@@ -16,6 +16,9 @@ import { lineLength, bbox, fmtDist } from './geo.js';
 import { $, $$, h, icon, toast, store } from './ui.js';
 import { initGestures } from './gestures.js';
 import { initView3d } from './view3d.js';
+import { WeatherOverlay } from './wxmap.js';
+import { isAerial } from './style.js';
+import { WIND_CLASSES } from './weather.js';
 
 // ------------------------------------------------------------------ state
 const DEFAULTS = {
@@ -28,11 +31,13 @@ const DEFAULTS = {
   terrain3d: false,
   labelsDown: false,
   labelsUp: false,
+  weather: { wind: false, temp: false, rain: false },
   exaggeration: 1.4,
   mmlKey: '',
   overlaysByActivity: {},
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
+state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
 const shared = parseShared(new URLSearchParams(location.search));
 if (shared && ACTIVITIES[shared.activity]) state.activity = shared.activity;
 
@@ -136,9 +141,35 @@ initInspector(map, {
 });
 
 initSearch(map, $('#search-input'), $('#search-results'));
+
+// Weather overlay: image sources are swapped in place when possible; adding or
+// removing one goes through a (diffed) style rebuild.
+const weather = new WeatherOverlay(map, {
+  setData,
+  setImage(id, img) {
+    const had = !!data[id];
+    data[id] = img;
+    const src = map.getSource(id);
+    if (img && src && had) src.updateImage(img);
+    else if (!!img !== had || (img && !src)) applyStyle();
+  },
+  setRadar(r) {
+    const before = JSON.stringify(data.wxRadar || null);
+    data.wxRadar = r;
+    if (JSON.stringify(r || null) !== before) applyStyle();
+  },
+  dark: () => isAerial(state.base) || state.base === 'night',
+});
+function setWeather(patch) {
+  Object.assign(state.weather, patch);
+  weather.set(state.weather);
+  $('#btn-wind').setAttribute('aria-pressed', String(state.weather.wind));
+  applyStyle();
+  renderLayersPanel();
+}
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, lipas,
+  map, planner, state, uphill, lipas, weather,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderLegend();
@@ -252,6 +283,12 @@ function renderLayersPanel() {
       h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight')));
 
+  p.append(section('Weather',
+    toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed, 48 h forecast'),
+    toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels'),
+    toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later'),
+    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Use the time bar to scrub or play the next 48 hours.')));
+
   for (const g of OVERLAY_GROUPS) {
     p.append(section(g.title, ...g.ids.map((id) => {
       const o = RASTER_OVERLAYS[id];
@@ -302,6 +339,8 @@ function renderLegend() {
     item(line('border-top:5px dotted #ea580c'), 'Carry / portage'),
     item(line('border-top:4px dashed #be123c'), 'Straight line')));
   p.append(sec('Gradient (profile)', ...GRADE_BANDS.map(([, c, l]) => item(line(`background:${c};height:8px`), l))));
+  p.append(sec('Wind along the route', ...WIND_CLASSES.map((c) => item(line(`background:${c.color};height:8px`), c.label)),
+    item(h('span', { class: 'lg-arrow' }, '➜'), 'Arrow = where the wind blows')));
   p.append(sec('LIPAS places', ...Object.values(LIPAS_TYPES).filter((t) => t.icon).map((t) => item(h('span', { class: 'lg-dot', style: `background:${t.color}` }), t.name))));
 }
 
@@ -318,6 +357,7 @@ for (const btn of $$('[data-panel]')) btn.addEventListener('click', () => openPa
 for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () => openPanel(null));
 
 $('#btn-plan').addEventListener('click', () => planner.setActive(!planner.active));
+$('#btn-wind').addEventListener('click', () => setWeather({ wind: !state.weather.wind }));
 $('#btn-3d').addEventListener('click', () => {
   state.terrain3d = !state.terrain3d;
   applyStyle();
@@ -388,6 +428,8 @@ map.on('load', () => {
   configureLayers();
   syncZoomHint();
   syncView3d();
+  if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
+  $('#btn-wind').setAttribute('aria-pressed', String(state.weather.wind));
   if (shared && shared.points.length) {
     planner.restore(shared);
     planner.setActive(true);

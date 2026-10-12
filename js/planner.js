@@ -3,11 +3,11 @@
 
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, gradeColor } from './config.js';
 import { routeLeg } from './router.js';
-import { analyse, windExposure } from './analysis.js';
-import { ProfileChart, COLOR_MODES, WAY_COLORS } from './chart.js';
+import { analyse, estimateTime } from './analysis.js';
+import { ProfileChart, COLOR_MODES, WAY_COLORS, colorAt } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
-import { wind, windRating } from './weather.js';
+import { windAlong, windClass, windRating, WIND_CLASSES } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
@@ -37,6 +37,8 @@ export class Planner {
     this.markers = [];
     this.analysis = null;
     this.colorMode = store.get('colorMode', 'grade');
+    this.colorOnMap = store.get('colorOnMap', false);
+    this.startOffsetH = 0; // departure: hours from now
     this.gen = 0;
     this.selected = null;
     this.collapsed = false;
@@ -191,6 +193,7 @@ export class Planner {
     this.map.getCanvas().style.cursor = on ? 'crosshair' : '';
     for (const m of this.markers) m.getElement().hidden = !on;
     this.app.onActiveChange(on);
+    this.drawColored();
     if (on) requestAnimationFrame(() => this.chart.draw());
   }
 
@@ -282,6 +285,35 @@ export class Planner {
     const a = await analyse(line, { activity: this.app.activity(), craft: this.craft });
     if (gen !== this.gen) return;
     this.analysis = a;
+    this.renderAnalysis();
+    this.loadWind(a);
+  }
+
+  startSec() {
+    const now = Date.now() / 1000;
+    if (!this.startOffsetH) return Math.round(now / 60) * 60;
+    return (Math.floor(now / 3600) + this.startOffsetH) * 3600;
+  }
+
+  // Wind at the time each part of the route is reached: time the route without
+  // wind, fetch the forecast, re-time it with the wind, and sample again.
+  async loadWind(a) {
+    const opt = { activity: this.app.activity(), craft: this.craft };
+    const startSec = this.startSec();
+    a.windError = false;
+    try {
+      let w = await windAlong(a.pts, a.along, a.tAt, startSec);
+      let t = estimateTime(a, opt, w.head);
+      w = await windAlong(a.pts, a.along, t.tAt, startSec); // same forecast, cached
+      t = estimateTime(a, opt, w.head);
+      if (this.analysis !== a) return;
+      a.wind = { ...w, startSec };
+      a.timeWind = t.total;
+      a.tAtWind = t.tAt;
+    } catch {
+      if (this.analysis !== a) return;
+      a.windError = true;
+    }
     this.renderAnalysis();
   }
 
@@ -476,9 +508,47 @@ export class Planner {
     for (const [k, label] of modes) {
       this.els.modesBar.append(h('button', {
         type: 'button', class: 'chip', 'aria-pressed': String(this.colorMode === k),
-        onclick: () => { this.colorMode = k; store.set('colorMode', k); this.renderModeChips(); this.chart.setMode(k); this.renderBreakdown(); },
+        onclick: () => { this.colorMode = k; store.set('colorMode', k); this.renderModeChips(); this.chart.setMode(k); this.renderBreakdown(); this.drawColored(); },
       }, label));
     }
+    this.els.modesBar.append(h('button', {
+      type: 'button', class: 'chip chip-map', 'aria-pressed': String(this.colorOnMap), title: 'Colour the route line on the map the same way',
+      onclick: () => { this.colorOnMap = !this.colorOnMap; store.set('colorOnMap', this.colorOnMap); this.renderModeChips(); this.drawColored(); },
+      html: `${icon('route', 14)} On map`,
+    }));
+  }
+
+  // Route line on the map coloured like the profile, plus wind arrows in wind mode.
+  drawColored() {
+    const a = this.analysis;
+    const EMPTY_FC = { type: 'FeatureCollection', features: [] };
+    if (!a || this.panel.hidden) {
+      this.app.setData('routeColor', EMPTY_FC);
+      this.app.setData('routeWind', EMPTY_FC);
+      return;
+    }
+    const features = [];
+    const n = a.pts.length;
+    let i = 0;
+    while (this.colorOnMap && i < n - 1) {
+      const color = colorAt(a, i + 1, this.colorMode);
+      let j = i + 1;
+      while (j < n - 1 && colorAt(a, j + 1, this.colorMode) === color) j++;
+      features.push({ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: a.pts.slice(i, j + 1) } });
+      i = j;
+    }
+    this.app.setData('routeColor', { type: 'FeatureCollection', features });
+    const arrows = [];
+    if (this.colorMode === 'wind' && a.wind) {
+      const step = Math.max(200, a.total / 28);
+      for (let k = 0, next = step / 2; k < n; k++) {
+        if (a.along[k] < next) continue;
+        next += step;
+        const c = windClass(a.wind.head[k], a.wind.speed[k]);
+        arrows.push({ type: 'Feature', properties: { rot: (a.wind.dir[k] + 180) % 360, color: c.color, size: Math.min(1.3, 0.6 + a.wind.speed[k] / 12) }, geometry: { type: 'Point', coordinates: a.pts[k] } });
+      }
+    }
+    this.app.setData('routeWind', { type: 'FeatureCollection', features: arrows });
   }
 
   renderToolbarState() {
@@ -510,7 +580,8 @@ export class Planner {
     stat('Distance', fmtDist(a.total));
     stat('Ascent', `${Math.round(a.up)} m`);
     stat('Descent', `${Math.round(a.down)} m`);
-    stat('Est. time', fmtDuration(a.time), act === 'paddle' ? CRAFT[this.craft].label : '');
+    const timeSub = [act === 'paddle' ? CRAFT[this.craft].label : '', a.timeWind ? 'with wind' : ''].filter(Boolean).join(' · ');
+    stat('Est. time', fmtDuration(a.timeWind || a.time), timeSub);
     if (act === 'mtb' || act === 'gravel') {
       const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);
       stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : '');
@@ -524,7 +595,8 @@ export class Planner {
     this.renderBreakdown();
     this.renderClimbs();
     this.renderWarnings();
-    if (act === 'paddle') this.renderWind(); else this.els.wind.innerHTML = '';
+    this.renderWind();
+    this.drawColored();
   }
 
   renderBreakdown() {
@@ -545,6 +617,11 @@ export class Planner {
     };
     if (this.colorMode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown]);
     else if (this.colorMode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other]);
+    else if (this.colorMode === 'wind') {
+      if (!a.wind) { box.append(h('p', { class: 'note' }, a.windError ? 'Wind forecast unavailable right now.' : 'Loading wind forecast…')); return; }
+      const m = sumBy((i) => windClass(a.wind.head[i], a.wind.speed[i]).key);
+      rows = WIND_CLASSES.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color]);
+    }
     else if (this.colorMode === 'uphill') {
       const m = sumBy((i) => (a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down'));
       rows = [...m.entries()].sort((x, y) => (x[0] === 'flat / down' ? 1 : y[0] === 'flat / down' ? -1 : x[0] - y[0]))
@@ -617,36 +694,66 @@ export class Planner {
     this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 80, bottom: this.panel.offsetHeight + 40, left: 60, right: 60 }, maxZoom: 16, duration: 700 });
   }
 
-  async renderWind() {
+  renderWind() {
     const a = this.analysis;
     const box = this.els.wind;
-    const mid = a.pts[Math.floor(a.pts.length / 2)];
+    const act = this.app.activity();
     box.innerHTML = '';
-    box.append(h('h4', {}, 'Wind on the water'));
-    const body = h('div', { class: 'wind-body' }, 'Loading forecast…');
-    box.append(body);
-    try {
-      const w = await wind(mid[1], mid[0]);
-      if (this.analysis !== a) return;
-      const ex = windExposure(a.pts, a.along, w.dir);
-      const r = windRating(w.speed, w.gust);
-      body.innerHTML = '';
-      body.append(
-        h('div', { class: 'wind-now' },
-          h('span', { class: 'wind-arrow', style: `transform:rotate(${w.dir + 180}deg)`, title: `from ${compass(w.dir)}`, html: '&#8593;' }),
-          h('span', {}, h('b', {}, `${w.speed.toFixed(1)} m/s`), ` gusts ${w.gust.toFixed(1)} · from ${compass(w.dir)} · ${Math.round(w.temp)} °C`),
-          h('span', { class: `pill ${r.tone}` }, r.label)),
-        h('div', { class: 'exposure' },
-          ...[['Headwind', ex.head, '#ef4444'], ['Crosswind', ex.cross, '#f59e0b'], ['Tailwind', ex.tail, '#22a447']].map(([l, v, c]) =>
-            h('span', { class: 'ex-item' }, h('i', { style: `background:${c};width:${Math.max(4, v * 100)}%` }), `${l} ${Math.round(v * 100)} %`))),
-        h('div', { class: 'hours' }, ...w.hourly.filter((_, i) => i % 2 === 0).map((x) =>
-          h('span', { class: 'hour', title: `${x.speed.toFixed(1)} m/s, gusts ${x.gust.toFixed(1)}` },
-            h('i', { style: `transform:rotate(${x.dir + 180}deg)`, html: '&#8593;' }), h('b', {}, x.speed.toFixed(0)), h('small', {}, x.time)))),
-      );
-    } catch {
-      body.textContent = 'Wind forecast unavailable right now.';
+    if (!a) return;
+    const select = h('select', { class: 'start-select', 'aria-label': 'Departure time', onchange: (e) => { this.startOffsetH = +e.target.value; this.loadWind(a); } });
+    const now = new Date();
+    for (let k = 0; k <= 36; k++) {
+      const d = new Date((Math.floor(now.getTime() / 3600000) + k) * 3600000);
+      const day = d.getDate() === now.getDate() ? '' : d.getDate() === new Date(now.getTime() + 86400000).getDate() ? 'Tomorrow ' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
+      select.append(h('option', { value: String(k), selected: k === this.startOffsetH }, k === 0 ? 'Now' : `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
     }
+    box.append(h('h4', {}, act === 'paddle' ? 'Wind on the water' : 'Wind on the route', h('label', { class: 'start' }, 'Start ', select)));
+    if (!a.wind) {
+      box.append(h('div', { class: 'wind-body note' }, a.windError ? 'Wind forecast unavailable right now.' : 'Loading forecast…'));
+      return;
+    }
+    const w = a.wind;
+    const s0 = w.start;
+    const r = windRating(s0.speed, s0.gust, act);
+    // distance share per class, and the strongest headwind stretch
+    const share = { head: 0, cross: 0, tail: 0, calm: 0 };
+    let worst = null;
+    for (let i = 1; i < a.pts.length; i++) {
+      const d = a.along[i] - a.along[i - 1];
+      const c = windClass(w.head[i], w.speed[i]).key;
+      share[c === 'strongHead' ? 'head' : c === 'strongTail' ? 'tail' : c] += d;
+      if (!worst || w.head[i] > worst.v) worst = { v: w.head[i], i };
+    }
+    const tot = a.along[a.along.length - 1] || 1;
+    const body = h('div', { class: 'wind-body' },
+      h('div', { class: 'wind-now' },
+        h('span', { class: 'wind-arrow', style: `transform:rotate(${s0.dir + 180}deg)`, title: `from ${compass(s0.dir)}`, html: '&#8593;' }),
+        h('span', {}, h('b', {}, `${s0.speed.toFixed(1)} m/s`), ` gusts ${s0.gust.toFixed(1)} · from ${compass(s0.dir)} · ${Math.round(s0.temp)} °C${s0.precip > 0.1 ? ` · rain ${s0.precip.toFixed(1)} mm/h` : ''}`),
+        h('span', { class: `pill ${r.tone}` }, r.label)),
+      h('div', { class: 'exposure' },
+        ...[['Headwind', share.head, '#ef4444'], ['Crosswind', share.cross, '#f59e0b'], ['Tailwind', share.tail, '#22a447'], ['Calm', share.calm, '#94a3b8']]
+          .filter(([, v]) => v > 0)
+          .map(([l, v, c]) => h('span', { class: 'ex-item' }, h('i', { style: `background:${c};width:${Math.max(4, (v / tot) * 100)}%` }), `${l} ${Math.round((v / tot) * 100)} %`))),
+      worst && worst.v >= 1.5 ? h('button', { type: 'button', class: 'link', onclick: () => {
+        const i0 = Math.max(0, worst.i - 20), i1 = Math.min(a.pts.length - 1, worst.i + 20);
+        this.focusRange(i0, i1, null);
+      } }, `Strongest headwind ${worst.v.toFixed(1)} m/s at km ${(a.along[worst.i] / 1000).toFixed(1)} →`) : null,
+      h('div', { class: 'hours' }, ...hourStrip(w.hourly, w.startSec)),
+      h('button', { type: 'button', class: 'link', onclick: () => { this.colorMode = 'wind'; store.set('colorMode', 'wind'); this.renderModeChips(); this.chart.setMode('wind'); this.renderBreakdown(); this.drawColored(); } }, 'Show wind along the route ↑'),
+    );
+    box.append(body);
   }
+}
+
+function hourStrip(s, startSec) {
+  const out = [];
+  for (let i = 0; i < s.time.length && out.length < 8; i++) {
+    if (s.time[i] < startSec - 1800 || (out.length && i % 2)) continue;
+    const t = new Date(s.time[i] * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    out.push(h('span', { class: 'hour', title: `${s.speed[i].toFixed(1)} m/s, gusts ${s.gust[i].toFixed(1)}, ${Math.round(s.temp[i])} °C` },
+      h('i', { style: `transform:rotate(${s.dir[i] + 180}deg)`, html: '&#8593;' }), h('b', {}, s.speed[i].toFixed(0)), h('small', {}, t)));
+  }
+  return out;
 }
 
 // DEM elevation for each routed vertex, taken from the nearest analysed sample.

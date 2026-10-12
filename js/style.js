@@ -80,10 +80,13 @@ export function buildStyle(s, ctx) {
     contours: { type: 'vector', tiles: [ctx.contourTiles], maxzoom: 16 },
     route: { type: 'geojson', data: ctx.data.route || EMPTY },
     routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
+    routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
+    routeWind: { type: 'geojson', data: ctx.data.routeWind || EMPTY },
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS' },
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
+    wxLabels: { type: 'geojson', data: ctx.data.wxLabels || EMPTY },
   };
   const layers = [];
   const add = (l) => layers.push(l);
@@ -266,6 +269,9 @@ export function buildStyle(s, ctx) {
     });
   }
 
+  // ---- Weather overlay (images rendered by wxmap.js, radar tiles) -------
+  addWeather(s, ctx, sources, layers);
+
   // ---- Difficulty numbers along trails (own toggles; JOSM MTB-Trailmap style)
   if (act === 'mtb' && s.labelsDown) {
     add({
@@ -310,8 +316,14 @@ export function buildStyle(s, ctx) {
       'line-dasharray': ['case', ['get', 'loading'], ['literal', [1, 1.5]], ['==', ['get', 'mode'], 'line'], ['literal', [2.5, 1.2]], ['literal', [1, 0]]],
     },
   });
+  add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
   add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['!', ['get', 'loading']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
+  add({
+    id: 'route-wind', type: 'symbol', source: 'routeWind',
+    layout: { 'icon-image': 'wind-arrow', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': ['get', 'size'], 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+    paint: { 'icon-color': ['get', 'color'], 'icon-halo-color': '#111827', 'icon-halo-width': 1.5 },
+  });
   add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
 
   const style = {
@@ -327,6 +339,30 @@ export function buildStyle(s, ctx) {
     style.sky = { 'sky-color': '#bcd8f0', 'horizon-color': '#eef4f8', 'fog-color': '#eef2f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.85 };
   }
   return style;
+}
+
+const FMI_RADAR = 'https://openwms.fmi.fi/geoserver/Radar/wms?service=WMS&request=GetMap&version=1.1.1' +
+  '&layers=Radar:suomi_dbz_eureffin&styles=&srs=EPSG:3857&bbox={bbox-epsg-3857}&width=512&height=512&format=image/png&transparent=true';
+
+function addWeather(s, ctx, sources, layers) {
+  const wx = s.weather || {};
+  const d = ctx.data;
+  if ((wx.temp || wx.wind) && d.wxField) {
+    sources.wxField = { type: 'image', url: d.wxField.url, coordinates: d.wxField.coordinates };
+    layers.push({ id: 'wx-field', type: 'raster', source: 'wxField', paint: { 'raster-opacity': wx.temp ? 0.5 : 0.38, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+  }
+  if (wx.rain && d.wxRain) {
+    sources.wxRain = { type: 'image', url: d.wxRain.url, coordinates: d.wxRain.coordinates };
+    layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': 0.85, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+  }
+  if (wx.rain && d.wxRadar) {
+    if (d.wxRadar.rv) {
+      sources.wxRadarRv = { type: 'raster', tiles: [d.wxRadar.rv], tileSize: 512, maxzoom: 7, attribution: 'Radar © RainViewer' };
+      layers.push({ id: 'wx-radar-rv', type: 'raster', source: 'wxRadarRv', paint: { 'raster-opacity': 0.7, 'raster-fade-duration': 0 } });
+    }
+    sources.wxRadarFmi = { type: 'raster', tiles: [FMI_RADAR], tileSize: 512, bounds: [19, 59.3, 32.5, 70.3], attribution: 'Radar © Ilmatieteen laitos (FMI)' };
+    layers.push({ id: 'wx-radar-fmi', type: 'raster', source: 'wxRadarFmi', paint: { 'raster-opacity': 0.75, 'raster-fade-duration': 0 } });
+  }
 }
 
 function addRasterOverlays(s, sources, layers, slot) {
@@ -539,4 +575,7 @@ function addLabels(s, P, hc, layers) {
   place('label-village', ['village'], 9, zi(9, 11, 14, 15));
   place('label-town', ['town'], 7, zi(7, 11, 13, 17), FONT_B);
   place('label-city', ['city'], 4, zi(4, 11, 12, 20), FONT_B);
+  if (s.weather && s.weather.temp) {
+    layers.push({ id: 'wx-temp-label', type: 'symbol', source: 'wxLabels', layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': 13, 'text-padding': 30 }, paint: { 'text-color': '#111827', 'text-halo-color': 'rgba(255,255,255,0.9)', 'text-halo-width': 2 } });
+  }
 }

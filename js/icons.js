@@ -81,7 +81,27 @@ function doubleChevron() {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// Plain white arrow pointing up; drawn as SDF so it can be tinted per feature.
+function windArrow() {
+  const [c, ctx] = canvas(22, 30);
+  ctx.beginPath();
+  ctx.moveTo(11, 2);
+  ctx.lineTo(20, 15);
+  ctx.lineTo(14, 13.5);
+  ctx.lineTo(14, 28);
+  ctx.lineTo(8, 28);
+  ctx.lineTo(8, 13.5);
+  ctx.lineTo(2, 15);
+  ctx.closePath();
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+const SDF = new Set(['wind-arrow']);
+
 export function makeIcon(id) {
+  if (id === 'wind-arrow') return windArrow();
   if (id === 'route-arrow') return chevron('#ffffff', 'rgba(0,0,0,0.35)');
   if (id === 'uphill-arrow') return doubleChevron();
   if (id.startsWith('lipas-')) {
@@ -96,6 +116,6 @@ export function installIcons(map) {
   map.on('styleimagemissing', (e) => {
     if (map.hasImage(e.id)) return;
     const img = makeIcon(e.id);
-    if (img) map.addImage(e.id, img, { pixelRatio: S });
+    if (img) map.addImage(e.id, img, { pixelRatio: S, sdf: SDF.has(e.id) });
   });
 }

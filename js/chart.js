@@ -3,7 +3,8 @@
 // is synced both ways with the map.
 
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT } from './config.js';
-import { fmtDist } from './geo.js';
+import { fmtDist, compass } from './geo.js';
+import { windClass } from './weather.js';
 
 export const WAY_COLORS = {
   path: '#7c2d12', footway: '#b45309', steps: '#dc2626', track: '#a16207', cycleway: '#2563eb',
@@ -15,6 +16,7 @@ export const COLOR_MODES = {
   grade: 'Gradient',
   uphill: 'Uphill difficulty',
   surface: 'Surface',
+  wind: 'Wind',
   way: 'Way type',
   down: 'MTB difficulty',
 };
@@ -25,9 +27,12 @@ export function colorAt(a, i, mode) {
     case 'surface': return SURFACE_COLORS[a.surf[i]] || SURFACE_COLORS.unknown;
     case 'way': return WAY_COLORS[a.way[i]] || WAY_COLORS.other;
     case 'down': return a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
+    case 'wind': return a.wind ? windClass(a.wind.head[i], a.wind.speed[i]).color : '#e2e8f0';
     default: return gradeColor(a.grade[i]);
   }
 }
+
+const clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 function niceStep(range, target) {
   const raw = range / target;
@@ -98,6 +103,12 @@ export class ProfileChart {
     if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
     if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
     rows.push(`${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
+    if (a.wind) {
+      const w = a.wind;
+      const c = windClass(w.head[i], w.speed[i]);
+      rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
+      if (a.tAtWind) rows.push(`Reached ${clock(a.wind.startSec + a.tAtWind[i])}`);
+    }
     this.tip.innerHTML = rows.join('<br>');
     this.tip.hidden = false;
     const tw = this.tip.offsetWidth;

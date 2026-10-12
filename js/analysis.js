@@ -1,7 +1,7 @@
 // Route analysis: elevation profile from the lidar DEM, grades, climbs with an
 // uphill-difficulty grade, surface / way-type breakdown, warnings and timing.
 
-import { densify, dist, bearing } from './geo.js';
+import { densify, dist } from './geo.js';
 import { elevations, smooth } from './dem.js';
 import { CRAFT } from './config.js';
 
@@ -127,15 +127,18 @@ export async function analyse(line, opt) {
 
   const climbs = findClimbs(along, ele, grade, sAttr, pts);
   const warnings = findWarnings(along, grade, sAttr, pts, opt.activity);
-  const time = estimateTime(along, grade, sAttr, surf, opt);
-
-  return {
+  const out = {
     activity: opt.activity,
     pts, along, ele, grade, surf, way, down6, upCls,
-    total, up, down, minE, maxE, time, climbs, warnings,
+    total, up, down, minE, maxE, climbs, warnings,
     surfaces: breakdown(surf),
     ways: breakdown(way),
+    attr: sAttr,
   };
+  const t = estimateTime(out, opt);
+  out.time = t.total;
+  out.tAt = t.tAt;
+  return out;
 }
 
 function findClimbs(along, ele, grade, sAttr, pts) {
@@ -215,8 +218,21 @@ function findWarnings(along, grade, sAttr, pts, activity) {
   return out.sort((a, b) => a.at - b.at);
 }
 
-function estimateTime(along, grade, sAttr, surf, opt) {
-  const a = opt.activity;
+/**
+ * Moving time per sample. With `head` (headwind component in m/s per sample,
+ * negative = tailwind) the pace is adjusted for wind, which matters a lot on a
+ * bike or in a kayak and a little on foot.
+ * @returns {{total:number, tAt:Float32Array}} tAt = seconds from start at each sample
+ */
+export function estimateTime(a, opt, head = null) {
+  const { along, grade, surf } = a;
+  const sAttr = a.attr;
+  const act = opt.activity;
+  const tAt = new Float32Array(along.length);
+  const windAdj = (kmh, i, k, lo, hi) => {
+    if (!head) return kmh;
+    return Math.max(kmh * lo, Math.min(kmh * hi, kmh - k * head[i]));
+  };
   let secs = 0;
   for (let i = 1; i < along.length; i++) {
     const d = along[i] - along[i - 1];
@@ -225,39 +241,29 @@ function estimateTime(along, grade, sAttr, surf, opt) {
     const tags = at.tags || {};
     let kmh;
     if (at.mode === 'water' || tags.route === 'water') {
-      kmh = tags.portage ? 2.5 : (CRAFT[opt.craft] || CRAFT.kayak).kmh;
-    } else if (a === 'hike' || a === 'paddle') {
+      kmh = tags.portage ? 2.5 : windAdj((CRAFT[opt.craft] || CRAFT.kayak).kmh, i, 0.35, 0.25, 1.35);
+    } else if (act === 'hike' || act === 'paddle') {
       kmh = 6 * Math.exp(-3.5 * Math.abs(g + 0.05)); // Tobler
       if (['path', 'bridleway'].includes(tags.highway)) kmh *= 0.88;
+      kmh = windAdj(kmh, i, 0.06, 0.8, 1.08);
     } else {
       const s = surf[i];
       const trail = ['path', 'bridleway', 'footway'].includes(tags.highway);
-      const flat = a === 'gravel'
+      let flat = act === 'gravel'
         ? (PAVED.has(s) ? 25 : trail ? 12 : 20)
         : (PAVED.has(s) ? 20 : trail ? 11 + Math.max(0, 2 - mtbScale(tags)) * 1.5 : 16);
-      const vam = a === 'gravel' ? 700 : 600; // vertical metres per hour when climbing
+      // ~1.2 km/h slower per m/s of headwind in the open, less on sheltered trails
+      flat = windAdj(flat, i, trail ? 0.5 : 1.2, 0.45, 1.3);
+      const vam = act === 'gravel' ? 700 : 600; // vertical metres per hour when climbing
       if (g > 0.01) {
-        const tFlat = d / (flat / 3.6);
-        const tClimb = (d * g) / (vam / 3600);
-        secs += Math.max(tFlat, tClimb);
+        secs += Math.max(d / (flat / 3.6), (d * g) / (vam / 3600));
+        tAt[i] = secs;
         continue;
       }
       kmh = g < -0.03 ? Math.min(flat * 1.25, trail ? 16 : 35) : flat;
     }
     secs += d / (Math.max(kmh, 0.5) / 3.6);
+    tAt[i] = secs;
   }
-  return secs;
-}
-
-/** Wind exposure along the route: share of distance with head/cross/tail wind. */
-export function windExposure(pts, along, windFromDeg) {
-  let head = 0, cross = 0, tail = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const d = along[i] - along[i - 1];
-    const heading = bearing(pts[i - 1], pts[i]);
-    let diff = Math.abs(((heading - windFromDeg + 540) % 360) - 180); // 180 = wind from behind
-    if (diff < 45) head += d; else if (diff > 135) tail += d; else cross += d;
-  }
-  const t = head + cross + tail || 1;
-  return { head: head / t, cross: cross / t, tail: tail / t };
+  return { total: secs, tAt };
 }
