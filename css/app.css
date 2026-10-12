@@ -149,6 +149,7 @@ button { font: inherit; color: inherit; }
 }
 .wx-row { display: flex; align-items: center; gap: 8px; }
 .wx-row input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
+.wx-time.linked::before { content: "⚑ "; color: var(--route); }
 .wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 120px; text-align: right; }
 .wx-info { justify-content: space-between; padding-left: 8px; flex-wrap: wrap; gap: 4px 14px; }
 .wx-legend { display: flex; gap: 12px; }
@@ -308,6 +309,13 @@ button { font: inherit; color: inherit; }
 }
 .li:hover, .li.sel { background: var(--surface-2); }
 .li .ic { color: var(--warn); }
+.li-row { display: flex; align-items: center; gap: 4px; }
+.li-row .li { flex: 1; min-width: 0; }
+.btn.avoid { height: 26px; padding: 0 9px; font-size: 12px; color: var(--bad); border-color: rgba(220,38,38,.35); }
+.btn.avoid:hover { background: rgba(220,38,38,.08); }
+.kind-incident .li .ic, .kind-roadwork .li .ic { color: var(--bad); }
+.kind-busy .li .ic { color: #b45309; }
+.kind-roadcond .li .ic { color: #7e22ce; }
 .li-main { display: flex; flex-direction: column; min-width: 0; }
 .li-main span { color: var(--muted); font-size: 12px; }
 .badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }

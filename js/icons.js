@@ -15,6 +15,7 @@ const GLYPHS = {
   tower: 'M9 3 H15 V6 H14 L16.5 21 H14.5 L13.6 15 H10.4 L9.5 21 H7.5 L10 6 H9 Z',
   landing: 'M3 15 C6 13 9 13 12 15 C15 17 18 17 21 15 V18 C18 20 15 20 12 18 C9 16 6 16 3 18 Z M12 3 L16 8 H13 V13 H11 V8 H8 Z',
   info: 'M11 10 H13 V19 H11 Z M12 5 A1.6 1.6 0 1 1 11.99 5 Z',
+  target: 'M12 3 A9 9 0 1 1 11.99 3 Z M12 6 A6 6 0 1 0 12.01 6 Z M12 9 A3 3 0 1 1 11.99 9 Z M11 1 H13 V7 H11 Z M11 17 H13 V23 H11 Z M1 11 H7 V13 H1 Z M17 11 H23 V13 H17 Z',
 };
 
 function canvas(w, h) {
@@ -81,6 +82,40 @@ function doubleChevron() {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// Warning signs for traffic & safety points: triangle / diamond with a glyph.
+function sign(shape, fill, glyph) {
+  const [c, ctx] = canvas(28, 28);
+  ctx.beginPath();
+  if (shape === 'triangle') { ctx.moveTo(14, 2.5); ctx.lineTo(26, 24.5); ctx.lineTo(2, 24.5); }
+  else { ctx.moveTo(14, 1.5); ctx.lineTo(26.5, 14); ctx.lineTo(14, 26.5); ctx.lineTo(1.5, 14); }
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+  ctx.fillStyle = '#111111';
+  ctx.font = '900 13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(glyph, 14, shape === 'triangle' ? 17 : 14.5);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// Ship seen from above, bow up; SDF so moving / anchored ships can be tinted.
+function ship() {
+  const [c, ctx] = canvas(16, 28);
+  ctx.beginPath();
+  ctx.moveTo(8, 1.5);
+  ctx.quadraticCurveTo(14.5, 8, 14, 26);
+  ctx.lineTo(2, 26);
+  ctx.quadraticCurveTo(1.5, 8, 8, 1.5);
+  ctx.closePath();
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 // Plain white arrow pointing up; drawn as SDF so it can be tinted per feature.
 function windArrow() {
   const [c, ctx] = canvas(22, 30);
@@ -98,10 +133,14 @@ function windArrow() {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
-const SDF = new Set(['wind-arrow']);
+const SDF = new Set(['wind-arrow', 'ship']);
 
 export function makeIcon(id) {
   if (id === 'wind-arrow') return windArrow();
+  if (id === 'ship') return ship();
+  if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');
+  if (id === 'sf-roadwork') return sign('diamond', '#f59e0b', '⚒');
+  if (id === 'sf-slippery') return sign('triangle', '#a855f7', '❄');
   if (id === 'route-arrow') return chevron('#ffffff', 'rgba(0,0,0,0.35)');
   if (id === 'uphill-arrow') return doubleChevron();
   if (id.startsWith('lipas-')) {

@@ -2,8 +2,9 @@
 
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, OVERLAY_GROUPS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, LIPAS_TYPES,
+  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, LIPAS_TYPES, SAFETY_OVERLAYS,
 } from './config.js';
+import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { buildStyle } from './style.js';
 import { installIcons } from './icons.js';
 import { Planner, parseShared } from './planner.js';
@@ -16,7 +17,7 @@ import { lineLength, bbox, fmtDist } from './geo.js';
 import { $, $$, h, icon, toast, store } from './ui.js';
 import { initGestures } from './gestures.js';
 import { initView3d } from './view3d.js';
-import { WeatherOverlay } from './wxmap.js';
+import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
 import { WIND_CLASSES } from './weather.js';
 
@@ -120,9 +121,13 @@ function applyStyle() {
 const uphill = new UphillLayer(map, (fc) => setData('uphill', fc));
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 
+const safety = new SafetyLayers(map, { setData, time: () => timeAtHour(planner.startOffsetH) });
+
 const planner = new Planner(map, {
   activity: () => state.activity,
   setData,
+  onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
+  hazards: (a, opt) => safety.hazardsAlong(a, opt),
   onActiveChange: (on) => {
     $('#btn-plan').setAttribute('aria-pressed', String(on));
     syncPlannerPadding();
@@ -139,6 +144,8 @@ initInspector(map, {
     toast('Now click where you want to go');
   },
   routeTo: (ll) => { planner.setActive(true); planner.addPoint(ll); },
+  avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
+  vessel: (mmsi) => safety.vessel(mmsi),
 });
 
 initSearch(map, $('#search-input'), $('#search-results'));
@@ -160,17 +167,21 @@ const weather = new WeatherOverlay(map, {
     if (JSON.stringify(r || null) !== before) applyStyle();
   },
   dark: () => isAerial(state.base) || state.base === 'night',
+  // the weather time bar and the route's departure time are one clock
+  onHour: (k) => { planner.setStartOffset(k, { fromMap: true }); safety.publish(); },
+  hasRoute: () => planner.points.length > 1,
 });
 function setWeather(patch) {
   Object.assign(state.weather, patch);
   weather.set(state.weather);
+  if (planner.startOffsetH) weather.setHour(planner.startOffsetH, { silent: true });
   $('#btn-wind').setAttribute('aria-pressed', String(state.weather.wind));
   applyStyle();
   renderLayersPanel();
 }
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, lipas, weather,
+  map, planner, state, uphill, lipas, weather, safety,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderLegend();
@@ -184,9 +195,18 @@ function syncPlannerPadding() {
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 
+const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map(([k]) => +k);
+
 function configureLayers() {
   const a = ACTIVITIES[state.activity];
-  lipas.configure({ routes: a.lipas.routes, points: a.lipas.points, showRoutes: !!state.overlays.lipasRoutes, showPoints: !!state.overlays.lipasPoints });
+  const o = state.overlays;
+  lipas.configure({
+    routes: a.lipas.routes,
+    points: [...(o.lipasPoints ? a.lipas.points : []), ...(o.restricted ? DANGER_TYPES : [])],
+    showRoutes: !!o.lipasRoutes,
+    showPoints: !!(o.lipasPoints || o.restricted),
+  });
+  safety.configure({ traffic: !!o.sfTraffic, incidents: !!o.sfIncidents, roadworks: !!o.sfRoadworks, roadcond: !!o.sfRoadcond, ships: !!o.sfShips });
   uphill.setEnabled(state.activity === 'mtb' && (state.trailColors !== 'down' || state.labelsUp));
 }
 
@@ -293,6 +313,14 @@ function renderLayersPanel() {
     toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later'),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Use the time bar to scrub or play the next 48 hours.')));
 
+  p.append(section('Traffic & safety',
+    ...Object.entries(SAFETY_OVERLAYS).map(([id, o]) => toggle(o.label, !!state.overlays[id], (v) => {
+      setOverlay(id, v);
+      if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
+      if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
+    }, o.note)),
+    h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up under Heads-up, each with an Avoid button.')));
+
   for (const g of OVERLAY_GROUPS) {
     p.append(section(g.title, ...g.ids.map((id) => {
       const o = RASTER_OVERLAYS[id];
@@ -342,6 +370,12 @@ function renderLegend() {
     item(line('background:#0369a1;height:5px'), 'Over water'),
     item(line('border-top:5px dotted #ea580c'), 'Carry / portage'),
     item(line('border-top:4px dashed #be123c'), 'Straight line')));
+  p.append(sec('Traffic & safety',
+    ...AADT_STEPS.map(([min, c], i) => item(line(`background:${c};height:6px`), `${min.toLocaleString('fi-FI')}${AADT_STEPS[i + 1] ? `–${AADT_STEPS[i + 1][0].toLocaleString('fi-FI')}` : '+'} vehicles/day`)),
+    item(line('background:#dc2626;height:5px'), 'Accident / incident'),
+    item(line('border-top:5px dashed #f59e0b'), 'Road works'),
+    item(line('background:#f97316;height:5px'), 'Poor road conditions (red/purple: worse)'),
+    item(line('background:rgba(220,38,38,.15);height:12px;box-shadow:inset 0 0 0 2px #dc2626'), 'Military area / your avoided places')));
   p.append(sec('Gradient (profile)', ...GRADE_BANDS.map(([, c, l]) => item(line(`background:${c};height:8px`), l))));
   p.append(sec('Wind along the route', ...WIND_CLASSES.map((c) => item(line(`background:${c.color};height:8px`), c.label)),
     item(h('span', { class: 'lg-arrow' }, '➜'), 'Arrow = where the wind blows')));

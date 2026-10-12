@@ -87,6 +87,11 @@ export function buildStyle(s, ctx) {
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
     wxLabels: { type: 'geojson', data: ctx.data.wxLabels || EMPTY },
+    sfAadt: { type: 'geojson', data: ctx.data.sfAadt || EMPTY, attribution: '© Fintraffic / Digiroad' },
+    sfLines: { type: 'geojson', data: ctx.data.sfLines || EMPTY, attribution: '© Fintraffic / Digitraffic' },
+    sfPoints: { type: 'geojson', data: ctx.data.sfPoints || EMPTY },
+    sfShips: { type: 'geojson', data: ctx.data.sfShips || EMPTY },
+    nogo: { type: 'geojson', data: ctx.data.nogo || EMPTY },
   };
   const layers = [];
   const add = (l) => layers.push(l);
@@ -135,6 +140,13 @@ export function buildStyle(s, ctx) {
   // Protected areas (national parks, nature reserves)
   add({ id: 'park-fill', type: 'fill', source: 'ofm', 'source-layer': 'park', minzoom: 7, paint: { 'fill-color': P.park, 'fill-opacity': aerialBase || topoBase ? 0 : zi(7, 0.07, 12, 0.04) } });
   add({ id: 'park-line', type: 'line', source: 'ofm', 'source-layer': 'park', minzoom: 7, paint: { 'line-color': P.park, 'line-width': zi(7, 0.8, 14, 2.2), 'line-dasharray': [3, 2], 'line-opacity': 0.7 } });
+
+  // Military areas (often with restricted access or live firing)
+  if (s.overlays.restricted) {
+    const mil = ['==', ['get', 'class'], 'military'];
+    add({ id: 'military-fill', type: 'fill', source: 'ofm', 'source-layer': 'landuse', minzoom: 8, filter: mil, paint: { 'fill-color': '#dc2626', 'fill-opacity': zi(8, 0.12, 14, 0.08) } });
+    add({ id: 'military-line', type: 'line', source: 'ofm', 'source-layer': 'landuse', minzoom: 8, filter: mil, paint: { 'line-color': '#b91c1c', 'line-width': zi(8, 1, 14, 2.5), 'line-dasharray': [4, 2] } });
+  }
 
   if (s.hillshade && !aerialBase) {
     add({
@@ -194,6 +206,21 @@ export function buildStyle(s, ctx) {
   }
 
   addRoads(s, P, hc, layers);
+
+  // Busy roads: Digiroad average daily traffic as a heat line over the roads
+  if (s.overlays.sfTraffic) {
+    const aadt = ['get', 'aadt'];
+    add({
+      id: 'sf-aadt', type: 'line', source: 'sfAadt', minzoom: 10,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['step', aadt, '#facc15', 2000, '#fb923c', 5000, '#ef4444', 10000, '#991b1b'],
+        'line-width': zi(10, 2, 13, ['step', aadt, 3, 5000, 5], 17, ['step', aadt, 8, 5000, 13]),
+        'line-opacity': zi(10, 0.55, 14, 0.7),
+        'line-blur': 0.6,
+      },
+    });
+  }
 
   // Rail & ferries (topo rasters already draw these)
   if (!topoBase) add({ id: 'rail', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 9, filter: ['all', ['in', ['get', 'class'], ['literal', ['rail', 'transit']]], ['!=', ['get', 'brunnel'], 'tunnel']], paint: { 'line-color': P.rail, 'line-width': zi(9, 0.6, 16, 2) } });
@@ -258,7 +285,7 @@ export function buildStyle(s, ctx) {
     poi('poi-outdoor', 13, ['any', ['in', ['get', 'class'], ['literal', outdoor]], ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]);
     poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]]);
   }
-  if (s.overlays.lipasPoints) {
+  if (s.overlays.lipasPoints || s.overlays.restricted) {
     add({
       id: 'lipas-point', type: 'symbol', source: 'lipasPoints', minzoom: 10,
       layout: {
@@ -271,6 +298,24 @@ export function buildStyle(s, ctx) {
 
   // ---- Weather overlay (images rendered by wxmap.js, radar tiles) -------
   addWeather(s, ctx, sources, layers);
+
+  // ---- Traffic & safety: incidents, road works, road conditions, ships --
+  add({
+    id: 'sf-lines', type: 'line', source: 'sfLines', minzoom: 6,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['match', ['get', 'kind'], 'incident', '#dc2626', 'roadwork', '#f59e0b', ['coalesce', ['get', 'color'], '#a855f7']],
+      'line-width': zi(6, 2, 12, 4, 16, 8),
+      'line-opacity': 0.85,
+      'line-dasharray': ['match', ['get', 'kind'], 'roadwork', ['literal', [1.5, 1]], ['literal', [1, 0]]],
+    },
+  });
+  add({ id: 'sf-points', type: 'symbol', source: 'sfPoints', minzoom: 6, layout: { 'icon-image': ['get', 'icon'], 'icon-size': zi(6, 0.6, 12, 0.85, 16, 1), 'icon-allow-overlap': true, 'symbol-sort-key': ['match', ['get', 'kind'], 'incident', 0, 'roadcond', 1, 2] } });
+  add({
+    id: 'sf-ships', type: 'symbol', source: 'sfShips', minzoom: 7,
+    layout: { 'icon-image': 'ship', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': zi(7, 0.5, 13, 0.9, 16, 1.2), 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+    paint: { 'icon-color': ['case', ['get', 'moving'], '#0f172a', '#64748b'], 'icon-halo-color': '#ffffff', 'icon-halo-width': 1.5 },
+  });
 
   // ---- Difficulty numbers along trails (own toggles; JOSM MTB-Trailmap style)
   if (act === 'mtb' && s.labelsDown) {
@@ -301,6 +346,10 @@ export function buildStyle(s, ctx) {
   }
 
   addLabels(s, P, hc, layers);
+
+  // ---- Places to avoid (route planner no-go areas) ------------------------
+  add({ id: 'nogo-fill', type: 'fill', source: 'nogo', paint: { 'fill-color': '#dc2626', 'fill-opacity': 0.14 } });
+  add({ id: 'nogo-line', type: 'line', source: 'nogo', paint: { 'line-color': '#dc2626', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
 
   // ---- Imported tracks & the planned route (always on top) --------------
   add({ id: 'tracks-casing', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 4, 16, 9), 'line-opacity': 0.8 } });

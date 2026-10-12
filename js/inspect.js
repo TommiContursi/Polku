@@ -29,12 +29,12 @@ export function initInspector(map, app) {
   map.on('click', async (e) => {
     if (app.isPlanning()) return;
     const ids = map.getStyle().layers.map((l) => l.id)
-      .filter((id) => /^(lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
+      .filter((id) => /^(sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
     const feats = map.queryRenderedFeatures(box, { layers: ids });
     const by = (re) => feats.find((f) => re.test(f.layer.id));
     const ll = [e.lngLat.lng, e.lngLat.lat];
-    const f = by(/^lipas-point/) || by(/^poi-|^label-peak/) || by(/^uphill-line/) || by(/^(path|track|cycleway)-/) || by(/^lipas-route/) || by(/^road-/) || by(/^water$/);
+    const f = by(/^sf-ships/) || by(/^sf-points/) || by(/^lipas-point/) || by(/^poi-|^label-peak/) || by(/^sf-lines/) || by(/^uphill-line/) || by(/^(path|track|cycleway)-/) || by(/^lipas-route/) || by(/^sf-aadt/) || by(/^road-/) || by(/^military/) || by(/^water$/);
     if (popup) popup.remove();
     if (!f) return;
     const body = h('div', { class: 'insp' });
@@ -42,8 +42,10 @@ export function initInspector(map, app) {
     keepInView(map, popup);
     const actions = h('div', { class: 'insp-actions' },
       h('button', { type: 'button', class: 'btn', onclick: () => { popup.remove(); app.routeFrom(ll); }, html: `${icon('flag', 15)} Route from here` }),
-      h('button', { type: 'button', class: 'btn', onclick: () => { popup.remove(); app.routeTo(ll); }, html: `${icon('plus', 15)} Add to route` }));
+      h('button', { type: 'button', class: 'btn', onclick: () => { popup.remove(); app.routeTo(ll); }, html: `${icon('plus', 15)} Add to route` }),
+      h('button', { type: 'button', class: 'btn avoid', title: 'Routes will go around this spot (40 m)', onclick: () => { popup.remove(); app.avoid(ll, body.querySelector('.insp-title')?.textContent); }, html: `${icon('close', 15)} Avoid` }));
 
+    if (/^sf-|^military/.test(f.layer.id)) { await renderSafety(body, f, app); body.append(actions); return; }
     if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
     else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
@@ -145,6 +147,45 @@ function renderLipas(body, p) {
     www ? h('a', { href: www, target: '_blank', rel: 'noopener', html: `Website ${icon('external', 13)}` }) : null,
     h('a', { href: `https://www.lipas.fi/liikuntapaikat/${p.lipasId}`, target: '_blank', rel: 'noopener', html: `LIPAS ${icon('external', 13)}` })));
   body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
+}
+
+const when = (iso) => (iso ? new Date(iso).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+
+async function renderSafety(body, f, app) {
+  const p = f.properties;
+  const kind = f.layer.id === 'military-fill' ? 'military' : p.kind;
+  if (kind === 'incident' || kind === 'roadwork') {
+    body.append(h('div', { class: 'insp-title' }, kind === 'incident' ? 'Traffic incident' : 'Road works'));
+    if (p.title) body.append(h('div', { class: 'insp-sub' }, p.title));
+    if (p.details) body.append(row('Effect', p.details));
+    if (p.start) body.append(row('From', when(p.start)));
+    if (p.end) body.append(row('Until', when(p.end)));
+    if (p.where) body.append(h('p', { class: 'insp-info' }, p.where.length > 240 ? `${p.where.slice(0, 240)}…` : p.where));
+    body.append(h('div', { class: 'insp-links' }, h('a', { href: 'https://liikennetilanne.fintraffic.fi/', target: '_blank', rel: 'noopener', html: `Fintraffic traffic situation ${icon('external', 13)}` })));
+  } else if (kind === 'roadcond') {
+    body.append(h('div', { class: 'insp-title' }, p.label));
+    if (p.reasons) body.append(row('Why', p.reasons));
+    if (p.roadTemp != null) body.append(row('Road surface', `${Math.round(p.roadTemp)} °C (air ${Math.round(p.temp)} °C)`));
+    body.append(row('Forecast for', `${when(p.at)}${p.forecast ? ` (${p.forecast})` : ''}`));
+  } else if (kind === 'aadt') {
+    body.append(h('div', { class: 'insp-title' }, 'Busy road'));
+    body.append(row('Traffic', `about ${Math.round(p.aadt).toLocaleString('fi-FI')} vehicles/day`));
+    body.append(h('p', { class: 'insp-info' }, p.aadt >= 5000 ? 'Heavy traffic for cycling — look for a cycleway or a quieter road.' : p.aadt >= 2000 ? 'Steady traffic; often fast cars on rural roads.' : 'Moderate traffic.'));
+  } else if (kind === 'ship') {
+    body.append(h('div', { class: 'insp-title' }, 'Ship'));
+    body.append(row('Speed', `${(p.sog || 0).toFixed(1)} kn${p.moving ? '' : ' (stopped)'}`));
+    body.append(row('Position', `${p.age} min ago`));
+    const v = await app.vessel(p.mmsi);
+    if (v) {
+      body.querySelector('.insp-title').textContent = v.name || 'Ship';
+      if (v.destination) body.append(row('Destination', v.destination));
+      if (v.draught) body.append(row('Draught', `${(v.draught / 10).toFixed(1)} m`));
+    }
+    body.append(h('p', { class: 'insp-info' }, 'Big ships can’t stop or turn quickly — cross fairways fast and well ahead of them.'));
+  } else if (kind === 'military') {
+    body.append(h('div', { class: 'insp-title' }, 'Military area'));
+    body.append(h('p', { class: 'insp-info' }, 'May be closed or have live firing. Check the Defence Forces’ notices before you go.'));
+  }
 }
 
 async function renderWater(body, ll, map, app) {

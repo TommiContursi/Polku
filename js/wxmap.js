@@ -39,6 +39,14 @@ export function ramp(stops, v) {
 export const rampHex = (stops, v) => `#${ramp(stops, v).map((x) => x.toString(16).padStart(2, '0')).join('')}`;
 const rampCss = (stops) => `linear-gradient(90deg, ${stops.map(([, c], i) => `${c} ${(i / (stops.length - 1)) * 100}%`).join(', ')})`;
 
+// One clock for the whole app: hour 0 is "now", hour k is k full hours ahead
+// (on the hour), the same steps as the planner's departure picker.
+export function timeAtHour(hr) {
+  const now = Date.now() / 1000;
+  if (hr < 0.01) return now;
+  return Math.max(now, Math.floor(now / 3600) * 3600 + hr * 3600);
+}
+
 // Web Mercator helpers (0..1 world units)
 const mx = (lon) => (lon + 180) / 360;
 const my = (lat) => { const s = Math.sin((lat * Math.PI) / 180); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI); };
@@ -161,7 +169,7 @@ export class WeatherOverlay {
   applyHour(images = false) {
     const g = this.grid;
     if (!g) return;
-    const t = g.time0 + this.hour * 3600;
+    const t = timeAtHour(this.hour);
     const N = COLS * ROWS;
     const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N);
     const times = g.series[0].time;
@@ -496,11 +504,21 @@ export class WeatherOverlay {
     bar.append(h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl), h('div', { class: 'wx-row wx-info' }, this.legendEl, this.readEl));
   }
 
-  setHour(hr) {
+  // `silent`: change came from the route's departure picker, don't echo back
+  setHour(hr, { silent = false } = {}) {
     this.hour = Math.max(0, Math.min(HOURS, hr));
     this.slider.value = String(Math.round(this.hour));
-    this.applyHour();
+    if (this.grid) this.applyHour(); else this.renderTime();
     this.readout();
+    if (!silent) this.emitHour();
+  }
+
+  // Tell the app (and so the planner) whenever the whole hour changes.
+  emitHour() {
+    const k = Math.round(this.hour);
+    if (k === this.lastEmit) return;
+    this.lastEmit = k;
+    if (this.app.onHour) this.app.onHour(k);
   }
 
   togglePlay() {
@@ -521,17 +539,21 @@ export class WeatherOverlay {
     this.hour = Math.min(HOURS, next);
     this.slider.value = String(Math.round(this.hour));
     this.applyHour();
+    this.emitHour();
   }
 
   renderTime() {
     if (!this.timeEl) return;
-    const t = new Date(((this.grid ? this.grid.time0 : Date.now() / 1000) + this.hour * 3600) * 1000);
+    const t = new Date(timeAtHour(this.hour) * 1000);
     const day = t.toLocaleDateString([], { weekday: 'short' });
     const clock = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let label = this.hour < 0.5 ? `Now · ${clock}` : `${day} ${clock} · +${Math.round(this.hour)} h`;
     if (this.on.rain && this.hour < 0.5) label += ' · radar';
     if (this.loading) label += ' · loading…';
     this.timeEl.textContent = label;
+    // linked with the route's departure time
+    this.timeEl.title = this.app.hasRoute && this.app.hasRoute() ? 'Also the departure time of your route' : '';
+    this.timeEl.classList.toggle('linked', !!(this.app.hasRoute && this.app.hasRoute()));
   }
 
   renderLegend() {

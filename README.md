@@ -23,11 +23,13 @@ Any static server works. `serve.py` just disables caching while you edit.
 | Aerial | MML / Maptiler | Esri world imagery, plus MML ortokuva (Kapsi) |
 | Depth (syvyyskäyrät / -alueet / -pisteet) | ✓ Traficom | ✓ Traficom, plus shipping lanes, and click on water to see the charted depth range |
 | Digiroad overlays | ✓ | ✓ paved roads, private roads, speed limits |
+| **Traffic & safety** | – | ✓ busy roads (Digiroad vehicles/day as a heat line), live accidents & incidents, road works at your departure time, slippery / poor road conditions (0–12 h), live ships (AIS) for paddlers, military areas and shooting ranges |
+| **Avoid places** | – | ✓ hazards along a planned route show under Heads-up with an **Avoid** button; any map popup can mark a spot to avoid; BRouter routes around them (undo-able, saved with the route) |
 | LIPAS official routes & places | ✓ | ✓ hiking / MTB / paddling routes, lean-tos, huts, campfire sites, landing places, chosen per activity |
 | Route planner | ✓ (login for saving) | ✓ no login: auto-routing per activity (BRouter), straight-line legs, **over-water legs**, undo/redo, reverse, back to start, drag points, click the line to add a via point |
 | Elevation profile | ✓ | ✓ lidar profile coloured by gradient / uphill grade / surface / way type / MTB difficulty, synced hover with the map, climbs list with uphill grade, warnings (steps, no-bike, S3+, steep, carries, straight lines) |
 | **Water routing** (kayak, canoe, SUP) | – | ✓ routes stay on open water, flag carries (portages) and give paddling time per craft |
-| **Weather on the route** (all activities) | – | ✓ forecast for when you reach each part (pick a departure time): wind (head / cross / tail, with arrows on the map), temperature and rain as profile colours, where and how much it rains, wind-adjusted time |
+| **Weather on the route** (all activities) | – | ✓ forecast for when you reach each part: wind (head / cross / tail, with arrows on the map), temperature and rain as profile colours, where and how much it rains, wind-adjusted time. The departure time and the map's weather time bar are one clock |
 | GPX/KML import, GPX export | ✓ | ✓ drag & drop, "Analyse & edit" an imported track |
 | Share | account | ✓ link encodes the route |
 | Click to inspect | ✓ | ✓ difficulty, uphill grade, surface, access, elevation. "Show all OSM tags" fetches `sac_scale`, `trail_visibility`, `smoothness`, width… with a link to edit in OSM |
@@ -45,12 +47,13 @@ Zooming: pinch or Ctrl+scroll over any panel zooms the map, not the page. Tilt a
 
 ## Data sources
 
-[OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles, © OpenStreetMap contributors) · [Mapterhorn](https://mapterhorn.com) terrain · [BRouter](https://brouter.de) routing · [Photon](https://photon.komoot.io) search · [Overpass API](https://overpass-api.de) · [LIPAS](https://lipas.fi) (University of Jyväskylä, CC BY 4.0) · Traficom (depth data) · Fintraffic Digiroad · Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) · Esri World Imagery · [Waymarked Trails](https://waymarkedtrails.org) · [Open-Meteo](https://open-meteo.com) · [FMI open data](https://en.ilmatieteenlaitos.fi/open-data) radar · [RainViewer](https://www.rainviewer.com/api.html) · [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
+[OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles, © OpenStreetMap contributors) · [Mapterhorn](https://mapterhorn.com) terrain · [BRouter](https://brouter.de) routing · [Photon](https://photon.komoot.io) search · [Overpass API](https://overpass-api.de) · [LIPAS](https://lipas.fi) (University of Jyväskylä, CC BY 4.0) · Traficom (depth data) · Fintraffic Digiroad · Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) · Esri World Imagery · [Waymarked Trails](https://waymarkedtrails.org) · [Open-Meteo](https://open-meteo.com) · [FMI open data](https://en.ilmatieteenlaitos.fi/open-data) radar · [RainViewer](https://www.rainviewer.com/api.html) · [Fintraffic Digitraffic](https://www.digitraffic.fi/en/) (road & marine, CC BY 4.0) · [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
 
 ## Limits worth knowing
 
 - OpenFreeMap carries the full trail network from **zoom 14** (only some at 13). The app shows a hint between z10.5 and z14.
-- Traficom's WMS only answers browsers on `localhost` (and its own sites). If you host Polku on a public domain, the depth layers need a small proxy.
+- Traficom's depth WMS checks the page's origin: it answers `localhost` and polku.si, but not every domain. If you host Polku elsewhere and depth layers stay empty, they need a small proxy.
+- No open source of FMI weather warnings or forest-fire warnings allows browser (CORS) access, so those aren't shown.
 - BRouter, Overpass, Photon and the WMS services are free public servers: be gentle. Overpass is slow at times; the app races several mirrors.
 - Uphill grades and climb times are estimates from terrain and tags, not ground truth. Water routes don't know about currents, rapids, private shores or bird-protection areas. Check local rules.
 - Everyman's rights apply. Paths on the map aren't necessarily official routes.
@@ -70,6 +73,7 @@ js/analysis.js      profile, grades, climbs, warnings, timing, wind exposure
 js/chart.js         elevation chart
 js/uphill.js        uphill-difficulty overlay + Overpass client
 js/wxmap.js         weather overlay (particles, fields, radar, time bar)
+js/safety.js        traffic & safety layers, hazards along routes
 js/weather.js       Open-Meteo client, wind along the route
 js/gestures.js      pinch / wheel over the UI → map zoom
 js/view3d.js        tilt & rotate orbit pad
