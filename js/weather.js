@@ -70,11 +70,13 @@ export function sampleAt(s, t) {
 export async function windAlong(pts, along, tAt, startSec) {
   const n = pts.length;
   const total = along[n - 1] || 1;
-  const k = Math.max(2, Math.min(8, Math.ceil(total / 4000) + 1));
+  // one forecast point per ~4 km, up to 12 (≈ every 10–20 km on long rides)
+  const k = Math.max(2, Math.min(12, Math.ceil(total / 4000) + 1));
   const idx = Array.from({ length: k }, (_, j) => Math.round((j / (k - 1)) * (n - 1)));
   const series = await forecastPoints(idx.map((i) => pts[i]));
   const speed = new Float32Array(n), gust = new Float32Array(n), dir = new Float32Array(n);
   const head = new Float32Array(n), cross = new Float32Array(n);
+  const temp = new Float32Array(n), precip = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const s = series[Math.min(k - 1, Math.round((along[i] / total) * (k - 1)))];
     const w = sampleAt(s, startSec + (tAt[i] || 0));
@@ -83,15 +85,45 @@ export async function windAlong(pts, along, tAt, startSec) {
     const hdg = bearing(a, b);
     const d = rad(hdg - w.dir);
     speed[i] = w.speed; gust[i] = w.gust; dir[i] = w.dir;
+    temp[i] = w.temp; precip[i] = w.precip;
     head[i] = w.speed * Math.cos(d); // >0 wind against you
     cross[i] = w.speed * Math.sin(d);
   }
   const first = sampleAt(series[0], startSec);
   return {
-    speed, gust, dir, head, cross,
+    speed, gust, dir, head, cross, temp, precip,
     start: { ...first, time: startSec },
     hourly: series[Math.floor(k / 2)],
   };
+}
+
+// Temperature and precipitation bands for the route profile.
+export const TEMP_BANDS = [
+  { key: 'frost', min: -Infinity, label: 'below −5 °C', color: '#6d28d9' },
+  { key: 'cold', min: -5, label: '−5…0 °C', color: '#3b82f6' },
+  { key: 'cool', min: 0, label: '0…5 °C', color: '#7dd3fc' },
+  { key: 'mild', min: 5, label: '5…10 °C', color: '#86efac' },
+  { key: 'warm', min: 10, label: '10…15 °C', color: '#fde047' },
+  { key: 'warmer', min: 15, label: '15…20 °C', color: '#fdba74' },
+  { key: 'hot', min: 20, label: '20…25 °C', color: '#f97316' },
+  { key: 'hotter', min: 25, label: 'over 25 °C', color: '#dc2626' },
+];
+export const tempBand = (t) => TEMP_BANDS.slice().reverse().find((b) => t >= b.min);
+
+export const RAIN_BANDS = [
+  { key: 'dry', label: 'Dry', color: '#a3acb9' },
+  { key: 'drizzle', label: 'Drizzle < 0.5 mm/h', color: '#93c5fd' },
+  { key: 'rain', label: 'Rain 0.5–2 mm/h', color: '#3b82f6' },
+  { key: 'heavy', label: 'Heavy > 2 mm/h', color: '#1e3a8a' },
+  { key: 'snow', label: 'Snow', color: '#a78bfa' },
+];
+const rainByKey = Object.fromEntries(RAIN_BANDS.map((b) => [b.key, b]));
+export function rainBand(mm, t) {
+  if (mm < 0.1) return rainByKey.dry;
+  if (t < 0.5) return rainByKey.snow;
+  if (mm < 0.5) return rainByKey.drizzle;
+  if (mm < 2) return rainByKey.rain;
+  return rainByKey.heavy;
 }
 
 export const WIND_CLASSES = [
@@ -100,7 +132,7 @@ export const WIND_CLASSES = [
   { key: 'cross', label: 'Crosswind', color: '#f59e0b' },
   { key: 'tail', label: 'Tailwind', color: '#4ade80' },
   { key: 'strongTail', label: 'Strong tailwind', color: '#15803d' },
-  { key: 'calm', label: 'Calm', color: '#cbd5e1' },
+  { key: 'calm', label: 'Calm', color: '#a3acb9' },
 ];
 const byKey = Object.fromEntries(WIND_CLASSES.map((c) => [c.key, c]));
 

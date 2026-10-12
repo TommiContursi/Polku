@@ -576,6 +576,10 @@ function addLabels(s, P, hc, layers) {
   place('label-town', ['town'], 7, zi(7, 11, 13, 17), FONT_B);
   place('label-city', ['city'], 4, zi(4, 11, 12, 20), FONT_B);
   if (s.weather && s.weather.temp) {
-    layers.push({ id: 'wx-temp-label', type: 'symbol', source: 'wxLabels', layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': 13, 'text-padding': 30 }, paint: { 'text-color': '#111827', 'text-halo-color': 'rgba(255,255,255,0.9)', 'text-halo-width': 2 } });
+    layers.push({ id: 'wx-temp-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'temp'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': 13, 'text-padding': 30 }, paint: { 'text-color': '#111827', 'text-halo-color': 'rgba(255,255,255,0.9)', 'text-halo-width': 2 } });
+  }
+  if (s.weather && s.weather.rain) {
+    // precipitation amount where it rains, nudged below the °C label
+    layers.push({ id: 'wx-rain-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'rain'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': 12, 'text-offset': [0, 1.3], 'text-padding': 20 }, paint: { 'text-color': '#1d4ed8', 'text-halo-color': 'rgba(255,255,255,0.92)', 'text-halo-width': 2 } });
   }
 }

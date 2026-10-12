@@ -56,9 +56,9 @@ export function initView3d(map, root) {
   return {
     show(on) {
       root.hidden = !on;
-      if (on && !store.get('seen3dHint', false)) {
-        store.set('seen3dHint', true);
-        toast('Tilt & rotate: drag the pad, right-drag or Ctrl+drag the map, or use two fingers on touch', { ms: 6000 });
+      if (on && !store.get('seen3dHint2', false)) {
+        store.set('seen3dHint2', true);
+        toast('Tilt & rotate: two-finger scroll on a trackpad, drag the pad, or right-drag / Ctrl+drag the map. Pinch zooms.', { ms: 7000 });
       }
     },
   };

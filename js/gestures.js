@@ -1,10 +1,15 @@
-// Zoom gestures over the floating UI.
+// Map gestures beyond MapLibre's defaults.
 //
-// Panels, the planner sheet and the buttons sit on top of the map, so wheel and
-// pinch events over them never reach MapLibre. A trackpad pinch (ctrl+wheel in
-// Chromium/Firefox, gesture* events in Safari) or a touch pinch would then zoom
-// the whole page and break the layout. Here we (1) never let the page zoom and
-// (2) hand those gestures to the map, unless a panel is actually scrolling.
+// 1. Zoom over the floating UI. Panels, the planner sheet and the buttons sit
+//    on top of the map, so wheel and pinch events over them never reach
+//    MapLibre; a trackpad pinch (ctrl+wheel in Chromium/Firefox, gesture*
+//    events in Safari) or a touch pinch would zoom the whole page instead. We
+//    never let the page zoom and hand those gestures to the map, unless a
+//    panel is actually scrolling.
+// 2. Trackpad tilt & rotate. In 3D mode a two-finger scroll on a trackpad
+//    tilts (up/down) and rotates (left/right) while pinch keeps zooming;
+//    Shift + two-finger scroll tilts in any mode; Safari's rotate gesture
+//    rotates. A real mouse wheel always zooms.
 
 const OVERLAY = '.topbar, .activity-bar, .fab-col, .panel, .sheet, .zoom-hint, .track-card, .toast, .view3d, .wx-bar, .maplibregl-ctrl';
 
@@ -17,15 +22,47 @@ function scrollableAncestor(el, root, dy) {
   return null;
 }
 
-export function initGestures(map) {
+// Same idea as MapLibre's own wheel/trackpad detection: mouse wheels report
+// big or line-based steps (multiples of 4.000244 in Chrome on macOS).
+function looksLikeTrackpad(e) {
+  if (e.deltaMode !== 0) return false;
+  if (e.deltaX !== 0) return true;
+  const d = Math.abs(e.deltaY);
+  if (!d) return false;
+  if (d % 4.000244140625 === 0 || d >= 100) return false;
+  return true;
+}
+
+export function initGestures(map, { trackpadTilt = () => false } = {}) {
   const canvas = map.getCanvas();
+  let lastCtrlWheel = 0;
+  let tiltUntil = 0;
 
   window.addEventListener('wheel', (e) => {
     const t = e.target instanceof Element ? e.target : null;
-    if (!t || canvas === t) return; // MapLibre handles its own canvas
-    const overlay = t.closest(OVERLAY);
+    if (e.ctrlKey) lastCtrlWheel = performance.now();
+
+    if (t === canvas) {
+      // trackpad tilt / rotate on the map itself
+      const now = performance.now();
+      const tilt = !e.ctrlKey && (e.shiftKey || (trackpadTilt() && (looksLikeTrackpad(e) || now < tiltUntil)));
+      if (!tilt) return; // MapLibre zooms
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      tiltUntil = now + 250; // keep momentum scrolling in tilt mode
+      const scale = e.deltaMode === 1 ? 16 : 1;
+      let dy = e.deltaY * scale, dx = e.deltaX * scale;
+      if (e.shiftKey && !dx && !dy) dy = e.deltaX; // some browsers turn shift+scroll sideways
+      map.jumpTo({
+        pitch: Math.max(0, Math.min(map.getMaxPitch(), map.getPitch() - dy * 0.25)),
+        bearing: map.getBearing() + dx * 0.3,
+      });
+      return;
+    }
+
+    const overlay = t && t.closest(OVERLAY);
     if (!overlay) {
-      if (e.ctrlKey) e.preventDefault(); // never zoom the page
+      if (e.ctrlKey && t && !map.getCanvasContainer().contains(t)) e.preventDefault(); // never zoom the page
       return;
     }
     // A plain wheel over a panel that can still scroll scrolls the panel.
@@ -34,22 +71,27 @@ export function initGestures(map) {
     canvas.dispatchEvent(new WheelEvent('wheel', {
       deltaX: e.deltaX, deltaY: e.deltaY, deltaZ: e.deltaZ, deltaMode: e.deltaMode,
       clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY,
-      ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, altKey: e.altKey, metaKey: e.metaKey,
+      ctrlKey: e.ctrlKey, shiftKey: false, altKey: e.altKey, metaKey: e.metaKey,
       bubbles: true, cancelable: true,
     }));
   }, { passive: false, capture: true });
 
-  // Safari trackpad pinch: gesture events instead of ctrl+wheel.
-  let z0 = null;
+  // Safari trackpad: pinch and rotate arrive as gesture events. Pinch zooms
+  // (unless the browser already sent ctrl+wheel), rotate turns the map.
+  let g0 = null;
   document.addEventListener('gesturestart', (e) => {
     e.preventDefault();
-    z0 = e.target instanceof Element && e.target.closest(OVERLAY) ? map.getZoom() : null;
+    g0 = { z: map.getZoom(), b: map.getBearing() };
   }, { passive: false });
   document.addEventListener('gesturechange', (e) => {
     e.preventDefault();
-    if (z0 != null && e.scale > 0) map.setZoom(z0 + Math.log2(e.scale));
+    if (!g0) return;
+    const opts = {};
+    if (performance.now() - lastCtrlWheel > 300 && e.scale > 0) opts.zoom = g0.z + Math.log2(e.scale);
+    if (Math.abs(e.rotation) > 2) opts.bearing = g0.b - e.rotation;
+    map.jumpTo(opts);
   }, { passive: false });
-  document.addEventListener('gestureend', (e) => { e.preventDefault(); z0 = null; }, { passive: false });
+  document.addEventListener('gestureend', (e) => { e.preventDefault(); g0 = null; }, { passive: false });
 
   // Touch pinch over the UI: block page zoom and zoom the map instead.
   let pinch = null;

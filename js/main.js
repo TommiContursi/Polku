@@ -29,6 +29,7 @@ const DEFAULTS = {
   hillshade: true,
   contours: true,
   terrain3d: false,
+  trackpadTilt: true,
   labelsDown: false,
   labelsUp: false,
   weather: { wind: false, temp: false, rain: false },
@@ -86,7 +87,7 @@ const map = new maplibregl.Map({
   cooperativeGestures: false,
 });
 installIcons(map);
-initGestures(map);
+initGestures(map, { trackpadTilt: () => state.terrain3d && state.trackpadTilt });
 const view3d = initView3d(map, $('#view3d'));
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
@@ -231,6 +232,8 @@ const OVERLAY_LABEL = {
 
 function renderLayersPanel() {
   const p = $('#layers-body');
+  const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
+  requestAnimationFrame(() => { p.scrollTop = keepScroll; });
   p.innerHTML = '';
   const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}, title), ...kids);
   const toggle = (label, on, fn, note = '') => {
@@ -279,6 +282,7 @@ function renderLayersPanel() {
     toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
     toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
     toggle('3D terrain', state.terrain3d, (v) => { state.terrain3d = v; applyStyle(); if (v && map.getPitch() < 30) map.easeTo({ pitch: 60, duration: 800 }); if (!v) map.easeTo({ pitch: 0 }); renderLayersPanel(); }),
+    state.terrain3d ? toggle('Trackpad scroll tilts & rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger scroll: up/down tilts, sideways rotates; pinch zooms') : null,
     state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
       h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight')));
@@ -415,6 +419,14 @@ const zoomHint = $('#zoom-hint');
 const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 13.8); };
 map.on('zoomend', syncZoomHint);
 zoomHint.addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
+
+// The page itself never scrolls: focus() on a control can otherwise scroll the
+// document (it has overflow:hidden, not no-scroll) and shift the whole UI.
+window.addEventListener('scroll', () => { if (window.scrollY || window.scrollX) window.scrollTo(0, 0); });
+document.addEventListener('scroll', () => {
+  const se = document.scrollingElement;
+  if (se && (se.scrollTop || se.scrollLeft)) { se.scrollTop = 0; se.scrollLeft = 0; }
+}, true);
 
 // ------------------------------------------------------------------ boot
 document.body.dataset.activity = state.activity;

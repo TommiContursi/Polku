@@ -4,7 +4,7 @@
 
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT } from './config.js';
 import { fmtDist, compass } from './geo.js';
-import { windClass } from './weather.js';
+import { windClass, tempBand, rainBand } from './weather.js';
 
 export const WAY_COLORS = {
   path: '#7c2d12', footway: '#b45309', steps: '#dc2626', track: '#a16207', cycleway: '#2563eb',
@@ -17,6 +17,8 @@ export const COLOR_MODES = {
   uphill: 'Uphill difficulty',
   surface: 'Surface',
   wind: 'Wind',
+  temp: 'Temperature',
+  rain: 'Rain',
   way: 'Way type',
   down: 'MTB difficulty',
 };
@@ -28,6 +30,8 @@ export function colorAt(a, i, mode) {
     case 'way': return WAY_COLORS[a.way[i]] || WAY_COLORS.other;
     case 'down': return a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
     case 'wind': return a.wind ? windClass(a.wind.head[i], a.wind.speed[i]).color : '#e2e8f0';
+    case 'temp': return a.wind ? tempBand(a.wind.temp[i]).color : '#e2e8f0';
+    case 'rain': return a.wind ? rainBand(a.wind.precip[i], a.wind.temp[i]).color : '#e2e8f0';
     default: return gradeColor(a.grade[i]);
   }
 }
@@ -107,6 +111,7 @@ export class ProfileChart {
       const w = a.wind;
       const c = windClass(w.head[i], w.speed[i]);
       rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
+      rows.push(`${w.temp[i].toFixed(0)} °C · ${w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry'}`);
       if (a.tAtWind) rows.push(`Reached ${clock(a.wind.startSec + a.tAtWind[i])}`);
     }
     this.tip.innerHTML = rows.join('<br>');

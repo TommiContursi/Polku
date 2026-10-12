@@ -7,7 +7,7 @@ import { analyse, estimateTime } from './analysis.js';
 import { ProfileChart, COLOR_MODES, WAY_COLORS, colorAt } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, WIND_CLASSES } from './weather.js';
+import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
@@ -551,6 +551,15 @@ export class Planner {
     this.app.setData('routeWind', { type: 'FeatureCollection', features: arrows });
   }
 
+  showMode(k) {
+    this.colorMode = k;
+    store.set('colorMode', k);
+    this.renderModeChips();
+    this.chart.setMode(k);
+    this.renderBreakdown();
+    this.drawColored();
+  }
+
   renderToolbarState() {
     if (!this.els) return;
     this.els.undo.disabled = !this.past.length;
@@ -617,10 +626,16 @@ export class Planner {
     };
     if (this.colorMode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown]);
     else if (this.colorMode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other]);
-    else if (this.colorMode === 'wind') {
-      if (!a.wind) { box.append(h('p', { class: 'note' }, a.windError ? 'Wind forecast unavailable right now.' : 'Loading wind forecast…')); return; }
-      const m = sumBy((i) => windClass(a.wind.head[i], a.wind.speed[i]).key);
-      rows = WIND_CLASSES.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color]);
+    else if (['wind', 'temp', 'rain'].includes(this.colorMode)) {
+      if (!a.wind) { box.append(h('p', { class: 'note' }, a.windError ? 'Weather forecast unavailable right now.' : 'Loading the forecast…')); return; }
+      const w = a.wind;
+      const [classes, fn] = {
+        wind: [WIND_CLASSES, (i) => windClass(w.head[i], w.speed[i]).key],
+        temp: [TEMP_BANDS, (i) => tempBand(w.temp[i]).key],
+        rain: [RAIN_BANDS, (i) => rainBand(w.precip[i], w.temp[i]).key],
+      }[this.colorMode];
+      const m = sumBy(fn);
+      rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color]);
     }
     else if (this.colorMode === 'uphill') {
       const m = sumBy((i) => (a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down'));
@@ -640,7 +655,8 @@ export class Planner {
       const pct = (d / a.total) * 100;
       if (pct < 0.3) continue;
       bar.append(h('span', { style: `width:${pct}%;background:${color}`, title: `${label}: ${fmtDist(d)}` }));
-      legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}` }), `${label} `, h('b', {}, fmtDist(d))));
+      const text = String(label);
+      legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}` }), `${text[0].toUpperCase()}${text.slice(1)} `, h('b', {}, fmtDist(d))));
     }
     box.append(bar, legend);
   }
@@ -707,7 +723,7 @@ export class Planner {
       const day = d.getDate() === now.getDate() ? '' : d.getDate() === new Date(now.getTime() + 86400000).getDate() ? 'Tomorrow ' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
       select.append(h('option', { value: String(k), selected: k === this.startOffsetH }, k === 0 ? 'Now' : `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
     }
-    box.append(h('h4', {}, act === 'paddle' ? 'Wind on the water' : 'Wind on the route', h('label', { class: 'start' }, 'Start ', select)));
+    box.append(h('h4', {}, act === 'paddle' ? 'Weather on the water' : 'Weather on the route', h('label', { class: 'start' }, 'Start ', select)));
     if (!a.wind) {
       box.append(h('div', { class: 'wind-body note' }, a.windError ? 'Wind forecast unavailable right now.' : 'Loading forecast…'));
       return;
@@ -725,11 +741,32 @@ export class Planner {
       if (!worst || w.head[i] > worst.v) worst = { v: w.head[i], i };
     }
     const tot = a.along[a.along.length - 1] || 1;
+    // temperature range and where / how much it rains, at arrival times
+    let tMin = Infinity, tMax = -Infinity, wetM = 0, peak = 0, mm = 0, firstWet = -1, lastWet = -1, snowM = 0;
+    const tAt = a.tAtWind || a.tAt;
+    for (let i = 1; i < a.pts.length; i++) {
+      tMin = Math.min(tMin, w.temp[i]); tMax = Math.max(tMax, w.temp[i]);
+      if (w.precip[i] >= 0.1) {
+        const d = a.along[i] - a.along[i - 1];
+        wetM += d; if (w.temp[i] < 0.5) snowM += d;
+        if (firstWet < 0) firstWet = i; lastWet = i;
+        peak = Math.max(peak, w.precip[i]);
+      }
+      mm += (w.precip[i] * (tAt[i] - tAt[i - 1])) / 3600;
+    }
+    const rainLine = wetM > 0
+      ? `${snowM > wetM / 2 ? 'Snow' : 'Rain'} on ${fmtDist(wetM)} (${Math.round((wetM / tot) * 100)} %, km ${(a.along[firstWet] / 1000).toFixed(0)}–${(a.along[lastWet] / 1000).toFixed(0)}), up to ${peak.toFixed(1)} mm/h · about ${mm < 0.5 ? mm.toFixed(1) : Math.round(mm)} mm on you`
+      : 'Dry the whole way';
+    const icy = tMin <= 0.5 && wetM > 0;
     const body = h('div', { class: 'wind-body' },
       h('div', { class: 'wind-now' },
         h('span', { class: 'wind-arrow', style: `transform:rotate(${s0.dir + 180}deg)`, title: `from ${compass(s0.dir)}`, html: '&#8593;' }),
         h('span', {}, h('b', {}, `${s0.speed.toFixed(1)} m/s`), ` gusts ${s0.gust.toFixed(1)} · from ${compass(s0.dir)} · ${Math.round(s0.temp)} °C${s0.precip > 0.1 ? ` · rain ${s0.precip.toFixed(1)} mm/h` : ''}`),
         h('span', { class: `pill ${r.tone}` }, r.label)),
+      h('div', { class: 'wx-sum' },
+        h('span', {}, h('b', {}, 'Temperature '), tMin === tMax || Math.round(tMin) === Math.round(tMax) ? `${Math.round(tMin)} °C` : `${Math.round(tMin)}…${Math.round(tMax)} °C`),
+        h('button', { type: 'button', class: 'link', onclick: () => this.showMode(wetM > 0 ? 'rain' : 'temp') }, rainLine),
+        icy ? h('span', { class: 'pill warn' }, 'Wet and near freezing — slippery roots and rocks') : null),
       h('div', { class: 'exposure' },
         ...[['Headwind', share.head, '#ef4444'], ['Crosswind', share.cross, '#f59e0b'], ['Tailwind', share.tail, '#22a447'], ['Calm', share.calm, '#94a3b8']]
           .filter(([, v]) => v > 0)
@@ -739,7 +776,8 @@ export class Planner {
         this.focusRange(i0, i1, null);
       } }, `Strongest headwind ${worst.v.toFixed(1)} m/s at km ${(a.along[worst.i] / 1000).toFixed(1)} →`) : null,
       h('div', { class: 'hours' }, ...hourStrip(w.hourly, w.startSec)),
-      h('button', { type: 'button', class: 'link', onclick: () => { this.colorMode = 'wind'; store.set('colorMode', 'wind'); this.renderModeChips(); this.chart.setMode('wind'); this.renderBreakdown(); this.drawColored(); } }, 'Show wind along the route ↑'),
+      h('div', { class: 'wx-links' },
+        ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([k, l]) => h('button', { type: 'button', class: 'link', onclick: () => this.showMode(k) }, `${l} along the route ↑`))),
     );
     box.append(body);
   }
