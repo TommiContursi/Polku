@@ -14,6 +14,8 @@ import { initSearch } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
 import { $, $$, h, icon, toast, store } from './ui.js';
+import { initGestures } from './gestures.js';
+import { initView3d } from './view3d.js';
 
 // ------------------------------------------------------------------ state
 const DEFAULTS = {
@@ -24,6 +26,8 @@ const DEFAULTS = {
   hillshade: true,
   contours: true,
   terrain3d: false,
+  labelsDown: false,
+  labelsUp: false,
   exaggeration: 1.4,
   mmlKey: '',
   overlaysByActivity: {},
@@ -77,6 +81,12 @@ const map = new maplibregl.Map({
   cooperativeGestures: false,
 });
 installIcons(map);
+initGestures(map);
+const view3d = initView3d(map, $('#view3d'));
+// Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
+// the on-screen pad appears whenever the view is tilted or 3D terrain is on.
+const syncView3d = () => view3d.show(state.terrain3d || map.getPitch() > 5);
+map.on('pitchend', syncView3d);
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Polku' }), 'bottom-right');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
@@ -96,6 +106,7 @@ function setData(id, fc) {
 function applyStyle() {
   map.setStyle(buildStyle(state, ctx), { diff: true });
   $('#btn-3d').setAttribute('aria-pressed', String(state.terrain3d));
+  syncView3d();
   saveSettings();
 }
 
@@ -144,7 +155,7 @@ new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 function configureLayers() {
   const a = ACTIVITIES[state.activity];
   lipas.configure({ routes: a.lipas.routes, points: a.lipas.points, showRoutes: !!state.overlays.lipasRoutes, showPoints: !!state.overlays.lipasPoints });
-  uphill.setEnabled(state.activity === 'mtb' && (state.trailColors === 'up' || state.trailColors === 'both'));
+  uphill.setEnabled(state.activity === 'mtb' && (state.trailColors !== 'down' || state.labelsUp));
 }
 
 // ------------------------------------------------------------------ activity bar
@@ -223,9 +234,14 @@ function renderLayersPanel() {
       }),
       h('p', { class: 'note' }, {
         down: 'Halo colour is the regular MTB difficulty from OSM mtb:scale (S0 green → S5 purple). White halo = not graded yet.',
-        up: 'Uphill grade (U0–U5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
+        up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
         both: 'Halo = regular MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
-      }[state.trailColors])));
+      }[state.trailColors]),
+      toggle('Difficulty numbers', state.labelsDown, (v) => { state.labelsDown = v; applyStyle(); }, 'S0–S6 beside graded trails (zoom 15+)'),
+      toggle('Uphill numbers', state.labelsUp, (v) => {
+        state.labelsUp = v; applyStyle(); configureLayers();
+        if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
+      }, '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)')));
   }
 
   p.append(section('Terrain',
@@ -371,6 +387,7 @@ map.on('load', () => {
   if (window.innerWidth < 720) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
   configureLayers();
   syncZoomHint();
+  syncView3d();
   if (shared && shared.points.length) {
     planner.restore(shared);
     planner.setActive(true);

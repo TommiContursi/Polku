@@ -92,12 +92,12 @@ export const MTB_SCALE_TEXT = [
 ];
 
 export const UPHILL_TEXT = [
-  'U0 · Under 10 %, good grip',
-  'U1 · Under 15 %, few obstacles',
-  'U2 · Under 20 %, loose stones or roots',
-  'U3 · Under 25 %, varying surface',
-  'U4 · Under 30 %, mostly pushing',
-  'U5 · Over 30 %, carry the bike',
+  '↑S0 · Under 10 %, good grip',
+  '↑S1 · Under 15 %, few obstacles',
+  '↑S2 · Under 20 %, loose stones or roots',
+  '↑S3 · Under 25 %, varying surface',
+  '↑S4 · Under 30 %, mostly pushing',
+  '↑S5 · Over 30 %, carry the bike',
 ];
 
 // Grade bands for the profile and route-colour mode. [min grade %, colour, label]

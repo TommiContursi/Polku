@@ -266,6 +266,34 @@ export function buildStyle(s, ctx) {
     });
   }
 
+  // ---- Difficulty numbers along trails (own toggles; JOSM MTB-Trailmap style)
+  if (act === 'mtb' && s.labelsDown) {
+    add({
+      id: 'mtb-label', type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 14.5,
+      filter: ['all', ['has', 'mtb_scale'], ['in', ['get', 'class'], ['literal', ['path', 'track']]]],
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': zi(14.5, 170, 18, 320),
+        'text-field': ['concat', 'S', ['to-string', ['get', 'mtb_scale']]],
+        'text-font': FONT_B, 'text-size': zi(14.5, 10, 18, 14), 'text-offset': [0, -1.1],
+        'text-keep-upright': true, 'text-max-angle': 40, 'text-padding': 1,
+      },
+      paint: { 'text-color': diffColor(MTB_IDX, '#ffffff'), 'text-halo-color': '#111111', 'text-halo-width': 1.6 },
+    });
+  }
+  if (act === 'mtb' && s.labelsUp) {
+    add({
+      id: 'uphill-label', type: 'symbol', source: 'uphill', minzoom: 14.5,
+      filter: ['>=', ['get', 'grade'], 6],
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': zi(14.5, 170, 18, 320),
+        'text-field': ['concat', '↑S', ['to-string', ['get', 'cls']]],
+        'text-font': FONT_B, 'text-size': zi(14.5, 10, 18, 14), 'text-offset': [0, 1.1],
+        'text-keep-upright': true, 'text-max-angle': 40, 'text-padding': 1,
+      },
+      paint: { 'text-color': diffColor(['get', 'cls'], '#ffffff'), 'text-halo-color': '#111111', 'text-halo-width': 1.6 },
+    });
+  }
+
   addLabels(s, P, hc, layers);
 
   // ---- Imported tracks & the planned route (always on top) --------------

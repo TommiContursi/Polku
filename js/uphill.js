@@ -2,7 +2,7 @@
 //
 // OSM rarely carries mtb:scale:uphill, so we compute it: each path/track in the
 // loaded vector tiles is resampled, its elevation profile is read from the lidar
-// DEM, and it is cut into ~25 m pieces graded U0–U5 by climbing gradient
+// DEM, and it is cut into ~25 m pieces graded ↑S0–↑S5 by climbing gradient
 // (bumped for loose surface / technical mtb:scale). Pieces are oriented uphill
 // so the arrow symbols point the way you'd be climbing. Where OSM does have an
 // explicit mtb:scale:uphill tag (fetched from Overpass), that wins.
@@ -161,7 +161,7 @@ function grade(sample, raw, props, forced = null) {
     if (d >= 8 && Number.isFinite(dh)) {
       const g = Math.abs(dh / d) * 100;
       {
-        // Flat pieces are U0 too, so every trail stays continuously coloured.
+        // Flat pieces are ↑S0 too, so every trail stays continuously coloured.
         const cls = props.subclass === 'steps' ? 5 : forced != null && g >= 4 ? forced : uphillClass(g, g, techBump(tags, g));
         const seg = pts.slice(i, j + 1);
         out.push({

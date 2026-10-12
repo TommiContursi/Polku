@@ -513,7 +513,7 @@ export class Planner {
     stat('Est. time', fmtDuration(a.time), act === 'paddle' ? CRAFT[this.craft].label : '');
     if (act === 'mtb' || act === 'gravel') {
       const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);
-      stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>U${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : '');
+      stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : '');
     } else if (act === 'paddle') {
       const carry = a.ways.find(([k]) => k === 'portage');
       stat('Carry', carry ? fmtDist(carry[1]) : '0 m');
@@ -578,7 +578,7 @@ export class Planner {
     a.climbs.forEach((c, k) => {
       // Bikes get the uphill difficulty grade; on foot the average gradient says more.
       const badge = bike
-        ? h('span', { class: 'badge', style: `background:${DIFF_COLORS[c.cls]}` }, `U${c.cls}`)
+        ? h('span', { class: 'badge', style: `background:${DIFF_COLORS[c.cls]}` }, `↑S${c.cls}`)
         : h('span', { class: 'badge', style: `background:${gradeColor(c.avg)}` }, `${Math.round(c.avg)}%`);
       const item = h('button', { type: 'button', class: `li${this.selected === c ? ' sel' : ''}` },
         badge,

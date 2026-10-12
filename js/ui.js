@@ -32,6 +32,15 @@ const P = {
   external: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  rotL: '<path d="M4.5 13a7.5 7.5 0 1 0 2.2-6.3"/><path d="M4 4v5h5"/>',
+  rotR: '<path d="M19.5 13a7.5 7.5 0 1 1-2.2-6.3"/><path d="M20 4v5h-5"/>',
+  tiltUp: '<path d="M3 19 8 9h8l5 10Z"/><path d="M12 7V2M9.5 4.5 12 2l2.5 2.5"/>',
+  tiltDown: '<rect x="4" y="9" width="16" height="10" rx="1"/><path d="M12 2v5M9.5 4.5 12 7l2.5-2.5"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="m12 4.5 3 7.5H9l3-7.5Z" fill="currentColor"/><path d="m12 19.5-3-7.5h6l-3 7.5Z"/>',
+  temp: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z"/><path d="M12 10v6"/>',
+  rain: '<path d="M7 16a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 10a4 4 0 0 1-2 6"/><path d="m9 19-1 2M13 19l-1 2M17 19l-1 2"/>',
+  play: '<path d="M7 4v16l13-8Z" fill="currentColor"/>',
+  pause: '<path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor"/>',
 };
 
 export const icon = (name, size = 20) =>
