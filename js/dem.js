@@ -1,0 +1,116 @@
+// Elevation sampling straight from the Mapterhorn terrarium tiles, so the route
+// profile and the uphill overlay use the same lidar-grade DEM as the hillshade.
+
+import { DEM_URL, DEM_MAXZOOM } from './config.js';
+import { lonLatToTile } from './geo.js';
+
+const MAX_TILES = 220;
+const cache = new Map(); // "z/x/y" -> Promise<{w,h,el}|null>
+
+function decode(img) {
+  const w = img.width, h = img.height;
+  const canvas = typeof OffscreenCanvas !== 'undefined'
+    ? new OffscreenCanvas(w, h)
+    : Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const px = ctx.getImageData(0, 0, w, h).data;
+  const el = new Float32Array(w * h);
+  for (let i = 0, j = 0; i < el.length; i++, j += 4) {
+    el[i] = px[j] * 256 + px[j + 1] + px[j + 2] / 256 - 32768;
+  }
+  return { w, h, el };
+}
+
+function loadTile(z, x, y) {
+  const key = `${z}/${x}/${y}`;
+  if (cache.has(key)) {
+    const p = cache.get(key);
+    cache.delete(key);
+    cache.set(key, p);
+    return p;
+  }
+  const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+  const p = fetch(url)
+    .then((r) => (r.ok ? r.blob() : null))
+    .then((b) => (b ? createImageBitmap(b) : null))
+    .then((img) => (img ? decode(img) : null))
+    .catch(() => null);
+  cache.set(key, p);
+  while (cache.size > MAX_TILES) cache.delete(cache.keys().next().value);
+  return p;
+}
+
+function sample(tile, fx, fy) {
+  // fx, fy: fractional position inside the tile (0..1)
+  const { w, h, el } = tile;
+  const x = Math.min(w - 1.001, Math.max(0, fx * w - 0.5));
+  const y = Math.min(h - 1.001, Math.max(0, fy * h - 0.5));
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  const tx = x - x0, ty = y - y0;
+  const i = y0 * w + x0;
+  const a = el[i], b = el[i + 1], c = el[i + w], d = el[i + w + 1];
+  return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+}
+
+/**
+ * Elevation for many points at once. Points are grouped per tile so each tile
+ * is fetched and decoded once. Missing tiles fall back to a coarser zoom.
+ * @returns {Promise<Float32Array>} metres, NaN where nothing is available
+ */
+export async function elevations(points, z = DEM_MAXZOOM) {
+  const out = new Float32Array(points.length).fill(NaN);
+  let pending = points.map((_, i) => i);
+  for (let zz = z; zz >= Math.max(0, z - 4) && pending.length; zz -= 2) {
+    const groups = new Map();
+    for (const i of pending) {
+      const [tx, ty] = lonLatToTile(points[i][0], points[i][1], zz);
+      const key = `${Math.floor(tx)}/${Math.floor(ty)}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(i);
+    }
+    const next = [];
+    const keys = [...groups.keys()];
+    // Bounded parallelism keeps the tile server happy on long routes.
+    for (let k = 0; k < keys.length; k += 8) {
+      await Promise.all(
+        keys.slice(k, k + 8).map(async (key) => {
+          const [x, y] = key.split('/').map(Number);
+          const tile = await loadTile(zz, x, y);
+          for (const i of groups.get(key)) {
+            if (!tile) { next.push(i); continue; }
+            const [tx, ty] = lonLatToTile(points[i][0], points[i][1], zz);
+            const v = sample(tile, tx - x, ty - y);
+            if (Number.isFinite(v) && v > -500) out[i] = v;
+            else next.push(i);
+          }
+        }),
+      );
+    }
+    pending = next;
+  }
+  return out;
+}
+
+export async function elevation(lngLat, z = DEM_MAXZOOM) {
+  return (await elevations([lngLat], z))[0];
+}
+
+// Centred moving average over a window in metres, for noise-free grades.
+export function smooth(values, along, windowM) {
+  const n = values.length;
+  const out = new Float32Array(n);
+  let lo = 0, hi = 0, sum = 0, cnt = 0;
+  for (let i = 0; i < n; i++) {
+    while (hi < n && along[hi] - along[i] <= windowM / 2) {
+      if (Number.isFinite(values[hi])) { sum += values[hi]; cnt++; }
+      hi++;
+    }
+    while (along[i] - along[lo] > windowM / 2) {
+      if (Number.isFinite(values[lo])) { sum -= values[lo]; cnt--; }
+      lo++;
+    }
+    out[i] = cnt ? sum / cnt : NaN;
+  }
+  return out;
+}

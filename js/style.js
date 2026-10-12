@@ -1,0 +1,514 @@
+// Builds the complete MapLibre style from app state. The same function is used
+// for every change (activity, base map, overlays) and applied with diff:true,
+// so only the parts that actually changed are touched.
+
+import {
+  OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
+  DIFF_COLORS, RASTER_OVERLAYS, LIPAS_TYPES, mmlTiles, kapsiTiles,
+} from './config.js';
+
+const EMPTY = { type: 'FeatureCollection', features: [] };
+const FONT = ['Noto Sans Regular'];
+const FONT_B = ['Noto Sans Bold'];
+const FONT_I = ['Noto Sans Italic'];
+
+const zi = (...stops) => ['interpolate', ['linear'], ['zoom'], ...stops];
+const ze = (base, ...stops) => ['interpolate', ['exponential', base], ['zoom'], ...stops];
+
+const PALETTES = {
+  trail: {
+    bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
+    wetland: '#d9ebe3', sand: '#f3e7bb', rock: '#e2dfd8', ice: '#f4fbff',
+    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3',
+    park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f',
+    building: '#d9d1c8', buildingLine: '#c4b9ad',
+    motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
+    road: '#ffffff', roadCase: '#b5ad9f', track: '#6b4f2a', path: '#1f1f1f', cycleway: '#5b7fa8',
+    rail: '#7b7b7b', text: '#2c2721', halo: '#ffffff', contour: '#b38b5d', contourText: '#8a6640',
+    boundary: '#8f72ad', hillshade: true,
+  },
+  plain: {
+    bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
+    wetland: '#eef4f2', sand: '#f4f1e6', rock: '#efeeec', ice: '#fafdff',
+    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6',
+    park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3',
+    building: '#e6e3df', buildingLine: '#d6d1cb',
+    motorway: '#e9c8a5', trunk: '#eed6ad', primary: '#f3e2b8', secondary: '#f6eccb', tertiary: '#faf5e4',
+    road: '#ffffff', roadCase: '#cdc8c0', track: '#7f6a4c', path: '#3a3a3a', cycleway: '#7d96b3',
+    rail: '#9a9a9a', text: '#45403a', halo: '#ffffff', contour: '#c9ad8c', contourText: '#9a8264',
+    boundary: '#a895bd', hillshade: false,
+  },
+  night: {
+    bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
+    wetland: '#18232a', sand: '#2a271f', rock: '#22221f', ice: '#20262b',
+    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d',
+    park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3',
+    building: '#272b31', buildingLine: '#30353c',
+    motorway: '#8a5a2f', trunk: '#80633a', primary: '#6f6040', secondary: '#5b5443', tertiary: '#4a4740',
+    road: '#3b3f46', roadCase: '#22252a', track: '#c9a874', path: '#e9e6df', cycleway: '#7ea4cf',
+    rail: '#5d5d5d', text: '#d8dde3', halo: '#0f1215', contour: '#6a5845', contourText: '#a08a70',
+    boundary: '#9b84c4', hillshade: true,
+  },
+};
+// Aerial and MML bases reuse the trail palette but hide our own fills.
+PALETTES.aerial = { ...PALETTES.trail, path: '#ffffff', track: '#ffe4b5', text: '#ffffff', halo: '#1a1a1a', hillshade: false };
+PALETTES.ortofi = PALETTES.aerial;
+PALETTES.mml = { ...PALETTES.trail, hillshade: false };
+PALETTES.maasto = PALETTES.mml;
+export const isAerial = (base) => base === 'aerial' || base === 'ortofi';
+export const isTopo = (base) => base === 'mml' || base === 'maasto';
+
+// mtb:scale → 0..6, or -1 when missing. (to-number("") is 0, hence the has-guard.)
+const MTB_IDX = ['case', ['has', 'mtb_scale'], ['to-number', ['slice', ['to-string', ['get', 'mtb_scale']], 0, 1], -1], -1];
+const diffColor = (idxExpr, none) => ['match', idxExpr, ...DIFF_COLORS.flatMap((c, i) => [i, c]), none];
+
+const isPathClass = ['==', ['get', 'class'], 'path'];
+const k0 = (hc) => (hc ? 1.35 : 1);
+const TRAIL_SUB = ['path', 'bridleway', 'steps', 'footway'];
+
+export function buildStyle(s, ctx) {
+  const P = PALETTES[s.base] || PALETTES.trail;
+  const hc = !!s.highContrast;
+  const act = s.activity;
+  const vectorFills = s.base === 'trail' || s.base === 'plain' || s.base === 'night';
+  const aerialBase = isAerial(s.base);
+  const topoBase = isTopo(s.base);
+  const sources = {
+    ofm: { type: 'vector', url: OFM_TILEJSON },
+    dem: { type: 'raster-dem', tiles: [ctx.demTiles], tileSize: DEM_TILESIZE, maxzoom: DEM_MAXZOOM, encoding: 'terrarium', attribution: '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>' },
+    terrain: { type: 'raster-dem', tiles: [ctx.demTiles], tileSize: DEM_TILESIZE, maxzoom: 13, encoding: 'terrarium' },
+    contours: { type: 'vector', tiles: [ctx.contourTiles], maxzoom: 16 },
+    route: { type: 'geojson', data: ctx.data.route || EMPTY },
+    routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
+    uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
+    lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS' },
+    lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
+    tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
+  };
+  const layers = [];
+  const add = (l) => layers.push(l);
+
+  add({ id: 'background', type: 'background', paint: { 'background-color': P.bg } });
+
+  // ---- Raster bases -------------------------------------------------------
+  if (s.base === 'aerial') {
+    sources.aerial = { type: 'raster', tiles: [ESRI_IMAGERY], tileSize: 256, maxzoom: 19, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' };
+    add({ id: 'aerial', type: 'raster', source: 'aerial', paint: { 'raster-fade-duration': 150 } });
+  }
+  if (s.base === 'ortofi') {
+    sources.ortofi = { type: 'raster', tiles: [kapsiTiles('ortokuva')], tileSize: 512, minzoom: 5, maxzoom: 19, attribution: 'Ortokuva © Maanmittauslaitos, Kapsi ry' };
+    add({ id: 'ortofi', type: 'raster', source: 'ortofi', paint: { 'raster-fade-duration': 150 } });
+  }
+  if (s.base === 'maasto') {
+    sources.maasto = { type: 'raster', tiles: [kapsiTiles('peruskartta')], tileSize: 512, minzoom: 5, maxzoom: 19, attribution: 'Maastokartta © Maanmittauslaitos, Kapsi ry' };
+    add({ id: 'maasto-base', type: 'raster', source: 'maasto', paint: { 'raster-fade-duration': 150 } });
+  }
+  if (s.base === 'mml' && s.mmlKey) {
+    sources.mmlBase = { type: 'raster', tiles: [mmlTiles('maastokartta', s.mmlKey)], tileSize: 256, maxzoom: 16, attribution: '© Maanmittauslaitos' };
+    add({ id: 'mml-base', type: 'raster', source: 'mmlBase' });
+  }
+
+  // ---- Land ---------------------------------------------------------------
+  if (vectorFills) {
+    const lc = (id, cls, color, extra = {}) =>
+      add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color, 'fill-antialias': false, ...extra } });
+    lc('lc-farmland', ['farmland'], P.farmland);
+    lc('lc-grass', ['grass'], P.grass);
+    lc('lc-wood', ['wood'], P.wood, { 'fill-opacity': P.woodOpacity });
+    lc('lc-wetland', ['wetland'], P.wetland);
+    add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 12, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': 'wetland_bg_11', 'fill-opacity': s.base === 'night' ? 0.25 : 0.55 } });
+    lc('lc-sand', ['sand'], P.sand);
+    lc('lc-rock', ['rock'], P.rock);
+    lc('lc-ice', ['ice'], P.ice);
+
+    const lu = (id, cls, color, minzoom = 8) =>
+      add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landuse', minzoom, filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color } });
+    lu('lu-residential', ['residential', 'suburb', 'neighbourhood'], P.residential, 9);
+    lu('lu-industrial', ['industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry'], P.industrial, 11);
+    lu('lu-cemetery', ['cemetery'], P.cemetery, 12);
+    lu('lu-sport', ['pitch', 'stadium', 'playground', 'track'], P.sport, 13);
+  }
+
+  // Protected areas (national parks, nature reserves)
+  add({ id: 'park-fill', type: 'fill', source: 'ofm', 'source-layer': 'park', minzoom: 7, paint: { 'fill-color': P.park, 'fill-opacity': aerialBase || topoBase ? 0 : zi(7, 0.07, 12, 0.04) } });
+  add({ id: 'park-line', type: 'line', source: 'ofm', 'source-layer': 'park', minzoom: 7, paint: { 'line-color': P.park, 'line-width': zi(7, 0.8, 14, 2.2), 'line-dasharray': [3, 2], 'line-opacity': 0.7 } });
+
+  if (s.hillshade && !aerialBase) {
+    add({
+      id: 'hillshade', type: 'hillshade', source: 'dem', minzoom: 4,
+      paint: {
+        'hillshade-method': 'multidirectional',
+        'hillshade-illumination-direction': [270, 315, 0, 45],
+        'hillshade-illumination-altitude': [30, 30, 30, 30],
+        'hillshade-shadow-color': s.base === 'night'
+          ? ['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.5)']
+          : ['rgba(70,50,35,0.32)', 'rgba(70,50,35,0.32)', 'rgba(70,50,35,0.22)', 'rgba(70,50,35,0.22)'],
+        'hillshade-highlight-color': s.base === 'night'
+          ? ['rgba(255,255,255,0.05)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.03)']
+          : ['rgba(255,255,240,0.35)', 'rgba(255,255,240,0.35)', 'rgba(255,255,240,0.2)', 'rgba(255,255,240,0.2)'],
+        'hillshade-exaggeration': zi(5, 0.75, 11, 0.55, 15, 0.45),
+      },
+    });
+  }
+
+  // ---- Water --------------------------------------------------------------
+  if (!aerialBase && !topoBase) {
+    const waterColor = act === 'paddle' ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
+    add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
+    add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
+    add({
+      id: 'waterway', type: 'line', source: 'ofm', 'source-layer': 'waterway', minzoom: 8,
+      filter: ['!=', ['get', 'brunnel'], 'tunnel'],
+      paint: {
+        'line-color': P.waterLine,
+        'line-width': zi(
+          8, ['match', ['get', 'class'], ['river', 'canal'], 0.6, 0],
+          11, ['match', ['get', 'class'], ['river', 'canal'], 1.2, 0.3],
+          14, ['match', ['get', 'class'], ['river', 'canal'], 2.4, 1],
+          18, ['match', ['get', 'class'], ['river', 'canal'], 6, 2.5],
+        ),
+        'line-dasharray': ['case', ['==', ['get', 'intermittent'], 1], ['literal', [3, 2]], ['literal', [1, 0]]],
+      },
+    });
+  }
+
+  // Depth & water overlays sit directly on the water.
+  addRasterOverlays(s, sources, layers, 'water');
+
+  // ---- Contours -----------------------------------------------------------
+  // MML terrain maps already carry 5 m contours.
+  if (s.contours && !topoBase) {
+    const dark = aerialBase;
+    const cColor = dark ? 'rgba(255,240,210,0.55)' : P.contour;
+    add({ id: 'contour-minor', type: 'line', source: 'contours', 'source-layer': 'contours', minzoom: 11, filter: ['==', ['get', 'level'], 0], paint: { 'line-color': cColor, 'line-width': zi(11, 0.3, 15, 0.6, 18, 1), 'line-opacity': zi(11, 0.35, 14, 0.6) } });
+    add({ id: 'contour-major', type: 'line', source: 'contours', 'source-layer': 'contours', minzoom: 9, filter: ['>', ['get', 'level'], 0], paint: { 'line-color': cColor, 'line-width': zi(9, 0.5, 15, 1.2, 18, 1.8), 'line-opacity': zi(9, 0.4, 13, 0.8) } });
+  }
+
+  // ---- Buildings ----------------------------------------------------------
+  if (vectorFills) {
+    add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': P.building, 'fill-outline-color': P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
+    add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
+  }
+
+  addRoads(s, P, hc, layers);
+
+  // Rail & ferries (topo rasters already draw these)
+  if (!topoBase) add({ id: 'rail', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 9, filter: ['all', ['in', ['get', 'class'], ['literal', ['rail', 'transit']]], ['!=', ['get', 'brunnel'], 'tunnel']], paint: { 'line-color': P.rail, 'line-width': zi(9, 0.6, 16, 2) } });
+  if (!topoBase) add({ id: 'rail-hatch', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 13, filter: ['all', ['==', ['get', 'class'], 'rail'], ['!=', ['get', 'brunnel'], 'tunnel']], paint: { 'line-color': P.rail, 'line-width': zi(13, 3, 18, 8), 'line-dasharray': [0.15, 2.5] } });
+  if (!topoBase) add({ id: 'ferry', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 8, filter: ['==', ['get', 'class'], 'ferry'], paint: { 'line-color': '#4a83b8', 'line-width': 1.2, 'line-dasharray': [2, 2] } });
+
+  // Boundaries
+  if (!topoBase) add({ id: 'boundary', type: 'line', source: 'ofm', 'source-layer': 'boundary', filter: ['all', ['<=', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': P.boundary, 'line-width': zi(3, 0.8, 10, 2), 'line-dasharray': [3, 1.5, 1, 1.5] } });
+
+  addRasterOverlays(s, sources, layers, 'overlay');
+
+  // ---- Official routes (LIPAS) -----------------------------------------
+  if (s.overlays.lipasRoutes) {
+    const typeColor = ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#555'];
+    add({ id: 'lipas-route-casing', type: 'line', source: 'lipasRoutes', minzoom: 8, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.75, 'line-width': zi(8, 2, 14, 6, 18, 10) } });
+    add({
+      id: 'lipas-route', type: 'line', source: 'lipasRoutes', minzoom: 8, layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': typeColor, 'line-width': zi(8, 1, 14, 3, 18, 5), 'line-opacity': 0.85,
+        'line-dasharray': ['case', ['in', ['get', 'type'], ['literal', [4451, 4452]]], ['literal', [2, 1.2]], ['literal', [1, 0]]],
+      },
+    });
+  }
+
+  // ---- Uphill difficulty (computed overlay) -----------------------------
+  if (act === 'mtb' && (s.trailColors === 'up' || s.trailColors === 'both')) {
+    // 'up': uphill grade replaces the halo. 'both': the mtb:scale halo stays and
+    // the uphill grade runs as a stripe alongside it.
+    const both = s.trailColors === 'both';
+    add({
+      id: 'uphill-line', type: 'line', source: 'uphill', minzoom: 12,
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+      paint: {
+        'line-color': diffColor(['get', 'cls'], '#999'),
+        'line-width': both ? zi(12, 1.4, 14, 2.4 * k0(hc), 16, 3.6 * k0(hc), 18, 5.5) : zi(12, 3, 14, hc ? 7 : 5.5, 16, hc ? 12 : 9, 18, 15),
+        'line-offset': both ? zi(12, 2.4, 14, 4.2 * k0(hc), 16, 7 * k0(hc), 18, 11) : 0,
+        'line-opacity': ['case', ['get', 'osm'], 1, 0.9],
+      },
+    });
+    add({
+      id: 'uphill-arrow', type: 'symbol', source: 'uphill', minzoom: 14,
+      filter: ['>=', ['get', 'grade'], 8],
+      layout: { 'symbol-placement': 'line', 'symbol-spacing': zi(14, 45, 18, 90), 'icon-image': 'uphill-arrow', 'icon-size': zi(14, 0.55, 18, 1), 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' },
+    });
+  }
+
+  // ---- Places / POIs ------------------------------------------------------
+  if (s.overlays.pois) {
+    // Things you plan an outing around show early; everyday services only up close.
+    const outdoor = ['campsite', 'shelter', 'picnic_site', 'drinking_water', 'lodging', 'swimming', 'harbor', 'ranger_station'];
+    const minor = ['toilets', 'information', 'attraction', 'bicycle_rental', 'parking', 'bicycle'];
+    const poi = (id, minzoom, filter) => add({
+      id, type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom, filter,
+      layout: {
+        'icon-image': ['match', ['get', 'subclass'], 'viewpoint', 'attraction', ['firepit', 'bbq'], 'lipas-fire', ['coalesce', ['image', ['get', 'class']], ['image', 'circle_11']]],
+        'icon-size': ['match', ['get', 'subclass'], ['firepit', 'bbq'], 0.6, hc ? 1.05 : 0.8],
+        'text-field': ['step', ['zoom'], '', 15, ['get', 'name']],
+        'text-font': FONT_I, 'text-size': 11, 'text-offset': [0, 1], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 8,
+      },
+      paint: { 'text-color': P.text, 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
+    });
+    poi('poi-outdoor', 13, ['any', ['in', ['get', 'class'], ['literal', outdoor]], ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]);
+    poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]]);
+  }
+  if (s.overlays.lipasPoints) {
+    add({
+      id: 'lipas-point', type: 'symbol', source: 'lipasPoints', minzoom: 10,
+      layout: {
+        'icon-image': ['concat', 'lipas-', ['get', 'icon']], 'icon-size': zi(10, 0.55, 14, 0.9), 'icon-allow-overlap': true,
+        'text-field': ['step', ['zoom'], '', 13, ['get', 'name']], 'text-font': FONT, 'text-size': 11, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 8,
+      },
+      paint: { 'text-color': P.text, 'text-halo-color': P.halo, 'text-halo-width': 1.4 },
+    });
+  }
+
+  addLabels(s, P, hc, layers);
+
+  // ---- Imported tracks & the planned route (always on top) --------------
+  add({ id: 'tracks-casing', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 4, 16, 9), 'line-opacity': 0.8 } });
+  add({ id: 'tracks', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#7c3aed', 'line-width': zi(8, 2, 16, 5) } });
+
+  add({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
+  add({
+    id: 'route-line', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'portage'],
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': ['case', ['get', 'loading'], '#9ca3af', ['==', ['get', 'mode'], 'water'], '#0369a1', ['==', ['get', 'mode'], 'line'], '#be123c', '#e11d48'],
+      'line-width': zi(8, 3, 16, 6.5),
+      'line-dasharray': ['case', ['get', 'loading'], ['literal', [1, 1.5]], ['==', ['get', 'mode'], 'line'], ['literal', [2.5, 1.2]], ['literal', [1, 0]]],
+    },
+  });
+  add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
+  add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['!', ['get', 'loading']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
+  add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
+
+  const style = {
+    version: 8,
+    name: 'Polku',
+    sprite: OFM_SPRITE,
+    glyphs: OFM_GLYPHS,
+    sources,
+    layers,
+  };
+  if (s.terrain3d) {
+    style.terrain = { source: 'terrain', exaggeration: s.exaggeration || 1.4 };
+    style.sky = { 'sky-color': '#bcd8f0', 'horizon-color': '#eef4f8', 'fog-color': '#eef2f3', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.85 };
+  }
+  return style;
+}
+
+function addRasterOverlays(s, sources, layers, slot) {
+  for (const [id, o] of Object.entries(RASTER_OVERLAYS)) {
+    if (o.slot !== slot || !s.overlays[id]) continue;
+    let tiles = o.tiles;
+    if (o.mml) {
+      if (!s.mmlKey) continue;
+      tiles = [mmlTiles(o.mml, s.mmlKey)];
+    }
+    sources[`ov-${id}`] = { type: 'raster', tiles, tileSize: o.tileSize, minzoom: o.minzoom || 0, maxzoom: o.maxzoom || 18, attribution: o.attribution };
+    layers.push({ id: `ov-${id}`, type: 'raster', source: `ov-${id}`, minzoom: o.minzoom || 0, paint: { 'raster-opacity': o.opacity, 'raster-fade-duration': 150 } });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Roads and trails
+
+function addRoads(s, P, hc, layers) {
+  const add = (l) => layers.push(l);
+  const act = s.activity;
+  const aerial = isAerial(s.base);
+  const mmlBase = isTopo(s.base);
+  const darkBase = aerial || s.base === 'night';
+  const plainHalo = darkBase ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
+  const roadsDim = act === 'paddle' ? 0.55 : 1;
+  const k = hc ? 1.35 : 1;
+
+  const roadStops = {
+    motorway: [6, 0.8, 12, 3, 18, 22],
+    trunk: [6, 0.6, 12, 2.6, 18, 20],
+    primary: [7, 0.5, 12, 2.2, 18, 18],
+    secondary: [8, 0.4, 12, 1.8, 18, 16],
+    tertiary: [9, 0.4, 12, 1.4, 18, 14],
+    minor: [11, 0.3, 14, 1.8, 18, 11],
+    service: [13, 0.3, 15, 1.4, 18, 7],
+  };
+  // Zoom expressions can't be wrapped in arithmetic, so scale each stop instead.
+  const roadW = (cls, f = 1) =>
+    ze(1.4, ...roadStops[cls].map((v, i) => (i % 2 === 0 ? v : typeof f === 'number' ? v * f : ['*', v, f])));
+  const roadColor = {
+    motorway: P.motorway, trunk: P.trunk, primary: P.primary, secondary: P.secondary,
+    tertiary: P.tertiary, minor: P.road, service: P.road,
+  };
+  const roadMin = { motorway: 5, trunk: 5, primary: 7, secondary: 8, tertiary: 9, minor: 11, service: 13 };
+
+  // Gravel: unpaved roads get a warm gravel casing so the network pops out.
+  const gravel = act === 'gravel';
+  const unpaved = ['==', ['get', 'surface'], 'unpaved'];
+
+  for (const brunnel of ['tunnel', 'ground', 'bridge']) {
+    const bf = brunnel === 'ground'
+      ? ['!', ['in', ['get', 'brunnel'], ['literal', ['tunnel', 'bridge']]]]
+      : ['==', ['get', 'brunnel'], brunnel];
+    const op = (brunnel === 'tunnel' ? 0.5 : 1) * roadsDim;
+
+    // casings
+    for (const cls of ['service', 'minor', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']) {
+      if (aerial && (cls === 'service')) continue;
+      const casingColor = gravel ? ['case', unpaved, '#c4842d', P.roadCase] : P.roadCase;
+      add({
+        id: `road-${brunnel}-${cls}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: roadMin[cls],
+        filter: ['all', ['==', ['get', 'class'], cls], bf],
+        layout: { 'line-join': 'round', 'line-cap': brunnel === 'ground' ? 'round' : 'butt' },
+        paint: {
+          'line-color': aerial ? 'rgba(0,0,0,0.5)' : casingColor,
+          'line-width': gravel && cls !== 'motorway' && cls !== 'trunk'
+            ? roadW(cls, ['case', unpaved, 2.5, 1.35])
+            : roadW(cls, 1.35),
+          'line-opacity': zi(roadMin[cls], 0, roadMin[cls] + 0.5, mmlBase ? 0 : op),
+          ...(brunnel === 'tunnel' ? { 'line-dasharray': [0.6, 0.4] } : {}),
+        },
+      });
+    }
+    // fills
+    for (const cls of ['service', 'minor', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']) {
+      if (aerial && cls === 'service') continue;
+      let color = roadColor[cls];
+      if (gravel && !['motorway', 'trunk'].includes(cls)) color = ['case', unpaved, '#fbd9a0', color];
+      add({
+        id: `road-${brunnel}-${cls}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: roadMin[cls],
+        filter: ['all', ['==', ['get', 'class'], cls], bf],
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': aerial ? 'rgba(255,255,255,0.55)' : color,
+          'line-width': roadW(cls),
+          'line-opacity': (mmlBase ? 0 : 1) * op,
+        },
+      });
+    }
+
+    // Tracks (forest roads, metsäautotie-ish): long dashes like the Finnish terrain map.
+    add({
+      id: `track-${brunnel}-halo`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 11,
+      filter: ['all', ['==', ['get', 'class'], 'track'], bf],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': act === 'mtb' && s.trailColors !== 'up'
+          ? diffColor(MTB_IDX, plainHalo)
+          : gravel ? (darkBase ? '#8a5a22' : '#e9b56c') : plainHalo,
+        'line-width': zi(11, 2, 14, 4 * k, 16, 7 * k, 18, 12 * k),
+        'line-opacity': (act === 'mtb' && s.trailColors !== 'up' ? 0.9 : gravel ? 0.9 : 0.7) * roadsDim,
+      },
+    });
+    add({
+      id: `track-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 10,
+      filter: ['all', ['==', ['get', 'class'], 'track'], bf],
+      paint: {
+        'line-color': P.track,
+        'line-width': zi(10, 0.6, 14, 1.4 * k, 16, 2.6 * k, 18, 4.5 * k),
+        'line-dasharray': [5, 1.4],
+        'line-opacity': zi(10, 0, 10.5, 0.8 * roadsDim, 14, roadsDim),
+      },
+    });
+
+    // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
+    const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], bf];
+    const noBike = ['==', ['get', 'bicycle'], 'no'];
+    const noFoot = ['==', ['get', 'foot'], 'no'];
+    const sidewalkish = ['all', ['==', ['get', 'subclass'], 'footway'], ['!', ['has', 'mtb_scale']]];
+    let haloColor;
+    if (act === 'mtb' && s.trailColors !== 'up') haloColor = diffColor(MTB_IDX, plainHalo);
+    else if (act === 'hike') haloColor = darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)';
+    else haloColor = plainHalo;
+    add({
+      id: `path-${brunnel}-halo`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
+      filter: trailFilter,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': haloColor,
+        'line-width': zi(12, 2.2, 14, 4 * k, 16, 7 * k, 18, 12 * k),
+        'line-opacity': [
+          'case',
+          act === 'mtb' || gravel ? noBike : noFoot, 0.25,
+          act === 'mtb' ? sidewalkish : ['literal', false], 0.35,
+          act === 'paddle' ? 0.5 : 0.95,
+        ],
+      },
+    });
+    // Explicit no-bike marker: small red ticks beside the line.
+    if (act === 'mtb' || gravel) {
+      add({
+        id: `path-${brunnel}-nobike`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14,
+        filter: ['all', trailFilter, noBike],
+        paint: { 'line-color': '#dc2626', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, 3, 18, 8), 'line-dasharray': [0.4, 1.6] },
+      });
+    }
+    add({
+      id: `path-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
+      filter: trailFilter,
+      paint: {
+        'line-color': act === 'hike' && !aerial ? '#b42318' : P.path,
+        'line-width': zi(12, 0.6 * k, 14, 1.15 * k, 16, 1.8 * k, 18, 3 * k),
+        'line-dasharray': ['match', ['get', 'subclass'], 'steps', ['literal', [0.4, 0.4]], ['literal', [2.4, 1.3]]],
+        'line-opacity': [
+          'case',
+          act === 'mtb' ? sidewalkish : ['literal', false], 0.5,
+          act === 'paddle' ? 0.6 : 1,
+        ],
+      },
+    });
+    // Cycleways (kevyen liikenteen väylä): thin solid line.
+    add({
+      id: `cycleway-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
+      filter: ['all', isPathClass, ['in', ['get', 'subclass'], ['literal', ['cycleway', 'pedestrian']]], bf],
+      paint: {
+        'line-color': aerial ? '#bfe0ff' : P.cycleway,
+        'line-width': zi(12, 0.6, 15, 1.6 * k, 18, 3.5 * k),
+        'line-opacity': 0.85 * roadsDim,
+      },
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Labels
+
+function addLabels(s, P, hc, layers) {
+  const topo = isTopo(s.base);
+  // On the MML rasters only our own overlays get labels; the map has the rest.
+  const add = (l) => { if (!topo || /^(contour|lipas)/.test(l.id)) layers.push(l); };
+  const halo = { 'text-halo-color': P.halo, 'text-halo-width': hc ? 2 : 1.4, 'text-halo-blur': 0.3 };
+
+  add({ id: 'label-waterway', type: 'symbol', source: 'ofm', 'source-layer': 'waterway', minzoom: 12, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 11, 'text-letter-spacing': 0.1 }, paint: { 'text-color': P.waterText, ...halo } });
+  add({ id: 'label-water', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-max-width': 6, 'text-letter-spacing': 0.08 }, paint: { 'text-color': P.waterText, ...halo } });
+  add({ id: 'label-water-line', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'LineString']], layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-letter-spacing': 0.15 }, paint: { 'text-color': P.waterText, ...halo } });
+  add({ id: 'label-park', type: 'symbol', source: 'ofm', 'source-layer': 'park', minzoom: 9, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 12, 'text-max-width': 8 }, paint: { 'text-color': '#2f6b2f', ...halo } });
+  add({ id: 'label-road', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 13, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': zi(13, 10, 17, 13), 'text-rotation-alignment': 'map' }, paint: { 'text-color': P.text, ...halo } });
+  add({
+    id: 'label-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11,
+    filter: ['==', ['get', 'class'], 'peak'],
+    layout: {
+      'icon-image': 'triangle_11', 'icon-size': 0.75,
+      'text-field': ['case', ['has', 'name'], ['concat', ['get', 'name'], '\n', ['to-string', ['get', 'ele']], ' m'], ['concat', ['to-string', ['get', 'ele']], ' m']],
+      'text-font': FONT, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-optional': true,
+    },
+    paint: { 'text-color': '#6b4b2b', ...halo },
+  });
+  if (s.contours && !isTopo(s.base)) {
+    add({ id: 'contour-label', type: 'symbol', source: 'contours', 'source-layer': 'contours', minzoom: 13, filter: ['>', ['get', 'level'], 0], layout: { 'symbol-placement': 'line', 'text-field': ['to-string', ['get', 'ele']], 'text-font': FONT, 'text-size': 10, 'symbol-spacing': 350 }, paint: { 'text-color': isAerial(s.base) ? '#ffeccc' : P.contourText, ...halo } });
+  }
+  if (s.overlays.lipasRoutes) {
+    add({ id: 'lipas-route-label', type: 'symbol', source: 'lipasRoutes', minzoom: 13, layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT_B, 'text-size': 11, 'symbol-spacing': 400 }, paint: { 'text-color': ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#444'], ...halo } });
+  }
+  const place = (id, classes, minzoom, size, font = FONT) =>
+    add({ id, type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom, filter: ['in', ['get', 'class'], ['literal', classes]], layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': size, 'text-max-width': 8 }, paint: { 'text-color': P.text, ...halo } });
+  place('label-place-minor', ['hamlet', 'isolated_dwelling', 'locality', 'neighbourhood'], 13, 11);
+  place('label-island', ['island', 'islet'], 11, 11, FONT_I);
+  place('label-suburb', ['suburb', 'quarter'], 11, zi(11, 11, 15, 14));
+  place('label-village', ['village'], 9, zi(9, 11, 14, 15));
+  place('label-town', ['town'], 7, zi(7, 11, 13, 17), FONT_B);
+  place('label-city', ['city'], 4, zi(4, 11, 12, 20), FONT_B);
+}

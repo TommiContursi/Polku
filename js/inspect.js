@@ -1,0 +1,170 @@
+// Click-to-inspect: trails, roads, POIs, LIPAS places/routes and water depth.
+// Shows what the vector tiles know instantly, then enriches from Overpass /
+// Traficom on demand.
+
+import { DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, TRAFICOM_WMS } from './config.js';
+import { elevation } from './dem.js';
+import { overpass } from './uphill.js';
+import { dist, pointSegment } from './geo.js';
+import { h, icon, escapeHtml } from './ui.js';
+
+const WAY_NAMES = {
+  path: 'Path', footway: 'Footpath', bridleway: 'Bridleway', steps: 'Steps', cycleway: 'Cycleway',
+  pedestrian: 'Pedestrian street', track: 'Forest road / track', service: 'Service road', minor: 'Minor road',
+  tertiary: 'Local road', secondary: 'Regional road', primary: 'Main road', trunk: 'Highway', motorway: 'Motorway',
+};
+
+const OSM_KEYS = [
+  ['name', 'Name'], ['highway', 'Type'], ['surface', 'Surface'], ['smoothness', 'Smoothness'], ['tracktype', 'Track grade'],
+  ['mtb:scale', 'MTB difficulty'], ['mtb:scale:uphill', 'MTB uphill'], ['mtb:scale:imba', 'IMBA'], ['sac_scale', 'Hiking (SAC)'],
+  ['trail_visibility', 'Trail visibility'], ['width', 'Width'], ['incline', 'Incline'], ['bicycle', 'Bicycle'], ['foot', 'Foot'],
+  ['horse', 'Horse'], ['access', 'Access'], ['lit', 'Lit'], ['winter_road', 'Winter road'], ['operator', 'Operator'], ['note', 'Note'],
+];
+
+const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https://${u}` : '';
+
+export function initInspector(map, app) {
+  let popup = null;
+
+  map.on('click', async (e) => {
+    if (app.isPlanning()) return;
+    const ids = map.getStyle().layers.map((l) => l.id)
+      .filter((id) => /^(lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
+    const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
+    const feats = map.queryRenderedFeatures(box, { layers: ids });
+    const by = (re) => feats.find((f) => re.test(f.layer.id));
+    const ll = [e.lngLat.lng, e.lngLat.lat];
+    const f = by(/^lipas-point/) || by(/^poi-|^label-peak/) || by(/^uphill-line/) || by(/^(path|track|cycleway)-/) || by(/^lipas-route/) || by(/^road-/) || by(/^water$/);
+    if (popup) popup.remove();
+    if (!f) return;
+    const body = h('div', { class: 'insp' });
+    popup = new maplibregl.Popup({ maxWidth: '320px', className: 'polku-popup', offset: 8 }).setLngLat(e.lngLat).setDOMContent(body).addTo(map);
+    keepInView(map, popup);
+    const actions = h('div', { class: 'insp-actions' },
+      h('button', { type: 'button', class: 'btn', onclick: () => { popup.remove(); app.routeFrom(ll); }, html: `${icon('flag', 15)} Route from here` }),
+      h('button', { type: 'button', class: 'btn', onclick: () => { popup.remove(); app.routeTo(ll); }, html: `${icon('plus', 15)} Add to route` }));
+
+    if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
+    else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
+    else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
+    else renderWay(body, f, feats, ll);
+    body.append(actions);
+    const ele = await elevation(ll);
+    const slot = body.querySelector('[data-ele]');
+    if (slot && Number.isFinite(ele)) slot.textContent = `${Math.round(ele)} m`;
+  });
+}
+
+// Pan so the popup clears the floating buttons on the right and the top bar.
+export function keepInView(map, popup) {
+  requestAnimationFrame(() => {
+    const r = popup.getElement().getBoundingClientRect();
+    const right = window.innerWidth - (window.innerWidth < 720 ? 64 : 84);
+    const dx = r.right > right ? r.right - right : r.left < 8 ? r.left - 8 : 0;
+    const dy = r.top < 120 ? r.top - 120 : 0;
+    if (dx || dy) map.panBy([dx, dy], { duration: 250 });
+  });
+}
+
+function row(label, value, html = false) {
+  return h('div', { class: 'insp-row' }, h('span', {}, label), html ? h('b', { html: value }) : h('b', {}, value));
+}
+
+function chip(color, text) {
+  return `<i class="dot" style="background:${color}"></i>${escapeHtml(text)}`;
+}
+
+function renderWay(body, f, feats, ll) {
+  const p = f.properties;
+  const isUphill = f.layer.id === 'uphill-line';
+  const way = isUphill ? (feats.find((x) => /^(path|track)-/.test(x.layer.id)) || f) : f;
+  const wp = way.properties;
+  const kind = wp.class === 'path' ? (wp.subclass || 'path') : wp.class;
+  body.append(h('div', { class: 'insp-title' }, WAY_NAMES[kind] || kind || 'Way'));
+  const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
+  if (Number.isFinite(idx)) body.append(row('MTB difficulty', chip(DIFF_COLORS[idx], MTB_SCALE_TEXT[idx]), true));
+  const up = feats.find((x) => x.layer.id === 'uphill-line');
+  if (up) body.append(row('Uphill', chip(DIFF_COLORS[up.properties.cls], `${UPHILL_TEXT[up.properties.cls]} (${up.properties.grade} %)`), true));
+  if (wp.surface) body.append(row('Surface', wp.surface));
+  const access = ['bicycle', 'foot', 'horse'].filter((k) => wp[k]).map((k) => `${k} ${wp[k]}`).join(', ');
+  if (access) body.append(row('Access', access));
+  if (wp.brunnel) body.append(row('Structure', wp.brunnel));
+  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
+  const more = h('div', { class: 'insp-more' });
+  const btn = h('button', {
+    type: 'button', class: 'link',
+    onclick: async () => {
+      btn.disabled = true;
+      btn.textContent = 'Loading OSM details…';
+      try {
+        const q = `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
+        const json = await overpass(q, { race: true });
+        const ways = (json.elements || []).filter((w) => w.geometry);
+        if (!ways.length) { btn.textContent = 'No OSM way found here'; return; }
+        const near = ways.map((w) => {
+          const g = w.geometry.map((c) => [c.lon, c.lat]);
+          let d = Infinity;
+          for (let i = 1; i < g.length; i++) d = Math.min(d, pointSegment(ll, g[i - 1], g[i]).d);
+          return { w, d, len: g.reduce((s, c, i) => (i ? s + dist(g[i - 1], c) : 0), 0) };
+        }).sort((a, b) => a.d - b.d)[0];
+        btn.remove();
+        const t = near.w.tags || {};
+        for (const [k, label] of OSM_KEYS) if (t[k]) more.append(row(label, t[k]));
+        more.append(row('Length', `${Math.round(near.len)} m`));
+        more.append(h('div', { class: 'insp-links' },
+          h('a', { href: `https://www.openstreetmap.org/way/${near.w.id}`, target: '_blank', rel: 'noopener', html: `OSM way ${near.w.id} ${icon('external', 13)}` }),
+          h('a', { href: `https://www.openstreetmap.org/edit?way=${near.w.id}`, target: '_blank', rel: 'noopener', html: `Improve it ${icon('external', 13)}` })));
+      } catch {
+        btn.disabled = false;
+        btn.textContent = 'Overpass is busy — try again';
+      }
+    },
+  }, 'Show all OSM tags (sac_scale, uphill, visibility…)');
+  more.append(btn);
+  body.append(more);
+}
+
+function renderPoi(body, f) {
+  const p = f.properties;
+  const title = p.name || (p.subclass || p.class || 'Place').replace(/_/g, ' ');
+  body.append(h('div', { class: 'insp-title' }, title));
+  if (p.subclass || p.class) body.append(row('Type', (p.subclass || p.class).replace(/_/g, ' ')));
+  if (p.ele) body.append(row('Height', `${p.ele} m`));
+  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
+}
+
+function renderLipas(body, p) {
+  body.append(h('div', { class: 'insp-title' }, p.name));
+  body.append(h('div', { class: 'insp-sub' }, `${p.typeName}${p.city ? ` · ${p.city}` : ''}`));
+  if (p.length) body.append(row('Length', `${p.length} km`));
+  if (p.surface) body.append(row('Surface', p.surface));
+  if (p.wc === 'true') body.append(row('Toilet', 'yes'));
+  if (p.info) body.append(h('p', { class: 'insp-info' }, p.info.length > 280 ? `${p.info.slice(0, 280)}…` : p.info));
+  const www = isHttp(p.www);
+  body.append(h('div', { class: 'insp-links' },
+    www ? h('a', { href: www, target: '_blank', rel: 'noopener', html: `Website ${icon('external', 13)}` }) : null,
+    h('a', { href: `https://www.lipas.fi/liikuntapaikat/${p.lipasId}`, target: '_blank', rel: 'noopener', html: `LIPAS ${icon('external', 13)}` })));
+  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
+}
+
+async function renderWater(body, ll, map, app) {
+  body.append(h('div', { class: 'insp-title' }, 'Water'));
+  const depthRow = row('Depth', '…');
+  body.append(depthRow);
+  body.append(h('div', { class: 'insp-actions' },
+    h('button', { type: 'button', class: 'btn', onclick: () => app.routeFrom(ll, 'water'), html: `${icon('paddle', 15)} Paddle from here` })));
+  try {
+    const R = 400;
+    const k = 20037508.34;
+    const x = (ll[0] * k) / 180;
+    const y = (Math.log(Math.tan(((90 + ll[1]) * Math.PI) / 360)) * k) / Math.PI;
+    const url = `${TRAFICOM_WMS}?service=WMS&request=GetFeatureInfo&version=1.1.1&layers=DepthArea_A&query_layers=DepthArea_A&styles=` +
+      `&srs=EPSG:3857&bbox=${x - R},${y - R},${x + R},${y + R}&width=101&height=101&x=50&y=50&info_format=application/json&feature_count=1`;
+    const res = await fetch(url);
+    const j = await res.json();
+    const pr = j.features && j.features[0] && j.features[0].properties;
+    depthRow.lastChild.textContent = pr ? `${pr.DRVAL1}–${pr.DRVAL2} m (Traficom chart)` : 'Not charted here';
+  } catch {
+    depthRow.lastChild.textContent = 'Unavailable';
+  }
+}
