@@ -384,6 +384,42 @@ button { font: inherit; color: inherit; }
 .lg-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; margin: 0 10px; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
 .lg-arrow { width: 34px; text-align: center; font-weight: 800; }
 
+/* ---------------------------------------------------------------- modal & cards */
+.modal {
+  padding: 0; border: 0; border-radius: 18px; width: min(560px, calc(100vw - 24px)); max-height: calc(100vh - 32px);
+  background: var(--surface-solid); color: var(--text); box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal:not([open]) { display: none; }
+.modal::backdrop { background: rgba(10, 14, 12, 0.55); backdrop-filter: blur(2px); }
+.modal-wide { width: min(980px, calc(100vw - 24px)); }
+.modal-card { position: fixed; inset: auto auto calc(var(--sheet-h) + 16px) 12px; margin: 0; width: min(360px, calc(100vw - 24px)); max-height: min(70vh, calc(100vh - var(--sheet-h) - 140px)); z-index: 9; box-shadow: var(--shadow); }
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px 12px 8px 18px; }
+.modal-head h2 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+.modal-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.modal-body { padding: 0 18px 16px; overflow: auto; }
+.cam-tabs { margin-bottom: 10px; }
+.cam-stage { position: relative; background: #0b0f0d; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; max-height: calc(100vh - 270px); min-height: 160px; display: flex; align-items: center; justify-content: center; }
+.cam-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cam-loading { position: absolute; inset: auto 12px 12px auto; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; }
+.cam-controls { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.cam-controls input[type=range] { flex: 1; accent-color: var(--accent); }
+.cam-time { font-size: 12px; font-weight: 600; color: var(--muted); min-width: 170px; text-align: right; font-variant-numeric: tabular-nums; }
+.cam-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 10px; align-items: flex-end; }
+.cam-wx { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.cam-wx-title { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); width: 100%; }
+.cam-wx-item { display: flex; flex-direction: column; font-size: 13px; }
+.cam-wx-item small { color: var(--muted); font-size: 11px; }
+.cam-links { display: flex; gap: 14px; }
+.ship-live { margin-bottom: 6px; }
+.ship-static .insp-row:last-child { border-bottom: 0; }
+.btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (max-width: 720px) {
+  .modal-wide { width: calc(100vw - 12px); }
+  .cam-time { min-width: 0; }
+  .modal-card { inset: auto 8px calc(var(--sheet-h) + 8px) 8px; width: auto; }
+}
+
 /* ---------------------------------------------------------------- misc */
 .toast {
   position: absolute; left: 50%; bottom: calc(var(--sheet-h) + 24px); z-index: 20; transform: translate(-50%, 10px);

@@ -92,6 +92,13 @@ export function buildStyle(s, ctx) {
     sfPoints: { type: 'geojson', data: ctx.data.sfPoints || EMPTY },
     sfShips: { type: 'geojson', data: ctx.data.sfShips || EMPTY },
     nogo: { type: 'geojson', data: ctx.data.nogo || EMPTY },
+    sfShipTrails: { type: 'geojson', data: ctx.data.sfShipTrails || EMPTY },
+    cameras: { type: 'geojson', data: ctx.data.cameras || EMPTY, attribution: '© Fintraffic' },
+    nmMarks: { type: 'geojson', data: ctx.data.nmMarks || EMPTY, attribution: '© Väylävirasto' },
+    nmLights: { type: 'geojson', data: ctx.data.nmLights || EMPTY },
+    nmSectors: { type: 'geojson', data: ctx.data.nmSectors || EMPTY },
+    nmLines: { type: 'geojson', data: ctx.data.nmLines || EMPTY },
+    nmAreas: { type: 'geojson', data: ctx.data.nmAreas || EMPTY },
   };
   const layers = [];
   const add = (l) => layers.push(l);
@@ -189,6 +196,16 @@ export function buildStyle(s, ctx) {
 
   // Depth & water overlays sit directly on the water.
   addRasterOverlays(s, sources, layers, 'water');
+
+  // Nautical chart: fairway areas, speed / restriction areas, navigation lines
+  if (s.overlays.nautical) {
+    const kind = ['get', 'kind'];
+    add({ id: 'nm-fairway', type: 'fill', source: 'nmAreas', minzoom: 10, filter: ['==', kind, 'fairway'], paint: { 'fill-color': '#a855f7', 'fill-opacity': zi(10, 0.05, 14, 0.09) } });
+    add({ id: 'nm-restrict-fill', type: 'fill', source: 'nmAreas', minzoom: 11, filter: ['in', kind, ['literal', ['speed', 'restrict']]], paint: { 'fill-color': '#db2777', 'fill-opacity': 0.05 } });
+    add({ id: 'nm-restrict-line', type: 'line', source: 'nmAreas', minzoom: 11, filter: ['in', kind, ['literal', ['speed', 'restrict']]], paint: { 'line-color': '#be185d', 'line-width': zi(11, 0.8, 15, 1.6), 'line-dasharray': [3, 2], 'line-opacity': 0.8 } });
+    add({ id: 'nm-navline', type: 'line', source: 'nmLines', minzoom: 10.5, paint: { 'line-color': s.base === 'night' || isAerial(s.base) ? '#f5f5f5' : '#111827', 'line-width': zi(10.5, 0.7, 15, 1.4, 18, 2), 'line-dasharray': [4, 2.5], 'line-opacity': 0.85 } });
+    add({ id: 'nm-sector', type: 'line', source: 'nmSectors', minzoom: 12.5, layout: { 'line-cap': 'butt' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(12.5, 2, 16, 5), 'line-opacity': 0.9 } });
+  }
 
   // ---- Contours -----------------------------------------------------------
   // MML terrain maps already carry 5 m contours.
@@ -311,10 +328,19 @@ export function buildStyle(s, ctx) {
     },
   });
   add({ id: 'sf-points', type: 'symbol', source: 'sfPoints', minzoom: 6, layout: { 'icon-image': ['get', 'icon'], 'icon-size': zi(6, 0.6, 12, 0.85, 16, 1), 'icon-allow-overlap': true, 'symbol-sort-key': ['match', ['get', 'kind'], 'incident', 0, 'roadcond', 1, 2] } });
+  add({ id: 'sf-ship-trail', type: 'line', source: 'sfShipTrails', minzoom: 7, filter: ['==', ['get', 'kind'], 'trail'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['get', 'selected'], 3, 1.6], 'line-opacity': ['case', ['get', 'selected'], 0.9, 0.5] } });
+  add({ id: 'sf-ship-vector', type: 'line', source: 'sfShipTrails', minzoom: 9, filter: ['==', ['get', 'kind'], 'vector'], paint: { 'line-color': ['get', 'color'], 'line-width': 1.6, 'line-dasharray': [2, 1.5], 'line-opacity': 0.85 } });
   add({
     id: 'sf-ships', type: 'symbol', source: 'sfShips', minzoom: 7,
-    layout: { 'icon-image': 'ship', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': zi(7, 0.5, 13, 0.9, 16, 1.2), 'icon-allow-overlap': true, 'icon-ignore-placement': true },
-    paint: { 'icon-color': ['case', ['get', 'moving'], '#0f172a', '#64748b'], 'icon-halo-color': '#ffffff', 'icon-halo-width': 1.5 },
+    layout: {
+      'icon-image': 'ship', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': zi(7, 0.5, 13, 0.9, 16, 1.2), 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+      'text-field': ['step', ['zoom'], '', 12.5, ['get', 'name']], 'text-font': FONT_B, 'text-size': 10.5, 'text-anchor': 'left', 'text-offset': [1, 0], 'text-optional': true,
+    },
+    paint: {
+      'icon-color': ['get', 'color'], 'icon-opacity': ['case', ['get', 'moving'], 1, 0.6],
+      'icon-halo-color': ['case', ['get', 'selected'], '#facc15', '#ffffff'], 'icon-halo-width': ['case', ['get', 'selected'], 3, 1.5],
+      'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6,
+    },
   });
 
   // ---- Difficulty numbers along trails (own toggles; JOSM MTB-Trailmap style)
@@ -343,6 +369,34 @@ export function buildStyle(s, ctx) {
       },
       paint: { 'text-color': diffColor(['get', 'cls'], '#ffffff'), 'text-halo-color': '#111111', 'text-halo-width': 1.6 },
     });
+  }
+
+  // ---- Nautical marks (IALA A), lights, signs; road cameras ------------
+  if (s.overlays.nautical) {
+    const kind = ['get', 'kind'];
+    const ink = s.base === 'night' || isAerial(s.base) ? '#f5f5f5' : '#111827';
+    const halo = s.base === 'night' || isAerial(s.base) ? '#0f172a' : '#ffffff';
+    add({ id: 'nm-navline-label', type: 'symbol', source: 'nmLines', minzoom: 13, filter: ['!=', ['get', 'depth'], ''], layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'depth'], 'text-font': FONT_I, 'text-size': 11, 'text-keep-upright': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
+    add({ id: 'nm-area-label', type: 'symbol', source: 'nmAreas', minzoom: 12.5, filter: ['all', ['in', kind, ['literal', ['speed', 'restrict']]], ['!=', ['get', 'label'], '']], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 11, 'text-padding': 40 }, paint: { 'text-color': '#be185d', 'text-halo-color': halo, 'text-halo-width': 1.8 } });
+    add({
+      id: 'nm-marks', type: 'symbol', source: 'nmMarks', minzoom: 11,
+      layout: {
+        'icon-image': ['get', 'icon'],
+        'icon-size': zi(11, 0.5, 13, 0.72, 16, 1, 18, 1.25),
+        'icon-anchor': ['match', ['get', 'icon'], ['nm-port', 'nm-starboard', 'nm-north', 'nm-south', 'nm-east', 'nm-west', 'nm-danger', 'nm-safe', 'nm-special', 'nm-leading'], 'bottom', ['nm-light', 'nm-lighthouse'], 'bottom-left', 'center'],
+        'icon-allow-overlap': ['step', ['zoom'], false, 13.5, true],
+        'symbol-sort-key': ['match', kind, 'fault', 0, 'mark', 1, 2],
+        'text-field': ['case', ['==', kind, 'sign'], ['get', 'label'], ''],
+        'text-font': FONT_B, 'text-size': 9, 'text-allow-overlap': true,
+      },
+      paint: { 'text-color': '#ffffff' },
+    });
+    add({ id: 'nm-lit', type: 'symbol', source: 'nmMarks', minzoom: 12, filter: ['all', ['==', kind, 'mark'], ['get', 'lit'], ['!', ['in', ['get', 'icon'], ['literal', ['nm-light', 'nm-lighthouse']]]]], layout: { 'icon-image': 'nm-flare', 'icon-size': zi(12, 0.5, 16, 0.9), 'icon-anchor': 'bottom-left', 'icon-offset': [3, -14], 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+    add({ id: 'nm-light-label', type: 'symbol', source: 'nmLights', minzoom: 14, filter: ['!=', ['get', 'char'], ''], layout: { 'text-field': ['get', 'char'], 'text-font': FONT_I, 'text-size': 10.5, 'text-anchor': 'left', 'text-offset': [1.2, -0.8], 'text-max-width': 12 }, paint: { 'text-color': '#a21caf', 'text-halo-color': halo, 'text-halo-width': 1.6 } });
+    add({ id: 'nm-mark-label', type: 'symbol', source: 'nmMarks', minzoom: 15, filter: ['all', ['==', kind, 'mark'], ['!=', ['get', 'name'], '']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 10, 'text-anchor': 'top', 'text-offset': [0, 0.4], 'text-max-width': 8, 'text-optional': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.4 } });
+  }
+  if (s.overlays.sfCameras) {
+    add({ id: 'cameras', type: 'symbol', source: 'cameras', minzoom: 7, layout: { 'icon-image': 'camera', 'icon-size': zi(7, 0.5, 12, 0.8, 16, 1), 'icon-allow-overlap': ['step', ['zoom'], false, 11, true] } });
   }
 
   addLabels(s, P, hc, layers);

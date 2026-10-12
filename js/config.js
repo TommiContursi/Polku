@@ -275,7 +275,7 @@ export const RASTER_OVERLAYS = {
 };
 
 export const OVERLAY_GROUPS = [
-  { title: 'Water', ids: ['depthAreas', 'depthContours', 'soundings', 'fairways'] },
+  { title: 'Water', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways'] },
   { title: 'Marked routes', ids: ['lipasRoutes', 'wmtHiking', 'wmtMtb', 'wmtCycling'] },
   { title: 'Terrain map', ids: ['maastoOverlay'] },
   { title: 'Places', ids: ['lipasPoints', 'pois'] },
@@ -288,14 +288,15 @@ export const SAFETY_OVERLAYS = {
   sfIncidents: { label: 'Accidents & incidents', note: 'Fintraffic, live' },
   sfRoadworks: { label: 'Road works', note: 'Fintraffic, at your departure time' },
   sfRoadcond: { label: 'Slippery / poor road conditions', note: 'Fintraffic road weather, 0–12 h forecast' },
-  sfShips: { label: 'Ships (live AIS)', note: 'Digitraffic Marine · zoom 8+' },
+  sfShips: { label: 'Ships (live AIS)', note: 'Type colours, names, trails & course · zoom 8+' },
+  sfCameras: { label: 'Road weather cameras', note: 'Fintraffic, 800+ cameras · tap for live & 24 h' },
   restricted: { label: 'Military areas & shooting ranges', note: 'OpenStreetMap, LIPAS' },
 };
 
 // Defaults per activity; the user's choices are remembered per activity.
 export const ACTIVITY_OVERLAYS = {
   mtb: { lipasRoutes: true, lipasPoints: true, pois: true, wmtMtb: false, restricted: true },
-  gravel: { lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true },
+  gravel: { lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfCameras: true },
   hike: { lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true, restricted: true },
-  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, restricted: true },
+  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, restricted: true, nautical: true },
 };

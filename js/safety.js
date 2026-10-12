@@ -11,6 +11,35 @@
 
 import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
 import { DIGIROAD_WMS } from './config.js';
+import { openModal } from './modal.js';
+import { h, icon } from './ui.js';
+import { compass } from './geo.js';
+
+// AIS ship type → group (colour on the map, label in the card)
+const SHIP_GROUPS = [
+  [[60, 69], 'Passenger', '#2563eb'], [[70, 79], 'Cargo', '#16a34a'], [[80, 89], 'Tanker', '#dc2626'],
+  [[40, 49], 'High-speed craft', '#0891b2'], [[36, 36], 'Sailing', '#7c3aed'], [[37, 37], 'Pleasure craft', '#a855f7'],
+  [[30, 30], 'Fishing', '#92400e'], [[31, 32], 'Towing', '#ea580c'], [[52, 52], 'Tug', '#ea580c'],
+  [[50, 51], 'Pilot / rescue', '#f59e0b'], [[53, 59], 'Service vessel', '#f59e0b'], [[33, 35], 'Dredger / diving / military', '#475569'],
+];
+export function shipGroup(type) {
+  const g = type != null && SHIP_GROUPS.find(([[a, b]]) => type >= a && type <= b);
+  return g ? { label: g[1], color: g[2] } : { label: 'Vessel', color: '#334155' };
+}
+const NAV_STATUS = ['Under way (engine)', 'At anchor', 'Not under command', 'Restricted manoeuvrability', 'Constrained by draught', 'Moored', 'Aground', 'Fishing', 'Under way (sailing)'];
+const FLAGS = { 230: 'Finland', 265: 'Sweden', 266: 'Sweden', 276: 'Estonia', 275: 'Latvia', 277: 'Lithuania', 211: 'Germany', 218: 'Germany', 219: 'Denmark', 220: 'Denmark', 257: 'Norway', 258: 'Norway', 259: 'Norway', 261: 'Poland', 273: 'Russia', 244: 'Netherlands', 245: 'Netherlands', 246: 'Netherlands', 235: 'United Kingdom', 232: 'United Kingdom', 209: 'Cyprus', 210: 'Cyprus', 212: 'Cyprus', 215: 'Malta', 229: 'Malta', 248: 'Malta', 249: 'Malta', 256: 'Malta', 636: 'Liberia', 538: 'Marshall Islands', 351: 'Panama', 352: 'Panama', 353: 'Panama', 354: 'Panama', 355: 'Panama', 356: 'Panama', 357: 'Panama', 370: 'Panama', 371: 'Panama', 372: 'Panama', 373: 'Panama', 477: 'Hong Kong', 563: 'Singapore', 564: 'Singapore', 565: 'Singapore', 305: 'Antigua & Barbuda', 304: 'Antigua & Barbuda', 255: 'Portugal (Madeira)', 236: 'Gibraltar', 314: 'Barbados', 341: 'St Kitts & Nevis', 375: 'St Vincent', 376: 'St Vincent', 377: 'St Vincent', 518: 'Cook Islands' };
+// AIS ETA bits: month 19–16, day 15–11, hour 10–6, minute 5–0 (UTC)
+function etaText(eta) {
+  if (!eta) return '';
+  const mo = (eta >> 16) & 15, d = (eta >> 11) & 31, hh = (eta >> 6) & 31, mm = eta & 63;
+  if (!mo || !d || hh > 23 || mm > 59) return '';
+  const now = new Date();
+  let t = new Date(Date.UTC(now.getUTCFullYear(), mo - 1, d, hh, mm));
+  if (t < now - 30 * 864e5) t = new Date(Date.UTC(now.getUTCFullYear() + 1, mo - 1, d, hh, mm)); // around new year
+  // crews often leave an old ETA in the transponder: only show plausible ones
+  if (t < now - 864e5 || t > now.getTime() + 45 * 864e5) return '';
+  return t.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
 const ROAD = 'https://tie.digitraffic.fi';
 const MARINE = 'https://meri.digitraffic.fi';
@@ -77,6 +106,10 @@ export class SafetyLayers {
     this.incidents = null;
     this.roadcond = null;
     this.ships = [];
+    this.tracks = new Map(); // mmsi -> [[lon, lat, ms], ...] seen this session
+    this.meta = new Map(); // mmsi -> vessel metadata
+    this.selected = null;
+    this.follow = false;
     this.timer = 0;
     map.on('moveend', () => this.schedule());
   }
@@ -211,14 +244,27 @@ export class SafetyLayers {
     const r = Math.min(80, Math.max(5, dist([c.lng, c.lat], [b.getEast(), b.getNorth()]) / 1000));
     this.loadingShips = true;
     try {
+      if (!this.metaLoaded) this.loadMeta();
       const gj = await get(`${MARINE}/api/ais/v1/locations?latitude=${c.lat.toFixed(4)}&longitude=${c.lng.toFixed(4)}&radius=${Math.round(r)}`);
       const now = Date.now();
       this.ships = (gj.features || []).filter((f) => now - (f.properties.timestampExternal || 0) < 20 * 60 * 1000).map((f) => {
         const p = f.properties;
         const heading = p.heading != null && p.heading < 360 ? p.heading : p.cog;
-        return { type: 'Feature', properties: { kind: 'ship', mmsi: f.mmsi, sog: p.sog, rot: heading || 0, moving: p.sog > 0.5, age: Math.round((now - p.timestampExternal) / 60000) }, geometry: f.geometry };
+        // trail: remember every new position while the map is open (Digitraffic has no history API)
+        const tr = this.tracks.get(f.mmsi) || [];
+        const last = tr[tr.length - 1];
+        const ll = f.geometry.coordinates;
+        if (!last || dist(last, ll) > 15) tr.push([ll[0], ll[1], p.timestampExternal]);
+        while (tr.length > 180 || (tr.length && now - tr[0][2] > 3 * 3600 * 1000)) tr.shift();
+        this.tracks.set(f.mmsi, tr);
+        return { type: 'Feature', properties: { kind: 'ship', mmsi: f.mmsi, sog: p.sog, cog: p.cog, heading, navStat: p.navStat, rot: heading || 0, moving: p.sog > 0.5, ts: p.timestampExternal, age: Math.round((now - p.timestampExternal) / 60000) }, geometry: f.geometry };
       });
       this.publish();
+      if (this.follow && this.selected) {
+        const s = this.ships.find((x) => x.properties.mmsi === this.selected);
+        if (s) this.map.easeTo({ center: s.geometry.coordinates, duration: 800 });
+      }
+      if (this.onShipsUpdate) this.onShipsUpdate();
     } catch { /* ignore */ } finally {
       this.loadingShips = false;
     }
@@ -283,11 +329,110 @@ export class SafetyLayers {
     this.app.setData('sfLines', { type: 'FeatureCollection', features: lines });
     this.app.setData('sfPoints', { type: 'FeatureCollection', features: points });
     this.app.setData('sfAadt', this.on.traffic ? { type: 'FeatureCollection', features: this.allAadt() } : EMPTY);
-    this.app.setData('sfShips', this.on.ships ? { type: 'FeatureCollection', features: this.ships } : EMPTY);
+    this.app.setData('sfShips', this.on.ships ? { type: 'FeatureCollection', features: this.shipFeatures() } : EMPTY);
+    this.app.setData('sfShipTrails', this.on.ships ? { type: 'FeatureCollection', features: this.shipTrails() } : EMPTY);
   }
 
   async vessel(mmsi) {
-    try { return await get(`${MARINE}/api/ais/v1/vessels/${mmsi}`); } catch { return null; }
+    if (this.meta.has(mmsi) && this.meta.get(mmsi).full) return this.meta.get(mmsi);
+    try {
+      const v = await get(`${MARINE}/api/ais/v1/vessels/${mmsi}`);
+      v.full = true;
+      this.meta.set(mmsi, v);
+      return v;
+    } catch { return this.meta.get(mmsi) || null; }
+  }
+
+  // Names and types of active vessels, once per session (small payload).
+  async loadMeta() {
+    this.metaLoaded = true;
+    try {
+      const list = await get(`${MARINE}/api/ais/v1/vessels`);
+      for (const v of list) if (!this.meta.has(v.mmsi)) this.meta.set(v.mmsi, v);
+      this.publish();
+    } catch { this.metaLoaded = false; }
+  }
+
+  shipFeatures() {
+    return this.ships.map((f) => {
+      const m = this.meta.get(f.properties.mmsi) || {};
+      const g = shipGroup(m.shipType);
+      return { ...f, properties: { ...f.properties, name: m.name || '', color: g.color, group: g.label, selected: f.properties.mmsi === this.selected } };
+    });
+  }
+
+  // Trails seen this session + where each moving ship is in 10 minutes.
+  shipTrails() {
+    const out = [];
+    for (const f of this.ships) {
+      const p = f.properties;
+      const m = this.meta.get(p.mmsi) || {};
+      const color = shipGroup(m.shipType).color;
+      const tr = this.tracks.get(p.mmsi);
+      if (tr && tr.length > 1) out.push({ type: 'Feature', properties: { kind: 'trail', color, selected: p.mmsi === this.selected }, geometry: { type: 'LineString', coordinates: tr.map((q) => [q[0], q[1]]) } });
+      if (p.moving && p.cog != null && p.cog < 360) {
+        const metres = p.sog * 1852 * (10 / 60);
+        const c = f.geometry.coordinates;
+        const b = (p.cog * Math.PI) / 180;
+        const k = Math.cos((c[1] * Math.PI) / 180);
+        out.push({ type: 'Feature', properties: { kind: 'vector', color }, geometry: { type: 'LineString', coordinates: [c, [c[0] + (Math.sin(b) * metres) / (111195 * k), c[1] + (Math.cos(b) * metres) / 111195]] } });
+      }
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- ship card
+  async openShip(mmsi) {
+    this.selected = mmsi;
+    this.publish();
+    const v = (await this.vessel(mmsi)) || {};
+    let calls = [];
+    try {
+      const pc = await get(`${MARINE}/api/port-call/v1/port-calls?mmsi=${mmsi}`);
+      calls = (pc.portCalls || []).slice(0, 3);
+    } catch { /* none */ }
+    const g = shipGroup(v.shipType);
+    const flag = FLAGS[String(mmsi).slice(0, 3)] || '';
+    const len = (v.referencePointA || 0) + (v.referencePointB || 0);
+    const beam = (v.referencePointC || 0) + (v.referencePointD || 0);
+    let render = () => {};
+    openModal({ title: v.name || `MMSI ${mmsi}`, subtitle: [g.label, flag].filter(Boolean).join(' · '), card: true, onClose: () => { this.selected = null; this.follow = false; this.onShipsUpdate = null; this.publish(); } }, (body) => {
+      const live = h('div', { class: 'ship-live' });
+      const followBtn = h('button', { type: 'button', class: 'btn', onclick: () => { this.follow = !this.follow; followBtn.setAttribute('aria-pressed', String(this.follow)); followBtn.textContent = this.follow ? 'Following' : 'Follow on map'; if (this.follow) this.loadShips(); } }, 'Follow on map');
+      const row = (k, val) => (val ? h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, val)) : null);
+      render = () => {
+        const f = this.ships.find((x) => x.properties.mmsi === mmsi);
+        live.innerHTML = '';
+        if (!f) { live.append(h('p', { class: 'note' }, 'Out of view or no recent position.')); return; }
+        const p = f.properties;
+        const tr = this.tracks.get(mmsi) || [];
+        live.append(
+          row('Speed', `${(p.sog || 0).toFixed(1)} kn (${((p.sog || 0) * 1.852).toFixed(1)} km/h)`),
+          row('Course', p.cog != null && p.cog < 360 ? `${Math.round(p.cog)}° ${compass(p.cog)}` : ''),
+          row('Status', NAV_STATUS[p.navStat] || ''),
+          row('Position', `${p.age} min ago`),
+          tr.length > 1 ? row('Trail', `${tr.length} positions since you opened the map`) : null,
+        );
+      };
+      render();
+      this.onShipsUpdate = render;
+      body.append(
+        live,
+        h('div', { class: 'ship-static' },
+          row('Destination', v.destination ? v.destination.trim() : ''),
+          row('ETA', etaText(v.eta)),
+          row('Size', len ? `${len} × ${beam} m` : ''),
+          row('Draught', v.draught ? `${(v.draught / 10).toFixed(1)} m` : ''),
+          row('Call sign', v.callSign || ''),
+          row('IMO', v.imo ? String(v.imo) : ''),
+          row('MMSI', String(mmsi)),
+          ...calls.map((c) => row(`Port call ${c.portToVisit || ''}`, [c.portAreaDetails && c.portAreaDetails[0] && c.portAreaDetails[0].berthName, c.portAreaDetails && c.portAreaDetails[0] && c.portAreaDetails[0].eta ? `ETA ${new Date(c.portAreaDetails[0].eta).toLocaleString([], { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''].filter(Boolean).join(' · ')))),
+        h('p', { class: 'insp-info' }, 'Dashed line: where it will be in 10 minutes at this speed. Big ships can’t stop or turn quickly — cross fairways fast and well ahead of them.'),
+        h('div', { class: 'insp-actions' }, followBtn,
+          h('a', { class: 'link', href: `https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`, target: '_blank', rel: 'noopener', html: `MarineTraffic ${icon('external', 13)}` }),
+          h('a', { class: 'link', href: `https://www.vesselfinder.com/?mmsi=${mmsi}`, target: '_blank', rel: 'noopener', html: `VesselFinder ${icon('external', 13)}` })),
+      );
+    });
   }
 
   // ---------------------------------------------------------------- route checks

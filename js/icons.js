@@ -116,6 +116,141 @@ function ship() {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// ---------------------------------------------------------------- nautical marks
+// IALA region A (Finland): body colour bands top → bottom and topmarks.
+const RED = '#dc2626', GREEN = '#16a34a', YEL = '#facc15', BLK = '#111827', MAG = '#c026d3';
+const MARKS = {
+  port: { bands: [RED], top: 'can', topColor: RED },
+  starboard: { bands: [GREEN], top: 'cone', topColor: GREEN },
+  north: { bands: [BLK, YEL], top: 'upup' },
+  south: { bands: [YEL, BLK], top: 'downdown' },
+  east: { bands: [BLK, YEL, BLK], top: 'diamond' },
+  west: { bands: [YEL, BLK, YEL], top: 'hourglass' },
+  danger: { bands: [BLK, RED, BLK], top: 'balls', topColor: BLK },
+  safe: { bands: [RED, '#ffffff', RED, '#ffffff'], vertical: true, top: 'ball', topColor: RED },
+  special: { bands: [YEL], top: 'x', topColor: YEL },
+};
+
+function tri(ctx, x, y, w, hh, up) {
+  ctx.beginPath();
+  if (up) { ctx.moveTo(x, y + hh); ctx.lineTo(x + w / 2, y); ctx.lineTo(x + w, y + hh); }
+  else { ctx.moveTo(x, y); ctx.lineTo(x + w / 2, y + hh); ctx.lineTo(x + w, y); }
+  ctx.closePath();
+}
+
+function navMark(kind) {
+  const m = MARKS[kind];
+  const [c, ctx] = canvas(18, 32);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = BLK;
+  // pole
+  ctx.beginPath(); ctx.moveTo(9, 9); ctx.lineTo(9, 31); ctx.stroke();
+  // body with bands
+  const x = 5, y = 14, w = 8, hgt = 15;
+  m.bands.forEach((col, i) => {
+    ctx.fillStyle = col;
+    if (m.vertical) ctx.fillRect(x + (w / m.bands.length) * i, y, w / m.bands.length, hgt);
+    else ctx.fillRect(x, y + (hgt / m.bands.length) * i, w, hgt / m.bands.length);
+  });
+  ctx.strokeRect(x, y, w, hgt);
+  // topmark
+  const tc = m.topColor || BLK;
+  ctx.fillStyle = tc;
+  const T = m.top;
+  if (T === 'can') { ctx.fillRect(6, 4, 6, 6); ctx.strokeRect(6, 4, 6, 6); }
+  else if (T === 'cone') { tri(ctx, 5, 3, 8, 8, true); ctx.fill(); ctx.stroke(); }
+  else if (T === 'upup') { tri(ctx, 5, 1, 8, 5.5, true); ctx.fill(); tri(ctx, 5, 7, 8, 5.5, true); ctx.fill(); }
+  else if (T === 'downdown') { tri(ctx, 5, 1, 8, 5.5, false); ctx.fill(); tri(ctx, 5, 7, 8, 5.5, false); ctx.fill(); }
+  else if (T === 'diamond') { tri(ctx, 5, 1, 8, 5.5, true); ctx.fill(); tri(ctx, 5, 7, 8, 5.5, false); ctx.fill(); }
+  else if (T === 'hourglass') { tri(ctx, 5, 1, 8, 5.5, false); ctx.fill(); tri(ctx, 5, 7, 8, 5.5, true); ctx.fill(); }
+  else if (T === 'balls') { for (const yy of [3.5, 9]) { ctx.beginPath(); ctx.arc(9, yy, 2.6, 0, Math.PI * 2); ctx.fill(); } }
+  else if (T === 'ball') { ctx.beginPath(); ctx.arc(9, 6, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+  else if (T === 'x') {
+    ctx.strokeStyle = YEL; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(5, 2); ctx.lineTo(13, 10); ctx.moveTo(13, 2); ctx.lineTo(5, 10); ctx.stroke();
+    ctx.strokeStyle = BLK; ctx.lineWidth = 0.6; ctx.stroke();
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// Chart light flare: magenta teardrop pointing up-right from the position.
+function flarePath(ctx, x, y, len) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.quadraticCurveTo(x + len * 0.15, y - len * 0.85, x + len * 0.72, y - len * 0.72);
+  ctx.quadraticCurveTo(x + len * 0.85, y - len * 0.15, x, y);
+  ctx.closePath();
+}
+
+function light(lighthouse = false) {
+  const [c, ctx] = canvas(26, 26);
+  ctx.fillStyle = MAG;
+  ctx.globalAlpha = 0.9;
+  flarePath(ctx, 9, 17, 16);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  if (lighthouse) {
+    // small tower with red band
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = BLK; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(6, 25); ctx.lineTo(8, 12); ctx.lineTo(10, 12); ctx.lineTo(12, 25); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = RED; ctx.fillRect(7.2, 17, 3.6, 3);
+  } else {
+    ctx.fillStyle = BLK;
+    ctx.beginPath(); ctx.arc(9, 17, 2.4, 0, Math.PI * 2); ctx.fill();
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+function flareOnly() {
+  const [c, ctx] = canvas(16, 16);
+  ctx.fillStyle = MAG;
+  flarePath(ctx, 2, 14, 13);
+  ctx.fill();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+function leading() {
+  const [c, ctx] = canvas(16, 30);
+  ctx.strokeStyle = BLK; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(8, 12); ctx.lineTo(8, 29); ctx.stroke();
+  ctx.fillStyle = '#f97316';
+  tri(ctx, 2, 1, 12, 11, true); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = BLK; ctx.fillRect(6.5, 6, 3, 5);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+function cairn() {
+  const [c, ctx] = canvas(16, 16);
+  ctx.fillStyle = '#e5e7eb'; ctx.strokeStyle = '#374151'; ctx.lineWidth = 1.2;
+  tri(ctx, 2, 2, 12, 12, true); ctx.fill(); ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+function ring(color, r = 6, w = 1.6) {
+  const n = (r + w) * 2 + 2;
+  const [c, ctx] = canvas(n, n);
+  ctx.strokeStyle = color; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.arc(n / 2, n / 2, r, 0, Math.PI * 2); ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+function signIcon() {
+  const [c, ctx] = canvas(20, 20);
+  ctx.fillStyle = '#1d4ed8'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.roundRect(2, 2, 16, 16, 3); ctx.fill(); ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+function cameraIcon() {
+  const [c, ctx] = canvas(24, 24);
+  ctx.fillStyle = '#0f172a'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.arc(12, 12, 10.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.roundRect(5.5, 8.5, 9, 7, 1.5); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(14.5, 11); ctx.lineTo(18.5, 8.8); ctx.lineTo(18.5, 15.2); ctx.lineTo(14.5, 13); ctx.closePath(); ctx.fill();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 // Plain white arrow pointing up; drawn as SDF so it can be tinted per feature.
 function windArrow() {
   const [c, ctx] = canvas(22, 30);
@@ -139,6 +274,17 @@ export function makeIcon(id) {
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
   if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');
+  if (id.startsWith('nm-') && MARKS[id.slice(3)]) return navMark(id.slice(3));
+  if (id === 'nm-light') return light(false);
+  if (id === 'nm-lighthouse') return light(true);
+  if (id === 'nm-flare') return flareOnly();
+  if (id === 'nm-leading') return leading();
+  if (id === 'nm-cairn') return cairn();
+  if (id === 'nm-racon') return ring(MAG, 5, 1.4);
+  if (id === 'nm-other') return ring('#475569', 3.5, 1.6);
+  if (id === 'nm-fault') return ring('#dc2626', 11, 2.4);
+  if (id === 'nm-sign') return signIcon();
+  if (id === 'camera') return cameraIcon();
   if (id === 'sf-roadwork') return sign('diamond', '#f59e0b', '⚒');
   if (id === 'sf-slippery') return sign('triangle', '#a855f7', '❄');
   if (id === 'route-arrow') return chevron('#ffffff', 'rgba(0,0,0,0.35)');

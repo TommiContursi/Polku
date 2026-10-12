@@ -5,6 +5,8 @@ import {
   DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, LIPAS_TYPES, SAFETY_OVERLAYS,
 } from './config.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
+import { CameraLayer } from './cameras.js';
+import { NauticalLayer } from './nautical.js';
 import { buildStyle } from './style.js';
 import { installIcons } from './icons.js';
 import { Planner, parseShared } from './planner.js';
@@ -122,6 +124,8 @@ const uphill = new UphillLayer(map, (fc) => setData('uphill', fc));
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 
 const safety = new SafetyLayers(map, { setData, time: () => timeAtHour(planner.startOffsetH) });
+const cameras = new CameraLayer(map, { setData });
+const nautical = new NauticalLayer(map, { setData });
 
 const planner = new Planner(map, {
   activity: () => state.activity,
@@ -146,6 +150,8 @@ initInspector(map, {
   routeTo: (ll) => { planner.setActive(true); planner.addPoint(ll); },
   avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
   vessel: (mmsi) => safety.vessel(mmsi),
+  openShip: (mmsi) => safety.openShip(mmsi),
+  openCamera: (id, name) => cameras.open(id, name),
 });
 
 initSearch(map, $('#search-input'), $('#search-results'));
@@ -181,7 +187,7 @@ function setWeather(patch) {
 }
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, lipas, weather, safety,
+  map, planner, state, uphill, lipas, weather, safety, cameras, nautical,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderLegend();
@@ -207,6 +213,8 @@ function configureLayers() {
     showPoints: !!(o.lipasPoints || o.restricted),
   });
   safety.configure({ traffic: !!o.sfTraffic, incidents: !!o.sfIncidents, roadworks: !!o.sfRoadworks, roadcond: !!o.sfRoadcond, ships: !!o.sfShips });
+  cameras.setEnabled(!!o.sfCameras);
+  nautical.setEnabled(!!o.nautical);
   uphill.setEnabled(state.activity === 'mtb' && (state.trailColors !== 'down' || state.labelsUp));
 }
 
@@ -245,6 +253,7 @@ function setOverlay(id, on) {
 }
 
 const OVERLAY_LABEL = {
+  nautical: 'Nautical marks & fairways',
   lipasRoutes: 'Official routes (LIPAS)',
   lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
   pois: 'OSM outdoor places',
@@ -325,7 +334,7 @@ function renderLayersPanel() {
     p.append(section(g.title, ...g.ids.map((id) => {
       const o = RASTER_OVERLAYS[id];
       const label = OVERLAY_LABEL[id] || (o && o.label) || id;
-      const note = o ? o.attribution.replace('© ', '') : id.startsWith('lipas') ? 'LIPAS, Finland' : 'OpenStreetMap';
+      const note = o ? o.attribution.replace('© ', '') : id === 'nautical' ? 'Buoys, lights & sectors, fairways, depths, speed limits · Väylävirasto · zoom 11+' : id.startsWith('lipas') ? 'LIPAS, Finland' : 'OpenStreetMap';
       return toggle(label, !!state.overlays[id], (v) => setOverlay(id, v), note);
     })));
   }
@@ -376,6 +385,14 @@ function renderLegend() {
     item(line('border-top:5px dashed #f59e0b'), 'Road works'),
     item(line('background:#f97316;height:5px'), 'Poor road conditions (red/purple: worse)'),
     item(line('background:rgba(220,38,38,.15);height:12px;box-shadow:inset 0 0 0 2px #dc2626'), 'Military area / your avoided places')));
+  p.append(sec('Nautical marks (IALA A)',
+    item(h('span', { class: 'lg-dot', style: 'background:#dc2626;border-radius:2px' }), 'Port-hand mark — keep left going in'),
+    item(h('span', { class: 'lg-dot', style: 'background:#16a34a;border-radius:2px' }), 'Starboard-hand mark — keep right going in'),
+    item(h('span', { class: 'lg-dot', style: 'background:linear-gradient(#111827 50%,#facc15 50%);border-radius:2px' }), 'Cardinal marks: pass on the side they name'),
+    item(h('span', { class: 'lg-dot', style: 'background:#c026d3' }), 'Light (with sectors: red / green / white)'),
+    item(line('border-top:2px dashed #111827'), 'Navigation line with swept depth'),
+    item(line('background:rgba(168,85,247,.25);height:10px'), 'Fairway area'),
+    item(line('border-top:2px dashed #be185d'), 'Speed limit / restriction area')));
   p.append(sec('Gradient (profile)', ...GRADE_BANDS.map(([, c, l]) => item(line(`background:${c};height:8px`), l))));
   p.append(sec('Wind along the route', ...WIND_CLASSES.map((c) => item(line(`background:${c.color};height:8px`), c.label)),
     item(h('span', { class: 'lg-arrow' }, '➜'), 'Arrow = where the wind blows')));
@@ -447,6 +464,12 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'l' && !mod) openPanel('layers-panel');
   else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); }
 });
+
+// Pointer cursor over things that open a card or modal.
+for (const id of ['cameras', 'sf-ships', 'nm-marks', 'sf-points']) {
+  map.on('mouseenter', id, () => { if (!planner.active) map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', id, () => { if (!planner.active) map.getCanvas().style.cursor = ''; });
+}
 
 // The free vector tiles only carry the full trail network from zoom 14.
 const zoomHint = $('#zoom-hint');
