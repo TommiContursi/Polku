@@ -13,6 +13,7 @@
 import { forecastCells, cellSize, cellCenter, alignSeries } from './weather.js';
 import { compass } from './geo.js';
 import { h, icon } from './ui.js';
+import { request, onStatus, sourceStatus, clock as hhmm } from './net.js';
 
 const MAX_CELLS = 90; // forecast cells per grid (the view plus a margin)
 const IMG = 72; // field image resolution
@@ -94,6 +95,8 @@ export class WeatherOverlay {
     map.on('mousemove', (e) => { this.pointerLL = [e.lngLat.lng, e.lngLat.lat]; this.readout(); });
     map.on('mouseout', () => { this.pointerLL = null; this.readout(); });
     map.on('touchend', () => { this.pointerLL = null; this.readout(); });
+    // Open-Meteo may be used again (or works again): refresh an old or missing forecast
+    onStatus((src, s) => { if (src === 'openmeteo' && (!s || s.retry) && this.active) this.maybeFetch(); });
   }
 
   get layersOn() { return this.on.wind || this.on.temp || this.on.rain; }
@@ -171,7 +174,7 @@ export class WeatherOverlay {
 
   covers(box, L) {
     const g = this.grid;
-    if (!g || g.L !== L) return false;
+    if (!g || g.L !== L || g.stale) return false;
     const b = g.box;
     return box[0] >= b[0] && box[2] <= b[2] && box[1] >= b[1] && box[3] <= b[3] && Date.now() - g.t < 30 * 60 * 1000;
   }
@@ -210,12 +213,14 @@ export class WeatherOverlay {
       const [w, n] = pts[0], [e, s] = pts[pts.length - 1];
       this.grid = {
         L, cols, rows, lon0: w, lat0: n, dLon, dLat, box: [w, s, e, n], merc: [mx(w), my(n), mx(e), my(s)],
-        pts, series, stale: !!raw.stale, zoom: this.map.getZoom(), t: Date.now(), time0: Date.now() / 1000,
+        pts, series, stale: !!raw.stale, from: raw.from || null, zoom: this.map.getZoom(), t: Date.now(), time0: Date.now() / 1000,
       };
+      this.status = null;
       if (!this.cam) this.buildCam();
       this.applyHour(true);
-    } catch {
-      this.status = 'Weather unavailable';
+    } catch (err) {
+      // keep whatever grid we had; say why there's no fresh one
+      this.status = err && err.name === 'Limited' ? err.message : 'Weather forecast unavailable right now';
     } finally {
       if (req === this.req) { this.loading = false; this.renderTime(); this.readout(); }
     }
@@ -338,7 +343,7 @@ export class WeatherOverlay {
   async loadRadarMeta() {
     if (this.radar && Date.now() - this.radar.t < 5 * 60 * 1000) return;
     try {
-      const j = await fetch('https://api.rainviewer.com/public/weather-maps.json').then((r) => r.json());
+      const j = await request('rainviewer', 'https://api.rainviewer.com/public/weather-maps.json').then((r) => r.json());
       const last = j.radar.past[j.radar.past.length - 1];
       this.radar = { t: Date.now(), rv: `${j.host}${last.path}/512/{z}/{x}/{y}/2/1_1.png`, time: last.time };
     } catch {
@@ -789,7 +794,15 @@ export class WeatherOverlay {
     const route = !!(this.app.hasRoute && this.app.hasRoute());
     this.timeEl.title = route ? 'Also the departure time of your route' : '';
     this.timeEl.classList.toggle('linked', route);
-    if (this.noteEl) this.noteEl.textContent = route ? 'Also your route’s departure — the shaded band is your ride. Road works and road conditions follow this time too.' : 'Also sets road works and road conditions, and the departure of a planned route.';
+    if (this.noteEl) {
+      const g = this.grid;
+      const st = sourceStatus('openmeteo');
+      const problem = this.status && !this.loading ? this.status
+        : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null;
+      this.noteEl.classList.toggle('warn', !!problem);
+      this.noteEl.textContent = problem ? `⚠ ${problem}`
+        : route ? 'Also your route’s departure — the shaded band is your ride. Road works and road conditions follow this time too.' : 'Also sets road works and road conditions, and the departure of a planned route.';
+    }
     if (this.app.onTime) this.app.onTime(this.hour);
   }
 

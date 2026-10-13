@@ -3,6 +3,7 @@
 
 import { BROUTER } from './config.js';
 import { routeWater } from './water.js';
+import { request } from './net.js';
 
 const cache = new Map();
 
@@ -23,7 +24,7 @@ const nogoParam = (nogos) => (nogos && nogos.length
 async function brouter(a, b, profile, signal, nogos) {
   const url = `${BROUTER}?lonlats=${a[0].toFixed(6)},${a[1].toFixed(6)}|${b[0].toFixed(6)},${b[1].toFixed(6)}` +
     `&profile=${profile}&alternativeidx=0&format=geojson${nogoParam(nogos)}`;
-  const res = await fetch(url, { signal });
+  const res = await request('brouter', url, { signal });
   const text = await res.text();
   if (!res.ok) throw new Error(text.trim().split('\n')[0] || `BRouter ${res.status}`);
   const gj = JSON.parse(text);

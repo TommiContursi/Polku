@@ -5,6 +5,7 @@
 // navigation from Digitraffic Marine. Sea areas and lakes alike.
 
 import { lonLatToTile, tileBounds } from './geo.js';
+import { request } from './net.js';
 
 const WFS = 'https://avoinapi.vaylapilvi.fi/vaylatiedot/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326';
 const Z = 10; // cache tiles (~20 × 10 km at 60°N)
@@ -89,7 +90,7 @@ export class NauticalLayer {
     if (this.tiles.has(id)) return;
     const [w, s, e, n] = tileBounds(x, y, Z);
     const url = `${WFS}&typeNames=vesivaylatiedot:${layer}&count=10000&bbox=${s},${w},${n},${e},urn:ogc:def:crs:EPSG::4326`;
-    const p = fetch(url).then((r) => r.json()).then((gj) => {
+    const p = request('vayla', url).then((r) => r.json()).then((gj) => {
       this.tiles.set(id, (gj.features || []).filter((f) => f.geometry));
       this.publishSoon();
     }).catch(() => this.tiles.delete(id));
@@ -99,7 +100,7 @@ export class NauticalLayer {
   async loadFaults() {
     if (this.faults && Date.now() - this.faults.t < 10 * 60 * 1000) return;
     try {
-      const gj = await fetch('https://meri.digitraffic.fi/api/aton/v1/faults?fixed_in_hours=1&language=en', { headers: { 'Digitraffic-User': 'Polku/1.0 (polku.si)' } }).then((r) => r.json());
+      const gj = await request('digitraffic', 'https://meri.digitraffic.fi/api/aton/v1/faults?fixed_in_hours=1&language=en', { headers: { 'Digitraffic-User': 'Polku/1.0 (polku.si)' } }).then((r) => r.json());
       this.faults = { t: Date.now(), features: (gj.features || []).filter((f) => f.geometry && !f.properties.fixed) };
       this.publishSoon();
     } catch { /* optional */ }

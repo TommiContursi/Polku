@@ -2,6 +2,7 @@
 // coordinates like "61.497, 23.761".
 
 import { PHOTON } from './config.js';
+import { request } from './net.js';
 
 export function initSearch(map, input, list) {
   let timer = 0;
@@ -48,7 +49,7 @@ export function initSearch(map, input, list) {
     const c = map.getCenter();
     const url = `${PHOTON}?q=${encodeURIComponent(q)}&limit=7&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}&location_bias_scale=0.4`;
     try {
-      const res = await fetch(url, { signal: ctrl.signal });
+      const res = await request('photon', url, { signal: ctrl.signal });
       const gj = await res.json();
       results = gj.features.map((f) => {
         const p = f.properties;

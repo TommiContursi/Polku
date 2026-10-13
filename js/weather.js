@@ -5,6 +5,7 @@
 import { OPEN_METEO } from './config.js';
 import { bearing } from './geo.js';
 import { idb } from './idb.js';
+import { request } from './net.js';
 
 const rad = (d) => (d * Math.PI) / 180;
 
@@ -40,7 +41,8 @@ const keyOf = (c) => `${c.L}/${c.i}/${c.j}`;
 /**
  * Hourly forecasts (−1 h … +49 h) for a list of cells, in the same order.
  * Only cells without a fresh copy are fetched. The result has `.stale = true`
- * when an older copy had to stand in for a failed request.
+ * (and `.from`, when the oldest copy was fetched) when older copies had to
+ * stand in for a failed or refused request.
  */
 export async function forecastCells(list) {
   const now = Date.now();
@@ -85,7 +87,12 @@ export async function forecastCells(list) {
   for (const n of need) {
     const c = cells.get(keys[n]);
     if (c && Date.now() - c.at < FRESH) out[n] = c.s;
-    else if (fallback.has(keys[n])) { out[n] = fallback.get(keys[n]).s; out.stale = true; }
+    else if (fallback.has(keys[n])) {
+      const f = fallback.get(keys[n]);
+      out[n] = f.s;
+      out.stale = true;
+      out.from = Math.min(out.from || Infinity, f.at); // oldest copy used
+    }
   }
   for (let n = 0; n < list.length; n++) if (!out[n]) throw error || new Error('Weather unavailable'); // (some() skips holes)
   if (cells.size > 4000) for (const k of [...cells.keys()].slice(0, 1000)) cells.delete(k);
@@ -120,7 +127,7 @@ async function fetchPoints(points, hours = 49) {
   const url = `${OPEN_METEO}?latitude=${lat}&longitude=${lon}` +
     '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover' +
     `&forecast_hours=${hours}&past_hours=1&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC`;
-  const res = await fetch(url);
+  const res = await request('openmeteo', url, { weight: points.length }); // Open-Meteo counts each location
   if (!res.ok) throw new Error('Weather unavailable');
   let j = await res.json();
   if (!Array.isArray(j)) j = [j];
@@ -192,6 +199,8 @@ export async function windAlong(pts, along, tAt, startSec) {
     speed, gust, dir, head, cross, temp, precip,
     start: { ...first, time: startSec },
     hourly: series[Math.floor(k / 2)],
+    stale: !!series.stale,
+    from: series.from || null,
   };
 }
 

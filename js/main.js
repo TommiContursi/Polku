@@ -22,6 +22,7 @@ import { $, $$, h, icon, toast, store } from './ui.js';
 import { initGestures } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
+import { onStatus, SOURCES, clock } from './net.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
 import { WIND_CLASSES } from './weather.js';
@@ -531,6 +532,24 @@ function openOfflineArea(area) {
   const b = area.bbox;
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 90, bottom: 320, left: 60, right: 60 }, duration: 0 });
 }
+
+// A free service is limiting or failing: say so once per episode (which one,
+// what it affects, when it's tried again); route weather retries on its own.
+const limitedNoticed = new Set();
+onStatus((src, s) => {
+  const info = SOURCES[src] || { label: src, what: '' };
+  if (!s) { limitedNoticed.delete(src); return; }
+  if (s.retry) {
+    const a = planner.analysis;
+    if (src === 'openmeteo' && a && (a.windError || (a.wind && a.wind.stale))) planner.loadWind(a);
+    return;
+  }
+  if (limitedNoticed.has(src)) return;
+  limitedNoticed.add(src);
+  toast(s.reason === 'limit'
+    ? `${info.label} (${info.what}) is limiting requests — showing saved data where there is some. Trying again at ${clock(s.until)}.`
+    : `${info.label} (${info.what}) isn’t responding — trying again at ${clock(s.until)}.`, { tone: 'warn', ms: 7000 });
+});
 
 // ------------------------------------------------------------------ boot
 registerServiceWorker();

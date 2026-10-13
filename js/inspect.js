@@ -8,6 +8,7 @@ import { overpass, gradeHere } from './uphill.js';
 import { dist, pointSegment } from './geo.js';
 import { h, icon, escapeHtml } from './ui.js';
 import { NAV_TEXT } from './nautical.js';
+import { request } from './net.js';
 
 export const WAY_NAMES = {
   path: 'Path', footway: 'Footpath', bridleway: 'Bridleway', steps: 'Steps', cycleway: 'Cycleway',
@@ -293,7 +294,7 @@ async function renderWater(body, ll, map, app) {
     const y = (Math.log(Math.tan(((90 + ll[1]) * Math.PI) / 360)) * k) / Math.PI;
     const url = `${TRAFICOM_WMS}?service=WMS&request=GetFeatureInfo&version=1.1.1&layers=DepthArea_A&query_layers=DepthArea_A&styles=` +
       `&srs=EPSG:3857&bbox=${x - R},${y - R},${x + R},${y + R}&width=101&height=101&x=50&y=50&info_format=application/json&feature_count=1`;
-    const res = await fetch(url);
+    const res = await request('traficom', url);
     const j = await res.json();
     const pr = j.features && j.features[0] && j.features[0].properties;
     depthRow.lastChild.textContent = pr ? `${pr.DRVAL1}–${pr.DRVAL2} m (Traficom chart)` : 'Not charted here';

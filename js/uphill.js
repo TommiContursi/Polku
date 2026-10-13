@@ -12,6 +12,7 @@ import { elevations, smooth } from './dem.js';
 import { uphillClass, techBump } from './analysis.js';
 import { OVERPASS } from './config.js';
 import { idb } from './idb.js';
+import { request } from './net.js';
 
 const PIECE = 25;
 const MIN_ZOOM = 13;
@@ -266,7 +267,8 @@ async function ask(i, query, signal, timeoutMs) {
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   if (signal) signal.addEventListener('abort', () => ctrl.abort());
   try {
-    const res = await fetch(OVERPASS[i], { method: 'POST', body: new URLSearchParams({ data: query }), signal: ctrl.signal });
+    // mirrors take turns, so no back-off here; still counted for the usage readout
+    const res = await request('overpass', OVERPASS[i], { method: 'POST', body: new URLSearchParams({ data: query }), signal: ctrl.signal, backoff: false });
     if (!res.ok) throw new Error(`Overpass ${res.status}`);
     const json = await res.json();
     preferred = i;

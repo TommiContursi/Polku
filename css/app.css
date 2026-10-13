@@ -543,3 +543,9 @@ body.dropping .drop-hint { display: flex; }
 .compass-btn svg { transition: transform .12s ease-out; }
 .compass-btn.heading { color: #fff; background: var(--accent) !important; }
 .compass-btn.heading svg { transition: none; }
+
+/* service limits */
+.tl-note.warn { color: #b45309; font-weight: 600; }
+.stale-note { color: #b45309; margin: 0 0 6px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tl-note.warn, :root:not([data-theme="light"]) .stale-note { color: #fbbf24; } }
+:root[data-theme="dark"] .tl-note.warn, :root[data-theme="dark"] .stale-note { color: #fbbf24; }

@@ -374,9 +374,9 @@ export class Planner {
       a.wind = { ...w, startSec };
       a.timeWind = t.total;
       a.tAtWind = t.tAt;
-    } catch {
+    } catch (err) {
       if (this.analysis !== a) return;
-      a.windError = true;
+      a.windError = err && err.name === 'Limited' ? err.message : true; // says which service and when
     }
     this.renderAnalysis();
     this.loadHazards(a);
@@ -740,7 +740,7 @@ export class Planner {
     if (this.colorMode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown]);
     else if (this.colorMode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other]);
     else if (['wind', 'temp', 'rain'].includes(this.colorMode)) {
-      if (!a.wind) { box.append(h('p', { class: 'note' }, a.windError ? 'Weather forecast unavailable right now.' : 'Loading the forecast…')); return; }
+      if (!a.wind) { box.append(h('p', { class: 'note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Weather forecast unavailable right now.') : 'Loading the forecast…')); return; }
       const w = a.wind;
       const [classes, fn] = {
         wind: [WIND_CLASSES, (i) => windClass(w.head[i], w.speed[i]).key],
@@ -842,8 +842,9 @@ export class Planner {
       select.append(h('option', { value: String(k), selected: k === this.startOffsetH }, k === 0 ? 'Now' : `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
     }
     box.append(h('h4', {}, act === 'paddle' ? 'Weather on the water' : 'Weather on the route', h('label', { class: 'start' }, 'Start ', select)));
+    if (a.wind && a.wind.stale) box.append(h('p', { class: 'note stale-note' }, `Older forecast (from ${new Date(a.wind.from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) — Open-Meteo couldn’t be reached.`));
     if (!a.wind) {
-      box.append(h('div', { class: 'wind-body note' }, a.windError ? 'Wind forecast unavailable right now.' : 'Loading forecast…'));
+      box.append(h('div', { class: 'wind-body note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : 'Loading forecast…'));
       return;
     }
     const w = a.wind;
