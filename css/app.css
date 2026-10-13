@@ -139,7 +139,7 @@ button { font: inherit; color: inherit; }
    map shows), then compass, locate and zoom (how you look at it). It rides
    above a bottom planner and an open phone timeline; Plan sits below it. */
 .map-ctrls {
-  position: absolute; right: 12px; bottom: calc(var(--wx-h, 0px) + 44px); z-index: 5;
+  position: absolute; right: 12px; bottom: calc(var(--wx-h, 0px) + 12px); z-index: 5;
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px; transition: bottom .2s;
 }
 .ctrl-btn {
@@ -288,10 +288,11 @@ button { font: inherit; color: inherit; }
 .maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; background: var(--surface-solid); }
 .maplibregl-ctrl-group button { width: 36px; height: 36px; }
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); transition: bottom .2s; }
-.maplibregl-ctrl-bottom-left { left: var(--pl-left); }
+.maplibregl-ctrl-bottom-left { left: var(--pl-left); display: flex; align-items: flex-end; }
+/* scale bar and the attribution (i) side by side, bottom left */
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl { float: none; clear: none; }
+.maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib { margin-left: 6px; }
 .maplibregl-ctrl-scale { border-radius: 4px; background: rgba(255,255,255,0.8); }
-/* planning with a bottom panel: the attribution rides on its top edge, left of the button column */
-@media (min-width: 721px) { body.planning[data-pl="sheet"] .maplibregl-ctrl-bottom-right { right: 72px; } }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 }
@@ -731,7 +732,7 @@ body.dropping .drop-hint { display: flex; }
   .act-current span { display: none; }
   /* the map controls keep their place (bottom right, thumb reach); the sheet is full
      width here, so they ride above it */
-  .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 44px); }
+  .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 12px); }
   body.planning .plan-btn { display: none; } /* the sheet opens where the pill was, with its own Done */
   .ctrl-btn { width: 44px; height: 44px; }
   .ctrl-compass .maplibregl-ctrl-group button { width: 44px; height: 44px; }
@@ -743,7 +744,7 @@ body.dropping .drop-hint { display: flex; }
   .plan-btn { width: 54px; height: 52px; border-radius: 14px; font-size: 10px; }
   /* the floating timeline takes the bottom; the map column (with Plan) stacks above it */
   body:not(.planning) .wx-bar { bottom: 44px; }
-  body:not(.planning) .track-card { bottom: calc(var(--wx-h, 0px) + 44px); }
+  body:not(.planning) .track-card { bottom: calc(var(--wx-h, 0px) + 48px); }
   body:not(.planning) .toast { bottom: calc(var(--wx-h, 0px) + 56px); }
   .zoom-hint { top: 62px; }
   .fab { width: 54px; height: 52px; border-radius: 14px; font-size: 10px; }

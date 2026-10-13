@@ -39,18 +39,11 @@
   </header>
   <button id="zoom-hint" class="zoom-hint" type="button" hidden>Zoom in to see every trail</button>
 
-  <!-- Map controls, bottom right at every screen size, in one order: what the map
-       shows (Layers, Weather), how you look at it (compass, locate, zoom), then Plan.
+  <!-- Map controls, bottom right at every screen size, in one order, top to bottom:
+       how you look at the map (compass, locate, zoom), what it shows (Weather,
+       Layers), then Plan — the most used ones nearest the thumb.
        On phones they ride above the planner sheet; on desktop it leaves them room. -->
   <div id="map-ctrls" class="map-ctrls">
-    <button id="btn-layers" class="fab fab-layers" type="button" data-panel="layers-panel" aria-pressed="false" title="Layers: base map, trails, weather, traffic… (L)">
-      <img class="fab-thumb" src="img/base/trail.jpg" alt="" width="56" height="56">
-      <span>Layers</span>
-    </button>
-    <button id="btn-time" class="fab" type="button" aria-pressed="false" aria-label="Time & weather" title="Time & weather (T)">
-      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></svg>
-      <span class="fab-time-label">Weather</span>
-    </button>
     <div class="ctrl-compass"></div>
     <button id="btn-locate" class="ctrl-btn fab-locate" type="button" aria-pressed="false" title="Show my location" aria-label="Show my location">
       <svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
@@ -59,6 +52,14 @@
       <button id="btn-zoom-in" class="ctrl-btn" type="button" title="Zoom in" aria-label="Zoom in"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="btn-zoom-out" class="ctrl-btn" type="button" title="Zoom out" aria-label="Zoom out"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
     </div>
+    <button id="btn-time" class="fab" type="button" aria-pressed="false" aria-label="Time & weather" title="Time & weather (T)">
+      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></svg>
+      <span class="fab-time-label">Weather</span>
+    </button>
+    <button id="btn-layers" class="fab fab-layers" type="button" data-panel="layers-panel" aria-pressed="false" title="Layers: base map, trails, weather, traffic… (L)">
+      <img class="fab-thumb" src="img/base/trail.jpg" alt="" width="56" height="56">
+      <span>Layers</span>
+    </button>
     <!-- Plan: last in the column (a fab on desktop, a pill on phones); it stays while planning, as Done -->
     <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
       <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
