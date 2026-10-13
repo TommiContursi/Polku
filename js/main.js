@@ -239,8 +239,10 @@ window.polku = {
 function syncPlanButton(on) {
   for (const b of $$('#btn-plan, #btn-plan-search')) {
     b.setAttribute('aria-expanded', String(on));
-    b.title = on ? 'Close the planner (R) — the route stays' : 'Plan a route (R)';
+    b.title = on ? 'Done — close the planner (R), the route stays' : 'Plan a route (R)';
   }
+  // the column's button stays in its place: Plan, or Done while planning
+  $('#btn-plan').innerHTML = on ? `${icon('check', 22)}<span>Done</span>` : `${icon('route', 22)}<span>Plan<span class="plan-more"> route</span></span>`;
 }
 
 // What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel.
@@ -490,7 +492,10 @@ function renderLayersPanel() {
       type: 'button', class: 'base-opt', 'aria-pressed': String(state.base === k), title: BASE_NOTE[k],
       onclick: () => { state.base = k; applyStyle(); renderLayersPanel(); },
     }, h('img', { src: thumb(k), alt: '', width: '64', height: '64', loading: 'lazy' }), h('span', {}, label)))),
-    h('p', { class: 'note' }, BASE_NOTE[state.base] || '')));
+    h('p', { class: 'note' }, BASE_NOTE[state.base] || ''),
+    toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
+    state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
+      h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null));
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
@@ -551,13 +556,10 @@ function renderLayersPanel() {
     toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later'),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
 
-  // terrain & 3D
-  p.append(layerGroup('terrain', 'Terrain & 3D', (state.terrain3d ? 1 : 0) + (state.overlays.maastoOverlay ? 1 : 0),
+  // terrain shading and maps (3D sits with the base maps)
+  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0,
     toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
     toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
-    toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
-    state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
-      h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
     toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', '')),
     state.mmlKey ? toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v))) : null));
 }

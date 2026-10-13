@@ -40,8 +40,8 @@
   <button id="zoom-hint" class="zoom-hint" type="button" hidden>Zoom in to see every trail</button>
 
   <!-- Map controls, bottom right at every screen size, in one order: what the map
-       shows (Layers, Weather), then how you look at it (compass, locate, zoom).
-       They ride above a bottom planner; Plan sits below them. -->
+       shows (Layers, Weather), how you look at it (compass, locate, zoom), then Plan.
+       On phones they ride above the planner sheet; on desktop it leaves them room. -->
   <div id="map-ctrls" class="map-ctrls">
     <button id="btn-layers" class="fab fab-layers" type="button" data-panel="layers-panel" aria-pressed="false" title="Layers: base map, trails, weather, traffic… (L)">
       <img class="fab-thumb" src="img/base/trail.jpg" alt="" width="56" height="56">
@@ -59,12 +59,13 @@
       <button id="btn-zoom-in" class="ctrl-btn" type="button" title="Zoom in" aria-label="Zoom in"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="btn-zoom-out" class="ctrl-btn" type="button" title="Zoom out" aria-label="Zoom out"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
     </div>
+    <!-- Plan: last in the column (a fab on desktop, a pill on phones); it stays while planning, as Done -->
+    <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
+      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
+      <span>Plan<span class="plan-more"> route</span></span>
+    </button>
   </div>
-  <!-- bottom right: a fab on desktop, a primary pill on phones; the planner's Done takes over while planning -->
-  <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
-    <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
-    <span>Plan<span class="plan-more"> route</span></span>
-  </button>
+
 
   <div id="view3d" class="view3d" hidden aria-label="3D view controls"></div>
   <div id="wx-bar" class="wx-bar" hidden role="region" aria-label="Timeline"></div>

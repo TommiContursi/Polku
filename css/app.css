@@ -139,10 +139,9 @@ button { font: inherit; color: inherit; }
    map shows), then compass, locate and zoom (how you look at it). It rides
    above a bottom planner and an open phone timeline; Plan sits below it. */
 .map-ctrls {
-  position: absolute; right: 12px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 112px); z-index: 5;
+  position: absolute; right: 12px; bottom: calc(var(--wx-h, 0px) + 44px); z-index: 5;
   display: flex; flex-direction: column; align-items: flex-end; gap: 8px; transition: bottom .2s;
 }
-body.planning .map-ctrls { bottom: calc(var(--sheet-h) + 44px); }
 .ctrl-btn {
   width: 40px; height: 40px; border: 0; border-radius: 12px; cursor: pointer; display: grid; place-items: center;
   background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow);
@@ -181,11 +180,11 @@ body.planning .map-ctrls { bottom: calc(var(--sheet-h) + 44px); }
 @keyframes pulse { 50% { opacity: .35; } }
 .fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Plan: in the search bar on desktop (the side panel opens right below it) and
-   at the bottom right, a fab like the rail on desktop and a pill on phones.
-   The planner's own Done takes over while planning. */
+/* Plan: in the search bar on desktop (the side panel opens right below it), and
+   last in the map column — a fab on desktop, a pill on phones. While planning
+   it stays where it is and reads Done. */
 .plan-btn {
-  position: absolute; right: 12px; bottom: 44px; z-index: 5;
+  margin-top: 4px;
   width: 60px; height: 56px; border: 0; border-radius: 16px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   background: var(--route); color: #fff; box-shadow: var(--shadow); font-size: 11px; font-weight: 700;
@@ -193,7 +192,8 @@ body.planning .map-ctrls { bottom: calc(var(--sheet-h) + 44px); }
 .plan-btn:hover { background: #be123c; }
 .plan-btn:focus-visible { outline: 2px solid var(--route); outline-offset: 2px; }
 .plan-more { display: none; }
-body.planning .plan-btn { display: none; }
+.plan-btn[aria-expanded="true"] { background: var(--surface-solid); color: var(--route); box-shadow: var(--shadow), inset 0 0 0 2px var(--route); }
+.plan-btn[aria-expanded="true"]:hover { background: var(--surface-2); }
 .search-plan {
   flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px 0 9px; margin-right: -5px;
   border: 0; border-radius: 999px; background: var(--route); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer;
@@ -466,7 +466,8 @@ body.planning .plan-btn { display: none; }
 
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
-body[data-sheet="full"] :is(.zoom-hint, .map-ctrls, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) { visibility: hidden; }
+body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) { visibility: hidden; }
+@media (max-width: 720px) { body[data-sheet="full"] .map-ctrls { visibility: hidden; } } /* on desktop it has its own column beside the planner */
 .sec { border-top: 1px solid var(--line); }
 .sec-head { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 11px 0 9px; border: 0; background: none; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
 .sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
@@ -708,8 +709,10 @@ body.dropping .drop-hint { display: flex; }
   .search kbd { display: none; }
   .act-current { padding: 0 8px 0 11px; }
   .act-current span { display: none; }
-  /* the map controls keep their place (bottom right, thumb reach); a little smaller */
-  .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 100px); }
+  /* the map controls keep their place (bottom right, thumb reach); the sheet is full
+     width here, so they ride above it */
+  .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 44px); }
+  body.planning .plan-btn { display: none; } /* the sheet opens where the pill was, with its own Done */
   .ctrl-btn { width: 44px; height: 44px; }
   .ctrl-compass .maplibregl-ctrl-group button { width: 44px; height: 44px; }
   @media (pointer: coarse) { .ctrl-zoom { display: none; } } /* pinch zooms */
@@ -718,9 +721,10 @@ body.dropping .drop-hint { display: flex; }
   .search-plan { display: none; }
   .plan-btn { flex-direction: row; gap: 8px; width: auto; height: 48px; padding: 0 20px 0 16px; border-radius: 999px; font-size: 15px; }
   .plan-more { display: inline; }
-  body:not(.planning) .wx-bar { bottom: 100px; }
-  body:not(.planning) .track-card { bottom: 100px; }
-  body:not(.planning) .toast { bottom: 104px; }
+  /* the floating timeline takes the bottom; the map column (with Plan) stacks above it */
+  body:not(.planning) .wx-bar { bottom: 44px; }
+  body:not(.planning) .track-card { bottom: calc(var(--wx-h, 0px) + 44px); }
+  body:not(.planning) .toast { bottom: calc(var(--wx-h, 0px) + 56px); }
   .zoom-hint { top: 62px; }
   .fab { width: 54px; height: 52px; border-radius: 14px; font-size: 10px; }
   .view3d { padding: 8px 6px 6px; }
