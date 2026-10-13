@@ -12,7 +12,8 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 - Trail map from OpenStreetMap with the MTB difficulty (`mtb:scale`, S0–S6) as a coloured halo, no-bike markers and optional `S2` labels along trails.
 - **Uphill difficulty** (↑S0–↑S5) for every trail in view, computed from the lidar elevation model and bumped for loose or technical surface; OSM `mtb:scale:uphill` tags win where they exist. Arrows point up the climb. Show difficulty, uphill or both.
 - Multidirectional hillshade and 5 m / 2.5 m contours generated in the browser, 3D terrain with exaggeration.
-- Base maps: Polku's trail map, the National Land Survey Maastokartta and aerial photos (keyless, via Kapsi), Esri imagery, night, plain and high-contrast styles — one tap away in the thumbnail switcher at the bottom left.
+- Base maps: Polku's trail map, the National Land Survey Maastokartta and aerial photos (keyless, via Kapsi), Esri imagery, night, plain and high-contrast styles — at the top of **Layers**, whose button shows the current one.
+- **Layers** shows what is on right now, groups everything else (trails, routes, places, water, traffic, roads, weather, terrain & 3D) and carries the map key for each group. Your sport sets the starting layers; **Settings** (⚙) holds the sport, planner position, display options, offline maps and data sources.
 
 **Plan a route**
 - Routing per activity — MTB, gravel, hike & run, paddle — with straight-line and over-water legs, drag points, click the line to add a via point, undo/redo, reverse, back to start.
@@ -56,7 +57,7 @@ There are no accounts, cookies, analytics or servers of our own. Settings, your 
 | | |
 |---|---|
 | <kbd>T</kbd> | timeline |
-| <kbd>L</kbd> | layers |
+| <kbd>L</kbd> | layers (and the map key) |
 | <kbd>R</kbd> | route planner |
 | <kbd>/</kbd> | search |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd>, +<kbd>Shift</kbd> | undo, redo |

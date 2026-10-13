@@ -1,8 +1,8 @@
 // Polku — app bootstrap: map, state, panels and wiring between modules.
 
 import {
-  ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, OVERLAY_GROUPS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, GRADE_BANDS, LIPAS_TYPES, SAFETY_OVERLAYS,
+  ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
+  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS,
 } from './config.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { CameraLayer } from './cameras.js';
@@ -26,7 +26,6 @@ import { onStatus, SOURCES, clock } from './net.js';
 import { renderUsage } from './usage.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
-import { WIND_CLASSES } from './weather.js';
 
 // ------------------------------------------------------------------ state
 const DEFAULTS = {
@@ -105,8 +104,9 @@ const syncView3d = () => view3d.show(state.terrain3d || map.getPitch() > 5);
 map.on('pitchend', syncView3d);
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Polku' }), 'bottom-right');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
-map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-map.addControl(new CompassControl({ toast }), 'top-right');
+// Zoom, compass and locate live in Polku's own control column (bottom right);
+// MapLibre's geolocate stays for the location dot, out of sight.
+$('.ctrl-compass').append(new CompassControl({ toast }).onAdd(map));
 const geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
 map.addControl(geolocate, 'top-right');
 map.on('error', (e) => {
@@ -122,7 +122,6 @@ function setData(id, fc) {
 
 function applyStyle() {
   map.setStyle(buildStyle(state, ctx), { diff: true });
-  $('#btn-3d').setAttribute('aria-pressed', String(state.terrain3d));
   syncView3d();
   saveSettings();
 }
@@ -145,7 +144,7 @@ const planner = new Planner(map, {
   saveOffline: () => {
     const p = planner.offlinePayload();
     if (!p) { toast('Plan a route first — the area along it is what gets saved'); return; }
-    openSaveOffline(p, { onSaved: () => renderLayersPanel() });
+    openSaveOffline(p, { onSaved: () => renderSettingsPanel() });
   },
   onActiveChange: (on) => {
     syncPlanButton(on);
@@ -231,7 +230,7 @@ window.polku = {
   map, planner, state, uphill, lipas, weather, safety, cameras, nautical,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
-    Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderLegend(); renderBaseSwitch();
+    Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderSettingsPanel();
   },
 };
 
@@ -240,8 +239,10 @@ window.polku = {
 function syncPlanButton(on) {
   for (const b of $$('#btn-plan, #btn-plan-search')) {
     b.setAttribute('aria-expanded', String(on));
-    b.title = on ? 'Close the planner (R) — the route stays' : 'Plan a route (R)';
+    b.title = on ? 'Done — close the planner (R), the route stays' : 'Plan a route (R)';
   }
+  // the column's button stays in its place: Plan, or Done while planning
+  $('#btn-plan').innerHTML = on ? `${icon('check', 22)}<span>Done</span>` : `${icon('route', 22)}<span>Plan<span class="plan-more"> route</span></span>`;
 }
 
 // What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel.
@@ -326,9 +327,7 @@ function closeActs() {
   document.addEventListener('pointerdown', (e) => { if (!box.contains(e.target)) closeActs(); }, true);
 }
 
-// ------------------------------------------------------------------ base map switcher
-// Google-style: a thumbnail of the current base at the bottom left; it opens all
-// of them, plus 3D terrain and a way into Layers.
+// ------------------------------------------------------------------ base maps
 const BASES = [['trail', 'Trail map'], ['maasto', 'Maastokartta'], ['aerial', 'Aerial'], ['ortofi', 'Aerial FI'], ['plain', 'Plain'], ['night', 'Night'], ['mml', 'MML WMTS']];
 const BASE_NOTE = {
   trail: 'Polku’s own trail map from OpenStreetMap, with lidar hillshade and contours.',
@@ -340,30 +339,21 @@ const BASE_NOTE = {
   mml: 'Official MML WMTS terrain map with your own API key.',
 };
 const thumb = (k) => `img/base/${{ aerial: 'ortofi', mml: 'maasto' }[k] || k}.jpg`;
-function renderBaseSwitch() {
-  const box = $('#base-switch');
-  const open = box.classList.contains('open');
-  box.innerHTML = '';
-  const cur = BASES.find(([k]) => k === state.base) || BASES[0];
-  const pop = h('div', { class: 'base-pop', role: 'dialog', 'aria-label': 'Base map', hidden: !open },
-    h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
-      type: 'button', class: 'base-opt', 'aria-pressed': String(state.base === k), title: BASE_NOTE[k],
-      onclick: () => { state.base = k; applyStyle(); renderBaseSwitch(); renderLayersPanel(); },
-    }, h('img', { src: thumb(k), alt: '', width: '64', height: '64', loading: 'lazy' }), h('span', {}, label)))),
-    h('p', { class: 'note base-note' }, BASE_NOTE[state.base] || ''),
-    h('div', { class: 'base-foot' },
-      h('label', { class: 'tg tg-inline' }, h('span', { class: 'tg-text' }, '3D terrain'),
-        h('input', { type: 'checkbox', role: 'switch', checked: state.terrain3d, onchange: () => $('#btn-3d').click() }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' })),
-      h('button', { type: 'button', class: 'link', onclick: () => { closeBase(); openPanel('layers-panel'); } }, 'More layers…')));
-  const btn = h('button', {
-    type: 'button', class: 'base-btn', 'aria-haspopup': 'dialog', 'aria-expanded': String(open), title: `Base map: ${cur[1]}`,
-    onclick: () => (box.classList.contains('open') ? closeBase() : openBase()),
-  }, h('img', { src: thumb(cur[0]), alt: '', width: '64', height: '64' }), h('span', {}, cur[1]));
-  box.append(btn, pop);
+// The Layers button shows the current base map: what the map looks like and
+// what is drawn on it are one place.
+function syncLayersButton() {
+  const b = BASES.find(([k]) => k === state.base) || BASES[0];
+  $('#btn-layers .fab-thumb').src = thumb(b[0]);
+  $('#btn-layers').title = `Layers — ${b[1]}, trails, weather, traffic… (L)`;
 }
-function openBase() { const b = $('#base-switch'); b.classList.add('open'); b.querySelector('.base-pop').hidden = false; b.querySelector('.base-btn').setAttribute('aria-expanded', 'true'); }
-function closeBase() { const b = $('#base-switch'); if (!b.classList.contains('open')) return; b.classList.remove('open'); b.querySelector('.base-pop').hidden = true; b.querySelector('.base-btn').setAttribute('aria-expanded', 'false'); }
-document.addEventListener('pointerdown', (e) => { if (!$('#base-switch').contains(e.target)) closeBase(); }, true);
+
+// What switching sport changes, said once so the connection is clear.
+const SPORT_NOTE = {
+  mtb: 'trails coloured by MTB difficulty, MTB routing, MTB routes and lean-tos',
+  gravel: 'unpaved roads highlighted, gravel routing, traffic and road works',
+  hike: 'paths highlighted, walking routes, hiking trails and huts',
+  paddle: 'water routing, depths, nautical marks and ships',
+};
 
 function setActivity(k) {
   if (state.activity === k) return;
@@ -372,10 +362,18 @@ function setActivity(k) {
   document.body.dataset.activity = k;
   renderActivityBar();
   renderLayersPanel();
-  renderLegend();
+  renderSettingsPanel();
   applyStyle();
   configureLayers();
   planner.onActivityChange();
+  toast(`${ACTIVITIES[k].label}: ${SPORT_NOTE[k]}. Change any of it in Layers.`, { ms: 5000 });
+}
+
+function set3d(on) {
+  state.terrain3d = on;
+  applyStyle();
+  map.easeTo({ pitch: on ? Math.max(60, map.getPitch()) : 0, duration: 800 });
+  renderLayersPanel();
 }
 
 // ------------------------------------------------------------------ layers panel
@@ -392,27 +390,135 @@ const OVERLAY_LABEL = {
   lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
   pois: 'OSM outdoor places',
 };
+const OVERLAY_NOTE = {
+  nautical: 'Buoys, lights & sectors, fairways, depths, speed limits · Väylävirasto · zoom 11+',
+  lipasRoutes: 'LIPAS, Finland',
+  lipasPoints: 'LIPAS, Finland',
+  pois: 'OpenStreetMap',
+};
+const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].label) || (SAFETY_OVERLAYS[id] && SAFETY_OVERLAYS[id].label) || id;
+
+// Groups of the Layers panel (base maps sit above them; weather and terrain are state, not overlays).
+const LAYER_GROUPS = [
+  { id: 'routes', title: 'Marked routes', ids: ['lipasRoutes', 'wmtHiking', 'wmtMtb', 'wmtCycling'] },
+  { id: 'places', title: 'Places', ids: ['lipasPoints', 'pois'] },
+  { id: 'water', title: 'Water & nautical', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways'] },
+  { id: 'safety', title: 'Traffic & safety', ids: Object.keys(SAFETY_OVERLAYS) },
+  { id: 'roads', title: 'Roads (Digiroad)', ids: ['drPaved', 'drPrivate', 'drSpeed'] },
+];
+
+// Map keys, next to the layers they explain.
+const keyItem = (swatch, label) => h('div', { class: 'lg-item' }, swatch, h('span', {}, label));
+const keyLine = (style) => h('span', { class: 'lg-line', style });
+const keyDot = (style) => h('span', { class: 'lg-dot', style });
+const mapKey = (...items) => h('details', { class: 'lg-key' }, h('summary', {}, 'Map key'), h('div', {}, ...items));
+const KEYS = {
+  trails: () => [
+    ...(state.activity === 'mtb' && state.trailColors !== 'up'
+      ? [h('h4', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
+    ...(state.activity === 'mtb' && state.trailColors !== 'down'
+      ? [h('h4', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
+    h('h4', {}, 'Ways'),
+    keyItem(keyLine('border-top:2px dashed #1f1f1f'), 'Path / trail'),
+    keyItem(keyLine('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
+    keyItem(keyLine('background:#5b7fa8;height:2px'), 'Cycleway (paved)'),
+    keyItem(keyLine('border-top:3px dotted #dc2626'), 'No bikes (beside a path)'),
+    state.activity === 'gravel' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
+    keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
+    h('h4', {}, 'Your route'),
+    keyItem(keyLine('background:#e11d48;height:5px'), 'Follows paths'),
+    keyItem(keyLine('background:#0369a1;height:5px'), 'Over water'),
+    keyItem(keyLine('border-top:5px dotted #ea580c'), 'Carry / portage'),
+    keyItem(keyLine('border-top:4px dashed #be123c'), 'Straight line'),
+  ],
+  places: () => Object.values(LIPAS_TYPES).filter((t) => t.icon).map((t) => keyItem(keyDot(`background:${t.color}`), t.name)),
+  water: () => [
+    keyItem(keyDot('background:#dc2626;border-radius:2px'), 'Port-hand mark — keep left going in'),
+    keyItem(keyDot('background:#16a34a;border-radius:2px'), 'Starboard-hand mark — keep right going in'),
+    keyItem(keyDot('background:linear-gradient(#111827 50%,#facc15 50%);border-radius:2px'), 'Cardinal marks: pass on the side they name'),
+    keyItem(keyDot('background:#c026d3'), 'Light (with sectors: red / green / white)'),
+    keyItem(keyLine('border-top:2px dashed #111827'), 'Navigation line with swept depth'),
+    keyItem(keyLine('background:rgba(168,85,247,.25);height:10px'), 'Fairway area'),
+    keyItem(keyLine('border-top:2px dashed #be185d'), 'Speed limit / restriction area'),
+  ],
+  safety: () => [
+    ...AADT_STEPS.map(([min, c], i) => keyItem(keyLine(`background:${c};height:6px`), `${min.toLocaleString('fi-FI')}${AADT_STEPS[i + 1] ? `–${AADT_STEPS[i + 1][0].toLocaleString('fi-FI')}` : '+'} vehicles/day`)),
+    keyItem(keyLine('background:#dc2626;height:5px'), 'Accident / incident'),
+    keyItem(keyLine('border-top:5px dashed #f59e0b'), 'Road works'),
+    keyItem(keyLine('background:#f97316;height:5px'), 'Poor road conditions (red/purple: worse)'),
+    keyItem(keyLine('background:rgba(220,38,38,.15);height:12px;box-shadow:inset 0 0 0 2px #dc2626'), 'Military area / your avoided places'),
+  ],
+};
+
+let usageBox = null;
+const toggle = (label, on, fn, note = '') => {
+  const id = `t-${Math.random().toString(36).slice(2, 8)}`;
+  return h('label', { class: 'tg', for: id },
+    h('span', { class: 'tg-text' }, label, note ? h('small', {}, note) : null),
+    h('input', { type: 'checkbox', id, checked: on, role: 'switch', onchange: (e) => fn(e.target.checked) }),
+    h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+};
+const seg = (options, value, fn) => h('div', { class: 'seg small full' },
+  ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
+const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}, title), ...kids);
+
+// A folding group; it opens by itself while something in it is on, until you choose.
+function layerGroup(id, title, count, ...kids) {
+  const saved = store.get('layerGroups', {})[id];
+  const d = h('details', { class: 'lg-group', open: saved ?? count > 0 },
+    h('summary', {}, h('span', { class: 'lg-title' }, title), count ? h('span', { class: 'lg-count' }, `${count} on`) : null), ...kids);
+  d.addEventListener('toggle', () => store.set('layerGroups', { ...store.get('layerGroups', {}), [id]: d.open }));
+  return d;
+}
 
 function renderLayersPanel() {
+  syncLayersButton();
   const p = $('#layers-body');
   const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
   requestAnimationFrame(() => { p.scrollTop = keepScroll; });
   p.innerHTML = '';
-  const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}, title), ...kids);
-  const toggle = (label, on, fn, note = '') => {
-    const id = `t-${Math.random().toString(36).slice(2, 8)}`;
-    return h('label', { class: 'tg', for: id },
-      h('span', { class: 'tg-text' }, label, note ? h('small', {}, note) : null),
-      h('input', { type: 'checkbox', id, checked: on, role: 'switch', onchange: (e) => fn(e.target.checked) }),
-      h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
-  };
-  const seg = (options, value, fn) => h('div', { class: 'seg small full' },
-    ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
+  const act = ACTIVITIES[state.activity];
+  const rerender = (fn) => (v) => { fn(v); renderLayersPanel(); };
 
+  // whose map this is: the sport sets the starting layers
+  p.append(h('div', { class: 'lp-sport' },
+    h('span', { html: icon(ACT_ICONS[state.activity], 18) }),
+    h('span', {}, h('span', {}, 'Map for ', h('b', {}, act.label)), h('small', {}, 'Your sport sets the trail colours and which layers start on.')),
+    h('button', { type: 'button', class: 'link', onclick: () => { openPanel(null); openActs(); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
+
+  // base maps as thumbnails
+  p.append(section('Base map',
+    h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
+      type: 'button', class: 'base-opt', 'aria-pressed': String(state.base === k), title: BASE_NOTE[k],
+      onclick: () => { state.base = k; applyStyle(); renderLayersPanel(); },
+    }, h('img', { src: thumb(k), alt: '', width: '64', height: '64', loading: 'lazy' }), h('span', {}, label)))),
+    h('p', { class: 'note' }, BASE_NOTE[state.base] || ''),
+    toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
+    state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
+      h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null));
+
+  // what is on right now, at a glance
+  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].filter(([k]) => state.weather[k]);
+  const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0;
+  p.append(section('On now',
+    on.length || wx.length ? h('div', { class: 'on-chips' },
+      ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
+      ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
+      : h('p', { class: 'note' }, 'No extra layers — just the base map and trails.'),
+    custom ? h('button', { type: 'button', class: 'link', onclick: () => {
+      state.overlaysByActivity[state.activity] = {};
+      state.overlays = overlaysFor(state.activity);
+      applyStyle(); configureLayers(); renderLayersPanel(); saveSettings();
+      toast(`Layers back to the ${act.label} defaults`);
+    } }, `Reset to ${act.label} defaults`) : null));
+
+  // trails & difficulty (and the map key for the base map's lines)
+  const trailKids = [];
   if (state.activity === 'mtb') {
-    p.append(section('Trail colours',
+    trailKids.push(
       seg([['down', 'Difficulty'], ['up', 'Uphill'], ['both', 'Both']], state.trailColors, (v) => {
-        state.trailColors = v; applyStyle(); configureLayers(); renderLayersPanel(); renderLegend();
+        state.trailColors = v; applyStyle(); configureLayers(); renderLayersPanel();
         if (v !== 'down' && map.getZoom() < 13) toast('Zoom in to level 13+ to see uphill grades');
       }),
       h('p', { class: 'note' }, {
@@ -420,54 +526,75 @@ function renderLayersPanel() {
         up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
         both: 'Halo = regular MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
       }[state.trailColors]),
-      toggle('Difficulty numbers', state.labelsDown, (v) => { state.labelsDown = v; applyStyle(); }, 'S0–S6 beside graded trails (zoom 15+)'),
-      toggle('Uphill numbers', state.labelsUp, (v) => {
+      toggle('Difficulty numbers', state.labelsDown, rerender((v) => { state.labelsDown = v; applyStyle(); }), 'S0–S6 beside graded trails (zoom 15+)'),
+      toggle('Uphill numbers', state.labelsUp, rerender((v) => {
         state.labelsUp = v; applyStyle(); configureLayers();
         if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
-      }, '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)')));
+      }), '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)'));
+  } else trailKids.push(h('p', { class: 'note' }, `Trails and roads are drawn for ${act.label.toLowerCase()}: what matters for it stands out.`));
+  p.append(layerGroup('trails', state.activity === 'mtb' ? 'Trails & difficulty' : 'Trails', (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...KEYS.trails())));
+
+  for (const g of LAYER_GROUPS) {
+    const kids = g.ids.map((id) => {
+      const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
+      return toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+        setOverlay(id, v);
+        if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
+        if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
+      }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+    });
+    if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up under Heads-up, each with an Avoid button.'));
+    if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
+    p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));
   }
 
-  p.append(section('Terrain',
-    toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
-    toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
-    toggle('3D terrain', state.terrain3d, (v) => { state.terrain3d = v; applyStyle(); if (v && map.getPitch() < 30) map.easeTo({ pitch: 60, duration: 800 }); if (!v) map.easeTo({ pitch: 0 }); renderLayersPanel(); }),
-    state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
-      h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
-    hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null,
-    toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight'),
-    hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null));
-
-  p.append(section('Weather',
-    toggle('Timeline', state.timeline, (v) => setTimeline(v), '48 h clock for weather, road conditions and your route (T)'),
+  // weather on the map — the same switches as on the Weather button's timeline
+  p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
+    toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)'),
     toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
     toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels'),
     toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later'),
-    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Use the time bar to scrub or play the next 48 hours.')));
+    h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
 
-  p.append(section('Traffic & safety',
-    ...Object.entries(SAFETY_OVERLAYS).map(([id, o]) => toggle(o.label, !!state.overlays[id], (v) => {
-      setOverlay(id, v);
-      if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
-      if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
-    }, o.note)),
-    h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up under Heads-up, each with an Avoid button.')));
+  // terrain shading and maps (3D sits with the base maps)
+  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0,
+    toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
+    toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
+    toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', '')),
+    state.mmlKey ? toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v))) : null));
+}
 
-  for (const g of OVERLAY_GROUPS) {
-    p.append(section(g.title, ...g.ids.map((id) => {
-      const o = RASTER_OVERLAYS[id];
-      const label = OVERLAY_LABEL[id] || (o && o.label) || id;
-      const note = o ? o.attribution.replace('© ', '') : id === 'nautical' ? 'Buoys, lights & sectors, fairways, depths, speed limits · Väylävirasto · zoom 11+' : id.startsWith('lipas') ? 'LIPAS, Finland' : 'OpenStreetMap';
-      return toggle(label, !!state.overlays[id], (v) => setOverlay(id, v), note);
-    })));
+// ------------------------------------------------------------------ settings panel
+// How Polku behaves (not what the map shows): sport, planner, display, offline, data.
+function renderSettingsPanel() {
+  const p = $('#settings-body');
+  const keepScroll = p.scrollTop;
+  requestAnimationFrame(() => { p.scrollTop = keepScroll; });
+  p.innerHTML = '';
+  p.append(section('Sport',
+    h('div', { class: 'seg small full sport-seg' }, ...Object.entries(ACTIVITIES).map(([k, a]) => h('button', {
+      type: 'button', 'aria-pressed': String(state.activity === k), onclick: () => setActivity(k), html: `${icon(ACT_ICONS[k], 16)}<span>${a.label}</span>`,
+    }))),
+    h('p', { class: 'note' }, `Also the pill beside the search. ${ACTIVITIES[state.activity].label} gives you ${SPORT_NOTE[state.activity]}; the planner routes and times the route for it.`)));
+
+  if (planner.sideMQ && planner.sideMQ.matches) {
+    p.append(section('Route planner',
+      seg([['left', 'Side panel (left)'], ['bottom', 'Bottom panel']], store.get('plannerDock', 'left'), (v) => { planner.setDock(v); renderSettingsPanel(); }),
+      h('p', { class: 'note' }, 'Open it with Plan or R. Its ⋯ menu has the same switch. While planning, the departure clock lives inside it.')));
   }
 
-  usageBox = h('div', { class: 'use-list' });
-  p.append(section('Data sources', usageBox));
-  renderUsage(usageBox);
+  p.append(section('Display',
+    toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight'),
+    hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
+    hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null));
 
   const offlineBox = h('div', { class: 'off-list' });
   p.append(section('Offline maps', offlineBox));
   renderOfflineSection(offlineBox, { open: openOfflineArea });
+
+  usageBox = h('div', { class: 'use-list' });
+  p.append(section('Data sources', usageBox));
+  renderUsage(usageBox);
 
   const keyInput = h('input', { type: 'password', placeholder: 'Paste your MML API key', value: state.mmlKey, autocomplete: 'off', spellcheck: 'false' });
   p.append(section('MML API key (optional)',
@@ -477,56 +604,8 @@ function renderLayersPanel() {
     h('div', { class: 'key-row' }, keyInput, h('button', { type: 'button', class: 'btn', onclick: () => {
       state.mmlKey = keyInput.value.trim();
       if (!state.mmlKey && state.base === 'mml') state.base = 'trail';
-      applyStyle(); renderLayersPanel(); renderBaseSwitch(); toast(state.mmlKey ? 'MML key saved' : 'MML key removed');
-    } }, 'Save')),
-    state.mmlKey ? toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, (v) => setOverlay('mmlMaastoOverlay', v)) : null));
-}
-
-// ------------------------------------------------------------------ legend
-function renderLegend() {
-  const p = $('#legend-body');
-  p.innerHTML = '';
-  const item = (swatch, label) => h('div', { class: 'lg-item' }, swatch, h('span', {}, label));
-  const line = (style) => h('span', { class: 'lg-line', style });
-  const sec = (title, ...items) => h('section', { class: 'lp-sec' }, h('h3', {}, title), ...items);
-  if (state.activity === 'mtb' && state.trailColors !== 'up') {
-    p.append(sec('MTB difficulty (halo)', ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => item(line(`background:${DIFF_COLORS[i]};height:8px`), t)),
-      item(line('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')));
-  }
-  if (state.activity === 'mtb' && state.trailColors !== 'down') {
-    p.append(sec(state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty', ...UPHILL_TEXT.map((t, i) => item(line(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)),
-      item(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')));
-  }
-  p.append(sec('Ways',
-    item(line('border-top:2px dashed #1f1f1f'), 'Path / trail'),
-    item(line('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
-    item(line('background:#5b7fa8;height:2px'), 'Cycleway (paved)'),
-    item(line('border-top:3px dotted #dc2626'), 'No bikes (beside a path)'),
-    state.activity === 'gravel' ? item(line('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
-    item(line('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary')));
-  p.append(sec('Route',
-    item(line('background:#e11d48;height:5px'), 'Follows paths'),
-    item(line('background:#0369a1;height:5px'), 'Over water'),
-    item(line('border-top:5px dotted #ea580c'), 'Carry / portage'),
-    item(line('border-top:4px dashed #be123c'), 'Straight line')));
-  p.append(sec('Traffic & safety',
-    ...AADT_STEPS.map(([min, c], i) => item(line(`background:${c};height:6px`), `${min.toLocaleString('fi-FI')}${AADT_STEPS[i + 1] ? `–${AADT_STEPS[i + 1][0].toLocaleString('fi-FI')}` : '+'} vehicles/day`)),
-    item(line('background:#dc2626;height:5px'), 'Accident / incident'),
-    item(line('border-top:5px dashed #f59e0b'), 'Road works'),
-    item(line('background:#f97316;height:5px'), 'Poor road conditions (red/purple: worse)'),
-    item(line('background:rgba(220,38,38,.15);height:12px;box-shadow:inset 0 0 0 2px #dc2626'), 'Military area / your avoided places')));
-  p.append(sec('Nautical marks (IALA A)',
-    item(h('span', { class: 'lg-dot', style: 'background:#dc2626;border-radius:2px' }), 'Port-hand mark — keep left going in'),
-    item(h('span', { class: 'lg-dot', style: 'background:#16a34a;border-radius:2px' }), 'Starboard-hand mark — keep right going in'),
-    item(h('span', { class: 'lg-dot', style: 'background:linear-gradient(#111827 50%,#facc15 50%);border-radius:2px' }), 'Cardinal marks: pass on the side they name'),
-    item(h('span', { class: 'lg-dot', style: 'background:#c026d3' }), 'Light (with sectors: red / green / white)'),
-    item(line('border-top:2px dashed #111827'), 'Navigation line with swept depth'),
-    item(line('background:rgba(168,85,247,.25);height:10px'), 'Fairway area'),
-    item(line('border-top:2px dashed #be185d'), 'Speed limit / restriction area')));
-  p.append(sec('Gradient (profile)', ...GRADE_BANDS.map(([, c, l]) => item(line(`background:${c};height:8px`), l))));
-  p.append(sec('Wind along the route', ...WIND_CLASSES.map((c) => item(line(`background:${c.color};height:8px`), c.label)),
-    item(h('span', { class: 'lg-arrow' }, '➜'), 'Arrow = where the wind blows')));
-  p.append(sec('LIPAS places', ...Object.values(LIPAS_TYPES).filter((t) => t.icon).map((t) => item(h('span', { class: 'lg-dot', style: `background:${t.color}` }), t.name))));
+      applyStyle(); renderLayersPanel(); renderSettingsPanel(); toast(state.mmlKey ? 'MML key saved' : 'MML key removed');
+    } }, 'Save'))));
 }
 
 // ------------------------------------------------------------------ panels & buttons
@@ -549,15 +628,10 @@ const toggleTimeline = () => {
   renderLayersPanel();
 };
 $('#btn-time').addEventListener('click', toggleTimeline);
-$('#btn-3d').addEventListener('click', () => {
-  state.terrain3d = !state.terrain3d;
-  applyStyle();
-  map.easeTo({ pitch: state.terrain3d ? 60 : 0, duration: 800 });
-  renderLayersPanel();
-  renderBaseSwitch();
-});
+$('#btn-zoom-in').addEventListener('click', () => map.zoomIn());
+$('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 
-// Phones: a Locate button in the thumb column drives MapLibre's (hidden) geolocate control.
+// Locate drives MapLibre's geolocate control (kept for the location dot, hidden).
 $('#btn-locate').addEventListener('click', () => geolocate.trigger());
 {
   const sync = () => {
@@ -572,7 +646,7 @@ $('#btn-locate').addEventListener('click', () => geolocate.trigger());
   map.once('load', () => { const g = $('.maplibregl-ctrl-geolocate'); if (g) new MutationObserver(sync).observe(g, { attributes: true, attributeFilter: ['class'] }); });
 }
 
-// Phones: the floating timeline sits above the thumb column's lowest row; the column follows it.
+// Phones: the floating timeline sits above the Plan pill; the map controls ride above it.
 new ResizeObserver(() => {
   const b = $('#wx-bar');
   const floating = !b.hidden && !b.classList.contains('docked') && matchMedia('(max-width: 720px)').matches;
@@ -622,7 +696,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'l' && !mod) openPanel('layers-panel');
   else if (e.key === 't' && !mod) toggleTimeline();
-  else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeBase(); closeActs(); }
+  else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs(); }
 });
 
 // The free vector tiles only carry the full trail network from zoom 14.
@@ -654,7 +728,6 @@ function openOfflineArea(area) {
 // A free service is limiting or failing: say so once per episode (which one,
 // what it affects, when it's tried again); route weather retries on its own.
 const limitedNoticed = new Set();
-let usageBox = null;
 // keep the readout current while Layers is open
 setInterval(() => { if (usageBox && !usageBox.closest('[hidden]')) renderUsage(usageBox); }, 5000);
 onStatus((src, s) => {
@@ -682,10 +755,8 @@ registerServiceWorker();
 initOfflineStatus();
 document.body.dataset.activity = state.activity;
 renderActivityBar();
-renderBaseSwitch();
 renderLayersPanel();
-renderLegend();
-$('#btn-3d').setAttribute('aria-pressed', String(state.terrain3d));
+renderSettingsPanel();
 map.on('load', () => {
   // Start with the attribution collapsed to its (i) button on small screens.
   if (window.innerWidth < 720) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');

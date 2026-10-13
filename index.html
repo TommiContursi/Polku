@@ -33,38 +33,39 @@
     </div>
     <!-- the active sport as a pill; hover (desktop) or tap opens the others -->
     <div id="activity-bar" class="act-pill"></div>
+    <button id="btn-settings" class="top-btn" type="button" data-panel="settings-panel" aria-pressed="false" title="Settings: sport, planner, display, offline maps, data sources" aria-label="Settings">
+      <svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+    </button>
   </header>
   <button id="zoom-hint" class="zoom-hint" type="button" hidden>Zoom in to see every trail</button>
 
-  <div class="fab-col">
-    <button class="fab" type="button" data-panel="layers-panel" aria-pressed="false" title="Map layers (L)">
-      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/><path d="m2 18 10 5 10-5" opacity=".55"/></svg>
+  <!-- Map controls, bottom right at every screen size, in one order: what the map
+       shows (Layers, Weather), how you look at it (compass, locate, zoom), then Plan.
+       On phones they ride above the planner sheet; on desktop it leaves them room. -->
+  <div id="map-ctrls" class="map-ctrls">
+    <button id="btn-layers" class="fab fab-layers" type="button" data-panel="layers-panel" aria-pressed="false" title="Layers: base map, trails, weather, traffic… (L)">
+      <img class="fab-thumb" src="img/base/trail.jpg" alt="" width="56" height="56">
       <span>Layers</span>
-    </button>
-    <button class="fab" type="button" data-panel="legend-panel" aria-pressed="false" title="Legend">
-      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h3M4 12h3M4 18h3M10 6h10M10 12h10M10 18h10"/></svg>
-      <span>Legend</span>
     </button>
     <button id="btn-time" class="fab" type="button" aria-pressed="false" aria-label="Time & weather" title="Time & weather (T)">
       <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></svg>
       <span class="fab-time-label">Weather</span>
     </button>
-    <button id="btn-3d" class="fab" type="button" aria-pressed="false" title="3D terrain">
-      <span class="fab-3d">3D</span>
-      <span>Terrain</span>
+    <div class="ctrl-compass"></div>
+    <button id="btn-locate" class="ctrl-btn fab-locate" type="button" aria-pressed="false" title="Show my location" aria-label="Show my location">
+      <svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
     </button>
-    <!-- phones: locate sits in the thumb column (desktop keeps MapLibre's button by the zoom) -->
-    <button id="btn-locate" class="fab fab-locate" type="button" aria-pressed="false" title="Show my location" aria-label="Show my location">
-      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    <div class="ctrl-zoom" role="group" aria-label="Zoom">
+      <button id="btn-zoom-in" class="ctrl-btn" type="button" title="Zoom in" aria-label="Zoom in"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button id="btn-zoom-out" class="ctrl-btn" type="button" title="Zoom out" aria-label="Zoom out"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+    </div>
+    <!-- Plan: last in the column (a fab on desktop, a pill on phones); it stays while planning, as Done -->
+    <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
+      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
+      <span>Plan<span class="plan-more"> route</span></span>
     </button>
   </div>
-  <!-- base map switcher: the current base as a thumbnail; opens all of them -->
-  <div id="base-switch" class="base-switch"></div>
-  <!-- bottom right: a fab on desktop, a primary pill on phones; the planner's Done takes over while planning -->
-  <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
-    <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
-    <span>Plan<span class="plan-more"> route</span></span>
-  </button>
+
 
   <div id="view3d" class="view3d" hidden aria-label="3D view controls"></div>
   <div id="wx-bar" class="wx-bar" hidden role="region" aria-label="Timeline"></div>
@@ -74,9 +75,9 @@
     <div id="layers-body" class="panel-body"></div>
   </aside>
 
-  <aside id="legend-panel" class="panel" hidden aria-label="Legend">
-    <div class="panel-head"><h2>Legend</h2><button class="panel-close tool" type="button" aria-label="Close"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-    <div id="legend-body" class="panel-body"></div>
+  <aside id="settings-panel" class="panel panel-settings" hidden aria-label="Settings">
+    <div class="panel-head"><h2>Settings</h2><button class="panel-close tool" type="button" aria-label="Close"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div id="settings-body" class="panel-body"></div>
   </aside>
 
   <section id="planner" class="sheet" hidden aria-label="Route planner"></section>
