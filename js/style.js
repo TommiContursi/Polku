@@ -444,9 +444,6 @@ export function buildStyle(s, ctx) {
   return style;
 }
 
-const FMI_RADAR = 'https://openwms.fmi.fi/geoserver/Radar/wms?service=WMS&request=GetMap&version=1.1.1' +
-  '&layers=Radar:suomi_dbz_eureffin&styles=&srs=EPSG:3857&bbox={bbox-epsg-3857}&width=512&height=512&format=image/png&transparent=true';
-
 function addWeather(s, ctx, sources, layers) {
   const wx = s.weather || {};
   const d = ctx.data;
@@ -463,8 +460,11 @@ function addWeather(s, ctx, sources, layers) {
       sources.wxRadarRv = { type: 'raster', tiles: [d.wxRadar.rv], tileSize: 512, maxzoom: 7, attribution: 'Radar © RainViewer' };
       layers.push({ id: 'wx-radar-rv', type: 'raster', source: 'wxRadarRv', paint: { 'raster-opacity': 0.7, 'raster-fade-duration': 0 } });
     }
-    sources.wxRadarFmi = { type: 'raster', tiles: [FMI_RADAR], tileSize: 512, bounds: [19, 59.3, 32.5, 70.3], attribution: 'Radar © Ilmatieteen laitos (FMI)' };
-    layers.push({ id: 'wx-radar-fmi', type: 'raster', source: 'wxRadarFmi', paint: { 'raster-opacity': 0.75, 'raster-fade-duration': 0 } });
+  }
+  // Finland: FMI's composite, fetched as data and drawn by js/radar.js
+  if (wx.rain && d.wxRadarFi) {
+    sources.wxRadarFi = { type: 'image', url: d.wxRadarFi.url, coordinates: d.wxRadarFi.coordinates };
+    layers.push({ id: 'wx-radar-fi', type: 'raster', source: 'wxRadarFi', paint: { 'raster-opacity': 0.85, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
 }
 
