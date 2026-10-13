@@ -16,7 +16,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 - **Layers** shows what is on right now, groups everything else (trails, routes, places, water, traffic, roads, weather, terrain & 3D) and carries the map key for each group. Your sport sets the starting layers; **Settings** (⚙) holds the sport, planner position, display options, offline maps and data sources.
 
 **Plan a route**
-- Routing per activity — MTB, gravel, hike & run, paddle — with straight-line and over-water legs, drag points, click the line to add a via point, undo/redo, reverse, back to start.
+- Routing per sport — MTB, gravel, road cycling, hike, trail run, run and paddle, each with its own router profile, timing model, warnings, map style and default layers — with straight-line and over-water legs, drag points, click the line to add a via point, undo/redo, reverse, back to start.
 - The planner keeps the map in view: on desktop a side panel (drag its edge to widen it for long profiles) or a full-width bottom panel with the lists in columns — your choice in the ⋯ menu; on phones a bottom sheet that peeks, goes half or full height, and drops out of the way while you draw. Its sections fold and remember how you left them.
 - Drag across the profile (or pinch it, or double-tap on touch) to zoom into a stretch; the map follows.
 - An elevation profile coloured by terrain (gradient, uphill grade, MTB difficulty), ground (surface, way type) or weather (wind, temperature, rain) — on the route line too if you like — with climbs, warnings (steps, no-bike sections, S3+, steep pitches, carries) and a time estimate that accounts for the wind.

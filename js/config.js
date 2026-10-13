@@ -42,32 +42,65 @@ export const wmsTiles = (url, layers, styles = '') =>
 // ---------------------------------------------------------------------------
 // Activities
 
+// group: bike / foot / water (winter sports will be a "snow" group). It decides
+// the map style flavour, the warnings and which timing model applies.
+// BRouter: Run and Trail run use hiking-mountain, which keeps to footways,
+// cycleways and paths in town (trekking, a bike profile, sent a city run 39 %
+// along main roads); a tuned running profile can come with route preferences.
 export const ACTIVITIES = {
   mtb: {
     label: 'MTB',
+    group: 'bike',
     brouter: 'mtb',
     mode: 'auto',
     lipas: { routes: [4411, 4412, 4405], points: [301, 206, 302] },
   },
   gravel: {
     label: 'Gravel',
+    group: 'bike',
     brouter: 'gravel',
     mode: 'auto',
     lipas: { routes: [4412], points: [301, 206] },
   },
+  road: {
+    label: 'Road cycling',
+    group: 'bike',
+    brouter: 'fastbike-lowtraffic',
+    mode: 'auto',
+    lipas: { routes: [4412], points: [206] },
+  },
   hike: {
-    label: 'Hike & run',
+    label: 'Hike',
+    group: 'foot',
     brouter: 'hiking-mountain',
     mode: 'auto',
     lipas: { routes: [4405, 4404, 4403], points: [301, 302, 304, 206, 202, 204] },
   },
+  trailrun: {
+    label: 'Trail run',
+    group: 'foot',
+    brouter: 'hiking-mountain',
+    mode: 'auto',
+    lipas: { routes: [4405, 4404, 4401], points: [301, 302, 206] },
+  },
+  run: {
+    label: 'Run',
+    group: 'foot',
+    brouter: 'hiking-mountain',
+    mode: 'auto',
+    lipas: { routes: [4401, 4403, 4406], points: [] },
+  },
   paddle: {
     label: 'Paddle',
+    group: 'water',
     brouter: 'river',
     mode: 'water',
     lipas: { routes: [4451, 4452], points: [205, 301, 206, 202, 203] },
   },
 };
+export const groupOf = (a) => (ACTIVITIES[a] || ACTIVITIES.mtb).group;
+// sports where the uphill-difficulty grades (↑S0–↑S5, from mtb:scale:uphill) mean something
+export const OFFROAD_BIKE = new Set(['mtb', 'gravel']);
 
 export const CRAFT = {
   kayak: { label: 'Sea kayak', kmh: 6.5 },
@@ -139,9 +172,11 @@ export const SURFACE_COLORS = {
 // LIPAS (national sports & outdoor facility register) feature types
 
 export const LIPAS_TYPES = {
+  4401: { name: 'Fitness trail (kuntorata, often lit)', color: '#0d9488', layer: 'lipas_4401_kuntorata' },
   4403: { name: 'Walking / outdoor route', color: '#ea580c', layer: 'lipas_4403_kavelyreitti' },
   4404: { name: 'Nature trail', color: '#15803d', layer: 'lipas_4404_luontopolku' },
   4405: { name: 'Hiking route', color: '#dc2626', layer: 'lipas_4405_retkeilyreitti' },
+  4406: { name: 'Multi-use route', color: '#9333ea', layer: 'lipas_4406_monikayttoreitti' },
   4411: { name: 'MTB route', color: '#7c3aed', layer: 'lipas_4411_maastopyorailyreitti' },
   4412: { name: 'Cycling route', color: '#2563eb', layer: 'lipas_4412_pyorailyreitti' },
   4451: { name: 'Paddling route', color: '#0284c7', layer: 'lipas_4451_melontareitti' },
@@ -297,6 +332,9 @@ export const SAFETY_OVERLAYS = {
 export const ACTIVITY_OVERLAYS = {
   mtb: { lipasRoutes: true, lipasPoints: true, pois: true, wmtMtb: false, restricted: true },
   gravel: { lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfCameras: true },
+  road: { lipasRoutes: false, lipasPoints: false, pois: false, wmtCycling: true, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfRoadcond: true, sfCameras: true },
   hike: { lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true, restricted: true },
+  trailrun: { lipasRoutes: true, lipasPoints: true, pois: true, restricted: true },
+  run: { lipasRoutes: true, lipasPoints: false, pois: false, sfRoadworks: true },
   paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, restricted: true, nautical: true },
 };

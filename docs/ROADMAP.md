@@ -12,8 +12,8 @@ Also approved:
 | 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | in review |
 | 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | merged (#14 went into the stacked base by accident; #15 brought it to `main`) |
 | 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | merged |
-| 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | #17 | in review |
-| 5 | More sports: road, trail run and run join the four we have | `sports` | — | |
+| 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | [#17](https://github.com/TommiContursi/Polku/pull/17) | merged |
+| 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | in review |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | — | |
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu | `edit-on-map` | — | |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
@@ -311,6 +311,29 @@ Also approved:
 - Share links keep working: `a=hike` still means Hike, and new ids are added.
 - A link shared from a newer Polku opened in an older one falls back to MTB, as now.
 - The default timing models reproduce today's times for MTB, gravel, hike and paddle, so nothing moves before phase 6.
+
+**Built (PR #18)**
+- **Sports:** MTB, Gravel, Road cycling, Hike, Trail run, Run, Paddle. Each has a `group` (bike / foot / water; "snow" is the slot for winter).
+  - Helpers: `groupOf()` and `OFFROAD_BIKE`, for where ↑S grades apply.
+  - The sport checks in style, analysis, planner and chart now use the group.
+- **BRouter:**
+  - Road cycling uses `fastbike-lowtraffic`.
+  - Run and Trail run use `hiking-mountain`: on three Tampere routes it kept to footways and cycleways, while `trekking` put a city run 39 % on main roads.
+- **Timing:**
+  - MTB, gravel, hike and paddle are unchanged.
+  - Road: 27 km/h paved, 800 m/h climbing.
+  - Run: 10.5 km/h paved / 9.5 trail; Trail run: 10 / 8.5. Both are grade-adjusted with Minetti's cost of running; Trail run never drops below a brisk hike on steep climbs.
+- **Warnings:** Road gets "Unpaved for N m — rough on road tyres"; Trail run gets "Very steep — walk it".
+- **Map styles:**
+  - Road: trails dimmed, cycleways wider, unpaved roads marked.
+  - Run and Trail run: the hiking path emphasis.
+- **LIPAS:** 4401 fitness trails (kuntorata) and 4406 multi-use routes added.
+- **Default layers:**
+  - Road: cycling routes, traffic, road works, road conditions, cameras.
+  - Run: fitness and walking routes, road works.
+  - Trail run: hiking routes and huts.
+- **Compatibility:** `a=hike` share links and saved settings still open Hike ("Hike & run" became "Hike"). Unknown sports fall back to MTB.
+- **Phones:** the Plan button is the same size as the rest of the map column (review note).
 
 **Cut**
 - Winter (planned, not built).

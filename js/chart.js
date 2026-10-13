@@ -2,7 +2,7 @@
 // fill is coloured by the selected mode, hover is synced both ways with the
 // map, and dragging across the chart zooms into a stretch.
 
-import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT } from './config.js';
+import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand } from './weather.js';
 
@@ -395,7 +395,7 @@ export class ProfileChart {
       a.climbs.forEach((cl, k) => {
         const x = X((cl.from + cl.to) / 2);
         const y = Y(a.ele[cl.end]) - 6;
-        ctx.fillStyle = ['mtb', 'gravel'].includes(a.activity) ? DIFF_COLORS[cl.cls] : gradeColor(cl.avg);
+        ctx.fillStyle = OFFROAD_BIKE.has(a.activity) ? DIFF_COLORS[cl.cls] : gradeColor(cl.avg);
         ctx.beginPath(); ctx.arc(x, y - 3, 7, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
