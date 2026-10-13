@@ -10,12 +10,12 @@
 // moves the particles simply pause and fade out, and forecast playback only
 // re-samples the grid. Particle canvases render at 1× pixel density.
 
-import { forecastCells, cellSize, cellCenter, alignSeries } from './weather.js';
+import { forecastCells, cellSize, latticePoint, alignSeries, uncached } from './weather.js';
 import { compass } from './geo.js';
 import { h, icon } from './ui.js';
-import { request, onStatus, sourceStatus, clock as hhmm } from './net.js';
+import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 
-const MAX_CELLS = 90; // forecast cells per grid (the view plus a margin)
+const MAX_CELLS = 60; // forecast points per grid (the view plus a margin); the field is smooth
 const IMG = 72; // field image resolution
 const HOURS = 48;
 const CELL = 24; // px, screen cache resolution
@@ -143,9 +143,11 @@ export class WeatherOverlay {
   onMoveEnd() {
     this.moving = false;
     if (!this.active) return;
-    // ask once the map has settled, not on every stop of a pan
+    // ask once the map has settled, not on every stop of a pan; zooming out
+    // usually comes in several steps, so wait a little longer for the last one
     clearTimeout(this.fetchTimer);
-    this.fetchTimer = setTimeout(() => this.maybeFetch(), 600);
+    const out = this.grid && this.map.getZoom() < this.grid.zoom - 0.3;
+    this.fetchTimer = setTimeout(() => this.maybeFetch(), out ? 1200 : 600);
     this.renderStrip();
     this.readout();
     if (!this.animated) return;
@@ -182,25 +184,44 @@ export class WeatherOverlay {
   async maybeFetch() {
     if (!this.active || this.map.getZoom() < 3) return;
     const box = this.viewBox();
-    // The grid is made of cells of the shared forecast lattice (see weather.js):
-    // the finest level that covers the view plus a margin in ≤ MAX_CELLS cells.
-    const padX = (box[2] - box[0]) * 0.2, padY = (box[3] - box[1]) * 0.2;
+    // The grid is made of points of the shared forecast lattice (see weather.js):
+    // the finest level that covers the view plus a margin in ≤ MAX_CELLS points.
+    const padX = (box[2] - box[0]) * 0.12, padY = (box[3] - box[1]) * 0.12;
     let L = 0;
     while (L < 11) {
       const [dx, dy] = cellSize(L);
       if (((box[2] - box[0] + 2 * padX) / dx + 2) * ((box[3] - box[1] + 2 * padY) / dy + 2) <= MAX_CELLS) break;
       L++;
     }
-    if (this.covers(box, L)) return;
-    const [dLon, dLat] = cellSize(L);
-    let i0 = Math.floor((box[0] - padX) / dLon), i1 = Math.floor((box[2] + padX) / dLon);
-    let j0 = Math.floor(Math.max(-80, box[1] - padY) / dLat), j1 = Math.floor(Math.min(80, box[3] + padY) / dLat);
-    if (i1 - i0 < 2) { i0 -= 1; i1 = i0 + 2; }
-    if (j1 - j0 < 2) { j0 -= 1; j1 = j0 + 2; }
-    const cols = i1 - i0 + 1, rows = j1 - j0 + 1;
-    const list = [];
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) list.push({ L, i: i0 + c, j: j1 - r }); // north row first
-    const pts = list.map(cellCenter);
+    const layout = (lv) => {
+      const [dLon, dLat] = cellSize(lv);
+      let i0 = Math.floor((box[0] - padX) / dLon), i1 = Math.ceil((box[2] + padX) / dLon);
+      let j0 = Math.floor(Math.max(-80, box[1] - padY) / dLat), j1 = Math.ceil(Math.min(80, box[3] + padY) / dLat);
+      if (i1 - i0 < 2) { i0 -= 1; i1 = i0 + 2; }
+      if (j1 - j0 < 2) { j0 -= 1; j1 = j0 + 2; }
+      const cols = i1 - i0 + 1, rows = j1 - j0 + 1;
+      const list = [];
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) list.push({ L: lv, i: i0 + c, j: j1 - r }); // north row first
+      return { L: lv, dLon, dLat, cols, rows, list };
+    };
+    // Budget: stay under ~2/3 of Open-Meteo's per-minute limit and 80 % of the
+    // hourly and daily ones (counted on this device). Too tight → a coarser grid
+    // (a quarter of the points, mostly cached already), else pause briefly.
+    const om = usage().find((u) => u.id === 'openmeteo');
+    const room = Math.min(...om.windows.map((w) => w.max * (w.name === 'minute' ? 0.66 : 0.8) - w.used));
+    let lay = layout(L);
+    while (uncached(lay.list) > room && lay.L < L + 2) lay = layout(lay.L + 1);
+    if (this.covers(box, lay.L)) return;
+    if (uncached(lay.list) > room) {
+      this.status = `Weather paused to stay within Open-Meteo’s free limit — resumes about ${hhmm(Date.now() + 60e3)}`;
+      clearTimeout(this.budgetTimer);
+      this.budgetTimer = setTimeout(() => this.maybeFetch(), 60e3);
+      this.renderTime(); this.readout();
+      return;
+    }
+    ({ L } = lay);
+    const { dLon, dLat, cols, rows, list } = lay;
+    const pts = list.map(latticePoint);
     const req = (this.req = Symbol('wx'));
     this.loading = true;
     this.renderTime();

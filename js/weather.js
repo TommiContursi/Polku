@@ -10,10 +10,12 @@ import { request } from './net.js';
 const rad = (d) => (d * Math.PI) / 180;
 
 // ------------------------------------------------------------------ forecast cells
-// Forecasts are fetched and cached per cell of a fixed lattice, so small map or
-// route changes reuse what's already here instead of asking again. Level 0
-// cells are 0.05° × 0.025° (≈ 2.8 × 2.8 km at 60° N, about the forecast
-// model's own resolution); each level up doubles both sides. A cell stays
+// Forecasts are fetched and cached per point of a fixed lattice, so small map
+// or route changes reuse what's already here instead of asking again. Level 0
+// points are 0.05° × 0.025° apart (≈ 2.8 × 2.8 km at 60° N, about the forecast
+// model's own resolution); each level up doubles the spacing and keeps every
+// other point, so the levels nest: a point fetched while zoomed out serves
+// again zoomed in, and the other way round. A cell stays
 // fresh for an hour (the models update hourly), in memory and in IndexedDB so
 // it survives reloads; copies up to a day old stand in when Open-Meteo can't
 // be reached. Open-Meteo counts every location as a call, so this is what
@@ -29,15 +31,26 @@ const store = idb('weather');
 store.prune((v) => v && Date.now() - v.at < KEEP).catch(() => {});
 
 export const cellSize = (L) => [LON0 * 2 ** L, LAT0 * 2 ** L];
+/** The nearest lattice point at level L. */
 export function cellAt([lon, lat], L = 0) {
   const [dx, dy] = cellSize(L);
-  return { L, i: Math.floor(lon / dx), j: Math.floor(lat / dy) };
+  return { L, i: Math.round(lon / dx), j: Math.round(lat / dy) };
 }
-export function cellCenter({ L, i, j }) {
+export function latticePoint({ L, i, j }) {
   const [dx, dy] = cellSize(L);
-  return [+((i + 0.5) * dx).toFixed(4), +((j + 0.5) * dy).toFixed(4)];
+  return [+(i * dx).toFixed(4), +(j * dy).toFixed(4)];
 }
-const keyOf = (c) => `${c.L}/${c.i}/${c.j}`;
+// keyed in level-0 units, so the same point has one key at every level
+const keyOf = (c) => `p/${c.i * 2 ** c.L}/${c.j * 2 ** c.L}`;
+const pointOfKey = (k) => { const [, I, J] = k.split('/').map(Number); return latticePoint({ L: 0, i: I, j: J }); };
+
+/** How many of these points would need a request (no fresh copy in memory, not on the way). */
+export function uncached(list) {
+  const now = Date.now();
+  let n = 0;
+  for (const k of new Set(list.map(keyOf))) { const c = cells.get(k); if (!(c && now - c.at < FRESH) && !inflight.has(k)) n++; }
+  return n;
+}
 
 /**
  * Hourly forecasts (−1 h … +49 h) for a list of cells, in the same order.
@@ -78,7 +91,7 @@ export async function forecastCells(list) {
   for (const k of new Set(need.map((n) => keys[n]))) (inflight.has(k) ? waits.push(inflight.get(k)) : mine.push(k));
   for (let b = 0; b < mine.length; b += BATCH) {
     const batch = mine.slice(b, b + BATCH);
-    const p = fetchPoints(batch.map((k) => { const [L, i, j] = k.split('/').map(Number); return cellCenter({ L, i, j }); })).then((series) => {
+    const p = fetchPoints(batch.map(pointOfKey)).then((series) => {
       const at = Date.now();
       batch.forEach((k, m) => {
         const v = { at, s: series[m] };
