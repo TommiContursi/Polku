@@ -151,6 +151,7 @@ const planner = new Planner(map, {
 
 initInspector(map, {
   isPlanning: () => planner.active,
+  activity: () => state.activity,
   routeFrom: (ll, mode) => {
     planner.setActive(true);
     if (mode) planner.setMode(mode);
@@ -164,7 +165,7 @@ initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable(), isPlanning: () => planner.active });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable(), isPlanning: () => planner.active, activity: () => state.activity });
 
 initSearch(map, $('#search-input'), $('#search-results'));
 

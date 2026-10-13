@@ -4,7 +4,7 @@
 
 import { DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, TRAFICOM_WMS } from './config.js';
 import { elevation } from './dem.js';
-import { overpass } from './uphill.js';
+import { overpass, gradeHere } from './uphill.js';
 import { dist, pointSegment } from './geo.js';
 import { h, icon, escapeHtml } from './ui.js';
 import { NAV_TEXT } from './nautical.js';
@@ -68,7 +68,7 @@ export function initInspector(map, app) {
     if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
     else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
-    else renderWay(body, f, feats, ll);
+    else renderWay(body, f, feats, ll, app.activity() === 'mtb');
     body.append(actions);
     const ele = await elevation(ll);
     const slot = body.querySelector('[data-ele]');
@@ -95,7 +95,7 @@ function chip(color, text) {
   return `<i class="dot" style="background:${color}"></i>${escapeHtml(text)}`;
 }
 
-function renderWay(body, f, feats, ll) {
+function renderWay(body, f, feats, ll, mtb) {
   const p = f.properties;
   const isUphill = f.layer.id === 'uphill-line';
   const way = isUphill ? (feats.find((x) => /^(path|track)-/.test(x.layer.id)) || f) : f;
@@ -108,6 +108,16 @@ function renderWay(body, f, feats, ll) {
   if (Number.isFinite(idx)) body.append(row('MTB difficulty', chip(DIFF_COLORS[idx], MTB_SCALE_TEXT[idx]), true));
   const up = feats.find((x) => x.layer.id === 'uphill-line');
   if (up) body.append(row('Uphill', chip(DIFF_COLORS[up.properties.cls], `${UPHILL_TEXT[up.properties.cls]} (${up.properties.grade} %)`), true));
+  else {
+    // uphill layer off: grade the ~25 m under the click from the DEM
+    const trail = /^(path|track|cycleway)-/.test(way.layer.id);
+    const slot = row(mtb && trail ? 'Uphill' : 'Incline', '…');
+    body.append(slot);
+    gradeHere(way, ll).then((r) => {
+      if (!r) { slot.remove(); return; }
+      slot.lastChild.innerHTML = mtb && trail ? chip(DIFF_COLORS[r.cls], `${UPHILL_TEXT[r.cls]} (${r.grade} %)`) : `${r.grade} %`;
+    }).catch(() => slot.remove());
+  }
   if (wp.surface) body.append(row('Surface', wp.surface));
   const access = ['bicycle', 'foot', 'horse'].filter((k) => wp[k]).map((k) => `${k} ${wp[k]}`).join(', ');
   if (access) body.append(row('Access', access));
