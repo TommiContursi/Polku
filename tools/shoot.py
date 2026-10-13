@@ -84,6 +84,11 @@ SCENES = {
     'desk-roundtrip': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_JS),
     'phone-roundtrip': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_JS),
     'desk-roundtrip-empty': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js="(() => { polku.planner.setActive(true); return true; })()"),
+    # the waypoint list with each leg's settings showing
+    'desk-leg-settings': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage={'polku:legSettings': 'true'}, js="polku.planner.reveal('points'); true"),
+    'desk-one-leg': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="(() => { const p = polku.planner; p.reveal('points'); const b = document.querySelectorAll('.wpl-row')[1].querySelector('[aria-label^=\"Settings of the leg\"]'); b && b.click(); return true; })()"),
+    'phone-one-leg': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js="(() => { const p = polku.planner; p.reveal('points'); const b = document.querySelectorAll('.wpl-row')[1].querySelector('[aria-label^=\"Settings of the leg\"]'); b && b.click(); return true; })()"),
+    'phone-leg-settings': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:legSettings': 'true'}, js="polku.planner.reveal('points'); true"),
     # the wide bottom panel, everything showing, at a few widths (and paddling: no climbs)
     'desk-bottom-full': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}),
     'mid-bottom-full': dict(DESK, w=1100, h=820, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}),

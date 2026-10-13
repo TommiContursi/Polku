@@ -60,6 +60,7 @@ export class Planner {
     this.ghosts = []; // drag handles in the middle of each leg
     this.pname = new WeakMap(); // point → the name you gave it (points move as arrays, so names follow them)
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
+    this.openLegs = new Set(); // waypoint rows whose leg settings are open (by point index)
     this.roads = initNames(map); // road and path names from the loaded tiles
     this.style = this.savedStyle(app.activity()); // the route's style; a leg may have its own (leg.style)
     this.styleLeg = null; // the leg the Route style section edits (null: the whole route)
@@ -1103,7 +1104,13 @@ export class Planner {
     this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
     box.innerHTML = '';
     // the whole list the other way round (the same as Reverse in the tools)
-    this.els.pointsFoot.replaceChildren(n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The finish becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse direction` }) : '');
+    const showLegs = n > 1 && store.get('legSettings', false);
+    for (const k of this.openLegs) if (k >= n - 1) this.openLegs.delete(k); // rows that are gone
+    this.els.pointsFoot.replaceChildren(...(n > 1 ? [
+      h('button', { type: 'button', class: 'btn', title: 'The finish becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse direction` }),
+      // each leg's routing and style, between its points (folded away by default)
+      h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showLegs), title: 'Every leg’s routing and style (or open one with the route button on its row)', onclick: () => { store.set('legSettings', !showLegs); this.openLegs.clear(); this.renderWaypoints(); }, html: `${icon('route', 16)} All leg settings` }),
+    ] : []));
     const loop = this.isLoop();
     const btn = (ic, label, fn, disabled = false, cls = '') => h('button', { type: 'button', class: `tool small ${cls}`, title: label, 'aria-label': label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 16) });
     this.points.forEach((p, i) => {
@@ -1124,17 +1131,41 @@ export class Planner {
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
         h('span', { class: 'wpl-main' }, input, h('small', {}, sub)),
         h('span', { class: 'wpl-tools' },
+          // this one leg's settings, under its point
+          i < n - 1 ? h('button', { type: 'button', class: 'tool small', title: `The leg after ${this.nameOf(i)}: routing and style`, 'aria-label': `Settings of the leg after ${this.nameOf(i)}`, 'aria-pressed': String(showLegs || this.openLegs.has(i)), 'aria-expanded': String(showLegs || this.openLegs.has(i)),
+            onclick: (e) => { e.stopPropagation(); if (showLegs) { store.set('legSettings', false); for (let k = 0; k < n - 1; k++) if (k !== i) this.openLegs.add(k); this.openLegs.delete(i); } else if (this.openLegs.has(i)) this.openLegs.delete(i); else this.openLegs.add(i); this.renderWaypoints(); },
+            html: icon('route', 16) }) : h('span', { class: 'tool small', 'aria-hidden': 'true' }),
           btn('chevronUp', `Move ${this.nameOf(i)} earlier`, () => this.movePointTo(i, i - 1), i === 0),
           btn('chevronDown', `Move ${this.nameOf(i)} later`, () => this.movePointTo(i, i + 1), i === n - 1),
           btn('trash', `Remove ${this.nameOf(i)}`, () => this.removePoint(i), false, 'danger')));
       row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => this.dragRow(e, row, i));
       box.append(row);
-      const ls = this.legs[i] && this.legs[i].style;
-      if (ls) {
-        box.append(h('li', { class: 'wpl-leg', title: 'This leg’s own style — click to change', onclick: () => { this.styleLeg = i; this.renderStyle(); this.reveal('style'); } },
-          h('span', { html: icon('route', 14) }), `Leg style: ${styleName(this.app.activity(), ls)}`));
+      const leg = this.legs[i];
+      if (!leg) return;
+      if (showLegs || this.openLegs.has(i)) box.append(this.legSettingsRow(i));
+      else {
+        // folded: only what differs from the defaults
+        const bits = [];
+        if (leg.mode === 'line' || (leg.mode === 'water') !== (this.app.activity() === 'paddle')) bits.push(MODE_LABEL[leg.mode] || 'Imported track');
+        if (leg.mode === 'fixed') bits.push('Imported track');
+        if (leg.style) bits.push(`style: ${styleName(this.app.activity(), leg.style)}`);
+        if (bits.length) {
+          box.append(h('li', { class: 'wpl-leg', title: 'This leg differs from the rest — click for its settings', onclick: () => { this.openLegs.add(i); this.renderWaypoints(); } },
+            h('span', { html: icon('route', 14) }), [...new Set(bits)].join(' · ')));
+        }
       }
     });
+  }
+
+  // One leg's settings, between its two points: how it's routed, and its style.
+  legSettingsRow(i) {
+    const leg = this.legs[i];
+    const modes = leg.mode === 'fixed'
+      ? h('span', { class: 'wpl-legnote' }, 'Imported track')
+      : h('div', { class: 'seg small', role: 'group', 'aria-label': `How the leg after ${this.nameOf(i)} is routed` }, ...['auto', 'line', 'water'].map((m) =>
+        h('button', { type: 'button', 'aria-pressed': String(leg.mode === m), title: MODE_LABEL[m], onclick: () => this.setLegMode(i, m), html: `${icon(MODE_ICON[m], 14)}<span>${MODE_SHORT[m]}</span>` })));
+    return h('li', { class: 'wpl-legset' }, h('span', { class: 'wpl-legline', 'aria-hidden': 'true' }), modes,
+      leg.mode === 'auto' ? this.legStylePicker(i, () => {}) : null);
   }
 
   // Drag a row by its grip; the gap it would drop into is marked, and the
@@ -1421,7 +1452,7 @@ export class Planner {
       !this.active && this.points.length ? act('plus', 'Add to my route', 'Your route goes on to here', () => { this.setActive(true); this.addPoint(ll); }) : null,
       roundTripSports.includes(this.app.activity()) ? act('roundtrip', 'Round trip from here', 'Loops of the length you choose, starting and ending here', () => this.openLoop(ll)) : null,
       act('close', 'Avoid this spot', 'Routes go around it (40 m)', () => { if (!this.active) this.setActive(true); this.addNogo(ll, 40, 'Avoided place'); }));
-    this.menu = new maplibregl.Popup({ offset: 6, closeButton: false, className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
+    this.menu = new maplibregl.Popup({ offset: 6, closeButton: false, maxWidth: '320px', className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
     this.menu.spot = true;
     this.keepMenuInView();
   }
@@ -1464,7 +1495,7 @@ export class Planner {
         loop ? null : act('check', 'Finish here', 'Make this the finish: the rest is removed', () => this.finishAt(i))) : null,
       last && !loop && n > 1 ? act('loop', 'Back to start', 'Add a leg back to the start', () => this.loop()) : null,
       act('trash', 'Remove point', '', () => this.removePoint(i), 'btn danger-text'));
-    this.menu = new maplibregl.Popup({ offset: 16, closeButton: false, className: 'polku-popup' })
+    this.menu = new maplibregl.Popup({ offset: 16, closeButton: false, maxWidth: '320px', className: 'polku-popup' })
       .setLngLat(marker.getLngLat()).setDOMContent(body).addTo(this.map);
     this.keepMenuInView();
   }
