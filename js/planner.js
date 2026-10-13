@@ -4,7 +4,7 @@
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, gradeColor } from './config.js';
 import { routeLeg } from './router.js';
 import { analyse, estimateTime } from './analysis.js';
-import { ProfileChart, COLOR_MODES, WAY_COLORS, colorAt, routeReadout } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand } from './weather.js';
@@ -577,12 +577,19 @@ export class Planner {
         tool('trash', 'Clear route', () => this.clear(), 'danger'),
         h('span', { class: 'tool-sep' }),
         this.els.collapse = tool('chevronDown', 'Collapse', () => this.toggleCollapse()),
-        tool('close', 'Close planner', () => this.setActive(false)),
+        tool('close', 'Close planner (R)', () => this.setActive(false)),
       ));
     this.els.stats = h('div', { class: 'stats' });
     this.els.craft = h('div', { class: 'seg small craft', role: 'group', 'aria-label': 'Craft' },
       ...Object.entries(CRAFT).map(([k, v]) => h('button', { type: 'button', 'data-craft': k, 'aria-pressed': String(this.craft === k), onclick: () => this.setCraft(k) }, v.label)));
-    this.els.modesBar = h('div', { class: 'chips', role: 'group', 'aria-label': 'Colour the profile by' });
+    this.els.modesBar = h('div', { class: 'chip-groups' });
+    this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => {
+      this.colorOnMap = e.target.checked;
+      store.set('colorOnMap', this.colorOnMap);
+      this.drawColored();
+    } });
+    this.els.mapToggleRow = h('label', { class: 'tg tg-inline', title: 'Colour the route line on the map the same way as the profile' },
+      h('span', { class: 'tg-text' }, 'Colour on map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     this.els.breakdown = h('div', { class: 'breakdown' });
     const profile = h('div', { class: 'profile' },
       h('div', { class: 'profile-top' }, this.els.modesBar, this.els.craft),
@@ -613,20 +620,22 @@ export class Planner {
 
   renderModeChips() {
     const act = this.app.activity();
-    const modes = Object.entries(COLOR_MODES).filter(([k]) => (k === 'down' || k === 'uphill' ? act === 'mtb' || act === 'gravel' : true));
-    if (!modes.some(([k]) => k === this.colorMode)) this.colorMode = 'grade';
+    const applies = (k) => (k === 'down' || k === 'uphill' ? act === 'mtb' || act === 'gravel' : true);
+    if (!applies(this.colorMode)) this.colorMode = 'grade';
     this.els.modesBar.innerHTML = '';
-    for (const [k, label] of modes) {
-      this.els.modesBar.append(h('button', {
-        type: 'button', class: 'chip', 'aria-pressed': String(this.colorMode === k),
-        onclick: () => { this.colorMode = k; store.set('colorMode', k); this.renderModeChips(); this.chart.setMode(k); this.renderBreakdown(); this.drawColored(); },
-      }, label));
+    for (const [title, keys] of COLOR_GROUPS) {
+      const shown = keys.filter(applies);
+      if (!shown.length) continue;
+      this.els.modesBar.append(h('div', { class: 'chip-group', role: 'group', 'aria-label': `Colour the profile by ${title.toLowerCase()}` },
+        h('span', { class: 'chip-group-label', 'aria-hidden': 'true' }, title),
+        ...shown.map((k) => h('button', {
+          type: 'button', class: 'chip', 'aria-pressed': String(this.colorMode === k),
+          onclick: () => this.showMode(k),
+        }, COLOR_MODES[k]))));
     }
-    this.els.modesBar.append(h('button', {
-      type: 'button', class: 'chip chip-map', 'aria-pressed': String(this.colorOnMap), title: 'Colour the route line on the map the same way',
-      onclick: () => { this.colorOnMap = !this.colorOnMap; store.set('colorOnMap', this.colorOnMap); this.renderModeChips(); this.drawColored(); },
-      html: `${icon('route', 14)} On map`,
-    }));
+    // a separate switch, in the same row so it wraps with the chips: the line on the map takes the same colours
+    this.els.mapToggle.checked = this.colorOnMap;
+    this.els.modesBar.append(this.els.mapToggleRow);
   }
 
   // Route line on the map coloured like the profile, plus wind arrows in wind mode.

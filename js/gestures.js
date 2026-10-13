@@ -11,7 +11,7 @@
 //    Shift + two-finger scroll tilts in any mode; Safari's rotate gesture
 //    rotates. A real mouse wheel always zooms.
 
-const OVERLAY = '.topbar, .activity-bar, .fab-col, .panel, .sheet, .zoom-hint, .track-card, .toast, .view3d, .wx-bar, .maplibregl-ctrl';
+const OVERLAY = '.topbar, .activity-bar, .fab-col, .plan-btn, .panel, .sheet, .zoom-hint, .track-card, .toast, .view3d, .wx-bar, .maplibregl-ctrl';
 
 function scrollableAncestor(el, root, dy) {
   for (let n = el; n && n !== root.parentElement; n = n.parentElement) {
