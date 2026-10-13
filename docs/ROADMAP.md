@@ -9,8 +9,8 @@ Also approved:
 | # | Phase | Branch | PR | Status |
 |---|---|---|---|---|
 | 0 | UI polish (Plan button, Weather button, grouped chips) | `ui-polish` | [#12](https://github.com/TommiContursi/Polku/pull/12) | merged |
-| 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | — | in progress |
-| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | — | |
+| 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | in review |
+| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | — | next (after #13 merges) |
 | 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | — | |
 | 4 | Layers, legend and Settings | `layers-settings` | — | |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | — | |
