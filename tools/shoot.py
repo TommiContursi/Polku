@@ -33,6 +33,8 @@ DRAG = ("""(async () => {
   if (touch) await wait(400);
   for (let k = 1; k <= 12; k++) { await wait(20); fire('mousemove', q.x + k * 7, q.y + k * 6); }
 })()""")
+STANDIN = ("(() => { const p = polku.planner; p.legs[0].result.provider = 'valhalla'; p.legs[1].status = 'waiting';"
+           " p.legs[1].wait = { reason: 'limit', until: Date.now() + 60000 }; p.drawRoute(); p.renderWarnings(); p.reveal('warnings'); return true; })()")
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -66,6 +68,10 @@ SCENES = {
     'phone-point-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openPointMenu(1, polku.planner.markers[1]); true"),
     'desk-spot-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([980, 560])); true"),
     'phone-spot-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([250, 300])); true"),
+    # one leg routed by the Valhalla stand-in, one waiting for brouter.de's pause to end
+    'desk-standin': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=STANDIN),
+    'phone-standin': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=STANDIN),
+    'desk-router-setting': dict(DESK, timeline=False, js="document.querySelector('#btn-settings').click(); setTimeout(() => { const i = document.querySelector('[aria-label=\"Routing server address\"]') || [...document.querySelectorAll('.panel-settings h3, .panel-settings .sec-title')].pop(); i && i.scrollIntoView({ block: 'center' }); }, 300); true"),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

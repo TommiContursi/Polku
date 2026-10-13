@@ -82,6 +82,7 @@ With the dev server running and Google Chrome installed:
 ```bash
 python3 tools/smoke.py                  # layout check at 4 sizes: no overlaps, no console errors
 python3 tools/shoot.py shots after      # screenshots for a pull request (--list for the scenes)
+tools/brouter-local.sh                  # optional: BRouter on this computer (Settings → Routing server)
 ```
 
 The plan for upcoming work is in [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -93,11 +94,12 @@ The plan for upcoming work is in [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Weather along the route** (`js/weather.js`, `js/analysis.js`): the route is timed first without wind, the forecast is sampled at each point for the hour you'd be there, and the time is re-estimated with the head- and tailwind components.
 - **Style** (`js/style.js`): one function builds the whole MapLibre style from app state and is applied with `setStyle(..., {diff: true})`. Activity, base map and overlays are all just state.
 - **Offline** (`js/offline.js`, `sw.js`): the tiles covering the route corridor at zoom 5–14 go into Cache Storage, and a service worker serves them when the network is slow (4 s) or gone. OpenFreeMap's weekly tile version is stripped from the cache key, so saved tiles keep matching. The routed line is saved with the area, so reopening it needs no routing server.
+- **Routing without a server of our own** (`js/router.js`, `js/net.js`, `js/valhalla.js`): legs come from [brouter.de](https://brouter.de), a free public BRouter that refuses (403 "Please, retry later!") when one address calls too often, for 40 s at first and half an hour after repeated bursts. So Polku stays well under it — at most 5 calls in 10 s and 12 a minute, consecutive legs in one call (a new sport or a shared link costs one call, not one per leg), the routed geometry saved with your route (a refresh costs none), and a drag's live preview only while there's budget to spare. When brouter.de pauses anyway, or would keep a leg waiting more than a few seconds, [Valhalla](https://valhalla.github.io/valhalla/) on the FOSSGIS servers that openstreetmap.org uses routes it instead (one call a second at most, as their terms ask; its way attributes are translated into the tags the analysis reads), and Heads-up says so, with a button to use BRouter again. Paddling has no stand-in: those legs wait. Running BRouter yourself is optional — `tools/brouter-local.sh` starts one on your computer, and Settings → Routing server points Polku at it (handy for development: it spares brouter.de).
 - **Hover** (`js/hover.js`): one `queryRenderedFeatures` call when the pointer rests, never while it moves, using the click popup's own layer priority so the preview always matches the click.
 
 ## Data sources
 
-[OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles, © OpenStreetMap contributors) · [Mapterhorn](https://mapterhorn.com) terrain · [BRouter](https://brouter.de) routing · [Photon](https://photon.komoot.io) search · [Overpass API](https://overpass-api.de) · [LIPAS](https://lipas.fi) (University of Jyväskylä, CC BY 4.0) · Traficom (depth data) · Väylävirasto (aids to navigation, fairways) · Fintraffic Digiroad · Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0) · Esri World Imagery · [Waymarked Trails](https://waymarkedtrails.org) · [Open-Meteo](https://open-meteo.com) · [FMI open data](https://en.ilmatieteenlaitos.fi/open-data) rain radar (fetched from the download service and drawn in the app, as FMI asks) · [RainViewer](https://www.rainviewer.com/api.html) · [Fintraffic Digitraffic](https://www.digitraffic.fi/en/) (road & marine, CC BY 4.0) · [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
+[OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles, © OpenStreetMap contributors) · [Mapterhorn](https://mapterhorn.com) terrain · [BRouter](https://brouter.de) routing · [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers when BRouter pauses ([fix the map](https://www.openstreetmap.org/fixthemap)) · [Photon](https://photon.komoot.io) search · [Overpass API](https://overpass-api.de) · [LIPAS](https://lipas.fi) (University of Jyväskylä, CC BY 4.0) · Traficom (depth data) · Väylävirasto (aids to navigation, fairways) · Fintraffic Digiroad · Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0) · Esri World Imagery · [Waymarked Trails](https://waymarkedtrails.org) · [Open-Meteo](https://open-meteo.com) · [FMI open data](https://en.ilmatieteenlaitos.fi/open-data) rain radar (fetched from the download service and drawn in the app, as FMI asks) · [RainViewer](https://www.rainviewer.com/api.html) · [Fintraffic Digitraffic](https://www.digitraffic.fi/en/) (road & marine, CC BY 4.0) · [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
 
 These are free public services: be gentle with them. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it; aerial imagery and the Kapsi raster maps stay online-only.
 
@@ -123,7 +125,8 @@ js/main.js          state, panels, wiring
 js/style.js         MapLibre style builder (palettes, roads/trails, overlays, labels)
 js/config.js        sources, activities, palettes, overlay catalogue
 js/planner.js       route planner + bottom sheet
-js/router.js        per-leg routing (BRouter / straight / water)
+js/router.js        per-leg routing (BRouter, batched; straight; water) and the Valhalla stand-in
+js/valhalla.js      Valhalla (FOSSGIS) client: routes and way attributes as OSM-style tags
 js/water.js         open-water A* router
 js/analysis.js      profile, grades, climbs, warnings, timing, wind exposure
 js/chart.js         elevation chart + route readout
@@ -143,7 +146,7 @@ js/modal.js         modal dialog / side card
 js/gestures.js      pinch / wheel over the UI → map zoom, trackpad tilt
 js/view3d.js        tilt & rotate orbit pad
 js/search.js, gpx.js, icons.js, geo.js, ui.js
-tools/              dev only: smoke.py, shoot.py, thumbs.py (headless Chrome via cdp.py), fixtures
+tools/              dev only: smoke.py, shoot.py, thumbs.py (headless Chrome via cdp.py), brouter-local.sh, fixtures
 img/base/           base map thumbnails (tools/thumbs.py)
 docs/ROADMAP.md     phased plan
 ```
