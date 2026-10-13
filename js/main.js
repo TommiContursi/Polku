@@ -104,7 +104,8 @@ const view3d = initView3d(map, $('#view3d'));
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
 const syncView3d = () => view3d.show(state.terrain3d || map.getPitch() > 5);
 map.on('pitchend', syncView3d);
-map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Polku' }), 'bottom-right');
+// bottom left, beside the scale bar: the bottom-right corner belongs to the map controls
+map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Polku' }), 'bottom-left');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
 // Zoom, compass and locate live in Polku's own control column (bottom right);
 // MapLibre's geolocate stays for the location dot, out of sight.
@@ -469,8 +470,9 @@ const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}
 
 // A folding group; it opens by itself while something in it is on, until you choose.
 function layerGroup(id, title, count, ...kids) {
+  const openByDefault = kids[0] === true ? kids.shift() : false; // optional flag before the children
   const saved = store.get('layerGroups', {})[id];
-  const d = h('details', { class: 'lg-group', open: saved ?? count > 0 },
+  const d = h('details', { class: 'lg-group', open: saved ?? (openByDefault || count > 0) },
     h('summary', {}, h('span', { class: 'lg-title' }, title), count ? h('span', { class: 'lg-count' }, `${count} on`) : null), ...kids);
   d.addEventListener('toggle', () => store.set('layerGroups', { ...store.get('layerGroups', {}), [id]: d.open }));
   return d;
@@ -501,6 +503,13 @@ function renderLayersPanel() {
     toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
     state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
       h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null));
+
+  // terrain shading right after the base maps and 3D, open unless you close it
+  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
+    toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
+    toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
+    toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', '')),
+    state.mmlKey ? toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v))) : null));
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
@@ -561,12 +570,7 @@ function renderLayersPanel() {
     toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later'),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
 
-  // terrain shading and maps (3D sits with the base maps)
-  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0,
-    toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
-    toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
-    toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', '')),
-    state.mmlKey ? toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v))) : null));
+
 }
 
 // ------------------------------------------------------------------ settings panel
@@ -671,7 +675,8 @@ $('#btn-locate').addEventListener('click', () => geolocate.trigger());
 new ResizeObserver(() => {
   const b = $('#wx-bar');
   const floating = !b.hidden && !b.classList.contains('docked') && matchMedia('(max-width: 720px)').matches;
-  document.documentElement.style.setProperty('--wx-h', `${floating ? b.offsetHeight + 8 : 0}px`);
+  // the column normally sits 12 px up; above the timeline (at 44 px) it needs its height plus that offset
+  document.documentElement.style.setProperty('--wx-h', `${floating ? b.offsetHeight + 40 : 0}px`);
 }).observe($('#wx-bar'));
 
 // ------------------------------------------------------------------ GPX / KML import (button + drag & drop)

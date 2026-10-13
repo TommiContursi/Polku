@@ -524,7 +524,7 @@ The user expects the smallest first step to be option A plus a FIT course export
 ## Where things live (keep for every phase)
 
 - **Top bar:** search, Plan, sport pill, ⚙ Settings.
-- **Bottom right:** one column — Layers, Weather, compass, locate, zoom — then Plan.
+- **Bottom right:** one column, top to bottom — compass, locate, zoom, Weather, Layers, Plan (most used nearest the thumb). The scale bar and the attribution (i) are bottom left, so the column reaches the corner.
 - **Layers panel** (opens beside its button) is what the map shows. **Settings** (opens under the ⚙) is how Polku behaves.
 - A control may appear in two places only if both say so (e.g. sport, weather layers).
 - Phones use the same places. Panels become bottom sheets there, and touch phones drop the +/−.
