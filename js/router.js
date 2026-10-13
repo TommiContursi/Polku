@@ -15,9 +15,14 @@ export function parseTags(str) {
   return tags;
 }
 
-async function brouter(a, b, profile, signal) {
+// nogos: [{ll:[lon,lat], r: metres}] — BRouter routes around these circles.
+const nogoParam = (nogos) => (nogos && nogos.length
+  ? `&nogos=${nogos.map((n) => `${n.ll[0].toFixed(6)},${n.ll[1].toFixed(6)},${Math.round(n.r)}`).join('|')}`
+  : '');
+
+async function brouter(a, b, profile, signal, nogos) {
   const url = `${BROUTER}?lonlats=${a[0].toFixed(6)},${a[1].toFixed(6)}|${b[0].toFixed(6)},${b[1].toFixed(6)}` +
-    `&profile=${profile}&alternativeidx=0&format=geojson`;
+    `&profile=${profile}&alternativeidx=0&format=geojson${nogoParam(nogos)}`;
   const res = await fetch(url, { signal });
   const text = await res.text();
   if (!res.ok) throw new Error(text.trim().split('\n')[0] || `BRouter ${res.status}`);
@@ -45,7 +50,7 @@ async function brouter(a, b, profile, signal) {
  * @returns {Promise<{coords, tags, portage, note}>}
  */
 export async function routeLeg({ from, to, mode, profile, opts = {} }, signal) {
-  const key = `${mode}|${profile}|${opts.portage}|${from.join(',')}|${to.join(',')}`;
+  const key = `${mode}|${profile}|${opts.portage}|${from.join(',')}|${to.join(',')}|${nogoParam(opts.nogos)}`;
   if (cache.has(key)) return cache.get(key);
   let result;
   if (mode === 'line') {
@@ -53,7 +58,7 @@ export async function routeLeg({ from, to, mode, profile, opts = {} }, signal) {
   } else if (mode === 'water') {
     result = await routeWater(from, to, { allowPortage: opts.portage !== false });
   } else {
-    const r = await brouter(from, to, profile, signal);
+    const r = await brouter(from, to, profile, signal, opts.nogos);
     result = { ...r, portage: [] };
   }
   cache.set(key, result);

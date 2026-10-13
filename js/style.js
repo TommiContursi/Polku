@@ -87,6 +87,18 @@ export function buildStyle(s, ctx) {
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
     wxLabels: { type: 'geojson', data: ctx.data.wxLabels || EMPTY },
+    sfAadt: { type: 'geojson', data: ctx.data.sfAadt || EMPTY, attribution: '© Fintraffic / Digiroad' },
+    sfLines: { type: 'geojson', data: ctx.data.sfLines || EMPTY, attribution: '© Fintraffic / Digitraffic' },
+    sfPoints: { type: 'geojson', data: ctx.data.sfPoints || EMPTY },
+    sfShips: { type: 'geojson', data: ctx.data.sfShips || EMPTY },
+    nogo: { type: 'geojson', data: ctx.data.nogo || EMPTY },
+    sfShipTrails: { type: 'geojson', data: ctx.data.sfShipTrails || EMPTY },
+    cameras: { type: 'geojson', data: ctx.data.cameras || EMPTY, attribution: '© Fintraffic' },
+    nmMarks: { type: 'geojson', data: ctx.data.nmMarks || EMPTY, attribution: '© Väylävirasto' },
+    nmLights: { type: 'geojson', data: ctx.data.nmLights || EMPTY },
+    nmSectors: { type: 'geojson', data: ctx.data.nmSectors || EMPTY },
+    nmLines: { type: 'geojson', data: ctx.data.nmLines || EMPTY },
+    nmAreas: { type: 'geojson', data: ctx.data.nmAreas || EMPTY },
   };
   const layers = [];
   const add = (l) => layers.push(l);
@@ -136,6 +148,13 @@ export function buildStyle(s, ctx) {
   add({ id: 'park-fill', type: 'fill', source: 'ofm', 'source-layer': 'park', minzoom: 7, paint: { 'fill-color': P.park, 'fill-opacity': aerialBase || topoBase ? 0 : zi(7, 0.07, 12, 0.04) } });
   add({ id: 'park-line', type: 'line', source: 'ofm', 'source-layer': 'park', minzoom: 7, paint: { 'line-color': P.park, 'line-width': zi(7, 0.8, 14, 2.2), 'line-dasharray': [3, 2], 'line-opacity': 0.7 } });
 
+  // Military areas (often with restricted access or live firing)
+  if (s.overlays.restricted) {
+    const mil = ['==', ['get', 'class'], 'military'];
+    add({ id: 'military-fill', type: 'fill', source: 'ofm', 'source-layer': 'landuse', minzoom: 8, filter: mil, paint: { 'fill-color': '#dc2626', 'fill-opacity': zi(8, 0.12, 14, 0.08) } });
+    add({ id: 'military-line', type: 'line', source: 'ofm', 'source-layer': 'landuse', minzoom: 8, filter: mil, paint: { 'line-color': '#b91c1c', 'line-width': zi(8, 1, 14, 2.5), 'line-dasharray': [4, 2] } });
+  }
+
   if (s.hillshade && !aerialBase) {
     add({
       id: 'hillshade', type: 'hillshade', source: 'dem', minzoom: 4,
@@ -178,6 +197,16 @@ export function buildStyle(s, ctx) {
   // Depth & water overlays sit directly on the water.
   addRasterOverlays(s, sources, layers, 'water');
 
+  // Nautical chart: fairway areas, speed / restriction areas, navigation lines
+  if (s.overlays.nautical) {
+    const kind = ['get', 'kind'];
+    add({ id: 'nm-fairway', type: 'fill', source: 'nmAreas', minzoom: 10, filter: ['==', kind, 'fairway'], paint: { 'fill-color': '#a855f7', 'fill-opacity': zi(10, 0.05, 14, 0.09) } });
+    add({ id: 'nm-restrict-fill', type: 'fill', source: 'nmAreas', minzoom: 11, filter: ['in', kind, ['literal', ['speed', 'restrict']]], paint: { 'fill-color': '#db2777', 'fill-opacity': 0.05 } });
+    add({ id: 'nm-restrict-line', type: 'line', source: 'nmAreas', minzoom: 11, filter: ['in', kind, ['literal', ['speed', 'restrict']]], paint: { 'line-color': '#be185d', 'line-width': zi(11, 0.8, 15, 1.6), 'line-dasharray': [3, 2], 'line-opacity': 0.8 } });
+    add({ id: 'nm-navline', type: 'line', source: 'nmLines', minzoom: 10.5, paint: { 'line-color': s.base === 'night' || isAerial(s.base) ? '#f5f5f5' : '#111827', 'line-width': zi(10.5, 0.7, 15, 1.4, 18, 2), 'line-dasharray': [4, 2.5], 'line-opacity': 0.85 } });
+    add({ id: 'nm-sector', type: 'line', source: 'nmSectors', minzoom: 12.5, layout: { 'line-cap': 'butt' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(12.5, 2, 16, 5), 'line-opacity': 0.9 } });
+  }
+
   // ---- Contours -----------------------------------------------------------
   // MML terrain maps already carry 5 m contours.
   if (s.contours && !topoBase) {
@@ -194,6 +223,21 @@ export function buildStyle(s, ctx) {
   }
 
   addRoads(s, P, hc, layers);
+
+  // Busy roads: Digiroad average daily traffic as a heat line over the roads
+  if (s.overlays.sfTraffic) {
+    const aadt = ['get', 'aadt'];
+    add({
+      id: 'sf-aadt', type: 'line', source: 'sfAadt', minzoom: 10,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['step', aadt, '#facc15', 2000, '#fb923c', 5000, '#ef4444', 10000, '#991b1b'],
+        'line-width': zi(10, 2, 13, ['step', aadt, 3, 5000, 5], 17, ['step', aadt, 8, 5000, 13]),
+        'line-opacity': zi(10, 0.55, 14, 0.7),
+        'line-blur': 0.6,
+      },
+    });
+  }
 
   // Rail & ferries (topo rasters already draw these)
   if (!topoBase) add({ id: 'rail', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 9, filter: ['all', ['in', ['get', 'class'], ['literal', ['rail', 'transit']]], ['!=', ['get', 'brunnel'], 'tunnel']], paint: { 'line-color': P.rail, 'line-width': zi(9, 0.6, 16, 2) } });
@@ -258,7 +302,7 @@ export function buildStyle(s, ctx) {
     poi('poi-outdoor', 13, ['any', ['in', ['get', 'class'], ['literal', outdoor]], ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]);
     poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]]);
   }
-  if (s.overlays.lipasPoints) {
+  if (s.overlays.lipasPoints || s.overlays.restricted) {
     add({
       id: 'lipas-point', type: 'symbol', source: 'lipasPoints', minzoom: 10,
       layout: {
@@ -271,6 +315,33 @@ export function buildStyle(s, ctx) {
 
   // ---- Weather overlay (images rendered by wxmap.js, radar tiles) -------
   addWeather(s, ctx, sources, layers);
+
+  // ---- Traffic & safety: incidents, road works, road conditions, ships --
+  add({
+    id: 'sf-lines', type: 'line', source: 'sfLines', minzoom: 6,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['match', ['get', 'kind'], 'incident', '#dc2626', 'roadwork', '#f59e0b', ['coalesce', ['get', 'color'], '#a855f7']],
+      'line-width': zi(6, 2, 12, 4, 16, 8),
+      'line-opacity': 0.85,
+      'line-dasharray': ['match', ['get', 'kind'], 'roadwork', ['literal', [1.5, 1]], ['literal', [1, 0]]],
+    },
+  });
+  add({ id: 'sf-points', type: 'symbol', source: 'sfPoints', minzoom: 6, layout: { 'icon-image': ['get', 'icon'], 'icon-size': zi(6, 0.6, 12, 0.85, 16, 1), 'icon-allow-overlap': true, 'symbol-sort-key': ['match', ['get', 'kind'], 'incident', 0, 'roadcond', 1, 2] } });
+  add({ id: 'sf-ship-trail', type: 'line', source: 'sfShipTrails', minzoom: 7, filter: ['==', ['get', 'kind'], 'trail'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['case', ['get', 'selected'], 3, 1.6], 'line-opacity': ['case', ['get', 'selected'], 0.9, 0.5] } });
+  add({ id: 'sf-ship-vector', type: 'line', source: 'sfShipTrails', minzoom: 9, filter: ['==', ['get', 'kind'], 'vector'], paint: { 'line-color': ['get', 'color'], 'line-width': 1.6, 'line-dasharray': [2, 1.5], 'line-opacity': 0.85 } });
+  add({
+    id: 'sf-ships', type: 'symbol', source: 'sfShips', minzoom: 7,
+    layout: {
+      'icon-image': 'ship', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': zi(7, 0.5, 13, 0.9, 16, 1.2), 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+      'text-field': ['step', ['zoom'], '', 12.5, ['get', 'name']], 'text-font': FONT_B, 'text-size': 10.5, 'text-anchor': 'left', 'text-offset': [1, 0], 'text-optional': true,
+    },
+    paint: {
+      'icon-color': ['get', 'color'], 'icon-opacity': ['case', ['get', 'moving'], 1, 0.6],
+      'icon-halo-color': ['case', ['get', 'selected'], '#facc15', '#ffffff'], 'icon-halo-width': ['case', ['get', 'selected'], 3, 1.5],
+      'text-color': '#0f172a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.6,
+    },
+  });
 
   // ---- Difficulty numbers along trails (own toggles; JOSM MTB-Trailmap style)
   if (act === 'mtb' && s.labelsDown) {
@@ -300,7 +371,39 @@ export function buildStyle(s, ctx) {
     });
   }
 
+  // ---- Nautical marks (IALA A), lights, signs; road cameras ------------
+  if (s.overlays.nautical) {
+    const kind = ['get', 'kind'];
+    const ink = s.base === 'night' || isAerial(s.base) ? '#f5f5f5' : '#111827';
+    const halo = s.base === 'night' || isAerial(s.base) ? '#0f172a' : '#ffffff';
+    add({ id: 'nm-navline-label', type: 'symbol', source: 'nmLines', minzoom: 13, filter: ['!=', ['get', 'depth'], ''], layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'depth'], 'text-font': FONT_I, 'text-size': 11, 'text-keep-upright': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
+    add({ id: 'nm-area-label', type: 'symbol', source: 'nmAreas', minzoom: 12.5, filter: ['all', ['in', kind, ['literal', ['speed', 'restrict']]], ['!=', ['get', 'label'], '']], layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 11, 'text-padding': 40 }, paint: { 'text-color': '#be185d', 'text-halo-color': halo, 'text-halo-width': 1.8 } });
+    add({
+      id: 'nm-marks', type: 'symbol', source: 'nmMarks', minzoom: 11,
+      layout: {
+        'icon-image': ['get', 'icon'],
+        'icon-size': zi(11, 0.5, 13, 0.72, 16, 1, 18, 1.25),
+        'icon-anchor': ['match', ['get', 'icon'], ['nm-port', 'nm-starboard', 'nm-north', 'nm-south', 'nm-east', 'nm-west', 'nm-danger', 'nm-safe', 'nm-special', 'nm-leading'], 'bottom', ['nm-light', 'nm-lighthouse'], 'bottom-left', 'center'],
+        'icon-allow-overlap': ['step', ['zoom'], false, 13.5, true],
+        'symbol-sort-key': ['match', kind, 'fault', 0, 'mark', 1, 2],
+        'text-field': ['case', ['==', kind, 'sign'], ['get', 'label'], ''],
+        'text-font': FONT_B, 'text-size': 9, 'text-allow-overlap': true,
+      },
+      paint: { 'text-color': '#ffffff' },
+    });
+    add({ id: 'nm-lit', type: 'symbol', source: 'nmMarks', minzoom: 12, filter: ['all', ['==', kind, 'mark'], ['get', 'lit'], ['!', ['in', ['get', 'icon'], ['literal', ['nm-light', 'nm-lighthouse']]]]], layout: { 'icon-image': 'nm-flare', 'icon-size': zi(12, 0.5, 16, 0.9), 'icon-anchor': 'bottom-left', 'icon-offset': [3, -14], 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+    add({ id: 'nm-light-label', type: 'symbol', source: 'nmLights', minzoom: 14, filter: ['!=', ['get', 'char'], ''], layout: { 'text-field': ['get', 'char'], 'text-font': FONT_I, 'text-size': 10.5, 'text-anchor': 'left', 'text-offset': [1.2, -0.8], 'text-max-width': 12 }, paint: { 'text-color': '#a21caf', 'text-halo-color': halo, 'text-halo-width': 1.6 } });
+    add({ id: 'nm-mark-label', type: 'symbol', source: 'nmMarks', minzoom: 15, filter: ['all', ['==', kind, 'mark'], ['!=', ['get', 'name'], '']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 10, 'text-anchor': 'top', 'text-offset': [0, 0.4], 'text-max-width': 8, 'text-optional': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.4 } });
+  }
+  if (s.overlays.sfCameras) {
+    add({ id: 'cameras', type: 'symbol', source: 'cameras', minzoom: 7, layout: { 'icon-image': 'camera', 'icon-size': zi(7, 0.5, 12, 0.8, 16, 1), 'icon-allow-overlap': ['step', ['zoom'], false, 11, true] } });
+  }
+
   addLabels(s, P, hc, layers);
+
+  // ---- Places to avoid (route planner no-go areas) ------------------------
+  add({ id: 'nogo-fill', type: 'fill', source: 'nogo', paint: { 'fill-color': '#dc2626', 'fill-opacity': 0.14 } });
+  add({ id: 'nogo-line', type: 'line', source: 'nogo', paint: { 'line-color': '#dc2626', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
 
   // ---- Imported tracks & the planned route (always on top) --------------
   add({ id: 'tracks-casing', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 4, 16, 9), 'line-opacity': 0.8 } });

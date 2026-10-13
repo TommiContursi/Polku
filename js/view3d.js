@@ -32,7 +32,7 @@ export function initView3d(map, root) {
 
   let drag = null;
   pad.addEventListener('pointerdown', (e) => {
-    pad.setPointerCapture(e.pointerId);
+    try { pad.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
     drag = { x: e.clientX, y: e.clientY, b: map.getBearing(), p: map.getPitch() };
     pad.classList.add('active');
   });

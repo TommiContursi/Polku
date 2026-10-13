@@ -155,6 +155,9 @@ export const LIPAS_TYPES = {
   205: { name: 'Landing place', color: '#0284c7', icon: 'landing', layer: 'lipas_205_rantautumispaikka' },
   206: { name: 'Campfire site', color: '#dc2626', icon: 'fire', layer: 'lipas_206_ruoanlaittopaikka' },
   207: { name: 'Info point', color: '#475569', icon: 'info', layer: 'lipas_207_opastuspiste' },
+  4810: { name: 'Shooting range', color: '#b91c1c', icon: 'target', layer: 'lipas_4810_ampumarata', danger: true },
+  4820: { name: 'Shooting sports centre', color: '#b91c1c', icon: 'target', layer: 'lipas_4820_ampumaurheilukeskus', danger: true },
+  4840: { name: 'Field archery range', color: '#b91c1c', icon: 'target', layer: 'lipas_4840_jousiammuntamaastorata', danger: true },
 };
 
 // ---------------------------------------------------------------------------
@@ -272,17 +275,28 @@ export const RASTER_OVERLAYS = {
 };
 
 export const OVERLAY_GROUPS = [
-  { title: 'Water', ids: ['depthAreas', 'depthContours', 'soundings', 'fairways'] },
+  { title: 'Water', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways'] },
   { title: 'Marked routes', ids: ['lipasRoutes', 'wmtHiking', 'wmtMtb', 'wmtCycling'] },
   { title: 'Terrain map', ids: ['maastoOverlay'] },
   { title: 'Places', ids: ['lipasPoints', 'pois'] },
   { title: 'Roads (Digiroad)', ids: ['drPaved', 'drPrivate', 'drSpeed'] },
 ];
 
+// Traffic & safety (see safety.js). Shown as their own Layers section.
+export const SAFETY_OVERLAYS = {
+  sfTraffic: { label: 'Busy roads (traffic volume)', note: 'Digiroad vehicles/day · zoom 10+' },
+  sfIncidents: { label: 'Accidents & incidents', note: 'Fintraffic, live' },
+  sfRoadworks: { label: 'Road works', note: 'Fintraffic, at your departure time' },
+  sfRoadcond: { label: 'Slippery / poor road conditions', note: 'Fintraffic road weather, 0–12 h forecast' },
+  sfShips: { label: 'Ships (live AIS)', note: 'Type colours, names, trails & course · zoom 8+' },
+  sfCameras: { label: 'Road weather cameras', note: 'Fintraffic, 800+ cameras · tap for live & 24 h' },
+  restricted: { label: 'Military areas & shooting ranges', note: 'OpenStreetMap, LIPAS' },
+};
+
 // Defaults per activity; the user's choices are remembered per activity.
 export const ACTIVITY_OVERLAYS = {
-  mtb: { lipasRoutes: true, lipasPoints: true, pois: true, wmtMtb: false },
-  gravel: { lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false },
-  hike: { lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true },
-  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true },
+  mtb: { lipasRoutes: true, lipasPoints: true, pois: true, wmtMtb: false, restricted: true },
+  gravel: { lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfCameras: true },
+  hike: { lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true, restricted: true },
+  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, restricted: true, nautical: true },
 };

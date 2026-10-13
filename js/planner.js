@@ -39,6 +39,7 @@ export class Planner {
     this.colorMode = store.get('colorMode', 'grade');
     this.colorOnMap = store.get('colorOnMap', false);
     this.startOffsetH = 0; // departure: hours from now
+    this.nogos = []; // places to avoid: [{ll, r, label}]
     this.gen = 0;
     this.selected = null;
     this.collapsed = false;
@@ -56,6 +57,7 @@ export class Planner {
     return {
       points: this.points.map((p) => p.slice()),
       legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status })),
+      nogos: this.nogos.map((n) => ({ ...n })),
     };
   }
   commit() {
@@ -66,6 +68,7 @@ export class Planner {
   restoreSnap(s) {
     this.points = s.points;
     this.legs = s.legs.map((l) => ({ ...l }));
+    this.nogos = s.nogos || [];
     this.update();
   }
   undo() { if (this.past.length) { this.future.push(this.snapshot()); this.restoreSnap(this.past.pop()); } }
@@ -150,6 +153,51 @@ export class Planner {
     this.update();
   }
 
+  // ---------------------------------------------------------------- places to avoid
+  nogosNear(a, b) {
+    const pad = Math.max(2000, dist(a, b) * 0.6);
+    const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    return this.nogos.filter((n) => dist(n.ll, mid) < pad + dist(a, b) / 2);
+  }
+
+  addNogo(ll, r = 40, label = 'Avoid') {
+    this.commit();
+    this.nogos.push({ ll: [+ll[0].toFixed(6), +ll[1].toFixed(6)], r: Math.round(r), label });
+    this.drawNogos();
+    this.update();
+    toast(this.points.length > 1 ? 'Re-routing around it…' : 'Marked — routes will go around it');
+  }
+
+  removeNogo(i) {
+    this.commit();
+    this.nogos.splice(i, 1);
+    this.drawNogos();
+    this.update();
+  }
+
+  drawNogos() {
+    const features = this.nogos.map((n, i) => {
+      const ring = [];
+      const k = Math.cos((n.ll[1] * Math.PI) / 180);
+      for (let j = 0; j <= 48; j++) {
+        const t = (j / 48) * Math.PI * 2;
+        ring.push([n.ll[0] + (Math.cos(t) * n.r) / (111195 * k), n.ll[1] + (Math.sin(t) * n.r) / 111195]);
+      }
+      return { type: 'Feature', properties: { i, label: n.label }, geometry: { type: 'Polygon', coordinates: [ring] } };
+    });
+    this.app.setData('nogo', { type: 'FeatureCollection', features });
+  }
+
+  openNogoMenu(i, lngLat) {
+    if (this.menu) this.menu.remove();
+    const n = this.nogos[i];
+    const body = h('div', { class: 'pt-menu' },
+      h('div', { class: 'pt-title' }, 'Avoided place'),
+      h('div', { class: 'pt-label' }, n.label),
+      h('button', { type: 'button', class: 'btn danger-text', onclick: () => { this.menu.remove(); this.removeNogo(i); }, html: `${icon('trash', 16)} Stop avoiding` }));
+    this.menu = new maplibregl.Popup({ offset: 8, closeButton: false, className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
+  }
+
   setLegMode(i, mode) {
     if (!this.legs[i] || this.legs[i].mode === mode) return;
     this.commit();
@@ -199,6 +247,7 @@ export class Planner {
 
   // ---------------------------------------------------------------- routing
   update() {
+    this.drawNogos();
     this.renderMarkers();
     this.renderToolbarState();
     this.save();
@@ -213,14 +262,15 @@ export class Planner {
     this.legs.forEach((leg, i) => {
       if (leg.mode === 'fixed') { leg.status = 'ok'; return; }
       const from = this.points[i], to = this.points[i + 1];
-      const key = `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}`;
+      const nogos = leg.mode === 'auto' ? this.nogosNear(from, to) : [];
+      const key = `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}`;
       if (leg.key === key && leg.result) return;
       leg.key = key;
       leg.result = null;
       leg.status = 'loading';
       jobs.push(async () => {
         try {
-          const r = await routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true } });
+          const r = await routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos } });
           if (leg.key !== key) return;
           leg.result = r;
           leg.status = 'ok';
@@ -295,6 +345,20 @@ export class Planner {
     return (Math.floor(now / 3600) + this.startOffsetH) * 3600;
   }
 
+  // Departure in whole hours from now. Shared with the weather time bar:
+  // `fromMap` means the map slider moved, so don't echo it back.
+  setStartOffset(k, { fromMap = false } = {}) {
+    k = Math.max(0, Math.min(48, Math.round(k)));
+    if (k === this.startOffsetH) return;
+    this.startOffsetH = k;
+    const sel = this.els.wind.querySelector('.start-select');
+    if (sel) sel.value = String(k);
+    if (!fromMap && this.app.onStartChange) this.app.onStartChange(k);
+    clearTimeout(this.windTimer);
+    // playback moves an hour a second; let it settle a little before re-fetching
+    this.windTimer = setTimeout(() => { if (this.analysis) this.loadWind(this.analysis); }, fromMap ? 250 : 0);
+  }
+
   // Wind at the time each part of the route is reached: time the route without
   // wind, fetch the forecast, re-time it with the wind, and sample again.
   async loadWind(a) {
@@ -315,11 +379,25 @@ export class Planner {
       a.windError = true;
     }
     this.renderAnalysis();
+    this.loadHazards(a);
+  }
+
+  // Road works, incidents, slippery roads and busy roads along the route.
+  async loadHazards(a) {
+    if (!this.app.hazards) return;
+    try {
+      const hz = await this.app.hazards(a, { activity: this.app.activity(), startSec: this.startSec() });
+      if (this.analysis !== a) return;
+      a.hazards = hz;
+      this.renderWarnings();
+    } catch { /* keep the static warnings */ }
   }
 
   // ---------------------------------------------------------------- map interaction
   onMapClick(e) {
     if (!this.active) return;
+    const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
+    if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
     const hit = this.map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-casing'] })[0];
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
     if (hit && hit.properties.kind === 'leg' && !hit.properties.loading) this.insertPoint(hit.properties.leg, ll);
@@ -390,6 +468,7 @@ export class Planner {
   // ---------------------------------------------------------------- persistence & sharing
   save() {
     store.set('route', {
+      nogos: this.nogos,
       points: this.points,
       modes: this.legs.map((l) => l.mode),
       fixed: this.legs.map((l) => (l.mode === 'fixed' && l.result ? encodePolyline(l.result.coords) : null)),
@@ -398,6 +477,7 @@ export class Planner {
 
   loadSaved() {
     const r = store.get('route', null);
+    if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
     this.legs = r.points.slice(1).map((_, i) => {
@@ -583,6 +663,7 @@ export class Planner {
       this.els.warnings.innerHTML = '';
       this.els.wind.innerHTML = '';
       this.els.hint.hidden = false;
+      if (this.app.onAnalysis) this.app.onAnalysis(null);
       return;
     }
     this.els.hint.hidden = this.points.length > 2;
@@ -606,6 +687,7 @@ export class Planner {
     this.renderWarnings();
     this.renderWind();
     this.drawColored();
+    if (this.app.onAnalysis) this.app.onAnalysis(a);
   }
 
   renderBreakdown() {
@@ -689,16 +771,21 @@ export class Planner {
     const a = this.analysis;
     const box = this.els.warnings;
     box.innerHTML = '';
-    if (!a.warnings.length) return;
-    box.append(h('h4', {}, `Heads-up (${a.warnings.length})`));
-    for (const w of a.warnings.slice(0, 30)) {
-      const item = h('button', { type: 'button', class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>at km ${(w.at / 1000).toFixed(1)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}</span></span>` });
-      item.addEventListener('click', () => {
-        const i0 = a.along.findIndex((d) => d >= w.at);
-        const i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len, 30));
-        this.focusRange(i0, i1 < 0 ? a.along.length - 1 : i1, w);
-      });
-      box.append(item);
+    if (!a) return;
+    const all = [...a.warnings, ...(a.hazards || [])].sort((x, y) => x.at - y.at);
+    if (!all.length) return;
+    box.append(h('h4', {}, `Heads-up (${all.length})`));
+    const KIND_ICON = { roadwork: 'warn', incident: 'warn', roadcond: 'warn', busy: 'warn' };
+    for (const w of all.slice(0, 40)) {
+      const i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
+      let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len, 30));
+      if (i1 < 0) i1 = a.along.length - 1;
+      // anything with a place can be avoided: a circle over the hazard
+      const avoid = w.avoid || (/^(Straight line|Carry)/.test(w.text) ? null : { ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)) });
+      const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
+        h('button', { type: 'button', class: 'li', html: `${icon(KIND_ICON[w.kind] || 'warn', 16)}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>at km ${(w.at / 1000).toFixed(1)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
+        avoid && this.legs.some((l) => l.mode === 'auto') ? h('button', { type: 'button', class: 'btn avoid', title: 'Route around this place', onclick: () => this.addNogo(avoid.ll, avoid.r, w.text) }, 'Avoid') : null);
+      box.append(row);
     }
   }
 
@@ -716,9 +803,9 @@ export class Planner {
     const act = this.app.activity();
     box.innerHTML = '';
     if (!a) return;
-    const select = h('select', { class: 'start-select', 'aria-label': 'Departure time', onchange: (e) => { this.startOffsetH = +e.target.value; this.loadWind(a); } });
+    const select = h('select', { class: 'start-select', 'aria-label': 'Departure time (linked with the weather time bar)', title: 'Linked with the weather time bar on the map', onchange: (e) => this.setStartOffset(+e.target.value) });
     const now = new Date();
-    for (let k = 0; k <= 36; k++) {
+    for (let k = 0; k <= 48; k++) {
       const d = new Date((Math.floor(now.getTime() / 3600000) + k) * 3600000);
       const day = d.getDate() === now.getDate() ? '' : d.getDate() === new Date(now.getTime() + 86400000).getDate() ? 'Tomorrow ' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
       select.append(h('option', { value: String(k), selected: k === this.startOffsetH }, k === 0 ? 'Now' : `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
