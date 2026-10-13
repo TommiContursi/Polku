@@ -149,6 +149,8 @@ const planner = new Planner(map, {
   },
   onActiveChange: (on) => {
     syncPlanButton(on);
+    // the long attribution line would run into the planner: keep it behind its (i)
+    if (on) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
     syncPlannerPadding();
   },
 });
@@ -231,19 +233,22 @@ window.polku = {
   },
 };
 
-// Plan sits where the sheet opens. Open, it reads Done on desktop (beside the
-// sheet); on phones it hides and the sheet's own close takes over.
+// Plan sits where the planner opens: in the search bar on desktop (side panel
+// below it), at the bottom on phones (the sheet takes its place, with its own Done).
 function syncPlanButton(on) {
-  const b = $('#btn-plan');
-  b.setAttribute('aria-expanded', String(on));
-  b.title = on ? 'Done — close the planner, keep the route (R)' : 'Plan a route (R)';
-  b.innerHTML = on ? `${icon('check', 22)}<span>Done</span>` : `${icon('route', 22)}<span>Plan<span class="plan-more"> route</span></span>`;
+  for (const b of $$('#btn-plan, #btn-plan-search')) {
+    b.setAttribute('aria-expanded', String(on));
+    b.title = on ? 'Close the planner (R) — the route stays' : 'Plan a route (R)';
+  }
 }
 
+// What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel.
 function syncPlannerPadding() {
   const sheet = $('#planner');
-  const pad = planner.active && !sheet.hidden ? sheet.offsetHeight : 0;
-  document.documentElement.style.setProperty('--sheet-h', `${pad}px`);
+  const open = planner.active && !sheet.hidden;
+  const side = open && planner.layout() === 'side';
+  document.documentElement.style.setProperty('--sheet-h', `${open && !side ? sheet.offsetHeight : 0}px`);
+  document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 
@@ -467,7 +472,7 @@ function openPanel(id) {
 for (const btn of $$('[data-panel]')) btn.addEventListener('click', () => openPanel(btn.dataset.panel));
 for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () => openPanel(null));
 
-$('#btn-plan').addEventListener('click', () => planner.setActive(!planner.active));
+for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
 $('#btn-time').addEventListener('click', () => { setTimeline(!state.timeline); renderLayersPanel(); });
 $('#btn-3d').addEventListener('click', () => {
   state.terrain3d = !state.terrain3d;
@@ -519,7 +524,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'l' && !mod) openPanel('layers-panel');
   else if (e.key === 't' && !mod) { setTimeline(!state.timeline); renderLayersPanel(); }
-  else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); }
+  else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); }
 });
 
 // The free vector tiles only carry the full trail network from zoom 14.
@@ -545,7 +550,7 @@ function openOfflineArea(area) {
   planner.setActive(true);
   planner.restoreSnapshot(r);
   const b = area.bbox;
-  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 90, bottom: 320, left: 60, right: 60 }, duration: 0 });
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: planner.viewPadding(), duration: 0 });
 }
 
 // A free service is limiting or failing: say so once per episode (which one,
@@ -594,7 +599,7 @@ map.on('load', () => {
     planner.restore(shared);
     planner.setActive(true);
     const b = bbox(shared.points);
-    if (b[0] !== b[2]) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 90, bottom: 320, left: 60, right: 60 }, duration: 0 });
+    if (b[0] !== b[2]) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: planner.viewPadding(), duration: 0 });
     history.replaceState(null, '', location.pathname + location.hash);
   } else if (planner.loadSaved()) {
     /* restored last session's route (planner stays closed until opened) */
