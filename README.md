@@ -16,7 +16,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 
 **Plan a route**
 - Routing per activity — MTB, gravel, hike & run, paddle — with straight-line and over-water legs, drag points, click the line to add a via point, undo/redo, reverse, back to start.
-- An elevation profile coloured by gradient, uphill grade, MTB difficulty, surface, way type, wind, temperature or rain, with climbs, warnings (steps, no-bike sections, S3+, steep pitches, carries) and a time estimate that accounts for the wind.
+- An elevation profile coloured by terrain (gradient, uphill grade, MTB difficulty), ground (surface, way type) or weather (wind, temperature, rain) — on the route line too if you like — with climbs, warnings (steps, no-bike sections, S3+, steep pitches, carries) and a time estimate that accounts for the wind.
 - Hover the route on the map for a live readout: distance, elevation, gradient, difficulty, surface, and the wind, temperature and rain when you get there.
 - **Avoid places**: any hazard or map popup can mark a spot the router goes around.
 - GPX/KML import (drag & drop), GPX export, and a share link that carries the route.
@@ -28,7 +28,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 - Live ships (AIS) coloured by type, with trails, course lines and a ship card (destination, size, draught, port calls, follow on map).
 
 **Know the weather**
-- A 48-hour **timeline** (Time button or <kbd>T</kbd>) that drives everything time-dependent: the weather layers, your route's departure, road works and road conditions. Its strip shows temperature, rain, wind and night for the map centre, and your ride as a band.
+- A 48-hour **timeline** (Weather button or <kbd>T</kbd>) that drives everything time-dependent: the weather layers, your route's departure, road works and road conditions. Its strip shows temperature, rain, wind and night for the map centre, and your ride as a band.
 - Animated wind, falling rain and snow where it's forecast, temperature field, rain radar now (FMI in Finland, RainViewer elsewhere).
 - **Weather along the route** for every activity: head-, cross- or tailwind per section (with arrows on the map), temperature and rain at the time you reach it.
 

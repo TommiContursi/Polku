@@ -15,13 +15,20 @@ export const WAY_COLORS = {
 export const COLOR_MODES = {
   grade: 'Gradient',
   uphill: 'Uphill difficulty',
+  down: 'MTB difficulty',
   surface: 'Surface',
+  way: 'Way type',
   wind: 'Wind',
   temp: 'Temperature',
   rain: 'Rain',
-  way: 'Way type',
-  down: 'MTB difficulty',
 };
+
+// The profile's colour chips, grouped by what they describe.
+export const COLOR_GROUPS = [
+  ['Terrain', ['grade', 'uphill', 'down']],
+  ['Ground', ['surface', 'way']],
+  ['Weather', ['wind', 'temp', 'rain']],
+];
 
 export function colorAt(a, i, mode) {
   switch (mode) {

@@ -134,10 +134,24 @@ button { font: inherit; color: inherit; }
 }
 .fab:hover { background: var(--surface-solid); }
 .fab[aria-pressed="true"] { background: var(--accent); color: #fff; }
-.fab.primary { background: var(--route); color: #fff; }
-.fab.primary[aria-pressed="true"] { background: #9f1239; }
 .fab-3d { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
 .fab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Plan: bottom right, where the planner opens. Open, it turns into Done
+   beside the sheet (desktop) or hides behind it (phone, below). */
+.plan-btn {
+  position: absolute; right: 12px; bottom: 44px; z-index: 5;
+  width: 60px; height: 56px; border: 0; border-radius: 16px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: var(--route); color: #fff; box-shadow: var(--shadow);
+  font-size: 11px; font-weight: 700; transition: bottom .2s, background .15s;
+}
+.plan-btn:hover { background: #be123c; }
+.plan-btn:focus-visible { outline: 2px solid var(--route); outline-offset: 2px; }
+.plan-more { display: none; }
+.plan-btn[aria-expanded="true"] { bottom: 12px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow), inset 0 0 0 2px var(--route); }
+.plan-btn[aria-expanded="true"] .ic { color: var(--route); }
+.plan-btn[aria-expanded="true"]:hover { background: var(--surface-2); }
 
 /* Weather */
 .wx-canvas { position: absolute; top: 0; left: 0; pointer-events: none; transition: opacity .3s; }
@@ -186,6 +200,7 @@ button { font: inherit; color: inherit; }
   background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
   transition: bottom .2s;
 }
+body:not(.planning) .view3d { bottom: 112px; }
 .orbit {
   position: relative; width: 76px; height: 76px; border-radius: 50%; cursor: grab; touch-action: none;
   background: radial-gradient(circle, var(--surface-solid) 0 30%, var(--surface-2) 31% 100%);
@@ -202,11 +217,13 @@ button { font: inherit; color: inherit; }
 .view3d .tool { width: 30px; height: 30px; }
 
 /* MapLibre controls */
-.maplibregl-ctrl-top-right { top: 334px; right: 4px; }
+.maplibregl-ctrl-top-right { top: 270px; right: 4px; }
 .maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; background: var(--surface-solid); }
 .maplibregl-ctrl-group button { width: 36px; height: 36px; }
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); transition: bottom .2s; }
 .maplibregl-ctrl-scale { border-radius: 4px; background: rgba(255,255,255,0.8); }
+/* desktop, planning: the attribution rides on the sheet's top edge, left of the button column */
+@media (min-width: 721px) { body.planning .maplibregl-ctrl-bottom-right { right: 72px; } }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 }
@@ -303,7 +320,13 @@ button { font: inherit; color: inherit; }
 .stat-sub { font-size: 11px; color: var(--muted); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; vertical-align: -1px; margin-right: 5px; }
 
-.profile-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.profile-top { display: flex; justify-content: space-between; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin-bottom: 6px; }
+.chip-groups { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; }
+.chip-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.chip-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 3px; }
+.tg-inline { margin-left: auto; padding: 0; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.tg-inline .tg-text { flex: none; }
+.tg-inline:hover { color: var(--text); }
 .craft { display: none; }
 .sheet.is-paddle .craft, body[data-activity="paddle"] .craft { display: inline-flex; }
 .profile-box { position: relative; }
@@ -346,11 +369,9 @@ button { font: inherit; color: inherit; }
 .list.wind h4 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .start { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 600; }
 .start-select { height: 26px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); font: inherit; font-size: 12px; padding: 0 6px; }
-.chip-map { display: inline-flex; align-items: center; gap: 4px; }
 .wx-sum { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
 .wx-sum .link { font-weight: 500; color: var(--text); text-decoration: underline dotted; text-underline-offset: 3px; }
 .wx-links { display: flex; gap: 12px; flex-wrap: wrap; }
-.chip-map .ic { width: 14px; height: 14px; }
 .wind-now { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .wind-arrow { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: var(--surface-2); font-size: 16px; font-weight: 700; }
 .pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
@@ -484,11 +505,19 @@ body.dropping .drop-hint { display: flex; }
   .act { padding: 0 10px; flex: 1; justify-content: center; }
   .act span { font-size: 12px; }
   .fab-col { top: 112px; }
+  /* Plan: a primary pill at the bottom; the planner sheet replaces it */
+  .plan-btn { flex-direction: row; gap: 8px; width: auto; height: 48px; padding: 0 20px 0 16px; border-radius: 999px; font-size: 15px; }
+  .plan-more { display: inline; }
+  body.planning .plan-btn { display: none; }
+  body:not(.planning) .wx-bar { bottom: 100px; }
+  body:not(.planning) .track-card { bottom: 100px; }
+  body:not(.planning) .toast { bottom: 104px; }
   .zoom-hint { top: 112px; }
   .fab { width: 48px; height: 48px; border-radius: 14px; }
   .fab span:not(.fab-3d) { display: none; }
-  .maplibregl-ctrl-top-right { top: 392px; }
+  .maplibregl-ctrl-top-right { top: 336px; }
   .view3d { bottom: calc(var(--sheet-h) + 40px); padding: 8px 6px 6px; }
+  body:not(.planning) .view3d { bottom: 100px; }
   .wx-bar { width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }
   .tl-title { display: none; }
   .tl-strip { margin-left: 0; height: 56px; }
@@ -504,9 +533,14 @@ body.dropping .drop-hint { display: flex; }
   .tool { width: 30px; height: 32px; }
   .tool-sep { display: none; }
   .seg button span { display: none; }
-  /* While planning, keep only Plan + Layers so the sheet has room */
-  body.planning .fab-col .fab:nth-child(n+3) { display: none; }
+  /* While planning, keep only Layers so the sheet has room */
+  body.planning .fab-col .fab:nth-child(n+2) { display: none; }
   body.planning .maplibregl-ctrl-top-right { display: none; }
+  /* chip groups: labels in a column of their own, chips wrap beside them */
+  .chip-groups { gap: 6px; }
+  .chip-group { position: relative; width: 100%; padding-left: 58px; }
+  .chip-group-label { position: absolute; left: 0; top: 8px; letter-spacing: .05em; }
+  .chip-group .chip { padding: 0 8px; }
   .stats { gap: 6px 16px; }
   .stat-value { font-size: 17px; }
   #profile-canvas { height: 120px; }
@@ -536,7 +570,10 @@ body.dropping .drop-hint { display: flex; }
 }
 .offline-banner span { display: inline-flex; align-items: center; gap: 6px; }
 .offline-banner .btn { height: 28px; padding: 0 12px; font-size: 12px; background: rgba(255,255,255,.18); border-color: transparent; color: #fff; }
-@media (max-width: 719px) { .offline-banner { top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--sheet-h) + 72px); white-space: nowrap; } }
+@media (max-width: 719px) {
+  .offline-banner { top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--sheet-h) + 72px); white-space: nowrap; }
+  body:not(.planning) .offline-banner { bottom: 104px; }
+}
 
 /* compass */
 .compass-btn { display: grid; place-items: center; color: var(--text); }

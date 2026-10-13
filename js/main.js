@@ -148,7 +148,7 @@ const planner = new Planner(map, {
     openSaveOffline(p, { onSaved: () => renderLayersPanel() });
   },
   onActiveChange: (on) => {
-    $('#btn-plan').setAttribute('aria-pressed', String(on));
+    syncPlanButton(on);
     syncPlannerPadding();
   },
 });
@@ -197,10 +197,11 @@ const weather = new WeatherOverlay(map, {
   onToggle: (patch) => setWeather(patch),
   onClose: () => setTimeline(false),
   onTime: (hr) => {
-    // the Time button shows how far ahead the map is looking
+    // the Weather button shows how far ahead the map is looking
     const k = Math.round(hr);
-    $('.fab-time-label').textContent = k ? `+${k} h` : 'Time';
+    $('.fab-time-label').textContent = k ? `+${k} h` : 'Weather';
     $('#btn-time').classList.toggle('ahead', k > 0);
+    $('#btn-time').setAttribute('aria-label', k ? `Time & weather, ${k} h ahead` : 'Time & weather');
   },
 });
 
@@ -229,6 +230,15 @@ window.polku = {
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderLegend();
   },
 };
+
+// Plan sits where the sheet opens. Open, it reads Done on desktop (beside the
+// sheet); on phones it hides and the sheet's own close takes over.
+function syncPlanButton(on) {
+  const b = $('#btn-plan');
+  b.setAttribute('aria-expanded', String(on));
+  b.title = on ? 'Done — close the planner, keep the route (R)' : 'Plan a route (R)';
+  b.innerHTML = on ? `${icon('check', 22)}<span>Done</span>` : `${icon('route', 22)}<span>Plan<span class="plan-more"> route</span></span>`;
+}
 
 function syncPlannerPadding() {
   const sheet = $('#planner');

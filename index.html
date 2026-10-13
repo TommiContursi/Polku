@@ -32,10 +32,6 @@
   <button id="zoom-hint" class="zoom-hint" type="button" hidden>Zoom in to see every trail</button>
 
   <div class="fab-col">
-    <button id="btn-plan" class="fab primary" type="button" aria-pressed="false" title="Plan a route (R)">
-      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
-      <span>Plan</span>
-    </button>
     <button class="fab" type="button" data-panel="layers-panel" aria-pressed="false" title="Map layers (L)">
       <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/><path d="m2 18 10 5 10-5" opacity=".55"/></svg>
       <span>Layers</span>
@@ -44,15 +40,20 @@
       <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h3M4 12h3M4 18h3M10 6h10M10 12h10M10 18h10"/></svg>
       <span>Legend</span>
     </button>
-    <button id="btn-time" class="fab" type="button" aria-pressed="false" title="Timeline: weather and time (T)">
-      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>
-      <span class="fab-time-label">Time</span>
+    <button id="btn-time" class="fab" type="button" aria-pressed="false" aria-label="Time & weather" title="Time & weather (T)">
+      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></svg>
+      <span class="fab-time-label">Weather</span>
     </button>
     <button id="btn-3d" class="fab" type="button" aria-pressed="false" title="3D terrain">
       <span class="fab-3d">3D</span>
       <span>Terrain</span>
     </button>
   </div>
+  <!-- next to where the planner sheet opens; becomes Done on desktop, hides on phones (the sheet's close takes over) -->
+  <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
+    <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
+    <span>Plan<span class="plan-more"> route</span></span>
+  </button>
 
   <div id="view3d" class="view3d" hidden aria-label="3D view controls"></div>
   <div id="wx-bar" class="wx-bar" hidden role="region" aria-label="Timeline"></div>
