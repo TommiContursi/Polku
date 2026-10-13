@@ -14,6 +14,7 @@ import { UphillLayer } from './uphill.js';
 import { LipasLayer } from './lipas.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
+import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection } from './offline.js';
 import { initSearch } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
@@ -136,6 +137,12 @@ const planner = new Planner(map, {
   onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
   onAnalysis: () => { weather.renderTime(); weather.renderStrip(); },
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
+  routeTip: (ev, d) => hover.route(ev, d),
+  saveOffline: () => {
+    const p = planner.offlinePayload();
+    if (!p) { toast('Plan a route first — the area along it is what gets saved'); return; }
+    openSaveOffline(p, { onSaved: () => renderLayersPanel() });
+  },
   onActiveChange: (on) => {
     $('#btn-plan').setAttribute('aria-pressed', String(on));
     syncPlannerPadding();
@@ -157,7 +164,7 @@ initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-initHover(map, { enabled: () => state.hoverInfo && hoverCapable(), isPlanning: () => planner.active });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable(), isPlanning: () => planner.active });
 
 initSearch(map, $('#search-input'), $('#search-results'));
 
@@ -365,6 +372,10 @@ function renderLayersPanel() {
     })));
   }
 
+  const offlineBox = h('div', { class: 'off-list' });
+  p.append(section('Offline maps', offlineBox));
+  renderOfflineSection(offlineBox, { open: openOfflineArea });
+
   const keyInput = h('input', { type: 'password', placeholder: 'Paste your MML API key', value: state.mmlKey, autocomplete: 'off', spellcheck: 'false' });
   p.append(section('MML API key (optional)',
     h('p', { class: 'note' }, 'Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay. Keys are free from ',
@@ -506,7 +517,21 @@ document.addEventListener('scroll', () => {
   if (se && (se.scrollTop || se.scrollLeft)) { se.scrollTop = 0; se.scrollLeft = 0; }
 }, true);
 
+// A saved offline area: its route comes back with the routed line (no routing
+// server needed) and the map frames it.
+function openOfflineArea(area) {
+  openPanel(null);
+  const r = area.route;
+  if (r.activity && r.activity !== state.activity) setActivity(r.activity);
+  planner.setActive(true);
+  planner.restoreSnapshot(r);
+  const b = area.bbox;
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 90, bottom: 320, left: 60, right: 60 }, duration: 0 });
+}
+
 // ------------------------------------------------------------------ boot
+registerServiceWorker();
+initOfflineStatus();
 document.body.dataset.activity = state.activity;
 renderActivityBar();
 renderLayersPanel();

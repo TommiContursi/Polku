@@ -32,10 +32,12 @@ export function initHover(map, app) {
   let frame = 0;
   let hiddenAt = 0;
   let pointer = false;
+  let route = false; // showing the planner's route readout
 
   const hide = () => {
     clearTimeout(timer);
     timer = 0;
+    route = false;
     if (tip.hidden) return;
     tip.hidden = true;
     hiddenAt = performance.now();
@@ -59,14 +61,19 @@ export function initHover(map, app) {
     const feats = map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers });
     let d = null;
     if (planning) {
-      // the route line belongs to the elevation profile's own hover marker
-      if (feats.some((f) => f.layer.id === 'route-casing')) { hide(); return; }
+      // the route line has its own live readout (see route() below)
+      if (feats.some((f) => f.layer.id === 'route-casing')) { if (!route) hide(); return; }
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
     if (!d) { const f = pickFeature(feats); d = f && describe(f, feats); }
     if (!d) { hide(); return; }
-    tip.innerHTML = `<b>${escapeHtml(d.title)}</b>${d.bits.length ? `<span>${d.bits.join(' · ')}</span>` : ''}`;
+    render(d);
+  };
+
+  const render = (d) => {
+    const lines = d.lines || (d.bits.length ? [d.bits.join(' · ')] : []);
+    tip.innerHTML = `<b>${escapeHtml(d.title)}</b>${lines.map((l) => `<span>${l}</span>`).join('')}`;
     tip.hidden = false;
     size = [tip.offsetWidth, tip.offsetHeight];
     shownAt = at;
@@ -91,7 +98,7 @@ export function initHover(map, app) {
     if (e.buttons || map.isMoving()) { hide(); return; }
     if (!frame) frame = requestAnimationFrame(cursor);
     if (!app.enabled()) { hide(); return; }
-    if (!tip.hidden) {
+    if (!tip.hidden && !route) {
       if (Math.hypot(at[0] - shownAt[0], at[1] - shownAt[1]) > DRIFT) hide();
       else place();
     }
@@ -101,7 +108,24 @@ export function initHover(map, app) {
   canvas.addEventListener('pointerleave', () => { at = null; hide(); });
   canvas.addEventListener('pointerdown', hide);
   map.on('movestart', hide);
-  return { hide };
+
+  return {
+    hide,
+    // The planner's readout for the route point under the cursor: follows the
+    // pointer live (no pause). Returns false when hover details are off.
+    route(ev, d) {
+      if (!d) { if (route) hide(); return false; }
+      if (!app.enabled() || !ev || ev.buttons || map.isMoving()) return false;
+      const r = canvas.getBoundingClientRect();
+      at = [ev.clientX - r.left, ev.clientY - r.top];
+      client = [ev.clientX, ev.clientY];
+      clearTimeout(timer);
+      timer = 0;
+      route = true;
+      render(d);
+      return true;
+    },
+  };
 }
 
 // ------------------------------------------------------------------ text

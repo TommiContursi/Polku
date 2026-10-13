@@ -4,7 +4,7 @@
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, gradeColor } from './config.js';
 import { routeLeg } from './router.js';
 import { analyse, estimateTime } from './analysis.js';
-import { ProfileChart, COLOR_MODES, WAY_COLORS, colorAt } from './chart.js';
+import { ProfileChart, COLOR_MODES, WAY_COLORS, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand } from './weather.js';
@@ -409,7 +409,7 @@ export class Planner {
     if (!a || this.panel.hidden) return;
     const hit = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-casing'] }).length;
     if (!hit) {
-      if (this.mapHover) { this.mapHover = false; this.chart.setHover(-1); this.app.setData('routeHover', EMPTY); }
+      if (this.mapHover) { this.mapHover = false; this.chart.setHover(-1); this.app.setData('routeHover', EMPTY); this.app.routeTip(null); }
       return;
     }
     const p = [e.lngLat.lng, e.lngLat.lat];
@@ -421,7 +421,8 @@ export class Planner {
       if (d < bd) { bd = d; best = i; }
     }
     this.mapHover = true;
-    this.chart.setHover(best);
+    const onMap = this.app.routeTip(e.originalEvent, routeReadout(a, best));
+    this.chart.setHover(best, !onMap);
     this.hoverAt(best, true);
   }
 
@@ -491,6 +492,35 @@ export class Planner {
     return true;
   }
 
+  // The whole route including routed geometry, so it can be reopened offline
+  // (no BRouter call: routeAll() keeps legs whose key and result match).
+  snapshot() {
+    return {
+      activity: this.app.activity(),
+      routeName: this.routeName || '',
+      points: this.points,
+      nogos: this.nogos,
+      legs: this.legs.map((l) => ({ mode: l.mode, key: l.key, result: l.status === 'ok' || l.mode === 'fixed' ? l.result : null })),
+    };
+  }
+
+  restoreSnapshot(s) {
+    this.points = s.points;
+    this.nogos = s.nogos || [];
+    this.routeName = s.routeName || '';
+    this.legs = s.legs.map((l) => (l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result } : { mode: l.mode }));
+    this.update();
+  }
+
+  offlinePayload() {
+    const a = this.analysis;
+    if (!a || this.legs.some((l) => !l.result)) return null;
+    const line = this.mergedLine().coords;
+    const b = bbox(line);
+    const name = this.routeName || `${ACTIVITIES[this.app.activity()].label} ${fmtDist(a.total)} · ${new Date().toLocaleDateString()}`;
+    return { name, line, bbox: b, km: a.total / 1000, route: this.snapshot() };
+  }
+
   shareUrl() {
     const u = new URL(location.href);
     u.search = '';
@@ -543,6 +573,7 @@ export class Planner {
         tool('upload', 'Import GPX / KML', () => $('#file-input').click()),
         tool('download', 'Export GPX', () => this.exportGpx()),
         tool('share', 'Copy share link', () => this.share()),
+        tool('offline', 'Save offline', () => this.app.saveOffline()),
         tool('trash', 'Clear route', () => this.clear(), 'danger'),
         h('span', { class: 'tool-sep' }),
         this.els.collapse = tool('chevronDown', 'Collapse', () => this.toggleCollapse()),

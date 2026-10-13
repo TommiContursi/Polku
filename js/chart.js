@@ -3,7 +3,7 @@
 // is synced both ways with the map.
 
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT } from './config.js';
-import { fmtDist, compass } from './geo.js';
+import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand } from './weather.js';
 
 export const WAY_COLORS = {
@@ -37,6 +37,31 @@ export function colorAt(a, i, mode) {
 }
 
 const clock = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const dot = (color) => `<i class="dot" style="background:${color}"></i>`;
+
+// One profile point, compact, for the tooltip beside the cursor when the
+// route line is hovered on the map: where, how steep, what's underfoot, and
+// the weather when you get there.
+export function routeReadout(a, i) {
+  const g = Math.round(a.grade[i] * 10) / 10 || 0; // no "-0.0 %"
+  const trail = [];
+  if (a.upCls[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.upCls[i]])}${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
+  if (a.down6[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.down6[i]])}${MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0]}`);
+  trail.push(a.surf[i] && a.surf[i] !== 'unknown' ? `${a.way[i]} · ${a.surf[i].replace('_', ' ')}` : a.way[i]);
+  const when = [];
+  if (a.wind) {
+    const w = a.wind;
+    const c = windClass(w.head[i], w.speed[i]);
+    when.push(`${dot(c.color)}${c.label}${c.key === 'calm' ? '' : ` ${w.speed[i].toFixed(0)} m/s`}`, `${w.temp[i].toFixed(0)} °C`,
+      w.precip[i] >= 0.1 ? `${w.temp[i] < 0.5 ? 'snow' : 'rain'} ${w.precip[i].toFixed(1)} mm/h` : 'dry');
+  }
+  if (a.wind && a.tAtWind) when.push(`at ${clock(a.wind.startSec + a.tAtWind[i])}`);
+  else if (a.tAt) when.push(`${fmtDuration(a.tAt[i])} in`);
+  return {
+    title: `${fmtDist(a.along[i])} · ${Math.round(a.ele[i])} m · ${g >= 0 ? '+' : ''}${g.toFixed(1)} %`,
+    lines: [trail.join(' · '), when.join(' · ')].filter(Boolean),
+  };
+}
 
 function niceStep(range, target) {
   const raw = range / target;
@@ -93,11 +118,12 @@ export class ProfileChart {
     this.onHover(i >= 0 ? i : null);
   }
 
-  setHover(i) {
+  // tip=false: just the marker line (the map shows its own readout)
+  setHover(i, tip = true) {
     this.hoverIdx = i;
     this.draw();
     const a = this.a;
-    if (i < 0 || !a) { this.tip.hidden = true; return; }
+    if (i < 0 || !a || !tip) { this.tip.hidden = true; return; }
     const g = this.geom();
     const x = g.x0 + (a.along[i] / a.total) * (g.x1 - g.x0);
     const rows = [
