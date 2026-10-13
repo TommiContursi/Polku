@@ -24,6 +24,11 @@
       <svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
       <input id="search-input" type="search" placeholder="Search places or paste coordinates" autocomplete="off" aria-label="Search places">
       <kbd>/</kbd>
+      <!-- desktop: plan from the search bar; the planner opens as a side panel right below -->
+      <button id="btn-plan-search" class="search-plan" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
+        <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
+        <span>Plan</span>
+      </button>
       <ul id="search-results" role="listbox" hidden></ul>
     </div>
   </header>
@@ -49,10 +54,10 @@
       <span>Terrain</span>
     </button>
   </div>
-  <!-- next to where the planner sheet opens; becomes Done on desktop, hides on phones (the sheet's close takes over) -->
+  <!-- phones: a primary button at the bottom, where the planner sheet opens; it gives way to the sheet -->
   <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
     <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
-    <span>Plan<span class="plan-more"> route</span></span>
+    <span>Plan route</span>
   </button>
 
   <div id="view3d" class="view3d" hidden aria-label="3D view controls"></div>

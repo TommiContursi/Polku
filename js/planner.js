@@ -42,7 +42,6 @@ export class Planner {
     this.nogos = []; // places to avoid: [{ll, r, label}]
     this.gen = 0;
     this.selected = null;
-    this.collapsed = false;
     this.panel = $('#planner');
     this.buildPanel();
     this.chart = new ProfileChart($('#profile-canvas'), $('#profile-tip'));
@@ -237,6 +236,9 @@ export class Planner {
   setActive(on) {
     this.active = on;
     this.panel.hidden = !on;
+    if (!on) { this.closeMore(); delete document.body.dataset.sheet; }
+    // an empty route opens small, so the map is there to tap; otherwise as you left it
+    if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
     document.body.classList.toggle('planning', on);
     this.map.getCanvas().style.cursor = on ? 'crosshair' : '';
     for (const m of this.markers) m.getElement().hidden = !on;
@@ -402,6 +404,7 @@ export class Planner {
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
     if (hit && hit.properties.kind === 'leg' && !hit.properties.loading) this.insertPoint(hit.properties.leg, ll);
     else this.addPoint(ll);
+    this.autoPeek();
   }
 
   onMapMove(e) {
@@ -443,6 +446,7 @@ export class Planner {
       }, i === 0 ? '' : last ? '' : String(i));
       el.hidden = !this.active;
       const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(p).addTo(this.map);
+      m.on('dragstart', () => this.autoPeek());
       m.on('dragend', () => {
         const ll = m.getLngLat();
         this.movePoint(i, [+ll.lng.toFixed(6), +ll.lat.toFixed(6)]);
@@ -494,7 +498,9 @@ export class Planner {
 
   // The whole route including routed geometry, so it can be reopened offline
   // (no BRouter call: routeAll() keeps legs whose key and result match).
-  snapshot() {
+  // Not snapshot(): that one is the undo history's, and a second method of the
+  // same name silently replaced it (undo after adding a point did nothing).
+  routeSnapshot() {
     return {
       activity: this.app.activity(),
       routeName: this.routeName || '',
@@ -518,7 +524,7 @@ export class Planner {
     const line = this.mergedLine().coords;
     const b = bbox(line);
     const name = this.routeName || `${ACTIVITIES[this.app.activity()].label} ${fmtDist(a.total)} · ${new Date().toLocaleDateString()}`;
-    return { name, line, bbox: b, km: a.total / 1000, route: this.snapshot() };
+    return { name, line, bbox: b, km: a.total / 1000, route: this.routeSnapshot() };
   }
 
   shareUrl() {
@@ -551,34 +557,32 @@ export class Planner {
   }
 
   // ---------------------------------------------------------------- panel
+  // One panel, two layouts: a side panel on wide screens (open / minimised) and
+  // a bottom sheet elsewhere (peek / half / full). The summary row — distance,
+  // time, ascent, routing mode, undo — is always visible; the rest scrolls in
+  // collapsible sections whose open state is remembered.
   buildPanel() {
     const p = this.panel;
     p.innerHTML = '';
     const tool = (name, label, fn, cls = '') => h('button', { type: 'button', class: `tool ${cls}`, title: label, 'aria-label': label, onclick: fn, html: icon(name, 19) });
     this.els = {};
-    const modes = h('div', { class: 'seg', role: 'group', 'aria-label': 'Routing for new legs' },
+    this.sec = {};
+    const modes = h('div', { class: 'seg modes', role: 'group', 'aria-label': 'Routing for new legs' },
       ...['auto', 'line', 'water'].map((m) => h('button', {
-        type: 'button', 'data-mode': m, 'aria-pressed': String(this.mode === m), title: MODE_LABEL[m],
+        type: 'button', 'data-mode': m, 'aria-pressed': String(this.mode === m), title: MODE_LABEL[m], 'aria-label': MODE_LABEL[m],
         onclick: () => this.setMode(m), html: `${icon(MODE_ICON[m], 17)}<span>${MODE_LABEL[m]}</span>`,
       })));
     this.els.undo = tool('undo', 'Undo (Ctrl+Z)', () => this.undo());
     this.els.redo = tool('redo', 'Redo', () => this.redo());
-    const head = h('div', { class: 'sheet-head' },
-      modes,
-      h('div', { class: 'tools' },
-        this.els.undo, this.els.redo,
-        tool('reverse', 'Reverse direction', () => this.reverse()),
-        tool('loop', 'Back to start', () => this.loop()),
-        h('span', { class: 'tool-sep' }),
-        tool('upload', 'Import GPX / KML', () => $('#file-input').click()),
-        tool('download', 'Export GPX', () => this.exportGpx()),
-        tool('share', 'Copy share link', () => this.share()),
-        tool('offline', 'Save offline', () => this.app.saveOffline()),
-        tool('trash', 'Clear route', () => this.clear(), 'danger'),
-        h('span', { class: 'tool-sep' }),
-        this.els.collapse = tool('chevronDown', 'Collapse', () => this.toggleCollapse()),
-        tool('close', 'Close planner (R)', () => this.setActive(false)),
-      ));
+    this.els.more = tool('more', 'More: reverse, back to start, import, export, share, offline, clear', () => this.toggleMore());
+    this.els.more.setAttribute('aria-haspopup', 'menu');
+    this.els.sum = h('div', { class: 'sheet-sum', 'aria-live': 'polite' });
+    this.els.min = tool('chevronUp', 'Minimise', () => this.setSheetState(this.panel.dataset.state === 'min' ? 'open' : 'min'), 'sheet-min');
+    this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
+    this.els.head = h('div', { class: 'sheet-head' },
+      h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
+        h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
+      h('div', { class: 'sheet-row tools-row' }, modes, h('div', { class: 'tools' }, this.els.undo, this.els.redo, this.els.more)));
     this.els.stats = h('div', { class: 'stats' });
     this.els.craft = h('div', { class: 'seg small craft', role: 'group', 'aria-label': 'Craft' },
       ...Object.entries(CRAFT).map(([k, v]) => h('button', { type: 'button', 'data-craft': k, 'aria-pressed': String(this.craft === k), onclick: () => this.setCraft(k) }, v.label)));
@@ -591,24 +595,230 @@ export class Planner {
     this.els.mapToggleRow = h('label', { class: 'tg tg-inline', title: 'Colour the route line on the map the same way as the profile' },
       h('span', { class: 'tg-text' }, 'Colour on map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     this.els.breakdown = h('div', { class: 'breakdown' });
-    const profile = h('div', { class: 'profile' },
-      h('div', { class: 'profile-top' }, this.els.modesBar, this.els.craft),
-      h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
-      this.els.breakdown);
     this.els.climbs = h('div', { class: 'list climbs' });
     this.els.warnings = h('div', { class: 'list warnings' });
     this.els.wind = h('div', { class: 'list wind' });
-    this.els.hint = h('p', { class: 'hint' }, 'Click the map to add points · drag a point to move it · click the route line to add a via point');
-    const body = h('div', { class: 'sheet-body' }, this.els.stats, profile, h('div', { class: 'lists' }, this.els.climbs, this.els.warnings, this.els.wind), this.els.hint);
-    p.append(head, body);
+    this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
+      ? 'Tap the map to add points · drag a point to move it · tap the route line to add a via point'
+      : 'Click the map to add points · drag a point to move it · click the route line to add a via point');
+    this.els.body = h('div', { class: 'sheet-body' },
+      this.els.stats,
+      this.section('profile', 'Profile',
+        h('div', { class: 'profile-top' }, this.els.modesBar, this.els.craft),
+        h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
+        this.els.breakdown),
+      this.section('climbs', 'Climbs', this.els.climbs),
+      this.section('warnings', 'Heads-up', this.els.warnings),
+      this.section('weather', 'Weather on the route', this.els.wind),
+      this.els.hint);
+    this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
+      'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
+    p.append(this.els.handle, this.els.head, this.els.body, this.els.grip);
     this.renderModeChips();
+    this.bindSheet();
+    this.bindResize();
   }
 
-  toggleCollapse() {
-    this.collapsed = !this.collapsed;
-    this.panel.classList.toggle('collapsed', this.collapsed);
-    this.els.collapse.innerHTML = icon(this.collapsed ? 'chevronUp' : 'chevronDown', 19);
-    if (!this.collapsed) requestAnimationFrame(() => this.chart.draw());
+  // A collapsible section; its open state is remembered across visits.
+  section(id, title, ...kids) {
+    const open = (store.get('sections', {})[id]) !== false;
+    const titleEl = h('span', { class: 'sec-title' }, title);
+    const count = h('span', { class: 'sec-count' });
+    const sum = h('span', { class: 'sec-sum' });
+    const head = h('button', { type: 'button', class: 'sec-head', 'aria-expanded': String(open), onclick: () => this.toggleSection(id) },
+      titleEl, count, sum, h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }));
+    const el = h('section', { class: 'sec', 'data-sec': id, 'data-open': String(open) }, head, h('div', { class: 'sec-body' }, ...kids));
+    this.sec[id] = { el, head, titleEl, count, sum };
+    return el;
+  }
+
+  toggleSection(id, open) {
+    const s = this.sec[id];
+    open = open ?? s.el.dataset.open !== 'true';
+    s.el.dataset.open = String(open);
+    s.head.setAttribute('aria-expanded', String(open));
+    store.set('sections', { ...store.get('sections', {}), [id]: open });
+    if (open && id === 'profile') requestAnimationFrame(() => this.chart.draw());
+  }
+
+  // title, count ("4"), one-line summary shown while collapsed, hidden when empty
+  setSection(id, { title, count = '', summary = '', empty = false }) {
+    const s = this.sec[id];
+    if (title) s.titleEl.textContent = title;
+    s.count.textContent = count === '' ? '' : String(count);
+    s.sum.textContent = summary;
+    s.el.hidden = empty;
+  }
+
+  // ---------------------------------------------------------------- panel layout & states
+  layout() { return this.sideMQ.matches ? 'side' : 'sheet'; }
+
+  setSheetState(st, { remember = true } = {}) {
+    const lay = this.layout();
+    const ok = lay === 'side' ? ['open', 'min'] : ['peek', 'half', 'full'];
+    if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
+    this.panel.dataset.layout = lay;
+    this.panel.dataset.state = st;
+    if (this.active) document.body.dataset.sheet = st; // a full sheet hides the map chrome under it
+    if (remember) store.set('sheetState', { ...store.get('sheetState', {}), [lay]: st });
+    this.els.min.innerHTML = icon(st === 'min' ? 'chevronDown' : 'chevronUp', 19);
+    this.els.min.title = st === 'min' ? 'Show the details' : 'Minimise';
+    this.els.handle.setAttribute('aria-valuetext', st);
+    this.els.handle.title = { peek: 'Show more', half: 'Drag up for everything, down for the map', full: 'Drag down for the map' }[st] || '';
+    if (st !== 'peek' && st !== 'min') requestAnimationFrame(() => this.chart.draw());
+  }
+
+  // While drawing or dragging on the map, the phone sheet gets out of the way.
+  // Not remembered, so the planner reopens at the size you chose.
+  autoPeek() {
+    if (this.active && this.layout() === 'sheet' && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
+  }
+
+  bindSheet() {
+    this.sideMQ = matchMedia('(min-width: 900px)');
+    this.sideMQ.addEventListener('change', () => this.setSheetState(store.get('sheetState', {})[this.layout()]));
+    // the summary rows are always visible: the peek height is theirs
+    new ResizeObserver(() => {
+      const hd = this.els.head;
+      this.panel.style.setProperty('--peek-h', `${Math.ceil(hd.offsetTop + hd.offsetHeight + 6)}px`);
+    }).observe(this.els.head);
+    const heights = () => {
+      const r = this.panel.getBoundingClientRect();
+      const peek = this.els.head.offsetTop + this.els.head.offsetHeight + 6;
+      return { peek, half: innerHeight * 0.5, full: r.bottom - 72, now: r.height };
+    };
+    let drag = null;
+    const down = (e) => {
+      if (this.layout() !== 'sheet' || e.button > 0) return;
+      // drag by the handle, or by the summary rows outside their buttons
+      if (!e.target.closest('.sheet-handle') && e.target.closest('button, input, select, a, label')) return;
+      drag = { y: e.clientY, h: heights(), moved: false, el: e.currentTarget };
+      try { drag.el.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+    };
+    const move = (e) => {
+      if (!drag) return;
+      const dy = e.clientY - drag.y;
+      if (!drag.moved && Math.abs(dy) < 6) return;
+      if (!drag.moved) { drag.moved = true; this.panel.classList.add('dragging'); }
+      const H = drag.h;
+      this.panel.style.height = `${Math.max(H.peek, Math.min(H.full, H.now - dy))}px`;
+    };
+    const up = () => {
+      if (!drag) return;
+      const { moved, h: H } = drag;
+      drag = null;
+      const st = this.panel.dataset.state;
+      let next = st;
+      if (!moved) next = st === 'peek' ? 'half' : 'peek'; // a tap toggles
+      else {
+        const now = this.panel.getBoundingClientRect().height;
+        next = Object.entries({ peek: H.peek, half: H.half, full: H.full }).sort((a, b) => Math.abs(a[1] - now) - Math.abs(b[1] - now))[0][0];
+      }
+      this.panel.classList.remove('dragging');
+      this.panel.style.height = '';
+      this.setSheetState(next);
+    };
+    for (const el of [this.els.handle, this.els.head]) {
+      el.addEventListener('pointerdown', down);
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+    }
+    this.els.handle.addEventListener('keydown', (e) => {
+      const order = ['peek', 'half', 'full'];
+      const i = order.indexOf(this.panel.dataset.state);
+      if (e.key === 'ArrowUp') { e.preventDefault(); this.setSheetState(order[Math.min(2, i + 1)]); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); this.setSheetState(order[Math.max(0, i - 1)]); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.setSheetState(order[(i + 1) % 3]); }
+    });
+    // panning the map while planning counts as "working on the map"
+    this.map.on('dragstart', (e) => { if (e.originalEvent) this.autoPeek(); });
+    this.setSheetState(store.get('sheetState', {})[this.layout()], { remember: false });
+  }
+
+  // Side panel width: drag the grip on its right edge (remembered), double-click
+  // to switch between narrow and wide, arrow keys when focused. A wider panel
+  // gives the profile room on long routes.
+  bindResize() {
+    const NARROW = 392;
+    const max = () => Math.max(NARROW, Math.min(innerWidth * 0.62, innerWidth - 84 - 12 - 240));
+    const apply = (w, save = true) => {
+      if (w == null) { this.panel.style.removeProperty('--pl-w'); w = NARROW; } else {
+        w = Math.round(Math.max(340, Math.min(max(), w)));
+        this.panel.style.setProperty('--pl-w', `${w}px`);
+      }
+      this.els.grip.setAttribute('aria-valuenow', String(w));
+      if (save) store.set('panelWidth', w === NARROW ? null : w);
+    };
+    const g = this.els.grip;
+    let drag = null;
+    g.addEventListener('pointerdown', (e) => {
+      drag = { x: e.clientX, w: this.panel.getBoundingClientRect().width };
+      this.panel.classList.add('resizing');
+      try { g.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+      e.preventDefault();
+    });
+    g.addEventListener('pointermove', (e) => { if (drag) apply(drag.w + e.clientX - drag.x, false); });
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      this.panel.classList.remove('resizing');
+      apply(this.panel.getBoundingClientRect().width);
+    };
+    g.addEventListener('pointerup', end);
+    g.addEventListener('pointercancel', end);
+    g.addEventListener('dblclick', () => apply(this.panel.getBoundingClientRect().width > NARROW + 40 ? null : max()));
+    g.addEventListener('keydown', (e) => {
+      const w = this.panel.getBoundingClientRect().width;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); apply(w + (e.key === 'ArrowRight' ? 32 : -32)); }
+      else if (e.key === 'Enter') { e.preventDefault(); apply(w > NARROW + 40 ? null : max()); }
+    });
+    const saved = store.get('panelWidth', null);
+    apply(saved, false);
+    addEventListener('resize', () => { const w = store.get('panelWidth', null); if (w) apply(w, false); });
+  }
+
+  // Padding for camera moves so routes and climbs land in the visible part of the map.
+  viewPadding(m = 40) {
+    if (!this.active || this.panel.hidden) return { top: 120, bottom: m + 20, left: m, right: m + 50 };
+    const r = this.panel.getBoundingClientRect();
+    if (this.layout() === 'side') return { top: 90, bottom: m, left: r.right + m, right: m + 70 };
+    return { top: 130, bottom: innerHeight - r.top + m / 2, left: m / 2, right: m + 30 };
+  }
+
+  // ---------------------------------------------------------------- the ⋯ menu
+  toggleMore() {
+    if (this.moreEl) { this.closeMore(); return; }
+    const item = (name, label, fn, cls = '') => h('button', { type: 'button', role: 'menuitem', class: `menu-item ${cls}`, onclick: () => { this.closeMore(); fn(); }, html: `${icon(name, 17)}<span>${label}</span>` });
+    const two = this.points.length > 1;
+    const el = h('div', { class: 'menu', role: 'menu', 'aria-label': 'Route actions' },
+      Object.assign(item('reverse', 'Reverse direction', () => this.reverse()), { disabled: !two }),
+      Object.assign(item('loop', 'Back to start', () => this.loop()), { disabled: !two }),
+      h('hr'),
+      item('upload', 'Import GPX / KML…', () => $('#file-input').click()),
+      Object.assign(item('download', 'Export GPX', () => this.exportGpx()), { disabled: !two }),
+      Object.assign(item('share', 'Copy share link', () => this.share()), { disabled: !two }),
+      Object.assign(item('offline', 'Save offline…', () => this.app.saveOffline()), { disabled: !two }),
+      h('hr'),
+      Object.assign(item('trash', 'Clear route', () => this.clear(), 'danger'), { disabled: !this.points.length }));
+    this.panel.append(el);
+    const b = this.els.more.getBoundingClientRect(), pr = this.panel.getBoundingClientRect();
+    const below = b.bottom + 260 < innerHeight;
+    el.style.right = `${Math.max(8, pr.right - b.right)}px`;
+    if (below) el.style.top = `${b.bottom - pr.top + 4}px`; else el.style.bottom = `${pr.bottom - b.top + 4}px`;
+    this.moreEl = el;
+    this.els.more.setAttribute('aria-expanded', 'true');
+    el.querySelector('.menu-item:not(:disabled)')?.focus();
+    this.offMore = (e) => { if (!el.contains(e.target) && !this.els.more.contains(e.target)) this.closeMore(); };
+    setTimeout(() => document.addEventListener('pointerdown', this.offMore, true));
+  }
+
+  closeMore() {
+    if (!this.moreEl) return;
+    this.moreEl.remove();
+    this.moreEl = null;
+    this.els.more.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', this.offMore, true);
   }
 
   setCraft(k) {
@@ -671,13 +881,21 @@ export class Planner {
     this.app.setData('routeWind', { type: 'FeatureCollection', features: arrows });
   }
 
-  showMode(k) {
+  showMode(k, { reveal = false } = {}) {
     this.colorMode = k;
     store.set('colorMode', k);
     this.renderModeChips();
     this.chart.setMode(k);
     this.renderBreakdown();
     this.drawColored();
+    const an = this.analysis;
+    if (an) this.setSection('profile', { summary: `${COLOR_MODES[k]} · ${Math.round(an.minE)}–${Math.round(an.maxE)} m` });
+    // links from the weather section: open the profile and bring it into view
+    if (reveal) {
+      this.toggleSection('profile', true);
+      if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
+      this.sec.profile.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   }
 
   renderToolbarState() {
@@ -691,12 +909,16 @@ export class Planner {
     const a = this.analysis;
     const act = this.app.activity();
     const st = this.els.stats;
+    const sum = this.els.sum;
     st.innerHTML = '';
+    sum.innerHTML = '';
     const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub' }, sub) : null));
+    const key = (label, value, title = '') => sum.append(h('div', { class: 'sum-item', title }, h('b', {}, value), h('small', {}, label)));
+    for (const id of ['profile', 'climbs', 'warnings', 'weather']) this.setSection(id, { empty: !a });
     if (!a) {
-      stat('Distance', '0 km');
-      stat('Ascent', '0 m');
-      stat('Descent', '0 m');
+      sum.append(h('p', { class: 'sum-empty' }, this.points.length
+        ? 'Add another point to make a route'
+        : `${matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click'} the map to add a start point`));
       this.chart.setData(null);
       this.els.breakdown.innerHTML = '';
       this.els.climbs.innerHTML = '';
@@ -707,11 +929,11 @@ export class Planner {
       return;
     }
     this.els.hint.hidden = this.points.length > 2;
-    stat('Distance', fmtDist(a.total));
-    stat('Ascent', `${Math.round(a.up)} m`);
-    stat('Descent', `${Math.round(a.down)} m`);
     const timeSub = [act === 'paddle' ? CRAFT[this.craft].label : '', a.timeWind ? 'with wind' : ''].filter(Boolean).join(' · ');
-    stat('Est. time', fmtDuration(a.timeWind || a.time), timeSub);
+    key('distance', fmtDist(a.total));
+    key(timeSub ? `time · ${timeSub}` : 'est. time', fmtDuration(a.timeWind || a.time), 'Estimated moving time');
+    key('ascent', `${Math.round(a.up)} m`);
+    stat('Descent', `${Math.round(a.down)} m`);
     if (act === 'mtb' || act === 'gravel') {
       const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);
       stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : '');
@@ -722,6 +944,7 @@ export class Planner {
       stat('High point', `${Math.round(a.maxE)} m`);
     }
     this.chart.setData(a, this.colorMode);
+    this.setSection('profile', { summary: `${COLOR_MODES[this.colorMode]} · ${Math.round(a.minE)}–${Math.round(a.maxE)} m` });
     this.renderBreakdown();
     this.renderClimbs();
     this.renderWarnings();
@@ -787,9 +1010,13 @@ export class Planner {
     const a = this.analysis;
     const box = this.els.climbs;
     box.innerHTML = '';
-    if (!a.climbs.length) return;
-    box.append(h('h4', {}, `Climbs (${a.climbs.length})`));
     const bike = ['mtb', 'gravel'].includes(this.app.activity());
+    const hardest = a.climbs.reduce((m, c) => (!m || c.gain > m.gain ? c : m), null);
+    this.setSection('climbs', {
+      count: a.climbs.length || '', empty: !a.climbs.length,
+      summary: hardest ? `biggest +${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %${bike ? ` · ↑S${hardest.cls}` : ''}` : '',
+    });
+    if (!a.climbs.length) return;
     a.climbs.forEach((c, k) => {
       // Bikes get the uphill difficulty grade; on foot the average gradient says more.
       const badge = bike
@@ -813,8 +1040,8 @@ export class Planner {
     box.innerHTML = '';
     if (!a) return;
     const all = [...a.warnings, ...(a.hazards || [])].sort((x, y) => x.at - y.at);
+    this.setSection('warnings', { count: all.length || '', empty: !all.length, summary: all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });
     if (!all.length) return;
-    box.append(h('h4', {}, `Heads-up (${all.length})`));
     const KIND_ICON = { roadwork: 'warn', incident: 'warn', roadcond: 'warn', busy: 'warn' };
     for (const w of all.slice(0, 40)) {
       const i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
@@ -834,7 +1061,7 @@ export class Planner {
     this.selected = sel;
     this.chart.setHighlight([a.along[i0], a.along[i1]]);
     const b = bbox(a.pts.slice(i0, i1 + 1));
-    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: { top: 80, bottom: this.panel.offsetHeight + 40, left: 60, right: 60 }, maxZoom: 16, duration: 700 });
+    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, duration: 700 });
   }
 
   renderWind() {
@@ -850,10 +1077,12 @@ export class Planner {
       const day = d.getDate() === now.getDate() ? '' : d.getDate() === new Date(now.getTime() + 86400000).getDate() ? 'Tomorrow ' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
       select.append(h('option', { value: String(k), selected: k === this.startOffsetH }, k === 0 ? 'Now' : `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
     }
-    box.append(h('h4', {}, act === 'paddle' ? 'Weather on the water' : 'Weather on the route', h('label', { class: 'start' }, 'Start ', select)));
+    this.setSection('weather', { title: act === 'paddle' ? 'Weather on the water' : 'Weather on the route', summary: '' });
+    box.append(h('div', { class: 'wind-start' }, h('label', { class: 'start' }, 'Start ', select)));
     if (a.wind && a.wind.stale) box.append(h('p', { class: 'note stale-note' }, `Older forecast (from ${new Date(a.wind.from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) — Open-Meteo couldn’t be reached.`));
     if (!a.wind) {
       box.append(h('div', { class: 'wind-body note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : 'Loading forecast…'));
+      this.setSection('weather', { summary: a.windError ? 'unavailable' : 'loading…' });
       return;
     }
     const w = a.wind;
@@ -886,6 +1115,7 @@ export class Planner {
       ? `${snowM > wetM / 2 ? 'Snow' : 'Rain'} on ${fmtDist(wetM)} (${Math.round((wetM / tot) * 100)} %, km ${(a.along[firstWet] / 1000).toFixed(0)}–${(a.along[lastWet] / 1000).toFixed(0)}), up to ${peak.toFixed(1)} mm/h · about ${mm < 0.5 ? mm.toFixed(1) : Math.round(mm)} mm on you`
       : 'Dry the whole way';
     const icy = tMin <= 0.5 && wetM > 0;
+    this.setSection('weather', { summary: `${Math.round(tMin) === Math.round(tMax) ? Math.round(tMin) : `${Math.round(tMin)}…${Math.round(tMax)}`} °C · ${r.label.toLowerCase()} · ${wetM > 0 ? (snowM > wetM / 2 ? 'snow' : 'rain') : 'dry'}` });
     const body = h('div', { class: 'wind-body' },
       h('div', { class: 'wind-now' },
         h('span', { class: 'wind-arrow', style: `transform:rotate(${s0.dir + 180}deg)`, title: `from ${compass(s0.dir)}`, html: '&#8593;' }),
@@ -893,7 +1123,7 @@ export class Planner {
         h('span', { class: `pill ${r.tone}` }, r.label)),
       h('div', { class: 'wx-sum' },
         h('span', {}, h('b', {}, 'Temperature '), tMin === tMax || Math.round(tMin) === Math.round(tMax) ? `${Math.round(tMin)} °C` : `${Math.round(tMin)}…${Math.round(tMax)} °C`),
-        h('button', { type: 'button', class: 'link', onclick: () => this.showMode(wetM > 0 ? 'rain' : 'temp') }, rainLine),
+        h('button', { type: 'button', class: 'link', onclick: () => this.showMode(wetM > 0 ? 'rain' : 'temp', { reveal: true }) }, rainLine),
         icy ? h('span', { class: 'pill warn' }, 'Wet and near freezing — slippery roots and rocks') : null),
       h('div', { class: 'exposure' },
         ...[['Headwind', share.head, '#ef4444'], ['Crosswind', share.cross, '#f59e0b'], ['Tailwind', share.tail, '#22a447'], ['Calm', share.calm, '#94a3b8']]
@@ -905,7 +1135,7 @@ export class Planner {
       } }, `Strongest headwind ${worst.v.toFixed(1)} m/s at km ${(a.along[worst.i] / 1000).toFixed(1)} →`) : null,
       h('div', { class: 'hours' }, ...hourStrip(w.hourly, w.startSec)),
       h('div', { class: 'wx-links' },
-        ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([k, l]) => h('button', { type: 'button', class: 'link', onclick: () => this.showMode(k) }, `${l} along the route ↑`))),
+        ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([k, l]) => h('button', { type: 'button', class: 'link', onclick: () => this.showMode(k, { reveal: true }) }, `${l} along the route ↑`))),
     );
     box.append(body);
   }

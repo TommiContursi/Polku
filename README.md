@@ -16,6 +16,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 
 **Plan a route**
 - Routing per activity — MTB, gravel, hike & run, paddle — with straight-line and over-water legs, drag points, click the line to add a via point, undo/redo, reverse, back to start.
+- The planner keeps the map in view: a side panel on desktop (drag its edge to widen it for long profiles, or minimise it) and a bottom sheet on phones that peeks, goes half or full height, and drops out of the way while you draw. Its sections fold and remember how you left them.
 - An elevation profile coloured by terrain (gradient, uphill grade, MTB difficulty), ground (surface, way type) or weather (wind, temperature, rain) — on the route line too if you like — with climbs, warnings (steps, no-bike sections, S3+, steep pitches, carries) and a time estimate that accounts for the wind.
 - Hover the route on the map for a live readout: distance, elevation, gradient, difficulty, surface, and the wind, temperature and rain when you get there.
 - **Avoid places**: any hazard or map popup can mark a spot the router goes around.
@@ -70,6 +71,15 @@ python3 serve.py        # → http://localhost:8765
 ```
 
 Any static server works; `serve.py` just disables HTTP caching while you edit. polku.si is served by GitHub Pages from `main`.
+
+With the dev server running and Google Chrome installed:
+
+```bash
+python3 tools/smoke.py                  # layout check at 4 sizes: no overlaps, no console errors
+python3 tools/shoot.py shots after      # screenshots for a pull request (--list for the scenes)
+```
+
+The plan for upcoming work is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## How the trickier parts work
 
@@ -128,6 +138,8 @@ js/modal.js         modal dialog / side card
 js/gestures.js      pinch / wheel over the UI → map zoom, trackpad tilt
 js/view3d.js        tilt & rotate orbit pad
 js/search.js, gpx.js, icons.js, geo.js, ui.js
+tools/              dev only: smoke.py, shoot.py (headless Chrome via cdp.py), fixtures
+docs/ROADMAP.md     phased plan
 ```
 
 ## Background
