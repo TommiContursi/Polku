@@ -14,6 +14,7 @@ import { forecastCells, cellSize, latticePoint, alignSeries, uncached } from './
 import { compass } from './geo.js';
 import { h, icon } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
+import { fmiRadar, FI_BOUNDS } from './radar.js';
 
 const MAX_CELLS = 60; // forecast points per grid (the view plus a margin); the field is smooth
 const IMG = 72; // field image resolution
@@ -147,7 +148,7 @@ export class WeatherOverlay {
     // usually comes in several steps, so wait a little longer for the last one
     clearTimeout(this.fetchTimer);
     const out = this.grid && this.map.getZoom() < this.grid.zoom - 0.3;
-    this.fetchTimer = setTimeout(() => this.maybeFetch(), out ? 1200 : 600);
+    this.fetchTimer = setTimeout(() => { this.maybeFetch(); this.loadFiRadar(); }, out ? 1200 : 600);
     this.renderStrip();
     this.readout();
     if (!this.animated) return;
@@ -344,7 +345,7 @@ export class WeatherOverlay {
     this.app.setImage('wxField', fieldOn ? draw((s) => (this.on.temp ? [...ramp(TEMP_RAMP, s.temp), 255] : [...ramp(WIND_RAMP, s.speed), 255])) : null);
     const forecastRain = this.on.rain && this.hour >= 0.5;
     this.app.setImage('wxRain', forecastRain ? draw((s) => (s.rain < 0.05 ? null : [...ramp(RAIN_RAMP, s.rain), Math.round(Math.min(235, 150 + s.rain * 45))])) : null);
-    this.app.setRadar(this.on.rain && this.hour < 0.5 ? this.radar || {} : null);
+    this.syncRadar();
     // labels: °C on a sparse grid, and precipitation amounts where it rains
     const feats = [];
     for (let r = 1; r < g.rows - 1; r++) {
@@ -361,6 +362,61 @@ export class WeatherOverlay {
     this.app.setData('wxLabels', { type: 'FeatureCollection', features: feats });
   }
 
+  // Radar "now": FMI's composite over Finland (sharp, our colours) and RainViewer
+  // for everywhere else; RainViewer is left out when Finland's image covers the view.
+  syncRadar() {
+    const now = this.on.rain && this.hour < 0.5;
+    if (!now) { this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; return; }
+    this.syncRadarRv();
+    this.loadFiRadar();
+  }
+
+  async loadFiRadar() {
+    if (!this.on.rain || this.hour >= 0.5) return;
+    const v = this.viewBox();
+    const fi = FI_BOUNDS;
+    if (v[2] < fi[0] || v[0] > fi[2] || v[3] < fi[1] || v[1] > fi[3]) return; // not over Finland
+    const z = this.map.getZoom();
+    // Zoomed out: all of Finland. Zoomed in: the view and a margin, sharper.
+    let box = fi;
+    if (z >= 7.5) {
+      const px = (v[2] - v[0]) * 0.5, py = (v[3] - v[1]) * 0.5;
+      box = [Math.max(fi[0], v[0] - px), Math.max(fi[1], v[1] - py), Math.min(fi[2], v[2] + px), Math.min(fi[3], v[3] + py)];
+    }
+    const c = this.fi;
+    const inside = c && v[0] >= c.box[0] && v[2] <= c.box[2] && v[1] >= c.box[1] && v[3] <= c.box[3];
+    // the all-Finland image serves every zoomed-out view; a zoomed-in one, views inside it
+    if (c && (c.zoomed ? inside && z >= 7.5 : z < 7.5) && Date.now() - c.t < 5 * 60e3) return;
+    if (this.fiLoading || Date.now() - (this.fiFailed || 0) < 60e3) return; // one try a minute after a failure
+    this.fiLoading = true;
+    try {
+      // pixels: about the screen's own, in Web Mercator proportions
+      const aspect = (my(box[1]) - my(box[3])) / (mx(box[2]) - mx(box[0]));
+      const width = Math.min(1024, Math.round(Math.max(256, this.map.getCanvas().clientWidth * (z >= 7.5 ? 1.5 : 0.6))));
+      const height = Math.min(2048, Math.round(width * Math.abs(aspect)));
+      const img = await fmiRadar(box, width, height, (mmh) => ramp(RAIN_RAMP, mmh));
+      if (!this.on.rain || this.hour >= 0.5) return;
+      const full = box === fi;
+      this.fi = { box, t: Date.now(), zoomed: z >= 7.5, rv: full }; // rv: RainViewer still needed around it
+      this.app.setImage('wxRadarFi', img);
+      this.syncRadarRv();
+      clearTimeout(this.fiTimer);
+      this.fiTimer = setTimeout(() => { if (this.fi) this.fi.t = 0; this.loadFiRadar(); }, 5 * 60e3); // new scans every 5 min
+      this.fiFailed = 0;
+    } catch {
+      this.fiFailed = Date.now(); // RainViewer still shows; net.js has the notice
+    } finally {
+      this.fiLoading = false;
+    }
+  }
+
+  syncRadarRv() {
+    const v = this.viewBox();
+    const c = this.fi;
+    const covers = c && !c.rv && v[0] >= c.box[0] && v[2] <= c.box[2] && v[1] >= c.box[1] && v[3] <= c.box[3];
+    this.app.setRadar(this.on.rain && this.hour < 0.5 && !covers ? this.radar || {} : null);
+  }
+
   async loadRadarMeta() {
     if (this.radar && Date.now() - this.radar.t < 5 * 60 * 1000) return;
     try {
@@ -370,7 +426,7 @@ export class WeatherOverlay {
     } catch {
       this.radar = { t: Date.now() };
     }
-    if (this.on.rain && this.hour < 0.5) this.app.setRadar(this.radar);
+    if (this.on.rain && this.hour < 0.5) this.syncRadarRv();
     this.renderTime();
   }
 
@@ -567,7 +623,7 @@ export class WeatherOverlay {
     if (!this.on.wind) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
     if (!this.on.rain) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
-    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); }
+    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; }
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
 
@@ -808,7 +864,7 @@ export class WeatherOverlay {
     const day = t.toLocaleDateString([], { weekday: 'short' });
     const clock = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let label = this.hour < 0.5 ? `Now · ${clock}` : `${day} ${clock} · +${Math.round(this.hour)} h`;
-    if (this.on.rain && this.hour < 0.5) label += ' · radar';
+    if (this.on.rain && this.hour < 0.5) label += this.fi ? ' · FMI radar' : ' · radar';
     if (this.loading) label += ' · loading…';
     this.timeEl.textContent = label;
     // linked with the route's departure time

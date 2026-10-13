@@ -549,7 +549,7 @@ onStatus((src, s) => {
   if (usageBox && !usageBox.closest('[hidden]')) renderUsage(usageBox);
   if (!s) { limitedNoticed.delete(src); return; }
   if (s.near) {
-    toast(`${info.label}: ${Math.round((s.used / s.max) * 100)} % of its ${{ minute: 'per-minute', hour: 'hourly', day: 'daily' }[s.name]} limit used from this device — ${info.what} may pause soon.`, { tone: 'warn', ms: 6000 });
+    toast(`${info.label}: ${Math.round((s.used / s.max) * 100)} % of its ${{ minute: 'per-minute', '5 minutes': 'five-minute', hour: 'hourly', day: 'daily' }[s.name]} limit used from this device — ${info.what} may pause soon.`, { tone: 'warn', ms: 6000 });
     return;
   }
   if (s.retry) {
