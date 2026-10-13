@@ -96,28 +96,41 @@ function fail(source, reason, wait = null) {
 
 // ------------------------------------------------------------------ usage
 const session = {}; // source -> weighted calls
-const recent = {}; // source -> [[ms, weight], …] within a day, for the per-minute/hour bars
 let today = loadToday();
+// source -> [[ms, weight], …] of the last hour, for the per-minute/hour bars (kept across reloads)
+const recent = today.recent || {};
 
 function loadToday() {
   const day = new Date().toISOString().slice(0, 10); // providers reset on UTC days
   try {
     const t = JSON.parse(localStorage.getItem('polku.usage') || 'null');
     if (t && t.day === day) return t;
+    if (t && t.recent) return { day, counts: {}, recent: t.recent }; // a new UTC day, but the last hour still counts
   } catch { /* storage blocked */ }
   return { day, counts: {} };
 }
 
 function count(source, weight) {
   const day = new Date().toISOString().slice(0, 10);
-  if (today.day !== day) today = { day, counts: {} };
+  if (today.day !== day) today = { day, counts: {}, recent };
   session[source] = (session[source] || 0) + weight;
   today.counts[source] = (today.counts[source] || 0) + weight;
   const r = (recent[source] ||= []);
   r.push([Date.now(), weight]);
-  while (r.length && Date.now() - r[0][0] > 864e5) r.shift();
+  while (r.length && Date.now() - r[0][0] > 3600e3) r.shift();
+  today.recent = recent;
   try { localStorage.setItem('polku.usage', JSON.stringify(today)); } catch { /* fine */ }
+  // warn once per window when 80 % of a published limit is used
+  for (const [ms, max, name] of SOURCES[source] && SOURCES[source].limits || []) {
+    const used = name === 'day' ? today.counts[source] : r.reduce((sum, [t, w]) => sum + (Date.now() - t < ms ? w : 0), 0);
+    const key = `${source}:${name}:${name === 'day' ? today.day : Math.floor(Date.now() / ms)}`;
+    if (used >= 0.8 * max && !warned.has(key)) {
+      warned.add(key);
+      emit(source, { near: true, name, used, max });
+    }
+  }
 }
+const warned = new Set();
 
 /** Per source: calls this session, today, and use against each known limit window. */
 export function usage() {

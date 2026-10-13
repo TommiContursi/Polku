@@ -23,6 +23,7 @@ import { initGestures } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
 import { onStatus, SOURCES, clock } from './net.js';
+import { renderUsage } from './usage.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
 import { WIND_CLASSES } from './weather.js';
@@ -376,6 +377,10 @@ function renderLayersPanel() {
     })));
   }
 
+  usageBox = h('div', { class: 'use-list' });
+  p.append(section('Data sources', usageBox));
+  renderUsage(usageBox);
+
   const offlineBox = h('div', { class: 'off-list' });
   p.append(section('Offline maps', offlineBox));
   renderOfflineSection(offlineBox, { open: openOfflineArea });
@@ -536,9 +541,17 @@ function openOfflineArea(area) {
 // A free service is limiting or failing: say so once per episode (which one,
 // what it affects, when it's tried again); route weather retries on its own.
 const limitedNoticed = new Set();
+let usageBox = null;
+// keep the readout current while Layers is open
+setInterval(() => { if (usageBox && !usageBox.closest('[hidden]')) renderUsage(usageBox); }, 5000);
 onStatus((src, s) => {
   const info = SOURCES[src] || { label: src, what: '' };
+  if (usageBox && !usageBox.closest('[hidden]')) renderUsage(usageBox);
   if (!s) { limitedNoticed.delete(src); return; }
+  if (s.near) {
+    toast(`${info.label}: ${Math.round((s.used / s.max) * 100)} % of its ${{ minute: 'per-minute', hour: 'hourly', day: 'daily' }[s.name]} limit used from this device — ${info.what} may pause soon.`, { tone: 'warn', ms: 6000 });
+    return;
+  }
   if (s.retry) {
     const a = planner.analysis;
     if (src === 'openmeteo' && a && (a.windError || (a.wind && a.wind.stale))) planner.loadWind(a);

@@ -24,6 +24,7 @@ const FRESH = 3600e3;
 const KEEP = 24 * 3600e3;
 const BATCH = 100; // locations per request
 const cells = new Map(); // "L/i/j" -> { at, s }
+const inflight = new Map(); // "L/i/j" -> Promise of the request fetching it
 const store = idb('weather');
 store.prune((v) => v && Date.now() - v.at < KEEP).catch(() => {});
 
@@ -70,20 +71,29 @@ export async function forecastCells(list) {
       return true;
     });
   }
-  let error = null;
-  const fetchKeys = [...new Set(need.map((n) => keys[n]))];
-  for (let b = 0; b < fetchKeys.length && !error; b += BATCH) {
-    const batch = fetchKeys.slice(b, b + BATCH);
-    try {
-      const series = await fetchPoints(batch.map((k) => { const [L, i, j] = k.split('/').map(Number); return cellCenter({ L, i, j }); }));
+  // Cells another call is already fetching are awaited, not asked for twice
+  // (the timeline and the weather layers often ask at the same moment).
+  const waits = [];
+  const mine = [];
+  for (const k of new Set(need.map((n) => keys[n]))) (inflight.has(k) ? waits.push(inflight.get(k)) : mine.push(k));
+  for (let b = 0; b < mine.length; b += BATCH) {
+    const batch = mine.slice(b, b + BATCH);
+    const p = fetchPoints(batch.map((k) => { const [L, i, j] = k.split('/').map(Number); return cellCenter({ L, i, j }); })).then((series) => {
       const at = Date.now();
       batch.forEach((k, m) => {
         const v = { at, s: series[m] };
         cells.set(k, v);
         store.set(k, v).catch(() => {});
       });
-    } catch (err) { error = err; }
+    });
+    const clear = () => batch.forEach((k) => { if (inflight.get(k) === p) inflight.delete(k); });
+    p.then(clear, clear);
+    batch.forEach((k) => inflight.set(k, p));
+    waits.push(p);
   }
+  const settled = await Promise.allSettled([...new Set(waits)]);
+  const failed = settled.find((r) => r.status === 'rejected');
+  const error = failed ? failed.reason : null;
   for (const n of need) {
     const c = cells.get(keys[n]);
     if (c && Date.now() - c.at < FRESH) out[n] = c.s;
