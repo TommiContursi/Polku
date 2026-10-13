@@ -12,7 +12,7 @@
 
 import { forecastCells, cellSize, latticePoint, alignSeries, uncached } from './weather.js';
 import { compass } from './geo.js';
-import { h, icon } from './ui.js';
+import { h, icon, store } from './ui.js';
 import { request, onStatus, sourceStatus, clock as hhmm, usage } from './net.js';
 import { fmiRadar, FI_BOUNDS } from './radar.js';
 
@@ -102,7 +102,7 @@ export class WeatherOverlay {
 
   get layersOn() { return this.on.wind || this.on.temp || this.on.rain; }
   // forecast data is needed for the weather layers and for the timeline strip
-  get active() { return this.open || this.layersOn; }
+  get active() { return this.open || !!this.docked || this.layersOn; }
   get animated() { return this.on.wind || this.on.rain; }
 
   set(layers) {
@@ -120,17 +120,99 @@ export class WeatherOverlay {
     this.readout();
   }
 
-  // Show / hide the timeline bar. Layers keep their selected time either way.
+  // Show / hide the floating timeline. Layers keep their selected time either way.
+  // While docked in the planner it stays there; this only sets what comes back.
   setOpen(on) {
     this.open = on;
-    this.bar.hidden = !on;
-    if (on) {
+    if (!this.docked) this.bar.hidden = !on;
+    this.wake();
+  }
+
+  // While planning, the timeline lives in the planner: one departure control,
+  // and no second panel over the map. `el` null puts it back on the map.
+  dock(el) {
+    if (el === (this.docked || null)) return;
+    if (!this.home) this.home = { parent: this.bar.parentElement, next: this.bar.nextSibling };
+    this.docked = el;
+    if (el) el.append(this.bar); else this.home.parent.insertBefore(this.bar, this.home.next);
+    this.bar.classList.toggle('docked', !!el);
+    this.bar.hidden = !el && !this.open;
+    this.placeFloat();
+    this.wake();
+  }
+
+  wake() {
+    if (this.active) {
       this.maybeFetch();
       this.renderChips();
       this.renderTime();
       requestAnimationFrame(() => this.renderStrip());
       if (!this.anim) this.startAnim();
-    } else if (!this.layersOn) this.stopClock();
+    } else this.stopClock();
+  }
+
+  // Floating on a wide screen: drag the title bar to put the timeline anywhere,
+  // the grip on its right edge to make it wider. Both are remembered; a
+  // double-click on the title bar puts it back at the bottom centre.
+  bindFloat() {
+    const bar = this.bar;
+    const head = bar.querySelector('.tl-head');
+    const grip = h('div', { class: 'tl-grip', title: 'Drag to resize the timeline', 'aria-hidden': 'true' });
+    bar.append(grip);
+    this.floatMQ = matchMedia('(min-width: 721px)');
+    this.floatMQ.addEventListener('change', () => this.placeFloat());
+    const can = () => !this.docked && this.floatMQ.matches;
+    let drag = null;
+    const start = (kind) => (e) => {
+      if (!can() || e.button > 0 || (kind === 'move' && e.target.closest('button, input, select, a'))) return;
+      const r = bar.getBoundingClientRect();
+      drag = { kind, x: e.clientX, y: e.clientY, r };
+      bar.classList.add('dragging');
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+      e.preventDefault();
+    };
+    const move = (e) => {
+      if (!drag) return;
+      const { r } = drag, dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      const f = drag.kind === 'move' ? { left: r.left + dx, top: r.top + dy, width: r.width } : { left: r.left, top: r.top, width: r.width + dx };
+      this.placeFloat(f);
+    };
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      bar.classList.remove('dragging');
+      if (this.float) store.set('timelineFloat', this.float);
+    };
+    for (const [el, kind] of [[head, 'move'], [grip, 'size']]) {
+      el.addEventListener('pointerdown', start(kind));
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+    }
+    head.addEventListener('dblclick', (e) => {
+      if (!can() || e.target.closest('button, input, select, a')) return;
+      store.set('timelineFloat', null);
+      this.placeFloat(null);
+    });
+    addEventListener('resize', () => this.placeFloat());
+    this.placeFloat(store.get('timelineFloat', null) || undefined);
+  }
+
+  // f: {left, top, width} in px, null: back to the default place, undefined: re-apply (and keep on screen)
+  placeFloat(f) {
+    if (f !== undefined) this.float = f;
+    const bar = this.bar, st = bar.style;
+    const on = this.float && !this.docked && this.floatMQ && this.floatMQ.matches;
+    bar.classList.toggle('placed', !!on);
+    if (!on) { st.left = st.top = st.width = st.bottom = st.transform = ''; return; }
+    // anywhere on the map, but never over the button column on the right
+    const right = innerWidth - 84;
+    const w = Math.round(Math.max(420, Math.min(right - 16, this.float.width)));
+    const hgt = bar.offsetHeight || 190;
+    const left = Math.round(Math.max(8, Math.min(right - w - 8, this.float.left)));
+    const top = Math.round(Math.max(8, Math.min(innerHeight - hgt - 8, this.float.top)));
+    this.float = { left, top, width: w };
+    Object.assign(st, { left: `${left}px`, top: `${top}px`, width: `${w}px`, bottom: 'auto', transform: 'none' });
   }
 
   onMoveStart() {
@@ -672,6 +754,7 @@ export class WeatherOverlay {
       this.noteEl,
     );
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
+    this.bindFloat();
   }
 
   renderChips() {
@@ -884,7 +967,8 @@ export class WeatherOverlay {
         : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null;
       this.noteEl.classList.toggle('warn', !!problem);
       this.noteEl.textContent = problem ? `⚠ ${problem}`
-        : route ? 'Also your route’s departure — the shaded band is your ride. Road works and road conditions follow this time too.' : 'Also sets road works and road conditions, and the departure of a planned route.';
+        : this.docked ? 'This is your departure: drag the strip or press play. The shaded band is your ride; road works and road conditions follow this time too.'
+          : route ? 'Also your route’s departure — the shaded band is your ride. Road works and road conditions follow this time too.' : 'Also sets road works and road conditions, and the departure of a planned route.';
     }
     if (this.app.onTime) this.app.onTime(this.hour);
   }

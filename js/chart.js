@@ -1,6 +1,6 @@
-// Elevation profile on canvas. The fill is coloured by the selected mode
-// (gradient, uphill difficulty, surface, way type, MTB difficulty) and hover
-// is synced both ways with the map.
+// Elevation profile on canvas (or, for paddling, wind along the route). The
+// fill is coloured by the selected mode, hover is synced both ways with the
+// map, and dragging across the chart zooms into a stretch.
 
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
@@ -64,6 +64,9 @@ export function routeReadout(a, i) {
   }
   if (a.wind && a.tAtWind) when.push(`at ${clock(a.wind.startSec + a.tAtWind[i])}`);
   else if (a.tAt) when.push(`${fmtDuration(a.tAt[i])} in`);
+  if (a.activity === 'paddle') {
+    return { title: `${fmtDist(a.along[i])} · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : a.way[i]}`, lines: [when.join(' · ')].filter(Boolean) };
+  }
   return {
     title: `${fmtDist(a.along[i])} · ${Math.round(a.ele[i])} m · ${g >= 0 ? '+' : ''}${g.toFixed(1)} %`,
     lines: [trail.join(' · '), when.join(' · ')].filter(Boolean),
@@ -83,23 +86,110 @@ export class ProfileChart {
     this.tip = tip;
     this.a = null;
     this.mode = 'grade';
+    // 'elevation': the usual profile; 'conditions': wind along the route (paddling,
+    // where the water surface has no profile worth drawing)
+    this.kind = 'elevation';
+    this.placeholder = '';
+    this.view = null; // [from, to] metres when zoomed in
     this.hoverIdx = -1;
     this.highlight = null;
     this.onHover = () => {};
     this.onClick = () => {};
+    this.onZoom = () => {};
     this.pad = { l: 40, r: 10, t: 10, b: 20 };
+    this.resetBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'chart-reset', textContent: 'Whole route', hidden: true, title: 'Zoom the profile back out' });
+    this.resetBtn.addEventListener('click', () => this.setView(null, true));
+    canvas.parentElement.append(this.resetBtn);
     new ResizeObserver(() => this.draw()).observe(canvas);
-    canvas.addEventListener('pointermove', (e) => this.pointer(e));
-    canvas.addEventListener('pointerleave', () => { this.setHover(-1); this.onHover(null); });
-    canvas.addEventListener('click', (e) => {
-      const i = this.indexAt(e);
-      if (i >= 0) this.onClick(i);
-    });
+    this.bindPointer();
   }
 
-  setData(a, mode = this.mode) { this.a = a; this.mode = mode; this.hoverIdx = -1; this.draw(); }
+  // Mouse: drag across the chart to zoom into that stretch, click to centre the
+  // map there. Touch: drag scrubs, double-tap zooms in around the tap.
+  bindPointer() {
+    const c = this.canvas;
+    let down = null, lastTap = 0;
+    c.addEventListener('pointerdown', (e) => {
+      if (e.button > 0) return;
+      down = { x: e.clientX, mouse: e.pointerType === 'mouse' };
+      if (down.mouse) try { c.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+    });
+    c.addEventListener('pointermove', (e) => {
+      if (down && down.mouse && Math.abs(e.clientX - down.x) > 6) {
+        const r = c.getBoundingClientRect();
+        this.sel = [down.x - r.left, e.clientX - r.left];
+        this.draw();
+        return;
+      }
+      this.pointer(e);
+    });
+    c.addEventListener('pointerup', (e) => {
+      const d = down;
+      down = null;
+      if (!d) return;
+      if (this.sel) {
+        const [x0, x1] = this.sel.slice().sort((p, q) => p - q);
+        this.sel = null;
+        if (x1 - x0 > 10) this.setView([this.distAt(x0), this.distAt(x1)], true); else this.draw();
+        return;
+      }
+      if (Math.abs(e.clientX - d.x) > 6) return;
+      const i = this.indexAt(e);
+      if (i < 0) return;
+      const now = Date.now();
+      if (!d.mouse && now - lastTap < 320) {
+        const [v0, v1] = this.domain();
+        const at = this.a.along[i], half = (v1 - v0) / 4;
+        this.setView([at - half, at + half], true);
+        lastTap = 0;
+        return;
+      }
+      lastTap = now;
+      this.onClick(i);
+    });
+    c.addEventListener('pointercancel', () => { down = null; this.sel = null; this.draw(); });
+    // pinch on a trackpad (ctrl+wheel) zooms the profile around the pointer; the map follows once it settles
+    c.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey || !this.a) return;
+      e.preventDefault();
+      const [v0, v1] = this.domain();
+      const at = this.distAt(e.clientX - this.geom().rect.left);
+      const f = Math.exp(Math.max(-0.5, Math.min(0.5, e.deltaY * 0.01)));
+      this.setView([at - (at - v0) * f, at + (v1 - at) * f]);
+      clearTimeout(this.zoomTimer);
+      this.zoomTimer = setTimeout(() => this.onZoom(this.view), 350);
+    }, { passive: false });
+    c.addEventListener('pointerleave', () => { if (!down) { this.setHover(-1); this.onHover(null); } });
+  }
+
+  setData(a, mode = this.mode, kind = this.kind) {
+    // a new route zooms back out; the same one (e.g. its forecast arrived) keeps the zoom
+    if (a !== this.a || kind !== this.kind) { this.view = null; this.resetBtn.hidden = true; }
+    this.a = a; this.mode = mode; this.kind = kind; this.hoverIdx = -1;
+    this.draw();
+  }
   setMode(mode) { this.mode = mode; this.draw(); }
   setHighlight(range) { this.highlight = range; this.draw(); }
+
+  domain() { return this.view || [0, this.a ? this.a.total : 1]; }
+
+  // Zoom to [from, to] metres (null: the whole route). `user`: tell the planner, so the map follows.
+  setView(v, user = false) {
+    const a = this.a;
+    if (!a) return;
+    if (v) {
+      let [d0, d1] = v;
+      const span = Math.max(Math.min(150, a.total), d1 - d0);
+      const mid = (d0 + d1) / 2;
+      d0 = Math.max(0, Math.min(a.total - span, mid - span / 2));
+      d1 = d0 + span;
+      v = d1 - d0 >= a.total * 0.98 ? null : [d0, d1];
+    }
+    this.view = v;
+    this.resetBtn.hidden = !v;
+    this.draw();
+    if (user) this.onZoom(v);
+  }
 
   geom() {
     const r = this.canvas.getBoundingClientRect();
@@ -107,16 +197,25 @@ export class ProfileChart {
     return { w: r.width, h: r.height, x0: l, x1: r.width - pr, y0: t, y1: r.height - b, rect: r };
   }
 
-  indexAt(e) {
-    if (!this.a) return -1;
+  distAt(x) {
     const g = this.geom();
-    const x = e.clientX - g.rect.left;
-    const d = ((x - g.x0) / (g.x1 - g.x0)) * this.a.total;
-    if (d < 0 || d > this.a.total) return -1;
+    const [v0, v1] = this.domain();
+    return v0 + Math.max(0, Math.min(1, (x - g.x0) / (g.x1 - g.x0))) * (v1 - v0);
+  }
+
+  idxOfDist(d) {
     const al = this.a.along;
     let lo = 0, hi = al.length - 1;
     while (hi - lo > 1) { const m = (lo + hi) >> 1; if (al[m] < d) lo = m; else hi = m; }
     return d - al[lo] < al[hi] - d ? lo : hi;
+  }
+
+  indexAt(e) {
+    if (!this.a) return -1;
+    const g = this.geom();
+    const x = e.clientX - g.rect.left;
+    if (x < g.x0 - 2 || x > g.x1 + 2) return -1;
+    return this.idxOfDist(this.distAt(x));
   }
 
   pointer(e) {
@@ -132,14 +231,16 @@ export class ProfileChart {
     const a = this.a;
     if (i < 0 || !a || !tip) { this.tip.hidden = true; return; }
     const g = this.geom();
-    const x = g.x0 + (a.along[i] / a.total) * (g.x1 - g.x0);
-    const rows = [
-      `<b>${fmtDist(a.along[i])}</b> · ${Math.round(a.ele[i])} m`,
-      `Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`,
-    ];
-    if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
-    if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
-    rows.push(`${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
+    const [v0, v1] = this.domain();
+    const x = g.x0 + ((a.along[i] - v0) / (v1 - v0)) * (g.x1 - g.x0);
+    const rows = this.kind === 'conditions'
+      ? [`<b>${fmtDist(a.along[i])}</b> · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : a.way[i]}`]
+      : [`<b>${fmtDist(a.along[i])}</b> · ${Math.round(a.ele[i])} m`, `Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`];
+    if (this.kind !== 'conditions') {
+      if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
+      if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
+      rows.push(`${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
+    }
     if (a.wind) {
       const w = a.wind;
       const c = windClass(w.head[i], w.speed[i]);
@@ -168,16 +269,27 @@ export class ProfileChart {
     const ink = css.getPropertyValue('--chart-ink').trim() || '#334155';
     const grid = css.getPropertyValue('--chart-grid').trim() || 'rgba(100,116,139,0.18)';
     const muted = css.getPropertyValue('--muted').trim() || '#64748b';
-    if (!a || a.pts.length < 2) {
-      ctx.fillStyle = muted;
-      ctx.font = '12px system-ui, sans-serif';
-      ctx.fillText('Add points on the map to see the elevation profile', g.x0, g.h / 2);
-      return;
+    const cond = this.kind === 'conditions';
+    const note = (text) => { ctx.fillStyle = muted; ctx.font = '12px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(text, g.x0, g.h / 2); };
+    if (!a || a.pts.length < 2) { note('Add points on the map to see the elevation profile'); return; }
+    if (cond && !a.wind) { note(this.placeholder || 'Loading the wind along the route…'); return; }
+    const [v0, v1] = this.domain();
+    const iA = Math.max(0, this.idxOfDist(v0) - 1), iB = Math.min(a.pts.length - 1, this.idxOfDist(v1) + 1);
+    // the value drawn: elevation, or wind speed for conditions
+    const val = cond ? a.wind.speed : a.ele;
+    let lo = Infinity, hi = -Infinity;
+    for (let k = iA; k <= iB; k++) {
+      const v = cond ? Math.max(val[k], a.wind.gust[k]) : val[k];
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
     }
-    const span = Math.max(20, a.maxE - a.minE);
-    const yMin = a.minE - span * 0.08;
-    const yMax = a.maxE + span * 0.12;
-    const X = (d) => g.x0 + (d / a.total) * (g.x1 - g.x0);
+    let yMin, yMax;
+    if (cond) { yMin = 0; yMax = Math.max(4, hi * 1.15); } else {
+      const span = Math.max(20, hi - lo);
+      yMin = lo - span * 0.08;
+      yMax = hi + span * 0.12;
+    }
+    const X = (d) => g.x0 + ((d - v0) / (v1 - v0)) * (g.x1 - g.x0);
     const Y = (e) => g.y1 - ((e - yMin) / (yMax - yMin)) * (g.y1 - g.y0);
 
     // grid + labels
@@ -185,18 +297,25 @@ export class ProfileChart {
     ctx.fillStyle = muted;
     ctx.strokeStyle = grid;
     ctx.lineWidth = 1;
-    const ys = niceStep(yMax - yMin, 4);
+    const ys = niceStep(yMax - yMin, cond ? 3 : 4);
+    const top = Math.floor(yMax / ys) * ys;
     for (let v = Math.ceil(yMin / ys) * ys; v <= yMax; v += ys) {
       const y = Math.round(Y(v)) + 0.5;
       ctx.beginPath(); ctx.moveTo(g.x0, y); ctx.lineTo(g.x1, y); ctx.stroke();
       ctx.textAlign = 'right';
-      ctx.fillText(`${Math.round(v)}`, g.x0 - 6, y + 3);
+      ctx.fillText(cond && Math.abs(v - top) < 1e-6 ? `${Math.round(v)} m/s` : `${Math.round(v)}`, g.x0 - 6, y + 3);
     }
-    const xs = niceStep(a.total / 1000, 6) * 1000;
+    const span = v1 - v0;
+    const xs = niceStep(span / 1000, 6) * 1000;
     ctx.textAlign = 'center';
-    for (let d = 0; d <= a.total + 1; d += xs) {
+    for (let d = Math.ceil(v0 / xs) * xs; d <= v1 + 1; d += xs) {
       ctx.fillText(d >= 1000 || xs >= 1000 ? `${(d / 1000).toFixed(xs < 1000 ? 1 : 0)} km` : `${d} m`, X(d), g.h - 5);
     }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(g.x0, 0, g.x1 - g.x0, g.h);
+    ctx.clip();
 
     // highlighted range (selected climb / warning)
     if (this.highlight) {
@@ -206,15 +325,14 @@ export class ProfileChart {
     }
 
     // coloured fill, batched by colour
-    const n = a.pts.length;
-    let i = 0;
-    while (i < n - 1) {
+    let i = iA;
+    while (i < iB) {
       const col = colorAt(a, i + 1, this.mode);
       let j = i + 1;
-      while (j < n - 1 && colorAt(a, j + 1, this.mode) === col) j++;
+      while (j < iB && colorAt(a, j + 1, this.mode) === col) j++;
       ctx.beginPath();
       ctx.moveTo(X(a.along[i]), g.y1);
-      for (let k = i; k <= j; k++) ctx.lineTo(X(a.along[k]), Y(a.ele[k]));
+      for (let k = i; k <= j; k++) ctx.lineTo(X(a.along[k]), Y(val[k]));
       ctx.lineTo(X(a.along[j]), g.y1);
       ctx.closePath();
       ctx.fillStyle = col;
@@ -223,25 +341,76 @@ export class ProfileChart {
     }
     // outline
     ctx.beginPath();
-    for (let k = 0; k < n; k++) {
-      const x = X(a.along[k]), y = Y(a.ele[k]);
-      if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    for (let k = iA; k <= iB; k++) {
+      const x = X(a.along[k]), y = Y(val[k]);
+      if (k > iA) ctx.lineTo(x, y); else ctx.moveTo(x, y);
     }
     ctx.strokeStyle = ink;
     ctx.lineWidth = 1.4;
     ctx.stroke();
 
-    // climb markers
-    ctx.font = '600 10px system-ui, sans-serif';
-    a.climbs.forEach((cl, k) => {
-      const x = X((cl.from + cl.to) / 2);
-      const y = Y(a.ele[cl.end]) - 6;
-      ctx.fillStyle = ['mtb', 'gravel'].includes(a.activity) ? DIFF_COLORS[cl.cls] : gradeColor(cl.avg);
-      ctx.beginPath(); ctx.arc(x, y - 3, 7, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${k + 1}`, x, y);
-    });
+    if (cond) {
+      const w = a.wind;
+      // gusts, dashed
+      ctx.beginPath();
+      for (let k = iA; k <= iB; k++) {
+        const x = X(a.along[k]), y = Y(w.gust[k]);
+        if (k > iA) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = muted;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // rain as bars from the bottom, carries as an orange band on the baseline
+      for (let k = iA + 1; k <= iB; k++) {
+        const x0 = X(a.along[k - 1]), x1 = X(a.along[k]);
+        if (w.precip[k] >= 0.1) {
+          ctx.fillStyle = 'rgba(37, 99, 235, 0.35)';
+          const hh = Math.min(1, w.precip[k] / 3) * (g.y1 - g.y0) * 0.3;
+          ctx.fillRect(x0, g.y1 - hh, Math.max(1, x1 - x0), hh);
+        }
+        if (a.way[k] === 'portage') {
+          ctx.fillStyle = '#ea580c';
+          ctx.fillRect(x0, g.y1 - 4, Math.max(2, x1 - x0), 4);
+        }
+      }
+      // where the wind blows, along the top
+      const n = Math.max(2, Math.floor((g.x1 - g.x0) / 46));
+      ctx.fillStyle = ink;
+      for (let s = 0; s < n; s++) {
+        const d = v0 + ((s + 0.5) / n) * span;
+        const k = this.idxOfDist(d);
+        const x = X(a.along[k]), y = g.y0 + 6;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(((w.dir[k] + 180) * Math.PI) / 180);
+        ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(3.5, 4); ctx.lineTo(0, 2); ctx.lineTo(-3.5, 4); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+    } else {
+      // climb markers
+      ctx.font = '600 10px system-ui, sans-serif';
+      a.climbs.forEach((cl, k) => {
+        const x = X((cl.from + cl.to) / 2);
+        const y = Y(a.ele[cl.end]) - 6;
+        ctx.fillStyle = ['mtb', 'gravel'].includes(a.activity) ? DIFF_COLORS[cl.cls] : gradeColor(cl.avg);
+        ctx.beginPath(); ctx.arc(x, y - 3, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${k + 1}`, x, y);
+      });
+    }
+
+    // drag selection
+    if (this.sel) {
+      const [p, q] = this.sel.slice().sort((m, n2) => m - n2);
+      ctx.fillStyle = 'rgba(31, 111, 74, 0.14)';
+      ctx.fillRect(p, g.y0, q - p, g.y1 - g.y0);
+      ctx.strokeStyle = 'rgba(31, 111, 74, 0.6)';
+      ctx.strokeRect(p + 0.5, g.y0 + 0.5, q - p - 1, g.y1 - g.y0 - 1);
+    }
 
     // hover
     if (this.hoverIdx >= 0) {
@@ -251,7 +420,8 @@ export class ProfileChart {
       ctx.beginPath(); ctx.moveTo(x, g.y0); ctx.lineTo(x, g.y1); ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = ink;
-      ctx.beginPath(); ctx.arc(x, Y(a.ele[this.hoverIdx]), 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, Y(val[this.hoverIdx]), 4, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
   }
 }

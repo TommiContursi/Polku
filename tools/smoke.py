@@ -16,11 +16,12 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cdp import Chrome  # noqa: E402
 
-VIEWPORTS = [(1440, 900, False), (1024, 768, False), (390, 844, True), (360, 740, True)]
+# (width, height, phone, planner docked at the bottom on desktop)
+VIEWPORTS = [(1440, 900, False, False), (1440, 900, False, True), (1024, 768, False, False), (390, 844, True, False), (360, 740, True, False)]
 
 # Visible boxes that must never overlap each other (toasts and popups are transient and skipped).
 BOXES = """(() => {
-  const sel = ['.topbar .brand', '.topbar .search', '#activity-bar', '#zoom-hint', '.fab-col', '#btn-plan', '#planner', '#wx-bar', '#view3d',
+  const sel = ['.topbar .brand', '.topbar .search', '#activity-bar', '#zoom-hint', '.fab-col', '#btn-plan', '#planner', '#wx-bar:not(.docked)', '#view3d',
     '.maplibregl-ctrl-top-right .maplibregl-ctrl-group', '.maplibregl-ctrl-attrib', '.maplibregl-ctrl-scale', '.offline-banner', '.panel'];
   const out = [];
   for (const s of sel) for (const e of document.querySelectorAll(s)) {
@@ -45,11 +46,11 @@ def overlaps(boxes):
     return bad
 
 
-def check(chrome, w, h, phone):
-    name = f'{w}x{h}'
+def check(chrome, w, h, phone, bottom=False):
+    name = f'{w}x{h}' + (' bottom' if bottom else '')
     fails = []
     pg = chrome.page(w, h, phone)
-    pg.open_app({'activity': 'mtb', 'timeline': True})
+    pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:plannerDock': '"bottom"'} if bottom else None)
     time.sleep(1.0)
     fails += [f'closed: {o}' for o in overlaps(pg.js(BOXES))]
 
@@ -58,10 +59,13 @@ def check(chrome, w, h, phone):
     pg.js("new Promise((ok) => { const p = polku.planner, t0 = Date.now(); const go = () => (p.analysis && p.analysis.pts.length > 10) || Date.now() - t0 > 30000 ? ok() : setTimeout(go, 200); go(); })")
     time.sleep(0.8)
     layout = pg.js("polku.planner.layout ? polku.planner.layout() : 'old'")
+    # one clock: while planning, the timeline is inside the planner, not over the map
+    if not pg.js("!!document.querySelector('#planner #wx-bar')"):
+        fails.append('timeline not docked in the planner while planning')
     states = ['open', 'min'] if layout == 'side' else ['peek', 'half', 'full']
     for st in states:
         pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
-        time.sleep(0.5)
+        time.sleep(1.0)  # the sheet's and the controls' transitions (slow in software rendering)
         ov = overlaps(pg.js(BOXES))
         fails += [f'planning/{st}: {o}' for o in ov]
         r = pg.js("(() => { const r = document.querySelector('#planner').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, h: r.height }; })()")
@@ -73,6 +77,11 @@ def check(chrome, w, h, phone):
             fails.append(f'peek is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
         elif st == 'half' and not (0.4 * h < r['h'] < 0.6 * h):
             fails.append(f'half is {r["h"]:.0f} px tall')
+    pg.js("polku.planner.setActive(false); true")
+    time.sleep(0.3)
+    if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
+        fails.append('timeline did not come back to the map after planning')
+    pg.js("polku.planner.setActive(true); true")
     # sections remember their state across reloads
     pg.js("polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'half'); polku.planner.toggleSection('climbs', false); true")
     pg.reload()
@@ -90,10 +99,10 @@ def main():
     chrome = Chrome()
     ok = True
     try:
-        for w, h, phone in VIEWPORTS:
+        for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue
-            ok = check(chrome, w, h, phone) and ok
+            ok = check(chrome, w, h, phone, bottom) and ok
     finally:
         chrome.close()
     sys.exit(0 if ok else 1)

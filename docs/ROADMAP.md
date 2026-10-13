@@ -10,7 +10,7 @@ Also approved:
 |---|---|---|---|---|
 | 0 | UI polish (Plan button, Weather button, grouped chips) | `ui-polish` | [#12](https://github.com/TommiContursi/Polku/pull/12) | merged |
 | 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | in review |
-| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | — | next (after #13 merges) |
+| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 (stacked on #13) | in review |
 | 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | — | |
 | 4 | Layers, legend and Settings | `layers-settings` | — | |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | — | |
@@ -165,6 +165,31 @@ Also approved:
   - The Terrain chips are hidden; Ground becomes "Way type" (water / carry).
   - Stats show Carry and the strongest headwind instead of Ascent / Descent.
   - Ascent and descent on water samples are no longer counted ([js/analysis.js](../js/analysis.js)); carries still count.
+
+**Built (PR #14)**
+- Everything above, except a separate wide-profile overlay. It turned out unnecessary: the resizable side panel, the bottom dock and chart zoom cover long routes.
+- **Planner position on desktop** (from review). The ⋯ menu moves the planner between:
+  - **left:** the side panel;
+  - **bottom:** a full-width panel. Its peek is one slim bar, with the summary, routing modes and common tools on a single row.
+- **The bottom panel when wide:**
+  - the lists sit in columns: Climbs | Heads-up | Departure & weather (wider);
+  - sections are always open there;
+  - the accordions stay for the side panel and phones.
+- **Desktop also has a red Plan fab at the bottom right,** besides the one in the search bar.
+- **Gestures:** over panels (planner, Layers, dialogs, timeline), wheel and pinch no longer move the map. Pinch / Ctrl+wheel over the profile zooms the profile.
+- **Profile zoom:**
+  - drag (mouse) or double-tap (touch) zooms;
+  - "Whole route" resets;
+  - the map frames the stretch.
+- **Floating timeline** (when not planning, desktop):
+  - drag the title bar to move it and the edge grip to resize it; both are remembered;
+  - double-click resets it;
+  - it never covers the button column.
+- **Paddle:**
+  - a conditions chart: wind area coloured by head / cross / tail, gusts dashed, direction arrows, rain bars, carries in orange;
+  - summary shows Carry; stats show headwind share and the strongest wind;
+  - chips are Way type and the weather ones only;
+  - ascent no longer counts water.
 
 **Cut**
 - Waves, currents and fetch modelling, which have no free source with browser (CORS) access.
@@ -420,6 +445,16 @@ The user's brief, kept here so it isn't lost. When it's time, the first delivera
 4. **Privacy:** data stays on the device unless the user chooses otherwise.
 
 The user expects the smallest first step to be option A plus a FIT course export. Phases 6 (speeds) and 10 (ranking) are built so that history can plug in later.
+
+## Planner layout contract (keep for phases 6–10)
+
+- **Summary bar** (always visible, both layouts): distance · time (from departure) · ascent or carry, routing mode, undo/redo, ⋯, Done.
+  - The speed chip (phase 6) and preference badges (phase 9) go here, next to the time; there is room in the one-row bottom bar.
+  - The ⋯ menu keeps every tool, so the narrow layouts never need more icons.
+- **Sections** are added with `this.section(id, title, …)`. Waypoints (8), Preferences (9) and Round trip (10) are new sections.
+  - In the side panel and on phones they fold, and their state is remembered.
+  - In a wide bottom panel they are grid columns (see `.sheet-cols` in `css/app.css`).
+- **Camera fits** use `planner.viewPadding()`.
 
 ## How to work on this (for any session)
 
