@@ -2,7 +2,7 @@
 
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS,
+  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER,
 } from './config.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { CameraLayer } from './cameras.js';
@@ -620,6 +620,28 @@ function renderSettingsPanel() {
   p.append(section('Data sources', usageBox));
   renderUsage(usageBox);
 
+  // your own BRouter: no shared limits (tools/brouter-local.sh starts one on this computer)
+  const routerInput = h('input', { type: 'url', placeholder: BROUTER, value: store.get('brouterUrl', ''), autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Routing server address' });
+  const routerNote = h('p', { class: 'note' });
+  p.append(section('Routing server (optional)',
+    h('p', { class: 'note' }, 'Routes come from brouter.de, a free public server that takes about a dozen routes a minute from one device. If you run BRouter yourself, enter its address — for one on this computer, http://localhost:17777/brouter (see tools/brouter-local.sh). Empty means brouter.de.'),
+    h('div', { class: 'key-row' }, routerInput, h('button', { type: 'button', class: 'btn', onclick: async () => {
+      const v = routerInput.value.trim().replace(/\/+$/, '');
+      if (v && !/^https?:\/\/[^\s]+$/.test(v)) { routerNote.textContent = 'That doesn’t look like an address (http://… or https://…).'; return; }
+      if (v && v !== BROUTER) {
+        routerNote.textContent = 'Checking…';
+        try {
+          const c = map.getCenter();
+          const r = await fetch(`${v}?lonlats=${c.lng.toFixed(5)},${c.lat.toFixed(5)}|${(c.lng + 0.003).toFixed(5)},${(c.lat + 0.002).toFixed(5)}&profile=trekking&alternativeidx=0&format=geojson`);
+          if (!r.ok) throw new Error(((await r.text()).split('\n')[0] || `HTTP ${r.status}`).slice(0, 120));
+          await r.json();
+        } catch (e) { routerNote.textContent = `It didn’t answer like BRouter: ${e.message}. Not saved.`; return; }
+      }
+      store.set('brouterUrl', v === BROUTER ? '' : v);
+      routerNote.textContent = v && v !== BROUTER ? 'Saved — routes now come from your server.' : 'Saved — routes come from brouter.de.';
+      planner.retryFailed();
+    } }, 'Save')), routerNote));
+
   const keyInput = h('input', { type: 'password', placeholder: 'Paste your MML API key', value: state.mmlKey, autocomplete: 'off', spellcheck: 'false' });
   p.append(section('MML API key (optional)',
     h('p', { class: 'note' }, 'Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay. Keys are free from ',
@@ -764,16 +786,24 @@ onStatus((src, s) => {
     toast(`${info.label}: ${Math.round((s.used / s.max) * 100)} % of its ${{ minute: 'per-minute', '5 minutes': 'five-minute', hour: 'hourly', day: 'daily' }[s.name]} limit used from this device — ${info.what} may pause soon.`, { tone: 'warn', ms: 6000 });
     return;
   }
+  if (s.pacing) {
+    const perMin = (SOURCES[src].pace.find(([ms]) => ms === 60e3) || [0, '?'])[1];
+    if (planner.active) toast(`Routing waits a few seconds: ${info.label} is a free service and takes about ${perMin} routes a minute from one device. The dashed legs follow on their own.`, { ms: 6000 });
+    return;
+  }
   if (s.retry) {
     const a = planner.analysis;
     if (src === 'openmeteo' && a && (a.windError || (a.wind && a.wind.stale))) planner.loadWind(a);
+    if (src === 'brouter') planner.retryFailed();
     return;
   }
   if (limitedNoticed.has(src)) return;
   limitedNoticed.add(src);
-  toast(s.reason === 'limit'
-    ? `${info.label} (${info.what}) is limiting requests — showing saved data where there is some. Trying again at ${clock(s.until)}.`
-    : `${info.label} (${info.what}) isn’t responding — trying again at ${clock(s.until)}.`, { tone: 'warn', ms: 7000 });
+  toast(src === 'brouter'
+    ? `${info.label} asks for a short pause — the dashed legs are routed at ${clock(s.until)} on their own.`
+    : s.reason === 'limit'
+      ? `${info.label} (${info.what}) is limiting requests — showing saved data where there is some. Trying again at ${clock(s.until)}.`
+      : `${info.label} (${info.what}) isn’t responding — trying again at ${clock(s.until)}.`, { tone: 'warn', ms: 7000 });
 });
 
 // ------------------------------------------------------------------ boot

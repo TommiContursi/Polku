@@ -9,11 +9,22 @@
 //   (see onStatus); listeners hear again when it may be used again.
 // - Usage: calls per source this session and today, weighted the way the
 //   provider counts them (Open-Meteo: one per location), for the readout.
+// - Pacing: a service with limits it enforces by refusing (`pace: [[ms, max],
+//   …]`) gets at most `max` calls per `ms` from this device, for each window;
+//   calls beyond that wait for a slot instead of being refused. `refused`
+//   names the answer the service gives when it's over its limit anyway (other
+//   tabs, a shared connection): a back-off that grows if it happens again.
 
 export const SOURCES = {
   openmeteo: { label: 'Open-Meteo', what: 'weather', limits: [[60e3, 600, 'minute'], [3600e3, 5000, 'hour'], [864e5, 10000, 'day']] },
   overpass: { label: 'Overpass', what: 'OSM data', limits: [[864e5, 10000, 'day']] },
-  brouter: { label: 'BRouter', what: 'routing' },
+  // brouter.de refuses with 403 "Please, retry later!" when one address calls too often. Measured 2026-10-13:
+  // the 22nd call in 8 s was refused for 40 s; after more bursts that day, for over 9 minutes. Its rules aren't
+  // published, so stay well below: 5 calls in 10 s, 12 a minute (the planner batches legs and keeps routes).
+  brouter: { label: 'BRouter', what: 'routing', pace: [[10e3, 5], [60e3, 12]], refused: { status: 403, text: /retry later/i, wait: 60e3 } },
+  brouterOwn: { label: 'Your BRouter', what: 'routing', steps: [5e3, 15e3, 60e3] }, // on this computer: back soon
+  // FOSSGIS's terms: one request a second at most, no heavy use (routing.openstreetmap.de/about.html)
+  valhalla: { label: 'Valhalla (FOSSGIS)', what: 'routing while BRouter pauses', pace: [[1100, 1], [60e3, 30]] },
   photon: { label: 'Photon', what: 'search' },
   digitraffic: { label: 'Digitraffic', what: 'traffic, cameras & ships', limits: [[60e3, 60, 'minute']] },
   digiroad: { label: 'Digiroad', what: 'traffic volumes' },
@@ -31,7 +42,9 @@ const listeners = new Set();
 export class Limited extends Error {
   constructor(source, until, reason) {
     const s = SOURCES[source] || { label: source };
-    super(reason === 'limit' ? `${s.label} is limiting requests — try again at ${clock(until)}` : `${s.label} isn't responding — trying again at ${clock(until)}`);
+    super(reason === 'limit' ? `${s.label} is limiting requests — try again at ${clock(until)}`
+      : reason === 'pacing' ? `${s.label} is busy with this device's earlier calls until ${clock(until)}`
+        : `${s.label} isn't responding — trying again at ${clock(until)}`);
     this.name = 'Limited';
     this.source = source;
     this.until = until;
@@ -46,19 +59,33 @@ const emit = (source, s) => { for (const fn of listeners) fn(source, s); };
 
 /**
  * fetch() for a known source. opts.weight: calls this request counts as;
- * opts.backoff: false to only count (e.g. Overpass, whose mirrors take turns).
+ * opts.backoff: false to only count (e.g. Overpass, whose mirrors take turns);
+ * opts.maxWait: ms this call may wait for a paced slot, else Limited ('pacing').
  */
 export async function request(source, url, opts = {}) {
-  const { weight = 1, backoff = true, ...init } = opts;
+  const { weight = 1, backoff = true, maxWait = Infinity, ...init } = opts;
+  if (backoff && sourceStatus(source)) { const s = status.get(source); throw new Limited(source, s.until, s.reason); }
+  if (SOURCES[source] && SOURCES[source].pace && waitFor(source) > maxWait) throw new Limited(source, Date.now() + waitFor(source), 'pacing');
+  await slot(source, init.signal);
   const s = status.get(source);
   if (backoff && s && s.until > Date.now()) throw new Limited(source, s.until, s.reason);
   count(source, weight);
   let res;
   try {
-    res = await fetch(url, init);
+    res = await fetch(url, init).catch((err) => {
+      // a dropped connection gets one more try before it counts as a failure
+      if (err.name === 'AbortError' || !navigator.onLine) throw err;
+      return sleep(800, init.signal).then(() => fetch(url, init));
+    });
   } catch (err) {
     if (err.name !== 'AbortError' && backoff && navigator.onLine) fail(source, 'down');
     throw err;
+  }
+  const ref = SOURCES[source] && SOURCES[source].refused;
+  if (backoff && ref && res.status === ref.status && ref.text.test(await res.clone().text().catch(() => ''))) {
+    const prev = status.get(source);
+    const e = fail(source, 'limit', Math.min(600e3, ref.wait * 2 ** (prev ? prev.fails : 0))); // 1, 2, 4… minutes
+    throw new Limited(source, e.until, e.reason);
   }
   if (res.status === 429 || (res.status >= 500 && res.status !== 501)) {
     if (!backoff) return res;
@@ -83,10 +110,48 @@ export async function request(source, url, opts = {}) {
   return res;
 }
 
+// ------------------------------------------------------------------ pacing
+const sleep = (ms, signal) => new Promise((ok, no) => {
+  if (signal && signal.aborted) { no(new DOMException('Aborted', 'AbortError')); return; }
+  const t = setTimeout(ok, ms);
+  if (signal) signal.addEventListener('abort', () => { clearTimeout(t); no(new DOMException('Aborted', 'AbortError')); }, { once: true });
+});
+const inWindow = (source, ms) => (recent[source] || []).filter(([t]) => Date.now() - t < ms);
+
+/** Calls this source can take right now without waiting (Infinity if it isn't paced). */
+export function headroom(source) {
+  const p = SOURCES[source] && SOURCES[source].pace;
+  return p ? Math.max(0, Math.min(...p.map(([ms, max]) => max - inWindow(source, ms).length))) : Infinity;
+}
+
+// ms until a call fits every window
+function waitFor(source) {
+  let wait = 0;
+  for (const [ms, max] of SOURCES[source].pace) {
+    const sent = inWindow(source, ms);
+    if (sent.length >= max) wait = Math.max(wait, sent[sent.length - max][0] + ms - Date.now() + 50);
+  }
+  return wait;
+}
+
+let pacingSaid = 0;
+async function slot(source, signal) {
+  const p = SOURCES[source] && SOURCES[source].pace;
+  if (!p) return;
+  for (;;) {
+    const wait = waitFor(source);
+    if (wait <= 0) return;
+    // say it once in a while, so a dashed line that waits isn't a mystery
+    if (wait > 1500 && Date.now() - pacingSaid > 120e3) { pacingSaid = Date.now(); emit(source, { pacing: true, until: Date.now() + wait }); }
+    await sleep(wait, signal);
+  }
+}
+
 function fail(source, reason, wait = null) {
   const prev = status.get(source);
   const fails = (prev ? prev.fails : 0) + 1;
-  const until = Date.now() + Math.max(15e3, wait != null && wait > 0 ? wait : STEPS[Math.min(fails, STEPS.length) - 1]);
+  const steps = (SOURCES[source] && SOURCES[source].steps) || STEPS;
+  const until = Date.now() + Math.max(steps[0] < 15e3 ? steps[0] : 15e3, wait != null && wait > 0 ? wait : steps[Math.min(fails, steps.length) - 1]);
   const s = { until, fails, reason };
   status.set(source, s);
   emit(source, s);

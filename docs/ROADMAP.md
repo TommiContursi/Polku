@@ -15,7 +15,8 @@ Also approved:
 | 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | [#17](https://github.com/TommiContursi/Polku/pull/17) | merged |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | merged |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | [#19](https://github.com/TommiContursi/Polku/pull/19), tweaks [#20](https://github.com/TommiContursi/Polku/pull/20) | merged |
-| 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | [#21](https://github.com/TommiContursi/Polku/pull/21) | in review |
+| 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | [#21](https://github.com/TommiContursi/Polku/pull/21) | merged |
+| 7½ | Routing that holds up: pacing, batching, routes kept on refresh, Valhalla stand-in | `brouter-pacing` | [#22](https://github.com/TommiContursi/Polku/pull/22) | in review |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
 | 9 | Route preferences: avoid ↔ prefer sliders, mapped to BRouter | `route-prefs` | — | |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
@@ -443,6 +444,21 @@ Also approved:
 - Marker drag vs the hover tooltip vs the map's own `dragPan`.
 - Live re-analysis is too heavy to run on every preview: run it only on commit, and draw only the geometry while dragging.
 
+## Fix between 7 and 8 — routing that holds up on free services
+
+The user hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta). Cause: brouter.de's per-address limit (403 "Please, retry later!"), which our live drag and per-leg calls ran into, and which Polku treated as a failure.
+
+**Built (PR #22)**
+- **Pacing** (`net.js` `pace`): brouter.de at most 5 calls / 10 s and 12 / minute; calls beyond wait for a slot. A 403 "retry later" is a back-off (1, 2, 4… min), not an error. A dropped connection gets one retry.
+- **Batching** (`router.js` `routeRun`): consecutive auto legs without avoided places go in one call, split at the track point nearest each via point (falls back to one call per leg if a split doesn't hold). A 20-leg route, a sport change or a share link: 1 call.
+- **Routes survive a refresh:** `save()` stores the routed geometry and way tags (a table of distinct tag sets); `loadSaved()` restores them with their keys. Measured: refresh = 0 calls.
+- **Valhalla stand-in** (`valhalla.js`): FOSSGIS's Valhalla (the routing openstreetmap.org uses; no key; 1 call/s, attribution + "fix the map") routes a leg when brouter.de is paused, down, can't route it, or would keep it waiting over 6 s. Mountain / Cross / Road bicycle and pedestrian costing; `trace_attributes` gives use, road class, surface, names and SAC scale, translated to OSM tags. Two calls per batch. Heads-up: "N legs routed by Valhalla", the attribution, and **Use BRouter**. Paddling has no stand-in (waits). Drag previews never use it.
+- **Waiting, not failing:** a leg the service can't take now is dashed with a straight stand-in for the totals, Heads-up says why (a pause, or your server not answering) and when, and it routes on its own when the service is back. Real failures say so in plain words and get a **Retry**.
+- **Your own BRouter (optional):** Settings → Routing server (checked with one test route before saving); `tools/brouter-local.sh` downloads BRouter 1.7.10 and Finland's routing data (~125 MB) and serves it on localhost:17777.
+
+**Later**
+- Road names along the route: Valhalla's `trace_attributes` already returns them; BRouter doesn't. For BRouter legs, read them from the vector tiles' `transportation_name` layer (phase 8).
+
 ## Phase 8 — Waypoint list and undo
 
 **Changes**
@@ -573,7 +589,8 @@ The user expects the smallest first step to be option A plus a FIT course export
   - Link them in the PR as `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
 - **Network:**
   - Every network call goes through `request()` in [js/net.js](../js/net.js), so limits, back-off and the usage readout keep working.
-  - Only free public services, and no backend.
+  - Only free public services, and no backend: polku.si is GitHub Pages, and the user doesn't want a server. If a service doesn't hold up for our use, add a fallback or switch, don't get stuck on it.
+  - **Never burst brouter.de while testing.** It blocks the whole connection (the user's too): 40 s for ~20 calls in 8 s, then half an hour after repeated bursts (2026-10-13). Test routing against `tools/brouter-local.sh` (Settings → Routing server) or a stand-in that answers in BRouter's GeoJSON format; one-off real calls are fine.
 - **Don't regress:**
   - weather along the route, warnings and Avoid, water routing and carries;
   - offline save and preview, GPX/KML import and GPX export;

@@ -2,7 +2,7 @@
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor } from './config.js';
-import { routeLeg } from './router.js';
+import { routeLeg, routeRun, routerHeadroom } from './router.js';
 import { analyse, estimateTime, surfaceClass } from './analysis.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, colorAt, routeReadout } from './chart.js';
@@ -11,11 +11,14 @@ import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
 import { keepInView } from './inspect.js';
+import { FIX_THE_MAP } from './valhalla.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
 const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
+// a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
+const STAND_IN_AFTER = 6000;
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
 const CODE_MODE = { a: 'auto', l: 'line', w: 'water' };
 
@@ -322,44 +325,86 @@ export class Planner {
 
   async routeAll() {
     const gen = ++this.gen;
-    const jobs = [];
+    const todo = []; // legs to route: { leg, key, from, to, nogos, profile }
     this.legs.forEach((leg, i) => {
       if (leg.mode === 'fixed') { leg.status = 'ok'; return; }
-      const { key, from, to, nogos, profile } = this.legKey(i);
-      if (leg.key === key && leg.result) return;
-      leg.key = key;
+      const k = this.legKey(i);
+      if (leg.key === k.key && leg.result) return;
+      leg.key = k.key;
       leg.result = null;
       leg.status = 'loading';
-      jobs.push(async () => {
-        try {
-          const r = await routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos } });
-          if (leg.key !== key) return;
-          leg.result = r;
-          leg.preview = null;
-          leg.status = 'ok';
-          if (r.note && this.active) toast(r.note, { tone: 'warn' });
-        } catch (e) {
-          if (leg.key !== key) return;
-          leg.result = { coords: [from, to], tags: [{}], portage: [] };
-          leg.status = 'error';
-          toast(`Couldn't route this leg: ${e.message}. Drawn as a straight line.`, { tone: 'warn', ms: 5000 });
-        }
-        this.drawRoute();
-      });
+      todo.push({ i, leg, ...k });
     });
+    // Consecutive auto legs with nothing to avoid near them go to BRouter in one
+    // call (a new sport, a shared link, both legs of a drag): it counts the calls.
+    const jobs = [];
+    const batchable = (t) => t.leg.mode === 'auto' && !t.nogos.length;
+    for (let j = 0; j < todo.length;) {
+      let e = j;
+      while (batchable(todo[j]) && e + 1 < todo.length && todo[e + 1].i === todo[e].i + 1 && batchable(todo[e + 1])) e++;
+      const run = todo.slice(j, e + 1);
+      j = e + 1;
+      jobs.push(run.length > 1 ? () => this.routeRunOf(run) : () => this.routeOne(run[0]));
+    }
     this.drawRoute();
     this.panel.classList.toggle('busy', jobs.length > 0);
     await pool(jobs, 3);
     if (gen !== this.gen) return;
     this.panel.classList.remove('busy');
+    if (jobs.length) this.save(); // now with the routed geometry
     await this.runAnalysis(gen);
+  }
+
+  async routeRunOf(run) {
+    let res = null;
+    try {
+      res = await routeRun({ points: [run[0].from, ...run.map((t) => t.to)], profile: run[0].profile, opts: { portage: true, nogos: [], maxWait: STAND_IN_AFTER } });
+    } catch (e) {
+      if (e.name === 'Limited') { for (const t of run) this.legFailed(t, e); this.drawRoute(); return; }
+      // anything else: one by one, so only the leg that can't be routed is left straight
+    }
+    if (res) { run.forEach((t, k) => this.legDone(t, res[k])); this.drawRoute(); return; }
+    await pool(run.map((t) => () => this.routeOne(t)), 2);
+  }
+
+  async routeOne(t) {
+    try {
+      this.legDone(t, await routeLeg({ from: t.from, to: t.to, mode: t.leg.mode, profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: STAND_IN_AFTER } }));
+    } catch (e) {
+      this.legFailed(t, e);
+    }
+    this.drawRoute();
+  }
+
+  legDone({ leg, key }, r) {
+    if (leg.key !== key) return; // moved on meanwhile
+    leg.result = r;
+    leg.preview = null;
+    leg.status = 'ok';
+    if (r.note && this.active) toast(r.note, { tone: 'warn' });
+  }
+
+  legFailed({ leg, key, from, to }, e) {
+    if (leg.key !== key || e.name === 'AbortError') return;
+    // a straight stand-in keeps the totals whole until it's routed
+    leg.result = { coords: [from, to], tags: [{}], portage: [] };
+    leg.preview = null;
+    if (e.name === 'Limited') {
+      // the service asked for a pause (net.js says so once): wait, dashed, and route when it's free (retryFailed)
+      leg.status = 'waiting';
+      leg.wait = { reason: e.reason, until: e.until, own: e.source !== 'brouter' };
+      leg.key = null;
+    } else {
+      leg.status = 'error';
+      toast(`Couldn't route this leg (${e.message}) — drawn as a straight line. Heads-up has a Retry.`, { tone: 'warn', ms: 6000 });
+    }
   }
 
   drawRoute() {
     const features = [];
     this.legs.forEach((leg, i) => {
       const from = this.points[i], to = this.points[i + 1];
-      const loading = !leg.result;
+      const loading = !leg.result || leg.status === 'waiting';
       // while dragging, a route that's a moment behind the pointer, joined to it
       const coords = loading ? (leg.preview ? [from, ...leg.preview, to] : [from, to]) : leg.result.coords;
       const mode = leg.status === 'error' ? 'line' : leg.mode === 'fixed' ? 'auto' : leg.mode;
@@ -374,13 +419,27 @@ export class Planner {
     if (!this.edit) this.renderGhosts();
   }
 
+  // Legs Valhalla routed while BRouter paused: ask BRouter again.
+  rerouteWithBrouter() {
+    let n = 0;
+    for (const l of this.legs) if (l.result && l.result.provider === 'valhalla') { l.key = null; n++; }
+    if (n) this.routeAll();
+  }
+
+  // Legs that waited for the service, or failed: route them again.
+  retryFailed() {
+    let n = 0;
+    for (const l of this.legs) if (l.status === 'waiting' || l.status === 'error') { l.key = null; n++; }
+    if (n) this.routeAll();
+  }
+
   mergedLine() {
     const coords = [];
     const attrs = [];
     for (const leg of this.legs) {
       const r = leg.result;
       if (!r) continue;
-      const mode = leg.status === 'error' ? 'line' : leg.mode;
+      const mode = leg.status === 'error' || leg.status === 'waiting' ? 'line' : leg.mode; // a stand-in is a straight line
       if (!coords.length) coords.push(r.coords[0]);
       for (let k = 1; k < r.coords.length; k++) {
         coords.push(r.coords[k]);
@@ -639,16 +698,19 @@ export class Planner {
   }
 
   // One request per leg at a time, each allowed to finish (so the route shows
-  // while you drag); the newest position goes next, at most every 0.7 s.
+  // while you drag); the newest position goes next, at most every 0.7 s, and
+  // only while there's budget to spare (net.js paces BRouter).
   fetchPreview(ed, li) {
     const leg = this.legs[li];
     if (this.edit !== ed || !leg || leg.result) return;
+    // brouter.de takes about a dozen calls a minute: previews stop while fewer than 4 are left, so the release never waits
+    if (routerHeadroom() < 4) return;
     const busy = ed.reqs[li];
     if (busy && !busy.done) { busy.again = true; return; }
     const { key, from, to, nogos, profile } = this.legKey(li);
     const q = ed.reqs[li] = { ctrl: new AbortController(), key, t: Date.now() };
     ed.last[li] = q.t;
-    routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos } }, q.ctrl.signal)
+    routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos, fallback: false } }, q.ctrl.signal)
       .then((r) => {
         if (leg.result) return;
         if (leg.key === key) { leg.result = r; leg.status = 'ok'; leg.preview = null; }
@@ -802,12 +864,19 @@ export class Planner {
   }
 
   // ---------------------------------------------------------------- persistence & sharing
+  // The route is kept on this device with its routed geometry and way tags
+  // (a table of distinct tag sets), so reopening Polku asks BRouter nothing.
   save() {
+    const table = [], idx = new Map();
+    const tagId = (t) => { const j = JSON.stringify(t || {}); if (!idx.has(j)) { idx.set(j, table.length); table.push(t || {}); } return idx.get(j); };
     store.set('route', {
       nogos: this.nogos,
       points: this.points,
       modes: this.legs.map((l) => l.mode),
       fixed: this.legs.map((l) => (l.mode === 'fixed' && l.result ? encodePolyline(l.result.coords) : null)),
+      routed: this.legs.map((l) => (l.mode !== 'fixed' && l.status === 'ok' && l.key && l.result
+        ? { key: l.key, line: encodePolyline(l.result.coords), tags: l.result.tags.map(tagId), portage: l.result.portage || [], provider: l.result.provider } : null)),
+      tags: table,
     });
   }
 
@@ -820,6 +889,12 @@ export class Planner {
       if (r.modes[i] === 'fixed' && r.fixed && r.fixed[i]) {
         const c = decodePolyline(r.fixed[i]);
         return { mode: 'fixed', status: 'ok', result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } };
+      }
+      const k = r.routed && r.routed[i];
+      if (k && r.tags) {
+        const c = decodePolyline(k.line);
+        c[0] = r.points[i]; c[c.length - 1] = r.points[i + 1]; // exact ends, so the leg's key still matches
+        return { mode: r.modes[i], key: k.key, status: 'ok', result: { coords: c, tags: k.tags.map((t) => r.tags[t] || {}), portage: k.portage || [], provider: k.provider } };
       }
       return { mode: r.modes[i] === 'fixed' ? 'auto' : r.modes[i] || 'auto' };
     });
@@ -1479,8 +1554,26 @@ export class Planner {
     const box = this.els.warnings;
     box.innerHTML = '';
     if (!a) return;
-    const all = [...a.warnings, ...(a.hazards || [])].sort((x, y) => x.at - y.at);
-    this.setSection('warnings', { count: all.length || '', empty: !all.length, summary: all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });
+    const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || [])].sort((x, y) => x.at - y.at);
+    const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
+    const count = all.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
+    this.setSection('warnings', { count: count || '', empty: !count, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });
+    if (unrouted) {
+      const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
+      const waiting = w && (w.reason === 'limit'
+        ? `The routing service asked for a short pause; ${unrouted === 1 ? 'it follows' : 'they follow'} on their own`
+        : `${w.own ? 'Your routing server' : 'The routing service'} isn’t answering — trying again at ${new Date(w.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${w.own ? ' (Settings → Routing server)' : ''}`);
+      box.append(h('div', { class: 'li-row kind-route' },
+        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${unrouted === 1 ? 'One leg isn’t' : `${unrouted} legs aren’t`} routed yet</b><span>${waiting || `Drawn as straight line${unrouted === 1 ? '' : 's'}`}</span></span>` }),
+        h('button', { type: 'button', class: 'btn', title: 'Ask the router again', onclick: () => this.retryFailed() }, 'Retry')));
+    }
+    const byValhalla = this.legs.filter((l) => l.status === 'ok' && l.result && l.result.provider === 'valhalla').length;
+    if (byValhalla) {
+      box.append(h('div', { class: 'li-row kind-route' },
+        h('div', { class: 'li', html: `${icon('info', 16)}<span class="li-main"><b>${byValhalla === 1 ? 'One leg' : `${byValhalla} legs`} routed by Valhalla</b><span>brouter.de asked for a pause, so the OpenStreetMap routing service stood in. Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> on FOSSGIS servers · <a href="${FIX_THE_MAP}" target="_blank" rel="noopener">fix the map</a></span></span>` }),
+        h('button', { type: 'button', class: 'btn', title: 'Route these legs with BRouter (its trail profiles) once it’s free', onclick: () => this.rerouteWithBrouter() }, 'Use BRouter')));
+    }
     if (!all.length) return;
     const KIND_ICON = { roadwork: 'warn', incident: 'warn', roadcond: 'warn', busy: 'warn' };
     for (const w of all.slice(0, 40)) {
