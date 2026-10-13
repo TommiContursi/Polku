@@ -336,5 +336,5 @@ export const ACTIVITY_OVERLAYS = {
   hike: { lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true, restricted: true },
   trailrun: { lipasRoutes: true, lipasPoints: true, pois: true, restricted: true },
   run: { lipasRoutes: true, lipasPoints: false, pois: false, sfRoadworks: true },
-  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, restricted: true, nautical: true },
+  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, soundings: true, fairways: true, sfShips: true, restricted: true, nautical: true },
 };

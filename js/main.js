@@ -46,6 +46,8 @@ const DEFAULTS = {
   exaggeration: 1.4,
   mmlKey: '',
   overlaysByActivity: {},
+  trailsByActivity: {}, // trail colours and numbers you chose, per sport (the sport only sets the defaults)
+  overlayOpacity: {}, // raster overlay → opacity you set (0.1–1)
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
@@ -54,7 +56,18 @@ const shared = parseShared(new URLSearchParams(location.search));
 if (shared && ACTIVITIES[shared.activity]) state.activity = shared.activity;
 
 const overlaysFor = (act) => ({ ...ACTIVITY_OVERLAYS[act], ...(state.overlaysByActivity[act] || {}) });
+// Trail colours and numbers: on in every sport if you want them; MTB starts with difficulty, the rest plain.
+const TRAIL_DEFAULTS = (act) => ({ trailColors: act === 'mtb' ? 'down' : 'off', labelsDown: false, labelsUp: false });
+const trailsFor = (act) => ({ ...TRAIL_DEFAULTS(act), ...(state.trailsByActivity[act] || {}) });
+// settings from before trail colours were per sport: they were MTB's
+if (!store.get('settings', {}).trailsByActivity) {
+  const old = store.get('settings', {});
+  const mtb = {};
+  for (const k of ['trailColors', 'labelsDown', 'labelsUp']) if (old[k] != null && old[k] !== TRAIL_DEFAULTS('mtb')[k]) mtb[k] = old[k];
+  if (Object.keys(mtb).length) state.trailsByActivity = { mtb };
+}
 state.overlays = overlaysFor(state.activity);
+Object.assign(state, trailsFor(state.activity));
 
 const data = {}; // live GeoJSON per app source, so style rebuilds keep it
 const saveSettings = () => {
@@ -159,9 +172,12 @@ const planner = new Planner(map, {
   },
 });
 
+// MTB difficulty in hover and click details: in MTB, and in any sport with trail colours on
+const showsDifficulty = () => state.activity === 'mtb' || state.trailColors !== 'off';
 initInspector(map, {
   isPlanning: () => planner.active,
   activity: () => state.activity,
+  difficulty: showsDifficulty,
   routeFrom: (ll, mode) => {
     planner.setActive(true);
     if (mode) planner.setMode(mode);
@@ -175,7 +191,7 @@ initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty });
 
 initSearch(map, $('#search-input'), $('#search-results'));
 
@@ -272,7 +288,7 @@ function configureLayers() {
   safety.configure({ traffic: !!o.sfTraffic, incidents: !!o.sfIncidents, roadworks: !!o.sfRoadworks, roadcond: !!o.sfRoadcond, ships: !!o.sfShips });
   cameras.setEnabled(!!o.sfCameras);
   nautical.setEnabled(!!o.nautical);
-  uphill.setEnabled(state.activity === 'mtb' && (state.trailColors !== 'down' || state.labelsUp));
+  uphill.setEnabled(state.trailColors === 'up' || state.trailColors === 'both' || state.labelsUp);
 }
 
 // ------------------------------------------------------------------ activity pill
@@ -365,6 +381,7 @@ function setActivity(k) {
   if (state.activity === k) return;
   state.activity = k;
   state.overlays = overlaysFor(k);
+  Object.assign(state, trailsFor(k));
   document.body.dataset.activity = k;
   renderActivityBar();
   renderLayersPanel();
@@ -383,6 +400,14 @@ function set3d(on) {
 }
 
 // ------------------------------------------------------------------ layers panel
+function setTrail(key, value) {
+  state[key] = value;
+  state.trailsByActivity[state.activity] = { ...(state.trailsByActivity[state.activity] || {}), [key]: value };
+  applyStyle();
+  configureLayers();
+  saveSettings();
+}
+
 function setOverlay(id, on) {
   state.overlays[id] = on;
   state.overlaysByActivity[state.activity] = { ...(state.overlaysByActivity[state.activity] || {}), [id]: on };
@@ -420,9 +445,9 @@ const keyDot = (style) => h('span', { class: 'lg-dot', style });
 const mapKey = (...items) => h('details', { class: 'lg-key' }, h('summary', {}, 'Map key'), h('div', {}, ...items));
 const KEYS = {
   trails: () => [
-    ...(state.activity === 'mtb' && state.trailColors !== 'up'
+    ...(state.trailColors === 'down' || state.trailColors === 'both'
       ? [h('h4', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
-    ...(state.activity === 'mtb' && state.trailColors !== 'down'
+    ...(state.trailColors === 'up' || state.trailColors === 'both'
       ? [h('h4', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
     h('h4', {}, 'Ways'),
     keyItem(keyLine('border-top:2px dashed #1f1f1f'), 'Path / trail'),
@@ -467,6 +492,31 @@ const toggle = (label, on, fn, note = '') => {
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
   ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
 const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}, title), ...kids);
+// A raster layer's opacity, right under its switch while it's on; remembered per layer
+// (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
+const WX_OPACITY = {
+  'wx:rain': { label: 'Rain', opacity: 0.85, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
+  'wx:temp': { label: 'Temperature', opacity: 0.5, layers: ['wx-field'], on: () => state.weather.temp },
+};
+const opacitySpec = (id) => (RASTER_OVERLAYS[id]
+  ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
+  : WX_OPACITY[id]);
+const opacityOf = (id) => (state.overlayOpacity[id] != null ? state.overlayOpacity[id] : opacitySpec(id).opacity);
+const opacityRow = (id) => {
+  const o = opacitySpec(id);
+  if (!o || !o.on()) return null;
+  const pct = h('span', { class: 'op-val' }, `${Math.round(opacityOf(id) * 100)} %`);
+  return h('label', { class: 'range op-row' }, h('span', {}, 'Opacity'),
+    h('input', { type: 'range', min: '10', max: '100', step: '5', value: String(Math.round(opacityOf(id) * 100)), 'aria-label': `${o.label} opacity`,
+      oninput: (e) => {
+        const v = +e.target.value / 100;
+        state.overlayOpacity[id] = v;
+        pct.textContent = `${e.target.value} %`;
+        for (const l of o.layers) if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', v); // live, no style rebuild
+      },
+      onchange: () => saveSettings() }), pct);
+};
+const withOpacity = (id, tg) => { const row = opacityRow(id); return row ? h('div', { class: 'tg-group' }, tg, row) : tg; };
 
 // A folding group; it opens by itself while something in it is on, until you choose.
 function layerGroup(id, title, count, ...kids) {
@@ -493,6 +543,26 @@ function renderLayersPanel() {
     h('span', {}, h('span', {}, 'Map for ', h('b', {}, act.label)), h('small', {}, 'Your sport sets the trail colours and which layers start on.')),
     h('button', { type: 'button', class: 'link', onclick: () => { openPanel(null); openActs(); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
 
+  // what is on right now, at a glance
+  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].filter(([k]) => state.weather[k]);
+  const trailOn = state.trailColors !== 'off';
+  const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
+  p.append(section('On now',
+    on.length || wx.length || trailOn ? h('div', { class: 'on-chips' },
+      trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
+      ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
+      ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
+      : h('p', { class: 'note' }, 'No extra layers — just the base map and trails.'),
+    custom ? h('button', { type: 'button', class: 'link', onclick: () => {
+      state.overlaysByActivity[state.activity] = {};
+      state.trailsByActivity[state.activity] = {};
+      state.overlays = overlaysFor(state.activity);
+      Object.assign(state, trailsFor(state.activity));
+      applyStyle(); configureLayers(); renderLayersPanel(); saveSettings();
+      toast(`Layers back to the ${act.label} defaults`);
+    } }, `Reset to ${act.label} defaults`) : null));
+
   // base maps as thumbnails
   p.append(section('Base map',
     h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
@@ -508,54 +578,37 @@ function renderLayersPanel() {
   p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
     toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
     toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
-    toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', '')),
-    state.mmlKey ? toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v))) : null));
+    withOpacity('maastoOverlay', toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
+    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null));
 
-  // what is on right now, at a glance
-  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].filter(([k]) => state.weather[k]);
-  const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0;
-  p.append(section('On now',
-    on.length || wx.length ? h('div', { class: 'on-chips' },
-      ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
-      ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
-      : h('p', { class: 'note' }, 'No extra layers — just the base map and trails.'),
-    custom ? h('button', { type: 'button', class: 'link', onclick: () => {
-      state.overlaysByActivity[state.activity] = {};
-      state.overlays = overlaysFor(state.activity);
-      applyStyle(); configureLayers(); renderLayersPanel(); saveSettings();
-      toast(`Layers back to the ${act.label} defaults`);
-    } }, `Reset to ${act.label} defaults`) : null));
-
-  // trails & difficulty (and the map key for the base map's lines)
-  const trailKids = [];
-  if (state.activity === 'mtb') {
-    trailKids.push(
-      seg([['down', 'Difficulty'], ['up', 'Uphill'], ['both', 'Both']], state.trailColors, (v) => {
-        state.trailColors = v; applyStyle(); configureLayers(); renderLayersPanel();
-        if (v !== 'down' && map.getZoom() < 13) toast('Zoom in to level 13+ to see uphill grades');
-      }),
-      h('p', { class: 'note' }, {
-        down: 'Halo colour is the regular MTB difficulty from OSM mtb:scale (S0 green → S5 purple). White halo = not graded yet.',
-        up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
-        both: 'Halo = regular MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
-      }[state.trailColors]),
-      toggle('Difficulty numbers', state.labelsDown, rerender((v) => { state.labelsDown = v; applyStyle(); }), 'S0–S6 beside graded trails (zoom 15+)'),
-      toggle('Uphill numbers', state.labelsUp, rerender((v) => {
-        state.labelsUp = v; applyStyle(); configureLayers();
-        if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
-      }), '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)'));
-  } else trailKids.push(h('p', { class: 'note' }, `Trails and roads are drawn for ${act.label.toLowerCase()}: what matters for it stands out.`));
-  p.append(layerGroup('trails', state.activity === 'mtb' ? 'Trails & difficulty' : 'Trails', (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...KEYS.trails())));
+  // trails & difficulty (and the map key for the base map's lines): in every sport
+  const trailKids = [
+    seg([['off', 'Off'], ['down', 'Difficulty'], ['up', 'Uphill'], ['both', 'Both']], state.trailColors, (v) => {
+      setTrail('trailColors', v); renderLayersPanel();
+      if ((v === 'up' || v === 'both') && map.getZoom() < 13) toast('Zoom in to level 13+ to see uphill grades');
+    }),
+    h('p', { class: 'note' }, {
+      off: `Trails and roads drawn for ${act.label.toLowerCase()}: what matters for it stands out. Turn on difficulty or uphill colours here.`,
+      down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0 green → S5 purple). White halo = not graded yet.',
+      up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
+      both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
+    }[state.trailColors] || ''),
+    toggle('Difficulty numbers', state.labelsDown, rerender((v) => setTrail('labelsDown', v)), 'S0–S6 beside graded trails (zoom 15+)'),
+    toggle('Uphill numbers', state.labelsUp, rerender((v) => {
+      setTrail('labelsUp', v);
+      if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
+    }), '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)'),
+  ];
+  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...KEYS.trails())));
 
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map((id) => {
       const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
-      return toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+      return withOpacity(id, toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
         setOverlay(id, v);
         if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
         if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
-      }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+      }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || ''));
     });
     if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up under Heads-up, each with an Avoid button.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
@@ -566,8 +619,8 @@ function renderLayersPanel() {
   p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
     toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)'),
     toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
-    toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels'),
-    toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later'),
+    withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
+    withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
 
 

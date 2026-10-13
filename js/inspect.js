@@ -69,7 +69,7 @@ export function initInspector(map, app) {
     if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
     else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
-    else renderWay(body, f, feats, ll, app.activity() === 'mtb');
+    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb');
     body.append(actions);
     const ele = await elevation(ll);
     const slot = body.querySelector('[data-ele]');

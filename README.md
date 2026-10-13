@@ -114,7 +114,7 @@ These are free public services: be gentle with them. Offline areas save only Ope
 ## Limits worth knowing
 
 - OpenFreeMap carries the full trail network from **zoom 14** (only some at 13); the app shows a hint between z10.5 and z14.
-- Traficom's depth WMS checks the page's origin: it answers `localhost` and polku.si, but not every domain. Hosted elsewhere, the depth layers need a small proxy.
+- Traficom's depth WMS answers browsers on any origin (checked from polku.si and `localhost`, 2026-10-14), so the depth layers need no proxy. If it ever starts checking origins, they'd need a small pass-through for GetMap and GetFeatureInfo (a free Cloudflare Worker would do).
 - No open source of FMI weather warnings or forest-fire warnings allows browser (CORS) access, so those aren't shown.
 - Digitraffic has no ship track history API: trails build up from positions seen while the map is open.
 - Offline areas cover the map, terrain and your route. Routing, search, weather, traffic and aerial maps need a connection. Browsers may clear saved data under storage pressure; on iPhone, add Polku to the home screen so it's kept.

@@ -21,12 +21,12 @@ Also approved:
 | 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | [#24](https://github.com/TommiContursi/Polku/pull/24) | in review |
 | 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown (+ Round trip & Style in the header, bottom panel by default) | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | merged |
-| 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | — | planned, awaiting OK |
-| 12 | Trail details & obstacles: barriers, fallen trees, fords, wet spots; width / visibility / smoothness / SAC | `trail-details` | — | planned, awaiting OK |
-| 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned, awaiting OK |
-| 14 | Round trips for paddling | `paddle-loops` | — | planned, awaiting OK |
-| 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned, awaiting OK |
-| 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned, awaiting OK |
+| 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | PR open |
+| 12 | Trail details & obstacles: barriers, fallen trees, fords, wet spots; width / visibility / smoothness / SAC | `trail-details` | — | planned |
+| 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
+| 14 | Round trips for paddling | `paddle-loops` | — | planned |
+| 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
+| 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
 
 ## Why this order
 
@@ -594,7 +594,7 @@ The user asked to think this through first: comprehensive and useful per sport, 
 
 ---
 
-## Phases 11–16 (added 2026-10-13, planned, awaiting the user's OK)
+## Phases 11–16 (added 2026-10-13, plan OK'd 2026-10-14)
 
 Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/smoke.py` passing, this file updated. Free public services only, no backend (phase 16 may *propose* one), every call through `js/net.js`, share links keep working, no regressions. Phases 15 and 16 start with research written here; 16 waits for an OK before any code.
 
@@ -613,6 +613,25 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 
 **Risks**
 - The uphill layer reads DEM tiles and Overpass (`mtb:scale:uphill`) for whatever is in view. Off by default outside MTB, so the cost only comes when someone turns it on.
+
+**Built (PR #29)**
+- **Trails & difficulty in every sport.** One control, *Off / Difficulty / Uphill / Both*, plus the Difficulty numbers and Uphill numbers toggles, for every sport. MTB starts on Difficulty, the others on Off. What you choose is remembered per sport (`settings.trailsByActivity`), like the overlays, so turning on uphill colours for a hike doesn't change MTB. Settings from before (one global choice, which was MTB's) move to MTB once.
+  - The `act === 'mtb'` gates are gone from `style.js` (difficulty halo on paths and tracks, uphill line and labels, difficulty labels), `configureLayers` (`uphill.setEnabled`), the map key, and hover and click details (MTB difficulty shows in any sport with trail colours on).
+  - The hike, run and paddle styling of paths stays as it was while trail colours are Off.
+- **Opacity sliders** (10–100 %, steps of 5) right under each raster layer's switch while it's on:
+  - the overlays: depth areas, contours, soundings, shipping lanes, Waymarked Trails, Maastokartta, the MML overlay;
+  - the weather fields: Rain (radar and forecast together) and Temperature.
+  - A drag sets `raster-opacity` live (no style rebuild); the value is saved on release in `settings.overlayOpacity` (keyed by overlay id, and `wx:rain` / `wx:temp`), and style rebuilds read it. Defaults are unchanged.
+- **Paddle: soundings on** by default, with depth areas, contours and shipping lanes.
+  - Checked again 2026-10-14 from the deployed site: a CORS fetch from `https://polku.si` got real PNG tiles for all three depth layers over the Helsinki archipelago (8–22 KB each). No proxy needed. The README's limits note is corrected, and says what a proxy would take if Traficom ever starts checking origins.
+- **"On now" first**, right under the sport header: the chips (each with ×), now with one for the trail colours too, and *Reset to <sport> defaults*, which resets the trail colours as well as the overlays.
+- **Smoke:** a new `layers` check (`python3 tools/smoke.py layers`):
+  - every sport has the same switches and the trail colours control;
+  - "On now" is the first section;
+  - every raster overlay that's on has its slider, and so does Rain;
+  - paddle has soundings on;
+  - a slider changes the map, and 30 % survives a reload.
+  - Against `main` it fails on exactly these points.
 
 ## Phase 12 — Trail details & obstacles
 

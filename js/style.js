@@ -264,7 +264,8 @@ export function buildStyle(s, ctx) {
   }
 
   // ---- Uphill difficulty (computed overlay) -----------------------------
-  if (act === 'mtb' && (s.trailColors === 'up' || s.trailColors === 'both')) {
+  // (in any sport: the trail colours are yours to turn on; the sport only sets the default)
+  if (s.trailColors === 'up' || s.trailColors === 'both') {
     // 'up': uphill grade replaces the halo. 'both': the mtb:scale halo stays and
     // the uphill grade runs as a stripe alongside it.
     const both = s.trailColors === 'both';
@@ -345,7 +346,7 @@ export function buildStyle(s, ctx) {
   });
 
   // ---- Difficulty numbers along trails (own toggles; JOSM MTB-Trailmap style)
-  if (act === 'mtb' && s.labelsDown) {
+  if (s.labelsDown) {
     add({
       id: 'mtb-label', type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 14.5,
       filter: ['all', ['has', 'mtb_scale'], ['in', ['get', 'class'], ['literal', ['path', 'track']]]],
@@ -358,7 +359,7 @@ export function buildStyle(s, ctx) {
       paint: { 'text-color': diffColor(MTB_IDX, '#ffffff'), 'text-halo-color': '#111111', 'text-halo-width': 1.6 },
     });
   }
-  if (act === 'mtb' && s.labelsUp) {
+  if (s.labelsUp) {
     add({
       id: 'uphill-label', type: 'symbol', source: 'uphill', minzoom: 14.5,
       filter: ['>=', ['get', 'grade'], 6],
@@ -451,24 +452,25 @@ export function buildStyle(s, ctx) {
 function addWeather(s, ctx, sources, layers) {
   const wx = s.weather || {};
   const d = ctx.data;
+  const op = (k, dflt) => (s.overlayOpacity && s.overlayOpacity[k] != null ? s.overlayOpacity[k] : dflt); // yours, or the default
   if ((wx.temp || wx.wind) && d.wxField) {
     sources.wxField = { type: 'image', url: d.wxField.url, coordinates: d.wxField.coordinates };
-    layers.push({ id: 'wx-field', type: 'raster', source: 'wxField', paint: { 'raster-opacity': wx.temp ? 0.5 : 0.38, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    layers.push({ id: 'wx-field', type: 'raster', source: 'wxField', paint: { 'raster-opacity': wx.temp ? op('wx:temp', 0.5) : 0.38, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
   if (wx.rain && d.wxRain) {
     sources.wxRain = { type: 'image', url: d.wxRain.url, coordinates: d.wxRain.coordinates };
-    layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': 0.85, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': op('wx:rain', 0.85), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
   if (wx.rain && d.wxRadar) {
     if (d.wxRadar.rv) {
       sources.wxRadarRv = { type: 'raster', tiles: [d.wxRadar.rv], tileSize: 512, maxzoom: 7, attribution: 'Radar © RainViewer' };
-      layers.push({ id: 'wx-radar-rv', type: 'raster', source: 'wxRadarRv', paint: { 'raster-opacity': 0.7, 'raster-fade-duration': 0 } });
+      layers.push({ id: 'wx-radar-rv', type: 'raster', source: 'wxRadarRv', paint: { 'raster-opacity': op('wx:rain', 0.7), 'raster-fade-duration': 0 } });
     }
   }
   // Finland: FMI's composite, fetched as data and drawn by js/radar.js
   if (wx.rain && d.wxRadarFi) {
     sources.wxRadarFi = { type: 'image', url: d.wxRadarFi.url, coordinates: d.wxRadarFi.coordinates };
-    layers.push({ id: 'wx-radar-fi', type: 'raster', source: 'wxRadarFi', paint: { 'raster-opacity': 0.85, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+    layers.push({ id: 'wx-radar-fi', type: 'raster', source: 'wxRadarFi', paint: { 'raster-opacity': op('wx:rain', 0.85), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
 }
 
@@ -481,7 +483,8 @@ function addRasterOverlays(s, sources, layers, slot) {
       tiles = [mmlTiles(o.mml, s.mmlKey)];
     }
     sources[`ov-${id}`] = { type: 'raster', tiles, tileSize: o.tileSize, minzoom: o.minzoom || 0, maxzoom: o.maxzoom || 18, attribution: o.attribution };
-    layers.push({ id: `ov-${id}`, type: 'raster', source: `ov-${id}`, minzoom: o.minzoom || 0, paint: { 'raster-opacity': o.opacity, 'raster-fade-duration': 150 } });
+    const op = s.overlayOpacity && s.overlayOpacity[id] != null ? s.overlayOpacity[id] : o.opacity; // yours, or the layer's own
+    layers.push({ id: `ov-${id}`, type: 'raster', source: `ov-${id}`, minzoom: o.minzoom || 0, paint: { 'raster-opacity': op, 'raster-fade-duration': 150 } });
   }
 }
 
@@ -520,6 +523,8 @@ function addRoads(s, P, hc, layers) {
   // (road cycling marks them the same way — there, so you can avoid them).
   const group = groupOf(act);
   const bikeAct = group === 'bike', footAct = group === 'foot';
+  // the difficulty halo: on whenever you've chosen Difficulty or Both, in any sport
+  const diffOn = s.trailColors === 'down' || s.trailColors === 'both';
   const gravel = act === 'gravel' || act === 'road';
   const roadBike = act === 'road';
   const unpaved = ['==', ['get', 'surface'], 'unpaved'];
@@ -571,11 +576,11 @@ function addRoads(s, P, hc, layers) {
       filter: ['all', ['==', ['get', 'class'], 'track'], bf],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
-        'line-color': act === 'mtb' && s.trailColors !== 'up'
+        'line-color': diffOn
           ? diffColor(MTB_IDX, plainHalo)
           : gravel ? (darkBase ? '#8a5a22' : '#e9b56c') : plainHalo,
         'line-width': zi(11, 2, 14, 4 * k, 16, 7 * k, 18, 12 * k),
-        'line-opacity': (act === 'mtb' && s.trailColors !== 'up' ? 0.9 : gravel ? 0.9 : 0.7) * roadsDim,
+        'line-opacity': (diffOn ? 0.9 : gravel ? 0.9 : 0.7) * roadsDim,
       },
     });
     add({
@@ -595,7 +600,7 @@ function addRoads(s, P, hc, layers) {
     const noFoot = ['==', ['get', 'foot'], 'no'];
     const sidewalkish = ['all', ['==', ['get', 'subclass'], 'footway'], ['!', ['has', 'mtb_scale']]];
     let haloColor;
-    if (act === 'mtb' && s.trailColors !== 'up') haloColor = diffColor(MTB_IDX, plainHalo);
+    if (diffOn) haloColor = diffColor(MTB_IDX, plainHalo);
     else if (footAct) haloColor = darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)';
     else haloColor = plainHalo;
     add({

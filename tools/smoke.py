@@ -2,7 +2,8 @@
 """Smoke test for Polku's layout: no overlapping controls, no console errors, planner states work.
 
   python3 tools/smoke.py            # all viewports
-  python3 tools/smoke.py 390x844    # just one
+  python3 tools/smoke.py 390x844    # just one size
+  python3 tools/smoke.py layers     # just the Layers panel in every sport
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -136,6 +137,78 @@ LOOP = """(async () => {
 })()"""
 
 
+# Layers: every sport has the same layers and controls (the trail colours
+# included), "On now" comes first, and every raster overlay that's on has its
+# opacity slider. Ends in paddle with Depth areas at 30 % for the reload check.
+LAYERS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const { ACTIVITIES, RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
+  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  await wait(300);
+  const body = document.querySelector('#layers-body');
+  const labels = () => [...body.querySelectorAll('.tg .tg-text')].map((t) => t.firstChild.textContent.trim()).filter((l) => !/opacity/i.test(l)).sort();
+  let first = null;
+  for (const k of [...Object.keys(ACTIVITIES).filter((a) => a !== 'paddle'), 'paddle']) {
+    polku.set({ activity: k });
+    await wait(400);
+    const segs = [...body.querySelectorAll('.seg button')].map((b) => b.textContent);
+    if (!['Off', 'Difficulty', 'Uphill', 'Both'].every((x) => segs.includes(x))) errs.push(`${k}: no trail colours control`);
+    const h3 = body.querySelector('.lp-sec h3');
+    if (!h3 || h3.textContent !== 'On now') errs.push(`${k}: the first section is ${h3 ? h3.textContent : 'missing'}, not On now`);
+    const now = labels();
+    if (!first) first = [k, now];
+    else {
+      const miss = first[1].filter((l) => !now.includes(l)), extra = now.filter((l) => !first[1].includes(l));
+      if (miss.length || extra.length) errs.push(`${k} vs ${first[0]}: missing ${miss.join(', ') || '-'}; extra ${extra.join(', ') || '-'}`);
+    }
+    for (const id of Object.keys(RASTER_OVERLAYS)) {
+      if (polku.state.overlays[id] && !body.querySelector(`input[aria-label="${RASTER_OVERLAYS[id].label} opacity"]`)) errs.push(`${k}: no opacity slider for ${id}`);
+    }
+  }
+  if (!polku.map.getLayer('ov-soundings')) errs.push('paddle: soundings are not on');
+  // the weather fields have one too (no fetch: the switch only, not the data)
+  const wx = { ...polku.state.weather };
+  polku.set({ weather: { ...wx, rain: true } });
+  await wait(300);
+  if (!body.querySelector('input[aria-label="Rain opacity"]')) errs.push('no opacity slider for the rain');
+  polku.set({ weather: wx });
+  await wait(300);
+  const r = body.querySelector('input[aria-label="' + RASTER_OVERLAYS.depthAreas.label + ' opacity"]');
+  if (r) {
+    r.value = '30';
+    r.dispatchEvent(new Event('input', { bubbles: true }));
+    r.dispatchEvent(new Event('change', { bubbles: true }));
+    await wait(200);
+    if (polku.map.getPaintProperty('ov-depthAreas', 'raster-opacity') !== 0.3) errs.push('the opacity slider did not change the map');
+  }
+  return errs;
+})()"""
+
+# after a reload: the depth areas keep 30 %
+LAYERS_AFTER = """(async () => {
+  const errs = [], { RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
+  const op = polku.map.getLayer('ov-depthAreas') && polku.map.getPaintProperty('ov-depthAreas', 'raster-opacity');
+  if (op !== 0.3) errs.push(`depth areas at ${op} after a reload, not 0.3`);
+  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  await new Promise((r) => setTimeout(r, 300));
+  const r = document.querySelector('#layers-body input[aria-label="' + RASTER_OVERLAYS.depthAreas.label + ' opacity"]');
+  if (!r || r.value !== '30') errs.push(`slider shows ${r ? r.value : 'nothing'} after a reload`);
+  return errs;
+})()"""
+
+
+def layers(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/60.15/24.95')
+    fails = pg.js(LAYERS)
+    pg.reload()
+    fails += pg.js(LAYERS_AFTER)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} layers (every sport)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -212,6 +285,8 @@ def main():
     chrome = Chrome()
     ok = True
     try:
+        if not only or 'layers' in only:
+            ok = layers(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue
