@@ -31,9 +31,9 @@
       </button>
       <ul id="search-results" role="listbox" hidden></ul>
     </div>
+    <!-- the active sport as a pill; hover (desktop) or tap opens the others -->
+    <div id="activity-bar" class="act-pill"></div>
   </header>
-
-  <nav id="activity-bar" class="activity-bar" aria-label="Activity"></nav>
   <button id="zoom-hint" class="zoom-hint" type="button" hidden>Zoom in to see every trail</button>
 
   <div class="fab-col">
@@ -53,7 +53,13 @@
       <span class="fab-3d">3D</span>
       <span>Terrain</span>
     </button>
+    <!-- phones: locate sits in the thumb column (desktop keeps MapLibre's button by the zoom) -->
+    <button id="btn-locate" class="fab fab-locate" type="button" aria-pressed="false" title="Show my location" aria-label="Show my location">
+      <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    </button>
   </div>
+  <!-- base map switcher: the current base as a thumbnail; opens all of them -->
+  <div id="base-switch" class="base-switch"></div>
   <!-- bottom right: a fab on desktop, a primary pill on phones; the planner's Done takes over while planning -->
   <button id="btn-plan" class="plan-btn" type="button" aria-expanded="false" aria-controls="planner" title="Plan a route (R)">
     <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
