@@ -525,3 +525,9 @@ body.dropping .drop-hint { display: flex; }
 .offline-banner span { display: inline-flex; align-items: center; gap: 6px; }
 .offline-banner .btn { height: 28px; padding: 0 12px; font-size: 12px; background: rgba(255,255,255,.18); border-color: transparent; color: #fff; }
 @media (max-width: 719px) { .offline-banner { top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--sheet-h) + 72px); white-space: nowrap; } }
+
+/* compass */
+.compass-btn { display: grid; place-items: center; color: var(--text); }
+.compass-btn svg { transition: transform .12s ease-out; }
+.compass-btn.heading { color: #fff; background: var(--accent) !important; }
+.compass-btn.heading svg { transition: none; }

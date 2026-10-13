@@ -21,6 +21,7 @@ import { lineLength, bbox, fmtDist } from './geo.js';
 import { $, $$, h, icon, toast, store } from './ui.js';
 import { initGestures } from './gestures.js';
 import { initView3d } from './view3d.js';
+import { CompassControl } from './compass.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
 import { WIND_CLASSES } from './weather.js';
@@ -94,7 +95,7 @@ const map = new maplibregl.Map({
   cooperativeGestures: false,
 });
 installIcons(map);
-initGestures(map, { trackpadTilt: () => state.terrain3d && state.trackpadTilt });
+initGestures(map, { trackpadTilt: () => state.terrain3d && state.trackpadTilt, trackpadRotate: () => state.trackpadTilt });
 const view3d = initView3d(map, $('#view3d'));
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
@@ -102,7 +103,8 @@ const syncView3d = () => view3d.show(state.terrain3d || map.getPitch() > 5);
 map.on('pitchend', syncView3d);
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Polku' }), 'bottom-right');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
-map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+map.addControl(new CompassControl({ toast }), 'top-right');
 const geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
 map.addControl(geolocate, 'top-right');
 map.on('error', (e) => {
@@ -343,9 +345,9 @@ function renderLayersPanel() {
     toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
     toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
     toggle('3D terrain', state.terrain3d, (v) => { state.terrain3d = v; applyStyle(); if (v && map.getPitch() < 30) map.easeTo({ pitch: 60, duration: 800 }); if (!v) map.easeTo({ pitch: 0 }); renderLayersPanel(); }),
-    state.terrain3d ? toggle('Trackpad scroll tilts & rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger scroll: up/down tilts, sideways rotates; pinch zooms') : null,
     state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
       h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
+    hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null,
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight'),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null));
 
