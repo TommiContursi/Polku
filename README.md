@@ -18,7 +18,8 @@ Any static server works. `serve.py` just disables caching while you edit.
 | Activity profiles | MTB, gravel, walking, winter | MTB, gravel, hike & run, **paddle** |
 | Hillshade + contours | MML + global | Lidar-grade Mapterhorn DEM, multidirectional hillshade, 5 m / 2.5 m contours generated in the browser |
 | 3D terrain | ✓ | ✓ with exaggeration slider; tilt and rotate with a two-finger trackpad scroll, Shift+scroll, Safari's rotate gesture or the on-screen orbit pad |
-| **Weather overlay** | – | ✓ windy-style animated wind, falling rain / snow where it's forecast, wind-speed or temperature field with °C labels, mm/h labels, rain radar now (FMI in Finland, RainViewer elsewhere) and rain forecast, 48 h time slider with play, readout with the next 6 h total |
+| **Timeline** | – | ✓ one 48 h clock (Time button or <kbd>T</kbd>) for the weather layers, the planned route's departure, road works and road conditions; a draggable forecast strip for the map centre (temperature, rain, wind arrows, night shading, your ride as a band), play, and Wind / Temperature / Rain chips right on it |
+| **Weather overlay** | – | ✓ windy-style animated wind, falling rain / snow where it's forecast, wind-speed or temperature field with °C labels, mm/h labels, rain radar now (FMI in Finland, RainViewer elsewhere) and rain forecast, readout with the next 6 h total |
 | MML maastokartta | needs their key | ✓ **keyless** via Kapsi: base map with our trails on top, or a transparent overlay |
 | Aerial | MML / Maptiler | Esri world imagery, plus MML ortokuva (Kapsi) |
 | Depth (syvyyskäyrät / -alueet / -pisteet) | ✓ Traficom | ✓ Traficom, plus shipping lanes, and click on water to see the charted depth range |

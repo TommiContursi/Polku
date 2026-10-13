@@ -663,6 +663,7 @@ export class Planner {
       this.els.warnings.innerHTML = '';
       this.els.wind.innerHTML = '';
       this.els.hint.hidden = false;
+      if (this.app.onAnalysis) this.app.onAnalysis(null);
       return;
     }
     this.els.hint.hidden = this.points.length > 2;
@@ -686,6 +687,7 @@ export class Planner {
     this.renderWarnings();
     this.renderWind();
     this.drawColored();
+    if (this.app.onAnalysis) this.app.onAnalysis(a);
   }
 
   renderBreakdown() {

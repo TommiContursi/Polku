@@ -144,13 +144,24 @@ button { font: inherit; color: inherit; }
 .wx-canvas.wx-hide { opacity: 0; transition: opacity .1s; }
 .wx-bar {
   position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--sheet-h) + 18px); z-index: 6;
-  width: min(560px, calc(100% - 200px)); padding: 6px 12px 8px 6px; border-radius: 16px;
+  width: min(640px, calc(100% - 200px)); padding: 6px 12px 8px 6px; border-radius: 16px;
   background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); transition: bottom .2s;
 }
+.tl-head { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px 8px; }
+.tl-title { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.tl-layers { flex: 1; }
+.tl-layers .chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; }
+.tl-layers .chip .ic { width: 14px; height: 14px; }
+.tl-close { width: 28px; height: 28px; }
+/* lines up with the slider: play button (34) + gap (8) on the left, gap (8) + time (132) on the right */
+.tl-strip { display: block; width: calc(100% - 182px); margin-left: 42px; height: 66px; cursor: ew-resize; touch-action: none; border-radius: 8px; }
+.tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
+.fab.ahead .fab-time-label { color: var(--route); font-weight: 800; }
+.fab.ahead[aria-pressed="true"] .fab-time-label { color: #fff; }
 .wx-row { display: flex; align-items: center; gap: 8px; }
 .wx-row input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
 .wx-time.linked::before { content: "⚑ "; color: var(--route); }
-.wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 120px; text-align: right; }
+.wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; overflow: hidden; text-overflow: ellipsis; }
 .wx-info { justify-content: space-between; padding-left: 8px; flex-wrap: wrap; gap: 4px 14px; }
 .wx-legend { display: flex; gap: 12px; }
 .wx-lg { display: inline-flex; align-items: center; gap: 6px; }
@@ -456,7 +467,10 @@ body.dropping .drop-hint { display: flex; }
   .maplibregl-ctrl-top-right { top: 392px; }
   .view3d { bottom: calc(var(--sheet-h) + 40px); padding: 8px 6px 6px; }
   .wx-bar { width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }
-  .wx-time { min-width: 0; }
+  .tl-title { display: none; }
+  .tl-strip { width: 100%; margin-left: 0; height: 56px; }
+  .tl-note { display: none; }
+  .wx-time { width: auto; flex: 0 1 auto; }
   body.planning .wx-bar { display: none; }
   .orbit { width: 62px; height: 62px; }
   .panel { left: 12px; right: 12px; top: auto; bottom: calc(12px + var(--sheet-h)); width: auto; max-height: 62vh; }

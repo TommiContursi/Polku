@@ -33,6 +33,7 @@ const DEFAULTS = {
   contours: true,
   terrain3d: false,
   trackpadTilt: true,
+  timeline: false,
   labelsDown: false,
   labelsUp: false,
   weather: { wind: false, temp: false, rain: false },
@@ -131,6 +132,7 @@ const planner = new Planner(map, {
   activity: () => state.activity,
   setData,
   onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
+  onAnalysis: () => { weather.renderTime(); weather.renderStrip(); },
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   onActiveChange: (on) => {
     $('#btn-plan').setAttribute('aria-pressed', String(on));
@@ -173,15 +175,34 @@ const weather = new WeatherOverlay(map, {
     if (JSON.stringify(r || null) !== before) applyStyle();
   },
   dark: () => isAerial(state.base) || state.base === 'night',
-  // the weather time bar and the route's departure time are one clock
+  // the timeline and the route's departure time are one clock
   onHour: (k) => { planner.setStartOffset(k, { fromMap: true }); safety.publish(); },
   hasRoute: () => planner.points.length > 1,
+  routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
+  onToggle: (patch) => setWeather(patch),
+  onClose: () => setTimeline(false),
+  onTime: (hr) => {
+    // the Time button shows how far ahead the map is looking
+    const k = Math.round(hr);
+    $('.fab-time-label').textContent = k ? `+${k} h` : 'Time';
+    $('#btn-time').classList.toggle('ahead', k > 0);
+  },
 });
+
+function setTimeline(on) {
+  state.timeline = on;
+  weather.setOpen(on);
+  if (on && planner.startOffsetH) weather.setHour(planner.startOffsetH, { silent: true });
+  $('#btn-time').setAttribute('aria-pressed', String(on));
+  saveSettings();
+}
+
 function setWeather(patch) {
   Object.assign(state.weather, patch);
   weather.set(state.weather);
   if (planner.startOffsetH) weather.setHour(planner.startOffsetH, { silent: true });
-  $('#btn-wind').setAttribute('aria-pressed', String(state.weather.wind));
+  // weather layers live on the timeline: switching one on opens it
+  if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
   applyStyle();
   renderLayersPanel();
 }
@@ -317,7 +338,8 @@ function renderLayersPanel() {
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight')));
 
   p.append(section('Weather',
-    toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed, 48 h forecast'),
+    toggle('Timeline', state.timeline, (v) => setTimeline(v), '48 h clock for weather, road conditions and your route (T)'),
+    toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
     toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels'),
     toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later'),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Use the time bar to scrub or play the next 48 hours.')));
@@ -412,7 +434,7 @@ for (const btn of $$('[data-panel]')) btn.addEventListener('click', () => openPa
 for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () => openPanel(null));
 
 $('#btn-plan').addEventListener('click', () => planner.setActive(!planner.active));
-$('#btn-wind').addEventListener('click', () => setWeather({ wind: !state.weather.wind }));
+$('#btn-time').addEventListener('click', () => { setTimeline(!state.timeline); renderLayersPanel(); });
 $('#btn-3d').addEventListener('click', () => {
   state.terrain3d = !state.terrain3d;
   applyStyle();
@@ -462,6 +484,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '/') { e.preventDefault(); $('#search-input').focus(); }
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'l' && !mod) openPanel('layers-panel');
+  else if (e.key === 't' && !mod) { setTimeline(!state.timeline); renderLayersPanel(); }
   else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); }
 });
 
@@ -498,7 +521,7 @@ map.on('load', () => {
   syncZoomHint();
   syncView3d();
   if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
-  $('#btn-wind').setAttribute('aria-pressed', String(state.weather.wind));
+  if (state.timeline) setTimeline(true);
   if (shared && shared.points.length) {
     planner.restore(shared);
     planner.setActive(true);

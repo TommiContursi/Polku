@@ -40,6 +40,7 @@ const P = {
   temp: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z"/><path d="M12 10v6"/>',
   rain: '<path d="M7 16a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 10a4 4 0 0 1-2 6"/><path d="m9 19-1 2M13 19l-1 2M17 19l-1 2"/>',
   play: '<path d="M7 4v16l13-8Z" fill="currentColor"/>',
+  clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
   pause: '<path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor"/>',
 };
 

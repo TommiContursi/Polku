@@ -1,7 +1,9 @@
-// Weather overlay in the spirit of windy.app: animated wind particles, falling
-// rain / snow, a wind-speed or temperature field, rain radar and a 48 h time
-// slider. Data: Open-Meteo on a grid over the view; FMI radar in Finland,
-// RainViewer elsewhere.
+// Timeline + weather overlay. The timeline (48 h, opened with the Time button)
+// is the app's clock: it moves the weather layers, the planned route's
+// departure, road works and road conditions. The weather layers — in the
+// spirit of windy.app — are animated wind particles, falling rain / snow, a
+// wind-speed or temperature field and rain radar. Data: Open-Meteo on a grid
+// over the view; FMI radar in Finland, RainViewer elsewhere.
 //
 // Performance: the expensive part is mapping screen pixels to geography. That
 // happens once per camera stop (moveend) into a coarse cell cache; while the map
@@ -47,6 +49,21 @@ export function timeAtHour(hr) {
   return Math.max(now, Math.floor(now / 3600) * 3600 + hr * 3600);
 }
 
+// Sun altitude in degrees (good to ~0.5°), for night shading on the timeline.
+function sunAltitude(lat, lon, tSec) {
+  const R = Math.PI / 180;
+  const d = tSec / 86400 + 2440587.5 - 2451545.0;
+  const g = (357.529 + 0.98560028 * d) * R;
+  const q = 280.459 + 0.98564736 * d;
+  const L = (q + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * R;
+  const e = (23.439 - 0.00000036 * d) * R;
+  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
+  const dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const gmst = ((18.697374558 + 24.06570982441908 * d) % 24 + 24) % 24;
+  const ha = (gmst * 15 + lon) * R - ra;
+  return Math.asin(Math.sin(lat * R) * Math.sin(dec) + Math.cos(lat * R) * Math.cos(dec) * Math.cos(ha)) / R;
+}
+
 // Web Mercator helpers (0..1 world units)
 const mx = (lon) => (lon + 180) / 360;
 const my = (lat) => { const s = Math.sin((lat * Math.PI) / 180); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI); };
@@ -58,6 +75,7 @@ export class WeatherOverlay {
     this.map = map;
     this.app = app; // { setImage(id, img|null), setRadar(r|null), setData(id, fc), dark() }
     this.on = { wind: false, temp: false, rain: false };
+    this.open = false; // timeline bar visible
     this.hour = 0;
     this.grid = null;
     this.cur = null;
@@ -78,20 +96,37 @@ export class WeatherOverlay {
     map.on('touchend', () => this.readout(this.map.getCenter().toArray()));
   }
 
-  get active() { return this.on.wind || this.on.temp || this.on.rain; }
+  get layersOn() { return this.on.wind || this.on.temp || this.on.rain; }
+  // forecast data is needed for the weather layers and for the timeline strip
+  get active() { return this.open || this.layersOn; }
   get animated() { return this.on.wind || this.on.rain; }
 
   set(layers) {
     Object.assign(this.on, layers);
-    this.bar.hidden = !this.active;
     this.windCv.hidden = !this.on.wind;
     this.rainCv.hidden = !this.on.rain;
-    if (!this.active) { this.stop(); return; }
+    this.renderChips();
+    this.clearLayers();
+    if (!this.active) { this.stopClock(); return; }
     this.renderLegend();
     if (this.grid) { this.buildCam(); this.applyHour(true); }
     this.maybeFetch();
     if (this.animated) this.startAnim();
     if (this.on.rain) this.loadRadarMeta();
+    this.readout();
+  }
+
+  // Show / hide the timeline bar. Layers keep their selected time either way.
+  setOpen(on) {
+    this.open = on;
+    this.bar.hidden = !on;
+    if (on) {
+      this.maybeFetch();
+      this.renderChips();
+      this.renderTime();
+      requestAnimationFrame(() => this.renderStrip());
+      if (!this.anim) this.startAnim();
+    } else if (!this.layersOn) this.stopClock();
   }
 
   onMoveStart() {
@@ -105,6 +140,7 @@ export class WeatherOverlay {
     this.moving = false;
     if (!this.active) return;
     this.maybeFetch();
+    this.renderStrip();
     if (!this.animated) return;
     this.buildCam();
     this.buildField();
@@ -189,6 +225,8 @@ export class WeatherOverlay {
     }
     this.cur = { u, v, gust, temp, rain, t, i, f };
     this.buildField();
+    if (images) this.stripData = null; // new grid → rebuild the strip
+    this.renderStrip();
     if (images || Math.abs((this.lastImgHour ?? -9) - this.hour) >= 0.25) {
       this.lastImgHour = this.hour;
       this.renderImages();
@@ -477,31 +515,203 @@ export class WeatherOverlay {
     }
   }
 
-  stop() {
+  // Remove what the switched-off layers drew (images, labels, particles).
+  clearLayers() {
+    if (!this.on.wind) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
+    if (!this.on.rain) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
+    if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
+    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); }
+    if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
+  }
+
+  // Nothing needs the clock running: stop playback and the animation loop.
+  stopClock() {
     this.playing = false;
     this.syncPlay();
     cancelAnimationFrame(this.anim);
     this.anim = 0;
-    this.clearCanvas(this.windCtx, this.windCv);
-    this.clearCanvas(this.rainCtx, this.rainCv);
-    this.windCv.hidden = true;
-    this.rainCv.hidden = true;
-    this.app.setImage('wxField', null);
-    this.app.setImage('wxRain', null);
-    this.app.setRadar(null);
-    this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
+
+  stop() { this.on = { wind: false, temp: false, rain: false }; this.clearLayers(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
   buildBar() {
     const bar = document.getElementById('wx-bar');
     this.bar = bar;
+    bar.hidden = true;
     this.playBtn = h('button', { type: 'button', class: 'tool', 'aria-label': 'Play forecast', onclick: () => this.togglePlay(), html: icon('play', 18) });
-    this.slider = h('input', { type: 'range', min: '0', max: String(HOURS), step: '1', value: '0', 'aria-label': 'Forecast hour', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(+e.target.value); } });
+    this.slider = h('input', { type: 'range', min: '0', max: String(HOURS), step: '1', value: '0', 'aria-label': 'Time, hours from now', oninput: (e) => { this.playing = false; this.syncPlay(); this.setHour(+e.target.value); } });
     this.timeEl = h('div', { class: 'wx-time' });
     this.legendEl = h('div', { class: 'wx-legend' });
     this.readEl = h('div', { class: 'wx-read' });
-    bar.append(h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl), h('div', { class: 'wx-row wx-info' }, this.legendEl, this.readEl));
+    // weather layers right on the timeline
+    this.chipsEl = h('div', { class: 'chips tl-layers', role: 'group', 'aria-label': 'Weather layers' },
+      ...[['wind', 'wind', 'Wind'], ['temp', 'temp', 'Temperature'], ['rain', 'rain', 'Rain']].map(([k, ic, label]) =>
+        h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': 'false', onclick: () => this.app.onToggle({ [k]: !this.on[k] }), html: `${icon(ic, 14)}${label}` })));
+    this.noteEl = h('div', { class: 'tl-note' });
+    this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': '48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
+    this.bindStrip();
+    bar.append(
+      h('div', { class: 'tl-head' },
+        h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
+        this.chipsEl,
+        h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) })),
+      this.stripCv,
+      h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
+      h('div', { class: 'wx-row wx-info' }, this.legendEl, this.readEl),
+      this.noteEl,
+    );
+    new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
+  }
+
+  renderChips() {
+    if (!this.chipsEl) return;
+    for (const b of this.chipsEl.children) b.setAttribute('aria-pressed', String(!!this.on[b.dataset.k]));
+  }
+
+  // ------------------------------------------------------------------ timeline strip
+  // 48 h at the map centre: night shading, rain bars, temperature line, wind
+  // arrows, day ticks, your ride (when a route is planned) and the cursor.
+  stripSeries() {
+    const g = this.grid;
+    const c = this.map.getCenter();
+    const w = g && this.weights([c.lng, c.lat]);
+    if (!w) return null;
+    const key = `${g.t}|${c.lng.toFixed(2)},${c.lat.toFixed(2)}|${Math.floor(Date.now() / 600000)}`;
+    if (this.stripData && this.stripData.key === key) return this.stripData;
+    const times = g.series[0].time;
+    const out = { key, temp: [], rain: [], speed: [], dir: [], t: [], lat: c.lat, lon: c.lng };
+    for (let hr = 0; hr <= HOURS; hr++) {
+      const t = timeAtHour(hr);
+      let i = 0;
+      while (i < times.length - 2 && times[i + 1] <= t) i++;
+      const f = Math.max(0, Math.min(1, (t - times[i]) / ((times[i + 1] - times[i]) || 3600)));
+      let temp = 0, rain = 0, u = 0, v = 0;
+      for (const [k, wt] of w) {
+        const s = g.series[k];
+        const lin = (a) => (a[i] ?? 0) * (1 - f) + (a[i + 1] ?? a[i] ?? 0) * f;
+        temp += lin(s.temp) * wt;
+        rain += lin(s.precip) * wt;
+        const sp = lin(s.speed), d = ((s.dir[i] + 180) * Math.PI) / 180;
+        u += Math.sin(d) * sp * wt; v += Math.cos(d) * sp * wt;
+      }
+      out.temp.push(temp); out.rain.push(rain); out.speed.push(Math.hypot(u, v));
+      out.dir.push(((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360); out.t.push(t);
+    }
+    this.stripData = out;
+    return out;
+  }
+
+  renderStrip() {
+    const cv = this.stripCv;
+    if (!cv || this.bar.hidden) return;
+    const W = cv.clientWidth, H = cv.clientHeight;
+    if (!W || !H) return;
+    const dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const css = getComputedStyle(cv);
+    const ink = css.getPropertyValue('--text').trim() || '#1c2420';
+    const muted = css.getPropertyValue('--muted').trim() || '#5f6b65';
+    const accent = css.getPropertyValue('--route').trim() || '#e11d48';
+    const d = this.stripSeries();
+    const PAD = 9; // matches the range thumb so strip and slider line up
+    const X = (hr) => PAD + (hr / HOURS) * (W - 2 * PAD);
+    ctx.font = '10px system-ui, sans-serif';
+    if (!d) { ctx.fillStyle = muted; ctx.fillText(this.loading ? 'Loading the forecast…' : 'Zoom in to see the forecast here', PAD, H / 2); return; }
+    // night
+    ctx.fillStyle = this.app.dark() || matchMedia('(prefers-color-scheme: dark)').matches ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
+    for (let hr = 0; hr < HOURS; hr++) {
+      if (sunAltitude(d.lat, d.lon, (d.t[hr] + d.t[hr + 1]) / 2) < -0.8) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
+    }
+    // your ride, from departure to arrival
+    const ride = this.app.routeHours && this.app.routeHours();
+    if (ride > 0) {
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = 0.16;
+      ctx.fillRect(X(this.hour), 0, Math.max(3, X(Math.min(HOURS, this.hour + ride)) - X(this.hour)), H);
+      ctx.globalAlpha = 1;
+      ctx.fillRect(X(this.hour), H - 3, Math.max(3, X(Math.min(HOURS, this.hour + ride)) - X(this.hour)), 3);
+    }
+    // rain bars
+    const top = 14, bottom = H - 14;
+    for (let hr = 0; hr < HOURS; hr++) {
+      const r = (d.rain[hr] + d.rain[hr + 1]) / 2;
+      if (r < 0.05) continue;
+      const bh = Math.min(1, r / 3) * (bottom - top) * 0.75 + 2;
+      ctx.fillStyle = (d.temp[hr] < 0.5 ? 'rgba(167,139,250,' : 'rgba(59,130,246,') + Math.min(0.9, 0.35 + r / 4) + ')';
+      ctx.fillRect(X(hr) + 0.5, bottom - bh, X(hr + 1) - X(hr) - 1, bh);
+    }
+    // temperature line
+    let tMin = Math.min(...d.temp), tMax = Math.max(...d.temp);
+    if (tMax - tMin < 4) { const m = (tMax + tMin) / 2; tMin = m - 2; tMax = m + 2; }
+    const Y = (t) => top + 4 + (1 - (t - tMin) / (tMax - tMin)) * (bottom - top - 14);
+    ctx.beginPath();
+    d.temp.forEach((t, hr) => { const x = X(hr), y = Y(t); if (hr) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+    // labels at the warmest / coldest hour
+    const iMax = d.temp.indexOf(Math.max(...d.temp)), iMin = d.temp.indexOf(Math.min(...d.temp));
+    ctx.fillStyle = '#c2410c';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${Math.round(d.temp[iMax])}°`, Math.min(W - 12, Math.max(12, X(iMax))), Y(d.temp[iMax]) - 4);
+    if (iMin !== iMax) ctx.fillText(`${Math.round(d.temp[iMin])}°`, Math.min(W - 12, Math.max(12, X(iMin))), Math.min(bottom, Y(d.temp[iMin]) + 11));
+    // wind arrows every 3 h
+    ctx.strokeStyle = muted;
+    ctx.fillStyle = muted;
+    for (let hr = 0; hr <= HOURS; hr += 3) {
+      const x = X(hr), y = 7, a = ((d.dir[hr] + 180) * Math.PI) / 180, l = Math.min(6, 2.5 + d.speed[hr] / 2);
+      ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+      ctx.lineWidth = d.speed[hr] > 8 ? 1.8 : 1.1;
+      ctx.beginPath(); ctx.moveTo(0, l); ctx.lineTo(0, -l); ctx.moveTo(-2.4, -l + 2.6); ctx.lineTo(0, -l); ctx.lineTo(2.4, -l + 2.6); ctx.stroke();
+      ctx.restore();
+    }
+    // day ticks and labels
+    ctx.textAlign = 'left';
+    ctx.fillStyle = muted;
+    ctx.strokeStyle = muted;
+    ctx.lineWidth = 1;
+    for (let hr = 1; hr <= HOURS; hr++) {
+      const dt = new Date(d.t[hr] * 1000);
+      if (dt.getHours() === 0) {
+        ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(X(hr), 0); ctx.lineTo(X(hr), H); ctx.stroke(); ctx.globalAlpha = 1;
+        ctx.fillText(dt.toLocaleDateString([], { weekday: 'short' }), X(hr) + 3, H - 4);
+      } else if (dt.getHours() % 6 === 0) {
+        ctx.fillText(String(dt.getHours()), X(hr) - 4, H - 4);
+      }
+    }
+    ctx.fillText('Now', 2, H - 4);
+    // cursor
+    const cx = X(this.hour);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+    const ti = Math.min(HOURS, Math.round(this.hour));
+    ctx.fillStyle = ink;
+    ctx.beginPath(); ctx.arc(cx, Y(d.temp[ti]), 3.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  bindStrip() {
+    const cv = this.stripCv;
+    let down = false;
+    const at = (e) => {
+      const r = cv.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (e.clientX - r.left - 9) / (r.width - 18)));
+      this.playing = false;
+      this.syncPlay();
+      this.setHour(Math.round(x * HOURS));
+    };
+    cv.addEventListener('pointerdown', (e) => {
+      down = true;
+      try { cv.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
+      at(e);
+    });
+    cv.addEventListener('pointermove', (e) => { if (down) at(e); });
+    cv.addEventListener('pointerup', () => { down = false; });
+    cv.addEventListener('pointercancel', () => { down = false; });
   }
 
   // `silent`: change came from the route's departure picker, don't echo back
@@ -552,8 +762,11 @@ export class WeatherOverlay {
     if (this.loading) label += ' · loading…';
     this.timeEl.textContent = label;
     // linked with the route's departure time
-    this.timeEl.title = this.app.hasRoute && this.app.hasRoute() ? 'Also the departure time of your route' : '';
-    this.timeEl.classList.toggle('linked', !!(this.app.hasRoute && this.app.hasRoute()));
+    const route = !!(this.app.hasRoute && this.app.hasRoute());
+    this.timeEl.title = route ? 'Also the departure time of your route' : '';
+    this.timeEl.classList.toggle('linked', route);
+    if (this.noteEl) this.noteEl.textContent = route ? 'Also your route’s departure — the shaded band is your ride. Road works and road conditions follow this time too.' : 'Also sets road works and road conditions, and the departure of a planned route.';
+    if (this.app.onTime) this.app.onTime(this.hour);
   }
 
   renderLegend() {
@@ -580,9 +793,10 @@ export class WeatherOverlay {
     const s = this.sample(ll);
     if (!s) { this.readEl.textContent = ''; return; }
     const parts = [];
-    if (this.on.wind) parts.push(`${s.speed.toFixed(1)} m/s ${compass(s.dir)}${s.gust > s.speed + 2 ? ` (gusts ${s.gust.toFixed(0)})` : ''}`);
-    if (this.on.temp || this.on.wind) parts.push(`${s.temp.toFixed(0)} °C`);
-    if (this.on.rain) {
+    const all = !this.layersOn; // timeline only: a compact summary of everything
+    if (this.on.wind || all) parts.push(`${s.speed.toFixed(1)} m/s ${compass(s.dir)}${s.gust > s.speed + 2 ? ` (gusts ${s.gust.toFixed(0)})` : ''}`);
+    if (this.on.temp || this.on.wind || all) parts.push(`${s.temp.toFixed(0)} °C`);
+    if (this.on.rain || all) {
       const kind = s.temp < 0.5 ? 'snow' : 'rain';
       parts.push(s.rain >= 0.05 ? `${kind} ${s.rain.toFixed(1)} mm/h` : 'dry');
       const sum = this.accum(ll, 6);
