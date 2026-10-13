@@ -289,3 +289,26 @@ export function windRating(speed, gust, activity) {
   if (g < 12) return { label: 'Windy — open sections feel it', tone: 'warn' };
   return { label: 'Very windy — watch for fallen trees', tone: 'bad' };
 }
+
+// Rain in the last 24 hours at a place (mm), for route styles' "wet ground:
+// auto" (styles.js). One Open-Meteo call per place and hour, kept for the hour.
+const rainCache = new Map();
+export async function recentRain([lon, lat]) {
+  const k = `${lon.toFixed(1)},${lat.toFixed(1)}|${Math.floor(Date.now() / 3600e3)}`;
+  if (!rainCache.has(k)) {
+    rainCache.set(k, (async () => {
+      const url = `${OPEN_METEO}?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}&hourly=precipitation&past_days=1&forecast_days=1&timezone=UTC`;
+      const res = await request('openmeteo', url);
+      if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
+      const d = await res.json();
+      const now = Date.now();
+      let mm = 0;
+      d.hourly.time.forEach((t, i) => {
+        const at = Date.parse(`${t}Z`);
+        if (at <= now && now - at < 24 * 3600e3) mm += d.hourly.precipitation[i] || 0;
+      });
+      return Math.round(mm * 10) / 10;
+    })().catch((e) => { rainCache.delete(k); throw e; }));
+  }
+  return rainCache.get(k);
+}

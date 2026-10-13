@@ -25,7 +25,7 @@ cd "$DIR"
 
 jar=$(find . -name "brouter-$VER-all.jar" -print -quit)
 if [ -z "$jar" ]; then
-  echo "Downloading BRouter $VER…"
+  echo "Downloading BRouter ${VER}…"
   curl -fL --progress-bar -o "brouter-$VER.zip" "https://github.com/abrensch/brouter/releases/download/v$VER/brouter-$VER.zip"
   unzip -q -o "brouter-$VER.zip" -d "brouter-$VER" && rm "brouter-$VER.zip"
   jar=$(find . -name "brouter-$VER-all.jar" -print -quit)
@@ -41,7 +41,7 @@ fi
 for t in $TILES; do
   f="segments4/$t.rd5"
   if [ ! -s "$f" ] || [ "${1:-}" = update ]; then
-    echo "Routing data $t…"
+    echo "Routing data ${t}…"
     # -z: only if brouter.de has a newer file than ours
     curl -fL --progress-bar -z "$f" -o "$f.part" "https://brouter.de/brouter/segments4/$t.rd5" && { [ -s "$f.part" ] && mv "$f.part" "$f" || rm -f "$f.part"; }
   fi

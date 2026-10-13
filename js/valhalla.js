@@ -65,9 +65,10 @@ const excludes = (nogos) => (nogos || []).map((n) => {
  * Two calls: the route, then the way attributes along it (without those the
  * legs still come back, just with unknown surfaces).
  */
-export async function valhallaRoute(points, profile, signal, nogos = []) {
+export async function valhallaRoute(points, profile, signal, nogos = [], style = {}) {
   const [costing, options] = COSTING[profile];
-  const base = { costing, costing_options: { [costing]: options }, ...(nogos.length ? { exclude_polygons: excludes(nogos) } : {}) };
+  // the route style's nearest equivalents (styles.js) over the sport's defaults
+  const base = { costing, costing_options: { [costing]: { ...options, ...style } }, ...(nogos.length ? { exclude_polygons: excludes(nogos) } : {}) };
   const body = { ...base, locations: points.map(([lon, lat]) => ({ lon, lat })), directions_type: 'none', shape_format: 'polyline6' };
   const res = await request('valhalla', `${VALHALLA}/route?json=${encodeURIComponent(JSON.stringify(body))}`, { signal });
   const d = await res.json().catch(() => ({}));

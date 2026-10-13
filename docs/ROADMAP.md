@@ -18,7 +18,7 @@ Also approved:
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | [#21](https://github.com/TommiContursi/Polku/pull/21) | merged |
 | 7½ | Routing that holds up: pacing, batching, routes kept on refresh, Valhalla stand-in | `brouter-pacing` | [#22](https://github.com/TommiContursi/Polku/pull/22) | merged |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | merged |
-| 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | — | designed, awaiting OK |
+| 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | [#24](https://github.com/TommiContursi/Polku/pull/24) | in review |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
 | — | Winter sports (ski, snowshoe) | — | — | later; the sports model in phase 5 leaves room |
 | — | Strava & Garmin (see the end of this file) | — | — | later: research and plan first, no code yet |
@@ -528,6 +528,16 @@ The user asked to think this through first: comprehensive and useful per sport, 
 **Build and verify**
 - `js/styles.js`: the catalogue (presets, controls, parameters per profile, Valhalla mapping, codes); the planner section and Style item; per-leg styles; Auto wet; the comparison line; share links; tests.
 - **Every preset is checked to really change routes** on three test areas (Kauppi, Tampere: MTB; Ainolanranta, Jyväskylä: city riding and running; Nuuksio: hiking), with values tuned until each step makes a visible difference. Tuning needs many routing calls, so it runs against a local BRouter (`tools/brouter-local.sh`), never in bursts against brouter.de.
+
+**Built (PR #24)** — approved as designed, with these findings from tuning
+- **`js/styles.js`** holds the catalogue: per sport, presets and controls; each step lists its BRouter variables, Valhalla options and (paddle) water-router options. `routerOf(sport, style, wet)` turns a style into `{ profile, params, valhalla, water, key }`; `encodeStyle` / `decodeStyle` make the share codes (`flowy`, `balanced~r1~c1`, `scenic~f8`, `~Wy` for wet).
+- **Tuning (local BRouter, `tools/style_probe.py --presets`):** every preset changes its sport's test route. What was dropped or changed because it didn't: MTB `hills` 2–3 (same as 1), road "Direct" preset (traffic matters only in places, so it stays a control), run "Flat" + no stairs (the flatter line used steps), trail run "Technical ok" (SAC grades are rare outside the fells) → "Nature".
+- **Road cycling** found the biggest gap: the stock road profile costs gravel main roads like asphalt, so 13–32 % of rural road rides were unpaved. `profiles/polku-road.brf` (stock plus `unpaved_mainroad_factor`) makes **Paved roads** the road default: Tampere–Orivesi 13 → 0 % unpaved for +1.2 km. Uploaded once per session as `custom_polku-road-1` (one shared file on the server, not one per visitor); a 500 means the server dropped it: upload again and retry once, without counting it as an outage; if it can't be used, the stock profile routes with a note.
+- **Planner:** a **Style** item in the stats row; the **Route style** section (presets, controls with one-line help, wet ground with the reason, the last change's effect, a scope switch when editing a leg); **Style** in the point menu for the next leg; legs with their own style marked in the waypoint list. Styles are in undo, the saved route, offline snapshots and share links (`p=`, `ps=`); the route's style is remembered per sport (`polku:styles`), a shared link's isn't.
+- **Costs:** a style change re-routes after 700 ms, batched by style (one call for a route in one style). The routing key includes the style, so cached and saved legs are reused when the style is the same.
+- **Wet ground:** Open-Meteo `past_days=1` at the start, one call per place and hour; 3 mm in 24 h turns "auto" on.
+- **Paddling:** "Near the shore" measures shore distance in metres (about 250 m), makes open water cost more the further out, and stops the straightening from cutting across open water; carries get their own cost. On Näsijärvi the route moves from the middle of the lake to the west shore and islands, for +0.5 km.
+- **Valhalla** gets the style's options when it stands in (checked: MTB Technical → `use_roads 0`, `avoid_bad_surfaces 0`).
 
 **Cut**
 - Ranking BRouter's `alternativeidx` 0–3 ourselves (4× the calls).

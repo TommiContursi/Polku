@@ -8,11 +8,12 @@ import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand } from './weather.js';
+import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
 import { keepInView } from './inspect.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
+import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom } from './styles.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
@@ -20,6 +21,8 @@ const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 // a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
 const STAND_IN_AFTER = 6000;
+// "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
+const WET_MM = 3;
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
 const CODE_MODE = { a: 'auto', l: 'line', w: 'water' };
 
@@ -45,6 +48,9 @@ export class Planner {
     this.ghosts = []; // drag handles in the middle of each leg
     this.pname = new WeakMap(); // point → the name you gave it (points move as arrays, so names follow them)
     this.roads = initNames(map); // road and path names from the loaded tiles
+    this.style = this.savedStyle(app.activity()); // the route's style; a leg may have its own (leg.style)
+    this.styleLeg = null; // the leg the Route style section edits (null: the whole route)
+    this.wet = { mm: null, on: false, at: null }; // rain in the last 24 h at the start, for "wet ground: auto"
     this.edit = null; // a drag in progress (see beginEdit)
     this.noClickUntil = 0;
     this.analysis = null;
@@ -87,9 +93,10 @@ export class Planner {
     return {
       points: this.points.map((p) => p.slice()),
       names: this.points.map((p) => this.pname.get(p) || ''),
-      legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status })),
+      legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status, style: l.style })),
       nogos: this.nogos.map((n) => ({ ...n })),
       routeName: this.routeName || '',
+      style: this.style,
     };
   }
   commit() {
@@ -103,6 +110,7 @@ export class Planner {
     this.legs = s.legs.map((l) => ({ ...l }));
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
+    if (s.style) this.style = s.style;
     this.update();
   }
 
@@ -149,7 +157,7 @@ export class Planner {
         return { mode: 'fixed', status: 'ok', result: { coords: c.coords.slice().reverse(), tags: c.tags.slice().reverse(), portage: [] } };
       }
       const m = (o || r) ? (o || r).l.mode : this.mode;
-      return { mode: m === 'fixed' ? 'auto' : m };
+      return { mode: m === 'fixed' ? 'auto' : m, style: o ? o.l.style : null };
     });
     this.points = pts;
     this.update();
@@ -195,13 +203,13 @@ export class Planner {
       const near = nearestOnLine(ll, c);
       const q = c[near.i], q2 = c[near.i + 1];
       const p = [+(q[0] + (q2[0] - q[0]) * near.t).toFixed(6), +(q[1] + (q2[1] - q[1]) * near.t).toFixed(6)];
-      const half = (coords, tags) => ({ mode: leg.mode, status: 'ok', result: { coords, tags, portage: [] } });
+      const half = (coords, tags) => ({ mode: leg.mode, status: 'ok', style: leg.style, result: { coords, tags, portage: [] } });
       this.points.splice(li + 1, 0, p);
       this.legs.splice(li, 1, half(c.slice(0, near.i + 1).concat([p]), r.tags.slice(0, near.i + 1)), half([p].concat(c.slice(near.i + 1)), r.tags.slice(near.i)));
       for (const k of [li, li + 1]) if (this.legs[k].mode !== 'fixed') this.legs[k].key = this.legKey(k).key;
     } else {
       this.points.splice(li + 1, 0, ll);
-      this.legs.splice(li, 1, { mode: leg.mode === 'fixed' ? 'auto' : leg.mode }, { mode: leg.mode === 'fixed' ? 'auto' : leg.mode });
+      this.legs.splice(li, 1, { mode: leg.mode === 'fixed' ? 'auto' : leg.mode, style: leg.style }, { mode: leg.mode === 'fixed' ? 'auto' : leg.mode, style: leg.style });
     }
     return li + 1;
   }
@@ -255,7 +263,7 @@ export class Planner {
       const a = this.legs[i - 1], b = this.legs[i];
       const merged = a.mode === 'fixed' && b.mode === 'fixed' && a.result && b.result
         ? { mode: 'fixed', status: 'ok', result: { coords: a.result.coords.concat(b.result.coords.slice(1)), tags: a.result.tags.concat(b.result.tags), portage: [] } }
-        : { mode: a.mode === 'fixed' ? 'auto' : a.mode };
+        : { mode: a.mode === 'fixed' ? 'auto' : a.mode, style: a.style };
       this.legs.splice(i - 1, 2, merged);
     }
     this.update();
@@ -267,7 +275,7 @@ export class Planner {
     this.points.reverse();
     this.legs = this.legs.reverse().map((l) => (l.mode === 'fixed' && l.result
       ? { mode: 'fixed', status: 'ok', result: { coords: l.result.coords.slice().reverse(), tags: l.result.tags.slice().reverse(), portage: [] } }
-      : { mode: l.mode }));
+      : { mode: l.mode, style: l.style }));
     this.update();
   }
 
@@ -332,7 +340,7 @@ export class Planner {
   setLegMode(i, mode) {
     if (!this.legs[i] || this.legs[i].mode === mode) return;
     this.commit();
-    this.legs[i] = { mode };
+    this.legs[i] = { mode, style: this.legs[i].style };
     this.update();
   }
 
@@ -351,15 +359,29 @@ export class Planner {
     this.update();
   }
 
-  restore({ points, modes }) {
+  restore({ points, modes, style, legStyles }) {
+    const sport = this.app.activity();
     this.points = points;
     this.legs = points.slice(1).map((_, i) => ({ mode: CODE_MODE[modes[i]] || modes[i] || 'auto' }))
       .map((l) => (l.mode === 'fixed' ? { mode: 'auto' } : l));
+    // a shared link's style is the route's, not yours: your own per-sport choice stays as it was
+    if (style != null) this.style = decodeStyle(sport, style);
+    for (const part of (legStyles || '').split(',')) {
+      const [i, code] = part.split(':');
+      if (this.legs[+i] && code) this.legs[+i].style = decodeStyle(sport, code);
+    }
     this.update();
   }
 
   onActivityChange() {
-    this.setMode(ACTIVITIES[this.app.activity()].mode);
+    const sport = this.app.activity();
+    this.style = this.savedStyle(sport);
+    this.styleLeg = null;
+    if (this.legs.some((l) => l.style)) {
+      for (const l of this.legs) l.style = null;
+      toast('Legs with their own style now follow the route’s — styles are per sport');
+    }
+    this.setMode(ACTIVITIES[sport].mode);
     this.panel.classList.toggle('is-paddle', this.app.activity() === 'paddle');
     this.renderToolbarState();
     if (this.points.length > 1) this.update();
@@ -387,6 +409,7 @@ export class Planner {
     this.drawNogos();
     this.renderMarkers();
     this.renderWaypoints();
+    this.checkWet();
     this.renderToolbarState();
     this.save();
     this.routeAll();
@@ -397,9 +420,20 @@ export class Planner {
     const leg = this.legs[i];
     const from = this.points[i], to = this.points[i + 1];
     const nogos = leg.mode === 'auto' ? this.nogosNear(from, to) : [];
-    const profile = ACTIVITIES[this.app.activity()].brouter;
-    return { key: `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}`, from, to, nogos, profile };
+    const rp = this.routerFor(i); // the leg's route style, as the routers take it
+    const profile = rp.profile || ACTIVITIES[this.app.activity()].brouter;
+    const styleKey = leg.mode === 'line' ? '' : rp.key;
+    return { key: `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}|${styleKey}`, from, to, nogos, profile, rp };
   }
+
+  // the router parameters for leg i: its own style, or the route's
+  routerFor(i) {
+    const leg = this.legs[i];
+    return routerOf(this.app.activity(), (leg && leg.style) || this.style, this.wet.on);
+  }
+
+  // what the routers get for a leg (styles.js)
+  styleOpts(t) { return { params: t.rp.params, valhalla: t.rp.valhalla, water: t.rp.water }; }
 
   async routeAll() {
     const gen = ++this.gen;
@@ -419,7 +453,7 @@ export class Planner {
     const batchable = (t) => t.leg.mode === 'auto' && !t.nogos.length;
     for (let j = 0; j < todo.length;) {
       let e = j;
-      while (batchable(todo[j]) && e + 1 < todo.length && todo[e + 1].i === todo[e].i + 1 && batchable(todo[e + 1])) e++;
+      while (batchable(todo[j]) && e + 1 < todo.length && todo[e + 1].i === todo[e].i + 1 && batchable(todo[e + 1]) && todo[e + 1].rp.key === todo[e].rp.key && todo[e + 1].profile === todo[e].profile) e++;
       const run = todo.slice(j, e + 1);
       j = e + 1;
       jobs.push(run.length > 1 ? () => this.routeRunOf(run) : () => this.routeOne(run[0]));
@@ -436,7 +470,7 @@ export class Planner {
   async routeRunOf(run) {
     let res = null;
     try {
-      res = await routeRun({ points: [run[0].from, ...run.map((t) => t.to)], profile: run[0].profile, opts: { portage: true, nogos: [], maxWait: STAND_IN_AFTER } });
+      res = await routeRun({ points: [run[0].from, ...run.map((t) => t.to)], profile: run[0].profile, opts: { portage: true, nogos: [], maxWait: STAND_IN_AFTER, ...this.styleOpts(run[0]) } });
     } catch (e) {
       if (e.name === 'Limited') { for (const t of run) this.legFailed(t, e); this.drawRoute(); return; }
       // anything else: one by one, so only the leg that can't be routed is left straight
@@ -447,7 +481,7 @@ export class Planner {
 
   async routeOne(t) {
     try {
-      this.legDone(t, await routeLeg({ from: t.from, to: t.to, mode: t.leg.mode, profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: STAND_IN_AFTER } }));
+      this.legDone(t, await routeLeg({ from: t.from, to: t.to, mode: t.leg.mode, profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: STAND_IN_AFTER, ...this.styleOpts(t) } }));
     } catch (e) {
       this.legFailed(t, e);
     }
@@ -495,6 +529,130 @@ export class Planner {
     });
     this.app.setData('route', { type: 'FeatureCollection', features });
     if (!this.edit) this.renderGhosts();
+  }
+
+  // ---------------------------------------------------------------- route style
+  savedStyle(sport) { return store.get('styles', {})[sport] || defaultStyle(); }
+
+  wetFor(style) { const w = (style && style.wet) || 'auto'; return w === 'yes' || (w === 'auto' && this.wet.on); }
+
+  // The Route style section: presets, the sport's controls, wet ground, and
+  // what the last change did. Scoped to one leg when opened from a point.
+  renderStyle() {
+    const box = this.els && this.els.styleBox;
+    if (!box) return;
+    const sport = this.app.activity();
+    const cat = STYLES[sport] || STYLES.mtb;
+    if (this.styleLeg != null && !this.legs[this.styleLeg]) this.styleLeg = null;
+    const leg = this.styleLeg;
+    const own = leg != null ? this.legs[leg].style : null;
+    const st = (leg != null && own) || this.style;
+    const vals = valuesOf(sport, st);
+    const custom = isCustom(sport, st);
+    const set = (next) => this.setStyle(next, leg);
+    const ownCount = this.legs.filter((l) => l.style).length;
+    this.setSection('style', { summary: `${styleName(sport, this.style)}${ownCount ? ` · ${ownCount} leg${ownCount > 1 ? 's' : ''} with their own` : ''}` });
+    box.innerHTML = '';
+    if (leg != null) {
+      box.append(h('div', { class: 'seg small full style-scope', role: 'group', 'aria-label': 'What the style is for' },
+        h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => { this.styleLeg = null; this.renderStyle(); } }, 'Whole route'),
+        h('button', { type: 'button', 'aria-pressed': 'true' }, `${this.nameOf(leg)} → ${this.nameOf(leg + 1)}`)),
+      h('p', { class: 'note' }, own ? 'This leg has its own style; the rest of the route keeps the route’s.' : `This leg follows the route’s style (${styleName(sport, this.style)}). Pick one to give it its own.`));
+    }
+    // presets, in the sport's words
+    box.append(h('div', { class: 'style-presets', role: 'group', 'aria-label': 'Route style' },
+      ...cat.presets.map(([k, label]) => h('button', {
+        type: 'button', class: 'chip', 'aria-pressed': String(!custom && st.p === k && (leg == null || !!own)),
+        onclick: () => set({ p: k, v: {}, wet: st.wet || 'auto' }),
+      }, label)),
+      custom ? h('span', { class: 'chip chip-on', 'aria-hidden': 'true' }, 'Custom') : null));
+    // the controls this sport's router really has
+    for (const ctl of cat.controls) {
+      const row = h('div', { class: 'style-ctl' }, h('span', { class: 'style-label' }, ctl.label));
+      if (ctl.type === 'flags') {
+        row.append(h('div', { class: 'style-flags', role: 'group', 'aria-label': ctl.label }, ...ctl.flags.map((f) => {
+          const on = vals[ctl.id].includes(f.key);
+          return h('button', { type: 'button', class: 'chip', 'aria-pressed': String(on), onclick: () => set({ ...st, v: { ...st.v, [ctl.id]: on ? vals[ctl.id].filter((x) => x !== f.key) : [...vals[ctl.id], f.key] } }) }, f.text);
+        })));
+      } else {
+        row.append(h('div', { class: 'seg small', role: 'group', 'aria-label': ctl.label }, ...ctl.steps.map((sp) => h('button', {
+          type: 'button', 'aria-pressed': String(vals[ctl.id] === sp.key), onclick: () => set({ ...st, v: { ...st.v, [ctl.id]: sp.key } }),
+        }, sp.text))));
+      }
+      box.append(row, h('p', { class: 'style-help' }, ctl.help));
+    }
+    if (hasWet(sport)) {
+      const w = st.wet || 'auto';
+      box.append(h('div', { class: 'style-ctl' }, h('span', { class: 'style-label' }, 'Wet ground'),
+        h('div', { class: 'seg small', role: 'group', 'aria-label': 'Wet ground' }, ...[['auto', 'Auto'], ['yes', 'Wet'], ['no', 'Dry']].map(([k, label]) => h('button', {
+          type: 'button', 'aria-pressed': String(w === k), onclick: () => set({ ...st, wet: k }),
+        }, label)))), this.els.wetNote = h('p', { class: 'style-help' }));
+      this.renderStyleWet(st);
+    }
+    if (this.styleDelta) box.append(h('p', { class: 'style-delta', 'aria-live': 'polite' }, `Last change: ${this.styleDelta}`));
+    box.append(h('p', { class: 'note' }, leg != null ? 'Only this leg is routed again.'
+      : `${cat.note || `“${cat.presets[0][1]}” is the routing service’s own profile for the sport.`} A change re-routes the route, usually in one call. To give one leg a different style, open a point’s menu.`));
+  }
+
+  renderStyleWet(st = (this.styleLeg != null && this.legs[this.styleLeg] && this.legs[this.styleLeg].style) || this.style) {
+    const el = this.els && this.els.wetNote;
+    if (!el) return;
+    const w = (st && st.wet) || 'auto';
+    const mm = this.wet.mm;
+    el.textContent = w === 'yes' ? 'Muddy paths and wet roots cost more.'
+      : w === 'no' ? 'Treated as dry, whatever the weather.'
+        : mm == null ? 'Auto: checks the rain of the last 24 hours at the start.'
+          : this.wet.on ? `Auto: ${mm} mm of rain in the last 24 hours here — muddy paths cost more.` : `Auto: dry enough (${mm} mm in the last 24 hours).`;
+  }
+
+  /**
+   * Set the style of the whole route (leg null) or of one leg. The route's
+   * style is also remembered for the sport. Re-routing waits 700 ms, so
+   * clicking through a few controls costs one batch of calls, not several.
+   */
+  setStyle(style, leg = null) {
+    const sport = this.app.activity();
+    this.commit();
+    this.styleBefore = { stats: this.styleStats(), a: this.analysis }; // compared once the new route is in
+    if (leg == null) {
+      this.style = style;
+      store.set('styles', { ...store.get('styles', {}), [sport]: style });
+    } else if (this.legs[leg]) {
+      this.legs[leg].style = style; // null: back to the route's
+    }
+    this.renderStyle();
+    this.renderToolbarState();
+    clearTimeout(this.styleTimer);
+    this.styleTimer = setTimeout(() => this.update(), 700);
+  }
+
+  // Wet ground "auto": rain in the last 24 h at the start (one cached call an hour).
+  async checkWet() {
+    const sport = this.app.activity();
+    if (!hasWet(sport) || !this.points.length) return;
+    const uses = [this.style, ...this.legs.map((l) => l.style)].some((st) => st && (st.wet || 'auto') === 'auto');
+    if (!uses) return;
+    try {
+      const mm = await recentRain(this.points[0]);
+      const on = mm >= WET_MM;
+      const was = this.wet.on;
+      this.wet = { mm, on, at: Date.now() };
+      if (on !== was) { this.renderStyle(); if (this.legs.length) this.update(); } else this.renderStyleWet();
+    } catch { /* no forecast: keep the last known */ }
+  }
+
+  // what the comparison line measures: distance, climbing, and what the style is about for the sport
+  styleStats() {
+    const a = this.analysis;
+    if (!a) return null;
+    const share = (pairs, keys) => { const m = pairs.filter(([k]) => keys.includes(k)).reduce((s, [, d]) => s + d, 0); return Math.round((100 * m) / a.total); };
+    const sport = this.app.activity();
+    const PAVED_S = ['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates'];
+    let what = null;
+    if (sport === 'road' || sport === 'gravel') what = ['unpaved', 100 - share(a.surfaces, PAVED_S.concat(['unknown', 'water']))];
+    else if (sport === 'paddle') what = ['carries', Math.round(a.ways.filter(([k]) => k === 'portage').reduce((s, [, d]) => s + d, 0))];
+    else what = ['trails', share(a.ways, ['path', 'track'])];
+    return { km: a.total / 1000, up: a.up, what };
   }
 
   // Legs Valhalla routed while BRouter paused: ask BRouter again.
@@ -707,6 +865,11 @@ export class Planner {
           btn('trash', `Remove ${this.nameOf(i)}`, () => this.removePoint(i), false, 'danger')));
       row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => this.dragRow(e, row, i));
       box.append(row);
+      const ls = this.legs[i] && this.legs[i].style;
+      if (ls) {
+        box.append(h('li', { class: 'wpl-leg', title: 'This leg’s own style — click to change', onclick: () => { this.styleLeg = i; this.renderStyle(); this.reveal('style'); } },
+          h('span', { html: icon('route', 14) }), `Leg style: ${styleName(this.app.activity(), ls)}`));
+      }
     });
   }
 
@@ -715,7 +878,7 @@ export class Planner {
   dragRow(e, row, i) {
     e.preventDefault();
     e.stopPropagation();
-    const box = this.els.points, rows = [...box.children];
+    const box = this.els.points, rows = [...box.querySelectorAll('.wpl-row')]; // not the leg-style lines between them
     const y0 = e.clientY;
     let to = i;
     row.classList.add('dragging');
@@ -870,10 +1033,11 @@ export class Planner {
     if (routerHeadroom() < 4) return;
     const busy = ed.reqs[li];
     if (busy && !busy.done) { busy.again = true; return; }
-    const { key, from, to, nogos, profile } = this.legKey(li);
+    const t = this.legKey(li);
+    const { key, from, to, nogos, profile } = t;
     const q = ed.reqs[li] = { ctrl: new AbortController(), key, t: Date.now() };
     ed.last[li] = q.t;
-    routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos, fallback: false } }, q.ctrl.signal)
+    routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos, fallback: false, ...this.styleOpts(t) } }, q.ctrl.signal)
       .then((r) => {
         if (leg.result) return;
         if (leg.key === key) { leg.result = r; leg.status = 'ok'; leg.preview = null; }
@@ -997,6 +1161,25 @@ export class Planner {
     this.keepMenuInView();
   }
 
+  // "Style: the route's / a preset / fine-tune…" for the leg after point i
+  legStylePicker(i, done) {
+    const sport = this.app.activity();
+    const cat = STYLES[sport] || STYLES.mtb;
+    const own = this.legs[i].style;
+    const sel = h('select', { 'aria-label': 'Style of the next leg', onchange: (e) => {
+      const v = e.target.value;
+      done();
+      if (v === '~tune') { this.styleLeg = i; this.renderStyle(); this.reveal('style'); return; }
+      this.setStyle(v ? { p: v, v: {}, wet: this.style.wet || 'auto' } : null, i);
+    } },
+    h('option', { value: '' }, `The route’s (${styleName(sport, this.style)})`),
+    ...cat.presets.map(([k, label]) => h('option', { value: k }, label)),
+    h('option', { value: '~tune' }, 'Fine-tune…'));
+    if (own && isCustom(sport, own)) { sel.prepend(h('option', { value: '~own', disabled: true }, 'Custom')); sel.value = '~own'; } else sel.value = own ? own.p : '';
+    return h('label', { class: 'mode-select pt-style' }, h('span', { class: 'mode-select-label' }, 'Style'),
+      h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
+  }
+
   openPointMenu(i, marker) {
     if (this.menu) this.menu.remove();
     const n = this.points.length;
@@ -1010,6 +1193,7 @@ export class Planner {
       legOut ? h('div', { class: 'pt-label' }, 'Next leg') : null,
       legOut ? h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
         h('button', { type: 'button', 'aria-pressed': String(legOut.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(i, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))) : null,
+      legOut && legOut.mode !== 'line' && legOut.mode !== 'fixed' ? this.legStylePicker(i, () => this.menu.remove()) : null,
       via ? h('div', { class: 'pt-row' },
         act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', () => this.startAt(i)),
         loop ? null : act('check', 'Finish here', 'Make this the finish: the rest is removed', () => this.finishAt(i))) : null,
@@ -1036,6 +1220,8 @@ export class Planner {
       nogos: this.nogos,
       points: this.points,
       names: this.points.map((p) => this.pname.get(p) || ''), // on this device only: not in share links
+      style: encodeStyle(this.app.activity(), this.style),
+      legStyles: this.legs.map((l) => (l.style ? encodeStyle(this.app.activity(), l.style) || 'balanced' : null)),
       modes: this.legs.map((l) => l.mode),
       fixed: this.legs.map((l) => (l.mode === 'fixed' && l.result ? encodePolyline(l.result.coords) : null)),
       routed: this.legs.map((l) => (l.mode !== 'fixed' && l.status === 'ok' && l.key && l.result
@@ -1050,6 +1236,7 @@ export class Planner {
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
     this.nameAll(r.names);
+    if (r.style != null) this.style = decodeStyle(this.app.activity(), r.style);
     this.legs = r.points.slice(1).map((_, i) => {
       if (r.modes[i] === 'fixed' && r.fixed && r.fixed[i]) {
         const c = decodePolyline(r.fixed[i]);
@@ -1063,6 +1250,7 @@ export class Planner {
       }
       return { mode: r.modes[i] === 'fixed' ? 'auto' : r.modes[i] || 'auto' };
     });
+    (r.legStyles || []).forEach((c, i) => { if (c && this.legs[i]) this.legs[i].style = decodeStyle(this.app.activity(), c); });
     this.update();
     return true;
   }
@@ -1077,6 +1265,8 @@ export class Planner {
       routeName: this.routeName || '',
       points: this.points,
       names: this.points.map((p) => this.pname.get(p) || ''),
+      style: encodeStyle(this.app.activity(), this.style),
+      legStyles: this.legs.map((l) => (l.style ? encodeStyle(this.app.activity(), l.style) || 'balanced' : null)),
       nogos: this.nogos,
       legs: this.legs.map((l) => ({ mode: l.mode, key: l.key, result: l.status === 'ok' || l.mode === 'fixed' ? l.result : null })),
     };
@@ -1087,7 +1277,11 @@ export class Planner {
     this.nameAll(s.names);
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
-    this.legs = s.legs.map((l) => (l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result } : { mode: l.mode }));
+    if (s.style != null) this.style = decodeStyle(s.activity || this.app.activity(), s.style);
+    this.legs = s.legs.map((l, i) => {
+      const style = s.legStyles && s.legStyles[i] ? decodeStyle(s.activity || this.app.activity(), s.legStyles[i]) : null;
+      return l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result, style } : { mode: l.mode, style };
+    });
     this.update();
   }
 
@@ -1106,6 +1300,12 @@ export class Planner {
     u.searchParams.set('r', encodePolyline(this.points));
     u.searchParams.set('m', this.legs.map((l) => MODE_CODE[l.mode]).join(''));
     u.searchParams.set('a', this.app.activity());
+    // the style shapes the line, so it travels with it (left out when it's the default)
+    const sport = this.app.activity();
+    const p = encodeStyle(sport, this.style);
+    if (p) u.searchParams.set('p', p);
+    const ps = this.legs.map((l, i) => (l.style ? `${i}:${encodeStyle(sport, l.style) || 'balanced'}` : '')).filter(Boolean).join(',');
+    if (ps) u.searchParams.set('ps', ps);
     return u.toString();
   }
 
@@ -1198,6 +1398,7 @@ export class Planner {
         h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow),
         this.els.breakdown),
       this.section('points', 'Waypoints', this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order' }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
+      this.section('style', 'Route style', this.els.styleBox = h('div', { class: 'style-box' })),
       this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
       this.section('speed', 'Time & speed', this.els.speedBox = h('div', { class: 'speed-box' }), this.els.speedRoute = h('div', { class: 'speed-route' })),
       this.section('climbs', 'Climbs', this.els.climbs),
@@ -1626,6 +1827,22 @@ export class Planner {
     const sp = speedSummary(act, this.craft);
     st.append(h('button', { type: 'button', class: 'stat stat-btn', title: 'Your speeds for this sport — tap to see or change them', onclick: () => this.reveal('speed') },
       h('span', { class: 'stat-label' }, 'Speed'), h('span', { class: 'stat-value' }, sp.name), h('span', { class: 'stat-sub' }, sp.txt)));
+    // and how the route is chosen
+    const ownStyles = this.legs.filter((l) => l.style).length;
+    st.append(h('button', { type: 'button', class: 'stat stat-btn', title: 'How the route is chosen for this sport — tap to see or change it', onclick: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } },
+      h('span', { class: 'stat-label' }, 'Style'), h('span', { class: 'stat-value' }, styleName(act, this.style)),
+      h('span', { class: 'stat-sub' }, [ownStyles ? `${ownStyles} leg${ownStyles > 1 ? 's' : ''} with their own` : '', hasWet(act) && this.wetFor(this.style) ? 'wet ground' : ''].filter(Boolean).join(' · ') || 'tap to change')));
+    // after a style change: what it did, compared with the route before
+    if (this.styleBefore && this.styleBefore.a !== a) {
+      const b = this.styleBefore.stats, n = this.styleStats();
+      this.styleBefore = null;
+      if (b && n) {
+        const sg = (v, unit, dp = 0) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(dp)} ${unit}`;
+        const what = n.what[0] === 'carries' ? `carries ${b.what[1]} → ${n.what[1]} m` : `${n.what[0]} ${b.what[1]} → ${n.what[1]} %`;
+        this.styleDelta = `${sg(n.km - b.km, 'km', 1)} · ${what} · climbing ${sg(n.up - b.up, 'm')}`;
+        toast(`${styleName(act, this.style)}: ${this.styleDelta}`, { ms: 5000 });
+      }
+    }
     this.chart.placeholder = a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : '';
     this.chart.setData(a, this.colorMode, paddle ? 'conditions' : 'elevation');
     this.setSection('profile', { title: paddle ? 'Conditions' : 'Profile', summary: this.profileSummary() });
@@ -1634,6 +1851,7 @@ export class Planner {
     this.renderWarnings();
     this.renderWind();
     this.renderSpeed();
+    this.renderStyle();
     this.drawColored();
     if (this.app.onAnalysis) this.app.onAnalysis(a);
   }
@@ -1894,7 +2112,7 @@ export function parseShared(params) {
   try {
     const points = decodePolyline(r);
     if (points.length < 1) return null;
-    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a') };
+    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '' };
   } catch {
     return null;
   }
