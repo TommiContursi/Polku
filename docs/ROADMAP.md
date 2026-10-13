@@ -479,6 +479,7 @@ The user hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta
 - **Waypoints section** (`renderWaypoints`, between Profile and Departure; its own column in a wide bottom panel):
   - a row per point: its marker badge, the name (an input: rename in place, Enter or leaving the field saves, Escape cancels), and below it the label when a name stands in for it, the distance from the start and the road it's on;
   - **↑ / ↓** buttons (labelled for screen readers), **remove**, and a **grip** to drag (pointer events; a line marks where it drops; one undo step);
+  - **Reverse direction** under the list (the user's note on #23; the same as Reverse in the tools);
   - click a row: the map eases to the point, centred in the part the planner leaves free, and its marker pulses.
 - **Names** (`pname`, a WeakMap from point to name: points move as arrays, so names follow them through reorder, reverse and drags; snapshots copy them for undo). Shown on the marker's tooltip and the point menu; saved with the route and the offline snapshot; written into GPX `<wpt><name>`. Never in share links.
 - **Auto names:** a point without a name shows the road or path it's on: Valhalla's tags when it routed the leg, else the loaded tiles (`js/names.js`: `transportation_name` segments in a 0.002° grid, rebuilt after the map moves; indoor corridors skipped). The list refreshes when new tiles bring names.

@@ -85,6 +85,12 @@ WAYPOINTS = """(async () => {
   p.undo();
   await wait(200);
   if (key() !== k0) errs.push('undo did not restore the order');
+  [...document.querySelectorAll('.wpl-foot button')].find((b) => /Reverse/.test(b.textContent)).click();
+  await wait(300);
+  if (p.points[0].join() !== k0.split('|').at(-1)) errs.push('Reverse direction did not reverse');
+  p.undo();
+  await wait(200);
+  if (key() !== k0) errs.push('undo did not undo the reverse');
   rows()[1].click();
   await wait(900);
   const pad = polku.map.getPadding();
