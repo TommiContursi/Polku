@@ -742,6 +742,7 @@ window.addEventListener('keydown', (e) => {
   if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? planner.redo() : planner.undo(); }
   else if (e.key === '/') { e.preventDefault(); $('#search-input').focus(); }
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
+  else if (e.key === 'f' && !mod && planner.points.length) { if (!planner.active) planner.setActive(true); planner.fitRoute(); }
   else if (e.key === 'l' && !mod) openPanel('layers-panel');
   else if (e.key === 't' && !mod) toggleTimeline();
   else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs(); }

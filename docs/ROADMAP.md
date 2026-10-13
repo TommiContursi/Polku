@@ -16,8 +16,8 @@ Also approved:
 | 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | merged |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | [#19](https://github.com/TommiContursi/Polku/pull/19), tweaks [#20](https://github.com/TommiContursi/Polku/pull/20) | merged |
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | [#21](https://github.com/TommiContursi/Polku/pull/21) | merged |
-| 7½ | Routing that holds up: pacing, batching, routes kept on refresh, Valhalla stand-in | `brouter-pacing` | [#22](https://github.com/TommiContursi/Polku/pull/22) | in review |
-| 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
+| 7½ | Routing that holds up: pacing, batching, routes kept on refresh, Valhalla stand-in | `brouter-pacing` | [#22](https://github.com/TommiContursi/Polku/pull/22) | merged |
+| 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | in review |
 | 9 | Route preferences: avoid ↔ prefer sliders, mapped to BRouter | `route-prefs` | — | |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
 | — | Winter sports (ski, snowshoe) | — | — | later; the sports model in phase 5 leaves room |
@@ -474,6 +474,20 @@ The user hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta
   - names, order, reverse and loop;
   - imported tracks.
 - **Waypoint names stay on the device.** Share links stay as they are (`r`, `m`, `a`).
+
+**Built (PR #23)**
+- **Waypoints section** (`renderWaypoints`, between Profile and Departure; its own column in a wide bottom panel):
+  - a row per point: its marker badge, the name (an input: rename in place, Enter or leaving the field saves, Escape cancels), and below it the label when a name stands in for it, the distance from the start and the road it's on;
+  - **↑ / ↓** buttons (labelled for screen readers), **remove**, and a **grip** to drag (pointer events; a line marks where it drops; one undo step);
+  - **Reverse direction** under the list (the user's note on #23; the same as Reverse in the tools);
+  - click a row: the map eases to the point, centred in the part the planner leaves free, and its marker pulses.
+- **Names** (`pname`, a WeakMap from point to name: points move as arrays, so names follow them through reorder, reverse and drags; snapshots copy them for undo). Shown on the marker's tooltip and the point menu; saved with the route and the offline snapshot; written into GPX `<wpt><name>`. Never in share links.
+- **Auto names:** a point without a name shows the road or path it's on: Valhalla's tags when it routed the leg, else the loaded tiles (`js/names.js`: `transportation_name` segments in a 0.002° grid, rebuilt after the map moves; indoor corridors skipped). The list refreshes when new tiles bring names.
+- **Reorder** (`movePointTo`): legs whose two ends stay neighbours are kept (no routing); an imported track the other way round is turned round; new neighbours get a new leg in the mode the point's outgoing leg had. Routing for the new legs is batched (#22).
+- **Undo covers everything:** snapshots now include names and the route's name; points, leg modes, avoided places, reverse, loop, start/finish here, imports, drags, renames and reorders are all one step each.
+- **Road names on the route:** the hover readout and the profile tooltip lead with the name ("Hämeenkatu · cycleway · paving stones"). Only ways running within 35° of the route's direction count, so a street crossing under or over it isn't taken for it.
+- **Show the whole route** (the user's note): a ⛶ tool in the planner's header row (always visible) and <kbd>F</kbd>; opening the planner while the route is entirely off screen frames it.
+- **Bug found on the way:** `easeTo({ padding })` leaves the padding on the map (MapLibre keeps it), so every later `fitBounds` with the planner's padding counted it twice and silently did nothing on a phone. Points are now centred with `offset`; `tools/smoke.py` checks the map keeps no padding.
 
 **Cut**
 - Turn-by-turn instructions.

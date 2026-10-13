@@ -39,12 +39,12 @@ export function parseTrackFile(text, filename = '') {
 
 const esc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]);
 
-export function toGPX({ name, coords, ele, waypoints = [] }) {
+export function toGPX({ name, coords, ele, waypoints = [], names = [] }) {
   const pts = coords
     .map((c, i) => `      <trkpt lat="${c[1].toFixed(6)}" lon="${c[0].toFixed(6)}">${ele && Number.isFinite(ele[i]) ? `<ele>${ele[i].toFixed(1)}</ele>` : ''}</trkpt>`)
     .join('\n');
   const wpts = waypoints
-    .map((w, i) => `  <wpt lat="${w[1].toFixed(6)}" lon="${w[0].toFixed(6)}"><name>${i === 0 ? 'Start' : i === waypoints.length - 1 ? 'Finish' : `Via ${i}`}</name></wpt>`)
+    .map((w, i) => `  <wpt lat="${w[1].toFixed(6)}" lon="${w[0].toFixed(6)}"><name>${esc(names[i] || (i === 0 ? 'Start' : i === waypoints.length - 1 ? 'Finish' : `Via ${i}`))}</name></wpt>`)
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Polku" xmlns="http://www.topografix.com/GPX/1/1">

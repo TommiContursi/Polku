@@ -17,6 +17,8 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 
 **Plan a route**
 - Routing per sport — MTB, gravel, road cycling, hike, trail run, run and paddle, each with its own router profile, timing model, warnings, map style and default layers — with straight-line and over-water legs, undo/redo, reverse, back to start.
+- A **Waypoints** list in the planner: every point with its distance and the road it's on; rename them (names go into GPX and stay on this device), reorder by dragging or with ↑/↓, remove, or click one to see it on the map. Undo covers all of it. The ⛶ button (or <kbd>F</kbd>) frames the whole route, and opening the planner far from your route brings it back into view.
+- Hover the route (or scrub the profile) for the road or path name there — from the map tiles already loaded, no extra requests.
 - Edit on the map like in Komoot: drag a point or the line itself (on touch, hold the line first) and the route follows as you drag; click the line or a leg's middle handle for a via point; a point's menu sets its next leg, makes it the start or finish, or removes it; long-press or right-click the map to add, avoid or start from that spot.
 - The planner keeps the map in view: on desktop a side panel (drag its edge to widen it for long profiles) or a full-width bottom panel with the lists in columns — your choice in the ⋯ menu; on phones a bottom sheet that peeks, goes half or full height, and drops out of the way while you draw. Its sections fold and remember how you left them.
 - Drag across the profile (or pinch it, or double-tap on touch) to zoom into a stretch; the map follows.
@@ -61,6 +63,7 @@ There are no accounts, cookies, analytics or servers of our own. Settings, your 
 | <kbd>T</kbd> | timeline |
 | <kbd>L</kbd> | layers (and the map key) |
 | <kbd>R</kbd> | route planner |
+| <kbd>F</kbd> | show the whole route |
 | <kbd>/</kbd> | search |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd>, +<kbd>Shift</kbd> | undo, redo |
 | <kbd>Esc</kbd> | close panels |
@@ -127,6 +130,7 @@ js/config.js        sources, activities, palettes, overlay catalogue
 js/planner.js       route planner + bottom sheet
 js/router.js        per-leg routing (BRouter, batched; straight; water) and the Valhalla stand-in
 js/valhalla.js      Valhalla (FOSSGIS) client: routes and way attributes as OSM-style tags
+js/names.js         road and path names near a point, from the loaded vector tiles
 js/water.js         open-water A* router
 js/analysis.js      profile, grades, climbs, warnings, timing, wind exposure
 js/chart.js         elevation chart + route readout
