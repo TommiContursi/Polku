@@ -83,6 +83,9 @@ SCENES = {
     # round trips (routing goes to a local BRouter: tools/brouter-local.sh)
     'desk-roundtrip': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_JS),
     'phone-roundtrip': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_JS),
+    'phone-planner-empty': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', js="(() => { polku.planner.setActive(true); return true; })()"),
+    'mid-planner-peek': dict(DESK, w=1100, h=820, timeline=True, route='route-kauppi-mtb.json', state='peek'),
+    'desk-planner-peek': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='peek'),
     'desk-roundtrip-empty': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js="(() => { polku.planner.setActive(true); return true; })()"),
     # the waypoint list with each leg's settings showing
     'desk-leg-settings': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage={'polku:legSettings': 'true'}, js="polku.planner.reveal('points'); true"),

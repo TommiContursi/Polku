@@ -716,6 +716,8 @@ export class Planner {
     const box = this.els && this.els.loopBox;
     if (!box) return;
     const L = this.loop;
+    this.els.quickLoop.setAttribute('aria-pressed', String(L.open));
+    this.els.quickLoop.hidden = !roundTripSports.includes(this.app.activity());
     this.setSection('loop', { empty: !L.open, summary: L.results.length ? `${L.results.length} loops` : '' });
     if (!L.open) { box.innerHTML = ''; return; }
     const sport = this.app.activity();
@@ -806,6 +808,7 @@ export class Planner {
     const box = this.els && this.els.styleBox;
     if (!box) return;
     const sport = this.app.activity();
+    this.els.quickStyle.innerHTML = `${icon('sliders', 16)}<span>Style: <b>${escapeHtml(styleName(sport, this.style))}</b></span>`;
     const cat = STYLES[sport] || STYLES.mtb;
     if (this.styleLeg != null && !this.legs[this.styleLeg]) this.styleLeg = null;
     const leg = this.styleLeg;
@@ -1653,10 +1656,13 @@ export class Planner {
       else this.setSheetState(st === 'peek' ? (this.lastOpen || 'half') : 'peek');
     }, 'sheet-min');
     this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
+    // the two big choices, always in sight: let Polku make loops, and how the route is chosen
+    this.els.quickLoop = h('button', { type: 'button', class: 'btn quick', 'aria-pressed': 'false', title: 'Let Polku make loops of the length you choose', onclick: () => (this.loop.open ? this.closeLoop() : this.openLoop()), html: `${icon('roundtrip', 16)}<span>Round trip</span>` });
+    this.els.quickStyle = h('button', { type: 'button', class: 'btn quick', title: 'How the route is chosen for this sport', onclick: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } });
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
       h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
         h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      h('div', { class: 'sheet-row tools-row' }, modes, h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
+      h('div', { class: 'sheet-row tools-row' }, modes, h('span', { class: 'quick-pair' }, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
@@ -1709,6 +1715,7 @@ export class Planner {
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
     p.append(this.els.handle, this.els.head, this.els.body, this.els.grip);
     this.renderLoop();
+    this.renderStyle();
     this.renderModeChips();
     this.bindSheet();
     this.bindResize();
@@ -1748,7 +1755,7 @@ export class Planner {
   // ---------------------------------------------------------------- panel layout & states
   // Wide screens choose: a side panel on the left (default) or a bottom panel
   // (⋯ → Move to the bottom). Phones and narrow windows always get the bottom sheet.
-  layout() { return this.sideMQ.matches && store.get('plannerDock', 'left') === 'left' ? 'side' : 'sheet'; }
+  layout() { return this.sideMQ.matches && store.get('plannerDock', 'bottom') === 'left' ? 'side' : 'sheet'; } // bottom unless you chose the side (the default for everyone new)
 
   setDock(where) {
     store.set('plannerDock', where);
@@ -2094,8 +2101,7 @@ export class Planner {
       const tap = matchMedia('(pointer: coarse)').matches ? 'tap' : 'click';
       sum.append(h('p', { class: 'sum-empty' }, this.loop.open ? `Round trip: ${tap} the map to move its start`
         : this.points.length ? 'Add another point to make a route' : `${tap[0].toUpperCase()}${tap.slice(1)} the map to add a start point`));
-      // or let Polku make loops (riding, walking, running)
-      if (!this.points.length && roundTripSports.includes(act) && !this.loop.open) sum.append(h('button', { type: 'button', class: 'btn', onclick: () => this.openLoop(), html: `${icon('roundtrip', 16)} Or make a round trip` }));
+
       this.chart.setData(null);
       this.els.breakdown.innerHTML = '';
       this.els.climbs.innerHTML = '';

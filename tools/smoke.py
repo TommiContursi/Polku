@@ -151,7 +151,7 @@ def check(chrome, w, h, phone, bottom=False):
     name = f'{w}x{h}' + (' bottom' if bottom else '')
     fails = []
     pg = chrome.page(w, h, phone)
-    pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:plannerDock': '"bottom"'} if bottom else None)
+    pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:plannerDock': '"bottom"' if bottom else '"left"'})
     time.sleep(1.0)
     fails += [f'closed: {o}' for o in overlaps(pg.js(BOXES))]
 

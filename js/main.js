@@ -603,7 +603,7 @@ function renderSettingsPanel() {
 
   if (planner.sideMQ && planner.sideMQ.matches) {
     p.append(section('Route planner',
-      seg([['left', 'Side panel (left)'], ['bottom', 'Bottom panel']], store.get('plannerDock', 'left'), (v) => { planner.setDock(v); renderSettingsPanel(); }),
+      seg([['bottom', 'Bottom panel'], ['left', 'Side panel (left)']], store.get('plannerDock', 'bottom'), (v) => { planner.setDock(v); renderSettingsPanel(); }),
       h('p', { class: 'note' }, 'Open it with Plan or R. Its ⋯ menu has the same switch. While planning, the departure clock lives inside it.')));
   }
 
