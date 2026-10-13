@@ -11,9 +11,14 @@ import { densify, lonLatToTile, tileBounds } from './geo.js';
 import { elevations, smooth } from './dem.js';
 import { uphillClass, techBump } from './analysis.js';
 import { OVERPASS } from './config.js';
+import { idb } from './idb.js';
 
 const PIECE = 25;
 const MIN_ZOOM = 13;
+const OSM_TTL = 7 * 864e5; // OSM uphill tags kept in the browser for a week
+const OSM_RETRY = 120e3; // after a failed Overpass call, leave that tile alone for 2 min
+const osmCache = idb('overpass');
+osmCache.prune((v) => v && Date.now() - v.at < 4 * OSM_TTL).catch(() => {});
 
 export class UphillLayer {
   constructor(map, onData) {
@@ -22,7 +27,8 @@ export class UphillLayer {
     this.enabled = false;
     this.fc = { type: 'FeatureCollection', features: [] };
     this.done = new Map(); // feature key -> features
-    this.osmTiles = new Map(); // z12 tile -> Promise<ways>
+    this.osmTiles = new Map(); // z12 tile -> { result }
+    this.osmFailed = new Map(); // z12 tile -> retry after (ms)
     this.timer = 0;
     this.run = 0;
     map.on('moveend', () => this.schedule());
@@ -116,12 +122,12 @@ export class UphillLayer {
     for (let x = x0; x <= x1; x++) {
       for (let y = y0; y <= y1; y++) {
         const key = `${x}/${y}`;
-        if (this.osmTiles.has(key)) continue;
+        if (this.osmTiles.has(key) || (this.osmFailed.get(key) || 0) > Date.now()) continue;
         const [w, s, e, n] = tileBounds(x, y, z);
         const q = `[out:json][timeout:20];way["mtb:scale:uphill"](${s},${w},${n},${e});out tags geom;`;
         const entry = { result: null };
         this.osmTiles.set(key, entry);
-        overpass(q)
+        cachedOverpass(`uphill/${z}/${key}`, q)
           .then(async (json) => {
             const ways = (json.elements || []).filter((el) => el.geometry);
             const out = [];
@@ -135,9 +141,30 @@ export class UphillLayer {
             entry.result = out;
             if (run === this.run || this.enabled) this.publish();
           })
-          .catch(() => { this.osmTiles.delete(key); });
+          .catch(() => { this.osmTiles.delete(key); this.osmFailed.set(key, Date.now() + OSM_RETRY); });
       }
     }
+  }
+}
+
+// Overpass answers cached in IndexedDB: fresh for a week, and an older copy
+// still beats nothing when every mirror is down.
+async function cachedOverpass(key, query) {
+  let hit = null;
+  try { hit = await osmCache.get(key); } catch { /* storage blocked */ }
+  if (hit && Date.now() - hit.at < OSM_TTL) return hit.json;
+  try {
+    const json = await overpass(query);
+    const slim = {
+      elements: (json.elements || []).filter((el) => el.geometry).map((el) => ({
+        geometry: el.geometry, tags: { 'mtb:scale:uphill': el.tags['mtb:scale:uphill'], 'mtb:scale': el.tags['mtb:scale'] },
+      })),
+    };
+    osmCache.set(key, { at: Date.now(), json: slim }).catch(() => {});
+    return slim;
+  } catch (err) {
+    if (hit) return hit.json;
+    throw err;
   }
 }
 
