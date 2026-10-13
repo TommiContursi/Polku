@@ -9,7 +9,7 @@ import { dist, pointSegment } from './geo.js';
 import { h, icon, escapeHtml } from './ui.js';
 import { NAV_TEXT } from './nautical.js';
 
-const WAY_NAMES = {
+export const WAY_NAMES = {
   path: 'Path', footway: 'Footpath', bridleway: 'Bridleway', steps: 'Steps', cycleway: 'Cycleway',
   pedestrian: 'Pedestrian street', track: 'Forest road / track', service: 'Service road', minor: 'Minor road',
   tertiary: 'Local road', secondary: 'Regional road', primary: 'Main road', trunk: 'Highway', motorway: 'Motorway',
@@ -24,25 +24,37 @@ const OSM_KEYS = [
 
 const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https://${u}` : '';
 
+// Layers a click can inspect, and the order it picks from when several are
+// under the pointer. The hover tooltip uses the same order, so it previews
+// exactly what a click opens.
+const INSPECTABLE = /^(cameras$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/;
+const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^uphill-line/, /^(path|track|cycleway)-/,
+  /^lipas-route/, /^sf-aadt/, /^road-/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/];
+
+export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
+
+export function pickFeature(feats) {
+  for (const re of PRIORITY) {
+    const f = feats.find((x) => re.test(x.layer.id));
+    if (f) return f;
+  }
+  return null;
+}
+
 export function initInspector(map, app) {
   let popup = null;
 
   map.on('click', async (e) => {
     if (app.isPlanning()) return;
-    const ids = map.getStyle().layers.map((l) => l.id)
-      .filter((id) => /^(cameras$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
-    const feats = map.queryRenderedFeatures(box, { layers: ids });
-    const by = (re) => feats.find((f) => re.test(f.layer.id));
+    const feats = map.queryRenderedFeatures(box, { layers: inspectLayers(map) });
+    const f = pickFeature(feats);
     const ll = [e.lngLat.lng, e.lngLat.lat];
-    // cameras and ships open their own modal / live card
-    const cam = by(/^cameras$/);
-    if (cam) { if (popup) popup.remove(); app.openCamera(cam.properties.id, cam.properties.name); return; }
-    const ship = by(/^sf-ships/);
-    if (ship) { if (popup) popup.remove(); app.openShip(ship.properties.mmsi); return; }
-    const f = by(/^nm-marks/) || by(/^sf-points/) || by(/^lipas-point/) || by(/^poi-|^label-peak/) || by(/^sf-lines/) || by(/^uphill-line/) || by(/^(path|track|cycleway)-/) || by(/^lipas-route/) || by(/^sf-aadt/) || by(/^road-/) || by(/^nm-sector/) || by(/^nm-navline/) || by(/^nm-restrict/) || by(/^military/) || by(/^nm-fairway/) || by(/^water$/);
     if (popup) popup.remove();
     if (!f) return;
+    // cameras and ships open their own modal / live card
+    if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }
+    if (/^sf-ships/.test(f.layer.id)) { app.openShip(f.properties.mmsi); return; }
     const body = h('div', { class: 'insp' });
     popup = new maplibregl.Popup({ maxWidth: '320px', className: 'polku-popup', offset: 8 }).setLngLat(e.lngLat).setDOMContent(body).addTo(map);
     keepInView(map, popup);
@@ -90,6 +102,8 @@ function renderWay(body, f, feats, ll) {
   const wp = way.properties;
   const kind = wp.class === 'path' ? (wp.subclass || 'path') : wp.class;
   body.append(h('div', { class: 'insp-title' }, WAY_NAMES[kind] || kind || 'Way'));
+  const route = feats.find((x) => x.layer.id === 'lipas-route');
+  if (route && route.properties.name) body.append(row('Part of', route.properties.name));
   const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
   if (Number.isFinite(idx)) body.append(row('MTB difficulty', chip(DIFF_COLORS[idx], MTB_SCALE_TEXT[idx]), true));
   const up = feats.find((x) => x.layer.id === 'uphill-line');
@@ -195,12 +209,12 @@ async function renderSafety(body, f, app) {
   }
 }
 
-const MARK_TYPE = {
+export const MARK_TYPE = {
   Viitta: 'Spar buoy', Poiju: 'Buoy', Reunamerkki: 'Edge mark (fixed)', Linjamerkki: 'Leading mark', Kummeli: 'Cairn',
   Sektoriloisto: 'Sector light', Merimajakka: 'Lighthouse', Tunnusmajakka: 'Landmark lighthouse', Apuloisto: 'Auxiliary light',
   Suuntaloisto: 'Directional light', Tutkamerkki: 'Radar reflector mark', 'Muu merkki': 'Other mark',
 };
-const SECTOR_NAME = { p: 'red', vi: 'green', v: 'white', k: 'yellow' };
+export const SECTOR_NAME = { p: 'red', vi: 'green', v: 'white', k: 'yellow' };
 
 function renderNautical(body, f, map) {
   const p = f.properties;

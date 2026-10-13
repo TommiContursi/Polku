@@ -385,6 +385,19 @@ button { font: inherit; color: inherit; }
 .insp-links a { color: var(--accent); display: inline-flex; align-items: center; gap: 3px; font-weight: 600; text-decoration: none; }
 .insp-more { margin-top: 6px; }
 .insp-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+/* hover details (desktop) */
+.hover-tip {
+  position: fixed; left: 0; top: 0; z-index: 8; pointer-events: none; max-width: 260px;
+  padding: 6px 10px 7px; border-radius: 10px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow);
+  font-size: 12px; line-height: 1.35; animation: hover-tip-in .12s ease-out;
+}
+.hover-tip b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; font-size: 13px; font-weight: 700; }
+.hover-tip span { display: block; color: var(--muted); }
+.hover-tip .dot { width: 8px; height: 8px; margin-right: 3px; vertical-align: 0; }
+.hover-tip em.bad { font-style: normal; font-weight: 600; color: var(--bad); }
+@keyframes hover-tip-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .hover-tip { animation: none; } }
 .pt-menu { display: flex; flex-direction: column; gap: 8px; min-width: 190px; }
 .pt-title { font-weight: 700; }
 .pt-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: -4px; }

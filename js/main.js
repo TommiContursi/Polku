@@ -13,6 +13,7 @@ import { Planner, parseShared } from './planner.js';
 import { UphillLayer } from './uphill.js';
 import { LipasLayer } from './lipas.js';
 import { initInspector } from './inspect.js';
+import { initHover, hoverCapable } from './hover.js';
 import { initSearch } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
@@ -33,6 +34,7 @@ const DEFAULTS = {
   contours: true,
   terrain3d: false,
   trackpadTilt: true,
+  hoverInfo: true,
   timeline: false,
   labelsDown: false,
   labelsUp: false,
@@ -155,6 +157,7 @@ initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
+initHover(map, { enabled: () => state.hoverInfo && hoverCapable(), isPlanning: () => planner.active });
 
 initSearch(map, $('#search-input'), $('#search-results'));
 
@@ -335,7 +338,8 @@ function renderLayersPanel() {
     state.terrain3d ? toggle('Trackpad scroll tilts & rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger scroll: up/down tilts, sideways rotates; pinch zooms') : null,
     state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
       h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
-    toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight')));
+    toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight'),
+    hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null));
 
   p.append(section('Weather',
     toggle('Timeline', state.timeline, (v) => setTimeline(v), '48 h clock for weather, road conditions and your route (T)'),
@@ -487,12 +491,6 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 't' && !mod) { setTimeline(!state.timeline); renderLayersPanel(); }
   else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); }
 });
-
-// Pointer cursor over things that open a card or modal.
-for (const id of ['cameras', 'sf-ships', 'nm-marks', 'sf-points']) {
-  map.on('mouseenter', id, () => { if (!planner.active) map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', id, () => { if (!planner.active) map.getCanvas().style.cursor = ''; });
-}
 
 // The free vector tiles only carry the full trail network from zoom 14.
 const zoomHint = $('#zoom-hint');
