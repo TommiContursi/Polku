@@ -521,6 +521,13 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .sheet-body { container-type: inline-size; }
 /* a wide bottom panel lays the lists out side by side, like a dashboard: the
    profile across the top, then climbs | heads-up | departure & weather, always open */
+/* a narrow panel (phone, side panel): the stats in three even columns, so a
+   long speed line doesn't push Style onto a row of its own */
+@container (max-width: 520px) {
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; }
+  .stat { min-width: 0; }
+  .stat-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 /* the row breaks only matter in a wide panel */
 .sec-break { display: none; }
 .sec-stack { display: contents; }
@@ -702,6 +709,15 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 }
 .wpl-leg { display: flex; align-items: center; gap: 6px; padding: 3px 0 3px 30px; font-size: 11px; font-weight: 600; color: var(--accent); cursor: pointer; border-bottom: 1px solid var(--line); }
 .wpl-leg:hover { text-decoration: underline; }
+/* a leg's settings, between its two points */
+.wpl-legset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0 6px 30px; border-bottom: 1px solid var(--line); position: relative; }
+.wpl-legline { position: absolute; left: 13px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.wpl-legset .seg button span { display: inline; }
+.wpl-legset .pt-style { flex: 1 1 160px; min-width: 0; }
+.wpl-legset .mode-select-label { display: none; }
+.wpl-legnote { font-size: 12px; color: var(--muted); }
+.wpl-tools .tool[aria-pressed="true"] { color: var(--accent); background: var(--surface-2); }
+.wpl-foot .btn[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .pt-style { align-self: stretch; }
 .pt-style .mode-select-box, .pt-style select { width: 100%; }
 
@@ -740,7 +756,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 @keyframes hover-tip-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .hover-tip { animation: none; } }
 .pt-menu { display: flex; flex-direction: column; gap: 8px; min-width: 236px; }
-.pt-menu .seg { align-self: flex-start; }
+.pt-menu .seg { align-self: stretch; display: grid; grid-template-columns: repeat(3, 1fr); }
+.pt-menu .seg button { padding: 0 6px; }
+.pt-style select { min-width: 0; text-overflow: ellipsis; }
 .pt-title { font-weight: 700; }
 .pt-sub { font-size: 12px; color: var(--muted); }
 .pt-row { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -854,10 +872,7 @@ body.dropping .drop-hint { display: flex; }
   .seg button span { display: none; }
   .pt-menu .seg button span { display: inline; } /* the menu has room to say what each mode is */
 
-  /* three even columns, so a long speed line doesn't push Style onto a row of its own */
-  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; }
-  .stat { min-width: 0; }
-  .stat-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
   .stat-value { font-size: 17px; }
   #profile-canvas { height: 120px; }
 }
