@@ -14,7 +14,7 @@ Also approved:
 | 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | merged |
 | 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | [#17](https://github.com/TommiContursi/Polku/pull/17) | merged |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | merged |
-| 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | #19 | in review |
+| 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | [#19](https://github.com/TommiContursi/Polku/pull/19) | in review |
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu | `edit-on-map` | — | |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
 | 9 | Route preferences: avoid ↔ prefer sliders, mapped to BRouter | `route-prefs` | — | |
