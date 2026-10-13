@@ -22,7 +22,7 @@ Also approved:
 | 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown (+ Round trip & Style in the header, bottom panel by default) | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | merged |
 | 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | PR open |
-| 12 | Trail details & obstacles: barriers, fallen trees, fords, wet spots; width / visibility / smoothness / SAC | `trail-details` | — | planned |
+| 12 | Trail details & obstacles: width, visibility, fallen trees, gates, fords, wet spots — on the map, along the route, in Heads-up | `trail-details` | — | redesigned 2026-10-14, awaiting OK |
 | 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
 | 14 | Round trips for paddling | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
@@ -633,33 +633,150 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - a slider changes the map, and 30 % survives a reload.
   - Against `main` it fails on exactly these points.
 
-## Phase 12 — Trail details & obstacles
+## Phase 12 — Trail details & obstacles (redesigned 2026-10-14, awaiting OK)
 
-**Data (no new kinds of calls)**
-- OpenFreeMap's tiles carry `class`, `subclass`, `surface` and `mtb_scale` for paths, but not `trail_visibility`, `width`, `smoothness`, `sac_scale` or obstacle nodes. These come from **Overpass, through the cache `js/uphill.js` already has** (`cachedOverpass`, IndexedDB, a week; mirrors and budget via `net.js`).
-- **Finding:** that query today runs per **z12** tile (about 10 km) and only for ways with `mtb:scale:uphill`, only while the uphill layer is on. Trail details are much denser, so this phase adds a **z14 tile** query (about 2.4 km) **at zoom 14+**, one per tile, combining:
-  - ways `highway=path|track|footway|bridleway|cycleway` with any of `trail_visibility`, `width`, `smoothness`, `sac_scale`, `mtb:scale:uphill`, `surface=mud`, `wet`;
-  - nodes `barrier=gate|lift_gate|kissing_gate|stile|cycle_barrier|log|fence…`, `obstacle=*` (e.g. `fallen_tree`), `ford=*`.
-  The uphill layer then reads the same z14 tiles instead of its own z12 query, so it's still one query per place.
-- **Wet and muddy spots:** the ways above (`surface=mud`, `wet=yes`) plus wetland areas, which the vector tiles already have (`landcover` class `wetland`), so those cost nothing.
-- **Budget:** about 20 tiles for a 10 × 10 km riding area, once a week per area; well inside Overpass's 10 000 a day in `net.js`. The query only runs where trail details or obstacles are shown, or a route needs them.
+**The goal, in the user's words:** looking at the map, understand what a trail is like before going there. Not just its difficulty, which Polku already shows well, but how wide it is, how visible it is on the ground, how rough it is, and whether something is in the way: fallen trees, gates, fords, wet spots. The same information should help when planning: seen along the route, warned about, and preferred or avoided where possible. Build on what's there (trail colours, profile colours, Heads-up, route styles) rather than adding separate controls.
 
-**Map**
-- **Obstacle icons from zoom 15,** in the JOSM style's visual language (github.com/TommiContursi/MTB-TrailMap-JOSM-Style): gate, lift gate, kissing gate, stile, cycle barrier, log / fallen tree, ford, plus a wet-spot mark.
-- **Trail character as a Trails option, one at a time** so colours don't clash: *Width* (line thickness like the JOSM style: < 0.6 m · < 1.8 m · wider), *Visibility* (fainter as `trail_visibility` gets worse: intermediate 75 %, bad / horrible / no 50 %, as in JOSM), *Smoothness* (a colour scale), *SAC* (hiking difficulty). Each with its key in the Layers panel.
-- Hover and click show the details ("Width 0.4 m · visibility bad · fallen tree here").
+**What Polku does today**
+- **Map:** the difficulty halo (`mtb_scale` from the vector tiles), uphill colours, surface only as "paved / unpaved" (the tiles carry no more), `bicycle=no` ticks. OpenFreeMap's tiles have no width, visibility, smoothness, SAC or obstacles.
+- **Hover and click:** difficulty, uphill grade, surface, access, bridge. Everything else only after **"Show all OSM tags"**, one way at a time (an Overpass call per click).
+- **Route:** BRouter's answer already carries way tags per stretch (`router.js` reads `WayTags`). The analysis uses `highway`, `surface`, `mtb:scale`, `mtb:scale:uphill`, `sac_scale`, `bicycle`, `access`. Heads-up has steps, no cycling, technical S3+, steep, unpaved for road tyres, SAC T4+ for hikers, each with **Avoid** (a no-go circle). **Node tags (gates, fords) are never read**, and width, visibility and obstacles never reach the analysis.
 
-**Route**
-- Obstacles within about 10 m of the route and faint trails (`trail_visibility` bad / horrible / no) join **Heads-up** with **Avoid** buttons, like hazards today.
-- **Route style:** where BRouter has a lever it's used (the MTB profile's `consider_smoothness`; the hiking profile's SAC). Width and visibility have no BRouter variable, so they're **ranked**: round-trip scoring and the "what it changed" line count obstacles and faint metres. To be confirmed in the phase: does any stock profile read `trail_visibility`?
+**What the data supports (checked 2026-10-14)**
+- **Finland** (Geofabrik's taginfo for Finland, data of 2026-10-12): 307 600 `highway=path` ways.
+
+  | on paths | share | note |
+  |---|---|---|
+  | `mtb:scale` | 54 % | already shown |
+  | `surface` | 34 % | |
+  | `width` | 24 % | mostly 0.2–1 m: 0.5 (15 200), 1 (11 900), 0.3 (9 100), 0.4 (8 400), 0.6 (7 600) |
+  | `trail_visibility` | 22 % | good 28 500 · excellent 18 300 · intermediate 14 800 · bad 7 200 · horrible 1 300 · no 530 (all elements) |
+  | `informal=yes` | 13 % | |
+  | `sac_scale` | 3 % | |
+  | `obstacle` (on the way) | 1.3 % | |
+  | `smoothness` | 1 % | 1.4 % of tracks; `tracktype` is on 23 % of tracks |
+
+  **Wet:** `surface=mud` on 3 300 paths, `bridge=boardwalk` (pitkospuut) on 3 300, `obstacle=mud` 275.
+
+  **Obstacles:**
+  - `obstacle=vegetation` 4 200 (overgrown);
+  - `obstacle=fallen_tree` 2 100, of which **1 830 are nodes**;
+  - `barrier=log` 660 nodes and `barrier=fallen_tree` 66;
+  - trail barriers: cycle barrier 390, stile 45, kissing gate 25;
+  - `ford` 4 700;
+  - `barrier=gate` 30 000 and `lift_gate` 3 700, mostly on roads and forest roads.
+- **The Finnish conventions** (the OSM Trails Finland / Trailmap tag guide, wiki.trailmap.fi/fi/kartoitus/tagit) match what mappers do:
+  - width classes < 0.6 · 0.6–0.9 (also untagged) · 0.9–1.8 · ≥ 1.8 m (drawn like a track);
+  - `trail_visibility` intermediate and worse is drawn faint, and paths through clear-cuts or storm damage get `bad`;
+  - `obstacle=fallen_tree` marks a tree you can't realistically ride over (a jumpable one raises `mtb:scale` instead);
+  - `obstacle=vegetation` marks an overgrown path;
+  - `surface=mud` marks anything significantly wet, bogs included;
+  - all kinds of gates are drawn alike.
+- **Per area** (Overpass, paths, footways, bridleways and tracks):
+  - **Kauppi** (Tampere, about 3.7 × 2.8 km): 2 155 ways. `mtb:scale` 66 %, width 38 %, visibility 12 % (faint 8 %). 63 obstacle nodes, 8 trail barriers, 16 fords, 25 muddy and 20 obstacle ways.
+  - **Keskuspuisto** (Helsinki, 3.3 × 4.4 km): 3 452 ways. `mtb:scale` 25 %, width 18 %, visibility 5 %, informal 26 %. 9 obstacle nodes, 23 fords.
+  - **Not measured:** Laajavuori, Nuuksio and rural Kainuu. The public Overpass servers answered 504 on all three mirrors, again and again.
+  - **So:** rich where riders map (the MTB areas), thin elsewhere. Width and visibility are worth drawing. Smoothness and SAC on paths are too sparse to be a map mode.
+- **BRouter** (lookups of 1.7.10, and a local server):
+  - **Its data has:** `trail_visibility`, `smoothness`, `sac_scale`, `mtb:scale`, `mtb:scale:uphill`, `obstacle` (`vegetation`, `fallen_tree`), `ford`, `informal`, `bridge` and `tracktype` on ways; `barrier` (gate … log, fallen_tree, windfall, debris) and `ford` on nodes.
+  - **Not:** `width` at all, and `obstacle` on nodes, which is how most Finnish fallen trees are mapped.
+  - **Its answers carry only the tags the profile uses.** With `profile:processUnusedTags=1` they carry the rest, and the route doesn't change. Verified: a Kauppi MTB route went from 11 way keys to more than 30, `trail_visibility` and `bridge` included. Node tags (crossings, kerbs, barriers) come either way.
+  - **No stock profile reads** `trail_visibility`, `obstacle` or `informal`. `mtb.brf` prices `smoothness` (`consider_smoothness`) and fords (tied to `Hill_factor`); `hiking-mountain.brf` prices `sac_scale`; barriers only matter for access.
+- **Overpass:** one tile query (ways with any of the detail keys, plus obstacle, barrier and ford nodes, `out tags geom qt`):
+  - a z14 tile, about 1.2 km here (not 2.4 km: Finland is at 60–70° N), took 81 KB and 8 s in Kauppi (117 ways, 25 nodes), and 93 KB and 0.8 s in Keskuspuisto;
+  - so **z13 tiles** (about 2.3 km) are the unit: roughly 300–400 KB of JSON each, about 25 for a 10 × 10 km riding area, cached for a week;
+  - heavier queries over 4 km boxes got 504s from every mirror several times in ten minutes. **Trail details are therefore best-effort and cached, and nothing on the route that BRouter already knows depends on Overpass.**
+
+**Design**
+
+*Map: one "Trail details" switch, in Layers → Trails & difficulty*
+- **Defaults:** on for MTB, hike and trail run, off for the other sports, remembered per sport (phase 11's `trailsByActivity`). It gets an "On now" chip and a map key.
+- **Data:** from zoom 14. Icons from zoom 15.
+- **Difficulty keeps the colour.** The details use other channels, so they can all be on with difficulty or uphill colours, as on Trailmap and in the JOSM style:
+  - **Width as line thickness**, the guide's classes: < 0.6 m thin, 0.6–0.9 m and untagged as today, 0.9–1.8 m thicker, ≥ 1.8 m like a track.
+  - **Visibility as fading:** intermediate at 75 %; bad, horrible and no at 45 % with a dotted centre line. Good and excellent are drawn normally.
+  - **Overgrown** (`obstacle=vegetation`): short green ticks beside the line. **Wet** (`surface=mud`, `obstacle=mud`): blue ticks.
+  - **Icons:**
+    - *fallen tree*: `obstacle=fallen_tree` on nodes, repeated along ways that carry it, plus `barrier=log`, `fallen_tree`, `windfall`, `debris`;
+    - *gate*: every kind, red when there's no access;
+    - *stile / kissing gate*;
+    - *cycle barrier*;
+    - *ford*.
+- **How:** the tiles' paths have no OSM ids or detail tags, so the ways that have details (from Overpass) are redrawn on top as a GeoJSON layer. It covers the tiles' drawing of the same way, with its own halo, centre line and fade. Ways without details stay as the tiles draw them.
+- **One query per place:** the uphill layer's own z12 query for `mtb:scale:uphill` moves into these z13 tiles.
+
+*Hover and click*
+- The cached details show at once, e.g. "0.4 m wide · faint (bad) · overgrown · fallen tree here · boardwalk", plus smoothness, SAC and informal where tagged. "Show all OSM tags" stays for the rest.
+
+*Planning*
+- **Along the route, for free:**
+  - **What:** `processUnusedTags=1` on every BRouter call gives visibility, smoothness, SAC, overgrown, fallen-tree and muddy ways, fords, boardwalks and barrier nodes, with no extra call.
+  - **Kept out of the leg keys,** so saved routes and caches stay valid; older legs just lack the details until they're routed again.
+  - **Valhalla stand-in legs** carry fewer tags; the details say so.
+- **From the trail-details tiles:** width, and fallen trees on nodes. These are only the tiles the route crosses (capped at about 40), fetched while a route exists in a sport with Trail details on.
+- **Heads-up**, each with Avoid as today, grouped when they repeat ("Fallen trees ×3 · km 2.1, 4.5, 6.0"):
+  - fallen trees and logs within about 8 m of the route;
+  - fords;
+  - stiles, kissing gates and cycle barriers (bike sports: "lift the bike over");
+  - faint stretches of 100 m or more ("hard to follow: have the map ready");
+  - overgrown stretches of 100 m or more;
+  - muddy stretches of 50 m or more;
+  - boardwalks of 100 m or more, only when it has rained (the route style's wet check, Open-Meteo): "slippery when wet".
+  - Round trips rank these by themselves, since the score already counts Heads-up items.
+- **Profile colours:** *Width* and *Visibility* chips join the *Ground* group, with the breakdown bar (e.g. "< 0.6 m 3.1 km · 0.6–0.9 m 2.4 km · not tagged 8 km"). The route readout on hover adds width, visibility, smoothness and SAC where known.
+- **Route style: one new choice, "Avoid obstacles and faint trails"**, for MTB, hike and trail run, off by default.
+  - **How:** Polku's own MTB and hiking profiles, copies of the stock `mtb.brf` and `hiking-mountain.brf` with about 15 added lines, uploaded the way the road profile already is (`CUSTOM_PROFILES`, falling back to the stock profile with a note). They add costs for:
+    - `trail_visibility` bad, horrible and no;
+    - `obstacle=fallen_tree|vegetation` and `surface=mud` ways;
+    - `barrier=log|fallen_tree|windfall|debris|stile|kissing_gate|cycle_barrier` nodes.
+  - **Tuned** with `tools/style_probe.py` on the local BRouter, and the existing "what it changed" line shows the effect.
+  - **Can't:**
+    - width: it's not in BRouter's data;
+    - fallen trees mapped as nodes: `obstacle` isn't in BRouter's node table. Those are warned about, with Avoid;
+    - Valhalla legs: Valhalla has no such options.
+
+**Where it lands in the UI**
+
+| Where | What's new |
+|---|---|
+| Layers → Trails & difficulty | "Trail details" switch (default per sport), its map key, an "On now" chip |
+| Map | thickness, fading, ticks; icons from z15 |
+| Hover and click | the details, without "Show all OSM tags" |
+| Planner → Heads-up | fallen trees, fords, barriers, faint, overgrown, wet stretches; Avoid; grouped |
+| Planner → profile colours (*Ground*) | Width, Visibility |
+| Planner → Route style | "Avoid obstacles and faint trails" (MTB, hike, trail run) |
+
+**Left out, and why**
+- **Smoothness and SAC as map modes:** 1 % and 3 % of Finnish paths, and `mtb:scale` (54 %) already says how rough a path is. They appear in hover, click and the route readout.
+- **One trail-character colour mode at a time (the old plan):** not needed once width, visibility and obstacles use thickness, fading and icons, so difficulty colours never have to be turned off to see them.
+- **Text labels for width or visibility (as in JOSM):** clutter on a riding map; hover gives the value.
+- **"Wet" guessed from bogs:** the base map already draws wetland. Saying "through a bog, no boardwalk mapped" on routes is possible from the loaded tiles but noisy; later, if wanted.
+- **`informal=yes`:** 13 % of paths, 26 % in Helsinki's Central Park. Everyman's right makes it mostly irrelevant, so it's shown in the popup only.
+- **Static trail-detail tiles:** a PMTiles file built weekly by a GitHub Action from Geofabrik's Finland extract and served from GitHub Pages would remove Overpass from the map. It's a bigger change (a build pipeline, a 50–100 MB file, Pages limits) and is worth it only if Overpass proves too flaky in use. Not now.
+
+**Budget**
+- **Map:** z13 tiles (about 2.3 km), fetched only at zoom 14+ with Trail details on, at most 6 at a time (today's cap), and cached a week in IndexedDB. A failed tile is retried after 2 minutes, and the Layers note says "OpenStreetMap server busy".
+- **Route corridor:** up to about 40 tiles, mostly the same ones.
+- **BRouter:** no extra calls; answers grow a little with `processUnusedTags`.
+
+**Two PRs, so neither drags**
+- **12a — Map and details:** the z13 trail-details tiles (and the uphill layer on them), the Trail details layer and icons, hover and click.
+- **12b — Route:** `processUnusedTags`, Heads-up items, Width and Visibility profile colours, corridor tiles, the avoid profiles and their route-style choice.
 
 **Test**
-- Areas with tags: Kauppi (Tampere) and Laajavuori (Jyväskylä) for obstacles and width. Smoke: icons appear at z15, Heads-up lists an obstacle on a fixture route.
-- Screenshots: obstacles at z16, each trail-character option, Heads-up with an obstacle.
+- **Places:** Kauppi, Laajavuori, Nuuksio, Keskuspuisto, with the local BRouter for routes and the avoid profiles (`style_probe.py` cases).
+- **Smoke, with a fixture tile** (no live Overpass in smoke): the details layer draws, icons appear at z15, and Heads-up lists a fallen tree and a ford on a fixture route.
+- **Screenshots:** Kauppi at z15–16 with Trail details on (MTB and hike), hover on a faint trail, Heads-up with obstacles, the Width profile.
 
 **Risks**
-- Tagging is patchy, so the UI says "from OpenStreetMap, where mapped".
-- Larger z14 responses in cities: filter to the listed keys, `out tags geom`, and skip tiles with too many ways.
+- **Patchy tagging:** the key and the details say "from OpenStreetMap, where mapped" and link to fixing the map.
+- **Overpass load:** best-effort, cached, one query per tile, only at zoom 14+.
+- **The custom profiles depend on brouter.de accepting uploads,** as the road profile does today; the stock profile is the fallback.
+
+**Questions for the user**
+1. Trail details on by default for MTB, hike and trail run?
+2. Polku's own MTB and hiking BRouter profiles for "Avoid obstacles and faint trails"? Or keep phase 12 to warnings and ranking only.
+3. Two PRs (12a, 12b), or one?
 
 ## Phase 13 — Water routing
 
@@ -715,6 +832,9 @@ Winter is close in Finland, so this comes before Strava. **Research first, writt
   - summer-only layers and warnings step back in winter.
 - **Safety wording, a rule for every screen:** ice data is sparse and quickly out of date. Polku never says or implies that ice is safe to walk, ski or cycle on.
 - **Season:** suggest winter sports when snow depth or the date says it's winter, without forcing it.
+- **Found while researching phase 12 (2026-10-14):**
+  - BRouter's `lookups.dat` *does* know `piste:type`, `piste:grooming` and `piste:difficulty`, and with `processUnusedTags=1` they come back along a route (1.4 km of a 5.9 km Kauppi route).
+  - Finnish winter trail riding has a community tag, `mtb:winter=1/2/3` (how fast a path opens after snowfall; unofficial, used by Trailmap's winter map), plus `seasonal=winter` and `snowplowing` / `winter_service` on cycleways (wiki.trailmap.fi/fi/kartoitus/tagit).
 
 ## Phase 16 — Strava & Garmin (research and plan only)
 
