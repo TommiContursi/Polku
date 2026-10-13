@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, gradeColor } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor } from './config.js';
 import { routeLeg } from './router.js';
 import { analyse, estimateTime } from './analysis.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, colorAt, routeReadout } from './chart.js';
@@ -870,7 +870,7 @@ export class Planner {
     const act = this.app.activity();
     const applies = act === 'paddle'
       ? (k) => ['way', 'wind', 'temp', 'rain'].includes(k)
-      : (k) => (k === 'down' || k === 'uphill' ? act === 'mtb' || act === 'gravel' : true);
+      : (k) => (k === 'down' || k === 'uphill' ? OFFROAD_BIKE.has(act) : true);
     if (!applies(this.colorMode)) this.colorMode = act === 'paddle' ? 'wind' : 'grade';
     this.els.modesBar.innerHTML = '';
     for (const [title, keys] of COLOR_GROUPS) {
@@ -996,9 +996,13 @@ export class Planner {
       key('ascent', `${Math.round(a.up)} m`);
       stat('Descent', `${Math.round(a.down)} m`);
     }
-    if (act === 'mtb' || act === 'gravel') {
+    if (OFFROAD_BIKE.has(act)) {
       const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);
       stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : '');
+    } else if (act === 'road') {
+      // road cyclists read climbs by height and average gradient
+      const hardest = a.climbs.reduce((m, c) => (!m || c.gain * c.avg > m.gain * m.avg ? c : m), null);
+      stat('Hardest climb', hardest ? `<i class="dot" style="background:${gradeColor(hardest.avg)}"></i>${Math.round(hardest.avg)} %` : '—', hardest ? `${Math.round(hardest.gain)} m over ${fmtDist(hardest.len)}` : '');
     } else if (paddle) {
       const w = a.wind;
       if (w) {
@@ -1082,7 +1086,7 @@ export class Planner {
     const a = this.analysis;
     const box = this.els.climbs;
     box.innerHTML = '';
-    const bike = ['mtb', 'gravel'].includes(this.app.activity());
+    const bike = OFFROAD_BIKE.has(this.app.activity()); // uphill grades; others read the average gradient
     const hardest = a.climbs.reduce((m, c) => (!m || c.gain > m.gain ? c : m), null);
     this.setSection('climbs', {
       count: a.climbs.length || '', empty: !a.climbs.length,

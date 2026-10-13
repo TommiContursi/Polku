@@ -3,7 +3,7 @@
 
 import { densify, dist } from './geo.js';
 import { elevations, smooth } from './dem.js';
-import { CRAFT } from './config.js';
+import { CRAFT, groupOf } from './config.js';
 
 const LOOSE = new Set(['gravel', 'sand', 'rock', 'pebblestone', 'ground', 'dirt', 'earth', 'mud', 'grass', 'unpaved', 'wood', 'roots']);
 const PAVED = new Set(['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates']);
@@ -190,7 +190,7 @@ function findClimbs(along, ele, grade, sAttr, pts) {
 }
 
 function findWarnings(along, grade, sAttr, pts, activity) {
-  const bike = activity === 'mtb' || activity === 'gravel';
+  const bike = groupOf(activity) === 'bike';
   const out = [];
   const pushRun = (test, text, minLen = 0) => {
     let s = -1;
@@ -211,9 +211,11 @@ function findWarnings(along, grade, sAttr, pts, activity) {
     pushRun((i) => mtbScale(t(i)) >= 3, (s) => `Technical trail S${mtbScale(t(s))}`);
     pushRun((i) => grade[i] >= 15, (s, e) => `Steep climb, up to ${Math.round(Math.max(...Array.from(grade.slice(s, e + 1))))} %`, 50);
     pushRun((i) => grade[i] <= -18, 'Steep descent', 40);
-  } else if (activity === 'hike') {
+    // road tyres: anything that isn't paved, over a stretch worth mentioning
+    if (activity === 'road') pushRun((i) => sAttr[i].mode !== 'water' && !PAVED.has(surfaceOf(t(i))) && surfaceOf(t(i)) !== 'unknown', (s, e) => `Unpaved for ${Math.round(along[e] - along[s])} m — rough on road tyres`, 150);
+  } else if (activity === 'hike' || activity === 'trailrun') {
     pushRun((i) => /^(demanding_alpine|difficult_alpine|alpine)/.test(t(i).sac_scale || ''), 'Alpine terrain (SAC T4+)');
-    pushRun((i) => grade[i] >= 25, 'Very steep section', 40);
+    pushRun((i) => grade[i] >= 25, activity === 'trailrun' ? 'Very steep — walk it' : 'Very steep section', 40);
   }
   pushRun((i) => sAttr[i].mode === 'line', 'Straight line — not following paths', 150);
   pushRun((i) => t(i).portage === 'yes', (s, e) => `Carry / portage ${Math.round(along[e] - along[s])} m`);
@@ -221,6 +223,25 @@ function findWarnings(along, grade, sAttr, pts, activity) {
   pushRun((i) => t(i).route === 'ferry', 'Ferry crossing');
   return out.sort((a, b) => a.at - b.at);
 }
+
+// Bikes: flat speed (km/h) on paved, unpaved and trail, climbing rate (m/h),
+// and the top speed downhill on trails and roads. The MTB trail speed gains
+// 1.5 km/h for each step below S2 (smooth trails roll faster).
+const BIKE = {
+  mtb: { paved: 20, unpaved: 16, trail: 11, vam: 600, down: [16, 35], mtbScale: true },
+  gravel: { paved: 25, unpaved: 20, trail: 12, vam: 700, down: [16, 35] },
+  road: { paved: 27, unpaved: 15, trail: 8, vam: 800, down: [14, 50] },
+};
+// Running: flat speed (km/h) on paved and on trail, adjusted for the gradient
+// by the metabolic cost of running uphill and downhill (Minetti et al. 2002).
+// Trail runners walk the steep bits: never slower than a brisk hike there.
+const RUN = {
+  run: { paved: 10.5, trail: 9.5 },
+  trailrun: { paved: 10, trail: 8.5, hikeFloor: true },
+};
+const runCost = (i) => 155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6;
+const gradeFactor = (g) => Math.max(0.3, Math.min(1.12, 3.6 / runCost(Math.max(-0.4, Math.min(0.4, g)))));
+const tobler = (g) => 6 * Math.exp(-3.5 * Math.abs(g + 0.05));
 
 /**
  * Moving time per sample. With `head` (headwind component in m/s per sample,
@@ -244,27 +265,31 @@ export function estimateTime(a, opt, head = null) {
     const at = sAttr[i];
     const tags = at.tags || {};
     let kmh;
+    const bike = BIKE[act], run = RUN[act];
     if (at.mode === 'water' || tags.route === 'water') {
       kmh = tags.portage ? 2.5 : windAdj((CRAFT[opt.craft] || CRAFT.kayak).kmh, i, 0.35, 0.25, 1.35);
-    } else if (act === 'hike' || act === 'paddle') {
-      kmh = 6 * Math.exp(-3.5 * Math.abs(g + 0.05)); // Tobler
-      if (['path', 'bridleway'].includes(tags.highway)) kmh *= 0.88;
-      kmh = windAdj(kmh, i, 0.06, 0.8, 1.08);
-    } else {
+    } else if (run) {
+      const trail = ['path', 'bridleway', 'track'].includes(tags.highway) || !PAVED.has(surf[i]);
+      kmh = (trail ? run.trail : run.paved) * gradeFactor(g);
+      if (run.hikeFloor && g > 0.08) kmh = Math.max(kmh, tobler(g) * 1.15); // power-hike the steep bits
+      kmh = windAdj(kmh, i, 0.1, 0.85, 1.05);
+    } else if (bike) {
       const s = surf[i];
       const trail = ['path', 'bridleway', 'footway'].includes(tags.highway);
-      let flat = act === 'gravel'
-        ? (PAVED.has(s) ? 25 : trail ? 12 : 20)
-        : (PAVED.has(s) ? 20 : trail ? 11 + Math.max(0, 2 - mtbScale(tags)) * 1.5 : 16);
+      let flat = PAVED.has(s) ? bike.paved : trail ? bike.trail + (bike.mtbScale ? Math.max(0, 2 - mtbScale(tags)) * 1.5 : 0) : bike.unpaved;
       // ~1.2 km/h slower per m/s of headwind in the open, less on sheltered trails
       flat = windAdj(flat, i, trail ? 0.5 : 1.2, 0.45, 1.3);
-      const vam = act === 'gravel' ? 700 : 600; // vertical metres per hour when climbing
       if (g > 0.01) {
-        secs += Math.max(d / (flat / 3.6), (d * g) / (vam / 3600));
+        secs += Math.max(d / (flat / 3.6), (d * g) / (bike.vam / 3600));
         tAt[i] = secs;
         continue;
       }
-      kmh = g < -0.03 ? Math.min(flat * 1.25, trail ? 16 : 35) : flat;
+      kmh = g < -0.03 ? Math.min(flat * 1.25, trail ? bike.down[0] : bike.down[1]) : flat;
+    } else {
+      // walking (hike, and carries / land legs when paddling)
+      kmh = tobler(g);
+      if (['path', 'bridleway'].includes(tags.highway)) kmh *= 0.88;
+      kmh = windAdj(kmh, i, 0.06, 0.8, 1.08);
     }
     secs += d / (Math.max(kmh, 0.5) / 3.6);
     tAt[i] = secs;

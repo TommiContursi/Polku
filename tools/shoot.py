@@ -26,6 +26,10 @@ SCENES = {
     'desk-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json'),
     'desk-settings': dict(DESK, timeline=False, js="document.querySelector('#btn-settings') && document.querySelector('#btn-settings').click(); true"),
     'desk-acts': dict(DESK, timeline=False, js="document.querySelector('.act-current') && document.querySelector('.act-current').click(); true"),
+    'desk-road': dict(DESK, timeline=False, activity='road', hash='#15.2/61.4975/23.7605'),
+    'desk-run': dict(DESK, timeline=False, activity='run', hash='#15.2/61.4975/23.7605'),
+    'desk-mtb-town': dict(DESK, timeline=False, activity='mtb', hash='#15.2/61.4975/23.7605'),
+    'phone-acts': dict(PHONE, timeline=False, js="document.querySelector('.act-current') && document.querySelector('.act-current').click(); true"),
     'desk-layers': dict(DESK, timeline=False, js="document.querySelector('[data-panel=layers-panel]').click(); true"),
     'phone-layers': dict(PHONE, timeline=False, js="document.querySelector('[data-panel=layers-panel]').click(); true"),
     'phone-settings': dict(PHONE, timeline=False, js="document.querySelector('#btn-settings') && document.querySelector('#btn-settings').click(); true"),
@@ -55,7 +59,7 @@ FIT = ("(() => { const p = polku.planner, a = p.analysis; if (!a) return;"
 def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
-    pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)}, sc.get('storage'))
+    pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)}, sc.get('storage'), **({'hash_': sc['hash']} if sc.get('hash') else {}))
     if sc.get('route') or sc.get('water'):
         pg.js('polku.planner.setActive(true); true')
         if sc.get('route'):

@@ -47,6 +47,7 @@ const DEFAULTS = {
   overlaysByActivity: {},
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
+if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
 state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
 const shared = parseShared(new URLSearchParams(location.search));
 if (shared && ACTIVITIES[shared.activity]) state.activity = shared.activity;
@@ -275,7 +276,7 @@ function configureLayers() {
 // ------------------------------------------------------------------ activity pill
 // Only the active sport shows, beside the search. Hover (mouse) or tap opens the
 // others; picking one, Escape or leaving closes it.
-const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', hike: 'hike', paddle: 'paddle' };
+const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle' };
 const hoverPointer = matchMedia('(hover: hover) and (pointer: fine)');
 function renderActivityBar() {
   const box = $('#activity-bar');
@@ -351,7 +352,10 @@ function syncLayersButton() {
 const SPORT_NOTE = {
   mtb: 'trails coloured by MTB difficulty, MTB routing, MTB routes and lean-tos',
   gravel: 'unpaved roads highlighted, gravel routing, traffic and road works',
+  road: 'paved routing on quieter roads, unpaved stretches marked, traffic, road works and road conditions',
   hike: 'paths highlighted, walking routes, hiking trails and huts',
+  trailrun: 'paths highlighted, trail routing, running times that walk the steep bits, trails and huts',
+  run: 'footways and paths, running pace, lit fitness trails (kuntorata) and walking routes',
   paddle: 'water routing, depths, nautical marks and ships',
 };
 
@@ -423,7 +427,7 @@ const KEYS = {
     keyItem(keyLine('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
     keyItem(keyLine('background:#5b7fa8;height:2px'), 'Cycleway (paved)'),
     keyItem(keyLine('border-top:3px dotted #dc2626'), 'No bikes (beside a path)'),
-    state.activity === 'gravel' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
+    state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
     keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
     h('h4', {}, 'Your route'),
     keyItem(keyLine('background:#e11d48;height:5px'), 'Follows paths'),
