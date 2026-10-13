@@ -69,6 +69,30 @@ EDIT = """(async () => {
 })()"""
 
 
+# The waypoint list: a row per point, ↓ reorders and undo puts it back, a row
+# click shows the point without leaving padding on the map (MapLibre keeps an
+# easeTo's padding, which made every later fit fail).
+WAYPOINTS = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  p.reveal('points');
+  await wait(300);
+  const key = () => p.points.map((q) => q.join()).join('|'), k0 = key();
+  const rows = () => document.querySelectorAll('.wpl-row');
+  if (rows().length !== p.points.length) errs.push(`${rows().length} rows for ${p.points.length} points`);
+  rows()[0].querySelector('[aria-label$="later"]').click();
+  await wait(300);
+  if (key() === k0) errs.push('the down button did not reorder');
+  p.undo();
+  await wait(200);
+  if (key() !== k0) errs.push('undo did not restore the order');
+  rows()[1].click();
+  await wait(900);
+  const pad = polku.map.getPadding();
+  if (pad.top || pad.bottom || pad.left || pad.right) errs.push(`the map kept padding ${JSON.stringify(pad)}`);
+  return errs;
+})()"""
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -114,6 +138,7 @@ def check(chrome, w, h, phone, bottom=False):
     pg.js(f"polku.planner.setSheetState({json.dumps(states[0])}, {{ remember: false }}); true")
     time.sleep(1.0)
     fails += [f'edit: {e}' for e in pg.js(EDIT)]
+    fails += [f'waypoints: {e}' for e in pg.js(WAYPOINTS)]
     pg.js("polku.planner.setActive(false); true")
     time.sleep(0.3)
     if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):

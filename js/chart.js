@@ -5,6 +5,7 @@
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand } from './weather.js';
+import { escapeHtml } from './ui.js';
 
 export const WAY_COLORS = {
   path: '#7c2d12', footway: '#b45309', steps: '#dc2626', track: '#a16207', cycleway: '#2563eb',
@@ -49,12 +50,12 @@ const dot = (color) => `<i class="dot" style="background:${color}"></i>`;
 // One profile point, compact, for the tooltip beside the cursor when the
 // route line is hovered on the map: where, how steep, what's underfoot, and
 // the weather when you get there.
-export function routeReadout(a, i) {
+export function routeReadout(a, i, road = '') {
   const g = Math.round(a.grade[i] * 10) / 10 || 0; // no "-0.0 %"
   const trail = [];
   if (a.upCls[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.upCls[i]])}${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
   if (a.down6[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.down6[i]])}${MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0]}`);
-  trail.push(a.surf[i] && a.surf[i] !== 'unknown' ? `${a.way[i]} · ${a.surf[i].replace('_', ' ')}` : a.way[i]);
+  trail.push((road ? `${escapeHtml(road)} · ` : '') + (a.surf[i] && a.surf[i] !== 'unknown' ? `${a.way[i]} · ${a.surf[i].replace('_', ' ')}` : a.way[i]));
   const when = [];
   if (a.wind) {
     const w = a.wind;
@@ -239,7 +240,8 @@ export class ProfileChart {
     if (this.kind !== 'conditions') {
       if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
       if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
-      rows.push(`${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
+      const road = this.nameAt ? this.nameAt(i) : '';
+      rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
     }
     if (a.wind) {
       const w = a.wind;

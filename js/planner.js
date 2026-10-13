@@ -12,6 +12,7 @@ import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, R
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
 import { keepInView } from './inspect.js';
 import { FIX_THE_MAP } from './valhalla.js';
+import { initNames } from './names.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
@@ -42,6 +43,8 @@ export class Planner {
     this.active = false;
     this.markers = [];
     this.ghosts = []; // drag handles in the middle of each leg
+    this.pname = new WeakMap(); // point → the name you gave it (points move as arrays, so names follow them)
+    this.roads = initNames(map); // road and path names from the loaded tiles
     this.edit = null; // a drag in progress (see beginEdit)
     this.noClickUntil = 0;
     this.analysis = null;
@@ -55,6 +58,7 @@ export class Planner {
     this.buildPanel();
     this.chart = new ProfileChart($('#profile-canvas'), $('#profile-tip'));
     this.chart.onHover = (i) => this.hoverAt(i);
+    this.chart.nameAt = (i) => this.roadAt(i);
     this.chart.onClick = (i) => this.analysis && this.map.easeTo({ center: this.analysis.pts[i], duration: 500 });
     // zooming the profile frames that stretch on the map (zooming out: the whole route)
     this.chart.onZoom = (v) => {
@@ -69,6 +73,12 @@ export class Planner {
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
     map.on('touchstart', 'route-casing', (e) => this.onLinePress(e));
     map.on('zoom', () => this.fitGhosts());
+    // names of roads come with the tiles: when new ones arrive, the list may know more
+    map.on('idle', () => {
+      if (!this.active || !this.points.length) return;
+      const names = this.points.map((_, i) => this.autoName(i)).join('|');
+      if (names !== this.shownNames) this.renderWaypoints();
+    });
     this.bindSpotMenu();
   }
 
@@ -76,8 +86,10 @@ export class Planner {
   snapshot() {
     return {
       points: this.points.map((p) => p.slice()),
+      names: this.points.map((p) => this.pname.get(p) || ''),
       legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status })),
       nogos: this.nogos.map((n) => ({ ...n })),
+      routeName: this.routeName || '',
     };
   }
   commit() {
@@ -87,9 +99,72 @@ export class Planner {
   }
   restoreSnap(s) {
     this.points = s.points;
+    this.nameAll(s.names);
     this.legs = s.legs.map((l) => ({ ...l }));
     this.nogos = s.nogos || [];
+    this.routeName = s.routeName || '';
     this.update();
+  }
+
+  // ---------------------------------------------------------------- waypoint names & order
+  nameAll(names) { this.points.forEach((p, i) => { if (names && names[i]) this.pname.set(p, names[i]); else this.pname.delete(p); }); }
+
+  label(i) { return i === 0 ? 'Start' : i === this.points.length - 1 ? 'Finish' : `Via ${i}`; }
+
+  // the road or path a point is on: from Valhalla's tags if it routed a leg there, else the map tiles
+  autoName(i) {
+    const near = [this.legs[i - 1] && this.legs[i - 1].result && this.legs[i - 1].result.tags.at(-1), this.legs[i] && this.legs[i].result && this.legs[i].result.tags[0]];
+    const t = near.find((x) => x && x.name);
+    return t ? t.name : this.roads.nameAt(this.points[i], 30);
+  }
+
+  /** What to call point i: your name, else the road it's on, else Start / Via n / Finish. */
+  nameOf(i) { return this.pname.get(this.points[i]) || this.autoName(i) || this.label(i); }
+
+  setName(i, name) {
+    const p = this.points[i];
+    name = String(name || '').trim().slice(0, 60);
+    if (!p || name === (this.pname.get(p) || '')) return;
+    this.commit();
+    if (name) this.pname.set(p, name); else this.pname.delete(p);
+    this.update(); // no routing: the legs haven't changed
+  }
+
+  // Move point i to position j. Legs whose two ends stay neighbours are kept
+  // (an imported track the other way round is turned round); new neighbours
+  // get a new leg in the mode the point's outgoing leg had.
+  movePointTo(i, j) {
+    const n = this.points.length;
+    if (i === j || i < 0 || j < 0 || i >= n || j >= n) return;
+    this.commit();
+    const pts = this.points.slice();
+    pts.splice(j, 0, pts.splice(i, 1)[0]);
+    const out = new Map();
+    this.legs.forEach((l, k) => out.set(this.points[k], { l, to: this.points[k + 1] }));
+    this.legs = pts.slice(1).map((to, k) => {
+      const from = pts[k], o = out.get(from), r = out.get(to);
+      if (o && o.to === to) return o.l;
+      if (r && r.to === from && r.l.mode === 'fixed' && r.l.result) {
+        const c = r.l.result;
+        return { mode: 'fixed', status: 'ok', result: { coords: c.coords.slice().reverse(), tags: c.tags.slice().reverse(), portage: [] } };
+      }
+      const m = (o || r) ? (o || r).l.mode : this.mode;
+      return { mode: m === 'fixed' ? 'auto' : m };
+    });
+    this.points = pts;
+    this.update();
+  }
+
+  // Show point i on the map, and make its marker pulse.
+  focusPoint(i) {
+    const p = this.points[i];
+    if (!p) return;
+    if (this.layout() === 'sheet' && this.panel.dataset.state === 'full') this.setSheetState('half');
+    // centred in the map the planner leaves free; an offset, not `padding`, which MapLibre would keep for every later move
+    const v = this.viewPadding(0);
+    this.map.easeTo({ center: p, zoom: Math.max(this.map.getZoom(), 15), offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2], duration: 600 });
+    const el = this.markers[i] && this.markers[i].getElement();
+    if (el) { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
   }
   undo() { if (this.past.length) { this.future.push(this.snapshot()); this.restoreSnap(this.past.pop()); } }
   redo() { if (this.future.length) { this.past.push(this.snapshot()); this.restoreSnap(this.future.pop()); } }
@@ -303,12 +378,15 @@ export class Planner {
     this.app.onActiveChange(on);
     this.drawColored();
     if (on) requestAnimationFrame(() => this.chart.draw());
+    // opened far from the route (you browsed elsewhere): bring it back into view
+    if (on && this.points.length && !this.routeInView()) requestAnimationFrame(() => this.fitRoute());
   }
 
   // ---------------------------------------------------------------- routing
   update() {
     this.drawNogos();
     this.renderMarkers();
+    this.renderWaypoints();
     this.renderToolbarState();
     this.save();
     this.routeAll();
@@ -568,15 +646,96 @@ export class Planner {
       if (d < bd) { bd = d; best = i; }
     }
     this.mapHover = true;
-    const onMap = this.app.routeTip(e.originalEvent, routeReadout(a, best));
+    const onMap = this.app.routeTip(e.originalEvent, routeReadout(a, best, this.roadAt(best)));
     this.chart.setHover(best, !onMap);
     this.hoverAt(best, true);
+  }
+
+  // the name of the road or path at analysis sample i ('' if none known)
+  roadAt(i) {
+    const a = this.analysis;
+    if (!a || i < 0) return '';
+    const t = a.attr[i] && a.attr[i].tags;
+    if (t && t.name) return t.name;
+    if (a.way[i] === 'water') return '';
+    const p0 = a.pts[Math.max(0, i - 2)], p1 = a.pts[Math.min(a.pts.length - 1, i + 2)];
+    const dir = (Math.atan2((p1[0] - p0[0]) * Math.cos((p0[1] * Math.PI) / 180), p1[1] - p0[1]) * 180) / Math.PI;
+    return this.roads.nameAt(a.pts[i], 15, dir);
   }
 
   hoverAt(i, fromMap = false) {
     if (i == null || i < 0 || !this.analysis) { this.app.setData('routeHover', EMPTY); return; }
     this.app.setData('routeHover', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: this.analysis.pts[i] } }] });
     if (!fromMap) this.mapHover = false;
+  }
+
+  // The Waypoints section: every point in order with its name and distance.
+  // Rename in place; reorder by dragging the grip or with ↑/↓ (keyboard and
+  // screen readers); remove; click a row to see the point on the map.
+  renderWaypoints() {
+    const box = this.els && this.els.points;
+    if (!box) return;
+    if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return; // don't take a name you're typing
+    const n = this.points.length;
+    this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
+    this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
+    box.innerHTML = '';
+    const loop = this.isLoop();
+    const btn = (ic, label, fn, disabled = false, cls = '') => h('button', { type: 'button', class: `tool small ${cls}`, title: label, 'aria-label': label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 16) });
+    this.points.forEach((p, i) => {
+      const last = i === n - 1 && i > 0;
+      const own = this.pname.get(p) || '';
+      const auto = this.autoName(i);
+      const input = h('input', {
+        class: 'wpl-name', type: 'text', value: own, placeholder: auto || this.label(i), maxlength: 60, spellcheck: 'false',
+        'aria-label': `Name of ${i === 0 ? 'the start' : last ? 'the finish' : `via point ${i}`}`,
+        onclick: (e) => e.stopPropagation(),
+        onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); else if (e.key === 'Escape') { e.target.value = own; e.target.blur(); } },
+        onblur: (e) => this.setName(i, e.target.value),
+      });
+      // the label only when a name stands in its place; the distance always
+      const sub = [own || auto ? this.label(i) : '', fmtDist(i ? this.lengthTo(i) : 0), last && loop ? 'back at the start' : '', own && auto ? auto : ''].filter(Boolean).join(' · ');
+      const row = h('li', { class: 'wpl-row', 'data-i': String(i), title: 'Show on the map', onclick: () => this.focusPoint(i) },
+        h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
+        h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
+        h('span', { class: 'wpl-main' }, input, h('small', {}, sub)),
+        h('span', { class: 'wpl-tools' },
+          btn('chevronUp', `Move ${this.nameOf(i)} earlier`, () => this.movePointTo(i, i - 1), i === 0),
+          btn('chevronDown', `Move ${this.nameOf(i)} later`, () => this.movePointTo(i, i + 1), i === n - 1),
+          btn('trash', `Remove ${this.nameOf(i)}`, () => this.removePoint(i), false, 'danger')));
+      row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => this.dragRow(e, row, i));
+      box.append(row);
+    });
+  }
+
+  // Drag a row by its grip; the gap it would drop into is marked, and the
+  // drop is one undo step.
+  dragRow(e, row, i) {
+    e.preventDefault();
+    e.stopPropagation();
+    const box = this.els.points, rows = [...box.children];
+    const y0 = e.clientY;
+    let to = i;
+    row.classList.add('dragging');
+    row.setPointerCapture(e.pointerId);
+    const move = (ev) => {
+      row.style.transform = `translateY(${ev.clientY - y0}px)`;
+      // its new place: how many of the other rows have their middle above the pointer
+      to = rows.filter((r, j) => { if (j === i) return false; const b = r.getBoundingClientRect(); return ev.clientY > b.top + b.height / 2; }).length;
+      rows.forEach((r, j) => { r.classList.toggle('drop-before', j === to && to < i); r.classList.toggle('drop-after', j === to && to > i); });
+    };
+    const up = () => {
+      row.removeEventListener('pointermove', move);
+      row.removeEventListener('pointerup', up);
+      row.removeEventListener('pointercancel', up);
+      row.classList.remove('dragging');
+      row.style.transform = '';
+      rows.forEach((r) => r.classList.remove('drop-before', 'drop-after'));
+      if (to !== i) this.movePointTo(i, to);
+    };
+    row.addEventListener('pointermove', move);
+    row.addEventListener('pointerup', up);
+    row.addEventListener('pointercancel', up);
   }
 
   // Points: the visible dot sits in a bigger, invisible touch target (44 px on
@@ -586,7 +745,7 @@ export class Planner {
     this.markers = this.points.map((p, i) => {
       const last = i === this.points.length - 1 && i > 0;
       const loopEnd = last && dist(p, this.points[0]) < 3;
-      const el = h('div', { class: 'wp-hit', title: 'Drag to move · click for options' }, h('div', {
+      const el = h('div', { class: 'wp-hit', title: `${this.nameOf(i)} · drag to move · click for options` }, h('div', {
         class: `wp ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loopEnd ? ' wp-loop' : ''}`,
       }, i === 0 ? '' : last ? '' : String(i)));
       el.hidden = !this.active;
@@ -671,7 +830,9 @@ export class Planner {
   editTo(ll) {
     const ed = this.edit;
     if (!ed) return;
+    const nm = this.pname.get(this.points[ed.i]);
     this.points[ed.i] = ll;
+    if (nm) this.pname.set(ll, nm);
     for (const li of [ed.i - 1, ed.i]) if (this.legs[li]) this.previewLeg(li);
     this.drawRoute();
   }
@@ -842,8 +1003,8 @@ export class Planner {
     const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
     const body = h('div', { class: 'pt-menu' },
       h('div', { class: 'pt-head' },
-        h('div', { class: 'pt-title' }, i === 0 ? 'Start' : last ? 'Finish' : `Via point ${i}`),
-        i > 0 ? h('div', { class: 'pt-sub' }, `${fmtDist(this.lengthTo(i))} from the start`) : null),
+        h('div', { class: 'pt-title' }, this.nameOf(i)),
+        h('div', { class: 'pt-sub' }, [this.nameOf(i) !== this.label(i) ? this.label(i) : '', i > 0 ? `${fmtDist(this.lengthTo(i))} from the start` : ''].filter(Boolean).join(' · ') || 'Where the route begins')),
       legOut ? h('div', { class: 'pt-label' }, 'Next leg') : null,
       legOut ? h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
         h('button', { type: 'button', 'aria-pressed': String(legOut.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(i, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))) : null,
@@ -872,6 +1033,7 @@ export class Planner {
     store.set('route', {
       nogos: this.nogos,
       points: this.points,
+      names: this.points.map((p) => this.pname.get(p) || ''), // on this device only: not in share links
       modes: this.legs.map((l) => l.mode),
       fixed: this.legs.map((l) => (l.mode === 'fixed' && l.result ? encodePolyline(l.result.coords) : null)),
       routed: this.legs.map((l) => (l.mode !== 'fixed' && l.status === 'ok' && l.key && l.result
@@ -885,6 +1047,7 @@ export class Planner {
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
+    this.nameAll(r.names);
     this.legs = r.points.slice(1).map((_, i) => {
       if (r.modes[i] === 'fixed' && r.fixed && r.fixed[i]) {
         const c = decodePolyline(r.fixed[i]);
@@ -911,6 +1074,7 @@ export class Planner {
       activity: this.app.activity(),
       routeName: this.routeName || '',
       points: this.points,
+      names: this.points.map((p) => this.pname.get(p) || ''),
       nogos: this.nogos,
       legs: this.legs.map((l) => ({ mode: l.mode, key: l.key, result: l.status === 'ok' || l.mode === 'fixed' ? l.result : null })),
     };
@@ -918,6 +1082,7 @@ export class Planner {
 
   restoreSnapshot(s) {
     this.points = s.points;
+    this.nameAll(s.names);
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
     this.legs = s.legs.map((l) => (l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result } : { mode: l.mode }));
@@ -959,7 +1124,7 @@ export class Planner {
     const name = this.routeName || `Polku ${ACTIVITIES[this.app.activity()].label} ${new Date().toISOString().slice(0, 10)}`;
     // Export the routed geometry (not the 10 m resampling) with DEM elevations.
     const line = this.mergedLine();
-    download(`${name.replace(/[^\w\- ]+/g, '').trim() || 'route'}.gpx`, toGPX({ name, coords: line.coords, ele: sampleEle(a, line.coords), waypoints: this.points }));
+    download(`${name.replace(/[^\w\- ]+/g, '').trim() || 'route'}.gpx`, toGPX({ name, coords: line.coords, ele: sampleEle(a, line.coords), waypoints: this.points, names: this.points.map((_, i) => this.nameOf(i)) }));
   }
 
   // ---------------------------------------------------------------- panel
@@ -978,6 +1143,7 @@ export class Planner {
         type: 'button', 'data-mode': m, 'aria-pressed': String(this.mode === m), title: MODE_LABEL[m], 'aria-label': MODE_LABEL[m],
         onclick: () => this.setMode(m), html: `${icon(MODE_ICON[m], 17)}<span>${MODE_LABEL[m]}</span>`,
       })));
+    this.els.fit = tool('fit', 'Show the whole route (F)', () => this.fitRoute());
     this.els.undo = tool('undo', 'Undo (Ctrl+Z)', () => this.undo());
     this.els.redo = tool('redo', 'Redo', () => this.redo());
     this.els.more = tool('more', 'More: reverse, back to start, import, export, share, offline, clear', () => this.toggleMore());
@@ -992,7 +1158,7 @@ export class Planner {
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
       h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
         h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      h('div', { class: 'sheet-row tools-row' }, modes, h('div', { class: 'tools' }, this.els.undo, this.els.redo,
+      h('div', { class: 'sheet-row tools-row' }, modes, h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
@@ -1029,6 +1195,7 @@ export class Planner {
         h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
         h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow),
         this.els.breakdown),
+      this.section('points', 'Waypoints', this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order' })),
       this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
       this.section('speed', 'Time & speed', this.els.speedBox = h('div', { class: 'speed-box' }), this.els.speedRoute = h('div', { class: 'speed-route' })),
       this.section('climbs', 'Climbs', this.els.climbs),
@@ -1401,6 +1568,7 @@ export class Planner {
     const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub' }, sub) : null));
     const key = (label, value, title = '') => sum.append(h('div', { class: 'sum-item', title }, h('b', {}, value), h('small', {}, label)));
     for (const id of ['profile', 'climbs', 'warnings', 'speed']) this.setSection(id, { empty: !a });
+    this.renderWaypoints(); // distances along the route
     // the clock stays reachable before there's a route: set the time, then draw
     if (!a) this.setSection('depart', { summary: this.startOffsetH ? `Depart ${new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Depart now' });
     if (!a) {
@@ -1587,6 +1755,27 @@ export class Planner {
         avoid && this.legs.some((l) => l.mode === 'auto') ? h('button', { type: 'button', class: 'btn avoid', title: 'Route around this place', onclick: () => this.addNogo(avoid.ll, avoid.r, w.text) }, 'Avoid') : null);
       box.append(row);
     }
+  }
+
+  // the route's extent: its points and routed lines
+  routeBounds() {
+    const all = this.points.concat(...this.legs.map((l) => (l.result ? l.result.coords : [])));
+    return all.length ? bbox(all) : null;
+  }
+
+  /** Frame the whole route in the part of the map the planner leaves free. */
+  fitRoute({ animate = true } = {}) {
+    const b = this.routeBounds();
+    if (!b) { toast('No route yet — click the map to start one'); return; }
+    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, duration: animate ? 700 : 0 });
+  }
+
+  // Is any of the route on screen?
+  routeInView() {
+    const b = this.routeBounds();
+    if (!b) return true;
+    const v = this.map.getBounds();
+    return !(b[2] < v.getWest() || b[0] > v.getEast() || b[3] < v.getSouth() || b[1] > v.getNorth());
   }
 
   focusRange(i0, i1, sel) {
