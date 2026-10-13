@@ -24,6 +24,7 @@ import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
 import { onStatus, SOURCES, clock } from './net.js';
 import { renderUsage } from './usage.js';
+import { renderSpeedEditor } from './speeds.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
 
@@ -570,6 +571,7 @@ function renderLayersPanel() {
 
 // ------------------------------------------------------------------ settings panel
 // How Polku behaves (not what the map shows): sport, planner, display, offline, data.
+let speedSport = null; // which sport's speeds Settings shows (defaults to the current one)
 function renderSettingsPanel() {
   const p = $('#settings-body');
   const keepScroll = p.scrollTop;
@@ -580,6 +582,20 @@ function renderSettingsPanel() {
       type: 'button', 'aria-pressed': String(state.activity === k), onclick: () => setActivity(k), html: `${icon(ACT_ICONS[k], 16)}<span>${a.label}</span>`,
     }))),
     h('p', { class: 'note' }, `Also the pill beside the search. ${ACTIVITIES[state.activity].label} gives you ${SPORT_NOTE[state.activity]}; the planner routes and times the route for it.`)));
+
+  // speeds: the same editor as the planner's Time & speed, for any sport
+  speedSport = ACTIVITIES[speedSport] ? speedSport : state.activity;
+  const speedBox = h('div', { class: 'speed-box' });
+  const pickSport = h('select', { class: 'start-select', 'aria-label': 'Sport for these speeds', onchange: (e) => { speedSport = e.target.value; renderSettingsPanel(); } },
+    ...Object.entries(ACTIVITIES).map(([k, a]) => h('option', { value: k, selected: k === speedSport }, a.label)));
+  p.append(section('Speeds',
+    h('label', { class: 'speed-sport' }, 'Speeds for ', pickSport),
+    speedBox,
+    h('p', { class: 'note' }, 'They set the time estimate (and so the weather along the route). The planner’s Time & speed section shows the same, and where the time goes on your route. Kept on this device only.')));
+  renderSpeedEditor(speedBox, speedSport, {
+    craft: planner.craft, onCraft: (k) => planner.setCraft(k),
+    onChange: () => { if (speedSport === state.activity) planner.retime(); },
+  });
 
   if (planner.sideMQ && planner.sideMQ.matches) {
     p.append(section('Route planner',
@@ -614,6 +630,7 @@ function renderSettingsPanel() {
 
 // ------------------------------------------------------------------ panels & buttons
 function openPanel(id) {
+  if (id === 'settings-panel') { speedSport = state.activity; renderSettingsPanel(); } // fresh: speeds may have changed in the planner
   for (const el of $$('.panel')) {
     const on = el.id === id && el.hidden;
     el.hidden = !on;

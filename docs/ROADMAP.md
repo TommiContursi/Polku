@@ -13,8 +13,8 @@ Also approved:
 | 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | merged (#14 went into the stacked base by accident; #15 brought it to `main`) |
 | 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | merged |
 | 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | [#17](https://github.com/TommiContursi/Polku/pull/17) | merged |
-| 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | in review |
-| 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | — | |
+| 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | merged |
+| 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | #19 | in review |
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu | `edit-on-map` | — | |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
 | 9 | Route preferences: avoid ↔ prefer sliders, mapped to BRouter | `route-prefs` | — | |
@@ -366,9 +366,24 @@ Also approved:
   - It costs no routing calls; only weather, and only if the arrival hours change.
 - **Storage:** values are stored locally as `polku:speeds`, never in share links.
 
+**Built (PR #19)**
+- **`js/speeds.js`:**
+  - defaults (Normal = the model's numbers exactly; hike 5.04 km/h is Tobler on the flat);
+  - presets Easy ×0.8 / Fast ×1.2 / Custom;
+  - storage `polku:speeds`;
+  - display in the user's units (pace for runners);
+  - a plain-words explanation per sport;
+  - `renderSpeedEditor()`, shared by the planner and Settings.
+- **`estimateTime` takes `opt.speeds`:** bike paved/unpaved/trail/vam, run paved/trail, hike walk, craft km/h. Running got paved and trail speeds after all; it was cheap.
+- **Planner:**
+  - a **Speed** item in the stats row (preset and values) opens **Time & speed**;
+  - that section holds the craft (paddle, moved from the profile), presets, editable values (editing makes it Custom) and "How it's estimated";
+  - **On this route** shows distance, time and speed by paved / gravel / trail / water / carries, uphill time, and what the wind adds or saves.
+- **On change:** `planner.retime()` recomputes the times without routing or the DEM, then the route weather after 400 ms.
+- **Settings → Speeds:** the same editor, for any sport.
+
 **Cut**
-- Learning speeds from GPX history; maybe later.
-- Per-surface speeds for running.
+- Learning speeds from GPX history; that's for the Strava/Garmin history work.
 
 **Risks**
 - Sensible preset numbers. Calibrate Normal to today's values.
