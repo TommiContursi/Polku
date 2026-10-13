@@ -436,6 +436,9 @@ button { font: inherit; color: inherit; }
    take a line of their own above the routing modes; wider, they sit after them. */
 .tools-row { flex-wrap: wrap; row-gap: 8px; }
 .quick-pair { display: flex; gap: 6px; order: -1; flex: 1 0 100%; }
+/* the profile size is for the chart: on a line of their own, the two step aside there */
+.sheet[data-state="profile"] .quick-pair { display: none; }
+@container (min-width: 560px) { .sheet[data-state="profile"] .quick-pair { display: flex; } }
 @container (min-width: 560px) {
   .tools-row { flex-wrap: nowrap; }
   .quick-pair { order: 0; flex: none; margin-right: auto; } /* right after the modes; the tools at the far end */

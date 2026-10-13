@@ -174,7 +174,7 @@ def check(chrome, w, h, phone, bottom=False):
             free = (w - r['r']) / w
             if free < 0.55:
                 fails.append(f'side/{st}: only {free:.0%} of the width left for the map')
-        elif st == 'peek' and r['h'] > 0.22 * h:
+        elif st == 'peek' and r['h'] > 0.27 * h:  # the summary, Round trip & Style, and the routing modes
             fails.append(f'peek is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
         elif st == 'half' and not (0.4 * h < r['h'] < 0.6 * h):
             fails.append(f'half is {r["h"]:.0f} px tall')
