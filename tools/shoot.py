@@ -25,7 +25,10 @@ SCENES = {
     'desk-closed': dict(DESK, timeline=True),
     'desk-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json'),
     'desk-min': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='min'),
+    'desk-bottom': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
+    'desk-bottom-peek': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"'}),
     'desk-wide': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage={'polku:panelWidth': '860'}),
+    'desk-zoom': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.chart.setView && polku.planner.chart.setView([700, 2000], true)"),
     'phone-closed': dict(PHONE, timeline=True),
     'phone-planner': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half'),
     'phone-peek': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek'),
@@ -60,6 +63,9 @@ def shoot(chrome, out_dir, label, name):
             pg.js(f"polku.planner.setSheetState ? polku.planner.setSheetState({json.dumps(sc['state'])}, {{ remember: false }}) : null; true")
         time.sleep(0.4)
         pg.js(FIT)
+        if sc.get('js'):
+            pg.js(sc['js'])
+            time.sleep(0.8)
         pg.idle()
     time.sleep(2.0)  # timeline strip, weather, fades
     pg.idle()

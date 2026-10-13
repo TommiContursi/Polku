@@ -100,9 +100,13 @@ export async function analyse(line, opt) {
     if (sAttr[i].tags && (sAttr[i].tags.route === 'water')) grade[i] = 0;
   }
 
-  // Ascent with a 2 m hysteresis (lidar DEM is clean, so this stays honest)
+  // Ascent with a 2 m hysteresis (lidar DEM is clean, so this stays honest).
+  // On open water the DEM only wiggles: the reference follows the surface and
+  // nothing counts until a carry or the shore.
+  const onWater = (i) => sAttr[i].mode === 'water' && !(sAttr[i].tags && sAttr[i].tags.portage);
   let up = 0, down = 0, ref = ele[0];
   for (let i = 1; i < n; i++) {
+    if (onWater(i)) { ref = ele[i]; continue; }
     if (ele[i] - ref > 2) { up += ele[i] - ref; ref = ele[i]; }
     else if (ref - ele[i] > 2) { down += ref - ele[i]; ref = ele[i]; }
   }

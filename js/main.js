@@ -149,6 +149,8 @@ const planner = new Planner(map, {
   },
   onActiveChange: (on) => {
     syncPlanButton(on);
+    // one clock: while planning, the timeline is the planner's departure section
+    weather.dock(on ? planner.els.dock : null); // (planner only opens after boot, so weather exists)
     // the long attribution line would run into the planner: keep it behind its (i)
     if (on) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
     syncPlannerPadding();
@@ -473,7 +475,13 @@ for (const btn of $$('[data-panel]')) btn.addEventListener('click', () => openPa
 for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () => openPanel(null));
 
 for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
-$('#btn-time').addEventListener('click', () => { setTimeline(!state.timeline); renderLayersPanel(); });
+// While planning, the timeline is docked in the planner: the button and T open it there.
+const toggleTimeline = () => {
+  if (planner.active) { planner.reveal('depart'); return; }
+  setTimeline(!state.timeline);
+  renderLayersPanel();
+};
+$('#btn-time').addEventListener('click', toggleTimeline);
 $('#btn-3d').addEventListener('click', () => {
   state.terrain3d = !state.terrain3d;
   applyStyle();
@@ -523,7 +531,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '/') { e.preventDefault(); $('#search-input').focus(); }
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'l' && !mod) openPanel('layers-panel');
-  else if (e.key === 't' && !mod) { setTimeline(!state.timeline); renderLayersPanel(); }
+  else if (e.key === 't' && !mod) toggleTimeline();
   else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); }
 });
 

@@ -1,17 +1,21 @@
 // Map gestures beyond MapLibre's defaults.
 //
-// 1. Zoom over the floating UI. Panels, the planner sheet and the buttons sit
-//    on top of the map, so wheel and pinch events over them never reach
-//    MapLibre; a trackpad pinch (ctrl+wheel in Chromium/Firefox, gesture*
-//    events in Safari) or a touch pinch would zoom the whole page instead. We
-//    never let the page zoom and hand those gestures to the map, unless a
-//    panel is actually scrolling.
+// 1. Zoom over the floating UI. The buttons and bars sit on top of the map, so
+//    wheel and pinch events over them never reach MapLibre; a trackpad pinch
+//    (ctrl+wheel in Chromium/Firefox, gesture* events in Safari) or a touch
+//    pinch would zoom the whole page instead. We never let the page zoom and
+//    hand those gestures to the map — except over panels (planner, Layers,
+//    dialogs, timeline), which keep their gestures to themselves.
 // 2. Trackpad tilt & rotate. A sideways two-finger scroll on a trackpad
 //    rotates; in 3D mode up/down tilts too, while pinch keeps zooming.
 //    Shift + two-finger scroll tilts in any mode; Safari's rotate gesture
 //    rotates. A real mouse wheel always zooms.
 
 const OVERLAY = '.topbar, .activity-bar, .fab-col, .plan-btn, .panel, .sheet, .zoom-hint, .track-card, .toast, .view3d, .wx-bar, .maplibregl-ctrl';
+// Panels are places of their own: over them a wheel or a pinch never moves the
+// map (it scrolls the panel, or the profile chart zooms itself). Small controls
+// that sit on the map still pass gestures through.
+const PANELS = '.sheet, .panel, .modal, .wx-bar, .track-card, .menu';
 
 function scrollableAncestor(el, root, dy) {
   for (let n = el; n && n !== root.parentElement; n = n.parentElement) {
@@ -75,6 +79,10 @@ export function initGestures(map, { trackpadTilt = () => false, trackpadRotate =
       if (e.ctrlKey && t && !map.getCanvasContainer().contains(t)) e.preventDefault(); // never zoom the page
       return;
     }
+    if (t.closest(PANELS)) {
+      if (e.ctrlKey) e.preventDefault(); // no page zoom; the chart handles its own
+      return;
+    }
     // A plain wheel over a panel that can still scroll scrolls the panel.
     if (!e.ctrlKey && scrollableAncestor(t, overlay, e.deltaY)) return;
     e.preventDefault();
@@ -91,7 +99,8 @@ export function initGestures(map, { trackpadTilt = () => false, trackpadRotate =
   let g0 = null;
   document.addEventListener('gesturestart', (e) => {
     e.preventDefault();
-    g0 = { z: map.getZoom(), b: map.getBearing() };
+    const t = e.target instanceof Element ? e.target : null;
+    g0 = t && t.closest(PANELS) ? null : { z: map.getZoom(), b: map.getBearing() };
   }, { passive: false });
   document.addEventListener('gesturechange', (e) => {
     e.preventDefault();
@@ -108,7 +117,7 @@ export function initGestures(map, { trackpadTilt = () => false, trackpadRotate =
   const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   document.addEventListener('touchstart', (e) => {
     const t = e.target instanceof Element ? e.target : null;
-    if (e.touches.length === 2 && t && t.closest(OVERLAY)) pinch = { d: dist(e.touches), z: map.getZoom() };
+    if (e.touches.length === 2 && t && t.closest(OVERLAY) && !t.closest(PANELS)) pinch = { d: dist(e.touches), z: map.getZoom() };
   }, { passive: true });
   document.addEventListener('touchmove', (e) => {
     if (!pinch || e.touches.length !== 2) return;

@@ -47,6 +47,14 @@ export class Planner {
     this.chart = new ProfileChart($('#profile-canvas'), $('#profile-tip'));
     this.chart.onHover = (i) => this.hoverAt(i);
     this.chart.onClick = (i) => this.analysis && this.map.easeTo({ center: this.analysis.pts[i], duration: 500 });
+    // zooming the profile frames that stretch on the map (zooming out: the whole route)
+    this.chart.onZoom = (v) => {
+      const a = this.analysis;
+      if (!a) return;
+      const [i0, i1] = v ? [this.chart.idxOfDist(v[0]), this.chart.idxOfDist(v[1])] : [0, a.pts.length - 1];
+      const b = bbox(a.pts.slice(i0, i1 + 1));
+      this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, duration: 600 });
+    };
     map.on('click', (e) => this.onMapClick(e));
     map.on('mousemove', (e) => this.onMapMove(e));
   }
@@ -236,7 +244,7 @@ export class Planner {
   setActive(on) {
     this.active = on;
     this.panel.hidden = !on;
-    if (!on) { this.closeMore(); delete document.body.dataset.sheet; }
+    if (!on) { this.closeMore(); delete document.body.dataset.sheet; delete document.body.dataset.pl; }
     // an empty route opens small, so the map is there to tap; otherwise as you left it
     if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
     document.body.classList.toggle('planning', on);
@@ -577,12 +585,25 @@ export class Planner {
     this.els.more = tool('more', 'More: reverse, back to start, import, export, share, offline, clear', () => this.toggleMore());
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.sum = h('div', { class: 'sheet-sum', 'aria-live': 'polite' });
-    this.els.min = tool('chevronUp', 'Minimise', () => this.setSheetState(this.panel.dataset.state === 'min' ? 'open' : 'min'), 'sheet-min');
+    this.els.min = tool('chevronUp', 'Minimise', () => {
+      const st = this.panel.dataset.state;
+      if (this.layout() === 'side') this.setSheetState(st === 'min' ? 'open' : 'min');
+      else this.setSheetState(st === 'peek' ? (this.lastOpen || 'half') : 'peek');
+    }, 'sheet-min');
     this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
-    this.els.head = h('div', { class: 'sheet-head' },
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
       h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
         h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      h('div', { class: 'sheet-row tools-row' }, modes, h('div', { class: 'tools' }, this.els.undo, this.els.redo, this.els.more)));
+      h('div', { class: 'sheet-row tools-row' }, modes, h('div', { class: 'tools' }, this.els.undo, this.els.redo,
+        // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
+        h('span', { class: 'tool-sep tool-wide' }),
+        tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
+        tool('loop', 'Back to start', () => this.loop(), 'tool-wide'),
+        tool('download', 'Export GPX', () => this.exportGpx(), 'tool-wide'),
+        tool('share', 'Copy share link', () => this.share(), 'tool-wide'),
+        tool('offline', 'Save offline', () => this.app.saveOffline(), 'tool-wide'),
+        tool('trash', 'Clear route', () => this.clear(), 'tool-wide danger'),
+        this.els.more))));
     this.els.stats = h('div', { class: 'stats' });
     this.els.craft = h('div', { class: 'seg small craft', role: 'group', 'aria-label': 'Craft' },
       ...Object.entries(CRAFT).map(([k, v]) => h('button', { type: 'button', 'data-craft': k, 'aria-pressed': String(this.craft === k), onclick: () => this.setCraft(k) }, v.label)));
@@ -601,15 +622,15 @@ export class Planner {
     this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
       ? 'Tap the map to add points · drag a point to move it · tap the route line to add a via point'
       : 'Click the map to add points · drag a point to move it · click the route line to add a via point');
-    this.els.body = h('div', { class: 'sheet-body' },
-      this.els.stats,
+    this.els.dock = h('div', { class: 'dock' }); // the timeline docks here while planning (main.js)
+    this.els.body = h('div', { class: 'sheet-body' }, this.els.stats, h('div', { class: 'sheet-cols' },
       this.section('profile', 'Profile',
         h('div', { class: 'profile-top' }, this.els.modesBar, this.els.craft),
         h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
         this.els.breakdown),
+      this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
       this.section('climbs', 'Climbs', this.els.climbs),
-      this.section('warnings', 'Heads-up', this.els.warnings),
-      this.section('weather', 'Weather on the route', this.els.wind),
+      this.section('warnings', 'Heads-up', this.els.warnings)),
       this.els.hint);
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
@@ -651,7 +672,16 @@ export class Planner {
   }
 
   // ---------------------------------------------------------------- panel layout & states
-  layout() { return this.sideMQ.matches ? 'side' : 'sheet'; }
+  // Wide screens choose: a side panel on the left (default) or a bottom panel
+  // (⋯ → Move to the bottom). Phones and narrow windows always get the bottom sheet.
+  layout() { return this.sideMQ.matches && store.get('plannerDock', 'left') === 'left' ? 'side' : 'sheet'; }
+
+  setDock(where) {
+    store.set('plannerDock', where);
+    this.setSheetState(store.get('sheetState', {})[this.layout()], { remember: false });
+    this.app.onActiveChange(this.active); // padding vars, button states
+    requestAnimationFrame(() => this.chart.draw());
+  }
 
   setSheetState(st, { remember = true } = {}) {
     const lay = this.layout();
@@ -659,10 +689,15 @@ export class Planner {
     if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
     this.panel.dataset.layout = lay;
     this.panel.dataset.state = st;
-    if (this.active) document.body.dataset.sheet = st; // a full sheet hides the map chrome under it
+    if (st !== 'peek' && st !== 'min') this.lastOpen = st;
+    if (this.active) {
+      document.body.dataset.sheet = st; // a full sheet hides the map chrome under it
+      document.body.dataset.pl = lay;
+    }
     if (remember) store.set('sheetState', { ...store.get('sheetState', {}), [lay]: st });
-    this.els.min.innerHTML = icon(st === 'min' ? 'chevronDown' : 'chevronUp', 19);
-    this.els.min.title = st === 'min' ? 'Show the details' : 'Minimise';
+    const folded = st === 'min' || st === 'peek';
+    this.els.min.innerHTML = icon(lay === 'side' ? (folded ? 'chevronDown' : 'chevronUp') : (folded ? 'chevronUp' : 'chevronDown'), 19);
+    this.els.min.title = folded ? 'Show the details' : lay === 'side' ? 'Minimise' : 'Fold down to the summary';
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { peek: 'Show more', half: 'Drag up for everything, down for the map', full: 'Drag down for the map' }[st] || '';
     if (st !== 'peek' && st !== 'min') requestAnimationFrame(() => this.chart.draw());
@@ -671,7 +706,7 @@ export class Planner {
   // While drawing or dragging on the map, the phone sheet gets out of the way.
   // Not remembered, so the planner reopens at the size you chose.
   autoPeek() {
-    if (this.active && this.layout() === 'sheet' && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
+    if (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
   }
 
   bindSheet() {
@@ -791,7 +826,10 @@ export class Planner {
     if (this.moreEl) { this.closeMore(); return; }
     const item = (name, label, fn, cls = '') => h('button', { type: 'button', role: 'menuitem', class: `menu-item ${cls}`, onclick: () => { this.closeMore(); fn(); }, html: `${icon(name, 17)}<span>${label}</span>` });
     const two = this.points.length > 1;
+    const side = this.layout() === 'side';
     const el = h('div', { class: 'menu', role: 'menu', 'aria-label': 'Route actions' },
+      this.sideMQ.matches ? item(side ? 'panelBottom' : 'panelLeft', side ? 'Move to the bottom' : 'Move to the left', () => this.setDock(side ? 'bottom' : 'left')) : null,
+      this.sideMQ.matches ? h('hr') : null,
       Object.assign(item('reverse', 'Reverse direction', () => this.reverse()), { disabled: !two }),
       Object.assign(item('loop', 'Back to start', () => this.loop()), { disabled: !two }),
       h('hr'),
@@ -830,8 +868,10 @@ export class Planner {
 
   renderModeChips() {
     const act = this.app.activity();
-    const applies = (k) => (k === 'down' || k === 'uphill' ? act === 'mtb' || act === 'gravel' : true);
-    if (!applies(this.colorMode)) this.colorMode = 'grade';
+    const applies = act === 'paddle'
+      ? (k) => ['way', 'wind', 'temp', 'rain'].includes(k)
+      : (k) => (k === 'down' || k === 'uphill' ? act === 'mtb' || act === 'gravel' : true);
+    if (!applies(this.colorMode)) this.colorMode = act === 'paddle' ? 'wind' : 'grade';
     this.els.modesBar.innerHTML = '';
     for (const [title, keys] of COLOR_GROUPS) {
       const shown = keys.filter(applies);
@@ -888,14 +928,26 @@ export class Planner {
     this.chart.setMode(k);
     this.renderBreakdown();
     this.drawColored();
-    const an = this.analysis;
-    if (an) this.setSection('profile', { summary: `${COLOR_MODES[k]} · ${Math.round(an.minE)}–${Math.round(an.maxE)} m` });
+    if (this.analysis) this.setSection('profile', { summary: this.profileSummary() });
     // links from the weather section: open the profile and bring it into view
-    if (reveal) {
-      this.toggleSection('profile', true);
-      if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
-      this.sec.profile.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (reveal) this.reveal('profile');
+  }
+
+  // Open a section and bring it into view (expanding a peeking sheet).
+  reveal(id) {
+    this.toggleSection(id, true);
+    if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
+    else if (this.layout() === 'side' && this.panel.dataset.state === 'min') this.setSheetState('open');
+    requestAnimationFrame(() => this.sec[id].el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+  }
+
+  profileSummary() {
+    const a = this.analysis;
+    if (a.activity === 'paddle') {
+      if (!a.wind) return 'wind along the route';
+      return `${COLOR_MODES[this.colorMode]} · up to ${Math.max(...a.wind.speed).toFixed(0)} m/s`;
     }
+    return `${COLOR_MODES[this.colorMode]} · ${Math.round(a.minE)}–${Math.round(a.maxE)} m`;
   }
 
   renderToolbarState() {
@@ -914,7 +966,9 @@ export class Planner {
     sum.innerHTML = '';
     const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub' }, sub) : null));
     const key = (label, value, title = '') => sum.append(h('div', { class: 'sum-item', title }, h('b', {}, value), h('small', {}, label)));
-    for (const id of ['profile', 'climbs', 'warnings', 'weather']) this.setSection(id, { empty: !a });
+    for (const id of ['profile', 'climbs', 'warnings']) this.setSection(id, { empty: !a });
+    // the clock stays reachable before there's a route: set the time, then draw
+    if (!a) this.setSection('depart', { summary: this.startOffsetH ? `Depart ${new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Depart now' });
     if (!a) {
       sum.append(h('p', { class: 'sum-empty' }, this.points.length
         ? 'Add another point to make a route'
@@ -929,22 +983,40 @@ export class Planner {
       return;
     }
     this.els.hint.hidden = this.points.length > 2;
-    const timeSub = [act === 'paddle' ? CRAFT[this.craft].label : '', a.timeWind ? 'with wind' : ''].filter(Boolean).join(' · ');
+    const paddle = act === 'paddle';
     key('distance', fmtDist(a.total));
-    key(timeSub ? `time · ${timeSub}` : 'est. time', fmtDuration(a.timeWind || a.time), 'Estimated moving time');
-    key('ascent', `${Math.round(a.up)} m`);
-    stat('Descent', `${Math.round(a.down)} m`);
+    // the time is from your departure: tapping it opens the clock (one control for both)
+    const dep = this.startOffsetH ? new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now';
+    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated moving time${a.timeWind ? ', with the wind' : ''}${paddle ? ` (${CRAFT[this.craft].label})` : ''} · set the departure`, onclick: () => this.reveal('depart') },
+      h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, `from ${dep}`));
+    sum.append(time);
+    const carry = a.ways.find(([k]) => k === 'portage');
+    if (paddle) key('carry', carry ? fmtDist(carry[1]) : '0 m');
+    else {
+      key('ascent', `${Math.round(a.up)} m`);
+      stat('Descent', `${Math.round(a.down)} m`);
+    }
     if (act === 'mtb' || act === 'gravel') {
       const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);
       stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : '');
-    } else if (act === 'paddle') {
-      const carry = a.ways.find(([k]) => k === 'portage');
-      stat('Carry', carry ? fmtDist(carry[1]) : '0 m');
+    } else if (paddle) {
+      const w = a.wind;
+      if (w) {
+        let head = 0, maxS = 0, maxG = 0;
+        for (let i = 1; i < a.pts.length; i++) {
+          if (w.head[i] > 1) head += a.along[i] - a.along[i - 1];
+          maxS = Math.max(maxS, w.speed[i]); maxG = Math.max(maxG, w.gust[i]);
+        }
+        stat('Headwind', `${Math.round((head / a.total) * 100)} %`, 'of the distance');
+        stat('Strongest wind', `${maxS.toFixed(0)} m/s`, `gusts ${maxG.toFixed(0)}`);
+      }
+      if (a.up >= 5) stat('Carry ascent', `${Math.round(a.up)} m`);
     } else {
       stat('High point', `${Math.round(a.maxE)} m`);
     }
-    this.chart.setData(a, this.colorMode);
-    this.setSection('profile', { summary: `${COLOR_MODES[this.colorMode]} · ${Math.round(a.minE)}–${Math.round(a.maxE)} m` });
+    this.chart.placeholder = a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : '';
+    this.chart.setData(a, this.colorMode, paddle ? 'conditions' : 'elevation');
+    this.setSection('profile', { title: paddle ? 'Conditions' : 'Profile', summary: this.profileSummary() });
     this.renderBreakdown();
     this.renderClimbs();
     this.renderWarnings();
@@ -1070,19 +1142,15 @@ export class Planner {
     const act = this.app.activity();
     box.innerHTML = '';
     if (!a) return;
-    const select = h('select', { class: 'start-select', 'aria-label': 'Departure time (linked with the weather time bar)', title: 'Linked with the weather time bar on the map', onchange: (e) => this.setStartOffset(+e.target.value) });
-    const now = new Date();
-    for (let k = 0; k <= 48; k++) {
-      const d = new Date((Math.floor(now.getTime() / 3600000) + k) * 3600000);
-      const day = d.getDate() === now.getDate() ? '' : d.getDate() === new Date(now.getTime() + 86400000).getDate() ? 'Tomorrow ' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
-      select.append(h('option', { value: String(k), selected: k === this.startOffsetH }, k === 0 ? 'Now' : `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`));
-    }
-    this.setSection('weather', { title: act === 'paddle' ? 'Weather on the water' : 'Weather on the route', summary: '' });
-    box.append(h('div', { class: 'wind-start' }, h('label', { class: 'start' }, 'Start ', select)));
+    // departure → back, for the section summary
+    const fmt = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const start = this.startSec();
+    const when = `${this.startOffsetH ? `Depart ${fmt(start)}` : 'Depart now'} → back ${fmt(start + (a.timeWind || a.time))}`;
+    box.append(h('h4', { class: 'wind-title' }, act === 'paddle' ? 'Weather on the water' : 'Weather on the route'));
     if (a.wind && a.wind.stale) box.append(h('p', { class: 'note stale-note' }, `Older forecast (from ${new Date(a.wind.from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) — Open-Meteo couldn’t be reached.`));
     if (!a.wind) {
       box.append(h('div', { class: 'wind-body note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : 'Loading forecast…'));
-      this.setSection('weather', { summary: a.windError ? 'unavailable' : 'loading…' });
+      this.setSection('depart', { summary: `${when} · ${a.windError ? 'forecast unavailable' : 'loading the forecast…'}` });
       return;
     }
     const w = a.wind;
@@ -1115,7 +1183,7 @@ export class Planner {
       ? `${snowM > wetM / 2 ? 'Snow' : 'Rain'} on ${fmtDist(wetM)} (${Math.round((wetM / tot) * 100)} %, km ${(a.along[firstWet] / 1000).toFixed(0)}–${(a.along[lastWet] / 1000).toFixed(0)}), up to ${peak.toFixed(1)} mm/h · about ${mm < 0.5 ? mm.toFixed(1) : Math.round(mm)} mm on you`
       : 'Dry the whole way';
     const icy = tMin <= 0.5 && wetM > 0;
-    this.setSection('weather', { summary: `${Math.round(tMin) === Math.round(tMax) ? Math.round(tMin) : `${Math.round(tMin)}…${Math.round(tMax)}`} °C · ${r.label.toLowerCase()} · ${wetM > 0 ? (snowM > wetM / 2 ? 'snow' : 'rain') : 'dry'}` });
+    this.setSection('depart', { summary: `${when} · ${Math.round(tMin) === Math.round(tMax) ? Math.round(tMin) : `${Math.round(tMin)}…${Math.round(tMax)}`} °C · ${r.label.toLowerCase()} · ${wetM > 0 ? (snowM > wetM / 2 ? 'snow' : 'rain') : 'dry'}` });
     const body = h('div', { class: 'wind-body' },
       h('div', { class: 'wind-now' },
         h('span', { class: 'wind-arrow', style: `transform:rotate(${s0.dir + 180}deg)`, title: `from ${compass(s0.dir)}`, html: '&#8593;' }),
