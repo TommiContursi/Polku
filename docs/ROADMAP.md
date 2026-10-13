@@ -13,7 +13,7 @@ Also approved:
 | 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | merged (#14 went into the stacked base by accident; #15 brought it to `main`) |
 | 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | merged |
 | 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | [#17](https://github.com/TommiContursi/Polku/pull/17) | merged |
-| 5 | More sports: road, trail run and run join the four we have | `sports` | #18 | in review |
+| 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | in review |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | — | |
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu | `edit-on-map` | — | |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
