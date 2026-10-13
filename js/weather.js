@@ -4,23 +4,121 @@
 
 import { OPEN_METEO } from './config.js';
 import { bearing } from './geo.js';
+import { idb } from './idb.js';
 
-const cache = new Map(); // url -> {t, v}
-const TTL = 20 * 60 * 1000;
 const rad = (d) => (d * Math.PI) / 180;
 
+// ------------------------------------------------------------------ forecast cells
+// Forecasts are fetched and cached per cell of a fixed lattice, so small map or
+// route changes reuse what's already here instead of asking again. Level 0
+// cells are 0.05° × 0.025° (≈ 2.8 × 2.8 km at 60° N, about the forecast
+// model's own resolution); each level up doubles both sides. A cell stays
+// fresh for an hour (the models update hourly), in memory and in IndexedDB so
+// it survives reloads; copies up to a day old stand in when Open-Meteo can't
+// be reached. Open-Meteo counts every location as a call, so this is what
+// keeps Polku under its limits.
+const LON0 = 0.05;
+const LAT0 = 0.025;
+const FRESH = 3600e3;
+const KEEP = 24 * 3600e3;
+const BATCH = 100; // locations per request
+const cells = new Map(); // "L/i/j" -> { at, s }
+const store = idb('weather');
+store.prune((v) => v && Date.now() - v.at < KEEP).catch(() => {});
+
+export const cellSize = (L) => [LON0 * 2 ** L, LAT0 * 2 ** L];
+export function cellAt([lon, lat], L = 0) {
+  const [dx, dy] = cellSize(L);
+  return { L, i: Math.floor(lon / dx), j: Math.floor(lat / dy) };
+}
+export function cellCenter({ L, i, j }) {
+  const [dx, dy] = cellSize(L);
+  return [+((i + 0.5) * dx).toFixed(4), +((j + 0.5) * dy).toFixed(4)];
+}
+const keyOf = (c) => `${c.L}/${c.i}/${c.j}`;
+
 /**
- * Hourly forecast for many points in one request.
+ * Hourly forecasts (−1 h … +49 h) for a list of cells, in the same order.
+ * Only cells without a fresh copy are fetched. The result has `.stale = true`
+ * when an older copy had to stand in for a failed request.
+ */
+export async function forecastCells(list) {
+  const now = Date.now();
+  const keys = list.map(keyOf);
+  const out = new Array(list.length);
+  const fallback = new Map(); // key -> older copy
+  let need = [];
+  keys.forEach((k, n) => {
+    const c = cells.get(k);
+    if (c && now - c.at < FRESH) out[n] = c.s;
+    else { need.push(n); if (c) fallback.set(k, c); }
+  });
+  if (need.length) {
+    const missing = [...new Set(need.map((n) => keys[n]))];
+    const saved = await store.getMany(missing).catch(() => []);
+    missing.forEach((k, m) => {
+      const v = saved[m];
+      if (!v || now - v.at >= KEEP) return;
+      if (now - v.at < FRESH) cells.set(k, v);
+      else if (!fallback.has(k) || fallback.get(k).at < v.at) fallback.set(k, v);
+    });
+    need = need.filter((n) => {
+      const c = cells.get(keys[n]);
+      if (c && now - c.at < FRESH) { out[n] = c.s; return false; }
+      return true;
+    });
+  }
+  let error = null;
+  const fetchKeys = [...new Set(need.map((n) => keys[n]))];
+  for (let b = 0; b < fetchKeys.length && !error; b += BATCH) {
+    const batch = fetchKeys.slice(b, b + BATCH);
+    try {
+      const series = await fetchPoints(batch.map((k) => { const [L, i, j] = k.split('/').map(Number); return cellCenter({ L, i, j }); }));
+      const at = Date.now();
+      batch.forEach((k, m) => {
+        const v = { at, s: series[m] };
+        cells.set(k, v);
+        store.set(k, v).catch(() => {});
+      });
+    } catch (err) { error = err; }
+  }
+  for (const n of need) {
+    const c = cells.get(keys[n]);
+    if (c && Date.now() - c.at < FRESH) out[n] = c.s;
+    else if (fallback.has(keys[n])) { out[n] = fallback.get(keys[n]).s; out.stale = true; }
+  }
+  for (let n = 0; n < list.length; n++) if (!out[n]) throw error || new Error('Weather unavailable'); // (some() skips holes)
+  if (cells.size > 4000) for (const k of [...cells.keys()].slice(0, 1000)) cells.delete(k);
+  return out;
+}
+
+/** One forecast per point, via its level-0 cell (points in the same cell share it). */
+export async function pointForecasts(points) {
+  const list = points.map((p) => cellAt(p, 0));
+  return forecastCells(list);
+}
+
+/** A series re-indexed to `n` hours from epoch second `t0` (cells fetched at different times line up). */
+export function alignSeries(s, t0, n) {
+  const off = Math.round((t0 - s.time[0]) / 3600);
+  const pick = (a) => Array.from({ length: n }, (_, k) => a[Math.max(0, Math.min(a.length - 1, off + k))]);
+  return {
+    lat: s.lat, lon: s.lon,
+    time: Array.from({ length: n }, (_, k) => t0 + k * 3600),
+    speed: pick(s.speed), dir: pick(s.dir), gust: pick(s.gust), temp: pick(s.temp), precip: pick(s.precip),
+  };
+}
+
+/**
+ * Hourly forecast for many points in one request (no caching: see forecastCells).
  * @returns {Promise<Array<{lat,lon,time:number[],speed,dir,gust,temp,precip}>>}  time in epoch seconds
  */
-export async function forecastPoints(points, hours = 48) {
+async function fetchPoints(points, hours = 49) {
   const lat = points.map((p) => p[1].toFixed(3)).join(',');
   const lon = points.map((p) => p[0].toFixed(3)).join(',');
   const url = `${OPEN_METEO}?latitude=${lat}&longitude=${lon}` +
     '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation' +
     `&forecast_hours=${hours}&past_hours=1&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC`;
-  const hit = cache.get(url);
-  if (hit && Date.now() - hit.t < TTL) return hit.v;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Weather unavailable');
   let j = await res.json();
@@ -35,8 +133,6 @@ export async function forecastPoints(points, hours = 48) {
     temp: r.hourly.temperature_2m,
     precip: r.hourly.precipitation,
   }));
-  cache.set(url, { t: Date.now(), v });
-  if (cache.size > 60) cache.delete(cache.keys().next().value);
   return v;
 }
 
@@ -73,7 +169,7 @@ export async function windAlong(pts, along, tAt, startSec) {
   // one forecast point per ~4 km, up to 12 (≈ every 10–20 km on long rides)
   const k = Math.max(2, Math.min(12, Math.ceil(total / 4000) + 1));
   const idx = Array.from({ length: k }, (_, j) => Math.round((j / (k - 1)) * (n - 1)));
-  const series = await forecastPoints(idx.map((i) => pts[i]));
+  const series = await pointForecasts(idx.map((i) => pts[i]));
   const speed = new Float32Array(n), gust = new Float32Array(n), dir = new Float32Array(n);
   const head = new Float32Array(n), cross = new Float32Array(n);
   const temp = new Float32Array(n), precip = new Float32Array(n);
