@@ -19,6 +19,20 @@ from cdp import Chrome  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIX = lambda name: open(os.path.join(HERE, 'fixtures', name)).read()
 
+# press on the middle of the first leg and pull it aside (mouse, or hold-then-drag on touch); no release
+DRAG = ("""(async () => {
+  const p = polku.planner, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const c = p.legs[0].result.coords, q = map.project(c[Math.floor(c.length / 2)]);
+  const cv = map.getCanvas(), R = cv.getBoundingClientRect(), touch = matchMedia('(pointer: coarse)').matches;
+  const fire = (type, x, y) => {
+    if (!touch) { cv.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: R.left + x, clientY: R.top + y, button: 0, buttons: 1 })); return; }
+    const t = [new Touch({ identifier: 1, target: cv, clientX: R.left + x, clientY: R.top + y })];
+    cv.dispatchEvent(new TouchEvent(type === 'mousedown' ? 'touchstart' : 'touchmove', { bubbles: true, cancelable: true, touches: t, targetTouches: t, changedTouches: t }));
+  };
+  fire('mousedown', q.x, q.y);
+  if (touch) await wait(400);
+  for (let k = 1; k <= 12; k++) { await wait(20); fire('mousemove', q.x + k * 7, q.y + k * 6); }
+})()""")
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -47,6 +61,14 @@ SCENES = {
     'phone-full': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full'),
     'desk-paddle': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]]),
     'phone-paddle': dict(PHONE, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half'),
+    'phone-profile': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js="polku.planner.reveal('profile'); true"),
+    'desk-point-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openPointMenu(1, polku.planner.markers[1]); true"),
+    'phone-point-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openPointMenu(1, polku.planner.markers[1]); true"),
+    'desk-spot-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([980, 560])); true"),
+    'phone-spot-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([250, 300])); true"),
+    # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
+    'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
+    'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
 }
 
 WAIT_ROUTE = ("new Promise((ok) => { const p = polku.planner, t0 = Date.now();"
@@ -78,9 +100,11 @@ def shoot(chrome, out_dir, label, name):
         pg.idle()
     if sc.get('js'):
         pg.js(sc['js'])
-        time.sleep(0.8)
-    time.sleep(2.0)  # timeline strip, weather, fades
-    pg.idle()
+    if sc.get('settle') is not None:
+        time.sleep(sc['settle'])  # a moment that doesn't wait
+    else:
+        time.sleep(2.8)  # timeline strip, weather, fades
+        pg.idle()
     path = pg.screenshot(os.path.join(out_dir, f'{label}-{name}.png'))
     errs = pg.errors()
     pg.close()

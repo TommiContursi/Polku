@@ -35,6 +35,40 @@ BOXES = """(() => {
 })()"""
 
 
+# Drag the middle of the first leg (straight-line legs: no routing requests):
+# with the mouse on desktop, hold-then-drag on touch. Expect one new point under
+# the pointer, one undo step, an unmoved map and map panning back on.
+EDIT = """(async () => {
+  const p = polku.planner, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const a = p.analysis.pts, b = a.reduce((m, q) => [Math.min(m[0], q[0]), Math.min(m[1], q[1]), Math.max(m[2], q[0]), Math.max(m[3], q[1])], [180, 90, -180, -90]);
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: p.viewPadding(), duration: 0 });
+  await wait(600);
+  const c = p.legs[0].result.coords, q = map.project([(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2]);
+  const cv = map.getCanvas(), R = cv.getBoundingClientRect(), touch = matchMedia('(pointer: coarse)').matches;
+  const n0 = p.points.length, u0 = p.past.length, c0 = map.getCenter();
+  const fire = (type, x, y) => {
+    if (!touch) { cv.dispatchEvent(new MouseEvent(type.replace('touch', 'mouse').replace('start', 'down').replace('end', 'up'), { bubbles: true, cancelable: true, clientX: R.left + x, clientY: R.top + y, button: 0, buttons: type === 'touchend' ? 0 : 1 })); return; }
+    const t = [new Touch({ identifier: 1, target: cv, clientX: R.left + x, clientY: R.top + y })];
+    cv.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: type === 'touchend' ? [] : t, targetTouches: type === 'touchend' ? [] : t, changedTouches: t }));
+  };
+  fire('touchstart', q.x, q.y);
+  if (touch) await wait(400);
+  for (let k = 1; k <= 8; k++) { await wait(30); fire('touchmove', q.x + k * 5, q.y - k * 5); }
+  fire('touchend', q.x + 40, q.y - 40);
+  if (!touch) window.dispatchEvent(new MouseEvent('mouseup'));
+  await wait(400);
+  const np = map.project(p.points[1]), errs = [];
+  if (p.points.length !== n0 + 1) errs.push(`${p.points.length - n0} points added, not 1`);
+  else if (Math.hypot(np.x - q.x - 40, np.y - q.y + 40) > 3) errs.push(`new point ${Math.round(np.x - q.x)},${Math.round(np.y - q.y)} px from the press, not 40,-40`);
+  if (p.past.length !== u0 + 1) errs.push(`${p.past.length - u0} undo steps`);
+  if (map.getCenter().lng !== c0.lng || map.getCenter().lat !== c0.lat) errs.push('the map panned');
+  if (!map.dragPan.isEnabled()) errs.push('map panning left off');
+  if (p.edit) errs.push('still editing');
+  p.undo();
+  return errs;
+})()"""
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -77,6 +111,9 @@ def check(chrome, w, h, phone, bottom=False):
             fails.append(f'peek is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
         elif st == 'half' and not (0.4 * h < r['h'] < 0.6 * h):
             fails.append(f'half is {r["h"]:.0f} px tall')
+    pg.js(f"polku.planner.setSheetState({json.dumps(states[0])}, {{ remember: false }}); true")
+    time.sleep(1.0)
+    fails += [f'edit: {e}' for e in pg.js(EDIT)]
     pg.js("polku.planner.setActive(false); true")
     time.sleep(0.3)
     if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):

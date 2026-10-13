@@ -496,20 +496,24 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .stat-sub { font-size: 11px; color: var(--muted); }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; vertical-align: -1px; margin-right: 5px; }
 
-.profile-top { display: flex; justify-content: space-between; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin-bottom: 6px; }
-.chip-groups { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; }
+.profile-top { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; margin: 4px 0 8px; }
+/* the colour menu: one line however many modes there are */
+.mode-select { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+.mode-select-label { white-space: nowrap; }
+.mode-select-box { position: relative; display: flex; min-width: 0; }
+.mode-select select {
+  appearance: none; -webkit-appearance: none; height: 30px; min-width: 0; max-width: 100%; padding: 0 30px 0 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.mode-select select:hover { background: var(--surface-2); }
+.mode-select select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mode-select-chev { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); display: flex; }
+.chip-groups { display: none; flex: 1; align-items: center; flex-wrap: wrap; gap: 8px 22px; }
 .chip-group { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .chip-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 3px; }
 .tg-inline { margin-left: auto; padding: 0; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .tg-inline .tg-text { flex: none; }
 .tg-inline:hover { color: var(--text); }
-/* in the planner (≤ 760 px wide): group labels in a column of their own, chips wrap beside them */
-.sheet .profile-top { flex-direction: column; align-items: stretch; }
-.sheet .chip-groups { gap: 6px; }
-.sheet .chip-group { position: relative; width: 100%; padding-left: 58px; }
-.sheet .chip-group-label { position: absolute; left: 0; top: 8px; letter-spacing: .05em; }
-.sheet .chip-group .chip { padding: 0 8px; }
-/* a widened side panel puts the groups side by side again */
 .sheet-body { container-type: inline-size; }
 /* a wide bottom panel lays the lists out side by side, like a dashboard: the
    profile across the top, then climbs | heads-up | departure & weather, always open */
@@ -526,11 +530,10 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .sheet-cols .sec-chev, .sheet-cols .sec-sum { display: none; }
   .sheet-cols .sec[data-open="false"] .sec-body { display: block; }
 }
-@container (min-width: 620px) {
-  .sheet .chip-groups { gap: 8px 22px; }
-  .sheet .chip-group { width: auto; padding-left: 0; }
-  .sheet .chip-group-label { position: static; letter-spacing: .08em; }
-  .sheet .chip-group .chip { padding: 0 11px; }
+/* a wide panel has room for every mode in one row of chips */
+@container (min-width: 1080px) {
+  .profile-top .mode-select { display: none; }
+  .profile-top .chip-groups { display: flex; }
 }
 .profile-box { position: relative; }
 .chart-reset { position: absolute; top: 0; right: 4px; z-index: 1; height: 24px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
@@ -615,12 +618,21 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .hour small { color: var(--muted); font-size: 10px; }
 
 /* ---------------------------------------------------------------- waypoints */
+/* the dot sits in a bigger invisible target: 44 px where fingers tap */
+.wp-hit { display: grid; place-items: center; width: 30px; height: 30px; cursor: grab; -webkit-tap-highlight-color: transparent; }
+.wp-hit:active, body.route-editing .maplibregl-canvas { cursor: grabbing !important; }
+@media (pointer: coarse) { .wp-hit { width: 44px; height: 44px; } .wp-hit.ghost { width: 36px; height: 36px; } }
 .wp {
   width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
   font: 700 11px/1 system-ui, sans-serif; color: #111; background: #fff; border: 2.5px solid #111;
-  box-shadow: 0 2px 6px rgba(0,0,0,.35); cursor: grab;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
 }
-.wp:active { cursor: grabbing; }
+/* the handle in the middle of a leg: drag it to reshape the route */
+.wp-ghost { width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2.5px solid #e11d48; box-shadow: 0 1px 4px rgba(0,0,0,.3); opacity: .9; transition: transform .12s, opacity .12s; }
+.ghost-line .wp-ghost { border-color: #be123c; }
+.ghost-water .wp-ghost { border-color: #0369a1; }
+.wp-hit.ghost:hover .wp-ghost { transform: scale(1.3); opacity: 1; }
+.wp-hit.ghost.dragging .wp-ghost { width: 22px; height: 22px; border-color: #111; transform: none; opacity: 1; }
 .wp-start { background: #16a34a; border-color: #fff; width: 24px; height: 24px; }
 .wp-start::after { content: ""; border-left: 8px solid #fff; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
 .wp-end { background: #111; border-color: #fff; width: 24px; height: 24px; }
@@ -656,8 +668,11 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .hover-tip em.bad { font-style: normal; font-weight: 600; color: var(--bad); }
 @keyframes hover-tip-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .hover-tip { animation: none; } }
-.pt-menu { display: flex; flex-direction: column; gap: 8px; min-width: 190px; }
+.pt-menu { display: flex; flex-direction: column; gap: 8px; min-width: 236px; }
+.pt-menu .seg { align-self: flex-start; }
 .pt-title { font-weight: 700; }
+.pt-sub { font-size: 12px; color: var(--muted); }
+.pt-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .pt-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: -4px; }
 
 /* ---------------------------------------------------------------- legend */
@@ -766,6 +781,7 @@ body.dropping .drop-hint { display: flex; }
   .tool { width: 30px; height: 32px; }
   .tool-sep { display: none; }
   .seg button span { display: none; }
+  .pt-menu .seg button span { display: inline; } /* the menu has room to say what each mode is */
 
   .stats { gap: 6px 16px; }
   .stat-value { font-size: 17px; }
