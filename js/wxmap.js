@@ -90,9 +90,10 @@ export class WeatherOverlay {
     map.on('movestart', () => this.onMoveStart());
     map.on('moveend', () => this.onMoveEnd());
     map.on('resize', () => { this.resizeCanvases(); this.onMoveEnd(); });
-    map.on('mousemove', (e) => this.readout([e.lngLat.lng, e.lngLat.lat]));
-    // touch screens have no hover: read out the map centre instead
-    map.on('touchend', () => this.readout(this.map.getCenter().toArray()));
+    // the card shows the spot under the mouse, else the map centre
+    map.on('mousemove', (e) => { this.pointerLL = [e.lngLat.lng, e.lngLat.lat]; this.readout(); });
+    map.on('mouseout', () => { this.pointerLL = null; this.readout(); });
+    map.on('touchend', () => { this.pointerLL = null; this.readout(); });
   }
 
   get layersOn() { return this.on.wind || this.on.temp || this.on.rain; }
@@ -143,6 +144,7 @@ export class WeatherOverlay {
     clearTimeout(this.fetchTimer);
     this.fetchTimer = setTimeout(() => this.maybeFetch(), 600);
     this.renderStrip();
+    this.readout();
     if (!this.animated) return;
     this.buildCam();
     this.buildField();
@@ -215,7 +217,7 @@ export class WeatherOverlay {
     } catch {
       this.status = 'Weather unavailable';
     } finally {
-      if (req === this.req) { this.loading = false; this.renderTime(); }
+      if (req === this.req) { this.loading = false; this.renderTime(); this.readout(); }
     }
   }
 
@@ -225,7 +227,7 @@ export class WeatherOverlay {
     if (!g) return;
     const t = timeAtHour(this.hour);
     const N = g.series.length;
-    const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N);
+    const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N), cloud = new Float32Array(N);
     const times = g.series[0].time;
     let i = 0;
     while (i < times.length - 2 && times[i + 1] <= t) i++;
@@ -239,9 +241,9 @@ export class WeatherOverlay {
       const ux = Math.sin(r0) * (1 - f) + Math.sin(r1) * f, vy = Math.cos(r0) * (1 - f) + Math.cos(r1) * f;
       const len = Math.hypot(ux, vy) || 1;
       u[k] = (ux / len) * sp; v[k] = (vy / len) * sp;
-      gust[k] = lin(s.gust); temp[k] = lin(s.temp); rain[k] = lin(s.precip);
+      gust[k] = lin(s.gust); temp[k] = lin(s.temp); rain[k] = lin(s.precip); cloud[k] = s.cloud ? lin(s.cloud) : NaN;
     }
-    this.cur = { u, v, gust, temp, rain, t, i, f };
+    this.cur = { u, v, gust, temp, rain, cloud, t, i, f };
     this.buildField();
     if (images) this.stripData = null; // new grid → rebuild the strip
     this.renderStrip();
@@ -250,6 +252,7 @@ export class WeatherOverlay {
       this.renderImages();
     }
     this.renderTime();
+    this.readout();
   }
 
   // Bilinear weights of a location on the forecast grid.
@@ -272,7 +275,7 @@ export class WeatherOverlay {
     if (!w) return null;
     const at = (arr) => w.reduce((s, [k, wt]) => s + arr[k] * wt, 0);
     const u = at(c.u), v = at(c.v);
-    return { u, v, speed: Math.hypot(u, v), gust: at(c.gust), temp: at(c.temp), rain: at(c.rain), dir: ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360 };
+    return { u, v, speed: Math.hypot(u, v), gust: at(c.gust), temp: at(c.temp), rain: at(c.rain), cloud: at(c.cloud), dir: ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360 };
   }
 
   // Precipitation summed over the next `hours` from the selected time.
@@ -568,15 +571,16 @@ export class WeatherOverlay {
         h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': 'false', onclick: () => this.app.onToggle({ [k]: !this.on[k] }), html: `${icon(ic, 14)}${label}` })));
     this.noteEl = h('div', { class: 'tl-note' });
     this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': '48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
+    this.nowEl = h('div', { class: 'tl-now' });
     this.bindStrip();
     bar.append(
       h('div', { class: 'tl-head' },
         h('span', { class: 'tl-title', html: `${icon('clock', 15)} Timeline` }),
         this.chipsEl,
         h('button', { type: 'button', class: 'tool tl-close', 'aria-label': 'Close timeline', onclick: () => this.app.onClose(), html: icon('close', 16) })),
-      this.stripCv,
+      h('div', { class: 'tl-main' }, this.stripCv, this.nowEl),
       h('div', { class: 'wx-row' }, this.playBtn, this.slider, this.timeEl),
-      h('div', { class: 'wx-row wx-info' }, this.legendEl, this.readEl),
+      this.infoEl = h('div', { class: 'wx-row wx-info', hidden: true }, this.legendEl, this.readEl),
       this.noteEl,
     );
     new ResizeObserver(() => this.renderStrip()).observe(this.stripCv);
@@ -692,12 +696,14 @@ export class WeatherOverlay {
     ctx.fillStyle = muted;
     ctx.strokeStyle = muted;
     ctx.lineWidth = 1;
+    // hour labels every 6 h, or only at noon when the strip is narrow (phones)
+    const every = (X(HOURS) - X(0)) / HOURS * 6 < 34 ? 12 : 6;
     for (let hr = 1; hr <= HOURS; hr++) {
       const dt = new Date(d.t[hr] * 1000);
       if (dt.getHours() === 0) {
         ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(X(hr), 0); ctx.lineTo(X(hr), H); ctx.stroke(); ctx.globalAlpha = 1;
         ctx.fillText(dt.toLocaleDateString([], { weekday: 'short' }), X(hr) + 3, H - 4);
-      } else if (dt.getHours() % 6 === 0) {
+      } else if (dt.getHours() % every === 0 && X(hr) > 30) {
         ctx.fillText(String(dt.getHours()), X(hr) - 4, H - 4);
       }
     }
@@ -803,23 +809,35 @@ export class WeatherOverlay {
     }
   }
 
-  readout(lngLat) {
-    if (!this.active || !this.readEl) return;
-    const ll = lngLat || this.lastLL || this.map.getCenter().toArray();
-    this.lastLL = ll;
-    this.renderLegend();
-    const s = this.sample(ll);
-    if (!s) { this.readEl.textContent = ''; return; }
-    const parts = [];
-    const all = !this.layersOn; // timeline only: a compact summary of everything
-    if (this.on.wind || all) parts.push(`${s.speed.toFixed(1)} m/s ${compass(s.dir)}${s.gust > s.speed + 2 ? ` (gusts ${s.gust.toFixed(0)})` : ''}`);
-    if (this.on.temp || this.on.wind || all) parts.push(`${s.temp.toFixed(0)} °C`);
-    if (this.on.rain || all) {
-      const kind = s.temp < 0.5 ? 'snow' : 'rain';
-      parts.push(s.rain >= 0.05 ? `${kind} ${s.rain.toFixed(1)} mm/h` : 'dry');
+  // The weather card beside the strip: the selected time at the spot under the
+  // mouse (or the map centre). At most once per frame.
+  readout() {
+    if (this.readFrame) return;
+    this.readFrame = requestAnimationFrame(() => {
+      this.readFrame = 0;
+      if (!this.active || !this.nowEl) return;
+      this.renderLegend();
+      this.infoEl.hidden = !this.legendKey;
+      const ll = this.pointerLL || this.map.getCenter().toArray();
+      const s = this.sample(ll);
+      if (!s) {
+        this.nowEl.innerHTML = `<small>${this.loading ? 'Loading forecast…' : this.status || 'No forecast here'}</small>`;
+        return;
+      }
+      const night = sunAltitude(ll[1], ll[0], this.cur.t) < -3;
+      const snow = s.temp < 0.5;
+      const kind = s.rain >= 0.1 ? (snow ? 'snow' : 'rain')
+        : !(s.cloud >= 0) ? (night ? 'moon' : 'cloudSun')
+          : s.cloud >= 70 ? 'cloud' : s.cloud >= 25 ? (night ? 'cloud' : 'cloudSun') : night ? 'moon' : 'sun';
+      const sky = { snow: 'Snow', rain: 'Rain', cloud: 'Cloudy', cloudSun: 'Partly cloudy', moon: 'Clear', sun: 'Sunny' }[kind];
       const sum = this.accum(ll, 6);
-      if (sum != null) parts.push(`next 6 h ${sum < 0.05 ? '0' : sum.toFixed(1)} mm`);
-    }
-    this.readEl.textContent = `Here: ${parts.join(' · ')}`;
+      const rainTxt = s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry';
+      const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
+      this.nowEl.title = `${sky} · ${this.pointerLL ? 'under the mouse' : 'at the map centre'}`;
+      this.nowEl.innerHTML =
+        `<div class="tl-now-main">${icon(kind, 24)}<b>${Math.round(s.temp)}°</b><small>${this.pointerLL ? 'here' : 'map centre'}</small></div>` +
+        `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
+        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>`;
+    });
   }
 }
