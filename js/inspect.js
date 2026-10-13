@@ -78,12 +78,15 @@ export function initInspector(map, app) {
 }
 
 // Pan so the popup clears the floating buttons on the right and the top bar.
-export function keepInView(map, popup) {
+// Pan so the popup clears the top bar and the control column; `pad` also keeps
+// it off a panel ({left, bottom} in px from the window's edges).
+export function keepInView(map, popup, pad = {}) {
   requestAnimationFrame(() => {
     const r = popup.getElement().getBoundingClientRect();
     const right = window.innerWidth - (window.innerWidth < 720 ? 64 : 84);
-    const dx = r.right > right ? r.right - right : r.left < 8 ? r.left - 8 : 0;
-    const dy = r.top < 120 ? r.top - 120 : 0;
+    const left = Math.max(8, pad.left || 0), bottom = window.innerHeight - Math.max(8, pad.bottom || 0);
+    const dx = r.right > right ? r.right - right : r.left < left ? r.left - left : 0;
+    const dy = r.top < 120 ? r.top - 120 : r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - 120) : 0;
     if (dx || dy) map.panBy([dx, dy], { duration: 250 });
   });
 }

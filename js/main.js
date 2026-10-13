@@ -175,7 +175,7 @@ initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable(), isPlanning: () => planner.active, activity: () => state.activity });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity });
 
 initSearch(map, $('#search-input'), $('#search-results'));
 

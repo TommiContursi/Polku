@@ -10,10 +10,12 @@ import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bb
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
+import { keepInView } from './inspect.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
 const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
+const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
 const CODE_MODE = { a: 'auto', l: 'line', w: 'water' };
 
@@ -36,6 +38,9 @@ export class Planner {
     this.future = [];
     this.active = false;
     this.markers = [];
+    this.ghosts = []; // drag handles in the middle of each leg
+    this.edit = null; // a drag in progress (see beginEdit)
+    this.noClickUntil = 0;
     this.analysis = null;
     this.colorMode = store.get('colorMode', 'grade');
     this.colorOnMap = store.get('colorOnMap', false);
@@ -58,6 +63,10 @@ export class Planner {
     };
     map.on('click', (e) => this.onMapClick(e));
     map.on('mousemove', (e) => this.onMapMove(e));
+    map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
+    map.on('touchstart', 'route-casing', (e) => this.onLinePress(e));
+    map.on('zoom', () => this.fitGhosts());
+    this.bindSpotMenu();
   }
 
   // ---------------------------------------------------------------- state
@@ -90,36 +99,72 @@ export class Planner {
   }
 
   insertPoint(legIdx, ll) {
-    const leg = this.legs[legIdx];
-    if (!leg) return this.addPoint(ll);
+    if (!this.legs[legIdx]) return this.addPoint(ll);
     this.commit();
-    if (leg.mode === 'fixed' && leg.result) {
-      const c = leg.result.coords;
+    this.splitLeg(legIdx, ll);
+    this.update();
+  }
+
+  // A new via point on leg `li`, at the spot of the line nearest `ll`. The two
+  // halves keep the geometry they had (a route through a point on it is the
+  // same route), so adding a point on the line costs no routing request.
+  // Returns the new point's index.
+  splitLeg(li, ll) {
+    const leg = this.legs[li];
+    const r = leg.result;
+    if (r && leg.status === 'ok' && leg.mode !== 'water' && r.coords.length > 1) {
+      const c = r.coords;
       const near = nearestOnLine(ll, c);
-      const k = Math.max(1, Math.min(c.length - 2, near.i + (near.t > 0.5 ? 1 : 0)));
-      const a = { mode: 'fixed', status: 'ok', result: { coords: c.slice(0, k + 1), tags: leg.result.tags.slice(0, k), portage: [] } };
-      const b = { mode: 'fixed', status: 'ok', result: { coords: c.slice(k), tags: leg.result.tags.slice(k), portage: [] } };
-      this.points.splice(legIdx + 1, 0, c[k]);
-      this.legs.splice(legIdx, 1, a, b);
+      const q = c[near.i], q2 = c[near.i + 1];
+      const p = [+(q[0] + (q2[0] - q[0]) * near.t).toFixed(6), +(q[1] + (q2[1] - q[1]) * near.t).toFixed(6)];
+      const half = (coords, tags) => ({ mode: leg.mode, status: 'ok', result: { coords, tags, portage: [] } });
+      this.points.splice(li + 1, 0, p);
+      this.legs.splice(li, 1, half(c.slice(0, near.i + 1).concat([p]), r.tags.slice(0, near.i + 1)), half([p].concat(c.slice(near.i + 1)), r.tags.slice(near.i)));
+      for (const k of [li, li + 1]) if (this.legs[k].mode !== 'fixed') this.legs[k].key = this.legKey(k).key;
     } else {
-      this.points.splice(legIdx + 1, 0, ll);
-      this.legs.splice(legIdx, 1, { mode: leg.mode }, { mode: leg.mode });
+      this.points.splice(li + 1, 0, ll);
+      this.legs.splice(li, 1, { mode: leg.mode === 'fixed' ? 'auto' : leg.mode }, { mode: leg.mode === 'fixed' ? 'auto' : leg.mode });
+    }
+    return li + 1;
+  }
+
+  isLoop() { const n = this.points.length; return n > 2 && dist(this.points[0], this.points[n - 1]) < 3; }
+
+  // Make point i the start. A loop turns round (the same route, a new start);
+  // otherwise the part before it goes. Undo brings it back.
+  startAt(i) {
+    if (i <= 0 || i >= this.points.length - 1) return;
+    this.commit();
+    if (this.isLoop()) {
+      const pts = this.points.slice(0, -1);
+      this.points = pts.slice(i).concat(pts.slice(0, i), [pts[i].slice()]);
+      this.legs = this.legs.slice(i).concat(this.legs.slice(0, i));
+      toast('The loop starts here now');
+    } else {
+      this.points = this.points.slice(i);
+      this.legs = this.legs.slice(i);
+      toast('The route starts here now — undo brings back the part before');
     }
     this.update();
   }
 
-  movePoint(i, ll) {
+  finishAt(i) {
+    if (i <= 0 || i >= this.points.length - 1) return;
     this.commit();
-    this.points[i] = ll;
-    for (const li of [i - 1, i]) {
-      const leg = this.legs[li];
-      if (leg && leg.mode === 'fixed' && leg.result) {
-        const c = leg.result.coords.slice();
-        if (li === i - 1) c[c.length - 1] = ll; else c[0] = ll;
-        leg.result = { ...leg.result, coords: c };
-      }
-    }
+    this.points = this.points.slice(0, i + 1);
+    this.legs = this.legs.slice(0, i);
+    toast('The route finishes here now — undo brings back the rest');
     this.update();
+  }
+
+  // metres along the route to point i
+  lengthTo(i) {
+    let m = 0;
+    for (let k = 0; k < i && k < this.legs.length; k++) {
+      const c = this.legs[k].result ? this.legs[k].result.coords : [this.points[k], this.points[k + 1]];
+      for (let j = 1; j < c.length; j++) m += dist(c[j - 1], c[j]);
+    }
+    return m;
   }
 
   removePoint(i) {
@@ -251,6 +296,7 @@ export class Planner {
     document.body.classList.toggle('planning', on);
     this.map.getCanvas().style.cursor = on ? 'crosshair' : '';
     for (const m of this.markers) m.getElement().hidden = !on;
+    this.renderGhosts();
     this.app.onActiveChange(on);
     this.drawColored();
     if (on) requestAnimationFrame(() => this.chart.draw());
@@ -265,16 +311,21 @@ export class Planner {
     this.routeAll();
   }
 
+  // what a leg's route depends on: when this changes, it needs routing again
+  legKey(i) {
+    const leg = this.legs[i];
+    const from = this.points[i], to = this.points[i + 1];
+    const nogos = leg.mode === 'auto' ? this.nogosNear(from, to) : [];
+    const profile = ACTIVITIES[this.app.activity()].brouter;
+    return { key: `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}`, from, to, nogos, profile };
+  }
+
   async routeAll() {
     const gen = ++this.gen;
-    const act = this.app.activity();
-    const profile = ACTIVITIES[act].brouter;
     const jobs = [];
     this.legs.forEach((leg, i) => {
       if (leg.mode === 'fixed') { leg.status = 'ok'; return; }
-      const from = this.points[i], to = this.points[i + 1];
-      const nogos = leg.mode === 'auto' ? this.nogosNear(from, to) : [];
-      const key = `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}`;
+      const { key, from, to, nogos, profile } = this.legKey(i);
       if (leg.key === key && leg.result) return;
       leg.key = key;
       leg.result = null;
@@ -284,6 +335,7 @@ export class Planner {
           const r = await routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos } });
           if (leg.key !== key) return;
           leg.result = r;
+          leg.preview = null;
           leg.status = 'ok';
           if (r.note && this.active) toast(r.note, { tone: 'warn' });
         } catch (e) {
@@ -308,7 +360,8 @@ export class Planner {
     this.legs.forEach((leg, i) => {
       const from = this.points[i], to = this.points[i + 1];
       const loading = !leg.result;
-      const coords = loading ? [from, to] : leg.result.coords;
+      // while dragging, a route that's a moment behind the pointer, joined to it
+      const coords = loading ? (leg.preview ? [from, ...leg.preview, to] : [from, to]) : leg.result.coords;
       const mode = leg.status === 'error' ? 'line' : leg.mode === 'fixed' ? 'auto' : leg.mode;
       features.push({ type: 'Feature', properties: { leg: i, mode, loading, kind: 'leg' }, geometry: { type: 'LineString', coordinates: coords } });
       if (!loading) {
@@ -318,6 +371,7 @@ export class Planner {
       }
     });
     this.app.setData('route', { type: 'FeatureCollection', features });
+    if (!this.edit) this.renderGhosts();
   }
 
   mergedLine() {
@@ -427,7 +481,7 @@ export class Planner {
 
   // ---------------------------------------------------------------- map interaction
   onMapClick(e) {
-    if (!this.active) return;
+    if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
     const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
     if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
     const hit = this.map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-casing'] })[0];
@@ -439,8 +493,9 @@ export class Planner {
 
   onMapMove(e) {
     const a = this.analysis;
-    if (!a || this.panel.hidden) return;
+    if (!a || this.panel.hidden || this.edit) return;
     const hit = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-casing'] }).length;
+    this.map.getCanvas().style.cursor = hit ? 'grab' : 'crosshair'; // the line can be dragged
     if (!hit) {
       if (this.mapHover) { this.mapHover = false; this.chart.setHover(-1); this.app.setData('routeHover', EMPTY); this.app.routeTip(null); }
       return;
@@ -465,39 +520,285 @@ export class Planner {
     if (!fromMap) this.mapHover = false;
   }
 
+  // Points: the visible dot sits in a bigger, invisible touch target (44 px on
+  // touch screens). Dragging one re-routes its two legs live.
   renderMarkers() {
     for (const m of this.markers) m.remove();
     this.markers = this.points.map((p, i) => {
       const last = i === this.points.length - 1 && i > 0;
       const loopEnd = last && dist(p, this.points[0]) < 3;
-      const el = h('div', {
+      const el = h('div', { class: 'wp-hit', title: 'Drag to move · click for options' }, h('div', {
         class: `wp ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loopEnd ? ' wp-loop' : ''}`,
-        title: 'Drag to move · click for options',
-      }, i === 0 ? '' : last ? '' : String(i));
+      }, i === 0 ? '' : last ? '' : String(i)));
       el.hidden = !this.active;
       const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(p).addTo(this.map);
-      m.on('dragstart', () => this.autoPeek());
-      m.on('dragend', () => {
-        const ll = m.getLngLat();
-        this.movePoint(i, [+ll.lng.toFixed(6), +ll.lat.toFixed(6)]);
-      });
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); this.openPointMenu(i, m); });
+      m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
+      m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
+      m.on('dragend', () => this.endEdit());
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointMenu(i, m); });
       return m;
     });
   }
 
+  // A handle in the middle of each leg: drag it to pull the route somewhere
+  // else, or click it for a via point there. Hidden where the leg is short on
+  // screen, so the handles never crowd the points.
+  renderGhosts() {
+    for (const g of this.ghosts) g.remove();
+    this.ghosts = [];
+    if (!this.active) return;
+    this.legs.forEach((leg, li) => {
+      if (!leg.result || leg.status !== 'ok') return;
+      const c = leg.result.coords;
+      let len = 0;
+      for (let j = 1; j < c.length; j++) len += dist(c[j - 1], c[j]);
+      if (len < 30) return;
+      let at = 0, mid = c[0];
+      for (let j = 1; j < c.length; j++) {
+        const d = dist(c[j - 1], c[j]);
+        if (at + d >= len / 2) { const t = d ? (len / 2 - at) / d : 0; mid = [c[j - 1][0] + (c[j][0] - c[j - 1][0]) * t, c[j - 1][1] + (c[j][1] - c[j - 1][1]) * t]; break; }
+        at += d;
+      }
+      mid = [+mid[0].toFixed(6), +mid[1].toFixed(6)];
+      const mode = leg.mode === 'fixed' ? 'auto' : leg.mode;
+      const el = h('div', { class: `wp-hit ghost ghost-${mode}`, title: 'Drag to reshape the route · click to add a point here' }, h('div', { class: 'wp-ghost' }));
+      const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(mid).addTo(this.map);
+      m.len = len;
+      m.on('dragstart', () => {
+        const snap = this.snapshot();
+        el.classList.add('dragging');
+        this.beginEdit(this.splitLeg(li, mid), snap, m);
+      });
+      m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
+      m.on('dragend', () => this.endEdit());
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.insertPoint(li, mid); });
+      this.ghosts.push(m);
+    });
+    this.fitGhosts();
+  }
+
+  fitGhosts() {
+    if (!this.ghosts.length) return;
+    const z = this.map.getZoom();
+    for (const g of this.ghosts) {
+      const lat = g.getLngLat().lat;
+      const px = g.len / ((40075016.686 * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** z));
+      g.getElement().hidden = !this.active || !!this.edit || px < 120;
+    }
+  }
+
+  // ---------------------------------------------------------------- live editing
+  // While a point or the line is dragged, its two legs are re-routed live, but
+  // only their geometry is drawn: the analysis waits for the release. Each leg
+  // asks BRouter when the pointer rests for a moment, or every 0.7 s at most
+  // while it keeps moving; one request per leg is in flight, and the cache
+  // answers repeats. Releasing is one undo step, and a request still in flight
+  // for the final spot is shared with it, not repeated.
+  beginEdit(i, snap, keep = null) {
+    if (this.edit) return;
+    this.edit = { i, snap, t0: Date.now(), timers: {}, reqs: {}, last: {} };
+    if (this.menu) this.menu.remove();
+    this.app.setData('routeColor', EMPTY);
+    this.app.setData('routeWind', EMPTY);
+    this.app.setData('routeHover', EMPTY);
+    this.app.routeTip(null);
+    this.chart.setHover(-1);
+    this.mapHover = false;
+    for (const g of this.ghosts) if (g !== keep) g.getElement().hidden = true;
+    document.body.classList.add('route-editing');
+    this.autoPeek();
+  }
+
+  editTo(ll) {
+    const ed = this.edit;
+    if (!ed) return;
+    this.points[ed.i] = ll;
+    for (const li of [ed.i - 1, ed.i]) if (this.legs[li]) this.previewLeg(li);
+    this.drawRoute();
+  }
+
+  previewLeg(li) {
+    const ed = this.edit, leg = this.legs[li];
+    const { key, from, to, nogos, profile } = this.legKey(li);
+    if (leg.mode === 'fixed') { // an imported track keeps its shape; only the end moves
+      if (!leg.result) return;
+      const c = leg.result.coords.slice();
+      if (li === ed.i - 1) c[c.length - 1] = to; else c[0] = from;
+      leg.result = { ...leg.result, coords: c };
+      return;
+    }
+    if (leg.key === key && leg.result) return;
+    leg.key = key;
+    if (leg.mode === 'line') { leg.result = { coords: [from, to], tags: [{}], portage: [] }; leg.status = 'ok'; return; }
+    leg.result = null; // drawn as a dashed straight line until the route arrives
+    leg.status = 'loading';
+    clearTimeout(ed.timers[li]);
+    if (leg.mode === 'water') return; // Polku's own water router runs on release: it's too heavy for every move
+    const since = Date.now() - (ed.last[li] || ed.t0);
+    ed.timers[li] = setTimeout(() => this.fetchPreview(ed, li), Math.max(0, Math.min(250, 700 - since)));
+  }
+
+  // One request per leg at a time, each allowed to finish (so the route shows
+  // while you drag); the newest position goes next, at most every 0.7 s.
+  fetchPreview(ed, li) {
+    const leg = this.legs[li];
+    if (this.edit !== ed || !leg || leg.result) return;
+    const busy = ed.reqs[li];
+    if (busy && !busy.done) { busy.again = true; return; }
+    const { key, from, to, nogos, profile } = this.legKey(li);
+    const q = ed.reqs[li] = { ctrl: new AbortController(), key, t: Date.now() };
+    ed.last[li] = q.t;
+    routeLeg({ from, to, mode: leg.mode, profile, opts: { portage: true, nogos } }, q.ctrl.signal)
+      .then((r) => {
+        if (leg.result) return;
+        if (leg.key === key) { leg.result = r; leg.status = 'ok'; leg.preview = null; }
+        else leg.preview = r.coords; // for a spot the pointer has since left: still better than a straight line
+        this.drawRoute();
+      })
+      .catch(() => {}) // cancelled, or failed: the release routes it again and says so
+      .finally(() => {
+        q.done = true;
+        if (q.again) ed.timers[li] = setTimeout(() => this.fetchPreview(ed, li), Math.max(0, 700 - (Date.now() - q.t)));
+      });
+  }
+
+  endEdit() {
+    const ed = this.edit;
+    if (!ed) return;
+    this.edit = null;
+    for (const t of Object.values(ed.timers)) clearTimeout(t);
+    for (const [li, q] of Object.entries(ed.reqs)) if (!q.done && (!this.legs[li] || this.legs[li].key !== q.key)) q.ctrl.abort(); // for a spot already left
+    document.body.classList.remove('route-editing');
+    this.noClickUntil = Date.now() + 450;
+    this.past.push(ed.snap);
+    if (this.past.length > 100) this.past.shift();
+    this.future = [];
+    this.update();
+  }
+
+  // Press on the route and drag: a new via point under the pointer. With a
+  // mouse the drag starts as soon as it moves; on a touch screen hold the line
+  // for a moment first, so a swipe across it still pans the map.
+  onLinePress(e) {
+    if (!this.active || this.edit || this.panel.hidden) return;
+    const f = (e.features || []).find((x) => x.properties.kind === 'leg');
+    if (!f || f.properties.loading) return;
+    const touch = e.type === 'touchstart';
+    if (touch ? e.points.length !== 1 : e.originalEvent.button !== 0) return;
+    const map = this.map, li = f.properties.leg, p0 = e.point;
+    const ll0 = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
+    let dot = null, hold = 0;
+    const start = () => {
+      if (this.edit) return;
+      if (touch) { map.dragPan.disable(); if (navigator.vibrate) navigator.vibrate(10); }
+      const snap = this.snapshot();
+      const k = this.splitLeg(li, ll0);
+      dot = new maplibregl.Marker({ element: h('div', { class: 'wp-hit' }, h('div', { class: 'wp wp-via' })) }).setLngLat(this.points[k]).addTo(map);
+      this.beginEdit(k, snap);
+      this.drawRoute();
+    };
+    const move = (ev) => {
+      if (!dot) {
+        const d = Math.hypot(ev.point.x - p0.x, ev.point.y - p0.y);
+        if (touch) { if (d > 10 || (ev.points && ev.points.length > 1)) stop(); return; } // a swipe or a pinch: the map's
+        if (d < 4) return;
+        start();
+      }
+      const ll = [+ev.lngLat.lng.toFixed(6), +ev.lngLat.lat.toFixed(6)];
+      dot.setLngLat(ll);
+      this.editTo(ll);
+    };
+    const stop = () => {
+      clearTimeout(hold);
+      map.off(touch ? 'touchmove' : 'mousemove', move);
+      if (touch) { map.off('touchend', stop); map.off('touchcancel', stop); } else window.removeEventListener('mouseup', stop);
+      if (!dot) return;
+      if (touch) map.dragPan.enable();
+      dot.remove();
+      this.endEdit();
+    };
+    if (touch) hold = setTimeout(start, 300);
+    else e.preventDefault(); // no panning: this press may become a drag
+    map.on(touch ? 'touchmove' : 'mousemove', move);
+    if (touch) { map.on('touchend', stop); map.on('touchcancel', stop); } else window.addEventListener('mouseup', stop);
+  }
+
+  // Long-press (touch) or right-click elsewhere on the map: what you can do at that spot.
+  bindSpotMenu() {
+    const map = this.map;
+    let hold = 0, p0 = null, lastTouch = 0;
+    const cancel = () => { clearTimeout(hold); hold = 0; };
+    const onUi = (e) => e.originalEvent && e.originalEvent.target.closest && e.originalEvent.target.closest('.maplibregl-marker, .maplibregl-popup');
+    map.on('touchstart', (e) => {
+      lastTouch = Date.now();
+      cancel();
+      if (e.points.length !== 1 || this.edit || onUi(e)) return;
+      if (this.map.getLayer('route-casing') && this.map.queryRenderedFeatures(e.point, { layers: ['route-casing'] }).length && this.active) return; // the line's own hold
+      p0 = e.point;
+      const ll = e.lngLat;
+      hold = setTimeout(() => {
+        hold = 0;
+        if (navigator.vibrate) navigator.vibrate(10);
+        this.noClickUntil = Date.now() + 700;
+        this.openSpotMenu(ll);
+      }, 550);
+    });
+    map.on('touchmove', (e) => { if (hold && (e.points.length > 1 || Math.hypot(e.point.x - p0.x, e.point.y - p0.y) > 10)) cancel(); });
+    map.on('touchend', cancel);
+    map.on('touchcancel', cancel);
+    // right-drag (and Ctrl+drag) rotates the map: no menu after a drag (Windows sends it on release)
+    let down = null;
+    map.on('mousedown', (e) => { down = e.originalEvent.button === 2 || e.originalEvent.ctrlKey ? e.point : null; });
+    map.on('contextmenu', (e) => {
+      if (Date.now() - lastTouch < 1000 || onUi(e) || (down && Math.hypot(e.point.x - down.x, e.point.y - down.y) > 4)) return;
+      this.openSpotMenu(e.lngLat);
+    });
+    map.on('rotatestart', () => { if (this.menu && this.menu.spot) this.menu.remove(); });
+  }
+
+  openSpotMenu(lngLat) {
+    if (this.menu) this.menu.remove();
+    const ll = [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)];
+    const act = (ic, label, title, fn) => h('button', { type: 'button', class: 'btn', title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
+    const body = h('div', { class: 'pt-menu' },
+      h('div', { class: 'pt-title' }, 'This spot'),
+      this.active
+        ? act('plus', 'Add a point here', 'The route goes on to here', () => { this.addPoint(ll); this.autoPeek(); })
+        : act('flag', 'Route from here', 'Start a new route here', () => { this.setActive(true); this.clear(); this.addPoint(ll); toast('Now tap or click where you want to go'); }),
+      !this.active && this.points.length ? act('plus', 'Add to my route', 'Your route goes on to here', () => { this.setActive(true); this.addPoint(ll); }) : null,
+      act('close', 'Avoid this spot', 'Routes go around it (40 m)', () => { if (!this.active) this.setActive(true); this.addNogo(ll, 40, 'Avoided place'); }));
+    this.menu = new maplibregl.Popup({ offset: 6, closeButton: false, className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
+    this.menu.spot = true;
+    this.keepMenuInView();
+  }
+
   openPointMenu(i, marker) {
     if (this.menu) this.menu.remove();
+    const n = this.points.length;
     const legOut = this.legs[i];
+    const last = i === n - 1 && i > 0, via = i > 0 && !last, loop = this.isLoop();
+    const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
     const body = h('div', { class: 'pt-menu' },
-      h('div', { class: 'pt-title' }, i === 0 ? 'Start' : i === this.points.length - 1 ? 'Finish' : `Via point ${i}`),
+      h('div', { class: 'pt-head' },
+        h('div', { class: 'pt-title' }, i === 0 ? 'Start' : last ? 'Finish' : `Via point ${i}`),
+        i > 0 ? h('div', { class: 'pt-sub' }, `${fmtDist(this.lengthTo(i))} from the start`) : null),
       legOut ? h('div', { class: 'pt-label' }, 'Next leg') : null,
       legOut ? h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
-        h('button', { type: 'button', 'aria-pressed': String(legOut.mode === m), onclick: () => { this.menu.remove(); this.setLegMode(i, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_LABEL[m].split(' ')[0]}</span>` }))) : null,
-      h('button', { type: 'button', class: 'btn danger-text', onclick: () => { this.menu.remove(); this.removePoint(i); }, html: `${icon('trash', 16)} Remove point` }),
-    );
+        h('button', { type: 'button', 'aria-pressed': String(legOut.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(i, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))) : null,
+      via ? h('div', { class: 'pt-row' },
+        act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', () => this.startAt(i)),
+        loop ? null : act('check', 'Finish here', 'Make this the finish: the rest is removed', () => this.finishAt(i))) : null,
+      last && !loop && n > 1 ? act('loop', 'Back to start', 'Add a leg back to the start', () => this.loop()) : null,
+      act('trash', 'Remove point', '', () => this.removePoint(i), 'btn danger-text'));
     this.menu = new maplibregl.Popup({ offset: 16, closeButton: false, className: 'polku-popup' })
       .setLngLat(marker.getLngLat()).setDOMContent(body).addTo(this.map);
+    this.keepMenuInView();
+  }
+
+  // clear of the top bar, the controls and the planner
+  keepMenuInView() {
+    const pad = this.viewPadding(0);
+    keepInView(this.map, this.menu, { left: this.layout() === 'side' && this.active ? pad.left + 8 : 8, bottom: pad.bottom + 8 });
   }
 
   // ---------------------------------------------------------------- persistence & sharing
@@ -628,25 +929,30 @@ export class Planner {
         this.els.more))));
     this.els.stats = h('div', { class: 'stats' });
     this.els.modesBar = h('div', { class: 'chip-groups' });
+    this.els.modeSel = h('select', { 'aria-label': 'Colour the profile by', onchange: (e) => this.showMode(e.target.value) });
+    this.els.modeSelect = h('label', { class: 'mode-select', title: 'What the colours of the profile show' },
+      h('span', { class: 'mode-select-label' }, 'Colour by'),
+      h('span', { class: 'mode-select-box' }, this.els.modeSel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
     this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => {
       this.colorOnMap = e.target.checked;
       store.set('colorOnMap', this.colorOnMap);
       this.drawColored();
     } });
     this.els.mapToggleRow = h('label', { class: 'tg tg-inline', title: 'Colour the route line on the map the same way as the profile' },
-      h('span', { class: 'tg-text' }, 'Colour on map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+      h('span', { class: 'tg-text' }, 'On map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     this.els.breakdown = h('div', { class: 'breakdown' });
     this.els.climbs = h('div', { class: 'list climbs' });
     this.els.warnings = h('div', { class: 'list warnings' });
     this.els.wind = h('div', { class: 'list wind' });
     this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
-      ? 'Tap the map to add points · drag a point to move it · tap the route line to add a via point'
-      : 'Click the map to add points · drag a point to move it · click the route line to add a via point');
+      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point for options · hold the map for more'
+      : 'Click the map to add points · drag a point or the line to reshape · click a point for options · right-click for more');
     this.els.dock = h('div', { class: 'dock' }); // the timeline docks here while planning (main.js)
     this.els.body = h('div', { class: 'sheet-body' }, this.els.stats, h('div', { class: 'sheet-cols' },
+      // the chart first; then one line to choose what colours it (a menu, or chips where they fit in a row)
       this.section('profile', 'Profile',
-        h('div', { class: 'profile-top' }, this.els.modesBar),
         h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
+        h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow),
         this.els.breakdown),
       this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
       this.section('speed', 'Time & speed', this.els.speedBox = h('div', { class: 'speed-box' }), this.els.speedRoute = h('div', { class: 'speed-route' })),
@@ -925,9 +1231,11 @@ export class Planner {
       : (k) => (k === 'down' || k === 'uphill' ? OFFROAD_BIKE.has(act) : true);
     if (!applies(this.colorMode)) this.colorMode = act === 'paddle' ? 'wind' : 'grade';
     this.els.modesBar.innerHTML = '';
+    this.els.modeSel.innerHTML = '';
     for (const [title, keys] of COLOR_GROUPS) {
       const shown = keys.filter(applies);
       if (!shown.length) continue;
+      this.els.modeSel.append(h('optgroup', { label: title }, ...shown.map((k) => h('option', { value: k }, COLOR_MODES[k]))));
       this.els.modesBar.append(h('div', { class: 'chip-group', role: 'group', 'aria-label': `Colour the profile by ${title.toLowerCase()}` },
         h('span', { class: 'chip-group-label', 'aria-hidden': 'true' }, title),
         ...shown.map((k) => h('button', {
@@ -935,9 +1243,8 @@ export class Planner {
           onclick: () => this.showMode(k),
         }, COLOR_MODES[k]))));
     }
-    // a separate switch, in the same row so it wraps with the chips: the line on the map takes the same colours
+    this.els.modeSel.value = this.colorMode;
     this.els.mapToggle.checked = this.colorOnMap;
-    this.els.modesBar.append(this.els.mapToggleRow);
   }
 
   // Route line on the map coloured like the profile, plus wind arrows in wind mode.

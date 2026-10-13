@@ -9,13 +9,13 @@ Also approved:
 | # | Phase | Branch | PR | Status |
 |---|---|---|---|---|
 | 0 | UI polish (Plan button, Weather button, grouped chips) | `ui-polish` | [#12](https://github.com/TommiContursi/Polku/pull/12) | merged |
-| 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | in review |
+| 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | merged |
 | 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | merged (#14 went into the stacked base by accident; #15 brought it to `main`) |
 | 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | merged |
 | 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | [#17](https://github.com/TommiContursi/Polku/pull/17) | merged |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | merged |
-| 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | [#19](https://github.com/TommiContursi/Polku/pull/19) | in review |
-| 7 | Editing on the map: drag the line, live preview, long-press, point menu | `edit-on-map` | — | |
+| 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | [#19](https://github.com/TommiContursi/Polku/pull/19), tweaks [#20](https://github.com/TommiContursi/Polku/pull/20) | merged |
+| 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | PR7 | in review |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
 | 9 | Route preferences: avoid ↔ prefer sliders, mapped to BRouter | `route-prefs` | — | |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
@@ -416,8 +416,28 @@ Also approved:
   - A drag costs at most about 3 requests per second of motion, and usually 1–2 in all.
   - Counted in the usage readout.
 
+**Built (PR PR7)**
+- **Drag the line** (`onLinePress`):
+  - with a mouse the drag starts after 4 px of movement (a plain click still adds a via point);
+  - on touch, hold the line for 300 ms first (a short buzz where supported), so a swipe across it still pans the map; map panning is off until the release;
+  - the new point appears under the pointer; the release is one undo step.
+- **Live re-routing while dragging** (`beginEdit` / `editTo` / `previewLeg` / `fetchPreview` / `endEdit`):
+  - only the two legs beside the point change, and only their geometry is drawn; the analysis, the coloured line and the hover readout wait for the release;
+  - per leg: a request when the pointer rests for 250 ms, or every 0.7 s at most while it moves, one at a time and each allowed to finish; an answer for a spot the pointer has left is still drawn (grey dashed, joined to the pointer), better than a straight line;
+  - measured: a quick drag costs 2 requests (one per leg), a 3.6 s continuous drag 12 in all;
+  - `router.js` shares requests in flight (`shared()`): the release reuses the preview's request for the final spot instead of repeating it; a request is cancelled only when every caller has given up;
+  - straight legs update instantly, imported tracks only move their end, water legs are routed on release (the water router is too heavy for every move).
+- **Adding a point on the line costs nothing:** `splitLeg()` splits the current geometry at the nearest spot, and both halves keep their routing key. Undo, "Start here" and turning a loop round are free too.
+- **Leg handles:** a small ring in the middle of each leg (drag it, or click it for a via point); hidden where the leg is under 120 px on screen and while dragging.
+- **Touch targets:** points sit in a 44 px invisible target on touch screens (30 px with a mouse); leg handles 36 px.
+- **Point menu:** distance from the start; next leg Follow / Straight / Water; for via points **Start here** / **Finish here** (a loop turns round instead, same route); for the finish **Back to start**; Remove. It pans into view, clear of the top bar and the planner.
+- **Spot menu:** long-press the map (550 ms) or right-click: **Add a point here** / **Avoid this spot** while planning, **Route from here** / **Add to my route** / **Avoid this spot** otherwise. "Avoid here" lives here rather than in the point menu: a via point is where you *do* want to go. No menu after a right-drag rotate.
+- **Profile colours, compact** (the user's note on #20): the three rows of chips became one line under the chart, "Colour by [Gradient ▾]" (a native menu grouped Terrain / Ground / Weather) and an "On map" switch; a panel at least 1080 px wide shows the chips in one row instead.
+- **Tests:** `tools/smoke.py` drags the line in every layout (mouse on desktop, hold-and-drag on touch) and checks one new point under the pointer, one undo step, no pan and panning back on; `tools/shoot.py` has `desk/phone-drag`, `-point-menu`, `-spot-menu` and `phone-profile`.
+
 **Cut**
 - Multi-select and snapping to POIs.
+- Escape to cancel a drag (undo does it).
 
 **Risks**
 - Marker drag vs the hover tooltip vs the map's own `dragPan`.

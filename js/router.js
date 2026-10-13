@@ -6,6 +6,28 @@ import { routeWater } from './water.js';
 import { request } from './net.js';
 
 const cache = new Map();
+// Requests in flight, shared: a drag's live preview and the commit that follows
+// it ask for the same leg, and that must cost one BRouter call, not two. The
+// fetch is cancelled only when everyone who asked for it has given up.
+const inflight = new Map();
+
+function shared(key, run, signal) {
+  let e = inflight.get(key);
+  if (!e) {
+    const ctrl = new AbortController();
+    e = { ctrl, users: 0 };
+    e.promise = run(ctrl.signal).finally(() => { if (inflight.get(key) === e) inflight.delete(key); });
+    inflight.set(key, e);
+  }
+  e.users++;
+  if (!signal) return e.promise;
+  return new Promise((ok, fail) => {
+    const quit = () => { if (--e.users === 0) { e.ctrl.abort(); inflight.delete(key); } fail(new DOMException('Aborted', 'AbortError')); };
+    if (signal.aborted) { quit(); return; }
+    signal.addEventListener('abort', quit, { once: true });
+    e.promise.then(ok, fail).finally(() => signal.removeEventListener('abort', quit));
+  });
+}
 
 export function parseTags(str) {
   const tags = {};
@@ -59,7 +81,7 @@ export async function routeLeg({ from, to, mode, profile, opts = {} }, signal) {
   } else if (mode === 'water') {
     result = await routeWater(from, to, { allowPortage: opts.portage !== false });
   } else {
-    const r = await brouter(from, to, profile, signal, opts.nogos);
+    const r = await shared(key, (sig) => brouter(from, to, profile, sig, opts.nogos), signal);
     result = { ...r, portage: [] };
   }
   cache.set(key, result);
