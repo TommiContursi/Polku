@@ -15,7 +15,7 @@ Also approved:
 | 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | [#17](https://github.com/TommiContursi/Polku/pull/17) | merged |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | [#18](https://github.com/TommiContursi/Polku/pull/18) | merged |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | [#19](https://github.com/TommiContursi/Polku/pull/19), tweaks [#20](https://github.com/TommiContursi/Polku/pull/20) | merged |
-| 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | PR7 | in review |
+| 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | [#21](https://github.com/TommiContursi/Polku/pull/21) | in review |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything | `waypoints` | — | |
 | 9 | Route preferences: avoid ↔ prefer sliders, mapped to BRouter | `route-prefs` | — | |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
@@ -416,7 +416,7 @@ Also approved:
   - A drag costs at most about 3 requests per second of motion, and usually 1–2 in all.
   - Counted in the usage readout.
 
-**Built (PR PR7)**
+**Built (PR #21)**
 - **Drag the line** (`onLinePress`):
   - with a mouse the drag starts after 4 px of movement (a plain click still adds a via point);
   - on touch, hold the line for 300 ms first (a short buzz where supported), so a swipe across it still pans the map; map panning is off until the release;
