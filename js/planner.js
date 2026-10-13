@@ -3,7 +3,8 @@
 
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor } from './config.js';
 import { routeLeg } from './router.js';
-import { analyse, estimateTime } from './analysis.js';
+import { analyse, estimateTime, surfaceClass } from './analysis.js';
+import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
@@ -342,11 +343,32 @@ export class Planner {
       this.renderAnalysis();
       return;
     }
-    const a = await analyse(line, { activity: this.app.activity(), craft: this.craft });
+    const a = await analyse(line, this.timeOpt());
     if (gen !== this.gen) return;
     this.analysis = a;
     this.renderAnalysis();
     this.loadWind(a);
+  }
+
+  // what the time estimate needs: the sport, the craft and your speeds
+  timeOpt() {
+    const activity = this.app.activity();
+    return { activity, craft: this.craft, speeds: speedsFor(activity) };
+  }
+
+  // Speeds changed: re-time the route (no routing, no DEM), then the route
+  // weather, since arrival times move.
+  retime() {
+    const a = this.analysis;
+    if (!a) return;
+    const t = estimateTime(a, this.timeOpt());
+    a.time = t.total;
+    a.tAt = t.tAt;
+    a.timeWind = null;
+    a.tAtWind = null;
+    this.renderAnalysis();
+    clearTimeout(this.retimeTimer);
+    this.retimeTimer = setTimeout(() => { if (this.analysis === a) this.loadWind(a); }, 400);
   }
 
   startSec() {
@@ -372,7 +394,7 @@ export class Planner {
   // Wind at the time each part of the route is reached: time the route without
   // wind, fetch the forecast, re-time it with the wind, and sample again.
   async loadWind(a) {
-    const opt = { activity: this.app.activity(), craft: this.craft };
+    const opt = this.timeOpt();
     const startSec = this.startSec();
     a.windError = false;
     try {
@@ -605,8 +627,6 @@ export class Planner {
         tool('trash', 'Clear route', () => this.clear(), 'tool-wide danger'),
         this.els.more))));
     this.els.stats = h('div', { class: 'stats' });
-    this.els.craft = h('div', { class: 'seg small craft', role: 'group', 'aria-label': 'Craft' },
-      ...Object.entries(CRAFT).map(([k, v]) => h('button', { type: 'button', 'data-craft': k, 'aria-pressed': String(this.craft === k), onclick: () => this.setCraft(k) }, v.label)));
     this.els.modesBar = h('div', { class: 'chip-groups' });
     this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => {
       this.colorOnMap = e.target.checked;
@@ -625,10 +645,11 @@ export class Planner {
     this.els.dock = h('div', { class: 'dock' }); // the timeline docks here while planning (main.js)
     this.els.body = h('div', { class: 'sheet-body' }, this.els.stats, h('div', { class: 'sheet-cols' },
       this.section('profile', 'Profile',
-        h('div', { class: 'profile-top' }, this.els.modesBar, this.els.craft),
+        h('div', { class: 'profile-top' }, this.els.modesBar),
         h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
         this.els.breakdown),
       this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
+      this.section('speed', 'Time & speed', this.els.speedBox = h('div', { class: 'speed-box' }), this.els.speedRoute = h('div', { class: 'speed-route' })),
       this.section('climbs', 'Climbs', this.els.climbs),
       this.section('warnings', 'Heads-up', this.els.warnings)),
       this.els.hint);
@@ -862,8 +883,39 @@ export class Planner {
   setCraft(k) {
     this.craft = k;
     store.set('craft', k);
-    for (const b of this.els.craft.children) b.setAttribute('aria-pressed', String(b.dataset.craft === k));
-    this.runAnalysis(this.gen);
+    this.retime();
+  }
+
+  // "Time & speed": your speeds for this sport (editable) and where the time goes on this route.
+  renderSpeed() {
+    const a = this.analysis;
+    const act = this.app.activity();
+    const sum = speedSummary(act, this.craft);
+    this.setSection('speed', { summary: `${sum.name} · ${sum.txt}`, empty: !a });
+    if (!a) return;
+    renderSpeedEditor(this.els.speedBox, act, { craft: this.craft, onCraft: (k) => this.setCraft(k), onChange: () => this.retime() });
+    const box = this.els.speedRoute;
+    box.innerHTML = '';
+    const tAt = a.tAtWind || a.tAt;
+    const cats = {};
+    let up = 0;
+    for (let i = 1; i < a.pts.length; i++) {
+      const c = surfaceClass(a, i);
+      const dt = tAt[i] - tAt[i - 1], dd = a.along[i] - a.along[i - 1];
+      (cats[c] ||= { d: 0, t: 0 });
+      cats[c].d += dd; cats[c].t += dt;
+      if (a.grade[i] > 3 && c !== 'water') up += dt;
+    }
+    const runner = act === 'run' || act === 'trailrun';
+    const LABEL = { paved: 'Paved', unpaved: 'Gravel & unpaved', trail: act === 'hike' || runner ? 'Paths & trails' : 'Trails', water: 'On the water', carry: 'Carries' };
+    const speedTxt = (d, t) => (t > 0 ? (runner ? `${pace((d / 1000) / (t / 3600))} /km` : `${((d / 1000) / (t / 3600)).toFixed(1)} km/h`) : '');
+    const rows = ['paved', 'unpaved', 'trail', 'water', 'carry'].filter((k) => cats[k] && cats[k].d > 20);
+    box.append(h('h4', {}, 'On this route'),
+      h('div', { class: 'speed-table' },
+        ...rows.map((k) => h('div', { class: 'speed-row' }, h('span', {}, LABEL[k]), h('b', {}, fmtDist(cats[k].d)), h('b', {}, fmtDuration(cats[k].t)), h('small', {}, speedTxt(cats[k].d, cats[k].t)))),
+        up > 30 && act !== 'paddle' ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which uphill (over 3 %)'), h('b', {}, ''), h('b', {}, fmtDuration(up)), h('small', {}, '')) : null,
+        a.timeWind ? h('div', { class: 'speed-row sub' }, h('span', {}, 'the wind'), h('b', {}, ''), h('b', {}, Math.abs(a.timeWind - a.time) < 60 ? 'about ±0' : `${a.timeWind > a.time ? '+' : '−'}${fmtDuration(Math.abs(a.timeWind - a.time))}`), h('small', {}, 'included above')) : null,
+        h('div', { class: 'speed-row total' }, h('span', {}, 'Moving time'), h('b', {}, fmtDist(a.total)), h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, speedTxt(a.total, a.timeWind || a.time)))));
   }
 
   renderModeChips() {
@@ -966,7 +1018,7 @@ export class Planner {
     sum.innerHTML = '';
     const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub' }, sub) : null));
     const key = (label, value, title = '') => sum.append(h('div', { class: 'sum-item', title }, h('b', {}, value), h('small', {}, label)));
-    for (const id of ['profile', 'climbs', 'warnings']) this.setSection(id, { empty: !a });
+    for (const id of ['profile', 'climbs', 'warnings', 'speed']) this.setSection(id, { empty: !a });
     // the clock stays reachable before there's a route: set the time, then draw
     if (!a) this.setSection('depart', { summary: this.startOffsetH ? `Depart ${new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Depart now' });
     if (!a) {
@@ -1018,6 +1070,10 @@ export class Planner {
     } else {
       stat('High point', `${Math.round(a.maxE)} m`);
     }
+    // what the time assumes, one tap from changing it
+    const sp = speedSummary(act, this.craft);
+    st.append(h('button', { type: 'button', class: 'stat stat-btn', title: 'Your speeds for this sport — tap to see or change them', onclick: () => this.reveal('speed') },
+      h('span', { class: 'stat-label' }, 'Speed'), h('span', { class: 'stat-value' }, sp.name), h('span', { class: 'stat-sub' }, sp.txt)));
     this.chart.placeholder = a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : '';
     this.chart.setData(a, this.colorMode, paddle ? 'conditions' : 'elevation');
     this.setSection('profile', { title: paddle ? 'Conditions' : 'Profile', summary: this.profileSummary() });
@@ -1025,6 +1081,7 @@ export class Planner {
     this.renderClimbs();
     this.renderWarnings();
     this.renderWind();
+    this.renderSpeed();
     this.drawColored();
     if (this.app.onAnalysis) this.app.onAnalysis(a);
   }

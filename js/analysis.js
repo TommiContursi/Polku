@@ -242,6 +242,18 @@ const RUN = {
 const runCost = (i) => 155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6;
 const gradeFactor = (g) => Math.max(0.3, Math.min(1.12, 3.6 / runCost(Math.max(-0.4, Math.min(0.4, g)))));
 const tobler = (g) => 6 * Math.exp(-3.5 * Math.abs(g + 0.05));
+const TOBLER_FLAT = tobler(0); // ≈ 5.04 km/h: "walking speed on the flat" scales the curve
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o && Number.isFinite(o[k])).map((k) => [k, o[k]]));
+
+/** What a stretch is for the time breakdown: paved / unpaved / trail / water / carry. */
+export function surfaceClass(a, i) {
+  const at = a.attr[i] || {};
+  const tags = at.tags || {};
+  if (tags.portage) return 'carry';
+  if (at.mode === 'water' || tags.route === 'water') return 'water';
+  if (['path', 'bridleway', 'footway', 'steps'].includes(tags.highway)) return 'trail';
+  return PAVED.has(a.surf[i]) ? 'paved' : a.surf[i] === 'unknown' ? 'paved' : 'unpaved';
+}
 
 /**
  * Moving time per sample. With `head` (headwind component in m/s per sample,
@@ -265,9 +277,12 @@ export function estimateTime(a, opt, head = null) {
     const at = sAttr[i];
     const tags = at.tags || {};
     let kmh;
-    const bike = BIKE[act], run = RUN[act];
+    // the user's speeds (speeds.js) over the model's own numbers
+    const bike = BIKE[act] && { ...BIKE[act], ...pick(opt.speeds, ['paved', 'unpaved', 'trail', 'vam']) };
+    const run = RUN[act] && { ...RUN[act], ...pick(opt.speeds, ['paved', 'trail']) };
     if (at.mode === 'water' || tags.route === 'water') {
-      kmh = tags.portage ? 2.5 : windAdj((CRAFT[opt.craft] || CRAFT.kayak).kmh, i, 0.35, 0.25, 1.35);
+      const craftKmh = (act === 'paddle' && opt.speeds && opt.speeds[opt.craft]) || (CRAFT[opt.craft] || CRAFT.kayak).kmh;
+      kmh = tags.portage ? 2.5 : windAdj(craftKmh, i, 0.35, 0.25, 1.35);
     } else if (run) {
       const trail = ['path', 'bridleway', 'track'].includes(tags.highway) || !PAVED.has(surf[i]);
       kmh = (trail ? run.trail : run.paved) * gradeFactor(g);
@@ -287,7 +302,7 @@ export function estimateTime(a, opt, head = null) {
       kmh = g < -0.03 ? Math.min(flat * 1.25, trail ? bike.down[0] : bike.down[1]) : flat;
     } else {
       // walking (hike, and carries / land legs when paddling)
-      kmh = tobler(g);
+      kmh = tobler(g) * (act === 'hike' && opt.speeds && opt.speeds.walk ? opt.speeds.walk / TOBLER_FLAT : 1);
       if (['path', 'bridleway'].includes(tags.highway)) kmh *= 0.88;
       kmh = windAdj(kmh, i, 0.06, 0.8, 1.08);
     }
