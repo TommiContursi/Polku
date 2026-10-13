@@ -19,6 +19,7 @@ Also approved:
 | 7½ | Routing that holds up: pacing, batching, routes kept on refresh, Valhalla stand-in | `brouter-pacing` | [#22](https://github.com/TommiContursi/Polku/pull/22) | merged |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | merged |
 | 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | [#24](https://github.com/TommiContursi/Polku/pull/24) | in review |
+| 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
 | — | Winter sports (ski, snowshoe) | — | — | later; the sports model in phase 5 leaves room |
 | — | Strava & Garmin (see the end of this file) | — | — | later: research and plan first, no code yet |
@@ -614,6 +615,13 @@ The user expects the smallest first step to be option A plus a FIT course export
   - In the side panel and on phones they fold, and their state is remembered.
   - In a wide bottom panel they are grid columns (see `.sheet-cols` in `css/app.css`).
 - **Camera fits** use `planner.viewPadding()`.
+
+## Planner layout contract — sections and sizes (updated in #25)
+
+- **One reading order everywhere:** Profile → Waypoints → Heads-up → Climbs → Departure & weather → Route style → Time & speed. Waypoints is near the top because it's what you edit; the settings come last. Each section folds and remembers it (side panel and phones).
+- **Wide bottom panel** (container ≥ 900 px), always open, in rows: the profile across the top; then Waypoints · Heads-up and Climbs stacked in one column · Departure & weather; then Route style · Time & speed. Columns grow from a minimum width and wrap rather than squeeze; a section alone on a row lays its parts side by side (Departure: timeline | weather on the route; Time & speed: editor | on this route). Row breaks are `.sec-break` elements; the stack is `.sec-stack` (`display: contents` when narrow).
+- **The always-visible summary** is distance · time · ascent and descent together (↑42 ↓62 m); the stats row under it has the rest (hardest climb, speed, style; for paddling the wind and carry figures). On phones the stats are three even columns.
+- **Bottom sheet sizes:** peek (the summary) · **profile** (the summary plus the elevation chart and its colours; the stats fold away; height measured from the content, at most 45 % of the screen) · half · full. Drag snaps to the nearest; a tap on the handle toggles between peek and your last size; arrow keys step through them. `tools/smoke.py` checks the profile size shows the whole chart.
 
 ## How to work on this (for any session)
 

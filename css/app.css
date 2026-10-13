@@ -405,6 +405,9 @@ button { font: inherit; color: inherit; }
   transition: height .22s ease;
 }
 .sheet[data-state="peek"] { height: var(--peek-h, 116px); }
+/* in between: the summary and the elevation profile (the stats row folds away) */
+.sheet[data-state="profile"] { height: var(--profile-h, 300px); }
+.sheet[data-state="profile"] .stats { display: none; }
 .sheet[data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); }
 @media (min-width: 721px) { .sheet[data-layout="sheet"][data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); } }
 .sheet.dragging { transition: none; user-select: none; }
@@ -431,6 +434,7 @@ button { font: inherit; color: inherit; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }
 .sum-item b { font-size: 19px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sum-item small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sum-elev .sum-down { color: var(--muted); font-weight: 600; }
 .sum-empty { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
 .sum-time { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 6px; }
 .sum-time small { text-decoration: underline dotted; text-underline-offset: 2px; }
@@ -517,20 +521,34 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .sheet-body { container-type: inline-size; }
 /* a wide bottom panel lays the lists out side by side, like a dashboard: the
    profile across the top, then climbs | heads-up | departure & weather, always open */
+/* the row breaks only matter in a wide panel */
+.sec-break { display: none; }
+.sec-stack { display: contents; }
+/* A wide panel lays the sections out like a dashboard, always open: the
+   profile across the top, then waypoints · heads-up & climbs · departure &
+   weather, then the settings (route style · time & speed). Each column grows
+   from a sensible width and wraps to
+   the next line rather than being squeezed; an empty one (no climbs on a
+   lake) gives its room to the others. */
 @container (min-width: 900px) {
-  /* a flexible row, not a fixed grid: an empty list (no climbs on a lake) gives its room to the weather */
-  .sheet-cols { display: flex; flex-wrap: wrap; gap: 0 24px; align-items: flex-start; }
-  .sheet-cols > .sec { min-width: 0; }
-  .sheet-cols > .sec[data-sec="profile"] { flex: 1 1 100%; order: 0; }
-  .sheet-cols > .sec[data-sec="points"] { flex: 1 1 0; order: 1; min-width: 280px; }
-  .sheet-cols > .sec[data-sec="style"] { flex: 1.4 1 0; order: 1; min-width: 380px; }
-  .sheet-cols > .sec[data-sec="climbs"] { flex: 1 1 0; order: 1; }
-  .sheet-cols > .sec[data-sec="warnings"] { flex: 1 1 0; order: 2; }
-  .sheet-cols > .sec[data-sec="depart"] { flex: 1.8 1 0; order: 3; min-width: 420px; }
-  .sheet-cols > .sec[data-sec="speed"] { flex: 1 1 0; order: 4; min-width: 300px; }
+  .sheet-cols { display: flex; flex-wrap: wrap; gap: 6px 28px; align-items: flex-start; }
+  .sheet-cols > .sec { flex: 1 1 280px; min-width: 260px; }
+  .sheet-cols > .sec-break { display: block; flex: 0 0 100%; height: 0; }
+  .sheet-cols > .sec[data-sec="profile"] { flex-basis: 100%; }
+  /* climbs above heads-up, in one column; gone when both are empty */
+  .sheet-cols > .sec-stack { display: flex; flex-direction: column; flex: 1 1 280px; min-width: 260px; }
+  .sheet-cols > .sec-stack:not(:has(> .sec:not([hidden]))) { display: none; }
+  .sheet-cols > .sec[data-sec="depart"] { flex: 1.7 1 400px; min-width: 380px; }
+  .sheet-cols > .sec[data-sec="points"] { flex: 1 1 280px; min-width: 260px; }
+  .sheet-cols > .sec[data-sec="style"] { flex: 1.4 1 380px; min-width: 360px; }
+  .sheet-cols > .sec[data-sec="speed"] { flex: 1.2 1 320px; min-width: 300px; }
+  /* a section on a row of its own: its parts side by side, not one line stretched across */
+  .sheet-cols > .sec[data-sec="speed"] > .sec-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 28px; align-items: start; }
+  .sheet-cols > .sec[data-sec="depart"] > .sec-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 0 28px; align-items: start; }
   .sheet-cols .sec-head { pointer-events: none; }
   .sheet-cols .sec-chev, .sheet-cols .sec-sum { display: none; }
   .sheet-cols .sec[data-open="false"] .sec-body { display: block; }
+  .sheet-cols .sec[data-sec="speed"][data-open="false"] > .sec-body, .sheet-cols .sec[data-sec="depart"][data-open="false"] > .sec-body { display: grid; }
 }
 /* a wide panel has room for every mode in one row of chips */
 @container (min-width: 1080px) {
@@ -836,7 +854,10 @@ body.dropping .drop-hint { display: flex; }
   .seg button span { display: none; }
   .pt-menu .seg button span { display: inline; } /* the menu has room to say what each mode is */
 
-  .stats { gap: 6px 16px; }
+  /* three even columns, so a long speed line doesn't push Style onto a row of its own */
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; }
+  .stat { min-width: 0; }
+  .stat-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .stat-value { font-size: 17px; }
   #profile-canvas { height: 120px; }
 }
