@@ -37,6 +37,8 @@ STANDIN = ("(() => { const p = polku.planner; p.legs[0].result.provider = 'valha
            " p.legs[1].wait = { reason: 'limit', until: Date.now() + 60000 }; p.drawRoute(); p.renderWarnings(); p.reveal('warnings'); return true; })()")
 WAYPOINTS = "(() => { const p = polku.planner; p.setName && p.setName(1, 'Coffee at Kauppi'); p.reveal(p.sec.points ? 'points' : 'profile'); return true; })()"
 SCROLL_END = "(() => { const b = document.querySelector('.sheet-body'); b.scrollTop = b.scrollHeight; return true; })()"
+LOOP_JS = ("(async () => { const p = polku.planner; p.setActive(true); if (!p.openLoop) return true; p.openLoop([23.7610, 61.4980]); p.loop.km = 25; p.renderLoop();"
+           " await p.generateLoops(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); p.reveal('loop'); return true; })()")
 LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
 STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) return true; p.setStyle({ p: 'flowy', v: {}, wet: 'auto' });"
             " await new Promise((r) => setTimeout(r, 4500)); p.reveal('style'); return true; })()")
@@ -78,6 +80,10 @@ SCENES = {
     # the waypoint list, one point named
     'desk-waypoints': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WAYPOINTS),
     'phone-waypoints': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=WAYPOINTS),
+    # round trips (routing goes to a local BRouter: tools/brouter-local.sh)
+    'desk-roundtrip': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_JS),
+    'phone-roundtrip': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_JS),
+    'desk-roundtrip-empty': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js="(() => { polku.planner.setActive(true); return true; })()"),
     # the wide bottom panel, everything showing, at a few widths (and paddling: no climbs)
     'desk-bottom-full': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}),
     'mid-bottom-full': dict(DESK, w=1100, h=820, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}),

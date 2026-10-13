@@ -121,6 +121,21 @@ STYLE = """(async () => {
 })()"""
 
 
+# Round trip: the panel opens with its choices (no routing here) and closes cleanly.
+LOOP = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  p.openLoop();
+  await wait(300);
+  const box = document.querySelector('.loop-box');
+  if (!box || !box.querySelector('.loop-go .btn.primary')) errs.push('no round-trip panel');
+  if (box && box.querySelectorAll('.loop-starts .chip').length < 4) errs.push('no length choices');
+  p.closeLoop();
+  await wait(200);
+  if (!document.querySelector('[data-sec=loop]').hidden) errs.push('round-trip panel stayed open');
+  return errs;
+})()"""
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -174,6 +189,7 @@ def check(chrome, w, h, phone, bottom=False):
     fails += [f'edit: {e}' for e in pg.js(EDIT)]
     fails += [f'waypoints: {e}' for e in pg.js(WAYPOINTS)]
     fails += [f'style: {e}' for e in pg.js(STYLE)]
+    fails += [f'round trip: {e}' for e in pg.js(LOOP)]
     pg.js("polku.planner.setActive(false); true")
     time.sleep(0.3)
     if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):

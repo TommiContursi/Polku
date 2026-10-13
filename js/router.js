@@ -229,3 +229,24 @@ export async function routeRun({ points, profile, opts = {} }, signal) {
   while (cache.size > 400) cache.delete(cache.keys().next().value);
   return legs;
 }
+
+/**
+ * A round trip's whole line in one BRouter call (start → via points → start),
+ * not split into legs: a generated via point can sit off the track (BRouter
+ * catches the nearest way, and correctMisplacedViaPoints trims spurs), so the
+ * planner moves the via points onto the line only when a loop is picked.
+ * Returns { coords, tags, provider? }.
+ */
+export async function routeLoop({ points, profile, opts = {} }, signal) {
+  const key = `loop|${profile}|${points.map((p) => p.join(',')).join('|')}|${paramStr(opts.params)}|${nogoParam(opts.nogos)}|${routerUrl()}`;
+  if (cache.has(key)) return cache.get(key);
+  let r;
+  try {
+    r = await shared(key, (sig) => brouterRetry(points, profile, sig, opts), signal);
+  } catch (e) {
+    const legs = await standIn(e, points, profile, opts, signal);
+    r = { coords: legs.flatMap((l, i) => (i ? l.coords.slice(1) : l.coords)), tags: legs.flatMap((l) => l.tags), provider: 'valhalla' };
+  }
+  if (!r.note) cache.set(key, r);
+  return r;
+}
