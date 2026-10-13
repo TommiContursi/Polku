@@ -17,8 +17,8 @@ Also approved:
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | [#19](https://github.com/TommiContursi/Polku/pull/19), tweaks [#20](https://github.com/TommiContursi/Polku/pull/20) | merged |
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | [#21](https://github.com/TommiContursi/Polku/pull/21) | merged |
 | 7½ | Routing that holds up: pacing, batching, routes kept on refresh, Valhalla stand-in | `brouter-pacing` | [#22](https://github.com/TommiContursi/Polku/pull/22) | merged |
-| 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | in review |
-| 9 | Route preferences: avoid ↔ prefer sliders, mapped to BRouter | `route-prefs` | — | |
+| 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | merged |
+| 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | — | designed, awaiting OK |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
 | — | Winter sports (ski, snowshoe) | — | — | later; the sports model in phase 5 leaves room |
 | — | Strava & Garmin (see the end of this file) | — | — | later: research and plan first, no code yet |
@@ -496,32 +496,47 @@ The user hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta
 **Risks**
 - Reordering changes which legs exist, so fixed (imported) legs must split and merge correctly. The logic already exists in `insertPoint` and `removePoint`.
 
-## Phase 9 — Route preferences
+## Phase 9 — Route style (redesigned 2026-10-13, before building)
 
-**Changes**
-- **Sliders per sport, from avoid to prefer**, in five steps. Where each applies:
-  - **busy roads and road crossings:** all sports except paddle;
-  - **big climbs:** all;
-  - **technical trails:** bikes, trail run;
-  - **unpaved surface:** bikes, run.
-- **How they reach BRouter:**
-  - **Polku profiles** live in `profiles/*.brf`, derived from the stock ones. Each adds variables for traffic, crossings (node tags), climbs, mtb:scale and surface.
-  - Each is uploaded once per profile version with `POST /brouter/profile`.
-  - The returned `custom_…` id is cached locally and re-uploaded if refused.
-  - Slider positions become `profile:xxx=` parameters.
-  - **Fallback:** if upload fails, use the stock profiles' own variables (`consider_traffic`, `consider_elevation`, `prefer_unpaved_paths`, `avoid_steep_inclines` and so on), with fewer steps.
-- **What shows in the UI:**
-  - Active preferences appear as small badges in the planner header ("Quiet roads · Few climbs").
-  - Changing one re-routes every leg (one request per leg), behind a short "Apply" debounce.
-- **Share links get a short `p=` parameter.** The preferences shape the route, so the person opening the link gets the same line.
+The user asked to think this through first: comprehensive and useful per sport, and maybe per leg rather than only for the whole route. The first plan (generic avoid ↔ prefer sliders, custom profiles uploaded to brouter.de) is replaced by this one.
+
+**What we found out**
+- **No uploads needed.** BRouter's `profile:name=value` URL parameters override *any* global variable of a stock profile, not only the ones brouter-web shows (source: `BExpressionContext._parseFile` injects them as assignments, and `BExpression.parse` protects that value against the profile's own first assignment). Uploading custom profiles would cost extra calls, has no documented retention, and a broken profile would fail every route; we don't need it.
+- **What each profile can really be steered with** (so the controls stay honest):
+
+  | Sport (profile) | Terrain | Technical | Climbs | Traffic | Other |
+  |---|---|---|---|---|---|
+  | MTB (`mtb`) | `MTB_factor` −3…3 (off-road ↔ roads), `path_preference` | `consider_smoothness` (on: S2 ×5, S3 ×15, S4+ banned; off: no difficulty penalty) | `hills` 0–2 | `avoid_unsafe` | `iswet`, `allow_steps`, `cycleroutes_pref` |
+  | Gravel (`gravel`) | `prefer_unpaved_paths` | — | `consider_elevation`, `avoid_steep_inclines` | `consider_traffic_estimate` | `prefer_forests`, `prefer_rivers`, `avoid_towns`, `avoid_noise`, `prefer_cycle_routes`, `assume_wet_conditions` |
+  | Road (`fastbike-lowtraffic`) | (always paved) | — | `uphillcost` with `consider_elevation` | `consider_traffic`, `avoid_unsafe` | `stick_to_cycleroutes` / `ignore_cycleroutes`, `allow_steps` |
+  | Hike, trail run, run (`hiking-mountain`) | `hiking_routes_preference` (marked trails) | `SAC_scale_limit`, `SAC_scale_preferred` | `consider_elevation` | (via `consider_noise`, `consider_town`) | `consider_forest`, `consider_river`, `iswet`, `allow_steps` |
+  | Paddle (Polku's water router) | — | — | — | — | shore cost (near shore ↔ open water), carry cost |
+
+- **Valhalla** (the stand-in) takes the nearest equivalents: bicycle `use_roads`, `use_hills`, `avoid_bad_surfaces`; pedestrian `use_hills`, `use_tracks`, `max_hiking_difficulty`, `step_penalty`.
+
+**Design**
+1. **A "Route style" per sport**, set like "My speeds" (phase 6): a **Style** item in the planner's stats row ("Flowy trails") opens a **Route style** section.
+   - **Presets first**, in riders' words. MTB: Balanced · Flowy trails · Technical · Smooth & easy · Roads to the trail. Gravel: Balanced · Gravel grinder · Mostly paved · Scenic. Road: Balanced · Quiet roads · Flat · Direct. Hike: Balanced · Nature paths · Easy paths · Mountain. Trail run: Balanced · Trails · Flatter · Technical ok. Run: Balanced · Green & quiet · Flat · Direct. Paddle: Balanced · Near the shore · No carries.
+   - **Fine-tune** under the presets: only the controls the sport's profile really has (the table above), each a 2–3 step segmented control with a one-line plain explanation. Touching one makes the style **Custom**. Balanced = the stock profile with no parameters, so nothing changes for anyone who doesn't touch it.
+2. **Whole route by default, per leg when you want it.** The style describes you and the sport, so it's the route's. But mixed days are real (ride the road to the trailhead, then trails; walk out of town, then a mountain path), so any leg can have **its own style**: the point menu's "Next leg" gets a **Style** choice (the route's, or a preset), and the Route style section gets a scope switch: *Whole route* / *Leg 2 → 3*. Legs with their own style are marked in the waypoint list between their points. Legs are routed separately anyway, so this costs nothing extra; runs of legs with the same style are still batched.
+3. **Wet ground: automatic.** MTB, gravel, hike and trail run have a "wet" switch (muddy paths cost more). Default **Auto**: rain in the last 24 h at the start (Open-Meteo `past_days`, one cached call) turns it on, and the section says why ("6 mm yesterday — avoiding muddy paths"). Manual Yes / No too.
+4. **What it changed.** After a style change, one line compares with the route before: "Flowy trails: +0.8 km · trails 41 → 63 % · +40 m climbing". No extra calls: the previous route is still in memory.
+5. **Costs.** A style change re-routes the auto legs: batched, so usually one call; debounced 700 ms while you click through the controls. Drag previews use the leg's style.
+6. **Share links** carry the style so the line matches: `p=` (the route's style, a short code) and `ps=` (legs with their own). Defaults are left out, so old links are unchanged. The style per sport is remembered on the device (`polku:styles`); the route's style is saved with the route.
+7. **Paddle** gets the same section through Polku's own water router: *near the shore* (cold water, wind: stay within reach of land) ↔ *open water ok*, and *carries: avoid / fine*. No service involved.
+
+**Build and verify**
+- `js/styles.js`: the catalogue (presets, controls, parameters per profile, Valhalla mapping, codes); the planner section and Style item; per-leg styles; Auto wet; the comparison line; share links; tests.
+- **Every preset is checked to really change routes** on three test areas (Kauppi, Tampere: MTB; Ainolanranta, Jyväskylä: city riding and running; Nuuksio: hiking), with values tuned until each step makes a visible difference. Tuning needs many routing calls, so it runs against a local BRouter (`tools/brouter-local.sh`), never in bursts against brouter.de.
 
 **Cut**
-- Per-leg preferences.
-- Ranking `alternativeidx` 0–3 ourselves, which costs 4× the calls. Keep it as a last resort only.
+- Ranking BRouter's `alternativeidx` 0–3 ourselves (4× the calls).
+- Lit ways for evening runs: BRouter's foot profile has no variable for it (Valhalla's `use_lit` would, but it's only the stand-in).
+- "Seek hills" for training: BRouter costs can't reward climbing.
 
 **Risks**
-- How long brouter.de keeps uploaded profiles isn't documented. Profile scripting needs care: a broken profile fails every route, so validate with a test request after upload.
-- Wording the sliders so they're honest about what BRouter actually does.
+- Some parameters change little on Finnish data (e.g. SAC scale is rarely tagged outside Lapland): the controls say what they do, and the tuning pass drops any that don't show a difference.
+- Per-leg styles add UI: they stay one menu choice away and are invisible until used.
 
 ## Phase 10 — Round trips
 
