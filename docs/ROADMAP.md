@@ -10,8 +10,8 @@ Also approved:
 |---|---|---|---|---|
 | 0 | UI polish (Plan button, Weather button, grouped chips) | `ui-polish` | [#12](https://github.com/TommiContursi/Polku/pull/12) | merged |
 | 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | in review |
-| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | #14 merged into the stacked base by accident; #15 brings it to `main` |
-| 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | #16 (stacked on #15) | in review |
+| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | merged (#14 went into the stacked base by accident; #15 brought it to `main`) |
+| 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | in review |
 | 4 | Layers, legend and Settings | `layers-settings` | — | |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | — | |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | — | |
