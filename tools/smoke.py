@@ -148,7 +148,7 @@ def check(chrome, w, h, phone, bottom=False):
     # one clock: while planning, the timeline is inside the planner, not over the map
     if not pg.js("!!document.querySelector('#planner #wx-bar')"):
         fails.append('timeline not docked in the planner while planning')
-    states = ['open', 'min'] if layout == 'side' else ['peek', 'half', 'full']
+    states = ['open', 'min'] if layout == 'side' else ['peek', 'profile', 'half', 'full']
     for st in states:
         pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
         time.sleep(1.0)  # the sheet's and the controls' transitions (slow in software rendering)
@@ -163,6 +163,12 @@ def check(chrome, w, h, phone, bottom=False):
             fails.append(f'peek is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
         elif st == 'half' and not (0.4 * h < r['h'] < 0.6 * h):
             fails.append(f'half is {r["h"]:.0f} px tall')
+        elif st == 'profile':
+            cv = pg.js("(() => { const c = document.querySelector('#profile-canvas').getBoundingClientRect(), s = document.querySelector('#planner').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, sb: s.bottom, h: c.height }; })()")
+            if not (0.2 * h < r['h'] < 0.46 * h):
+                fails.append(f'profile size is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
+            elif cv['h'] < 60 or cv['bottom'] > cv['sb']:
+                fails.append('the profile size does not show the whole chart')
     pg.js(f"polku.planner.setSheetState({json.dumps(states[0])}, {{ remember: false }}); true")
     time.sleep(1.0)
     fails += [f'edit: {e}' for e in pg.js(EDIT)]

@@ -21,6 +21,8 @@ const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 // a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
 const STAND_IN_AFTER = 6000;
+// bottom sheet sizes: the summary, + the elevation profile, half the screen, nearly all of it
+const SHEET_STATES = ['peek', 'profile', 'half', 'full'];
 // "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
 const WET_MM = 3;
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
@@ -1397,12 +1399,15 @@ export class Planner {
         h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
         h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow),
         this.els.breakdown),
+      // one reading order, in a column or in rows (wide panel): your points and what the route is like, then the settings
+      h('div', { class: 'sec-break', 'aria-hidden': 'true' }), // wide panel: a new row
       this.section('points', 'Waypoints', this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order' }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
-      this.section('style', 'Route style', this.els.styleBox = h('div', { class: 'style-box' })),
+      // the two short lists share a column in a wide panel
+      h('div', { class: 'sec-stack' }, this.section('warnings', 'Heads-up', this.els.warnings), this.section('climbs', 'Climbs', this.els.climbs)),
       this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
-      this.section('speed', 'Time & speed', this.els.speedBox = h('div', { class: 'speed-box' }), this.els.speedRoute = h('div', { class: 'speed-route' })),
-      this.section('climbs', 'Climbs', this.els.climbs),
-      this.section('warnings', 'Heads-up', this.els.warnings)),
+      h('div', { class: 'sec-break', 'aria-hidden': 'true' }), // wide panel: a new row
+      this.section('style', 'Route style', this.els.styleBox = h('div', { class: 'style-box' })),
+      this.section('speed', 'Time & speed', this.els.speedBox = h('div', { class: 'speed-box' }), this.els.speedRoute = h('div', { class: 'speed-route' }))),
       this.els.hint);
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
@@ -1457,7 +1462,7 @@ export class Planner {
 
   setSheetState(st, { remember = true } = {}) {
     const lay = this.layout();
-    const ok = lay === 'side' ? ['open', 'min'] : ['peek', 'half', 'full'];
+    const ok = lay === 'side' ? ['open', 'min'] : SHEET_STATES;
     if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
     this.panel.dataset.layout = lay;
     this.panel.dataset.state = st;
@@ -1471,7 +1476,7 @@ export class Planner {
     this.els.min.innerHTML = icon(lay === 'side' ? (folded ? 'chevronDown' : 'chevronUp') : (folded ? 'chevronUp' : 'chevronDown'), 19);
     this.els.min.title = folded ? 'Show the details' : lay === 'side' ? 'Minimise' : 'Fold down to the summary';
     this.els.handle.setAttribute('aria-valuetext', st);
-    this.els.handle.title = { peek: 'Show more', half: 'Drag up for everything, down for the map', full: 'Drag down for the map' }[st] || '';
+    this.els.handle.title = { peek: 'Show more', profile: 'Drag up for the details, down for the map', half: 'Drag up for everything, down for the profile', full: 'Drag down for the map' }[st] || '';
     if (st !== 'peek' && st !== 'min') requestAnimationFrame(() => this.chart.draw());
   }
 
@@ -1484,15 +1489,27 @@ export class Planner {
   bindSheet() {
     this.sideMQ = matchMedia('(min-width: 900px)');
     this.sideMQ.addEventListener('change', () => this.setSheetState(store.get('sheetState', {})[this.layout()]));
-    // the summary rows are always visible: the peek height is theirs
-    new ResizeObserver(() => {
+    // the summary rows are always visible: the peek height is theirs; the
+    // profile size adds the elevation chart and its colours (the stats row
+    // folds away there), measured, so it fits whatever the sport shows
+    const profileH = () => {
+      const hd = this.els.head, sec = this.sec.profile.el, top = sec.querySelector('.profile-top');
+      const peek = hd.offsetTop + hd.offsetHeight + 6;
+      if (sec.hidden || !top.offsetHeight) return Math.round(Math.min(innerHeight * 0.36, peek + 230));
+      return Math.round(Math.min(innerHeight * 0.45, peek + top.getBoundingClientRect().bottom - sec.getBoundingClientRect().top + 12));
+    };
+    const sizes = () => {
       const hd = this.els.head;
       this.panel.style.setProperty('--peek-h', `${Math.ceil(hd.offsetTop + hd.offsetHeight + 6)}px`);
-    }).observe(this.els.head);
+      this.panel.style.setProperty('--profile-h', `${profileH()}px`);
+    };
+    new ResizeObserver(sizes).observe(this.els.head);
+    new ResizeObserver(sizes).observe(this.sec.profile.el);
+    addEventListener('resize', sizes);
     const heights = () => {
       const r = this.panel.getBoundingClientRect();
       const peek = this.els.head.offsetTop + this.els.head.offsetHeight + 6;
-      return { peek, half: innerHeight * 0.5, full: r.bottom - 72, now: r.height };
+      return { peek, profile: profileH(), half: innerHeight * 0.5, full: r.bottom - 72, now: r.height };
     };
     let drag = null;
     const down = (e) => {
@@ -1516,10 +1533,10 @@ export class Planner {
       drag = null;
       const st = this.panel.dataset.state;
       let next = st;
-      if (!moved) next = st === 'peek' ? 'half' : 'peek'; // a tap toggles
+      if (!moved) next = st === 'peek' ? (this.lastOpen || 'profile') : 'peek'; // a tap toggles
       else {
         const now = this.panel.getBoundingClientRect().height;
-        next = Object.entries({ peek: H.peek, half: H.half, full: H.full }).sort((a, b) => Math.abs(a[1] - now) - Math.abs(b[1] - now))[0][0];
+        next = Object.entries({ peek: H.peek, profile: H.profile, half: H.half, full: H.full }).sort((a, b) => Math.abs(a[1] - now) - Math.abs(b[1] - now))[0][0];
       }
       this.panel.classList.remove('dragging');
       this.panel.style.height = '';
@@ -1532,11 +1549,11 @@ export class Planner {
       el.addEventListener('pointercancel', up);
     }
     this.els.handle.addEventListener('keydown', (e) => {
-      const order = ['peek', 'half', 'full'];
+      const order = SHEET_STATES;
       const i = order.indexOf(this.panel.dataset.state);
-      if (e.key === 'ArrowUp') { e.preventDefault(); this.setSheetState(order[Math.min(2, i + 1)]); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); this.setSheetState(order[Math.min(order.length - 1, i + 1)]); }
       else if (e.key === 'ArrowDown') { e.preventDefault(); this.setSheetState(order[Math.max(0, i - 1)]); }
-      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.setSheetState(order[(i + 1) % 3]); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.setSheetState(order[(i + 1) % order.length]); }
     });
     // panning the map while planning counts as "working on the map"
     this.map.on('dragstart', (e) => { if (e.originalEvent) this.autoPeek(); });
@@ -1740,7 +1757,8 @@ export class Planner {
   // Open a section and bring it into view (expanding a peeking sheet).
   reveal(id) {
     this.toggleSection(id, true);
-    if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
+    const st = this.panel.dataset.state;
+    if (this.layout() === 'sheet' && (st === 'peek' || (st === 'profile' && id !== 'profile'))) this.setSheetState('half');
     else if (this.layout() === 'side' && this.panel.dataset.state === 'min') this.setSheetState('open');
     requestAnimationFrame(() => this.sec[id].el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
   }
@@ -1768,7 +1786,7 @@ export class Planner {
     const sum = this.els.sum;
     st.innerHTML = '';
     sum.innerHTML = '';
-    const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub' }, sub) : null));
+    const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub', title: sub }, sub) : null));
     const key = (label, value, title = '') => sum.append(h('div', { class: 'sum-item', title }, h('b', {}, value), h('small', {}, label)));
     for (const id of ['profile', 'climbs', 'warnings', 'speed']) this.setSection(id, { empty: !a });
     this.renderWaypoints(); // distances along the route
@@ -1798,8 +1816,9 @@ export class Planner {
     const carry = a.ways.find(([k]) => k === 'portage');
     if (paddle) key('carry', carry ? fmtDist(carry[1]) : '0 m');
     else {
-      key('ascent', `${Math.round(a.up)} m`);
-      stat('Descent', `${Math.round(a.down)} m`);
+      // climbing and descent together, in the line that's always visible
+      sum.append(h('div', { class: 'sum-item sum-elev', title: `${Math.round(a.up)} m of climbing, ${Math.round(a.down)} m of descent` },
+        h('b', {}, `↑${Math.round(a.up)} `, h('span', { class: 'sum-down' }, `↓${Math.round(a.down)}`), ' m'), h('small', {}, 'ascent · descent')));
     }
     if (OFFROAD_BIKE.has(act)) {
       const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);

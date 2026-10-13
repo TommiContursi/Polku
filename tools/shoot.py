@@ -36,6 +36,7 @@ DRAG = ("""(async () => {
 STANDIN = ("(() => { const p = polku.planner; p.legs[0].result.provider = 'valhalla'; p.legs[1].status = 'waiting';"
            " p.legs[1].wait = { reason: 'limit', until: Date.now() + 60000 }; p.drawRoute(); p.renderWarnings(); p.reveal('warnings'); return true; })()")
 WAYPOINTS = "(() => { const p = polku.planner; p.setName && p.setName(1, 'Coffee at Kauppi'); p.reveal(p.sec.points ? 'points' : 'profile'); return true; })()"
+SCROLL_END = "(() => { const b = document.querySelector('.sheet-body'); b.scrollTop = b.scrollHeight; return true; })()"
 LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
 STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) return true; p.setStyle({ p: 'flowy', v: {}, wet: 'auto' });"
             " await new Promise((r) => setTimeout(r, 4500)); p.reveal('style'); return true; })()")
@@ -77,6 +78,16 @@ SCENES = {
     # the waypoint list, one point named
     'desk-waypoints': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WAYPOINTS),
     'phone-waypoints': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=WAYPOINTS),
+    # the wide bottom panel, everything showing, at a few widths (and paddling: no climbs)
+    'desk-bottom-full': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}),
+    'mid-bottom-full': dict(DESK, w=1100, h=820, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}),
+    'small-bottom-full': dict(DESK, w=960, h=820, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}),
+    'desk-bottom-profile': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='profile', storage={'polku:plannerDock': '"bottom"'}),
+    'phone-profile-size': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='profile'),
+    'desk-bottom-end': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}, js=SCROLL_END),
+    'mid-bottom-end': dict(DESK, w=1100, h=820, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}, js=SCROLL_END),
+    'mid-bottom-standin': dict(DESK, w=1100, h=820, timeline=True, route='route-kauppi-mtb.json', state='full', storage={'polku:plannerDock': '"bottom"'}, js=STANDIN),
+    'desk-bottom-paddle': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='full', storage={'polku:plannerDock': '"bottom"'}),
     # route style (routing goes to a local BRouter: tools/brouter-local.sh)
     'desk-style': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=LOCAL, js=STYLE_JS),
     'phone-style': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', storage=LOCAL, js=STYLE_JS),
