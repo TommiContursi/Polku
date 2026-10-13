@@ -815,10 +815,10 @@ export class Planner {
 
   // Padding for camera moves so routes and climbs land in the visible part of the map.
   viewPadding(m = 40) {
-    if (!this.active || this.panel.hidden) return { top: 120, bottom: m + 20, left: m, right: m + 50 };
+    if (!this.active || this.panel.hidden) return { top: 80, bottom: m + 20, left: m, right: m + 50 };
     const r = this.panel.getBoundingClientRect();
-    if (this.layout() === 'side') return { top: 90, bottom: m, left: r.right + m, right: m + 70 };
-    return { top: 130, bottom: innerHeight - r.top + m / 2, left: m / 2, right: m + 30 };
+    if (this.layout() === 'side') return { top: 80, bottom: m, left: r.right + m, right: m + 70 };
+    return { top: 80, bottom: innerHeight - r.top + m / 2, left: m / 2, right: m + 30 };
   }
 
   // ---------------------------------------------------------------- the ⋯ menu

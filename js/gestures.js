@@ -11,11 +11,11 @@
 //    Shift + two-finger scroll tilts in any mode; Safari's rotate gesture
 //    rotates. A real mouse wheel always zooms.
 
-const OVERLAY = '.topbar, .activity-bar, .fab-col, .plan-btn, .panel, .sheet, .zoom-hint, .track-card, .toast, .view3d, .wx-bar, .maplibregl-ctrl';
+const OVERLAY = '.topbar, .fab-col, .plan-btn, .base-switch, .panel, .sheet, .zoom-hint, .track-card, .toast, .view3d, .wx-bar, .maplibregl-ctrl';
 // Panels are places of their own: over them a wheel or a pinch never moves the
 // map (it scrolls the panel, or the profile chart zooms itself). Small controls
 // that sit on the map still pass gestures through.
-const PANELS = '.sheet, .panel, .modal, .wx-bar, .track-card, .menu';
+const PANELS = '.sheet, .panel, .modal, .wx-bar, .track-card, .menu, .base-pop, .act-menu';
 
 function scrollableAncestor(el, root, dy) {
   for (let n = el; n && n !== root.parentElement; n = n.parentElement) {

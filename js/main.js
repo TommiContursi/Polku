@@ -231,7 +231,7 @@ window.polku = {
   map, planner, state, uphill, lipas, weather, safety, cameras, nautical,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
-    Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderLegend();
+    Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderLegend(); renderBaseSwitch();
   },
 };
 
@@ -271,18 +271,99 @@ function configureLayers() {
   uphill.setEnabled(state.activity === 'mtb' && (state.trailColors !== 'down' || state.labelsUp));
 }
 
-// ------------------------------------------------------------------ activity bar
+// ------------------------------------------------------------------ activity pill
+// Only the active sport shows, beside the search. Hover (mouse) or tap opens the
+// others; picking one, Escape or leaving closes it.
+const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', hike: 'hike', paddle: 'paddle' };
+const hoverPointer = matchMedia('(hover: hover) and (pointer: fine)');
 function renderActivityBar() {
-  const bar = $('#activity-bar');
-  bar.innerHTML = '';
-  const icons = { mtb: 'bike', gravel: 'gravel', hike: 'hike', paddle: 'paddle' };
-  for (const [k, a] of Object.entries(ACTIVITIES)) {
-    bar.append(h('button', {
-      type: 'button', class: 'act', 'aria-pressed': String(state.activity === k), title: a.label,
-      onclick: () => setActivity(k), html: `${icon(icons[k], 20)}<span>${a.label}</span>`,
-    }));
-  }
+  const box = $('#activity-bar');
+  box.innerHTML = '';
+  const cur = ACTIVITIES[state.activity];
+  const menu = h('div', { class: 'act-menu', role: 'listbox', 'aria-label': 'Activity', hidden: true },
+    ...Object.entries(ACTIVITIES).map(([k, a]) => h('button', {
+      type: 'button', role: 'option', class: 'act', 'aria-selected': String(state.activity === k), 'data-k': k,
+      onclick: () => { closeActs(); setActivity(k); }, html: `${icon(ACT_ICONS[k], 20)}<span>${a.label}</span>`,
+    })));
+  const btn = h('button', {
+    type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', title: `Activity: ${cur.label}`,
+    onclick: () => (menu.hidden ? openActs() : closeActs()),
+    html: `${icon(ACT_ICONS[state.activity], 20)}<span>${cur.label}</span>${icon('chevronDown', 16)}`,
+  });
+  box.append(btn, menu);
 }
+let actTimer = 0;
+function openActs() {
+  const box = $('#activity-bar');
+  clearTimeout(actTimer);
+  box.querySelector('.act-menu').hidden = false;
+  box.querySelector('.act-current').setAttribute('aria-expanded', 'true');
+  box.classList.add('open');
+}
+function closeActs() {
+  const box = $('#activity-bar');
+  const m = box.querySelector('.act-menu');
+  if (!m || m.hidden) return;
+  m.hidden = true;
+  box.querySelector('.act-current').setAttribute('aria-expanded', 'false');
+  box.classList.remove('open');
+}
+{
+  const box = $('#activity-bar');
+  box.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches) openActs(); });
+  box.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches) { clearTimeout(actTimer); actTimer = setTimeout(closeActs, 250); } });
+  box.addEventListener('keydown', (e) => {
+    const opts = [...box.querySelectorAll('.act-menu .act')];
+    const i = opts.indexOf(document.activeElement);
+    if (e.key === 'Escape') { closeActs(); box.querySelector('.act-current').focus(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      openActs();
+      const n = opts.length;
+      opts[i < 0 ? (e.key === 'ArrowDown' ? 0 : n - 1) : (i + (e.key === 'ArrowDown' ? 1 : n - 1)) % n].focus();
+    }
+  });
+  document.addEventListener('pointerdown', (e) => { if (!box.contains(e.target)) closeActs(); }, true);
+}
+
+// ------------------------------------------------------------------ base map switcher
+// Google-style: a thumbnail of the current base at the bottom left; it opens all
+// of them, plus 3D terrain and a way into Layers.
+const BASES = [['trail', 'Trail map'], ['maasto', 'Maastokartta'], ['aerial', 'Aerial'], ['ortofi', 'Aerial FI'], ['plain', 'Plain'], ['night', 'Night'], ['mml', 'MML WMTS']];
+const BASE_NOTE = {
+  trail: 'Polku’s own trail map from OpenStreetMap, with lidar hillshade and contours.',
+  maasto: 'The National Land Survey terrain map (via Kapsi), with Polku’s trails on top. Finland only.',
+  aerial: 'Esri world imagery with trails on top.',
+  ortofi: 'National Land Survey aerial photos (via Kapsi) — sharper than global imagery in Finland.',
+  plain: 'Muted base for reading routes and overlays.',
+  night: 'Dark map for dusk and night use.',
+  mml: 'Official MML WMTS terrain map with your own API key.',
+};
+const thumb = (k) => `img/base/${{ aerial: 'ortofi', mml: 'maasto' }[k] || k}.jpg`;
+function renderBaseSwitch() {
+  const box = $('#base-switch');
+  const open = box.classList.contains('open');
+  box.innerHTML = '';
+  const cur = BASES.find(([k]) => k === state.base) || BASES[0];
+  const pop = h('div', { class: 'base-pop', role: 'dialog', 'aria-label': 'Base map', hidden: !open },
+    h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
+      type: 'button', class: 'base-opt', 'aria-pressed': String(state.base === k), title: BASE_NOTE[k],
+      onclick: () => { state.base = k; applyStyle(); renderBaseSwitch(); renderLayersPanel(); },
+    }, h('img', { src: thumb(k), alt: '', width: '64', height: '64', loading: 'lazy' }), h('span', {}, label)))),
+    h('p', { class: 'note base-note' }, BASE_NOTE[state.base] || ''),
+    h('div', { class: 'base-foot' },
+      h('label', { class: 'tg tg-inline' }, h('span', { class: 'tg-text' }, '3D terrain'),
+        h('input', { type: 'checkbox', role: 'switch', checked: state.terrain3d, onchange: () => $('#btn-3d').click() }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' })),
+      h('button', { type: 'button', class: 'link', onclick: () => { closeBase(); openPanel('layers-panel'); } }, 'More layers…')));
+  const btn = h('button', {
+    type: 'button', class: 'base-btn', 'aria-haspopup': 'dialog', 'aria-expanded': String(open), title: `Base map: ${cur[1]}`,
+    onclick: () => (box.classList.contains('open') ? closeBase() : openBase()),
+  }, h('img', { src: thumb(cur[0]), alt: '', width: '64', height: '64' }), h('span', {}, cur[1]));
+  box.append(btn, pop);
+}
+function openBase() { const b = $('#base-switch'); b.classList.add('open'); b.querySelector('.base-pop').hidden = false; b.querySelector('.base-btn').setAttribute('aria-expanded', 'true'); }
+function closeBase() { const b = $('#base-switch'); if (!b.classList.contains('open')) return; b.classList.remove('open'); b.querySelector('.base-pop').hidden = true; b.querySelector('.base-btn').setAttribute('aria-expanded', 'false'); }
+document.addEventListener('pointerdown', (e) => { if (!$('#base-switch').contains(e.target)) closeBase(); }, true);
 
 function setActivity(k) {
   if (state.activity === k) return;
@@ -327,20 +408,6 @@ function renderLayersPanel() {
   };
   const seg = (options, value, fn) => h('div', { class: 'seg small full' },
     ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
-
-  p.append(section('Base map',
-    seg([['trail', 'Trail map'], ['maasto', 'Maastokartta'], ['aerial', 'Aerial'], ['ortofi', 'Aerial FI'], ['plain', 'Plain'], ['night', 'Night'], ...(state.mmlKey ? [['mml', 'MML WMTS']] : [])], state.base, (v) => {
-      state.base = v; applyStyle(); renderLayersPanel();
-    }),
-    h('p', { class: 'note' }, {
-      trail: 'Polku’s own trail map from OpenStreetMap, with lidar hillshade and contours.',
-      maasto: 'The National Land Survey terrain map (via Kapsi), with Polku’s trails, difficulty and routes drawn on top. Finland only.',
-      aerial: 'Esri world imagery with trails on top.',
-      ortofi: 'National Land Survey aerial photos (via Kapsi) — sharper than global imagery in Finland.',
-      plain: 'Muted base for reading routes and overlays.',
-      night: 'Dark map for dusk and night use.',
-      mml: 'Official MML WMTS terrain map with your own API key.',
-    }[state.base] || '')));
 
   if (state.activity === 'mtb') {
     p.append(section('Trail colours',
@@ -410,7 +477,7 @@ function renderLayersPanel() {
     h('div', { class: 'key-row' }, keyInput, h('button', { type: 'button', class: 'btn', onclick: () => {
       state.mmlKey = keyInput.value.trim();
       if (!state.mmlKey && state.base === 'mml') state.base = 'trail';
-      applyStyle(); renderLayersPanel(); toast(state.mmlKey ? 'MML key saved' : 'MML key removed');
+      applyStyle(); renderLayersPanel(); renderBaseSwitch(); toast(state.mmlKey ? 'MML key saved' : 'MML key removed');
     } }, 'Save')),
     state.mmlKey ? toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, (v) => setOverlay('mmlMaastoOverlay', v)) : null));
 }
@@ -487,7 +554,30 @@ $('#btn-3d').addEventListener('click', () => {
   applyStyle();
   map.easeTo({ pitch: state.terrain3d ? 60 : 0, duration: 800 });
   renderLayersPanel();
+  renderBaseSwitch();
 });
+
+// Phones: a Locate button in the thumb column drives MapLibre's (hidden) geolocate control.
+$('#btn-locate').addEventListener('click', () => geolocate.trigger());
+{
+  const sync = () => {
+    const g = $('.maplibregl-ctrl-geolocate');
+    if (!g) return;
+    const b = $('#btn-locate');
+    const on = g.classList.contains('maplibregl-ctrl-geolocate-active') || g.classList.contains('maplibregl-ctrl-geolocate-background');
+    b.setAttribute('aria-pressed', String(on));
+    b.classList.toggle('waiting', g.classList.contains('maplibregl-ctrl-geolocate-waiting'));
+    b.classList.toggle('background', g.classList.contains('maplibregl-ctrl-geolocate-background'));
+  };
+  map.once('load', () => { const g = $('.maplibregl-ctrl-geolocate'); if (g) new MutationObserver(sync).observe(g, { attributes: true, attributeFilter: ['class'] }); });
+}
+
+// Phones: the floating timeline sits above the thumb column's lowest row; the column follows it.
+new ResizeObserver(() => {
+  const b = $('#wx-bar');
+  const floating = !b.hidden && !b.classList.contains('docked') && matchMedia('(max-width: 720px)').matches;
+  document.documentElement.style.setProperty('--wx-h', `${floating ? b.offsetHeight + 8 : 0}px`);
+}).observe($('#wx-bar'));
 
 // ------------------------------------------------------------------ GPX / KML import (button + drag & drop)
 async function importFile(file) {
@@ -532,7 +622,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'l' && !mod) openPanel('layers-panel');
   else if (e.key === 't' && !mod) toggleTimeline();
-  else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); }
+  else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeBase(); closeActs(); }
 });
 
 // The free vector tiles only carry the full trail network from zoom 14.
@@ -592,6 +682,7 @@ registerServiceWorker();
 initOfflineStatus();
 document.body.dataset.activity = state.activity;
 renderActivityBar();
+renderBaseSwitch();
 renderLayersPanel();
 renderLegend();
 $('#btn-3d').setAttribute('aria-pressed', String(state.terrain3d));

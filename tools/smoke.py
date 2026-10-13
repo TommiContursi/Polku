@@ -21,7 +21,7 @@ VIEWPORTS = [(1440, 900, False, False), (1440, 900, False, True), (1024, 768, Fa
 
 # Visible boxes that must never overlap each other (toasts and popups are transient and skipped).
 BOXES = """(() => {
-  const sel = ['.topbar .brand', '.topbar .search', '#activity-bar', '#zoom-hint', '.fab-col', '#btn-plan', '#planner', '#wx-bar:not(.docked)', '#view3d',
+  const sel = ['.topbar .brand', '.topbar .search', '#activity-bar .act-current', '#zoom-hint', '.fab-col', '#btn-plan', '#planner', '#wx-bar:not(.docked)', '#view3d', '#base-switch .base-btn',
     '.maplibregl-ctrl-top-right .maplibregl-ctrl-group', '.maplibregl-ctrl-attrib', '.maplibregl-ctrl-scale', '.offline-banner', '.panel'];
   const out = [];
   for (const s of sel) for (const e of document.querySelectorAll(s)) {

@@ -10,8 +10,8 @@ Also approved:
 |---|---|---|---|---|
 | 0 | UI polish (Plan button, Weather button, grouped chips) | `ui-polish` | [#12](https://github.com/TommiContursi/Polku/pull/12) | merged |
 | 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | in review |
-| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 (stacked on #13) | in review |
-| 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | — | |
+| 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | merged (#14 went into the stacked base by accident; #15 brought it to `main`) |
+| 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | in review |
 | 4 | Layers, legend and Settings | `layers-settings` | — | |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | — | |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | — | |
@@ -218,6 +218,19 @@ Also approved:
     - +/− are hidden on touch, since pinch zooms (already done in phase 1).
   - Desktop keeps the top-right rail and zoom.
   - smoke.py checks for overlaps at 1440 × 900, 1024 × 768, 390 × 844 and 360 × 740, across the rail, zoom, compass, Plan/Done, timeline, planner and toasts.
+
+**Built (PR #16)**
+- **The sport pill** sits in the top row, after the search. It opens on hover (mouse) or tap, works with arrow keys, and closes on pick, Escape or an outside tap. Phones show its icon only.
+- **The base map switcher** sits at the bottom left, beside the planner when it's open.
+  - It opens thumbnails of every base, with a short note and the 3D terrain switch.
+  - "More layers…" opens Layers, and the Base map section is gone from there.
+  - Thumbnails come from `tools/thumbs.py`. Aerial reuses the NLS photo, so no Esri-derived image is stored.
+- **Phones:**
+  - Layers, Legend, Weather and a new Locate button form a column at the bottom right, above the Plan pill. The column rises above the timeline when it's open (`--wx-h`).
+  - The compass sits top right; 3D moves to the switcher.
+  - While planning, only Layers stays.
+- **Space:** everything that sat under the old activity row moved up (side panel top 64 px, zoom hint and compass at 62 px).
+- **Bottom-panel columns** are a flexible row, so an empty list (no climbs on a lake) gives its room to Departure & weather.
 
 **Cut**
 - Custom base-map ordering.

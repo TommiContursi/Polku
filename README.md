@@ -12,7 +12,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 - Trail map from OpenStreetMap with the MTB difficulty (`mtb:scale`, S0–S6) as a coloured halo, no-bike markers and optional `S2` labels along trails.
 - **Uphill difficulty** (↑S0–↑S5) for every trail in view, computed from the lidar elevation model and bumped for loose or technical surface; OSM `mtb:scale:uphill` tags win where they exist. Arrows point up the climb. Show difficulty, uphill or both.
 - Multidirectional hillshade and 5 m / 2.5 m contours generated in the browser, 3D terrain with exaggeration.
-- Base maps: Polku's trail map, the National Land Survey Maastokartta and aerial photos (keyless, via Kapsi), Esri imagery, night, plain and high-contrast styles.
+- Base maps: Polku's trail map, the National Land Survey Maastokartta and aerial photos (keyless, via Kapsi), Esri imagery, night, plain and high-contrast styles — one tap away in the thumbnail switcher at the bottom left.
 
 **Plan a route**
 - Routing per activity — MTB, gravel, hike & run, paddle — with straight-line and over-water legs, drag points, click the line to add a via point, undo/redo, reverse, back to start.
@@ -140,7 +140,8 @@ js/modal.js         modal dialog / side card
 js/gestures.js      pinch / wheel over the UI → map zoom, trackpad tilt
 js/view3d.js        tilt & rotate orbit pad
 js/search.js, gpx.js, icons.js, geo.js, ui.js
-tools/              dev only: smoke.py, shoot.py (headless Chrome via cdp.py), fixtures
+tools/              dev only: smoke.py, shoot.py, thumbs.py (headless Chrome via cdp.py), fixtures
+img/base/           base map thumbnails (tools/thumbs.py)
 docs/ROADMAP.md     phased plan
 ```
 
