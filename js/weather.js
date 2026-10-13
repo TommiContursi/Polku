@@ -106,6 +106,7 @@ export function alignSeries(s, t0, n) {
     lat: s.lat, lon: s.lon,
     time: Array.from({ length: n }, (_, k) => t0 + k * 3600),
     speed: pick(s.speed), dir: pick(s.dir), gust: pick(s.gust), temp: pick(s.temp), precip: pick(s.precip),
+    cloud: s.cloud ? pick(s.cloud) : null, // cells cached before cloud cover was asked for
   };
 }
 
@@ -117,7 +118,7 @@ async function fetchPoints(points, hours = 49) {
   const lat = points.map((p) => p[1].toFixed(3)).join(',');
   const lon = points.map((p) => p[0].toFixed(3)).join(',');
   const url = `${OPEN_METEO}?latitude=${lat}&longitude=${lon}` +
-    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation' +
+    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover' +
     `&forecast_hours=${hours}&past_hours=1&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Weather unavailable');
@@ -132,6 +133,7 @@ async function fetchPoints(points, hours = 49) {
     gust: r.hourly.wind_gusts_10m,
     temp: r.hourly.temperature_2m,
     precip: r.hourly.precipitation,
+    cloud: r.hourly.cloud_cover,
   }));
   return v;
 }
