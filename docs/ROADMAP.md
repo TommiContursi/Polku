@@ -20,9 +20,13 @@ Also approved:
 | 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | merged |
 | 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | [#24](https://github.com/TommiContursi/Polku/pull/24) | in review |
 | 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
-| 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | in review |
-| — | Winter sports (ski, snowshoe) | — | — | later; the sports model in phase 5 leaves room |
-| — | Strava & Garmin (see the end of this file) | — | — | later: research and plan first, no code yet |
+| 10 | Round trips: 3 generated loops, ranked, with the cost shown (+ Round trip & Style in the header, bottom panel by default) | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | merged |
+| 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | — | planned, awaiting OK |
+| 12 | Trail details & obstacles: barriers, fallen trees, fords, wet spots; width / visibility / smoothness / SAC | `trail-details` | — | planned, awaiting OK |
+| 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned, awaiting OK |
+| 14 | Round trips for paddling | `paddle-loops` | — | planned, awaiting OK |
+| 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned, awaiting OK |
+| 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned, awaiting OK |
 
 ## Why this order
 
@@ -589,6 +593,119 @@ The user asked to think this through first: comprehensive and useful per sport, 
 - Loops that come back on the same road. Use `allowSamewayback=0` and flag big overlaps when scoring.
 
 ---
+
+## Phases 11–16 (added 2026-10-13, planned, awaiting the user's OK)
+
+Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/smoke.py` passing, this file updated. Free public services only, no backend (phase 16 may *propose* one), every call through `js/net.js`, share links keep working, no regressions. Phases 15 and 16 start with research written here; 16 waits for an OK before any code.
+
+## Phase 11 — Layers: quick fixes
+
+**What changes**
+- **Every layer and control in every sport.** The sport only sets which layers *start* on (`ACTIVITY_OVERLAYS`), never what you may turn on. Today the trail controls are MTB-only: `state.activity === 'mtb'` gates the Difficulty / Uphill / Both switch, the difficulty and uphill numbers, the uphill overlay (`uphill.setEnabled`) and their map key (`main.js` around lines 275, 423–426, 532–549). They become a **Trail colours** control for everyone: *Off / Difficulty / Uphill / Both*, with a default per sport (MTB: Difficulty; others: Off), plus the two number toggles. The pass also audits `style.js` and the Layers groups for any other sport gate.
+- **Opacity per raster overlay.** A slider (10–100 %) right under each raster overlay's toggle while it's on: Maastokartta (transparent), the MML overlay, depth areas, contours, soundings, shipping lanes, Waymarked Trails, radar. Remembered per layer (`settings.overlayOpacity[id]`); the defaults are today's (`RASTER_OVERLAYS[id].opacity`, Maastokartta 0.4). Applied as `raster-opacity`, so a drag updates the map without a style rebuild.
+- **Paddle defaults: soundings on** (with depth areas, contours and fairways, which already are).
+  - **Checked 2026-10-13:** Traficom's WMS (`julkinen.traficom.fi/inspirepalvelu/rajoitettu/wms`) answers *any* origin with `Access-Control-Allow-Origin: *`. `Sounding_P`, `DepthArea_A` and `DepthContour_L` returned real images over the Helsinki archipelago for `Origin: https://polku.si` and for `https://example.org` alike. The README's note ("only localhost and polku.si; elsewhere a proxy") is out of date and gets corrected. The phase confirms it in the browser on polku.si itself (the deployed site), and if a layer doesn't load there, it says what a proxy would take instead.
+- **"On now" first.** The chips of what's on (each with ×), and *Reset to <sport> defaults*, move to the top of the Layers panel, under the sport header.
+
+**Test**
+- Smoke: for every sport the Layers panel has the Trail colours control; an opacity set on one overlay survives a reload.
+- Screenshots: Layers in paddle and in hike, with trail colours and the opacity slider; MTB unchanged.
+
+**Risks**
+- The uphill layer reads DEM tiles and Overpass (`mtb:scale:uphill`) for whatever is in view. Off by default outside MTB, so the cost only comes when someone turns it on.
+
+## Phase 12 — Trail details & obstacles
+
+**Data (no new kinds of calls)**
+- OpenFreeMap's tiles carry `class`, `subclass`, `surface` and `mtb_scale` for paths, but not `trail_visibility`, `width`, `smoothness`, `sac_scale` or obstacle nodes. These come from **Overpass, through the cache `js/uphill.js` already has** (`cachedOverpass`, IndexedDB, a week; mirrors and budget via `net.js`).
+- **Finding:** that query today runs per **z12** tile (about 10 km) and only for ways with `mtb:scale:uphill`, only while the uphill layer is on. Trail details are much denser, so this phase adds a **z14 tile** query (about 2.4 km) **at zoom 14+**, one per tile, combining:
+  - ways `highway=path|track|footway|bridleway|cycleway` with any of `trail_visibility`, `width`, `smoothness`, `sac_scale`, `mtb:scale:uphill`, `surface=mud`, `wet`;
+  - nodes `barrier=gate|lift_gate|kissing_gate|stile|cycle_barrier|log|fence…`, `obstacle=*` (e.g. `fallen_tree`), `ford=*`.
+  The uphill layer then reads the same z14 tiles instead of its own z12 query, so it's still one query per place.
+- **Wet and muddy spots:** the ways above (`surface=mud`, `wet=yes`) plus wetland areas, which the vector tiles already have (`landcover` class `wetland`), so those cost nothing.
+- **Budget:** about 20 tiles for a 10 × 10 km riding area, once a week per area; well inside Overpass's 10 000 a day in `net.js`. The query only runs where trail details or obstacles are shown, or a route needs them.
+
+**Map**
+- **Obstacle icons from zoom 15,** in the JOSM style's visual language (github.com/TommiContursi/MTB-TrailMap-JOSM-Style): gate, lift gate, kissing gate, stile, cycle barrier, log / fallen tree, ford, plus a wet-spot mark.
+- **Trail character as a Trails option, one at a time** so colours don't clash: *Width* (line thickness like the JOSM style: < 0.6 m · < 1.8 m · wider), *Visibility* (fainter as `trail_visibility` gets worse: intermediate 75 %, bad / horrible / no 50 %, as in JOSM), *Smoothness* (a colour scale), *SAC* (hiking difficulty). Each with its key in the Layers panel.
+- Hover and click show the details ("Width 0.4 m · visibility bad · fallen tree here").
+
+**Route**
+- Obstacles within about 10 m of the route and faint trails (`trail_visibility` bad / horrible / no) join **Heads-up** with **Avoid** buttons, like hazards today.
+- **Route style:** where BRouter has a lever it's used (the MTB profile's `consider_smoothness`; the hiking profile's SAC). Width and visibility have no BRouter variable, so they're **ranked**: round-trip scoring and the "what it changed" line count obstacles and faint metres. To be confirmed in the phase: does any stock profile read `trail_visibility`?
+
+**Test**
+- Areas with tags: Kauppi (Tampere) and Laajavuori (Jyväskylä) for obstacles and width. Smoke: icons appear at z15, Heads-up lists an obstacle on a fixture route.
+- Screenshots: obstacles at z16, each trail-character option, Heads-up with an obstacle.
+
+**Risks**
+- Tagging is patchy, so the UI says "from OpenStreetMap, where mapped".
+- Larger z14 responses in cities: filter to the listed keys, `out tags geom`, and skip tiles with too many ways.
+
+## Phase 13 — Water routing
+
+**Today:** `js/water.js` renders OpenFreeMap water white on black in a hidden map, adds streams as a cost, runs A* with a shore cost and a land cost for carries, then straightens. Phase 9 added "near the shore" and carry costs.
+
+**Add costs to the same grid**
+- **Fairways** (`vaylaalueet_uusi` from the Väylävirasto WFS that `nautical.js` already loads): a cost per cell inside a fairway. The cheapest path then crosses it straight rather than following it.
+- **Shallow areas:** cells shallower than a minimum per craft (sea kayak about 0.3 m, canoe 0.3, SUP 0.2, rowing boat 0.5) cost a lot or are blocked. Source to settle in the phase:
+  - Traficom's depth areas as **vector** (a WFS with `DRVAL1`/`DRVAL2`, if Traficom's INSPIRE service has one);
+  - or the `DepthArea_A` **WMS** drawn into the hidden map, with its fixed colours mapped back to depth classes.
+- **Rocks, shoals and marks:** a buffer (about 30 m) around underwater rocks and obstructions (Traficom layers, to be identified) and around isolated-danger and cardinal marks (Väylävirasto aids to navigation, loaded by `nautical.js`).
+- **Optional:** "stay within N m of shore" as a setting (phase 9 has near-shore on or off), and **wind exposure**: open-water cells cost more with a strong onshore or side wind, from the route weather already fetched.
+
+**Coverage and gaps**
+- Check what's open and usable from a browser for the **sea** (Traficom charts) and **lakes** (SYKE lake depth data: WMS/WFS, licence, CORS), and Väylävirasto's inland charts.
+- Where a leg has no depth data, Heads-up says so ("No depth data for this lake — shallows aren't avoided").
+
+**UI**
+- **Paddling Route style controls:** Fairways (avoid / ignore), Minimum depth (from the craft, editable), Shoals and rocks (keep clear / ignore), Shore (as now), Carries (as now), Wind (avoid exposure / ignore).
+- **A note on why the route went where it did,** in Heads-up: "kept out of the fairway", "around a shoal", "close to shore because of the wind".
+
+**Test**
+- Before/after legs: Näsijärvi (Tampere; fairway and inland depth), a coastal archipelago route (Turku or Helsinki), a river (e.g. Kokemäenjoki).
+- Keep grid size and time per leg in check: report the milliseconds and grid cells per leg before and after, and cap the extra data per leg.
+
+**Risks**
+- Depth rasters at the wrong resolution. WMS colour mapping depends on the style staying fixed, so test it against a known chart.
+
+## Phase 14 — Round trips for paddling
+
+- **After 13,** so loops use the new water costs. Same card UI as phase 10.
+- **Generation:** `roundtrip.js` with the opposite water check. Via points must be *on* water: nudged along the circle onto open water, and away from shore by the near-shore setting. Legs are routed with Polku's own water router, so there are no routing API calls, but there is CPU, so measure the time for 3 candidates; fewer via points (3) and a coarser grid if needed.
+- **Ranking:** distance match, open-water exposure (share of the loop far from shore), wind (headwind share from the route weather; one cached forecast lookup per candidate), carries, and anything Heads-up from phase 13.
+- **Test:** loops from Tampere (Näsijärvi and Pyhäjärvi), the Helsinki archipelago and a river town.
+
+## Phase 15 — Winter (research first, then build)
+
+Winter is close in Finland, so this comes before Strava. **Research first, written here before coding:**
+- **Sports for a "snow" group:** cross-country ski (classic / skate), snowshoe, winter walk, fat bike. For each: timing (speeds and snow effects), routing profile (BRouter has no ski profile: does its `lookups.dat` know `piste:type`? If not, do ski tracks need a small graph of our own from Overpass, as the water router does for water?), and default layers.
+- **Ski tracks (latu):**
+  - LIPAS ski-track types and their attributes (lighting, length, style);
+  - OSM `piste:type=nordic` with `piste:grooming` (classic / skating) and `lit`;
+  - whether any municipality (**Jyväskylä first**) publishes grooming status ("latu ajettu", last groomed) through an open API: URL, format, licence, CORS.
+  Show tracks by style and lighting, with grooming age where known.
+- **Snow:** snow depth from FMI open-data observations (stations), as a layer and along the route.
+- **Ice:**
+  - sea ice from FMI (Baltic ice charts: concentration, thickness);
+  - lake ice from SYKE (thickness observations, satellite ice cover) or Copernicus Lake Ice Extent.
+  For each: coverage, update frequency, resolution, licence, CORS and limits.
+- **Effects to build:**
+  - paddle warns about, or refuses, routes on frozen water;
+  - winter sports may cross ice only where the data says it's frozen, always with a clear warning;
+  - summer-only layers and warnings step back in winter.
+- **Safety wording, a rule for every screen:** ice data is sparse and quickly out of date. Polku never says or implies that ice is safe to walk, ski or cycle on.
+- **Season:** suggest winter sports when snow depth or the date says it's winter, without forcing it.
+
+## Phase 16 — Strava & Garmin (research and plan only)
+
+- The brief is in **Later: Strava & Garmin** below.
+- **Deliverables:**
+  - local import of a Strava bulk export or a GPX/FIT folder into a heatmap in IndexedDB;
+  - FIT course export for Garmin devices;
+  - the OAuth options (a tiny serverless token exchange) and what Strava's and Garmin's APIs and terms actually allow;
+  - using the history to calibrate speeds per sport (phase 6), and in route style and round trips to prefer familiar places or explore new ones.
+- Written here as findings and a plan; **no code until the user OKs it.**
 
 ## Later: Strava & Garmin (not started; research first, no code)
 
