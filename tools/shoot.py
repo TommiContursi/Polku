@@ -44,6 +44,14 @@ STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) return tru
             " await new Promise((r) => setTimeout(r, 4500)); p.reveal('style'); return true; })()")
 LEG_STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) { p.openPointMenu(0, p.markers[0]); return true; } p.setStyle({ p: 'transfer', v: {}, wet: 'auto' }, 0);"
                 " await new Promise((r) => setTimeout(r, 4500)); if (p.layout() === 'side') p.reveal('points'); await new Promise((r) => setTimeout(r, 600)); p.openPointMenu(0, p.markers[0]); return true; })()")
+# the Layers panel scrolled to a group (after optionally pressing a trail colours choice)
+def LAYERS_AT(group, colours=None):
+    press = (f"const b = [...document.querySelectorAll('#layers-body .seg button')].find((x) => x.textContent === {json.dumps(colours)}); b && b.click(); await wait(800);"
+             if colours else '')
+    return ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('[data-panel=layers-panel]').click(); await wait(400); " + press +
+            f" const s = [...document.querySelectorAll('#layers-body summary')].find((x) => new RegExp({json.dumps(group)}).test(x.textContent)); s && s.scrollIntoView({{ block: 'start' }}); return true; }})()")
+
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -112,6 +120,11 @@ SCENES = {
     'desk-standin': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=STANDIN),
     'phone-standin': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=STANDIN),
     'desk-router-setting': dict(DESK, timeline=False, js="document.querySelector('#btn-settings').click(); setTimeout(() => { const i = document.querySelector('[aria-label=\"Routing server address\"]') || [...document.querySelectorAll('.panel-settings h3, .panel-settings .sec-title')].pop(); i && i.scrollIntoView({ block: 'center' }); }, 300); true"),
+    # phase 11: the same layers in every sport; opacity under each raster overlay
+    'desk-layers-hike': dict(DESK, timeline=False, activity='hike', hash='#15.4/61.5085/23.8040', js=LAYERS_AT('^Trails', 'Difficulty')),
+    'phone-layers-hike': dict(PHONE, timeline=False, activity='hike', hash='#15.4/61.5085/23.8040', js=LAYERS_AT('^Trails', 'Difficulty')),
+    'desk-layers-paddle': dict(DESK, timeline=False, activity='paddle', hash='#14.6/60.1440/24.9850', js=LAYERS_AT('^Water')),
+    'phone-layers-paddle': dict(PHONE, timeline=False, activity='paddle', hash='#14.6/60.1440/24.9850', js=LAYERS_AT('^Water')),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
