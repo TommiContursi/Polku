@@ -4,6 +4,7 @@
 
 import { LIPAS_WFS, LIPAS_TYPES } from './config.js';
 import { lonLatToTile, tileBounds } from './geo.js';
+import { request } from './net.js';
 
 const Z = 9; // cache granularity (≈ 60 km tiles at 61°N)
 
@@ -70,7 +71,7 @@ export class LipasLayer {
     const [w, s, e, n] = tileBounds(x, y, Z);
     const url = `${LIPAS_WFS}?service=WFS&version=2.0.0&request=GetFeature&typeNames=lipas:${t.layer}` +
       `&outputFormat=application/json&srsName=EPSG:4326&count=2000&bbox=${s},${w},${n},${e},urn:ogc:def:crs:EPSG::4326`;
-    const res = await fetch(url);
+    const res = await request('lipas', url);
     if (!res.ok) throw new Error(`LIPAS ${res.status}`);
     const gj = await res.json();
     return (gj.features || [])

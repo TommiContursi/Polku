@@ -4,10 +4,11 @@
 import { openModal } from './modal.js';
 import { h, icon } from './ui.js';
 import { compass } from './geo.js';
+import { request } from './net.js';
 
 const ROAD = 'https://tie.digitraffic.fi';
 const HEADERS = { 'Digitraffic-User': 'Polku/1.0 (polku.si)' };
-const get = (url) => fetch(url, { headers: HEADERS }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const get = (url) => request('digitraffic', url, { headers: HEADERS }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
 
 const DIRECTION = { UNKNOWN: '', INCREASING_DIRECTION: 'road number up', DECREASING_DIRECTION: 'road number down', CROSSING_INCREASING_DIRECTION: 'side road →', CROSSING_DECREASING_DIRECTION: 'side road ←', SPECIAL_DIRECTION: 'special view' };
 const SENSORS = [

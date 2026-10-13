@@ -5,14 +5,17 @@
 import { OPEN_METEO } from './config.js';
 import { bearing } from './geo.js';
 import { idb } from './idb.js';
+import { request } from './net.js';
 
 const rad = (d) => (d * Math.PI) / 180;
 
 // ------------------------------------------------------------------ forecast cells
-// Forecasts are fetched and cached per cell of a fixed lattice, so small map or
-// route changes reuse what's already here instead of asking again. Level 0
-// cells are 0.05° × 0.025° (≈ 2.8 × 2.8 km at 60° N, about the forecast
-// model's own resolution); each level up doubles both sides. A cell stays
+// Forecasts are fetched and cached per point of a fixed lattice, so small map
+// or route changes reuse what's already here instead of asking again. Level 0
+// points are 0.05° × 0.025° apart (≈ 2.8 × 2.8 km at 60° N, about the forecast
+// model's own resolution); each level up doubles the spacing and keeps every
+// other point, so the levels nest: a point fetched while zoomed out serves
+// again zoomed in, and the other way round. A cell stays
 // fresh for an hour (the models update hourly), in memory and in IndexedDB so
 // it survives reloads; copies up to a day old stand in when Open-Meteo can't
 // be reached. Open-Meteo counts every location as a call, so this is what
@@ -23,24 +26,37 @@ const FRESH = 3600e3;
 const KEEP = 24 * 3600e3;
 const BATCH = 100; // locations per request
 const cells = new Map(); // "L/i/j" -> { at, s }
+const inflight = new Map(); // "L/i/j" -> Promise of the request fetching it
 const store = idb('weather');
 store.prune((v) => v && Date.now() - v.at < KEEP).catch(() => {});
 
 export const cellSize = (L) => [LON0 * 2 ** L, LAT0 * 2 ** L];
+/** The nearest lattice point at level L. */
 export function cellAt([lon, lat], L = 0) {
   const [dx, dy] = cellSize(L);
-  return { L, i: Math.floor(lon / dx), j: Math.floor(lat / dy) };
+  return { L, i: Math.round(lon / dx), j: Math.round(lat / dy) };
 }
-export function cellCenter({ L, i, j }) {
+export function latticePoint({ L, i, j }) {
   const [dx, dy] = cellSize(L);
-  return [+((i + 0.5) * dx).toFixed(4), +((j + 0.5) * dy).toFixed(4)];
+  return [+(i * dx).toFixed(4), +(j * dy).toFixed(4)];
 }
-const keyOf = (c) => `${c.L}/${c.i}/${c.j}`;
+// keyed in level-0 units, so the same point has one key at every level
+const keyOf = (c) => `p/${c.i * 2 ** c.L}/${c.j * 2 ** c.L}`;
+const pointOfKey = (k) => { const [, I, J] = k.split('/').map(Number); return latticePoint({ L: 0, i: I, j: J }); };
+
+/** How many of these points would need a request (no fresh copy in memory, not on the way). */
+export function uncached(list) {
+  const now = Date.now();
+  let n = 0;
+  for (const k of new Set(list.map(keyOf))) { const c = cells.get(k); if (!(c && now - c.at < FRESH) && !inflight.has(k)) n++; }
+  return n;
+}
 
 /**
  * Hourly forecasts (−1 h … +49 h) for a list of cells, in the same order.
  * Only cells without a fresh copy are fetched. The result has `.stale = true`
- * when an older copy had to stand in for a failed request.
+ * (and `.from`, when the oldest copy was fetched) when older copies had to
+ * stand in for a failed or refused request.
  */
 export async function forecastCells(list) {
   const now = Date.now();
@@ -68,24 +84,38 @@ export async function forecastCells(list) {
       return true;
     });
   }
-  let error = null;
-  const fetchKeys = [...new Set(need.map((n) => keys[n]))];
-  for (let b = 0; b < fetchKeys.length && !error; b += BATCH) {
-    const batch = fetchKeys.slice(b, b + BATCH);
-    try {
-      const series = await fetchPoints(batch.map((k) => { const [L, i, j] = k.split('/').map(Number); return cellCenter({ L, i, j }); }));
+  // Cells another call is already fetching are awaited, not asked for twice
+  // (the timeline and the weather layers often ask at the same moment).
+  const waits = [];
+  const mine = [];
+  for (const k of new Set(need.map((n) => keys[n]))) (inflight.has(k) ? waits.push(inflight.get(k)) : mine.push(k));
+  for (let b = 0; b < mine.length; b += BATCH) {
+    const batch = mine.slice(b, b + BATCH);
+    const p = fetchPoints(batch.map(pointOfKey)).then((series) => {
       const at = Date.now();
       batch.forEach((k, m) => {
         const v = { at, s: series[m] };
         cells.set(k, v);
         store.set(k, v).catch(() => {});
       });
-    } catch (err) { error = err; }
+    });
+    const clear = () => batch.forEach((k) => { if (inflight.get(k) === p) inflight.delete(k); });
+    p.then(clear, clear);
+    batch.forEach((k) => inflight.set(k, p));
+    waits.push(p);
   }
+  const settled = await Promise.allSettled([...new Set(waits)]);
+  const failed = settled.find((r) => r.status === 'rejected');
+  const error = failed ? failed.reason : null;
   for (const n of need) {
     const c = cells.get(keys[n]);
     if (c && Date.now() - c.at < FRESH) out[n] = c.s;
-    else if (fallback.has(keys[n])) { out[n] = fallback.get(keys[n]).s; out.stale = true; }
+    else if (fallback.has(keys[n])) {
+      const f = fallback.get(keys[n]);
+      out[n] = f.s;
+      out.stale = true;
+      out.from = Math.min(out.from || Infinity, f.at); // oldest copy used
+    }
   }
   for (let n = 0; n < list.length; n++) if (!out[n]) throw error || new Error('Weather unavailable'); // (some() skips holes)
   if (cells.size > 4000) for (const k of [...cells.keys()].slice(0, 1000)) cells.delete(k);
@@ -120,7 +150,7 @@ async function fetchPoints(points, hours = 49) {
   const url = `${OPEN_METEO}?latitude=${lat}&longitude=${lon}` +
     '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover' +
     `&forecast_hours=${hours}&past_hours=1&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC`;
-  const res = await fetch(url);
+  const res = await request('openmeteo', url, { weight: points.length }); // Open-Meteo counts each location
   if (!res.ok) throw new Error('Weather unavailable');
   let j = await res.json();
   if (!Array.isArray(j)) j = [j];
@@ -192,6 +222,8 @@ export async function windAlong(pts, along, tAt, startSec) {
     speed, gust, dir, head, cross, temp, precip,
     start: { ...first, time: startSec },
     hourly: series[Math.floor(k / 2)],
+    stale: !!series.stale,
+    from: series.from || null,
   };
 }
 

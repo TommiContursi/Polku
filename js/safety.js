@@ -14,6 +14,7 @@ import { DIGIROAD_WMS } from './config.js';
 import { openModal } from './modal.js';
 import { h, icon } from './ui.js';
 import { compass } from './geo.js';
+import { request } from './net.js';
 
 // AIS ship type → group (colour on the map, label in the card)
 const SHIP_GROUPS = [
@@ -46,7 +47,7 @@ const MARINE = 'https://meri.digitraffic.fi';
 const HEADERS = { 'Digitraffic-User': 'Polku/1.0 (polku.si)' };
 const EMPTY = { type: 'FeatureCollection', features: [] };
 
-const get = (url) => fetch(url, { headers: HEADERS }).then((r) => {
+const get = (url) => request('digitraffic', url, { headers: HEADERS }).then((r) => {
   if (!r.ok) throw new Error(`${r.status}`);
   return r.json();
 });
@@ -164,7 +165,7 @@ export class SafetyLayers {
       const url = `${DIGIROAD_WMS}?service=WFS&version=2.0.0&request=GetFeature&typeNames=digiroad:dr_liikennemaara` +
         `&outputFormat=application/json&srsName=EPSG:4326&count=20000&propertyName=arvo,geom` +
         `&cql_filter=${encodeURIComponent(`arvo>=800 AND BBOX(geom,${w},${s},${e},${n},'EPSG:4326')`)}`;
-      const p = fetch(url).then((r) => r.json()).then((gj) => {
+      const p = request('digiroad', url).then((r) => r.json()).then((gj) => {
         const feats = (gj.features || []).filter((f) => f.geometry).map((f) => ({ type: 'Feature', properties: { kind: 'aadt', aadt: f.properties.arvo }, geometry: f.geometry }));
         this.aadtTiles.set(key, feats);
         return feats;
