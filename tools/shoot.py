@@ -25,6 +25,7 @@ SCENES = {
     'desk-closed': dict(DESK, timeline=True),
     'desk-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json'),
     'desk-min': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='min'),
+    'desk-wide': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage={'polku:panelWidth': '860'}),
     'phone-closed': dict(PHONE, timeline=True),
     'phone-planner': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half'),
     'phone-peek': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek'),
@@ -46,7 +47,7 @@ FIT = ("(() => { const p = polku.planner, a = p.analysis; if (!a) return;"
 def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
-    pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)})
+    pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)}, sc.get('storage'))
     if sc.get('route') or sc.get('water'):
         pg.js('polku.planner.setActive(true); true')
         if sc.get('route'):
