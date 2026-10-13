@@ -11,8 +11,8 @@ Also approved:
 | 0 | UI polish (Plan button, Weather button, grouped chips) | `ui-polish` | [#12](https://github.com/TommiContursi/Polku/pull/12) | merged |
 | 1 | Planner panel: side panel on desktop, peek / half / full sheet on phones | `planner-panel` | [#13](https://github.com/TommiContursi/Polku/pull/13) | in review |
 | 2 | One clock, and paddling conditions instead of a water "profile" | `one-clock` | #14 → re-landed as [#15](https://github.com/TommiContursi/Polku/pull/15) | merged (#14 went into the stacked base by accident; #15 brought it to `main`) |
-| 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | in review |
-| 4 | Layers, legend and Settings | `layers-settings` | — | |
+| 3 | Map chrome: activity pill, base map switcher, rail and thumb reach | `map-chrome` | [#16](https://github.com/TommiContursi/Polku/pull/16) | merged |
+| 4 | Layers, legend and Settings — and one place for each kind of control | `layers-settings` | #17 | in review |
 | 5 | More sports: road, trail run and run join the four we have | `sports` | — | |
 | 6 | My speeds: Easy / Normal / Fast and custom, per sport | `speeds` | — | |
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu | `edit-on-map` | — | |
@@ -257,6 +257,30 @@ Also approved:
   - Details on hover, Trackpad rotates & tilts, and High contrast;
   - later, the speed presets.
 
+**Built (PR #17)**, widened after the user's review: buttons were hard to connect, and they moved between screen sizes.
+- **Where things live, at every size:**
+  - **Top bar:** what you do (search, Plan, sport, ⚙ Settings).
+  - **Bottom right:** what the map shows and how you look at it. One column: Layers (a thumbnail of the base map), Weather, compass, locate, zoom (desktop). It rides above a bottom planner and an open phone timeline, and stays visible while planning; only a full planner hides it.
+- **What went:**
+  - the top-right rail;
+  - the separate base switcher (merged into Layers);
+  - the Legend button and panel (keys moved next to their layers);
+  - the 3D button (in Layers → Terrain & 3D);
+  - MapLibre's own zoom and compass. Polku's buttons replace them; MapLibre's geolocate stays hidden, for the location dot.
+- **Layers:**
+  - "Map for MTB — your sport sets the trail colours and which layers start on" with a Change link;
+  - base map thumbnails;
+  - **On now** chips (× turns one off; weather layers too) and "Reset to MTB defaults";
+  - folding groups that remember their state and say how many are on: Trails & difficulty, Marked routes, Places, Water & nautical, Traffic & safety, Roads, Weather on the map, Terrain & 3D;
+  - each with its **Map key**.
+- **Settings:**
+  - Sport (with what it changes);
+  - Route planner position (left / bottom, desktop);
+  - Display (high contrast, hover details, trackpad);
+  - Offline maps, Data sources, MML key.
+- **Switching sport says what it changed**, in a toast: "Gravel: unpaved roads highlighted, gravel routing, traffic and road works. Change any of it in Layers."
+- **Duplicates are labelled:** "Also the pill beside the search", and the Timeline switch "also the Weather button (T)".
+
 **Cut**
 - Overlay search.
 - Drag-to-reorder overlays.
@@ -458,6 +482,15 @@ The user's brief, kept here so it isn't lost. When it's time, the first delivera
 4. **Privacy:** data stays on the device unless the user chooses otherwise.
 
 The user expects the smallest first step to be option A plus a FIT course export. Phases 6 (speeds) and 10 (ranking) are built so that history can plug in later.
+
+## Where things live (keep for every phase)
+
+- **Top bar:** search, Plan, sport pill, ⚙ Settings.
+- **Bottom right:** one column — Layers, Weather, compass, locate, zoom — then Plan.
+- **Layers panel** (opens beside its button) is what the map shows. **Settings** (opens under the ⚙) is how Polku behaves.
+- A control may appear in two places only if both say so (e.g. sport, weather layers).
+- Phones use the same places. Panels become bottom sheets there, and touch phones drop the +/−.
+- New settings go in Settings (e.g. speeds in phase 6, with a quick chip in the planner). New map layers go in a Layers group.
 
 ## Planner layout contract (keep for phases 6–10)
 

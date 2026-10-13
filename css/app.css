@@ -68,7 +68,7 @@ button { font: inherit; color: inherit; }
 .topbar {
   position: absolute; top: 12px; left: 12px; z-index: 7; /* above the planner: search results and the sport menu open over it */
   display: flex; gap: 8px; align-items: center;
-  width: min(680px, calc(100vw - 96px));
+  width: min(730px, calc(100vw - 24px));
 }
 .brand {
   display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px;
@@ -77,7 +77,7 @@ button { font: inherit; color: inherit; }
   backdrop-filter: blur(10px);
 }
 .search {
-  position: relative; flex: 1; display: flex; align-items: center; gap: 8px;
+  position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
   height: 40px; padding: 0 10px 0 12px;
   background: var(--surface); border-radius: 999px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
   color: var(--muted);
@@ -120,22 +120,13 @@ button { font: inherit; color: inherit; }
 .act:hover, .act:focus-visible { background: var(--surface-2); outline: none; }
 .act[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
 
-/* ---------------------------------------------------------------- base map switcher */
-.base-switch { position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + 38px); z-index: 5; transition: bottom .2s; }
-.base-btn { position: relative; display: block; width: 64px; height: 64px; padding: 0; border: 2px solid #fff; border-radius: 14px; overflow: hidden; cursor: pointer; box-shadow: var(--shadow); background: var(--surface-2); }
-.base-btn img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.base-btn span { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 3px 3px; font-size: 10px; font-weight: 700; color: #fff; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
-.base-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.base-pop { position: absolute; left: 0; bottom: 74px; width: 306px; padding: 12px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
+/* ---------------------------------------------------------------- base maps (in Layers) */
 .base-grid { display: grid; grid-template-columns: repeat(4, 64px); gap: 10px 8px; justify-content: space-between; }
 .base-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; font-size: 11px; font-weight: 600; color: var(--muted); }
 .base-opt img { width: 64px; height: 64px; border-radius: 12px; border: 2px solid transparent; object-fit: cover; box-shadow: 0 0 0 1px var(--line); }
 .base-opt:hover img { border-color: var(--line); }
 .base-opt[aria-pressed="true"] { color: var(--text); }
 .base-opt[aria-pressed="true"] img { border-color: var(--accent); }
-.base-note { margin: 10px 0 0; }
-.base-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
-.base-foot .tg-inline { margin-left: 0; }
 
 .zoom-hint {
   position: absolute; top: 62px; left: calc(12px + var(--pl-left)); z-index: 3; height: 30px; padding: 0 12px; border: 0; border-radius: 999px;
@@ -143,11 +134,39 @@ button { font: inherit; color: inherit; }
 }
 .zoom-hint:hover { color: var(--text); }
 
-/* ---------------------------------------------------------------- floating buttons */
-.fab-col {
-  position: absolute; top: 12px; right: 12px; z-index: 5;
-  display: flex; flex-direction: column; gap: 8px;
+/* ---------------------------------------------------------------- map controls */
+/* One column, bottom right, at every screen size: Layers and Weather (what the
+   map shows), then compass, locate and zoom (how you look at it). It rides
+   above a bottom planner and an open phone timeline; Plan sits below it. */
+.map-ctrls {
+  position: absolute; right: 12px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 112px); z-index: 5;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px; transition: bottom .2s;
 }
+body.planning .map-ctrls { bottom: calc(var(--sheet-h) + 44px); }
+.ctrl-btn {
+  width: 40px; height: 40px; border: 0; border-radius: 12px; cursor: pointer; display: grid; place-items: center;
+  background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow);
+}
+.ctrl-btn:hover { background: var(--surface-2); }
+.ctrl-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ctrl-zoom { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.ctrl-zoom .ctrl-btn { border-radius: 0; box-shadow: none; }
+.ctrl-zoom .ctrl-btn + .ctrl-btn { border-top: 1px solid var(--line); }
+.ctrl-compass .maplibregl-ctrl { margin: 0; }
+.ctrl-compass .maplibregl-ctrl-group button { width: 40px; height: 40px; }
+.fab.fab-layers { position: relative; overflow: hidden; padding: 0; justify-content: flex-end; color: #fff; border: 2px solid #fff; }
+.fab-layers .fab-thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fab-layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+.fab-layers[aria-pressed="true"] { background: var(--surface); box-shadow: var(--shadow), 0 0 0 3px var(--accent); }
+/* MapLibre's own geolocate: only its location dot is used; Locate above drives it */
+.maplibregl-ctrl-top-right { display: none; }
+.top-btn {
+  flex: none; width: 40px; height: 40px; border: 0; border-radius: 999px; cursor: pointer; display: grid; place-items: center;
+  background: var(--surface); color: var(--text); box-shadow: var(--shadow); backdrop-filter: blur(10px);
+}
+.top-btn:hover { background: var(--surface-solid); }
+.top-btn[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.top-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fab {
   width: 60px; height: 56px; border: 0; border-radius: 16px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -156,8 +175,6 @@ button { font: inherit; color: inherit; }
 }
 .fab:hover { background: var(--surface-solid); }
 .fab[aria-pressed="true"] { background: var(--accent); color: #fff; }
-.fab-3d { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
-.fab-locate { display: none; }
 .fab-locate[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .fab-locate.background { background: var(--surface-solid); color: var(--accent); box-shadow: var(--shadow), inset 0 0 0 2px var(--accent); }
 .fab-locate.waiting .ic { animation: pulse 1s ease-in-out infinite; }
@@ -177,7 +194,6 @@ button { font: inherit; color: inherit; }
 .plan-btn:focus-visible { outline: 2px solid var(--route); outline-offset: 2px; }
 .plan-more { display: none; }
 body.planning .plan-btn { display: none; }
-body:not(.planning) .view3d { bottom: 112px; }
 .search-plan {
   flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px 0 9px; margin-right: -5px;
   border: 0; border-radius: 999px; background: var(--route); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer;
@@ -247,7 +263,8 @@ body:not(.planning) .view3d { bottom: 112px; }
 
 /* 3D tilt & rotate */
 .view3d {
-  position: absolute; right: 12px; bottom: calc(var(--sheet-h) + 44px); z-index: 5;
+  /* bottom left: the right side holds the map controls */
+  position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 40px); z-index: 5;
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px 8px;
   background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
   transition: bottom .2s;
@@ -268,7 +285,6 @@ body:not(.planning) .view3d { bottom: 112px; }
 .view3d .tool { width: 30px; height: 30px; }
 
 /* MapLibre controls */
-.maplibregl-ctrl-top-right { top: 270px; right: 4px; }
 .maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; background: var(--surface-solid); }
 .maplibregl-ctrl-group button { width: 36px; height: 36px; }
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); transition: bottom .2s; }
@@ -281,12 +297,14 @@ body:not(.planning) .view3d { bottom: 112px; }
 }
 
 /* ---------------------------------------------------------------- panels */
+/* Layers opens beside its button (bottom right), Settings under the ⚙ (top right) */
 .panel {
-  position: absolute; top: 12px; right: 84px; z-index: 6;
-  width: 340px; max-height: calc(100% - 24px - var(--sheet-h));
+  position: absolute; bottom: calc(var(--sheet-h) + 12px); right: 84px; z-index: 6;
+  width: 356px; max-height: calc(100% - 88px - var(--sheet-h));
   display: flex; flex-direction: column;
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px);
 }
+.panel-settings { top: 64px; right: 12px; bottom: auto; max-height: calc(100% - 76px - var(--sheet-h)); }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 10px 6px 16px; }
 .panel-head h2 { margin: 0; font-size: 16px; }
 .panel-body { overflow: auto; padding: 0 16px 16px; }
@@ -294,6 +312,33 @@ body:not(.planning) .view3d { bottom: 112px; }
 .lp-sec:first-child { border-top: 0; }
 .lp-sec h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .note { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+/* whose map: the sport sets the starting layers */
+.lp-sport { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 9px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--text); font-size: 13px; }
+.lp-sport > span:first-child { color: var(--accent); display: grid; }
+.lp-sport > span:nth-child(2) { flex: 1; display: grid; }
+.lp-sport small { color: var(--muted); font-size: 11.5px; }
+.lp-sport .link { flex: none; }
+/* active layers at a glance */
+.on-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.on-chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 10px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; max-width: 100%; }
+.on-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.on-chip:hover { background: var(--accent); color: #fff; }
+.on-chip.wx { background: rgba(37, 99, 235, .12); color: #1d4ed8; }
+.on-chip.wx:hover { background: #2563eb; color: #fff; }
+/* folding groups */
+.lg-group { border-top: 1px solid var(--line); }
+.lg-group > summary { display: flex; align-items: center; gap: 8px; padding: 11px 0; cursor: pointer; list-style: none; }
+.lg-group > summary::-webkit-details-marker { display: none; }
+.lg-group > summary::after { content: ""; width: 8px; height: 8px; margin: 0 4px 0 auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; }
+.lg-group[open] > summary::after { transform: rotate(45deg); }
+.lg-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.lg-count { font-size: 11px; font-weight: 700; color: var(--accent); }
+.lg-group > :last-child { margin-bottom: 10px; }
+.lg-key { margin-top: 6px; font-size: 12px; }
+.lg-key > summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 4px 0; }
+.lg-key h4 { margin: 8px 0 2px; font-size: 11px; color: var(--muted); font-weight: 700; }
+.seg.sport-seg { display: grid; grid-template-columns: 1fr 1fr; }
+.sport-seg button { gap: 5px; }
 .note a { color: var(--accent); }
 
 .tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
@@ -421,7 +466,7 @@ body:not(.planning) .view3d { bottom: 112px; }
 
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
-body[data-sheet="full"] :is(.zoom-hint, .fab-col, .base-switch, .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) { visibility: hidden; }
+body[data-sheet="full"] :is(.zoom-hint, .map-ctrls, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) { visibility: hidden; }
 .sec { border-top: 1px solid var(--line); }
 .sec-head { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 11px 0 9px; border: 0; background: none; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
 .sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); white-space: nowrap; }
@@ -644,7 +689,7 @@ body[data-sheet="full"] :is(.zoom-hint, .fab-col, .base-switch, .maplibregl-ctrl
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast[data-tone="warn"] { background: #7c2d12; }
 .track-card {
-  position: absolute; left: calc(88px + var(--pl-left)); bottom: calc(var(--sheet-h) + 40px); z-index: 7;
+  position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + 40px); z-index: 7;
   display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px;
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
 }
@@ -663,19 +708,12 @@ body.dropping .drop-hint { display: flex; }
   .search kbd { display: none; }
   .act-current { padding: 0 8px 0 11px; }
   .act-current span { display: none; }
-  /* thumb reach: the rail is a column at the bottom right, above the Plan pill
-     (and above the timeline when it's open); while planning only Layers stays, top right */
-  body:not(.planning) .fab-col { top: auto; bottom: calc(100px + var(--wx-h, 0px)); transition: bottom .2s; }
-  body.planning .fab-col { top: 62px; }
-  #btn-3d { display: none; } /* 3D is in the base map switcher */
-  .fab-locate { display: flex; }
-  .maplibregl-ctrl-top-right .maplibregl-ctrl-group:has(.maplibregl-ctrl-geolocate) { display: none; }
-  .base-switch { left: 12px; bottom: 44px; }
-  .base-btn { width: 52px; height: 52px; }
-  .base-btn span { display: none; }
-  .base-pop { bottom: 62px; width: min(306px, calc(100vw - 24px)); }
-  body.planning .base-switch { display: none; }
-  .track-card { left: 12px; }
+  /* the map controls keep their place (bottom right, thumb reach); a little smaller */
+  .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 100px); }
+  .ctrl-btn { width: 44px; height: 44px; }
+  .ctrl-compass .maplibregl-ctrl-group button { width: 44px; height: 44px; }
+  @media (pointer: coarse) { .ctrl-zoom { display: none; } } /* pinch zooms */
+  .top-btn { width: 40px; }
   /* Plan: a primary pill at the bottom; the planner sheet replaces it */
   .search-plan { display: none; }
   .plan-btn { flex-direction: row; gap: 8px; width: auto; height: 48px; padding: 0 20px 0 16px; border-radius: 999px; font-size: 15px; }
@@ -684,13 +722,8 @@ body.dropping .drop-hint { display: flex; }
   body:not(.planning) .track-card { bottom: 100px; }
   body:not(.planning) .toast { bottom: 104px; }
   .zoom-hint { top: 62px; }
-  .fab { width: 48px; height: 48px; border-radius: 14px; }
-  .fab span:not(.fab-3d) { display: none; }
-  .maplibregl-ctrl-top-right { top: 62px; }
-  /* touch phones pinch to zoom; the +/− buttons only cost room */
-  @media (pointer: coarse) { .maplibregl-ctrl-top-right .maplibregl-ctrl-group:has(.maplibregl-ctrl-zoom-in) { display: none; } }
-  .view3d { bottom: calc(var(--sheet-h) + 40px); padding: 8px 6px 6px; }
-  body:not(.planning) .view3d { left: 12px; right: auto; bottom: calc(108px + var(--wx-h, 0px)); } /* the right side is the thumb column */
+  .fab { width: 54px; height: 52px; border-radius: 14px; font-size: 10px; }
+  .view3d { padding: 8px 6px 6px; }
   .wx-bar { width: calc(100% - 24px); bottom: calc(var(--sheet-h) + 40px); }
   .tl-title { display: none; }
   .tl-strip { margin-left: 0; height: 56px; }
@@ -708,9 +741,7 @@ body.dropping .drop-hint { display: flex; }
   .tool { width: 30px; height: 32px; }
   .tool-sep { display: none; }
   .seg button span { display: none; }
-  /* While planning, keep only Layers so the sheet has room */
-  body.planning .fab-col .fab:nth-child(n+2) { display: none; }
-  body.planning .maplibregl-ctrl-top-right { display: none; }
+
   .stats { gap: 6px 16px; }
   .stat-value { font-size: 17px; }
   #profile-canvas { height: 120px; }
