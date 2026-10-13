@@ -366,7 +366,7 @@ export class WeatherOverlay {
   // for everywhere else; RainViewer is left out when Finland's image covers the view.
   syncRadar() {
     const now = this.on.rain && this.hour < 0.5;
-    if (!now) { this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; return; }
+    if (!now) { this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; return; }
     this.syncRadarRv();
     this.loadFiRadar();
   }
@@ -390,15 +390,19 @@ export class WeatherOverlay {
     if (this.fiLoading || Date.now() - (this.fiFailed || 0) < 60e3) return; // one try a minute after a failure
     this.fiLoading = true;
     try {
-      // pixels: about the screen's own, in Web Mercator proportions
+      // ~1 km per pixel, about the radar's own resolution: finer would just repeat
+      // its cells (and let false echoes pass the speckle filter); the map smooths it
       const aspect = (my(box[1]) - my(box[3])) / (mx(box[2]) - mx(box[0]));
-      const width = Math.min(1024, Math.round(Math.max(256, this.map.getCanvas().clientWidth * (z >= 7.5 ? 1.5 : 0.6))));
-      const height = Math.min(2048, Math.round(width * Math.abs(aspect)));
+      const km = (box[2] - box[0]) * 111.32 * Math.cos((((box[1] + box[3]) / 2) * Math.PI) / 180);
+      const width = Math.max(24, Math.min(1024, Math.round(km)));
+      const height = Math.max(24, Math.min(2048, Math.round(width * Math.abs(aspect))));
       const img = await fmiRadar(box, width, height, (mmh) => ramp(RAIN_RAMP, mmh));
       if (!this.on.rain || this.hour >= 0.5) return;
       const full = box === fi;
       this.fi = { box, t: Date.now(), zoomed: z >= 7.5, rv: full }; // rv: RainViewer still needed around it
       this.app.setImage('wxRadarFi', img);
+      this.fiRate = img.rateAt;
+      this.buildField();
       this.syncRadarRv();
       clearTimeout(this.fiTimer);
       this.fiTimer = setTimeout(() => { if (this.fi) this.fi.t = 0; this.loadFiRadar(); }, 5 * 60e3); // new scans every 5 min
@@ -505,9 +509,11 @@ export class WeatherOverlay {
         const v = 0.25 + s.speed * 0.13; // constant on-screen speed, like windy
         vx[i] = (dx / len) * v; vy[i] = (dy / len) * v;
       }
-      rain[i] = s.rain;
+      // "now": the drops follow the radar where it covers, else the forecast
+      const radar = this.fiRate ? this.fiRate(cam.ll[2 * i], cam.ll[2 * i + 1]) : null;
+      rain[i] = radar != null ? radar : s.rain;
       snow[i] = s.temp < 0.5 ? 1 : 0;
-      if (s.rain >= 0.05) wet++;
+      if (rain[i] >= 0.05) wet++;
     }
     this.field = { vx, vy, rain, snow, wet: wet / n };
   }
@@ -623,7 +629,7 @@ export class WeatherOverlay {
     if (!this.on.wind) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
     if (!this.on.rain) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
-    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; }
+    if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; }
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
 
