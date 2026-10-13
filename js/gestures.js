@@ -6,8 +6,8 @@
 //    events in Safari) or a touch pinch would zoom the whole page instead. We
 //    never let the page zoom and hand those gestures to the map, unless a
 //    panel is actually scrolling.
-// 2. Trackpad tilt & rotate. In 3D mode a two-finger scroll on a trackpad
-//    tilts (up/down) and rotates (left/right) while pinch keeps zooming;
+// 2. Trackpad tilt & rotate. A sideways two-finger scroll on a trackpad
+//    rotates; in 3D mode up/down tilts too, while pinch keeps zooming.
 //    Shift + two-finger scroll tilts in any mode; Safari's rotate gesture
 //    rotates. A real mouse wheel always zooms.
 
@@ -33,10 +33,11 @@ function looksLikeTrackpad(e) {
   return true;
 }
 
-export function initGestures(map, { trackpadTilt = () => false } = {}) {
+export function initGestures(map, { trackpadTilt = () => false, trackpadRotate = () => false } = {}) {
   const canvas = map.getCanvas();
   let lastCtrlWheel = 0;
   let tiltUntil = 0;
+  let turnUntil = 0;
 
   window.addEventListener('wheel', (e) => {
     const t = e.target instanceof Element ? e.target : null;
@@ -45,7 +46,16 @@ export function initGestures(map, { trackpadTilt = () => false } = {}) {
     if (t === canvas) {
       // trackpad tilt / rotate on the map itself
       const now = performance.now();
-      const tilt = !e.ctrlKey && (e.shiftKey || (trackpadTilt() && (looksLikeTrackpad(e) || now < tiltUntil)));
+      const pad = looksLikeTrackpad(e);
+      const tilt = !e.ctrlKey && (e.shiftKey || (trackpadTilt() && (pad || now < tiltUntil)));
+      // 2D: a mostly sideways two-finger scroll rotates; up/down keeps zooming
+      if (!tilt && !e.ctrlKey && trackpadRotate() && pad && (now < turnUntil || Math.abs(e.deltaX) > 2 * Math.abs(e.deltaY) + 1)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        turnUntil = now + 250;
+        map.jumpTo({ bearing: map.getBearing() + e.deltaX * 0.3 });
+        return;
+      }
       if (!tilt) return; // MapLibre zooms
       e.preventDefault();
       e.stopImmediatePropagation();

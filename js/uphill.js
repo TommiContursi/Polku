@@ -147,6 +147,45 @@ export class UphillLayer {
   }
 }
 
+/**
+ * Incline and uphill grade of the ~25 m of way under a point, from the DEM, for
+ * hover and click when the uphill layer is off. Same smoothing and grading as
+ * the layer. Reads DEM tiles (usually already cached), never Overpass.
+ */
+export async function gradeHere(f, ll) {
+  const g = f.geometry;
+  const lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+  const k = Math.cos((ll[1] * Math.PI) / 180);
+  let best = null;
+  for (const line of lines) {
+    if (line.length < 2) continue;
+    const s = densify(line, 8);
+    s.pts.forEach((p, i) => {
+      const d = ((p[0] - ll[0]) * k) ** 2 + (p[1] - ll[1]) ** 2;
+      if (!best || d < best.d) best = { d, i, s };
+    });
+  }
+  if (!best) return null;
+  const { s, i } = best;
+  const at = s.along[i];
+  const lo = s.along.findIndex((a) => a >= at - 40);
+  let hi = s.along.length - 1;
+  while (hi > i && s.along[hi] > at + 40) hi--;
+  const along = s.along.slice(lo, hi + 1);
+  if (along[along.length - 1] - along[0] < 12) return null;
+  const ele = smooth(await elevations(s.pts.slice(lo, hi + 1), 14), along, 24);
+  const j = i - lo;
+  let a = j, b = j;
+  while (a > 0 && along[j] - along[a] < 12.5) a--;
+  while (b < along.length - 1 && along[b] - along[j] < 12.5) b++;
+  const dh = ele[b] - ele[a];
+  if (!Number.isFinite(dh) || along[b] - along[a] < 8) return null;
+  const grade = Math.abs(dh / (along[b] - along[a])) * 100;
+  const p = f.properties;
+  const tags = { highway: p.class === 'track' ? 'track' : 'path', 'mtb:scale': p.mtb_scale, surface: p.surface };
+  return { grade: Math.round(grade), cls: p.subclass === 'steps' ? 5 : uphillClass(grade, grade, techBump(tags, grade)) };
+}
+
 // Overpass answers cached in IndexedDB: fresh for a week, and an older copy
 // still beats nothing when every mirror is down.
 async function cachedOverpass(key, query) {

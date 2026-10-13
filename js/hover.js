@@ -1,6 +1,6 @@
 // Hover details on desktop: a line or two about what a click would open, read
-// from features already drawn on the map. Never makes a network request; the
-// click popup keeps the full details (OSM tags, depth, elevation, …).
+// from features already drawn on the map. Never calls an API (the incline may
+// read a terrain tile); the click popup keeps the full details (OSM tags, depth…).
 //
 // Cost: one queryRenderedFeatures per pointer rest (~0.3 ms flat, ~10 ms in
 // tilted 3D), none while the pointer or the map is moving.
@@ -9,6 +9,7 @@ import { DIFF_COLORS, UPHILL_TEXT } from './config.js';
 import { inspectLayers, pickFeature, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
+import { gradeHere } from './uphill.js';
 import { h, escapeHtml } from './ui.js';
 
 const FIRST = 260; // ms the pointer rests before the first tooltip
@@ -33,11 +34,13 @@ export function initHover(map, app) {
   let hiddenAt = 0;
   let pointer = false;
   let route = false; // showing the planner's route readout
+  let current = null; // what the tooltip shows
 
   const hide = () => {
     clearTimeout(timer);
     timer = 0;
     route = false;
+    current = null;
     if (tip.hidden) return;
     tip.hidden = true;
     hiddenAt = performance.now();
@@ -66,12 +69,19 @@ export function initHover(map, app) {
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
-    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats); }
+    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.activity() === 'mtb' }); }
     if (!d) { hide(); return; }
     render(d);
+    // the incline from the DEM arrives a moment later
+    if (d.pending) {
+      d.pending.then((bit) => {
+        if (bit && current === d && !tip.hidden && !route) { d.bits.splice(d.upAt, 0, bit); render(d); }
+      }).catch(() => {});
+    }
   };
 
   const render = (d) => {
+    current = d;
     const lines = d.lines || (d.bits.length ? [d.bits.join(' · ')] : []);
     tip.innerHTML = `<b>${escapeHtml(d.title)}</b>${lines.map((l) => `<span>${l}</span>`).join('')}`;
     tip.hidden = false;
@@ -140,10 +150,10 @@ function wayKind(feats) {
   if (!w) return null;
   const p = w.properties;
   const kind = p.class === 'path' ? (p.subclass || 'path') : p.class;
-  return { p, name: WAY_NAMES[kind] || (kind ? cap(String(kind).replace(/_/g, ' ')) : 'Way') };
+  return { f: w, p, name: WAY_NAMES[kind] || (kind ? cap(String(kind).replace(/_/g, ' ')) : 'Way') };
 }
 
-function describe(f, feats) {
+function describe(f, feats, ctx) {
   const p = f.properties;
   const id = f.layer.id;
 
@@ -170,12 +180,12 @@ function describe(f, feats) {
     const type = (p.subclass || p.class || '').replace(/_/g, ' ');
     return { title: p.name || cap(type || 'Place'), bits: [p.name && type ? e(cap(type)) : '', p.ele ? `${e(p.ele)} m` : ''].filter(Boolean) };
   }
-  if (id === 'uphill-line' || /^(path|track|cycleway|road)-/.test(id)) return way(feats);
+  if (id === 'uphill-line' || /^(path|track|cycleway|road)-/.test(id)) return way(feats, ctx);
   return null;
 }
 
 // Trail or road: name (from a LIPAS route on it), difficulty, uphill grade, surface.
-function way(feats) {
+function way(feats, ctx) {
   const w = wayKind(feats);
   const route = feats.find((x) => x.layer.id === 'lipas-route');
   const up = feats.find((x) => x.layer.id === 'uphill-line');
@@ -186,10 +196,19 @@ function way(feats) {
   const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
   if (Number.isFinite(idx)) bits.push(`${dot(DIFF_COLORS[idx])}S${idx}`);
   if (up) bits.push(`${dot(DIFF_COLORS[up.properties.cls])}${UPHILL_TEXT[up.properties.cls].split(' ')[0]} ${up.properties.grade} %`);
+  const upAt = bits.length;
   if (wp.surface) bits.push(e(String(wp.surface).replace(/_/g, ' ')));
   if (wp.bicycle === 'no') bits.push('no bikes');
   if (wp.brunnel === 'bridge') bits.push('bridge');
-  return { title, bits };
+  const d = { title, bits, upAt };
+  // uphill layer off (or not computed here): work out the incline on the spot
+  if (!up && w && ctx) {
+    const trail = /^(path|track|cycleway)-/.test(w.f.layer.id);
+    d.pending = gradeHere(w.f, ctx.ll).then((r) => r && (ctx.mtb && trail
+      ? `${dot(DIFF_COLORS[r.cls])}${UPHILL_TEXT[r.cls].split(' ')[0]} ${r.grade} %`
+      : `${r.grade} % incline`));
+  }
+  return d;
 }
 
 function nautical(p) {
