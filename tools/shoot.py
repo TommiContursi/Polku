@@ -36,6 +36,11 @@ DRAG = ("""(async () => {
 STANDIN = ("(() => { const p = polku.planner; p.legs[0].result.provider = 'valhalla'; p.legs[1].status = 'waiting';"
            " p.legs[1].wait = { reason: 'limit', until: Date.now() + 60000 }; p.drawRoute(); p.renderWarnings(); p.reveal('warnings'); return true; })()")
 WAYPOINTS = "(() => { const p = polku.planner; p.setName && p.setName(1, 'Coffee at Kauppi'); p.reveal(p.sec.points ? 'points' : 'profile'); return true; })()"
+LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
+STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) return true; p.setStyle({ p: 'flowy', v: {}, wet: 'auto' });"
+            " await new Promise((r) => setTimeout(r, 4500)); p.reveal('style'); return true; })()")
+LEG_STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) { p.openPointMenu(0, p.markers[0]); return true; } p.setStyle({ p: 'transfer', v: {}, wet: 'auto' }, 0);"
+                " await new Promise((r) => setTimeout(r, 4500)); if (p.layout() === 'side') p.reveal('points'); await new Promise((r) => setTimeout(r, 600)); p.openPointMenu(0, p.markers[0]); return true; })()")
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -72,6 +77,12 @@ SCENES = {
     # the waypoint list, one point named
     'desk-waypoints': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WAYPOINTS),
     'phone-waypoints': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=WAYPOINTS),
+    # route style (routing goes to a local BRouter: tools/brouter-local.sh)
+    'desk-style': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=LOCAL, js=STYLE_JS),
+    'phone-style': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', storage=LOCAL, js=STYLE_JS),
+    'desk-leg-style': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=LOCAL, js=LEG_STYLE_JS),
+    'phone-leg-style': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', storage=LOCAL, js=LEG_STYLE_JS),
+    'desk-style-road': dict(DESK, timeline=True, activity='road', route='route-kauppi-mtb.json', storage=LOCAL, js="(async () => { const p = polku.planner; if (!p.renderStyle) return true; await new Promise((r) => setTimeout(r, 3000)); p.reveal('style'); return true; })()"),
     # one leg routed by the Valhalla stand-in, one waiting for brouter.de's pause to end
     'desk-standin': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=STANDIN),
     'phone-standin': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=STANDIN),

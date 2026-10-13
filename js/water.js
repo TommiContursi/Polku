@@ -153,9 +153,16 @@ class Heap {
   }
 }
 
-function astar(grid, sx, sy, tx, ty, landCost) {
+// Route style "near the shore" (styles.js): within about this far of land
+const NEAR_SHORE_M = 250;
+
+function astar(grid, sx, sy, tx, ty, landCost, near = false) {
   const { W, H, type } = grid;
-  const shore = shoreDistance(type, W, H);
+  // near the shore: distances in metres matter, so count further, and open water costs more the further out
+  const lim = near ? Math.max(2, Math.round(NEAR_SHORE_M / grid.res)) : 0;
+  const shore = shoreDistance(type, W, H, near ? Math.min(120, 2 * lim + 2) : 6);
+  grid.shore = shore;
+  grid.nearCells = lim;
   const N = W * H;
   const g = new Float32Array(N).fill(Infinity);
   const came = new Int32Array(N).fill(-1);
@@ -168,7 +175,11 @@ function astar(grid, sx, sy, tx, ty, landCost) {
   };
   const cellCost = (i) => {
     const t = type[i];
-    if (t === 1) { const d = shore[i]; return d <= 1 ? 1.8 : d === 2 ? 1.25 : 1; }
+    if (t === 1) {
+      const d = shore[i];
+      if (lim) return d <= 1 ? 1.5 : d <= lim ? 1 : 1 + Math.min(1.5, (d - lim) / lim);
+      return d <= 1 ? 1.8 : d === 2 ? 1.25 : 1;
+    }
     if (t === 2) return 3;
     return landCost;
   };
@@ -214,6 +225,8 @@ function lineOfSight(grid, a, b, water) {
   for (;;) {
     const t = type[y0 * W + x0];
     if (water ? t !== 1 : false) return false;
+    // near the shore: a straight line mustn't cut out across open water either
+    if (water && grid.nearCells && grid.shore[y0 * W + x0] > grid.nearCells * 1.3) return false;
     if (x0 === x1 && y0 === y1) return true;
     const e2 = 2 * err;
     if (e2 >= dy) { err += dy; x0 += sx; }
@@ -243,7 +256,7 @@ function stringPull(grid, path) {
   return out;
 }
 
-async function attempt(from, to, padFactor, allowPortage) {
+async function attempt(from, to, padFactor, allowPortage, style = {}) {
   const span = dist(from, to);
   const pad = Math.max(span * padFactor, 900);
   const midLat = (from[1] + to[1]) / 2;
@@ -263,7 +276,7 @@ async function attempt(from, to, padFactor, allowPortage) {
   };
   const [sx, sy] = toCell(from);
   const [tx, ty] = toCell(to);
-  const path = astar(grid, sx, sy, tx, ty, allowPortage ? 22 : 400);
+  const path = astar(grid, sx, sy, tx, ty, allowPortage ? style.carry || 22 : 400, style.shore === 'near');
   if (!path) throw new Error('No water connection found.');
   const pulled = stringPull(grid, path);
 
@@ -286,15 +299,20 @@ async function attempt(from, to, padFactor, allowPortage) {
   return { coords, tags, portage, portageM, resolution: grid.res };
 }
 
-/** Route a paddling leg over water. */
-export async function routeWater(from, to, { allowPortage = true } = {}) {
-  let best = await attempt(from, to, 0.35, allowPortage);
+/**
+ * Route a paddling leg over water. Route style (styles.js): shore 'near' keeps
+ * within reach of land; carry is the cost of a cell of land (22 = carry when
+ * it's shorter, higher = avoid carrying).
+ */
+export async function routeWater(from, to, { allowPortage = true, shore, carry } = {}) {
+  const style = { shore, carry };
+  let best = await attempt(from, to, 0.35, allowPortage, style);
   const total = best.coords.length > 1 ? best.coords.reduce((s, c, i, a) => (i ? s + dist(a[i - 1], c) : 0), 0) : 0;
   // A large carry often means the real water route leaves the search window
   // (around a long peninsula). Look wider once before accepting it.
   if (best.portageM > Math.max(150, total * 0.12)) {
     try {
-      const wide = await attempt(from, to, 1.1, allowPortage);
+      const wide = await attempt(from, to, 1.1, allowPortage, style);
       if (wide.portageM < best.portageM * 0.7) best = wide;
     } catch { /* keep first result */ }
   }

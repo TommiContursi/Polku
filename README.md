@@ -17,6 +17,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 
 **Plan a route**
 - Routing per sport — MTB, gravel, road cycling, hike, trail run, run and paddle, each with its own router profile, timing model, warnings, map style and default layers — with straight-line and over-water legs, undo/redo, reverse, back to start.
+- **Route style** per sport: presets in the sport's own words (MTB: Flowy trails, Technical, Smooth & easy, Roads to the trail; road: Paved roads, Flatter; hike: Nature paths, Easy paths, Mountain; run: Green & quiet, Along water, Flat; paddle: Near the shore, No carries; gravel, trail run likewise) and fine-tuning with only the controls that sport's router really has. Wet ground is automatic (rain in the last 24 h at the start). For the whole route, or one leg from a point's menu. After a change, one line says what it did ("+0.8 km · trails 41 → 63 %"). Styles travel in share links.
 - A **Waypoints** list in the planner: every point with its distance and the road it's on; rename them (names go into GPX and stay on this device), reorder by dragging or with ↑/↓, remove, or click one to see it on the map. Undo covers all of it. The ⛶ button (or <kbd>F</kbd>) frames the whole route, and opening the planner far from your route brings it back into view.
 - Hover the route (or scrub the profile) for the road or path name there — from the map tiles already loaded, no extra requests.
 - Edit on the map like in Komoot: drag a point or the line itself (on touch, hold the line first) and the route follows as you drag; click the line or a leg's middle handle for a via point; a point's menu sets its next leg, makes it the start or finish, or removes it; long-press or right-click the map to add, avoid or start from that spot.
@@ -86,6 +87,7 @@ With the dev server running and Google Chrome installed:
 python3 tools/smoke.py                  # layout check at 4 sizes: no overlaps, no console errors
 python3 tools/shoot.py shots after      # screenshots for a pull request (--list for the scenes)
 tools/brouter-local.sh                  # optional: BRouter on this computer (Settings → Routing server)
+python3 tools/style_probe.py --presets  # does every route style change the route? (against the local BRouter)
 ```
 
 The plan for upcoming work is in [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -98,6 +100,7 @@ The plan for upcoming work is in [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Style** (`js/style.js`): one function builds the whole MapLibre style from app state and is applied with `setStyle(..., {diff: true})`. Activity, base map and overlays are all just state.
 - **Offline** (`js/offline.js`, `sw.js`): the tiles covering the route corridor at zoom 5–14 go into Cache Storage, and a service worker serves them when the network is slow (4 s) or gone. OpenFreeMap's weekly tile version is stripped from the cache key, so saved tiles keep matching. The routed line is saved with the area, so reopening it needs no routing server.
 - **Routing without a server of our own** (`js/router.js`, `js/net.js`, `js/valhalla.js`): legs come from [brouter.de](https://brouter.de), a free public BRouter that refuses (403 "Please, retry later!") when one address calls too often, for 40 s at first and half an hour after repeated bursts. So Polku stays well under it — at most 5 calls in 10 s and 12 a minute, consecutive legs in one call (a new sport or a shared link costs one call, not one per leg), the routed geometry saved with your route (a refresh costs none), and a drag's live preview only while there's budget to spare. When brouter.de pauses anyway, or would keep a leg waiting more than a few seconds, [Valhalla](https://valhalla.github.io/valhalla/) on the FOSSGIS servers that openstreetmap.org uses routes it instead (one call a second at most, as their terms ask; its way attributes are translated into the tags the analysis reads), and Heads-up says so, with a button to use BRouter again. Paddling has no stand-in: those legs wait. Running BRouter yourself is optional — `tools/brouter-local.sh` starts one on your computer, and Settings → Routing server points Polku at it (handy for development: it spares brouter.de).
+- **Route styles** (`js/styles.js`): BRouter's `profile:name=value` URL parameters override any global variable of a stock profile (it injects them before the profile's own assignments), so most styles need no custom profiles. The one exception is road cycling: the stock road profile costs gravel main roads like asphalt, and many Finnish tertiary roads are gravel, so `profiles/polku-road.brf` adds one variable; it's uploaded once per session under a fixed id and uploaded again if the server has dropped it. Every preset was checked to change real routes (`tools/style_probe.py`).
 - **Hover** (`js/hover.js`): one `queryRenderedFeatures` call when the pointer rests, never while it moves, using the click popup's own layer priority so the preview always matches the click.
 
 ## Data sources
@@ -131,6 +134,8 @@ js/planner.js       route planner + bottom sheet
 js/router.js        per-leg routing (BRouter, batched; straight; water) and the Valhalla stand-in
 js/valhalla.js      Valhalla (FOSSGIS) client: routes and way attributes as OSM-style tags
 js/names.js         road and path names near a point, from the loaded vector tiles
+js/styles.js        route styles: presets and controls per sport, as BRouter / Valhalla / water-router parameters
+profiles/           Polku's own BRouter profile (road: gravel main roads count as rough), uploaded to the router
 js/water.js         open-water A* router
 js/analysis.js      profile, grades, climbs, warnings, timing, wind exposure
 js/chart.js         elevation chart + route readout

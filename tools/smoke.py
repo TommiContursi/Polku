@@ -99,6 +99,28 @@ WAYPOINTS = """(async () => {
 })()"""
 
 
+# Route style: another preset reaches the share link, and undo puts it back
+# (straight-line legs, so no routing). The per-sport choice is cleared after.
+STYLE = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  p.reveal('style');
+  await wait(300);
+  const code = () => new URL(p.shareUrl()).searchParams.get('p') || '';
+  const before = code();
+  const chips = [...document.querySelectorAll('.style-presets .chip')];
+  if (chips.length < 3) errs.push(`${chips.length} style presets`);
+  const other = chips.find((c) => c.getAttribute('aria-pressed') !== 'true' && c.tagName === 'BUTTON');
+  other.click();
+  await wait(900);
+  if (code() === before) errs.push('the style did not reach the share link');
+  p.undo();
+  await wait(300);
+  if (code() !== before) errs.push('undo did not restore the style');
+  localStorage.removeItem('polku:styles');
+  return errs;
+})()"""
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -145,6 +167,7 @@ def check(chrome, w, h, phone, bottom=False):
     time.sleep(1.0)
     fails += [f'edit: {e}' for e in pg.js(EDIT)]
     fails += [f'waypoints: {e}' for e in pg.js(WAYPOINTS)]
+    fails += [f'style: {e}' for e in pg.js(STYLE)]
     pg.js("polku.planner.setActive(false); true")
     time.sleep(0.3)
     if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
