@@ -10,12 +10,11 @@
 // moves the particles simply pause and fade out, and forecast playback only
 // re-samples the grid. Particle canvases render at 1× pixel density.
 
-import { forecastPoints } from './weather.js';
+import { forecastCells, cellSize, cellCenter, alignSeries } from './weather.js';
 import { compass } from './geo.js';
 import { h, icon } from './ui.js';
 
-const COLS = 9;
-const ROWS = 9;
+const MAX_CELLS = 90; // forecast cells per grid (the view plus a margin)
 const IMG = 72; // field image resolution
 const HOURS = 48;
 const CELL = 24; // px, screen cache resolution
@@ -130,6 +129,7 @@ export class WeatherOverlay {
   }
 
   onMoveStart() {
+    clearTimeout(this.fetchTimer);
     if (!this.animated) return;
     this.moving = true;
     this.windCv.classList.add('wx-hide');
@@ -139,7 +139,9 @@ export class WeatherOverlay {
   onMoveEnd() {
     this.moving = false;
     if (!this.active) return;
-    this.maybeFetch();
+    // ask once the map has settled, not on every stop of a pan
+    clearTimeout(this.fetchTimer);
+    this.fetchTimer = setTimeout(() => this.maybeFetch(), 600);
     this.renderStrip();
     if (!this.animated) return;
     this.buildCam();
@@ -165,33 +167,49 @@ export class WeatherOverlay {
     return [w, s, e, n];
   }
 
-  covers(box) {
-    if (!this.grid) return false;
-    const g = this.grid.box;
-    const zoomOk = Math.abs(this.grid.zoom - this.map.getZoom()) < 1.6;
-    return zoomOk && box[0] >= g[0] && box[2] <= g[2] && box[1] >= g[1] && box[3] <= g[3] && Date.now() - this.grid.t < 30 * 60 * 1000;
+  covers(box, L) {
+    const g = this.grid;
+    if (!g || g.L !== L) return false;
+    const b = g.box;
+    return box[0] >= b[0] && box[2] <= b[2] && box[1] >= b[1] && box[3] <= b[3] && Date.now() - g.t < 30 * 60 * 1000;
   }
 
   async maybeFetch() {
     if (!this.active || this.map.getZoom() < 3) return;
     const box = this.viewBox();
-    if (this.covers(box)) return;
-    const padX = (box[2] - box[0]) * 0.25, padY = (box[3] - box[1]) * 0.25;
-    const w = box[0] - padX, e = box[2] + padX, s = Math.max(-80, box[1] - padY), n = Math.min(80, box[3] + padY);
-    const x0 = mx(w), x1 = mx(e), y0 = my(n), y1 = my(s);
-    const pts = [];
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        pts.push([lonOf(x0 + ((x1 - x0) * c) / (COLS - 1)), latOf(y0 + ((y1 - y0) * r) / (ROWS - 1))]);
-      }
+    // The grid is made of cells of the shared forecast lattice (see weather.js):
+    // the finest level that covers the view plus a margin in ≤ MAX_CELLS cells.
+    const padX = (box[2] - box[0]) * 0.2, padY = (box[3] - box[1]) * 0.2;
+    let L = 0;
+    while (L < 11) {
+      const [dx, dy] = cellSize(L);
+      if (((box[2] - box[0] + 2 * padX) / dx + 2) * ((box[3] - box[1] + 2 * padY) / dy + 2) <= MAX_CELLS) break;
+      L++;
     }
+    if (this.covers(box, L)) return;
+    const [dLon, dLat] = cellSize(L);
+    let i0 = Math.floor((box[0] - padX) / dLon), i1 = Math.floor((box[2] + padX) / dLon);
+    let j0 = Math.floor(Math.max(-80, box[1] - padY) / dLat), j1 = Math.floor(Math.min(80, box[3] + padY) / dLat);
+    if (i1 - i0 < 2) { i0 -= 1; i1 = i0 + 2; }
+    if (j1 - j0 < 2) { j0 -= 1; j1 = j0 + 2; }
+    const cols = i1 - i0 + 1, rows = j1 - j0 + 1;
+    const list = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) list.push({ L, i: i0 + c, j: j1 - r }); // north row first
+    const pts = list.map(cellCenter);
     const req = (this.req = Symbol('wx'));
     this.loading = true;
     this.renderTime();
     try {
-      const series = await forecastPoints(pts, HOURS + 1);
+      const raw = await forecastCells(list);
       if (req !== this.req) return;
-      this.grid = { box: [w, s, e, n], merc: [x0, y0, x1, y1], pts, series, zoom: this.map.getZoom(), t: Date.now(), time0: Date.now() / 1000 };
+      // cells fetched at different times share one hourly axis
+      const t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600;
+      const series = raw.map((s) => alignSeries(s, t0, HOURS + 2));
+      const [w, n] = pts[0], [e, s] = pts[pts.length - 1];
+      this.grid = {
+        L, cols, rows, lon0: w, lat0: n, dLon, dLat, box: [w, s, e, n], merc: [mx(w), my(n), mx(e), my(s)],
+        pts, series, stale: !!raw.stale, zoom: this.map.getZoom(), t: Date.now(), time0: Date.now() / 1000,
+      };
       if (!this.cam) this.buildCam();
       this.applyHour(true);
     } catch {
@@ -206,7 +224,7 @@ export class WeatherOverlay {
     const g = this.grid;
     if (!g) return;
     const t = timeAtHour(this.hour);
-    const N = COLS * ROWS;
+    const N = g.series.length;
     const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N);
     const times = g.series[0].time;
     let i = 0;
@@ -238,14 +256,14 @@ export class WeatherOverlay {
   weights(lngLat) {
     const g = this.grid;
     if (!g) return null;
-    const [x0, y0, x1, y1] = g.merc;
-    const gx = ((mx(lngLat[0]) - x0) / (x1 - x0)) * (COLS - 1);
-    const gy = ((my(lngLat[1]) - y0) / (y1 - y0)) * (ROWS - 1);
-    if (!(gx >= 0 && gy >= 0 && gx <= COLS - 1 && gy <= ROWS - 1)) return null;
-    const cx = Math.min(COLS - 2, Math.floor(gx)), cy = Math.min(ROWS - 2, Math.floor(gy));
+    const { cols, rows } = g;
+    const gx = (lngLat[0] - g.lon0) / g.dLon;
+    const gy = (g.lat0 - lngLat[1]) / g.dLat;
+    if (!(gx >= 0 && gy >= 0 && gx <= cols - 1 && gy <= rows - 1)) return null;
+    const cx = Math.min(cols - 2, Math.floor(gx)), cy = Math.min(rows - 2, Math.floor(gy));
     const tx = gx - cx, ty = gy - cy;
-    const k = cy * COLS + cx;
-    return [[k, (1 - tx) * (1 - ty)], [k + 1, tx * (1 - ty)], [k + COLS, (1 - tx) * ty], [k + COLS + 1, tx * ty]];
+    const k = cy * cols + cx;
+    return [[k, (1 - tx) * (1 - ty)], [k + 1, tx * (1 - ty)], [k + cols, (1 - tx) * ty], [k + cols + 1, tx * ty]];
   }
 
   sample(lngLat) {
@@ -300,9 +318,9 @@ export class WeatherOverlay {
     this.app.setRadar(this.on.rain && this.hour < 0.5 ? this.radar || {} : null);
     // labels: °C on a sparse grid, and precipitation amounts where it rains
     const feats = [];
-    for (let r = 1; r < ROWS - 1; r++) {
-      for (let c = 1; c < COLS - 1; c++) {
-        const k = r * COLS + c;
+    for (let r = 1; r < g.rows - 1; r++) {
+      for (let c = 1; c < g.cols - 1; c++) {
+        const k = r * g.cols + c;
         if (this.on.temp) feats.push({ type: 'Feature', properties: { kind: 'temp', t: `${Math.round(this.cur.temp[k])}°` }, geometry: { type: 'Point', coordinates: g.pts[k] } });
         const rr = this.cur.rain[k];
         if (this.on.rain && rr >= 0.1) {
