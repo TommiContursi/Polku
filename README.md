@@ -37,6 +37,7 @@ Any static server works. `serve.py` just disables caching while you edit.
 | GPX/KML import, GPX export | ✓ | ✓ drag & drop, "Analyse & edit" an imported track |
 | Share | account | ✓ link encodes the route |
 | Click to inspect | ✓ | ✓ difficulty, uphill grade, surface, access, elevation. "Show all OSM tags" fetches `sac_scale`, `trail_visibility`, `smoothness`, width… with a link to edit in OSM |
+| Hover details | – | ✓ desktop: after a short pause, a one- or two-line preview of what a click opens (trail S2 · ↑S3 · surface, LIPAS place, camera, ship, buoy, busy road). No network requests; can be turned off in Layers |
 | Night map, high contrast, plain | partly | ✓ |
 
 Not rebuilt: accounts and cloud sync, Garmin/Strava/Suunto integration, offline maps, photos, segments and the native apps. The Strava heatmap isn't included because its tiles don't allow cross-origin use.
@@ -88,6 +89,7 @@ js/gestures.js      pinch / wheel over the UI → map zoom
 js/view3d.js        tilt & rotate orbit pad
 js/lipas.js         LIPAS WFS loader
 js/inspect.js       click popups
+js/hover.js         hover details (desktop)
 js/dem.js           DEM tile sampler
 js/search.js, gpx.js, icons.js, geo.js, ui.js
 ```
