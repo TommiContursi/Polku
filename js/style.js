@@ -84,6 +84,8 @@ export function buildStyle(s, ctx) {
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
     routeWind: { type: 'geojson', data: ctx.data.routeWind || EMPTY },
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
+    trailWays: { type: 'geojson', data: ctx.data.trailWays || EMPTY }, // trail details (js/trails.js)
+    trailPoints: { type: 'geojson', data: ctx.data.trailPoints || EMPTY },
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS' },
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
@@ -223,7 +225,7 @@ export function buildStyle(s, ctx) {
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
   }
 
-  addRoads(s, P, hc, layers);
+  addRoads(s, P, hc, layers, ctx);
 
   // Busy roads: Digiroad average daily traffic as a heat line over the roads
   if (s.overlays.sfTraffic) {
@@ -491,7 +493,7 @@ function addRasterOverlays(s, sources, layers, slot) {
 // ---------------------------------------------------------------------------
 // Roads and trails
 
-function addRoads(s, P, hc, layers) {
+function addRoads(s, P, hc, layers, ctx) {
   const add = (l) => layers.push(l);
   const act = s.activity;
   const aerial = isAerial(s.base);
@@ -525,6 +527,8 @@ function addRoads(s, P, hc, layers) {
   const bikeAct = group === 'bike', footAct = group === 'foot';
   // the difficulty halo: on whenever you've chosen Difficulty or Both, in any sport
   const diffOn = s.trailColors === 'down' || s.trailColors === 'both';
+  // trail details: inside the loaded tiles, trails are drawn from OSM (js/trails.js)
+  const covered = !!(s.trailDetails && ctx.trailCoverage);
   const gravel = act === 'gravel' || act === 'road';
   const roadBike = act === 'road';
   const unpaved = ['==', ['get', 'surface'], 'unpaved'];
@@ -595,51 +599,81 @@ function addRoads(s, P, hc, layers) {
     });
 
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
-    const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], bf];
+    // With trail details on, the trails inside the loaded detail tiles are
+    // drawn from OSM instead (below), so they're hidden from the tiles there.
+    const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway', 'steps']]], ['all', ['==', ['get', 'subclass'], 'footway'], ['has', 'mtb_scale']]];
+    const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], bf,
+      ...(covered ? [['!', ['all', trailSet, ['within', ctx.trailCoverage]]]] : [])];
     const noBike = ['==', ['get', 'bicycle'], 'no'];
     const noFoot = ['==', ['get', 'foot'], 'no'];
     const sidewalkish = ['all', ['==', ['get', 'subclass'], 'footway'], ['!', ['has', 'mtb_scale']]];
-    let haloColor;
-    if (diffOn) haloColor = diffColor(MTB_IDX, plainHalo);
-    else if (footAct) haloColor = darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)';
-    else haloColor = plainHalo;
+    const haloOf = (idx) => (diffOn ? diffColor(idx, plainHalo) : footAct ? (darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)') : plainHalo);
+    const haloOpacity = [
+      'case',
+      bikeAct ? noBike : noFoot, 0.25,
+      act === 'mtb' ? sidewalkish : ['literal', false], 0.35,
+      act === 'paddle' || roadBike ? 0.5 : 0.95,
+    ];
+    // widths per zoom, times a per-trail factor (1 for the tiles; the trail's width class for OSM)
+    const times = (v, f) => (f === 1 ? v : ['*', v, f]);
+    const haloW = (f) => zi(12, times(2.2, f), 14, times(4 * k, f), 16, times(7 * k, f), 18, times(12 * k, f));
+    const centreW = (f) => zi(12, times(0.6 * k, f), 14, times(1.15 * k, f), 16, times(1.8 * k, f), 18, times(3 * k, f));
+    const centreColor = footAct && !aerial ? '#b42318' : P.path;
+    const centreOpacity = [
+      'case',
+      act === 'mtb' ? sidewalkish : ['literal', false], 0.5,
+      act === 'paddle' || roadBike ? 0.6 : 1,
+    ];
     add({
       id: `path-${brunnel}-halo`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: trailFilter,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: {
-        'line-color': haloColor,
-        'line-width': zi(12, 2.2, 14, 4 * k, 16, 7 * k, 18, 12 * k),
-        'line-opacity': [
-          'case',
-          bikeAct ? noBike : noFoot, 0.25,
-          act === 'mtb' ? sidewalkish : ['literal', false], 0.35,
-          act === 'paddle' || roadBike ? 0.5 : 0.95,
-        ],
-      },
+      paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
     });
     // Explicit no-bike marker: small red ticks beside the line.
-    if (bikeAct) {
-      add({
-        id: `path-${brunnel}-nobike`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14,
-        filter: ['all', trailFilter, noBike],
-        paint: { 'line-color': '#dc2626', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, 3, 18, 8), 'line-dasharray': [0.4, 1.6] },
-      });
-    }
+    const noBikeTicks = (id, source, filter) => add({
+      id, type: 'line', source, ...(source === 'ofm' ? { 'source-layer': 'transportation' } : {}), minzoom: 14, filter,
+      paint: { 'line-color': '#dc2626', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, 3, 18, 8), 'line-dasharray': [0.4, 1.6] },
+    });
+    if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofm', ['all', trailFilter, noBike]);
     add({
       id: `path-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: trailFilter,
       paint: {
-        'line-color': footAct && !aerial ? '#b42318' : P.path,
-        'line-width': zi(12, 0.6 * k, 14, 1.15 * k, 16, 1.8 * k, 18, 3 * k),
+        'line-color': centreColor,
+        'line-width': centreW(1),
         'line-dasharray': ['match', ['get', 'subclass'], 'steps', ['literal', [0.4, 0.4]], ['literal', [2.4, 1.3]]],
-        'line-opacity': [
-          'case',
-          act === 'mtb' ? sidewalkish : ['literal', false], 0.5,
-          act === 'paddle' || roadBike ? 0.6 : 1,
-        ],
+        'line-opacity': centreOpacity,
       },
     });
+    // The same trails from OSM, in the Trailmap / JOSM language: the band is as
+    // wide as the trail, faint trails get a dotted centre line, and the barely
+    // visible ones only their colour.
+    if (s.trailDetails) {
+      const vis = ['get', 'vis'];
+      const osmFilter = ['all', ['==', ['get', 'trail'], true], bf];
+      add({
+        id: `path-osm-${brunnel}-halo`, type: 'line', source: 'trailWays', minzoom: 12,
+        filter: osmFilter,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': haloOf(['get', 'mtb']),
+          'line-width': haloW(['get', 'wf']),
+          'line-opacity': ['*', haloOpacity, ['match', vis, 1, 0.9, 2, 0.75, 3, 0.55, 1]],
+        },
+      });
+      if (bikeAct) noBikeTicks(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike]);
+      add({
+        id: `path-osm-${brunnel}`, type: 'line', source: 'trailWays', minzoom: 12,
+        filter: osmFilter,
+        paint: {
+          'line-color': centreColor,
+          'line-width': centreW(['get', 'cf']),
+          'line-dasharray': ['case', ['==', ['get', 'subclass'], 'steps'], ['literal', [0.4, 0.4]], ['>=', vis, 1], ['literal', [0.6, 1.6]], ['literal', [2.4, 1.3]]],
+          'line-opacity': ['case', ['>=', vis, 3], 0, centreOpacity],
+        },
+      });
+    }
     // Cycleways (kevyen liikenteen väylä): thin solid line.
     add({
       id: `cycleway-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
@@ -651,6 +685,43 @@ function addRoads(s, P, hc, layers) {
         'line-opacity': 0.85 * roadsDim,
       },
     });
+  }
+
+  // Trail details beside and on the line: overgrown (green dots) on one side,
+  // wet or muddy (blue dots) on the other; fallen trees, gates, stiles, cycle
+  // barriers and fords as icons from zoom 15.
+  if (s.trailDetails) {
+    // fences, walls and hedges (the vector tiles have none): where you can't go through
+    add({
+      id: 'td-fence', type: 'line', source: 'trailWays', minzoom: 15, filter: ['has', 'fence'],
+      paint: {
+        'line-color': ['match', ['get', 'fence'], 'hedge', darkBase ? '#6fbf6f' : '#4d8a3a', 'wall', darkBase ? '#9ca3af' : '#6b7280', darkBase ? '#c08a6a' : '#8b4a2b'],
+        'line-width': zi(15, 1, 18, 2.4),
+        'line-dasharray': ['match', ['get', 'fence'], 'fence', ['literal', [2.4, 1.2]], ['literal', [1, 0]]],
+      },
+    });
+    const wf = ['get', 'wf'];
+    // round dots right at the edge of the band (Trailmap draws these boldly too)
+    const side = (sign) => zi(14, ['*', sign * 3, wf], 16, ['*', sign * 5, wf], 18, ['*', sign * 8.2, wf]);
+    const dots = { 'line-width': zi(14, 2.6, 16, 3.6, 18, 5.2), 'line-dasharray': [0.01, 1.7] };
+    add({
+      id: 'td-veg', type: 'line', source: 'trailWays', minzoom: 14, filter: ['==', ['get', 'veg'], true], layout: { 'line-cap': 'round' },
+      paint: { 'line-color': darkBase ? '#5ee07a' : '#15a34a', 'line-offset': side(1), ...dots },
+    });
+    add({
+      id: 'td-wet', type: 'line', source: 'trailWays', minzoom: 14, filter: ['==', ['get', 'mud'], true], layout: { 'line-cap': 'round' },
+      paint: { 'line-color': darkBase ? '#7cb4ff' : '#1d5fe0', 'line-offset': side(-1), ...dots },
+    });
+    const icon = { 'icon-size': zi(15, 0.72, 18, 1), 'icon-allow-overlap': true, 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport' };
+    add({
+      id: 'td-way-tree', type: 'symbol', source: 'trailWays', minzoom: 15, filter: ['==', ['get', 'tree'], true],
+      layout: { 'symbol-placement': 'line', 'symbol-spacing': zi(15, 70, 18, 140), 'icon-image': 'td-tree', ...icon },
+    });
+    add({
+      id: 'td-way-ford', type: 'symbol', source: 'trailWays', minzoom: 15, filter: ['==', ['get', 'wayford'], true],
+      layout: { 'symbol-placement': 'line-center', 'icon-image': 'td-ford', ...icon },
+    });
+    add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
   }
 }
 

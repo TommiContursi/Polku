@@ -52,6 +52,25 @@ def LAYERS_AT(group, colours=None):
             f" const s = [...document.querySelectorAll('#layers-body summary')].find((x) => new RegExp({json.dumps(group)}).test(x.textContent)); s && s.scrollIntoView({{ block: 'start' }}); return true; }})()")
 
 
+# Trail details from the recorded Tykkikallio tile (Overpass held back, so the
+# neighbours just stay unloaded), then a view; `extra` runs after (open a popup, the key…). On a branch
+# without trail details the seeding just does nothing.
+def TRAILS_AT(lon, lat, zoom, extra=''):
+    return ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); try { const T = await import(location.origin + '/js/trails.js');"
+            " const fx = await (await fetch(location.origin + '/tools/fixtures/trails-tykkikallio.json')).json();"
+            " T.holdFetches(); T.seedTile(4682, 2273, fx); } catch (e) { /* main */ }"
+            f" polku.map.jumpTo({{ center: [{lon}, {lat}], zoom: {zoom} }}); await wait(1800); try {{ {extra} }} catch (e) {{ /* main */ }} return true; }})()")
+
+
+TRAIL_KEY = ("document.querySelector('[data-panel=layers-panel]').click(); await wait(400);"
+             " const g = [...document.querySelectorAll('#layers-body summary')].find((x) => /^Trails/.test(x.textContent)); g.parentElement.open = true;"
+             " const k = g.parentElement.querySelector('.lg-key'); if (k) k.open = true;"
+             " const h4 = [...g.parentElement.querySelectorAll('h4')].find((x) => /Trail details/.test(x.textContent));"
+             " const t = [...g.parentElement.querySelectorAll('.tg')].find((x) => /Trail details/.test(x.textContent));"
+             " (t || g).scrollIntoView({ block: 'start' }); if (h4 && innerWidth > 700) h4.scrollIntoView({ block: 'center' });")
+TRAIL_POPUP = ("const m = polku.map; const f = m.queryRenderedFeatures({ layers: ['td-points'] }).find((x) => x.properties.kind === 'tree');"
+               " const p = m.project(f.geometry.coordinates); m.fire('click', { point: p, lngLat: m.unproject(p), originalEvent: new MouseEvent('click') }); await wait(600);")
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -125,6 +144,15 @@ SCENES = {
     'phone-layers-hike': dict(PHONE, timeline=False, activity='hike', hash='#15.4/61.5085/23.8040', js=LAYERS_AT('^Trails', 'Difficulty')),
     'desk-layers-paddle': dict(DESK, timeline=False, activity='paddle', hash='#14.6/60.1440/24.9850', js=LAYERS_AT('^Water')),
     'phone-layers-paddle': dict(PHONE, timeline=False, activity='paddle', hash='#14.6/60.1440/24.9850', js=LAYERS_AT('^Water')),
+    # phase 12a: trail details at Tykkikallio, Jyväskylä (compare with Trailmap.fi there)
+    'desk-trails-mtb': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16)),
+    'phone-trails-mtb': dict(PHONE, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16)),
+    'desk-trails-close': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7655, 62.2290, 17.4)),
+    'phone-trails-close': dict(PHONE, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7655, 62.2290, 17.4)),
+    'desk-trails-hike': dict(DESK, timeline=False, activity='hike', hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16)),
+    'desk-trails-key': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16, TRAIL_KEY)),
+    'phone-trails-key': dict(PHONE, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16, TRAIL_KEY)),
+    'desk-trails-popup': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7655, 62.2290, 17.4, TRAIL_POPUP)),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

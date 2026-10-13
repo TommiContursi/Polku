@@ -268,6 +268,65 @@ function windArrow() {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// Trail details (js/trails.js): what's in the way, on a small disc. Brown for
+// fallen trees, slate for barriers, red for a gate you may not pass, blue for fords.
+const TRAIL_ICONS = {
+  tree: '#a16207', gate: '#334155', 'gate-no': '#dc2626', stile: '#334155', cycle: '#334155', ford: '#0284c7',
+};
+function trailIcon(kind) {
+  const [c, ctx] = canvas(22, 22);
+  ctx.beginPath();
+  ctx.arc(11, 11, 9.8, 0, Math.PI * 2);
+  ctx.fillStyle = TRAIL_ICONS[kind];
+  ctx.fill();
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+  ctx.strokeStyle = '#ffffff';
+  ctx.fillStyle = '#ffffff';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const line = (pts, w = 1.8) => {
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.stroke();
+  };
+  if (kind === 'tree') {
+    line([[5, 14.5], [17, 9]], 3.4); // the trunk, lying across
+    line([[9.5, 12.4], [8.5, 8.6]], 1.4); // two branches
+    line([[13.2, 10.7], [13.6, 6.8]], 1.4);
+  } else if (kind === 'gate' || kind === 'gate-no') {
+    line([[6.5, 6], [6.5, 16]]);
+    line([[15.5, 6], [15.5, 16]]);
+    line([[6.5, 9], [15.5, 9]], 1.5);
+    line([[6.5, 13], [15.5, 13]], 1.5);
+  } else if (kind === 'stile') {
+    line([[6, 16.5], [11, 5.5], [16, 16.5]], 1.6);
+    line([[7.6, 13], [14.4, 13]], 1.4);
+    line([[9.2, 9.4], [12.8, 9.4]], 1.4);
+  } else if (kind === 'cycle') {
+    line([[5, 9], [13, 9]], 2);
+    line([[9, 13.5], [17, 13.5]], 2);
+  } else if (kind === 'ford') {
+    const wave = (y) => line([[4.5, y], [7, y - 1.8], [9.5, y], [12, y - 1.8], [14.5, y], [17, y - 1.8]], 1.6);
+    wave(10);
+    wave(14.5);
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+/** An icon as an image URL, for keys and lists (the same drawing the map uses). */
+export function iconUrl(id) {
+  const img = makeIcon(id);
+  if (!img) return '';
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  c.getContext('2d').putImageData(img, 0, 0);
+  return c.toDataURL();
+}
+
 const SDF = new Set(['wind-arrow', 'ship']);
 
 export function makeIcon(id) {
@@ -289,6 +348,7 @@ export function makeIcon(id) {
   if (id === 'sf-slippery') return sign('triangle', '#a855f7', '❄');
   if (id === 'route-arrow') return chevron('#ffffff', 'rgba(0,0,0,0.35)');
   if (id === 'uphill-arrow') return doubleChevron();
+  if (id.startsWith('td-') && TRAIL_ICONS[id.slice(3)]) return trailIcon(id.slice(3));
   if (id.startsWith('lipas-')) {
     const name = id.slice(6);
     const type = Object.values(LIPAS_TYPES).find((t) => t.icon === name);

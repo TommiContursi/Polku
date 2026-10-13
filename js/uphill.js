@@ -5,21 +5,16 @@
 // DEM, and it is cut into ~25 m pieces graded ↑S0–↑S5 by climbing gradient
 // (bumped for loose surface / technical mtb:scale). Pieces are oriented uphill
 // so the arrow symbols point the way you'd be climbing. Where OSM does have an
-// explicit mtb:scale:uphill tag (fetched from Overpass), that wins.
+// explicit mtb:scale:uphill tag, that wins: it comes with the trail details
+// (js/trails.js, one Overpass query per z13 tile, shared).
 
-import { densify, lonLatToTile, tileBounds } from './geo.js';
+import { densify } from './geo.js';
 import { elevations, smooth } from './dem.js';
 import { uphillClass, techBump } from './analysis.js';
-import { OVERPASS } from './config.js';
-import { idb } from './idb.js';
-import { request } from './net.js';
+import { trailTile, tilesIn } from './trails.js';
 
 const PIECE = 25;
 const MIN_ZOOM = 13;
-const OSM_TTL = 7 * 864e5; // OSM uphill tags kept in the browser for a week
-const OSM_RETRY = 120e3; // after a failed Overpass call, leave that tile alone for 2 min
-const osmCache = idb('overpass');
-osmCache.prune((v) => v && Date.now() - v.at < 4 * OSM_TTL).catch(() => {});
 
 export class UphillLayer {
   constructor(map, onData) {
@@ -28,8 +23,7 @@ export class UphillLayer {
     this.enabled = false;
     this.fc = { type: 'FeatureCollection', features: [] };
     this.done = new Map(); // feature key -> features
-    this.osmTiles = new Map(); // z12 tile -> { result }
-    this.osmFailed = new Map(); // z12 tile -> retry after (ms)
+    this.osmTiles = new Map(); // z13 trail-details tile -> { result }
     this.timer = 0;
     this.run = 0;
     map.on('moveend', () => this.schedule());
@@ -114,36 +108,31 @@ export class UphillLayer {
     this.onData(this.fc);
   }
 
-  // Explicit mtb:scale:uphill tags from OSM, cached per z12 tile.
+  // Explicit mtb:scale:uphill tags from OSM, from the trail-details tiles.
   async loadOsm(view, run) {
-    const z = 12;
-    const [x0, y0] = lonLatToTile(view[0], view[3], z).map(Math.floor);
-    const [x1, y1] = lonLatToTile(view[2], view[1], z).map(Math.floor);
-    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 6) return;
-    for (let x = x0; x <= x1; x++) {
-      for (let y = y0; y <= y1; y++) {
-        const key = `${x}/${y}`;
-        if (this.osmTiles.has(key) || (this.osmFailed.get(key) || 0) > Date.now()) continue;
-        const [w, s, e, n] = tileBounds(x, y, z);
-        const q = `[out:json][timeout:20];way["mtb:scale:uphill"](${s},${w},${n},${e});out tags geom;`;
-        const entry = { result: null };
-        this.osmTiles.set(key, entry);
-        cachedOverpass(`uphill/${z}/${key}`, q)
-          .then(async (json) => {
-            const ways = (json.elements || []).filter((el) => el.geometry);
-            const out = [];
-            for (const way of ways) {
-              const line = way.geometry.map((p) => [p.lon, p.lat]);
-              const s2 = densify(line, 8);
-              const el = await elevations(s2.pts, 14);
-              const forced = parseInt(way.tags['mtb:scale:uphill'], 10);
-              out.push(...grade(s2, el, { 'mtb_scale': way.tags['mtb:scale'] }, Number.isFinite(forced) ? forced : null));
-            }
-            entry.result = out;
-            if (run === this.run || this.enabled) this.publish();
-          })
-          .catch(() => { this.osmTiles.delete(key); this.osmFailed.set(key, Date.now() + OSM_RETRY); });
-      }
+    const list = tilesIn(view);
+    if (list.length > 12) return;
+    for (const [x, y] of list) {
+      const key = `${x}/${y}`;
+      if (this.osmTiles.has(key)) continue;
+      const entry = { result: null };
+      this.osmTiles.set(key, entry);
+      trailTile(x, y)
+        .then(async (data) => {
+          const out = [];
+          for (const [, t, flat] of data.w) {
+            const forced = parseInt(t['mtb:scale:uphill'], 10);
+            if (!Number.isFinite(forced)) continue;
+            const line = [];
+            for (let i = 0; i < flat.length; i += 2) line.push([flat[i], flat[i + 1]]);
+            const s2 = densify(line, 8);
+            const el = await elevations(s2.pts, 14);
+            out.push(...grade(s2, el, { 'mtb_scale': t['mtb:scale'] }, forced));
+          }
+          entry.result = out;
+          if (run === this.run || this.enabled) this.publish();
+        })
+        .catch(() => { this.osmTiles.delete(key); }); // trailTile waits 2 min before asking again
     }
   }
 }
@@ -185,27 +174,6 @@ export async function gradeHere(f, ll) {
   const p = f.properties;
   const tags = { highway: p.class === 'track' ? 'track' : 'path', 'mtb:scale': p.mtb_scale, surface: p.surface };
   return { grade: Math.round(grade), cls: p.subclass === 'steps' ? 5 : uphillClass(grade, grade, techBump(tags, grade)) };
-}
-
-// Overpass answers cached in IndexedDB: fresh for a week, and an older copy
-// still beats nothing when every mirror is down.
-async function cachedOverpass(key, query) {
-  let hit = null;
-  try { hit = await osmCache.get(key); } catch { /* storage blocked */ }
-  if (hit && Date.now() - hit.at < OSM_TTL) return hit.json;
-  try {
-    const json = await overpass(query);
-    const slim = {
-      elements: (json.elements || []).filter((el) => el.geometry).map((el) => ({
-        geometry: el.geometry, tags: { 'mtb:scale:uphill': el.tags['mtb:scale:uphill'], 'mtb:scale': el.tags['mtb:scale'] },
-      })),
-    };
-    osmCache.set(key, { at: Date.now(), json: slim }).catch(() => {});
-    return slim;
-  } catch (err) {
-    if (hit) return hit.json;
-    throw err;
-  }
 }
 
 function intersects(line, [w, s, e, n]) {
@@ -256,41 +224,4 @@ function grade(sample, raw, props, forced = null) {
     merged.push(f);
   }
   return merged;
-}
-
-// Public Overpass mirrors come and go. Background queries try one mirror at a
-// time (preferring the last one that worked); interactive ones race a few and
-// keep the first answer.
-let preferred = 0;
-async function ask(i, query, signal, timeoutMs) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  if (signal) signal.addEventListener('abort', () => ctrl.abort());
-  try {
-    // mirrors take turns, so no back-off here; still counted for the usage readout
-    const res = await request('overpass', OVERPASS[i], { method: 'POST', body: new URLSearchParams({ data: query }), signal: ctrl.signal, backoff: false });
-    if (!res.ok) throw new Error(`Overpass ${res.status}`);
-    const json = await res.json();
-    preferred = i;
-    return json;
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-export async function overpass(query, { race = false } = {}) {
-  const order = OVERPASS.map((_, k) => (preferred + k) % OVERPASS.length);
-  if (race) {
-    const stop = new AbortController();
-    try {
-      return await Promise.any(order.slice(0, 3).map((i) => ask(i, query, stop.signal, 25000)));
-    } finally {
-      stop.abort();
-    }
-  }
-  let lastErr;
-  for (const i of order) {
-    try { return await ask(i, query, null, 20000); } catch (e) { lastErr = e; }
-  }
-  throw lastErr;
 }
