@@ -81,6 +81,7 @@ export function buildStyle(s, ctx) {
     route: { type: 'geojson', data: ctx.data.route || EMPTY },
     routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
+    loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
     routeWind: { type: 'geojson', data: ctx.data.routeWind || EMPTY },
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS' },
@@ -427,6 +428,9 @@ export function buildStyle(s, ctx) {
     layout: { 'icon-image': 'wind-arrow', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': ['get', 'size'], 'icon-allow-overlap': true, 'icon-ignore-placement': true },
     paint: { 'icon-color': ['get', 'color'], 'icon-halo-color': '#111827', 'icon-halo-width': 1.5 },
   });
+  // round-trip candidates (planner): the one you're looking at wider and on top
+  add({ id: 'loops-casing', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 6, 4], 16, ['case', ['get', 'on'], 12, 8]], 'line-opacity': 0.9 } });
+  add({ id: 'loops-line', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 3.5, 2], 16, ['case', ['get', 'on'], 7, 4]], 'line-opacity': ['case', ['get', 'on'], 1, 0.7] } });
   add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
 
   const style = {

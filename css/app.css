@@ -416,19 +416,36 @@ button { font: inherit; color: inherit; }
 .sheet-handle:focus-visible { outline: 2px solid var(--accent); }
 .sheet-head { flex: none; padding: 0 10px 8px 14px; touch-action: none; container-type: inline-size; }
 /* a wide bottom panel fits the summary and the tools on one row: collapsed, it is one slim bar */
-@container (min-width: 760px) {
+/* a wide header: everything on one line */
+@container (min-width: 1240px) {
   .sheet-head-in { display: flex; align-items: center; gap: 18px; }
   .sheet-head-in > .sheet-row { display: contents; }
   .sheet-head-in .sheet-sum { flex: none; order: 1; }
   .sheet-head-in .modes { order: 2; }
-  .sheet-head-in .tools { order: 3; margin-left: auto; }
-  .sheet-head-in .sheet-min { order: 4; }
-  .sheet-head-in .done { order: 5; }
+  .sheet-head-in .quick-pair { order: 3; }
+  .sheet-head-in .tools { order: 4; margin-left: auto; }
+  .sheet-head-in .sheet-min { order: 5; }
+  .sheet-head-in .done { order: 6; }
   .sheet-head-in .seg.modes button span { display: inline; }
 }
 .tool-wide { display: none; }
-@container (min-width: 1000px) { .sheet-head-in .tool-wide { display: inline-flex; } .sheet-head-in .tool-sep.tool-wide { display: block; } }
+/* and the common tools out of ⋯ when there's room for them too */
+@container (min-width: 1560px) { .sheet-head-in .tool-wide { display: inline-flex; } .sheet-head-in .tool-sep.tool-wide { display: block; } }
 .sheet-row { display: flex; align-items: center; gap: 8px; }
+/* Round trip and Style: plain words, always in the header. On a phone they
+   take a line of their own above the routing modes; wider, they sit after them. */
+.tools-row { flex-wrap: wrap; row-gap: 8px; }
+.quick-pair { display: flex; gap: 6px; order: -1; flex: 1 0 100%; }
+/* the profile size is for the chart: on a line of their own, the two step aside there */
+.sheet[data-state="profile"] .quick-pair { display: none; }
+@container (min-width: 560px) { .sheet[data-state="profile"] .quick-pair { display: flex; } }
+@container (min-width: 560px) {
+  .tools-row { flex-wrap: nowrap; }
+  .quick-pair { order: 0; flex: none; margin-right: auto; } /* right after the modes; the tools at the far end */
+}
+.btn.quick { height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; gap: 6px; white-space: nowrap; }
+.btn.quick b { font-weight: 700; }
+.btn.quick[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .sheet-row + .sheet-row { margin-top: 8px; }
 .sheet-sum { flex: 1; min-width: 0; display: flex; gap: 6px 20px; align-items: flex-end; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }
@@ -541,7 +558,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .sheet-cols { display: flex; flex-wrap: wrap; gap: 6px 28px; align-items: flex-start; }
   .sheet-cols > .sec { flex: 1 1 280px; min-width: 260px; }
   .sheet-cols > .sec-break { display: block; flex: 0 0 100%; height: 0; }
-  .sheet-cols > .sec[data-sec="profile"] { flex-basis: 100%; }
+  .sheet-cols > .sec[data-sec="profile"], .sheet-cols > .sec[data-sec="loop"] { flex-basis: 100%; }
   /* climbs above heads-up, in one column; gone when both are empty */
   .sheet-cols > .sec-stack { display: flex; flex-direction: column; flex: 1 1 280px; min-width: 260px; }
   .sheet-cols > .sec-stack:not(:has(> .sec:not([hidden]))) { display: none; }
@@ -720,6 +737,30 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-foot .btn[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .pt-style { align-self: stretch; }
 .pt-style .mode-select-box, .pt-style select { width: 100%; }
+
+/* round trips */
+.loop-box { display: flex; flex-direction: column; gap: 6px; }
+.loop-starts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: 122px; }
+.loop-start { font-size: 13px; font-weight: 600; }
+.loop-hint { margin: 0; }
+.loop-len-box { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.loop-len { width: 72px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 700; }
+.loop-go { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.loop-sum { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
+.loop-sum span { flex: 1 1 200px; }
+.loop-cost { margin: 0; }
+.loop-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; margin-top: 6px; }
+.loop-card { display: flex; flex-direction: column; gap: 3px; padding: 10px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+.loop-card.on { border-color: var(--text); background: var(--surface-2); }
+.loop-card-head { display: flex; align-items: center; gap: 8px; }
+.loop-card-head b { font-size: 16px; }
+.loop-dot { width: 22px; height: 22px; border-radius: 50%; color: #fff; font: 700 12px/22px system-ui, sans-serif; text-align: center; flex: none; }
+.loop-best { margin-left: auto; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
+.loop-card-line { font-size: 12px; }
+.loop-card-line.muted { color: var(--muted); font-size: 11px; }
+.loop-card .btn { align-self: flex-start; margin-top: 4px; }
+@container (max-width: 420px) { .loop-starts { margin-left: 0; } }
+.sum-empty + .btn { margin-left: 8px; }
 
 /* the marker of a point picked in the list */
 .wp-hit.pulse .wp { animation: wp-pulse 1.1s ease-out 2; }

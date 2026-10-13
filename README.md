@@ -17,6 +17,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 
 **Plan a route**
 - Routing per sport — MTB, gravel, road cycling, hike, trail run, run and paddle, each with its own router profile, timing model, warnings, map style and default layers — with straight-line and over-water legs, undo/redo, reverse, back to start.
+- **Round trips:** choose a start (map centre, your location, or click), a length in km or time, and a direction (or "into the wind first"), and Polku makes three loops in your route style, compares them (distance, time, climbing, trails or unpaved share, how much is ridden twice, heads-up) and lets you pick one — it becomes a normal route you can drag and edit. Three routing calls a go, up to six if a loop needs adjusting; via points are kept off lakes using the map's own water.
 - **Route style** per sport: presets in the sport's own words (MTB: Flowy trails, Technical, Smooth & easy, Roads to the trail; road: Paved roads, Flatter; hike: Nature paths, Easy paths, Mountain; run: Green & quiet, Along water, Flat; paddle: Near the shore, No carries; gravel, trail run likewise) and fine-tuning with only the controls that sport's router really has. Wet ground is automatic (rain in the last 24 h at the start). For the whole route, or one leg from a point's menu. After a change, one line says what it did ("+0.8 km · trails 41 → 63 %"). Styles travel in share links.
 - A **Waypoints** list in the planner: every point with its distance and the road it's on; rename them (names go into GPX and stay on this device), reorder by dragging or with ↑/↓, remove, or click one to see it on the map. Undo covers all of it. The ⛶ button (or <kbd>F</kbd>) frames the whole route, and opening the planner far from your route brings it back into view.
 - Hover the route (or scrub the profile) for the road or path name there — from the map tiles already loaded, no extra requests.
@@ -88,6 +89,7 @@ python3 tools/smoke.py                  # layout check at 4 sizes: no overlaps, 
 python3 tools/shoot.py shots after      # screenshots for a pull request (--list for the scenes)
 tools/brouter-local.sh                  # optional: BRouter on this computer (Settings → Routing server)
 python3 tools/style_probe.py --presets  # does every route style change the route? (against the local BRouter)
+python3 tools/loop_probe.py             # how long do round-trip loops ride? (calibrates js/roundtrip.js)
 ```
 
 The plan for upcoming work is in [docs/ROADMAP.md](docs/ROADMAP.md).
@@ -134,6 +136,7 @@ js/planner.js       route planner + bottom sheet
 js/router.js        per-leg routing (BRouter, batched; straight; water) and the Valhalla stand-in
 js/valhalla.js      Valhalla (FOSSGIS) client: routes and way attributes as OSM-style tags
 js/names.js         road and path names near a point, from the loaded vector tiles
+js/roundtrip.js     round trips: loop shapes, water-aware directions, scoring
 js/styles.js        route styles: presets and controls per sport, as BRouter / Valhalla / water-router parameters
 profiles/           Polku's own BRouter profile (road: gravel main roads count as rough), uploaded to the router
 js/water.js         open-water A* router

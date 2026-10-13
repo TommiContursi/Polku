@@ -2,13 +2,14 @@
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor } from './config.js';
-import { routeLeg, routeRun, routerHeadroom } from './router.js';
+import { routeLeg, routeRun, routeLoop, routerHeadroom } from './router.js';
+import { roundTripSports, radiusFor, reach, waterOf, plan, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass } from './analysis.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain } from './weather.js';
+import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
 import { keepInView } from './inspect.js';
 import { FIX_THE_MAP } from './valhalla.js';
@@ -21,6 +22,15 @@ const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 // a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
 const STAND_IN_AFTER = 6000;
+// round trips: lengths to pick from per sport, the candidates' colours, and how many calls they may take
+const LOOP_PRESETS = {
+  mtb: { km: [10, 20, 30, 50], min: [60, 90, 120, 180] }, gravel: { km: [25, 40, 60, 90], min: [60, 120, 180, 240] },
+  road: { km: [30, 50, 80, 120], min: [60, 120, 180, 240] }, hike: { km: [5, 10, 15, 20], min: [60, 120, 180, 240] },
+  trailrun: { km: [5, 10, 15, 25], min: [30, 60, 90, 120] }, run: { km: [5, 8, 10, 15], min: [30, 45, 60, 90] },
+};
+const LOOP_COLORS = ['#2563eb', '#ea580c', '#9333ea'];
+const LOOP_CALLS = 6; // per generation
+const LOOP_CAP = 5; // generations per 10 minutes
 // bottom sheet sizes: the summary, + the elevation profile, half the screen, nearly all of it
 const SHEET_STATES = ['peek', 'profile', 'half', 'full'];
 // "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
@@ -49,6 +59,7 @@ export class Planner {
     this.markers = [];
     this.ghosts = []; // drag handles in the middle of each leg
     this.pname = new WeakMap(); // point → the name you gave it (points move as arrays, so names follow them)
+    this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.openLegs = new Set(); // waypoint rows whose leg settings are open (by point index)
     this.roads = initNames(map); // road and path names from the loaded tiles
     this.style = this.savedStyle(app.activity()); // the route's style; a leg may have its own (leg.style)
@@ -378,6 +389,7 @@ export class Planner {
 
   onActivityChange() {
     const sport = this.app.activity();
+    if (this.loop.open) this.closeLoop(); // lengths and styles are per sport
     this.style = this.savedStyle(sport);
     this.styleLeg = null;
     if (this.legs.some((l) => l.style)) {
@@ -401,6 +413,7 @@ export class Planner {
     for (const m of this.markers) m.getElement().hidden = !on;
     this.renderGhosts();
     this.app.onActiveChange(on);
+    if (on && !this.analysis) this.renderAnalysis(); // the empty planner's first words (and its round-trip button)
     this.drawColored();
     if (on) requestAnimationFrame(() => this.chart.draw());
     // opened far from the route (you browsed elsewhere): bring it back into view
@@ -534,6 +547,256 @@ export class Planner {
     if (!this.edit) this.renderGhosts();
   }
 
+  // ---------------------------------------------------------------- round trips
+  // Loops of about a chosen length from a start (js/roundtrip.js does the
+  // shapes and the water). Three candidates, each one routing call; a bad one
+  // is replaced by the next direction and a near miss resized once, at most
+  // six calls in all. Picking one makes it a normal route.
+  openLoop(start = null) {
+    const L = this.loop;
+    if (!this.active) this.setActive(true);
+    L.open = true;
+    L.results = [];
+    const sport = this.app.activity();
+    const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
+    if (L.km == null || L.sport !== sport) { L.km = pre.km[1]; L.min = pre.min[1]; L.sport = sport; }
+    if (start) this.setLoopStart(start, 'the spot you chose', false);
+    else if (this.points.length) this.setLoopStart(this.points[0].slice(), 'your route’s start', false);
+    else { const c = this.map.getCenter(); this.setLoopStart([+c.lng.toFixed(6), +c.lat.toFixed(6)], 'the map centre', false); }
+    this.renderLoop();
+    if (!this.analysis) this.renderAnalysis(); // the empty planner's round-trip button goes
+    this.reveal('loop');
+  }
+
+  closeLoop() {
+    const L = this.loop;
+    L.open = false;
+    L.results = [];
+    if (this.loopMarker) { this.loopMarker.remove(); this.loopMarker = null; }
+    this.app.setData('loops', EMPTY);
+    this.renderLoop();
+    if (!this.analysis) this.renderAnalysis();
+  }
+
+  setLoopStart(ll, label, render = true) {
+    const L = this.loop;
+    L.start = ll;
+    L.startLabel = label;
+    L.results = [];
+    this.app.setData('loops', EMPTY);
+    if (!this.loopMarker) this.loopMarker = new maplibregl.Marker({ element: h('div', { class: 'wp-hit' }, h('div', { class: 'wp wp-start' })) }).setLngLat(ll).addTo(this.map);
+    else this.loopMarker.setLngLat(ll);
+    if (render) this.renderLoop();
+  }
+
+  async loopFromHere() {
+    if (!navigator.geolocation) { toast('This browser can’t tell where you are'); return; }
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const ll = [+pos.coords.longitude.toFixed(6), +pos.coords.latitude.toFixed(6)];
+      this.setLoopStart(ll, 'your location');
+      this.map.easeTo({ center: ll, duration: 500 });
+    }, () => toast('Couldn’t get your location — click the map to choose the start'), { enableHighAccuracy: true, timeout: 10000 });
+  }
+
+  async generateLoops() {
+    const L = this.loop;
+    const sport = this.app.activity();
+    if (L.busy || !L.start || !roundTripSports.includes(sport)) return;
+    // the routing service is free and shared: a few at a time
+    L.gens = L.gens.filter((t) => Date.now() - t < 600e3);
+    if (L.gens.length >= LOOP_CAP) {
+      toast(`That’s ${LOOP_CAP} round trips in 10 minutes — the free routing service needs a breather. Try again at ${new Date(L.gens[0] + 600e3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`, { tone: 'warn', ms: 6000 });
+      return;
+    }
+    L.gens.push(Date.now());
+    L.busy = true;
+    L.editing = false;
+    L.results = [];
+    L.note = '';
+    this.app.setData('loops', EMPTY);
+    this.renderLoop();
+    try {
+      const targetM = L.mode === 'min' ? distanceForTime(sport, L.min, speedsFor(sport)) : L.km * 1000;
+      const start = L.start;
+      // frame the loops' reach first: its water comes from the tiles the map loads
+      const b = reach(start, radiusFor(sport, targetM));
+      this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), duration: 0, maxZoom: 15 });
+      await new Promise((ok) => { const t = setTimeout(ok, 8000); this.map.once('idle', () => { clearTimeout(t); ok(); }); });
+      const water = waterOf(this.map);
+      let direction = L.dir;
+      if (direction === 'wind') {
+        try { const [s] = await pointForecasts([start]); direction = Math.round(sampleAt(s, Date.now() / 1000 + this.startOffsetH * 3600).dir); } catch { direction = null; }
+      }
+      const options = plan({ start, sport, targetM, direction, count: 6, water, spin: L.spin });
+      const rp = routerOf(sport, this.style, this.wet.on);
+      const profile = rp.profile || ACTIVITIES[sport].brouter;
+      const opts = { portage: true, nogos: this.nogos, params: { ...rp.params, correctMisplacedViaPoints: 1 }, valhalla: rp.valhalla, maxWait: STAND_IN_AFTER };
+      let calls = 0;
+      const run = async (o) => {
+        calls++;
+        try {
+          const line = await routeLoop({ points: o.points, profile, opts });
+          let m = 0;
+          for (let i = 1; i < line.coords.length; i++) m += dist(line.coords[i - 1], line.coords[i]);
+          return { o, line, m, ratio: m / targetM, twice: twiceShare(line.coords) };
+        } catch (err) { return { o, err }; }
+      };
+      const bad = (r) => r.err || r.ratio > 1.6 || r.twice > 0.55;
+      const queue = options.slice(3);
+      const found = await Promise.all(options.slice(0, 3).map(run));
+      for (let k = 0; k < found.length; k++) {
+        let r = found[k];
+        while (bad(r) && queue.length && calls < LOOP_CALLS) r = await run(queue.shift());
+        if (!r.err && (r.ratio < 0.8 || r.ratio > 1.25) && calls < LOOP_CALLS) {
+          const again = await run(resize(r.o, r.m, targetM, start, water));
+          if (!again.err && Math.abs(again.ratio - 1) < Math.abs(r.ratio - 1)) r = again;
+        }
+        found[k] = r;
+      }
+      const ok = found.filter((r) => !r.err && r.ratio < 2);
+      const limited = found.find((r) => r.err && r.err.name === 'Limited');
+      // the same analysis as a route: time, climbing, heads-up
+      for (const r of ok) {
+        r.a = await analyse({ coords: r.line.coords, attrs: r.line.tags.map((t) => ({ mode: 'auto', tags: t || {} })) }, this.timeOpt());
+        r.score = loopScore({ km: r.a.total / 1000, targetKm: targetM / 1000, twice: r.twice, warnings: r.a.warnings.length });
+      }
+      ok.sort((x, y) => x.score - y.score);
+      L.results = ok.map((r, i) => ({ ...r, letter: 'ABC'[i], color: LOOP_COLORS[i] }));
+      L.targetM = targetM;
+      L.calls = calls;
+      L.on = 0;
+      L.note = !ok.length ? (limited ? limited.err.message : 'No loop worked out here — try another length or start, or click the map nearer to paths.') : '';
+      this.drawLoops();
+      if (ok.length) {
+        const bb = bbox(ok.flatMap((r) => r.line.coords));
+        this.map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: this.viewPadding(), duration: 600, maxZoom: 15 });
+      }
+    } finally {
+      L.busy = false;
+      this.renderLoop();
+      // the cards into view (a phone's half sheet starts at the choices)
+      requestAnimationFrame(() => { const c = this.els.loopBox.querySelector('.loop-cards, .note'); if (c) c.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+    }
+  }
+
+  drawLoops() {
+    const L = this.loop;
+    this.app.setData('loops', { type: 'FeatureCollection', features: L.results.map((r, i) => ({ type: 'Feature', properties: { color: r.color, on: i === L.on }, geometry: { type: 'LineString', coordinates: r.line.coords } })) });
+  }
+
+  // A loop picked: a normal route. Its via points move onto the line (the
+  // nearest spot, in order), so the legs split exactly and nothing is routed again.
+  pickLoop(k) {
+    const r = this.loop.results[k];
+    if (!r) return;
+    const c = r.line.coords, tags = r.line.tags;
+    const start = r.o.points[0];
+    const pts = [start.slice()], cuts = [0];
+    for (const v of r.o.points.slice(1, -1)) {
+      let best = -1, bd = Infinity;
+      for (let i = cuts[cuts.length - 1] + 1; i < c.length - 1; i++) { const d = dist(c[i], v); if (d < bd) { bd = d; best = i; } }
+      if (best < 0 || bd > 600) continue; // trimmed away: one point fewer
+      cuts.push(best);
+      pts.push([+c[best][0].toFixed(6), +c[best][1].toFixed(6)]);
+    }
+    cuts.push(c.length - 1);
+    pts.push(start.slice());
+    this.commit();
+    this.points = pts;
+    this.legs = cuts.slice(1).map((b, i) => ({ mode: 'auto', status: 'ok', result: { coords: c.slice(cuts[i], b + 1), tags: tags.slice(cuts[i], b), portage: [], provider: r.line.provider } }));
+    this.legs.forEach((l, i) => { l.key = this.legKey(i).key; });
+    this.routeName = '';
+    this.closeLoop();
+    this.update();
+    this.fitRoute();
+    toast(`Loop ${r.letter} is your route now — drag it or its points to change it`);
+  }
+
+  renderLoop() {
+    const box = this.els && this.els.loopBox;
+    if (!box) return;
+    const L = this.loop;
+    this.els.quickLoop.setAttribute('aria-pressed', String(L.open));
+    this.els.quickLoop.hidden = !roundTripSports.includes(this.app.activity());
+    this.setSection('loop', { empty: !L.open, summary: L.results.length ? `${L.results.length} loops` : '' });
+    if (!L.open) { box.innerHTML = ''; return; }
+    const sport = this.app.activity();
+    box.innerHTML = '';
+    const close = h('button', { type: 'button', class: 'btn', onclick: () => this.closeLoop() }, 'Close');
+    if (!roundTripSports.includes(sport)) {
+      box.append(h('p', { class: 'note' }, 'Round trips are for riding, walking and running for now: paddling loops would need a lot of Polku’s own water routing.'), close);
+      return;
+    }
+    const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
+    const row = (label, ...kids) => h('div', { class: 'style-ctl' }, h('span', { class: 'style-label' }, label), ...kids);
+    const DIR_NAME = { 0: 'north', 45: 'north-east', 90: 'east', 135: 'south-east', 180: 'south', 225: 'south-west', 270: 'west', 315: 'north-west', wind: 'into the wind first' };
+    // with loops to look at, the choices fold into one line (results first, on a phone too)
+    if (L.results.length && !L.editing) {
+      box.append(h('div', { class: 'loop-sum' },
+        h('span', {}, `${L.mode === 'min' ? `${L.min} min` : `${L.km} km`} · ${L.dir == null ? 'any direction' : DIR_NAME[L.dir]} · from ${L.startLabel}`),
+        h('button', { type: 'button', class: 'btn', onclick: () => { L.editing = true; this.renderLoop(); } }, 'Change'),
+        h('button', { type: 'button', class: 'btn', disabled: L.busy, title: 'Other directions for the same length', onclick: () => { L.spin = (L.spin + 15) % 60; this.generateLoops(); } }, 'Other directions'),
+        close));
+      this.renderLoopCards(box, sport);
+      return;
+    }
+    // where from
+    box.append(row('Start', h('span', { class: 'loop-start' }, `From ${L.startLabel || 'the map centre'}`)),
+      h('div', { class: 'loop-starts' },
+        h('button', { type: 'button', class: 'chip', onclick: () => { const c = this.map.getCenter(); this.setLoopStart([+c.lng.toFixed(6), +c.lat.toFixed(6)], 'the map centre'); } }, 'Map centre'),
+        h('button', { type: 'button', class: 'chip', onclick: () => this.loopFromHere() }, 'My location'),
+        this.points.length ? h('button', { type: 'button', class: 'chip', onclick: () => this.setLoopStart(this.points[0].slice(), 'your route’s start') }, 'Route start') : null,
+        h('span', { class: 'style-help loop-hint' }, 'or click the map')));
+    // how long
+    const unit = L.mode === 'min' ? 'min' : 'km';
+    const val = L.mode === 'min' ? L.min : L.km;
+    const input = h('input', { type: 'number', class: 'loop-len', min: '1', step: L.mode === 'min' ? '5' : '1', value: String(val), 'aria-label': L.mode === 'min' ? 'Length in minutes' : 'Length in kilometres',
+      onchange: (e) => { const v = Math.max(1, Math.min(L.mode === 'min' ? 600 : 300, +e.target.value || val)); if (L.mode === 'min') L.min = v; else L.km = v; L.results = []; this.app.setData('loops', EMPTY); this.renderLoop(); } });
+    box.append(row(L.mode === 'min' ? 'Time' : 'Distance',
+      h('div', { class: 'seg small', role: 'group', 'aria-label': 'Distance or time' }, ...[['km', 'km'], ['min', 'Time']].map(([k, t]) => h('button', { type: 'button', 'aria-pressed': String(L.mode === k), onclick: () => { L.mode = k; L.results = []; this.renderLoop(); } }, t))),
+      h('label', { class: 'loop-len-box' }, input, h('span', {}, unit))),
+      h('div', { class: 'loop-starts' }, ...(L.mode === 'min' ? pre.min : pre.km).map((v) => h('button', { type: 'button', class: 'chip', 'aria-pressed': String(v === val), onclick: () => { if (L.mode === 'min') L.min = v; else L.km = v; L.results = []; this.app.setData('loops', EMPTY); this.renderLoop(); } },
+        L.mode === 'min' ? (v >= 60 ? `${v / 60} h` : `${v} min`) : `${v} km`))));
+    // which way
+    const dirs = [[null, 'Any'], [0, 'N'], [45, 'NE'], [90, 'E'], [135, 'SE'], [180, 'S'], [225, 'SW'], [270, 'W'], [315, 'NW']];
+    if (sport !== 'hike' && sport !== 'run') dirs.push(['wind', 'Into the wind first']);
+    box.append(row('Direction', h('div', { class: 'style-flags', role: 'group', 'aria-label': 'Direction' }, ...dirs.map(([d, t]) => h('button', {
+      type: 'button', class: 'chip', 'aria-pressed': String(L.dir === d), title: d === 'wind' ? 'Head out into the wind and come back with it behind you' : '',
+      onclick: () => { L.dir = d; L.results = []; this.app.setData('loops', EMPTY); this.renderLoop(); },
+    }, t)))));
+    // go
+    const used = L.gens.filter((t) => Date.now() - t < 600e3).length;
+    box.append(h('div', { class: 'loop-go' },
+      h('button', { type: 'button', class: 'btn primary', disabled: L.busy, onclick: () => this.generateLoops(), html: L.busy ? 'Making loops…' : `${icon('roundtrip', 16)} ${L.results.length ? 'Make new loops' : 'Make 3 loops'}` }),
+      L.results.length ? h('button', { type: 'button', class: 'btn', disabled: L.busy, title: 'Other directions for the same length', onclick: () => { L.spin = (L.spin + 15) % 60; this.generateLoops(); } }, 'Other directions') : null,
+      close),
+    h('p', { class: 'style-help loop-cost' }, `Three routing calls, up to six if loops need adjusting${used ? ` · ${used} of ${LOOP_CAP} round trips in the last 10 minutes` : ''}. In your route style (${styleName(sport, this.style)}).`));
+    if (L.note) box.append(h('p', { class: 'note' }, L.note));
+    if (L.results.length) this.renderLoopCards(box, sport);
+  }
+
+  renderLoopCards(box, sport) {
+    const L = this.loop;
+    const list = h('div', { class: 'loop-cards' });
+    L.results.forEach((r, i) => {
+      const a = r.a;
+      const trails = a.ways.filter(([k]) => k === 'path' || k === 'track').reduce((m, [, d]) => m + d, 0);
+      const PAVED_S = ['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates', 'unknown'];
+      const unpaved = a.surfaces.filter(([k]) => !PAVED_S.includes(k)).reduce((m, [, d]) => m + d, 0);
+      const what = sport === 'road' || sport === 'gravel' ? `unpaved ${Math.round((100 * unpaved) / a.total)} %` : `trails ${Math.round((100 * trails) / a.total)} %`;
+      const card = h('div', { class: `loop-card${i === L.on ? ' on' : ''}`, role: 'button', tabindex: '0', onmouseenter: () => { L.on = i; this.drawLoops(); this.markLoopCards(); }, onfocus: () => { L.on = i; this.drawLoops(); this.markLoopCards(); },
+        onclick: () => { L.on = i; this.drawLoops(); this.markLoopCards(); } },
+        h('div', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === 0 ? h('span', { class: 'loop-best' }, 'Closest match') : null),
+        h('div', { class: 'loop-card-line' }, `${fmtDuration(a.time)} · ↑${Math.round(a.up)} m · ${what}`),
+        h('div', { class: 'loop-card-line muted' }, [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', a.warnings.length ? `${a.warnings.length} heads-up` : 'no heads-up', r.line.provider === 'valhalla' ? 'via Valhalla' : ''].filter(Boolean).join(' · ')),
+        h('button', { type: 'button', class: 'btn', onclick: (e) => { e.stopPropagation(); this.pickLoop(i); } }, 'Use this loop'));
+      list.append(card);
+    });
+    box.append(list);
+  }
+
+  markLoopCards() { this.els.loopBox.querySelectorAll('.loop-card').forEach((c, i) => c.classList.toggle('on', i === this.loop.on)); }
+
   // ---------------------------------------------------------------- route style
   savedStyle(sport) { return store.get('styles', {})[sport] || defaultStyle(); }
 
@@ -545,6 +808,7 @@ export class Planner {
     const box = this.els && this.els.styleBox;
     if (!box) return;
     const sport = this.app.activity();
+    this.els.quickStyle.innerHTML = `${icon('sliders', 16)}<span>Style: <b>${escapeHtml(styleName(sport, this.style))}</b></span>`;
     const cat = STYLES[sport] || STYLES.mtb;
     if (this.styleLeg != null && !this.legs[this.styleLeg]) this.styleLeg = null;
     const leg = this.styleLeg;
@@ -780,6 +1044,7 @@ export class Planner {
   // ---------------------------------------------------------------- map interaction
   onMapClick(e) {
     if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
+    if (this.loop.open && !this.loop.busy) { this.setLoopStart([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)], 'the spot you clicked'); return; }
     const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
     if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
     const hit = this.map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-casing'] })[0];
@@ -1188,6 +1453,7 @@ export class Planner {
         ? act('plus', 'Add a point here', 'The route goes on to here', () => { this.addPoint(ll); this.autoPeek(); })
         : act('flag', 'Route from here', 'Start a new route here', () => { this.setActive(true); this.clear(); this.addPoint(ll); toast('Now tap or click where you want to go'); }),
       !this.active && this.points.length ? act('plus', 'Add to my route', 'Your route goes on to here', () => { this.setActive(true); this.addPoint(ll); }) : null,
+      roundTripSports.includes(this.app.activity()) ? act('roundtrip', 'Round trip from here', 'Loops of the length you choose, starting and ending here', () => this.openLoop(ll)) : null,
       act('close', 'Avoid this spot', 'Routes go around it (40 m)', () => { if (!this.active) this.setActive(true); this.addNogo(ll, 40, 'Avoided place'); }));
     this.menu = new maplibregl.Popup({ offset: 6, closeButton: false, maxWidth: '320px', className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
     this.menu.spot = true;
@@ -1390,10 +1656,13 @@ export class Planner {
       else this.setSheetState(st === 'peek' ? (this.lastOpen || 'half') : 'peek');
     }, 'sheet-min');
     this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
+    // the two big choices, always in sight: let Polku make loops, and how the route is chosen
+    this.els.quickLoop = h('button', { type: 'button', class: 'btn quick', 'aria-pressed': 'false', title: 'Let Polku make loops of the length you choose', onclick: () => (this.loop.open ? this.closeLoop() : this.openLoop()), html: `${icon('roundtrip', 16)}<span>Round trip</span>` });
+    this.els.quickStyle = h('button', { type: 'button', class: 'btn quick', title: 'How the route is chosen for this sport', onclick: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } });
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
       h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
         h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      h('div', { class: 'sheet-row tools-row' }, modes, h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
+      h('div', { class: 'sheet-row tools-row' }, modes, h('span', { class: 'quick-pair' }, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
@@ -1425,6 +1694,8 @@ export class Planner {
       : 'Click the map to add points · drag a point or the line to reshape · click a point for options · right-click for more');
     this.els.dock = h('div', { class: 'dock' }); // the timeline docks here while planning (main.js)
     this.els.body = h('div', { class: 'sheet-body' }, this.els.stats, h('div', { class: 'sheet-cols' },
+      // a round trip being made (shown only then)
+      this.section('loop', 'Round trip', this.els.loopBox = h('div', { class: 'loop-box' })),
       // the chart first; then one line to choose what colours it (a menu, or chips where they fit in a row)
       this.section('profile', 'Profile',
         h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
@@ -1443,6 +1714,8 @@ export class Planner {
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
     p.append(this.els.handle, this.els.head, this.els.body, this.els.grip);
+    this.renderLoop();
+    this.renderStyle();
     this.renderModeChips();
     this.bindSheet();
     this.bindResize();
@@ -1482,7 +1755,7 @@ export class Planner {
   // ---------------------------------------------------------------- panel layout & states
   // Wide screens choose: a side panel on the left (default) or a bottom panel
   // (⋯ → Move to the bottom). Phones and narrow windows always get the bottom sheet.
-  layout() { return this.sideMQ.matches && store.get('plannerDock', 'left') === 'left' ? 'side' : 'sheet'; }
+  layout() { return this.sideMQ.matches && store.get('plannerDock', 'bottom') === 'left' ? 'side' : 'sheet'; } // bottom unless you chose the side (the default for everyone new)
 
   setDock(where) {
     store.set('plannerDock', where);
@@ -1652,6 +1925,7 @@ export class Planner {
       this.sideMQ.matches ? h('hr') : null,
       Object.assign(item('reverse', 'Reverse direction', () => this.reverse()), { disabled: !two }),
       Object.assign(item('loop', 'Back to start', () => this.loop()), { disabled: !two }),
+      item('roundtrip', 'Round trip…', () => this.openLoop()),
       h('hr'),
       item('upload', 'Import GPX / KML…', () => $('#file-input').click()),
       Object.assign(item('download', 'Export GPX', () => this.exportGpx()), { disabled: !two }),
@@ -1824,9 +2098,10 @@ export class Planner {
     // the clock stays reachable before there's a route: set the time, then draw
     if (!a) this.setSection('depart', { summary: this.startOffsetH ? `Depart ${new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Depart now' });
     if (!a) {
-      sum.append(h('p', { class: 'sum-empty' }, this.points.length
-        ? 'Add another point to make a route'
-        : `${matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click'} the map to add a start point`));
+      const tap = matchMedia('(pointer: coarse)').matches ? 'tap' : 'click';
+      sum.append(h('p', { class: 'sum-empty' }, this.loop.open ? `Round trip: ${tap} the map to move its start`
+        : this.points.length ? 'Add another point to make a route' : `${tap[0].toUpperCase()}${tap.slice(1)} the map to add a start point`));
+
       this.chart.setData(null);
       this.els.breakdown.innerHTML = '';
       this.els.climbs.innerHTML = '';

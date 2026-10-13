@@ -20,7 +20,7 @@ Also approved:
 | 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | merged |
 | 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | [#24](https://github.com/TommiContursi/Polku/pull/24) | in review |
 | 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
-| 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | — | |
+| 10 | Round trips: 3 generated loops, ranked, with the cost shown | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | in review |
 | — | Winter sports (ski, snowshoe) | — | — | later; the sports model in phase 5 leaves room |
 | — | Strava & Garmin (see the end of this file) | — | — | later: research and plan first, no code yet |
 
@@ -568,6 +568,17 @@ The user asked to think this through first: comprehensive and useful per sport, 
   - candidates appear as coloured lines with cards (distance, ascent, time, hardest climb, unpaved %, heads-up count).
 - **Picking one** turns it into a normal route. The loop's geometry is split at 4–6 via points into fixed legs, so editing re-routes only the legs you touch.
 
+**Built (PR #27)**
+- **Polku makes the loops, BRouter routes them** (`js/roundtrip.js`). BRouter's own round-trip mode just puts points on an arc around the start; doing it here means a loop is an ordinary route (start → 4 via points → start), so route styles, the Valhalla stand-in, caching and editing all apply, and picking a loop is free.
+- **Shape:** the start sits *on* a circle and the via points go round it (clockwise), so the loop rides a ring, not out-and-back spokes. Radius = target ÷ (2π × the sport's detour factor), calibrated with `tools/loop_probe.py` on 5 places × 4 sports × 3 directions against a local BRouter.
+- **Water first:** a via point in a lake or the sea fails or sends the route the long way round (measured: 190× the target from Kuopio, 2.8× from Tampere heading north over Näsijärvi). Before routing, the map frames the loops' reach and its loaded tiles' water polygons are read (`querySourceFeatures`, any base map): 12 directions are scored by how wet their circle is, via points are nudged along the circle off the water, and the three driest directions at least 60° apart are routed. Same places, water-aware: the worst of the bad cases gone (Tampere 0.81–1.29×, Kuopio run 0.85–0.97×).
+- **One call per loop** (`router.routeLoop`, the whole line, with `correctMisplacedViaPoints` to trim spurs). A loop that fails, rides over 1.6× the target or more than half of it twice is replaced by the next direction; one under 0.8× or over 1.25× is resized once; at most 6 calls a go, 5 goes per 10 minutes (the panel says both).
+- **Ranking, locally:** each loop goes through Polku's analysis (time, climbing, heads-up) and is scored on distance fit, riding the same way twice (`twiceShare`: within 15 m of a part 300 m+ away along it) and heads-up. Cards: distance, time, climbing, trails % (unpaved % for road and gravel), ridden twice, heads-up, "via Valhalla" if it stood in.
+- **Picking one:** its via points move onto the line (nearest spot, in order), so the legs split exactly and nothing is routed again; one undo step; it's a loop, so "Start here" turns it round.
+- **Inputs:** start (map centre, my location, route start, or a click on the map), length (km or time, turned into km with your speeds; presets per sport), direction (any, 8 compass points, or "into the wind first" for bikes: the wind at the start from the forecast, so you come home with it behind you).
+- **Where:** "Or make a round trip" in an empty planner, "Round trip…" in the ⋯ menu, "Round trip from here" in the long-press / right-click menu. Once there are loops, the choices fold into one line so the cards come first (phones especially).
+- **Not for paddling yet** (it would need many runs of Polku's own water router); the panel says so.
+
 **Cut**
 - More than 3 candidates.
 - "Surprise me".
@@ -620,6 +631,8 @@ The user expects the smallest first step to be option A plus a FIT course export
 
 - **One reading order everywhere:** Profile → Waypoints → Heads-up → Climbs → Departure & weather → Route style → Time & speed. Waypoints is near the top because it's what you edit; the settings come last. Each section folds and remembers it (side panel and phones).
 - **Wide bottom panel** (container ≥ 900 px), always open, in rows: the profile across the top; then Waypoints · Heads-up and Climbs stacked in one column · Departure & weather; then Route style · Time & speed. Columns grow from a minimum width and wrap rather than squeeze; a section alone on a row lays its parts side by side (Departure: timeline | weather on the route; Time & speed: editor | on this route). Row breaks are `.sec-break` elements; the stack is `.sec-stack` (`display: contents` when narrow).
+- **The header (always visible, also when folded to the summary)** carries the two big choices in words: **Round trip** and **Style: …** (#27, the user's note: starting was confusing with round trips in ⋯). On a phone or the side panel they have a line of their own above the routing modes; from 560 px they sit right after the modes; from 1240 px the whole header is one line, and the common tools come out of ⋯ from 1560 px.
+- **The planner opens at the bottom by default** for everyone new (`plannerDock` defaults to `bottom`; the side panel is a choice in ⋯ and Settings).
 - **The always-visible summary** is distance · time · ascent and descent together (↑42 ↓62 m); the stats row under it has the rest (hardest climb, speed, style; for paddling the wind and carry figures). On phones the stats are three even columns.
 - **Bottom sheet sizes:** peek (the summary) · **profile** (the summary plus the elevation chart and its colours; the stats fold away; height measured from the content, at most 45 % of the screen) · half · full. Drag snaps to the nearest; a tap on the handle toggles between peek and your last size; arrow keys step through them. `tools/smoke.py` checks the profile size shows the whole chart.
 
