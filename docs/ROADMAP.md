@@ -1255,6 +1255,22 @@ The research brief this replaces asked about: sports for a snow group; ski track
 - **Summer-only things step back** in winter (beaches, water temperature, wet-ground routing).
 - **Ice wording, a rule for every screen:** Polku never says or implies ice is safe.
 
+**What Trailmap does in winter** *(viewed with the user's Plus account, 2026-10-14; nothing changed there, none of its tiles or keys used)*:
+- **Winter is a map profile** beside MTB, Gravel, Walking, Other and Own. Each profile has its own layer settings and "Reset profile defaults".
+- **The winter map drops** difficulty, trail visibility, surface and width, and draws:
+  - **ways by how they open after snow**, using the community tag `mtb:winter`: 1 opens quickly (the sure picks), 2 / `yes` opens clearly slower, 3 opens slowly or not at all (mostly walkers), no tag means not known;
+  - **groomed (maintained) trails**;
+  - **ploughed cycleways** (`snowplowing` / `winter_service` = yes, and no / limited for not ploughed);
+  - **no access in winter** (`bicycle:winter=no`, `foot:winter=no`, `mtb:winter=no`; usually a ski-track base), as a red and white chequer;
+  - **ski-track bases** as double lines, coloured by source (OSM or LIPAS);
+  - **skating routes**;
+  - **winter-only ways** (`seasonal=winter`) at full strength: paths over ice or bog.
+- Tag meanings: Trailmap's mapping guide, wiki.trailmap.fi/fi/kartoitus/tagit ("Trailmap MTB Talvikartta").
+- **BRouter knows none of these winter tags** (only `lit` and the piste tags), so they can't steer its routing.
+- **So Polku's winter:**
+  - **BRouter, through route-style parameters:** keep off ski tracks, and prefer lit ways after dark.
+  - **Overpass tiles** (as trail details load now) for the winter tags. Polku draws them like Trailmap's winter map, as a **Winter** colour mode for the profile and the route, and as Heads-up ("Opens slowly after snow: 2.4 km", "Not ploughed: 1.2 km", "No cycling in winter (ski track): 300 m", with Avoid).
+
 **15b — Skiing (when it's winter, so there's snow to test on)**
 - One **Ski** sport, kept simple: styles Classic / Skate / Any track, Any first.
 - Its own router over the area's ski tracks (OSM's, which BRouter misses in part, joined with LIPAS and the Helsinki service map). Grooming age where it's open, links to the operator elsewhere.
