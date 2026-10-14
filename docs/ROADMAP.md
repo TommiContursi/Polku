@@ -32,7 +32,8 @@ Also approved:
 | — | The route on the map: a click opens the planner, a tap or right-click opens a menu for that part, LIPAS routes easier to pick | `route-menu` | [#44](https://github.com/TommiContursi/Polku/pull/44) | merged |
 | — | Fix: route points stacked down off the route (from #43); tests could run on cached files | `marker-fix` | [#45](https://github.com/TommiContursi/Polku/pull/45) | merged |
 | — | Reading the route: points snap onto the path, a tap beside a menu only closes it, the sport on the profile and map, distance marks, departure at the start, sunrise and sunset | `route-read` | [#46](https://github.com/TommiContursi/Polku/pull/46) | merged |
-| — | Fix: a cleared route left its colours (and wind arrows) on the map | `clear-colours` | [#47](https://github.com/TommiContursi/Polku/pull/47) | PR open |
+| — | Fix: a cleared route left its colours (and wind arrows) on the map | `clear-colours` | [#47](https://github.com/TommiContursi/Polku/pull/47) | merged |
+| — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | PR open |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | — | next |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
@@ -437,7 +438,7 @@ Also approved:
 
 **Built (PR #21)**
 - **Drag the line** (`onLinePress`):
-  - with a mouse the drag starts after 4 px of movement (a plain click still adds a via point);
+  - with a mouse the drag starts after 4 px of movement (a plain click added a via point; since #48 it opens that part's menu);
   - on touch, hold the line for 300 ms first (a short buzz where supported), so a swipe across it still pans the map; map panning is off until the release;
   - the new point appears under the pointer; the release is one undo step.
 - **Live re-routing while dragging** (`beginEdit` / `editTo` / `previewLeg` / `fetchPreview` / `endEdit`):
@@ -447,7 +448,7 @@ Also approved:
   - `router.js` shares requests in flight (`shared()`): the release reuses the preview's request for the final spot instead of repeating it; a request is cancelled only when every caller has given up;
   - straight legs update instantly, imported tracks only move their end, water legs are routed on release (the water router is too heavy for every move).
 - **Adding a point on the line costs nothing:** `splitLeg()` splits the current geometry at the nearest spot, and both halves keep their routing key. Undo, "Start here" and turning a loop round are free too.
-- **Leg handles:** a small ring in the middle of each leg (drag it, or click it for a via point); hidden where the leg is under 120 px on screen and while dragging.
+- **Leg handles:** a small ring in the middle of each leg (drag it, or click it for a via point; since #48 a click opens that part's menu); hidden where the leg is under 120 px on screen and while dragging.
 - **Touch targets:** points sit in a 44 px invisible target on touch screens (30 px with a mouse); leg handles 36 px.
 - **Point menu:** distance from the start; next leg Follow / Straight / Water; for via points **Start here** / **Finish here** (a loop turns round instead, same route); for the finish **Back to start**; Remove. It pans into view, clear of the top bar and the planner.
 - **Spot menu:** long-press the map (550 ms) or right-click: **Add a point here** / **Avoid this spot** while planning, **Route from here** / **Add to my route** / **Avoid this spot** otherwise. "Avoid here" lives here rather than in the point menu: a via point is where you *do* want to go. No menu after a right-drag rotate.
@@ -1094,13 +1095,22 @@ From the backlog *(user, 2026-10-14)*:
 
 *(User, 2026-10-14)*: "when the route editor is closed, it should be possible to activate it by clicking the route"; "LIPAS routes are difficult to click or choose with the finger: it often activates the trail or road behind"; "on mobile, touching the route adds a new point; that is not always what is wanted"; "think the way of editing parts of the route by clicking, right-clicking or touching: what settings should be editable".
 - **The planner closed:** a click or tap on your route opens it, with the menu for that part of the route. Hovering it (desktop) says "Your route · click to edit it".
-- **A menu for a part of the route** (`planner.openLegMenu`), opened by a tap on the line (touch) or a right-click (desktop):
+- **A menu for a part of the route** (`planner.openLegMenu`), opened by a tap on the line (touch) or a right-click (desktop), and since #48 by a mouse click too:
   - "Add a point here" first;
   - then the leg's own settings: its sport, how it's routed (Follow / Straight / Water) and its style;
   - "Avoid this spot";
   - "On the profile", which zooms the profile to that leg, and the map follows.
   - 13c adds "Stop here" to it.
-- **A click on the line (mouse) still adds a via point,** and a drag still reshapes the route: quick for a mouse, and undo is there. A finger gets the menu first, since a tap is easily a mistake. Hold-and-drag still reshapes, and the menu's first button adds the point.
+- **A click on the line (mouse) still added a via point,** and a drag still reshapes the route: quick for a mouse, and undo is there. A finger got the menu first, since a tap is easily a mistake. Hold-and-drag still reshapes, and the menu's first button adds the point. *Changed in #48, below.*
+
+**One click for the route (built 2026-10-14, #48)**
+
+*(User, 2026-10-14)*: "It is logical that touching the route opens the modal and asks adding a point. But clicking it with left mouse just simply adds more points… Maybe it should happen from the left click instead of right at least if we want to unify the mobile and desktop."
+- **A click on the line opens that part's menu,** as a tap does: mouse and finger work the same. "Add a point here" is its first button, so a point is two clicks away, and never added by mistake.
+- **A click on a leg's handle** (the ring in its middle) opens the same menu, at the handle.
+- **Unchanged:** a drag on the line or a handle reshapes the route (it adds a point where you let go); a click on the map away from the route adds a point; a right-click on the line opens the menu, elsewhere the spot menu.
+- **Hover readout** on the line (desktop) ends with "Click for options · drag to reshape", and the planner's hint says "click a point or the line for options".
+- **Tests:** `routemenu` in `tools/smoke.py` checks that a click, a handle click and a tap each open the menu and add no point (it fails on the old code); `tools/shoot.py` has `desk-leg-click`, `desk-leg-handle`, `phone-leg-handle` and `desk-leg-hover`.
 - **LIPAS routes over trails:**
   - A click there picks the LIPAS route (its card has "The path under it ›").
   - The trail's card has "Part of: … ›" back to the route.

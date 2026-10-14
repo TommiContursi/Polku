@@ -125,7 +125,7 @@ def MULTI_JS(sec):
             " const r = document.querySelector('.speed-row.sub.head'); if (r && " + json.dumps(sec) + " === 'speed') r.scrollIntoView({ block: 'center' }); await wait(300); return true; })()")
 
 
-# clicks and taps on the route: a LIPAS route over a trail, a tap on the line (phone), a right-click on it (desktop)
+# clicks and taps on the route: a LIPAS route over a trail; a tap, a click or a right-click on the line, a click on a leg's handle
 LIPAS_PICK = ("(async () => { const m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)); await wait(2500);"
               " const f = m.queryRenderedFeatures({ layers: ['lipas-route'] }).find((x) => /MTB-lenkki/.test(x.properties.name)); if (!f) return true;"
               " const c = f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates[0]; const q = m.project(c[Math.floor(c.length / 3)]);"
@@ -133,8 +133,11 @@ LIPAS_PICK = ("(async () => { const m = polku.map, wait = (ms) => new Promise((r
 def LINE_PICK(how):
     return ("(async () => { const p = polku.planner, m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));"
             " const c = p.legs[1].result.coords, ll = c[Math.floor(c.length / 2)], q = m.project(ll);"
-            + (" p.lastTouchAt = Date.now(); m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') });" if how == 'tap'
-               else " m.fire('contextmenu', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('contextmenu') });")
+            + {'tap': " p.lastTouchAt = Date.now(); m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') });",
+               'click': " m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') });",
+               'handle': " const g = p.ghosts.find((x) => x.getElement().isConnected && !x.getElement().hidden); if (g) g.getElement().click();",
+               'right': " m.fire('contextmenu', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('contextmenu') });",
+               'hover': " const r = m.getCanvas().getBoundingClientRect(); m.fire('mousemove', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('mousemove', { clientX: r.left + q.x, clientY: r.top + q.y }) });"}[how]
             + " await wait(700); return true; })()")
 
 
@@ -284,6 +287,10 @@ SCENES = {
     'phone-lipas-pick': dict(PHONE, timeline=False, hash='#14.6/62.4495/25.8945', js=LIPAS_PICK),
     'phone-leg-tap': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('tap')),
     'desk-leg-menu': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('right')),
+    'desk-leg-click': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('click')),
+    'desk-leg-hover': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('hover'), settle=0.8),
+    'desk-leg-handle': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('handle')),
+    'phone-leg-handle': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('handle')),
     # what the route shows: snapped points, the sport strip, distance marks, the sun
     'desk-snap': dict(DESK, timeline=False, hash='#14.84/61.87283/25.21918', storage=LOCAL, js=SNAP_JS),
     'phone-snap': dict(PHONE, timeline=False, hash='#14.84/61.87283/25.21918', storage=LOCAL, js=SNAP_JS),
