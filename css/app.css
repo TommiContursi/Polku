@@ -98,8 +98,11 @@ button { font: inherit; color: inherit; }
 }
 #search-results li { padding: 8px 10px; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; }
 #search-results li.active, #search-results li:hover { background: var(--accent-soft); }
+#search-results li.r-group { cursor: default; padding: 8px 10px 2px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: none; }
+#search-results li.r-group:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
 .r-name { color: var(--text); font-weight: 600; }
-.r-sub { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+.r-sub { color: var(--muted); font-size: 12px; }
+.r-sub::first-letter { text-transform: uppercase; }
 
 /* ---------------------------------------------------------------- activity pill */
 /* the active sport beside the search; hover or tap opens the others */
@@ -809,6 +812,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .insp-links a { color: var(--accent); display: inline-flex; align-items: center; gap: 3px; font-weight: 600; text-decoration: none; }
 .insp-more { margin-top: 6px; }
 .insp-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.insp-ride { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.35; }
 
 /* hover details (desktop) */
 .hover-tip {

@@ -70,7 +70,7 @@ export function initHover(map, app) {
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
-    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false }); }
+    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning }); }
     if (!d) { hide(); return; }
     render(d);
     // the incline from the DEM arrives a moment later
@@ -176,7 +176,7 @@ function describe(f, feats, ctx) {
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
-  if (id === 'lipas-route') return { title: p.name || p.typeName || 'Route', bits: [e(p.typeName || ''), p.length ? `${e(p.length)} km` : ''].filter(Boolean) };
+  if (id === 'lipas-route') return { title: p.name || p.typeName || 'Route', bits: [e(p.typeName || ''), p.length ? `${e(p.length)} km` : '', ctx.planning ? '' : 'click to ride it'].filter(Boolean) };
   if (/^poi-|^label-peak/.test(id)) {
     const type = (p.subclass || p.class || '').replace(/_/g, ' ');
     return { title: p.name || cap(type || 'Place'), bits: [p.name && type ? e(cap(type)) : '', p.ele ? `${e(p.ele)} m` : ''].filter(Boolean) };

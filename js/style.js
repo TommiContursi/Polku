@@ -95,6 +95,7 @@ export function buildStyle(s, ctx) {
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS' },
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
+    lipasPick: { type: 'geojson', data: ctx.data.lipasPick || EMPTY }, // a route picked in search, while its card is open
     wxLabels: { type: 'geojson', data: ctx.data.wxLabels || EMPTY },
     sfAadt: { type: 'geojson', data: ctx.data.sfAadt || EMPTY, attribution: '© Fintraffic / Digiroad' },
     sfLines: { type: 'geojson', data: ctx.data.sfLines || EMPTY, attribution: '© Fintraffic / Digitraffic' },
@@ -422,6 +423,11 @@ export function buildStyle(s, ctx) {
   // ---- Places to avoid (route planner no-go areas) ------------------------
   add({ id: 'nogo-fill', type: 'fill', source: 'nogo', paint: { 'fill-color': '#dc2626', 'fill-opacity': 0.14 } });
   add({ id: 'nogo-line', type: 'line', source: 'nogo', paint: { 'line-color': '#dc2626', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
+
+  // ---- A LIPAS route picked in search (drawn at any zoom, until its card closes)
+  const pickColor = ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#555'];
+  add({ id: 'lipas-pick-casing', type: 'line', source: 'lipasPick', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(6, 4, 14, 9, 18, 13), 'line-opacity': 0.9 } });
+  add({ id: 'lipas-pick', type: 'line', source: 'lipasPick', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': pickColor, 'line-width': zi(6, 2, 14, 5, 18, 8) } });
 
   // ---- Imported tracks & the planned route (always on top) --------------
   add({ id: 'tracks-casing', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 4, 16, 9), 'line-opacity': 0.8 } });

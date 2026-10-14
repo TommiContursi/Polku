@@ -28,7 +28,7 @@ export const SOURCES = {
   photon: { label: 'Photon', what: 'search' },
   digitraffic: { label: 'Digitraffic', what: 'traffic, cameras & ships', limits: [[60e3, 60, 'minute']] },
   digiroad: { label: 'Digiroad', what: 'traffic volumes' },
-  lipas: { label: 'LIPAS', what: 'routes & places' },
+  lipas: { label: 'LIPAS', what: 'routes & places, and search' },
   vayla: { label: 'Väylävirasto', what: 'nautical chart' },
   traficom: { label: 'Traficom', what: 'water depth' },
   rainviewer: { label: 'RainViewer', what: 'rain radar' },

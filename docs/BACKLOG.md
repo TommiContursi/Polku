@@ -15,6 +15,8 @@ or idea.
 - **Trail-detail tiles are cached a week,** so a fallen tree cleared yesterday still shows. *(2026-10-14; see "Fresher trail data" below)*
 - **Smoke (headless Chrome) can fail the phone sheet heights** when the machine is short of network connections or CPU: seen once, not reproduced. Watch for it. *(2026-10-14)*
 - **On a 360 px phone the summary's "↓57 m" nearly touches Done.** *(2026-10-14)*
+- **Share links re-route imported GPX tracks.** A fixed leg from a file travels as its two ends only, so whoever opens the link gets a routed leg, not your track. LIPAS legs now travel as references (12c); a GPX track would need its line in the link (too long for a URL) or a short-link service. *(2026-10-14)*
+- **A tall card on a short screen** (a LIPAS route's card with Ride, about 330 px) can sit under the top bar at 600 px of height. *(2026-10-14)*
 
 ## Ideas
 
@@ -26,9 +28,11 @@ or idea.
   - Each would be a switch under *Weather on the map*, on the timeline.
 - **Timeline into the past** *(user, 2026-10-14)*: a few hours back, to see how the rain has moved. FMI's radar layers keep about two weeks at 5 minutes (WMS `time`), so the last 2–3 hours could play like the forecast does.
 
-### Routes and search *(user, 2026-10-14; planned as phase 12c)*
-- Ride a LIPAS route, add one to yours, and find routes and stops in search (see ROADMAP 12c).
-- Search: grouped results, recent searches, "near me" categories (lean-to, campfire site, parking, water).
+### Routes and search *(user, 2026-10-14)*
+- ~~Ride a LIPAS route, add one to yours, and find routes and stops in search~~ *(done in 12c)*.
+- ~~Search: grouped results, recent searches~~ *(done in 12c)*; still to do: "near me" categories (lean-to, campfire site, parking, water).
+- **Loops inside a LIPAS network** (Laajavuoren ulkoilureitit: "Vuorenlenkki 5 km, Kuntolenkki 8.5 km…"): LIPAS doesn't name its parts (`reitti_nimi_fi` is empty), so Ride takes the longest line through them. Picking a loop by clicking its stretches one after another would let you ride "Kuntolenkki". *(12c)*
+- **Snap a LIPAS line to the paths:** LIPAS lines are drawn by hand, about one point every 40–75 m, so a ride can cut corners off the real path. An optional "follow the paths" pass (one BRouter call with the line's points as via points) would fix the profile and trail details, at the cost of one call. *(12c)*
 - OSM route relations (Waymarked Trails) as rideable routes.
 
 ### Your own things
@@ -56,4 +60,4 @@ or idea.
   - GitHub Pages: about 100 GB a month of bandwidth.
   - The counters are in Settings → data sources.
 - **OpenFreeMap's tile URLs change weekly;** saved offline areas use version-free keys (`sw.js`).
-- **LIPAS search costs one request per route type** (the WFS refuses several types at once): keep it debounced and cached.
+- **LIPAS search costs three requests** per query (12c: the combined layers `lipas_kaikki_reitit` / `lipas_kaikki_pisteet` take one filter for every type). If LIPAS renames or drops those layers, search loses its routes and stops (Places still work).

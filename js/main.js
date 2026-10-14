@@ -12,7 +12,7 @@ import { installIcons, iconUrl } from './icons.js';
 import { Planner, parseShared } from './planner.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
-import { LipasLayer } from './lipas.js';
+import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection } from './offline.js';
@@ -127,6 +127,10 @@ map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
 $('.ctrl-compass').append(new CompassControl({ toast }).onAdd(map));
 const geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
 map.addControl(geolocate, 'top-right');
+// where you were last seen (a LIPAS route you ride starts at the end nearer you)
+let lastFix = null;
+geolocate.on('geolocate', (p) => { lastFix = { ll: [p.coords.longitude, p.coords.latitude], t: Date.now() }; });
+const whereYouAre = () => (lastFix && Date.now() - lastFix.t < 30 * 60e3 ? lastFix.ll : null);
 map.on('error', (e) => {
   // Tile 404s outside DEM coverage are expected; surface everything else in the console only.
   if (e && e.error && !/404|Failed to fetch|AbortError/.test(String(e.error.message || e.error))) console.warn(e.error);
@@ -194,7 +198,19 @@ const planner = new Planner(map, {
 // MTB difficulty in hover and click details: in MTB, and in any sport with trail colours on
 const showsDifficulty = () => state.activity === 'mtb' || state.trailColors !== 'off';
 const isBike = () => ACTIVITIES[state.activity].group === 'bike';
-initInspector(map, {
+// Ride a LIPAS route, or add it to yours (its own line: no routing, js/lipas.js rideOf)
+async function rideLipas(props, { click = null, near = null, add = false } = {}) {
+  try {
+    const place = await lipasPlace(props.type, props.lipasId);
+    const end = add && planner.points.length ? planner.points[planner.points.length - 1] : null;
+    const ride = rideOf(place, { near: end || whereYouAre() || near || map.getCenter().toArray(), click });
+    if (!ride || !ride.pieces.length) throw new Error('LIPAS has no line for this route');
+    planner.rideLipas(place, ride, { add: !!end });
+  } catch (e) {
+    toast(e.name === 'Limited' ? e.message : `Couldn't load the route from LIPAS (${e.message})`, { tone: 'warn' });
+  }
+}
+const inspector = initInspector(map, {
   isPlanning: () => planner.active,
   activity: () => state.activity,
   difficulty: showsDifficulty,
@@ -208,13 +224,23 @@ initInspector(map, {
   },
   routeTo: (ll) => { planner.setActive(true); planner.addPoint(ll); },
   avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
+  rideLipas,
+  lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
 const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike });
 
-initSearch(map, $('#search-input'), $('#search-results'));
+initSearch(map, $('#search-input'), $('#search-results'), {
+  sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
+  padding: () => (planner.active ? planner.viewPadding() : 70),
+  // the picked route stands out (and shows at any zoom) while its card is open
+  openLipas: (props, ll, near, parts) => {
+    setData('lipasPick', { type: 'FeatureCollection', features: (parts || []).map((p) => ({ type: 'Feature', properties: { type: props.type }, geometry: { type: 'LineString', coordinates: p.coords } })) });
+    inspector.openLipas(props, ll, near).on('close', () => setData('lipasPick', { type: 'FeatureCollection', features: [] }));
+  },
+});
 
 // Weather overlay: image sources are swapped in place when possible; adding or
 // removing one goes through a (diffed) style rebuild.
