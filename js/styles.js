@@ -216,6 +216,31 @@ export const STYLES = {
       ['direct', 'Direct', { f: 'ignore', w: 'ignore' }],
     ],
   },
+  // open-water swimming: the water router, close to the shore and well away from boats
+  swim: {
+    controls: [
+      control('n', 'Shore', 'Near the shore keeps within easy reach of land; open water takes the straighter line (swim with someone, and a tow float).', [
+        ['near', 'Near the shore', {}, {}, { water: { shore: 'near' } }],
+        ['open', 'Open water ok', {}],
+      ]),
+      control('f', 'Fairways', 'Boats can’t see a swimmer: shipping lanes and small-boat routes are avoided, and crossed straight when there’s no way round. (Väylävirasto)', [
+        ['avoid', 'Avoid', {}, {}, { water: { fairways: 'avoid' } }],
+        ['cross', 'Cross straight', {}],
+      ]),
+      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers (Väylävirasto marks, OpenStreetMap rocks and reefs).', [
+        ['clear', 'Keep clear', {}],
+        ['ignore', 'Ignore', {}, {}, { water: { hazards: 'ignore' } }],
+      ]),
+      control('w', 'Wind', 'Keeps out of water that the wind makes choppy (the forecast at your start).', [
+        ['shelter', 'Keep sheltered', {}],
+        ['ignore', 'Ignore', {}, {}, { water: { wind: 'ignore' } }],
+      ]),
+    ],
+    presets: [
+      ['balanced', 'Near the shore', {}],
+      ['open', 'Open water', { n: 'open' }],
+    ],
+  },
 };
 
 export const hasWet = (sport) => !!WET[sport];

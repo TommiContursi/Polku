@@ -3,7 +3,7 @@
 
 import { densify, dist } from './geo.js';
 import { elevations, smooth } from './dem.js';
-import { CRAFT, groupOf } from './config.js';
+import { CRAFT, groupOf, isWater } from './config.js';
 import { obstacleKind, widthClass, visClass, obstacleText } from './trails.js';
 
 const LOOSE = new Set(['gravel', 'sand', 'rock', 'pebblestone', 'ground', 'dirt', 'earth', 'mud', 'grass', 'unpaved', 'wood', 'roots']);
@@ -193,7 +193,9 @@ function findClimbs(along, ele, grade, sAttr, pts) {
 }
 
 function findWarnings(along, grade, sAttr, pts, activity) {
-  const bike = groupOf(activity) === 'bike';
+  // each stretch by its own sport (a multisport route: a leg may have its own)
+  const sp = (i) => sAttr[i].sport || activity;
+  const bikeAt = (i) => groupOf(sp(i)) === 'bike';
   const out = [];
   const pushRun = (test, text, minLen = 0) => {
     let s = -1;
@@ -208,18 +210,16 @@ function findWarnings(along, grade, sAttr, pts, activity) {
     }
   };
   const t = (i) => sAttr[i].tags || {};
-  if (bike) {
-    pushRun((i) => t(i).highway === 'steps', 'Steps — carry the bike');
-    pushRun((i) => ['no', 'dismount'].includes(t(i).bicycle), 'Cycling not allowed here');
-    pushRun((i) => mtbScale(t(i)) >= 3, (s) => `Technical trail S${mtbScale(t(s))}`);
-    pushRun((i) => grade[i] >= 15, (s, e) => `Steep climb, up to ${Math.round(Math.max(...Array.from(grade.slice(s, e + 1))))} %`, 50);
-    pushRun((i) => grade[i] <= -18, 'Steep descent', 40);
-    // road tyres: anything that isn't paved, over a stretch worth mentioning
-    if (activity === 'road') pushRun((i) => sAttr[i].mode !== 'water' && !PAVED.has(surfaceOf(t(i))) && surfaceOf(t(i)) !== 'unknown', (s, e) => `Unpaved for ${Math.round(along[e] - along[s])} m — rough on road tyres`, 150);
-  } else if (activity === 'hike' || activity === 'trailrun') {
-    pushRun((i) => /^(demanding_alpine|difficult_alpine|alpine)/.test(t(i).sac_scale || ''), 'Alpine terrain (SAC T4+)');
-    pushRun((i) => grade[i] >= 25, activity === 'trailrun' ? 'Very steep — walk it' : 'Very steep section', 40);
-  }
+  pushRun((i) => bikeAt(i) && t(i).highway === 'steps', 'Steps — carry the bike');
+  pushRun((i) => bikeAt(i) && ['no', 'dismount'].includes(t(i).bicycle), 'Cycling not allowed here');
+  pushRun((i) => bikeAt(i) && mtbScale(t(i)) >= 3, (s) => `Technical trail S${mtbScale(t(s))}`);
+  pushRun((i) => bikeAt(i) && grade[i] >= 15, (s, e) => `Steep climb, up to ${Math.round(Math.max(...Array.from(grade.slice(s, e + 1))))} %`, 50);
+  pushRun((i) => bikeAt(i) && grade[i] <= -18, 'Steep descent', 40);
+  // road tyres: anything that isn't paved, over a stretch worth mentioning
+  pushRun((i) => sp(i) === 'road' && sAttr[i].mode !== 'water' && !PAVED.has(surfaceOf(t(i))) && surfaceOf(t(i)) !== 'unknown', (s, e) => `Unpaved for ${Math.round(along[e] - along[s])} m — rough on road tyres`, 150);
+  const footAt = (i) => sp(i) === 'hike' || sp(i) === 'trailrun';
+  pushRun((i) => footAt(i) && /^(demanding_alpine|difficult_alpine|alpine)/.test(t(i).sac_scale || ''), 'Alpine terrain (SAC T4+)');
+  pushRun((i) => footAt(i) && grade[i] >= 25, (s) => (sp(s) === 'trailrun' ? 'Very steep — walk it' : 'Very steep section'), 40);
   pushRun((i) => sAttr[i].mode === 'line', 'Straight line — not following paths', 150);
   pushRun((i) => t(i).portage === 'yes', (s, e) => `Carry / portage ${Math.round(along[e] - along[s])} m`);
   pushRun((i) => ['private', 'no'].includes(t(i).access), 'Private or no access');
@@ -277,15 +277,17 @@ function trailDetailsOf(coords, attrs, src, along) {
 /** Heads-up items from the trail details: faint, overgrown, wet stretches; fallen trees, barriers, fords. */
 export function trailWarnings(a, opt = {}) {
   const td = a.td;
-  if (!td || opt.activity === 'paddle') return [];
+  if (!td) return [];
   const { along, pts } = a;
-  const bike = groupOf(opt.activity) === 'bike';
+  // by each stretch's sport: nothing on the water, bike wording on bike legs
+  const sp = (i) => (a.attr && a.attr[i] && a.attr[i].sport) || opt.activity;
+  if (along.every((_, i) => isWater(sp(i)))) return [];
   const out = [];
   const m = (s, e) => `${Math.round(along[e] - along[s])} m`;
   const run = (test, minLen, text, icon = null) => {
     let s = -1;
     for (let i = 0; i <= along.length; i++) {
-      const on = i < along.length && test(i);
+      const on = i < along.length && !isWater(sp(i)) && test(i);
       if (on && s < 0) s = i;
       if (!on && s >= 0) {
         const len = along[i - 1] - along[s];
@@ -301,7 +303,8 @@ export function trailWarnings(a, opt = {}) {
   run((i) => td.ford[i], 0, () => 'Ford: no bridge', 'td-ford');
   if (opt.wet) run((i) => td.boardwalk[i], 100, (s, e) => `Boardwalk for ${m(s, e)}: slippery when wet`);
   for (const p of td.points) {
-    const { title, note } = obstacleText(p, bike);
+    if (isWater(sp(p.i))) continue;
+    const { title, note } = obstacleText(p, groupOf(sp(p.i)) === 'bike');
     out.push({ at: p.at, len: 0, text: title, note, lngLat: p.ll || pts[p.i], kind: 'trail', icon: `td-${p.kind}`, group: p.kind });
   }
   return out.sort((x, y) => x.at - y.at);
@@ -347,7 +350,9 @@ export function surfaceClass(a, i) {
 export function estimateTime(a, opt, head = null) {
   const { along, grade, surf } = a;
   const sAttr = a.attr;
-  const act = opt.activity;
+  // each stretch at its own sport's speeds (opt.speedsBy: { sport: speeds } for a multisport route)
+  const sportAt = (i) => sAttr[i].sport || opt.activity;
+  const speedsOf = (sp) => (opt.speedsBy && opt.speedsBy[sp]) || (sp === opt.activity ? opt.speeds : null);
   const tAt = new Float32Array(along.length);
   const windAdj = (kmh, i, k, lo, hi) => {
     if (!head) return kmh;
@@ -360,12 +365,16 @@ export function estimateTime(a, opt, head = null) {
     const at = sAttr[i];
     const tags = at.tags || {};
     let kmh;
+    const act = sportAt(i), sps = speedsOf(act);
     // the user's speeds (speeds.js) over the model's own numbers
-    const bike = BIKE[act] && { ...BIKE[act], ...pick(opt.speeds, ['paved', 'unpaved', 'trail', 'vam']) };
-    const run = RUN[act] && { ...RUN[act], ...pick(opt.speeds, ['paved', 'trail']) };
+    const bike = BIKE[act] && { ...BIKE[act], ...pick(sps, ['paved', 'unpaved', 'trail', 'vam']) };
+    const run = RUN[act] && { ...RUN[act], ...pick(sps, ['paved', 'trail']) };
     if (at.mode === 'water' || tags.route === 'water') {
-      const craftKmh = (act === 'paddle' && opt.speeds && opt.speeds[opt.craft]) || (CRAFT[opt.craft] || CRAFT.kayak).kmh;
-      kmh = tags.portage ? 2.5 : windAdj(craftKmh, i, 0.35, 0.25, 1.35);
+      if (act === 'swim') kmh = tags.portage ? tobler(g) : windAdj((sps && sps.swim) || 2.5, i, 0.05, 0.6, 1.1);
+      else {
+        const craftKmh = (sps && sps[opt.craft]) || (CRAFT[opt.craft] || CRAFT.kayak).kmh;
+        kmh = tags.portage ? 2.5 : windAdj(craftKmh, i, 0.35, 0.25, 1.35);
+      }
     } else if (run) {
       const trail = ['path', 'bridleway', 'track'].includes(tags.highway) || !PAVED.has(surf[i]);
       kmh = (trail ? run.trail : run.paved) * gradeFactor(g);
@@ -385,7 +394,7 @@ export function estimateTime(a, opt, head = null) {
       kmh = g < -0.03 ? Math.min(flat * 1.25, trail ? bike.down[0] : bike.down[1]) : flat;
     } else {
       // walking (hike, and carries / land legs when paddling)
-      kmh = tobler(g) * (act === 'hike' && opt.speeds && opt.speeds.walk ? opt.speeds.walk / TOBLER_FLAT : 1);
+      kmh = tobler(g) * (act === 'hike' && sps && sps.walk ? sps.walk / TOBLER_FLAT : 1);
       if (['path', 'bridleway'].includes(tags.highway)) kmh *= 0.88;
       kmh = windAdj(kmh, i, 0.06, 0.8, 1.08);
     }
@@ -393,4 +402,20 @@ export function estimateTime(a, opt, head = null) {
     tAt[i] = secs;
   }
   return { total: secs, tAt };
+}
+
+/**
+ * Distance and moving time per sport, in the order the route meets them
+ * (a sport that comes back is counted together), for a multisport summary.
+ */
+export function sportSplit(a, tAt, fallback, waitAt = null) {
+  const by = new Map();
+  for (let i = 1; i < a.along.length; i++) {
+    const sp = (a.attr[i] && a.attr[i].sport) || fallback;
+    const v = by.get(sp) || { sport: sp, dist: 0, time: 0 };
+    v.dist += a.along[i] - a.along[i - 1];
+    v.time += tAt[i] - tAt[i - 1] - (waitAt ? waitAt[i] : 0); // moving time: not the changeovers
+    by.set(sp, v);
+  }
+  return [...by.values()];
 }

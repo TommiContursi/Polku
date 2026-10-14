@@ -278,6 +278,12 @@ export function windClass(head, speed) {
 // How the wind feels for the activity.
 export function windRating(speed, gust, activity) {
   const g = Math.max(speed, gust * 0.7);
+  if (activity === 'swim') {
+    if (g < 3) return { label: 'Calm water', tone: 'good' };
+    if (g < 6) return { label: 'Some chop', tone: 'ok' };
+    if (g < 9) return { label: 'Choppy — hard to sight', tone: 'warn' };
+    return { label: 'Rough — swim somewhere sheltered', tone: 'bad' };
+  }
   if (activity === 'paddle') {
     if (g < 4) return { label: 'Calm water', tone: 'good' };
     if (g < 7) return { label: 'Moderate', tone: 'ok' };

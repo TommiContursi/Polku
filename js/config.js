@@ -97,8 +97,17 @@ export const ACTIVITIES = {
     mode: 'water',
     lipas: { routes: [4451, 4452], points: [205, 301, 206, 202, 203] },
   },
+  // open water: the water router near the shore; land between swims on foot (swimrun)
+  swim: {
+    label: 'Swim',
+    group: 'water',
+    brouter: 'hiking-mountain',
+    mode: 'water',
+    lipas: { routes: [], points: [3220, 3230, 205] },
+  },
 };
 export const groupOf = (a) => (ACTIVITIES[a] || ACTIVITIES.mtb).group;
+export const isWater = (a) => groupOf(a) === 'water';
 // sports where the uphill-difficulty grades (↑S0–↑S5, from mtb:scale:uphill) mean something
 export const OFFROAD_BIKE = new Set(['mtb', 'gravel']);
 
@@ -190,6 +199,8 @@ export const LIPAS_TYPES = {
   205: { name: 'Landing place', color: '#0284c7', icon: 'landing', layer: 'lipas_205_rantautumispaikka' },
   206: { name: 'Campfire site', color: '#dc2626', icon: 'fire', layer: 'lipas_206_ruoanlaittopaikka' },
   207: { name: 'Info point', color: '#475569', icon: 'info', layer: 'lipas_207_opastuspiste' },
+  3220: { name: 'Beach', color: '#0891b2', icon: 'swim', layer: 'lipas_3220_uimaranta' },
+  3230: { name: 'Swimming place', color: '#0e7490', icon: 'swim', layer: 'lipas_3230_uimapaikka' },
   4810: { name: 'Shooting range', color: '#b91c1c', icon: 'target', layer: 'lipas_4810_ampumarata', danger: true },
   4820: { name: 'Shooting sports centre', color: '#b91c1c', icon: 'target', layer: 'lipas_4820_ampumaurheilukeskus', danger: true },
   4840: { name: 'Field archery range', color: '#b91c1c', icon: 'target', layer: 'lipas_4840_jousiammuntamaastorata', danger: true },
@@ -337,4 +348,5 @@ export const ACTIVITY_OVERLAYS = {
   trailrun: { lipasRoutes: true, lipasPoints: true, pois: true, restricted: true },
   run: { lipasRoutes: true, lipasPoints: false, pois: false, sfRoadworks: true },
   paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, soundings: true, fairways: true, sfShips: true, restricted: true, nautical: true },
+  swim: { lipasRoutes: false, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, nautical: true },
 };

@@ -4,6 +4,14 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
+### Multisport routes and Swim ([#43](https://github.com/TommiContursi/Polku/pull/43))
+- **Each leg of a route can have its own sport:** bike to the shore, paddle across, run on the island. Set it on the leg's row in the waypoint list or in the point's menu. When a new leg is mostly water while you draw a land sport, Polku offers to paddle it.
+- **Each leg is routed, timed and checked as its sport:** its router, its style, your speeds for it, its Heads-up.
+- **Changeovers:** where the sport changes, the time to change (15 min bike ↔ paddle, 10 paddle ↔ run, 1 swim ↔ run…) is added. You can set your own on the waypoint, and the weather on the route moves on with it.
+- **Time & speed** shows each sport's distance and time, and every sport's speeds.
+- **Swim is a new sport:** open-water routes near the shore that keep away from boats, a pace per 100 m, and beaches and swimming places from LIPAS.
+- **Share links and saved routes** keep each leg's sport and your changeover times.
+
 ### A new README and this changelog ([#42](https://github.com/TommiContursi/Polku/pull/42))
 - **The README** now shows what Polku does, with a screenshot for each feature. The developer notes moved to [docs/DEVELOPING.md](docs/DEVELOPING.md).
 - **The map's footer** links to Polku's source and its maker, alongside OpenStreetMap and the other credits.

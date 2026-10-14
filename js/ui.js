@@ -28,6 +28,7 @@ const P = {
   trailrun: '<circle cx="13" cy="4.5" r="2"/><path d="M11.6 7.6 9 13l2.6 3.2-1 4.8M9 13l-2.6 3.5H3M6 10.2l3.6-2 2.6 2.6 3-1.2"/><path d="m14.5 21 3.5-5 1.6 2 1.4-1.6 1.5 4.6"/>',
   hike: '<circle cx="13" cy="4.5" r="2"/><path d="m9 21 2.5-7 3 3V21M11.5 14 12 9l-3 2v3M12 9l3 3 2.5-1"/><path d="M18 9v12"/>',
   paddle: '<path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M5 13.5h14l-2 2.5H7Z"/><path d="m6 5 12 9M4.5 3.8 7 5.7M17 13.3l2.5 1.9"/>',
+  swim: '<circle cx="16" cy="6" r="2"/><path d="m4 13 5-3.5 3.5 2.5"/><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M2 21c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5" opacity=".55"/>',
   water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/>',
   straight: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5 17.5 6.5" stroke-dasharray="2.5 2"/>',
   auto: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/>',
@@ -87,9 +88,18 @@ export function h(tag, attrs = {}, ...children) {
 export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 let toastTimer = 0;
-export function toast(msg, { tone = 'info', ms = 3500 } = {}) {
+export function toast(msg, { tone = 'info', ms = 3500, action = null } = {}) {
   const t = $('#toast');
   t.textContent = msg;
+  // one thing to do about it ("Paddle this leg"), right in the message
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'toast-act';
+    b.textContent = action.label;
+    b.addEventListener('click', () => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); action.fn(); });
+    t.append(' ', b);
+  }
   t.dataset.tone = tone;
   t.hidden = false;
   t.classList.add('show');

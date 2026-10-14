@@ -2,7 +2,7 @@
 
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER,
+  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater,
 } from './config.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { CameraLayer } from './cameras.js';
@@ -145,7 +145,7 @@ map.on('moveend', () => {
 });
 // paddling, zoomed in: what the water router will want (rocks, fairways) comes ahead, cached
 map.on('moveend', () => {
-  if (state.activity !== 'paddle' || map.getZoom() < 11) return;
+  if (!isWater(state.activity) || map.getZoom() < 11) return;
   const b = map.getBounds();
   prefetchWater([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
 });
@@ -364,7 +364,7 @@ function configureLayers() {
 // ------------------------------------------------------------------ activity pill
 // Only the active sport shows, beside the search. Hover (mouse) or tap opens the
 // others; picking one, Escape or leaving closes it.
-const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle' };
+const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
 const hoverPointer = matchMedia('(hover: hover) and (pointer: fine)');
 function renderActivityBar() {
   const box = $('#activity-bar');
@@ -445,6 +445,7 @@ const SPORT_NOTE = {
   trailrun: 'paths highlighted, trail routing, running times that walk the steep bits, trails and huts',
   run: 'footways and paths, running pace, lit fitness trails (kuntorata) and walking routes',
   paddle: 'water routing, depths, nautical marks and ships',
+  swim: 'open-water routes near the shore, shipping lanes avoided, beaches and swimming places',
 };
 
 function setActivity(k) {

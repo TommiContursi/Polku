@@ -2,7 +2,7 @@
 // fill is coloured by the selected mode, hover is synced both ways with the
 // map, and dragging across the chart zooms into a stretch.
 
-import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE } from './config.js';
+import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE, isWater } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand } from './weather.js';
 import { escapeHtml } from './ui.js';
@@ -91,7 +91,7 @@ export function routeReadout(a, i, road = '') {
   }
   if (a.wind && a.tAtWind) when.push(`at ${clock(a.wind.startSec + a.tAtWind[i])}`);
   else if (a.tAt) when.push(`${fmtDuration(a.tAt[i])} in`);
-  if (a.activity === 'paddle') {
+  if (isWater(a.activity)) {
     return { title: `${fmtDist(a.along[i])} · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : a.way[i]}`, lines: [when.join(' · ')].filter(Boolean) };
   }
   return {

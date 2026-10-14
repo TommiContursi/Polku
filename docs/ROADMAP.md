@@ -27,8 +27,9 @@ Also approved:
 | 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | [#39](https://github.com/TommiContursi/Polku/pull/39) | merged |
 | 13 | Water routing: fairways, rocks and marks, wind (no depths: licence, see the phase) | `water-routing` | [#40](https://github.com/TommiContursi/Polku/pull/40) | merged |
 | — | First visit: open on Helsinki and ask for your location; later visits open where you left off | `first-visit` | [#41](https://github.com/TommiContursi/Polku/pull/41) | merged |
-| — | A README with screenshots, a changelog, developer notes in docs/, Polku and its maker in the map's credits | `readme` | [#42](https://github.com/TommiContursi/Polku/pull/42) | PR open |
-| 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | — | OK'd 2026-10-14, next |
+| — | A README with screenshots, a changelog, developer notes in docs/, Polku and its maker in the map's credits | `readme` | [#42](https://github.com/TommiContursi/Polku/pull/42) | merged |
+| 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | [#43](https://github.com/TommiContursi/Polku/pull/43) | PR open |
+| 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | — | next |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
@@ -1002,10 +1003,41 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - **Swim** as a sport (open water, about 2–3 km/h; near the shore; fairways strongly avoided), for swimrun and triathlon.
 - **Later:** multisport round trips (phase 10 and 14 loops are single-sport); a "Swimrun" preset that switches run and swim at the water's edge by itself.
 
-**For the user to decide**
-1. Which combinations matter most: bike + paddle, hike/packraft, swimrun, triathlon?
-2. Should Swim be a sport in the pill, or only inside multisport routes?
-3. Should this come before phase 14 (paddling round trips) or after?
+**Built (13b), 2026-10-14.** Split like 12a/12b: the sport per leg here; stops, nights and the gear check in **13c**.
+- **A sport per leg** (`planner.legSport(i)`): a leg's own sport, else the route's. A water leg in a land sport counts as Paddle, as Polku already timed it. Each leg is routed by its sport:
+  - its BRouter profile;
+  - its style (yours for that sport, unless the leg has its own);
+  - its craft on the water (Swim for swim legs);
+  - its speeds, warnings and trail details.
+- **Where to set it:**
+  - the leg's row in the waypoint list (a sport picker beside Follow / Straight / Water and the style);
+  - the point menu ("Next leg");
+  - **a hint while drawing**: a new leg that's mostly water in a land sport offers "Paddle it"; one mostly on land while paddling or swimming offers the land sport. It reads the water drawn on the map, with no request.
+  - A new leg goes on in the sport of the one before.
+- **Changeovers:**
+  - The default time depends on the pair: bike ↔ paddle 15 min, foot ↔ paddle 10, swim ↔ run 1, swim ↔ bike 3, bike ↔ foot 5.
+  - The minutes can be edited on the waypoint's row and in its menu.
+  - They're added to the time, so arrival times and the weather on the route move on by them.
+  - The marker gets the next sport's badge.
+- **Time & speed:** the speeds of every sport in the route, and "By sport" (distance, moving time, speed) plus the changeovers. The surface breakdown leaves the changeovers out.
+- **Swim is a sport** in the switcher:
+  - the water router near the shore, keeping out of every fairway where it can;
+  - a pace per 100 m (2:24 by default);
+  - wind ratings for swimmers;
+  - LIPAS beaches and swimming places on the map and in search;
+  - land between swims goes on foot.
+- **Share links** carry `s=` (one letter per leg, `-` for the route's sport) and `cw=` (changeover minutes you set). The saved route and offline areas keep both. Old links are unchanged.
+- **Tests:** `tools/smoke.py multi` builds a ride → paddle → run route with straight legs (no routing). It checks each leg's sport, the 15- and 10-minute changeovers (one then set to 3), the time per sport, the badges and the list, and the share link and the saved route. Scenes are `*-multisport` and `*-multisport-time`, routed on the local BRouter.
+
+## Phase 13c — Stops and nights (next)
+
+From 13b's plan *(user, 2026-10-14)*:
+- **A stop at any waypoint:** a break ("Lunch, 1 h") or a night ("go on at 08:00"). The time after it moves on, and the route's weather follows.
+- **Days** for a trip over midnight, with each day's weather.
+- **Overnight spots** suggested nearby: LIPAS lean-tos, huts and campsites; OSM shelters.
+- **A longer forecast for multi-day trips:** up to about 7 days from Open-Meteo, saying where it's beyond the forecast.
+- **The gear check:** Heads-up warns when a sport's gear stays at a changeover the route doesn't come back to. Each changeover says *left here* or *carried along* (a packraft, a folding kayak).
+- Share links carry the stops (`st=`).
 
 ## Phase 14 — Round trips for paddling (and more loops for every sport)
 

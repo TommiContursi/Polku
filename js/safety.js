@@ -10,7 +10,7 @@
 // The same data is checked against planned routes (see `hazardsAlong`).
 
 import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
-import { DIGIROAD_WMS } from './config.js';
+import { DIGIROAD_WMS, isWater } from './config.js';
 import { openModal } from './modal.js';
 import { h, icon } from './ui.js';
 import { compass } from './geo.js';
@@ -447,7 +447,7 @@ export class SafetyLayers {
     if (!a || !this.inFinland()) return [];
     const box = [Infinity, Infinity, -Infinity, -Infinity];
     for (const p of a.pts) { box[0] = Math.min(box[0], p[0]); box[1] = Math.min(box[1], p[1]); box[2] = Math.max(box[2], p[0]); box[3] = Math.max(box[3], p[1]); }
-    const onWheelsOrFeet = activity !== 'paddle';
+    const onWheelsOrFeet = !isWater(activity);
     await Promise.all([
       this.loadIncidents(),
       this.loadRoadworks(box, { publish: false }),
