@@ -9,6 +9,7 @@ import fcntl
 import json
 import os
 import select
+import sys
 import subprocess
 import time
 
@@ -22,8 +23,18 @@ IDLE = ("new Promise((ok) => { const m = polku.map; const t = setTimeout(ok, 200
         " if (m.loaded() && m.areTilesLoaded()) go(); else m.once('idle', go); })")
 
 
+def check_server():
+    """The dev server must answer: with it down, pages would load whatever the profile's service worker kept."""
+    import urllib.request
+    try:
+        urllib.request.urlopen(BASE + 'index.html', timeout=5).read(64)
+    except Exception as e:
+        sys.exit(f'No dev server at {BASE} ({e}). Start it first: python3 serve.py')
+
+
 class Chrome:
     def __init__(self):
+        check_server()
         os.makedirs(PROFILE, exist_ok=True)
         a, b = os.pipe()  # we write to b, Chrome reads fd 3
         c, d = os.pipe()  # Chrome writes fd 4, we read c
@@ -101,8 +112,10 @@ class Page:
         self.width, self.height, self.phone = width, height, phone
         self.target = chrome.send('Target.createTarget', {'url': 'about:blank'})['targetId']
         self.s = chrome.send('Target.attachToTarget', {'targetId': self.target, 'flatten': True})['sessionId']
-        for m in ('Page.enable', 'Runtime.enable'):
+        for m in ('Page.enable', 'Runtime.enable', 'Network.enable'):
             chrome.send(m, {}, self.s)
+        # always today's files from the dev server, never what the profile's service worker kept
+        chrome.send('Network.setBypassServiceWorker', {'bypass': True}, self.s)
         chrome.send('Emulation.setDeviceMetricsOverride', {'width': width, 'height': height, 'deviceScaleFactor': 2 if phone else 1, 'mobile': phone}, self.s)
         chrome.send('Emulation.setTouchEmulationEnabled', {'enabled': phone, 'maxTouchPoints': 5 if phone else 1}, self.s)
         chrome.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'light'}, {'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, self.s)

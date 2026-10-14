@@ -16,6 +16,7 @@ or idea.
 - **Smoke (headless Chrome) can fail the phone sheet heights** when the machine is short of network connections or CPU: seen once, not reproduced. Watch for it. *(2026-10-14)*
 - **On a 360 px phone the summary's "↓57 m" nearly touches Done.** *(2026-10-14)*
 - **Share links re-route imported GPX tracks.** A fixed leg from a file travels as its two ends only, so whoever opens the link gets a routed leg, not your track. LIPAS legs now travel as references (12c); a GPX track would need its line in the link (too long for a URL) or a short-link service. *(2026-10-14)*
+- **The tests ran on cached files when the dev server was down** (the headless profile's service worker answered), so they could pass on old code. Fixed 2026-10-14: `tools/cdp.py` stops without a dev server and bypasses the service worker. *(2026-10-14)*
 - **The opened attribution on a phone** (tap the ⓘ) runs three lines and under the Plan button until it's closed again. *(2026-10-14)*
 - **A tall card on a short screen** (a LIPAS route's card with Ride, about 330 px) can sit under the top bar at 600 px of height. *(2026-10-14)*
 

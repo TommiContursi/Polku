@@ -584,6 +584,13 @@ ROUTE_MENU = """(async () => {
   if (p.points.length !== 2) errs.push(`opening the planner from the route: ${p.points.length} points`);
   if (!menu()) errs.push('opening the planner from the route: no menu for that part');
   if (polku.planner.menu) polku.planner.menu.remove();
+  // the points' markers sit on their points (a CSS rule once made them stack down the page)
+  p.setActive(true);
+  p.clear();
+  for (const q of [[23.750, 61.500], [23.770, 61.505], [23.760, 61.495]]) p.addPoint(q);
+  await wait(400);
+  const off = p.markers.map((mk, i) => { const r = mk.getElement().getBoundingClientRect(), c = m.getCanvas().getBoundingClientRect(), q2 = m.project(p.points[i]); return Math.round(Math.hypot(r.left + r.width / 2 - c.left - q2.x, r.top + r.height / 2 - c.top - q2.y)); });
+  if (off.some((d) => d > 2)) errs.push(`markers off their points by ${off.join(', ')} px`);
   p.clear();
   return errs;
 })()"""
