@@ -40,6 +40,14 @@ SCROLL_END = "(() => { const b = document.querySelector('.sheet-body'); b.scroll
 LOOP_JS = ("(async () => { const p = polku.planner; p.setActive(true); if (!p.openLoop) return true; p.openLoop([23.7610, 61.4980]); p.loop.km = 25; p.renderLoop();"
            " await p.generateLoops(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); p.reveal('loop'); return true; })()")
 LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
+# Phase 14: paddling loops off Kaivopuisto (Polku's own water router, live water data), and
+# "More loops" (three more, in other directions) for the MTB loops above. Older code shows
+# what it did then: no paddling round trips, and "Other directions" in place of "More loops".
+def LOOP_AT(sport, ll, km, more=False):
+    return ("(async () => { const p = polku.planner; p.setActive(true); if (!p.openLoop) return true; p.openLoop(" + json.dumps(ll) + f"); p.loop.km = {km}; p.renderLoop();"
+            " await p.generateLoops();" + (" await p.generateLoops({ more: true });" if more else "")
+            + " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); p.reveal('loop');"
+            " await new Promise((r) => setTimeout(r, 400)); const m = document.querySelector('.loop-more'); if (m && " + json.dumps(more) + ") m.scrollIntoView({ block: 'nearest' }); return true; })()")
 STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) return true; p.setStyle({ p: 'flowy', v: {}, wet: 'auto' });"
             " await new Promise((r) => setTimeout(r, 4500)); p.reveal('style'); return true; })()")
 LEG_STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) { p.openPointMenu(0, p.markers[0]); return true; } p.setStyle({ p: 'transfer', v: {}, wet: 'auto' }, 0);"
@@ -302,6 +310,11 @@ SCENES = {
     'phone-leg-tap': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('tap')),
     'desk-leg-menu': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('right')),
     'desk-leg-click': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('click')),
+    'desk-paddle-loops': dict(DESK, timeline=False, activity='paddle', hash='#12.5/60.150/24.955', js=LOOP_AT('paddle', [24.955, 60.155], 12)),
+    'phone-paddle-loops': dict(PHONE, timeline=False, activity='paddle', hash='#12.5/60.150/24.955', js=LOOP_AT('paddle', [24.955, 60.155], 12)),
+    'desk-river-loops': dict(DESK, timeline=False, activity='paddle', hash='#12.5/61.485/21.795', js=LOOP_AT('paddle', [21.795, 61.485], 8)),
+    'desk-more-loops': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_AT('mtb', [23.7610, 61.4980], 25, more=True)),
+    'phone-more-loops': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_AT('mtb', [23.7610, 61.4980], 25, more=True)),
     'desk-stops': dict(DESK, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('depart')),
     'phone-stops': dict(PHONE, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('depart')),
     'desk-stops-list': dict(DESK, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('points')),

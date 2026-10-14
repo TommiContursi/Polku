@@ -24,6 +24,15 @@ import { lonLatToTile, tileBounds } from './geo.js';
 // re-routes the legs that went without it).
 const WAIT_MS = 2500;
 const inTime = (p, ms = WAIT_MS) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]);
+// A source that just made a leg wait in vain isn't waited for again for a little
+// while: a round trip's twelve legs would otherwise wait 2.5 s each for the same
+// slow answer. The answer still comes and the planner's legs are routed again then.
+const SLOW_FOR = 20e3;
+const slowUntil = {};
+// (an answer that has come in meanwhile still counts: a moment's grace)
+const waitFor = (src, p) => (Date.now() < (slowUntil[src] || 0)
+  ? inTime(p, 30)
+  : inTime(p).catch((e) => { slowUntil[src] = Date.now() + SLOW_FOR; throw e; }));
 const late = new Set();
 export function onWaterData(fn) { late.add(fn); return () => late.delete(fn); }
 const lateArrived = () => { for (const fn of late) fn(); };
@@ -70,7 +79,7 @@ async function osmHazards(box) {
   if (!tiles) return null;
   const all = Promise.all(tiles);
   try {
-    const got = await inTime(all);
+    const got = await waitFor('osm', all);
     return { points: got.flatMap((t) => t.points), areas: got.flatMap((t) => t.areas) };
   } catch (err) {
     all.then(lateArrived, () => {});
@@ -109,9 +118,9 @@ export async function waterInputs(box, want, at) {
   const mid = [(w + e) / 2, (s + n) / 2];
   const missing = [];
   const [ways, osm, wind] = await Promise.all([
-    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return inTime(p).catch(() => { missing.push('Väylävirasto'); p.then(lateArrived, () => {}); return null; }); })() : null,
+    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).catch(() => { missing.push('Väylävirasto'); p.then(lateArrived, () => {}); return null; }); })() : null,
     want.hazards ? osmHazards(box).catch(() => { missing.push('OpenStreetMap'); return null; }) : null,
-    want.wind ? inTime(windAt(mid, at)).catch(() => { missing.push('the wind forecast'); return null; }) : null,
+    want.wind ? waitFor('wind', windAt(mid, at)).catch(() => { missing.push('the wind forecast'); return null; }) : null,
   ]);
   const fc = (features) => ({ type: 'FeatureCollection', features });
   const fairways = want.fairways && ways ? fc(ways.fairways) : fc([]);

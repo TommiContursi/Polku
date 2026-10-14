@@ -72,7 +72,20 @@ const waitIdle = (map) =>
     map.triggerRepaint();
   });
 
-async function rasterise(bounds) {
+// One hidden map draws every leg's water, so legs routed side by side take turns
+// to draw (a loop's legs, or a paddle route's), and each grid keeps the projection
+// it was drawn with, not the map's, which the next leg moves.
+let turn = Promise.resolve();
+function rasterise(bounds) {
+  const run = turn.then(() => rasteriseNow(bounds));
+  turn = run.catch(() => {});
+  return run;
+}
+
+const mercX = (lon) => (lon + 180) / 360;
+const mercY = (lat) => { const s = Math.sin((lat * Math.PI) / 180); return 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI); };
+
+async function rasteriseNow(bounds) {
   const h = ensureHidden();
   await h.ready;
   const [w, s, e, n] = bounds;
@@ -101,10 +114,16 @@ async function rasterise(bounds) {
     const r = px[j];
     if (r > 200) { type[i] = 1; waterCells++; } else if (r > 60) type[i] = 2;
   }
+  // Web Mercator, north up: the view's corners pin it down
+  const nw = h.map.unproject([0, 0]), se = h.map.unproject([cw, ch]);
+  const x0 = mercX(nw.lng), x1 = mercX(se.lng), y0 = mercY(nw.lat), y1 = mercY(se.lat);
   return {
     W: cw, H: ch, type, waterCells, res,
-    project: (ll) => h.map.project(ll),
-    unproject: (x, y) => h.map.unproject([x, y]).toArray(),
+    project: ([lon, lat]) => ({ x: ((mercX(lon) - x0) / (x1 - x0)) * cw, y: ((mercY(lat) - y0) / (y1 - y0)) * ch }),
+    unproject: (x, y) => {
+      const X = x0 + (x / cw) * (x1 - x0), Y = y0 + (y / ch) * (y1 - y0);
+      return [X * 360 - 180, (Math.atan(Math.sinh(Math.PI * (1 - 2 * Y))) * 180) / Math.PI];
+    },
   };
 }
 

@@ -72,7 +72,7 @@ js/planner.js       route planner: waypoints, legs, undo, the panel and sheet, H
 js/router.js        per-leg routing (BRouter batched; straight; water) and the Valhalla stand-in
 js/valhalla.js      Valhalla (FOSSGIS) client: routes and way attributes as OSM-style tags
 js/styles.js        route styles: presets and controls per sport, as router parameters
-js/roundtrip.js     round trips: loop shapes, water-aware directions, scoring
+js/roundtrip.js     round trips: loop shapes, water-aware directions, loops on the water (out and back on rivers), scoring
 js/water.js         open-water router (grid, costs, wind, A*, string-pulling)
 js/waterdata.js     what the water router avoids: fairways, marks, OSM hazards, wind
 js/analysis.js      profile, grades, climbs, warnings, timing, wind exposure, trail details

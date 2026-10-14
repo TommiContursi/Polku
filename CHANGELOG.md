@@ -4,6 +4,13 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
+### Round trips for paddling and swimming, and More loops ([#50](https://github.com/TommiContursi/Polku/pull/50))
+- **Round trips on the water:** choose a start (a click on the shore will do), a length and a direction, and Polku makes three paddling or swimming loops. They come from Polku's own water router, so they cost no routing calls. They keep to your route style: near the shore, fairways, rocks, the wind for your craft.
+- **On a river,** where there's no room for a ring, the loop goes out and back.
+- **The cards** show the time, any carrying, and the shipping lanes, rough water or rocks on the way.
+- **More loops, in every sport:** if none of the three suit you, "More loops" makes three more in other directions and keeps the first ones (up to nine). It replaces "Other directions".
+- **Fixed:** a paddle route's legs, routed side by side, could shift each other's line a little.
+
 ### Stops and nights ([#49](https://github.com/TommiContursi/Polku/pull/49))
 - **Stop at any point of the route:** a break ("45 min") or a night ("go on at 08:30"). Set it in the point's menu, on its row in the waypoint list, or with **Stop here** on the route.
 - **The time moves on with your stops:** arrival times, the weather on the route, the times on the distance marks and the sunset warnings all follow. Each waypoint now shows when you'd get there.

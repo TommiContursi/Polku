@@ -3,7 +3,7 @@
 
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom } from './router.js';
-import { roundTripSports, radiusFor, reach, waterOf, plan, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
+import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit } from './analysis.js';
 import { detailsAlong } from './trails.js';
 import { iconUrl } from './icons.js';
@@ -11,7 +11,7 @@ import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
-import { onWaterData } from './waterdata.js';
+import { onWaterData, prefetchWater } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
 import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
@@ -33,8 +33,12 @@ const LOOP_PRESETS = {
   mtb: { km: [10, 20, 30, 50], min: [60, 90, 120, 180] }, gravel: { km: [25, 40, 60, 90], min: [60, 120, 180, 240] },
   road: { km: [30, 50, 80, 120], min: [60, 120, 180, 240] }, hike: { km: [5, 10, 15, 20], min: [60, 120, 180, 240] },
   trailrun: { km: [5, 10, 15, 25], min: [30, 60, 90, 120] }, run: { km: [5, 8, 10, 15], min: [30, 45, 60, 90] },
+  paddle: { km: [5, 10, 15, 25], min: [60, 120, 180, 240] }, swim: { km: [1, 2, 3, 5], min: [30, 45, 60, 90] },
 };
-const LOOP_COLORS = ['#2563eb', '#ea580c', '#9333ea'];
+// up to nine loops ("More loops" makes three at a time): a letter and a colour each
+const LOOP_COLORS = ['#2563eb', '#ea580c', '#9333ea', '#0d9488', '#db2777', '#65a30d', '#0891b2', '#b45309', '#4f46e5'];
+const LOOP_LETTERS = 'ABCDEFGHI';
+const LOOP_MAX = 9;
 const LOOP_CALLS = 6; // per generation
 const LOOP_CAP = 5; // generations per 10 minutes
 // bottom sheet sizes: the summary, + the elevation profile, half the screen, nearly all of it
@@ -930,84 +934,145 @@ export class Planner {
     }, () => toast('Couldn’t get your location — click the map to choose the start'), { enableHighAccuracy: true, timeout: 10000 });
   }
 
-  async generateLoops() {
+  // `more`: three more loops in directions not tried yet, after the ones there are
+  async generateLoops({ more = false } = {}) {
     const L = this.loop;
     const sport = this.app.activity();
     if (L.busy || !L.start || !roundTripSports.includes(sport)) return;
-    // the routing service is free and shared: a few at a time
-    L.gens = L.gens.filter((t) => Date.now() - t < 600e3);
-    if (L.gens.length >= LOOP_CAP) {
-      toast(`That’s ${LOOP_CAP} round trips in 10 minutes — the free routing service needs a breather. Try again at ${new Date(L.gens[0] + 600e3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`, { tone: 'warn', ms: 6000 });
-      return;
+    if (more && L.results.length >= LOOP_MAX) return;
+    const wet = waterLoop(sport); // Polku's own water router: no routing service to spare
+    if (!wet) {
+      // the routing service is free and shared: a few at a time
+      L.gens = L.gens.filter((t) => Date.now() - t < 600e3);
+      if (L.gens.length >= LOOP_CAP) {
+        toast(`That’s ${LOOP_CAP} round trips in 10 minutes — the free routing service needs a breather. Try again at ${new Date(L.gens[0] + 600e3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`, { tone: 'warn', ms: 6000 });
+        return;
+      }
+      L.gens.push(Date.now());
     }
-    L.gens.push(Date.now());
     L.busy = true;
     L.editing = false;
-    L.results = [];
     L.note = '';
-    this.app.setData('loops', EMPTY);
+    if (!more) { L.results = []; L.used = []; L.calls = 0; this.app.setData('loops', EMPTY); }
     this.renderLoop();
+    const T = { t: performance.now() }; // where the time goes (L.timing, for tools/loop_probe.py and the tests)
+    const lap = (k) => { const n = performance.now(); T[k] = Math.round(n - T.t); T.t = n; };
     try {
-      const targetM = L.mode === 'min' ? distanceForTime(sport, L.min, speedsFor(sport)) : L.km * 1000;
+      const targetM = more ? L.targetM : L.mode === 'min' ? distanceForTime(sport, L.min, speedsFor(sport), this.craft) : L.km * 1000;
       const start = L.start;
-      // frame the loops' reach first: its water comes from the tiles the map loads
-      const b = reach(start, radiusFor(sport, targetM));
-      this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), duration: 0, maxZoom: 15 });
-      await new Promise((ok) => { const t = setTimeout(ok, 8000); this.map.once('idle', () => { clearTimeout(t); ok(); }); });
-      const water = waterOf(this.map);
+      if (!more || !L.water) {
+        // frame the loops' reach first: its water comes from the tiles the map loads
+        const b = reach(start, radiusFor(sport, targetM));
+        if (wet) prefetchWater(b); // fairways, marks and rocks for the whole area while the map loads (cached per tile)
+        this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), duration: 0, maxZoom: 15 });
+        await new Promise((ok) => { const t = setTimeout(ok, 8000); this.map.once('idle', () => { clearTimeout(t); ok(); }); });
+        L.water = waterOf(this.map);
+      }
+      lap('frame');
+      const water = L.water;
+      // on the water: from the water nearest the start (a click on the shore, a beach, a car park by the lake)
+      const from = wet ? nearestWater(L.start, water, 1000) : L.start;
+      if (!from) {
+        L.note = 'That start is over a kilometre from the water: click a shore, a beach or a landing for the loops to start from.';
+        return;
+      }
       let direction = L.dir;
       if (direction === 'wind') {
         try { const [s] = await pointForecasts([start]); direction = Math.round(sampleAt(s, Date.now() / 1000 + this.startOffsetH * 3600).dir); } catch { direction = null; }
       }
-      const options = plan({ start, sport, targetM, direction, count: 6, water, spin: L.spin });
       const rp = routerOf(sport, this.style, this.wet.on);
+      // directions not tried yet; when every one has been, the same ones turned a little
+      let options = [];
+      for (let k = 0; k < 3 && options.length < 3; k++) {
+        const ask = { start: from, sport, targetM, direction, count: 12, water, spin: L.spin, skip: L.used };
+        options = wet ? planWater({ ...ask, shore: rp.water.shore || 'open' }) : plan(ask);
+        if (options.length < 3) { L.spin = (L.spin + 10) % 30; L.used = []; }
+      }
+      let calls = 0;
+      // on land: one BRouter call a loop
       const profile = rp.profile || ACTIVITIES[sport].brouter;
       const opts = { portage: true, nogos: this.nogos, params: { ...rp.params, correctMisplacedViaPoints: 1 }, valhalla: rp.valhalla, maxWait: STAND_IN_AFTER };
-      let calls = 0;
-      const run = async (o) => {
+      const length = (c) => { let m = 0; for (let i = 1; i < c.length; i++) m += dist(c[i - 1], c[i]); return m; };
+      const runLand = async (o) => {
         calls++;
         try {
           const line = await routeLoop({ points: o.points, profile, opts });
-          let m = 0;
-          for (let i = 1; i < line.coords.length; i++) m += dist(line.coords[i - 1], line.coords[i]);
+          const m = length(line.coords);
           return { o, line, m, ratio: m / targetM, twice: twiceShare(line.coords) };
         } catch (err) { return { o, err }; }
       };
-      const bad = (r) => r.err || r.ratio > 1.6 || r.twice > 0.55;
+      // on the water: each leg by Polku's own router (CPU, no network but the water data)
+      const waterOpts = { ...rp.water, craft: sport === 'swim' ? 'swim' : this.craft, at: this.startSec(), nogos: this.nogos };
+      const runWater = async (o) => {
+        try {
+          const legs = [];
+          for (let i = 1; i < o.points.length; i++) legs.push(await routeLeg({ from: o.points[i - 1], to: o.points[i], mode: 'water', opts: { portage: true, water: waterOpts } }));
+          const coords = [], tags = [];
+          legs.forEach((r, k) => { coords.push(...(k ? r.coords.slice(1) : r.coords)); tags.push(...r.tags); });
+          const m = length(coords);
+          let carry = 0;
+          for (let k = 1; k < coords.length; k++) if (tags[k - 1] && tags[k - 1].portage) carry += dist(coords[k - 1], coords[k]);
+          return { o, legs, line: { coords, tags, provider: 'water' }, m, ratio: m / targetM, twice: o.outBack ? 0 : twiceShare(coords), carry };
+        } catch (err) { return { o, err }; }
+      };
+      const run = wet ? runWater : runLand;
+      const budget = wet ? 9 : LOOP_CALLS; // loops tried in all (on the water: CPU time)
+      const deadline = performance.now() + (wet ? 12e3 : 90e3); // and no more replacing after this
+      const canTry = () => tried < budget && performance.now() < deadline;
+      let tried = 0;
+      const go = (o) => { tried++; L.used.push(o.bearing); return run(o); };
+      const CARRY = 200; // m: on the water, a loop that carries more than this tries another way first
+      const bad = (r) => r.err || r.ratio > 1.6 || r.twice > 0.55 || (wet && r.carry > CARRY);
       const queue = options.slice(3);
-      const found = await Promise.all(options.slice(0, 3).map(run));
+      // on land the three go at once (the router paces them); on the water one after another (one CPU)
+      const found = wet ? [] : await Promise.all(options.slice(0, 3).map(go));
+      if (wet) for (const o of options.slice(0, 3)) { found.push(await go(o)); L.progress = found.length; this.renderLoop(); }
       for (let k = 0; k < found.length; k++) {
         let r = found[k];
-        while (bad(r) && queue.length && calls < LOOP_CALLS) r = await run(queue.shift());
-        if (!r.err && (r.ratio < 0.8 || r.ratio > 1.25) && calls < LOOP_CALLS) {
-          const again = await run(resize(r.o, r.m, targetM, start, water));
-          if (!again.err && Math.abs(again.ratio - 1) < Math.abs(r.ratio - 1)) r = again;
+        while (bad(r) && queue.length && canTry()) r = await go(queue.shift());
+        if (!r.err && (r.ratio < 0.8 || r.ratio > 1.25) && canTry()) {
+          tried++;
+          const again = await run(resize(r.o, r.m, targetM, from, water));
+          const worse = again.err || (wet && again.carry > CARRY);
+          if (!worse && Math.abs(again.ratio - 1) < Math.abs(r.ratio - 1)) r = again;
         }
         found[k] = r;
       }
-      const ok = found.filter((r) => !r.err && r.ratio < 2);
+      lap('route');
+      const ok = found.filter((r) => !r.err && r.ratio < 2 && !(wet && r.carry > Math.max(400, 0.25 * r.m)));
       const limited = found.find((r) => r.err && r.err.name === 'Limited');
       // the same analysis as a route: time, climbing, heads-up
       for (const r of ok) {
-        r.a = await analyse({ coords: r.line.coords, attrs: r.line.tags.map((t) => ({ mode: 'auto', tags: t || {} })) }, this.timeOpt());
-        r.score = loopScore({ km: r.a.total / 1000, targetKm: targetM / 1000, twice: r.twice, warnings: r.a.warnings.length + (r.a.trailWarn || []).length });
+        r.a = await analyse({ coords: r.line.coords, attrs: r.line.tags.map((t) => ({ mode: wet ? 'water' : 'auto', tags: t || {} })) }, this.timeOpt());
+        if (!wet) r.carry = 0;
+        r.events = wet ? r.legs.flatMap((l) => (l.water && l.water.events) || []) : [];
+        r.score = loopScore({ km: r.a.total / 1000, targetKm: targetM / 1000, twice: r.twice, warnings: r.a.warnings.filter((w) => !/^Carry/.test(w.text)).length + (r.a.trailWarn || []).length + r.events.length, carryM: wet ? r.carry : 0 }) + (r.o.outBack ? 10 : 0); // a ring, where there's room for one
       }
+      lap('analyse');
+      L.timing = { ...T, t: undefined, tried };
       ok.sort((x, y) => x.score - y.score);
-      L.results = ok.map((r, i) => ({ ...r, letter: 'ABC'[i], color: LOOP_COLORS[i] }));
+      const n0 = L.results.length;
+      L.results = L.results.concat(ok.slice(0, LOOP_MAX - n0).map((r, i) => ({ ...r, letter: LOOP_LETTERS[n0 + i], color: LOOP_COLORS[n0 + i] })));
       L.targetM = targetM;
-      L.calls = calls;
-      L.on = 0;
-      L.note = !ok.length ? (limited ? limited.err.message : 'No loop worked out here — try another length or start, or click the map nearer to paths.') : '';
+      L.calls = (L.calls || 0) + calls;
+      L.on = ok.length ? n0 : L.on;
+      L.note = !ok.length ? (limited ? limited.err.message : more ? 'No more loops worked out here — try another length or start.'
+        : wet ? 'No loop worked out on the water here — try another length, or a start on a bigger lake or the sea.' : 'No loop worked out here — try another length or start, or click the map nearer to paths.') : '';
       this.drawLoops();
       if (ok.length) {
-        const bb = bbox(ok.flatMap((r) => r.line.coords));
+        const bb = bbox(L.results.flatMap((r) => r.line.coords));
         this.map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: this.viewPadding(), duration: 600, maxZoom: 15 });
       }
     } finally {
       L.busy = false;
+      L.progress = 0;
       this.renderLoop();
-      // the cards into view (a phone's half sheet starts at the choices)
-      requestAnimationFrame(() => { const c = this.els.loopBox.querySelector('.loop-cards, .note'); if (c) c.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+      // the cards into view (a phone's half sheet starts at the choices); after "More loops", the new ones
+      requestAnimationFrame(() => {
+        const cards = this.els.loopBox.querySelectorAll('.loop-card');
+        const c = (more && cards[L.on]) || this.els.loopBox.querySelector('.loop-cards, .note');
+        if (c) c.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
     }
   }
 
@@ -1021,6 +1086,19 @@ export class Planner {
   pickLoop(k) {
     const r = this.loop.results[k];
     if (!r) return;
+    if (r.legs) { // on the water: its legs as they were routed, start → via points → start
+      this.commit();
+      this.points = r.o.points.map((p) => p.slice());
+      this.legs = r.legs.map((res) => ({ mode: 'water', status: 'ok', result: res }));
+      // a leg routed without a source that was slow then is routed again (its answer is in the cache by now)
+      this.legs.forEach((l, i) => { l.key = l.result.water && l.result.water.missing && l.result.water.missing.length ? null : this.legKey(i).key; });
+      this.routeName = '';
+      this.closeLoop();
+      this.update();
+      this.fitRoute();
+      toast(`Loop ${r.letter} is your route now — drag it or its points to change it`);
+      return;
+    }
     const c = r.line.coords, tags = r.line.tags;
     const start = r.o.points[0];
     const pts = [start.slice()], cuts = [0];
@@ -1056,7 +1134,7 @@ export class Planner {
     box.innerHTML = '';
     const close = h('button', { type: 'button', class: 'btn', onclick: () => this.closeLoop() }, 'Close');
     if (!roundTripSports.includes(sport)) {
-      box.append(h('p', { class: 'note' }, 'Round trips are for riding, walking and running for now: paddling loops would need a lot of Polku’s own water routing.'), close);
+      box.append(h('p', { class: 'note' }, 'No round trips for this sport yet.'), close);
       return;
     }
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
@@ -1067,7 +1145,6 @@ export class Planner {
       box.append(h('div', { class: 'loop-sum' },
         h('span', {}, `${L.mode === 'min' ? `${L.min} min` : `${L.km} km`} · ${L.dir == null ? 'any direction' : DIR_NAME[L.dir]} · from ${L.startLabel}`),
         h('button', { type: 'button', class: 'btn', onclick: () => { L.editing = true; this.renderLoop(); } }, 'Change'),
-        h('button', { type: 'button', class: 'btn', disabled: L.busy, title: 'Other directions for the same length', onclick: () => { L.spin = (L.spin + 15) % 60; this.generateLoops(); } }, 'Other directions'),
         close));
       this.renderLoopCards(box, sport);
       return;
@@ -1099,35 +1176,60 @@ export class Planner {
     // go
     const used = L.gens.filter((t) => Date.now() - t < 600e3).length;
     box.append(h('div', { class: 'loop-go' },
-      h('button', { type: 'button', class: 'btn primary', disabled: L.busy, onclick: () => this.generateLoops(), html: L.busy ? 'Making loops…' : `${icon('roundtrip', 16)} ${L.results.length ? 'Make new loops' : 'Make 3 loops'}` }),
-      L.results.length ? h('button', { type: 'button', class: 'btn', disabled: L.busy, title: 'Other directions for the same length', onclick: () => { L.spin = (L.spin + 15) % 60; this.generateLoops(); } }, 'Other directions') : null,
+      h('button', { type: 'button', class: 'btn primary', disabled: L.busy, onclick: () => this.generateLoops(), html: L.busy ? this.loopBusyText() : `${icon('roundtrip', 16)} ${L.results.length ? 'Make new loops' : 'Make 3 loops'}` }),
       close),
-    h('p', { class: 'style-help loop-cost' }, `Three routing calls, up to six if loops need adjusting${used ? ` · ${used} of ${LOOP_CAP} round trips in the last 10 minutes` : ''}. In your route style (${styleName(sport, this.style)}).`));
+    h('p', { class: 'style-help loop-cost' }, waterLoop(sport)
+      ? `No routing calls: Polku’s own water router works the loops out on this device, a few seconds each. In your route style (${styleName(sport, this.style)}).`
+      : `Three routing calls, up to six if loops need adjusting${used ? ` · ${used} of ${LOOP_CAP} round trips in the last 10 minutes` : ''}. In your route style (${styleName(sport, this.style)}).`));
     if (L.note) box.append(h('p', { class: 'note' }, L.note));
     if (L.results.length) this.renderLoopCards(box, sport);
   }
 
   renderLoopCards(box, sport) {
     const L = this.loop;
+    const wet = waterLoop(sport);
     const list = h('div', { class: 'loop-cards' });
+    const best = L.results.reduce((m, r, i) => (m < 0 || r.score < L.results[m].score ? i : m), -1);
+    const pick = (i) => { L.on = i; this.drawLoops(); this.markLoopCards(); };
     L.results.forEach((r, i) => {
       const a = r.a;
-      const trails = a.ways.filter(([k]) => k === 'path' || k === 'track').reduce((m, [, d]) => m + d, 0);
-      const PAVED_S = ['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates', 'unknown'];
-      const unpaved = a.surfaces.filter(([k]) => !PAVED_S.includes(k)).reduce((m, [, d]) => m + d, 0);
-      const what = sport === 'road' || sport === 'gravel' ? `unpaved ${Math.round((100 * unpaved) / a.total)} %` : `trails ${Math.round((100 * trails) / a.total)} %`;
-      const card = h('div', { class: `loop-card${i === L.on ? ' on' : ''}`, role: 'button', tabindex: '0', onmouseenter: () => { L.on = i; this.drawLoops(); this.markLoopCards(); }, onfocus: () => { L.on = i; this.drawLoops(); this.markLoopCards(); },
-        onclick: () => { L.on = i; this.drawLoops(); this.markLoopCards(); } },
-        h('div', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === 0 ? h('span', { class: 'loop-best' }, 'Closest match') : null),
-        h('div', { class: 'loop-card-line' }, `${fmtDuration(a.time)} · ↑${Math.round(a.up)} m · ${what}`),
-        h('div', { class: 'loop-card-line muted' }, [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', a.warnings.length + (a.trailWarn || []).length ? `${a.warnings.length + (a.trailWarn || []).length} heads-up` : 'no heads-up', r.line.provider === 'valhalla' ? 'via Valhalla' : ''].filter(Boolean).join(' · ')),
+      let what, notes;
+      if (wet) {
+        // on the water: carrying, and what the water router noted (shipping lanes, rough water, rocks)
+        const n = (k) => r.events.filter((e) => e.kind === k).length;
+        what = r.carry > 30 ? `carry ${fmtDist(r.carry)}` : 'no carries';
+        notes = [n('ship') ? `${n('ship')} shipping lane${n('ship') > 1 ? 's' : ''}` : '', n('rough') ? 'rough water' : '', n('hazard') ? 'near rocks' : '', n('harbour') ? 'a harbour' : ''].filter(Boolean);
+        notes = [r.o.outBack ? 'out and back' : '', notes.length ? notes.join(' · ') : 'nothing to note on the water', r.twice > 0.05 ? `${Math.round(r.twice * 100)} % paddled twice` : ''];
+      } else {
+        const trails = a.ways.filter(([k]) => k === 'path' || k === 'track').reduce((m, [, d]) => m + d, 0);
+        const PAVED_S = ['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates', 'unknown'];
+        const unpaved = a.surfaces.filter(([k]) => !PAVED_S.includes(k)).reduce((m, [, d]) => m + d, 0);
+        what = `${sport === 'road' || sport === 'gravel' ? `unpaved ${Math.round((100 * unpaved) / a.total)} %` : `trails ${Math.round((100 * trails) / a.total)} %`}`;
+        const hu = a.warnings.length + (a.trailWarn || []).length;
+        notes = [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', hu ? `${hu} heads-up` : 'no heads-up', r.line.provider === 'valhalla' ? 'via Valhalla' : ''];
+      }
+      const card = h('div', { class: `loop-card${i === L.on ? ' on' : ''}`, role: 'button', tabindex: '0', onmouseenter: () => pick(i), onfocus: () => pick(i), onclick: () => pick(i) },
+        h('div', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === best ? h('span', { class: 'loop-best' }, 'Closest match') : null),
+        h('div', { class: 'loop-card-line' }, `${fmtDuration(a.time)} · ${wet ? '' : `↑${Math.round(a.up)} m · `}${what}`),
+        h('div', { class: 'loop-card-line muted' }, notes.filter(Boolean).join(' · ')),
         h('button', { type: 'button', class: 'btn', onclick: (e) => { e.stopPropagation(); this.pickLoop(i); } }, 'Use this loop'));
       list.append(card);
     });
+    // none of them? three more, in other directions (the ones there are stay)
+    if (L.results.length < LOOP_MAX) {
+      list.append(h('button', { type: 'button', class: 'loop-card loop-more', disabled: L.busy, onclick: () => this.generateLoops({ more: true }),
+        title: wet ? 'Three more loops in other directions (on this device: no routing calls)' : 'Three more loops in other directions: up to six routing calls' },
+      h('span', { html: icon('roundtrip', 18) }), h('b', {}, L.busy ? this.loopBusyText() : 'More loops'), h('small', {}, L.busy ? '' : 'three more, in other directions')));
+    }
     box.append(list);
   }
 
-  markLoopCards() { this.els.loopBox.querySelectorAll('.loop-card').forEach((c, i) => c.classList.toggle('on', i === this.loop.on)); }
+  loopBusyText() {
+    const L = this.loop;
+    return L.progress ? `Making loops… ${L.progress} of 3` : 'Making loops…';
+  }
+
+  markLoopCards() { this.els.loopBox.querySelectorAll('.loop-card:not(.loop-more)').forEach((c, i) => c.classList.toggle('on', i === this.loop.on)); }
 
   // ---------------------------------------------------------------- route style
   savedStyle(sport) { return store.get('styles', {})[sport] || defaultStyle(); }

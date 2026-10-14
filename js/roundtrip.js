@@ -15,9 +15,12 @@ import { dist } from './geo.js';
 
 // route length ÷ circle length, per sport (median of 30 loops each)
 // (×0.88 after the water-aware directions: they avoid the long ways round, so loops came out a little short)
-const DETOUR = { mtb: 1.35, gravel: 1.57, road: 1.45, hike: 1.23, trailrun: 1.19, run: 1.12 };
+// Paddling and swimming (phase 14): Polku's own water router, round via points on the water.
+const DETOUR = { mtb: 1.35, gravel: 1.57, road: 1.45, hike: 1.23, trailrun: 1.19, run: 1.12, paddle: 1.0, swim: 1.0 }; // on the water: about the circle (tools/loop_probe.py water, 2026-10-14)
 const VIAS = 4;
+const WATER_VIAS = 3; // a water loop is four legs of A*: fewer via points, less CPU
 export const roundTripSports = Object.keys(DETOUR);
+export const waterLoop = (sport) => sport === 'paddle' || sport === 'swim';
 
 const R = 6371000;
 export function destination([lon, lat], m, bearing) {
@@ -75,11 +78,11 @@ export function waterOf(map) {
  * along the circle off any water) and how much of the circle is water. The
  * best `count` directions, spread out, come first. No network.
  */
-export function plan({ start, sport, targetM, direction = null, count = 3, water, spin = 0 }) {
+export function plan({ start, sport, targetM, direction = null, count = 3, water, spin = 0, skip = [] }) {
   const r = radiusFor(sport, targetM);
   const bearings = direction == null
     ? Array.from({ length: 12 }, (_, i) => (i * 30 + spin) % 360)
-    : [-40, -20, 0, 20, 40].map((d) => (direction + d + 360) % 360);
+    : [-40, -20, 0, 20, 40].map((d) => (direction + d + (spin % 20) + 360) % 360);
   const options = bearings.map((b) => {
     // how wet the circle is (36 samples)
     let wet = 0;
@@ -95,7 +98,7 @@ export function plan({ start, sport, targetM, direction = null, count = 3, water
       vias.push(onCircle(start, r, b, a + (t || 0)));
     }
     return { bearing: b, r, points: [start, ...vias, start.slice()], wet: wet / 35, stuck };
-  });
+  }).filter((o) => !skip.some((b) => Math.abs(angleDiff(b, o.bearing)) < 10)); // tried already ("More loops")
   // fewest via points stuck in water, then the driest circle; when no direction was asked for, keep them ≥ 60° apart
   options.sort((x, y) => x.stuck - y.stuck || x.wet - y.wet || (direction == null ? 0 : Math.abs(angleDiff(x.bearing, direction)) - Math.abs(angleDiff(y.bearing, direction))));
   const out = [];
@@ -108,18 +111,137 @@ export function plan({ start, sport, targetM, direction = null, count = 3, water
   return out;
 }
 
-const angleDiff = (a, b) => ((a - b + 540) % 360) - 180;
+export const angleDiff = (a, b) => ((a - b + 540) % 360) - 180;
 
 /** The same circle, resized so the loop rides about the target (after a first try missed it). */
 export function resize(option, actualM, targetM, start, water) {
   const k = Math.max(0.6, Math.min(1.5, targetM / actualM));
   const r = option.r * k;
+  if (option.outBack) return { ...outBackOption(start, option.r * k, option.bearing, water, option.shore), resized: true };
+  if (option.onWater) return { ...waterOption(start, r, option.bearing, water, option.shore), resized: true };
   const vias = option.points.slice(1, -1).map((_, i) => {
     const a = ((i + 1) * 360) / (VIAS + 1);
     const t = [0, 8, -8, 16, -16, 25, -25].find((d) => !water.isWater(onCircle(start, r, option.bearing, a + d)));
     return onCircle(start, r, option.bearing, a + (t || 0));
   });
   return { ...option, r, points: [start, ...vias, start.slice()], resized: true };
+}
+
+// ---------------------------------------------------------------- loops on the water
+// The other way round from land loops: the via points have to be on the water,
+// with some water round them (not on the shoreline), and near the shore too when
+// the style keeps to it. The loop's straight lines are checked for land, which is
+// where carries would come (another lake, a peninsula in the way).
+const ring = (p, m, n = 8) => Array.from({ length: n }, (_, k) => destination(p, m, (k * 360) / n));
+function waterSpot(p, water, shore) {
+  if (!water.isWater(p) || ring(p, 40).some((q) => !water.isWater(q))) return 0;
+  if (shore === 'near' && ring(p, 350).every((q) => water.isWater(q))) return 1; // water, but far out
+  return 2;
+}
+
+function waterOption(start, r, b, water, shore) {
+  const vias = [];
+  let stuck = 0;
+  for (let k = 1; k <= WATER_VIAS; k++) {
+    const a = (k * 360) / (WATER_VIAS + 1);
+    // along the circle first, then nearer the start or further out
+    let best = null, bestQ = 0;
+    for (const s of [1, 0.8, 1.2, 0.65]) {
+      for (const d of [0, 10, -10, 20, -20, 30, -30, 45, -45]) {
+        const p = onCircle(start, r * s, b, a + d), q = waterSpot(p, water, shore);
+        if (q > bestQ) { best = p; bestQ = q; }
+        if (q === 2) break;
+      }
+      if (bestQ === 2) break;
+    }
+    if (!best) { stuck++; best = onCircle(start, r, b, a); }
+    vias.push(best);
+  }
+  const points = [start, ...vias, start.slice()];
+  // land on the straight lines between them (not counting the first and last 300 m: a start on the shore)
+  let dry = 0, n = 0;
+  for (let i = 1; i < points.length; i++) {
+    const p = points[i - 1], q = points[i], len = dist(p, q), steps = Math.max(4, Math.round(len / 150));
+    for (let k = 1; k < steps; k++) {
+      const t = k / steps, x = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+      if ((i === 1 && t * len < 300) || (i === points.length - 1 && (1 - t) * len < 300)) continue;
+      n++;
+      if (!water.isWater(x)) dry++;
+    }
+  }
+  return { bearing: b, r, points, stuck, dry: n ? dry / n : 1, onWater: true, shore };
+}
+
+// Where the water is too narrow for a ring (a river, a narrow lake), a loop is out
+// and back: one turning point about half the length away, on the water.
+function outBackOption(start, d, b, water, shore) {
+  let best = null, bestQ = 0;
+  for (const s of [1, 0.85, 1.15, 0.7]) {
+    for (const t of [0, 8, -8, 16, -16]) {
+      const p = destination(start, d * s, b + t), q = waterSpot(p, water, shore);
+      if (q > bestQ) { best = p; bestQ = q; }
+      if (q === 2) break;
+    }
+    if (bestQ === 2) break;
+  }
+  const turn = best || destination(start, d, b);
+  let dry = 0, n = 0;
+  const len = dist(start, turn), steps = Math.max(6, Math.round(len / 120));
+  for (let k = 1; k < steps; k++) {
+    const t = k / steps;
+    if (t * len < 300) continue;
+    n++;
+    if (!water.isWater([start[0] + (turn[0] - start[0]) * t, start[1] + (turn[1] - start[1]) * t])) dry++;
+  }
+  return { bearing: b, r: d, points: [start, turn, start.slice()], stuck: best ? 0 : 1, dry: n ? dry / n : 1, onWater: true, outBack: true, shore };
+}
+
+/**
+ * Candidate loops on the water before routing (the water of the map's loaded
+ * tiles): via points on water, the loop's lines over as little land as can be.
+ * Best first, spread round the start when no direction is asked for. Rings that
+ * would cross much land give way to out-and-back loops (a river). No network.
+ */
+export function planWater({ start, sport, targetM, direction = null, count = 3, water, spin = 0, shore = 'open', skip = [] }) {
+  const r = radiusFor(sport, targetM);
+  const bearings = direction == null
+    ? Array.from({ length: 12 }, (_, i) => (i * 30 + spin) % 360)
+    : [-40, -20, 0, 20, 40].map((d) => (direction + d + (spin % 20) + 360) % 360);
+  const fresh = bearings.filter((b) => !skip.some((x) => Math.abs(angleDiff(x, b)) < 10));
+  const rings = fresh.map((b) => waterOption(start, r, b, water, shore));
+  // out and back: a turning point half the length away (a river's way there and back is about straight)
+  const half = targetM / 2 / (DETOUR[sport] || 1.15);
+  const outs = fresh.map((b) => outBackOption(start, half, b, water, shore));
+  const RING_OK = 0.3; // a ring crossing more land than this would be carries
+  const rank = (x) => (x.outBack ? 1 : x.dry <= RING_OK ? 0 : 2); // good rings, then out and back, then rings over land
+  const options = [...rings, ...outs];
+  options.sort((x, y) => x.stuck - y.stuck || rank(x) - rank(y) || x.dry - y.dry || (direction == null ? 0 : Math.abs(angleDiff(x.bearing, direction)) - Math.abs(angleDiff(y.bearing, direction))));
+  const out = [];
+  for (const o of options) {
+    if (out.length >= count) break;
+    if (direction == null && out.some((p) => Math.abs(angleDiff(p.bearing, o.bearing)) < 60)) continue;
+    out.push(o);
+  }
+  for (const o of options) if (out.length < count && !out.includes(o)) out.push(o);
+  return out;
+}
+
+/**
+ * The water nearest a start on land (up to `max` m), a little way out from the
+ * shore so the loop starts on the water; the start itself when it's on the water;
+ * null when there's none that near.
+ */
+export function nearestWater(start, water, max = 1000) {
+  if (water.isWater(start)) return start;
+  for (let m = 20; m <= max; m += 20) {
+    for (let k = 0; k < 24; k++) {
+      const b = k * 15, p = destination(start, m, b);
+      if (!water.isWater(p)) continue;
+      const out = destination(start, m + 15, b);
+      return water.isWater(out) ? out : p;
+    }
+  }
+  return null;
 }
 
 /** How much of a line is ridden twice: the share of it within 15 m of a part at least 300 m away along it. */
@@ -146,12 +268,14 @@ export function twiceShare(coords) {
   return pts.length ? twice / pts.length : 0;
 }
 
-/** Lower is better: off-target distance, riding the same way twice, and heads-up items. */
-export const score = ({ km, targetKm, twice, warnings }) => 100 * Math.abs(km - targetKm) / targetKm + 60 * twice + 2 * warnings;
+/** Lower is better: off-target distance, riding the same way twice, heads-up items, and carrying. */
+export const score = ({ km, targetKm, twice, warnings, carryM = 0 }) => 100 * Math.abs(km - targetKm) / targetKm + 60 * twice + 2 * warnings + carryM / 20;
 
 /** A time target as a distance, with the speeds the time estimate uses (phase 6). */
-export function distanceForTime(sport, minutes, speeds) {
-  const kmh = sport === 'hike' ? speeds.walk * 0.9
+export function distanceForTime(sport, minutes, speeds, craft = 'kayak') {
+  const kmh = sport === 'paddle' ? (speeds[craft] || 6) * 0.9
+    : sport === 'swim' ? (speeds.swim || 2.5) * 0.95
+    : sport === 'hike' ? speeds.walk * 0.9
     : sport === 'run' || sport === 'trailrun' ? (speeds.paved + speeds.trail) / 2 * 0.95
       : sport === 'road' ? speeds.paved * 0.9
         : (speeds.paved * 0.3 + speeds.unpaved * 0.4 + speeds.trail * 0.3) * 0.9;
