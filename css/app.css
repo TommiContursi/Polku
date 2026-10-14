@@ -782,6 +782,17 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wp-sport { position: absolute; left: calc(50% + 4px); top: calc(50% - 20px); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; }
 .wp-sport svg { width: 12px; height: 12px; }
 .speed-sport { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; }
+/* the sport strip under the profile (chart.js), icons over its stretches */
+.chart-sports { position: absolute; inset: 0; pointer-events: none; }
+.chart-sport { position: absolute; transform: translate(-50%, -50%); width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: 0 0 0 1.5px var(--surface-solid); }
+.chart-sport svg { width: 11px; height: 11px; }
+/* the sun at the start; the departure in the start's menu and row */
+.sun-line { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; font-size: 12.5px; color: var(--muted); }
+.pt-depart { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.pt-depart .mode-select-box { flex: 1; }
+.pt-depart select { width: 100%; }
+.wpl-depart { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--accent); }
+.wpl-depart select { font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); padding: 0 2px; }
 .speed-row.sub.head span { padding-left: 0; font-weight: 700; color: var(--text); }
 .speed-row.sub span svg { display: inline-block; vertical-align: -2px; margin-right: 4px; }
 .speed-row.sub span:has(svg) { white-space: nowrap; }
@@ -854,7 +865,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .pt-menu .seg { align-self: stretch; display: grid; grid-template-columns: repeat(3, 1fr); }
 .pt-menu .seg button { padding: 0 6px; }
 .pt-style select { min-width: 0; text-overflow: ellipsis; }
-.pt-title { font-weight: 700; }
+.pt-title { font-weight: 700; padding-right: 26px; } /* clear of the popup's × */
 .pt-sub { font-size: 12px; color: var(--muted); }
 .pt-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .pt-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: -4px; }

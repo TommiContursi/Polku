@@ -138,6 +138,19 @@ def LINE_PICK(how):
             + " await wait(700); return true; })()")
 
 
+# points clicked beside the trails at Konnevesi (the user's test spot), snapped onto them (local BRouter)
+SNAP_JS = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setMode('auto');"
+           " for (const q of [[25.2135, 61.8735], [25.2190, 61.8712], [25.2160, 61.8690], [25.2240, 61.8725]]) p.addPoint(q);"
+           " const t0 = Date.now(); while (!(p.legs.every((l) => l.status === 'ok') && p.analysis) && Date.now() - t0 < 30000) await wait(300);"
+           " if (p.setSheetState) p.setSheetState('peek', { remember: false }); polku.map.jumpTo({ center: [25.2190, 61.8715], zoom: 15.2 }); await wait(1200); return true; })()")
+# the multisport route, its profile coloured by sport (on the map too), the strip under it
+def MULTI_SPORT_JS(sec='profile', extra=''):
+    return MULTI_JS(sec).replace("return true; })()", ("if (p.pickColor) { p.pickColor('sport'); p.setColorOnMap(true); } " + extra + " await wait(600); return true; })()"))
+MARKS_JS = "(async () => { const p = polku.planner; if (p.setMarks) p.setMarks({ km: true, time: true }); await new Promise((r) => setTimeout(r, 600)); return true; })()"
+# the multisport route leaving an hour before sunset: Heads-up says when it gets dark
+SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); try { const S = await import(location.origin + '/js/sun.js'); const s = S.sunTimes(Date.now() / 1000, [23.761, 61.498]); const k = Math.max(0, Math.round((s.set - Date.now() / 1000) / 3600) - 1); p.setStartOffset(k); } catch (e) { /* main */ }")
+
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -271,6 +284,15 @@ SCENES = {
     'phone-lipas-pick': dict(PHONE, timeline=False, hash='#14.6/62.4495/25.8945', js=LIPAS_PICK),
     'phone-leg-tap': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('tap')),
     'desk-leg-menu': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('right')),
+    # what the route shows: snapped points, the sport strip, distance marks, the sun
+    'desk-snap': dict(DESK, timeline=False, hash='#14.84/61.87283/25.21918', storage=LOCAL, js=SNAP_JS),
+    'phone-snap': dict(PHONE, timeline=False, hash='#14.84/61.87283/25.21918', storage=LOCAL, js=SNAP_JS),
+    'desk-multisport-sport': dict(DESK, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_SPORT_JS()),
+    'phone-multisport-sport': dict(PHONE, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_SPORT_JS()),
+    'desk-marks': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='peek', js=MARKS_JS),
+    'phone-marks': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=MARKS_JS),
+    'desk-sun': dict(DESK, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=SUN_JS),
+    'phone-sun': dict(PHONE, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=SUN_JS),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

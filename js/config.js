@@ -107,6 +107,8 @@ export const ACTIVITIES = {
   },
 };
 export const groupOf = (a) => (ACTIVITIES[a] || ACTIVITIES.mtb).group;
+// each sport's colour where a route mixes them (the profile's Sport colours and strip, the map)
+export const SPORT_COLORS = { mtb: '#c2410c', gravel: '#a16207', road: '#b91c1c', hike: '#15803d', trailrun: '#4d7c0f', run: '#0f766e', paddle: '#0369a1', swim: '#6d28d9' };
 export const isWater = (a) => groupOf(a) === 'water';
 // sports where the uphill-difficulty grades (↑S0–↑S5, from mtb:scale:uphill) mean something
 export const OFFROAD_BIKE = new Set(['mtb', 'gravel']);

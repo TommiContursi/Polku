@@ -106,11 +106,13 @@ export function initInspector(map, app) {
       h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(click || pop.getLngLat().toArray()); }, html: `${icon('flag', 15)} Route from here` })));
   }
 
-  let lastTouch = 0;
-  map.on('touchstart', () => { lastTouch = Date.now(); });
+  let lastTouch = 0, openAtPress = false;
+  map.on('touchstart', () => { lastTouch = Date.now(); openAtPress = !!popup && popup.isOpen(); });
   map.on('click', async (e) => {
     if (app.isPlanning()) return;
     const touch = Date.now() - lastTouch < 800;
+    // a finger beside an open card closes it; another tap opens the next one
+    if (touch && openAtPress) { openAtPress = false; if (popup) popup.remove(); return; }
     const box = hitBox(e.point, touch);
     const ll = [e.lngLat.lng, e.lngLat.lat];
     // your route, with the planner closed: open it there
@@ -143,7 +145,9 @@ export function initInspector(map, app) {
 // it off a panel ({left, bottom} in px from the window's edges).
 export function keepInView(map, popup, pad = {}) {
   requestAnimationFrame(() => {
-    const r = popup.getElement().getBoundingClientRect();
+    const el = popup.getElement();
+    if (!el || !popup.isOpen()) return; // closed already
+    const r = el.getBoundingClientRect();
     const right = window.innerWidth - (window.innerWidth < 720 ? 64 : 84);
     const left = Math.max(8, pad.left || 0), bottom = window.innerHeight - Math.max(8, pad.bottom || 0);
     const dx = r.right > right ? r.right - right : r.left < left ? r.left - left : 0;
