@@ -47,6 +47,18 @@ async function pool(jobs, n) {
   }));
 }
 
+// A tiny strip of each colour mode's colours, for the header's colour button.
+const SWATCH = {
+  plain: ['#e11d48', '#e11d48'],
+  grade: ['#3b82f6', '#8fb996', '#facc15', '#f97316', '#dc2626'],
+  uphill: DIFF_COLORS.slice(0, 5), down: DIFF_COLORS.slice(0, 5), both: DIFF_COLORS.slice(0, 5),
+  surface: ['#64748b', '#d4a017', '#8b5e34'],
+  way: [WAY_COLORS.cycleway, WAY_COLORS.track, WAY_COLORS.path],
+  width: TRAIL_SCALES.width.colors.slice(2), vis: TRAIL_SCALES.vis.colors.slice(2),
+  wind: WIND_CLASSES.map((c) => c.color), temp: TEMP_BANDS.slice(1, 7).map((b) => b.color), rain: RAIN_BANDS.slice(1).map((b) => b.color),
+};
+const swatchOf = (k) => `linear-gradient(90deg, ${(SWATCH[k] || SWATCH.plain).join(', ')})`;
+
 // Trail obstacles that repeat (three fallen trees…) become one heads-up row.
 const GROUP_TEXT = { tree: 'Fallen trees and logs', stile: 'Stiles and kissing gates', cycle: 'Cycle barriers', 'gate-no': 'Gates with no access', ford: 'Fords' };
 function groupTrail(list) {
@@ -413,19 +425,27 @@ export class Planner {
   }
 
   // The header in the first arrangement that fits. Labels change with the sport and the
-  // style, so this measures rather than trusting breakpoints: one line → two lines →
-  // the quick buttons on a line of their own → compact labels (the sport's icon,
-  // the style without "Style:", the modes as icons). CSS (.sheet-head.two-line / .stack /
-  // .tight / .tighter) does the rest.
+  // style, so this measures rather than trusting breakpoints: one line → one slim line →
+  // two lines → the quick buttons on a line of their own → compact labels (the colour as
+  // its swatch, the sport's icon, the style without "Style:") → the modes as icons.
+  // CSS (.sheet-head.slim / .two-line / .stack / .tight / .tighter) does the rest.
   fitHeader() {
     const head = this.els.head;
     if (!head || this.panel.hidden) return;
     const over = (el) => el && el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1;
-    head.classList.remove('two-line', 'stack', 'tight', 'tighter');
+    head.classList.remove('two-line', 'slim', 'stack', 'tight', 'tightest', 'tighter');
     head.classList.add('measuring');
-    if (over(head.firstChild)) head.classList.add('two-line');
+    // one line, then one line with only the active mode's label and the extra tools in ⋯, then two lines
+    if (over(head.firstChild)) {
+      head.classList.add('slim');
+      if (over(head.firstChild)) { head.classList.remove('slim'); head.classList.add('two-line'); }
+    }
     if (over(this.els.toolsRow)) head.classList.add('stack');
-    if (over(this.els.quickPair) || over(this.els.toolsRow)) head.classList.add('tight');
+    // the quick line doesn't shrink (a line of its own), so it's measured against the row's width
+    // (on one line the row is `display: contents` and has no width of its own)
+    const qpOver = () => this.els.quickPair.offsetParent !== null && this.els.quickPair.scrollWidth > Math.min(this.els.quickPair.clientWidth, this.els.toolsRow.clientWidth || Infinity) + 1;
+    if (qpOver() || over(this.els.toolsRow)) head.classList.add('tight');
+    if (qpOver()) head.classList.add('tightest'); // the smallest phones: Round trip as its icon
     // the tools fell to a line of their own under the modes: the modes go icon-only
     const modes = this.els.toolsRow.querySelector('.modes'), tools = this.els.toolsRow.querySelector('.tools');
     if (modes && tools && tools.offsetTop > modes.offsetTop + modes.offsetHeight / 2) head.classList.add('tighter');
@@ -1742,15 +1762,19 @@ export class Planner {
     }, 'sheet-min');
     this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
     // the two big choices, always in sight: let Polku make loops, and how the route is chosen
-    this.els.quickLoop = h('button', { type: 'button', class: 'btn quick', 'aria-pressed': 'false', title: 'Let Polku make loops of the length you choose', onclick: () => (this.loop.open ? this.closeLoop() : this.openLoop()), html: `${icon('roundtrip', 16)}<span>Round trip</span>` });
+    this.els.quickLoop = h('button', { type: 'button', class: 'btn quick quick-loop', 'aria-pressed': 'false', 'aria-label': 'Round trip', title: 'Let Polku make loops of the length you choose', onclick: () => (this.loop.open ? this.closeLoop() : this.openLoop()), html: `${icon('roundtrip', 16)}<span>Round trip</span>` });
     this.els.quickStyle = h('button', { type: 'button', class: 'btn quick', title: 'How the route is chosen for this sport', onclick: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } });
     // the sport, right where the route is edited: a native list, so it opens at the button everywhere
     this.els.sportSel = h('select', { 'aria-label': 'Sport', onchange: (e) => { if (this.app.setSport) this.app.setSport(e.target.value); } });
-    this.els.quickSport = h('label', { class: 'btn quick quick-sport', title: 'Sport: routing, speeds and heads-up follow it' });
+    this.els.quickSport = h('label', { class: 'btn quick quick-sel quick-sport', title: 'Sport: routing, speeds and heads-up follow it' });
+    // the route's colours, beside the drawing modes: the same setting as the profile's
+    // "Colour by" and "On map" (both stay there, in step)
+    this.els.colorSel = h('select', { 'aria-label': 'Colour the route by', onchange: (e) => this.pickColor(e.target.value) });
+    this.els.quickColor = h('label', { class: 'btn quick quick-sel quick-color', title: 'Colour of the route on the map (the profile follows)' });
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
       h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
         h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      this.els.toolsRow = h('div', { class: 'sheet-row tools-row' }, modes, this.els.quickPair = h('span', { class: 'quick-pair' }, this.els.quickSport, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
+      this.els.toolsRow = h('div', { class: 'sheet-row tools-row' }, modes, this.els.quickPair = h('span', { class: 'quick-pair' }, this.els.quickColor, this.els.quickSport, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
@@ -1766,11 +1790,7 @@ export class Planner {
     this.els.modeSelect = h('label', { class: 'mode-select', title: 'What the colours of the profile show' },
       h('span', { class: 'mode-select-label' }, 'Colour by'),
       h('span', { class: 'mode-select-box' }, this.els.modeSel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
-    this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => {
-      this.colorOnMap = e.target.checked;
-      store.set('colorOnMap', this.colorOnMap);
-      this.drawColored();
-    } });
+    this.els.mapToggle = h('input', { type: 'checkbox', role: 'switch', checked: this.colorOnMap, onchange: (e) => this.setColorOnMap(e.target.checked) });
     this.els.mapToggleRow = h('label', { class: 'tg tg-inline', title: 'Colour the route line on the map the same way as the profile' },
       h('span', { class: 'tg-text' }, 'On map'), this.els.mapToggle, h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     this.els.breakdown = h('div', { class: 'breakdown' });
@@ -2080,11 +2100,50 @@ export class Planner {
         h('div', { class: 'speed-row total' }, h('span', {}, 'Moving time'), h('b', {}, fmtDist(a.total)), h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, speedTxt(a.total, a.timeWind || a.time)))));
   }
 
+  // which colour modes make sense for the sport
+  modeApplies(k) {
+    const act = this.app.activity();
+    if (act === 'paddle') return ['way', 'wind', 'temp', 'rain'].includes(k);
+    return k === 'down' || k === 'uphill' || k === 'both' ? OFFROAD_BIKE.has(act) : k === 'width' || k === 'vis' ? act !== 'road' : true;
+  }
+
+  // The route line on the map coloured like the profile, or plain (the profile keeps its colours).
+  setColorOnMap(on) {
+    this.colorOnMap = on;
+    store.set('colorOnMap', on);
+    if (this.els.mapToggle) this.els.mapToggle.checked = on;
+    this.drawColored();
+    this.renderQuickColor();
+  }
+
+  // From the header: a mode colours the line and the profile; "plain" leaves the line red.
+  pickColor(k) {
+    if (k === 'plain') { this.setColorOnMap(false); return; }
+    this.colorOnMap = true;
+    store.set('colorOnMap', true);
+    if (this.els.mapToggle) this.els.mapToggle.checked = true;
+    this.showMode(k); // redraws the line and re-renders the chip
+  }
+
+  renderQuickColor() {
+    if (!this.els || !this.els.quickColor) return;
+    const sel = this.els.colorSel;
+    sel.innerHTML = '';
+    sel.append(h('option', { value: 'plain' }, 'Plain line'));
+    for (const [title, keys] of COLOR_GROUPS) {
+      const shown = keys.filter((k) => this.modeApplies(k));
+      if (shown.length) sel.append(h('optgroup', { label: title }, ...shown.map((k) => h('option', { value: k }, COLOR_MODES[k]))));
+    }
+    const k = this.colorOnMap ? this.colorMode : 'plain';
+    sel.value = k;
+    this.els.quickColor.innerHTML = `<span class="q-swatch" style="background:${swatchOf(k)}"></span><span class="q-label">${escapeHtml(k === 'plain' ? 'Plain line' : COLOR_MODES[k])}</span>${icon('chevronDown', 12)}`;
+    this.els.quickColor.append(sel);
+    this.fitHeaderSoon();
+  }
+
   renderModeChips() {
     const act = this.app.activity();
-    const applies = act === 'paddle'
-      ? (k) => ['way', 'wind', 'temp', 'rain'].includes(k)
-      : (k) => (k === 'down' || k === 'uphill' || k === 'both' ? OFFROAD_BIKE.has(act) : k === 'width' || k === 'vis' ? act !== 'road' : true);
+    const applies = (k) => this.modeApplies(k);
     if (!applies(this.colorMode)) this.colorMode = act === 'paddle' ? 'wind' : 'grade';
     this.els.modesBar.innerHTML = '';
     this.els.modeSel.innerHTML = '';
@@ -2101,6 +2160,7 @@ export class Planner {
     }
     this.els.modeSel.value = this.colorMode;
     this.els.mapToggle.checked = this.colorOnMap;
+    this.renderQuickColor();
   }
 
   // Route line on the map coloured like the profile, plus wind arrows in wind mode.

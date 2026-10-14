@@ -332,6 +332,22 @@ def header_fit(chrome):
             out = pg.js(HEADER_OUT)
             if out:
                 fails.append(f'{w}x{h} {dock} {sport}: {out}')
+        if w == 700:
+            # the header's colour list and the profile's "Colour by" / "On map" are one setting
+            sync = pg.js("""(() => {
+              const p = polku.planner, errs = [];
+              p.pickColor('surface');
+              if (!p.els.mapToggle.checked || p.els.modeSel.value !== 'surface' || p.els.colorSel.value !== 'surface') errs.push('picking Surface in the header');
+              p.pickColor('plain');
+              if (p.els.mapToggle.checked || p.els.colorSel.value !== 'plain') errs.push('picking Plain line in the header');
+              p.setColorOnMap(true);
+              if (p.els.colorSel.value !== 'surface') errs.push('On map in the profile');
+              p.setColorOnMap(false);
+              localStorage.removeItem('polku:colorMode'); localStorage.removeItem('polku:colorOnMap');
+              return errs.join(', ');
+            })()""")
+            if sync:
+                fails.append(f'colour out of step: {sync}')
         fails += [f'{w}x{h} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} planner header fits" + ''.join(f'\n     - {f}' for f in fails), flush=True)

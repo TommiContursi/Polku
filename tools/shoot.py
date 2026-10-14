@@ -186,6 +186,9 @@ SCENES = {
     'desk-rain-jkl': dict(DESK, timeline=True, hash='#11/62.235/25.74', settle=16, storage={'polku:settings': json.dumps({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': False, 'temp': False}})}),
     'phone-rain-jkl': dict(PHONE, timeline=True, hash='#11/62.235/25.74', settle=16, storage={'polku:settings': json.dumps({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': False, 'temp': False}})}),
     'desk-rain-coast': dict(DESK, timeline=True, hash='#9/60.5/21.6', settle=16, storage={'polku:settings': json.dumps({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': False, 'temp': False}})}),
+    # the route's colour in the header (Draw · Colour | Route | Edit)
+    'desk-bottom-colour': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"'}, js="(() => { const p = polku.planner; if (p.pickColor) p.pickColor('grade'); return true; })()"),
+    'phone-colour': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="(() => { const p = polku.planner; if (p.pickColor) p.pickColor('grade'); return true; })()"),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
