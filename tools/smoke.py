@@ -6,6 +6,7 @@
   python3 tools/smoke.py layers     # just the Layers panel in every sport
   python3 tools/smoke.py trails     # just the trail details (from a recorded tile)
   python3 tools/smoke.py header     # just the planner header fitting its sheet
+  python3 tools/smoke.py lipas      # just LIPAS search and riding a LIPAS route (recorded answers)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -303,6 +304,77 @@ def trails(chrome):
     return not fails
 
 
+# LIPAS routes (12c): search finds a route and stops by name, grouped; picking the
+# route opens its card; "Ride this route" makes it the plan as fixed legs (no
+# routing call), a loop with two via points; its share link rebuilds it from
+# LIPAS, again with no routing call. LIPAS answers come from a recorded file.
+LIPAS_RIDE = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const fx = await (await fetch(location.origin + '/tools/fixtures/lipas-multamaki.json')).json();
+  const L = await import(location.origin + '/js/lipas.js');
+  const P = await import(location.origin + '/js/planner.js');
+  const n = await import(location.origin + '/js/net.js');
+  const routed = () => n.usage().filter((u) => /^brouter|^valhalla/.test(u.id)).reduce((s, u) => s + (u.session || 0), 0);
+  const empty = { type: 'FeatureCollection', features: [] };
+  L.seedLipas((url) => (/CQL_FILTER=id%3D615379/.test(url) ? fx.place : /lipas_kaikki_reitit/.test(url) ? fx.routes : /lipas_kaikki_pisteet/.test(url) ? fx.stops : empty));
+  const r0 = routed();
+  const input = document.querySelector('#search-input');
+  input.focus();
+  input.value = 'multam';
+  input.dispatchEvent(new Event('input'));
+  let heads = [];
+  for (let k = 0; k < 40; k++) {
+    await wait(200);
+    heads = [...document.querySelectorAll('#search-results .r-group')].map((x) => x.textContent);
+    if (heads.includes('Routes · LIPAS') && heads.includes('Stops · LIPAS')) break;
+  }
+  if (!heads.includes('Routes · LIPAS')) errs.push(`search groups: ${heads.join(', ') || 'none'}`);
+  if (!heads.includes('Stops · LIPAS')) errs.push('no LIPAS stops in search');
+  const item = [...document.querySelectorAll('#search-results li[data-kind=routes]')].find((li) => /Multamäen MTB-lenkki/.test(li.textContent));
+  if (!item) return [...errs, 'Multamäen MTB-lenkki is not in the results'];
+  item.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+  let ride = null;
+  for (let k = 0; k < 40 && !ride; k++) { await wait(200); ride = [...document.querySelectorAll('.polku-popup button')].find((b) => /Ride this route/.test(b.textContent)); }
+  if (!ride) return [...errs, 'the card has no Ride this route'];
+  const note = () => document.querySelector('.polku-popup .insp-ride')?.textContent || '';
+  for (let k = 0; k < 30 && !/loop|one way/.test(note()); k++) await wait(150);
+  if (!/^18 km · a loop/.test(note())) errs.push(`the card says: ${note() || 'nothing'}`);
+  if (!polku.map.getLayer('lipas-pick') || !polku.map.queryRenderedFeatures({ layers: ['lipas-pick'] }).length) errs.push('the picked route is not highlighted');
+  ride.click();
+  const p = polku.planner;
+  for (let k = 0; k < 50 && !(p.analysis && p.legs.length === 3); k++) await wait(200);
+  const km = p.analysis ? p.analysis.total / 1000 : 0;
+  if (p.legs.length !== 3 || !p.legs.every((l) => l.mode === 'fixed' && l.src)) errs.push(`legs: ${p.legs.map((l) => l.mode).join(', ')}`);
+  if (!p.isLoop()) errs.push('the ride is not a loop');
+  if (Math.abs(km - 18) > 0.5) errs.push(`ride is ${km.toFixed(2)} km`);
+  if (p.routeName !== 'Multamäen MTB-lenkki') errs.push(`route name: ${p.routeName}`);
+  const url = p.shareUrl();
+  if (!/[?&]lr=/.test(url)) errs.push('the share link has no LIPAS legs');
+  // the link, opened elsewhere: legs from LIPAS
+  p.clear();
+  p.restore(P.parseShared(new URL(url).searchParams));
+  for (let k = 0; k < 50 && !(p.analysis && p.legs.every((l) => l.result)); k++) await wait(200);
+  const km2 = p.analysis ? p.analysis.total / 1000 : 0;
+  if (!p.legs.every((l) => l.mode === 'fixed' && l.status === 'ok') || Math.abs(km2 - km) > 0.05) errs.push(`from the link: ${p.legs.map((l) => `${l.mode}/${l.status}`).join(', ')}, ${km2.toFixed(2)} km`);
+  if (routed() !== r0) errs.push(`${routed() - r0} routing requests (riding a LIPAS route needs none)`);
+  p.clear();
+  L.seedLipas(null);
+  localStorage.removeItem('polku:recentSearches');
+  return errs;
+})()"""
+
+
+def lipas(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/62.4345/25.9026')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(LIPAS_RIDE)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} LIPAS search & ride" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The planner header never spills out of the sheet (labels vary: a measured layout,
 # planner.js fitHeader). Narrow desktop windows with the bottom dock, a small phone.
 HEADER_OUT = """(() => {
@@ -450,6 +522,8 @@ def main():
             ok = trails(chrome) and ok
         if not only or 'header' in only:
             ok = header_fit(chrome) and ok
+        if not only or 'lipas' in only:
+            ok = lipas(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

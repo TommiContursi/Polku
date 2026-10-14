@@ -171,3 +171,28 @@ export function tileBounds(x, y, z) {
   const lat = (t) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * t) / n))) * 180) / Math.PI;
   return [lon(x), lat(y + 1), lon(x + 1), lat(y)];
 }
+
+// ETRS-TM35FIN (EPSG:3067, Finland's grid) to [lon, lat]: Krüger's series on
+// GRS80, good to a millimetre. LIPAS answers in its own grid at full precision
+// (its EPSG:4326 output is rounded to 4 decimals, up to 11 m off).
+const TM = (() => {
+  const f = 1 / 298.257222101, n = f / (2 - f), n2 = n * n, n3 = n2 * n;
+  return {
+    A: (6378137 / (1 + n)) * (1 + n2 / 4 + (n2 * n2) / 64),
+    b: [n / 2 - (2 / 3) * n2 + (37 / 96) * n3, n2 / 48 + n3 / 15, (17 / 480) * n3],
+    d: [2 * n - (2 / 3) * n2 - 2 * n3, (7 / 3) * n2 - (8 / 5) * n3, (56 / 15) * n3],
+  };
+})();
+export function tm35ToLonLat(x, y) {
+  const k0 = 0.9996, xi = y / (k0 * TM.A), eta = (x - 500000) / (k0 * TM.A);
+  let xp = xi, ep = eta;
+  for (let j = 1; j <= 3; j++) {
+    xp -= TM.b[j - 1] * Math.sin(2 * j * xi) * Math.cosh(2 * j * eta);
+    ep -= TM.b[j - 1] * Math.cos(2 * j * xi) * Math.sinh(2 * j * eta);
+  }
+  const chi = Math.asin(Math.sin(xp) / Math.cosh(ep));
+  let lat = chi;
+  for (let j = 1; j <= 3; j++) lat += TM.d[j - 1] * Math.sin(2 * j * chi);
+  const lon = 27 + (Math.atan2(Math.sinh(ep), Math.cos(xp)) * 180) / Math.PI;
+  return [+lon.toFixed(6), +((lat * 180) / Math.PI).toFixed(6)];
+}

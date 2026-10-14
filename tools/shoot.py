@@ -85,6 +85,25 @@ def TRAIL_ROUTE(sec='warnings', mode=None):
             f" p.reveal({json.dumps(sec)});{show} await wait(400); return true; }})()")
 
 
+# phase 12c: LIPAS in search, its card, riding it. LIPAS's answers for the search and
+# the route come from a recorded file (the map's own LIPAS lines load live); older
+# code without LIPAS search gets the old card by a click on the route instead.
+LIPAS_SEARCH = ("const wait = (ms) => new Promise((r) => setTimeout(r, ms));"
+                " try { const L = await import(location.origin + '/js/lipas.js'); if (L.seedLipas) { const fx = await (await fetch(location.origin + '/tools/fixtures/lipas-multamaki.json')).json();"
+                " L.seedLipas((url) => (/CQL_FILTER=id%3D615379/.test(url) ? fx.place : /lipas_kaikki_reitit/.test(url) ? fx.routes : /lipas_kaikki_pisteet/.test(url) ? fx.stops : null)); } } catch (e) { /* main */ }"
+                " const i = document.querySelector('#search-input'); i.focus(); i.value = 'multam'; i.dispatchEvent(new Event('input')); await wait(3500);")
+LIPAS_CARD = (LIPAS_SEARCH +
+              " const li = [...document.querySelectorAll('#search-results li[data-kind=routes]')].find((x) => /MTB-lenkki/.test(x.textContent));"
+              " if (li) { li.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })); await wait(2500); }"
+              " else { i.blur(); await wait(300); const m = polku.map; m.jumpTo({ center: [25.8945, 62.4495], zoom: 13 }); await wait(2500);"
+              " const f = m.queryRenderedFeatures({ layers: ['lipas-route'] }).find((x) => /MTB-lenkki/.test(x.properties.name)); if (f) { const c = f.geometry.coordinates; const q = m.project(c[Math.floor(c.length / 2)]);"
+              " m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') }); await wait(1200); } }")
+LIPAS_RIDE = (LIPAS_CARD +
+              " const b = [...document.querySelectorAll('.polku-popup button')].find((x) => /Ride this route/.test(x.textContent)); if (!b) return true; b.click();"
+              " const p = polku.planner, t0 = Date.now(); while (!(p.analysis && p.analysis.wind) && Date.now() - t0 < 15000) await wait(250);"
+              " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); await wait(900);")
+
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -189,6 +208,13 @@ SCENES = {
     # the route's colour in the header (Draw · Colour | Route | Edit)
     'desk-bottom-colour': dict(DESK, timeline=False, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"'}, js="(() => { const p = polku.planner; if (p.pickColor) p.pickColor('grade'); return true; })()"),
     'phone-colour': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="(() => { const p = polku.planner; if (p.pickColor) p.pickColor('grade'); return true; })()"),
+    # phase 12c: LIPAS routes and stops in search, the route's card, riding it
+    'desk-search-lipas': dict(DESK, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_SEARCH + ' return true; })()'),
+    'phone-search-lipas': dict(PHONE, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_SEARCH + ' return true; })()'),
+    'desk-lipas-card': dict(DESK, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_CARD + ' return true; })()'),
+    'phone-lipas-card': dict(PHONE, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_CARD + ' return true; })()'),
+    'desk-lipas-ride': dict(DESK, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_RIDE + ' return true; })()'),
+    'phone-lipas-ride': dict(PHONE, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_RIDE + ' return true; })()'),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

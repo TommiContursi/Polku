@@ -47,6 +47,55 @@ export function pickFeature(feats) {
 export function initInspector(map, app) {
   let popup = null;
 
+  // the card for a feature (a click, or a pick in search)
+  async function show(f, ll, feats = []) {
+    if (popup) popup.remove();
+    const body = h('div', { class: 'insp' });
+    popup = new maplibregl.Popup({ maxWidth: '320px', className: 'polku-popup', offset: 8 }).setLngLat(ll).setDOMContent(body).addTo(map);
+    keepInView(map, popup);
+    const pop = popup;
+    const actions = h('div', { class: 'insp-actions' },
+      h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(ll); }, html: `${icon('flag', 15)} Route from here` }),
+      h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeTo(ll); }, html: `${icon('plus', 15)} Add to route` }),
+      h('button', { type: 'button', class: 'btn avoid', title: 'Routes will go around this spot (40 m)', onclick: () => { pop.remove(); app.avoid(ll, body.querySelector('.insp-title')?.textContent); }, html: `${icon('close', 15)} Avoid` }));
+
+    if (/^nm-/.test(f.layer.id)) { renderNautical(body, f, map); body.append(actions); return; }
+    if (/^sf-|^military/.test(f.layer.id)) { await renderSafety(body, f, app); body.append(actions); return; }
+    if (/^td-/.test(f.layer.id)) renderObstacle(body, f, app);
+    else if (f.layer.id === 'lipas-route') { renderLipas(body, f.properties); body.append(rideActions(f.properties, f.click || null, pop, f.near)); }
+    else if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
+    else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
+    else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
+    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb');
+    if (f.layer.id !== 'lipas-route') body.append(actions);
+    const ele = await elevation(ll);
+    const slot = body.querySelector('[data-ele]');
+    if (slot && Number.isFinite(ele)) slot.textContent = `${Math.round(ele)} m`;
+  }
+
+  // A LIPAS route's card: ride it (its own line, no routing), add all of it to
+  // your route, or start a route here. What riding gives is said once LIPAS has
+  // sent all its parts (one request, kept).
+  function rideActions(p, click, pop, near) {
+    const note = h('div', { class: 'insp-ride' }, 'Checking the route…');
+    const ride = h('button', { type: 'button', class: 'btn primary', onclick: () => { pop.remove(); app.rideLipas(p, { click, near }); }, html: `${icon('route', 15)} Ride this route` });
+    const add = h('button', { type: 'button', class: 'btn', title: 'Your route goes to this one and follows it', onclick: () => { pop.remove(); app.rideLipas(p, { click, near, add: true }); }, html: `${icon('plus', 15)} Add to route` });
+    app.lipasRide(p, click).then((r) => {
+      if (!r) { note.textContent = ''; return; }
+      const km = r.km >= 10 ? Math.round(r.km) : r.km.toFixed(1);
+      if (r.network) {
+        note.textContent = `A network of trails: riding takes the ${click ? 'stretch you clicked' : 'longest stretch'} (${km} km). Click another to ride that one.`;
+        ride.innerHTML = `${icon('route', 15)} Ride this stretch`;
+      } else {
+        const bits = [`${km} km`, r.loop ? 'a loop' : 'one way'];
+        if (r.left >= 0.3) bits.push(`side trails (${r.left.toFixed(1)} km) left out`);
+        note.textContent = `${bits.join(' · ')}. Follows LIPAS's line: no routing needed.`;
+      }
+    }).catch(() => { note.textContent = 'LIPAS isn\'t answering: riding may not work right now.'; });
+    return h('div', {}, note, h('div', { class: 'insp-actions' }, ride, add,
+      h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(click || pop.getLngLat().toArray()); }, html: `${icon('flag', 15)} Route from here` })));
+  }
+
   map.on('click', async (e) => {
     if (app.isPlanning()) return;
     const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
@@ -58,26 +107,17 @@ export function initInspector(map, app) {
     // cameras and ships open their own modal / live card
     if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }
     if (/^sf-ships/.test(f.layer.id)) { app.openShip(f.properties.mmsi); return; }
-    const body = h('div', { class: 'insp' });
-    popup = new maplibregl.Popup({ maxWidth: '320px', className: 'polku-popup', offset: 8 }).setLngLat(e.lngLat).setDOMContent(body).addTo(map);
-    keepInView(map, popup);
-    const actions = h('div', { class: 'insp-actions' },
-      h('button', { type: 'button', class: 'btn', onclick: () => { popup.remove(); app.routeFrom(ll); }, html: `${icon('flag', 15)} Route from here` }),
-      h('button', { type: 'button', class: 'btn', onclick: () => { popup.remove(); app.routeTo(ll); }, html: `${icon('plus', 15)} Add to route` }),
-      h('button', { type: 'button', class: 'btn avoid', title: 'Routes will go around this spot (40 m)', onclick: () => { popup.remove(); app.avoid(ll, body.querySelector('.insp-title')?.textContent); }, html: `${icon('close', 15)} Avoid` }));
-
-    if (/^nm-/.test(f.layer.id)) { renderNautical(body, f, map); body.append(actions); return; }
-    if (/^sf-|^military/.test(f.layer.id)) { await renderSafety(body, f, app); body.append(actions); return; }
-    if (/^td-/.test(f.layer.id)) renderObstacle(body, f, app);
-    else if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
-    else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
-    else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
-    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb');
-    body.append(actions);
-    const ele = await elevation(ll);
-    const slot = body.querySelector('[data-ele]');
-    if (slot && Number.isFinite(ele)) slot.textContent = `${Math.round(ele)} m`;
+    if (f.layer.id === 'lipas-route') f.click = ll;
+    show(f, ll, feats);
   });
+
+  return {
+    /** A LIPAS route's or stop's card (from search): props as the map layer has them. */
+    openLipas(props, ll, near) {
+      show({ layer: { id: props.type > 4000 && props.type < 4800 ? 'lipas-route' : 'lipas-point' }, properties: props, near }, ll);
+      return popup; // made before show() first waits
+    },
+  };
 }
 
 // Pan so the popup clears the floating buttons on the right and the top bar.

@@ -9,7 +9,8 @@ import { detailsAlong } from './trails.js';
 import { iconUrl } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
+import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength } from './geo.js';
+import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
@@ -134,7 +135,7 @@ export class Planner {
     return {
       points: this.points.map((p) => p.slice()),
       names: this.points.map((p) => this.pname.get(p) || ''),
-      legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status, style: l.style })),
+      legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status, style: l.style, src: l.src })),
       nogos: this.nogos.map((n) => ({ ...n })),
       routeName: this.routeName || '',
       style: this.style,
@@ -195,7 +196,7 @@ export class Planner {
       if (o && o.to === to) return o.l;
       if (r && r.to === from && r.l.mode === 'fixed' && r.l.result) {
         const c = r.l.result;
-        return { mode: 'fixed', status: 'ok', result: { coords: c.coords.slice().reverse(), tags: c.tags.slice().reverse(), portage: [] } };
+        return { mode: 'fixed', status: 'ok', src: flipSrc(r.l.src), result: { coords: c.coords.slice().reverse(), tags: c.tags.slice().reverse(), portage: [] } };
       }
       const m = (o || r) ? (o || r).l.mode : this.mode;
       return { mode: m === 'fixed' ? 'auto' : m, style: o ? o.l.style : null };
@@ -236,17 +237,23 @@ export class Planner {
   // halves keep the geometry they had (a route through a point on it is the
   // same route), so adding a point on the line costs no routing request.
   // Returns the new point's index.
-  splitLeg(li, ll) {
+  splitLeg(li, ll, near = null) {
     const leg = this.legs[li];
     const r = leg.result;
     if (r && leg.status === 'ok' && leg.mode !== 'water' && r.coords.length > 1) {
       const c = r.coords;
-      const near = nearestOnLine(ll, c);
+      near = near || nearestOnLine(ll, c);
       const q = c[near.i], q2 = c[near.i + 1];
       const p = [+(q[0] + (q2[0] - q[0]) * near.t).toFixed(6), +(q[1] + (q2[1] - q[1]) * near.t).toFixed(6)];
-      const half = (coords, tags) => ({ mode: leg.mode, status: 'ok', style: leg.style, result: { coords, tags, portage: [] } });
+      // a LIPAS leg's halves remember where they are along LIPAS's line (share links)
+      let src = [null, null];
+      if (leg.src) {
+        const m = lineLength(c.slice(0, near.i + 1)) + dist(q, p), dir = leg.src.b >= leg.src.a ? 1 : -1, mid = leg.src.a + dir * m;
+        src = [{ ...leg.src, b: mid }, { ...leg.src, a: mid }];
+      }
+      const half = (coords, tags, k) => ({ mode: leg.mode, status: 'ok', style: leg.style, src: src[k], result: { coords, tags, portage: [] } });
       this.points.splice(li + 1, 0, p);
-      this.legs.splice(li, 1, half(c.slice(0, near.i + 1).concat([p]), r.tags.slice(0, near.i + 1)), half([p].concat(c.slice(near.i + 1)), r.tags.slice(near.i)));
+      this.legs.splice(li, 1, half(c.slice(0, near.i + 1).concat([p]), r.tags.slice(0, near.i + 1), 0), half([p].concat(c.slice(near.i + 1)), r.tags.slice(near.i), 1));
       for (const k of [li, li + 1]) if (this.legs[k].mode !== 'fixed') this.legs[k].key = this.legKey(k).key;
     } else {
       this.points.splice(li + 1, 0, ll);
@@ -302,8 +309,10 @@ export class Planner {
     else if (i >= this.legs.length) this.legs.pop();
     else {
       const a = this.legs[i - 1], b = this.legs[i];
+      const sa = a.src, sb = b.src;
+      const src = sa && sb && sa.t === sb.t && sa.id === sb.id && sa.seq === sb.seq && Math.abs(sa.b - sb.a) < 2 ? { ...sa, b: sb.b } : null;
       const merged = a.mode === 'fixed' && b.mode === 'fixed' && a.result && b.result
-        ? { mode: 'fixed', status: 'ok', result: { coords: a.result.coords.concat(b.result.coords.slice(1)), tags: a.result.tags.concat(b.result.tags), portage: [] } }
+        ? { mode: 'fixed', status: 'ok', src, result: { coords: a.result.coords.concat(b.result.coords.slice(1)), tags: a.result.tags.concat(b.result.tags), portage: [] } }
         : { mode: a.mode === 'fixed' ? 'auto' : a.mode, style: a.style };
       this.legs.splice(i - 1, 2, merged);
     }
@@ -315,7 +324,7 @@ export class Planner {
     this.commit();
     this.points.reverse();
     this.legs = this.legs.reverse().map((l) => (l.mode === 'fixed' && l.result
-      ? { mode: 'fixed', status: 'ok', result: { coords: l.result.coords.slice().reverse(), tags: l.result.tags.slice().reverse(), portage: [] } }
+      ? { mode: 'fixed', status: 'ok', src: flipSrc(l.src), result: { coords: l.result.coords.slice().reverse(), tags: l.result.tags.slice().reverse(), portage: [] } }
       : { mode: l.mode, style: l.style }));
     this.update();
   }
@@ -410,11 +419,13 @@ export class Planner {
     this.update();
   }
 
-  restore({ points, modes, style, legStyles }) {
+  restore({ points, modes, style, legStyles, lipas }) {
     const sport = this.app.activity();
     this.points = points;
     this.legs = points.slice(1).map((_, i) => ({ mode: CODE_MODE[modes[i]] || modes[i] || 'auto' }))
       .map((l) => (l.mode === 'fixed' ? { mode: 'auto' } : l));
+    // legs that ride a LIPAS route: its line comes from LIPAS, not from a router
+    for (const r of lipas || []) if (this.legs[r.i]) this.legs[r.i] = { mode: 'fixed', status: 'loading', result: null, src: { t: r.t, id: r.id, seq: r.seq, a: r.a, b: r.b } };
     // a shared link's style is the route's, not yours: your own per-sport choice stays as it was
     if (style != null) this.style = decodeStyle(sport, style);
     for (const part of (legStyles || '').split(',')) {
@@ -422,6 +433,89 @@ export class Planner {
       if (this.legs[+i] && code) this.legs[+i].style = decodeStyle(sport, code);
     }
     this.update();
+    this.loadSources();
+  }
+
+  // Legs that came as LIPAS references (a share link): their line from LIPAS,
+  // clipped to where the leg starts and ends. If LIPAS can't answer, routed.
+  async loadSources() {
+    const todo = this.legs.filter((l) => l.mode === 'fixed' && l.src && !l.result);
+    if (!todo.length) return;
+    await Promise.all(todo.map(async (l) => {
+      let c = null;
+      try {
+        const line = stitch(await lipasPlace(l.src.t, l.src.id), l.src.seq);
+        c = line && clipAlong(line, l.src.a, l.src.b);
+      } catch { /* routed instead */ }
+      const i = this.legs.indexOf(l);
+      if (i < 0) return;
+      if (c && c.length > 1) {
+        c[0] = this.points[i]; c[c.length - 1] = this.points[i + 1];
+        Object.assign(l, { status: 'ok', result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } });
+      } else this.legs[i] = { mode: 'auto', style: l.style };
+    }));
+    this.update();
+  }
+
+  // ---------------------------------------------------------------- LIPAS routes
+  // A LIPAS route as the plan, or added to its end (lipas.js rideOf makes one
+  // line of its parts). Its line goes in as fixed legs, like an imported track:
+  // riding it costs no routing call. Only the gaps between its parts, and the
+  // way to it when adding, are routed.
+  rideLipas(place, ride, { add = false } = {}) {
+    const p = place.props;
+    const fixed = (coords, seq, a, b) => ({ mode: 'fixed', status: 'ok', src: { t: p.type, id: p.lipasId, seq, a, b }, result: { coords, tags: coords.slice(1).map(() => ({})), portage: [] } });
+    let pieces = ride.pieces.map((pc) => ({ ...pc, coords: pc.coords.slice() }));
+    const end = add && this.points.length ? this.points[this.points.length - 1] : null;
+    // added loop: join it where it comes nearest your route, ride round, and come back there
+    if (end && ride.loop && !ride.closeGap && pieces.length === 1) {
+      const pc = pieces[0], near = nearestOnLine(end, pc.coords);
+      const m = lineLength(pc.coords.slice(0, near.i + 1));
+      if (m > 50 && pc.b - m > 50) {
+        pieces = [
+          { coords: pc.coords.slice(near.i), seq: pc.seq, a: m, b: pc.b },
+          { coords: pc.coords.slice(0, near.i + 1), seq: pc.seq, a: 0, b: m },
+        ];
+        pieces[0].coords[pieces[0].coords.length - 1] = pieces[1].coords[0];
+      }
+    }
+    const pts = [], legs = [];
+    pieces.forEach((pc, k) => {
+      const c = pc.coords;
+      if (k) {
+        if (dist(pts[pts.length - 1], c[0]) > 0.5) { pts.push(c[0]); legs.push({ mode: 'auto' }); }
+        else c[0] = pts[pts.length - 1];
+      } else pts.push(c[0]);
+      legs.push(fixed(c, pc.seq, pc.a, pc.b));
+      pts.push(c[c.length - 1]);
+    });
+    if (ride.closeGap) { pts.push(pts[0].slice()); legs.push({ mode: 'auto' }); }
+    else if (ride.loop) { pts[pts.length - 1] = pts[0].slice(); legs[legs.length - 1].result.coords[legs[legs.length - 1].result.coords.length - 1] = pts[0].slice(); }
+    const had = this.points.length > 1;
+    this.commit();
+    if (end) {
+      this.legs.push({ mode: this.mode });
+      this.points.push(...pts);
+      this.legs.push(...legs);
+    } else {
+      this.points = pts;
+      this.legs = legs;
+      this.routeName = p.name;
+      // a loop on one leg gets two via points, so it can be dragged and has a finish of its own
+      if (ride.loop && this.legs.length === 1) {
+        const L = lineLength(this.legs[0].result.coords);
+        this.splitLeg(0, null, alongAt(this.legs[0].result.coords, L / 3));
+        this.splitLeg(1, null, alongAt(this.legs[1].result.coords, L / 3));
+      }
+    }
+    this.setActive(true);
+    this.update();
+    const b = bbox(this.legs.flatMap((l, i) => (l.result ? l.result.coords : [this.points[i], this.points[i + 1]])));
+    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 15, duration: 700 });
+    const km = fmtDist(ride.km * 1000);
+    const what = ride.network ? `${p.name} is a network of trails: ${end ? 'added' : 'riding'} the stretch ${end ? 'you picked' : 'you clicked'} (${km})`
+      : `${end ? 'Added' : 'Riding'} ${p.name} · ${km}${ride.loop ? ' loop' : ''}${ride.left >= 0.3 ? ` (${fmtDist(ride.left * 1000)} of side trails left out)` : ''}`;
+    toast(`${what}${!end && had ? ' — undo brings back your route' : ''}`, { ms: 5000 });
   }
 
   // The header in the first arrangement that fits. Labels change with the sport and the
@@ -540,7 +634,7 @@ export class Planner {
     const gen = ++this.gen;
     const todo = []; // legs to route: { leg, key, from, to, nogos, profile }
     this.legs.forEach((leg, i) => {
-      if (leg.mode === 'fixed') { leg.status = 'ok'; return; }
+      if (leg.mode === 'fixed') { if (leg.result) leg.status = 'ok'; return; } // a LIPAS leg from a link may still be on its way
       const k = this.legKey(i);
       if (leg.key === k.key && leg.result) return;
       leg.key = k.key;
@@ -1255,7 +1349,7 @@ export class Planner {
         // folded: only what differs from the defaults
         const bits = [];
         if (leg.mode === 'line' || (leg.mode === 'water') !== (this.app.activity() === 'paddle')) bits.push(MODE_LABEL[leg.mode] || 'Imported track');
-        if (leg.mode === 'fixed') bits.push('Imported track');
+        if (leg.mode === 'fixed') bits.push(leg.src ? 'LIPAS route' : 'Imported track');
         if (leg.style) bits.push(`style: ${styleName(this.app.activity(), leg.style)}`);
         if (bits.length) {
           box.append(h('li', { class: 'wpl-leg', title: 'This leg differs from the rest — click for its settings', onclick: () => { this.openLegs.add(i); this.renderWaypoints(); } },
@@ -1269,7 +1363,7 @@ export class Planner {
   legSettingsRow(i) {
     const leg = this.legs[i];
     const modes = leg.mode === 'fixed'
-      ? h('span', { class: 'wpl-legnote' }, 'Imported track')
+      ? h('span', { class: 'wpl-legnote' }, leg.src ? 'LIPAS route (its own line)' : 'Imported track')
       : h('div', { class: 'seg small', role: 'group', 'aria-label': `How the leg after ${this.nameOf(i)} is routed` }, ...['auto', 'line', 'water'].map((m) =>
         h('button', { type: 'button', 'aria-pressed': String(leg.mode === m), title: MODE_LABEL[m], onclick: () => this.setLegMode(i, m), html: `${icon(MODE_ICON[m], 14)}<span>${MODE_SHORT[m]}</span>` })));
     return h('li', { class: 'wpl-legset' }, h('span', { class: 'wpl-legline', 'aria-hidden': 'true' }), modes,
@@ -1628,6 +1722,7 @@ export class Planner {
       legStyles: this.legs.map((l) => (l.style ? encodeStyle(this.app.activity(), l.style) || 'balanced' : null)),
       modes: this.legs.map((l) => l.mode),
       fixed: this.legs.map((l) => (l.mode === 'fixed' && l.result ? encodePolyline(l.result.coords) : null)),
+      src: this.legs.map((l) => (l.mode === 'fixed' && l.src) || null),
       routed: this.legs.map((l) => (l.mode !== 'fixed' && l.status === 'ok' && l.key && l.result
         ? { key: l.key, line: encodePolyline(l.result.coords), tags: l.result.tags.map(tagId), portage: l.result.portage || [], provider: l.result.provider } : null)),
       tags: table,
@@ -1644,7 +1739,7 @@ export class Planner {
     this.legs = r.points.slice(1).map((_, i) => {
       if (r.modes[i] === 'fixed' && r.fixed && r.fixed[i]) {
         const c = decodePolyline(r.fixed[i]);
-        return { mode: 'fixed', status: 'ok', result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } };
+        return { mode: 'fixed', status: 'ok', src: (r.src && r.src[i]) || null, result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } };
       }
       const k = r.routed && r.routed[i];
       if (k && r.tags) {
@@ -1672,7 +1767,7 @@ export class Planner {
       style: encodeStyle(this.app.activity(), this.style),
       legStyles: this.legs.map((l) => (l.style ? encodeStyle(this.app.activity(), l.style) || 'balanced' : null)),
       nogos: this.nogos,
-      legs: this.legs.map((l) => ({ mode: l.mode, key: l.key, result: l.status === 'ok' || l.mode === 'fixed' ? l.result : null })),
+      legs: this.legs.map((l) => ({ mode: l.mode, key: l.key, src: l.src || null, result: l.status === 'ok' || l.mode === 'fixed' ? l.result : null })),
     };
   }
 
@@ -1684,7 +1779,7 @@ export class Planner {
     if (s.style != null) this.style = decodeStyle(s.activity || this.app.activity(), s.style);
     this.legs = s.legs.map((l, i) => {
       const style = s.legStyles && s.legStyles[i] ? decodeStyle(s.activity || this.app.activity(), s.legStyles[i]) : null;
-      return l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result, style } : { mode: l.mode, style };
+      return l.result ? { mode: l.mode, key: l.key, status: 'ok', result: l.result, style, src: l.src || null } : { mode: l.mode === 'fixed' ? 'auto' : l.mode, style };
     });
     this.update();
   }
@@ -1710,6 +1805,9 @@ export class Planner {
     if (p) u.searchParams.set('p', p);
     const ps = this.legs.map((l, i) => (l.style ? `${i}:${encodeStyle(sport, l.style) || 'balanced'}` : '')).filter(Boolean).join(',');
     if (ps) u.searchParams.set('ps', ps);
+    // LIPAS legs as references (a few characters, not their line); older links route these legs
+    const lr = this.legs.map((l, i) => (l.mode === 'fixed' && l.src ? `${i}:${l.src.t}.${l.src.id}.${l.src.seq}.${Math.round(l.src.a)}.${Math.round(l.src.b)}` : '')).filter(Boolean).join(',');
+    if (lr) u.searchParams.set('lr', lr);
     return u.toString();
   }
 
@@ -2595,13 +2693,31 @@ function sampleEle(a, coords) {
   return out;
 }
 
+// A LIPAS leg's place along LIPAS's line, the other way round
+const flipSrc = (src) => (src ? { ...src, a: src.b, b: src.a } : null);
+
+// {i, t} of the spot `m` metres along a line (for splitLeg)
+function alongAt(c, m) {
+  let s = 0;
+  for (let i = 1; i < c.length; i++) {
+    const d = dist(c[i - 1], c[i]);
+    if (s + d >= m) return { i: i - 1, t: d ? (m - s) / d : 0 };
+    s += d;
+  }
+  return { i: c.length - 2, t: 1 };
+}
+
 export function parseShared(params) {
   const r = params.get('r');
   if (!r) return null;
   try {
     const points = decodePolyline(r);
     if (points.length < 1) return null;
-    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '' };
+    const lipas = (params.get('lr') || '').split(',').map((x) => {
+      const m = x.match(/^(\d+):(\d+)\.(\d+)\.([\w-]+)\.(\d+)\.(\d+)$/);
+      return m && { i: +m[1], t: +m[2], id: +m[3], seq: m[4], a: +m[5], b: +m[6] };
+    }).filter(Boolean);
+    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas };
   } catch {
     return null;
   }

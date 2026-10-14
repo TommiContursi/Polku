@@ -18,13 +18,13 @@ Also approved:
 | 7 | Editing on the map: drag the line, live preview, long-press, point menu (+ a compact profile colour menu) | `edit-on-map` | [#21](https://github.com/TommiContursi/Polku/pull/21) | merged |
 | 7½ | Routing that holds up: pacing, batching, routes kept on refresh, Valhalla stand-in | `brouter-pacing` | [#22](https://github.com/TommiContursi/Polku/pull/22) | merged |
 | 8 | Waypoint list: reorder, rename, delete, undo for everything (+ road names, show the whole route) | `waypoints` | [#23](https://github.com/TommiContursi/Polku/pull/23) | merged |
-| 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | [#24](https://github.com/TommiContursi/Polku/pull/24) | in review |
-| 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
+| 9 | Route style: presets and fine-tuning per sport, whole route or per leg, wet ground auto (redesigned) | `route-prefs` | [#24](https://github.com/TommiContursi/Polku/pull/24) | merged |
+| 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | merged |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown (+ Round trip & Style in the header, bottom panel by default) | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | merged |
-| 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | PR open |
+| 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | merged |
 | 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | merged |
-| 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | PR open |
-| 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | — | planned 2026-10-14, awaiting OK |
+| 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | merged |
+| 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | [#39](https://github.com/TommiContursi/Polku/pull/39) | PR open |
 | 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
 | 14 | Round trips for paddling | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
@@ -857,7 +857,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - **Uphill band at the trail's width:** today the uphill grades come from the vector tiles, which have no width. Grading the OSM ways (trail details) instead would let the uphill band follow width too.
 - **Overpass load:** if the public mirrors stay this flaky (504s were common while building 12), consider the static PMTiles option from the 12 design.
 
-## Phase 12c — LIPAS routes & search (planned 2026-10-14, awaiting OK)
+## Phase 12c — LIPAS routes & search (OK'd and built 2026-10-14)
 
 **The user's ask:** use the existing routes (LIPAS) in planning: add one to a route, or choose to ride one. Make them findable in search, and develop search further. Later, the user's own saved places, perhaps with a login (see [BACKLOG.md](BACKLOG.md)).
 
@@ -893,6 +893,30 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - Ride Pyhä Koko kierros (117 km) with zero routing calls, and add a LIPAS route to an existing route.
 - Search "koko kierros", "laajavuori", "laavu".
 - Smoke, from recorded LIPAS answers: the ride makes fixed legs, and search groups its results.
+
+**Built (12c)**
+- **What LIPAS's routes really look like** (186 places around Jyväskylä and the Tampere "Koko kierros" routes, checked 2026-10-14): every part is a LineString, but a place has up to 232 parts (`reitti_id`). Some are one line (Multamäen MTB-lenkki, Pyhä Koko kierros), some a chain or a loop of parts, some a loop with a spur to a car park, some a network of fitness loops (Laajavuoren ulkoilureitit). LIPAS's EPSG:4326 output is rounded to 4 decimals (up to 11 m off), so Polku asks for EPSG:3067 and converts it itself (`geo.js tm35ToLonLat`, checked against LIPAS's own output). The map's LIPAS lines use it too.
+- **Making one line of the parts** (`lipas.js rideOf`):
+  - part ends within 20 m meet at a junction, and loose ends within 400 m are bridged;
+  - if the parts can be ridden one after another, each once (an Euler path: chain, loop, figure of eight), that's the ride, going as straight on as it can at junctions;
+  - a loop with a spur (two odd junctions close together) rides the spur out and back;
+  - parts not joined to the rest (a shortcut or a side trail LIPAS didn't connect) are left out, and the card says how much;
+  - a network that can't be ridden in one line rides the stretch you clicked (or the longest), and says so.
+  - Gaps under 30 m are drawn across; longer ones (and a loop's last gap, like Pyhä's 131 m) are routed legs.
+  - Around Jyväskylä, about nine places in ten ride as one line.
+- **Ride this route** (card): the line becomes the plan as fixed legs, so no routing calls. A loop gets two via points, so it can be dragged and has a finish of its own. It takes the route's name, and undo brings your old route back. A one-way route starts at the end nearer you (your location if Polku knows it, else the map's centre).
+- **Add to route** (card): a routed leg from your route's end to the LIPAS route's nearer end (a loop: its nearest point, ridden round back to it), then the line.
+- **The card** says what riding gives before you tap ("18 km · a loop. Follows LIPAS's line: no routing needed", or "A network of trails: riding takes the stretch you clicked"). It asks LIPAS once for all the parts (kept for the session).
+- **Share links** carry LIPAS legs as references (`lr=0:4411.615379.1.0.6004,…`: leg, type, place, parts, metres along), not their line. Opening one fetches the place and clips the line, with no routing. If LIPAS doesn't answer, those legs are routed. Older links and imported GPX legs work as before.
+- **Search, grouped** (`search.js`):
+  - Groups: Coordinates · Recent · Places (Photon) · Routes (LIPAS) · Stops (LIPAS) · Trails on the map (named paths in the loaded tiles, no request).
+  - A group that arrives later goes below the ones showing, so nothing moves under your finger.
+  - A path named like a LIPAS route, and Photon's copies of trails already listed, are dropped.
+  - Routes rank by how well the name matches, your sport's route types, and nearness.
+  - LIPAS is asked from 3 characters: three small requests (routes near and in all Finland, stops near), names and types only, from the combined layers `lipas_kaikki_reitit` / `lipas_kaikki_pisteet`, which do take one filter over every type. Answers are kept per query.
+  - Picking a route fits it, draws it on top at any zoom (`lipas-pick`), and opens its card. A stop flies there and opens its card.
+  - Your last six picks are on the device (Recent).
+- **Tests:** `tools/smoke.py lipas` finds Multamäen MTB-lenkki and two stops by "multam" from a recorded file (`tools/fixtures/lipas-multamaki.json`), rides it (3 fixed legs, a loop, 18 km), and rebuilds it from its share link, all with no routing request. Scenes are in `tools/shoot.py` (`*-search-lipas`, `*-lipas-card`, `*-lipas-ride`).
 
 ## Phase 13 — Water routing
 
