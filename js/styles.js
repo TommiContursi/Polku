@@ -195,11 +195,25 @@ export const STYLES = {
         ['avoid', 'Avoid', {}, {}, { water: { carry: 70 } }],
         ['never', 'Never', {}, {}, { water: { carry: 400 } }],
       ]),
+      // phase 13 (js/waterdata.js): Väylävirasto fairways and marks, OSM rocks and shoals, the forecast wind
+      control('f', 'Fairways', 'Shipping lanes are crossed straight and quickly, not followed: ships can’t stop or turn for you. Small-boat routes are fine either way. (Väylävirasto)', [
+        ['cross', 'Cross straight', {}],
+        ['ignore', 'Ignore', {}, {}, { water: { fairways: 'ignore' } }],
+      ]),
+      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers: isolated-danger and cardinal marks (Väylävirasto) and the rocks, reefs and shoals in OpenStreetMap. Polku doesn’t know depths, so keep a lookout for the rest.', [
+        ['clear', 'Keep clear', {}],
+        ['ignore', 'Ignore', {}, {}, { water: { hazards: 'ignore' } }],
+      ]),
+      control('w', 'Wind', 'Keeps out of rough water for your craft: waves build where the wind has a long way over open water (the forecast at your departure). Ignore takes the shortest way whatever the wind.', [
+        ['shelter', 'Keep sheltered', {}],
+        ['ignore', 'Ignore', {}, {}, { water: { wind: 'ignore' } }],
+      ]),
     ],
     presets: [
       ['balanced', 'Balanced', {}],
       ['shore', 'Near the shore', { n: 'near' }],
       ['nocarry', 'No carries', { p: 'never' }],
+      ['direct', 'Direct', { f: 'ignore', w: 'ignore' }],
     ],
   },
 };

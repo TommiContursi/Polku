@@ -13,6 +13,7 @@ import { Planner, parseShared } from './planner.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
+import { prefetchWater } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection } from './offline.js';
@@ -127,6 +128,12 @@ map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
 $('.ctrl-compass').append(new CompassControl({ toast }).onAdd(map));
 const geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
 map.addControl(geolocate, 'top-right');
+// paddling, zoomed in: what the water router will want (rocks, fairways) comes ahead, cached
+map.on('moveend', () => {
+  if (state.activity !== 'paddle' || map.getZoom() < 11) return;
+  const b = map.getBounds();
+  prefetchWater([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
+});
 // where you were last seen (a LIPAS route you ride starts at the end nearer you)
 let lastFix = null;
 geolocate.on('geolocate', (p) => { lastFix = { ll: [p.coords.longitude, p.coords.latitude], t: Date.now() }; });

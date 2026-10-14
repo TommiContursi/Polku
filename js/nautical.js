@@ -34,6 +34,62 @@ const LAYERS = {
   signs: 'vesiliikennemerkit_uusi',
 };
 
+// Väylävirasto tiles, shared by the chart layer and the paddling router (water.js):
+// "layer/x/y" -> features, or the promise of them
+const TILES = new Map();
+function loadTile(key, x, y, onLoad) {
+  const id = `${key}/${x}/${y}`;
+  if (TILES.has(id)) { const v = TILES.get(id); return Array.isArray(v) ? Promise.resolve(v) : v; }
+  const [w, s, e, n] = tileBounds(x, y, Z);
+  const url = `${WFS}&typeNames=vesivaylatiedot:${LAYERS[key]}&count=10000&bbox=${s},${w},${n},${e},urn:ogc:def:crs:EPSG::4326`;
+  const p = request('vayla', url).then((r) => r.json()).then((gj) => {
+    const list = (gj.features || []).filter((f) => f.geometry);
+    TILES.set(id, list);
+    if (onLoad) onLoad();
+    return list;
+  });
+  p.catch(() => TILES.delete(id));
+  TILES.set(id, p);
+  return p;
+}
+
+/**
+ * Fairway areas and danger marks in a box, for the paddling router: at most
+ * `max` z10 tiles (about 20 × 10 km each), else null (too big to ask for).
+ */
+export async function waterwaysIn([w, s, e, n], max = 24) {
+  const [x0, y0] = lonLatToTile(w, n, Z).map(Math.floor);
+  const [x1, y1] = lonLatToTile(e, s, Z).map(Math.floor);
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > max) return null;
+  const jobs = [];
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) jobs.push(loadTile('areas', x, y), loadTile('marks', x, y));
+  const got = await Promise.all(jobs);
+  const seen = new Set(), areas = [], marks = [];
+  got.forEach((list, k) => {
+    for (const f of list) {
+      const fid = f.id || JSON.stringify(f.geometry.coordinates).slice(0, 60);
+      if (seen.has(fid)) continue;
+      seen.add(fid);
+      (k % 2 ? marks : areas).push(f);
+    }
+  });
+  return {
+    // shipping lanes (design draught from 4.5 m), harbour basins, the rest (small-boat routes)
+    fairways: areas.map((f) => {
+      const p = f.properties, draught = +p.mitoitussyvays || 0;
+      const cls = /satama/i.test(p.tyyppi || '') ? 'harbour' : draught >= 4.5 ? 'ship' : 'small';
+      return { type: 'Feature', properties: { cls, draught, name: cleanName(p.vaylan_nimi) }, geometry: f.geometry };
+    }),
+    // isolated danger and cardinal marks: a rock or shoal beside them (cardinals: on the side they don't name)
+    marks: marks.map((f) => {
+      const p = f.properties, kind = NAV_KIND[p.navigointilajikoodi];
+      if (!['danger', 'north', 'south', 'east', 'west'].includes(kind)) return null;
+      const c = f.geometry.type === 'MultiPoint' ? f.geometry.coordinates[0] : f.geometry.coordinates;
+      return { type: 'Feature', properties: { kind, name: p.nimifi || '' }, geometry: { type: 'Point', coordinates: c } };
+    }).filter(Boolean),
+  };
+}
+
 // Which icon a mark gets on the map.
 function markIcon(p) {
   const t = p.turvalaitetyyppifi || '';
@@ -88,12 +144,7 @@ export class NauticalLayer {
   load(key, layer, x, y) {
     const id = `${key}/${x}/${y}`;
     if (this.tiles.has(id)) return;
-    const [w, s, e, n] = tileBounds(x, y, Z);
-    const url = `${WFS}&typeNames=vesivaylatiedot:${layer}&count=10000&bbox=${s},${w},${n},${e},urn:ogc:def:crs:EPSG::4326`;
-    const p = request('vayla', url).then((r) => r.json()).then((gj) => {
-      this.tiles.set(id, (gj.features || []).filter((f) => f.geometry));
-      this.publishSoon();
-    }).catch(() => this.tiles.delete(id));
+    const p = loadTile(key, x, y).then((list) => { this.tiles.set(id, list); this.publishSoon(); }).catch(() => this.tiles.delete(id));
     this.tiles.set(id, p);
   }
 

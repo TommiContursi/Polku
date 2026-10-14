@@ -17,7 +17,7 @@
 
 export const SOURCES = {
   openmeteo: { label: 'Open-Meteo', what: 'weather', limits: [[60e3, 600, 'minute'], [3600e3, 5000, 'hour'], [864e5, 10000, 'day']] },
-  overpass: { label: 'Overpass', what: 'OSM trail details, uphill tags and click details', limits: [[864e5, 10000, 'day']] },
+  overpass: { label: 'Overpass', what: 'OSM trail details, uphill tags, click details and rocks on the water', limits: [[864e5, 10000, 'day']] },
   // brouter.de refuses with 403 "Please, retry later!" when one address calls too often. Measured 2026-10-13:
   // the 22nd call in 8 s was refused for 40 s; after more bursts that day, for over 9 minutes. Its rules aren't
   // published, so stay well below: 5 calls in 10 s, 12 a minute (the planner batches legs and keeps routes).

@@ -7,6 +7,7 @@
   python3 tools/smoke.py trails     # just the trail details (from a recorded tile)
   python3 tools/smoke.py header     # just the planner header fitting its sheet
   python3 tools/smoke.py lipas      # just LIPAS search and riding a LIPAS route (recorded answers)
+  python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -375,6 +376,86 @@ def lipas(chrome):
     return not fails
 
 
+# Water routing (13): Kaivopuisto → Suomenlinna over the Särkän väylä shipping lane,
+# with Väylävirasto's fairways and marks from a recorded file, a fixed wind and no
+# OSM. The lane is crossed (no longer inside it than when fairways are ignored), a
+# rock put on the way is kept clear of, the planner's Heads-up names the crossing,
+# and a leg takes well under the time budget. Map tiles load live.
+WATER = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const fx = await (await fetch(location.origin + '/tools/fixtures/water-helsinki.json')).json();
+  const D = await import(location.origin + '/js/waterdata.js');
+  const W = await import(location.origin + '/js/water.js');
+  const G = await import(location.origin + '/js/geo.js');
+  const n = await import(location.origin + '/js/net.js');
+  const fc = (features) => ({ type: 'FeatureCollection', features });
+  let extra = [];
+  D.seedWater((box, want) => ({
+    fairways: want.fairways ? fc(fx.fairways) : fc([]),
+    hazards: want.hazards ? fc([...fx.marks.map((f) => ({ ...f, properties: { ...f.properties, src: 'mark' } })), ...extra]) : fc([]),
+    wind: want.wind ? { speed: 10, gust: 14, dir: 180 } : null, missing: [] }));
+  const from = [24.9585, 60.1540], to = [24.9800, 60.1480];
+  const ships = fx.fairways.filter((f) => f.properties.cls === 'ship');
+  const inside = (p, g) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).some((rings) => {
+    let k = false;
+    for (const ring of rings) for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) k = !k;
+    }
+    return k;
+  });
+  const inLane = (c) => { let m = 0; for (let i = 1; i < c.length; i++) { const d = G.dist(c[i - 1], c[i]), s = Math.ceil(d / 5); for (let j = 0; j < s; j++) { const t = (j + 0.5) / s, p = [c[i - 1][0] + (c[i][0] - c[i - 1][0]) * t, c[i - 1][1] + (c[i][1] - c[i - 1][1]) * t]; if (ships.some((f) => inside(p, f.geometry))) m += d / s; } } return m; };
+  const t0 = performance.now();
+  const cross = await W.routeWater(from, to, { at: 0, hazards: 'ignore', wind: 'ignore' });
+  const ms = performance.now() - t0;
+  const ignore = await W.routeWater(from, to, { at: 0, fairways: 'ignore', hazards: 'ignore', wind: 'ignore' });
+  const mc = inLane(cross.coords), mi = inLane(ignore.coords);
+  if (!cross.water.events.some((e) => e.kind === 'ship')) errs.push('no shipping-lane crossing found');
+  if (mc > mi + 5) errs.push(`${Math.round(mc)} m inside the shipping lane, against ${Math.round(mi)} m ignoring fairways`);
+  if (ms > 6000) errs.push(`a leg took ${Math.round(ms)} ms`);
+  // a rock where the direct line went: kept clear of
+  const c = ignore.coords, L = G.lineLength(c);
+  let acc = 0, rock = null;
+  for (let i = 1; i < c.length && !rock; i++) { const d = G.dist(c[i - 1], c[i]); if (acc + d >= L * 0.3) { const t = (L * 0.3 - acc) / d; rock = [c[i - 1][0] + (c[i][0] - c[i - 1][0]) * t, c[i - 1][1] + (c[i][1] - c[i - 1][1]) * t]; } acc += d; }
+  extra = [{ type: 'Feature', properties: { kind: 'rock', src: 'osm' }, geometry: { type: 'Point', coordinates: rock } }];
+  const clear = await W.routeWater(from, to, { at: 0, fairways: 'ignore', wind: 'ignore' });
+  const near = G.nearestOnLine(rock, clear.coords).d;
+  if (near < 18) errs.push(`passes ${Math.round(near)} m from a rock (keeps 25 m)`);
+  extra = [];
+  // in the planner: Heads-up names the crossing
+  polku.set({ activity: 'paddle' });
+  await wait(800);
+  const p = polku.planner;
+  p.setActive(true);
+  p.clear();
+  p.setMode('water');
+  p.addPoint(from);
+  p.addPoint(to);
+  for (let k = 0; k < 60 && !(p.analysis && p.analysis.waterWarn); k++) await wait(250);
+  const texts = ((p.analysis && p.analysis.waterWarn) || []).map((w) => w.text);
+  if (!texts.some((t) => /^Crosses (the Särkän väylä|a shipping lane)/.test(t))) errs.push(`Heads-up: ${texts.join(' / ') || 'nothing from the water'}`);
+  p.reveal('warnings');
+  await wait(300);
+  if (!/Crosses/.test(document.querySelector('[data-sec=warnings]')?.textContent || '')) errs.push('the crossing is not in Heads-up');
+  if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (water legs need none)');
+  p.clear();
+  D.seedWater(null);
+  polku.set({ activity: 'mtb' });
+  return errs;
+})()"""
+
+
+def water(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.152/24.97')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WATER, timeout=85000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} water routing" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The planner header never spills out of the sheet (labels vary: a measured layout,
 # planner.js fitHeader). Narrow desktop windows with the bottom dock, a small phone.
 HEADER_OUT = """(() => {
@@ -524,6 +605,8 @@ def main():
             ok = header_fit(chrome) and ok
         if not only or 'lipas' in only:
             ok = lipas(chrome) and ok
+        if not only or 'water' in only:
+            ok = water(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

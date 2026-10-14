@@ -35,6 +35,14 @@ or idea.
 - **Snap a LIPAS line to the paths:** LIPAS lines are drawn by hand, about one point every 40–75 m, so a ride can cut corners off the real path. An optional "follow the paths" pass (one BRouter call with the line's points as via points) would fix the profile and trail details, at the cost of one call. *(12c)*
 - OSM route relations (Waymarked Trails) as rideable routes.
 
+### Water *(phase 13, 2026-10-14)*
+- **Depths for routing:** Traficom's hydrographic licence excludes route planning; an agreement with Traficom (copyright@traficom.fi) would allow it. Ask whether a free, non-commercial paddling planner can get one.
+- **Water rocks from the NLS terrain database** ("vesikivi", CC BY 4.0) with the user's own free NLS API key, the way Polku's optional MML layers work.
+- **A static water-hazards file** (OSM rocks, reefs and shoals for Finland, built weekly by a GitHub Action from Geofabrik's extract), if Overpass stays unreliable. All four mirrors failed while building phase 13.
+- **Wind beyond waves:** a headwind or crosswind cost per craft (a canoe in a crosswind), and gusts; the forecast at each leg's own hour on long trips.
+- **Show the keep-clear zones and the wind exposure on the map** while planning, so the route's bends explain themselves.
+- **Multisport** (proposed as phase 13b, awaiting OK).
+
 ### Your own things
 - **Saved places** *(user, 2026-10-14)*: star a place and find it again, starting on the device (export and import). They'd sync only if a login comes; see phase 16's backend question.
 - **Saved routes:** a list of routes, not just the last one.
@@ -52,7 +60,8 @@ or idea.
 
 - **FMI retires its old radar layers at the end of November 2026,** including `suomi_rr_eureffin`, which "now" reads. Polku falls back to reflectivity on its own, but that overstates drizzle. Find the replacement before then (ROADMAP, phase 12 "Later"). **Dated.**
 - **brouter.de pauses busy devices** ("retry later"; escalates to about 30 minutes). Never burst-test it: use the local BRouter (`tools/brouter-local.sh`). Valhalla on FOSSGIS stands in.
-- **Overpass mirrors are flaky:** 504s on every mirror at times while building phase 12. Trail details are best-effort and cached; route warnings from BRouter don't depend on it.
+- **Overpass mirrors are flaky:** 504s on every mirror at times while building phases 12 and 13. Trail details are best-effort and cached; route warnings from BRouter don't depend on it. The water router waits 2.5 s for OSM's rocks, then routes without them and re-routes when they arrive.
+- **Traficom's licence:** its depth layers are shown "not for navigation" and never used for routing. If Traficom changes the licence or asks, the layers can be dropped from Paddle's defaults. **Watch.**
 - **Free tiers if Polku gets popular:**
   - Open-Meteo: 10 000 calls a day per IP, non-commercial;
   - Overpass: 10 000 a day in `net.js`;

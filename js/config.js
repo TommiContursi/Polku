@@ -201,7 +201,7 @@ export const LIPAS_TYPES = {
 export const RASTER_OVERLAYS = {
   depthAreas: {
     label: 'Depth areas',
-    attribution: '© Traficom',
+    attribution: '© Traficom nautical chart data (not for navigation)',
     tiles: [wmsTiles(TRAFICOM_WMS, 'DepthArea_A', 'syvyysalue_a')],
     tileSize: 512,
     minzoom: 10,
@@ -210,7 +210,7 @@ export const RASTER_OVERLAYS = {
   },
   depthContours: {
     label: 'Depth contours',
-    attribution: '© Traficom',
+    attribution: '© Traficom nautical chart data (not for navigation)',
     tiles: [wmsTiles(TRAFICOM_WMS, 'DepthContour_L', 'syvyyskayra')],
     tileSize: 512,
     minzoom: 11,
@@ -219,7 +219,7 @@ export const RASTER_OVERLAYS = {
   },
   soundings: {
     label: 'Depth soundings',
-    attribution: '© Traficom',
+    attribution: '© Traficom nautical chart data (not for navigation)',
     tiles: [wmsTiles(TRAFICOM_WMS, 'Sounding_P', 'Syvyyspiste_point')],
     tileSize: 512,
     minzoom: 14,
@@ -228,7 +228,7 @@ export const RASTER_OVERLAYS = {
   },
   fairways: {
     label: 'Shipping lanes',
-    attribution: '© Traficom',
+    attribution: '© Traficom nautical chart data (not for navigation)',
     tiles: [wmsTiles(TRAFICOM_WMS, 'TwoWayRoutePart_A,DeepWaterRoutePart_A,TrafficSeparationSchemeLanePart_A')],
     tileSize: 512,
     minzoom: 9,
