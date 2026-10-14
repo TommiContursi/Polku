@@ -966,12 +966,15 @@ The user expects the smallest first step to be option A plus a FIT course export
 - **One reading order everywhere:** Profile → Waypoints → Heads-up → Climbs → Departure & weather → Route style → Time & speed. Waypoints is near the top because it's what you edit; the settings come last. Each section folds and remembers it (side panel and phones).
 - **Wide bottom panel** (container ≥ 900 px), always open, in rows: the profile across the top; then Waypoints · Heads-up and Climbs stacked in one column · Departure & weather; then Route style · Time & speed. Columns grow from a minimum width and wrap rather than squeeze; a section alone on a row lays its parts side by side (Departure: timeline | weather on the route; Time & speed: editor | on this route). Row breaks are `.sec-break` elements; the stack is `.sec-stack` (`display: contents` when narrow).
 - **The header (always visible, also when folded to the summary)** carries the big choices in words: **the sport**, **Round trip** and **Style: …** (#27, the user's note: starting was confusing with round trips in ⋯; the sport button since #33). On a phone or the side panel they have a line of their own above the routing modes; from 560 px they sit right after the modes; from 1240 px the whole header is one line, and the common tools come out of ⋯ from 1560 px.
-- **The header never spills over** (#34; the user's screenshot after the sport button joined it, a ~700 px window). Labels change with the sport and the style, so `planner.js` `fitHeader()` measures, on width changes and label changes, and picks the first arrangement that fits:
+- **The header, in four groups, in the same order at every size** (#37, the user's OK): **Draw** (Follow paths · Straight · Over water) · **Colour** (the route's colours: the profile's "Colour by" and "On map" in one native list, plus "Plain line"; both places stay in step) · **Route** (Sport · Round trip · Style) · **Edit** (Fit · Undo · Redo · ⋯), then Done.
+- **The header never spills over** (#34, #37). Labels change with the sport and the style, so `planner.js` `fitHeader()` measures, on width changes and label changes, and picks the first arrangement that fits:
   1. one line, if the breakpoint allows it;
-  2. two lines (`.two-line`);
-  3. the quick buttons on a line of their own (`.stack`);
-  4. compact labels: the sport's icon, the style without "Style:" (`.tight`);
-  5. the routing modes as icons, so they share a line with the tools (`.tighter`).
+  2. one slim line: only the active mode keeps its label, and the extra tools stay in ⋯ (`.slim`);
+  3. two lines (`.two-line`);
+  4. Colour and the Route buttons on a line of their own (`.stack`);
+  5. compact labels: the colour as its swatch, the sport's icon, the style without "Style:" (`.tight`);
+  6. Round trip as its icon (`.tightest`);
+  7. the routing modes as icons, so they share a line with the tools (`.tighter`).
   - `python3 tools/smoke.py header` checks nothing sticks out of the sheet at 360, 600, 700, 760 and 1300 px (bottom dock), with the longest sport name (Road cycling) and the Technical style.
 - **The planner opens at the bottom by default** for everyone new (`plannerDock` defaults to `bottom`; the side panel is a choice in ⋯ and Settings).
 - **The always-visible summary** is distance · time · ascent and descent together (↑42 ↓62 m); the stats row under it has the rest (hardest climb, speed, style; for paddling the wind and carry figures). On phones the stats are three even columns.

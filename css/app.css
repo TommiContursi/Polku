@@ -458,10 +458,16 @@ button { font: inherit; color: inherit; }
 .sheet[data-state="profile"] .sheet-head.stack .quick-pair { display: none; }
 .btn.quick { height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; gap: 6px; white-space: nowrap; }
 .btn.quick b { font-weight: 700; }
-/* the sport: a native list laid over the button, so it opens right there */
-.quick-sport { position: relative; cursor: pointer; }
-.quick-sport select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
-.quick-sport:focus-within { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+/* the sport and the route's colours: a native list laid over the button, so it opens right there */
+.quick-sel { position: relative; cursor: pointer; }
+.quick-sel select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.quick-sel:focus-within { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+.q-swatch { width: 22px; height: 8px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.sheet-head.tight .quick-color .q-label { display: none; }
+.sheet-head.tightest .quick-loop span { display: none; }
+/* one slim line (planner.js fitHeader): only the active mode keeps its label, the extra tools stay in ⋯ */
+.sheet-head.slim .sheet-head-in .seg.modes button:not([aria-pressed="true"]) span { display: none; }
+.sheet-head.slim .sheet-head-in .tool-wide, .sheet-head.slim .sheet-head-in .tool-sep.tool-wide { display: none; }
 .btn.quick[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .sheet-row + .sheet-row { margin-top: 8px; }
 .sheet-sum { flex: 1; min-width: 0; display: flex; gap: 6px 20px; align-items: flex-end; }
