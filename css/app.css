@@ -779,7 +779,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-change { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--accent); white-space: nowrap; }
 .wpl-change input, .pt-change input { width: 3.6em; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); color: var(--text); font: inherit; text-align: right; }
 .pt-change { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
-.wp-hit { position: relative; }
 .wp-sport { position: absolute; left: calc(50% + 4px); top: calc(50% - 20px); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; }
 .wp-sport svg { width: 12px; height: 12px; }
 .speed-sport { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; }
