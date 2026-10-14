@@ -293,6 +293,8 @@ SCENES = {
     'phone-marks': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=MARKS_JS),
     'desk-sun': dict(DESK, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=SUN_JS),
     'phone-sun': dict(PHONE, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=SUN_JS),
+    # a route coloured on the map, then cleared: nothing of it should stay
+    'phone-cleared': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); if (p.pickColor) p.pickColor('grade'); p.setColorOnMap(true); await wait(600); p.clear(); await wait(800); return true; })()"),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

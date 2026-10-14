@@ -4,6 +4,9 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
+### Fixed: a cleared route left its colours on the map ([#47](https://github.com/TommiContursi/Polku/pull/47))
+- With the route coloured on the map ("On map"), clearing it removed the line but left the colours and the wind arrows. Now they go with it.
+
 ### Reading the route ([#46](https://github.com/TommiContursi/Polku/pull/46))
 - **Points snap onto the path:** with Follow paths, a point clicked beside a trail or road moves onto it, where the route goes. A point the route can't reach gets a thin dashed line to it.
 - **Menus have an ×,** and a tap beside an open menu only closes it, without adding a point.
