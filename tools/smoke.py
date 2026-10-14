@@ -633,6 +633,17 @@ ROUTE_BITS = """(async () => {
   p.setMarks({ km: false });
   if ((await m.getSource('routeMarks').getData()).features.length) errs.push('distance marks stay when switched off');
   p.setMarks({ km: true });
+  // the route coloured on the map, then cleared: nothing of it stays
+  if (p.pickColor) { p.pickColor('grade'); p.setColorOnMap(true); }
+  await wait(300);
+  const coloured = (await m.getSource('routeColor').getData()).features.length;
+  p.clear();
+  await wait(400);
+  const left = (await m.getSource('routeColor').getData()).features.length + (await m.getSource('routeMarks').getData()).features.length;
+  if (!coloured || left) errs.push(`colours on the map: ${coloured} before clearing, ${left} after`);
+  p.undo();
+  for (let k = 0; k < 30 && !p.analysis; k++) await wait(200);
+  p.setColorOnMap(false);
   p.reveal('depart');
   await wait(200);
   if (!/Sunrise|Midnight sun|Polar night/.test(document.querySelector('.sun-line')?.textContent || '')) errs.push('no sun times in Departure & weather');
