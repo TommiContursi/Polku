@@ -247,7 +247,8 @@ const planner = new Planner(map, {
   activity: () => state.activity,
   trailDetails: () => !!state.trailDetails, // width and fallen trees along the route from the same tiles
   sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),
-  setSport: (k) => setActivity(k),
+  // the planner's own picker: the route's sport (the map's too); the map in it already: just the route
+  setSport: (k) => (state.activity === k ? planner.routeAs(k) : setActivity(k, { from: 'planner' })),
   setData,
   onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
   onAnalysis: () => { weather.renderTime(); weather.renderStrip(); },
@@ -504,8 +505,11 @@ const SPORT_NOTE = {
   swim: 'open-water routes near the shore, shipping lanes avoided, beaches and swimming places',
 };
 
-function setActivity(k) {
+// `from`: 'map' (the sport pill: the map's sport; a drawn route keeps its sports) or
+// 'planner' (the planner's picker: the route goes with it, and Undo brings it back)
+function setActivity(k, { from = 'map' } = {}) {
   if (state.activity === k) return;
+  const prev = state.activity;
   state.activity = k;
   state.overlays = overlaysFor(k);
   Object.assign(state, trailsFor(k));
@@ -515,8 +519,8 @@ function setActivity(k) {
   renderSettingsPanel();
   applyStyle();
   configureLayers();
-  planner.onActivityChange();
-  toast(`${ACTIVITIES[k].label}: ${SPORT_NOTE[k]}. Change any of it in Layers.`, { ms: 5000 });
+  // the planner says what happened to a drawn route; otherwise what the map shows now
+  if (!planner.onActivityChange(prev, { from })) toast(`${ACTIVITIES[k].label}: ${SPORT_NOTE[k]}. Change any of it in Layers.`, { ms: 5000 });
 }
 
 function set3d(on) {

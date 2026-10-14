@@ -1071,3 +1071,8 @@ body.dropping .drop-hint { display: flex; }
 .use-bar.hot i { background: #f59e0b; }
 .use-status { margin: 4px 0 0; color: #b45309; font-weight: 600; }
 .use-row.limited .use-head b::after { content: " ⚠"; color: #b45309; }
+
+/* a section the planner just opened for you lights up for a moment */
+@keyframes sec-flash { 0%, 30% { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); } 100% { box-shadow: inset 0 0 0 2px transparent; background: transparent; } }
+.sec-flash { animation: sec-flash 1.5s ease-out; border-radius: 12px; }
+@media (prefers-reduced-motion: reduce) { .sec-flash { animation: none; box-shadow: inset 0 0 0 2px var(--accent); } }

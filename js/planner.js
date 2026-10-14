@@ -344,8 +344,8 @@ export class Planner {
     const el = this.markers[i] && this.markers[i].getElement();
     if (el) { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
   }
-  undo() { if (this.past.length) { this.future.push(this.snapshot()); this.restoreSnap(this.past.pop()); } }
-  redo() { if (this.future.length) { this.past.push(this.snapshot()); this.restoreSnap(this.future.pop()); } }
+  undo() { if (this.past.length) { this.future.push(this.snapshot()); this.restoreSnap(this.past.pop()); this.renderQuickSport(); } }
+  redo() { if (this.future.length) { this.past.push(this.snapshot()); this.restoreSnap(this.future.pop()); this.renderQuickSport(); } }
 
   addPoint(ll) {
     this.commit();
@@ -690,7 +690,9 @@ export class Planner {
 
   renderQuickSport() {
     const sports = this.app.sports ? this.app.sports() : [];
-    const cur = sports.find((x) => x.k === this.app.activity());
+    // the route's sport (most of its length), which may not be the map's (the sport pill changed it)
+    const k = this.points.length > 1 && this.legs.length ? this.mainSport() : this.app.activity();
+    const cur = sports.find((x) => x.k === k);
     if (!cur) { this.els.quickSport.hidden = true; return; }
     this.els.sportSel.innerHTML = '';
     for (const x of sports) this.els.sportSel.append(h('option', { value: x.k }, x.label));
@@ -700,22 +702,64 @@ export class Planner {
     this.fitHeaderSoon();
   }
 
-  onActivityChange() {
+  // The sport changed (`prev` the one before). A drawn route keeps its sports: the legs
+  // that followed the old one have it as their own now, so nothing is routed again behind
+  // your back. From the planner's own picker (`from: 'planner'`) the route goes with the
+  // sport, and Undo brings it back. Returns true when it told you something.
+  onActivityChange(prev = null, { from = 'map' } = {}) {
     const sport = this.app.activity();
-    this.renderQuickSport();
     if (this.loop.open) this.closeLoop(); // lengths and styles are per sport
     this.style = this.savedStyle(sport);
     this.styleLeg = null;
-    // a leg with its own sport keeps it (and its style); one now in the route's sport just follows it
-    for (const l of this.legs) if (l.sport === sport) l.sport = undefined;
-    if (this.legs.some((l) => l.style && !l.sport)) {
-      for (const l of this.legs) if (!l.sport) l.style = null;
-      toast('Legs with their own style now follow the route’s — styles are per sport');
-    }
+    const route = this.points.length > 1 && prev && prev !== sport && ACTIVITIES[prev];
+    if (route) for (let i = 0; i < this.legs.length; i++) if (!this.legs[i].sport) this.legs[i].sport = this.legSportAs(i, prev);
+    for (const l of this.legs) if (l.sport === sport) l.sport = undefined; // already in the new sport: follows it
+    this.renderQuickSport(); // the route's sport, now that its legs keep theirs
     this.setMode(ACTIVITIES[sport].mode);
     this.panel.classList.toggle('is-paddle', isWater(this.app.activity()));
     this.renderToolbarState();
-    if (this.points.length > 1) this.update();
+    if (!route) { if (this.points.length > 1) this.update(); return false; }
+    if (from === 'planner') { this.routeAs(sport); return true; }
+    this.update(); // the same legs (their keys match): only drawn again
+    const L = (k) => ACTIVITIES[k].label;
+    toast(`The map is for ${L(sport)} now: your route stays ${L(this.mainSport())}.`, { ms: 9000, action: { label: `Route it as ${L(sport)}`, fn: () => this.routeAs(sport) } });
+    return true;
+  }
+
+  // the sport most of the route is in (by length)
+  mainSport() {
+    const by = {};
+    this.legs.forEach((_, i) => { const sp = this.legSport(i); by[sp] = (by[sp] || 0) + (this.lengthTo(i + 1) - this.lengthTo(i)); });
+    return Object.entries(by).sort((a, b) => b[1] - a[1]).map(([k]) => k)[0] || this.app.activity();
+  }
+
+  // what leg i's sport is when the route's sport is `act` (a water leg in a land sport is paddled)
+  legSportAs(i, act) {
+    const leg = this.legs[i];
+    if (leg.sport) return leg.sport;
+    return leg.mode === 'water' && !isWater(act) ? 'paddle' : act;
+  }
+
+  // The route in `sport`: the legs in its main sport follow it (a leg in another sport, the
+  // paddle across in a ride, keeps it), and their own styles go (styles are per sport).
+  // One undo step back to the route before.
+  routeAs(sport) {
+    if (this.app.activity() !== sport) return; // the sport moved on meanwhile
+    const prev = this.mainSport();
+    if (prev === sport) { this.update(); return; } // it is already
+    const main = this.legs.map((_, i) => this.legSport(i) === prev || this.legSport(i) === sport);
+    this.commit();
+    let styled = false;
+    this.legs.forEach((l, i) => {
+      if (!main[i]) return;
+      if (l.style) styled = true;
+      l.sport = undefined;
+      l.style = null;
+    });
+    this.update();
+    this.renderQuickSport();
+    const L = (k) => ACTIVITIES[k].label;
+    toast(`Your route is ${L(sport)} now${styled ? ' (legs with their own style follow the route’s)' : ''} · Undo brings back the ${L(prev)} route`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   setActive(on) {
@@ -3056,7 +3100,16 @@ export class Planner {
     const st = this.panel.dataset.state;
     if (this.layout() === 'sheet' && (st === 'peek' || (st === 'profile' && id !== 'profile'))) this.setSheetState('half');
     else if (this.layout() === 'side' && this.panel.dataset.state === 'min') this.setSheetState('open');
-    requestAnimationFrame(() => this.sec[id].el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+    // and show where: the section lights up for a moment (the Weather button, Speed, Style, a link…)
+    requestAnimationFrame(() => {
+      const el = this.sec[id].el;
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      el.classList.remove('sec-flash');
+      void el.offsetWidth; // restart the animation
+      el.classList.add('sec-flash');
+      clearTimeout(el.flashTimer);
+      el.flashTimer = setTimeout(() => el.classList.remove('sec-flash'), 1600);
+    });
   }
 
   profileSummary() {

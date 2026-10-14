@@ -4,6 +4,11 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Fixed: changing the sport changed your route ([#54](https://github.com/TommiContursi/Polku/pull/54))
+- **Picking another sport in the top menu routed a drawn route again in that sport,** leg by leg, without a word. Now the route keeps its sports, and a note offers **Route it as …** if that's what you want.
+- **The planner's own sport picker** shows the route's sport, changes its main sport only (a paddle leg in a ride stays a paddle), and **Undo** brings the route back.
+- **When the planner jumps to a section** (the Weather button while planning, Speed, Style…), that section lights up for a moment, so you see where to look.
+
 ### Winter as a trail colour ([#53](https://github.com/TommiContursi/Polku/pull/53))
 - **Trails & difficulty has a Winter choice** beside Difficulty, Uphill and Both. It colours the trails by how soon they open after snow, with ploughed paths, no access in winter and ski tracks, at any time of year, so you can look before the snow comes.
 - **A trail's card and its hover say what it's like in winter,** where that's mapped. A ski track out on a lake or a field has a card of its own, and LIPAS's ski tracks, skating and snowmobile routes say what they're for.
