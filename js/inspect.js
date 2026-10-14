@@ -2,7 +2,14 @@
 // Shows what the vector tiles know instantly, then enriches from Overpass /
 // Traficom on demand.
 
-import { DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, TRAFICOM_WMS } from './config.js';
+import { DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, TRAFICOM_WMS, LIPAS_TYPES, isLipasRoute } from './config.js';
+
+// LIPAS's winter lines aren't to ride: what each one is for instead
+const WINTER_LIPAS_NOTE = {
+  4402: 'A ski track: keep off it on foot and by bike. Whether it’s groomed: the operator’s website.',
+  4421: 'A snowmobile route: for snowmobiles, not a way to walk or ride.',
+  1550: 'A skating route on natural ice. Polku never says ice is safe: check the operator’s status before you go.',
+};
 import { elevation } from './dem.js';
 import { gradeHere } from './uphill.js';
 import { overpass } from './osm.js';
@@ -71,7 +78,9 @@ export function initInspector(map, app) {
       renderLipas(body, f.properties);
       const under = feats.find((x) => /^(path|track|cycleway)-|^road-/.test(x.layer.id));
       if (under) body.append(h('button', { type: 'button', class: 'link insp-switch', onclick: () => show(under, ll, feats), html: `The ${(WAY_NAMES[under.properties.class === 'path' ? under.properties.subclass || 'path' : under.properties.class] || 'way').toLowerCase()} under it ${icon('chevronRight', 13)}` }));
-      body.append(rideActions(f.properties, f.click || null, pop, f.near));
+      const wt = LIPAS_TYPES[f.properties.type];
+      if (wt && wt.winter) body.append(h('p', { class: 'insp-info insp-winter', html: `${icon('snow', 14)} ${escapeHtml(WINTER_LIPAS_NOTE[f.properties.type] || '')}` }));
+      else body.append(rideActions(f.properties, f.click || null, pop, f.near));
     }
     else if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
@@ -134,7 +143,7 @@ export function initInspector(map, app) {
   return {
     /** A LIPAS route's or stop's card (from search): props as the map layer has them. */
     openLipas(props, ll, near) {
-      show({ layer: { id: props.type > 4000 && props.type < 4800 ? 'lipas-route' : 'lipas-point' }, properties: props, near }, ll);
+      show({ layer: { id: isLipasRoute(props.type) ? 'lipas-route' : 'lipas-point' }, properties: props, near }, ll);
       return popup; // made before show() first waits
     },
   };

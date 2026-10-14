@@ -40,6 +40,18 @@ SCROLL_END = "(() => { const b = document.querySelector('.sheet-body'); b.scroll
 LOOP_JS = ("(async () => { const p = polku.planner; p.setActive(true); if (!p.openLoop) return true; p.openLoop([23.7610, 61.4980]); p.loop.km = 25; p.renderLoop();"
            " await p.generateLoops(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); p.reveal('loop'); return true; })()")
 LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
+# Phase 15a: winter on the map at Laajavuori (Jyväskylä; winter set On, the OSM winter ways and
+# LIPAS's ski tracks live), its group in Layers, and the snow layer over Lapland (FMI's stations).
+WINTER_ON = {'polku:winter': '"on"'}
+# the OSM winter ways from the recorded tile (Overpass can take longer than a scene waits)
+SEED_WINTER = ("try { const W = await import(location.origin + '/js/winter.js'); const fx = await (await fetch(location.origin + '/tools/fixtures/winter-laajavuori.json')).json();"
+               " W.seedWinterTile(fx.x, fx.y, fx.data); } catch (e) { /* before phase 15a */ }")
+WAIT = "(async () => { " + SEED_WINTER + " await new Promise((r) => setTimeout(r, 4000)); return true; })()"
+WINTER_LAYERS = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); " + SEED_WINTER + " await wait(3000); document.querySelector('[data-panel=layers-panel]').click(); await wait(500);"
+                 " const g = [...document.querySelectorAll('#layers-body .lg-group')].find((x) => /^Winter/.test(x.querySelector('.lg-title').textContent));"
+                 " if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); } await wait(600); return true; })()")
+SNOW_ON = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const c = document.querySelector('.tl-layers [data-k=snow]'); if (c) c.click();"
+           " await wait(5000); return true; })()")
 # Phase 14: paddling loops off Kaivopuisto (Polku's own water router, live water data), and
 # "More loops" (three more, in other directions) for the MTB loops above. Older code shows
 # what it did then: no paddling round trips, and "Other directions" in place of "More loops".
@@ -310,6 +322,12 @@ SCENES = {
     'phone-leg-tap': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('tap')),
     'desk-leg-menu': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('right')),
     'desk-leg-click': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('click')),
+    'desk-winter': dict(DESK, timeline=False, hash='#14/62.258/25.715', storage=WINTER_ON, js=WAIT),
+    'phone-winter': dict(PHONE, timeline=False, hash='#14/62.258/25.715', storage=WINTER_ON, js=WAIT),
+    'desk-winter-layers': dict(DESK, timeline=False, hash='#14/62.258/25.715', storage=WINTER_ON, js=WINTER_LAYERS),
+    'phone-winter-layers': dict(PHONE, timeline=False, hash='#14/62.258/25.715', storage=WINTER_ON, js=WINTER_LAYERS),
+    'desk-snow': dict(DESK, timeline=False, hash='#5.6/66.8/25.8', js=SNOW_ON),
+    'phone-snow': dict(PHONE, timeline=False, hash='#5.2/66.0/25.8', js=SNOW_ON),
     'desk-paddle-loops': dict(DESK, timeline=False, activity='paddle', hash='#12.5/60.150/24.955', js=LOOP_AT('paddle', [24.955, 60.155], 12)),
     'phone-paddle-loops': dict(PHONE, timeline=False, activity='paddle', hash='#12.5/60.150/24.955', js=LOOP_AT('paddle', [24.955, 60.155], 12)),
     'desk-river-loops': dict(DESK, timeline=False, activity='paddle', hash='#12.5/61.485/21.795', js=LOOP_AT('paddle', [21.795, 61.485], 8)),

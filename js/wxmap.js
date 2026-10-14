@@ -10,6 +10,7 @@
 // moves the particles simply pause and fade out, and forecast playback only
 // re-samples the grid. Particle canvases render at 1× pixel density.
 
+import { measuredSnow } from './winter.js';
 import { forecastCells, cellSize, latticePoint, alignSeries, uncached } from './weather.js';
 import { compass } from './geo.js';
 import { h, icon, store } from './ui.js';
@@ -22,9 +23,11 @@ const HOURS = 48;
 const CELL = 24; // px, screen cache resolution
 
 const WIND_RAMP = [[0, '#3b82f6'], [3, '#22d3ee'], [6, '#4ade80'], [9, '#facc15'], [12, '#fb923c'], [16, '#ef4444'], [22, '#a855f7']];
+// snow on the ground, cm (the model): a cool wash that leaves bare ground clear
+const SNOW_RAMP = [[1, '#e0f2fe'], [10, '#bae6fd'], [25, '#7dd3fc'], [50, '#60a5fa'], [80, '#6366f1'], [120, '#7c3aed']];
 const TEMP_RAMP = [[-25, '#7c3aed'], [-15, '#2563eb'], [-5, '#38bdf8'], [0, '#e0f2fe'], [5, '#a7f3d0'], [10, '#fde047'], [18, '#fb923c'], [25, '#ef4444'], [32, '#9f1239']];
 export const RAIN_RAMP = [[0.1, '#93c5fd'], [0.5, '#3b82f6'], [2, '#1d4ed8'], [5, '#7c3aed'], [10, '#db2777']];
-export { TEMP_RAMP };
+export { TEMP_RAMP, SNOW_RAMP };
 
 const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 export function ramp(stops, v) {
@@ -75,7 +78,7 @@ export class WeatherOverlay {
   constructor(map, app) {
     this.map = map;
     this.app = app; // { setImage(id, img|null), setRadar(r|null), setData(id, fc), dark() }
-    this.on = { wind: false, temp: false, rain: false };
+    this.on = { wind: false, temp: false, rain: false, snow: false };
     this.open = false; // timeline bar visible
     this.hour = 0;
     this.grid = null;
@@ -100,7 +103,7 @@ export class WeatherOverlay {
     onStatus((src, s) => { if (src === 'openmeteo' && (!s || s.retry) && this.active) this.maybeFetch(); });
   }
 
-  get layersOn() { return this.on.wind || this.on.temp || this.on.rain; }
+  get layersOn() { return this.on.wind || this.on.temp || this.on.rain || this.on.snow; }
   // forecast data is needed for the weather layers and for the timeline strip
   get active() { return this.open || !!this.docked || this.layersOn; }
   get animated() { return this.on.wind || this.on.rain; }
@@ -117,6 +120,7 @@ export class WeatherOverlay {
     this.maybeFetch();
     if (this.animated) this.startAnim();
     if (this.on.rain) this.loadRadarMeta();
+    if (this.on.snow) this.loadSnowObs();
     this.readout();
   }
 
@@ -336,7 +340,7 @@ export class WeatherOverlay {
     if (!g) return;
     const t = timeAtHour(this.hour);
     const N = g.series.length;
-    const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N), cloud = new Float32Array(N);
+    const u = new Float32Array(N), v = new Float32Array(N), gust = new Float32Array(N), temp = new Float32Array(N), rain = new Float32Array(N), cloud = new Float32Array(N), snow = new Float32Array(N);
     const times = g.series[0].time;
     let i = 0;
     while (i < times.length - 2 && times[i + 1] <= t) i++;
@@ -351,8 +355,9 @@ export class WeatherOverlay {
       const len = Math.hypot(ux, vy) || 1;
       u[k] = (ux / len) * sp; v[k] = (vy / len) * sp;
       gust[k] = lin(s.gust); temp[k] = lin(s.temp); rain[k] = lin(s.precip); cloud[k] = s.cloud ? lin(s.cloud) : NaN;
+      snow[k] = s.snow ? lin(s.snow) : NaN; // cm (cells from before snow was asked for: not known)
     }
-    this.cur = { u, v, gust, temp, rain, cloud, t, i, f };
+    this.cur = { u, v, gust, temp, rain, cloud, snow, t, i, f };
     this.buildField();
     if (images) this.stripData = null; // new grid → rebuild the strip
     this.renderStrip();
@@ -384,7 +389,7 @@ export class WeatherOverlay {
     if (!w) return null;
     const at = (arr) => w.reduce((s, [k, wt]) => s + arr[k] * wt, 0);
     const u = at(c.u), v = at(c.v);
-    return { u, v, speed: Math.hypot(u, v), gust: at(c.gust), temp: at(c.temp), rain: at(c.rain), cloud: at(c.cloud), dir: ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360 };
+    return { u, v, speed: Math.hypot(u, v), gust: at(c.gust), temp: at(c.temp), rain: at(c.rain), cloud: at(c.cloud), snow: c.snow ? at(c.snow) : NaN, dir: ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360 };
   }
 
   // Precipitation summed over the next `hours` from the selected time.
@@ -425,6 +430,8 @@ export class WeatherOverlay {
     };
     const fieldOn = this.on.temp || this.on.wind;
     this.app.setImage('wxField', fieldOn ? draw((s) => (this.on.temp ? [...ramp(TEMP_RAMP, s.temp), 255] : [...ramp(WIND_RAMP, s.speed), 255])) : null);
+    // snow on the ground: a wash where there's 1 cm or more (bare ground stays clear)
+    this.app.setImage('wxSnow', this.on.snow ? draw((x) => (!(x.snow >= 1) ? null : [...ramp(SNOW_RAMP, x.snow), Math.round(Math.min(220, 120 + x.snow * 2))])) : null);
     const forecastRain = this.on.rain && this.hour >= 0.5;
     this.app.setImage('wxRain', forecastRain ? draw((s) => (s.rain < 0.05 ? null : [...ramp(RAIN_RAMP, s.rain), Math.round(Math.min(235, 150 + s.rain * 45))])) : null);
     this.syncRadar();
@@ -441,7 +448,20 @@ export class WeatherOverlay {
         }
       }
     }
+    // snow: what FMI's stations measured (now) beside the model's wash
+    if (this.on.snow && this.snowObs) {
+      for (const o of this.snowObs) feats.push({ type: 'Feature', properties: { kind: 'snowobs', t: o.cm >= 1 ? `${Math.round(o.cm)} cm` : '0', bare: o.cm >= 1 ? 0 : 1 }, geometry: { type: 'Point', coordinates: o.ll } });
+    }
     this.app.setData('wxLabels', { type: 'FeatureCollection', features: feats });
+  }
+
+  // FMI's measured snow depths, once an hour, while the snow layer is on
+  async loadSnowObs() {
+    if (!this.on.snow) return;
+    try {
+      this.snowObs = await measuredSnow();
+      if (this.on.snow) this.renderImages();
+    } catch { /* the model's wash still shows */ }
   }
 
   // Radar "now": FMI's composite over Finland (sharp, our colours) and RainViewer
@@ -717,6 +737,7 @@ export class WeatherOverlay {
     if (!this.on.wind) { this.clearCanvas(this.windCtx, this.windCv); this.windCv.hidden = true; }
     if (!this.on.rain) { this.clearCanvas(this.rainCtx, this.rainCv); this.rainCv.hidden = true; }
     if (!this.on.temp && !this.on.wind) this.app.setImage('wxField', null);
+    if (!this.on.snow) this.app.setImage('wxSnow', null);
     if (!this.on.rain) { this.app.setImage('wxRain', null); this.app.setRadar(null); this.app.setImage('wxRadarFi', null); this.fi = null; this.fiRate = null; }
     if (!this.layersOn) this.app.setData('wxLabels', { type: 'FeatureCollection', features: [] });
   }
@@ -729,7 +750,7 @@ export class WeatherOverlay {
     this.anim = 0;
   }
 
-  stop() { this.on = { wind: false, temp: false, rain: false }; this.clearLayers(); this.stopClock(); }
+  stop() { this.on = { wind: false, temp: false, rain: false, snow: false }; this.clearLayers(); this.stopClock(); }
 
   // ------------------------------------------------------------------ time bar
   buildBar() {
@@ -743,7 +764,7 @@ export class WeatherOverlay {
     this.readEl = h('div', { class: 'wx-read' });
     // weather layers right on the timeline
     this.chipsEl = h('div', { class: 'chips tl-layers', role: 'group', 'aria-label': 'Weather layers' },
-      ...[['wind', 'wind', 'Wind'], ['temp', 'temp', 'Temperature'], ['rain', 'rain', 'Rain']].map(([k, ic, label]) =>
+      ...[['wind', 'wind', 'Wind'], ['temp', 'temp', 'Temperature'], ['rain', 'rain', 'Rain'], ['snow', 'snow', 'Snow']].map(([k, ic, label]) =>
         h('button', { type: 'button', class: 'chip', 'data-k': k, 'aria-pressed': 'false', onclick: () => this.app.onToggle({ [k]: !this.on[k] }), html: `${icon(ic, 14)}${label}` })));
     this.noteEl = h('div', { class: 'tl-note' });
     this.stripCv = h('canvas', { class: 'tl-strip', role: 'img', 'aria-label': '48-hour forecast here: temperature, rain and wind. Drag to change the time.' });
@@ -984,6 +1005,7 @@ export class WeatherOverlay {
     if (this.on.temp) parts.push(['°C', TEMP_RAMP]);
     else if (this.on.wind) parts.push(['m/s', WIND_RAMP]);
     if (this.on.rain) parts.push(['mm/h', RAIN_RAMP]);
+    if (this.on.snow) parts.push(['cm snow', SNOW_RAMP]);
     const key = parts.map((p) => p[0]).join();
     if (key === this.legendKey) return;
     this.legendKey = key;
@@ -1023,7 +1045,8 @@ export class WeatherOverlay {
       this.nowEl.innerHTML =
         `<div class="tl-now-main">${icon(kind, 24)}<b>${Math.round(s.temp)}°</b><small>${this.pointerLL ? 'here' : 'map centre'}</small></div>` +
         `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
-        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>`;
+        `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` +
+        (this.on.snow && Number.isFinite(s.snow) ? `<div>${icon('snow', 12)}${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</div>` : '');
     });
   }
 }

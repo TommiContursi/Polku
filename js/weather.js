@@ -140,6 +140,7 @@ export function alignSeries(s, t0, n) {
     time: Array.from({ length: n }, (_, k) => t0 + k * 3600),
     speed: pick(s.speed), dir: pick(s.dir), gust: pick(s.gust), temp: pick(s.temp), precip: pick(s.precip),
     cloud: s.cloud ? pick(s.cloud) : null, // cells cached before cloud cover was asked for
+    snow: s.snow ? pick(s.snow) : null, snowfall: s.snowfall ? pick(s.snowfall) : null, // and before snow (phase 15)
   };
 }
 
@@ -151,7 +152,7 @@ async function fetchPoints(points, hours = 49) {
   const lat = points.map((p) => p[1].toFixed(3)).join(',');
   const lon = points.map((p) => p[0].toFixed(3)).join(',');
   const url = `${OPEN_METEO}?latitude=${lat}&longitude=${lon}` +
-    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover' +
+    '&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation,cloud_cover,snow_depth,snowfall' +
     `&forecast_hours=${hours}&past_hours=1&wind_speed_unit=ms&timeformat=unixtime&timezone=UTC`;
   const res = await request('openmeteo', url, { weight: points.length }); // Open-Meteo counts each location
   if (!res.ok) throw new Error('Weather unavailable');
@@ -167,6 +168,8 @@ async function fetchPoints(points, hours = 49) {
     temp: r.hourly.temperature_2m,
     precip: r.hourly.precipitation,
     cloud: r.hourly.cloud_cover,
+    snow: r.hourly.snow_depth ? r.hourly.snow_depth.map((m) => (m == null ? null : Math.round(m * 1000) / 10)) : null, // cm
+    snowfall: r.hourly.snowfall || null, // cm in the hour
   }));
   return v;
 }
@@ -188,6 +191,8 @@ export function sampleAt(s, t) {
     dir: ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360,
     temp: lin(s.temp),
     precip: lin(s.precip),
+    snow: s.snow ? lin(s.snow) : null, // cm on the ground (the model)
+    snowfall: s.snowfall ? lin(s.snowfall) : null, // cm an hour
   };
 }
 
@@ -212,6 +217,7 @@ export async function windAlong(pts, along, tAt, startSec) {
   const speed = new Float32Array(n), gust = new Float32Array(n), dir = new Float32Array(n);
   const head = new Float32Array(n), cross = new Float32Array(n);
   const temp = new Float32Array(n), precip = new Float32Array(n);
+  const snow = new Float32Array(n).fill(NaN), snowfall = new Float32Array(n).fill(NaN); // NaN: a cell from before snow was asked for
   for (let i = 0; i < n; i++) {
     const s = series[Math.min(k - 1, Math.round((along[i] / total) * (k - 1)))];
     const w = sampleAt(s, startSec + (tAt[i] || 0));
@@ -221,6 +227,8 @@ export async function windAlong(pts, along, tAt, startSec) {
     const d = rad(hdg - w.dir);
     speed[i] = w.speed; gust[i] = w.gust; dir[i] = w.dir;
     temp[i] = w.temp; precip[i] = w.precip;
+    if (w.snow != null) snow[i] = w.snow;
+    if (w.snowfall != null) snowfall[i] = w.snowfall;
     head[i] = w.speed * Math.cos(d); // >0 wind against you
     cross[i] = w.speed * Math.sin(d);
   }
@@ -229,7 +237,7 @@ export async function windAlong(pts, along, tAt, startSec) {
   // it's more than three days ahead (less certain): sample indexes, or -1
   const at = (t) => { for (let i = 0; i < n; i++) if (startSec + (tAt[i] || 0) > t) return i; return -1; };
   return {
-    speed, gust, dir, head, cross, temp, precip, long,
+    speed, gust, dir, head, cross, temp, precip, snow, snowfall, long,
     beyond: at(last), beyondSec: last, unsure: at(now + 72 * 3600),
     start: { ...first, time: startSec },
     hourly: series[Math.floor(k / 2)],

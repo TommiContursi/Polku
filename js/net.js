@@ -32,7 +32,8 @@ export const SOURCES = {
   vayla: { label: 'Väylävirasto', what: 'nautical chart' },
   traficom: { label: 'Traficom', what: 'water depth' },
   rainviewer: { label: 'RainViewer', what: 'rain radar' },
-  fmi: { label: 'FMI', what: 'rain radar (Finland)', limits: [[300e3, 600, '5 minutes'], [864e5, 20000, 'day']] },
+  fmi: { label: 'FMI', what: 'rain radar and measured snow (Finland)', limits: [[300e3, 600, '5 minutes'], [864e5, 20000, 'day']] },
+  copernicus: { label: 'Copernicus Marine', what: 'sea ice (FMI’s ice charts)' },
 };
 
 const STEPS = [60e3, 120e3, 300e3, 900e3];

@@ -13,6 +13,7 @@
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
+  python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -723,6 +724,72 @@ def loops(chrome):
     return not fails
 
 
+# Winter (phase 15a): Auto / On / Off; the winter ways from a recorded OSM tile at
+# Laajavuori drawn in Trailmap's classes; LIPAS's ski tracks asked for in winter; the
+# Winter group in Layers; FMI's measured snow read from its WFS answer; the snow chip.
+WINTER = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const W = await import(location.origin + '/js/winter.js');
+  const fx = await (await fetch(location.origin + '/tools/fixtures/winter-laajavuori.json')).json();
+  // the classes
+  const c = (t) => W.winterClass(t);
+  const want = [[{ 'bicycle:winter': 'no', highway: 'track' }, 'closed'], [{ 'piste:type': 'nordic' }, 'ski'], [{ highway: 'cycleway', snowplowing: 'yes' }, 'ploughed'],
+    [{ highway: 'cycleway', winter_service: 'limited' }, 'unploughed'], [{ highway: 'path', 'mtb:winter': '1' }, 'open1'], [{ highway: 'path', 'mtb:winter': 'yes' }, 'open2'],
+    [{ highway: 'path', 'mtb:winter': '3' }, 'open3'], [{ highway: 'path', seasonal: 'winter' }, 'seasonal'], [{ highway: 'path' }, null]];
+  for (const [t, k] of want) if (c(t) !== k) errs.push(`class of ${JSON.stringify(t)}: ${c(t)}`);
+  // FMI's answer: the latest value per station, -1 is no snow
+  const xml = '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:BsWfs="http://xml.fmi.fi/schema/wfs/2.0" xmlns:gml="http://www.opengis.net/gml/3.2"><wfs:member><BsWfs:BsWfsElement><BsWfs:Location><gml:Point><gml:pos>62.40 25.68 </gml:pos></gml:Point></BsWfs:Location><BsWfs:Time>2026-01-10T08:00:00Z</BsWfs:Time><BsWfs:ParameterName>snow_aws</BsWfs:ParameterName><BsWfs:ParameterValue>31.0</BsWfs:ParameterValue></BsWfs:BsWfsElement></wfs:member><wfs:member><BsWfs:BsWfsElement><BsWfs:Location><gml:Point><gml:pos>62.40 25.68 </gml:pos></gml:Point></BsWfs:Location><BsWfs:Time>2026-01-10T09:00:00Z</BsWfs:Time><BsWfs:ParameterName>snow_aws</BsWfs:ParameterName><BsWfs:ParameterValue>33.0</BsWfs:ParameterValue></BsWfs:BsWfsElement></wfs:member><wfs:member><BsWfs:BsWfsElement><BsWfs:Location><gml:Point><gml:pos>60.20 24.90 </gml:pos></gml:Point></BsWfs:Location><BsWfs:Time>2026-01-10T09:00:00Z</BsWfs:Time><BsWfs:ParameterName>snow_aws</BsWfs:ParameterName><BsWfs:ParameterValue>-1.0</BsWfs:ParameterValue></BsWfs:BsWfsElement></wfs:member></wfs:FeatureCollection>';
+  const obs = W.parseSnow(xml);
+  if (obs.length !== 2 || obs.find((o) => o.ll[1] === 62.4).cm !== 33 || obs.find((o) => o.ll[1] === 60.2).cm !== 0) errs.push(`FMI parse: ${JSON.stringify(obs)}`);
+  const near = W.snowNear(obs, [25.72, 62.26], 60);
+  if (!near || near.cm !== 33) errs.push(`nearest station: ${JSON.stringify(near)}`);
+  // Auto: on from 5 cm, off below 2 (no flicker between); On and Off are yours
+  W.setWinterSetting('auto');
+  if (W.isWinter(4, false) || !W.isWinter(5, false) || !W.isWinter(3, true) || W.isWinter(1, true) || W.isWinter(null, false) || !W.isWinter(null, true)) errs.push('auto thresholds');
+  W.setWinterSetting('on'); if (!W.isWinter(0, false)) errs.push('On');
+  W.setWinterSetting('off'); if (W.isWinter(50, true)) errs.push('Off');
+  W.setWinterSetting('on');
+  // the map in winter: the recorded tile, drawn
+  W.holdWinterFetches(true);
+  W.seedWinterTile(fx.x, fx.y, fx.data);
+  polku.map.jumpTo({ center: [25.715, 62.258], zoom: 14 });
+  await wait(600);
+  document.querySelector('[data-panel=layers-panel]').click();
+  await wait(400);
+  const segs = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Winter/.test(g.querySelector('.lg-title').textContent));
+  if (!segs) return [...errs, 'no Winter group in Layers'];
+  [...segs.querySelectorAll('.seg button')].find((b) => b.textContent === 'On').click();
+  await wait(800);
+  if (!polku.state.winterOn) errs.push('winter not on');
+  if (!document.querySelector('.act-winter')) errs.push('no winter badge on the sport');
+  for (let k = 0; k < 20 && !polku.map.querySourceFeatures('winterWays').length; k++) await wait(250);
+  const cls = {}; for (const f of polku.map.querySourceFeatures('winterWays')) cls[f.properties.cls] = 1;
+  for (const k of ['ski', 'open1', 'open2', 'ploughed']) if (!cls[k]) errs.push(`no ${k} ways drawn (${Object.keys(cls).join(', ')})`);
+  for (const id of ['winter-way', 'winter-ski', 'winter-ski-gap', 'winter-closed']) if (!polku.map.getLayer(id)) errs.push(`no layer ${id}`);
+  if (!polku.lipas.routeTypes.includes(4402)) errs.push(`LIPAS ski tracks not asked for: ${polku.lipas.routeTypes}`);
+  // off again: the winter layers go
+  const g2 = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Winter/.test(g.querySelector('.lg-title').textContent));
+  [...g2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Off').click();
+  await wait(800);
+  if (polku.state.winterOn || polku.map.getLayer('winter-way') || polku.lipas.routeTypes.includes(4402)) errs.push('winter layers stay after Off');
+  // the snow chip on the timeline
+  if (!document.querySelector('.tl-layers [data-k=snow]')) errs.push('no Snow on the timeline');
+  W.setWinterSetting('auto');
+  return errs;
+})()"""
+
+
+def winter(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/62.258/25.715')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WINTER, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} winter on the map" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Clicks and taps on the route: a click or a tap on the line, or on a leg's handle, opens
 # that part's menu and adds no point (its first button does); with the planner closed, a
 # click on the route opens it with that part's menu; a LIPAS route drawn over a trail is
@@ -1043,6 +1110,8 @@ def main():
             ok = stops(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
+        if not only or 'winter' in only:
+            ok = winter(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

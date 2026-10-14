@@ -5,7 +5,7 @@
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
   DIFF_COLORS, RASTER_OVERLAYS, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
-  isWater,
+  isWater, isLipasRoute,
 } from './config.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
@@ -65,7 +65,8 @@ const diffColor = (idxExpr, none) => ['match', idxExpr, ...DIFF_COLORS.flatMap((
 
 const isPathClass = ['==', ['get', 'class'], 'path'];
 // the trail colours' own opacities (Layers → Trails & difficulty), 0.1–1: 'down' difficulty, 'up' uphill
-const trailColorOpacity = (s, which) => (s.overlayOpacity && s.overlayOpacity[`trail:${which}`] != null ? s.overlayOpacity[`trail:${which}`] : 1);
+// yours, or full; in winter with the winter ways on, faint (difficulty matters little under snow, as on Trailmap's winter map)
+const trailColorOpacity = (s, which) => (s.overlayOpacity && s.overlayOpacity[`trail:${which}`] != null ? s.overlayOpacity[`trail:${which}`] : 1) * (s.winterOn && s.overlays.winterWays ? 0.3 : 1);
 const k0 = (hc) => (hc ? 1.35 : 1);
 const TRAIL_SUB = ['path', 'bridleway', 'steps', 'footway'];
 
@@ -95,6 +96,7 @@ export function buildStyle(s, ctx) {
     trailWays: { type: 'geojson', data: ctx.data.trailWays || EMPTY }, // trail details (js/trails.js)
     trailPoints: { type: 'geojson', data: ctx.data.trailPoints || EMPTY },
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS' },
+    winterWays: { type: 'geojson', data: ctx.data.winterWays || EMPTY }, // OSM's winter tags (js/winter.js)
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
     lipasPick: { type: 'geojson', data: ctx.data.lipasPick || EMPTY }, // a route picked in search, while its card is open
@@ -262,16 +264,40 @@ export function buildStyle(s, ctx) {
   addRasterOverlays(s, sources, layers, 'overlay');
 
   // ---- Official routes (LIPAS) -----------------------------------------
-  if (s.overlays.lipasRoutes) {
-    const typeColor = ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#555'];
+  if (s.overlays.lipasRoutes || (s.winterOn && s.overlays.lipasWinter)) {
+    const typeColor = ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => isLipasRoute(k)).flatMap(([k, v]) => [+k, v.color]), '#555'];
     add({ id: 'lipas-route-casing', type: 'line', source: 'lipasRoutes', minzoom: 8, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.75, 'line-width': zi(8, 2, 14, 6, 18, 10) } });
     add({
       id: 'lipas-route', type: 'line', source: 'lipasRoutes', minzoom: 8, layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': typeColor, 'line-width': zi(8, 1, 14, 3, 18, 5), 'line-opacity': 0.85,
-        'line-dasharray': ['case', ['in', ['get', 'type'], ['literal', [4451, 4452]]], ['literal', [2, 1.2]], ['literal', [1, 0]]],
+        'line-dasharray': ['case', ['in', ['get', 'type'], ['literal', [4451, 4452, 4421]]], ['literal', [2, 1.2]], ['literal', [1, 0]]],
       },
     });
+    // a ski track as a double line, as on Trailmap's winter map: keep off it on foot and by bike
+    add({ id: 'lipas-ski-gap', type: 'line', source: 'lipasRoutes', minzoom: 11, filter: ['==', ['get', 'type'], 4402], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(11, 0.6, 14, 1.4, 18, 2.4) } });
+  }
+
+  // ---- Winter ways (OSM: js/winter.js) ------------------------------------
+  // How soon a way opens after snow, ploughing, no access in winter, ski tracks: Trailmap's winter classes
+  if (s.winterOn && s.overlays.winterWays) {
+    const W = zi(11, 1.6, 14, 3.4, 18, 6);
+    const cls = (c) => ['==', ['get', 'cls'], c];
+    add({ id: 'winter-casing', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', cls('ski')], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.8, 'line-width': zi(11, 3, 14, 6, 18, 10) } });
+    add({
+      id: 'winter-way', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', ['in', ['get', 'cls'], ['literal', ['ski', 'closed']]]], layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': ['match', ['get', 'cls'], 'ploughed', '#0d9488', 'open1', '#65a30d', 'open2', '#a3b10e', 'open3', '#d39b46', 'unploughed', '#94a3b8', 'seasonal', '#0891b2', '#64748b'],
+        'line-width': W,
+        'line-dasharray': ['match', ['get', 'cls'], 'unploughed', ['literal', [1.5, 1.2]], 'seasonal', ['literal', [0.6, 1.4]], ['literal', [1, 0]]],
+      },
+    });
+    // no access in winter: red and white, like a closed ski base
+    add({ id: 'winter-closed', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('closed'), layout: { 'line-join': 'round' }, paint: { 'line-color': '#dc2626', 'line-width': W } });
+    add({ id: 'winter-closed-dash', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('closed'), layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(11, 1, 14, 2, 18, 3.5), 'line-dasharray': ['literal', [1, 1]] } });
+    // ski tracks from OSM: the double line in pink (LIPAS's in its own magenta)
+    add({ id: 'winter-ski', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('ski'), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#f472b6', 'line-width': zi(11, 2.4, 14, 4.4, 18, 7) } });
+    add({ id: 'winter-ski-gap', type: 'line', source: 'winterWays', minzoom: 11, filter: cls('ski'), layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(11, 0.8, 14, 1.6, 18, 2.6) } });
   }
 
   // ---- Uphill difficulty (computed overlay) -----------------------------
@@ -490,6 +516,10 @@ function addWeather(s, ctx, sources, layers) {
     sources.wxField = { type: 'image', url: d.wxField.url, coordinates: d.wxField.coordinates };
     layers.push({ id: 'wx-field', type: 'raster', source: 'wxField', paint: { 'raster-opacity': wx.temp ? op('wx:temp', 0.5) : 0.38, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
   }
+  if (wx.snow && d.wxSnow) {
+    sources.wxSnow = { type: 'image', url: d.wxSnow.url, coordinates: d.wxSnow.coordinates };
+    layers.push({ id: 'wx-snow', type: 'raster', source: 'wxSnow', paint: { 'raster-opacity': op('wx:snow', 0.7), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
+  }
   if (wx.rain && d.wxRain) {
     sources.wxRain = { type: 'image', url: d.wxRain.url, coordinates: d.wxRain.coordinates };
     layers.push({ id: 'wx-rain', type: 'raster', source: 'wxRain', paint: { 'raster-opacity': op('wx:rain', 0.85), 'raster-resampling': 'linear', 'raster-fade-duration': 0 } });
@@ -509,7 +539,7 @@ function addWeather(s, ctx, sources, layers) {
 
 function addRasterOverlays(s, sources, layers, slot) {
   for (const [id, o] of Object.entries(RASTER_OVERLAYS)) {
-    if (o.slot !== slot || !s.overlays[id]) continue;
+    if (o.slot !== slot || !s.overlays[id] || (o.winter && !s.winterOn)) continue;
     let tiles = o.tiles;
     if (o.mml) {
       if (!s.mmlKey) continue;
@@ -798,6 +828,11 @@ function addLabels(s, P, hc, layers) {
   place('label-city', ['city'], 4, zi(4, 11, 12, 20), FONT_B);
   if (s.weather && s.weather.temp) {
     layers.push({ id: 'wx-temp-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'temp'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': 13, 'text-padding': 30 }, paint: { 'text-color': '#111827', 'text-halo-color': 'rgba(255,255,255,0.9)', 'text-halo-width': 2 } });
+  }
+  if (s.weather && s.weather.snow) {
+    // the snow FMI's stations measured: the real thing beside the model's wash
+    // (a bare station is a small grey 0: measured, no snow)
+    layers.push({ id: 'wx-snow-label', type: 'symbol', source: 'wxLabels', filter: ['==', ['get', 'kind'], 'snowobs'], layout: { 'text-field': ['get', 't'], 'text-font': FONT_B, 'text-size': ['case', ['==', ['get', 'bare'], 1], 10, 12], 'text-padding': 12, 'symbol-sort-key': ['get', 'bare'] }, paint: { 'text-color': ['case', ['==', ['get', 'bare'], 1], '#94a3b8', '#4338ca'], 'text-halo-color': 'rgba(255,255,255,0.95)', 'text-halo-width': 2 } });
   }
   if (s.weather && s.weather.rain) {
     // precipitation amount where it rains, nudged below the °C label

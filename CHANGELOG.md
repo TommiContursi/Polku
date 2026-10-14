@@ -2,6 +2,15 @@
 
 What's new in Polku, newest first. Every change ships to [polku.si](https://polku.si) when its pull request is merged. Plans and ideas are in [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/BACKLOG.md](docs/BACKLOG.md).
 
+## 2026-10-15
+
+### Winter on the map ([#52](https://github.com/TommiContursi/Polku/pull/52))
+- **Winter switches on by itself** where there's snow (5 cm or more at FMI's nearest station, or in the forecast), or set it yourself: **Auto / On / Off** in the new Winter group of the layers panel. The sport pill shows ❄ while it's winter.
+- **Snow depth as a layer:** a wash of the snow on the ground (the forecast), with what FMI's stations measured on top. On the timeline as **Snow**.
+- **Winter ways from OpenStreetMap,** drawn like Trailmap's winter map: how soon a trail opens after snow, ploughed and unploughed paths, no access in winter (red and white), ski tracks as a double line, ways there only in winter. The summer difficulty colours fade meanwhile.
+- **Ski tracks, skating routes on natural ice and snowmobile routes** from LIPAS. Their cards say they're not to ride, with the operator's page for the grooming status.
+- **Sea ice for paddlers and swimmers:** FMI's daily ice charts over the sea.
+
 ## 2026-10-14
 
 ### Round trips for paddling and swimming, and More loops ([#50](https://github.com/TommiContursi/Polku/pull/50))

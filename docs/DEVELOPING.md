@@ -85,6 +85,7 @@ js/search.js        grouped search: places, LIPAS routes and stops, trails, coor
 js/wxmap.js         weather overlay and timeline (particles, fields, radar, forecast strip)
 js/weather.js       Open-Meteo client, weather along the route (10 days for trips with nights)
 js/stops.js         stops and nights: a night's length, days, places to sleep, the gear check, st= links
+js/winter.js        winter: Auto / On / Off, FMI's measured snow, OSM's winter ways (z12 Overpass tiles), sea ice
 js/radar.js         FMI rain radar (GeoTIFF from the download service)
 js/safety.js        traffic and safety layers, ships, hazards along routes
 js/cameras.js       road weather cameras and the camera modal
