@@ -539,9 +539,10 @@ def multi(chrome):
     return not fails
 
 
-# Clicks and taps on the route: a click on the line adds a via point; a finger gets the
-# leg's menu (no new point); with the planner closed, a click on the route opens it with
-# that part's menu; a LIPAS route drawn over a trail is what a click there picks.
+# Clicks and taps on the route: a click or a tap on the line, or on a leg's handle, opens
+# that part's menu and adds no point (its first button does); with the planner closed, a
+# click on the route opens it with that part's menu; a LIPAS route drawn over a trail is
+# what a click there picks.
 ROUTE_MENU = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const I = await import(location.origin + '/js/inspect.js');
@@ -561,9 +562,18 @@ ROUTE_MENU = """(async () => {
   const menu = () => document.querySelector('.polku-popup .pt-menu');
   fire();
   await wait(300);
-  if (p.points.length !== 3) errs.push(`a click on the line: ${p.points.length} points (a via point expected)`);
-  p.undo();
-  await wait(300);
+  if (p.points.length !== 2) errs.push(`a click on the line added a point (${p.points.length})`);
+  if (!menu() || !/Add a point here/.test(menu().textContent)) errs.push('a click on the line: no menu for that part of the route');
+  if (p.menu) p.menu.remove();
+  const g = p.ghosts[0] && p.ghosts[0].getElement();
+  if (!g) errs.push('no handle on the leg');
+  else {
+    g.click();
+    await wait(300);
+    if (p.points.length !== 2) errs.push(`a click on the leg's handle added a point (${p.points.length})`);
+    if (!menu() || !/Add a point here/.test(menu().textContent)) errs.push("a click on the leg's handle: no menu for that part");
+    if (p.menu) p.menu.remove();
+  }
   p.lastTouchAt = Date.now();
   fire();
   await wait(300);

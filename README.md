@@ -26,7 +26,7 @@ Polku is a web app built on open data. It runs in your browser, keeps your setti
 MTB, gravel, road cycling, hiking, trail running, running, paddling and swimming. Each has its own router, speeds, warnings and map, and **one route can mix them**: bike to the shore, paddle across, run on the island, with the changeovers in the time.
 
 - **Click to route, drag to change:** drag a point or the line itself and the route follows as you drag. Undo covers everything.
-- **Tap a part of the route** (or right-click it) to add a point there or change that part: its sport, how it's routed, its style. With the planner closed, a click on your route opens it.
+- **Click or tap a part of the route** to add a point there or change that part: its sport, how it's routed, its style. With the planner closed, a click on your route opens it.
 - **Route style in the sport's own words:** Flowy trails, Technical, Smooth & easy, Paved roads, Nature paths, Near the shore… For the whole route or a single leg.
 - **An elevation profile** coloured by gradient, uphill or MTB difficulty, trail width or visibility, surface, wind, temperature or rain, on the map too if you like.
 - **Heads-up** lists what's on the way: steps, no-bike sections, fallen trees, hard-to-follow trails, road works, busy roads, carries. Each comes with an *Avoid* button.

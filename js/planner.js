@@ -1483,9 +1483,10 @@ export class Planner {
     const r = touch ? 12 : 6;
     const hit = this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
-    // the line itself: a click adds a via point there; a finger on it gets the choices first
-    // (a tap is easily a mistake, and there's more to do with a part of the route than add a point)
-    if (hit && !hit.properties.loading) { if (touch) this.openLegMenu(hit.properties.leg, e.lngLat); else this.insertPoint(hit.properties.leg, ll); }
+    // the line itself: a click or a tap gets that part's menu, mouse and finger alike (a point
+    // added by mistake is easy, and there's more to do with a part of the route than add one);
+    // "Add a point here" comes first in it, and a drag still reshapes the route
+    if (hit && !hit.properties.loading) this.openLegMenu(hit.properties.leg, e.lngLat);
     else { this.addPoint(ll); this.sportHint(); }
     this.autoPeek();
   }
@@ -1535,7 +1536,9 @@ export class Planner {
       if (d < bd) { bd = d; best = i; }
     }
     this.mapHover = true;
-    const onMap = this.app.routeTip(e.originalEvent, routeReadout(a, best, this.roadAt(best)));
+    const d = routeReadout(a, best, this.roadAt(best));
+    d.lines.push('<i class="tip-hint">Click for options · drag to reshape</i>');
+    const onMap = this.app.routeTip(e.originalEvent, d);
     this.chart.setHover(best, !onMap);
     this.hoverAt(best, true);
   }
@@ -1708,8 +1711,8 @@ export class Planner {
   }
 
   // A handle in the middle of each leg: drag it to pull the route somewhere
-  // else, or click it for a via point there. Hidden where the leg is short on
-  // screen, so the handles never crowd the points.
+  // else, or click it for that part's menu, as on the line. Hidden where the leg
+  // is short on screen, so the handles never crowd the points.
   renderGhosts() {
     for (const g of this.ghosts) g.remove();
     this.ghosts = [];
@@ -1728,7 +1731,7 @@ export class Planner {
       }
       mid = [+mid[0].toFixed(6), +mid[1].toFixed(6)];
       const mode = leg.mode === 'fixed' ? 'auto' : leg.mode;
-      const el = h('div', { class: `wp-hit ghost ghost-${mode}`, title: 'Drag to reshape the route · click to add a point here' }, h('div', { class: 'wp-ghost' }));
+      const el = h('div', { class: `wp-hit ghost ghost-${mode}`, title: 'Drag to reshape the route · click for options' }, h('div', { class: 'wp-ghost' }));
       const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(mid).addTo(this.map);
       m.len = len;
       m.on('dragstart', () => {
@@ -1738,7 +1741,7 @@ export class Planner {
       });
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.insertPoint(li, mid); });
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openLegMenu(li, { lng: mid[0], lat: mid[1] }); });
       this.ghosts.push(m);
     });
     this.fitGhosts();
@@ -1926,7 +1929,7 @@ export class Planner {
     return moved;
   }
 
-  // A part of the route (one leg), tapped, or right-clicked on desktop: what you can do
+  // A part of the route (one leg), clicked, tapped or right-clicked: what you can do
   // with it there. Adding a point comes first; then the leg's own settings (its sport,
   // how it's routed, its style), avoiding the spot, and finding it on the profile.
   openLegMenu(li, lngLat) {
@@ -2270,8 +2273,8 @@ export class Planner {
     this.els.warnings = h('div', { class: 'list warnings' });
     this.els.wind = h('div', { class: 'list wind' });
     this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
-      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point for options · hold the map for more'
-      : 'Click the map to add points · drag a point or the line to reshape · click a point for options · right-click for more');
+      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for options · hold the map for more'
+      : 'Click the map to add points · drag a point or the line to reshape · click a point or the line for options · right-click the map for more');
     this.els.dock = h('div', { class: 'dock' }); // the timeline docks here while planning (main.js)
     this.els.body = h('div', { class: 'sheet-body' }, this.els.stats, h('div', { class: 'sheet-cols' },
       // a round trip being made (shown only then)

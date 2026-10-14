@@ -4,6 +4,12 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
+### One click for the route ([#48](https://github.com/TommiContursi/Polku/pull/48))
+- **A click on the route opens a menu for that part,** as a tap does on a phone, instead of adding a point straight away. "Add a point here" is the menu's first button; its sport, how it's routed and its style are there too.
+- **The same for the ring in the middle of each leg.**
+- **Dragging the line still reshapes the route,** and a click on the map away from the route still adds a point.
+- Hovering the route says "Click for options · drag to reshape".
+
 ### Fixed: a cleared route left its colours on the map ([#47](https://github.com/TommiContursi/Polku/pull/47))
 - With the route coloured on the map ("On map"), clearing it removed the line but left the colours and the wind arrows. Now they go with it.
 

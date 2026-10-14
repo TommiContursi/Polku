@@ -56,6 +56,8 @@ or idea.
 
 ### Planner
 - The route's colour sits in the header and in the profile *(done in #37)*.
+- **A quick point on the line** (Alt-click, say) if two clicks for a point (#48: a click opens the part's menu, "Add a point here" is its first button) feel slow. Dragging already makes one. *(2026-10-14)*
+- **More grab handles along long legs,** by their length on screen, so it's clear the whole line can be dragged, not just its middle. *(2026-10-14, from the user's question about extra points on long legs)*
 - **Avoid profiles** ("Avoid obstacles and faint trails") with Polku's own BRouter profiles, if warnings and ranking turn out not to be enough. *(phase 12 design; the user chose warnings first)*
 
 ## Things to watch (possible future issues)

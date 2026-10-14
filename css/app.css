@@ -859,6 +859,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .hover-tip span { display: block; color: var(--muted); }
 .hover-tip .dot { width: 8px; height: 8px; margin-right: 3px; vertical-align: 0; }
 .hover-tip em.bad { font-style: normal; font-weight: 600; color: var(--bad); }
+.hover-tip .tip-hint { font-style: normal; font-size: 11px; opacity: .8; }
 @keyframes hover-tip-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .hover-tip { animation: none; } }
 .pt-menu { display: flex; flex-direction: column; gap: 8px; min-width: 236px; }
