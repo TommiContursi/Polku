@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
-### A new README and this changelog
+### A new README and this changelog ([#42](https://github.com/TommiContursi/Polku/pull/42))
 - **The README** now shows what Polku does, with a screenshot for each feature. The developer notes moved to [docs/DEVELOPING.md](docs/DEVELOPING.md).
 - **The map's footer** links to Polku's source and its maker, alongside OpenStreetMap and the other credits.
 
