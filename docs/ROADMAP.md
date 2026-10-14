@@ -24,7 +24,7 @@ Also approved:
 | 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | merged |
 | 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | merged |
 | 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | merged |
-| 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | (this PR) | PR open |
+| 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | [#39](https://github.com/TommiContursi/Polku/pull/39) | PR open |
 | 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
 | 14 | Round trips for paddling | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
