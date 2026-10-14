@@ -182,6 +182,10 @@ SCENES = {
     'narrow-bottom-peek': dict(DESK, w=700, h=900, timeline=False, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"', 'polku:styles': '{"mtb":{"p":"technical","v":{},"wet":"auto"}}'}),
     'narrow-bottom-half': dict(DESK, w=700, h=900, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"', 'polku:styles': '{"mtb":{"p":"technical","v":{},"wet":"auto"}}'}),
     'small-phone-peek': dict(PHONE, w=360, h=740, timeline=False, route='route-kauppi-mtb.json', state='peek', storage={'polku:styles': '{"mtb":{"p":"technical","v":{},"wet":"auto"}}'}),
+    # rain "now" (live FMI radar): Jyväskylä, and somewhere it really rains
+    'desk-rain-jkl': dict(DESK, timeline=True, hash='#11/62.235/25.74', settle=16, storage={'polku:settings': json.dumps({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': False, 'temp': False}})}),
+    'phone-rain-jkl': dict(PHONE, timeline=True, hash='#11/62.235/25.74', settle=16, storage={'polku:settings': json.dumps({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': False, 'temp': False}})}),
+    'desk-rain-coast': dict(DESK, timeline=True, hash='#9/60.5/21.6', settle=16, storage={'polku:settings': json.dumps({'activity': 'mtb', 'timeline': True, 'weather': {'rain': True, 'wind': False, 'temp': False}})}),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
