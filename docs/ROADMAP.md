@@ -35,21 +35,35 @@ Also approved:
 | — | Fix: a cleared route left its colours (and wind arrows) on the map | `clear-colours` | [#47](https://github.com/TommiContursi/Polku/pull/47) | merged |
 | — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | merged |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | [#49](https://github.com/TommiContursi/Polku/pull/49) | merged |
-| 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | [#50](https://github.com/TommiContursi/Polku/pull/50) | PR open |
+| 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | [#50](https://github.com/TommiContursi/Polku/pull/50) | merged |
 | 15 | Winter research and plan (docs) | `winter` | [#51](https://github.com/TommiContursi/Polku/pull/51) | merged |
 | 15a | Winter on the map: Auto / On / Off, the snow layer with FMI's measured depths, OSM's winter ways, LIPAS ski tracks, skating and snowmobile routes, sea ice | `winter-conditions` | [#52](https://github.com/TommiContursi/Polku/pull/52) | merged |
-| — | Winter as a trail colour (Trails & difficulty: Off / Difficulty / Uphill / Both / Winter), any time of year; winter on the trail cards | `winter-colours` | [#53](https://github.com/TommiContursi/Polku/pull/53) | PR open |
-| — | Fix: changing the sport re-routed a drawn route (it keeps its sports now, "Route it as …" asks, Undo works); the planner's section jumps light up | `sport-switch` | [#54](https://github.com/TommiContursi/Polku/pull/54) | PR open |
+| — | Winter as a trail colour (Trails & difficulty: Off / Difficulty / Uphill / Both / Winter), any time of year; winter on the trail cards | `winter-colours` | [#53](https://github.com/TommiContursi/Polku/pull/53) | merged |
+| — | Fix: changing the sport re-routed a drawn route (it keeps its sports now, "Route it as …" asks, Undo works); the planner's section jumps light up | `sport-switch` | [#54](https://github.com/TommiContursi/Polku/pull/54) | merged |
+| — | Docs: plans and ideas written as plans (no chat quotes), the backlog sorted by size, this order | `docs-tidy` | [#55](https://github.com/TommiContursi/Polku/pull/55) | PR open |
 | 15b | Winter on the route: keep off ski tracks, lit ways after dark, time in snow, winter Heads-up, paddling in the ice season | `winter-route` | — | next |
-| 15c | Skiing (when it's winter) | `skiing` | — | planned |
-| 21 | Say what it means: every colour and line explained in its hover and card, and everything Polku works out shown, not only used (an audit of every layer) | `explain` | — | planned, after 15b |
+| — | Bug sweep: the backlog's small bugs in one PR (see BACKLOG, "Small") | `bug-sweep` | — | after 15b |
+| 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, and the per-sport place kinds visible as switches | `explain` | — | planned |
 | 20 | Map style: how roads, cycleways, paths and the rest are drawn (Trailmap's cartography as a guide); LIPAS routes by category (cycling, MTB, hiking, walking) | `map-style` | — | planned |
-| 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
-| 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
+| 17 | Weather: clouds, thunder, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
 | 18 | Languages: English, Finnish and Swedish, with a switcher in Settings (your browser's language by default) | `languages` | — | planned |
-| 19 | Help and a tutorial (the last phase: when the rest has settled) | `help` | — | planned |
+| 15c | Skiing (in December–January, with snow to test on) | `skiing` | — | planned |
+| 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | later |
+| 19 | Help and a tutorial (the last phase: when the rest has settled) | `help` | — | planned, last |
 
-## Why this order
+## The order from here (agreed 2026-10-15)
+
+1. **15b, winter on the route.** It's timely (winter is close), and the winter map (15a) is in.
+2. **A bug sweep:** the backlog's small bugs in one quick PR.
+3. **21, say what it means.** Every colour explained, nothing that Polku works out kept hidden, and the per-sport place kinds as visible switches. It touches every layer, so it goes before the map's look changes.
+4. **20, map style.** It builds on 21's explanations.
+5. **17, weather layers,** with the check before heavy loads.
+6. **18, languages,** once the wording has settled through 21.
+7. **15c, skiing,** when there's snow to test on.
+8. **16, Strava & Garmin** (research and a plan): big, and it depends on outside accounts and terms, so it moved later.
+9. **19, help and a tutorial,** last, when the rest holds still.
+
+## Why this order (phases 0–10)
 
 - **1 and 2 come first.** They fix the biggest complaint: while planning you see panels, not the map. They also build the panel that phases 6–10 all add to: speed chip, waypoint list, preferences and round trips.
 - **3 before 5.** Seven sports don't fit the current activity row, so the activity pill has to exist first.
@@ -284,7 +298,7 @@ Also approved:
   - Details on hover, Trackpad rotates & tilts, and High contrast;
   - later, the speed presets.
 
-**Built (PR #17)**, widened after the user's review: buttons were hard to connect, and they moved between screen sizes.
+**Built (PR #17)**, widened after review: buttons were hard to connect, and they moved between screen sizes.
 - **Where things live, at every size:**
   - **Top bar:** what you do (search, Plan, sport, ⚙ Settings).
   - **Bottom right:** what the map shows and how you look at it. One column: Layers (a thumbnail of the base map), Weather, compass, locate, zoom (desktop). It rides above a bottom planner and an open phone timeline, and stays visible while planning; only a full planner hides it.
@@ -459,7 +473,7 @@ Also approved:
 - **Touch targets:** points sit in a 44 px invisible target on touch screens (30 px with a mouse); leg handles 36 px.
 - **Point menu:** distance from the start; next leg Follow / Straight / Water; for via points **Start here** / **Finish here** (a loop turns round instead, same route); for the finish **Back to start**; Remove. It pans into view, clear of the top bar and the planner.
 - **Spot menu:** long-press the map (550 ms) or right-click: **Add a point here** / **Avoid this spot** while planning, **Route from here** / **Add to my route** / **Avoid this spot** otherwise. "Avoid here" lives here rather than in the point menu: a via point is where you *do* want to go. No menu after a right-drag rotate.
-- **Profile colours, compact** (the user's note on #20): the three rows of chips became one line under the chart, "Colour by [Gradient ▾]" (a native menu grouped Terrain / Ground / Weather) and an "On map" switch; a panel at least 1080 px wide shows the chips in one row instead.
+- **Profile colours, compact** (from review of #20): the three rows of chips became one line under the chart, "Colour by [Gradient ▾]" (a native menu grouped Terrain / Ground / Weather) and an "On map" switch; a panel at least 1080 px wide shows the chips in one row instead.
 - **Tests:** `tools/smoke.py` drags the line in every layout (mouse on desktop, hold-and-drag on touch) and checks one new point under the pointer, one undo step, no pan and panning back on; `tools/shoot.py` has `desk/phone-drag`, `-point-menu`, `-spot-menu` and `phone-profile`.
 
 **Cut**
@@ -472,7 +486,7 @@ Also approved:
 
 ## Fix between 7 and 8 — routing that holds up on free services
 
-The user hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta). Cause: brouter.de's per-address limit (403 "Please, retry later!"), which our live drag and per-leg calls ran into, and which Polku treated as a failure.
+Testing hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta). Cause: brouter.de's per-address limit (403 "Please, retry later!"), which our live drag and per-leg calls ran into, and which Polku treated as a failure.
 
 **Built (PR #22)**
 - **Pacing** (`net.js` `pace`): brouter.de at most 5 calls / 10 s and 12 / minute; calls beyond wait for a slot. A 403 "retry later" is a back-off (1, 2, 4… min), not an error. A dropped connection gets one retry.
@@ -505,14 +519,14 @@ The user hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta
 - **Waypoints section** (`renderWaypoints`, between Profile and Departure; its own column in a wide bottom panel):
   - a row per point: its marker badge, the name (an input: rename in place, Enter or leaving the field saves, Escape cancels), and below it the label when a name stands in for it, the distance from the start and the road it's on;
   - **↑ / ↓** buttons (labelled for screen readers), **remove**, and a **grip** to drag (pointer events; a line marks where it drops; one undo step);
-  - **Reverse direction** under the list (the user's note on #23; the same as Reverse in the tools);
+  - **Reverse direction** under the list (from review of #23; the same as Reverse in the tools);
   - click a row: the map eases to the point, centred in the part the planner leaves free, and its marker pulses.
 - **Names** (`pname`, a WeakMap from point to name: points move as arrays, so names follow them through reorder, reverse and drags; snapshots copy them for undo). Shown on the marker's tooltip and the point menu; saved with the route and the offline snapshot; written into GPX `<wpt><name>`. Never in share links.
 - **Auto names:** a point without a name shows the road or path it's on: Valhalla's tags when it routed the leg, else the loaded tiles (`js/names.js`: `transportation_name` segments in a 0.002° grid, rebuilt after the map moves; indoor corridors skipped). The list refreshes when new tiles bring names.
 - **Reorder** (`movePointTo`): legs whose two ends stay neighbours are kept (no routing); an imported track the other way round is turned round; new neighbours get a new leg in the mode the point's outgoing leg had. Routing for the new legs is batched (#22).
 - **Undo covers everything:** snapshots now include names and the route's name; points, leg modes, avoided places, reverse, loop, start/finish here, imports, drags, renames and reorders are all one step each.
 - **Road names on the route:** the hover readout and the profile tooltip lead with the name ("Hämeenkatu · cycleway · paving stones"). Only ways running within 35° of the route's direction count, so a street crossing under or over it isn't taken for it.
-- **Show the whole route** (the user's note): a ⛶ tool in the planner's header row (always visible) and <kbd>F</kbd>; opening the planner while the route is entirely off screen frames it.
+- **Show the whole route:** a ⛶ tool in the planner's header row (always visible) and <kbd>F</kbd>; opening the planner while the route is entirely off screen frames it.
 - **Bug found on the way:** `easeTo({ padding })` leaves the padding on the map (MapLibre keeps it), so every later `fitBounds` with the planner's padding counted it twice and silently did nothing on a phone. Points are now centred with `offset`; `tools/smoke.py` checks the map keeps no padding.
 
 **Cut**
@@ -524,7 +538,7 @@ The user hit "Couldn't route this leg" in easy places (Jyväskylä, Ainolanranta
 
 ## Phase 9 — Route style (redesigned 2026-10-13, before building)
 
-The user asked to think this through first: comprehensive and useful per sport, and maybe per leg rather than only for the whole route. The first plan (generic avoid ↔ prefer sliders, custom profiles uploaded to brouter.de) is replaced by this one.
+This was to be thought through first: comprehensive and useful per sport, and maybe per leg rather than only for the whole route. The first plan (generic avoid ↔ prefer sliders, custom profiles uploaded to brouter.de) is replaced by this one.
 
 **What we found out**
 - **No uploads needed.** BRouter's `profile:name=value` URL parameters override *any* global variable of a stock profile, not only the ones brouter-web shows (source: `BExpressionContext._parseFile` injects them as assignments, and `BExpression.parse` protects that value against the profile's own first assignment). Uploading custom profiles would cost extra calls, has no documented retention, and a broken profile would fail every route; we don't need it.
@@ -656,7 +670,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 
 ## Phase 12 — Trail details & obstacles (redesigned 2026-10-14, OK'd; 12a built)
 
-**The goal, in the user's words:** looking at the map, understand what a trail is like before going there. Not just its difficulty, which Polku already shows well, but how wide it is, how visible it is on the ground, how rough it is, and whether something is in the way: fallen trees, gates, fords, wet spots. The same information should help when planning: seen along the route, warned about, and preferred or avoided where possible. Build on what's there (trail colours, profile colours, Heads-up, route styles) rather than adding separate controls.
+**The goal:** looking at the map, understand what a trail is like before going there. Not just its difficulty, which Polku already shows well, but how wide it is, how visible it is on the ground, how rough it is, and whether something is in the way: fallen trees, gates, fords, wet spots. The same information should help when planning: seen along the route, warned about, and preferred or avoided where possible. Build on what's there (trail colours, profile colours, Heads-up, route styles) rather than adding separate controls.
 
 **What Polku does today**
 - **Map:** the difficulty halo (`mtb_scale` from the vector tiles), uphill colours, surface only as "paved / unpaved" (the tiles carry no more), `bicycle=no` ticks. OpenFreeMap's tiles have no width, visibility, smoothness, SAC or obstacles.
@@ -794,7 +808,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - **Overpass load:** best-effort, cached, one query per tile, only at zoom 14+.
 - **The custom profiles depend on brouter.de accepting uploads,** as the road profile does today; the stock profile is the fallback.
 
-**Questions for the user, and the answers (2026-10-14)**
+**Questions, and the decisions (2026-10-14)**
 1. Trail details on by default for MTB, hike and trail run? **Yes: try it, change it if we don't like it.**
 2. Polku's own MTB and hiking BRouter profiles for "Avoid obstacles and faint trails"? Or keep phase 12 to warnings and ranking only. **Warnings and ranking are enough for now.** So 12b has no avoid profiles; the Avoid button (a no-go circle) stays the way round an obstacle.
 3. Two PRs (12a, 12b), or one? **12a and 12b.**
@@ -803,13 +817,13 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - **Tiles:** `js/trails.js`, one Overpass query per z13 tile, cached a week in IndexedDB (`js/osm.js`, which now holds the Overpass client for everyone). Each tile has:
   - every trail (path, bridleway, steps, MTB-graded footways) with its tags;
   - tracks, footways and cycleways only when they have obstacles, fords, mud, visibility or `mtb:scale:uphill`;
-  - **fences, walls and hedges**, and gates, stiles, cycle barriers, fallen trees and fords **anywhere in the tile**. A user caught the water tower's locked gate on Tykkikallio missing: it sits on a service road and in a fence, not on a trail.
+  - **fences, walls and hedges**, and gates, stiles, cycle barriers, fallen trees and fords **anywhere in the tile**. Testing caught the water tower's locked gate on Tykkikallio missing: it sits on a service road and in a fence, not on a trail.
   - Size: the Tykkikallio tile is 192 KB of JSON (5–13 s) and 62 KB stored: 263 trails, 105 fences, walls and hedges, 33 obstacles.
 - **Drawing, in Trailmap's and the JOSM style's language:**
   - inside the tiles that have loaded, trails are drawn from OSM, and a `within` filter hides the vector tiles' own trail lines there;
   - difficulty keeps the colour of the band, and the band's width follows `width` (< 0.6 m thinner, 0.9–1.8 m and ≥ 1.8 m thicker);
   - `trail_visibility` intermediate and bad get a dotted centre line and a lighter band; horrible and no show the colour only;
-  - overgrown and wet stretches: bold round dots, green on one side and blue on the other (made bolder after the user compared them with Trailmap);
+  - overgrown and wet stretches: bold round dots, green on one side and blue on the other (made bolder after comparing them with Trailmap);
   - fences: brown dashes (hedges green, walls grey) from z15;
   - icons from z15: fallen tree or log, gate, gate with no access (red, `access=no` / `locked=yes`), stile or kissing gate, cycle barrier, ford.
   - It all has a map key under Trails & difficulty.
@@ -859,7 +873,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - The Settings counter says what Overpass is for: trail details, uphill tags and click details.
 
 **Later (from the 12 review, not built)**
-- **Rain "now": FMI's rain rate, built in #35** (found 2026-10-14; the user's screenshots: pink and pouring over Jyväskylä in drizzle).
+- **Rain "now": FMI's rain rate, built in #35** (found in testing, 2026-10-14: pink and pouring over Jyväskylä in drizzle).
   - **Cause:** the reflectivity composite (`radar_finland_cappi_dbzh`, Marshall–Palmer) said 2–9 mm/h; FMI's corrected rain rate said 0.01–0.05. In autumn the melting layer is low, and reflectivity overstates light rain.
   - **Built:** `js/radar.js` reads `suomi_rr_eureffin`: 16-bit, mm/h × 100 (from its own colour map: 7 = 0.07 mm/h … 2513 = 25 mm/h), the same values whatever box is asked for, and shown from 0.1 mm/h.
   - Light rain is drawn fainter (strength grows with the rate), so drizzle no longer paints the map purple.
@@ -878,7 +892,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 
 ## Phase 12c — LIPAS routes & search (OK'd and built 2026-10-14)
 
-**The user's ask:** use the existing routes (LIPAS) in planning: add one to a route, or choose to ride one. Make them findable in search, and develop search further. Later, the user's own saved places, perhaps with a login (see [BACKLOG.md](BACKLOG.md)).
+**The goal:** use the existing routes (LIPAS) in planning: add one to a route, or choose to ride one. Make them findable in search, and develop search further. Later, your own saved places, perhaps with a login (see [BACKLOG.md](BACKLOG.md)).
 
 **What Polku does today**
 - **LIPAS on the map:** official routes and stops (lean-tos, huts, campfire and landing sites) are drawn per sport. They load by area from LIPAS's WFS (`js/lipas.js`, cached per z9 tile).
@@ -950,7 +964,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - Fairway areas carry the design draught (`mitoitussyvays`), so shipping lanes (7–15 m) and small-boat routes (1.8–4 m) can be told apart; harbour basins are a type.
   - Aids to navigation give isolated-danger and cardinal marks.
 - **OpenStreetMap (ODbL)** has rocks, reefs and shoals, sparsely: southern Näsijärvi had 33 rocks, 3 reefs and 3 shoals. Overpass was failing on every mirror at times while testing.
-- **NLS terrain database water rocks** ("vesikivi") need an API key: a later option with the user's own key, as Polku's MML layers already do.
+- **NLS terrain database water rocks** ("vesikivi") need an API key: a later option with your own key, as Polku's MML layers already do.
 
 **Built**
 - **A second, synchronous drawing of the same window** (canvas, the hidden map's projection: about 15 ms) marks each cell:
@@ -985,19 +999,19 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 
 ## Phase 13b — Multisport routes (OK'd 2026-10-14; before phase 14)
 
-**The user's answers (2026-10-14):**
+**Decisions (2026-10-14):**
 - **Flexible:** any sport after any other, with the suggestions below.
 - **Swim is a sport of its own, in the sport switcher.** The rule: any sport a leg can have is also a sport in the switcher.
 - **Before phase 14.**
 - **Each leg's sport is also in the waypoint list,** next to Follow / Straight / Water and the leg's style, for easy editing. The changeover time goes on the waypoint's row.
-- **Stops and nights** *(user, 2026-10-14)*: a waypoint can be a stop of its own, not only a changeover. Examples are a break ("Lunch, 1 h") or a night ("Sleep at the lean-to, go on at 08:00"), on a bike tour, a hike or a paddling trip.
+- **Stops and nights:** a waypoint can be a stop of its own, not only a changeover. Examples are a break ("Lunch, 1 h") or a night ("Sleep at the lean-to, go on at 08:00"), on a bike tour, a hike or a paddling trip.
   - The time after a stop moves on by its length, so arrival times, the route weather and the timeline's shaded band follow. Day 2 starts when you say.
   - The summary shows days for a trip over midnight: "Day 1: 62 km · 4 h 10 · Day 2: 48 km · 3 h 20", with each day's weather.
   - Overnight spots nearby are suggested from LIPAS (lean-tos, huts, campsites) and OSM (shelters, campsites).
   - The forecast reaches 49 hours today (`forecast_hours=49`). Multi-day trips need up to about 7 days: Open-Meteo has 16, at more data per call. Polku would say when a day is beyond the forecast, or turning less certain.
   - Share links carry the stops (`st=`: point, minutes or the time to go on).
 
-**The user's ask:** "consider multisport activity route planning". For example: bike to a lake and paddle across; hike to a lake with a packraft; swimrun (run and swim in turns); triathlon training. Later (phase 15), ski and skate on ice.
+**The goal:** plan trips that mix sports. For example: bike to a lake and paddle across; hike to a lake with a packraft; swimrun (run and swim in turns); triathlon training. Later (phase 15), ski and skate on ice.
 
 **What Polku has:**
 - The sport is the route's (the pill), and it sets the router, speeds, layers, Heads-up and colours.
@@ -1044,17 +1058,17 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 
 ## Between 13b and 13c — reading the route (built 2026-10-14)
 
-*(User, 2026-10-14, after #44)*:
-- "the route balls are off from where they should be, hundreds of metres" (fixed in #45: a CSS rule from #43);
-- "with Follow paths, the balls should snap to trails / roads";
-- "on mobile, tapping outside a small modal to close it adds a new point; add an × too";
-- "it isn't easy to see the sport of each section: show it on the profile and on the map, and under every chart style as a line and an icon";
-- "km / time on the route line?";
-- "change the start time in the waypoint menu";
-- "sunrise and sunset, important especially for kayaking".
+Found in testing after #44:
+- route points sat hundreds of metres off the route (fixed in #45: a CSS rule from #43);
+- with Follow paths, points should snap onto the trail or road;
+- on a phone, a tap beside a small menu (to close it) also added a point; menus need an ×;
+- each part's sport was hard to see: show it on the profile, on the map, and under every chart style as a line and an icon;
+- distance (and time) marks along the route line;
+- the start time in the waypoint menu;
+- sunrise and sunset, important for paddling especially.
 
 What was built:
-- **Snapping** (`planner.snapPoints`): after routing, a point whose legs all follow paths moves onto the line, where the router joined the way (BRouter's own ends: 2–96 m at the user's test spot). It doesn't snap if the legs disagree or it's over 400 m; straight, water and imported legs keep your spot. Leg keys follow, so nothing is routed again. A gap that's left is drawn as a thin dashed line (`route-gap`).
+- **Snapping** (`planner.snapPoints`): after routing, a point whose legs all follow paths moves onto the line, where the router joined the way (BRouter's own ends: 2–96 m at the test spot). It doesn't snap if the legs disagree or it's over 400 m; straight, water and imported legs keep your spot. Leg keys follow, so nothing is routed again. A gap that's left is drawn as a thin dashed line (`route-gap`).
 - **Menus:** an × on every planner menu. A click or tap that starts while a menu or card is open just closes it (the planner adds nothing; on touch, the inspector doesn't open the next card).
 - **The sport on the profile:**
   - a "Sport" colour mode (group *Route*), with "On map" colouring the route line;
@@ -1069,7 +1083,7 @@ What was built:
 
 ## Phase 13c — Stops and nights (built 2026-10-14, #49)
 
-From 13b's plan *(user, 2026-10-14)*:
+From 13b's plan:
 - **A stop at any waypoint:** a break ("Lunch, 1 h") or a night ("go on at 08:00"). The time after it moves on, and the route's weather follows.
 - **Days** for a trip over midnight, with each day's weather.
 - **Overnight spots** suggested nearby: LIPAS lean-tos, huts and campsites; OSM shelters.
@@ -1112,7 +1126,7 @@ From 13b's plan *(user, 2026-10-14)*:
 ## Phase 14 — Round trips for paddling (and more loops for every sport) (built 2026-10-14, #50)
 
 - **After 13 and 13b,** so loops use the new water costs. Same card UI as phase 10.
-- **More loops** *(user, 2026-10-14)*: if none of the first three suit you, a "More loops" button, or swiping or scrolling past the third card, makes three more. They go in other directions and with other via points. Each costs routing calls in land sports (counted, and paced like the first three); paddling loops cost CPU only. This applies to every sport, not just paddling.
+- **More loops:** if none of the first three suit you, a "More loops" button, or swiping or scrolling past the third card, makes three more. They go in other directions and with other via points. Each costs routing calls in land sports (counted, and paced like the first three); paddling loops cost CPU only. This applies to every sport, not just paddling.
 - **Generation:** `roundtrip.js` with the opposite water check. Via points must be *on* water: nudged along the circle onto open water, and away from shore by the near-shore setting. Legs are routed with Polku's own water router, so there are no routing API calls, but there is CPU, so measure the time for 3 candidates; fewer via points (3) and a coarser grid if needed.
 - **Ranking:** distance match, open-water exposure (share of the loop far from shore), wind (headwind share from the route weather; one cached forecast lookup per candidate), carries, and anything Heads-up from phase 13.
 - **Test:** loops from Tampere (Näsijärvi and Pyhäjärvi), the Helsinki archipelago and a river town.
@@ -1155,20 +1169,20 @@ From 13b's plan *(user, 2026-10-14)*:
 
 ## Phase 17 — Weather: clouds, thunder, snow, back in time (planned 2026-10-14)
 
-From the backlog *(user, 2026-10-14)*:
+From the backlog (2026-10-14):
 - **New switches** under *Weather on the map*, on the timeline:
   - **clouds** (Open-Meteo low, mid and high cover);
   - **thunder** (FMI's lightning observations; Open-Meteo CAPE and lightning potential);
   - snow moved to phase 15a (the snow-depth fill and FMI's measured depths).
 - **The timeline into the past:** the last 2–3 hours of FMI's radar (WMS `time`, kept about two weeks at 5 minutes), playing like the forecast, to see where the rain came from. Past wind and temperature from Open-Meteo's `past_hours`.
-- **A check before heavy loads** *(user)*: when a view would cost many calls to a free service, Polku asks first. That happens with a new layer zoomed out over half of Finland, or with history for every grid point.
+- **A check before heavy loads:** when a view would cost many calls to a free service, Polku asks first. That happens with a new layer zoomed out over half of Finland, or with history for every grid point.
   - The message: "This view needs about 450 weather calls (Open-Meteo allows 10 000 a day). Load it?" with *Load*, *Not now* and *Always for this layer*.
   - The numbers come from `net.js` (each service's limits and today's use).
   - Cheap views never ask: today's weather map stays under 60 points a view.
 
 ## Between 13b and 13c — the route on the map (built 2026-10-14)
 
-*(User, 2026-10-14)*: "when the route editor is closed, it should be possible to activate it by clicking the route"; "LIPAS routes are difficult to click or choose with the finger: it often activates the trail or road behind"; "on mobile, touching the route adds a new point; that is not always what is wanted"; "think the way of editing parts of the route by clicking, right-clicking or touching: what settings should be editable".
+The goals (2026-10-14): with the planner closed, a click on the route opens it; LIPAS routes easy to pick with a finger (a tap often took the trail or road under them); on a phone, a tap on the route shouldn't add a point by mistake; and a clear answer to what each part of the route lets you change, by click, right-click or tap.
 - **The planner closed:** a click or tap on your route opens it, with the menu for that part of the route. Hovering it (desktop) says "Your route · click to edit it".
 - **A menu for a part of the route** (`planner.openLegMenu`), opened by a tap on the line (touch) or a right-click (desktop), and since #48 by a mouse click too:
   - "Add a point here" first;
@@ -1180,7 +1194,7 @@ From the backlog *(user, 2026-10-14)*:
 
 **One click for the route (built 2026-10-14, #48)**
 
-*(User, 2026-10-14)*: "It is logical that touching the route opens the modal and asks adding a point. But clicking it with left mouse just simply adds more points… Maybe it should happen from the left click instead of right at least if we want to unify the mobile and desktop."
+The goal: mouse and finger work the same. A tap on the line opened a menu, but a mouse click added a point straight away.
 - **A click on the line opens that part's menu,** as a tap does: mouse and finger work the same. "Add a point here" is its first button, so a point is two clicks away, and never added by mistake.
 - **A click on a leg's handle** (the ring in its middle) opens the same menu, at the handle.
 - **Unchanged:** a drag on the line or a handle reshapes the route (it adds a point where you let go); a click on the map away from the route adds a point; a right-click on the line opens the menu, elsewhere the spot menu.
@@ -1193,7 +1207,7 @@ From the backlog *(user, 2026-10-14)*:
 
 ## Phase 18 — Languages (planned 2026-10-14)
 
-*(User, 2026-10-14)*: a language switcher in Settings, with flags: English, Finnish, Swedish. By default, the browser's or phone's language (`navigator.languages`); English otherwise.
+A language switcher in Settings, with flags: English, Finnish, Swedish. By default, the browser's or phone's language (`navigator.languages`); English otherwise.
 - **All text in one place per language** (`js/i18n/en.js`, `fi.js`, `sv.js`), looked up by key. English is the fallback for anything not yet translated.
 - **Formats follow the language** (`Intl`): numbers, dates and times, km and m.
 - **What doesn't translate:** the map's own labels (OpenFreeMap has `name:fi` / `name:sv` for place names, a style choice) and sources' wording (LIPAS's Finnish names stay).
@@ -1202,7 +1216,7 @@ From the backlog *(user, 2026-10-14)*:
 
 ## Phase 19 — Help and a tutorial (planned 2026-10-14; the last phase)
 
-*(User, 2026-10-14: "we need a tutorial or proper help … as a last thing".)* This comes when the features have settled, so it doesn't go stale:
+A tutorial and proper help, as the last phase. It comes when the features have settled, so it doesn't go stale:
 - **A first-run tour** of a few steps: sport, plan a route by clicking, the profile and Heads-up, layers, weather. It can be skipped and reopened from Settings.
 - **Help in place:** a "?" in each planner section and Layers group, opening a short page that explains it, with pictures.
 - **A help page** (HTML, in the repo): what each sport does, where the data comes from and how fresh it is, what costs calls, offline areas, sharing, keyboard shortcuts.
@@ -1210,7 +1224,7 @@ From the backlog *(user, 2026-10-14)*:
 
 ## Phase 15 — Winter (researched 2026-10-14)
 
-*(User, 2026-10-14)*: "start the winter project now"; "you can also do your own thinking and researching about winter project, the roadmap is just a guide"; "can't snow be drawn on the map as a layer to fill areas?"
+The goal (2026-10-14): Polku in Finnish winter conditions, researched beyond the original brief, with snow drawn on the map as a filled layer.
 
 The research brief this replaces asked about: sports for a snow group; ski tracks from LIPAS, OSM and municipal grooming status (Jyväskylä first); FMI snow depth; FMI sea ice and SYKE / Copernicus lake ice; effects on paddling and on winter sports crossing ice; the safety wording; the season. All of it is answered below.
 
@@ -1230,10 +1244,10 @@ The research brief this replaces asked about: sports for a snow group; ski track
 | Copernicus Lake Ice Extent (250 m, daily) and HR-S&I snow cover (20 m) | Lake ice and snow cover from satellites | Europe | Free | **Needs an account** (CDSE / Cryoland WMS answered 403): not for Polku |
 | **Digitraffic** maintenance tracking | Ploughing, salting, sanding with times | State roads, and Kuopio only among municipalities | CC BY 4.0 | CORS ok |
 
-### The user's answers (2026-10-14)
-1. "I'm not too familiar with different types of ski activities. You can decide. Let's not make this too complicated at the beginning."
-2. On winter as presets or sports: "in Trailmap winter is one of the map layers… Maybe it could be a toggle in settings to allow winter calculation or have own winter settings section in the layer menu. But I feel this should be connected somehow automatically to the time of the year, day and weather the user is browsing the page."
-3. "Maybe we should still consider these winter sports like skiing to be something we develop when it's winter. For now we could focus on existing sports and how they work in winter conditions and what type of data we could pull to help planning, let's say cycling in winter."
+### Decisions (2026-10-14)
+1. **Skiing kept simple** to begin with; the details of ski styles are Polku's to choose.
+2. **Winter is not a sport of its own.** It's a mode, with its own place in the layers menu (or Settings), and it should follow the time of year, the day and the weather where you look, by itself.
+3. **Skiing waits until it's winter.** First come the existing sports in winter conditions, and the data that helps plan them, cycling in winter especially.
 
 ### The plan
 
@@ -1261,7 +1275,7 @@ The research brief this replaces asked about: sports for a snow group; ski track
 - **Summer-only things step back** in winter (beaches, water temperature, wet-ground routing).
 - **Ice wording, a rule for every screen:** Polku never says or implies ice is safe.
 
-**What Trailmap does in winter** *(viewed with the user's Plus account, 2026-10-14; nothing changed there, none of its tiles or keys used)*:
+**What Trailmap does in winter** *(viewed with a Plus account, 2026-10-14; nothing changed there, none of its tiles or keys used)*:
 - **Winter is a map profile** beside MTB, Gravel, Walking, Other and Own. Each profile has its own layer settings and "Reset profile defaults".
 - **The winter map drops** difficulty, trail visibility, surface and width, and draws:
   - **ways by how they open after snow**, using the community tag `mtb:winter`: 1 opens quickly (the sure picks), 2 / `yes` opens clearly slower, 3 opens slowly or not at all (mostly walkers), no tag means not known;
@@ -1284,7 +1298,7 @@ The research brief this replaces asked about: sports for a snow group; ski track
 
 **Built (15a: winter on the map), 2026-10-15** (`js/winter.js`, `main.js`, `style.js`, `wxmap.js`, `weather.js`):
 - **Winter Auto / On / Off,** in a **Winter** group in the layers panel (open while it's winter). Auto looks at the snow where you are when the map stops moving (again after 8 km): FMI's nearest station within 60 km, else the forecast model at the map centre. Winter comes on from 5 cm and goes off below 2 cm, so it doesn't flicker at the edge. The sport pill shows ❄ while it's winter, with the snow in its tooltip.
-- **The snow layer** (the user's ask), on the timeline as **Snow** and in Layers:
+- **The snow layer**, on the timeline as **Snow** and in Layers:
   - Open-Meteo's `snow_depth` on the weather grid as a cool wash from 1 cm (to 120 cm), with no extra calls (8 variables a call);
   - FMI's measured depths on top (107 stations, hourly; a grey 0 where there's none);
   - the readout says "12 cm of snow".
@@ -1302,10 +1316,10 @@ The research brief this replaces asked about: sports for a snow group; ski track
   - `tools/smoke.py winter` checks the classes, FMI's WFS answer, Auto's thresholds and On / Off, a recorded Laajavuori tile drawn, LIPAS's ski tracks asked for, the layers going with Off, and the Snow chip.
   - `tools/shoot.py` has `*-winter`, `*-winter-layers` and `*-snow`.
 
-**After #52: Winter as a trail colour (#53)** *(user, 2026-10-15)*: "did you implement a toggle for winter MTB difficulty? I can't see it in the trails & difficulty setting."
+**After #52: Winter as a trail colour (#53).** Winter needed a place among the trail colours too, where you'd look for it, not only in its own group.
 - **Trails & difficulty gets a fifth choice, Winter** (Off / Difficulty / Uphill / Both / Winter). It draws the winter ways (Trailmap's classes, from OSM) at any time of year, so you can look before the snow comes. The map key follows it.
 - While it's winter with another colour chosen, the group says so: the difficulty colours are faded and the winter ways show over them.
-- **Winter colours explained** *(user, 2026-10-15: "it is not enough to add a color coding … and assume that the user understands what eg purple means")*:
+- **Winter colours explained** (phase 21's rule):
   - hovering a trail adds what its winter colour means ("❄ opens quickly after snow");
   - an OSM ski track with no trail under it (over a field or a lake) has a hover and a card of its own ("Ski track · In winter: keep off on foot and by bike · groomed for classic and skating · lit");
   - LIPAS's ski tracks, skating and snowmobile routes say what they're for in the hover, not "click to ride it".
@@ -1315,7 +1329,7 @@ The research brief this replaces asked about: sports for a snow group; ski track
 
 ## Phase 21 — Say what it means (planned 2026-10-15; after 15b)
 
-*(User, 2026-10-15)*: "it is not enough to add a color coding or layer over a route/road/track and assume that the user understands what eg purple means. We have so many different layers and features. The info should be visible in the hover/click modal. Same goes with many other details like if you know that the road is wet/slippery or other information that you calculate but do not show to user. This might be a big update but worth of considering."
+Polku draws many layers and colours. A colour is only useful if Polku also says what it means, and much of what Polku works out (wet or slippery ground, for one) is used but never shown. A big update, worth doing.
 
 **The rule (for every layer and every phase from now on):**
 - anything drawn in a colour, a pattern or a symbol says what it is, and what it means for you, in its hover and in its card;
@@ -1329,7 +1343,7 @@ The research brief this replaces asked about: sports for a snow group; ski track
 | Trail details (width, visibility, wet, overgrown) | in the hover's bits | the drawn width class ("narrow, under 0.6 m") said as such |
 | Gravel and road sports' warm casing (unpaved) | surface, when tagged | "drawn warm: unpaved" in words |
 | Winter ways, LIPAS winter routes | explained (#53) | — |
-| Places per sport (LIPAS kinds, OSM POI kinds) | name and type | which kinds a switch holds, and that the sport changes them *(user, 2026-10-15)* |
+| Places per sport (LIPAS kinds, OSM POI kinds) | name and type | which kinds a switch holds, and that the sport changes them |
 | Snow wash, temperature, wind, rain fields | the timeline's readout under the pointer | a hover on the map itself, at least while the timeline is closed |
 | Sea ice | none | the concentration at the spot (Copernicus GetFeatureInfo, JSON) and the chart's date |
 | Depth areas, contours, soundings (Traficom) | none | the depth class at the spot, with "not for navigation" |
@@ -1343,7 +1357,7 @@ The table goes into this phase's PR filled in, with a test that every inspectabl
 
 ## Phase 20 — Map style (planned 2026-10-15)
 
-*(User, 2026-10-14/15)*: "by map styles I mean how roads are drawn and other elements"; "LIPAS routes are in Trailmap categorized behind a few toggles (Cycling, Mountain biking, Hiking, Walking / outdoors)"; and the styles' designer: Tapio Kaasalainen's Mapnik styles, "probably the old styles and not the new but still", based on OSM Bright:
+The goal: how roads and the other elements are drawn (the cartography), and LIPAS routes as switches by kind (cycling, mountain biking, hiking, walking), as in Trailmap. The reference for the look: Tapio Kaasalainen's Mapnik styles, based on OSM Bright (likely older than Trailmap's current ones):
 - github.com/TapioKn/MTB-kartta_full (summer) and github.com/TapioKn/MTB-kartta_winter (winter): CartoCSS (`roads.mss`, `paths_and_tracks.mss`, `constructs.mss`, `palette.mss`, `labels.mss`), for Mapnik.
 - **Neither repository has a licence** (all rights reserved by default), and Trailmap's licence page names its MTB style "Antti Nissinen & Tapio Kaasalainen" with none either. So they're a **visual guide only**: Polku draws its own rules in MapLibre from the same ideas (Trailmap's tagging guide describes each element). Porting any of their code would need Tapio's permission first.
 - **The work:**
@@ -1376,7 +1390,7 @@ The table goes into this phase's PR filled in, with a test that every inspectabl
 
 ## Later: Strava & Garmin (not started; research first, no code)
 
-The user's brief, kept here so it isn't lost. When it's time, the first deliverable is research and a phased plan, not code.
+The brief, kept here so it isn't lost. When it's time, the first deliverable is research and a phased plan, not code.
 
 1. **Sending routes.**
    - Check what Strava's API actually allows (it probably can't create routes; verify).
@@ -1390,7 +1404,7 @@ The user's brief, kept here so it isn't lost. When it's time, the first delivera
    - In route generation (phase 10), prefer familiar or new places by ranking candidates on how much they overlap the heatmap.
 4. **Privacy:** data stays on the device unless the user chooses otherwise.
 
-The user expects the smallest first step to be option A plus a FIT course export. Phases 6 (speeds) and 10 (ranking) are built so that history can plug in later.
+The smallest first step is expected to be option A plus a FIT course export. Phases 6 (speeds) and 10 (ranking) are built so that history can plug in later.
 
 ## Where things live (keep for every phase)
 
@@ -1415,8 +1429,8 @@ The user expects the smallest first step to be option A plus a FIT course export
 
 - **One reading order everywhere:** Profile → Waypoints → Heads-up → Climbs → Departure & weather → Route style → Time & speed. Waypoints is near the top because it's what you edit; the settings come last. Each section folds and remembers it (side panel and phones).
 - **Wide bottom panel** (container ≥ 900 px), always open, in rows: the profile across the top; then Waypoints · Heads-up and Climbs stacked in one column · Departure & weather; then Route style · Time & speed. Columns grow from a minimum width and wrap rather than squeeze; a section alone on a row lays its parts side by side (Departure: timeline | weather on the route; Time & speed: editor | on this route). Row breaks are `.sec-break` elements; the stack is `.sec-stack` (`display: contents` when narrow).
-- **The header (always visible, also when folded to the summary)** carries the big choices in words: **the sport**, **Round trip** and **Style: …** (#27, the user's note: starting was confusing with round trips in ⋯; the sport button since #33). On a phone or the side panel they have a line of their own above the routing modes; from 560 px they sit right after the modes; from 1240 px the whole header is one line, and the common tools come out of ⋯ from 1560 px.
-- **The header, in four groups, in the same order at every size** (#37, the user's OK): **Draw** (Follow paths · Straight · Over water) · **Colour** (the route's colours: the profile's "Colour by" and "On map" in one native list, plus "Plain line"; both places stay in step) · **Route** (Sport · Round trip · Style) · **Edit** (Fit · Undo · Redo · ⋯), then Done.
+- **The header (always visible, also when folded to the summary)** carries the big choices in words: **the sport**, **Round trip** and **Style: …** (#27: starting was confusing with round trips in ⋯; the sport button since #33). On a phone or the side panel they have a line of their own above the routing modes; from 560 px they sit right after the modes; from 1240 px the whole header is one line, and the common tools come out of ⋯ from 1560 px.
+- **The header, in four groups, in the same order at every size** (#37): **Draw** (Follow paths · Straight · Over water) · **Colour** (the route's colours: the profile's "Colour by" and "On map" in one native list, plus "Plain line"; both places stay in step) · **Route** (Sport · Round trip · Style) · **Edit** (Fit · Undo · Redo · ⋯), then Done.
 - **The header never spills over** (#34, #37). Labels change with the sport and the style, so `planner.js` `fitHeader()` measures, on width changes and label changes, and picks the first arrangement that fits:
   1. one line, if the breakpoint allows it;
   2. one slim line: only the active mode keeps its label, and the extra tools stay in ⋯ (`.slim`);
@@ -1433,9 +1447,9 @@ The user expects the smallest first step to be option A plus a FIT course export
 ## How to work on this (for any session)
 
 - **Branches:** one per phase, from `main` after the previous phase is merged. If it isn't merged yet, branch from it and say so in the PR.
-- **Bugs, ideas and things to watch** go into [BACKLOG.md](BACKLOG.md) as they come up (the user's ask, 2026-10-14). An item moves here when it becomes work, and is ticked off there.
+- **Bugs, ideas and things to watch** go into [BACKLOG.md](BACKLOG.md) as they come up. An item moves here when it becomes work, and is ticked off there.
 - **Testing:**
-  - Work in the browser pane inside Claude Code (the user prefers to watch there). `python3 serve.py` serves http://localhost:8765.
+  - Work in the browser pane inside Claude Code (it can be watched there). `python3 serve.py` serves http://localhost:8765.
   - Check MTB, gravel, hike and paddle (plus the new sports once they exist) at **1440 × 900** and **390 × 844**, with a route drawn and the timeline open.
   - Run `tools/smoke.py` once it exists. `window.polku` gives scripted access (planner, map, state).
 - **Screenshots:**
