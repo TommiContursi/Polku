@@ -32,7 +32,7 @@ Also approved:
 | — | The route on the map: a click opens the planner, a tap or right-click opens a menu for that part, LIPAS routes easier to pick | `route-menu` | [#44](https://github.com/TommiContursi/Polku/pull/44) | merged |
 | — | Fix: route points stacked down off the route (from #43); tests could run on cached files | `marker-fix` | [#45](https://github.com/TommiContursi/Polku/pull/45) | merged |
 | — | Reading the route: points snap onto the path, a tap beside a menu only closes it, the sport on the profile and map, distance marks, departure at the start, sunrise and sunset | `route-read` | [#46](https://github.com/TommiContursi/Polku/pull/46) | merged |
-| — | Fix: a cleared route left its colours (and wind arrows) on the map | `clear-colours` | (this PR) | PR open |
+| — | Fix: a cleared route left its colours (and wind arrows) on the map | `clear-colours` | [#47](https://github.com/TommiContursi/Polku/pull/47) | PR open |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | — | next |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
