@@ -9,8 +9,9 @@ or idea.
 
 ## Bugs and quirks
 
-- **Changing the sport in the top menu re-routes a drawn route** *(user, 2026-10-15)*: picking Paddle (or any sport) routes every leg that follows the route's sport again as the new sport, while legs with their own sport stay. That can mess a route badly, and nothing warns. **Next, as its own fix PR:** the route keeps its legs' sports when the map's sport changes, and a toast offers to route it as the new sport.
-- **The planner's section links don't show where they lead** *(user, 2026-10-15)*: the Weather button while planning opens the weather in the planner (Departure & weather), and on desktop nothing points there. The same goes for the planner's other jumps to a section (Time & speed, Route style…). Flash the section it opens, or open the small weather box instead.
+- ~~**Changing the sport in the top menu re-routes a drawn route**~~ *(user, 2026-10-15)*: fixed in #54. The route keeps its sports when the map's sport changes, and a toast offers "Route it as …". The planner's own picker shows the route's sport, routes its main sport only, and Undo brings it back.
+- **The planner's summary follows the map's sport** *(found in #54, 2026-10-15)*: with the map on Paddle and the route kept MTB, the summary shows "carry" (paddling's figure) and the speeds, styles and colour modes follow the map's sport too. The planner could use the route's own main sport (`mainSport()`) wherever it means the route.
+- ~~**The planner's section links don't show where they lead**~~ *(user, 2026-10-15)*: fixed in #54. Every jump to a section (the Weather button, Speed, Style, links in the summary) lights that section up for a moment.
 - **Rain labels at "now" come from the forecast.** The small "0.2 mm/h" labels stay on while the FMI radar draws "now", so they can disagree. Show the radar's rate at "now", or hide them. *(2026-10-14, while fixing the radar)*
 - **The timeline can say "· radar" instead of "· FMI radar"** until it redraws: the label is set before FMI's image arrives. *(2026-10-14)*
 - **The uphill band has one width.** Uphill grades come from the vector tiles, which have no width, so in Uphill mode the band doesn't follow the trail's width; the centre line does. Grading the trail-details ways instead would fix it. *(2026-10-14, user)*

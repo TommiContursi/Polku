@@ -39,6 +39,7 @@ Also approved:
 | 15 | Winter research and plan (docs) | `winter` | [#51](https://github.com/TommiContursi/Polku/pull/51) | merged |
 | 15a | Winter on the map: Auto / On / Off, the snow layer with FMI's measured depths, OSM's winter ways, LIPAS ski tracks, skating and snowmobile routes, sea ice | `winter-conditions` | [#52](https://github.com/TommiContursi/Polku/pull/52) | merged |
 | — | Winter as a trail colour (Trails & difficulty: Off / Difficulty / Uphill / Both / Winter), any time of year; winter on the trail cards | `winter-colours` | [#53](https://github.com/TommiContursi/Polku/pull/53) | PR open |
+| — | Fix: changing the sport re-routed a drawn route (it keeps its sports now, "Route it as …" asks, Undo works); the planner's section jumps light up | `sport-switch` | [#54](https://github.com/TommiContursi/Polku/pull/54) | PR open |
 | 15b | Winter on the route: keep off ski tracks, lit ways after dark, time in snow, winter Heads-up, paddling in the ice season | `winter-route` | — | next |
 | 15c | Skiing (when it's winter) | `skiing` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, and everything Polku works out shown, not only used (an audit of every layer) | `explain` | — | planned, after 15b |

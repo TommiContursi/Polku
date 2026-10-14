@@ -13,6 +13,7 @@
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
+  python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
@@ -724,6 +725,75 @@ def loops(chrome):
     return not fails
 
 
+# The sport changes with a route drawn (user, 2026-10-15: "this changes setting of legs … this
+# can mess badly a route"). From the map's sport pill the route keeps its sports (nothing routed
+# again) and a toast offers to route it as the new one; that, and the planner's own picker, route
+# the main sport only (the paddle leg stays) and Undo brings the route back.
+SPORT_SWITCH = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const n = await import(location.origin + '/js/net.js');
+  const p = polku.planner;
+  p.setActive(true);
+  p.clear();
+  p.setMode('line');
+  for (const q of [[23.700, 61.500], [23.720, 61.506], [23.745, 61.509], [23.760, 61.504]]) p.addPoint(q);
+  p.setLegSport(1, 'paddle');
+  for (let k = 0; k < 30 && !p.analysis; k++) await wait(200);
+  const sports = () => p.legs.map((_, i) => p.legSport(i)).join(',');
+  const keys = () => p.legs.map((l) => l.key).join('|');
+  if (sports() !== 'mtb,paddle,mtb') errs.push(`start: ${sports()}`);
+  const k0 = keys();
+  polku.set({ activity: 'gravel' }); // the map’s sport pill
+  await wait(500);
+  if (sports() !== 'mtb,paddle,mtb') errs.push(`after the map’s sport changed: ${sports()}`);
+  if (keys() !== k0) errs.push('legs routed again after the map’s sport changed');
+  const act = [...document.querySelectorAll('.toast button')].find((b) => /Route it as Gravel/.test(b.textContent));
+  if (!act || !/your route stays MTB/.test(document.querySelector('.toast')?.textContent || '')) errs.push(`toast: ${document.querySelector('.toast')?.textContent}`);
+  else {
+    if (p.els.sportSel.value !== 'mtb') errs.push(`the planner’s sport shows ${p.els.sportSel.value} for an MTB route`);
+    act.click();
+    await wait(400);
+    if (sports() !== 'gravel,paddle,gravel') errs.push(`routed as Gravel: ${sports()}`);
+    p.undo();
+    await wait(400);
+    if (sports() !== 'mtb,paddle,mtb' || keys() !== k0) errs.push(`undo after Route it as: ${sports()}`);
+  }
+  // the planner’s picker for the map’s own sport routes the route in it (the map stays)
+  polku.set({ activity: 'hike' }); await wait(300); // the map: Hike, the route MTB
+  p.app.setSport('hike');
+  await wait(400);
+  if (sports() !== 'hike,paddle,hike') errs.push(`the planner’s picker for the map’s sport: ${sports()}`);
+  p.undo(); await wait(300);
+  polku.set({ activity: 'gravel' }); await wait(300);
+  // the planner’s own picker: the route goes with it, Undo back
+  p.app.setSport('hike');
+  await wait(500);
+  if (sports() !== 'hike,paddle,hike') errs.push(`the planner’s picker (Hike): ${sports()}`);
+  p.undo();
+  await wait(400);
+  if (sports() !== 'mtb,paddle,mtb') errs.push(`undo after the planner’s picker: ${sports()}`);
+  // the Weather button while planning opens the planner's weather, and the section shows itself
+  document.querySelector('#btn-time').click();
+  await wait(150);
+  if (!p.sec.depart.el.classList.contains('sec-flash')) errs.push('the Weather button: Departure & weather not highlighted');
+  if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (straight legs need none)');
+  p.clear();
+  polku.set({ activity: 'mtb' });
+  return errs;
+})()"""
+
+
+def sport_switch(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.505/23.73')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(SPORT_SWITCH, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} changing the sport with a route" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Winter (phase 15a): Auto / On / Off; the winter ways from a recorded OSM tile at
 # Laajavuori drawn in Trailmap's classes; LIPAS's ski tracks asked for in winter; the
 # Winter group in Layers; FMI's measured snow read from its WFS answer; the snow chip.
@@ -1143,6 +1213,8 @@ def main():
             ok = loops(chrome) and ok
         if not only or 'winter' in only:
             ok = winter(chrome) and ok
+        if not only or 'sports' in only:
+            ok = sport_switch(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue
