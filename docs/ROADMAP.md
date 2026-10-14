@@ -839,10 +839,16 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - The Settings counter says what Overpass is for: trail details, uphill tags and click details.
 
 **Later (from the 12 review, not built)**
-- **Rain "now" from FMI's rain-rate product, not reflectivity** (found 2026-10-14).
-  - **The problem:** in Jyväskylä at 06:30, the reflectivity composite Polku reads (`radar_finland_cappi_dbzh`, 28–38 dBZ, Marshall–Palmer) said 2–9 mm/h, drawn pink and pouring. FMI's own corrected rain rate (`radar_finland_cappi_rate`, GetFeatureInfo) said 0.003–0.01 mm/h; the forecast said 0.3 and the user saw drizzle. In autumn the melting layer is low, and reflectivity overstates light rain (the "bright band").
-  - **What to do:** read the rain-rate layer instead. Its 8-bit GeoTIFF from the WMS is rescaled (raw 8 ≈ 0.01 mm/h), not mm/h, and a WCS GetCoverage probe in EPSG:3857 was refused. So find the right request: WCS in its native EPSG:3067 and draw it as an image quad; FMI's download service; or a 16-bit or float GeoTIFF from the WMS.
-  - **Until then:** the drop count follows the rate (12b), but "now" still trusts reflectivity.
+- **Rain "now": FMI's rain rate, built in #35** (found 2026-10-14; the user's screenshots: pink and pouring over Jyväskylä in drizzle).
+  - **Cause:** the reflectivity composite (`radar_finland_cappi_dbzh`, Marshall–Palmer) said 2–9 mm/h; FMI's corrected rain rate said 0.01–0.05. In autumn the melting layer is low, and reflectivity overstates light rain.
+  - **Built:** `js/radar.js` reads `suomi_rr_eureffin`: 16-bit, mm/h × 100 (from its own colour map: 7 = 0.07 mm/h … 2513 = 25 mm/h), the same values whatever box is asked for, and shown from 0.1 mm/h.
+  - Light rain is drawn fainter (strength grows with the rate), so drizzle no longer paints the map purple.
+  - If that layer stops answering, reflectivity takes over on its own.
+  - **Ruled out:** `radar_finland_cappi_rate` (its 8-bit GeoTIFF is stretched per request: the same pixel read 103 in one box and 17–22 in another), WCS (disabled on FMI's server) and FMI's styled map tiles (evaluation only).
+- **Before the end of November 2026: a rain-rate source to replace `suomi_rr_eureffin`.** It's one of the old layers FMI retires then; the reflectivity fallback is right in showers but wrong in drizzle. Candidates:
+  - FMI's open radar composites on AWS (rain-rate GeoTIFFs in EPSG:3067, about 1 km; check CORS, size and compression);
+  - a new rain-rate layer, if FMI's download service publishes one with fixed values;
+  - otherwise, a reflectivity correction for the melting layer (temperature from the forecast).
 - **Fresher trail data.** Tiles are cached a week, so a fallen tree cleared yesterday still shows. Trailmap's makers have had trouble with detail loading and data that only updates a few times a day. Options:
   - show the tiles' age in the key;
   - a "Refresh trail details here" action;
