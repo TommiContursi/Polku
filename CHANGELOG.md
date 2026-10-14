@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
-### Reading the route
+### Reading the route ([#46](https://github.com/TommiContursi/Polku/pull/46))
 - **Points snap onto the path:** with Follow paths, a point clicked beside a trail or road moves onto it, where the route goes. A point the route can't reach gets a thin dashed line to it.
 - **Menus have an ×,** and a tap beside an open menu only closes it, without adding a point.
 - **See each part's sport:**
@@ -14,7 +14,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 - **Departure** can be set from the start point's menu and the start's row in the waypoint list.
 - **Sunrise and sunset** at the start, under Departure & weather. Heads-up tells you when part of the trip is after sunset or in the dark, and reminds paddlers that a light is required on the water after dark.
 
-### Fixed: route points off the route
+### Fixed: route points off the route ([#45](https://github.com/TommiContursi/Polku/pull/45))
 - **Points and leg handles drifted further off the route the more of them there were** (a style rule from the multisport change). They sit on their spots again.
 
 ### Your route on the map ([#44](https://github.com/TommiContursi/Polku/pull/44))
