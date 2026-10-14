@@ -234,6 +234,22 @@ TRAILS = """(async () => {
     if (!t || !/log|fallen/i.test(t.textContent)) errs.push(`clicking the fallen tree opened ${t ? t.textContent : 'nothing'}`);
     document.querySelector('.polku-popup .maplibregl-popup-close-button')?.click();
   }
+  // uphill colours come back after switching them off and on (they're cached, and once stayed blank)
+  m.jumpTo({ center: [25.7652, 62.2289], zoom: 15.5 });
+  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  await wait(400);
+  const seg = (t) => [...document.querySelectorAll('#layers-body .seg button')].find((b) => b.textContent === t);
+  const uphill = async (ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (m.querySourceFeatures('uphill').length) return true; await wait(250); } return false; };
+  seg('Uphill').click();
+  if (!(await uphill(20000))) errs.push('uphill colours never appeared');
+  else {
+    for (const step of ['Off', 'Uphill', 'Difficulty', 'Both']) {
+      seg(step).click();
+      await wait(300);
+      if (step !== 'Off' && step !== 'Difficulty' && !(await uphill(3000))) errs.push(`uphill colours blank after switching to ${step}`);
+    }
+  }
+  seg('Difficulty').click();
   polku.set({ activity: 'road' });
   await wait(600);
   if (polku.state.trailDetails || m.getLayer('path-osm-ground')) errs.push('road cycling starts with trail details on');

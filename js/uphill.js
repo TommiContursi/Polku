@@ -31,9 +31,14 @@ export class UphillLayer {
   }
 
   setEnabled(on) {
+    const was = this.enabled;
     this.enabled = on;
-    if (on) this.schedule();
-    else { this.fc = { type: 'FeatureCollection', features: [] }; this.onData(this.fc); }
+    if (on) {
+      // back on: show what's already graded right away (update() only publishes
+      // when it grades something new, so a cached view would stay blank)
+      if (!was) this.publish();
+      this.schedule();
+    } else { this.fc = { type: 'FeatureCollection', features: [] }; this.onData(this.fc); }
   }
 
   schedule() {
