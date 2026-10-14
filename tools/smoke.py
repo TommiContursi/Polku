@@ -733,7 +733,8 @@ WINTER = """(async () => {
   const fx = await (await fetch(location.origin + '/tools/fixtures/winter-laajavuori.json')).json();
   // the classes
   const c = (t) => W.winterClass(t);
-  const want = [[{ 'bicycle:winter': 'no', highway: 'track' }, 'closed'], [{ 'piste:type': 'nordic' }, 'ski'], [{ highway: 'cycleway', snowplowing: 'yes' }, 'ploughed'],
+  const want = [[{ 'bicycle:winter': 'no', highway: 'track' }, 'closed'], [{ 'piste:type': 'nordic' }, 'ski'], [{ highway: 'cycleway', 'piste:type': 'nordic', bicycle: 'yes' }, 'groomed'],
+    [{ highway: 'track', 'piste:type': 'nordic', 'bicycle:winter': 'no' }, 'closed'], [{ highway: 'cycleway', snowplowing: 'yes' }, 'ploughed'],
     [{ highway: 'cycleway', winter_service: 'limited' }, 'unploughed'], [{ highway: 'path', 'mtb:winter': '1' }, 'open1'], [{ highway: 'path', 'mtb:winter': 'yes' }, 'open2'],
     [{ highway: 'path', 'mtb:winter': '3' }, 'open3'], [{ highway: 'path', seasonal: 'winter' }, 'seasonal'], [{ highway: 'path' }, null]];
   for (const [t, k] of want) if (c(t) !== k) errs.push(`class of ${JSON.stringify(t)}: ${c(t)}`);
@@ -772,6 +773,36 @@ WINTER = """(async () => {
   [...g2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Off').click();
   await wait(800);
   if (polku.state.winterOn || polku.map.getLayer('winter-way') || polku.lipas.routeTypes.includes(4402)) errs.push('winter layers stay after Off');
+  // the Winter trail colours: the winter ways any time, winter or not
+  const trails = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Trails/.test(g.querySelector('.lg-title').textContent));
+  trails.open = true;
+  const wbtn = [...trails.querySelectorAll('.seg button')].find((b) => b.textContent === 'Winter');
+  if (!wbtn) errs.push('no Winter in the trail colours');
+  else {
+    wbtn.click();
+    await wait(800);
+    for (let k = 0; k < 20 && !polku.map.querySourceFeatures('winterWays').length; k++) await wait(250);
+    if (!polku.map.getLayer('winter-way') || !polku.map.querySourceFeatures('winterWays').length) errs.push('Winter trail colours (winter off): no winter ways');
+    if (polku.map.getLayer('uphill-line')) errs.push('uphill colours with Winter picked');
+    // the colours are explained: a click on a ski track's line (no trail under it) opens its card
+    document.querySelector('#layers-panel .panel-close, #layers-panel [aria-label^=Close]')?.click();
+    const ski = polku.map.queryRenderedFeatures({ layers: ['winter-ski'] })[0];
+    if (!ski) errs.push('no ski track in view to click');
+    else {
+      const cc = ski.geometry.type === 'MultiLineString' ? ski.geometry.coordinates[0] : ski.geometry.coordinates, q = polku.map.project(cc[Math.floor(cc.length / 2)]);
+      polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') });
+      await wait(900);
+      const card = document.querySelector('.maplibregl-popup')?.textContent || '';
+      if (!/In winter/.test(card) || !/ski track/i.test(card)) errs.push(`ski track card: ${card.slice(0, 120)}`);
+      document.querySelector('.maplibregl-popup-close-button')?.click();
+      await wait(300);
+    }
+    document.querySelector('[data-panel=layers-panel]').click();
+    await wait(400);
+    const t2 = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Trails/.test(g.querySelector('.lg-title').textContent));
+    [...t2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Difficulty').click();
+    await wait(500);
+  }
   // the snow chip on the timeline
   if (!document.querySelector('.tl-layers [data-k=snow]')) errs.push('no Snow on the timeline');
   W.setWinterSetting('auto');

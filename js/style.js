@@ -280,14 +280,14 @@ export function buildStyle(s, ctx) {
 
   // ---- Winter ways (OSM: js/winter.js) ------------------------------------
   // How soon a way opens after snow, ploughing, no access in winter, ski tracks: Trailmap's winter classes
-  if (s.winterOn && s.overlays.winterWays) {
+  if ((s.winterOn && s.overlays.winterWays) || s.trailColors === 'winter') { // winter, or the Winter trail colours any time
     const W = zi(11, 1.6, 14, 3.4, 18, 6);
     const cls = (c) => ['==', ['get', 'cls'], c];
     add({ id: 'winter-casing', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', cls('ski')], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.8, 'line-width': zi(11, 3, 14, 6, 18, 10) } });
     add({
       id: 'winter-way', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', ['in', ['get', 'cls'], ['literal', ['ski', 'closed']]]], layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': ['match', ['get', 'cls'], 'ploughed', '#0d9488', 'open1', '#65a30d', 'open2', '#a3b10e', 'open3', '#d39b46', 'unploughed', '#94a3b8', 'seasonal', '#0891b2', '#64748b'],
+        'line-color': ['match', ['get', 'cls'], 'ploughed', '#0d9488', 'groomed', '#0d9488', 'open1', '#65a30d', 'open2', '#a3b10e', 'open3', '#d39b46', 'unploughed', '#94a3b8', 'seasonal', '#0891b2', '#64748b'],
         'line-width': W,
         'line-dasharray': ['match', ['get', 'cls'], 'unploughed', ['literal', [1.5, 1.2]], 'seasonal', ['literal', [0.6, 1.4]], ['literal', [1, 0]]],
       },

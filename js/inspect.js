@@ -17,6 +17,7 @@ import { obstacleText, VIS_TEXT } from './trails.js';
 import { dist, pointSegment } from './geo.js';
 import { h, icon, escapeHtml } from './ui.js';
 import { NAV_TEXT } from './nautical.js';
+import { WINTER_TEXT } from './winter.js';
 import { request } from './net.js';
 
 export const WAY_NAMES = {
@@ -30,6 +31,7 @@ const OSM_KEYS = [
   ['mtb:scale', 'MTB difficulty'], ['mtb:scale:uphill', 'MTB uphill'], ['mtb:scale:imba', 'IMBA'], ['sac_scale', 'Hiking (SAC)'],
   ['trail_visibility', 'Trail visibility'], ['width', 'Width'], ['incline', 'Incline'], ['bicycle', 'Bicycle'], ['foot', 'Foot'],
   ['horse', 'Horse'], ['access', 'Access'], ['lit', 'Lit'], ['winter_road', 'Winter road'], ['operator', 'Operator'], ['note', 'Note'],
+  ['mtb:winter', 'In winter (opens after snow)'], ['snowplowing', 'Ploughed'], ['winter_service', 'Winter maintenance'], ['bicycle:winter', 'Bicycle in winter'], ['foot:winter', 'Foot in winter'], ['seasonal', 'Seasonal'], ['piste:type', 'Piste'], ['piste:grooming', 'Grooming'],
 ];
 
 const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https://${u}` : '';
@@ -37,16 +39,31 @@ const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https:/
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
-const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/,
+const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
   /^sf-aadt/, /^road-/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/];
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
 export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]; };
 
 export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
+
+// The winter way at the spot: the nearest drawn one within about 10 m (a hit box also catches a
+// ski track beside a cycleway, which isn't what the cycleway is like). { cls, beside } or null:
+// `beside` when it's a ski track of its own next to the way you're looking at.
+export function winterAt(feats, ll) {
+  let best = null;
+  for (const f of feats) {
+    if (!/^winter-(way|ski|closed)$/.test(f.layer.id)) continue;
+    const g = f.geometry, lines = g.type === 'MultiLineString' ? g.coordinates : [g.coordinates];
+    let d = Infinity;
+    for (const c of lines) for (let i = 1; i < c.length; i++) d = Math.min(d, pointSegment(ll, c[i - 1], c[i]).d);
+    if (d <= 10 && (!best || d < best.d)) best = { d, cls: f.properties.cls };
+  }
+  return best && WINTER_TEXT[best.cls] ? { cls: best.cls, beside: best.cls === 'ski' } : null;
+}
 
 export function pickFeature(feats) {
   for (const re of PRIORITY) {
@@ -83,6 +100,7 @@ export function initInspector(map, app) {
       else body.append(rideActions(f.properties, f.click || null, pop, f.near));
     }
     else if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
+    else if (/^winter-/.test(f.layer.id)) renderWinter(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
     else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
     else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb', (g) => { g.click = ll; show(g, ll, feats); });
@@ -188,6 +206,9 @@ function renderWay(body, f, feats, ll, mtb, open = null) {
   }
   const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
   if (Number.isFinite(idx)) body.append(row('MTB difficulty', chip(DIFF_COLORS[idx], MTB_SCALE_TEXT[idx]), true));
+  // what winter means on it, where the winter ways are drawn (OSM's winter tags, js/winter.js)
+  const win = winterAt(feats, ll);
+  if (win) body.append(win.beside ? row('Beside it', 'A ski track: keep off it on foot and by bike') : row('In winter', WINTER_TEXT[win.cls]));
   const up = feats.find((x) => x.layer.id === 'uphill-line');
   if (up) body.append(row('Uphill', chip(DIFF_COLORS[up.properties.cls], `${UPHILL_TEXT[up.properties.cls]} (${up.properties.grade} %)`), true));
   else {
@@ -272,6 +293,17 @@ function renderPoi(body, f) {
   body.append(h('div', { class: 'insp-title' }, title));
   if (p.subclass || p.class) body.append(row('Type', (p.subclass || p.class).replace(/_/g, ' ')));
   if (p.ele) body.append(row('Height', `${p.ele} m`));
+  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
+}
+
+// A way drawn by its winter tags with no trail of the map's under it (a ski track over a field or a lake)
+function renderWinter(body, p) {
+  body.append(h('div', { class: 'insp-title' }, p.name || (p.cls === 'ski' ? 'Ski track' : 'Winter way')));
+  body.append(h('div', { class: 'insp-sub' }, 'OpenStreetMap, winter tags'));
+  body.append(row('In winter', WINTER_TEXT[p.cls] || ''));
+  if (p.grooming) body.append(row('Groomed for', String(p.grooming).replace(/\+|;/g, ' and ')));
+  if (p.lit) body.append(row('Lit', 'yes'));
+  if (p.cls === 'ski') body.append(h('p', { class: 'insp-info insp-winter', html: `${icon('snow', 14)} Keep off it on foot and by bike: footprints and tyre tracks spoil the track.` }));
   body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
 }
 

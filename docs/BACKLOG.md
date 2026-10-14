@@ -9,6 +9,8 @@ or idea.
 
 ## Bugs and quirks
 
+- **Changing the sport in the top menu re-routes a drawn route** *(user, 2026-10-15)*: picking Paddle (or any sport) routes every leg that follows the route's sport again as the new sport, while legs with their own sport stay. That can mess a route badly, and nothing warns. **Next, as its own fix PR:** the route keeps its legs' sports when the map's sport changes, and a toast offers to route it as the new sport.
+- **The planner's section links don't show where they lead** *(user, 2026-10-15)*: the Weather button while planning opens the weather in the planner (Departure & weather), and on desktop nothing points there. The same goes for the planner's other jumps to a section (Time & speed, Route style…). Flash the section it opens, or open the small weather box instead.
 - **Rain labels at "now" come from the forecast.** The small "0.2 mm/h" labels stay on while the FMI radar draws "now", so they can disagree. Show the radar's rate at "now", or hide them. *(2026-10-14, while fixing the radar)*
 - **The timeline can say "· radar" instead of "· FMI radar"** until it redraws: the label is set before FMI's image arrives. *(2026-10-14)*
 - **The uphill band has one width.** Uphill grades come from the vector tiles, which have no width, so in Uphill mode the band doesn't follow the trail's width; the centre line does. Grading the trail-details ways instead would fix it. *(2026-10-14, user)*
@@ -23,6 +25,9 @@ or idea.
 
 ## Ideas
 
+- **Hidden settings** *(user, 2026-10-15)*: the map shows different places for each sport (harbours, beaches and toilets for paddling and swimming, lean-tos for hiking…). One switch ("Lean-tos, huts, campfire & landing sites (LIPAS)", "OSM outdoor places") hides which kinds it has, and they change with the sport behind your back. Show the kinds under each switch, each yours to turn on or off, with the sport's defaults marked. LIPAS routes the same (phase 20). Look for other per-sport defaults that change silently. *(phase 21)*
+- **A glowing route line** *(user, 2026-10-15)*: a stronger neon halo as an option beside the plain red line, to make the route stand out over busy layers.
+- **A clicked road highlighted** *(user, 2026-10-15)*: when not planning, a click on a road or trail could highlight the whole OSM way. The tiles cut a way at their edges; the exact way comes with "Show all OSM tags" (Overpass `out geom`), so highlight the tiles' part at once and the whole way once it's fetched.
 ### Weather *(now ROADMAP phase 17, with a check before heavy loads)*
 - **More weather on the map** *(user, 2026-10-14)*:
   - **clouds:** Open-Meteo has low, mid and high cloud cover;
