@@ -229,6 +229,9 @@ SCENES = {
     'phone-water-crossing': dict(PHONE, timeline=False, activity='paddle', hash='#14.6/60.1515/24.9715', pre=WATER_SEED, water=WATER_LEG, state='half', js="(async () => { polku.planner.reveal('warnings'); return true; })()"),
     'desk-water-style': dict(DESK, timeline=False, activity='paddle', hash='#14.6/60.1515/24.9715', pre=WATER_SEED, water=WATER_LEG, js="(async () => { polku.planner.reveal('style'); return true; })()"),
     'phone-water-style': dict(PHONE, timeline=False, activity='paddle', hash='#14.6/60.1515/24.9715', pre=WATER_SEED, water=WATER_LEG, state='full', js="(async () => { polku.planner.reveal('style'); return true; })()"),
+    # a first visit: no link, nothing remembered (the app opens where it opens; no location in headless Chrome)
+    'desk-first-visit': dict(DESK, timeline=False, hash=''),
+    'phone-first-visit': dict(PHONE, timeline=False, hash=''),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
@@ -247,7 +250,7 @@ FIT = ("(() => { const p = polku.planner, a = p.analysis; if (!a) return;"
 def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
-    pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)}, sc.get('storage'), **({'hash_': sc['hash']} if sc.get('hash') else {}))
+    pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)}, sc.get('storage'), **({'hash_': sc['hash']} if 'hash' in sc else {}))
     if sc.get('pre'):
         pg.js(sc['pre'])  # before any route: e.g. trail-detail tiles the route's analysis will read
     if sc.get('route') or sc.get('water'):

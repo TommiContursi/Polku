@@ -20,7 +20,7 @@ or idea.
 
 ## Ideas
 
-### Weather
+### Weather *(now ROADMAP phase 17, with a check before heavy loads)*
 - **More weather on the map** *(user, 2026-10-14)*:
   - **clouds:** Open-Meteo has low, mid and high cloud cover;
   - **thunder:** FMI's open data has lightning observations, and Open-Meteo has CAPE and lightning potential;
@@ -41,7 +41,7 @@ or idea.
 - **A static water-hazards file** (OSM rocks, reefs and shoals for Finland, built weekly by a GitHub Action from Geofabrik's extract), if Overpass stays unreliable. All four mirrors failed while building phase 13.
 - **Wind beyond waves:** a headwind or crosswind cost per craft (a canoe in a crosswind), and gusts; the forecast at each leg's own hour on long trips.
 - **Show the keep-clear zones and the wind exposure on the map** while planning, so the route's bends explain themselves.
-- **Multisport** (proposed as phase 13b, awaiting OK).
+- **Multisport** (ROADMAP phase 13b, OK'd).
 
 ### Your own things
 - **Saved places** *(user, 2026-10-14)*: star a place and find it again, starting on the device (export and import). They'd sync only if a login comes; see phase 16's backend question.
