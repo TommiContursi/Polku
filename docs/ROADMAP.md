@@ -36,7 +36,8 @@ Also approved:
 | — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | merged |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | [#49](https://github.com/TommiContursi/Polku/pull/49) | merged |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | [#50](https://github.com/TommiContursi/Polku/pull/50) | PR open |
-| 15 | Winter: researched; plan in two PRs (15a snow, ice and winter places; 15b skiing), waiting for an OK | `winter` | — | next |
+| 15a | Winter conditions for the sports there are: automatic winter, snow and ice layers, winter routing, time and Heads-up | `winter-conditions` | — | next |
+| 15b | Skiing (when it's winter) | `skiing` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
 | 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
 | 18 | Languages: English, Finnish and Swedish, with a switcher in Settings (your browser's language by default) | `languages` | — | planned |
@@ -1201,7 +1202,7 @@ From the backlog *(user, 2026-10-14)*:
 - **A help page** (HTML, in the repo): what each sport does, where the data comes from and how fresh it is, what costs calls, offline areas, sharing, keyboard shortcuts.
 - Written for new users, tested on someone who hasn't used Polku.
 
-## Phase 15 — Winter (researched 2026-10-14; the plan waits for an OK)
+## Phase 15 — Winter (researched 2026-10-14)
 
 *(User, 2026-10-14)*: "start the winter project now"; "you can also do your own thinking and researching about winter project, the roadmap is just a guide"; "can't snow be drawn on the map as a layer to fill areas?"
 
@@ -1223,34 +1224,41 @@ The research brief this replaces asked about: sports for a snow group; ski track
 | Copernicus Lake Ice Extent (250 m, daily) and HR-S&I snow cover (20 m) | Lake ice and snow cover from satellites | Europe | Free | **Needs an account** (CDSE / Cryoland WMS answered 403): not for Polku |
 | **Digitraffic** maintenance tracking | Ploughing, salting, sanding with times | State roads, and Kuopio only among municipalities | CC BY 4.0 | CORS ok |
 
-### The plan: two PRs
+### The user's answers (2026-10-14)
+1. "I'm not too familiar with different types of ski activities. You can decide. Let's not make this too complicated at the beginning."
+2. On winter as presets or sports: "in Trailmap winter is one of the map layers… Maybe it could be a toggle in settings to allow winter calculation or have own winter settings section in the layer menu. But I feel this should be connected somehow automatically to the time of the year, day and weather the user is browsing the page."
+3. "Maybe we should still consider these winter sports like skiing to be something we develop when it's winter. For now we could focus on existing sports and how they work in winter conditions and what type of data we could pull to help planning, let's say cycling in winter."
 
-**15a — Snow, ice and winter places on the map** (no new sport yet; useful from the first snow)
-- **Snow as a filled layer** *(the user's ask)*: a "Snow depth" field on the weather map, from Open-Meteo `snow_depth`, drawn like temperature (0, 1–10, 10–30, 30–60, 60+ cm). It uses the same grid and the same calls, plus two variables. FMI's 107 measured depths go on top as small labels, and the timeline plays the forecast snowfall.
-- **Snow along the route:** the depth at each part, fresh snow since yesterday, and Heads-up such as "Little or no snow: 0–3 cm" or "15 cm of fresh snow overnight: slow going".
-- **Cold:** wind chill from Open-Meteo's temperature and wind. Heads-up warns of frostbite from about −27 °C felt, where bare skin can freeze within half an hour.
-- **Ice layers:** sea ice concentration and thickness (Copernicus Marine WMTS, FMI's charts, dated), and SYKE's lake ice stations with the last thickness and its date.
-- **Paddling in the ice season:** a water leg where the sea-ice chart shows ice, or a lake between its freeze-up and break-up dates (SYKE's nearest station), gets a strong warning. Polku never says the water is open.
-- **Winter places:** LIPAS ski tracks (by style, lit or not), skating routes, winter swimming places (Swim's places in winter), snowmobile routes, ski huts; OSM nordic tracks (style, lighting) from Overpass tiles, as the trail details are. Helsinki-region tracks show their grooming age and condition. Everywhere else a track's card links to its operator's page from LIPAS ("Grooming status ↗"): Fluent Outdoors' data can be linked to, not used.
-- **The season:** winter layers come on by themselves when there's snow (FMI or the model) where you look; summer-only ones (beaches, water temperature) step back. Nothing is forced.
+### The plan
 
-**15b — Skiing (and winter riding and walking)**
-- **A Ski sport** (the "snow" group) with route styles Classic, Skate and Any track, and a Swim-like rule: every sport a leg can have is in the switcher.
-- **Its own router** (like the water one): a graph of the area's ski tracks from OSM (every ski way, the 10 % BRouter lacks too) and LIPAS / service-map lines joined to it within about 15 m. A* with the style (classic tracks for Classic, skating for Skate), lighting after dark (it knows when you'll be there), grooming age where known, and difficulty.
-  - A point off the tracks gets a short walk to the nearest one, on foot (multisport, no new UI).
-  - No routing calls: one Overpass query per area, cached a week.
-- **Ski timing:** flat speeds per style (Normal: classic 9 km/h, skate 12 km/h), slower uphill, faster down, slower in fresh or deep snow (15a's snow).
-- **Winter for the others, as route-style presets, not new sports:**
-  - **MTB / Gravel "Winter":** prefers `mtb:winter`, ploughed (`winter_service`, `snowplowing`) and ice roads, and keeps off groomed ski tracks (riding on them spoils the track).
-  - **Hike "Winter" / snowshoe:** ploughed paths and `piste:type=hike` / `skitour`; ski tracks only to cross them.
-- **On the ice:** Ski, Hike and the winter presets may cross a lake only as a straight leg you draw. The warning is always there, with SYKE's nearest measurement and its date if there is one. Ice roads (`ice_road=yes`) are the exception, and only in the dates they're open.
-- **Safety wording, a rule for every screen:** ice data is sparse and quickly out of date. Polku never says or implies that ice is safe to walk, ski or cycle on.
+**15a — Winter conditions for the sports there are (now)**
+- **Winter switches itself on** from the date and the time on the timeline, and from the snow and temperature where you're looking: FMI's measured depth near the map's centre, else Open-Meteo's. It's shown as a chip ("Winter: 12 cm of snow"). The override is in Settings and in a **Winter** group in the layers menu: *Auto / On / Off*.
+- **Winter layers** (the Winter group, on by themselves in winter):
+  - **snow depth as a filled layer** (Open-Meteo on the weather grid, with no extra calls), with FMI's 107 measured depths on top;
+  - fresh snow (the last 24 h and the forecast);
+  - **ploughed and winter-maintained ways** (`winter_service`, `snowplowing`);
+  - winter trail riding (`mtb:winter` 1–3: how soon a path opens after snow);
+  - **groomed ski tracks** (LIPAS and OSM, to keep bikes and boots off), and snowmobile routes;
+  - sea ice (FMI's charts) and SYKE's lake-ice stations;
+  - lit ways where it's dark.
+- **Routing in winter** (the route styles stay; winter adjusts them):
+  - **Bikes:** prefer ploughed ways and `mtb:winter` trails, keep off groomed ski tracks, and lean to lit ways after dark. Road and gravel prefer winter-maintained roads.
+  - **On foot:** ploughed paths; ski tracks only to cross.
+  - **Paddle:** a strong warning in the ice season (sea-ice charts, SYKE's freeze-up and break-up dates). Polku never says the water is open.
+- **Time in winter:** slower in snow by depth and fresh snow (bikes most, on foot less, little on ploughed ways), from 15a's snow along the route.
+- **Heads-up in winter:**
+  - snow depth and fresh snow on the way;
+  - **slippery:** around 0 °C after rain or thaw, and freezing rain from Open-Meteo's weather codes (Digitraffic's road conditions already show on roads);
+  - cold and wind chill (frostbite from about −27 °C felt);
+  - darkness with unlit stretches;
+  - paths that may not be open in winter (unploughed, `mtb:winter` absent or slow).
+- **Summer-only things step back** in winter (beaches, water temperature, wet-ground routing).
+- **Ice wording, a rule for every screen:** Polku never says or implies ice is safe.
 
-### Questions for the user
-1. **Ski as one sport** with Classic / Skate / Any as its styles (recommended), or two sports?
-2. **Winter riding and walking as route-style presets** of MTB, Gravel and Hike (recommended), or sports of their own (Fat bike, Snowshoe)?
-3. **Grooming status outside the Helsinki region:** Fluent Outdoors' terms rule it out without permission. Should Polku link to each operator's page (planned), and do you want to ask Jyväskylä (whose data it is) or Fluent Progress for permission or open data? I can draft the message.
-4. **Order:** 15a first (snow, ice, places; useful as soon as it snows), then 15b (skiing)?
+**15b — Skiing (when it's winter, so there's snow to test on)**
+- One **Ski** sport, kept simple: styles Classic / Skate / Any track, Any first.
+- Its own router over the area's ski tracks (OSM's, which BRouter misses in part, joined with LIPAS and the Helsinki service map). Grooming age where it's open, links to the operator elsewhere.
+- Ski timing, a short walk to the nearest track, and the same ice rules.
 
 ## Phase 16 — Strava & Garmin (research and plan only)
 
