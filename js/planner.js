@@ -13,6 +13,7 @@ import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bb
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
+import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
@@ -105,6 +106,8 @@ export class Planner {
     this.ghosts = []; // drag handles in the middle of each leg
     this.pname = new WeakMap(); // point → the name you gave it (points move as arrays, so names follow them)
     this.pchange = new WeakMap(); // point → your changeover minutes there (where the sport changes)
+    this.pstop = new WeakMap(); // point → a stop there: { min } a break, { on } a night (go on at that minute of the day)
+    this.pcarry = new WeakMap(); // point → true: the gear of the sport you change out of there goes along
     this.marks = { km: true, time: false, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.openLegs = new Set(); // waypoint rows whose leg settings are open (by point index)
@@ -166,6 +169,8 @@ export class Planner {
       points: this.points.map((p) => p.slice()),
       names: this.points.map((p) => this.pname.get(p) || ''),
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
+      stops: this.points.map((p) => this.pstop.get(p) || null),
+      carry: this.points.map((p) => !!this.pcarry.get(p)),
       legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status, style: l.style, src: l.src, sport: l.sport })),
       nogos: this.nogos.map((n) => ({ ...n })),
       routeName: this.routeName || '',
@@ -181,6 +186,8 @@ export class Planner {
     this.points = s.points;
     this.nameAll(s.names);
     this.changeAll(s.changes);
+    this.stopAll(s.stops);
+    this.carryAll(s.carry);
     this.legs = s.legs.map((l) => ({ ...l }));
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
@@ -191,6 +198,8 @@ export class Planner {
   // ---------------------------------------------------------------- waypoint names & order
   nameAll(names) { this.points.forEach((p, i) => { if (names && names[i]) this.pname.set(p, names[i]); else this.pname.delete(p); }); }
   changeAll(list) { this.points.forEach((p, i) => { if (list && list[i] != null) this.pchange.set(p, list[i]); else this.pchange.delete(p); }); }
+  stopAll(list) { this.points.forEach((p, i) => { const st = cleanStop(list && list[i]); if (st) this.pstop.set(p, st); else this.pstop.delete(p); }); }
+  carryAll(list) { this.points.forEach((p, i) => { if (list && list[i]) this.pcarry.set(p, true); else this.pcarry.delete(p); }); }
 
   // ---------------------------------------------------------------- a sport per leg (multisport)
   // A leg's own sport, else the route's. A water leg in a land sport has always
@@ -226,7 +235,41 @@ export class Planner {
     this.retime();
     this.renderWaypoints();
     this.renderMarkers();
+    this.save();
   }
+
+  // ---------------------------------------------------------------- stops and nights
+  // A stop at via point i: a break, or a night. Not at the start (that's the
+  // departure) or the finish.
+  stopAt(i) { return i > 0 && i < this.points.length - 1 ? this.pstop.get(this.points[i]) || null : null; }
+
+  setStop(i, stop) {
+    const p = this.points[i];
+    if (!p || i <= 0 || i >= this.points.length - 1) return;
+    stop = cleanStop(stop);
+    const old = this.stopAt(i);
+    if (JSON.stringify(old) === JSON.stringify(stop)) return;
+    this.commit();
+    if (stop) this.pstop.set(p, stop); else this.pstop.delete(p);
+    this.retime();
+    this.renderWaypoints();
+    this.renderMarkers();
+    this.save();
+  }
+
+  // the gear of the sport you change out of at point i: left there (the default), or taken along
+  carryAt(i) { return !!this.pcarry.get(this.points[i]); }
+  setCarry(i, on) {
+    const p = this.points[i];
+    if (!p || this.carryAt(i) === !!on) return;
+    this.commit();
+    if (on) this.pcarry.set(p, true); else this.pcarry.delete(p);
+    this.renderWarnings();
+    this.renderWaypoints();
+    this.save();
+  }
+  // what's left at a changeover: "Your bike", "Your sea kayak"
+  gearLabel(g) { return g === 'bike' ? 'Your bike' : `Your ${(CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase()}`; }
 
   // Leg i in another sport: it's routed again with that sport's router, style and speed.
   setLegSport(i, sport) {
@@ -505,12 +548,14 @@ export class Planner {
     this.update();
   }
 
-  restore({ points, modes, style, legStyles, lipas, sports, changes }) {
+  restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry }) {
     const sport = this.app.activity();
     this.points = points;
     this.legs = points.slice(1).map((_, i) => ({ mode: CODE_MODE[modes[i]] || modes[i] || 'auto', sport: (sports && sports[i]) || undefined }))
       .map((l) => (l.mode === 'fixed' ? { mode: 'auto', sport: l.sport } : l));
     for (const [i, m] of changes || []) if (this.points[i]) this.pchange.set(this.points[i], m);
+    for (const [i, st] of stops || []) if (this.points[i]) this.pstop.set(this.points[i], st);
+    for (const i of carry || []) if (this.points[i]) this.pcarry.set(this.points[i], true);
     // legs that ride a LIPAS route: its line comes from LIPAS, not from a router
     for (const r of lipas || []) if (this.legs[r.i]) this.legs[r.i] = { mode: 'fixed', status: 'loading', result: null, sport: this.legs[r.i].sport, src: { t: r.t, id: r.id, seq: r.seq, a: r.a, b: r.b } };
     // a shared link's style is the route's, not yours: your own per-sport choice stays as it was
@@ -1279,10 +1324,12 @@ export class Planner {
       while (j < n - 1 && start + tAt[j] < x.to) j++;
       const len = a.along[j] - a.along[i];
       if (len < 50) continue;
-      const evening = new Date(x.from * 1000).getHours() >= 12;
+      // the sun's own times (sunset, dusk, sunrise), not where the trip happens to start or end in them
+      const evening = new Date(x.sunFrom * 1000).getHours() >= 12;
+      const already = x.sunFrom < x.from - 60; // dark (or after sunset) already when that part begins
       out.push(x.kind === 'twilight'
-        ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.from)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.to)}) for ${fmtDist(len)}`, note: 'twilight: light fading' }
-        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `dark from ${fmt(x.from)}` : `light from ${fmt(x.to)}`}${water ? ' · on the water a light is required after dark' : ' · take a light'}` });
+        ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light' }
+        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${water ? ' · on the water a light is required after dark' : ' · take a light'}` });
     }
     return out;
   }
@@ -1364,27 +1411,38 @@ export class Planner {
     return { activity, craft: this.craft, speeds: speedsFor(activity), speedsBy };
   }
 
-  // Changeovers along the route: where (metres) and for how long (seconds)
+  // Changeovers and stops along the route: where (metres), the changeover's seconds
+  // and the stop. How long a night lasts depends on when you get there (timed()).
   waitsAlong() {
     const out = [];
     for (let i = 1; i < this.legs.length; i++) {
-      const c = this.changeAt(i);
-      if (c && c.min > 0) out.push({ i, at: this.lengthTo(i), sec: c.min * 60, from: c.from, to: c.to });
+      const c = this.changeAt(i), stop = this.stopAt(i);
+      const change = c ? c.min * 60 : 0;
+      if (change > 0 || stop) out.push({ i, at: this.lengthTo(i), change, stop, from: c && c.from, to: c && c.to });
     }
     return out;
   }
 
   // The time along the route: moving at each stretch's own sport, plus the changeovers
-  // (so arrival times, and the weather when you get there, move on by them).
+  // and stops (so arrival times, and the weather when you get there, move on by them).
+  // A night lasts until its morning hour after you arrive, so it's timed on the way.
   timed(a, head = null) {
     const t = estimateTime(a, this.timeOpt(), head);
     const waits = this.waitsAlong();
-    // waitAt[i]: the changeover that starts with sample i (so breakdowns can leave it out of moving time)
+    // waitAt[i]: the wait that starts with sample i (so breakdowns can leave it out of moving time)
     const waitAt = new Float32Array(a.along.length);
     let k = 0, add = 0;
     if (waits.length) {
+      const start = this.startSec();
       for (let i = 0; i < a.along.length; i++) {
-        while (k < waits.length && a.along[i] >= waits[k].at - 1) { add += waits[k].sec; waitAt[i] += waits[k++].sec; }
+        while (k < waits.length && a.along[i] >= waits[k].at - 1) {
+          const w = waits[k++];
+          w.arrive = start + t.tAt[i] + add;
+          w.rest = restSec(w.stop, w.arrive, w.change);
+          w.sec = w.change + w.rest;
+          add += w.sec;
+          waitAt[i] += w.sec;
+        }
         t.tAt[i] += add;
       }
       t.total = t.tAt[a.along.length - 1];
@@ -1392,6 +1450,24 @@ export class Planner {
     t.waits = waits;
     a.waitAt = waitAt;
     return t;
+  }
+
+  // when you'd reach point i (epoch seconds, before any stop there), or null
+  arriveAt(i) {
+    const a = this.analysis;
+    const tAt = a && (a.tAtWind || a.tAt);
+    if (!tAt) return null;
+    const start = a.wind ? a.wind.startSec : this.startSec();
+    if (i <= 0) return start;
+    const at = this.lengthTo(i);
+    let k = 0;
+    while (k < a.along.length - 1 && a.along[k] < at - 1) k++;
+    return start + tAt[k] - (a.waitAt ? a.waitAt[k] : 0);
+  }
+  // a clock time on the trip: "13:40", with the day when it isn't the day you leave ("Thu 08:00")
+  clockOf(sec) {
+    const d = new Date(sec * 1000), t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toDateString() === new Date(this.startSec() * 1000).toDateString() ? t : `${d.toLocaleDateString([], { weekday: 'short' })} ${t}`;
   }
 
   // Speeds changed: re-time the route (no routing, no DEM), then the route
@@ -1451,6 +1527,7 @@ export class Planner {
       a.wind = { ...w, startSec };
       a.timeWind = t.total;
       a.tAtWind = t.tAt;
+      a.waits = t.waits; // nights timed with the wind's arrival times
       a.darkWarn = this.darkWarnings(a);
     } catch (err) {
       if (this.analysis !== a) return;
@@ -1594,23 +1671,28 @@ export class Planner {
         onblur: (e) => this.setName(i, e.target.value),
       });
       // the label only when a name stands in its place; the distance always
-      const sub = [own || auto ? this.label(i) : '', fmtDist(i ? this.lengthTo(i) : 0), last && loop ? 'back at the start' : '', own && auto ? auto : ''].filter(Boolean).join(' · ');
+      const arrive = i > 0 && this.analysis ? this.arriveAt(i) : null;
+      const sub = [own || auto ? this.label(i) : '', fmtDist(i ? this.lengthTo(i) : 0), arrive ? this.clockOf(arrive) : '', last && loop ? 'back at the start' : '', own && auto ? auto : ''].filter(Boolean).join(' · ');
       // a changeover: into which sport, and the minutes it takes (yours to change)
       const ch = this.changeAt(i);
       const change = ch ? h('span', { class: 'wpl-change', onclick: (e) => e.stopPropagation() },
         h('span', { html: icon(this.sportIcon(ch.to), 13) }), `${ACTIVITIES[ch.to].label} · `,
         h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }),
         ' min to change') : null;
+      const stop = this.stopAt(i);
       const row = h('li', { class: 'wpl-row', 'data-i': String(i), title: 'Show on the map', onclick: () => this.focusPoint(i) },
         h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
-        h('span', { class: 'wpl-main' }, input, h('small', {}, sub), change,
+        h('span', { class: 'wpl-main' }, input, h('small', {}, sub), change, stop ? this.stopChip(i, stop) : null,
           i === 0 && n > 1 ? h('label', { class: 'wpl-depart', onclick: (e) => e.stopPropagation() }, h('span', { html: icon('clock', 12) }), 'Depart ', this.departSelect()) : null),
         h('span', { class: 'wpl-tools' },
           // this one leg's settings, under its point
           i < n - 1 ? h('button', { type: 'button', class: 'tool small', title: `The leg after ${this.nameOf(i)}: routing and style`, 'aria-label': `Settings of the leg after ${this.nameOf(i)}`, 'aria-pressed': String(showLegs || this.openLegs.has(i)), 'aria-expanded': String(showLegs || this.openLegs.has(i)),
             onclick: (e) => { e.stopPropagation(); if (showLegs) { store.set('legSettings', false); for (let k = 0; k < n - 1; k++) if (k !== i) this.openLegs.add(k); this.openLegs.delete(i); } else if (this.openLegs.has(i)) this.openLegs.delete(i); else this.openLegs.add(i); this.renderWaypoints(); },
             html: icon('route', 16) }) : h('span', { class: 'tool small', 'aria-hidden': 'true' }),
+          // a stop here: a break, or the night (the start is the departure, the finish the end)
+          i > 0 && !last ? h('button', { type: 'button', class: 'tool small', title: stop ? `No stop at ${this.nameOf(i)}` : `A stop at ${this.nameOf(i)}: a break or a night`, 'aria-label': stop ? `Remove the stop at ${this.nameOf(i)}` : `Stop at ${this.nameOf(i)}`, 'aria-pressed': String(!!stop),
+            onclick: (e) => { e.stopPropagation(); this.setStop(i, stop ? null : { min: DEFAULT_BREAK }); }, html: icon(isNight(stop) ? 'moon' : 'pause', 16) }) : h('span', { class: 'tool small', 'aria-hidden': 'true' }),
           btn('chevronUp', `Move ${this.nameOf(i)} earlier`, () => this.movePointTo(i, i - 1), i === 0),
           btn('chevronDown', `Move ${this.nameOf(i)} later`, () => this.movePointTo(i, i + 1), i === n - 1),
           btn('trash', `Remove ${this.nameOf(i)}`, () => this.removePoint(i), false, 'danger')));
@@ -1697,9 +1779,10 @@ export class Planner {
       const last = i === this.points.length - 1 && i > 0;
       const loopEnd = last && dist(p, this.points[0]) < 3;
       const ch = this.changeAt(i);
-      const el = h('div', { class: 'wp-hit', title: `${this.nameOf(i)}${ch ? ` · change to ${ACTIVITIES[ch.to].label} (${ch.min} min)` : ''} · drag to move · click for options` }, h('div', {
+      const el = h('div', { class: 'wp-hit', title: `${this.nameOf(i)}${ch ? ` · change to ${ACTIVITIES[ch.to].label} (${ch.min} min)` : ''}${this.stopAt(i) ? ` · ${stopLabel(this.stopAt(i))}` : ''} · drag to move · click for options` }, h('div', {
         class: `wp ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loopEnd ? ' wp-loop' : ''}`,
-      }, i === 0 ? '' : last ? '' : String(i)), ch ? h('span', { class: 'wp-sport', html: icon(this.sportIcon(ch.to), 12) }) : null);
+      }, i === 0 ? '' : last ? '' : String(i)), ch ? h('span', { class: 'wp-sport', html: icon(this.sportIcon(ch.to), 12) }) : null,
+      this.stopAt(i) ? h('span', { class: `wp-stop${isNight(this.stopAt(i)) ? ' night' : ''}`, html: icon(isNight(this.stopAt(i)) ? 'moon' : 'pause', 11) }) : null);
       el.hidden = !this.active;
       const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(p).addTo(this.map);
       m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
@@ -1782,9 +1865,10 @@ export class Planner {
   editTo(ll) {
     const ed = this.edit;
     if (!ed) return;
-    const nm = this.pname.get(this.points[ed.i]);
+    const old = this.points[ed.i];
     this.points[ed.i] = ll;
-    if (nm) this.pname.set(ll, nm);
+    // what belongs to the point goes with it: its name, changeover minutes, stop and gear
+    for (const m of [this.pname, this.pchange, this.pstop, this.pcarry]) if (m.has(old)) m.set(ll, m.get(old));
     for (const li of [ed.i - 1, ed.i]) if (this.legs[li]) this.previewLeg(li);
     this.drawRoute();
   }
@@ -1953,8 +2037,9 @@ export class Planner {
           h('button', { type: 'button', 'aria-pressed': String(leg.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(li, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))),
       leg.mode === 'auto' || leg.mode === 'water' ? this.legStylePicker(li, () => this.menu.remove()) : null,
       h('div', { class: 'pt-row' },
-        act('close', 'Avoid this spot', 'The route goes around it (40 m)', () => this.addNogo(ll, 40, 'Avoided place')),
-        this.analysis ? act('mountain', 'On the profile', 'Zoom the profile to this part', () => this.showLegOnProfile(li)) : null));
+        act('pause', 'Stop here', 'A break or a night at this spot: a point with a stop', () => this.stopHere(li, ll)),
+        act('close', 'Avoid this spot', 'The route goes around it (40 m)', () => this.addNogo(ll, 40, 'Avoided place'))),
+      this.analysis ? act('mountain', 'On the profile', 'Zoom the profile to this part', () => this.showLegOnProfile(li)) : null);
     this.menu = new maplibregl.Popup({ offset: 10, closeButton: true, maxWidth: '320px', className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
     this.keepMenuInView();
   }
@@ -2058,6 +2143,8 @@ export class Planner {
       legOut ? h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
         h('button', { type: 'button', 'aria-pressed': String(legOut.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(i, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))) : null,
       legOut && legOut.mode !== 'line' && legOut.mode !== 'fixed' ? this.legStylePicker(i, () => this.menu.remove()) : null,
+      via ? this.stopEditor(i) : null,
+      this.gearToggle(i),
       via ? h('div', { class: 'pt-row' },
         act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', () => this.startAt(i)),
         loop ? null : act('check', 'Finish here', 'Make this the finish: the rest is removed', () => this.finishAt(i))) : null,
@@ -2068,9 +2155,143 @@ export class Planner {
     this.keepMenuInView();
   }
 
+  // A stop in a waypoint row: Break / Night / no stop, and its minutes or morning hour
+  stopChip(i, stop) {
+    const night = isNight(stop);
+    const kind = h('select', { 'aria-label': `Stop at ${this.nameOf(i)}`, onchange: (e) => this.setStop(i, e.target.value === 'night' ? { on: DEFAULT_ON } : e.target.value === 'break' ? { min: DEFAULT_BREAK } : null) },
+      h('option', { value: 'break' }, 'Break'), h('option', { value: 'night' }, 'Night'), h('option', { value: '' }, 'No stop'));
+    kind.value = night ? 'night' : 'break';
+    const w = this.analysis && (this.analysis.waits || []).find((x) => x.i === i);
+    return h('span', { class: `wpl-stop${night ? ' night' : ''}`, onclick: (e) => e.stopPropagation() },
+      h('span', { html: icon(night ? 'moon' : 'pause', 13) }), kind,
+      night
+        ? h('span', {}, ' on at ', h('input', { type: 'time', step: 900, value: hhmm(stop.on), 'aria-label': `Go on from ${this.nameOf(i)} at`, onchange: (e) => { const on = parseHhmm(e.target.value); if (on != null) this.setStop(i, { on }); } }),
+          w && w.rest ? ` · ${fmtDuration(w.rest)}` : '')
+        : h('span', {}, ' ', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, 'aria-label': `Minutes of the break at ${this.nameOf(i)}`, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), ' min'));
+  }
+
+  // The point menu's stop: none, a break or a night; for a night, places to sleep near it
+  stopEditor(i) {
+    const stop = this.stopAt(i), night = isNight(stop);
+    const reopen = () => { if (this.markers[i]) this.openPointMenu(i, this.markers[i]); };
+    const set = (st) => { this.setStop(i, st); reopen(); };
+    const w = this.analysis && (this.analysis.waits || []).find((x) => x.i === i);
+    const arrive = this.analysis ? this.arriveAt(i) : null;
+    const box = h('div', { class: 'pt-stop' },
+      h('div', { class: 'pt-label' }, 'Stop here'),
+      h('div', { class: 'seg small', role: 'group', 'aria-label': `Stop at ${this.nameOf(i)}` },
+        ...[['', 'No stop', 'close'], ['break', 'Break', 'pause'], ['night', 'Night', 'moon']].map(([k, label, ic]) =>
+          h('button', { type: 'button', 'aria-pressed': String(k === (night ? 'night' : stop ? 'break' : '')), onclick: () => set(k === 'night' ? { on: (stop && stop.on) ?? DEFAULT_ON } : k === 'break' ? { min: (stop && stop.min) || DEFAULT_BREAK } : null), html: `${icon(ic, 15)}<span>${label}</span>` }))),
+      stop && !night ? h('label', { class: 'pt-change' }, 'For', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), 'min') : null,
+      night ? h('label', { class: 'pt-change' }, 'Go on at', h('input', { type: 'time', step: 900, value: hhmm(stop.on), onchange: (e) => { const on = parseHhmm(e.target.value); if (on != null) set({ on }); } })) : null,
+      stop && arrive ? h('div', { class: 'pt-sub' }, `You’d get here ${this.clockOf(arrive)}${w ? ` · on ${this.clockOf(arrive + w.sec)}` : ''}`) : null);
+    if (night) {
+      const list = h('div', { class: 'stay-list' });
+      const find = h('button', { type: 'button', class: 'btn', onclick: () => this.listStays(i, list, find), html: `${icon('search', 15)} Places to sleep nearby` });
+      box.append(find, list);
+    }
+    return box;
+  }
+
+  // Lean-tos, huts and campsites within 3 km of point i (LIPAS and OpenStreetMap): move the point to one
+  async listStays(i, list, btn) {
+    const p = this.points[i];
+    btn.disabled = true;
+    list.replaceChildren(h('div', { class: 'pt-sub' }, 'Looking in LIPAS and OpenStreetMap…'));
+    // what's in so far (LIPAS usually answers first), then the whole list
+    const show = (found, done) => {
+      if (this.points[i] !== p) return; // the route changed meanwhile
+      const rows = found.map((x) => h('div', { class: 'stay' },
+        x.icon ? h('img', { class: 'li-ico', src: iconUrl(x.icon), alt: '' }) : h('span', { html: icon('moon', 14) }),
+        h('span', { class: 'stay-main' }, h('b', {}, x.name), h('small', {}, `${x.kind} · ${fmtDist(x.d)} · ${x.src}`)),
+        h('button', { type: 'button', class: 'btn small', title: `Move ${this.nameOf(i)} to ${x.name}`, onclick: () => this.moveToStay(i, x) }, 'Go here')));
+      if (!done) rows.push(h('div', { class: 'pt-sub' }, 'Still looking…'));
+      else if (!found.length) rows.push(h('div', { class: 'pt-sub' }, 'No lean-tos, huts or campsites within 3 km in LIPAS or OpenStreetMap.'));
+      list.replaceChildren(...rows);
+      if (this.menu && this.menu.getElement() && this.menu.getElement().contains(list)) this.keepMenuInView(); // wider and taller now
+    };
+    try {
+      show(await staysNear(p, 3, (part) => show(part, false)), true);
+      btn.hidden = true;
+    } catch {
+      list.replaceChildren(h('div', { class: 'pt-sub' }, 'LIPAS and OpenStreetMap didn’t answer. Try again in a moment.'));
+      btn.disabled = false;
+    }
+  }
+
+  // point i moved to a place to sleep, named after it (its legs are routed again)
+  moveToStay(i, x) {
+    if (this.menu) this.menu.remove();
+    if (!this.points[i]) return;
+    this.beginEdit(i, this.snapshot());
+    this.editTo(x.at.slice());
+    this.pname.set(this.points[i], x.name);
+    this.endEdit();
+    if (this.menu) this.menu.remove();
+  }
+
+  // "Stop here" on the line: a point there with a break, and its menu to make it a night
+  stopHere(li, ll) {
+    if (!this.legs[li]) return;
+    this.commit();
+    const k = this.splitLeg(li, ll);
+    this.pstop.set(this.points[k], { min: DEFAULT_BREAK });
+    this.update();
+    if (this.markers[k]) this.openPointMenu(k, this.markers[k]);
+  }
+
+  // At a changeover out of a bike or a boat: is it left here, or taken along?
+  gearToggle(i) {
+    const c = this.changeAt(i), g = c && GEAR[c.from];
+    if (!g || GEAR[c.to] === g) return null;
+    const what = g === 'bike' ? 'the bike' : `the ${(CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase()}`;
+    return h('label', { class: 'tg tg-inline pt-gear', title: `Off: ${what} stays here, and Heads-up checks the route comes back for it. On: it goes along (a packraft, a folding bike).` },
+      h('span', { class: 'tg-text' }, `Take ${what} along`),
+      h('input', { type: 'checkbox', role: 'switch', checked: this.carryAt(i), onchange: (e) => this.setCarry(i, e.target.checked) }),
+      h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+  }
+
+  // Heads-up from the stops: gear left behind, and a night too short to sleep
+  stopWarnings(a) {
+    const out = [];
+    const sports = this.legs.map((_, i) => this.legSport(i));
+    if (new Set(sports).size > 1) {
+      for (const w of gearChecks({ sports, points: this.points, carry: (i) => this.carryAt(i), along: (i) => this.lengthTo(i), name: (i) => this.nameOf(i), label: (g) => this.gearLabel(g) })) {
+        out.push({ at: w.at, len: 0, kind: 'gear', ic: w.gear === 'bike' ? 'bike' : 'paddle', noAvoid: true, text: w.text, note: w.note });
+      }
+    }
+    for (const w of a.waits || []) {
+      if (!isNight(w.stop) || w.rest >= 5 * 3600) continue;
+      out.push({ at: w.at, len: 0, kind: 'dark', ic: 'moon', noAvoid: true, text: `A short night at ${this.nameOf(w.i)}: ${fmtDuration(w.rest)}`, note: `you’d get there ${this.clockOf(w.arrive)} and go on at ${hhmm(w.stop.on)}` });
+    }
+    return out;
+  }
+
+  // A trip with nights, day by day: when, how far, how long, and that day's weather
+  daysList(a) {
+    const tAt = a.tAtWind || a.tAt, start = a.wind ? a.wind.startSec : this.startSec();
+    const days = tripDays(a, tAt, start, a.waits);
+    if (!days.length) return null;
+    const date = (sec) => new Date(sec * 1000).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'numeric' });
+    const time = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return h('div', { class: 'days' }, ...days.map((d) => {
+      const wx = dayWeather(a.wind, a, d.i0, d.i1);
+      const t = wx && (Math.round(wx.tMin) === Math.round(wx.tMax) ? `${Math.round(wx.tMin)} °C` : `${Math.round(wx.tMin)}…${Math.round(wx.tMax)} °C`);
+      const weather = wx ? [t, `wind up to ${Math.round(wx.wind)} m/s`, wx.wetM > 0 ? `rain on ${fmtDist(wx.wetM)}` : 'dry', wx.beyond ? 'past the forecast' : wx.unsure ? 'less certain' : ''].filter(Boolean).join(' · ') : '';
+      const night = d.n <= (a.waits || []).filter((w) => isNight(w.stop)).length ? (a.waits || []).filter((w) => isNight(w.stop))[d.n - 1] : null;
+      return h('button', { type: 'button', class: 'day', title: 'Show this day on the profile and the map', onclick: () => this.focusRange(d.i0, d.i1, null) },
+        h('b', {}, `Day ${d.n}`), h('span', { class: 'day-when' }, `${date(d.t0)} · ${time(d.t0)}–${time(d.t1)}`),
+        h('span', { class: 'day-what' }, `${fmtDist(d.to - d.from)} · ${fmtDuration(d.moving)} moving${d.up >= 20 ? ` · ↑${Math.round(d.up)} m` : ''}${night ? ` · night at ${this.nameOf(night.i)}` : ''}`),
+        weather ? h('span', { class: 'day-wx' }, weather) : null);
+    }));
+  }
+
   // clear of the top bar, the controls and the planner
   keepMenuInView() {
     const pad = this.viewPadding(0);
+    // a tall menu (a night's places to sleep) scrolls inside the room there is: under the top bar, over the planner
+    const body = this.menu && this.menu.getElement() && this.menu.getElement().querySelector('.pt-menu');
+    if (body) body.style.maxHeight = `${Math.max(220, window.innerHeight - pad.bottom - 8 - 120 - 40)}px`;
     keepInView(this.map, this.menu, { left: this.layout() === 'side' && this.active ? pad.left + 8 : 8, bottom: pad.bottom + 8 });
   }
 
@@ -2085,6 +2306,8 @@ export class Planner {
       points: this.points,
       names: this.points.map((p) => this.pname.get(p) || ''), // on this device only: not in share links
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
+      stops: this.points.map((p) => this.pstop.get(p) || null),
+      carry: this.points.map((p) => !!this.pcarry.get(p)),
       sports: this.legs.map((l) => l.sport || null),
       style: encodeStyle(this.app.activity(), this.style),
       legStyles: this.legs.map((l, i) => (l.style ? encodeStyle(this.legSport(i), l.style) || 'balanced' : null)),
@@ -2104,6 +2327,8 @@ export class Planner {
     this.points = r.points;
     this.nameAll(r.names);
     this.changeAll(r.changes);
+    this.stopAll(r.stops);
+    this.carryAll(r.carry);
     if (r.style != null) this.style = decodeStyle(this.app.activity(), r.style);
     this.legs = r.points.slice(1).map((_, i) => {
       if (r.modes[i] === 'fixed' && r.fixed && r.fixed[i]) {
@@ -2135,6 +2360,8 @@ export class Planner {
       points: this.points,
       names: this.points.map((p) => this.pname.get(p) || ''),
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
+      stops: this.points.map((p) => this.pstop.get(p) || null),
+      carry: this.points.map((p) => !!this.pcarry.get(p)),
       style: encodeStyle(this.app.activity(), this.style),
       legStyles: this.legs.map((l, i) => (l.style ? encodeStyle(this.legSport(i), l.style) || 'balanced' : null)),
       nogos: this.nogos,
@@ -2146,6 +2373,8 @@ export class Planner {
     this.points = s.points;
     this.nameAll(s.names);
     this.changeAll(s.changes);
+    this.stopAll(s.stops);
+    this.carryAll(s.carry);
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
     if (s.style != null) this.style = decodeStyle(s.activity || this.app.activity(), s.style);
@@ -2182,6 +2411,11 @@ export class Planner {
     if (this.legs.some((l) => l.sport)) u.searchParams.set('s', this.legs.map((l) => (l.sport && SPORT_CODE[l.sport]) || '-').join(''));
     const cw = this.points.map((q, i) => (this.pchange.has(q) ? `${i}:${this.pchange.get(q)}` : '')).filter(Boolean).join(',');
     if (cw) u.searchParams.set('cw', cw);
+    // stops and nights, and gear taken along at a changeover
+    const st = encodeStops(this.points.map((_, i) => this.stopAt(i)));
+    if (st) u.searchParams.set('st', st);
+    const cg = this.points.map((q, i) => (this.pcarry.get(q) && this.changeAt(i) ? String(i) : '')).filter(Boolean).join(',');
+    if (cg) u.searchParams.set('cg', cg);
     // LIPAS legs as references (a few characters, not their line); older links route these legs
     const lr = this.legs.map((l, i) => (l.mode === 'fixed' && l.src ? `${i}:${l.src.t}.${l.src.id}.${l.src.seq}.${Math.round(l.src.a)}.${Math.round(l.src.b)}` : '')).filter(Boolean).join(',');
     if (lr) u.searchParams.set('lr', lr);
@@ -2205,7 +2439,7 @@ export class Planner {
     const name = this.routeName || `Polku ${ACTIVITIES[this.app.activity()].label} ${new Date().toISOString().slice(0, 10)}`;
     // Export the routed geometry (not the 10 m resampling) with DEM elevations.
     const line = this.mergedLine();
-    download(`${name.replace(/[^\w\- ]+/g, '').trim() || 'route'}.gpx`, toGPX({ name, coords: line.coords, ele: sampleEle(a, line.coords), waypoints: this.points, names: this.points.map((_, i) => this.nameOf(i)) }));
+    download(`${name.replace(/[^\w\- ]+/g, '').trim() || 'route'}.gpx`, toGPX({ name, coords: line.coords, ele: sampleEle(a, line.coords), waypoints: this.points, names: this.points.map((_, i) => this.nameOf(i)), descs: this.points.map((_, i) => stopLabel(this.stopAt(i))) }));
   }
 
   // ---------------------------------------------------------------- panel
@@ -2592,13 +2826,16 @@ export class Planner {
   sportRows(a, tAt, speedTxt) {
     const waits = a.waits || [];
     if (!this.isMulti() && !waits.length) return [];
-    const wait = waits.reduce((t, w) => t + w.sec, 0);
-    // moving time per sport: the time between samples, less a changeover that falls in it
+    // moving time per sport: the time between samples, less a changeover or stop that falls in it
     const split = sportSplit(a, tAt, this.app.activity(), a.waitAt);
     return [
-      h('div', { class: 'speed-row sub head' }, h('span', {}, 'By sport'), h('b', {}, ''), h('b', {}, ''), h('small', {}, '')),
+      h('div', { class: 'speed-row sub head' }, h('span', {}, this.isMulti() ? 'By sport' : 'Moving and stops'), h('b', {}, ''), h('b', {}, ''), h('small', {}, '')),
       ...split.map((x) => h('div', { class: 'speed-row sub' }, h('span', { html: `${icon(this.sportIcon(x.sport), 13)} ${escapeHtml(ACTIVITIES[x.sport].label)}` }), h('b', {}, fmtDist(x.dist)), h('b', {}, fmtDuration(Math.max(0, x.time))), h('small', {}, speedTxt(x.dist, x.time)))),
-      waits.length ? h('div', { class: 'speed-row sub' }, h('span', {}, `Changeovers (${waits.length})`), h('b', {}, ''), h('b', {}, fmtDuration(wait)), h('small', {}, 'yours to set on each point')) : null,
+      ...[['change', 'Changeovers', 'yours to set on each point'], ['break', 'Breaks', ''], ['night', 'Nights', 'until the hour you go on']].map(([k, label, note]) => {
+        const ws = waits.filter((w) => (k === 'change' ? w.change > 0 : k === 'night' ? isNight(w.stop) : w.stop && !isNight(w.stop)));
+        const t = ws.reduce((sum, w) => sum + (k === 'change' ? w.change : w.rest || 0), 0);
+        return ws.length ? h('div', { class: 'speed-row sub' }, h('span', {}, `${label} (${ws.length})`), h('b', {}, ''), h('b', {}, fmtDuration(t)), h('small', {}, note)) : null;
+      }),
     ].filter(Boolean);
   }
 
@@ -2752,7 +2989,7 @@ export class Planner {
       const p = a.pts[i - 1], q = a.pts[i];
       const ll = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
       const sec = tAt ? tAt[i - 1] + (tAt[i] - tAt[i - 1]) * t : 0;
-      const at = new Date((start + sec) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const at = this.clockOf(start + sec);
       features.push({ type: 'Feature', properties: { label: `${d / 1000} km${this.marks.time && tAt ? ` · ${at}` : ''}` }, geometry: { type: 'Point', coordinates: ll } });
     }
     this.app.setData('routeMarks', { type: 'FeatureCollection', features });
@@ -2796,11 +3033,13 @@ export class Planner {
     this.els.hint.hidden = this.points.length > 2;
     const paddle = isWater(act);
     const waitSec = (a.waits || []).reduce((t, w) => t + w.sec, 0);
+    const nights = (a.waits || []).filter((w) => isNight(w.stop)).length;
     key('distance', fmtDist(a.total));
     // the time is from your departure: tapping it opens the clock (one control for both)
     const dep = this.startOffsetH ? new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now';
-    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of changeovers` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''} · set the departure`, onclick: () => this.reveal('depart') },
-      h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, `from ${dep}`));
+    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''} · set the departure`, onclick: () => this.reveal('depart') },
+      // over days: the time on the move, and how many days it's spread over
+      h('b', {}, nights ? shortDuration((a.timeWind || a.time) - waitSec) : fmtDuration(a.timeWind || a.time)), h('small', {}, nights ? `${nights + 1} days` : `from ${dep}`));
     sum.append(time);
     const carry = a.ways.find(([k]) => k === 'portage');
     if (paddle) key('carry', carry ? fmtDist(carry[1]) : '0 m');
@@ -2965,7 +3204,7 @@ export class Planner {
     box.innerHTML = '';
     if (!a) return;
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || [])].sort((x, y) => x.at - y.at);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...this.stopWarnings(a)].sort((x, y) => x.at - y.at);
     const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
     const count = all.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
     this.setSection('warnings', { count: count || '', empty: !count, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });
@@ -2995,7 +3234,7 @@ export class Planner {
         : w.avoid ? [{ ...w.avoid, label: w.text }]
           : w.noAvoid || /^(Straight line|Carry)/.test(w.text) ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
       const where = w.items ? `at km ${w.items.map((p) => (p.at / 1000).toFixed(1)).join(', ')}` : `at km ${(w.at / 1000).toFixed(1)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
-      const ico = w.icon ? `<img class="li-ico" src="${iconUrl(w.icon)}" alt="">` : icon(KIND_ICON[w.kind] || 'warn', 16);
+      const ico = w.icon ? `<img class="li-ico" src="${iconUrl(w.icon)}" alt="">` : icon(w.ic || KIND_ICON[w.kind] || 'warn', 16);
       const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
         h('button', { type: 'button', class: 'li', html: `${ico}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${where}${w.note ? ` · ${escapeHtml(w.note)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
         avoid && this.legs.some((l) => l.mode === 'auto' || l.mode === 'water') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null);
@@ -3041,10 +3280,12 @@ export class Planner {
     // departure → back, for the section summary
     const fmt = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const start = this.startSec();
-    const when = `${this.startOffsetH ? `Depart ${fmt(start)}` : 'Depart now'} → back ${fmt(start + (a.timeWind || a.time))}`;
+    const when = `${this.startOffsetH ? `Depart ${fmt(start)}` : 'Depart now'} → ${this.isLoop() ? 'back' : 'there'} ${this.clockOf(start + (a.timeWind || a.time))}`;
     box.append(h('h4', { class: 'wind-title' }, isWater(act) ? 'Weather on the water' : 'Weather on the route'));
     const sun = this.sunLine();
     if (sun) box.append(h('p', { class: 'sun-line', html: `${icon('sun', 15)} ${escapeHtml(sun)}` }));
+    const days = this.daysList(a); // with nights: day by day (each day's weather once it's in)
+    if (days) box.append(days);
     if (a.wind && a.wind.stale) box.append(h('p', { class: 'note stale-note' }, `Older forecast (from ${new Date(a.wind.from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) — Open-Meteo couldn’t be reached.`));
     if (!a.wind) {
       box.append(h('div', { class: 'wind-body note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : 'Loading forecast…'));
@@ -3099,6 +3340,8 @@ export class Planner {
         const i0 = Math.max(0, worst.i - 20), i1 = Math.min(a.pts.length - 1, worst.i + 20);
         this.focusRange(i0, i1, null);
       } }, `Strongest headwind ${worst.v.toFixed(1)} m/s at km ${(a.along[worst.i] / 1000).toFixed(1)} →`) : null,
+      w.beyond >= 0 ? h('p', { class: 'note' }, `The forecast reaches ${this.clockOf(w.beyondSec)} (km ${(a.along[w.beyond] / 1000).toFixed(0)}); after that the weather shown is its last hour.`)
+        : w.unsure >= 0 ? h('p', { class: 'note' }, `From km ${(a.along[w.unsure] / 1000).toFixed(0)} (${this.clockOf(w.startSec + (a.tAtWind || a.tAt)[w.unsure])}) it’s more than three days ahead: the forecast is less certain.`) : null,
       h('div', { class: 'hours' }, ...hourStrip(w.hourly, w.startSec)),
       h('div', { class: 'wx-links' },
         ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([k, l]) => h('button', { type: 'button', class: 'link', onclick: () => this.showMode(k, { reveal: true }) }, `${l} along the route ↑`))),
@@ -3134,6 +3377,9 @@ function sampleEle(a, coords) {
   return out;
 }
 
+// "2 h 13" or "54 min": a duration where there's little room
+const shortDuration = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };
+
 // A LIPAS leg's place along LIPAS's line, the other way round
 const flipSrc = (src) => (src ? { ...src, a: src.b, b: src.a } : null);
 
@@ -3160,7 +3406,9 @@ export function parseShared(params) {
     }).filter(Boolean);
     const sports = (params.get('s') || '').split('').map((c) => CODE_SPORT[c] || null);
     const changes = (params.get('cw') || '').split(',').map((x) => x.split(':').map(Number)).filter(([i, m]) => Number.isFinite(i) && Number.isFinite(m));
-    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas, sports, changes };
+    const stops = decodeStops(params.get('st'));
+    const carry = (params.get('cg') || '').split(',').filter((x) => /^\d+$/.test(x)).map(Number);
+    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas, sports, changes, stops, carry };
   } catch {
     return null;
   }

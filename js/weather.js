@@ -40,8 +40,11 @@ export function latticePoint({ L, i, j }) {
   const [dx, dy] = cellSize(L);
   return [+(i * dx).toFixed(4), +(j * dy).toFixed(4)];
 }
-// keyed in level-0 units, so the same point has one key at every level
-const keyOf = (c) => `p/${c.i * 2 ** c.L}/${c.j * 2 ** c.L}`;
+// keyed in level-0 units, so the same point has one key at every level ('q/': the long forecast)
+const keyOf = (c, long = false) => `${long ? 'q' : 'p'}/${c.i * 2 ** c.L}/${c.j * 2 ** c.L}`;
+// Multi-day trips need more than 49 hours: 10 days (Open-Meteo has 16) for the
+// route's points only, cached apart from the map's cells.
+export const LONG_HOURS = 240;
 const pointOfKey = (k) => { const [, I, J] = k.split('/').map(Number); return latticePoint({ L: 0, i: I, j: J }); };
 
 /** How many of these points would need a request (no fresh copy in memory, not on the way). */
@@ -53,14 +56,14 @@ export function uncached(list) {
 }
 
 /**
- * Hourly forecasts (−1 h … +49 h) for a list of cells, in the same order.
- * Only cells without a fresh copy are fetched. The result has `.stale = true`
- * (and `.from`, when the oldest copy was fetched) when older copies had to
- * stand in for a failed or refused request.
+ * Hourly forecasts (−1 h … +49 h, or 10 days with `long`) for a list of cells,
+ * in the same order. Only cells without a fresh copy are fetched. The result
+ * has `.stale = true` (and `.from`, when the oldest copy was fetched) when older
+ * copies had to stand in for a failed or refused request.
  */
-export async function forecastCells(list) {
+export async function forecastCells(list, { long = false } = {}) {
   const now = Date.now();
-  const keys = list.map(keyOf);
+  const keys = list.map((c) => keyOf(c, long));
   const out = new Array(list.length);
   const fallback = new Map(); // key -> older copy
   let need = [];
@@ -91,7 +94,7 @@ export async function forecastCells(list) {
   for (const k of new Set(need.map((n) => keys[n]))) (inflight.has(k) ? waits.push(inflight.get(k)) : mine.push(k));
   for (let b = 0; b < mine.length; b += BATCH) {
     const batch = mine.slice(b, b + BATCH);
-    const p = fetchPoints(batch.map(pointOfKey)).then((series) => {
+    const p = fetchPoints(batch.map(pointOfKey), long ? LONG_HOURS : 49).then((series) => {
       const at = Date.now();
       batch.forEach((k, m) => {
         const v = { at, s: series[m] };
@@ -123,9 +126,9 @@ export async function forecastCells(list) {
 }
 
 /** One forecast per point, via its level-0 cell (points in the same cell share it). */
-export async function pointForecasts(points) {
+export async function pointForecasts(points, opt) {
   const list = points.map((p) => cellAt(p, 0));
-  return forecastCells(list);
+  return forecastCells(list, opt);
 }
 
 /** A series re-indexed to `n` hours from epoch second `t0` (cells fetched at different times line up). */
@@ -201,7 +204,11 @@ export async function windAlong(pts, along, tAt, startSec) {
   // one forecast point per ~4 km, up to 12 (≈ every 10–20 km on long rides)
   const k = Math.max(2, Math.min(12, Math.ceil(total / 4000) + 1));
   const idx = Array.from({ length: k }, (_, j) => Math.round((j / (k - 1)) * (n - 1)));
-  const series = await pointForecasts(idx.map((i) => pts[i]));
+  // a trip that ends more than two days from now (nights on the way): the long forecast
+  const now = Date.now() / 1000;
+  const long = startSec + (tAt[n - 1] || 0) > now + 46 * 3600;
+  const series = await pointForecasts(idx.map((i) => pts[i]), { long });
+  const last = Math.min(...series.map((s) => s.time[s.time.length - 1]));
   const speed = new Float32Array(n), gust = new Float32Array(n), dir = new Float32Array(n);
   const head = new Float32Array(n), cross = new Float32Array(n);
   const temp = new Float32Array(n), precip = new Float32Array(n);
@@ -218,8 +225,12 @@ export async function windAlong(pts, along, tAt, startSec) {
     cross[i] = w.speed * Math.sin(d);
   }
   const first = sampleAt(series[0], startSec);
+  // where the forecast runs out (the values there are its last hour's), and where
+  // it's more than three days ahead (less certain): sample indexes, or -1
+  const at = (t) => { for (let i = 0; i < n; i++) if (startSec + (tAt[i] || 0) > t) return i; return -1; };
   return {
-    speed, gust, dir, head, cross, temp, precip,
+    speed, gust, dir, head, cross, temp, precip, long,
+    beyond: at(last), beyondSec: last, unsure: at(now + 72 * 3600),
     start: { ...first, time: startSec },
     hourly: series[Math.floor(k / 2)],
     stale: !!series.stale,

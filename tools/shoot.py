@@ -149,6 +149,20 @@ SNAP_JS = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((
 # the multisport route, its profile coloured by sport (on the map too), the strip under it
 def MULTI_SPORT_JS(sec='profile', extra=''):
     return MULTI_JS(sec).replace("return true; })()", ("if (p.pickColor) { p.pickColor('sport'); p.setColorOnMap(true); } " + extra + " await wait(600); return true; })()"))
+# An overnighter in Nuuksio (local BRouter): leave at 15:00, a break at Mustalampi, the night at
+# Holma-Saarijärvi's lean-to (on at 08:30), back to Haukkalampi. `then`: what to show.
+def STOPS_JS(sec, then=''):
+    return ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setMode('auto');"
+            " for (const q of [[24.5397, 60.3089], [24.5124, 60.3061], [24.4956, 60.3013], [24.4888, 60.3115], [24.5397, 60.3089]]) p.addPoint(q);"
+            " const hr = new Date().getHours(); let k = (15 - hr + 24) % 24; if (k < 1) k += 24; p.setStartOffset(k);"
+            " let t0 = Date.now(); while (!(p.legs.every((l) => l.status === 'ok') && p.analysis) && Date.now() - t0 < 40000) await wait(300);"
+            " if (p.setStop) { p.setStop(1, { min: 45 }); p.setStop(2, { on: 510 }); p.setName(2, 'Holma-Saarijärven laavu'); p.setName(1, 'Mustalampi'); }"
+            " t0 = Date.now(); while (!(p.analysis && (p.analysis.wind || p.analysis.windError)) && Date.now() - t0 < 30000) await wait(300);"
+            f" p.setSheetState({json.dumps('full' if sec in ('points', 'depart') else 'half')}, {{ remember: false }}); await wait(300); p.fitRoute({{ animate: false }});"
+            f" p.reveal({json.dumps(sec)}); await wait(500); {then} return true; }})()")
+# the night point's menu, with the places to sleep near it (LIPAS and OpenStreetMap, live)
+STAY_MENU = ("if (p.markers[2]) { p.openPointMenu(2, p.markers[2]); await wait(300);"
+             " const b = [...document.querySelectorAll('.polku-popup button')].find((x) => /Places to sleep/.test(x.textContent)); if (b) { b.click(); for (let k = 0; k < 80 && /Looking|Still looking/.test(document.querySelector('.stay-list')?.textContent || 'Looking'); k++) await wait(300); } }")
 MARKS_JS = "(async () => { const p = polku.planner; if (p.setMarks) p.setMarks({ km: true, time: true }); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 # the multisport route leaving an hour before sunset: Heads-up says when it gets dark
 SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); try { const S = await import(location.origin + '/js/sun.js'); const s = S.sunTimes(Date.now() / 1000, [23.761, 61.498]); const k = Math.max(0, Math.round((s.set - Date.now() / 1000) / 3600) - 1); p.setStartOffset(k); } catch (e) { /* main */ }")
@@ -288,6 +302,14 @@ SCENES = {
     'phone-leg-tap': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('tap')),
     'desk-leg-menu': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('right')),
     'desk-leg-click': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('click')),
+    'desk-stops': dict(DESK, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('depart')),
+    'phone-stops': dict(PHONE, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('depart')),
+    'desk-stops-list': dict(DESK, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('points')),
+    'phone-stops-list': dict(PHONE, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('points')),
+    'desk-stop-menu': dict(DESK, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('speed', STAY_MENU)),
+    'phone-stop-menu': dict(PHONE, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('speed', STAY_MENU.replace("p.openPointMenu", "p.setSheetState('peek', { remember: false }); await wait(300); p.openPointMenu"))),
+    'desk-gear': dict(DESK, timeline=True, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('warnings')),
+    'phone-gear': dict(PHONE, timeline=True, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('warnings')),
     'desk-leg-hover': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('hover'), settle=0.8),
     'desk-leg-handle': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('handle')),
     'phone-leg-handle': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('handle')),

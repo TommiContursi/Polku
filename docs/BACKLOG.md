@@ -18,6 +18,7 @@ or idea.
 - **Share links re-route imported GPX tracks.** A fixed leg from a file travels as its two ends only, so whoever opens the link gets a routed leg, not your track. LIPAS legs now travel as references (12c); a GPX track would need its line in the link (too long for a URL) or a short-link service. *(2026-10-14)*
 - **The tests ran on cached files when the dev server was down** (the headless profile's service worker answered), so they could pass on old code. Fixed 2026-10-14: `tools/cdp.py` stops without a dev server and bypasses the service worker. *(2026-10-14)*
 - **The opened attribution on a phone** (tap the ⓘ) runs three lines and under the Plan button until it's closed again. *(2026-10-14)*
+- **LIPAS has few lean-tos in Nuuksio:** "Places to sleep" found one LIPAS lean-to within 6 km against seven OSM campsites and huts. Check whether more are under another LIPAS type, or missing. *(13c, 2026-10-14)*
 - **A tall card on a short screen** (a LIPAS route's card with Ride, about 330 px) can sit under the top bar at 600 px of height. *(2026-10-14)*
 
 ## Ideas
@@ -57,6 +58,11 @@ or idea.
 ### Planner
 - The route's colour sits in the header and in the profile *(done in #37)*.
 - **A quick point on the line** (Alt-click, say) if two clicks for a point (#48: a click opens the part's menu, "Add a point here" is its first button) feel slow. Dragging already makes one. *(2026-10-14)*
+- **Departure more than 48 hours ahead** *(13c, 2026-10-14)*: a weekend trip planned on Monday. The route's 10-day forecast would cover it; the timeline (and its weather map) stops at 48 h, so this needs a date picker that leaves the map's timeline alone.
+- **Places to sleep along the route** *(13c)*: "Lean-tos near km 40–60" for choosing where the night goes, not only near a point that's already a night.
+- **The nights on the profile and the timeline** *(13c)*: the profile is by distance, so a night is a thin line there; the timeline's band could leave the nights out.
+- **Two nights in one place** (a rest day) *(13c)*: a night lasts until the next morning; a "Stay 2 nights" choice would cover it.
+- **Where does the boat come from?** *(13c)*: the gear check warns about gear left behind; a paddle leg that starts far from where the boat was could say so too, unless it's a rental.
 - **More grab handles along long legs,** by their length on screen, so it's clear the whole line can be dragged, not just its middle. *(2026-10-14, from the user's question about extra points on long legs)*
 - **Avoid profiles** ("Avoid obstacles and faint trails") with Polku's own BRouter profiles, if warnings and ranking turn out not to be enough. *(phase 12 design; the user chose warnings first)*
 

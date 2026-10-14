@@ -426,6 +426,28 @@ export function rideOf(place, { near = null, click = null } = {}) {
   return { pieces, loop, closeGap, network, left, km };
 }
 
+// ---------------------------------------------------------------- near a point
+const near = new Map(); // "lon/lat/km/types" -> Promise<places>
+
+/**
+ * LIPAS places of `types` within about `km` of [lon, lat] (one small request,
+ * names and types only, kept for the session): [{ type, id, name, at }].
+ */
+export function lipasNear([lon, lat], km, types) {
+  const dLat = km / 111, dLon = km / (111 * Math.cos((lat * Math.PI) / 180));
+  const box = [lon - dLon, lat - dLat, lon + dLon, lat + dLat].map((v) => v.toFixed(4));
+  const key = `${lon.toFixed(3)}/${lat.toFixed(3)}/${km}/${types.join(',')}`;
+  if (near.has(key)) return near.get(key);
+  const p = getJson(`${LIPAS_WFS}?service=WFS&version=2.0.0&request=GetFeature&typeNames=lipas:lipas_kaikki_pisteet` +
+    '&outputFormat=application/json&count=60&propertyName=id,nimi_fi,tyyppikoodi,x,y' +
+    `&CQL_FILTER=${encodeURIComponent(`tyyppikoodi IN (${types.join(',')}) AND BBOX(the_geom,${box.join(',')},'EPSG:4326')`)}`)
+    .then((gj) => (gj.features || []).map((f) => f.properties || {}).filter((q) => LIPAS_TYPES[q.tyyppikoodi])
+      .map((q) => ({ type: q.tyyppikoodi, id: q.id, name: q.nimi_fi || LIPAS_TYPES[q.tyyppikoodi].name, at: Number.isFinite(q.x) ? tm35ToLonLat(q.x, q.y) : null })));
+  p.catch(() => near.delete(key));
+  near.set(key, p);
+  return p;
+}
+
 // ---------------------------------------------------------------- search by name
 export const ROUTE_TYPES = Object.keys(LIPAS_TYPES).map(Number).filter((t) => t > 4000 && t < 4800);
 export const STOP_TYPES = [301, 302, 304, 202, 206, 205, 204, 203, 3220, 3230];

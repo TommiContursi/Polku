@@ -33,9 +33,9 @@ Also approved:
 | — | Fix: route points stacked down off the route (from #43); tests could run on cached files | `marker-fix` | [#45](https://github.com/TommiContursi/Polku/pull/45) | merged |
 | — | Reading the route: points snap onto the path, a tap beside a menu only closes it, the sport on the profile and map, distance marks, departure at the start, sunrise and sunset | `route-read` | [#46](https://github.com/TommiContursi/Polku/pull/46) | merged |
 | — | Fix: a cleared route left its colours (and wind arrows) on the map | `clear-colours` | [#47](https://github.com/TommiContursi/Polku/pull/47) | merged |
-| — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | PR open |
-| 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | — | next |
-| 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
+| — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | merged |
+| 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | [#49](https://github.com/TommiContursi/Polku/pull/49) | PR open |
+| 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | next |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
 | 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
@@ -1060,7 +1060,7 @@ What was built:
   - Checked: Helsinki 14 October 07:57 / 18:17, midsummer 03:55 / 22:51, Utsjoki's polar day and night.
 - **Tests:** `smoke.py routebits` covers sunrise and sunset, the strip, Sport, the marks and their switch, the sun line, snapping without routing again, a click beside a menu, and the menus' × and departure.
 
-## Phase 13c — Stops and nights (next)
+## Phase 13c — Stops and nights (built 2026-10-14, #49)
 
 From 13b's plan *(user, 2026-10-14)*:
 - **A stop at any waypoint:** a break ("Lunch, 1 h") or a night ("go on at 08:00"). The time after it moves on, and the route's weather follows.
@@ -1069,6 +1069,38 @@ From 13b's plan *(user, 2026-10-14)*:
 - **A longer forecast for multi-day trips:** up to about 7 days from Open-Meteo, saying where it's beyond the forecast.
 - **The gear check:** Heads-up warns when a sport's gear stays at a changeover the route doesn't come back to. Each changeover says *left here* or *carried along* (a packraft, a folding kayak).
 - Share links carry the stops (`st=`).
+
+**Built (13c), 2026-10-14** (`js/stops.js`, `planner.js`, `weather.js`):
+- **A stop at any via point** (`planner.pstop`, kept with the point like its name, so it survives a drag, a reorder and undo):
+  - **a break:** minutes;
+  - **a night:** the hour you go on ("on at 08:00"). It lasts until that hour comes round after you arrive (local time, so summer time is right), with the changeover inside it.
+  - Set in the point's menu (No stop / Break / Night), in its waypoint row (a ⏸ button and a chip with the minutes or the hour), or with **Stop here** in a part of the route's menu (a point there with a 30 min break).
+- **Timing** (`planner.timed`): the waits are worked out in order along the route, because a night depends on when you get there. The wind's times are used once they're in, so arrival times, the route weather, the distance marks' times, the sun warnings and the timeline's band all move on by them.
+- **Waypoint rows** show when you'd get to each point (with the day when it isn't the day you leave), and a night's length.
+- **Days** (`tripDays`, `dayWeather`), under Departure & weather for a trip with nights: each day's date and hours, distance, moving time, climbing, where you sleep, and its temperature, strongest wind and rain. A tap on a day shows it on the profile and the map. The summary shows the moving time, with "2 days" under it.
+- **Places to sleep nearby** (`staysNear`), in a night's menu: LIPAS lean-tos, huts, lodges and campsites, and OpenStreetMap's campsites, huts and lean-tos within 3 km (one LIPAS request and one Overpass query, cached). LIPAS's answer shows first, then OSM's adds to it. **Go here** moves the point there and names it after the place. Measured in Nuuksio: 1 LIPAS lean-to and 7 OSM campsites and huts, about 2–6 s (Overpass is the slow one).
+- **A longer forecast:** when the trip ends more than 46 h from now, the route's points are asked for 10 days (`forecast_hours=240`), cached apart from the map's 49-hour cells. Departure & weather says where it's more than three days ahead ("less certain"), or where the forecast runs out.
+- **The gear check** (`gearChecks`): changing out of a bike or a boat leaves it there, unless **Take the bike along** (or the kayak) is switched on in that point's menu (a packraft, a folding bike). Heads-up says "Your bike is still at Via 1" when the route goes on with it from somewhere else (over 300 m away), and "Your sea kayak stays at Via 2" when the route doesn't come back for it. MTB to gravel is the same bike, and on foot or swimming there's nothing to leave.
+- **A short night:** Heads-up warns when a night gives under 5 hours, for example arriving at 03:00 and going on at 08:00.
+- **Share links** carry `st=` (`1:45,2:n0800`: a 45 min break at point 1, a night at point 2 going on at 08:00) and `cg=` (points where the gear goes along). The saved route, offline areas and undo keep both. Old links are unchanged.
+- **GPX export** puts the stop in each waypoint's description ("Night · on at 08:30").
+- **Fixed on the way:**
+  - dragging a point lost your changeover minutes there (only its name moved with it);
+  - changed changeover minutes weren't saved until the next route change;
+  - "Depart → back 16:40" said *back* for one-way routes too ("there" now, with the day for a trip over midnight);
+  - leaving after sunset, the dark warnings gave the departure as the time of sunset or dusk (`sun.js darkness()` now also returns the sun's own times, `sunFrom` / `sunTo`).
+- **Menus scroll** when they're taller than the room above the planner (a night's menu with its places), and move again when the places list makes them wider.
+- **Tests:** `tools/smoke.py stops` builds MTB → paddle → MTB on straight legs (no routing). It checks:
+  - the gear warning, and that it goes when the bike is taken along;
+  - a 45 min break plus the 15 min changeover;
+  - a night ending at 08:00;
+  - "2 days", the two days and their moving time;
+  - the sun's own time when leaving after dusk;
+  - the badges, rows, Time & speed and the menu;
+  - a short night;
+  - undo, a drag, the share link and the saved route.
+  
+  `tools/shoot.py` has `*-stops`, `*-stops-list`, `*-stop-menu` (a Nuuksio overnighter on the local BRouter, with live places to sleep) and `*-gear`.
 
 ## Phase 14 — Round trips for paddling (and more loops for every sport)
 
