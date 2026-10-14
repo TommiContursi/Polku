@@ -24,8 +24,9 @@ Also approved:
 | 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | merged |
 | 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | merged |
 | 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | merged |
-| 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | [#39](https://github.com/TommiContursi/Polku/pull/39) | PR open |
-| 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
+| 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | [#39](https://github.com/TommiContursi/Polku/pull/39) | merged |
+| 13 | Water routing: fairways, rocks and marks, wind (no depths: licence, see the phase) | `water-routing` | [#40](https://github.com/TommiContursi/Polku/pull/40) | PR open |
+| 13b | Multisport routes: a sport per leg, changeovers, time per sport, a swim sport | `multisport` | — | proposed 2026-10-14, awaiting OK |
 | 14 | Round trips for paddling | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
@@ -918,32 +919,77 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - Your last six picks are on the device (Recent).
 - **Tests:** `tools/smoke.py lipas` finds Multamäen MTB-lenkki and two stops by "multam" from a recorded file (`tools/fixtures/lipas-multamaki.json`), rides it (3 fixed legs, a loop, 18 km), and rebuilds it from its share link, all with no routing request. Scenes are in `tools/shoot.py` (`*-search-lipas`, `*-lipas-card`, `*-lipas-ride`).
 
-## Phase 13 — Water routing
+## Phase 13 — Water routing (built 2026-10-14; redesigned on what the data allows)
 
-**Today:** `js/water.js` renders OpenFreeMap water white on black in a hidden map, adds streams as a cost, runs A* with a shore cost and a land cost for carries, then straightens. Phase 9 added "near the shore" and carry costs.
+**Before:** `js/water.js` rendered OpenFreeMap water white on black in a hidden map, added streams as a cost, ran A* with a shore cost and a land cost for carries, then straightened. Phase 9 added "near the shore" and carry costs.
 
-**Add costs to the same grid**
-- **Fairways** (`vaylaalueet_uusi` from the Väylävirasto WFS that `nautical.js` already loads): a cost per cell inside a fairway. The cheapest path then crosses it straight rather than following it.
-- **Shallow areas:** cells shallower than a minimum per craft (sea kayak about 0.3 m, canoe 0.3, SUP 0.2, rowing boat 0.5) cost a lot or are blocked. Source to settle in the phase:
-  - Traficom's depth areas as **vector** (a WFS with `DRVAL1`/`DRVAL2`, if Traficom's INSPIRE service has one);
-  - or the `DepthArea_A` **WMS** drawn into the hidden map, with its fixed colours mapped back to depth classes.
-- **Rocks, shoals and marks:** a buffer (about 30 m) around underwater rocks and obstructions (Traficom layers, to be identified) and around isolated-danger and cardinal marks (Väylävirasto aids to navigation, loaded by `nautical.js`).
-- **Optional:** "stay within N m of shore" as a setting (phase 9 has near-shore on or off), and **wind exposure**: open-water cells cost more with a strong onshore or side wind, from the route weather already fetched.
+**The plan was** costs for fairways, shallows (per craft), rocks, shoals and marks, and the wind, with Heads-up saying why the route went where it did.
 
-**Coverage and gaps**
-- Check what's open and usable from a browser for the **sea** (Traficom charts) and **lakes** (SYKE lake depth data: WMS/WFS, licence, CORS), and Väylävirasto's inland charts.
-- Where a leg has no depth data, Heads-up says so ("No depth data for this lake — shallows aren't avoided").
+**Checked (2026-10-14): what may be used for routing**
+- **Traficom's depth data can't be.** Its WFS (`inspirepalvelu/rajoitettu/wfs`) has depth areas with `DRVAL1`/`DRVAL2` and is open to browsers. But the hydrographic data licence grants use "for other than navigational purposes", and counts route planning as navigation; Traficom's page says navigational use needs an agreement (copyright@traficom.fi). Its open depth data covers the sea and only the Vuoksi, Kymijoki and Kokemäenjoki watercourses inland. Polku keeps showing Traficom's depth layers (with "not for navigation" in their attribution, as the licence asks), but the router doesn't read them.
+- **SYKE's lake depths are open** (CC BY 4.0, CORS, `paikkatiedot.ymparisto.fi/geoserver/inspire_el/wfs`). But they cover 1,922 mostly small lakes (not Näsijärvi, Päijänne, Jyväsjärvi, Keitele, Vesijärvi or Längelmävesi), and their shallowest class is 0–1.5 m, which can't tell a kayak's 0.3 m. Not used; SYKE also asks intensive users for an identifier.
+- **Väylävirasto's fairways and marks are CC BY 4.0** with no navigation clause.
+  - Fairway areas carry the design draught (`mitoitussyvays`), so shipping lanes (7–15 m) and small-boat routes (1.8–4 m) can be told apart; harbour basins are a type.
+  - Aids to navigation give isolated-danger and cardinal marks.
+- **OpenStreetMap (ODbL)** has rocks, reefs and shoals, sparsely: southern Näsijärvi had 33 rocks, 3 reefs and 3 shoals. Overpass was failing on every mirror at times while testing.
+- **NLS terrain database water rocks** ("vesikivi") need an API key: a later option with the user's own key, as Polku's MML layers already do.
 
-**UI**
-- **Paddling Route style controls:** Fairways (avoid / ignore), Minimum depth (from the craft, editable), Shoals and rocks (keep clear / ignore), Shore (as now), Carries (as now), Wind (avoid exposure / ignore).
-- **A note on why the route went where it did,** in Heads-up: "kept out of the fairway", "around a shoal", "close to shore because of the wind".
+**Built**
+- **A second, synchronous drawing of the same window** (canvas, the hidden map's projection: about 15 ms) marks each cell:
+  - its fairway class;
+  - a keep-clear zone: 45 m round isolated-danger marks; 55 m round cardinal marks, centred 35 m to the side they warn of; 25 m round OSM rocks; reef and shoal areas plus 15 m;
+  - places you avoid (now honoured on water legs too).
+- **Costs:** a shipping lane ×4 (so it's crossed straight, not followed), a harbour basin ×2, a small-boat route ×1.1, a keep-clear zone ×10, an avoided place ×60.
+- **Wind:** the forecast at the leg's start (`at`: departure plus the way so far at your craft's speed). For each water cell, the fetch (open water upwind, to 8 km, the window's edge counting as 2 km more) gives a wave height (JONSWAP, Hs = 0.0016·U·√(F/g), with a quarter of the gust). Water rougher than half your craft's comfortable wave (sea kayak 0.35 m, canoe 0.25, SUP 0.2) costs more and more.
+- **String-pulling keeps to the costs:** a straightened line may not cost more than the way A* found (3 % slack), so it can't cut through a keep-clear zone or slant along a lane.
+- **Heads-up** (`planner.waterWarnings`):
+  - "Crosses the Särkän väylä" (the lane's name from Väylävirasto), "Along a shipping lane for 1.2 km", "Through a harbour basin";
+  - "Close to a marked rock or shoal" (only when the way had to pass one);
+  - "Rough for a SUP: waves up to about 0.3 m" with the wind;
+  - "Not checked on the water: OpenStreetMap didn't answer".
+- **Sources that are slow don't hold up a route.** Each gets 4 s, then the leg is routed without it. When the answer arrives (cached: OSM hazards per z11 tile for a week), the planner re-routes those legs by itself. While you look at the map in Paddle at zoom 11+, the hazards and fairways for the view are fetched ahead.
+- **Route style for Paddle** gains Fairways (Cross straight / Ignore), Rocks & shoals (Keep clear / Ignore) and Wind (Keep sheltered / Ignore), and a "Direct" preset (fairways and wind ignored). Changing the departure hour or the craft re-routes water legs. `water.js` keeps routes per wind class (direction to 45°, speed to 2 m/s), so re-timing mostly costs nothing.
+- **Tests:**
+  - `tools/smoke.py water` uses recorded Väylävirasto data (`tools/fixtures/water-helsinki.json`), a fixed 10 m/s southerly and no OSM. It checks that the lane is crossed (no longer inside it than when fairways are ignored), that a rock put on the direct line is kept clear of, that the planner's Heads-up names the crossing, and that no routing requests are made.
+  - `tools/water_probe.py` measures before and after per leg.
 
-**Test**
-- Before/after legs: Näsijärvi (Tampere; fairway and inland depth), a coastal archipelago route (Turku or Helsinki), a river (e.g. Kokemäenjoki).
-- Keep grid size and time per leg in check: report the milliseconds and grid cells per leg before and after, and cap the extra data per leg.
+**Measured** (`tools/water_probe.py`, headless Chrome, a fresh profile, so the first leg in an area also waits for its data):
 
-**Risks**
-- Depth rasters at the wrong resolution. WMS colour mapping depends on the style staying fixed, so test it against a known chart.
+| Leg | Before | After (sea kayak) | After (SUP) | What changed |
+|---|---|---|---|---|
+| Helsinki: Kaivopuisto → Suomenlinna | 1.41 km · 754 ms | 1.41 km · 93 ms | 1.46 km · 78 ms | Crosses the Särkän väylä straight in 78 m (before: about 200 m slanting through it). The SUP keeps out of 0.3 m waves (10 m/s southerly). |
+| Turku: Ruissalo → Hirvensalo | 8.15 km · 318 ms | 8.18 km · 4.3 s | 8.18 km · 4.3 s | Harbour basin noted (348 m). Overpass didn't answer in time, so it was routed without OSM's rocks (and is re-routed when they come). |
+| Näsijärvi: Mustalahti → Siilinkari | 6.08 km · 99 ms | 6.21 km · 2.5 s (first data) | 6.47 km · 209 ms | Only small-boat fairways here (draught 1.8–2.4 m), so no fairway notes. The SUP takes 0.4 km more to stay in calmer water (6.5 m/s, SE). |
+| Kokemäenjoki at Pori | 7.77 km · 195 ms | 7.82 km · 4.1 s | 7.82 km · 4.1 s | A river: nothing to avoid; Overpass didn't answer in time. |
+
+- **Grid cells are the same as before** (0.8–1.2 million per leg). Once a window's data is in, the extra time per leg is 10–30 ms for drawing the costs, about 10 ms for the wind, and up to 1.3× the A* time. The rest of "After" is waiting for data the first time.
+- The wait for a source was then cut from 4 s to 2.5 s, since the leg is re-routed when the data arrives anyway.
+
+## Phase 13b — Multisport routes (proposed 2026-10-14, awaiting OK)
+
+**The user's ask:** "consider multisport activity route planning". For example: bike to a lake and paddle across; hike to a lake with a packraft; swimrun (run and swim in turns); triathlon training. Later (phase 15), ski and skate on ice.
+
+**What Polku has:**
+- The sport is the route's (the pill), and it sets the router, speeds, layers, Heads-up and colours.
+- Each leg already has its own route style and its own way of routing: Follow paths, Straight or Over water.
+- Water legs carry over land on foot.
+
+**Proposal**
+- **A sport per leg.** Each leg may have its own sport; the default is the route's. The leg's sport picks its router (BRouter's profile; Paddle, and a new Swim, use the water router), its style controls, its speeds and its Heads-up rules (trail details on bike and foot legs, the water notes above on water legs).
+  - Set it in the point menu ("From here: Paddle ▾"), in a leg's settings row, or with "Change sport here" on the line.
+  - **A hint while drawing:** clicking on water while drawing a land sport offers "Paddle from here?"; clicking on land while paddling offers "Carry, or go on foot or by bike?".
+- **Changeovers.** A point where the sport changes is a changeover. Its marker shows both sports, and it has a changeover time, editable in its menu (about 15 min bike↔paddle, 10 hike↔paddle, 1 run↔swim). The time counts in the total and moves the weather timeline.
+- **Gear check.** Heads-up warns when you leave something behind and don't come back for it: "Your bike stays at the shore (km 12) — the route doesn't come back there". Each changeover says whether the gear is *carried along* (packraft, folding kayak) or *left here*.
+- **Time and profile per sport.** The summary splits the time, for example "Bike 22 km · 1 h 05 · Paddle 6 km · 1 h 10 · changeovers 25 min". The profile gets a band with each leg's sport. MTB and uphill colours apply to bike legs.
+- **Weather** uses each leg's own speed for arrival times, and each sport's wind rules (paddling's wind classes on water legs).
+- **Share links:** an `s=` parameter with one letter per leg, only when a route mixes sports, so single-sport links stay as they are.
+- **Swim** as a sport (open water, about 2–3 km/h; near the shore; fairways strongly avoided), for swimrun and triathlon.
+- **Later:** multisport round trips (phase 10 and 14 loops are single-sport); a "Swimrun" preset that switches run and swim at the water's edge by itself.
+
+**For the user to decide**
+1. Which combinations matter most: bike + paddle, hike/packraft, swimrun, triathlon?
+2. Should Swim be a sport in the pill, or only inside multisport routes?
+3. Should this come before phase 14 (paddling round trips) or after?
 
 ## Phase 14 — Round trips for paddling
 

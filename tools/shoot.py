@@ -104,6 +104,15 @@ LIPAS_RIDE = (LIPAS_CARD +
               " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); await wait(900);")
 
 
+# phase 13: a paddling leg over the Särkän väylä shipping lane (Kaivopuisto → Suomenlinna),
+# fairways and marks from a recorded file, a fixed 10 m/s southerly; older code routes it its old way
+WATER_SEED = ("(async () => { try { const D = await import(location.origin + '/js/waterdata.js'); if (D.seedWater) {"
+              " const fx = await (await fetch(location.origin + '/tools/fixtures/water-helsinki.json')).json(); const fc = (f) => ({ type: 'FeatureCollection', features: f });"
+              " D.seedWater((box, want) => ({ fairways: want.fairways ? fc(fx.fairways) : fc([]), hazards: want.hazards ? fc(fx.marks) : fc([]), wind: want.wind ? { speed: 10, gust: 14, dir: 180 } : null, missing: [] })); } } catch (e) { /* main */ } return true; })()")
+WATER_LEG = [[24.9585, 60.1540], [24.9800, 60.1480]]
+NAUTICAL_ON = "(() => { polku.set && polku.set({ overlays: { ...polku.state.overlays, nautical: true } }); return true; })()"
+
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -215,6 +224,11 @@ SCENES = {
     'phone-lipas-card': dict(PHONE, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_CARD + ' return true; })()'),
     'desk-lipas-ride': dict(DESK, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_RIDE + ' return true; })()'),
     'phone-lipas-ride': dict(PHONE, timeline=False, hash='#13/62.4345/25.9026', js='(async () => { ' + LIPAS_RIDE + ' return true; })()'),
+    # phase 13: water routing (fairways crossed straight, Heads-up), and the paddling style controls
+    'desk-water-crossing': dict(DESK, timeline=False, activity='paddle', hash='#14.6/60.1515/24.9715', pre=WATER_SEED, water=WATER_LEG, js="(async () => { polku.planner.reveal('warnings'); return true; })()"),
+    'phone-water-crossing': dict(PHONE, timeline=False, activity='paddle', hash='#14.6/60.1515/24.9715', pre=WATER_SEED, water=WATER_LEG, state='half', js="(async () => { polku.planner.reveal('warnings'); return true; })()"),
+    'desk-water-style': dict(DESK, timeline=False, activity='paddle', hash='#14.6/60.1515/24.9715', pre=WATER_SEED, water=WATER_LEG, js="(async () => { polku.planner.reveal('style'); return true; })()"),
+    'phone-water-style': dict(PHONE, timeline=False, activity='paddle', hash='#14.6/60.1515/24.9715', pre=WATER_SEED, water=WATER_LEG, state='full', js="(async () => { polku.planner.reveal('style'); return true; })()"),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

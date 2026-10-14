@@ -11,6 +11,7 @@ import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
+import { onWaterData } from './waterdata.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml } from './ui.js';
@@ -121,6 +122,12 @@ export class Planner {
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
     map.on('touchstart', 'route-casing', (e) => this.onLinePress(e));
     map.on('zoom', () => this.fitGhosts());
+    // a source the water router waited for in vain has answered: route those legs again
+    onWaterData(() => {
+      let again = false;
+      for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; again = true; }
+      if (again) this.routeAll();
+    });
     // names of roads come with the tiles: when new ones arrive, the list may know more
     map.on('idle', () => {
       if (!this.active || !this.points.length) return;
@@ -614,11 +621,20 @@ export class Planner {
   legKey(i) {
     const leg = this.legs[i];
     const from = this.points[i], to = this.points[i + 1];
-    const nogos = leg.mode === 'auto' ? this.nogosNear(from, to) : [];
+    const nogos = leg.mode === 'auto' || leg.mode === 'water' ? this.nogosNear(from, to) : [];
     const rp = this.routerFor(i); // the leg's route style, as the routers take it
     const profile = rp.profile || ACTIVITIES[this.app.activity()].brouter;
     const styleKey = leg.mode === 'line' ? '' : rp.key;
-    return { key: `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}|${styleKey}`, from, to, nogos, profile, rp };
+    // a water leg also depends on the craft and, keeping out of the wind, on the hour it starts
+    const at = leg.mode === 'water' ? this.legStartSec(i) : 0;
+    const waterKey = leg.mode === 'water' ? `|${this.craft}|${rp.water.wind === 'ignore' ? '' : Math.floor(at / 3600)}` : '';
+    return { key: `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}|${styleKey}${waterKey}`, from, to, nogos, profile, rp, at };
+  }
+
+  // When leg i starts, roughly: the departure plus the way so far at your paddling speed (for the wind on water legs)
+  legStartSec(i) {
+    const kmh = (CRAFT[this.craft] || CRAFT.kayak).kmh;
+    return this.startSec() + (this.lengthTo(i) / 1000 / kmh) * 3600;
   }
 
   // the router parameters for leg i: its own style, or the route's
@@ -628,7 +644,7 @@ export class Planner {
   }
 
   // what the routers get for a leg (styles.js)
-  styleOpts(t) { return { params: t.rp.params, valhalla: t.rp.valhalla, water: t.rp.water }; }
+  styleOpts(t) { return { params: t.rp.params, valhalla: t.rp.valhalla, water: { ...t.rp.water, craft: this.craft, at: t.at, nogos: t.nogos } }; }
 
   async routeAll() {
     const gen = ++this.gen;
@@ -1142,9 +1158,39 @@ export class Planner {
     const a = await analyse(line, this.timeOpt());
     if (gen !== this.gen) return;
     this.analysis = a;
+    a.waterWarn = this.waterWarnings();
     this.renderAnalysis();
     this.loadWind(a);
     this.loadTrail(a);
+  }
+
+  // Heads-up from the water router (water.js events): shipping lanes and
+  // harbours on the way, keep-clear zones it had to pass, rough water, and any
+  // source that didn't answer. Positions along the whole route.
+  waterWarnings() {
+    const out = [];
+    const missing = new Set();
+    this.legs.forEach((leg, i) => {
+      const wr = leg.mode === 'water' && leg.status === 'ok' && leg.result && leg.result.water;
+      if (!wr) return;
+      for (const m of wr.missing || []) missing.add(m);
+      const base = this.lengthTo(i);
+      for (const e of wr.events || []) {
+        const at = base + e.at, len = e.len;
+        if (e.kind === 'ship') {
+          out.push(len > 600
+            ? { at, len, kind: 'water', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn` }
+            : { at, len, kind: 'water', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn' });
+        } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going' });
+        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap' });
+        else if (e.kind === 'rough') {
+          const w = wr.wind;
+          out.push({ at, len, kind: 'water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast` : 'an estimate from the forecast' });
+        }
+      }
+    });
+    if (missing.size) out.push({ at: 0, len: 0, kind: 'water', noAvoid: true, text: `Not checked on the water: ${[...missing].join(', ')} didn’t answer`, note: 'routed without it; Retry by moving a point' });
+    return out;
   }
 
   // Trail details along the route: the router's tags gave the first heads-up
@@ -1203,7 +1249,11 @@ export class Planner {
     if (!fromMap && this.app.onStartChange) this.app.onStartChange(k);
     clearTimeout(this.windTimer);
     // playback moves an hour a second; let it settle a little before re-fetching
-    this.windTimer = setTimeout(() => { if (this.analysis) this.loadWind(this.analysis); }, fromMap ? 250 : 0);
+    this.windTimer = setTimeout(() => {
+      // water legs that keep out of the wind follow the forecast for the new hour (water.js keeps routes per wind class)
+      if (this.legs.some((l, i) => l.mode === 'water' && this.routerFor(i).water.wind !== 'ignore')) { this.routeAll(); return; }
+      if (this.analysis) this.loadWind(this.analysis);
+    }, fromMap ? 600 : 0);
   }
 
   // Wind at the time each part of the route is reached: time the route without
@@ -1724,7 +1774,7 @@ export class Planner {
       fixed: this.legs.map((l) => (l.mode === 'fixed' && l.result ? encodePolyline(l.result.coords) : null)),
       src: this.legs.map((l) => (l.mode === 'fixed' && l.src) || null),
       routed: this.legs.map((l) => (l.mode !== 'fixed' && l.status === 'ok' && l.key && l.result
-        ? { key: l.key, line: encodePolyline(l.result.coords), tags: l.result.tags.map(tagId), portage: l.result.portage || [], provider: l.result.provider } : null)),
+        ? { key: l.key, line: encodePolyline(l.result.coords), tags: l.result.tags.map(tagId), portage: l.result.portage || [], provider: l.result.provider, water: l.result.water ? { ...l.result.water, times: undefined } : undefined } : null)),
       tags: table,
     });
   }
@@ -1745,7 +1795,7 @@ export class Planner {
       if (k && r.tags) {
         const c = decodePolyline(k.line);
         c[0] = r.points[i]; c[c.length - 1] = r.points[i + 1]; // exact ends, so the leg's key still matches
-        return { mode: r.modes[i], key: k.key, status: 'ok', result: { coords: c, tags: k.tags.map((t) => r.tags[t] || {}), portage: k.portage || [], provider: k.provider } };
+        return { mode: r.modes[i], key: k.key, status: 'ok', result: { coords: c, tags: k.tags.map((t) => r.tags[t] || {}), portage: k.portage || [], provider: k.provider, water: k.water } };
       }
       return { mode: r.modes[i] === 'fixed' ? 'auto' : r.modes[i] || 'auto' };
     });
@@ -2163,7 +2213,8 @@ export class Planner {
   setCraft(k) {
     this.craft = k;
     store.set('craft', k);
-    this.retime();
+    if (this.legs.some((l) => l.mode === 'water')) this.routeAll(); // how rough is too rough depends on the craft
+    else this.retime();
   }
 
   // "Time & speed": your speeds for this sport (editable) and where the time goes on this route.
@@ -2526,7 +2577,7 @@ export class Planner {
     box.innerHTML = '';
     if (!a) return;
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || [])].sort((x, y) => x.at - y.at);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || [])].sort((x, y) => x.at - y.at);
     const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
     const count = all.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
     this.setSection('warnings', { count: count || '', empty: !count, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });
@@ -2554,12 +2605,12 @@ export class Planner {
       // anything with a place can be avoided: a circle over the hazard (each of them, for a group)
       const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
         : w.avoid ? [{ ...w.avoid, label: w.text }]
-          : /^(Straight line|Carry)/.test(w.text) ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
+          : w.noAvoid || /^(Straight line|Carry)/.test(w.text) ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
       const where = w.items ? `at km ${w.items.map((p) => (p.at / 1000).toFixed(1)).join(', ')}` : `at km ${(w.at / 1000).toFixed(1)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
       const ico = w.icon ? `<img class="li-ico" src="${iconUrl(w.icon)}" alt="">` : icon(KIND_ICON[w.kind] || 'warn', 16);
       const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
         h('button', { type: 'button', class: 'li', html: `${ico}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${where}${w.note ? ` · ${escapeHtml(w.note)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
-        avoid && this.legs.some((l) => l.mode === 'auto') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null);
+        avoid && this.legs.some((l) => l.mode === 'auto' || l.mode === 'water') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null);
       box.append(row);
     }
   }

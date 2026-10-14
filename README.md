@@ -32,7 +32,7 @@ Polku shows how hard a trail is in both directions, routes you over land or open
 
 **Paddle**
 - An open-water router for kayak, canoe and SUP: routes stay on water, carries (portages) are flagged, and paddling time depends on the craft.
-- Depth areas, contours and soundings (Traficom); click the water for the charted depth.
+- Depth areas, contours and soundings (Traficom, not for navigation); click the water for the charted depth.
 - A **nautical chart** for the sea and lakes: IALA-A buoys and marks, lights with their character and red/green/white sectors, leading marks, fairways with swept depth, speed limits and restriction areas, waterway signs and reported faults.
 - Live ships (AIS) coloured by type, with trails, course lines and a ship card (destination, size, draught, port calls, follow on map).
 
@@ -107,7 +107,7 @@ The plan for upcoming work is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Data sources
 
-[OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles, © OpenStreetMap contributors) · [Mapterhorn](https://mapterhorn.com) terrain · [BRouter](https://brouter.de) routing · [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers when BRouter pauses ([fix the map](https://www.openstreetmap.org/fixthemap)) · [Photon](https://photon.komoot.io) search · [Overpass API](https://overpass-api.de) · [LIPAS](https://lipas.fi) (University of Jyväskylä, CC BY 4.0) · Traficom (depth data) · Väylävirasto (aids to navigation, fairways) · Fintraffic Digiroad · Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0) · Esri World Imagery · [Waymarked Trails](https://waymarkedtrails.org) · [Open-Meteo](https://open-meteo.com) · [FMI open data](https://en.ilmatieteenlaitos.fi/open-data) rain radar (fetched from the download service and drawn in the app, as FMI asks) · [RainViewer](https://www.rainviewer.com/api.html) · [Fintraffic Digitraffic](https://www.digitraffic.fi/en/) (road & marine, CC BY 4.0) · [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
+[OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles, © OpenStreetMap contributors) · [Mapterhorn](https://mapterhorn.com) terrain · [BRouter](https://brouter.de) routing · [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers when BRouter pauses ([fix the map](https://www.openstreetmap.org/fixthemap)) · [Photon](https://photon.komoot.io) search · [Overpass API](https://overpass-api.de) · [LIPAS](https://lipas.fi) (University of Jyväskylä, CC BY 4.0) · Traficom (depth data, shown only: its licence excludes route planning) · Väylävirasto (aids to navigation, fairways; CC BY 4.0, also used by the paddling router) · Fintraffic Digiroad · Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0) · Esri World Imagery · [Waymarked Trails](https://waymarkedtrails.org) · [Open-Meteo](https://open-meteo.com) · [FMI open data](https://en.ilmatieteenlaitos.fi/open-data) rain radar (fetched from the download service and drawn in the app, as FMI asks) · [RainViewer](https://www.rainviewer.com/api.html) · [Fintraffic Digitraffic](https://www.digitraffic.fi/en/) (road & marine, CC BY 4.0) · [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
 
 These are free public services: be gentle with them. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it; aerial imagery and the Kapsi raster maps stay online-only.
 
