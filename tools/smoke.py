@@ -5,6 +5,7 @@
   python3 tools/smoke.py 390x844    # just one size
   python3 tools/smoke.py layers     # just the Layers panel in every sport
   python3 tools/smoke.py trails     # just the trail details (from a recorded tile)
+  python3 tools/smoke.py header     # just the planner header fitting its sheet
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -302,6 +303,41 @@ def trails(chrome):
     return not fails
 
 
+# The planner header never spills out of the sheet (labels vary: a measured layout,
+# planner.js fitHeader). Narrow desktop windows with the bottom dock, a small phone.
+HEADER_OUT = """(() => {
+  const sheet = document.querySelector('#planner').getBoundingClientRect();
+  let worst = 0, who = '';
+  for (const el of document.querySelectorAll('.sheet-head button, .sheet-head label, .sheet-head .seg')) {
+    if (!el.offsetParent) continue;
+    const over = el.getBoundingClientRect().right - (sheet.right - 4);
+    if (over > worst) { worst = over; who = (el.getAttribute('aria-label') || el.title || el.textContent || '').trim().slice(0, 30); }
+  }
+  return worst > 1 ? `${who} sticks out ${Math.round(worst)} px` : '';
+})()"""
+
+
+def header_fit(chrome):
+    fails = []
+    for w, h, phone, dock in [(360, 740, True, 'left'), (600, 900, False, 'bottom'), (700, 900, False, 'bottom'), (760, 900, False, 'bottom'), (1300, 800, False, 'bottom')]:
+        pg = chrome.page(w, h, phone)
+        pg.open_app({'activity': 'road'}, {'polku:plannerDock': json.dumps(dock), 'polku:styles': json.dumps({'mtb': {'p': 'technical', 'v': {}, 'wet': 'auto'}})})
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js("(() => { polku.planner.setActive(true); return true; })()")
+        time.sleep(0.8)
+        for sport in ('road', 'mtb'):
+            if sport == 'mtb':
+                pg.js("(() => { polku.set({ activity: 'mtb' }); return true; })()")
+                time.sleep(0.8)
+            out = pg.js(HEADER_OUT)
+            if out:
+                fails.append(f'{w}x{h} {dock} {sport}: {out}')
+        fails += [f'{w}x{h} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} planner header fits" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def layers(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/60.15/24.95')
@@ -396,6 +432,8 @@ def main():
             ok = layers(chrome) and ok
         if not only or 'trails' in only:
             ok = trails(chrome) and ok
+        if not only or 'header' in only:
+            ok = header_fit(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

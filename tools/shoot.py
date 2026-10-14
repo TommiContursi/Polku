@@ -178,6 +178,10 @@ SCENES = {
     'desk-trail-both': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'both')),
     'desk-trails-uphill': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16.4, "polku.set({ trailColors: 'up' }); await wait(4000);")),
     'phone-trails-uphill': dict(PHONE, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16.4, "polku.set({ trailColors: 'up' }); await wait(4000);")),
+    # the planner header where it used to spill over (a narrow desktop window, a small phone)
+    'narrow-bottom-peek': dict(DESK, w=700, h=900, timeline=False, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"', 'polku:styles': '{"mtb":{"p":"technical","v":{},"wet":"auto"}}'}),
+    'narrow-bottom-half': dict(DESK, w=700, h=900, timeline=False, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"', 'polku:styles': '{"mtb":{"p":"technical","v":{},"wet":"auto"}}'}),
+    'small-phone-peek': dict(PHONE, w=360, h=740, timeline=False, route='route-kauppi-mtb.json', state='peek', storage={'polku:styles': '{"mtb":{"p":"technical","v":{},"wet":"auto"}}'}),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

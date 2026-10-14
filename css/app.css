@@ -422,15 +422,16 @@ button { font: inherit; color: inherit; }
 .sheet-head { flex: none; padding: 0 10px 8px 14px; touch-action: none; container-type: inline-size; }
 /* a wide bottom panel fits the summary and the tools on one row: collapsed, it is one slim bar */
 /* a wide header: everything on one line */
+/* (unless planner.js measured that it doesn't fit: .two-line) */
 @container (min-width: 1240px) {
-  .sheet-head-in { display: flex; align-items: center; gap: 18px; }
-  .sheet-head-in > .sheet-row { display: contents; }
-  .sheet-head-in .sheet-sum { flex: none; order: 1; }
-  .sheet-head-in .modes { order: 2; }
-  .sheet-head-in .quick-pair { order: 3; }
-  .sheet-head-in .tools { order: 4; margin-left: auto; }
-  .sheet-head-in .sheet-min { order: 5; }
-  .sheet-head-in .done { order: 6; }
+  .sheet-head:not(.two-line) .sheet-head-in { display: flex; align-items: center; gap: 18px; }
+  .sheet-head:not(.two-line) .sheet-head-in > .sheet-row { display: contents; }
+  .sheet-head:not(.two-line) .sheet-head-in .sheet-sum { flex: none; order: 1; }
+  .sheet-head:not(.two-line) .sheet-head-in .modes { order: 2; }
+  .sheet-head:not(.two-line) .sheet-head-in .quick-pair { order: 3; }
+  .sheet-head:not(.two-line) .sheet-head-in .tools { order: 4; margin-left: auto; }
+  .sheet-head:not(.two-line) .sheet-head-in .sheet-min { order: 5; }
+  .sheet-head:not(.two-line) .sheet-head-in .done { order: 6; }
   .sheet-head-in .seg.modes button span { display: inline; }
 }
 .tool-wide { display: none; }
@@ -448,6 +449,13 @@ button { font: inherit; color: inherit; }
   .tools-row { flex-wrap: nowrap; }
   .quick-pair { order: 0; flex: none; margin-right: auto; } /* right after the modes; the tools at the far end */
 }
+/* measured too narrow (planner.js fitHeader): the quick buttons take a line of their
+   own, then shorter labels; while measuring they show even where the profile size hides them */
+.sheet-head.stack .tools-row { flex-wrap: wrap; }
+.sheet-head.stack .quick-pair { order: -1; flex: 1 0 100%; margin-right: 0; }
+.sheet-head.tight .quick-sport > span, .sheet-head.tight .q-pre { display: none; }
+.sheet-head.measuring .quick-pair { display: flex !important; }
+.sheet[data-state="profile"] .sheet-head.stack .quick-pair { display: none; }
 .btn.quick { height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; gap: 6px; white-space: nowrap; }
 .btn.quick b { font-weight: 700; }
 /* the sport: a native list laid over the button, so it opens right there */
@@ -473,6 +481,8 @@ button { font: inherit; color: inherit; }
 .seg.modes button { padding: 0 10px; }
 .seg.modes button span { display: none; }
 .seg.modes button[aria-pressed="true"] span { display: inline; }
+/* the narrowest headers: the modes as icons, so they share a line with the tools */
+.sheet-head.tighter .seg.modes button span { display: none; }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 .sheet.busy .sheet-head::after {

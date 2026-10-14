@@ -412,6 +412,32 @@ export class Planner {
     this.update();
   }
 
+  // The header in the first arrangement that fits. Labels change with the sport and the
+  // style, so this measures rather than trusting breakpoints: one line → two lines →
+  // the quick buttons on a line of their own → compact labels (the sport's icon,
+  // the style without "Style:", the modes as icons). CSS (.sheet-head.two-line / .stack /
+  // .tight / .tighter) does the rest.
+  fitHeader() {
+    const head = this.els.head;
+    if (!head || this.panel.hidden) return;
+    const over = (el) => el && el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1;
+    head.classList.remove('two-line', 'stack', 'tight', 'tighter');
+    head.classList.add('measuring');
+    if (over(head.firstChild)) head.classList.add('two-line');
+    if (over(this.els.toolsRow)) head.classList.add('stack');
+    if (over(this.els.quickPair) || over(this.els.toolsRow)) head.classList.add('tight');
+    // the tools fell to a line of their own under the modes: the modes go icon-only
+    const modes = this.els.toolsRow.querySelector('.modes'), tools = this.els.toolsRow.querySelector('.tools');
+    if (modes && tools && tools.offsetTop > modes.offsetTop + modes.offsetHeight / 2) head.classList.add('tighter');
+    head.classList.remove('measuring');
+    this.fitW = head.clientWidth;
+  }
+
+  fitHeaderSoon() {
+    cancelAnimationFrame(this.fitFrame);
+    this.fitFrame = requestAnimationFrame(() => this.fitHeader());
+  }
+
   renderQuickSport() {
     const sports = this.app.sports ? this.app.sports() : [];
     const cur = sports.find((x) => x.k === this.app.activity());
@@ -421,6 +447,7 @@ export class Planner {
     this.els.sportSel.value = cur.k;
     this.els.quickSport.innerHTML = `${icon(cur.icon, 16)}<span>${escapeHtml(cur.label)}</span>${icon('chevronDown', 12)}`;
     this.els.quickSport.append(this.els.sportSel);
+    this.fitHeaderSoon();
   }
 
   onActivityChange() {
@@ -846,7 +873,8 @@ export class Planner {
     const box = this.els && this.els.styleBox;
     if (!box) return;
     const sport = this.app.activity();
-    this.els.quickStyle.innerHTML = `${icon('sliders', 16)}<span>Style: <b>${escapeHtml(styleName(sport, this.style))}</b></span>`;
+    this.els.quickStyle.innerHTML = `${icon('sliders', 16)}<span><span class="q-pre">Style: </span><b>${escapeHtml(styleName(sport, this.style))}</b></span>`;
+    this.fitHeaderSoon();
     const cat = STYLES[sport] || STYLES.mtb;
     if (this.styleLeg != null && !this.legs[this.styleLeg]) this.styleLeg = null;
     const leg = this.styleLeg;
@@ -1722,7 +1750,7 @@ export class Planner {
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
       h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
         h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      h('div', { class: 'sheet-row tools-row' }, modes, h('span', { class: 'quick-pair' }, this.els.quickSport, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
+      this.els.toolsRow = h('div', { class: 'sheet-row tools-row' }, modes, this.els.quickPair = h('span', { class: 'quick-pair' }, this.els.quickSport, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
@@ -1868,6 +1896,7 @@ export class Planner {
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
     };
     new ResizeObserver(sizes).observe(this.els.head);
+    new ResizeObserver(() => { if (this.els.head.clientWidth !== this.fitW) this.fitHeaderSoon(); }).observe(this.els.head);
     new ResizeObserver(sizes).observe(this.sec.profile.el);
     addEventListener('resize', sizes);
     const heights = () => {
