@@ -29,7 +29,7 @@ Also approved:
 | — | First visit: open on Helsinki and ask for your location; later visits open where you left off | `first-visit` | [#41](https://github.com/TommiContursi/Polku/pull/41) | merged |
 | — | A README with screenshots, a changelog, developer notes in docs/, Polku and its maker in the map's credits | `readme` | [#42](https://github.com/TommiContursi/Polku/pull/42) | merged |
 | 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | [#43](https://github.com/TommiContursi/Polku/pull/43) | merged |
-| — | The route on the map: a click opens the planner, a tap or right-click opens a menu for that part, LIPAS routes easier to pick | `route-menu` | (this PR) | PR open |
+| — | The route on the map: a click opens the planner, a tap or right-click opens a menu for that part, LIPAS routes easier to pick | `route-menu` | [#44](https://github.com/TommiContursi/Polku/pull/44) | PR open |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | — | next |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
