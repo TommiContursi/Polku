@@ -4,6 +4,7 @@
   python3 tools/smoke.py            # all viewports
   python3 tools/smoke.py 390x844    # just one size
   python3 tools/smoke.py layers     # just the Layers panel in every sport
+  python3 tools/smoke.py trails     # just the trail details (from a recorded tile)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -197,6 +198,62 @@ LAYERS_AFTER = """(async () => {
 })()"""
 
 
+# Trail details from a recorded tile (Tykkikallio, Jyväskylä; Overpass held back,
+# so its neighbours just stay unloaded): trails drawn from OSM with the tiles' own hidden
+# there, icons and fences up close, an obstacle opens its card, and road
+# cycling starts with it off.
+SEED_TRAILS = """(async () => {
+  const T = await import(location.origin + '/js/trails.js');
+  const fx = await (await fetch(location.origin + '/tools/fixtures/trails-tykkikallio.json')).json();
+  T.holdFetches();
+  T.seedTile(4682, 2273, fx);
+  return true;
+})()"""
+TRAILS = """(async () => {
+  const m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const idle = () => new Promise((r) => { if (m.loaded()) r(); else m.once('idle', r); });
+  await wait(1500); await idle();
+  if (!polku.state.trailDetails) errs.push('trail details are off in MTB');
+  const osm = m.queryRenderedFeatures({ layers: ['path-osm-ground', 'path-osm-bridge'] });
+  if (osm.length < 40) errs.push(`only ${osm.length} trails drawn from OSM`);
+  if (!JSON.stringify(m.getFilter('path-ground')).includes('within')) errs.push("the tiles' trails aren't hidden inside the detail tiles");
+  const kinds = new Set(osm.map((f) => f.properties.w));
+  if (!kinds.has(0) || !kinds.has(2)) errs.push('no narrow or no wide trail in view');
+  if (!osm.some((f) => f.properties.vis >= 2)) errs.push('no faint trail in view');
+  m.jumpTo({ center: [25.7652, 62.2290], zoom: 17.2 });
+  await wait(800); await idle();
+  const pts = m.queryRenderedFeatures({ layers: ['td-points'] });
+  if (!pts.some((f) => f.properties.kind === 'tree') || !pts.some((f) => f.properties.kind === 'gate-no')) errs.push(`icons: ${pts.map((f) => f.properties.kind).join(', ') || 'none'}`);
+  if (!m.queryRenderedFeatures({ layers: ['td-fence'] }).length) errs.push('no fences drawn');
+  const tree = pts.find((f) => f.properties.kind === 'tree');
+  if (tree) {
+    const point = m.project(tree.geometry.coordinates);
+    m.fire('click', { point, lngLat: m.unproject(point), originalEvent: new MouseEvent('click') });
+    await wait(400);
+    const t = document.querySelector('.polku-popup .insp-title');
+    if (!t || !/log|fallen/i.test(t.textContent)) errs.push(`clicking the fallen tree opened ${t ? t.textContent : 'nothing'}`);
+    document.querySelector('.polku-popup .maplibregl-popup-close-button')?.click();
+  }
+  polku.set({ activity: 'road' });
+  await wait(600);
+  if (polku.state.trailDetails || m.getLayer('path-osm-ground')) errs.push('road cycling starts with trail details on');
+  polku.set({ activity: 'mtb' });
+  return errs;
+})()"""
+
+
+def trails(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/62.2289/25.7652')
+    pg.js(SEED_TRAILS)
+    pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16 }); true")
+    fails = pg.js(TRAILS)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} trail details" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def layers(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/60.15/24.95')
@@ -287,6 +344,8 @@ def main():
     try:
         if not only or 'layers' in only:
             ok = layers(chrome) and ok
+        if not only or 'trails' in only:
+            ok = trails(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

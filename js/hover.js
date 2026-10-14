@@ -10,6 +10,7 @@ import { inspectLayers, pickFeature, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from '.
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
+import { obstacleText, detailBits } from './trails.js';
 import { h, escapeHtml } from './ui.js';
 
 const FIRST = 260; // ms the pointer rests before the first tooltip
@@ -69,7 +70,7 @@ export function initHover(map, app) {
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
-    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb' }); }
+    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false }); }
     if (!d) { hide(); return; }
     render(d);
     // the incline from the DEM arrives a moment later
@@ -180,6 +181,10 @@ function describe(f, feats, ctx) {
     const type = (p.subclass || p.class || '').replace(/_/g, ' ');
     return { title: p.name || cap(type || 'Place'), bits: [p.name && type ? e(cap(type)) : '', p.ele ? `${e(p.ele)} m` : ''].filter(Boolean) };
   }
+  if (/^td-/.test(id)) {
+    const o = obstacleText(p, ctx && ctx.bike);
+    return { title: o.title, bits: o.note ? [e(o.note)] : [] };
+  }
   if (id === 'uphill-line' || /^(path|track|cycleway|road)-/.test(id)) return way(feats, ctx);
   return null;
 }
@@ -199,7 +204,8 @@ function way(feats, ctx) {
   const upAt = bits.length;
   if (wp.surface) bits.push(e(String(wp.surface).replace(/_/g, ' ')));
   if (wp.bicycle === 'no') bits.push('no bikes');
-  if (wp.brunnel === 'bridge') bits.push('bridge');
+  if (wp.brunnel === 'bridge' && !wp.boardwalk) bits.push('bridge');
+  if (wp.osm) bits.push(...detailBits(wp).map(e)); // trail details, drawn from OSM
   const d = { title, bits, upAt };
   // uphill layer off (or not computed here): work out the incline on the spot
   if (!up && w && ctx) {

@@ -8,9 +8,10 @@ import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
 import { buildStyle } from './style.js';
-import { installIcons } from './icons.js';
+import { installIcons, iconUrl } from './icons.js';
 import { Planner, parseShared } from './planner.js';
 import { UphillLayer } from './uphill.js';
+import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer } from './lipas.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
@@ -57,7 +58,8 @@ if (shared && ACTIVITIES[shared.activity]) state.activity = shared.activity;
 
 const overlaysFor = (act) => ({ ...ACTIVITY_OVERLAYS[act], ...(state.overlaysByActivity[act] || {}) });
 // Trail colours and numbers: on in every sport if you want them; MTB starts with difficulty, the rest plain.
-const TRAIL_DEFAULTS = (act) => ({ trailColors: act === 'mtb' ? 'down' : 'off', labelsDown: false, labelsUp: false });
+// Trail details (width, visibility, obstacles) start on where they matter most.
+const TRAIL_DEFAULTS = (act) => ({ trailColors: act === 'mtb' ? 'down' : 'off', labelsDown: false, labelsUp: false, trailDetails: ['mtb', 'hike', 'trailrun'].includes(act) });
 const trailsFor = (act) => ({ ...TRAIL_DEFAULTS(act), ...(state.trailsByActivity[act] || {}) });
 // settings from before trail colours were per sport: they were MTB's
 if (!store.get('settings', {}).trailsByActivity) {
@@ -144,6 +146,20 @@ function applyStyle() {
 
 // ------------------------------------------------------------------ modules
 const uphill = new UphillLayer(map, (fc) => setData('uphill', fc));
+// Trail details from OSM; inside the tiles that have loaded, trails are drawn from them.
+let busyToldAt = 0;
+const details = new TrailDetails(map, {
+  onData: (ways, points) => { setData('trailWays', ways); setData('trailPoints', points); },
+  onCoverage: (area) => {
+    ctx.trailCoverage = area;
+    if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); // only the trail filters change
+  },
+  onBusy: () => {
+    if (Date.now() - busyToldAt < 10 * 60e3) return;
+    busyToldAt = Date.now();
+    toast('Trail details: the OpenStreetMap server is busy — trying again in a couple of minutes');
+  },
+});
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 
 const safety = new SafetyLayers(map, { setData, time: () => timeAtHour(planner.startOffsetH) });
@@ -174,10 +190,12 @@ const planner = new Planner(map, {
 
 // MTB difficulty in hover and click details: in MTB, and in any sport with trail colours on
 const showsDifficulty = () => state.activity === 'mtb' || state.trailColors !== 'off';
+const isBike = () => ACTIVITIES[state.activity].group === 'bike';
 initInspector(map, {
   isPlanning: () => planner.active,
   activity: () => state.activity,
   difficulty: showsDifficulty,
+  bike: isBike,
   routeFrom: (ll, mode) => {
     planner.setActive(true);
     if (mode) planner.setMode(mode);
@@ -191,7 +209,7 @@ initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike });
 
 initSearch(map, $('#search-input'), $('#search-results'));
 
@@ -246,7 +264,7 @@ function setWeather(patch) {
 }
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, lipas, weather, safety, cameras, nautical,
+  map, planner, state, uphill, trailDetails: details, lipas, weather, safety, cameras, nautical,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderSettingsPanel();
@@ -289,6 +307,7 @@ function configureLayers() {
   cameras.setEnabled(!!o.sfCameras);
   nautical.setEnabled(!!o.nautical);
   uphill.setEnabled(state.trailColors === 'up' || state.trailColors === 'both' || state.labelsUp);
+  details.setEnabled(!!state.trailDetails);
 }
 
 // ------------------------------------------------------------------ activity pill
@@ -449,6 +468,18 @@ const KEYS = {
       ? [h('h4', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
     ...(state.trailColors === 'up' || state.trailColors === 'both'
       ? [h('h4', {}, state.trailColors === 'both' ? 'Uphill difficulty (stripe)' : 'Uphill difficulty'), ...UPHILL_TEXT.map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:${state.trailColors === 'both' ? 4 : 8}px`), t)), keyItem(h('span', { class: 'lg-arrow' }, '»'), 'Uphill direction (8 %+)')] : []),
+    ...(state.trailDetails ? [
+      h('h4', {}, 'Trail details (OpenStreetMap, where mapped)'),
+      keyItem(keyLine('background:#feb13e;height:4px;box-shadow:inset 0 0 0 1.5px #feb13e'), 'Narrow, under 0.6 m (thinner)'),
+      keyItem(keyLine('background:#feb13e;height:11px'), 'Wide, 0.9 m or more (thicker)'),
+      keyItem(keyLine('height:7px;background:repeating-linear-gradient(90deg,#1f1f1f 0 2px,transparent 2px 5px) center/100% 2px no-repeat,#feb13e'), 'Faint on the ground (dotted)'),
+      keyItem(keyLine('background:#feb13e;height:6px;opacity:.55'), 'Barely or not visible (colour only)'),
+      keyItem(keyLine('border-top:3px dotted #2f9e44'), 'Overgrown (beside the line)'),
+      keyItem(keyLine('border-top:3px dotted #1d6fd1'), 'Wet or muddy (beside the line)'),
+      keyItem(keyLine('border-top:2px dashed #8b4a2b'), 'Fence (hedge green, wall grey)'),
+      ...[['td-tree', 'Fallen tree or log across'], ['td-gate', 'Gate or barrier'], ['td-gate-no', 'Gate, no access'], ['td-stile', 'Stile or kissing gate'], ['td-cycle', 'Cycle barrier'], ['td-ford', 'Ford (no bridge)']]
+        .map(([id, label]) => keyItem(h('img', { class: 'lg-icon', src: iconUrl(id), alt: '' }), label)),
+    ] : []),
     h('h4', {}, 'Ways'),
     keyItem(keyLine('border-top:2px dashed #1f1f1f'), 'Path / trail'),
     keyItem(keyLine('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
@@ -549,8 +580,9 @@ function renderLayersPanel() {
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
   p.append(section('On now',
-    on.length || wx.length || trailOn ? h('div', { class: 'on-chips' },
+    on.length || wx.length || trailOn || state.trailDetails ? h('div', { class: 'on-chips' },
       trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
+      state.trailDetails ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail details', onclick: () => { setTrail('trailDetails', false); renderLayersPanel(); }, html: `<span>Trail details</span>${icon('close', 12)}` }) : null,
       ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
       ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
       : h('p', { class: 'note' }, 'No extra layers — just the base map and trails.'),
@@ -593,13 +625,17 @@ function renderLayersPanel() {
       up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
     }[state.trailColors] || ''),
+    toggle('Trail details', state.trailDetails, rerender((v) => {
+      setTrail('trailDetails', v);
+      if (v && map.getZoom() < DETAILS_ZOOM) toast(`Zoom in to level ${DETAILS_ZOOM}+ to see trail details`);
+    }), `Width, faint trails, overgrown and wet stretches, fallen trees, gates, fords · zoom ${DETAILS_ZOOM}+ · from OpenStreetMap, where mapped`),
     toggle('Difficulty numbers', state.labelsDown, rerender((v) => setTrail('labelsDown', v)), 'S0–S6 beside graded trails (zoom 15+)'),
     toggle('Uphill numbers', state.labelsUp, rerender((v) => {
       setTrail('labelsUp', v);
       if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
     }), '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)'),
   ];
-  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...KEYS.trails())));
+  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...KEYS.trails())));
 
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map((id) => {

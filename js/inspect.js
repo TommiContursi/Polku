@@ -4,7 +4,9 @@
 
 import { DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, TRAFICOM_WMS } from './config.js';
 import { elevation } from './dem.js';
-import { overpass, gradeHere } from './uphill.js';
+import { gradeHere } from './uphill.js';
+import { overpass } from './osm.js';
+import { obstacleText, VIS_TEXT } from './trails.js';
 import { dist, pointSegment } from './geo.js';
 import { h, icon, escapeHtml } from './ui.js';
 import { NAV_TEXT } from './nautical.js';
@@ -28,8 +30,8 @@ const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https:/
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/;
-const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^uphill-line/, /^(path|track|cycleway)-/,
+const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/;
+const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^uphill-line/, /^(path|track|cycleway)-/,
   /^lipas-route/, /^sf-aadt/, /^road-/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/];
 
 export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
@@ -66,7 +68,8 @@ export function initInspector(map, app) {
 
     if (/^nm-/.test(f.layer.id)) { renderNautical(body, f, map); body.append(actions); return; }
     if (/^sf-|^military/.test(f.layer.id)) { await renderSafety(body, f, app); body.append(actions); return; }
-    if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
+    if (/^td-/.test(f.layer.id)) renderObstacle(body, f, app);
+    else if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
     else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
     else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb');
@@ -125,7 +128,8 @@ function renderWay(body, f, feats, ll, mtb) {
   if (wp.surface) body.append(row('Surface', wp.surface));
   const access = ['bicycle', 'foot', 'horse'].filter((k) => wp[k]).map((k) => `${k} ${wp[k]}`).join(', ');
   if (access) body.append(row('Access', access));
-  if (wp.brunnel) body.append(row('Structure', wp.brunnel));
+  if (wp.brunnel) body.append(row('Structure', wp.boardwalk ? 'boardwalk (pitkospuut)' : wp.brunnel));
+  if (wp.osm) trailRows(body, wp);
   body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
   const more = h('div', { class: 'insp-more' });
   const btn = h('button', {
@@ -134,7 +138,8 @@ function renderWay(body, f, feats, ll, mtb) {
       btn.disabled = true;
       btn.textContent = 'Loading OSM details…';
       try {
-        const q = `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
+        // a trail drawn from OSM knows its way; otherwise the nearest way to the click
+        const q = wp.osm ? `[out:json][timeout:15];way(${wp.osm});out tags geom;` : `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
         const json = await overpass(q, { race: true });
         const ways = (json.elements || []).filter((w) => w.geometry);
         if (!ways.length) { btn.textContent = 'No OSM way found here'; return; }
@@ -159,6 +164,31 @@ function renderWay(body, f, feats, ll, mtb) {
   }, 'Show all OSM tags (sac_scale, uphill, visibility…)');
   more.append(btn);
   body.append(more);
+}
+
+// What trail details know about a trail (js/trails.js), without asking Overpass.
+function trailRows(body, p) {
+  if (p.width != null) body.append(row('Width', `${p.width}${/[a-z]/i.test(String(p.width)) ? '' : ' m'}`));
+  if (p.tv) body.append(row('Visibility', `${p.vis ? VIS_TEXT[p.vis] : 'clear'} (${p.tv})`));
+  const issues = [p.veg && 'overgrown', p.mud && 'wet or muddy', p.tree && 'fallen trees', p.wayford && 'ford'].filter(Boolean);
+  if (issues.length) body.append(row('On the way', issues.join(', ')));
+  if (p.smooth) body.append(row('Smoothness', String(p.smooth).replace(/_/g, ' ')));
+  if (p.sac) body.append(row('Hiking (SAC)', String(p.sac).replace(/_/g, ' ')));
+  if (p.informal) body.append(row('Path', 'informal (not an official trail)'));
+}
+
+function renderObstacle(body, f, app) {
+  const p = f.properties;
+  const { title, note } = obstacleText(p, app.bike ? app.bike() : false);
+  body.append(h('div', { class: 'insp-title' }, title));
+  if (note) body.append(h('div', { class: 'insp-sub' }, note));
+  if (p.barrier) body.append(row('OSM', `barrier=${p.barrier}${p.obstacle ? ` · obstacle=${p.obstacle}` : ''}`));
+  else if (p.obstacle) body.append(row('OSM', `obstacle=${p.obstacle}`));
+  const kind = p.kind ? 'node' : 'way';
+  body.append(h('div', { class: 'insp-links' },
+    h('a', { href: `https://www.openstreetmap.org/${kind}/${p.osm}`, target: '_blank', rel: 'noopener', html: `OSM ${kind} ${p.osm} ${icon('external', 13)}` }),
+    h('a', { href: `https://www.openstreetmap.org/edit?${kind}=${p.osm}`, target: '_blank', rel: 'noopener', html: `Gone? Fix the map ${icon('external', 13)}` })));
+  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
 }
 
 function renderPoi(body, f) {

@@ -815,6 +815,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .lg-line { display: block; width: 34px; flex: none; border-radius: 3px; }
 .lg-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; margin: 0 10px; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
 .lg-arrow { width: 34px; text-align: center; font-weight: 800; }
+.lg-icon { width: 20px; height: 20px; flex: none; margin: 0 7px; }
 
 /* ---------------------------------------------------------------- modal & cards */
 .modal {

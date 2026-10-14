@@ -22,7 +22,8 @@ Also approved:
 | 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown (+ Round trip & Style in the header, bottom panel by default) | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | merged |
 | 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | PR open |
-| 12 | Trail details & obstacles: width, visibility, fallen trees, gates, fords, wet spots — on the map, along the route, in Heads-up | `trail-details` | — | redesigned 2026-10-14, awaiting OK |
+| 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | PR open |
+| 12b | Trail details along the route: Heads-up, Width and Visibility profile colours | `trail-route` | — | next |
 | 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
 | 14 | Round trips for paddling | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
@@ -633,7 +634,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - a slider changes the map, and 30 % survives a reload.
   - Against `main` it fails on exactly these points.
 
-## Phase 12 — Trail details & obstacles (redesigned 2026-10-14, awaiting OK)
+## Phase 12 — Trail details & obstacles (redesigned 2026-10-14, OK'd; 12a built)
 
 **The goal, in the user's words:** looking at the map, understand what a trail is like before going there. Not just its difficulty, which Polku already shows well, but how wide it is, how visible it is on the ground, how rough it is, and whether something is in the way: fallen trees, gates, fords, wet spots. The same information should help when planning: seen along the route, warned about, and preferred or avoided where possible. Build on what's there (trail colours, profile colours, Heads-up, route styles) rather than adding separate controls.
 
@@ -702,7 +703,7 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
     - *stile / kissing gate*;
     - *cycle barrier*;
     - *ford*.
-- **How:** the tiles' paths have no OSM ids or detail tags, so the ways that have details (from Overpass) are redrawn on top as a GeoJSON layer. It covers the tiles' drawing of the same way, with its own halo, centre line and fade. Ways without details stay as the tiles draw them.
+- **How:** the tiles' paths have no OSM ids or detail tags. An overlay on top can't make a narrow trail look narrower than the tile line under it, so inside the tiles that have loaded, *all* trails come from Overpass and are drawn from OSM, and a `within` filter hides the vector tiles' own trail lines there. That's 262 trails in the Tykkikallio tile, so it costs little more than fetching only the detailed ones. Elsewhere the tiles draw trails as before.
 - **One query per place:** the uphill layer's own z12 query for `mtb:scale:uphill` moves into these z13 tiles.
 
 *Hover and click*
@@ -773,10 +774,35 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - **Overpass load:** best-effort, cached, one query per tile, only at zoom 14+.
 - **The custom profiles depend on brouter.de accepting uploads,** as the road profile does today; the stock profile is the fallback.
 
-**Questions for the user**
-1. Trail details on by default for MTB, hike and trail run?
-2. Polku's own MTB and hiking BRouter profiles for "Avoid obstacles and faint trails"? Or keep phase 12 to warnings and ranking only.
-3. Two PRs (12a, 12b), or one?
+**Questions for the user, and the answers (2026-10-14)**
+1. Trail details on by default for MTB, hike and trail run? **Yes: try it, change it if we don't like it.**
+2. Polku's own MTB and hiking BRouter profiles for "Avoid obstacles and faint trails"? Or keep phase 12 to warnings and ranking only. **Warnings and ranking are enough for now.** So 12b has no avoid profiles; the Avoid button (a no-go circle) stays the way round an obstacle.
+3. Two PRs (12a, 12b), or one? **12a and 12b.**
+
+**Built (12a, PR #31)**
+- **Tiles:** `js/trails.js`, one Overpass query per z13 tile, cached a week in IndexedDB (`js/osm.js`, which now holds the Overpass client for everyone). Each tile has:
+  - every trail (path, bridleway, steps, MTB-graded footways) with its tags;
+  - tracks, footways and cycleways only when they have obstacles, fords, mud, visibility or `mtb:scale:uphill`;
+  - **fences, walls and hedges**, and gates, stiles, cycle barriers, fallen trees and fords **anywhere in the tile**. A user caught the water tower's locked gate on Tykkikallio missing: it sits on a service road and in a fence, not on a trail.
+  - Size: the Tykkikallio tile is 192 KB of JSON (5–13 s) and 62 KB stored: 263 trails, 105 fences, walls and hedges, 33 obstacles.
+- **Drawing, in Trailmap's and the JOSM style's language:**
+  - inside the tiles that have loaded, trails are drawn from OSM, and a `within` filter hides the vector tiles' own trail lines there;
+  - difficulty keeps the colour of the band, and the band's width follows `width` (< 0.6 m thinner, 0.9–1.8 m and ≥ 1.8 m thicker);
+  - `trail_visibility` intermediate and bad get a dotted centre line and a lighter band; horrible and no show the colour only;
+  - overgrown and wet stretches: bold round dots, green on one side and blue on the other (made bolder after the user compared them with Trailmap);
+  - fences: brown dashes (hedges green, walls grey) from z15;
+  - icons from z15: fallen tree or log, gate, gate with no access (red, `access=no` / `locked=yes`), stile or kissing gate, cycle barrier, ford.
+  - It all has a map key under Trails & difficulty.
+- **Switch:** "Trail details" in Layers → Trails & difficulty, on by default for MTB, hike and trail run and remembered per sport. It has an "On now" chip, and a busy toast at most every 10 minutes if Overpass fails. Tiles load from zoom 14, and loaded ones still draw down to zoom 12.
+- **Hover:** width, visibility, overgrown, wet, fallen trees and boardwalk.
+- **Click:** the same rows, plus smoothness, SAC and informal, and "Show all OSM tags" now fetches that exact way. An obstacle opens its own card: what it is, a "may have been cleared" note for fallen trees, its OSM tags, and a "Gone? Fix the map" link.
+- **The uphill layer** takes its `mtb:scale:uphill` overrides from the same tiles; its own z12 query is gone.
+- **Smoke:** `python3 tools/smoke.py trails` uses a recorded tile (`tools/fixtures/trails-tykkikallio.json`, © OpenStreetMap contributors), so smoke never calls Overpass. It checks:
+  - trails are drawn from OSM and the tiles' lines are hidden there;
+  - narrow, wide and faint trails are present;
+  - icons and fences show up close;
+  - the fallen tree opens its card;
+  - road cycling starts with trail details off.
 
 ## Phase 13 — Water routing
 
