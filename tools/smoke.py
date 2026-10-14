@@ -11,6 +11,7 @@
   python3 tools/smoke.py multi      # just multisport: a sport per leg, changeovers, share links (straight legs)
   python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
+  python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -539,6 +540,114 @@ def multi(chrome):
     return not fails
 
 
+# Stops and nights: a break and a night on via points (straight legs, no routing). The night
+# lasts until its morning hour; the trip gets days; the bike left at a changeover is in
+# Heads-up until it's taken along; a night too short to sleep is too; stops survive a drag,
+# undo, the share link (st=, cg=) and the saved route.
+STOPS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const P = await import(location.origin + '/js/planner.js');
+  const S = await import(location.origin + '/js/stops.js');
+  const n = await import(location.origin + '/js/net.js');
+  const p = polku.planner;
+  p.setActive(true);
+  p.clear();
+  p.setMode('line');
+  for (const q of [[23.700, 61.500], [23.720, 61.506], [23.745, 61.509], [23.760, 61.504]]) p.addPoint(q);
+  p.setLegSport(1, 'paddle'); // mtb → paddle → mtb: the bike stays at point 1
+  const ready = (k) => p.analysis && p.analysis.waits && p.analysis.waits.length === k;
+  for (let k = 0; k < 40 && !ready(2); k++) await wait(200);
+  const warns = () => [...document.querySelectorAll('.warnings .li-main b')].map((x) => x.textContent);
+  if (!warns().some((t) => /^Your bike is still at/.test(t))) errs.push(`no gear warning: ${warns().join(' / ')}`);
+  p.setCarry(1, true);
+  await wait(200);
+  if (warns().some((t) => /^Your bike/.test(t))) errs.push('gear warning after taking the bike along');
+  // a 45 min break where the paddle starts, and the night at point 2 (on at 08:00)
+  p.setStop(1, { min: 45 });
+  p.setStop(2, { on: 480 });
+  await wait(400);
+  const a = p.analysis, w1 = a.waits.find((w) => w.i === 1), w2 = a.waits.find((w) => w.i === 2);
+  if (!w1 || w1.sec !== (15 + 45) * 60) errs.push(`break + changeover at point 1: ${w1 && w1.sec / 60} min`);
+  const on = w2 && new Date((w2.arrive + w2.sec) * 1000);
+  if (!on || on.getHours() !== 8 || on.getMinutes() !== 0) errs.push(`the night ends ${on}`);
+  if (!w2 || w2.rest < 3600) errs.push(`night of ${w2 && w2.rest / 3600} h`);
+  const total = (p.analysis.timeWind || p.analysis.time);
+  const moving = total - a.waits.reduce((t, w) => t + w.sec, 0);
+  const sum = document.querySelector('.sum-time small')?.textContent;
+  if (sum !== '2 days') errs.push(`summary time: ${sum}`);
+  const days = S.tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : p.startSec(), a.waits);
+  if (days.length !== 2 || Math.abs(days[0].moving + days[1].moving - moving) > 2) errs.push(`days: ${days.length}, moving ${days.map((d) => d.moving).join('+')} vs ${moving}`);
+  p.reveal('depart');
+  await wait(200);
+  if (document.querySelectorAll('.days .day').length !== 2) errs.push(`${document.querySelectorAll('.days .day').length} days in Departure & weather`);
+  if (document.querySelectorAll('.wp-stop').length !== 2 || document.querySelectorAll('.wp-stop.night').length !== 1) errs.push(`stop badges: ${document.querySelectorAll('.wp-stop').length}`);
+  p.reveal('points');
+  await wait(200);
+  if (document.querySelectorAll('.wpl-stop').length !== 2 || !document.querySelector('.wpl-stop.night input[type=time]')) errs.push('stops in the waypoint list');
+  p.reveal('speed');
+  await wait(200);
+  const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
+  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+  // the point menu has the stop, places to sleep for a night, and the gear switch
+  p.openPointMenu(2, p.markers[2]);
+  await wait(200);
+  const menu = document.querySelector('.polku-popup .pt-menu');
+  if (!menu || !menu.querySelector('.pt-stop [aria-pressed=true]') || !/Places to sleep nearby/.test(menu.textContent)) errs.push('the point menu: no stop or places to sleep');
+  if (p.menu) p.menu.remove();
+  p.openPointMenu(1, p.markers[1]);
+  await wait(200);
+  if (!document.querySelector('.polku-popup .pt-gear input:checked')) errs.push('the point menu: no "Take the bike along"');
+  if (p.menu) p.menu.remove();
+  // a night too short to sleep
+  const ready2 = new Date((w2.arrive + w2.change + 3600) * 1000);
+  p.setStop(2, { on: ready2.getHours() * 60 + ready2.getMinutes() });
+  await wait(300);
+  if (!warns().some((t) => /^A short night/.test(t))) errs.push(`no short-night warning: ${warns().join(' / ')}`);
+  p.setStop(2, { on: 480 });
+  // undo takes a stop back; a drag keeps it
+  p.setStop(1, null);
+  p.undo();
+  if (!p.stopAt(1) || p.stopAt(1).min !== 45) errs.push(`undo: ${JSON.stringify(p.stopAt(1))}`);
+  p.beginEdit(2, p.snapshot());
+  p.editTo([23.746, 61.5095]);
+  p.endEdit();
+  if (!S.isNight(p.stopAt(2))) errs.push('a dragged point lost its night');
+  // the share link and the saved route
+  const url = p.shareUrl(), q = new URL(url).searchParams;
+  if (q.get('st') !== '1:45,2:n0800' || q.get('cg') !== '1') errs.push(`share link: st=${q.get('st')} cg=${q.get('cg')}`);
+  p.clear();
+  p.restore(P.parseShared(q));
+  await wait(300);
+  const back = `${JSON.stringify(p.stopAt(1))} ${JSON.stringify(p.stopAt(2))} ${p.carryAt(1)}`;
+  if (back !== '{"min":45} {"on":480} true') errs.push(`from the link: ${back}`);
+  p.save();
+  p.legs = []; p.points = [];
+  p.loadSaved();
+  await wait(300);
+  const saved = `${JSON.stringify(p.stopAt(1))} ${JSON.stringify(p.stopAt(2))} ${p.carryAt(1)}`;
+  if (saved !== '{"min":45} {"on":480} true') errs.push(`saved route: ${saved}`);
+  // leaving after dusk: the warning keeps the sun's own time, not the departure's
+  const Sun = await import(location.origin + '/js/sun.js');
+  const t8 = Date.parse('2026-10-14T20:00:00+03:00') / 1000, dk = Sun.darkness(t8, t8 + 3600, [24.94, 60.17]);
+  if (!dk.length || dk[0].from !== t8 || !(dk[0].sunFrom < t8 - 1800)) errs.push(`darkness from 20:00: ${JSON.stringify(dk)}`);
+  if (S.encodeStops([null, { min: 45 }, { on: 480 }]) !== '1:45,2:n0800' || JSON.stringify(S.decodeStops('1:45,2:n0800,x,3:n2500')) !== '[[1,{"min":45}],[2,{"on":480}]]') errs.push('st= encoding');
+  if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (straight legs need none)');
+  p.clear();
+  return errs;
+})()"""
+
+
+def stops(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.505/23.73')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(STOPS, timeout=85000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} stops and nights" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Clicks and taps on the route: a click or a tap on the line, or on a leg's handle, opens
 # that part's menu and adds no point (its first button does); with the planner closed, a
 # click on the route opens it with that part's menu; a LIPAS route drawn over a trail is
@@ -855,6 +964,8 @@ def main():
             ok = route_menu(chrome) and ok
         if not only or 'routebits' in only:
             ok = route_bits(chrome) and ok
+        if not only or 'stops' in only:
+            ok = stops(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

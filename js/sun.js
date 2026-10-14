@@ -37,9 +37,11 @@ export function sunTimes(at, [lon, lat]) {
 }
 
 /**
- * The stretches of a trip in the dark: [{ from, to, kind }] in epoch seconds
- * between `start` and `end` (kind: 'twilight' after sunset or before sunrise,
- * 'dark' past civil dusk or before dawn). Looks at each day the trip touches.
+ * The stretches of a trip in the dark: [{ from, to, kind, sunFrom, sunTo }] in epoch
+ * seconds between `start` and `end` (kind: 'twilight' after sunset or before sunrise,
+ * 'dark' past civil dusk or before dawn). `from` and `to` are clipped to the trip;
+ * `sunFrom` and `sunTo` are when that stretch really begins and ends (sunset, dusk…).
+ * Looks at each day the trip touches.
  */
 export function darkness(start, end, ll) {
   const out = [];
@@ -60,7 +62,7 @@ export function darkness(start, end, ll) {
     if (next.dawn && next.rise) out.push({ from: next.dawn, to: next.rise, kind: 'twilight' });
   }
   // clip to the trip, merge what overlaps
-  return out.map((x) => ({ ...x, from: Math.max(start, x.from), to: Math.min(end, x.to) })).filter((x) => x.to > x.from)
+  return out.map((x) => ({ ...x, sunFrom: x.from, sunTo: x.to, from: Math.max(start, x.from), to: Math.min(end, x.to) })).filter((x) => x.to > x.from)
     .sort((a, b) => a.from - b.from)
-    .reduce((acc, x) => { const l = acc[acc.length - 1]; if (l && l.kind === x.kind && x.from <= l.to + 1) l.to = Math.max(l.to, x.to); else acc.push({ ...x }); return acc; }, []);
+    .reduce((acc, x) => { const l = acc[acc.length - 1]; if (l && l.kind === x.kind && x.from <= l.to + 1) { l.to = Math.max(l.to, x.to); l.sunTo = Math.max(l.sunTo, x.sunTo); } else acc.push({ ...x }); return acc; }, []);
 }

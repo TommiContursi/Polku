@@ -4,6 +4,18 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
+### Stops and nights ([#49](https://github.com/TommiContursi/Polku/pull/49))
+- **Stop at any point of the route:** a break ("45 min") or a night ("go on at 08:30"). Set it in the point's menu, on its row in the waypoint list, or with **Stop here** on the route.
+- **The time moves on with your stops:** arrival times, the weather on the route, the times on the distance marks and the sunset warnings all follow. Each waypoint now shows when you'd get there.
+- **Days:** a trip with nights shows each day under Departure & weather: when you leave and arrive, how far, how long, where you sleep, and that day's weather. The summary shows your moving time, with "2 days" under it.
+- **Places to sleep nearby:** a night's menu finds lean-tos, huts and campsites within 3 km (from LIPAS and OpenStreetMap). **Go here** moves the point there.
+- **A longer forecast** for trips that run past two days: up to 10 days, saying where it gets less certain.
+- **Your bike or boat:** when you change out of a bike or a boat, Heads-up tells you if the route doesn't come back for it. If you take it along (a packraft, a folding bike), switch that on in the point's menu.
+- **Heads-up warns about a short night** (under 5 hours).
+- **Share links, saved routes and GPX files** keep the stops.
+- **Fixed:** dragging a point where the sport changes forgot the changeover minutes you'd set there.
+- **Fixed:** leaving after sunset, Heads-up gave your departure time as the time of sunset ("After sunset (18:56)" when the sun set at 18:19).
+
 ### One click for the route ([#48](https://github.com/TommiContursi/Polku/pull/48))
 - **A click on the route opens a menu for that part,** as a tap does on a phone, instead of adding a point straight away. "Add a point here" is the menu's first button; its sport, how it's routed and its style are there too.
 - **The same for the ring in the middle of each leg.**
