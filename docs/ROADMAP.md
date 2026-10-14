@@ -41,8 +41,8 @@ Also approved:
 | — | Winter as a trail colour (Trails & difficulty: Off / Difficulty / Uphill / Both / Winter), any time of year; winter on the trail cards | `winter-colours` | [#53](https://github.com/TommiContursi/Polku/pull/53) | merged |
 | — | Fix: changing the sport re-routed a drawn route (it keeps its sports now, "Route it as …" asks, Undo works); the planner's section jumps light up | `sport-switch` | [#54](https://github.com/TommiContursi/Polku/pull/54) | merged |
 | — | Docs: plans and ideas written as plans (no chat quotes), the backlog sorted by size, this order | `docs-tidy` | [#55](https://github.com/TommiContursi/Polku/pull/55) | PR open |
-| 15b | Winter on the route: keep off ski tracks, lit ways after dark, time in snow, winter Heads-up, paddling in the ice season | `winter-route` | — | next |
-| — | Bug sweep: the backlog's small bugs in one PR (see BACKLOG, "Small") | `bug-sweep` | — | after 15b |
+| 15b | Winter on the route: time in snow, winter Heads-up (snow, snowfall, slippery, the cold, ways closed in winter, beside ski tracks, unploughed), lit stretches in the dark, the ice season on the water | `winter-route` | [#56](https://github.com/TommiContursi/Polku/pull/56) | PR open |
+| — | Bug sweep: the backlog's small bugs in one PR (see BACKLOG, "Small") | `bug-sweep` | — | next |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, and the per-sport place kinds visible as switches | `explain` | — | planned |
 | 20 | Map style: how roads, cycleways, paths and the rest are drawn (Trailmap's cartography as a guide); LIPAS routes by category (cycling, MTB, hiking, walking) | `map-style` | — | planned |
 | 17 | Weather: clouds, thunder, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
@@ -1315,6 +1315,33 @@ The research brief this replaces asked about: sports for a snow group; ski track
 - **Tests:**
   - `tools/smoke.py winter` checks the classes, FMI's WFS answer, Auto's thresholds and On / Off, a recorded Laajavuori tile drawn, LIPAS's ski tracks asked for, the layers going with Off, and the Snow chip.
   - `tools/shoot.py` has `*-winter`, `*-winter-layers` and `*-snow`.
+
+**Built (15b: winter on the route), 2026-10-15** (`js/winter.js`, `analysis.js estimateTime`, `planner.js`):
+- **When it counts:** wherever the route weather's snow depth (Open-Meteo, at the hour you'd be there) reaches 3 cm somewhere on the route, unless winter is set Off. In Auto or On it doesn't wait for the map's winter.
+- **Time in snow** (`snowFactor`). Each stretch is slower by the snow on the ground, its way and how you go:
+  - **ploughed or groomed ways** (OSM's winter classes along the route): 0.88 by bike, 0.95 on foot;
+  - **streets and roads** (mostly ploughed): 0.85 by bike;
+  - **trails by bike:** from 1 − cm/25 (down to 0.35), eased where `mtb:winter` says they open quickly (1 − cm/50) and harsher where they open slowly (1 − cm/20);
+  - **on foot:** gentler throughout.
+
+  The figures are rough, and the docs say so. Time & speed shows "of which the snow" (+16 min for 15 cm on a 6.8 km Laajavuori ride), included in the time and the weather's arrival times.
+- **The ways' winter classes along the route** (`winterAlong`): the winter tiles (z12, Overpass, a week's cache) matched to each sample within 8 m. They load once the snow counts, and then the time and Heads-up are worked out again.
+- **Winter Heads-up:**
+  - snow on the way (the depth, and how much longer it makes the time);
+  - snowing while you're out (2 cm or more, from the snowfall at your times);
+  - **slippery**: rain or sleet at −2…+1.5 °C, 100 m or more;
+  - **the cold as it feels at your own speed**: Environment Canada / FMI wind chill, with the wind plus your riding speed. "Very cold" from −15 °C, "Frostbite risk" from −27 °C;
+  - **ways closed in winter** (with Avoid);
+  - **beside a ski track** (walking and cycling allowed, keep off the track);
+  - **not ploughed** and **opens slowly after snow** (by bike);
+  - **the ice season** on water legs (in winter, or at 0.5 °C or colder on the water): Polku can't see the ice, so check FMI's chart and local reports.
+- **In the dark** (any season) also says how much of it is lit (`lit=yes` on the ways the router took).
+- **Routing isn't steered by winter yet,** and why:
+  - BRouter's data has no winter tags (they come from Overpass);
+  - its no-go lines either block hard (a closed path would also block every crossing) or, with a weight, barely change the route (tested on the local BRouter: the same 6855 m route at weight 2 and 50, a different 6759 m one only with a hard line).
+
+  So ways closed in winter come up in Heads-up with Avoid, as other hazards do. Polku's own graph router (planned for skiing, 15c) could prefer ploughed ways later.
+- **Tests:** `tools/smoke.py winterroute` uses a made-up forecast along the recorded Laajavuori tile's ploughed cycleway. It checks the classes along it, the time (ploughed slower than summer but less than unknown ways), every Heads-up item, Off silencing it all, and the ice season on water. `tools/shoot.py` has `*-winter-route` and `desk-winter-time`.
 
 **After #52: Winter as a trail colour (#53).** Winter needed a place among the trail colours too, where you'd look for it, not only in its own group.
 - **Trails & difficulty gets a fifth choice, Winter** (Off / Difficulty / Uphill / Both / Winter). It draws the winter ways (Trailmap's classes, from OSM) at any time of year, so you can look before the snow comes. The map key follows it.

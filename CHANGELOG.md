@@ -4,6 +4,17 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Winter on the route ([#56](https://github.com/TommiContursi/Polku/pull/56))
+- **Snow in the time:** where the forecast has snow on your route, the time allows for it: little on ploughed ways and streets, more on trails, most where a trail is slow to open after snow. Time & speed shows how much the snow adds.
+- **Winter Heads-up:**
+  - the snow on the way;
+  - snow falling while you're out;
+  - **slippery** rain or sleet around 0 °C;
+  - **the cold as it feels at your speed** (frostbite from about −27 °C);
+  - ways closed in winter (with Avoid), stretches beside a ski track, unploughed ways, and trails slow to open after snow;
+  - for paddlers, **the ice season** (Polku can't see the ice).
+- **In the dark** now says how much of it is lit.
+
 ### Fixed: changing the sport changed your route ([#54](https://github.com/TommiContursi/Polku/pull/54))
 - **Picking another sport in the top menu routed a drawn route again in that sport,** leg by leg, without a word. Now the route keeps its sports, and a note offers **Route it as …** if that's what you want.
 - **The planner's own sport picker** shows the route's sport, changes its main sport only (a paddle leg in a ride stays a paddle), and **Undo** brings the route back.

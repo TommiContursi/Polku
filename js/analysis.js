@@ -1,6 +1,7 @@
 // Route analysis: elevation profile from the lidar DEM, grades, climbs with an
 // uphill-difficulty grade, surface / way-type breakdown, warnings and timing.
 
+import { snowFactor } from './winter.js';
 import { densify, dist } from './geo.js';
 import { elevations, smooth } from './dem.js';
 import { CRAFT, groupOf, isWater } from './config.js';
@@ -347,7 +348,9 @@ export function surfaceClass(a, i) {
  * bike or in a kayak and a little on foot.
  * @returns {{total:number, tAt:Float32Array}} tAt = seconds from start at each sample
  */
-export function estimateTime(a, opt, head = null) {
+// `snow` (phase 15b): { cm: snow on the ground per sample, cls: each sample's winter class or null },
+// which slows land stretches by winter.js snowFactor (water and carries aren't changed).
+export function estimateTime(a, opt, head = null, snow = null) {
   const { along, grade, surf } = a;
   const sAttr = a.attr;
   // each stretch at its own sport's speeds (opt.speedsBy: { sport: speeds } for a multisport route)
@@ -359,6 +362,7 @@ export function estimateTime(a, opt, head = null) {
     return Math.max(kmh * lo, Math.min(kmh * hi, kmh - k * head[i]));
   };
   let secs = 0;
+  const slow = (i, way, how) => (snow && snow.cm ? snowFactor(snow.cm[i], way, snow.cls ? snow.cls[i] : null, how) : 1);
   for (let i = 1; i < along.length; i++) {
     const d = along[i] - along[i - 1];
     const g = grade[i] / 100;
@@ -379,24 +383,25 @@ export function estimateTime(a, opt, head = null) {
       const trail = ['path', 'bridleway', 'track'].includes(tags.highway) || !PAVED.has(surf[i]);
       kmh = (trail ? run.trail : run.paved) * gradeFactor(g);
       if (run.hikeFloor && g > 0.08) kmh = Math.max(kmh, tobler(g) * 1.15); // power-hike the steep bits
-      kmh = windAdj(kmh, i, 0.1, 0.85, 1.05);
+      kmh = windAdj(kmh, i, 0.1, 0.85, 1.05) * slow(i, trail ? 'trail' : 'paved', 'foot');
     } else if (bike) {
       const s = surf[i];
       const trail = ['path', 'bridleway', 'footway'].includes(tags.highway);
       let flat = PAVED.has(s) ? bike.paved : trail ? bike.trail + (bike.mtbScale ? Math.max(0, 2 - mtbScale(tags)) * 1.5 : 0) : bike.unpaved;
       // ~1.2 km/h slower per m/s of headwind in the open, less on sheltered trails
       flat = windAdj(flat, i, trail ? 0.5 : 1.2, 0.45, 1.3);
+      const f = slow(i, PAVED.has(s) ? 'paved' : trail ? 'trail' : 'unpaved', 'bike');
       if (g > 0.01) {
-        secs += Math.max(d / (flat / 3.6), (d * g) / (bike.vam / 3600));
+        secs += Math.max(d / (flat / 3.6), (d * g) / (bike.vam / 3600)) / f;
         tAt[i] = secs;
         continue;
       }
-      kmh = g < -0.03 ? Math.min(flat * 1.25, trail ? bike.down[0] : bike.down[1]) : flat;
+      kmh = (g < -0.03 ? Math.min(flat * 1.25, trail ? bike.down[0] : bike.down[1]) : flat) * f;
     } else {
       // walking (hike, and carries / land legs when paddling)
       kmh = tobler(g) * (act === 'hike' && sps && sps.walk ? sps.walk / TOBLER_FLAT : 1);
       if (['path', 'bridleway'].includes(tags.highway)) kmh *= 0.88;
-      kmh = windAdj(kmh, i, 0.06, 0.8, 1.08);
+      kmh = windAdj(kmh, i, 0.06, 0.8, 1.08) * slow(i, ['path', 'bridleway'].includes(tags.highway) ? 'trail' : PAVED.has(surf[i]) ? 'paved' : 'unpaved', 'foot');
     }
     secs += d / (Math.max(kmh, 0.5) / 3.6);
     tAt[i] = secs;

@@ -29,6 +29,8 @@ Winter switches on by itself where there's snow (or set it yourself), and the ma
 - **ski tracks** (so feet and bikes keep off them), skating routes on natural ice and snowmobile routes;
 - **sea ice** from FMI's daily charts.
 
+On a route, the time allows for the snow (ploughed ways little, trails more), and Heads-up tells you about the snow, slippery rain around 0 °C, the cold as it feels at your speed, ways closed in winter and, on the water, the ice season.
+
 ## Plan a route in any sport
 
 MTB, gravel, road cycling, hiking, trail running, running, paddling and swimming. Each has its own router, speeds, warnings and map, and **one route can mix them**: bike to the shore, paddle across, run on the island, with the changeovers in the time.

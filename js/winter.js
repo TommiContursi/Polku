@@ -257,3 +257,86 @@ export function seaIceProtocol(maplibre) {
     return { data: await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer() };
   });
 }
+
+// ---------------------------------------------------------------- winter on a route
+/**
+ * The winter class at each sample of a route (analysis `a`), from the winter tiles
+ * along it: the nearest classed way within 8 m, else null. Loads what's missing
+ * (Overpass, cached a week); null when the route spans too many tiles.
+ */
+export async function winterAlong(a, { maxTiles = 24 } = {}) {
+  let w = 180, s = 90, e = -180, n = -90;
+  for (const [x, y] of a.pts) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); }
+  const list = winterTilesIn([w, s, e, n]);
+  if (list.length > maxTiles) return null;
+  await Promise.allSettled(list.map(([x, y]) => winterTile(x, y)));
+  // segments of the classed ways, in a coarse grid
+  const CELL = 0.0006, grid = new Map(), key = (x, y) => `${Math.floor(x / CELL)},${Math.floor(y / (CELL / 2))}`;
+  for (const [x, y] of list) {
+    const d = (tiles.get(`${x}/${y}`) || {}).data;
+    if (!d) continue;
+    for (const [, t, flat] of d.w) {
+      const cls = winterClass(t);
+      if (!cls) continue;
+      for (let i = 2; i < flat.length; i += 2) {
+        const p = [flat[i - 2], flat[i - 1]], q = [flat[i], flat[i + 1]];
+        const k = key((p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push([p, q, cls]);
+      }
+    }
+  }
+  const out = new Array(a.pts.length).fill(null);
+  a.pts.forEach((pt, i) => {
+    const cx = Math.floor(pt[0] / CELL), cy = Math.floor(pt[1] / (CELL / 2));
+    let best = 8, cls = null;
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      for (const [p, q, c] of grid.get(`${cx + dx},${cy + dy}`) || []) {
+        const d = pointSegmentM(pt, p, q);
+        if (d < best) { best = d; cls = c; }
+      }
+    }
+    out[i] = cls;
+  });
+  return out;
+}
+function pointSegmentM(p, a, b) {
+  const k = Math.cos((p[1] * Math.PI) / 180);
+  const ax = (a[0] - p[0]) * k, ay = a[1] - p[1], bx = (b[0] - p[0]) * k, by = b[1] - p[1];
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+  const t = l2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+  return Math.hypot(ax + dx * t, ay + dy * t) * 111195;
+}
+
+/**
+ * How much slower snow makes a stretch: a speed factor (1 = as in summer), from the
+ * snow on the ground (cm), the kind of way ('paved' | 'unpaved' | 'trail'), how it
+ * fares in winter (its class from winterAlong, or null) and how you go ('bike' | 'foot').
+ * Rough, and said to be: ploughed ways little, packed trails some, deep snow on a
+ * trail a lot (a bike in 20 cm of fresh snow is down to a third, or pushed).
+ */
+export function snowFactor(cm, way, cls, how) {
+  if (!(cm >= 3)) return 1;
+  if (cls === 'ploughed' || cls === 'groomed') return how === 'bike' ? 0.88 : 0.95;
+  const clamp = (v, lo) => Math.max(lo, Math.min(1, v));
+  if (how === 'bike') {
+    if (cls === 'open1') return clamp(1 - cm / 50, 0.6);
+    if (cls === 'open2') return clamp(1 - cm / 35, 0.45);
+    if (cls === 'open3' || cls === 'unploughed') return clamp(1 - cm / 20, 0.3);
+    return way === 'paved' ? 0.85 : clamp(1 - cm / 25, 0.35); // streets mostly get ploughed
+  }
+  if (cls === 'open1') return clamp(1 - cm / 90, 0.75);
+  if (cls === 'open3' || cls === 'unploughed') return clamp(1 - cm / 45, 0.5);
+  return way === 'paved' ? 0.92 : clamp(1 - cm / 60, 0.55);
+}
+
+/**
+ * Wind chill (°C), the Environment Canada / FMI formula, for the air moving past you:
+ * the wind (m/s) and your own speed (km/h). Only below 10 °C and above 5 km/h of air.
+ */
+export function windChill(t, windMs, ownKmh = 0) {
+  const v = windMs * 3.6 + ownKmh;
+  if (t > 10 || v < 4.8) return t;
+  const p = v ** 0.16;
+  return 13.12 + 0.6215 * t - 11.37 * p + 0.3965 * t * p;
+}
