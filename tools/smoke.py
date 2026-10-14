@@ -9,6 +9,7 @@
   python3 tools/smoke.py lipas      # just LIPAS search and riding a LIPAS route (recorded answers)
   python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind)
   python3 tools/smoke.py multi      # just multisport: a sport per leg, changeovers, share links (straight legs)
+  python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -537,6 +538,68 @@ def multi(chrome):
     return not fails
 
 
+# Clicks and taps on the route: a click on the line adds a via point; a finger gets the
+# leg's menu (no new point); with the planner closed, a click on the route opens it with
+# that part's menu; a LIPAS route drawn over a trail is what a click there picks.
+ROUTE_MENU = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const I = await import(location.origin + '/js/inspect.js');
+  const pick = I.pickFeature([{ layer: { id: 'path-ground' } }, { layer: { id: 'lipas-route' } }]);
+  if (!pick || pick.layer.id !== 'lipas-route') errs.push(`a LIPAS route over a trail picks ${pick && pick.layer.id}`);
+  const p = polku.planner, m = polku.map;
+  p.setActive(true);
+  p.clear();
+  p.setMode('line');
+  p.addPoint([23.750, 61.500]);
+  p.addPoint([23.770, 61.505]);
+  await wait(500);
+  m.jumpTo({ center: [23.760, 61.5025], zoom: 14 });
+  await wait(600);
+  const q = m.project([23.760, 61.5025]);
+  const fire = () => m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') });
+  const menu = () => document.querySelector('.polku-popup .pt-menu');
+  fire();
+  await wait(300);
+  if (p.points.length !== 3) errs.push(`a click on the line: ${p.points.length} points (a via point expected)`);
+  p.undo();
+  await wait(300);
+  p.lastTouchAt = Date.now();
+  fire();
+  await wait(300);
+  if (p.points.length !== 2) errs.push(`a tap on the line added a point (${p.points.length})`);
+  if (!menu() || !/Add a point here/.test(menu().textContent) || !menu().querySelector('.pt-sport select')) errs.push('a tap on the line: no menu for that part of the route');
+  else {
+    [...menu().querySelectorAll('button')].find((b) => /Add a point here/.test(b.textContent)).click();
+    await wait(300);
+    if (p.points.length !== 3) errs.push(`"Add a point here": ${p.points.length} points`);
+    p.undo();
+    await wait(300);
+  }
+  p.lastTouchAt = 0;
+  p.setActive(false);
+  await wait(400);
+  fire();
+  await wait(600);
+  if (!p.active) errs.push('a click on the route (planner closed) did not open the planner');
+  if (p.points.length !== 2) errs.push(`opening the planner from the route: ${p.points.length} points`);
+  if (!menu()) errs.push('opening the planner from the route: no menu for that part');
+  if (polku.planner.menu) polku.planner.menu.remove();
+  p.clear();
+  return errs;
+})()"""
+
+
+def route_menu(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.5025/23.76')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(ROUTE_MENU, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} clicks and taps on the route" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The planner header never spills out of the sheet (labels vary: a measured layout,
 # planner.js fitHeader). Narrow desktop windows with the bottom dock, a small phone.
 HEADER_OUT = """(() => {
@@ -690,6 +753,8 @@ def main():
             ok = water(chrome) and ok
         if not only or 'multi' in only:
             ok = multi(chrome) and ok
+        if not only or 'routemenu' in only:
+            ok = route_menu(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

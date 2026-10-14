@@ -833,6 +833,11 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .insp-more { margin-top: 6px; }
 .insp-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 .insp-ride { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.35; }
+/* the other card for the same spot: the trail under a LIPAS route, the route a trail is part of */
+.insp-switch { display: inline-flex; align-items: center; gap: 2px; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 2px 0; cursor: pointer; }
+.insp-link { cursor: pointer; }
+.insp-link b { color: var(--accent); }
+.insp-link svg, .insp-switch svg { vertical-align: -2px; }
 
 /* hover details (desktop) */
 .hover-tip {

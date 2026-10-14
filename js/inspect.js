@@ -31,8 +31,13 @@ const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https:/
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
 const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/;
-const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^uphill-line/, /^(path|track|cycleway)-/,
-  /^lipas-route/, /^sf-aadt/, /^road-/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/];
+// An official (LIPAS) route drawn over a trail is what a click there means: its card
+// links to the trail under it, and the trail's card back to the route.
+const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/,
+  /^sf-aadt/, /^road-/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/];
+
+// a finger covers more than a mouse pointer: a wider box to find what's under it
+export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]; };
 
 export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
 
@@ -62,11 +67,16 @@ export function initInspector(map, app) {
     if (/^nm-/.test(f.layer.id)) { renderNautical(body, f, map); body.append(actions); return; }
     if (/^sf-|^military/.test(f.layer.id)) { await renderSafety(body, f, app); body.append(actions); return; }
     if (/^td-/.test(f.layer.id)) renderObstacle(body, f, app);
-    else if (f.layer.id === 'lipas-route') { renderLipas(body, f.properties); body.append(rideActions(f.properties, f.click || null, pop, f.near)); }
+    else if (f.layer.id === 'lipas-route') {
+      renderLipas(body, f.properties);
+      const under = feats.find((x) => /^(path|track|cycleway)-|^road-/.test(x.layer.id));
+      if (under) body.append(h('button', { type: 'button', class: 'link insp-switch', onclick: () => show(under, ll, feats), html: `The ${(WAY_NAMES[under.properties.class === 'path' ? under.properties.subclass || 'path' : under.properties.class] || 'way').toLowerCase()} under it ${icon('chevronRight', 13)}` }));
+      body.append(rideActions(f.properties, f.click || null, pop, f.near));
+    }
     else if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
     else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
-    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb');
+    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb', (g) => { g.click = ll; show(g, ll, feats); });
     if (f.layer.id !== 'lipas-route') body.append(actions);
     const ele = await elevation(ll);
     const slot = body.querySelector('[data-ele]');
@@ -96,12 +106,18 @@ export function initInspector(map, app) {
       h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(click || pop.getLngLat().toArray()); }, html: `${icon('flag', 15)} Route from here` })));
   }
 
+  let lastTouch = 0;
+  map.on('touchstart', () => { lastTouch = Date.now(); });
   map.on('click', async (e) => {
     if (app.isPlanning()) return;
-    const box = [[e.point.x - 7, e.point.y - 7], [e.point.x + 7, e.point.y + 7]];
+    const touch = Date.now() - lastTouch < 800;
+    const box = hitBox(e.point, touch);
+    const ll = [e.lngLat.lng, e.lngLat.lat];
+    // your route, with the planner closed: open it there
+    const leg = map.getLayer('route-casing') && map.queryRenderedFeatures(box, { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
+    if (leg && app.openRoute) { if (popup) popup.remove(); app.openRoute(leg.properties.leg, e.lngLat); return; }
     const feats = map.queryRenderedFeatures(box, { layers: inspectLayers(map) });
     const f = pickFeature(feats);
-    const ll = [e.lngLat.lng, e.lngLat.lat];
     if (popup) popup.remove();
     if (!f) return;
     // cameras and ships open their own modal / live card
@@ -110,6 +126,8 @@ export function initInspector(map, app) {
     if (f.layer.id === 'lipas-route') f.click = ll;
     show(f, ll, feats);
   });
+  // the other card for the same spot: the trail under a LIPAS route, or the route a trail is part of
+  app.switchCard = (f, ll, feats) => show(f, ll, feats);
 
   return {
     /** A LIPAS route's or stop's card (from search): props as the map layer has them. */
@@ -142,7 +160,7 @@ function chip(color, text) {
   return `<i class="dot" style="background:${color}"></i>${escapeHtml(text)}`;
 }
 
-function renderWay(body, f, feats, ll, mtb) {
+function renderWay(body, f, feats, ll, mtb, open = null) {
   const p = f.properties;
   const isUphill = f.layer.id === 'uphill-line';
   const way = isUphill ? (feats.find((x) => /^(path|track)-/.test(x.layer.id)) || f) : f;
@@ -150,7 +168,11 @@ function renderWay(body, f, feats, ll, mtb) {
   const kind = wp.class === 'path' ? (wp.subclass || 'path') : wp.class;
   body.append(h('div', { class: 'insp-title' }, WAY_NAMES[kind] || kind || 'Way'));
   const route = feats.find((x) => x.layer.id === 'lipas-route');
-  if (route && route.properties.name) body.append(row('Part of', route.properties.name));
+  if (route && route.properties.name) {
+    const r = row('Part of', route.properties.name);
+    if (open) { r.classList.add('insp-link'); r.title = 'Open the route’s card'; r.addEventListener('click', () => open(route)); r.lastChild.append(' ', h('span', { html: icon('chevronRight', 13) })); }
+    body.append(r);
+  }
   const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
   if (Number.isFinite(idx)) body.append(row('MTB difficulty', chip(DIFF_COLORS[idx], MTB_SCALE_TEXT[idx]), true));
   const up = feats.find((x) => x.layer.id === 'uphill-line');

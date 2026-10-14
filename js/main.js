@@ -247,6 +247,8 @@ const inspector = initInspector(map, {
   routeTo: (ll) => { planner.setActive(true); planner.addPoint(ll); },
   avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
   rideLipas,
+  // a click on your route with the planner closed: open it, with that part's choices
+  openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; planner.setActive(true); setTimeout(() => planner.openLegMenu(leg, lngLat), 60); }, // (the same click mustn't add a point too)
   lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),

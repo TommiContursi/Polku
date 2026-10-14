@@ -135,6 +135,7 @@ export class Planner {
     };
     map.on('click', (e) => this.onMapClick(e));
     map.on('mousemove', (e) => this.onMapMove(e));
+    map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
     map.on('touchstart', 'route-casing', (e) => this.onLinePress(e));
     map.on('zoom', () => this.fitGhosts());
@@ -1412,9 +1413,13 @@ export class Planner {
     if (this.loop.open && !this.loop.busy) { this.setLoopStart([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)], 'the spot you clicked'); return; }
     const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
     if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
-    const hit = this.map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-casing'] })[0];
+    const touch = this.isTouch();
+    const r = touch ? 12 : 6;
+    const hit = this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
-    if (hit && hit.properties.kind === 'leg' && !hit.properties.loading) this.insertPoint(hit.properties.leg, ll);
+    // the line itself: a click adds a via point there; a finger on it gets the choices first
+    // (a tap is easily a mistake, and there's more to do with a part of the route than add a point)
+    if (hit && !hit.properties.loading) { if (touch) this.openLegMenu(hit.properties.leg, e.lngLat); else this.insertPoint(hit.properties.leg, ll); }
     else { this.addPoint(ll); this.sportHint(); }
     this.autoPeek();
   }
@@ -1824,12 +1829,52 @@ export class Planner {
     if (touch) { map.on('touchend', stop); map.on('touchcancel', stop); } else window.addEventListener('mouseup', stop);
   }
 
+  isTouch() { return Date.now() - (this.lastTouchAt || 0) < 800; }
+
+  // A part of the route (one leg), tapped, or right-clicked on desktop: what you can do
+  // with it there. Adding a point comes first; then the leg's own settings (its sport,
+  // how it's routed, its style), avoiding the spot, and finding it on the profile.
+  openLegMenu(li, lngLat) {
+    if (this.menu) this.menu.remove();
+    const leg = this.legs[li];
+    if (!leg) return;
+    const ll = [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)];
+    const sp = this.legSport(li);
+    const from = this.lengthTo(li), len = this.lengthTo(li + 1) - from;
+    const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
+    const body = h('div', { class: 'pt-menu' },
+      h('div', { class: 'pt-head' },
+        h('div', { class: 'pt-title' }, `${this.nameOf(li)} → ${this.nameOf(li + 1)}`),
+        h('div', { class: 'pt-sub' }, `${ACTIVITIES[sp].label} · ${fmtDist(len)} · from km ${(from / 1000).toFixed(1)}`)),
+      act('plus', 'Add a point here', 'A via point at this spot: drag it to change the way', () => this.insertPoint(li, ll), 'btn primary'),
+      h('div', { class: 'pt-label' }, 'This part'),
+      this.legSportPicker(li, () => this.menu.remove()),
+      leg.mode === 'fixed'
+        ? h('div', { class: 'pt-sub' }, leg.src ? 'A LIPAS route: its own line' : 'An imported track: its own line')
+        : h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
+          h('button', { type: 'button', 'aria-pressed': String(leg.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(li, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))),
+      leg.mode === 'auto' || leg.mode === 'water' ? this.legStylePicker(li, () => this.menu.remove()) : null,
+      h('div', { class: 'pt-row' },
+        act('close', 'Avoid this spot', 'The route goes around it (40 m)', () => this.addNogo(ll, 40, 'Avoided place')),
+        this.analysis ? act('mountain', 'On the profile', 'Zoom the profile to this part', () => this.showLegOnProfile(li)) : null));
+    this.menu = new maplibregl.Popup({ offset: 10, closeButton: false, maxWidth: '320px', className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
+    this.keepMenuInView();
+  }
+
+  // the profile zoomed to leg i (the map follows it)
+  showLegOnProfile(li) {
+    if (!this.analysis) return;
+    this.reveal('profile');
+    if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
+    requestAnimationFrame(() => this.chart.setView([this.lengthTo(li), this.lengthTo(li + 1)], true));
+  }
+
   // Long-press (touch) or right-click elsewhere on the map: what you can do at that spot.
   bindSpotMenu() {
     const map = this.map;
     let hold = 0, p0 = null, lastTouch = 0;
     const cancel = () => { clearTimeout(hold); hold = 0; };
-    const onUi = (e) => e.originalEvent && e.originalEvent.target.closest && e.originalEvent.target.closest('.maplibregl-marker, .maplibregl-popup');
+    const onUi = (e) => { const t = e.originalEvent && e.originalEvent.target; return !!(t && t.closest && t.closest('.maplibregl-marker, .maplibregl-popup')); };
     map.on('touchstart', (e) => {
       lastTouch = Date.now();
       cancel();
@@ -1852,6 +1897,9 @@ export class Planner {
     map.on('mousedown', (e) => { down = e.originalEvent.button === 2 || e.originalEvent.ctrlKey ? e.point : null; });
     map.on('contextmenu', (e) => {
       if (Date.now() - lastTouch < 1000 || onUi(e) || (down && Math.hypot(e.point.x - down.x, e.point.y - down.y) > 4)) return;
+      // on the route: that part of it
+      const leg = this.active && map.getLayer('route-casing') && map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
+      if (leg && !leg.properties.loading) { this.openLegMenu(leg.properties.leg, e.lngLat); return; }
       this.openSpotMenu(e.lngLat);
     });
     map.on('rotatestart', () => { if (this.menu && this.menu.spot) this.menu.remove(); });
