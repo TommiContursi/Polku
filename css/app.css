@@ -788,6 +788,10 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-stop select, .wpl-stop input { padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); color: var(--text); font: inherit; }
 .wpl-stop input[type="number"] { width: 3.6em; text-align: right; }
 .pt-change input[type="time"] { width: auto; text-align: left; }
+.act-winter { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: -2px; border-radius: 50%; background: rgba(255,255,255,.22); }
+.act-winter svg { width: 13px; height: 13px; }
+.insp-winter { display: flex; gap: 6px; align-items: flex-start; color: var(--text); }
+.insp-winter svg { flex: none; margin-top: 2px; color: #6366f1; }
 .wp-stop { position: absolute; right: calc(50% + 4px); top: calc(50% - 20px); width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; background: #64748b; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; }
 .wp-stop.night { background: #6366f1; }
 .wp-stop svg { width: 11px; height: 11px; }
@@ -971,7 +975,7 @@ body.dropping .drop-hint { display: flex; }
   .brand span { display: none; }
   .search kbd { display: none; }
   .act-current { padding: 0 8px 0 11px; }
-  .act-current span { display: none; }
+  .act-current span:not(.act-winter) { display: none; }
   /* the map controls keep their place (bottom right, thumb reach); the sheet is full
      width here, so they ride above it */
   .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 12px); }

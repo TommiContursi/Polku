@@ -3,7 +3,7 @@
 // landing places, loaded by bounding box from the open WFS (CC BY 4.0). Also:
 // one place with all its parts (to ride a route), and search by name.
 
-import { LIPAS_WFS, LIPAS_TYPES } from './config.js';
+import { LIPAS_WFS, LIPAS_TYPES, isLipasRoute } from './config.js';
 import { lonLatToTile, tileBounds, tm35ToLonLat, dist, lineLength, nearestOnLine } from './geo.js';
 import { request } from './net.js';
 
@@ -129,7 +129,7 @@ export class LipasLayer {
     for (const [key, v] of this.tiles) {
       if (!v || !v.features) continue;
       const type = +key.split('/')[0];
-      const isRoute = type > 4000;
+      const isRoute = isLipasRoute(type);
       if (isRoute ? !(this.showRoutes && this.routeTypes.includes(type)) : !(this.showPoints && this.pointTypes.includes(type))) continue;
       for (const f of v.features) {
         if (seen.has(f.id)) continue;

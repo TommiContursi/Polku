@@ -36,8 +36,11 @@ Also approved:
 | — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | merged |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | [#49](https://github.com/TommiContursi/Polku/pull/49) | merged |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | [#50](https://github.com/TommiContursi/Polku/pull/50) | PR open |
-| 15a | Winter conditions for the sports there are: automatic winter, snow and ice layers, winter routing, time and Heads-up | `winter-conditions` | — | next |
-| 15b | Skiing (when it's winter) | `skiing` | — | planned |
+| 15 | Winter research and plan (docs) | `winter` | [#51](https://github.com/TommiContursi/Polku/pull/51) | PR open |
+| 15a | Winter on the map: Auto / On / Off, the snow layer with FMI's measured depths, OSM's winter ways, LIPAS ski tracks, skating and snowmobile routes, sea ice | `winter-conditions` | [#52](https://github.com/TommiContursi/Polku/pull/52) | PR open |
+| 15b | Winter on the route: keep off ski tracks, lit ways after dark, time in snow, winter Heads-up, paddling in the ice season | `winter-route` | — | next |
+| 15c | Skiing (when it's winter) | `skiing` | — | planned |
+| 20 | Map style: how roads, cycleways, paths and the rest are drawn (Trailmap's cartography as a guide); LIPAS routes by category (cycling, MTB, hiking, walking) | `map-style` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
 | 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
 | 18 | Languages: English, Finnish and Swedish, with a switcher in Settings (your browser's language by default) | `languages` | — | planned |
@@ -1231,7 +1234,7 @@ The research brief this replaces asked about: sports for a snow group; ski track
 
 ### The plan
 
-**15a — Winter conditions for the sports there are (now)**
+**15a and 15b — Winter conditions for the sports there are (now), in two PRs: the map, then the route**
 - **Winter switches itself on** from the date and the time on the timeline, and from the snow and temperature where you're looking: FMI's measured depth near the map's centre, else Open-Meteo's. It's shown as a chip ("Winter: 12 cm of snow"). The override is in Settings and in a **Winter** group in the layers menu: *Auto / On / Off*.
 - **Winter layers** (the Winter group, on by themselves in winter):
   - **snow depth as a filled layer** (Open-Meteo on the weather grid, with no extra calls), with FMI's 107 measured depths on top;
@@ -1271,10 +1274,30 @@ The research brief this replaces asked about: sports for a snow group; ski track
   - **BRouter, through route-style parameters:** keep off ski tracks, and prefer lit ways after dark.
   - **Overpass tiles** (as trail details load now) for the winter tags. Polku draws them like Trailmap's winter map, as a **Winter** colour mode for the profile and the route, and as Heads-up ("Opens slowly after snow: 2.4 km", "Not ploughed: 1.2 km", "No cycling in winter (ski track): 300 m", with Avoid).
 
-**15b — Skiing (when it's winter, so there's snow to test on)**
+**15c — Skiing (when it's winter, so there's snow to test on)**
 - One **Ski** sport, kept simple: styles Classic / Skate / Any track, Any first.
 - Its own router over the area's ski tracks (OSM's, which BRouter misses in part, joined with LIPAS and the Helsinki service map). Grooming age where it's open, links to the operator elsewhere.
 - Ski timing, a short walk to the nearest track, and the same ice rules.
+
+**Built (15a: winter on the map), 2026-10-15** (`js/winter.js`, `main.js`, `style.js`, `wxmap.js`, `weather.js`):
+- **Winter Auto / On / Off,** in a **Winter** group in the layers panel (open while it's winter). Auto looks at the snow where you are when the map stops moving (again after 8 km): FMI's nearest station within 60 km, else the forecast model at the map centre. Winter comes on from 5 cm and goes off below 2 cm, so it doesn't flicker at the edge. The sport pill shows ❄ while it's winter, with the snow in its tooltip.
+- **The snow layer** (the user's ask), on the timeline as **Snow** and in Layers:
+  - Open-Meteo's `snow_depth` on the weather grid as a cool wash from 1 cm (to 120 cm), with no extra calls (8 variables a call);
+  - FMI's measured depths on top (107 stations, hourly; a grey 0 where there's none);
+  - the readout says "12 cm of snow".
+- **Winter ways** (OSM, z12 Overpass tiles, a week's cache, zoom 11+), in Trailmap's winter classes:
+  - opens quickly / more slowly / slowly after snow (`mtb:winter` 1, 2 / yes, 3);
+  - ploughed and not ploughed (`snowplowing`, `winter_service`);
+  - no access in winter (red and white: `bicycle:winter` / `foot:winter` / `mtb:winter` = no);
+  - OSM's ski tracks as a pink double line;
+  - winter-only ways (`seasonal=winter`).
+
+  The summer difficulty colours fade to 30 % meanwhile. Laajavuori (Jyväskylä): 114 ski-track parts, 58 and 69 quick and slower opening, 37 ploughed, 14 not.
+- **LIPAS in winter:** ski tracks (`4402`, a magenta double line), skating routes on natural ice (`1550`) and snowmobile routes (`4421`, dashed). Their cards say what they're for instead of "Ride this route" ("A ski track: keep off it on foot and by bike…"), with the operator's website for the grooming status.
+- **Sea ice** (Paddle and Swim, in winter): FMI's daily Baltic ice concentration through Copernicus Marine's WMTS. A `seaice://` protocol keys out the open water, so only the ice shows over the sea.
+- **Tests:**
+  - `tools/smoke.py winter` checks the classes, FMI's WFS answer, Auto's thresholds and On / Off, a recorded Laajavuori tile drawn, LIPAS's ski tracks asked for, the layers going with Off, and the Snow chip.
+  - `tools/shoot.py` has `*-winter`, `*-winter-layers` and `*-snow`.
 
 ## Phase 16 — Strava & Garmin (research and plan only)
 

@@ -2,8 +2,10 @@
 
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
-  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater,
+  DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
 } from './config.js';
+import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
+import { pointForecasts, sampleAt } from './weather.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
 import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
@@ -74,7 +76,7 @@ Object.assign(state, trailsFor(state.activity));
 
 const data = {}; // live GeoJSON per app source, so style rebuilds keep it
 const saveSettings = () => {
-  const { overlays, ...rest } = state;
+  const { overlays, winterOn, winterSnow, ...rest } = state; // the overlays (per sport) and winter (found again) aren't saved here
   store.set('settings', rest);
 };
 
@@ -88,6 +90,7 @@ const demSource = new mlcontour.DemSource({
   timeoutMs: 15000,
 });
 demSource.setupMaplibre(maplibregl);
+seaIceProtocol(maplibregl); // FMI's sea-ice charts with the open water left clear (winter.js)
 const ctx = {
   demTiles: demSource.sharedDemProtocolUrl,
   contourTiles: demSource.contourProtocolUrl({
@@ -187,6 +190,54 @@ const details = new TrailDetails(map, {
   },
 });
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
+const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
+
+// ------------------------------------------------------------------ winter
+// Winter switches itself on where there's snow (Auto), or is yours to set.
+// The snow: FMI's measurement at the nearest station (within 60 km), else the
+// forecast model's at the map centre. Looked at again when the map stops moving.
+state.winterOn = winterSetting() === 'on';
+state.winterSnow = null; // { cm, src: 'FMI' | 'forecast', km }
+let winterAt = null; // where it was last looked at
+async function checkWinter(force = false) {
+  const c = map.getCenter(), ll = [c.lng, c.lat];
+  if (!force && winterAt && Math.hypot((ll[0] - winterAt[0]) * Math.cos((ll[1] * Math.PI) / 180), ll[1] - winterAt[1]) * 111 < 8) return; // under 8 km away: as it was
+  if (!force && map.getZoom() < 6) return;
+  winterAt = ll;
+  let snow = null;
+  try {
+    const near = snowNear(await measuredSnow(), ll, 60);
+    if (near) snow = { cm: near.cm, src: 'FMI', km: Math.round(near.d / 1000) };
+  } catch { /* FMI didn't answer: the forecast's */ }
+  if (!snow) {
+    try {
+      const [s] = await pointForecasts([ll]);
+      const v = sampleAt(s, Date.now() / 1000).snow;
+      if (v != null) snow = { cm: v, src: 'forecast' };
+    } catch { /* not known */ }
+  }
+  state.winterSnow = snow;
+  setWinter(isWinter(snow ? snow.cm : null, state.winterOn));
+}
+function setWinter(on) {
+  const changed = on !== state.winterOn;
+  state.winterOn = on;
+  if (changed) { applyStyle(); configureLayers(); }
+  renderActivityBar();
+  if (!$('#layers-panel').hidden) renderLayersPanel();
+}
+// "Winter: 12 cm of snow (FMI, 14 km away)" and the like
+function winterNote() {
+  const w = state.winterSnow, set = winterSetting();
+  const snow = w ? (w.cm >= 1 ? `${Math.round(w.cm)} cm of snow` : 'no snow') + (w.src === 'FMI' ? ` (FMI, ${w.km} km away)` : ' (forecast)') : '';
+  if (set === 'on') return `Winter: on (yours)${snow ? ` · ${snow}` : ''}`;
+  if (set === 'off') return `Winter: off (yours)${snow ? ` · ${snow}` : ''}`;
+  return state.winterOn ? `Winter: ${snow || 'snow where you look'}` : snow ? `Not winter here: ${snow}` : 'Winter: looking for the snow…';
+}
+const escapeAttr = (t) => String(t).replace(/[&"<>]/g, (c) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]);
+let winterTimer = 0;
+map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(() => checkWinter(), 1500); });
+map.once('load', () => checkWinter(true));
 
 const safety = new SafetyLayers(map, { setData, time: () => timeAtHour(planner.startOffsetH) });
 const cameras = new CameraLayer(map, { setData });
@@ -350,12 +401,15 @@ const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map
 function configureLayers() {
   const a = ACTIVITIES[state.activity];
   const o = state.overlays;
+  // in winter: ski tracks, skating and snowmobile routes too (so feet and bikes keep off ski tracks)
+  const routes = [...(o.lipasRoutes ? a.lipas.routes : []), ...(state.winterOn && o.lipasWinter ? WINTER_LIPAS : [])];
   lipas.configure({
-    routes: a.lipas.routes,
+    routes,
     points: [...(o.lipasPoints ? a.lipas.points : []), ...(o.restricted ? DANGER_TYPES : [])],
-    showRoutes: !!o.lipasRoutes,
+    showRoutes: routes.length > 0,
     showPoints: !!(o.lipasPoints || o.restricted),
   });
+  winterWays.setEnabled(!!(state.winterOn && o.winterWays));
   safety.configure({ traffic: !!o.sfTraffic, incidents: !!o.sfIncidents, roadworks: !!o.sfRoadworks, roadcond: !!o.sfRoadcond, ships: !!o.sfShips });
   cameras.setEnabled(!!o.sfCameras);
   nautical.setEnabled(!!o.nautical);
@@ -380,7 +434,7 @@ function renderActivityBar() {
   const btn = h('button', {
     type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', title: `Activity: ${cur.label}`,
     onclick: () => (menu.hidden ? openActs() : closeActs()),
-    html: `${icon(ACT_ICONS[state.activity], 20)}<span>${cur.label}</span>${icon('chevronDown', 16)}`,
+    html: `${icon(ACT_ICONS[state.activity], 20)}<span>${cur.label}</span>${state.winterOn ? `<span class="act-winter" title="${escapeAttr(winterNote())}">${icon('snow', 14)}</span>` : ''}${icon('chevronDown', 16)}`,
   });
   box.append(btn, menu);
 }
@@ -517,6 +571,18 @@ const keyLine = (style) => h('span', { class: 'lg-line', style });
 const keyDot = (style) => h('span', { class: 'lg-dot', style });
 const mapKey = (...items) => h('details', { class: 'lg-key' }, h('summary', {}, 'Map key'), h('div', {}, ...items));
 const KEYS = {
+  winter: () => [
+    keyItem(keyLine('background:#0d9488;height:4px'), WINTER_TEXT.ploughed),
+    keyItem(keyLine('border-top:4px dashed #94a3b8'), WINTER_TEXT.unploughed),
+    keyItem(keyLine('background:#65a30d;height:4px'), WINTER_TEXT.open1),
+    keyItem(keyLine('background:#a3b10e;height:4px'), WINTER_TEXT.open2),
+    keyItem(keyLine('background:#d39b46;height:4px'), WINTER_TEXT.open3),
+    keyItem(keyLine('background:repeating-linear-gradient(90deg,#dc2626 0 5px,#fff 5px 9px);height:5px'), WINTER_TEXT.closed),
+    keyItem(keyLine('background:#f472b6;height:6px;box-shadow:inset 0 0 0 2px #f472b6,inset 0 -2px 0 2px #fff'), 'Ski track (OpenStreetMap; LIPAS in magenta)'),
+    keyItem(keyLine('background:#7c3aed;height:4px'), 'Skating route on natural ice (LIPAS)'),
+    keyItem(keyLine('border-top:4px dashed #ea580c'), 'Snowmobile route (LIPAS)'),
+    keyItem(keyLine('border-top:4px dotted #0891b2'), WINTER_TEXT.seasonal),
+  ],
   trails: () => [
     ...(state.trailColors === 'down' || state.trailColors === 'both'
       ? [h('h4', {}, 'MTB difficulty (halo)'), ...MTB_SCALE_TEXT.slice(0, 6).map((t, i) => keyItem(keyLine(`background:${DIFF_COLORS[i]};height:8px`), t)), keyItem(keyLine('background:#fff;height:8px;box-shadow:inset 0 0 0 1px #ccc'), 'Not graded in OSM')] : []),
@@ -582,6 +648,7 @@ const section = (title, ...kids) => h('section', { class: 'lp-sec' }, h('h3', {}
 const WX_OPACITY = {
   'wx:rain': { label: 'Rain', opacity: 0.85, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
   'wx:temp': { label: 'Temperature', opacity: 0.5, layers: ['wx-field'], on: () => state.weather.temp },
+  'wx:snow': { label: 'Snow depth', opacity: 0.7, layers: ['wx-snow'], on: () => state.weather.snow },
 };
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
@@ -647,7 +714,7 @@ function renderLayersPanel() {
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].filter(([k]) => state.weather[k]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['snow', 'Snow depth']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
   // On now and Base map fold away like the other groups (open unless you close them)
@@ -712,6 +779,27 @@ function renderLayersPanel() {
   ];
   p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...KEYS.trails())));
 
+  // winter: on by itself where there's snow (or yours to set), and what it shows
+  const wset = winterSetting(), wOn = state.winterOn;
+  const wIds = ['winterWays', 'lipasWinter', 'seaIce'];
+  p.append(layerGroup('winter', wOn ? 'Winter ❄' : 'Winter', wOn ? wIds.filter((id) => state.overlays[id]).length : 0, wOn,
+    seg([['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], wset, (v) => {
+      setWinterSetting(v);
+      if (v === 'auto') { winterAt = null; checkWinter(true); }
+      setWinter(isWinter(state.winterSnow ? state.winterSnow.cm : null, state.winterOn));
+      renderLayersPanel();
+    }),
+    h('p', { class: 'note' }, `${winterNote()}. Auto turns winter on from ${SNOW_ON} cm of snow where you look (FMI’s nearest station, else the forecast).`),
+    toggle('Winter ways', !!state.overlays.winterWays, rerender((v) => {
+      setOverlay('winterWays', v);
+      if (v && wOn && map.getZoom() < WINTER_MIN_ZOOM) toast(`Zoom in to level ${WINTER_MIN_ZOOM}+ to see the winter ways`);
+    }), 'How soon trails open after snow, ploughing, no access in winter, ski tracks · OpenStreetMap, where mapped · zoom 11+'),
+    toggle('Ski tracks, skating & snowmobile routes', !!state.overlays.lipasWinter, rerender((v) => setOverlay('lipasWinter', v)), 'LIPAS · keep off ski tracks on foot and by bike'),
+    withOpacity('seaIce', toggle('Sea ice', !!state.overlays.seaIce, rerender((v) => setOverlay('seaIce', v)), 'FMI’s daily ice charts (Copernicus Marine) · never a sign that ice is safe')),
+    withOpacity('wx:snow', toggle('Snow depth on the map', state.weather.snow, (v) => setWeather({ snow: v }), 'On the timeline, with FMI’s measured depths')),
+    wOn ? null : h('p', { class: 'note' }, 'These show while it’s winter.'),
+    mapKey(...KEYS.winter())));
+
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map((id) => {
       const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
@@ -732,6 +820,7 @@ function renderLayersPanel() {
     toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
     withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
     withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
+    withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
 
 

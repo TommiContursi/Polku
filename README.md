@@ -21,6 +21,14 @@ Polku is a web app built on open data. It runs in your browser, keeps your setti
 
 <img src="docs/screenshots/uphill.webp" alt="Uphill difficulty: every trail graded by how hard it is to ride up, with arrows pointing up the climb" width="100%">
 
+## Winter
+
+Winter switches on by itself where there's snow (or set it yourself), and the map changes with it:
+- **snow depth as a layer,** with FMI's measured depths;
+- **trails by how soon they open after snow** (from OpenStreetMap's winter tags), ploughed paths, and where you can't go in winter;
+- **ski tracks** (so feet and bikes keep off them), skating routes on natural ice and snowmobile routes;
+- **sea ice** from FMI's daily charts.
+
 ## Plan a route in any sport
 
 MTB, gravel, road cycling, hiking, trail running, running, paddling and swimming. Each has its own router, speeds, warnings and map, and **one route can mix them**: bike to the shore, paddle across, run on the island, with the changeovers in the time.

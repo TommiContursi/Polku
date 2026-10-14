@@ -66,10 +66,10 @@ or idea.
 - **Swipe for more loops** *(14, user)*: "More loops" is a card at the end of the list. A swipe past the third card could make them too, but on land each round costs routing calls, so a tap is safer. Revisit if people miss it.
 - **Water loops: the headwind share and open water** *(14)*: the router keeps out of rough water and Near the shore keeps the via points near land, but the cards don't rank by headwind, or by how far from shore a loop goes.
 - **Water loops in a new area are slow** *(14)*: 8–18 s the first time (fetching the fairways and Overpass's rocks), 3–5 s after. A coarser grid for candidates, or the area's data fetched before the click, would help.
-- **Property boundaries** *(user, 2026-10-14: Trailmap has a toggle for them)*: MML's open cadastral vector tiles (`avoin-karttakuva.maanmittauslaitos.fi/kiinteisto-avoin`, Trailmap's source) need a free API key. Check whether MML's terms allow Polku's own key in a public static app before planning a layer (never Trailmap's key).
+- **Property boundaries** *(user, 2026-10-14: Trailmap has a toggle for them)*: MML's open cadastral vector tiles (`avoin-karttakuva.maanmittauslaitos.fi/kiinteisto-avoin`, Trailmap's source) need a free API key. Polku already takes your own MML key in Settings for the MML maps, so the layer could use the same key (never Trailmap's).
 - **More from Trailmap's settings** *(viewed 2026-10-14)*:
   - **MML paths and minor roads:** the National Land Survey's topographic paths, which OSM may lack. MML open vector tiles, with the same key question.
-  - **Digiroad overlays:** speed limits, paved roads, private roads (road associations), traffic volumes. Väylävirasto's open road data, which would suit Road and Gravel.
+  - **Digiroad overlays:** Polku already has paved roads, private roads and speed limits (Layers → Roads), and traffic volumes under Traffic & safety.
   - **Bedrock and a "green forest" switch.**
   - **High contrast and a colour-tone choice** (Default / Plus / Super).
   - **Places shown sooner or later** (a −2 … +2 zoom offset).
