@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
-### Multisport routes and Swim
+### Multisport routes and Swim ([#43](https://github.com/TommiContursi/Polku/pull/43))
 - **Each leg of a route can have its own sport:** bike to the shore, paddle across, run on the island. Set it on the leg's row in the waypoint list or in the point's menu. When a new leg is mostly water while you draw a land sport, Polku offers to paddle it.
 - **Each leg is routed, timed and checked as its sport:** its router, its style, your speeds for it, its Heads-up.
 - **Changeovers:** where the sport changes, the time to change (15 min bike ↔ paddle, 10 paddle ↔ run, 1 swim ↔ run…) is added. You can set your own on the waypoint, and the weather on the route moves on with it.
