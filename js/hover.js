@@ -5,7 +5,8 @@
 // Cost: one queryRenderedFeatures per pointer rest (~0.3 ms flat, ~10 ms in
 // tilted 3D), none while the pointer or the map is moving.
 
-import { DIFF_COLORS, UPHILL_TEXT } from './config.js';
+import { DIFF_COLORS, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
+import { WINTER_TEXT } from './winter.js';
 import { inspectLayers, pickFeature, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
@@ -179,7 +180,13 @@ function describe(f, feats, ctx) {
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
-  if (id === 'lipas-route') return { title: p.name || p.typeName || 'Route', bits: [e(p.typeName || ''), p.length ? `${e(p.length)} km` : '', ctx.planning ? '' : 'click to ride it'].filter(Boolean) };
+  if (id === 'lipas-route') {
+    const t = LIPAS_TYPES[p.type] || {};
+    // a ski track, skating or snowmobile route isn't one to ride: what it's for instead
+    const winterBit = { 4402: 'keep off on foot and by bike', 4421: 'for snowmobiles', 1550: 'on natural ice: check its status' }[p.type];
+    return { title: p.name || p.typeName || 'Route', bits: [e(p.typeName || ''), p.length ? `${e(p.length)} km` : '', t.winter ? winterBit : ctx.planning ? '' : 'click to ride it'].filter(Boolean) };
+  }
+  if (/^winter-/.test(id)) return { title: p.name || (p.cls === 'ski' ? 'Ski track' : 'Winter way'), bits: [e(WINTER_TEXT[p.cls] || ''), p.grooming ? e(`groomed: ${String(p.grooming).replace(/\+|;/g, ' and ')}`) : '', p.lit ? 'lit' : ''].filter(Boolean) };
   if (/^poi-|^label-peak/.test(id)) {
     const type = (p.subclass || p.class || '').replace(/_/g, ' ');
     return { title: p.name || cap(type || 'Place'), bits: [p.name && type ? e(cap(type)) : '', p.ele ? `${e(p.ele)} m` : ''].filter(Boolean) };
@@ -209,6 +216,9 @@ function way(feats, ctx) {
   if (wp.bicycle === 'no') bits.push('no bikes');
   if (wp.brunnel === 'bridge' && !wp.boardwalk) bits.push('bridge');
   if (wp.osm) bits.push(...detailBits(wp).map(e)); // trail details, drawn from OSM
+  // what its winter colour means, where the winter ways are drawn
+  const win = feats.find((x) => /^winter-(way|ski|closed)$/.test(x.layer.id));
+  if (win && WINTER_TEXT[win.properties.cls]) bits.push(`❄ ${e(WINTER_TEXT[win.properties.cls].toLowerCase())}`);
   const d = { title, bits, upAt };
   // uphill layer off (or not computed here): work out the incline on the spot
   if (!up && w && ctx) {

@@ -409,7 +409,7 @@ function configureLayers() {
     showRoutes: routes.length > 0,
     showPoints: !!(o.lipasPoints || o.restricted),
   });
-  winterWays.setEnabled(!!(state.winterOn && o.winterWays));
+  winterWays.setEnabled(!!(state.winterOn && o.winterWays) || state.trailColors === 'winter'); // or the Winter trail colours, any time
   safety.configure({ traffic: !!o.sfTraffic, incidents: !!o.sfIncidents, roadworks: !!o.sfRoadworks, roadcond: !!o.sfRoadcond, ships: !!o.sfShips });
   cameras.setEnabled(!!o.sfCameras);
   nautical.setEnabled(!!o.nautical);
@@ -721,7 +721,7 @@ function renderLayersPanel() {
   const onCount = on.length + wx.length + (trailOn ? 1 : 0) + (state.trailDetails ? 1 : 0);
   p.append(layerGroup('onnow', 'On now', onCount, true,
     on.length || wx.length || trailOn || state.trailDetails ? h('div', { class: 'on-chips' },
-      trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
+      trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill', winter: 'Winter colours' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
       state.trailDetails ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail details', onclick: () => { setTrail('trailDetails', false); renderLayersPanel(); }, html: `<span>Trail details</span>${icon('close', 12)}` }) : null,
       ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
       ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
@@ -755,8 +755,9 @@ function renderLayersPanel() {
 
   // trails & difficulty (and the map key for the base map's lines): in every sport
   const trailKids = [
-    seg([['off', 'Off'], ['down', 'Difficulty'], ['up', 'Uphill'], ['both', 'Both']], state.trailColors, (v) => {
+    seg([['off', 'Off'], ['down', 'Difficulty'], ['up', 'Uphill'], ['both', 'Both'], ['winter', 'Winter']], state.trailColors, (v) => {
       setTrail('trailColors', v); renderLayersPanel();
+      if (v === 'winter' && map.getZoom() < WINTER_MIN_ZOOM) toast(`Zoom in to level ${WINTER_MIN_ZOOM}+ to see the winter colours`);
       if ((v === 'up' || v === 'both') && map.getZoom() < 13) toast('Zoom in to level 13+ to see uphill grades');
     }),
     h('p', { class: 'note' }, {
@@ -764,7 +765,9 @@ function renderLayersPanel() {
       down: 'Halo colour is the MTB difficulty from OSM mtb:scale (S0 green → S5 purple). White halo = not graded yet.',
       up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
+      winter: 'Trails by how soon they open after snow (OSM mtb:winter), ploughed and unploughed paths, no access in winter, ski tracks: Trailmap’s winter classes, from OpenStreetMap where mapped (zoom 11+). In winter they show by themselves (the Winter group).',
     }[state.trailColors] || ''),
+    state.winterOn && state.trailColors !== 'winter' && state.trailColors !== 'off' ? h('p', { class: 'note' }, '❄ It’s winter here: the difficulty colours are faded, and the winter ways show over them (Winter, below).') : null,
     state.trailColors === 'down' || state.trailColors === 'both' ? trailColorOpacityRow('down', 'Difficulty') : null,
     state.trailColors === 'up' || state.trailColors === 'both' ? trailColorOpacityRow('up', 'Uphill') : null,
     toggle('Trail details', state.trailDetails, rerender((v) => {
@@ -777,7 +780,7 @@ function renderLayersPanel() {
       if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
     }), '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)'),
   ];
-  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...KEYS.trails())));
+  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...(state.trailColors === 'winter' ? KEYS.winter() : KEYS.trails()))));
 
   // winter: on by itself where there's snow (or yours to set), and what it shows
   const wset = winterSetting(), wOn = state.winterOn;

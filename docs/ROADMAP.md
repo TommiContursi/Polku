@@ -36,10 +36,12 @@ Also approved:
 | — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | merged |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | [#49](https://github.com/TommiContursi/Polku/pull/49) | merged |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | [#50](https://github.com/TommiContursi/Polku/pull/50) | PR open |
-| 15 | Winter research and plan (docs) | `winter` | [#51](https://github.com/TommiContursi/Polku/pull/51) | PR open |
-| 15a | Winter on the map: Auto / On / Off, the snow layer with FMI's measured depths, OSM's winter ways, LIPAS ski tracks, skating and snowmobile routes, sea ice | `winter-conditions` | [#52](https://github.com/TommiContursi/Polku/pull/52) | PR open |
+| 15 | Winter research and plan (docs) | `winter` | [#51](https://github.com/TommiContursi/Polku/pull/51) | merged |
+| 15a | Winter on the map: Auto / On / Off, the snow layer with FMI's measured depths, OSM's winter ways, LIPAS ski tracks, skating and snowmobile routes, sea ice | `winter-conditions` | [#52](https://github.com/TommiContursi/Polku/pull/52) | merged |
+| — | Winter as a trail colour (Trails & difficulty: Off / Difficulty / Uphill / Both / Winter), any time of year; winter on the trail cards | `winter-colours` | [#53](https://github.com/TommiContursi/Polku/pull/53) | PR open |
 | 15b | Winter on the route: keep off ski tracks, lit ways after dark, time in snow, winter Heads-up, paddling in the ice season | `winter-route` | — | next |
 | 15c | Skiing (when it's winter) | `skiing` | — | planned |
+| 21 | Say what it means: every colour and line explained in its hover and card, and everything Polku works out shown, not only used (an audit of every layer) | `explain` | — | planned, after 15b |
 | 20 | Map style: how roads, cycleways, paths and the rest are drawn (Trailmap's cartography as a guide); LIPAS routes by category (cycling, MTB, hiking, walking) | `map-style` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
 | 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
@@ -1298,6 +1300,66 @@ The research brief this replaces asked about: sports for a snow group; ski track
 - **Tests:**
   - `tools/smoke.py winter` checks the classes, FMI's WFS answer, Auto's thresholds and On / Off, a recorded Laajavuori tile drawn, LIPAS's ski tracks asked for, the layers going with Off, and the Snow chip.
   - `tools/shoot.py` has `*-winter`, `*-winter-layers` and `*-snow`.
+
+**After #52: Winter as a trail colour (#53)** *(user, 2026-10-15)*: "did you implement a toggle for winter MTB difficulty? I can't see it in the trails & difficulty setting."
+- **Trails & difficulty gets a fifth choice, Winter** (Off / Difficulty / Uphill / Both / Winter). It draws the winter ways (Trailmap's classes, from OSM) at any time of year, so you can look before the snow comes. The map key follows it.
+- While it's winter with another colour chosen, the group says so: the difficulty colours are faded and the winter ways show over them.
+- **Winter colours explained** *(user, 2026-10-15: "it is not enough to add a color coding … and assume that the user understands what eg purple means")*:
+  - hovering a trail adds what its winter colour means ("❄ opens quickly after snow");
+  - an OSM ski track with no trail under it (over a field or a lake) has a hover and a card of its own ("Ski track · In winter: keep off on foot and by bike · groomed for classic and skating · lit");
+  - LIPAS's ski tracks, skating and snowmobile routes say what they're for in the hover, not "click to ride it".
+- **Trail cards** say what winter means on a way where the winter ways are drawn ("In winter: Opens quickly after snow"). "Show all OSM tags" lists the winter tags (`mtb:winter`, `snowplowing`, `winter_service`, `bicycle:winter`, `foot:winter`, `seasonal`, the piste tags).
+- **Tests:** `smoke.py winter` also picks Winter in the trail colours with winter off.
+
+## Phase 21 — Say what it means (planned 2026-10-15; after 15b)
+
+*(User, 2026-10-15)*: "it is not enough to add a color coding or layer over a route/road/track and assume that the user understands what eg purple means. We have so many different layers and features. The info should be visible in the hover/click modal. Same goes with many other details like if you know that the road is wet/slippery or other information that you calculate but do not show to user. This might be a big update but worth of considering."
+
+**The rule (for every layer and every phase from now on):**
+- anything drawn in a colour, a pattern or a symbol says what it is, and what it means for you, in its hover and in its card;
+- anything Polku works out and uses (in routing, timing or Heads-up) is shown where it applies, not only used.
+
+**The audit:** one row per layer: hover, card, map key, and what's worked out but hidden. It starts from this list (2026-10-15):
+
+| Layer or finding | Hover / card now | Missing |
+|---|---|---|
+| Difficulty halo, uphill stripe and arrows | S-grade and uphill % on trails | the arrows' meaning; "not graded yet" (white halo) |
+| Trail details (width, visibility, wet, overgrown) | in the hover's bits | the drawn width class ("narrow, under 0.6 m") said as such |
+| Gravel and road sports' warm casing (unpaved) | surface, when tagged | "drawn warm: unpaved" in words |
+| Winter ways, LIPAS winter routes | explained (#53) | — |
+| Snow wash, temperature, wind, rain fields | the timeline's readout under the pointer | a hover on the map itself, at least while the timeline is closed |
+| Sea ice | none | the concentration at the spot (Copernicus GetFeatureInfo, JSON) and the chart's date |
+| Depth areas, contours, soundings (Traficom) | none | the depth class at the spot, with "not for navigation" |
+| Wet ground after rain (`wet: auto`, recentRain) | only in Route style | on trail hovers and cards in wet sports: "about 6 mm of rain in 24 h: roots and boardwalks slippery" |
+| Road conditions, incidents, road works, traffic volume | yes | — |
+| The route coloured on the map (grade, surface, wind, sport) | the planner's readout while planning | the same with the planner closed |
+| The water router's rough water and keep-clear zones | Heads-up only | on the route's hover where it applies |
+| LIPAS places, POIs, military areas | yes | — |
+
+The table goes into this phase's PR filled in, with a test that every inspectable layer has a hover text and a card.
+
+## Phase 20 — Map style (planned 2026-10-15)
+
+*(User, 2026-10-14/15)*: "by map styles I mean how roads are drawn and other elements"; "LIPAS routes are in Trailmap categorized behind a few toggles (Cycling, Mountain biking, Hiking, Walking / outdoors)"; and the styles' designer: Tapio Kaasalainen's Mapnik styles, "probably the old styles and not the new but still", based on OSM Bright:
+- github.com/TapioKn/MTB-kartta_full (summer) and github.com/TapioKn/MTB-kartta_winter (winter): CartoCSS (`roads.mss`, `paths_and_tracks.mss`, `constructs.mss`, `palette.mss`, `labels.mss`), for Mapnik.
+- **Neither repository has a licence** (all rights reserved by default), and Trailmap's licence page names its MTB style "Antti Nissinen & Tapio Kaasalainen" with none either. So they're a **visual guide only**: Polku draws its own rules in MapLibre from the same ideas (Trailmap's tagging guide describes each element). Porting any of their code would need Tapio's permission first.
+- **The work:**
+  - roads, cycleways by surface, footways, tracks, paths by width and visibility;
+  - bridges with railings, tunnels faded;
+  - parking by access, shelters, huts, firepits, viewpoints, bunkers;
+  - fixme and no-exit marks;
+  - LIPAS routes by category (Cycling, Mountain biking, Hiking, Walking / outdoors) as their own switches.
+
+  Compare against Trailmap's views of the same places (as in phase 12a).
+
+**Other countries, for later** (Trailmap's licence page, support.trailmap.fi/info/lisenssit, 2026-10-15). Trailmap uses these national open maps; each needs checking for keys, CORS and terms before Polku could use it:
+- **Norway:** Kartverket Topografisk norgeskart (CC BY 4.0).
+- **Sweden:** Lantmäteriet Topografisk webbkarta (open data).
+- **Denmark:** Klimadatastyrelsen DTK/25 (CC BY 4.0).
+- **Spain:** IGN Mapa Topográfico Nacional (CC BY 4.0).
+- **Estonia:** Maa- ja Ruumiamet põhikaart and ortofoto (open data).
+- **Orienteering maps:** Mapant and Mapant España (CC BY 4.0).
+- **Trailmap's own stack** for comparison: GraphHopper and OSRM for routing, Planetiler, Tippecanoe and TileServer GL for tiles, OpenMapTiles, MapLibre.
 
 ## Phase 16 — Strava & Garmin (research and plan only)
 

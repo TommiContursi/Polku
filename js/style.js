@@ -280,7 +280,7 @@ export function buildStyle(s, ctx) {
 
   // ---- Winter ways (OSM: js/winter.js) ------------------------------------
   // How soon a way opens after snow, ploughing, no access in winter, ski tracks: Trailmap's winter classes
-  if (s.winterOn && s.overlays.winterWays) {
+  if ((s.winterOn && s.overlays.winterWays) || s.trailColors === 'winter') { // winter, or the Winter trail colours any time
     const W = zi(11, 1.6, 14, 3.4, 18, 6);
     const cls = (c) => ['==', ['get', 'cls'], c];
     add({ id: 'winter-casing', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', cls('ski')], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.8, 'line-width': zi(11, 3, 14, 6, 18, 10) } });
