@@ -125,7 +125,13 @@ const view3d = initView3d(map, $('#view3d'));
 const syncView3d = () => view3d.show(state.terrain3d || map.getPitch() > 5);
 map.on('pitchend', syncView3d);
 // bottom left, beside the scale bar: the bottom-right corner belongs to the map controls
-map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Polku' }), 'bottom-left');
+map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+// Polku (its source) and its maker first, then the data credits MapLibre collects from the
+// sources. MapLibre sorts its own list by length and rewrites it, so this sits just before it.
+{
+  const attrib = $('.maplibregl-ctrl-attrib');
+  attrib.insertBefore(h('span', { class: 'attrib-own', html: '<a href="https://github.com/TommiContursi/Polku" target="_blank" rel="noopener">Polku</a> © <a href="https://github.com/TommiContursi" target="_blank" rel="noopener">TommiContursi</a> | ' }), attrib.querySelector('.maplibregl-ctrl-attrib-inner'));
+}
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
 // Zoom, compass and locate live in Polku's own control column (bottom right);
 // MapLibre's geolocate stays for the location dot, out of sight.

@@ -295,6 +295,10 @@ button { font: inherit; color: inherit; }
 /* scale bar and the attribution (i) side by side, bottom left */
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl { float: none; clear: none; }
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib { margin-left: 6px; }
+/* Polku's own credit sits just before MapLibre's list (main.js): on the same line, and folded away with it */
+.maplibregl-ctrl-attrib .attrib-own { display: none; }
+.maplibregl-ctrl-attrib:not(.maplibregl-compact) .attrib-own, .maplibregl-ctrl-attrib.maplibregl-compact-show .attrib-own { display: inline; }
+.maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner { display: inline; }
 .maplibregl-ctrl-scale { border-radius: 4px; background: rgba(255,255,255,0.8); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }

@@ -1,0 +1,86 @@
+# Changelog
+
+What's new in Polku, newest first. Every change ships to [polku.si](https://polku.si) when its pull request is merged. Plans and ideas are in [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/BACKLOG.md](docs/BACKLOG.md).
+
+## 2026-10-14
+
+### A new README and this changelog
+- **The README** now shows what Polku does, with a screenshot for each feature. The developer notes moved to [docs/DEVELOPING.md](docs/DEVELOPING.md).
+- **The map's footer** links to Polku's source and its maker, alongside OpenStreetMap and the other credits.
+
+### First visit opens on Helsinki ([#41](https://github.com/TommiContursi/Polku/pull/41))
+- A first visit opens on Helsinki and asks for your location once.
+- Later visits open where you left off.
+- Links with a position or a route work as before.
+
+### Water routing: fairways, rocks and the wind ([#40](https://github.com/TommiContursi/Polku/pull/40))
+- **Shipping lanes are crossed straight and quickly,** not followed (Väylävirasto's fairways). Harbour basins are noted.
+- **Marked dangers are kept clear of:** isolated-danger and cardinal marks, and OpenStreetMap's rocks, reefs and shoals.
+- **Rough water is avoided for your craft:** waves build where the wind has a long way over open water, and the forecast at your departure decides how rough is too rough for a sea kayak, a canoe or a SUP.
+- **Heads-up names it all,** for example "Crosses the Särkän väylä — cross quickly and straight…".
+- **Places you avoid now work on water legs too.**
+- **Paddle route style** gets Fairways, Rocks & shoals and Wind switches, and a Direct preset.
+- **Depths aren't used for routing:** Traficom's licence excludes route planning. Its depth layers now say "not for navigation".
+
+### LIPAS routes in the planner and in search ([#39](https://github.com/TommiContursi/Polku/pull/39))
+- **Ride this route** on an official LIPAS route makes it your plan using its own line, with no routing calls. Routes made of many parts are joined into one line where they can be.
+- **Add to route** joins a whole LIPAS route onto yours.
+- **Search is grouped:** places, LIPAS routes, LIPAS stops (lean-tos, huts, campfire sites), trails on the map, coordinates, and your recent searches.
+- **LIPAS lines are now drawn at full precision.**
+
+### Planner header and rain radar ([#34](https://github.com/TommiContursi/Polku/pull/34), [#35](https://github.com/TommiContursi/Polku/pull/35), [#36](https://github.com/TommiContursi/Polku/pull/36), [#37](https://github.com/TommiContursi/Polku/pull/37))
+- **The planner header** always fits, in four groups (Draw · Colour | Route | Edit), with the route's colour one tap away.
+- **Rain "now"** comes from FMI's measured rain rate instead of radar reflectivity, so drizzle no longer looks like a downpour and light rain still shows.
+
+### Trail details ([#31](https://github.com/TommiContursi/Polku/pull/31), [#32](https://github.com/TommiContursi/Polku/pull/32), [#33](https://github.com/TommiContursi/Polku/pull/33))
+- **On the map:** how wide a trail is, how easy it is to follow, overgrown and wet stretches, fallen trees, gates, fences and fords, drawn the way a rider reads them.
+- **Along the route:** Heads-up lists them (with icons), and the profile can be coloured by trail width or visibility.
+- **Separate opacity sliders** for difficulty and uphill colours.
+- **The profile can show "Both" difficulty scales.**
+- **A quick sport button** in the planner.
+- **Fixed:** uphill colours stayed blank after being switched off and on.
+
+## 2026-10-13
+
+### Layers ([#29](https://github.com/TommiContursi/Polku/pull/29))
+- Every layer control in every sport, an opacity slider per overlay, soundings for paddlers, and "On now" first.
+
+### Round trips ([#27](https://github.com/TommiContursi/Polku/pull/27))
+- Choose a start, a length (km or time) and a direction. Polku makes three loops in your route style and compares them; pick one and it becomes a normal route.
+
+### Route style ([#24](https://github.com/TommiContursi/Polku/pull/24), [#25](https://github.com/TommiContursi/Polku/pull/25), [#26](https://github.com/TommiContursi/Polku/pull/26))
+- **Presets in each sport's own words,** with fine-tuning, for the whole route or one leg.
+- **Wet ground** is taken into account automatically after rain.
+- **Road bikes** get a paved-roads profile.
+- **A tidier planner layout,** and each leg's settings in the waypoint list.
+
+### Editing, waypoints and reliable routing ([#21](https://github.com/TommiContursi/Polku/pull/21), [#22](https://github.com/TommiContursi/Polku/pull/22), [#23](https://github.com/TommiContursi/Polku/pull/23))
+- **Edit on the map:** drag a point or the line itself and the route follows; point and spot menus.
+- **A waypoint list:** rename, reorder and remove points, with undo for everything, road names, and a button to show the whole route.
+- **Routing that holds up on free services:** pacing, one call for many legs, routes kept on refresh, and Valhalla standing in when BRouter pauses.
+
+### Sports and speeds ([#18](https://github.com/TommiContursi/Polku/pull/18), [#19](https://github.com/TommiContursi/Polku/pull/19), [#20](https://github.com/TommiContursi/Polku/pull/20))
+- **Road cycling, trail running and running** join MTB, gravel, hiking and paddling.
+- **Your speeds** per sport: Easy / Normal / Fast or your own values, with an explanation of the time.
+
+### The layout ([#12](https://github.com/TommiContursi/Polku/pull/12), [#13](https://github.com/TommiContursi/Polku/pull/13), [#15](https://github.com/TommiContursi/Polku/pull/15), [#16](https://github.com/TommiContursi/Polku/pull/16), [#17](https://github.com/TommiContursi/Polku/pull/17))
+- **The planner** is a side panel on desktop, or a full-width bottom panel, and a peek / half / full sheet on phones.
+- **One clock** (the timeline) for the weather, your departure and the roads, with paddling conditions instead of a profile on water.
+- **The sport pill and a base map switcher,** with controls within thumb reach on phones.
+- **Layers, the map key and Settings,** with one place for each kind of control.
+
+### Weather, limits and details ([#4](https://github.com/TommiContursi/Polku/pull/4)–[#11](https://github.com/TommiContursi/Polku/pull/11))
+- **The timeline** drives the weather layers, the route and road works.
+- **Hover details** on desktop.
+- **A route readout** on hover, and **offline areas** along a route.
+- **Incline on hover,** and a compass with heading-up.
+- **Far fewer weather calls:** forecasts are cached per grid cell.
+- **Free services' limits are handled gracefully,** with a usage readout.
+- **Rain radar** from FMI's download service.
+
+## 2026-10-12
+
+### The first Polku ([#1](https://github.com/TommiContursi/Polku/pull/1)–[#3](https://github.com/TommiContursi/Polku/pull/3))
+- An open-data trail map of Finland for MTB, gravel, hiking and paddling: MTB difficulty and computed uphill grades, hillshade and contours, 3D terrain, an open-water router, wind along routes and a weather map.
+- **Traffic and safety layers:** busy roads, incidents, road works, road conditions, military areas. Places to avoid on routes.
+- **Road weather cameras,** ships with more detail, and a nautical chart layer.

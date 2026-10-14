@@ -232,6 +232,10 @@ SCENES = {
     # a first visit: no link, nothing remembered (the app opens where it opens; no location in headless Chrome)
     'desk-first-visit': dict(DESK, timeline=False, hash=''),
     'phone-first-visit': dict(PHONE, timeline=False, hash=''),
+    # for the README: the weather map (live forecast) and the traffic layers (live)
+    'desk-wind-map': dict(DESK, timeline=True, hash='#8.2/60.75/24.6', settle=14, storage={'polku:settings': json.dumps({'activity': 'paddle', 'timeline': True, 'weather': {'rain': True, 'wind': True, 'temp': True}})}),
+    'phone-wind-map': dict(PHONE, timeline=True, hash='#7.6/60.9/24.6', settle=14, storage={'polku:settings': json.dumps({'activity': 'paddle', 'timeline': True, 'weather': {'rain': True, 'wind': True, 'temp': False}})}),
+    'desk-traffic': dict(DESK, timeline=False, activity='road', hash='#12.4/61.4985/23.7700', settle=10),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
