@@ -64,6 +64,9 @@ export function initHover(map, app) {
     const [x, y] = at;
     const feats = map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers });
     let d = null;
+    if (!planning && map.getLayer('route-casing') && map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers: ['route-casing'] }).length) {
+      d = { title: 'Your route', bits: ['click to edit it'] }; // the planner is closed: a click opens it there
+    }
     if (planning) {
       // the route line has its own live readout (see route() below)
       if (feats.some((f) => f.layer.id === 'route-casing')) { if (!route) hide(); return; }

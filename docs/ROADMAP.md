@@ -28,13 +28,15 @@ Also approved:
 | 13 | Water routing: fairways, rocks and marks, wind (no depths: licence, see the phase) | `water-routing` | [#40](https://github.com/TommiContursi/Polku/pull/40) | merged |
 | — | First visit: open on Helsinki and ask for your location; later visits open where you left off | `first-visit` | [#41](https://github.com/TommiContursi/Polku/pull/41) | merged |
 | — | A README with screenshots, a changelog, developer notes in docs/, Polku and its maker in the map's credits | `readme` | [#42](https://github.com/TommiContursi/Polku/pull/42) | merged |
-| 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | [#43](https://github.com/TommiContursi/Polku/pull/43) | PR open |
+| 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | [#43](https://github.com/TommiContursi/Polku/pull/43) | merged |
+| — | The route on the map: a click opens the planner, a tap or right-click opens a menu for that part, LIPAS routes easier to pick | `route-menu` | (this PR) | PR open |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | — | next |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
 | 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
-| 18 | Help and a tutorial (the last phase: when the rest has settled) | `help` | — | planned |
+| 18 | Languages: English, Finnish and Swedish, with a switcher in Settings (your browser's language by default) | `languages` | — | planned |
+| 19 | Help and a tutorial (the last phase: when the rest has settled) | `help` | — | planned |
 
 ## Why this order
 
@@ -1060,7 +1062,32 @@ From the backlog *(user, 2026-10-14)*:
   - The numbers come from `net.js` (each service's limits and today's use).
   - Cheap views never ask: today's weather map stays under 60 points a view.
 
-## Phase 18 — Help and a tutorial (planned 2026-10-14; the last phase)
+## Between 13b and 13c — the route on the map (built 2026-10-14)
+
+*(User, 2026-10-14)*: "when the route editor is closed, it should be possible to activate it by clicking the route"; "LIPAS routes are difficult to click or choose with the finger: it often activates the trail or road behind"; "on mobile, touching the route adds a new point; that is not always what is wanted"; "think the way of editing parts of the route by clicking, right-clicking or touching: what settings should be editable".
+- **The planner closed:** a click or tap on your route opens it, with the menu for that part of the route. Hovering it (desktop) says "Your route · click to edit it".
+- **A menu for a part of the route** (`planner.openLegMenu`), opened by a tap on the line (touch) or a right-click (desktop):
+  - "Add a point here" first;
+  - then the leg's own settings: its sport, how it's routed (Follow / Straight / Water) and its style;
+  - "Avoid this spot";
+  - "On the profile", which zooms the profile to that leg, and the map follows.
+  - 13c adds "Stop here" to it.
+- **A click on the line (mouse) still adds a via point,** and a drag still reshapes the route: quick for a mouse, and undo is there. A finger gets the menu first, since a tap is easily a mistake. Hold-and-drag still reshapes, and the menu's first button adds the point.
+- **LIPAS routes over trails:**
+  - A click there picks the LIPAS route (its card has "The path under it ›").
+  - The trail's card has "Part of: … ›" back to the route.
+  - Taps search a wider box than the mouse (14 px against 7).
+
+## Phase 18 — Languages (planned 2026-10-14)
+
+*(User, 2026-10-14)*: a language switcher in Settings, with flags: English, Finnish, Swedish. By default, the browser's or phone's language (`navigator.languages`); English otherwise.
+- **All text in one place per language** (`js/i18n/en.js`, `fi.js`, `sv.js`), looked up by key. English is the fallback for anything not yet translated.
+- **Formats follow the language** (`Intl`): numbers, dates and times, km and m.
+- **What doesn't translate:** the map's own labels (OpenFreeMap has `name:fi` / `name:sv` for place names, a style choice) and sources' wording (LIPAS's Finnish names stay).
+- **Flags with the language's name beside them,** since a flag is a country, not a language (Swedish in Finland). Remembered on the device; `?lang=` in links.
+- **Before the help and tutorial** (phase 19), so those are written once per language.
+
+## Phase 19 — Help and a tutorial (planned 2026-10-14; the last phase)
 
 *(User, 2026-10-14: "we need a tutorial or proper help … as a last thing".)* This comes when the features have settled, so it doesn't go stale:
 - **A first-run tour** of a few steps: sport, plan a route by clicking, the profile and Heads-up, layers, weather. It can be skipped and reopened from Settings.

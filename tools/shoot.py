@@ -125,6 +125,19 @@ def MULTI_JS(sec):
             " const r = document.querySelector('.speed-row.sub.head'); if (r && " + json.dumps(sec) + " === 'speed') r.scrollIntoView({ block: 'center' }); await wait(300); return true; })()")
 
 
+# clicks and taps on the route: a LIPAS route over a trail, a tap on the line (phone), a right-click on it (desktop)
+LIPAS_PICK = ("(async () => { const m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)); await wait(2500);"
+              " const f = m.queryRenderedFeatures({ layers: ['lipas-route'] }).find((x) => /MTB-lenkki/.test(x.properties.name)); if (!f) return true;"
+              " const c = f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates[0]; const q = m.project(c[Math.floor(c.length / 3)]);"
+              " m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') }); await wait(1500); return true; })()")
+def LINE_PICK(how):
+    return ("(async () => { const p = polku.planner, m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));"
+            " const c = p.legs[1].result.coords, ll = c[Math.floor(c.length / 2)], q = m.project(ll);"
+            + (" p.lastTouchAt = Date.now(); m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') });" if how == 'tap'
+               else " m.fire('contextmenu', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('contextmenu') });")
+            + " await wait(700); return true; })()")
+
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -253,6 +266,11 @@ SCENES = {
     'phone-multisport': dict(PHONE, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('points')),
     'desk-multisport-time': dict(DESK, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('speed')),
     'phone-multisport-time': dict(PHONE, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('speed')),
+    # clicks and taps on the route
+    'desk-lipas-pick': dict(DESK, timeline=False, hash='#14.6/62.4495/25.8945', js=LIPAS_PICK),
+    'phone-lipas-pick': dict(PHONE, timeline=False, hash='#14.6/62.4495/25.8945', js=LIPAS_PICK),
+    'phone-leg-tap': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('tap')),
+    'desk-leg-menu': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('right')),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),

@@ -4,6 +4,11 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
+### Your route on the map
+- **With the planner closed,** a click or tap on your route opens it, with a menu for that part of the route.
+- **A tap on the route** (phone), or a **right-click** (desktop), opens a menu for that part: add a point here, its sport, Follow / Straight / Water, its style, avoid this spot, and show it on the profile. A tap no longer adds a point by mistake. A mouse click on the line still adds a via point, and dragging still reshapes.
+- **LIPAS routes are easier to pick:** where one runs over a trail, a click opens the LIPAS route, with a link to the trail under it (and back). Taps reach a little further than a mouse pointer.
+
 ### Multisport routes and Swim ([#43](https://github.com/TommiContursi/Polku/pull/43))
 - **Each leg of a route can have its own sport:** bike to the shore, paddle across, run on the island. Set it on the leg's row in the waypoint list or in the point's menu. When a new leg is mostly water while you draw a land sport, Polku offers to paddle it.
 - **Each leg is routed, timed and checked as its sport:** its router, its style, your speeds for it, its Heads-up.
