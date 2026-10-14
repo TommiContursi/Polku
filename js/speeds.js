@@ -17,6 +17,7 @@ export const SPEED_DEFAULTS = {
   trailrun: { paved: 10, trail: 8.5 },
   run: { paved: 10.5, trail: 9.5 },
   paddle: Object.fromEntries(Object.entries(CRAFT).map(([k, v]) => [k, v.kmh])),
+  swim: { swim: 2.5 }, // open water, about 2:25 per 100 m
 };
 export const PRESETS = [['easy', 'Easy', 0.8], ['normal', 'Normal', 1], ['fast', 'Fast', 1.2], ['custom', 'Custom']];
 
@@ -24,9 +25,10 @@ const FIELDS = {
   bike: [['paved', 'Paved', 'km/h'], ['unpaved', 'Gravel', 'km/h'], ['trail', 'Trail', 'km/h'], ['vam', 'Climbing', 'm/h']],
   run: [['paved', 'Paved', 'pace'], ['trail', 'Trail', 'pace']],
   hike: [['walk', 'Walking, flat', 'km/h']],
+  swim: [['swim', 'Open water', 'pace100']],
 };
 const fieldsOf = (sport, craft) => (sport === 'paddle' ? [[craft, CRAFT[craft].label, 'km/h']]
-  : sport === 'hike' ? FIELDS.hike : sport === 'run' || sport === 'trailrun' ? FIELDS.run : FIELDS.bike);
+  : sport === 'swim' ? FIELDS.swim : sport === 'hike' ? FIELDS.hike : sport === 'run' || sport === 'trailrun' ? FIELDS.run : FIELDS.bike);
 
 const choiceOf = (sport) => (store.get('speeds', {})[sport]) || { preset: 'normal' };
 
@@ -51,7 +53,16 @@ const parsePace = (txt) => {
   const sec = +m[1] * 60 + (m[2] ? +m[2].padEnd(2, '0') : 0);
   return sec >= 120 && sec <= 1200 ? 3600 / sec : null;
 };
-const show = (v, unit) => (unit === 'pace' ? pace(v) : unit === 'm/h' ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
+// swimmers count minutes per 100 m
+export const pace100 = (kmh) => { const s = Math.round(360 / kmh); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const parsePace100 = (txt) => {
+  const m = String(txt).trim().match(/^(\d{1,2})(?:[:.,](\d{1,2}))?$/);
+  if (!m) return null;
+  const sec = +m[1] * 60 + (m[2] ? +m[2].padEnd(2, '0') : 0);
+  return sec >= 50 && sec <= 600 ? 360 / sec : null;
+};
+const show = (v, unit) => (unit === 'pace' ? pace(v) : unit === 'pace100' ? pace100(v) : unit === 'm/h' ? String(Math.round(v)) : String(Math.round(v * 10) / 10));
+const unitText = (unit) => (unit === 'pace' ? 'min/km' : unit === 'pace100' ? 'min/100 m' : unit);
 
 /** One line for the stats: "Normal · 20 / 16 / 11 km/h · 600 m/h up". */
 export function speedSummary(sport, craft) {
@@ -59,6 +70,7 @@ export function speedSummary(sport, craft) {
   const name = (PRESETS.find(([k]) => k === s.preset) || PRESETS[1])[1];
   let txt;
   if (sport === 'paddle') txt = `${CRAFT[craft].label} ${show(s[craft], 'km/h')} km/h`;
+  else if (sport === 'swim') txt = `${pace100(s.swim)} /100 m`;
   else if (sport === 'hike') txt = `${show(s.walk, 'km/h')} km/h on the flat`;
   else if (sport === 'run' || sport === 'trailrun') txt = `${pace(s.paved)} /km paved · ${pace(s.trail)} trail`;
   else txt = `${show(s.paved)} / ${show(s.unpaved)} / ${show(s.trail)} km/h · ${Math.round(s.vam)} m/h up`;
@@ -71,8 +83,9 @@ export const HOW = {
   run: (sport) => `Your flat pace on paved and on trail, slowed uphill and quickened gently downhill by the energy cost of running on that gradient (Minetti et al. 2002: +10 % costs about 40 % of your speed).${sport === 'trailrun' ? ' On steep climbs you walk: never slower than a brisk hike.' : ''} Wind changes it a little. Stops aren't included.`,
   hike: () => 'Tobler’s hiking function: fastest on a gentle downhill (−5 %), slower up and steeply down; 12 % slower on paths than on roads. Your walking speed scales it. Breaks aren’t included.',
   paddle: () => 'Your craft’s cruising speed on flat water. Headwind slows you about 0.35 km/h per m/s (down to a quarter of your speed), tailwind helps up to +35 %. Carries go at walking pace (2.5 km/h). Breaks aren’t included.',
+  swim: () => 'Your open-water pace per 100 m (slower than in a pool: no walls, sighting, waves). Waves into your face slow you a little. Land between swims goes at walking pace. Breaks aren’t included.',
 };
-const howOf = (sport) => (sport === 'paddle' ? HOW.paddle() : sport === 'hike' ? HOW.hike() : sport === 'run' || sport === 'trailrun' ? HOW.run(sport) : HOW.bike(sport));
+const howOf = (sport) => (sport === 'paddle' ? HOW.paddle() : sport === 'swim' ? HOW.swim() : sport === 'hike' ? HOW.hike() : sport === 'run' || sport === 'trailrun' ? HOW.run(sport) : HOW.bike(sport));
 
 /**
  * Preset buttons, the values (editable; editing makes them Custom) and the
@@ -100,10 +113,10 @@ export function renderSpeedEditor(box, sport, opts = {}) {
   const grid = h('div', { class: 'speed-fields' });
   for (const [key, label, unit] of fieldsOf(sport, craft)) {
     const input = h('input', {
-      type: 'text', inputmode: unit === 'pace' ? 'text' : 'decimal', value: show(s[key], unit), 'aria-label': `${label} (${unit === 'pace' ? 'min/km' : unit})`,
+      type: 'text', inputmode: unit === 'pace' || unit === 'pace100' ? 'text' : 'decimal', value: show(s[key], unit), 'aria-label': `${label} (${unitText(unit)})`,
       onchange: (e) => {
         const raw = e.target.value.replace(',', '.');
-        const v = unit === 'pace' ? parsePace(raw) : +raw;
+        const v = unit === 'pace' ? parsePace(raw) : unit === 'pace100' ? parsePace100(raw) : +raw;
         const ok = v && Number.isFinite(v) && v > 0 && (unit === 'm/h' ? v <= 3000 : v <= 80);
         if (!ok) { e.target.value = show(s[key], unit); e.target.classList.add('bad'); setTimeout(() => e.target.classList.remove('bad'), 900); return; }
         const cur = speedsFor(sport);
@@ -111,7 +124,7 @@ export function renderSpeedEditor(box, sport, opts = {}) {
         rerender();
       },
     });
-    grid.append(h('label', { class: 'speed-field' }, h('span', {}, label), input, h('small', {}, unit === 'pace' ? 'min/km' : unit)));
+    grid.append(h('label', { class: 'speed-field' }, h('span', {}, label), input, h('small', {}, unitText(unit))));
   }
   box.append(grid, h('p', { class: 'note speed-how' }, howOf(sport)));
 }

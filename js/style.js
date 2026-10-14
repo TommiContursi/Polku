@@ -5,6 +5,7 @@
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
   DIFF_COLORS, RASTER_OVERLAYS, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
+  isWater,
 } from './config.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
@@ -185,7 +186,7 @@ export function buildStyle(s, ctx) {
 
   // ---- Water --------------------------------------------------------------
   if (!aerialBase && !topoBase) {
-    const waterColor = act === 'paddle' ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
+    const waterColor = isWater(act) ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
     add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
     add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
     add({
@@ -520,7 +521,7 @@ function addRoads(s, P, hc, layers, ctx) {
   const mmlBase = isTopo(s.base);
   const darkBase = aerial || s.base === 'night';
   const plainHalo = darkBase ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
-  const roadsDim = act === 'paddle' ? 0.55 : 1;
+  const roadsDim = isWater(act) ? 0.55 : 1;
   const k = hc ? 1.35 : 1;
 
   const roadStops = {
@@ -632,7 +633,7 @@ function addRoads(s, P, hc, layers, ctx) {
       'case',
       bikeAct ? noBike : noFoot, 0.25,
       act === 'mtb' ? sidewalkish : ['literal', false], 0.35,
-      act === 'paddle' || roadBike ? 0.5 : 0.95,
+      isWater(act) || roadBike ? 0.5 : 0.95,
     ];
     // difficulty colours fade with their slider; the plain halo doesn't
     const haloOpacity = diffOn && trailColorOpacity(s, 'down') !== 1 ? ['*', haloOpacity0, trailColorOpacity(s, 'down')] : haloOpacity0;
@@ -644,7 +645,7 @@ function addRoads(s, P, hc, layers, ctx) {
     const centreOpacity = [
       'case',
       act === 'mtb' ? sidewalkish : ['literal', false], 0.5,
-      act === 'paddle' || roadBike ? 0.6 : 1,
+      isWater(act) || roadBike ? 0.6 : 1,
     ];
     add({
       id: `path-${brunnel}-halo`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,

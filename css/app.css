@@ -770,6 +770,22 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-foot .btn[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .pt-style { align-self: stretch; }
 .pt-style .mode-select-box, .pt-style select { width: 100%; }
+/* multisport: a leg's sport, a changeover's minutes */
+.wpl-legset .pt-sport { flex: 0 1 150px; min-width: 0; }
+.wpl-legset .pt-sport .mode-select-label { display: inline-flex; color: var(--muted); }
+.pt-sport { display: flex; align-items: center; gap: 6px; }
+.pt-sport .mode-select-box { flex: 1; min-width: 0; }
+.pt-sport select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.wpl-change { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.wpl-change input, .pt-change input { width: 3.6em; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); color: var(--text); font: inherit; text-align: right; }
+.pt-change { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.wp-hit { position: relative; }
+.wp-sport { position: absolute; left: calc(50% + 4px); top: calc(50% - 20px); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; }
+.wp-sport svg { width: 12px; height: 12px; }
+.speed-sport { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; }
+.speed-row.sub.head span { padding-left: 0; font-weight: 700; color: var(--text); }
+.speed-row.sub span svg { display: inline-block; vertical-align: -2px; margin-right: 4px; }
+.speed-row.sub span:has(svg) { white-space: nowrap; }
 
 /* round trips */
 .loop-box { display: flex; flex-direction: column; gap: 6px; }
@@ -889,6 +905,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   background: #111a16; color: #fff; box-shadow: var(--shadow); font-weight: 500; opacity: 0; transition: opacity .2s, transform .2s;
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast .toast-act { pointer-events: auto; margin-left: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
 .toast[data-tone="warn"] { background: #7c2d12; }
 .track-card {
   position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + 40px); z-index: 7;

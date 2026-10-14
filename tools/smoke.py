@@ -8,6 +8,7 @@
   python3 tools/smoke.py header     # just the planner header fitting its sheet
   python3 tools/smoke.py lipas      # just LIPAS search and riding a LIPAS route (recorded answers)
   python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind)
+  python3 tools/smoke.py multi      # just multisport: a sport per leg, changeovers, share links (straight legs)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -266,6 +267,9 @@ TRAILS = """(async () => {
 ROUTE_TRAILS = """(async () => {
   const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const fx = await (await fetch(location.origin + '/tools/fixtures/route-tykkikallio-mtb.json')).json();
+  // dry ground whatever the weather: "wet: auto" after real rain would route the recorded legs again
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
   p.setActive(true);
   p.restoreSnapshot(fx);
   const t0 = Date.now();
@@ -456,6 +460,83 @@ def water(chrome):
     return not fails
 
 
+# Multisport (13b): an MTB route whose middle leg is paddled and last run, all
+# straight lines (no routing). Each leg has its sport; the changeovers (15 min
+# bike → paddle, 10 paddle → run, and one set by hand) add to the time; the time
+# splits by sport; markers and the waypoint list show the changes; the share
+# link and the saved route bring it all back; Swim is a sport.
+MULTI = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const P = await import(location.origin + '/js/planner.js');
+  const n = await import(location.origin + '/js/net.js');
+  const p = polku.planner;
+  polku.set({ activity: 'mtb' });
+  await wait(500);
+  p.setActive(true);
+  p.clear();
+  p.setMode('line');
+  for (const q of [[23.700, 61.500], [23.720, 61.506], [23.745, 61.509], [23.760, 61.504]]) p.addPoint(q);
+  p.setLegSport(1, 'paddle');
+  p.setLegSport(2, 'run');
+  for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 2); k++) await wait(200);
+  const sports = p.legs.map((_, i) => p.legSport(i)).join(',');
+  if (sports !== 'mtb,paddle,run') errs.push(`leg sports: ${sports}`);
+  const a = p.analysis;
+  if (!a || !a.waits || a.waits.length !== 2) return [...errs, `changeovers: ${a && a.waits ? a.waits.length : 'none'}`];
+  const mins = a.waits.map((w) => w.sec / 60).join(',');
+  if (mins !== '15,10') errs.push(`changeover minutes: ${mins}`);
+  const moving = p.timed(a).total - 25 * 60;
+  p.setChangeMin(2, 3);
+  await wait(300);
+  if (Math.round((p.analysis.time - moving) / 60) !== 18) errs.push(`time with 15 + 3 min of changeovers: ${Math.round((p.analysis.time - moving) / 60)} min more than moving`);
+  if (document.querySelectorAll('.wp-sport').length !== 2) errs.push(`${document.querySelectorAll('.wp-sport').length} changeover badges on the map`);
+  p.reveal('points');
+  await wait(200);
+  if (document.querySelectorAll('.wpl-change input').length !== 2) errs.push('no changeover minutes in the waypoint list');
+  p.openLegs.add(1); p.renderWaypoints();
+  const sel = document.querySelector('.wpl-legset .pt-sport select');
+  if (!sel || sel.value !== 'paddle') errs.push(`the leg's sport picker shows ${sel && sel.value}`);
+  p.reveal('speed');
+  await wait(200);
+  const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
+  if (!rows.some((t) => /Paddle/.test(t)) || !rows.some((t) => /^Changeovers \\(2\\)/.test(t))) errs.push(`time by sport: ${rows.join(' / ')}`);
+  // the share link: sports and the hand-set minutes come back
+  const url = p.shareUrl();
+  if (!/[?&]s=-pu(&|$)/.test(url) || !/[?&]cw=2%3A3|[?&]cw=2:3/.test(url)) errs.push(`share link: ${url.split('?')[1]}`);
+  p.clear();
+  p.restore(P.parseShared(new URL(url).searchParams));
+  for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 2); k++) await wait(200);
+  const back = p.legs.map((_, i) => p.legSport(i)).join(',') + ' ' + (p.analysis && p.analysis.waits ? p.analysis.waits.map((w) => w.sec / 60).join(',') : '');
+  if (back !== 'mtb,paddle,run 15,3') errs.push(`from the link: ${back}`);
+  // the saved route too
+  p.save();
+  p.legs = []; p.points = [];
+  p.loadSaved();
+  await wait(400);
+  const saved = p.legs.map((_, i) => p.legSport(i)).join(',') + ' ' + (p.changeAt(2) || {}).min;
+  if (saved !== 'mtb,paddle,run 3') errs.push(`saved route: ${saved}`);
+  // Swim is a sport of its own
+  polku.set({ activity: 'swim' });
+  await wait(600);
+  if (!/Swim/.test(document.querySelector('.act-current')?.textContent || '')) errs.push('Swim is not in the sport switcher');
+  if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (straight legs need none)');
+  p.clear();
+  polku.set({ activity: 'mtb' });
+  return errs;
+})()"""
+
+
+def multi(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.505/23.73')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(MULTI, timeout=85000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} multisport" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The planner header never spills out of the sheet (labels vary: a measured layout,
 # planner.js fitHeader). Narrow desktop windows with the bottom dock, a small phone.
 HEADER_OUT = """(() => {
@@ -607,6 +688,8 @@ def main():
             ok = lipas(chrome) and ok
         if not only or 'water' in only:
             ok = water(chrome) and ok
+        if not only or 'multi' in only:
+            ok = multi(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

@@ -428,7 +428,7 @@ export function rideOf(place, { near = null, click = null } = {}) {
 
 // ---------------------------------------------------------------- search by name
 export const ROUTE_TYPES = Object.keys(LIPAS_TYPES).map(Number).filter((t) => t > 4000 && t < 4800);
-export const STOP_TYPES = [301, 302, 304, 202, 206, 205, 204, 203];
+export const STOP_TYPES = [301, 302, 304, 202, 206, 205, 204, 203, 3220, 3230];
 const found = new Map(); // query|box -> Promise<{routes, stops}>
 
 /**

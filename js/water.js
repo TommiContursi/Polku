@@ -249,10 +249,11 @@ class Heap {
 // Route style "near the shore" (styles.js): within about this far of land
 const NEAR_SHORE_M = 250;
 
-// how much more a cell costs in a fairway (by class: small-boat route, harbour basin, shipping lane)
-const FAIR_COST = [1, 1.1, 2, 4];
+// how much more a cell costs in a fairway (by class: small-boat route, harbour basin, shipping lane);
+// 'avoid' (swimmers: boats can't see you) keeps out of all of them where it can
+const FAIR_COST = { cross: [1, 1.1, 2, 4], avoid: [1, 4, 8, 14] };
 
-function astar(grid, sx, sy, tx, ty, landCost, near = false, comfort = 0) {
+function astar(grid, sx, sy, tx, ty, landCost, near = false, comfort = 0, fairCost = FAIR_COST.cross) {
   const { W, H, type } = grid;
   // near the shore: distances in metres matter, so count further, and open water costs more the further out
   const lim = near ? Math.max(2, Math.round(NEAR_SHORE_M / grid.res)) : 0;
@@ -285,7 +286,7 @@ function astar(grid, sx, sy, tx, ty, landCost, near = false, comfort = 0) {
     if (nogo && nogo[i]) c *= 60;
     if (type[i] === 0) return c;
     if (haz && haz[i]) c *= 10;
-    if (fair && fair[i]) c *= FAIR_COST[fair[i]];
+    if (fair && fair[i]) c *= fairCost[fair[i]];
     // rough water: from half the craft's comfortable wave height up
     if (wave && comfort && wave[i] > comfort / 2) c *= 1 + 0.8 * Math.min(2.5, wave[i] / comfort - 0.5);
     return c;
@@ -418,7 +419,7 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   };
   const [sx, sy] = toCell(from);
   const [tx, ty] = toCell(to);
-  const path = astar(grid, sx, sy, tx, ty, allowPortage ? style.carry || 22 : 400, style.shore === 'near', comfort);
+  const path = astar(grid, sx, sy, tx, ty, allowPortage ? style.carry || 22 : 400, style.shore === 'near', comfort, FAIR_COST[style.fairways] || FAIR_COST.cross);
   lap('astar');
   if (!path) throw new Error('No water connection found.');
   const pulled = stringPull(grid, path);
@@ -525,7 +526,7 @@ const memo = new Map(); // same leg, same costs, same wind class: the same route
  */
 export async function routeWater(from, to, { allowPortage = true, shore, carry, fairways = 'cross', hazards = 'clear', wind = 'shelter', craft = 'kayak', at = 0, nogos = [] } = {}) {
   const t0 = performance.now();
-  const style = { shore, carry, wind, craft, nogos };
+  const style = { shore, carry, wind, craft, nogos, fairways };
   const want = { fairways: fairways !== 'ignore', hazards: hazards !== 'ignore', wind: wind === 'shelter' };
   let inputsOf = null;
   if (want.fairways || want.hazards || want.wind) {

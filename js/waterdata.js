@@ -129,7 +129,7 @@ export async function waterInputs(box, want, at) {
 }
 
 // Waves a craft is comfortable in (significant height, m), from the wind over open water
-export const COMFORT_WAVE = { kayak: 0.35, canoe: 0.25, sup: 0.2 };
+export const COMFORT_WAVE = { kayak: 0.35, canoe: 0.25, sup: 0.2, swim: 0.15 };
 
 /**
  * Significant wave height (m) from wind (m/s) blowing over `fetch` metres of open

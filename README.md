@@ -23,7 +23,7 @@ Polku is a web app built on open data. It runs in your browser, keeps your setti
 
 ## Plan a route in any sport
 
-MTB, gravel, road cycling, hiking, trail running, running and paddling. Each has its own router, speeds, warnings and map.
+MTB, gravel, road cycling, hiking, trail running, running, paddling and swimming. Each has its own router, speeds, warnings and map, and **one route can mix them**: bike to the shore, paddle across, run on the island, with the changeovers in the time.
 
 - **Click to route, drag to change:** drag a point or the line itself and the route follows as you drag. Undo covers everything.
 - **Route style in the sport's own words:** Flowy trails, Technical, Smooth & easy, Paved roads, Nature paths, Near the shore… For the whole route or a single leg.

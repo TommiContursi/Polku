@@ -113,6 +113,18 @@ WATER_LEG = [[24.9585, 60.1540], [24.9800, 60.1480]]
 NAUTICAL_ON = "(() => { polku.set && polku.set({ overlays: { ...polku.state.overlays, nautical: true } }); return true; })()"
 
 
+# phase 13b: bike from Tampere's centre to the Pyynikki shore, paddle to Viikinsaari, run on the island
+# (routing on a local BRouter: tools/brouter-local.sh); main draws the same with an "Over water" leg
+def MULTI_JS(sec):
+    return ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setMode('auto');"
+            " for (const q of [[23.7610, 61.4980], [23.7345, 61.4925], [23.7560, 61.4740], [23.7625, 61.4718]]) p.addPoint(q);"
+            " if (p.setLegSport) { p.setLegSport(1, 'paddle'); p.setLegSport(2, 'run'); } else p.setLegMode(1, 'water');"
+            " const t0 = Date.now(); while (!(p.legs.every((l) => l.status === 'ok') && p.analysis && p.analysis.wind) && Date.now() - t0 < 40000) await wait(300);"
+            f" p.setSheetState({json.dumps('full' if sec == 'speed' else 'half')}, {{ remember: false }}); await wait(300); p.fitRoute({{ animate: false }});"
+            f" p.reveal({json.dumps(sec)}); await wait(400);"
+            " const r = document.querySelector('.speed-row.sub.head'); if (r && " + json.dumps(sec) + " === 'speed') r.scrollIntoView({ block: 'center' }); await wait(300); return true; })()")
+
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -236,6 +248,11 @@ SCENES = {
     'desk-wind-map': dict(DESK, timeline=True, hash='#8.2/60.75/24.6', settle=14, storage={'polku:settings': json.dumps({'activity': 'paddle', 'timeline': True, 'weather': {'rain': True, 'wind': True, 'temp': True}})}),
     'phone-wind-map': dict(PHONE, timeline=True, hash='#7.6/60.9/24.6', settle=14, storage={'polku:settings': json.dumps({'activity': 'paddle', 'timeline': True, 'weather': {'rain': True, 'wind': True, 'temp': False}})}),
     'desk-traffic': dict(DESK, timeline=False, activity='road', hash='#12.4/61.4985/23.7700', settle=10),
+    # phase 13b: multisport (a sport per leg, changeovers, time by sport)
+    'desk-multisport': dict(DESK, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('points')),
+    'phone-multisport': dict(PHONE, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('points')),
+    'desk-multisport-time': dict(DESK, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('speed')),
+    'phone-multisport-time': dict(PHONE, timeline=False, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('speed')),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
