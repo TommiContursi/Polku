@@ -26,7 +26,7 @@ Also approved:
 | 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | merged |
 | 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | [#39](https://github.com/TommiContursi/Polku/pull/39) | merged |
 | 13 | Water routing: fairways, rocks and marks, wind (no depths: licence, see the phase) | `water-routing` | [#40](https://github.com/TommiContursi/Polku/pull/40) | merged |
-| — | First visit: open on Helsinki and ask for your location; later visits open where you left off | `first-visit` | (this PR) | PR open |
+| — | First visit: open on Helsinki and ask for your location; later visits open where you left off | `first-visit` | [#41](https://github.com/TommiContursi/Polku/pull/41) | PR open |
 | 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | — | OK'd 2026-10-14, next |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
