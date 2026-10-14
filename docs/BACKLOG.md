@@ -66,6 +66,10 @@ or idea.
 - **Swipe for more loops** *(14, user)*: "More loops" is a card at the end of the list. A swipe past the third card could make them too, but on land each round costs routing calls, so a tap is safer. Revisit if people miss it.
 - **Water loops: the headwind share and open water** *(14)*: the router keeps out of rough water and Near the shore keeps the via points near land, but the cards don't rank by headwind, or by how far from shore a loop goes.
 - **Water loops in a new area are slow** *(14)*: 8–18 s the first time (fetching the fairways and Overpass's rocks), 3–5 s after. A coarser grid for candidates, or the area's data fetched before the click, would help.
+- **Grooming status beyond the Helsinki region** *(15 research, 2026-10-14)*: Fluent Outdoors has it for 45 municipalities (Jyväskylä, Kuopio, Oulu…), but its terms forbid reuse without written permission. Ask Jyväskylä (the data's owner) to publish it as open data, or Fluent Progress for permission.
+- **Tour skating on natural ice** *(15)*: LIPAS `1550` skating routes and the ploughed ice tracks (Kuopio, Helsinki, Tampere); a Skate sport after Ski, with the same ice rules.
+- **Winter maintenance of streets and paths** *(15)*: Digitraffic tracks ploughing, salting and sanding, but outside state roads only Kuopio. Worth a look for winter cycling if more towns join.
+- **Satellite snow cover and lake ice** *(15)*: Copernicus HR-S&I (20 m) and Lake Ice Extent (250 m, daily) would be sharper than the model, but need an account (CDSE). Revisit if they open a public map service.
 - **More grab handles along long legs,** by their length on screen, so it's clear the whole line can be dragged, not just its middle. *(2026-10-14, from the user's question about extra points on long legs)*
 - **Avoid profiles** ("Avoid obstacles and faint trails") with Polku's own BRouter profiles, if warnings and ranking turn out not to be enough. *(phase 12 design; the user chose warnings first)*
 
