@@ -24,6 +24,7 @@ Also approved:
 | 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | PR open |
 | 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | merged |
 | 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | PR open |
+| 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | — | planned 2026-10-14, awaiting OK |
 | 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
 | 14 | Round trips for paddling | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
@@ -856,6 +857,43 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - **Uphill band at the trail's width:** today the uphill grades come from the vector tiles, which have no width. Grading the OSM ways (trail details) instead would let the uphill band follow width too.
 - **Overpass load:** if the public mirrors stay this flaky (504s were common while building 12), consider the static PMTiles option from the 12 design.
 
+## Phase 12c — LIPAS routes & search (planned 2026-10-14, awaiting OK)
+
+**The user's ask:** use the existing routes (LIPAS) in planning: add one to a route, or choose to ride one. Make them findable in search, and develop search further. Later, the user's own saved places, perhaps with a login (see [BACKLOG.md](BACKLOG.md)).
+
+**What Polku does today**
+- **LIPAS on the map:** official routes and stops (lean-tos, huts, campfire and landing sites) are drawn per sport. They load by area from LIPAS's WFS (`js/lipas.js`, cached per z9 tile).
+- **The card:** a click opens name, type, municipality, length, notes, Website and LIPAS links, plus *Route from here*, *Add to route* and *Avoid*. Those use the clicked *point*, not the route.
+- **Search** (`js/search.js`): places from Photon (OSM) and coordinates. LIPAS routes and stops aren't in it.
+
+**Checked (2026-10-14)**
+- LIPAS's WFS takes name filters across all of Finland, one type per request (`CQL_FILTER=nimi_fi ILIKE '%…%'`). "koko kierros" returned five cycling routes around Tampere (Pyhä 117 km, Näsi 338 km…) as LineStrings with their properties.
+- Useful properties: length (`reitin_pituus_km`), municipality, surface, width (`reitin_leveys_m`), lit km, rest stops (`taukopaikat_lkm`), website, notes.
+- Asking for several types at once, or for only some properties, failed. So search makes one small request per route type, and the geometry is fetched only when you pick a result.
+
+**Design**
+- **Ride a LIPAS route.** On its card, *Ride this route* makes its line the planned route, the way a GPX import does: fixed legs, **no routing calls**. It also:
+  - starts at the end nearest to you (or the map centre), and keeps loops as loops;
+  - takes the route's name;
+  - stitches multi-part routes end to end, routing the gaps.
+  - Then everything else applies: profile, Heads-up, trail details, style, editing (moving a via point re-routes only that leg).
+- **Add a LIPAS route to yours.** *Add to route* on the card routes from your route's end to the LIPAS route's nearer end, then follows it as fixed legs. Today the button adds just the clicked spot.
+- **Search, one box, results grouped:**
+  - *Places* (Photon, as now);
+  - *Routes* (LIPAS, by name, all route types: "Pyhä", "koko kierros", "Laajavuori"), each with type, municipality and length;
+  - *Stops* (LIPAS lean-tos, huts and campfire sites by name);
+  - *Trails* (named paths on the loaded map, e.g. "Rantapolku");
+  - *Coordinates*.
+  - Picking a route fits it on the map and opens its card, with *Ride this route* one tap away.
+  - Recent searches are kept on the device.
+  - LIPAS is asked only from 3 characters, debounced, with answers cached per query, through `net.js` ("lipas", already counted).
+- **Later** (BACKLOG): your own saved places, starting on the device (star a place, export or import), synced only if a login ever comes (phase 16's backend question); "near me" categories in search; OSM route relations (Waymarked Trails) as rideable routes.
+
+**Test**
+- Ride Pyhä Koko kierros (117 km) with zero routing calls, and add a LIPAS route to an existing route.
+- Search "koko kierros", "laajavuori", "laavu".
+- Smoke, from recorded LIPAS answers: the ride makes fixed legs, and search groups its results.
+
 ## Phase 13 — Water routing
 
 **Today:** `js/water.js` renders OpenFreeMap water white on black in a hidden map, adds streams as a cost, runs A* with a shore cost and a land cost for carries, then straightens. Phase 9 added "near the shore" and carry costs.
@@ -983,6 +1021,7 @@ The user expects the smallest first step to be option A plus a FIT course export
 ## How to work on this (for any session)
 
 - **Branches:** one per phase, from `main` after the previous phase is merged. If it isn't merged yet, branch from it and say so in the PR.
+- **Bugs, ideas and things to watch** go into [BACKLOG.md](BACKLOG.md) as they come up (the user's ask, 2026-10-14). An item moves here when it becomes work, and is ticked off there.
 - **Testing:**
   - Work in the browser pane inside Claude Code (the user prefers to watch there). `python3 serve.py` serves http://localhost:8765.
   - Check MTB, gravel, hike and paddle (plus the new sports once they exist) at **1440 × 900** and **390 × 844**, with a route drawn and the timeline open.
