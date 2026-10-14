@@ -86,6 +86,7 @@ export function buildStyle(s, ctx) {
     terrain: { type: 'raster-dem', tiles: [ctx.demTiles], tileSize: DEM_TILESIZE, maxzoom: 13, encoding: 'terrarium' },
     contours: { type: 'vector', tiles: [ctx.contourTiles], maxzoom: 16 },
     route: { type: 'geojson', data: ctx.data.route || EMPTY },
+    routeMarks: { type: 'geojson', data: ctx.data.routeMarks || EMPTY }, // distance (and time) marks along the route
     routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
@@ -434,9 +435,11 @@ export function buildStyle(s, ctx) {
   add({ id: 'tracks-casing', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 4, 16, 9), 'line-opacity': 0.8 } });
   add({ id: 'tracks', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#7c3aed', 'line-width': zi(8, 2, 16, 5) } });
 
-  add({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
+  // a point the route couldn't reach: a thin dashed line to it (planner.js drawRoute)
+  add({ id: 'route-gap', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'gap'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#64748b', 'line-width': zi(8, 1, 16, 2), 'line-dasharray': [1, 2] } });
+  add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
   add({
-    id: 'route-line', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'portage'],
+    id: 'route-line', type: 'line', source: 'route', filter: ['all', ['!=', ['get', 'kind'], 'portage'], ['!=', ['get', 'kind'], 'gap']],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
       'line-color': ['case', ['get', 'loading'], '#9ca3af', ['==', ['get', 'mode'], 'water'], '#0369a1', ['==', ['get', 'mode'], 'line'], '#be123c', '#e11d48'],
@@ -446,7 +449,7 @@ export function buildStyle(s, ctx) {
   });
   add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
-  add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['!', ['get', 'loading']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
+  add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['all', ['!', ['get', 'loading']], ['!=', ['get', 'kind'], 'gap']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
   add({
     id: 'route-wind', type: 'symbol', source: 'routeWind',
     layout: { 'icon-image': 'wind-arrow', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': ['get', 'size'], 'icon-allow-overlap': true, 'icon-ignore-placement': true },
@@ -455,6 +458,13 @@ export function buildStyle(s, ctx) {
   // round-trip candidates (planner): the one you're looking at wider and on top
   add({ id: 'loops-casing', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 6, 4], 16, ['case', ['get', 'on'], 12, 8]], 'line-opacity': 0.9 } });
   add({ id: 'loops-line', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 3.5, 2], 16, ['case', ['get', 'on'], 7, 4]], 'line-opacity': ['case', ['get', 'on'], 1, 0.7] } });
+  // distance marks along the route: a dot on the line, "5 km" (and the time you'd be there) beside it
+  add({ id: 'route-marks-dot', type: 'circle', source: 'routeMarks', minzoom: 9, paint: { 'circle-radius': zi(9, 2.5, 16, 4), 'circle-color': '#ffffff', 'circle-stroke-color': '#111827', 'circle-stroke-width': 1.5 } });
+  add({
+    id: 'route-marks', type: 'symbol', source: 'routeMarks', minzoom: 9,
+    layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 11, 'text-anchor': 'left', 'text-offset': [0.7, 0], 'text-padding': 4, 'text-optional': true },
+    paint: { 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
+  });
   add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
 
   const style = {

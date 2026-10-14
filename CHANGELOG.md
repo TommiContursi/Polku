@@ -4,6 +4,16 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-14
 
+### Reading the route
+- **Points snap onto the path:** with Follow paths, a point clicked beside a trail or road moves onto it, where the route goes. A point the route can't reach gets a thin dashed line to it.
+- **Menus have an ×,** and a tap beside an open menu only closes it, without adding a point.
+- **See each part's sport:**
+  - a **Sport** colour for the profile (and the route on the map);
+  - on a multisport route, a strip under the profile with each sport's colour and icon, whatever colours the profile shows.
+- **Distance marks** along the route on the map (1 km, 5 km… by length), and if you like, the time you'd be there. Both are in the planner's ⋯ menu.
+- **Departure** can be set from the start point's menu and the start's row in the waypoint list.
+- **Sunrise and sunset** at the start, under Departure & weather. Heads-up tells you when part of the trip is after sunset or in the dark, and reminds paddlers that a light is required on the water after dark.
+
 ### Fixed: route points off the route
 - **Points and leg handles drifted further off the route the more of them there were** (a style rule from the multisport change). They sit on their spots again.
 

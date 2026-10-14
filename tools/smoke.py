@@ -10,6 +10,7 @@
   python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind)
   python3 tools/smoke.py multi      # just multisport: a sport per leg, changeovers, share links (straight legs)
   python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
+  python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -607,6 +608,75 @@ def route_menu(chrome):
     return not fails
 
 
+# What the route shows: a point beside its path snaps onto the routed line (no routing
+# again); a multisport route gets the sport strip and the Sport colours; distance marks
+# along the line; the sun at the start, and sunrise / sunset maths; a tap beside an
+# open menu only closes it.
+ROUTE_BITS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const S = await import(location.origin + '/js/sun.js');
+  const f = (t) => new Date(t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Helsinki' });
+  const sun = S.sunTimes(Date.parse('2026-10-14T12:00:00+03:00') / 1000, [24.94, 60.17]);
+  if (f(sun.rise) !== '07:57' || f(sun.set) !== '18:17') errs.push(`Helsinki 14 Oct: sunrise ${f(sun.rise)}, sunset ${f(sun.set)} (07:57, 18:17 expected)`);
+  if (S.sunTimes(Date.parse('2026-06-21T12:00:00+03:00') / 1000, [27.03, 69.91]).day !== 'polar-day') errs.push('no midnight sun in Utsjoki at midsummer');
+  const p = polku.planner, m = polku.map;
+  p.setActive(true);
+  p.clear();
+  p.setMode('line');
+  for (const q of [[23.700, 61.500], [23.720, 61.506], [23.745, 61.509], [23.760, 61.504]]) p.addPoint(q);
+  p.setLegSport(1, 'paddle');
+  for (let k = 0; k < 30 && !(p.analysis && p.analysis.waits && p.analysis.waits.length); k++) await wait(200);
+  if (!p.chart.segs || p.chart.segs.length !== 3 || document.querySelectorAll('.chart-sport').length < 2) errs.push(`sport strip: ${p.chart.segs ? p.chart.segs.length : 0} stretches, ${document.querySelectorAll('.chart-sport').length} icons`);
+  if (!p.modeApplies('sport')) errs.push('no Sport colours for a multisport route');
+  const marks = await m.getSource('routeMarks').getData();
+  if (marks.features.length !== Math.floor(p.analysis.total / 1000)) errs.push(`${marks.features.length} distance marks on ${(p.analysis.total / 1000).toFixed(1)} km`);
+  p.setMarks({ km: false });
+  if ((await m.getSource('routeMarks').getData()).features.length) errs.push('distance marks stay when switched off');
+  p.setMarks({ km: true });
+  p.reveal('depart');
+  await wait(200);
+  if (!/Sunrise|Midnight sun|Polar night/.test(document.querySelector('.sun-line')?.textContent || '')) errs.push('no sun times in Departure & weather');
+  // a point beside its path: the routed leg starts 30 m away, so the point moves onto it, and its key with it
+  p.clear();
+  p.setMode('auto');
+  p.points = [[23.7600, 61.5000], [23.7700, 61.5040]];
+  const c = [[23.7605, 61.5002], [23.7650, 61.5020], [23.7698, 61.5039]];
+  p.legs = [{ mode: 'auto', status: 'ok', result: { coords: c.map((x) => x.slice()), tags: [{}, {}], portage: [] } }];
+  if (!p.snapPoints() || p.points[0][0] !== 23.7605 || p.points[1][0] !== 23.7698) errs.push(`a point beside the path didn't snap: ${JSON.stringify(p.points)}`);
+  if (p.legs[0].key !== p.legKey(0).key) errs.push('the snapped leg would be routed again');
+  // a tap beside an open menu: closes it, adds nothing
+  p.clear();
+  p.setMode('line');
+  p.addPoint([23.750, 61.500]);
+  p.addPoint([23.770, 61.505]);
+  await wait(300);
+  p.openPointMenu(1, p.markers[1]);
+  const q = m.project([23.740, 61.495]);
+  m.fire('mousedown', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('mousedown') });
+  m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') });
+  await wait(200);
+  if (p.points.length !== 2) errs.push(`a click beside an open menu added a point (${p.points.length})`);
+  if (!document.querySelector('.polku-popup .maplibregl-popup-close-button')) { /* closed by the click: fine */ }
+  p.openPointMenu(0, p.markers[0]);
+  if (!document.querySelector('.polku-popup .maplibregl-popup-close-button')) errs.push('the point menu has no close button');
+  if (!document.querySelector('.polku-popup .pt-depart select')) errs.push('no departure in the start point’s menu');
+  if (p.menu) p.menu.remove();
+  p.clear();
+  return errs;
+})()"""
+
+
+def route_bits(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.505/23.73')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(ROUTE_BITS, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} what the route shows" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The planner header never spills out of the sheet (labels vary: a measured layout,
 # planner.js fitHeader). Narrow desktop windows with the bottom dock, a small phone.
 HEADER_OUT = """(() => {
@@ -762,6 +832,8 @@ def main():
             ok = multi(chrome) and ok
         if not only or 'routemenu' in only:
             ok = route_menu(chrome) and ok
+        if not only or 'routebits' in only:
+            ok = route_bits(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

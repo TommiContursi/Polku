@@ -2,10 +2,10 @@
 // fill is coloured by the selected mode, hover is synced both ways with the
 // map, and dragging across the chart zooms into a stretch.
 
-import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE, isWater } from './config.js';
+import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand } from './weather.js';
-import { escapeHtml } from './ui.js';
+import { escapeHtml, icon } from './ui.js';
 
 export const WAY_COLORS = {
   path: '#7c2d12', footway: '#b45309', steps: '#dc2626', track: '#a16207', cycleway: '#2563eb',
@@ -25,6 +25,7 @@ export const COLOR_MODES = {
   wind: 'Wind',
   temp: 'Temperature',
   rain: 'Rain',
+  sport: 'Sport',
 };
 
 // The profile's colour chips, grouped by what they describe.
@@ -32,6 +33,7 @@ export const COLOR_GROUPS = [
   ['Terrain', ['grade', 'uphill', 'down', 'both']],
   ['Ground', ['surface', 'way', 'width', 'vis']],
   ['Weather', ['wind', 'temp', 'rain']],
+  ['Route', ['sport']],
 ];
 
 // Trail width and visibility along the route (analysis.js a.td): index = class + 2
@@ -59,6 +61,7 @@ export function colorAt(a, i, mode) {
     case 'wind': return a.wind ? windClass(a.wind.head[i], a.wind.speed[i]).color : '#e2e8f0';
     case 'temp': return a.wind ? tempBand(a.wind.temp[i]).color : '#e2e8f0';
     case 'rain': return a.wind ? rainBand(a.wind.precip[i], a.wind.temp[i]).color : '#e2e8f0';
+    case 'sport': return SPORT_COLORS[(a.attr[i] && a.attr[i].sport) || a.activity] || '#64748b';
     default: return gradeColor(a.grade[i]);
   }
 }
@@ -193,6 +196,7 @@ export class ProfileChart {
     // a new route zooms back out; the same one (e.g. its forecast arrived) keeps the zoom
     if (a !== this.a || kind !== this.kind) { this.view = null; this.resetBtn.hidden = true; }
     this.a = a; this.mode = mode; this.kind = kind; this.hoverIdx = -1;
+    this.segs = sportSegments(a);
     this.draw();
   }
   setMode(mode) { this.mode = mode; this.draw(); }
@@ -220,7 +224,8 @@ export class ProfileChart {
 
   geom() {
     const r = this.canvas.getBoundingClientRect();
-    const { l, r: pr, t, b } = this.pad;
+    const { l, r: pr, t } = this.pad;
+    const b = this.pad.b + (this.segs && this.segs.length > 1 ? 12 : 0); // room for the sport strip
     return { w: r.width, h: r.height, x0: l, x1: r.width - pr, y0: t, y1: r.height - b, rect: r };
   }
 
@@ -431,6 +436,9 @@ export class ProfileChart {
       });
     }
 
+    // a multisport route: each stretch's sport, as a band under the profile (whatever the colours above)
+    this.drawSports(ctx, g, X);
+
     // drag selection
     if (this.sel) {
       const [p, q] = this.sel.slice().sort((m, n2) => m - n2);
@@ -452,4 +460,47 @@ export class ProfileChart {
     }
     ctx.restore();
   }
+
+  // The sport strip: a band under the plot in each stretch's sport colour, its icon over it
+  // (HTML, beside the canvas) where the stretch is wide enough to hold one.
+  drawSports(ctx, g, X) {
+    if (!this.sportBox) {
+      this.sportBox = Object.assign(document.createElement('div'), { className: 'chart-sports' });
+      this.canvas.parentElement.append(this.sportBox);
+    }
+    const segs = this.segs || [];
+    this.sportBox.innerHTML = '';
+    if (segs.length < 2) return;
+    const y = g.y1 + 3;
+    for (const sg of segs) {
+      const x0 = Math.max(g.x0, X(sg.d0)), x1 = Math.min(g.x1, X(sg.d1));
+      if (x1 <= x0) continue;
+      ctx.fillStyle = SPORT_COLORS[sg.sport] || '#64748b';
+      ctx.fillRect(x0, y, Math.max(1, x1 - x0 - 1), 6);
+      if (x1 - x0 >= 22) {
+        const el = document.createElement('span');
+        el.className = 'chart-sport';
+        el.title = ACTIVITIES[sg.sport] ? ACTIVITIES[sg.sport].label : sg.sport;
+        el.style.left = `${(x0 + x1) / 2}px`;
+        el.style.top = `${y + 3}px`;
+        el.style.background = SPORT_COLORS[sg.sport] || '#64748b';
+        el.innerHTML = icon(SPORT_ICONS[sg.sport] || 'route', 11);
+        this.sportBox.append(el);
+      }
+    }
+  }
+}
+
+// the sports along a route, as stretches [{ d0, d1, sport }]
+const SPORT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
+function sportSegments(a) {
+  if (!a || !a.attr) return [];
+  const out = [];
+  for (let i = 1; i < a.along.length; i++) {
+    const sp = (a.attr[i] && a.attr[i].sport) || a.activity;
+    const last = out[out.length - 1];
+    if (last && last.sport === sp) last.d1 = a.along[i];
+    else out.push({ d0: a.along[i - 1], d1: a.along[i], sport: sp });
+  }
+  return out;
 }

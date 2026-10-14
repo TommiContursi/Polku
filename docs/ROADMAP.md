@@ -29,7 +29,9 @@ Also approved:
 | — | First visit: open on Helsinki and ask for your location; later visits open where you left off | `first-visit` | [#41](https://github.com/TommiContursi/Polku/pull/41) | merged |
 | — | A README with screenshots, a changelog, developer notes in docs/, Polku and its maker in the map's credits | `readme` | [#42](https://github.com/TommiContursi/Polku/pull/42) | merged |
 | 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | [#43](https://github.com/TommiContursi/Polku/pull/43) | merged |
-| — | The route on the map: a click opens the planner, a tap or right-click opens a menu for that part, LIPAS routes easier to pick | `route-menu` | [#44](https://github.com/TommiContursi/Polku/pull/44) | PR open |
+| — | The route on the map: a click opens the planner, a tap or right-click opens a menu for that part, LIPAS routes easier to pick | `route-menu` | [#44](https://github.com/TommiContursi/Polku/pull/44) | merged |
+| — | Fix: route points stacked down off the route (from #43); tests could run on cached files | `marker-fix` | [#45](https://github.com/TommiContursi/Polku/pull/45) | PR open |
+| — | Reading the route: points snap onto the path, a tap beside a menu only closes it, the sport on the profile and map, distance marks, departure at the start, sunrise and sunset | `route-read` | (this PR) | PR open |
 | 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | — | next |
 | 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
@@ -1030,6 +1032,31 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - land between swims goes on foot.
 - **Share links** carry `s=` (one letter per leg, `-` for the route's sport) and `cw=` (changeover minutes you set). The saved route and offline areas keep both. Old links are unchanged.
 - **Tests:** `tools/smoke.py multi` builds a ride → paddle → run route with straight legs (no routing). It checks each leg's sport, the 15- and 10-minute changeovers (one then set to 3), the time per sport, the badges and the list, and the share link and the saved route. Scenes are `*-multisport` and `*-multisport-time`, routed on the local BRouter.
+
+## Between 13b and 13c — reading the route (built 2026-10-14)
+
+*(User, 2026-10-14, after #44)*:
+- "the route balls are off from where they should be, hundreds of metres" (fixed in #45: a CSS rule from #43);
+- "with Follow paths, the balls should snap to trails / roads";
+- "on mobile, tapping outside a small modal to close it adds a new point; add an × too";
+- "it isn't easy to see the sport of each section: show it on the profile and on the map, and under every chart style as a line and an icon";
+- "km / time on the route line?";
+- "change the start time in the waypoint menu";
+- "sunrise and sunset, important especially for kayaking".
+
+What was built:
+- **Snapping** (`planner.snapPoints`): after routing, a point whose legs all follow paths moves onto the line, where the router joined the way (BRouter's own ends: 2–96 m at the user's test spot). It doesn't snap if the legs disagree or it's over 400 m; straight, water and imported legs keep your spot. Leg keys follow, so nothing is routed again. A gap that's left is drawn as a thin dashed line (`route-gap`).
+- **Menus:** an × on every planner menu. A click or tap that starts while a menu or card is open just closes it (the planner adds nothing; on touch, the inspector doesn't open the next card).
+- **The sport on the profile:**
+  - a "Sport" colour mode (group *Route*), with "On map" colouring the route line;
+  - a strip under the profile in every colour mode, coloured by sport with its icon, for a multisport route (`chart.js drawSports`).
+- **Distance marks** on the route line: every 1, 5, 10 or 25 km by length, optionally with the time you'd be there. Both are switched in the planner's ⋯ menu (on, times off) and remembered.
+- **Departure** from the start point's menu and the start's row in the waypoint list (the timeline's hours), kept in step with the timeline.
+- **The sun** (`js/sun.js`, the sunrise equation, no service):
+  - "Sunrise · sunset · dark from" at the start in Departure & weather, or midnight sun or polar night (with its midday twilight).
+  - Heads-up: "After sunset (18:18) for 3 km" and "In the dark for 2 km", at the times you'd be there, with a light reminder (required on the water).
+  - Checked: Helsinki 14 October 07:57 / 18:17, midsummer 03:55 / 22:51, Utsjoki's polar day and night.
+- **Tests:** `smoke.py routebits` covers sunrise and sunset, the strip, Sport, the marks and their switch, the sun line, snapping without routing again, a click beside a menu, and the menus' × and departure.
 
 ## Phase 13c — Stops and nights (next)
 

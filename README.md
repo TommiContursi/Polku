@@ -30,7 +30,7 @@ MTB, gravel, road cycling, hiking, trail running, running, paddling and swimming
 - **Route style in the sport's own words:** Flowy trails, Technical, Smooth & easy, Paved roads, Nature paths, Near the shore… For the whole route or a single leg.
 - **An elevation profile** coloured by gradient, uphill or MTB difficulty, trail width or visibility, surface, wind, temperature or rain, on the map too if you like.
 - **Heads-up** lists what's on the way: steps, no-bike sections, fallen trees, hard-to-follow trails, road works, busy roads, carries. Each comes with an *Avoid* button.
-- **Your speeds** (Easy / Normal / Fast, or your own), and a time that accounts for the wind.
+- **Your speeds** (Easy / Normal / Fast, or your own), and a time that accounts for the wind, with **distance marks** on the route, the times you'd pass them, and **sunrise and sunset** (Heads-up says when you'd be out in the dark).
 - **GPX import and export,** and a share link that carries the whole route.
 
 ![Heads-up along a route at Tykkikallio: private access, a log across the trail, a stretch that's hard to follow, each with an Avoid button; waypoints and the weather on the route beside it](docs/screenshots/headsup.webp)
