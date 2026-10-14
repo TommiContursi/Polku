@@ -25,11 +25,14 @@ Also approved:
 | 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | merged |
 | 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | merged |
 | 12c | LIPAS routes into the planner (ride one, add one), routes and stops in search | `lipas-routes` | [#39](https://github.com/TommiContursi/Polku/pull/39) | merged |
-| 13 | Water routing: fairways, rocks and marks, wind (no depths: licence, see the phase) | `water-routing` | [#40](https://github.com/TommiContursi/Polku/pull/40) | PR open |
-| 13b | Multisport routes: a sport per leg, changeovers, time per sport, a swim sport | `multisport` | — | proposed 2026-10-14, awaiting OK |
-| 14 | Round trips for paddling | `paddle-loops` | — | planned |
+| 13 | Water routing: fairways, rocks and marks, wind (no depths: licence, see the phase) | `water-routing` | [#40](https://github.com/TommiContursi/Polku/pull/40) | merged |
+| — | First visit: open on Helsinki and ask for your location; later visits open where you left off | `first-visit` | [#41](https://github.com/TommiContursi/Polku/pull/41) | PR open |
+| 13b | Multisport routes: a sport per leg (in the waypoint list too), changeovers, time per sport, Swim as a sport | `multisport` | — | OK'd 2026-10-14, next |
+| 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
+| 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
+| 18 | Help and a tutorial (the last phase: when the rest has settled) | `help` | — | planned |
 
 ## Why this order
 
@@ -965,7 +968,19 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 - **Grid cells are the same as before** (0.8–1.2 million per leg). Once a window's data is in, the extra time per leg is 10–30 ms for drawing the costs, about 10 ms for the wind, and up to 1.3× the A* time. The rest of "After" is waiting for data the first time.
 - The wait for a source was then cut from 4 s to 2.5 s, since the leg is re-routed when the data arrives anyway.
 
-## Phase 13b — Multisport routes (proposed 2026-10-14, awaiting OK)
+## Phase 13b — Multisport routes (OK'd 2026-10-14; before phase 14)
+
+**The user's answers (2026-10-14):**
+- **Flexible:** any sport after any other, with the suggestions below.
+- **Swim is a sport of its own, in the sport switcher.** The rule: any sport a leg can have is also a sport in the switcher.
+- **Before phase 14.**
+- **Each leg's sport is also in the waypoint list,** next to Follow / Straight / Water and the leg's style, for easy editing. The changeover time goes on the waypoint's row.
+- **Stops and nights** *(user, 2026-10-14)*: a waypoint can be a stop of its own, not only a changeover. Examples are a break ("Lunch, 1 h") or a night ("Sleep at the lean-to, go on at 08:00"), on a bike tour, a hike or a paddling trip.
+  - The time after a stop moves on by its length, so arrival times, the route weather and the timeline's shaded band follow. Day 2 starts when you say.
+  - The summary shows days for a trip over midnight: "Day 1: 62 km · 4 h 10 · Day 2: 48 km · 3 h 20", with each day's weather.
+  - Overnight spots nearby are suggested from LIPAS (lean-tos, huts, campsites) and OSM (shelters, campsites).
+  - The forecast reaches 49 hours today (`forecast_hours=49`). Multi-day trips need up to about 7 days: Open-Meteo has 16, at more data per call. Polku would say when a day is beyond the forecast, or turning less certain.
+  - Share links carry the stops (`st=`: point, minutes or the time to go on).
 
 **The user's ask:** "consider multisport activity route planning". For example: bike to a lake and paddle across; hike to a lake with a packraft; swimrun (run and swim in turns); triathlon training. Later (phase 15), ski and skate on ice.
 
@@ -991,12 +1006,34 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
 2. Should Swim be a sport in the pill, or only inside multisport routes?
 3. Should this come before phase 14 (paddling round trips) or after?
 
-## Phase 14 — Round trips for paddling
+## Phase 14 — Round trips for paddling (and more loops for every sport)
 
-- **After 13,** so loops use the new water costs. Same card UI as phase 10.
+- **After 13 and 13b,** so loops use the new water costs. Same card UI as phase 10.
+- **More loops** *(user, 2026-10-14)*: if none of the first three suit you, a "More loops" button, or swiping or scrolling past the third card, makes three more. They go in other directions and with other via points. Each costs routing calls in land sports (counted, and paced like the first three); paddling loops cost CPU only. This applies to every sport, not just paddling.
 - **Generation:** `roundtrip.js` with the opposite water check. Via points must be *on* water: nudged along the circle onto open water, and away from shore by the near-shore setting. Legs are routed with Polku's own water router, so there are no routing API calls, but there is CPU, so measure the time for 3 candidates; fewer via points (3) and a coarser grid if needed.
 - **Ranking:** distance match, open-water exposure (share of the loop far from shore), wind (headwind share from the route weather; one cached forecast lookup per candidate), carries, and anything Heads-up from phase 13.
 - **Test:** loops from Tampere (Näsijärvi and Pyhäjärvi), the Helsinki archipelago and a river town.
+
+## Phase 17 — Weather: clouds, thunder, snow, back in time (planned 2026-10-14)
+
+From the backlog *(user, 2026-10-14)*:
+- **New switches** under *Weather on the map*, on the timeline:
+  - **clouds** (Open-Meteo low, mid and high cover);
+  - **thunder** (FMI's lightning observations; Open-Meteo CAPE and lightning potential);
+  - **snow** (Open-Meteo snowfall and snow depth; FMI snow depth, shared with phase 15).
+- **The timeline into the past:** the last 2–3 hours of FMI's radar (WMS `time`, kept about two weeks at 5 minutes), playing like the forecast, to see where the rain came from. Past wind and temperature from Open-Meteo's `past_hours`.
+- **A check before heavy loads** *(user)*: when a view would cost many calls to a free service, Polku asks first. That happens with a new layer zoomed out over half of Finland, or with history for every grid point.
+  - The message: "This view needs about 450 weather calls (Open-Meteo allows 10 000 a day). Load it?" with *Load*, *Not now* and *Always for this layer*.
+  - The numbers come from `net.js` (each service's limits and today's use).
+  - Cheap views never ask: today's weather map stays under 60 points a view.
+
+## Phase 18 — Help and a tutorial (planned 2026-10-14; the last phase)
+
+*(User, 2026-10-14: "we need a tutorial or proper help … as a last thing".)* This comes when the features have settled, so it doesn't go stale:
+- **A first-run tour** of a few steps: sport, plan a route by clicking, the profile and Heads-up, layers, weather. It can be skipped and reopened from Settings.
+- **Help in place:** a "?" in each planner section and Layers group, opening a short page that explains it, with pictures.
+- **A help page** (HTML, in the repo): what each sport does, where the data comes from and how fresh it is, what costs calls, offline areas, sharing, keyboard shortcuts.
+- Written for new users, tested on someone who hasn't used Polku.
 
 ## Phase 15 — Winter (research first, then build)
 

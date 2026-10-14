@@ -103,12 +103,16 @@ const ctx = {
 };
 
 // ------------------------------------------------------------------ map
+// Where the map opens: a link's view (#zoom/lat/lon, MapLibre reads it), else where
+// you left it last time, else (a first visit) Helsinki, and Polku asks for your location.
+const lastView = store.get('view', null);
+const firstVisit = !/^#\d/.test(location.hash) && !lastView && !shared;
 const map = new maplibregl.Map({
   container: 'map',
   style: buildStyle(state, ctx),
   hash: true,
-  center: [23.735, 61.493],
-  zoom: 13.5,
+  center: lastView ? lastView.c : [24.9384, 60.1699],
+  zoom: lastView ? lastView.z : 12,
   maxPitch: 80,
   attributionControl: false,
   cooperativeGestures: false,
@@ -128,6 +132,11 @@ map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
 $('.ctrl-compass').append(new CompassControl({ toast }).onAdd(map));
 const geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
 map.addControl(geolocate, 'top-right');
+let viewTimer = 0;
+map.on('moveend', () => {
+  clearTimeout(viewTimer);
+  viewTimer = setTimeout(() => { const c = map.getCenter(); store.set('view', { c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2) }); }, 800);
+});
 // paddling, zoomed in: what the water router will want (rocks, fairways) comes ahead, cached
 map.on('moveend', () => {
   if (state.activity !== 'paddle' || map.getZoom() < 11) return;
@@ -967,6 +976,8 @@ map.on('load', () => {
   syncZoomHint();
   syncView3d();
   if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
+  // a first visit: show where you are, if the browser may tell (Helsinki stays otherwise)
+  if (firstVisit && navigator.geolocation) setTimeout(() => geolocate.trigger(), 600);
   if (state.timeline) setTimeline(true);
   if (shared && shared.points.length) {
     planner.restore(shared);
