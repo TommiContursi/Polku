@@ -4,9 +4,11 @@
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
-import { analyse, estimateTime, surfaceClass } from './analysis.js';
+import { analyse, estimateTime, surfaceClass, trailWarnings } from './analysis.js';
+import { detailsAlong } from './trails.js';
+import { iconUrl } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, colorAt, routeReadout } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify } from './geo.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
@@ -43,6 +45,19 @@ async function pool(jobs, n) {
   await Promise.all(Array.from({ length: Math.min(n, queue.length) }, async () => {
     while (queue.length) await queue.shift()();
   }));
+}
+
+// Trail obstacles that repeat (three fallen trees…) become one heads-up row.
+const GROUP_TEXT = { tree: 'Fallen trees and logs', stile: 'Stiles and kissing gates', cycle: 'Cycle barriers', 'gate-no': 'Gates with no access', ford: 'Fords' };
+function groupTrail(list) {
+  const by = new Map();
+  for (const w of list) if (w.group) by.set(w.group, [...(by.get(w.group) || []), w]);
+  const out = list.filter((w) => !w.group || by.get(w.group).length < 3);
+  for (const [g, items] of by) {
+    if (items.length < 3) continue;
+    out.push({ at: items[0].at, len: 0, text: `${GROUP_TEXT[g] || items[0].text} ×${items.length}`, note: items[0].note, kind: 'trail', icon: items[0].icon, lngLat: items[0].lngLat, items });
+  }
+  return out;
 }
 
 export class Planner {
@@ -321,6 +336,16 @@ export class Planner {
     toast(this.points.length > 1 ? 'Re-routing around it…' : 'Marked — routes will go around it');
   }
 
+  // several at once (a group of fallen trees): one undo step, one re-route
+  addNogos(list) {
+    if (list.length === 1) { this.addNogo(list[0].ll, list[0].r, list[0].label); return; }
+    this.commit();
+    for (const n of list) this.nogos.push({ ll: [+n.ll[0].toFixed(6), +n.ll[1].toFixed(6)], r: Math.round(n.r), label: n.label });
+    this.drawNogos();
+    this.update();
+    toast(`Re-routing around ${list.length} places…`);
+  }
+
   removeNogo(i) {
     this.commit();
     this.nogos.splice(i, 1);
@@ -387,8 +412,20 @@ export class Planner {
     this.update();
   }
 
+  renderQuickSport() {
+    const sports = this.app.sports ? this.app.sports() : [];
+    const cur = sports.find((x) => x.k === this.app.activity());
+    if (!cur) { this.els.quickSport.hidden = true; return; }
+    this.els.sportSel.innerHTML = '';
+    for (const x of sports) this.els.sportSel.append(h('option', { value: x.k }, x.label));
+    this.els.sportSel.value = cur.k;
+    this.els.quickSport.innerHTML = `${icon(cur.icon, 16)}<span>${escapeHtml(cur.label)}</span>${icon('chevronDown', 12)}`;
+    this.els.quickSport.append(this.els.sportSel);
+  }
+
   onActivityChange() {
     const sport = this.app.activity();
+    this.renderQuickSport();
     if (this.loop.open) this.closeLoop(); // lengths and styles are per sport
     this.style = this.savedStyle(sport);
     this.styleLeg = null;
@@ -406,6 +443,7 @@ export class Planner {
     this.active = on;
     this.panel.hidden = !on;
     if (!on) { this.closeMore(); delete document.body.dataset.sheet; delete document.body.dataset.pl; }
+    if (on) this.renderQuickSport();
     // an empty route opens small, so the map is there to tap; otherwise as you left it
     if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
     document.body.classList.toggle('planning', on);
@@ -658,7 +696,7 @@ export class Planner {
       // the same analysis as a route: time, climbing, heads-up
       for (const r of ok) {
         r.a = await analyse({ coords: r.line.coords, attrs: r.line.tags.map((t) => ({ mode: 'auto', tags: t || {} })) }, this.timeOpt());
-        r.score = loopScore({ km: r.a.total / 1000, targetKm: targetM / 1000, twice: r.twice, warnings: r.a.warnings.length });
+        r.score = loopScore({ km: r.a.total / 1000, targetKm: targetM / 1000, twice: r.twice, warnings: r.a.warnings.length + (r.a.trailWarn || []).length });
       }
       ok.sort((x, y) => x.score - y.score);
       L.results = ok.map((r, i) => ({ ...r, letter: 'ABC'[i], color: LOOP_COLORS[i] }));
@@ -788,7 +826,7 @@ export class Planner {
         onclick: () => { L.on = i; this.drawLoops(); this.markLoopCards(); } },
         h('div', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === 0 ? h('span', { class: 'loop-best' }, 'Closest match') : null),
         h('div', { class: 'loop-card-line' }, `${fmtDuration(a.time)} · ↑${Math.round(a.up)} m · ${what}`),
-        h('div', { class: 'loop-card-line muted' }, [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', a.warnings.length ? `${a.warnings.length} heads-up` : 'no heads-up', r.line.provider === 'valhalla' ? 'via Valhalla' : ''].filter(Boolean).join(' · ')),
+        h('div', { class: 'loop-card-line muted' }, [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', a.warnings.length + (a.trailWarn || []).length ? `${a.warnings.length + (a.trailWarn || []).length} heads-up` : 'no heads-up', r.line.provider === 'valhalla' ? 'via Valhalla' : ''].filter(Boolean).join(' · ')),
         h('button', { type: 'button', class: 'btn', onclick: (e) => { e.stopPropagation(); this.pickLoop(i); } }, 'Use this loop'));
       list.append(card);
     });
@@ -964,6 +1002,25 @@ export class Planner {
     this.analysis = a;
     this.renderAnalysis();
     this.loadWind(a);
+    this.loadTrail(a);
+  }
+
+  // Trail details along the route: the router's tags gave the first heads-up
+  // (analysis.js); with trail details on, the map's Overpass tiles add width
+  // and fallen trees mapped as points (js/trails.js), and it's re-checked for
+  // boardwalks once we know whether it has rained.
+  async loadTrail(a) {
+    const opt = () => ({ activity: this.app.activity(), wet: this.wetFor(this.style) });
+    a.trailWarn = trailWarnings(a, opt());
+    this.renderWarnings();
+    if (!this.app.trailDetails || !this.app.trailDetails() || this.app.activity() === 'paddle') return;
+    try {
+      if (!(await detailsAlong(a)) || this.analysis !== a) return;
+      a.trailWarn = trailWarnings(a, opt());
+      a.trailMore = true; // width and points from OSM are in
+      if (this.colorMode === 'width' || this.colorMode === 'vis') this.renderAnalysis();
+      else this.renderWarnings();
+    } catch { /* the router's tags still stand */ }
   }
 
   // what the time estimate needs: the sport, the craft and your speeds
@@ -1659,10 +1716,13 @@ export class Planner {
     // the two big choices, always in sight: let Polku make loops, and how the route is chosen
     this.els.quickLoop = h('button', { type: 'button', class: 'btn quick', 'aria-pressed': 'false', title: 'Let Polku make loops of the length you choose', onclick: () => (this.loop.open ? this.closeLoop() : this.openLoop()), html: `${icon('roundtrip', 16)}<span>Round trip</span>` });
     this.els.quickStyle = h('button', { type: 'button', class: 'btn quick', title: 'How the route is chosen for this sport', onclick: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } });
+    // the sport, right where the route is edited: a native list, so it opens at the button everywhere
+    this.els.sportSel = h('select', { 'aria-label': 'Sport', onchange: (e) => { if (this.app.setSport) this.app.setSport(e.target.value); } });
+    this.els.quickSport = h('label', { class: 'btn quick quick-sport', title: 'Sport: routing, speeds and heads-up follow it' });
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
       h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
         h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      h('div', { class: 'sheet-row tools-row' }, modes, h('span', { class: 'quick-pair' }, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
+      h('div', { class: 'sheet-row tools-row' }, modes, h('span', { class: 'quick-pair' }, this.els.quickSport, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
@@ -1995,7 +2055,7 @@ export class Planner {
     const act = this.app.activity();
     const applies = act === 'paddle'
       ? (k) => ['way', 'wind', 'temp', 'rain'].includes(k)
-      : (k) => (k === 'down' || k === 'uphill' ? OFFROAD_BIKE.has(act) : true);
+      : (k) => (k === 'down' || k === 'uphill' || k === 'both' ? OFFROAD_BIKE.has(act) : k === 'width' || k === 'vis' ? act !== 'road' : true);
     if (!applies(this.colorMode)) this.colorMode = act === 'paddle' ? 'wind' : 'grade';
     this.els.modesBar.innerHTML = '';
     this.els.modeSel.innerHTML = '';
@@ -2199,6 +2259,12 @@ export class Planner {
     };
     if (this.colorMode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown]);
     else if (this.colorMode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other]);
+    else if ((this.colorMode === 'width' || this.colorMode === 'vis') && a.td) {
+      const sc = TRAIL_SCALES[this.colorMode];
+      const m = sumBy((i) => a.td[this.colorMode][i]);
+      // narrow → wide (clear → barely visible), then the not-mapped and the roads
+      rows = [...m.entries()].sort((x, y) => (x[0] < 0) - (y[0] < 0) || (x[0] < 0 ? y[0] - x[0] : x[0] - y[0])).map(([k, d]) => [sc.labels[k + 2], d, sc.colors[k + 2]]);
+    }
     else if (['wind', 'temp', 'rain'].includes(this.colorMode)) {
       if (!a.wind) { box.append(h('p', { class: 'note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Weather forecast unavailable right now.') : 'Loading the forecast…')); return; }
       const w = a.wind;
@@ -2214,6 +2280,11 @@ export class Planner {
       const m = sumBy((i) => (a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down'));
       rows = [...m.entries()].sort((x, y) => (x[0] === 'flat / down' ? 1 : y[0] === 'flat / down' ? -1 : x[0] - y[0]))
         .map(([k, d]) => [k === 'flat / down' ? k : UPHILL_TEXT[k], d, k === 'flat / down' ? '#d6dde3' : DIFF_COLORS[k]]);
+    } else if (this.colorMode === 'both') {
+      // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
+      const m = sumBy((i) => (a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99));
+      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3']
+        : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10]] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k]]));
     } else if (this.colorMode === 'down') {
       const m = sumBy((i) => (a.down6[i] >= 0 ? a.down6[i] : 'not graded'));
       rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
@@ -2268,7 +2339,7 @@ export class Planner {
     box.innerHTML = '';
     if (!a) return;
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || [])].sort((x, y) => x.at - y.at);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || [])].sort((x, y) => x.at - y.at);
     const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
     const count = all.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
     this.setSection('warnings', { count: count || '', empty: !count, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });
@@ -2293,11 +2364,15 @@ export class Planner {
       const i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
       let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len, 30));
       if (i1 < 0) i1 = a.along.length - 1;
-      // anything with a place can be avoided: a circle over the hazard
-      const avoid = w.avoid || (/^(Straight line|Carry)/.test(w.text) ? null : { ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)) });
+      // anything with a place can be avoided: a circle over the hazard (each of them, for a group)
+      const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
+        : w.avoid ? [{ ...w.avoid, label: w.text }]
+          : /^(Straight line|Carry)/.test(w.text) ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
+      const where = w.items ? `at km ${w.items.map((p) => (p.at / 1000).toFixed(1)).join(', ')}` : `at km ${(w.at / 1000).toFixed(1)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
+      const ico = w.icon ? `<img class="li-ico" src="${iconUrl(w.icon)}" alt="">` : icon(KIND_ICON[w.kind] || 'warn', 16);
       const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
-        h('button', { type: 'button', class: 'li', html: `${icon(KIND_ICON[w.kind] || 'warn', 16)}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>at km ${(w.at / 1000).toFixed(1)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
-        avoid && this.legs.some((l) => l.mode === 'auto') ? h('button', { type: 'button', class: 'btn avoid', title: 'Route around this place', onclick: () => this.addNogo(avoid.ll, avoid.r, w.text) }, 'Avoid') : null);
+        h('button', { type: 'button', class: 'li', html: `${ico}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${where}${w.note ? ` · ${escapeHtml(w.note)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
+        avoid && this.legs.some((l) => l.mode === 'auto') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null);
       box.append(row);
     }
   }

@@ -4,6 +4,7 @@
 import { densify, dist } from './geo.js';
 import { elevations, smooth } from './dem.js';
 import { CRAFT, groupOf } from './config.js';
+import { obstacleKind, widthClass, visClass, obstacleText } from './trails.js';
 
 const LOOSE = new Set(['gravel', 'sand', 'rock', 'pebblestone', 'ground', 'dirt', 'earth', 'mud', 'grass', 'unpaved', 'wood', 'roots']);
 const PAVED = new Set(['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates']);
@@ -138,7 +139,9 @@ export async function analyse(line, opt) {
     surfaces: breakdown(surf),
     ways: breakdown(way),
     attr: sAttr,
+    td: trailDetailsOf(coords, attrs, src, along),
   };
+  out.trailWarn = trailWarnings(out, opt);
   const t = estimateTime(out, opt);
   out.time = t.total;
   out.tAt = t.tAt;
@@ -222,6 +225,86 @@ function findWarnings(along, grade, sAttr, pts, activity) {
   pushRun((i) => ['private', 'no'].includes(t(i).access), 'Private or no access');
   pushRun((i) => t(i).route === 'ferry', 'Ferry crossing');
   return out.sort((a, b) => a.at - b.at);
+}
+
+// ---------------------------------------------------------------- trail details along the route
+const TRAIL_WAYS = new Set(['path', 'bridleway', 'footway', 'steps']);
+const yes = (v) => v != null && v !== 'no';
+
+/**
+ * Per sample: is it a trail, its width class and visibility (-2 not a trail,
+ * -1 not tagged, else as js/trails.js), overgrown, wet, fallen trees, ford,
+ * boardwalk; and the barriers, fallen trees and fords at nodes on the route.
+ * From the router's tags; js/trails.js (detailsAlong) fills in what OSM has
+ * beyond them (width; fallen trees mapped as points).
+ */
+function trailDetailsOf(coords, attrs, src, along) {
+  const n = src.length;
+  const td = {
+    trail: new Uint8Array(n), width: new Int8Array(n).fill(-2), vis: new Int8Array(n).fill(-2),
+    veg: new Uint8Array(n), mud: new Uint8Array(n), tree: new Uint8Array(n), ford: new Uint8Array(n), boardwalk: new Uint8Array(n),
+    points: [],
+  };
+  for (let i = 0; i < n; i++) {
+    const a = attrs[Math.min(src[i], attrs.length - 1)] || {};
+    if (a.mode === 'water' || a.mode === 'line') continue;
+    const t = a.tags || {};
+    const o = String(t.obstacle || '').toLowerCase();
+    if (TRAIL_WAYS.has(t.highway)) {
+      td.trail[i] = 1;
+      td.width[i] = t.width != null ? widthClass(t) : -1;
+      td.vis[i] = t.trail_visibility != null ? visClass(t) : -1;
+    }
+    td.veg[i] = /vegetation/.test(o) ? 1 : 0;
+    td.mud[i] = t.surface === 'mud' || /mud/.test(o) ? 1 : 0;
+    td.tree[i] = /fallen.?trees?/.test(o) ? 1 : 0;
+    td.ford[i] = yes(t.ford) ? 1 : 0;
+    td.boardwalk[i] = t.bridge === 'boardwalk' ? 1 : 0;
+  }
+  // a node at the end of interval k: at the first sample past it
+  let i = 0;
+  for (let k = 0; k < attrs.length; k++) {
+    const t = (attrs[k] && attrs[k].tags) || {};
+    if (!t['node:barrier'] && !t['node:ford']) continue;
+    const kind = obstacleKind({ barrier: t['node:barrier'], ford: t['node:ford'], access: t['node:access'] });
+    if (!kind || kind === 'gate') continue; // ordinary gates are everywhere on forest roads: not a heads-up
+    while (i < n - 1 && src[i] <= k) i++;
+    td.points.push({ i, at: along[i], ll: coords[k + 1], kind, barrier: t['node:barrier'], ford: t['node:ford'], access: t['node:access'] });
+  }
+  return td;
+}
+
+/** Heads-up items from the trail details: faint, overgrown, wet stretches; fallen trees, barriers, fords. */
+export function trailWarnings(a, opt = {}) {
+  const td = a.td;
+  if (!td || opt.activity === 'paddle') return [];
+  const { along, pts } = a;
+  const bike = groupOf(opt.activity) === 'bike';
+  const out = [];
+  const m = (s, e) => `${Math.round(along[e] - along[s])} m`;
+  const run = (test, minLen, text, icon = null) => {
+    let s = -1;
+    for (let i = 0; i <= along.length; i++) {
+      const on = i < along.length && test(i);
+      if (on && s < 0) s = i;
+      if (!on && s >= 0) {
+        const len = along[i - 1] - along[s];
+        if (len >= minLen) out.push({ at: along[s], len, text: text(s, i - 1), lngLat: pts[s], kind: 'trail', icon });
+        s = -1;
+      }
+    }
+  };
+  run((i) => td.vis[i] >= 2, 100, (s, e) => `${td.vis.slice(s, e + 1).some((v) => v >= 3) ? 'Barely visible path' : 'Hard to follow'} for ${m(s, e)}`);
+  run((i) => td.veg[i], 100, (s, e) => `Overgrown for ${m(s, e)}`);
+  run((i) => td.mud[i], 50, (s, e) => `Wet or muddy for ${m(s, e)}`);
+  run((i) => td.tree[i], 0, () => 'Fallen trees on the trail', 'td-tree');
+  run((i) => td.ford[i], 0, () => 'Ford: no bridge', 'td-ford');
+  if (opt.wet) run((i) => td.boardwalk[i], 100, (s, e) => `Boardwalk for ${m(s, e)}: slippery when wet`);
+  for (const p of td.points) {
+    const { title, note } = obstacleText(p, bike);
+    out.push({ at: p.at, len: 0, text: title, note, lngLat: p.ll || pts[p.i], kind: 'trail', icon: `td-${p.kind}`, group: p.kind });
+  }
+  return out.sort((x, y) => x.at - y.at);
 }
 
 // Bikes: flat speed (km/h) on paved, unpaved and trail, climbing rate (m/h),

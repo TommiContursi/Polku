@@ -17,8 +17,11 @@ export const COLOR_MODES = {
   grade: 'Gradient',
   uphill: 'Uphill difficulty',
   down: 'MTB difficulty',
+  both: 'Both',
   surface: 'Surface',
   way: 'Way type',
+  width: 'Width',
+  vis: 'Visibility',
   wind: 'Wind',
   temp: 'Temperature',
   rain: 'Rain',
@@ -26,17 +29,33 @@ export const COLOR_MODES = {
 
 // The profile's colour chips, grouped by what they describe.
 export const COLOR_GROUPS = [
-  ['Terrain', ['grade', 'uphill', 'down']],
-  ['Ground', ['surface', 'way']],
+  ['Terrain', ['grade', 'uphill', 'down', 'both']],
+  ['Ground', ['surface', 'way', 'width', 'vis']],
   ['Weather', ['wind', 'temp', 'rain']],
 ];
 
+// Trail width and visibility along the route (analysis.js a.td): index = class + 2
+// (-2 not a trail, -1 a trail without the tag, then js/trails.js's classes).
+export const TRAIL_SCALES = {
+  width: {
+    colors: ['#94a3b8', '#d6dde3', '#c2410c', '#f59e0b', '#65a30d', '#15803d'],
+    labels: ['road or track', 'width not mapped', 'under 0.6 m', '0.6–0.9 m', '0.9–1.8 m', '1.8 m or more'],
+  },
+  vis: {
+    colors: ['#94a3b8', '#d6dde3', '#16a34a', '#eab308', '#f97316', '#dc2626'],
+    labels: ['road or track', 'visibility not mapped', 'clear', 'faint in places', 'hard to see', 'barely visible'],
+  },
+};
+
 export function colorAt(a, i, mode) {
   switch (mode) {
+    case 'width': case 'vis': return a.td ? TRAIL_SCALES[mode].colors[a.td[mode][i] + 2] : '#d6dde3';
     case 'uphill': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : '#d6dde3';
     case 'surface': return SURFACE_COLORS[a.surf[i]] || SURFACE_COLORS.unknown;
     case 'way': return WAY_COLORS[a.way[i]] || WAY_COLORS.other;
     case 'down': return a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
+    // as on the map: climbs by their uphill grade, the rest by MTB difficulty
+    case 'both': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : a.down6[i] >= 0 ? DIFF_COLORS[a.down6[i]] : '#d6dde3';
     case 'wind': return a.wind ? windClass(a.wind.head[i], a.wind.speed[i]).color : '#e2e8f0';
     case 'temp': return a.wind ? tempBand(a.wind.temp[i]).color : '#e2e8f0';
     case 'rain': return a.wind ? rainBand(a.wind.precip[i], a.wind.temp[i]).color : '#e2e8f0';
@@ -56,6 +75,13 @@ export function routeReadout(a, i, road = '') {
   if (a.upCls[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.upCls[i]])}${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
   if (a.down6[i] >= 0) trail.push(`${dot(DIFF_COLORS[a.down6[i]])}${MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0]}`);
   trail.push((road ? `${escapeHtml(road)} · ` : '') + (a.surf[i] && a.surf[i] !== 'unknown' ? `${a.way[i]} · ${a.surf[i].replace('_', ' ')}` : a.way[i]));
+  // trail details where OSM has them
+  if (a.td && a.td.trail[i]) {
+    if (a.td.width[i] >= 0) trail.push(`${TRAIL_SCALES.width.labels[a.td.width[i] + 2]} wide`);
+    if (a.td.vis[i] >= 1) trail.push(TRAIL_SCALES.vis.labels[a.td.vis[i] + 2]);
+    const t = (a.attr[i] && a.attr[i].tags) || {};
+    if (t.smoothness) trail.push(`smoothness ${escapeHtml(String(t.smoothness).replace(/_/g, ' '))}`);
+  }
   const when = [];
   if (a.wind) {
     const w = a.wind;

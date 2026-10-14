@@ -450,6 +450,10 @@ button { font: inherit; color: inherit; }
 }
 .btn.quick { height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; gap: 6px; white-space: nowrap; }
 .btn.quick b { font-weight: 700; }
+/* the sport: a native list laid over the button, so it opens right there */
+.quick-sport { position: relative; cursor: pointer; }
+.quick-sport select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.quick-sport:focus-within { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
 .btn.quick[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .sheet-row + .sheet-row { margin-top: 8px; }
 .sheet-sum { flex: 1; min-width: 0; display: flex; gap: 6px 20px; align-items: flex-end; }
@@ -632,6 +636,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 }
 .li:hover, .li.sel { background: var(--surface-2); }
 .li .ic { color: var(--warn); }
+.li-ico { width: 18px; height: 18px; flex: none; }
 .li-row { display: flex; align-items: center; gap: 4px; }
 .li-row .li { flex: 1; min-width: 0; }
 .btn.avoid { height: 26px; padding: 0 9px; font-size: 12px; color: var(--bad); border-color: rgba(220,38,38,.35); }

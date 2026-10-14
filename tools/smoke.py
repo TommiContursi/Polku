@@ -154,8 +154,8 @@ LAYERS = """(async () => {
     await wait(400);
     const segs = [...body.querySelectorAll('.seg button')].map((b) => b.textContent);
     if (!['Off', 'Difficulty', 'Uphill', 'Both'].every((x) => segs.includes(x))) errs.push(`${k}: no trail colours control`);
-    const h3 = body.querySelector('.lp-sec h3');
-    if (!h3 || h3.textContent !== 'On now') errs.push(`${k}: the first section is ${h3 ? h3.textContent : 'missing'}, not On now`);
+    const top = body.querySelector('.lg-group summary .lg-title');
+    if (!top || top.textContent !== 'On now') errs.push(`${k}: the first section is ${top ? top.textContent : 'missing'}, not On now`);
     const now = labels();
     if (!first) first = [k, now];
     else {
@@ -258,12 +258,44 @@ TRAILS = """(async () => {
 })()"""
 
 
+# Trail details along a route (12b): a recorded BRouter route over Tykkikallio
+# (its tags, the log as a node tag) and the recorded tile. No routing requests.
+ROUTE_TRAILS = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const fx = await (await fetch(location.origin + '/tools/fixtures/route-tykkikallio-mtb.json')).json();
+  p.setActive(true);
+  p.restoreSnapshot(fx);
+  const t0 = Date.now();
+  while (!(p.analysis && p.analysis.trailMore) && Date.now() - t0 < 30000) await wait(250);
+  const a = p.analysis;
+  if (!a || !a.trailMore) return ['the trail details along the route never came in'];
+  const texts = (a.trailWarn || []).map((w) => w.text);
+  if (texts.filter((t) => /^Log across/.test(t)).length !== 1) errs.push(`log heads-up: ${texts.join(' / ') || 'none'}`);
+  if (!texts.some((t) => /^Hard to follow/.test(t))) errs.push('no faint stretch in the heads-up');
+  if (![...a.td.width].some((w) => w >= 0)) errs.push('no width along the route (from the tile)');
+  p.reveal('warnings');
+  await wait(300);
+  if (!document.querySelector('[data-sec=warnings] .li-ico')) errs.push('trail heads-up rows have no icon');
+  p.showMode('width');
+  await wait(300);
+  const legend = [...document.querySelectorAll('.bd-legend .bd-item')].map((x) => x.textContent).join(' / ');
+  if (!/Under 0\\.6 m/.test(legend) || !/Road or track/.test(legend)) errs.push(`width breakdown: ${legend}`);
+  p.showMode('grade');
+  const n = await import(location.origin + '/js/net.js');
+  const routed = n.usage().filter((u) => /^brouter|^valhalla/.test(u.id)).reduce((s, u) => s + (u.session || 0), 0);
+  if (routed) errs.push(`${routed} routing requests (the fixture should need none)`);
+  localStorage.removeItem('polku:colorMode');
+  return errs;
+})()"""
+
+
 def trails(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/62.2289/25.7652')
     pg.js(SEED_TRAILS)
     pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16 }); true")
     fails = pg.js(TRAILS)
+    fails += [f'route: {e}' for e in pg.js(ROUTE_TRAILS)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} trail details" + ''.join(f'\n     - {f}' for f in fails), flush=True)
@@ -298,6 +330,8 @@ def check(chrome, w, h, phone, bottom=False):
     fails = []
     pg = chrome.page(w, h, phone)
     pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:plannerDock': '"bottom"' if bottom else '"left"'})
+    # no Overpass in the layout checks: trail-detail tiles loading live made the timing flaky
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     time.sleep(1.0)
     fails += [f'closed: {o}' for o in overlaps(pg.js(BOXES))]
 
