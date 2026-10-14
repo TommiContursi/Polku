@@ -168,6 +168,9 @@ const nautical = new NauticalLayer(map, { setData });
 
 const planner = new Planner(map, {
   activity: () => state.activity,
+  trailDetails: () => !!state.trailDetails, // width and fallen trees along the route from the same tiles
+  sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),
+  setSport: (k) => setActivity(k),
   setData,
   onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
   onAnalysis: () => { weather.renderTime(); weather.renderStrip(); },
@@ -547,6 +550,23 @@ const opacityRow = (id) => {
       },
       onchange: () => saveSettings() }), pct);
 };
+// The trail colours' opacities, difficulty and uphill each: paint only, so a style
+// diff per frame at most while dragging; saved on release.
+let tcFrame = 0;
+const trailColorOpacityRow = (which, label) => {
+  const key = `trail:${which}`;
+  const v0 = Math.round((state.overlayOpacity[key] ?? 1) * 100);
+  const pct = h('span', { class: 'op-val' }, `${v0} %`);
+  return h('label', { class: 'range op-row' }, h('span', {}, label),
+    h('input', { type: 'range', min: '10', max: '100', step: '5', value: String(v0), 'aria-label': `${label} opacity`,
+      oninput: (e) => {
+        state.overlayOpacity[key] = +e.target.value / 100;
+        pct.textContent = `${e.target.value} %`;
+        cancelAnimationFrame(tcFrame);
+        tcFrame = requestAnimationFrame(() => map.setStyle(buildStyle(state, ctx), { diff: true }));
+      },
+      onchange: () => saveSettings() }), pct);
+};
 const withOpacity = (id, tg) => { const row = opacityRow(id); return row ? h('div', { class: 'tg-group' }, tg, row) : tg; };
 
 // A folding group; it opens by itself while something in it is on, until you choose.
@@ -579,7 +599,9 @@ function renderLayersPanel() {
   const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
-  p.append(section('On now',
+  // On now and Base map fold away like the other groups (open unless you close them)
+  const onCount = on.length + wx.length + (trailOn ? 1 : 0) + (state.trailDetails ? 1 : 0);
+  p.append(layerGroup('onnow', 'On now', onCount, true,
     on.length || wx.length || trailOn || state.trailDetails ? h('div', { class: 'on-chips' },
       trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
       state.trailDetails ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail details', onclick: () => { setTrail('trailDetails', false); renderLayersPanel(); }, html: `<span>Trail details</span>${icon('close', 12)}` }) : null,
@@ -596,7 +618,7 @@ function renderLayersPanel() {
     } }, `Reset to ${act.label} defaults`) : null));
 
   // base maps as thumbnails
-  p.append(section('Base map',
+  p.append(layerGroup('base', 'Base map', 0, true,
     h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
       type: 'button', class: 'base-opt', 'aria-pressed': String(state.base === k), title: BASE_NOTE[k],
       onclick: () => { state.base = k; applyStyle(); renderLayersPanel(); },
@@ -625,6 +647,8 @@ function renderLayersPanel() {
       up: 'Uphill grade (↑S0–↑S5) computed from the lidar elevation model for every trail in view, bumped for loose or technical surface. OSM mtb:scale:uphill tags override it. Arrows point uphill.',
       both: 'Halo = MTB difficulty (mtb:scale). Thin stripe beside it = uphill grade, with arrows pointing uphill on climbs of 8 %+.',
     }[state.trailColors] || ''),
+    state.trailColors === 'down' || state.trailColors === 'both' ? trailColorOpacityRow('down', 'Difficulty') : null,
+    state.trailColors === 'up' || state.trailColors === 'both' ? trailColorOpacityRow('up', 'Uphill') : null,
     toggle('Trail details', state.trailDetails, rerender((v) => {
       setTrail('trailDetails', v);
       if (v && map.getZoom() < DETAILS_ZOOM) toast(`Zoom in to level ${DETAILS_ZOOM}+ to see trail details`);

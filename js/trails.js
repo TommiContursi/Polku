@@ -10,11 +10,11 @@
 // visual language of Trailmap.fi and the MTB-TrailMap JOSM style. The uphill
 // layer reads its OSM mtb:scale:uphill tags from the same tiles.
 
-import { lonLatToTile, tileBounds } from './geo.js';
+import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
 import { cachedOverpass } from './osm.js';
 
 export const TILE_Z = 13;
-export const MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z12
+export const MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
 const RETRY = 120e3; // a failed tile is left alone for 2 minutes
 const MAX_VIEW = 12; // more tiles than this in view: zoomed out too far to load
 const MAX_KEPT = 80;
@@ -64,7 +64,7 @@ const tiles = new Map(); // "x/y" -> { promise, data }
 const failed = new Map(); // "x/y" -> retry after (ms)
 const listeners = new Set();
 let fetching = true;
-/** Tests and screenshots: never ask Overpass (tiles come from seedTile; the rest just stay unloaded). */
+/** Tests and screenshots: never ask Overpass (tiles come from seedTile; asking for any other fails quietly). */
 export function holdFetches(on = true) { fetching = !on; }
 const arrived = (key) => { for (const fn of listeners) fn(key); };
 export const onTile = (fn) => listeners.add(fn);
@@ -75,7 +75,7 @@ export function trailTile(x, y) {
   const have = tiles.get(key);
   if (have) return have.promise;
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
-  if (!fetching) return new Promise(() => {});
+  if (!fetching) return Promise.reject(Object.assign(new Error('held'), { held: true }));
   const entry = { data: null };
   entry.promise = cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { timeoutMs: 30000 })
     .then((data) => { entry.data = data; arrived(key); return data; })
@@ -236,10 +236,11 @@ export class TrailDetails {
     const want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     if (z >= MIN_ZOOM && want.length <= MAX_VIEW) {
       for (const [x, y] of want) {
-        if (!loadedTile(x, y)) trailTile(x, y).catch(() => { if (this.app.onBusy) this.app.onBusy(); });
+        if (!loadedTile(x, y)) trailTile(x, y).catch((err) => { if (!err.held && this.app.onBusy) this.app.onBusy(); });
       }
     }
-    this.publish(z >= 12 ? want.filter(([x, y]) => loadedTile(x, y)).slice(0, 40) : []);
+    // below zoom 13 the details don't show anyway: the map's own trails are enough there
+    this.publish(z >= 13 ? want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24) : []);
   }
 
   publish(list) {
@@ -287,4 +288,114 @@ export function detailBits(p) {
   const width = p.width != null ? `${String(p.width).trim()}${/[a-z]/i.test(String(p.width)) ? '' : ' m'} wide` : '';
   return [width, p.vis ? VIS_TEXT[p.vis] : '', p.veg ? 'overgrown' : '', p.mud ? 'wet or muddy' : '', p.tree ? 'fallen trees' : '',
     p.boardwalk ? 'boardwalk' : '', p.wayford ? 'ford' : ''].filter(Boolean);
+}
+
+// ---------------------------------------------------------------- along a route
+const bearing = (a, b) => (Math.atan2((b[0] - a[0]) * Math.cos((a[1] * Math.PI) / 180), b[1] - a[1]) * 180) / Math.PI;
+const skew = (x, y) => { const d = Math.abs(((x - y) % 180 + 180) % 180); return Math.min(d, 180 - d); }; // 0 parallel … 90 crossing
+const CELL = 0.0005; // degrees: about 55 × 25 m here
+
+/**
+ * What OSM has along a route beyond the router's tags: width (BRouter has no
+ * width), fallen trees and other obstacles mapped as points (its node table
+ * has no `obstacle`), and visibility, overgrown and wet stretches where the
+ * router said nothing (a Valhalla leg, a route saved before). From the same
+ * z13 tiles the map draws; fills `a.td` (js/analysis.js) in place. False when
+ * the route crosses too many tiles or none would load.
+ */
+export async function detailsAlong(a, { maxTiles = 40 } = {}) {
+  const { pts, along, td } = a;
+  if (!td) return false;
+  const want = new Map();
+  for (let i = 0; i < pts.length; i += 2) {
+    const [x, y] = lonLatToTile(pts[i][0], pts[i][1], TILE_Z).map(Math.floor);
+    want.set(`${x}/${y}`, [x, y]);
+  }
+  if (want.size > maxTiles) return false;
+  const loaded = (await Promise.allSettled([...want.values()].map(([x, y]) => trailTile(x, y)))).filter((r) => r.status === 'fulfilled').map((r) => r.value);
+  if (!loaded.length) return false;
+
+  // the tiles' ways as segments in a grid, and their obstacle nodes
+  const grid = new Map();
+  const cell = (lon, lat) => `${Math.floor(lon / CELL)},${Math.floor(lat / CELL)}`;
+  const seenWay = new Set(), seenNode = new Set(), nodes = [];
+  for (const d of loaded) {
+    for (const [id, t, flat] of d.w) {
+      if (!t.highway || seenWay.has(id)) continue;
+      seenWay.add(id);
+      for (let j = 2; j < flat.length; j += 2) {
+        const p0 = [flat[j - 2], flat[j - 1]], p1 = [flat[j], flat[j + 1]];
+        const seg = { p0, p1, t, ang: bearing(p0, p1) };
+        const x0 = Math.floor(Math.min(p0[0], p1[0]) / CELL), x1 = Math.floor(Math.max(p0[0], p1[0]) / CELL);
+        const y0 = Math.floor(Math.min(p0[1], p1[1]) / CELL), y1 = Math.floor(Math.max(p0[1], p1[1]) / CELL);
+        if ((x1 - x0 + 1) * (y1 - y0 + 1) > 36) continue; // a stray long segment
+        for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+          const k = `${x},${y}`;
+          if (!grid.has(k)) grid.set(k, []);
+          grid.get(k).push(seg);
+        }
+      }
+    }
+    for (const [id, lon, lat, t] of d.n) {
+      if (seenNode.has(id)) continue;
+      seenNode.add(id);
+      const kind = obstacleKind(t);
+      if (kind && kind !== 'gate') nodes.push({ ll: [lon, lat], kind, barrier: t.barrier, ford: t.ford, access: t.access, obstacle: t.obstacle, osm: id });
+    }
+  }
+
+  // each sample to the way it runs along (within 5 m, roughly the same way)
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const at = a.attr[i] || {};
+    if (at.mode === 'water' || at.mode === 'line') continue;
+    const dir = bearing(pts[Math.max(0, i - 1)], pts[Math.min(n - 1, i + 1)]);
+    const cx = Math.floor(pts[i][0] / CELL), cy = Math.floor(pts[i][1] / CELL);
+    let best = null, bd = 5;
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      for (const seg of grid.get(`${cx + dx},${cy + dy}`) || []) {
+        if (skew(dir, seg.ang) > 35) continue;
+        const d = pointSegment(pts[i], seg.p0, seg.p1).d;
+        if (d < bd) { bd = d; best = seg; }
+      }
+    }
+    if (!best) continue;
+    const t = best.t;
+    // the router's way type wins: a road beside a muddy footway stays a dry road
+    const hw = at.tags && at.tags.highway;
+    if (hw && hw !== t.highway) continue;
+    if (['path', 'bridleway', 'footway', 'steps'].includes(t.highway)) {
+      td.trail[i] = 1;
+      if (td.width[i] < 0) td.width[i] = t.width != null ? widthClass(t) : -1;
+      if (td.vis[i] < 0) td.vis[i] = t.trail_visibility != null ? visClass(t) : -1;
+    }
+    const o = obstacles(t);
+    if (/vegetation/.test(o)) td.veg[i] = 1;
+    if (t.surface === 'mud' || /mud/.test(o)) td.mud[i] = 1;
+    if (/fallen.?trees?/.test(o)) td.tree[i] = 1;
+    if (t.bridge === 'boardwalk') td.boardwalk[i] = 1;
+  }
+
+  // obstacle nodes within 10 m of the route, unless the router already reported the same kind there
+  const sgrid = new Map();
+  for (let i = 0; i < n; i++) {
+    const k = cell(pts[i][0], pts[i][1]);
+    if (!sgrid.has(k)) sgrid.set(k, []);
+    sgrid.get(k).push(i);
+  }
+  for (const nd of nodes) {
+    const cx = Math.floor(nd.ll[0] / CELL), cy = Math.floor(nd.ll[1] / CELL);
+    let bi = -1, bd = 10;
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      for (const i of sgrid.get(`${cx + dx},${cy + dy}`) || []) {
+        const d = pointSegment(nd.ll, pts[i], pts[Math.min(n - 1, i + 1)]).d;
+        if (d < bd) { bd = d; bi = i; }
+      }
+    }
+    // the router may have reported the same node (barrier=log): one place, one heads-up
+    if (bi < 0 || td.points.some((p) => p.kind === nd.kind && p.ll && dist(p.ll, nd.ll) < 15)) continue;
+    td.points.push({ i: bi, at: along[bi], ll: nd.ll, kind: nd.kind, barrier: nd.barrier, ford: nd.ford, access: nd.access, osm: nd.osm });
+  }
+  td.points.sort((p, q) => p.at - q.at);
+  return true;
 }

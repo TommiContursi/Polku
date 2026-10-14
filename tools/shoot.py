@@ -71,6 +71,20 @@ TRAIL_KEY = ("document.querySelector('[data-panel=layers-panel]').click(); await
 TRAIL_POPUP = ("const m = polku.map; const f = m.queryRenderedFeatures({ layers: ['td-points'] }).find((x) => x.properties.kind === 'tree');"
                " const p = m.project(f.geometry.coordinates); m.fire('click', { point: p, lngLat: m.unproject(p), originalEvent: new MouseEvent('click') }); await wait(600);")
 
+# the recorded tile only, before a route loads (its analysis reads the tile)
+TRAILS_PRE = ("(async () => { try { const T = await import(location.origin + '/js/trails.js'); T.holdFetches();"
+              " T.seedTile(4682, 2273, await (await fetch(location.origin + '/tools/fixtures/trails-tykkikallio.json')).json()); } catch (e) { /* main */ } return true; })()")
+
+
+# the route's trail details in, then a planner section (and a profile colour, where the branch has it)
+def TRAIL_ROUTE(sec='warnings', mode=None):
+    show = (f" const C = await import(location.origin + '/js/chart.js'); if (C.COLOR_MODES[{json.dumps(mode)}]) p.showMode({json.dumps(mode)});"
+            " const t = document.querySelector('#planner input[role=switch]'); if (t && !t.checked) t.click();") if mode else ''
+    return ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); const t0 = Date.now();"
+            " while (!(p.analysis && (p.analysis.trailMore || !('trailWarn' in p.analysis))) && Date.now() - t0 < 8000) await wait(200);"
+            f" p.reveal({json.dumps(sec)});{show} await wait(400); return true; }})()")
+
+
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 SCENES = {
@@ -153,6 +167,17 @@ SCENES = {
     'desk-trails-key': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16, TRAIL_KEY)),
     'phone-trails-key': dict(PHONE, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16, TRAIL_KEY)),
     'desk-trails-popup': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7655, 62.2290, 17.4, TRAIL_POPUP)),
+    # phase 12b: trail details along the route (recorded route + tile, no routing, no Overpass)
+    'desk-trail-headsup': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('warnings')),
+    'phone-trail-headsup': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='full', pre=TRAILS_PRE, js=TRAIL_ROUTE('warnings')),
+    'desk-trail-width': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'width')),
+    'phone-trail-width': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='half', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'width')),
+    'desk-trail-vis': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'vis')),
+    'desk-layers-both': dict(DESK, timeline=False, hash='#16.2/62.2287/25.7652', js=LAYERS_AT('^Trails', 'Both')),
+    'phone-layers-both': dict(PHONE, timeline=False, hash='#16.2/62.2287/25.7652', js=LAYERS_AT('^Trails', 'Both')),
+    'desk-trail-both': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'both')),
+    'desk-trails-uphill': dict(DESK, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16.4, "polku.set({ trailColors: 'up' }); await wait(4000);")),
+    'phone-trails-uphill': dict(PHONE, timeline=False, hash='#12/62.2289/25.7652', js=TRAILS_AT(25.7652, 62.2287, 16.4, "polku.set({ trailColors: 'up' }); await wait(4000);")),
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
@@ -172,6 +197,8 @@ def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
     pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)}, sc.get('storage'), **({'hash_': sc['hash']} if sc.get('hash') else {}))
+    if sc.get('pre'):
+        pg.js(sc['pre'])  # before any route: e.g. trail-detail tiles the route's analysis will read
     if sc.get('route') or sc.get('water'):
         pg.js('polku.planner.setActive(true); true')
         if sc.get('route'):

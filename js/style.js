@@ -63,6 +63,8 @@ const MTB_IDX = ['case', ['has', 'mtb_scale'], ['to-number', ['slice', ['to-stri
 const diffColor = (idxExpr, none) => ['match', idxExpr, ...DIFF_COLORS.flatMap((c, i) => [i, c]), none];
 
 const isPathClass = ['==', ['get', 'class'], 'path'];
+// the trail colours' own opacities (Layers → Trails & difficulty), 0.1–1: 'down' difficulty, 'up' uphill
+const trailColorOpacity = (s, which) => (s.overlayOpacity && s.overlayOpacity[`trail:${which}`] != null ? s.overlayOpacity[`trail:${which}`] : 1);
 const k0 = (hc) => (hc ? 1.35 : 1);
 const TRAIL_SUB = ['path', 'bridleway', 'steps', 'footway'];
 
@@ -75,6 +77,10 @@ export function buildStyle(s, ctx) {
   const topoBase = isTopo(s.base);
   const sources = {
     ofm: { type: 'vector', url: OFM_TILEJSON },
+    // the same tiles again (from the HTTP cache), for the trail lines alone: with trail details on,
+    // their filter changes as detail tiles load, and MapLibre lays out a source's tiles again when
+    // a filter changes; on their own source that's only the trails, not the whole map (it froze the page)
+    ofmTrails: { type: 'vector', url: OFM_TILEJSON },
     dem: { type: 'raster-dem', tiles: [ctx.demTiles], tileSize: DEM_TILESIZE, maxzoom: DEM_MAXZOOM, encoding: 'terrarium', attribution: '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>' },
     terrain: { type: 'raster-dem', tiles: [ctx.demTiles], tileSize: DEM_TILESIZE, maxzoom: 13, encoding: 'terrarium' },
     contours: { type: 'vector', tiles: [ctx.contourTiles], maxzoom: 16 },
@@ -271,16 +277,24 @@ export function buildStyle(s, ctx) {
     // 'up': uphill grade replaces the halo. 'both': the mtb:scale halo stays and
     // the uphill grade runs as a stripe alongside it.
     const both = s.trailColors === 'both';
+    const tc = trailColorOpacity(s, 'up');
     add({
       id: 'uphill-line', type: 'line', source: 'uphill', minzoom: 12,
       layout: { 'line-cap': 'butt', 'line-join': 'round' },
       paint: {
         'line-color': diffColor(['get', 'cls'], '#999'),
-        'line-width': both ? zi(12, 1.4, 14, 2.4 * k0(hc), 16, 3.6 * k0(hc), 18, 5.5) : zi(12, 3, 14, hc ? 7 : 5.5, 16, hc ? 12 : 9, 18, 15),
+        // 'up': as wide as the difficulty band, so it reads the same way
+        'line-width': both ? zi(12, 1.4, 14, 2.4 * k0(hc), 16, 3.6 * k0(hc), 18, 5.5) : zi(12, 2.2, 14, 4 * k0(hc), 16, 7 * k0(hc), 18, 12 * k0(hc)),
         'line-offset': both ? zi(12, 2.4, 14, 4.2 * k0(hc), 16, 7 * k0(hc), 18, 11) : 0,
-        'line-opacity': ['case', ['get', 'osm'], 1, 0.9],
+        'line-opacity': ['*', ['case', ['get', 'osm'], 1, 0.9], tc],
       },
     });
+    // 'up' colours the band like difficulty does, so the trails' centre lines go back on top
+    // (dashed, thinner or dotted where trail details know the width and visibility)
+    if (!both) for (const id of ['track-ground', 'path-ground', 'path-osm-ground']) {
+      const l = layers.find((x) => x.id === id);
+      if (l) add({ ...l, id: `${id}-over` });
+    }
     add({
       id: 'uphill-arrow', type: 'symbol', source: 'uphill', minzoom: 14,
       filter: ['>=', ['get', 'grade'], 8],
@@ -584,7 +598,7 @@ function addRoads(s, P, hc, layers, ctx) {
           ? diffColor(MTB_IDX, plainHalo)
           : gravel ? (darkBase ? '#8a5a22' : '#e9b56c') : plainHalo,
         'line-width': zi(11, 2, 14, 4 * k, 16, 7 * k, 18, 12 * k),
-        'line-opacity': (diffOn ? 0.9 : gravel ? 0.9 : 0.7) * roadsDim,
+        'line-opacity': (diffOn ? 0.9 * trailColorOpacity(s, 'down') : gravel ? 0.9 : 0.7) * roadsDim,
       },
     });
     add({
@@ -608,12 +622,14 @@ function addRoads(s, P, hc, layers, ctx) {
     const noFoot = ['==', ['get', 'foot'], 'no'];
     const sidewalkish = ['all', ['==', ['get', 'subclass'], 'footway'], ['!', ['has', 'mtb_scale']]];
     const haloOf = (idx) => (diffOn ? diffColor(idx, plainHalo) : footAct ? (darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)') : plainHalo);
-    const haloOpacity = [
+    const haloOpacity0 = [
       'case',
       bikeAct ? noBike : noFoot, 0.25,
       act === 'mtb' ? sidewalkish : ['literal', false], 0.35,
       act === 'paddle' || roadBike ? 0.5 : 0.95,
     ];
+    // difficulty colours fade with their slider; the plain halo doesn't
+    const haloOpacity = diffOn && trailColorOpacity(s, 'down') !== 1 ? ['*', haloOpacity0, trailColorOpacity(s, 'down')] : haloOpacity0;
     // widths per zoom, times a per-trail factor (1 for the tiles; the trail's width class for OSM)
     const times = (v, f) => (f === 1 ? v : ['*', v, f]);
     const haloW = (f) => zi(12, times(2.2, f), 14, times(4 * k, f), 16, times(7 * k, f), 18, times(12 * k, f));
@@ -625,19 +641,19 @@ function addRoads(s, P, hc, layers, ctx) {
       act === 'paddle' || roadBike ? 0.6 : 1,
     ];
     add({
-      id: `path-${brunnel}-halo`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
+      id: `path-${brunnel}-halo`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: trailFilter,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
     });
     // Explicit no-bike marker: small red ticks beside the line.
     const noBikeTicks = (id, source, filter) => add({
-      id, type: 'line', source, ...(source === 'ofm' ? { 'source-layer': 'transportation' } : {}), minzoom: 14, filter,
+      id, type: 'line', source, ...(source === 'ofmTrails' ? { 'source-layer': 'transportation' } : {}), minzoom: 14, filter,
       paint: { 'line-color': '#dc2626', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, 3, 18, 8), 'line-dasharray': [0.4, 1.6] },
     });
-    if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofm', ['all', trailFilter, noBike]);
+    if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
     add({
-      id: `path-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
+      id: `path-${brunnel}`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: trailFilter,
       paint: {
         'line-color': centreColor,

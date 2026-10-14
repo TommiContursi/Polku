@@ -47,6 +47,19 @@ function shared(key, run, signal) {
   });
 }
 
+// what's worth knowing about a node on the route: barriers you'd stop for, fallen trees, fords
+const NODE_BARRIERS = /^(gate|lift_gate|swing_gate|sliding_gate|wicket_gate|hampshire_gate|bump_gate|chain|rope|bar|block|stile|kissing_gate|turnstile|horse_stile|full-height_turnstile|cycle_barrier|motorcycle_barrier|log|fallen_tree|windfall|debris)$/;
+function nodeTags(t) {
+  const barrier = NODE_BARRIERS.test(t.barrier || '');
+  const ford = t.ford && t.ford !== 'no';
+  if (!barrier && !ford) return null;
+  const o = {};
+  if (barrier) o['node:barrier'] = t.barrier;
+  if (ford) o['node:ford'] = t.ford;
+  if (t.access) o['node:access'] = t.access;
+  return o;
+}
+
 export function parseTags(str) {
   const tags = {};
   for (const kv of (str || '').split(' ')) {
@@ -96,8 +109,11 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
       return { ...r, note: 'Paved only isn’t available right now (the routing server didn’t take Polku’s road profile), so gravel main roads may be used.' };
     }
   }
+  // processUnusedTags: the answer carries every tag BRouter knows (trail visibility, obstacles,
+  // fords, boardwalks…), not just the ones the profile prices; the route itself doesn't change.
+  // Not part of any cache key, so routes cached or saved before stay valid.
   const url = `${routerUrl()}?lonlats=${pts.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join('|')}` +
-    `&profile=${profile}&alternativeidx=0&format=geojson${nogoParam(nogos)}${paramStr(params)}`;
+    `&profile=${profile}&alternativeidx=0&format=geojson${nogoParam(nogos)}${paramStr(params)}&profile:processUnusedTags=1`;
   // a dropped custom profile answers 500: not an outage, so no back-off for those
   const res = await request(routerSource(), url, { signal, maxWait, ...(custom ? { backoff: false } : {}) });
   if (custom && res.status >= 500 && !retried) {
@@ -111,16 +127,19 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
   const coords = f.geometry.coordinates;
   const msgs = f.properties.messages || [];
   // messages[i] describes the stretch that ends at (lon,lat); map every
-  // coordinate interval to the way tags of the stretch it belongs to.
+  // coordinate interval to the way tags of the stretch it belongs to. A gate,
+  // log or ford at the end of a stretch rides along on the interval ending
+  // there, as node:* tags (so splitting, reversing and saving keep it).
   const head = msgs[0] || [];
-  const iLon = head.indexOf('Longitude'), iLat = head.indexOf('Latitude'), iTags = head.indexOf('WayTags');
-  const stretches = msgs.slice(1).map((m) => ({ lon: +m[iLon] / 1e6, lat: +m[iLat] / 1e6, tags: parseTags(m[iTags]) }));
+  const iLon = head.indexOf('Longitude'), iLat = head.indexOf('Latitude'), iTags = head.indexOf('WayTags'), iNode = head.indexOf('NodeTags');
+  const stretches = msgs.slice(1).map((m) => ({ lon: +m[iLon] / 1e6, lat: +m[iLat] / 1e6, tags: parseTags(m[iTags]), node: iNode >= 0 ? nodeTags(parseTags(m[iNode])) : null }));
   const tags = [];
   let si = 0;
   for (let i = 1; i < coords.length; i++) {
     const st = stretches[Math.min(si, stretches.length - 1)];
-    tags.push(st ? st.tags : {});
-    if (st && Math.abs(coords[i][0] - st.lon) < 2e-6 && Math.abs(coords[i][1] - st.lat) < 2e-6) si++;
+    const ends = st && Math.abs(coords[i][0] - st.lon) < 2e-6 && Math.abs(coords[i][1] - st.lat) < 2e-6;
+    tags.push(!st ? {} : ends && st.node ? { ...st.tags, ...st.node } : st.tags);
+    if (ends) si++;
   }
   return { coords: coords.map((c) => [c[0], c[1]]), tags };
 }

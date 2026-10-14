@@ -22,8 +22,8 @@ Also approved:
 | 9½ | Planner layout pass: rows that don't squeeze, one section order, ascent with descent, a "profile" sheet size | `sheet-columns` | [#25](https://github.com/TommiContursi/Polku/pull/25) | in review |
 | 10 | Round trips: 3 generated loops, ranked, with the cost shown (+ Round trip & Style in the header, bottom panel by default) | `round-trips` | [#27](https://github.com/TommiContursi/Polku/pull/27) | merged |
 | 11 | Layers: every control in every sport, opacity per overlay, paddle soundings, "On now" first | `layers-fixes` | [#29](https://github.com/TommiContursi/Polku/pull/29) | PR open |
-| 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | PR open |
-| 12b | Trail details along the route: Heads-up, Width and Visibility profile colours | `trail-route` | — | next |
+| 12a | Trail details on the map: width, visibility, overgrown and wet, fallen trees, gates, fences, fords; hover and click | `trail-details` | [#31](https://github.com/TommiContursi/Polku/pull/31) | merged |
+| 12b | Trail details along the route: Heads-up, Width and Visibility profile colours (+ review fixes) | `trail-route` | [#33](https://github.com/TommiContursi/Polku/pull/33) | PR open |
 | 13 | Water routing: fairways, shallows, rocks and marks, shore and wind, depth coverage | `water-routing` | — | planned |
 | 14 | Round trips for paddling | `paddle-loops` | — | planned |
 | 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
@@ -803,6 +803,52 @@ Same way of working: one PR per phase, screenshots at 1440 and 390 px, `tools/sm
   - icons and fences show up close;
   - the fallen tree opens its card;
   - road cycling starts with trail details off.
+
+**Built (12b, PR #33)**
+- **BRouter's own tags, for free:** every call asks for `profile:processUnusedTags=1`, so the answer carries trail visibility, obstacles, fords, boardwalks and smoothness, not just what the profile prices. The parameter is outside every cache key, so saved and cached routes stay valid.
+  - Gates, logs, fallen trees, stiles, cycle barriers and fords at nodes ride along as `node:*` tags on the stretch that ends there, so splitting, reversing and saving routes keep them.
+  - Checked on the local BRouter and once on brouter.de (`barrier=log` and both visibility values came back).
+- **Along the route** (`analysis.js` `trailDetailsOf`):
+  - per sample: trail or not, width class, visibility, overgrown, wet, fallen trees, ford, boardwalk;
+  - the obstacles at nodes, at their exact place.
+  - **With trail details on, the map's own tiles** (`trails.js` `detailsAlong`, up to 40 z13 tiles, cached) add width (not in BRouter's data) and fallen trees mapped as points (not in its node table). They also fill in visibility, overgrown and wet where the router said nothing, e.g. on Valhalla legs.
+  - Matching rules: within 5 m and roughly the same direction; a road never takes a footway's tags.
+  - Obstacles both sources know are deduped by place (≤ 15 m).
+- **Heads-up** (`trailWarnings`), each with Avoid:
+  - stretches: hard to follow (100 m+, *barely visible* where it's `horrible` or `no`), overgrown (100 m+), wet or muddy (50 m+), fallen trees on the trail, fords;
+  - boardwalks of 100 m+ only when it has rained ("slippery when wet", the route style's wet check);
+  - points: logs and fallen trees ("may have been cleared since"), stiles and kissing gates ("lift the bike over" for bikes), cycle barriers, gates with no access, fords.
+  - Rows carry the map's own icons.
+  - Three or more of the same kind fold into one row ("Fallen trees and logs ×3 · at km 1.2, 2.4, 3.9"); its Avoid marks them all in one undo step.
+  - Round trips count them in their score and on their cards.
+- **Profile colours:** *Width* and *Visibility* join *Ground* (not for road cycling or paddling), with breakdown bars (under 0.6 m · 0.6–0.9 · 0.9–1.8 · 1.8+ · not mapped · road or track). The hover readout adds width, visibility and smoothness.
+- **Smoke:** `trails` now also restores a recorded BRouter route over Tykkikallio (`tools/fixtures/route-tykkikallio-mtb.json`) and checks:
+  - exactly one log heads-up (the router and the tile both know it);
+  - a faint stretch, and width along the route;
+  - the icons, and the Width breakdown;
+  - zero routing requests.
+  - The layout checks hold Overpass back now: in headless Chrome, tiles loading live froze the page long enough to fail the sheet timing.
+- **Review fixes in the same PR:**
+  - **Uphill colours:** as wide as the difficulty band, with the trails' centre lines redrawn on top, so Uphill reads like Difficulty with trail details on. The switch-off-and-on bug was fixed in #32.
+  - **Opacity sliders for the trail colours,** one for difficulty and one for uphill (both show in *Both*; the plain halo stays).
+  - **On now and Base map fold away** like the other Layers groups (open unless you close them).
+  - **The profile's *Both*:** climbs by uphill grade, the rest by MTB difficulty.
+  - **A sport button in the planner header,** a native list next to Round trip and Style.
+  - **Rain animation:** the number of drops follows the rate. Drizzle is a few short, faint streaks; full density from about 4 mm/h. Before, drizzle looked like pouring.
+  - **The trail lines read from their own vector source** (the same OpenFreeMap tiles, from the HTTP cache), so a coverage change re-lays out only the trails, not the whole map. Trail details publish from zoom 13.
+  - The Settings counter says what Overpass is for: trail details, uphill tags and click details.
+
+**Later (from the 12 review, not built)**
+- **Rain "now" from FMI's rain-rate product, not reflectivity** (found 2026-10-14).
+  - **The problem:** in Jyväskylä at 06:30, the reflectivity composite Polku reads (`radar_finland_cappi_dbzh`, 28–38 dBZ, Marshall–Palmer) said 2–9 mm/h, drawn pink and pouring. FMI's own corrected rain rate (`radar_finland_cappi_rate`, GetFeatureInfo) said 0.003–0.01 mm/h; the forecast said 0.3 and the user saw drizzle. In autumn the melting layer is low, and reflectivity overstates light rain (the "bright band").
+  - **What to do:** read the rain-rate layer instead. Its 8-bit GeoTIFF from the WMS is rescaled (raw 8 ≈ 0.01 mm/h), not mm/h, and a WCS GetCoverage probe in EPSG:3857 was refused. So find the right request: WCS in its native EPSG:3067 and draw it as an image quad; FMI's download service; or a 16-bit or float GeoTIFF from the WMS.
+  - **Until then:** the drop count follows the rate (12b), but "now" still trusts reflectivity.
+- **Fresher trail data.** Tiles are cached a week, so a fallen tree cleared yesterday still shows. Trailmap's makers have had trouble with detail loading and data that only updates a few times a day. Options:
+  - show the tiles' age in the key;
+  - a "Refresh trail details here" action;
+  - refetch in the background when a tile you're looking at is older than a day, within the Overpass budget.
+- **Uphill band at the trail's width:** today the uphill grades come from the vector tiles, which have no width. Grading the OSM ways (trail details) instead would let the uphill band follow width too.
+- **Overpass load:** if the public mirrors stay this flaky (504s were common while building 12), consider the static PMTiles option from the 12 design.
 
 ## Phase 13 — Water routing
 

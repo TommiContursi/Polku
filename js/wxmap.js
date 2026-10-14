@@ -644,8 +644,10 @@ export class WeatherOverlay {
     this.anim = requestAnimationFrame(tick);
   }
 
-  // Falling rain streaks (slanted by the wind) and drifting snowflakes, denser
-  // where more precipitation is forecast.
+  // Falling rain streaks (slanted by the wind) and drifting snowflakes. How many
+  // follows the rate: drizzle is a few short, faint streaks; from about 4 mm/h
+  // it's the full shower (before, drizzle looked like pouring: four tries a drop
+  // at a fixed 15 % floor filled the screen).
   drawPrecip(k, f, cellAt) {
     const ctx = this.rainCtx;
     ctx.clearRect(0, 0, this.W, this.H);
@@ -655,26 +657,23 @@ export class WeatherOverlay {
     this.drops.length = n;
     const dark = this.app.dark();
     const spawn = (d) => {
-      for (let tries = 0; tries < 4; tries++) {
-        const x = Math.random() * this.W, y = Math.random() * this.H;
-        const i = cellAt(x, y);
-        const r = f.rain[i];
-        if (r >= 0.05 && Math.random() < Math.min(1, 0.15 + r / 1.5)) {
-          d.x = x; d.y = y; d.age = 0; d.snow = !!f.snow[i];
-          d.max = d.snow ? 90 + Math.random() * 90 : 18 + Math.random() * 22;
-          d.len = 6 + Math.random() * 6;
-          d.fall = d.snow ? 0.7 + Math.random() * 0.6 : 7 + Math.random() * 4;
-          d.phase = Math.random() * 6.28;
-          return true;
-        }
+      const x = Math.random() * this.W, y = Math.random() * this.H;
+      const i = cellAt(x, y);
+      const r = f.rain[i];
+      // 0.1 mm/h ≈ 5 % of the drops, 1 mm/h ≈ 33 %, 2 mm/h ≈ 57 %, 4 mm/h and up: all
+      if (r >= 0.05 && Math.random() < Math.min(1, Math.max(0.02, r / 4) ** 0.8)) {
+        d.x = x; d.y = y; d.age = 0; d.snow = !!f.snow[i]; d.light = r < 1;
+        d.max = d.snow ? 90 + Math.random() * 90 : 18 + Math.random() * 22;
+        d.len = (r < 1 ? 3.5 : r < 4 ? 6 : 8) + Math.random() * 4;
+        d.fall = d.snow ? 0.7 + Math.random() * 0.6 : (r < 1 ? 5.5 : 7) + Math.random() * 4;
+        d.phase = Math.random() * 6.28;
+        return true;
       }
       d.age = 0; d.max = 4 + Math.random() * 10; d.x = -1; // dormant: try again soon
       return false;
     };
     ctx.lineCap = 'round';
-    ctx.lineWidth = 1.2;
-    ctx.strokeStyle = dark ? 'rgba(186,230,253,0.75)' : 'rgba(29,78,216,0.55)';
-    ctx.beginPath();
+    const heavy = new Path2D(), light = new Path2D();
     const flakes = [];
     for (const d of this.drops) {
       if ((d.age += k) > d.max) { spawn(d); continue; }
@@ -688,13 +687,20 @@ export class WeatherOverlay {
       } else {
         const dx = wx * 1.5, dy = d.fall;
         const l = d.len / Math.hypot(dx, dy);
-        ctx.moveTo(d.x, d.y);
-        ctx.lineTo(d.x - dx * l, d.y - dy * l);
+        const path = d.light ? light : heavy;
+        path.moveTo(d.x, d.y);
+        path.lineTo(d.x - dx * l, d.y - dy * l);
         d.x += dx * k; d.y += dy * k;
       }
       if (d.y > this.H || d.x < 0 || d.x > this.W) d.age = d.max + 1;
     }
-    ctx.stroke();
+    // drizzle and light rain fainter and thinner than a real shower
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = dark ? 'rgba(186,230,253,0.45)' : 'rgba(29,78,216,0.32)';
+    ctx.stroke(light);
+    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = dark ? 'rgba(186,230,253,0.8)' : 'rgba(29,78,216,0.6)';
+    ctx.stroke(heavy);
     if (flakes.length) {
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = dark ? 'rgba(255,255,255,0.4)' : 'rgba(51,65,85,0.55)';
