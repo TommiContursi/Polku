@@ -837,12 +837,16 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .loop-card { display: flex; flex-direction: column; gap: 3px; padding: 10px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
 .loop-card.on { border-color: var(--text); background: var(--surface-2); }
 .loop-card-head { display: flex; align-items: center; gap: 8px; }
-.loop-card-head b { font-size: 16px; }
+.loop-card-head b { font-size: 16px; white-space: nowrap; }
 .loop-dot { width: 22px; height: 22px; border-radius: 50%; color: #fff; font: 700 12px/22px system-ui, sans-serif; text-align: center; flex: none; }
 .loop-best { margin-left: auto; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
 .loop-card-line { font-size: 12px; }
 .loop-card-line.muted { color: var(--muted); font-size: 11px; }
 .loop-card .btn { align-self: flex-start; margin-top: 4px; }
+.loop-more { align-items: center; justify-content: center; gap: 2px; min-height: 96px; border-style: dashed; background: none; color: var(--text); font: inherit; text-align: center; }
+.loop-more:hover:not(:disabled) { border-color: var(--text); }
+.loop-more:disabled { cursor: default; opacity: .7; }
+.loop-more small { color: var(--muted); font-size: 11px; }
 @container (max-width: 420px) { .loop-starts { margin-left: 0; } }
 .sum-empty + .btn { margin-left: 8px; }
 

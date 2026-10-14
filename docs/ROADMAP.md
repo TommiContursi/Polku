@@ -34,9 +34,9 @@ Also approved:
 | — | Reading the route: points snap onto the path, a tap beside a menu only closes it, the sport on the profile and map, distance marks, departure at the start, sunrise and sunset | `route-read` | [#46](https://github.com/TommiContursi/Polku/pull/46) | merged |
 | — | Fix: a cleared route left its colours (and wind arrows) on the map | `clear-colours` | [#47](https://github.com/TommiContursi/Polku/pull/47) | merged |
 | — | One click for the route: a click or a tap on the line, or on a leg's handle, opens that part's menu (no point added by mistake) | `route-click` | [#48](https://github.com/TommiContursi/Polku/pull/48) | merged |
-| 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | [#49](https://github.com/TommiContursi/Polku/pull/49) | PR open |
-| 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | — | next |
-| 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | planned |
+| 13c | Stops and nights, days, a longer forecast, overnight spots, the gear check | `stops` | [#49](https://github.com/TommiContursi/Polku/pull/49) | merged |
+| 14 | Round trips for paddling, and "More loops" in every sport | `paddle-loops` | [#50](https://github.com/TommiContursi/Polku/pull/50) | PR open |
+| 15 | Winter: snow sports, ski tracks, snow depth, ice (research first, then build) | `winter` | — | next |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | planned |
 | 17 | Weather: clouds, thunder, snow, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
 | 18 | Languages: English, Finnish and Swedish, with a switcher in Settings (your browser's language by default) | `languages` | — | planned |
@@ -1102,13 +1102,49 @@ From 13b's plan *(user, 2026-10-14)*:
   
   `tools/shoot.py` has `*-stops`, `*-stops-list`, `*-stop-menu` (a Nuuksio overnighter on the local BRouter, with live places to sleep) and `*-gear`.
 
-## Phase 14 — Round trips for paddling (and more loops for every sport)
+## Phase 14 — Round trips for paddling (and more loops for every sport) (built 2026-10-14, #50)
 
 - **After 13 and 13b,** so loops use the new water costs. Same card UI as phase 10.
 - **More loops** *(user, 2026-10-14)*: if none of the first three suit you, a "More loops" button, or swiping or scrolling past the third card, makes three more. They go in other directions and with other via points. Each costs routing calls in land sports (counted, and paced like the first three); paddling loops cost CPU only. This applies to every sport, not just paddling.
 - **Generation:** `roundtrip.js` with the opposite water check. Via points must be *on* water: nudged along the circle onto open water, and away from shore by the near-shore setting. Legs are routed with Polku's own water router, so there are no routing API calls, but there is CPU, so measure the time for 3 candidates; fewer via points (3) and a coarser grid if needed.
 - **Ranking:** distance match, open-water exposure (share of the loop far from shore), wind (headwind share from the route weather; one cached forecast lookup per candidate), carries, and anything Heads-up from phase 13.
 - **Test:** loops from Tampere (Näsijärvi and Pyhäjärvi), the Helsinki archipelago and a river town.
+
+**Built (14), 2026-10-14** (`js/roundtrip.js`, `planner.js generateLoops`, `water.js`, `waterdata.js`):
+- **Round trips for Paddle and Swim,** with the same cards as on land. The legs go through Polku's own water router, so there are no routing calls: it's computing time on the device, and the water data (fairways, marks, OSM rocks) is fetched once for the area, cached per tile.
+- **From the water:** a click on land (a shore, a car park by the lake) starts the loops from the nearest water, up to 1 km away (`nearestWater`).
+- **Via points on the water** (`planWater`): three per loop (four legs of A*, not five). Each one is moved along the circle, nearer the start or further out, to a spot with water 40 m round it. With "Near the shore" it also has to be within 350 m of land.
+  - The loop's straight lines are checked for land, where carries would come.
+  - A ring that would cross over 30 % land gives way to **out and back**: one turning point half the length away, on the water. That's what a river gets.
+- **Picked by:** distance match, carrying (a loop carrying over 200 m tries another direction first; over 400 m, or a quarter of its length, isn't shown), paddling the same water twice (except out and back, which says so), and the water router's notes (shipping lanes, rough water for your craft at your departure, rocks). The wind counts through the router, which keeps out of rough water; the headwind share isn't scored.
+- **Cards for the water:** time, carrying, out and back, the shipping lanes, rough water, rocks.
+- **Detour factor:** 1.0 for paddling and swimming (water routes ride about the circle), measured on the places below.
+- **Time:** at most nine loops tried, and no more replacing after 12 s.
+- **More loops** (every sport): a card after the loops makes three more in directions not tried yet. The first ones stay, up to nine loops (A–I, each its own colour), and "Closest match" moves to the best of all of them. When every direction has been tried, the circle turns 10°. On land it's one more round trip of the five per 10 minutes (up to six routing calls); on the water there's no routing call. It replaces "Other directions". The user asked for "a button (or just swiping)"; it's a card at the end of the list, not a swipe, because on land each round costs routing calls.
+- **Fixed on the way** (`water.js`): legs routed side by side (a paddle route's, now a loop's) shared one hidden map. A grid's projection followed the map's current view, so the next leg's view could shift a leg's line while its A* ran. Each grid now keeps its own projection, and the legs take turns to draw. Measured on a three-leg Näsijärvi route: side by side gave 66 and 69 m of carrying where one at a time gave 62 and 61; now both give 62 and 61.
+- **Waiting for slow sources** (`waterdata.js`): a source that made a leg wait 2.5 s in vain isn't waited for again for 20 s (an answer that has come in meanwhile still counts). Without this, a round trip's twelve legs could each wait for the same slow Overpass. A picked loop's legs that went without a source are routed again (from the cache by then).
+
+**Measured** (headless Chrome, live water data, the final code with the area's data cached):
+
+| Start | Target | Loops (first three, then More) | Time: three · More |
+|---|---|---|---|
+| Näsijärvi, Mustalahti (Tampere) | 10 km | 10.2, 9.2, 8.9 · 10.1, 9.1, 15.5 km; no carries | 4.1 s · 3.7 s |
+| Pyhäjärvi, Pyynikki (Tampere) | 10 km | 9.2, 10.7, 7.0 · 10.1, 10.5, 14.9 km; no carries | 4.5 s · 3.1 s |
+| Kaivopuisto (Helsinki archipelago) | 12 km | 12.0, 11.1, 13.9 · 12.3, 11.5, 12.3 km; the shipping lanes noted; 36 m carry at most | 5.3 s · 3.3 s |
+| Kokemäenjoki at Pori (a river) | 8 km | 8.1, 9.1, 12.6 · 9.0 km, all out and back; 185 m carry at most | 2.9 s · 9.2 s (one more found) |
+| Swim, Hietaniemi (Helsinki) | 2 km | 2.0, 1.8, 2.9 · 1.9, 1.8, 2.4 km; no carries | 3.7 s · 1.5 s |
+
+- **The first run in an area** also fetches its fairways, marks and rocks: 8–18 s in these tests, and 26–28 s before the area's data was fetched once up front.
+
+- **Tests:** `tools/smoke.py loops` uses the recorded Helsinki fairways and a fixed wind. It checks:
+  - the river case: the nearest water, and out and back first;
+  - the Round trip button for Paddle and Swim;
+  - loops near 8 km with little carrying, starting at the water;
+  - the cards and More loops (new directions, letters A…);
+  - a picked loop becoming water legs that aren't routed again;
+  - no routing calls.
+  
+  `tools/shoot.py` has `*-paddle-loops`, `desk-river-loops` and `*-more-loops`.
 
 ## Phase 17 — Weather: clouds, thunder, snow, back in time (planned 2026-10-14)
 

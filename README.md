@@ -44,7 +44,9 @@ MTB, gravel, road cycling, hiking, trail running, running, paddling and swimming
 
 ## Round trips
 
-Pick a start, a length in kilometres or time, and a direction ("into the wind first" works too). Polku makes three loops in your route style and compares them: distance, time, climbing, the share of trail, how much is ridden twice, and what Heads-up found. Pick one and it becomes a normal route you can edit.
+Pick a start, a length in kilometres or time, and a direction ("into the wind first" works too). Polku makes three loops in your route style and compares them: distance, time, climbing, the share of trail, how much is ridden twice, and what Heads-up found. None of them right? **More loops** makes three more in other directions. Pick one and it becomes a normal route you can edit.
+
+**On the water too:** paddling and swimming loops come from Polku's own water router, with no routing calls. They keep to your style (near the shore, across shipping lanes, out of rough water), and on a river they go out and back.
 
 ![Three generated round trips from Tampere, compared side by side](docs/screenshots/roundtrip.webp)
 

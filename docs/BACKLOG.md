@@ -63,6 +63,9 @@ or idea.
 - **The nights on the profile and the timeline** *(13c)*: the profile is by distance, so a night is a thin line there; the timeline's band could leave the nights out.
 - **Two nights in one place** (a rest day) *(13c)*: a night lasts until the next morning; a "Stay 2 nights" choice would cover it.
 - **Where does the boat come from?** *(13c)*: the gear check warns about gear left behind; a paddle leg that starts far from where the boat was could say so too, unless it's a rental.
+- **Swipe for more loops** *(14, user)*: "More loops" is a card at the end of the list. A swipe past the third card could make them too, but on land each round costs routing calls, so a tap is safer. Revisit if people miss it.
+- **Water loops: the headwind share and open water** *(14)*: the router keeps out of rough water and Near the shore keeps the via points near land, but the cards don't rank by headwind, or by how far from shore a loop goes.
+- **Water loops in a new area are slow** *(14)*: 8–18 s the first time (fetching the fairways and Overpass's rocks), 3–5 s after. A coarser grid for candidates, or the area's data fetched before the click, would help.
 - **More grab handles along long legs,** by their length on screen, so it's clear the whole line can be dragged, not just its middle. *(2026-10-14, from the user's question about extra points on long legs)*
 - **Avoid profiles** ("Avoid obstacles and faint trails") with Polku's own BRouter profiles, if warnings and ranking turn out not to be enough. *(phase 12 design; the user chose warnings first)*
 

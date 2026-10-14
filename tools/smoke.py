@@ -12,6 +12,7 @@
   python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
+  python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -648,6 +649,80 @@ def stops(chrome):
     return not fails
 
 
+# Round trips on the water (phase 14): paddling loops off Kaivopuisto with the recorded
+# fairways and a fixed wind, no routing calls. They start from the water nearest the click,
+# come out near the length, carry little; "More loops" adds three in other directions; a
+# picked loop is a route of water legs that isn't routed again. A river (a strip of water)
+# gets an out-and-back loop.
+LOOPS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const fx = await (await fetch(location.origin + '/tools/fixtures/water-helsinki.json')).json();
+  const D = await import(location.origin + '/js/waterdata.js');
+  const R = await import(location.origin + '/js/roundtrip.js');
+  const G = await import(location.origin + '/js/geo.js');
+  const n = await import(location.origin + '/js/net.js');
+  const fc = (features) => ({ type: 'FeatureCollection', features });
+  D.seedWater((box, want) => ({ fairways: want.fairways ? fc(fx.fairways) : fc([]), hazards: want.hazards ? fc(fx.marks.map((f) => ({ ...f, properties: { ...f.properties, src: 'mark' } }))) : fc([]), wind: want.wind ? { speed: 6, gust: 9, dir: 200 } : null, missing: [] }));
+  // the river: a strip of water 110 m wide, the start 330 m from it
+  const strip = { isWater: ([x, y]) => Math.abs(y - 61) < 0.0005 };
+  const near = R.nearestWater([24, 61.003], strip);
+  if (!near || !strip.isWater(near)) errs.push(`nearest water to a start by the river: ${near}`);
+  const river = R.planWater({ start: near || [24, 61], sport: 'paddle', targetM: 6000, water: strip, count: 3 });
+  if (!river.length || !river[0].outBack) errs.push(`a river's first loop is ${river[0] && (river[0].outBack ? 'out and back' : 'a ring')}`);
+  const p = polku.planner;
+  polku.set({ activity: 'paddle' });
+  await wait(500);
+  if (p.els.quickLoop.hidden) errs.push('no Round trip button for paddling');
+  p.openLoop([24.955, 60.155]);
+  p.loop.mode = 'km'; p.loop.km = 8;
+  const t0 = performance.now();
+  await p.generateLoops();
+  const ms = performance.now() - t0, L = p.loop;
+  if (L.results.length < 2) return [...errs, `${L.results.length} paddling loops (${L.note})`];
+  for (const r of L.results) {
+    if (r.ratio < 0.7 || r.ratio > 1.4) errs.push(`loop ${r.letter}: ${(r.m / 1000).toFixed(1)} km for 8`);
+    if (r.carry > 400) errs.push(`loop ${r.letter} carries ${Math.round(r.carry)} m`);
+    if (!r.legs || r.legs.length < 2) errs.push(`loop ${r.letter}: ${r.legs && r.legs.length} legs`);
+  }
+  if (G.dist(L.results[0].line.coords[0], L.start) > 1000) errs.push('the loop starts far from the click');
+  const cards = document.querySelectorAll('.loop-card:not(.loop-more)').length;
+  if (cards !== L.results.length || !document.querySelector('.loop-more')) errs.push(`${cards} cards, More loops: ${!!document.querySelector('.loop-more')}`);
+  // three more, in other directions
+  const before = L.results.map((r) => r.o.bearing), n0 = L.results.length;
+  await p.generateLoops({ more: true });
+  const added = L.results.slice(n0);
+  if (!added.length) errs.push(`More loops added none (${L.note})`);
+  if (added.some((r) => before.some((b) => Math.abs(R.angleDiff(b, r.o.bearing)) < 10))) errs.push('More loops repeated a direction');
+  if (L.results.map((r) => r.letter).join('') !== 'ABCDEFGHI'.slice(0, L.results.length)) errs.push(`letters ${L.results.map((r) => r.letter).join('')}`);
+  // picked: a route of water legs, not routed again
+  const pick = L.results[0], m0 = pick.m;
+  p.pickLoop(0);
+  await wait(1500);
+  if (!p.isLoop() || p.legs.some((l) => l.mode !== 'water' || l.status !== 'ok')) errs.push(`the picked loop: ${p.legs.map((l) => `${l.mode}/${l.status}`).join(', ')}`);
+  const m1 = p.analysis ? p.analysis.total : 0;
+  if (Math.abs(m1 - m0) > m0 * 0.02) errs.push(`picked loop ${Math.round(m0)} m became ${Math.round(m1)} m`);
+  if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (loops on the water need none)');
+  if (ms > 40000) errs.push(`paddling loops took ${Math.round(ms / 1000)} s`);
+  polku.set({ activity: 'swim' });
+  await wait(400);
+  if (p.els.quickLoop.hidden) errs.push('no Round trip button for swimming');
+  p.clear();
+  polku.set({ activity: 'mtb' });
+  return errs;
+})()"""
+
+
+def loops(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'paddle'}, {'polku:plannerDock': '"left"'}, '#12.5/60.150/24.955')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(LOOPS, timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} round trips on the water" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Clicks and taps on the route: a click or a tap on the line, or on a leg's handle, opens
 # that part's menu and adds no point (its first button does); with the planner closed, a
 # click on the route opens it with that part's menu; a LIPAS route drawn over a trail is
@@ -966,6 +1041,8 @@ def main():
             ok = route_bits(chrome) and ok
         if not only or 'stops' in only:
             ok = stops(chrome) and ok
+        if not only or 'loops' in only:
+            ok = loops(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue
