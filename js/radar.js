@@ -34,18 +34,21 @@ const fetchLayer = async (layer, box, width, height) => {
   return readTiff(await res.arrayBuffer(), width, height);
 };
 
-// How strongly to paint a rate: drizzle faint, a real shower solid (0.1 mm/h → 70, 1 → 152, 10+ → 235 of 255)
-const alphaFor = (mmh) => Math.round(70 + 165 * Math.max(0, Math.min(1, Math.log10(mmh / 0.1) / 2)));
+// How strongly to paint a rate: the same as the forecast layer (wxmap.js), so "now" and the
+// hours after read alike: drizzle a clear light blue, a shower solid (0.03 → 151, 1 → 195, 2+ → 235)
+const alphaFor = (mmh) => Math.round(Math.min(235, 150 + mmh * 45));
 
 export async function fmiRadar(box, width, height, colour) {
   // value → mm/h for each source, and which value means "outside coverage"
-  let px, rate, outside;
+  let px, rate, outside, speckle;
   try {
     px = await fetchLayer(RATE, box, width, height);
     if (!(px instanceof Uint16Array)) throw new Error('rain rate: not 16-bit');
     rate = new Float32Array(65536);
-    for (let v = 10; v < 65535; v++) rate[v] = v / 100; // from 0.1 mm/h; 0 is dry
+    // from 0.03 mm/h: drizzle is mostly 0.01–0.1 here, and "a little rain" should show
+    for (let v = 3; v < 65535; v++) rate[v] = v / 100;
     outside = 65535;
+    speckle = 3; // FMI has already cleaned this product: only lone dots go
   } catch {
     px = await fetchLayer(DBZ, box, width, height);
     rate = new Float32Array(256);
@@ -54,6 +57,7 @@ export async function fmiRadar(box, width, height, colour) {
       if (mmh >= 0.3) rate[v] = mmh; // below this: barely damp, and mostly birds, insects and clutter
     }
     outside = 255;
+    speckle = 5; // raw reflectivity: ships, turbines and waves echo as dots and lines
   }
   const lut = new Uint8ClampedArray(rate.length * 4);
   for (let v = 0; v < rate.length; v++) {
@@ -63,7 +67,7 @@ export async function fmiRadar(box, width, height, colour) {
     const [r, g, b] = colour(mmh);
     lut.set([r, g, b, alphaFor(mmh)], v * 4);
   }
-  const keep = despeckle(px, rate, width, height);
+  const keep = despeckle(px, rate, width, height, speckle);
   const lut32 = new Uint32Array(lut.buffer);
   const raw = document.createElement('canvas');
   raw.width = width;
@@ -73,12 +77,12 @@ export async function fmiRadar(box, width, height, colour) {
   let rain = 0;
   for (let i = 0; i < px.length; i++) if (keep[i]) { out[i] = lut32[px[i]]; rain++; }
   raw.getContext('2d').putImageData(img, 0, 0);
-  // soft edges, like the forecast layer (browsers without canvas filters just skip it)
+  // soft edges (browsers without canvas filters just skip it); the map's linear resampling does the rest
   const cv = document.createElement('canvas');
   cv.width = width;
   cv.height = height;
   const ctx = cv.getContext('2d');
-  ctx.filter = 'blur(1.2px)';
+  ctx.filter = 'blur(0.5px)'; // just the edges: at ~1 km a pixel, more smears scattered drizzle cells away
   ctx.drawImage(raw, 0, 0);
   const x0 = mx(box[0]), x1 = mx(box[2]), y0 = my(box[3]), y1 = my(box[1]);
   const rateAt = (lon, lat) => {
@@ -91,10 +95,11 @@ export async function fmiRadar(box, width, height, colour) {
 }
 
 // Ships, wind turbines, waves and the like echo as dots and thin lines; rain
-// comes in areas. Keep a wet pixel when ≥ 5 of its 8 neighbours are wet (that
-// drops dots, lines and tiny clusters), then give back the edge pixels next to
-// what was kept, so real rain keeps its shape.
-function despeckle(px, rate, w, h) {
+// comes in areas. Keep a wet pixel when ≥ `min` of its 8 neighbours are wet (5
+// drops dots, lines and tiny clusters; 3, for FMI's cleaned rain rate, only lone
+// dots, so thin drizzle stays), then give back the edge pixels next to what was
+// kept, so real rain keeps its shape.
+function despeckle(px, rate, w, h, min = 5) {
   const wet = new Uint8Array(px.length);
   for (let i = 0; i < px.length; i++) wet[i] = rate[px[i]] > 0 ? 1 : 0;
   const core = new Uint8Array(px.length);
@@ -103,7 +108,7 @@ function despeckle(px, rate, w, h) {
       const i = y * w + x;
       if (!wet[i]) continue;
       const n = wet[i - w - 1] + wet[i - w] + wet[i - w + 1] + wet[i - 1] + wet[i + 1] + wet[i + w - 1] + wet[i + w] + wet[i + w + 1];
-      if (n >= 5) core[i] = 1;
+      if (n >= min) core[i] = 1;
     }
   }
   const keep = new Uint8Array(px.length);
