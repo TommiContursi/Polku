@@ -7,7 +7,7 @@
 
 import { DIFF_COLORS, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { inspectLayers, pickFeature, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
+import { inspectLayers, pickFeature, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
@@ -217,8 +217,8 @@ function way(feats, ctx) {
   if (wp.brunnel === 'bridge' && !wp.boardwalk) bits.push('bridge');
   if (wp.osm) bits.push(...detailBits(wp).map(e)); // trail details, drawn from OSM
   // what its winter colour means, where the winter ways are drawn
-  const win = feats.find((x) => /^winter-(way|ski|closed)$/.test(x.layer.id));
-  if (win && WINTER_TEXT[win.properties.cls]) bits.push(`❄ ${e(WINTER_TEXT[win.properties.cls].toLowerCase())}`);
+  const win = ctx && ctx.ll ? winterAt(feats, ctx.ll) : null;
+  if (win) bits.push(win.beside ? '❄ a ski track beside it' : `❄ ${e(WINTER_TEXT[win.cls].toLowerCase())}`);
   const d = { title, bits, upAt };
   // uphill layer off (or not computed here): work out the incline on the spot
   if (!up && w && ctx) {

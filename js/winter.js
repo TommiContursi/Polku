@@ -114,14 +114,18 @@ export function slimWinter(json) {
 
 /**
  * What winter means on a way, Trailmap's classes:
- * 'closed' no access in winter (a ski track's base, usually), 'ski' a groomed ski track,
+ * 'closed' no access in winter (a ski track's base, usually), 'ski' a ski track and only that,
+ * 'groomed' a ski track on a way still open to walking and cycling,
  * 'ploughed' maintained in winter, 'unploughed' not, 'open1' / 'open2' / 'open3' how soon
  * it opens after snow, 'seasonal' there only in winter; null: nothing said.
  */
 export function winterClass(t) {
   const no = (v) => /^(no|private)$/.test(String(v || ''));
   if (no(t['bicycle:winter']) || no(t['foot:winter']) || no(t['mtb:winter'])) return 'closed';
-  if (t['piste:type'] === 'nordic' && !t.highway) return 'ski';
+  if (t['piste:type'] === 'nordic' && !t.highway) return 'ski'; // a ski track and nothing else: keep off
+  // a ski track along a path, track or cycleway that walking and cycling aren't barred from: groomed,
+  // still open to them (Trailmap's "groomed trail"); a barred one was 'closed' above
+  if (t['piste:type'] === 'nordic') return 'groomed';
   const plough = String(t.snowplowing || t.winter_service || '');
   if (/^yes$/.test(plough)) return 'ploughed';
   if (/^(no|limited)$/.test(plough)) return 'unploughed';
@@ -129,7 +133,6 @@ export function winterClass(t) {
   if (m === '1') return 'open1';
   if (m === '2' || m === 'yes') return 'open2';
   if (m === '3') return 'open3';
-  if (t['piste:type'] === 'nordic') return 'ski'; // a ski track on a path or track, nothing else said
   if (t.seasonal === 'winter') return 'seasonal';
   return null;
 }
@@ -137,6 +140,7 @@ export function winterClass(t) {
 export const WINTER_TEXT = {
   closed: 'No access in winter (usually a ski track)',
   ski: 'Ski track: keep off on foot and by bike',
+  groomed: 'Groomed in winter, with a ski track: walking and cycling allowed, off the track itself',
   ploughed: 'Ploughed in winter',
   unploughed: 'Not ploughed in winter',
   open1: 'Opens quickly after snow',

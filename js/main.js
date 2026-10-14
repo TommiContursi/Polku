@@ -572,7 +572,7 @@ const keyDot = (style) => h('span', { class: 'lg-dot', style });
 const mapKey = (...items) => h('details', { class: 'lg-key' }, h('summary', {}, 'Map key'), h('div', {}, ...items));
 const KEYS = {
   winter: () => [
-    keyItem(keyLine('background:#0d9488;height:4px'), WINTER_TEXT.ploughed),
+    keyItem(keyLine('background:#0d9488;height:4px'), `${WINTER_TEXT.ploughed}, or groomed (walking and cycling allowed)`),
     keyItem(keyLine('border-top:4px dashed #94a3b8'), WINTER_TEXT.unploughed),
     keyItem(keyLine('background:#65a30d;height:4px'), WINTER_TEXT.open1),
     keyItem(keyLine('background:#a3b10e;height:4px'), WINTER_TEXT.open2),

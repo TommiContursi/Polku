@@ -1308,6 +1308,7 @@ The research brief this replaces asked about: sports for a snow group; ski track
   - hovering a trail adds what its winter colour means ("❄ opens quickly after snow");
   - an OSM ski track with no trail under it (over a field or a lake) has a hover and a card of its own ("Ski track · In winter: keep off on foot and by bike · groomed for classic and skating · lit");
   - LIPAS's ski tracks, skating and snowmobile routes say what they're for in the hover, not "click to ride it".
+  - **A ski track on a path, track or cycleway that walking and cycling aren't barred from is "groomed"** (teal, as on Trailmap: walking and cycling allowed, off the ski track itself). Only a ski track on its own, or one marked closed in winter, says keep off. A ski track running beside a cycleway is "beside it" on the cycleway's card, not the cycleway's own winter class (the nearest winter way within 10 m of the click).
 - **Trail cards** say what winter means on a way where the winter ways are drawn ("In winter: Opens quickly after snow"). "Show all OSM tags" lists the winter tags (`mtb:winter`, `snowplowing`, `winter_service`, `bicycle:winter`, `foot:winter`, `seasonal`, the piste tags).
 - **Tests:** `smoke.py winter` also picks Winter in the trail colours with winter off.
 
@@ -1327,6 +1328,7 @@ The research brief this replaces asked about: sports for a snow group; ski track
 | Trail details (width, visibility, wet, overgrown) | in the hover's bits | the drawn width class ("narrow, under 0.6 m") said as such |
 | Gravel and road sports' warm casing (unpaved) | surface, when tagged | "drawn warm: unpaved" in words |
 | Winter ways, LIPAS winter routes | explained (#53) | — |
+| Places per sport (LIPAS kinds, OSM POI kinds) | name and type | which kinds a switch holds, and that the sport changes them *(user, 2026-10-15)* |
 | Snow wash, temperature, wind, rain fields | the timeline's readout under the pointer | a hover on the map itself, at least while the timeline is closed |
 | Sea ice | none | the concentration at the spot (Copernicus GetFeatureInfo, JSON) and the chart's date |
 | Depth areas, contours, soundings (Traficom) | none | the depth class at the spot, with "not for navigation" |

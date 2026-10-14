@@ -733,7 +733,8 @@ WINTER = """(async () => {
   const fx = await (await fetch(location.origin + '/tools/fixtures/winter-laajavuori.json')).json();
   // the classes
   const c = (t) => W.winterClass(t);
-  const want = [[{ 'bicycle:winter': 'no', highway: 'track' }, 'closed'], [{ 'piste:type': 'nordic' }, 'ski'], [{ highway: 'cycleway', snowplowing: 'yes' }, 'ploughed'],
+  const want = [[{ 'bicycle:winter': 'no', highway: 'track' }, 'closed'], [{ 'piste:type': 'nordic' }, 'ski'], [{ highway: 'cycleway', 'piste:type': 'nordic', bicycle: 'yes' }, 'groomed'],
+    [{ highway: 'track', 'piste:type': 'nordic', 'bicycle:winter': 'no' }, 'closed'], [{ highway: 'cycleway', snowplowing: 'yes' }, 'ploughed'],
     [{ highway: 'cycleway', winter_service: 'limited' }, 'unploughed'], [{ highway: 'path', 'mtb:winter': '1' }, 'open1'], [{ highway: 'path', 'mtb:winter': 'yes' }, 'open2'],
     [{ highway: 'path', 'mtb:winter': '3' }, 'open3'], [{ highway: 'path', seasonal: 'winter' }, 'seasonal'], [{ highway: 'path' }, null]];
   for (const [t, k] of want) if (c(t) !== k) errs.push(`class of ${JSON.stringify(t)}: ${c(t)}`);
@@ -788,7 +789,7 @@ WINTER = """(async () => {
     const ski = polku.map.queryRenderedFeatures({ layers: ['winter-ski'] })[0];
     if (!ski) errs.push('no ski track in view to click');
     else {
-      const cc = ski.geometry.coordinates, q = polku.map.project(cc[Math.floor(cc.length / 2)]);
+      const cc = ski.geometry.type === 'MultiLineString' ? ski.geometry.coordinates[0] : ski.geometry.coordinates, q = polku.map.project(cc[Math.floor(cc.length / 2)]);
       polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') });
       await wait(900);
       const card = document.querySelector('.maplibregl-popup')?.textContent || '';

@@ -322,6 +322,9 @@ SCENES = {
     'phone-leg-tap': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js=LINE_PICK('tap')),
     'desk-leg-menu': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('right')),
     'desk-leg-click': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('click')),
+    'desk-ski-card': dict(DESK, timeline=False, hash='#14.5/62.262/25.735', storage=WINTER_ON, js="(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); " + SEED_WINTER + " await wait(3500);"
+                          " const f = polku.map.queryRenderedFeatures({ layers: ['winter-ski'] }).find((x) => x.geometry.type === 'LineString' && x.geometry.coordinates.length > 4); if (f) { const c = f.geometry.coordinates, q = polku.map.project(c[Math.floor(c.length / 2)]);"
+                          " polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') }); } await wait(1200); return true; })()"),
     'desk-winter-colours': dict(DESK, timeline=False, hash='#14/62.258/25.715', js=LAYERS_AT('^Trails', 'Winter').replace("(async () => { ", "(async () => { " + SEED_WINTER + " ")),
     'phone-winter-colours': dict(PHONE, timeline=False, hash='#14/62.258/25.715', js=LAYERS_AT('^Trails', 'Winter').replace("(async () => { ", "(async () => { " + SEED_WINTER + " ")),
     'desk-winter': dict(DESK, timeline=False, hash='#14/62.258/25.715', storage=WINTER_ON, js=WAIT),

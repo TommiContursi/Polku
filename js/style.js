@@ -287,7 +287,7 @@ export function buildStyle(s, ctx) {
     add({
       id: 'winter-way', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', ['in', ['get', 'cls'], ['literal', ['ski', 'closed']]]], layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': ['match', ['get', 'cls'], 'ploughed', '#0d9488', 'open1', '#65a30d', 'open2', '#a3b10e', 'open3', '#d39b46', 'unploughed', '#94a3b8', 'seasonal', '#0891b2', '#64748b'],
+        'line-color': ['match', ['get', 'cls'], 'ploughed', '#0d9488', 'groomed', '#0d9488', 'open1', '#65a30d', 'open2', '#a3b10e', 'open3', '#d39b46', 'unploughed', '#94a3b8', 'seasonal', '#0891b2', '#64748b'],
         'line-width': W,
         'line-dasharray': ['match', ['get', 'cls'], 'unploughed', ['literal', [1.5, 1.2]], 'seasonal', ['literal', [0.6, 1.4]], ['literal', [1, 0]]],
       },

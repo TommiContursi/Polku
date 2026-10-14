@@ -50,6 +50,21 @@ export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x -
 
 export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
 
+// The winter way at the spot: the nearest drawn one within about 10 m (a hit box also catches a
+// ski track beside a cycleway, which isn't what the cycleway is like). { cls, beside } or null:
+// `beside` when it's a ski track of its own next to the way you're looking at.
+export function winterAt(feats, ll) {
+  let best = null;
+  for (const f of feats) {
+    if (!/^winter-(way|ski|closed)$/.test(f.layer.id)) continue;
+    const g = f.geometry, lines = g.type === 'MultiLineString' ? g.coordinates : [g.coordinates];
+    let d = Infinity;
+    for (const c of lines) for (let i = 1; i < c.length; i++) d = Math.min(d, pointSegment(ll, c[i - 1], c[i]).d);
+    if (d <= 10 && (!best || d < best.d)) best = { d, cls: f.properties.cls };
+  }
+  return best && WINTER_TEXT[best.cls] ? { cls: best.cls, beside: best.cls === 'ski' } : null;
+}
+
 export function pickFeature(feats) {
   for (const re of PRIORITY) {
     const f = feats.find((x) => re.test(x.layer.id));
@@ -192,8 +207,8 @@ function renderWay(body, f, feats, ll, mtb, open = null) {
   const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
   if (Number.isFinite(idx)) body.append(row('MTB difficulty', chip(DIFF_COLORS[idx], MTB_SCALE_TEXT[idx]), true));
   // what winter means on it, where the winter ways are drawn (OSM's winter tags, js/winter.js)
-  const win = feats.find((x) => /^winter-(way|ski|closed)$/.test(x.layer.id));
-  if (win && WINTER_TEXT[win.properties.cls]) body.append(row('In winter', WINTER_TEXT[win.properties.cls]));
+  const win = winterAt(feats, ll);
+  if (win) body.append(win.beside ? row('Beside it', 'A ski track: keep off it on foot and by bike') : row('In winter', WINTER_TEXT[win.cls]));
   const up = feats.find((x) => x.layer.id === 'uphill-line');
   if (up) body.append(row('Uphill', chip(DIFF_COLORS[up.properties.cls], `${UPHILL_TEXT[up.properties.cls]} (${up.properties.grade} %)`), true));
   else {
