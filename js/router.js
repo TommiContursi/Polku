@@ -194,6 +194,7 @@ export async function routeLeg({ from, to, mode, profile, opts = {} }, signal) {
     result = { coords: [from, to], tags: [{}], portage: [] };
   } else if (mode === 'water') {
     result = await routeWater(from, to, { allowPortage: opts.portage !== false, ...(opts.water || {}) });
+    if (result.water.missing.length) return result; // routed without a source that didn't answer: ask again next time
   } else {
     let r;
     try {

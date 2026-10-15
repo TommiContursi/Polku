@@ -15,6 +15,7 @@ status. The review of 15 October 2026 opened #65–#75, listed in
 ## Known limits and quirks
 
 ### Small
+- **After an Overpass error (not a slow answer), a water leg isn't routed again on its own** *(found while fixing #67, 2026-10-15)*: the leg goes without OSM's rocks and Heads-up says so. The tile is asked for again after two minutes, by the next leg that needs it, and a good answer then doesn't route the legs that went without it. Moving a point does. A tile that comes in fine after failing could route those legs again.
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
@@ -123,7 +124,7 @@ status. The review of 15 October 2026 opened #65–#75, listed in
 
 - **FMI retires its old radar layers at the end of November 2026,** including `suomi_rr_eureffin`, which "now" reads. Polku falls back to reflectivity on its own, but that overstates drizzle. Find the replacement before then (ROADMAP, phase 12 "Later"). **Dated.**
 - **brouter.de pauses busy devices** ("retry later"; escalates to about 30 minutes). Never burst-test it: use the local BRouter (`tools/brouter-local.sh`). Valhalla on FOSSGIS stands in.
-- **Overpass mirrors are flaky:** 504s on every mirror at times while building phases 12 and 13. Trail details are best-effort and cached; route warnings from BRouter don't depend on it. The water router waits 2.5 s for OSM's rocks, then routes without them and is intended to re-route when they arrive. The outer leg cache currently blocks identical-leg recovery: [#67](https://github.com/TommiContursi/Polku/issues/67).
+- **Overpass mirrors are flaky:** 504s on every mirror at times while building phases 12 and 13. Trail details are best-effort and cached; route warnings from BRouter don't depend on it. The water router waits 2.5 s for OSM's rocks, then routes without them (Heads-up says so) and routes the leg again when they arrive (fixed in #81, [#67](https://github.com/TommiContursi/Polku/issues/67)).
 - **Traficom's licence:** its depth layers are shown "not for navigation" and never used for routing. If Traficom changes the licence or asks, the layers can be dropped from Paddle's defaults. **Watch.**
 - **Free tiers if Polku gets popular:**
   - Open-Meteo: 10 000 calls a day per IP, non-commercial;

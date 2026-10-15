@@ -21,7 +21,8 @@ import { lonLatToTile, tileBounds } from './geo.js';
 
 // A source gets this long before the leg is routed without it. Its answer still
 // comes, goes into the cache, and tells onWaterData listeners (the planner
-// re-routes the legs that went without it).
+// re-routes the legs that went without it; a leg still being routed then is
+// routed again in water.js).
 const WAIT_MS = 2500;
 const inTime = (p, ms = WAIT_MS) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('slow')), ms))]);
 // A source that just made a leg wait in vain isn't waited for again for a little
@@ -34,8 +35,10 @@ const waitFor = (src, p) => (Date.now() < (slowUntil[src] || 0)
   ? inTime(p, 30)
   : inTime(p).catch((e) => { slowUntil[src] = Date.now() + SLOW_FOR; throw e; }));
 const late = new Set();
+let lateCount = 0; // late answers so far: water.js routes a leg again if one came while it was being routed
 export function onWaterData(fn) { late.add(fn); return () => late.delete(fn); }
-const lateArrived = () => { for (const fn of late) fn(); };
+export const lateAnswers = () => lateCount;
+const lateArrived = () => { lateCount++; for (const fn of late) fn(); };
 
 // Rocks, reefs, shoals and wrecks in OSM (points; reefs and shoals also as
 // areas), one Overpass query per z11 tile (about 10 × 10 km), kept a week.
