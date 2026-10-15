@@ -10,6 +10,7 @@
   python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind), and OSM's rocks coming late (mocked)
   python3 tools/smoke.py multi      # just multisport: a sport per leg, changeovers, share links (straight legs)
   python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
+  python3 tools/smoke.py backtostart  # Back to start buttons, closing leg and undo (straight legs)
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
@@ -1405,6 +1406,81 @@ ROUTE_MENU = """(async () => {
 })()"""
 
 
+# Exercise the buttons, not the planner method: round-trip state once shadowed
+# the action and every Back to start entry point threw instead of adding a leg.
+BACK_TO_START = """(async (entry) => {
+  const p = polku.planner, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const ready = async (count) => {
+    const end = Date.now() + 10000;
+    while (Date.now() < end) {
+      if (p.legs.length === count && p.legs.every((l) => l.status === 'ok')) return true;
+      await wait(50);
+    }
+    return false;
+  };
+  p.setActive(true);
+  p.setMode('line');
+  for (const q of [[23.750, 61.500], [23.770, 61.505], [23.760, 61.495]]) p.addPoint(q);
+  if (!await ready(2)) return ['initial straight legs did not finish'];
+  if (entry === 'finish') {
+    p.setLegSport(1, 'paddle');
+    if (!await ready(2)) return ['mixed-sport straight legs did not finish'];
+  }
+  const sports = p.legs.map((_, i) => p.legSport(i));
+  p.reveal('points');
+  const before = p.snapshot(), past = p.past.length;
+  if (entry === 'finish') p.markers[p.markers.length - 1].getElement().click();
+  const selector = entry === 'finish' ? '.pt-menu button[title="Add a leg back to the start"]'
+    : entry === 'toolbar' ? '.tools button[aria-label="Back to start"]'
+    : 'button[title="Route back to where you started"]';
+  const button = document.querySelector(selector);
+  if (!button || button.disabled || !button.getClientRects().length) return [`${entry}: button unavailable`];
+  button.click();
+  if (p.points.length !== before.points.length + 1) return [`${entry}: did not add one closing point`];
+  if (!same(p.points.slice(0, -1), before.points)) errs.push('changed existing points');
+  if (!same(p.points[p.points.length - 1], before.points[0])) errs.push('finish is not the start');
+  if (p.past.length !== past + 1) errs.push('closing the route did not make one undo step');
+  if (!await ready(3)) errs.push('closing leg did not finish');
+  else {
+    const leg = p.legs[p.legs.length - 1], coords = leg.result.coords;
+    if (leg.mode !== 'line') errs.push('closing leg ignored the selected routing mode');
+    if (!same(p.legs.map((_, i) => p.legSport(i)), [...sports, sports[sports.length - 1]])) errs.push('closing leg changed the route sports or did not continue the last sport');
+    if (!same(coords[0], before.points[before.points.length - 1]) || !same(coords[coords.length - 1], before.points[0])) errs.push('closing geometry does not join the old finish to the start');
+  }
+  const closed = p.snapshot(), closedPast = p.past.length;
+  if (entry === 'finish') p.markers[p.markers.length - 1].getElement().click();
+  const again = document.querySelector(selector);
+  if (again) {
+    if (!again.disabled) errs.push('Back to start is still enabled on a closed route');
+    again.click();
+  }
+  if (!same(p.snapshot(), closed) || p.past.length !== closedPast) errs.push('closed route gained another closing leg or undo step');
+  p.els.undo.click();
+  if (!await ready(2) || !same(p.snapshot(), before)) errs.push('Undo did not restore the original route');
+  if (p.past.length !== past) errs.push('Undo did not restore the history position');
+  return errs;
+})"""
+
+
+def back_to_start(chrome):
+    ok = True
+    for entry, w, h, phone, dock in [('waypoints', 1440, 900, False, 'left'),
+                                    ('finish', 390, 844, True, 'left'),
+                                    ('toolbar', 1920, 1080, False, 'bottom')]:
+        pg = chrome.page(w, h, phone)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': json.dumps(dock)})
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            fails = pg.js(BACK_TO_START + '(' + json.dumps(entry) + ')')
+            fails += [f'console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+        print(f"{'ok  ' if not fails else 'FAIL'} Back to start: {entry} ({w}x{h})" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+        ok = not fails and ok
+    return ok
+
+
 def route_menu(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.5025/23.76')
@@ -1804,6 +1880,8 @@ def main():
             ok = multi(chrome) and ok
         if not only or 'routemenu' in only:
             ok = route_menu(chrome) and ok
+        if not only or 'backtostart' in only:
+            ok = back_to_start(chrome) and ok
         if not only or 'routebits' in only:
             ok = route_bits(chrome) and ok
         if not only or 'stops' in only:

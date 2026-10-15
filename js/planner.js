@@ -486,8 +486,8 @@ export class Planner {
     this.update();
   }
 
-  loop() {
-    if (this.points.length < 2) return;
+  backToStart() {
+    if (this.points.length < 2 || this.isLoop()) return;
     this.addPoint(this.points[0].slice());
   }
 
@@ -1952,7 +1952,7 @@ export class Planner {
     this.els.pointsFoot.replaceChildren(...[
       loops ? h('button', { type: 'button', class: 'btn', title: 'Loops of the length you choose, from your start', onclick: () => this.openLoop(), html: `${icon('roundtrip', 16)} Round trip` }) : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The finish becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
-      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.loop(), html: `${icon('loop', 16)} Back to start` }) : null,
+      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.backToStart(), html: `${icon('loop', 16)} Back to start` }) : null,
       h('button', { type: 'button', class: 'btn', title: 'Import a GPX or KML file (or drop it on the map)', onclick: () => $('#file-input').click(), html: `${icon('upload', 16)} Import` }),
       // each leg's routing and style, between its points (folded away by default)
       n > 1 ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showLegs), title: 'Every leg’s routing and style (or open one with the route button on its row)', onclick: () => { store.set('legSettings', !showLegs); this.openLegs.clear(); this.renderWaypoints(); }, html: `${icon('route', 16)} All leg settings` }) : null,
@@ -2457,7 +2457,7 @@ export class Planner {
       via ? h('div', { class: 'pt-row' },
         act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', () => this.startAt(i)),
         loop ? null : act('check', 'Finish here', 'Make this the finish: the rest is removed', () => this.finishAt(i))) : null,
-      last && !loop && n > 1 ? act('loop', 'Back to start', 'Add a leg back to the start', () => this.loop()) : null,
+      last && !loop && n > 1 ? act('loop', 'Back to start', 'Add a leg back to the start', () => this.backToStart()) : null,
       act('trash', 'Remove point', '', () => this.removePoint(i), 'btn danger-text'));
     this.menu = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '320px', className: 'polku-popup' })
       .setLngLat(marker.getLngLat()).setDOMContent(body).addTo(this.map);
@@ -2797,7 +2797,7 @@ export class Planner {
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
-        tool('loop', 'Back to start', () => this.loop(), 'tool-wide'),
+        this.els.backToStart = tool('loop', 'Back to start', () => this.backToStart(), 'tool-wide'),
         tool('download', 'Export GPX', () => this.exportGpx(), 'tool-wide'),
         tool('share', 'Copy share link', () => this.share(), 'tool-wide'),
         tool('offline', 'Save offline', () => this.app.saveOffline(), 'tool-wide'),
@@ -3462,6 +3462,7 @@ export class Planner {
     if (!this.els) return;
     this.els.undo.disabled = !this.past.length;
     this.els.redo.disabled = !this.future.length;
+    this.els.backToStart.disabled = this.points.length < 2 || this.isLoop();
     this.renderModeChips();
   }
 
