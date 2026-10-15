@@ -24,7 +24,7 @@ With the dev server running and Google Chrome installed:
 ```bash
 python3 tools/smoke.py                  # layout at 5 sizes, trail details, LIPAS, water routing: no overlaps, no console errors
 python3 tools/shoot.py shots after      # screenshots for a pull request (--list for the scenes)
-python3 tools/readme_shots.py           # the README's screenshots, into docs/screenshots (WebP)
+python3 tools/readme_shots.py           # legacy README scenes, into docs/screenshots (WebP)
 tools/brouter-local.sh                  # optional: BRouter on this computer (Settings → Routing server)
 python3 tools/style_probe.py --presets  # does every route style change the route? (against the local BRouter)
 python3 tools/loop_probe.py             # how long do round-trip loops ride? (calibrates js/roundtrip.js)
@@ -32,6 +32,8 @@ python3 tools/water_probe.py            # paddling legs before/after the water c
 ```
 
 The tests answer from recorded files in `tools/fixtures/` (a route, an Overpass tile, LIPAS answers, Väylävirasto fairways), so they make no routing calls. `tools/brouter-local.sh` starts BRouter on your computer for anything that does route; please don't burst-test brouter.de.
+
+The README links JPEGs on the `pr-screenshots` branch. Capture its current scenes with `tools/shoot.py`: `desk-planner`, `desk-trails-close`, `phone-planner`, `desk-trail-headsup` and `desk-water-crossing`. Check the images, convert them to JPEG, put them under the documentation branch's name on `pr-screenshots`, and update the README links. Keep new images off `main`.
 
 Headless Chrome draws the map in software, and one frame can take a second when the computer is busy. So a check waits for the state it tests, not a fixed time: the next animation frame for something the app does in one, `SETTLED` in `tools/smoke.py` for the planner's size.
 
@@ -128,3 +130,7 @@ docs/               ROADMAP, BACKLOG, this file, screenshots
 ## Working on it
 
 The rules are in [AGENTS.md](../AGENTS.md). In short: one phase or one fix per pull request, `tools/smoke.py` passes, CHANGELOG, ROADMAP and BACKLOG updated in the same PR, every request through `js/net.js`, share links keep working, and only the user merges.
+
+## Project background
+
+Polku started as an experiment loosely inspired by [Trailmap](https://web.trailmap.fi): a trail map of Finland with MTB difficulty. It has since grown its own way, with uphill grades, paddling, weather, safety and offline maps. It is an independent project, not affiliated with Trailmap, and uses none of its data or services.

@@ -1,147 +1,104 @@
 # Polku
 
-**An outdoor map for Finland: trails, terrain, water and weather in one place.** Plan a ride, a run, a hike or a paddle, see how hard it is in both directions and what the weather does on the way, then take it with you, offline if you need.
+**Explore Finland, from forest trails to open water.**
 
-**→ [polku.si](https://polku.si)** · free · no account · works on your phone · [what's new](CHANGELOG.md)
+Polku is a free outdoor map and multi-sport route planner for Finland. Plan mountain biking, gravel and road cycling, hiking, trail running, running, paddling and swimming routes, or combine different sports in one trip.
 
-![Planning an MTB route at Kauppi, Tampere: the route on a trail map coloured by MTB difficulty, and its elevation profile coloured by gradient](docs/screenshots/planner.webp)
+Explore detailed terrain, find trails that suit you, and check the weather for when you expect to reach each part of your route. Build your own plan, discover a round trip, or follow an official route, then save the map and route for offline use.
 
-Polku is a web app built on open data. It runs in your browser, keeps your settings and routes on your device, and talks only to free public services.
+**[Open Polku →](https://polku.si)** · Free to use · No account needed · Works on mobile · [What's new](CHANGELOG.md)
 
----
+![An MTB route at Kauppi, Tampere, with the route planner, detailed terrain and an elevation profile](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-planner.jpg?raw=true)
 
-## Trails the way you ride them
+## Explore the outdoors
 
-![Trail details at Tykkikallio, Jyväskylä: narrow and faint trails drawn thinner and dashed, fallen trees, a gate and a fence](docs/screenshots/trails.webp)
+Read the landscape before you go: shaded terrain, **5 m contours and 3D views**, with trail maps, the National Land Survey's terrain map and aerial photos to choose from.
 
-- **MTB difficulty** (S0–S6) as a coloured halo on every trail, and **uphill difficulty** (↑S0–↑S5) computed from the lidar elevation model, with arrows up the climb. Show either, or both.
-- **Trail details** from OpenStreetMap: how wide a trail is, how easy it is to follow, overgrown and wet stretches, fallen trees, gates, fences and fords, drawn the way a rider reads them.
-- **Hillshade, 5 m contours and 3D terrain**, and base maps from the trail map to the National Land Survey's terrain map and aerial photos.
-- Rest the pointer on anything for a quick preview; click for the details, all OSM tags, and a link to fix the map.
+- **Find trails that fit your ride.** Colours show mountain biking difficulty and estimated uphill difficulty separately, so you can judge the trail and the climb. Arrows point uphill.
+- **See the details that matter outdoors.** Trail width and visibility, wet or overgrown stretches, fallen trees, gates, fences and fords come from OpenStreetMap. Select a feature for details and a link to help correct the map.
+- **Discover routes and places to stop.** Search official hiking, MTB, cycling and paddling routes from Finland's [LIPAS](https://lipas.fi) register, alongside lean-tos, huts, campfire sites and landing places. Add an official route to your plan using its recorded line.
 
-<img src="docs/screenshots/uphill.webp" alt="Uphill difficulty: every trail graded by how hard it is to ride up, with arrows pointing up the climb" width="100%">
+![Trail details at Tykkikallio, Jyväskylä: narrow and faint trails, fallen trees, a gate and a fence](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-trails-close.jpg?raw=true)
 
-## Winter
+## Plan your own way
 
-Winter switches on by itself where there's snow (or set it yourself), and the map changes with it:
-- **snow depth as a layer,** with FMI's measured depths;
-- **trails by how soon they open after snow** (from OpenStreetMap's winter tags), ploughed paths, and where you can't go in winter;
-- **ski tracks** (so feet and bikes keep off them), skating routes on natural ice and snowmobile routes;
-- **sea ice** from FMI's daily charts.
+Choose from **eight sports**, each with its own routing, speeds, route styles and warnings. Mix them within one trip: cycle to the shore, paddle across and run on an island, with time for changing between sports.
 
-On a route, the time allows for the snow (ploughed ways little, trails more), and Heads-up tells you about the snow, slippery rain around 0 °C, the cold as it feels at your speed, ways closed in winter and, on the water, the ice season.
-
-## Plan a route in any sport
-
-MTB, gravel, road cycling, hiking, trail running, running, paddling and swimming. Each has its own router, speeds, warnings and map, and **one route can mix them**: bike to the shore, paddle across, run on the island, with the changeovers in the time.
-
-- **Click to route, drag to change:** drag a point or the line itself and the route follows as you drag. Undo covers everything.
-- **Click or tap a part of the route** to add a point there or change that part: its sport, how it's routed, its style. With the planner closed, a click on your route opens it.
-- **Route style in the sport's own words:** Flowy trails, Technical, Smooth & easy, Paved roads, Nature paths, Near the shore… For the whole route or a single leg.
-- **An elevation profile** coloured by gradient, uphill or MTB difficulty, trail width or visibility, surface, wind, temperature or rain, on the map too if you like.
-- **Heads-up** lists what's on the way: steps, no-bike sections, fallen trees, hard-to-follow trails, road works, busy roads, carries. Each comes with an *Avoid* button.
-- **Your speeds** (Easy / Normal / Fast, or your own), and a time that accounts for the wind, with **distance marks** on the route, the times you'd pass them, and **sunrise and sunset** (Heads-up says when you'd be out in the dark).
-- **Stops and nights:** a break or a night at any point ("go on at 08:30"). The times and the weather follow, a trip shows its days, and a night finds lean-tos, huts and campsites nearby. Heads-up tells you if your bike or boat is left somewhere the route doesn't come back to.
-- **GPX import and export,** and a share link that carries the whole route.
-
-![Heads-up along a route at Tykkikallio: private access, a log across the trail, a stretch that's hard to follow, each with an Avoid button; waypoints and the weather on the route beside it](docs/screenshots/headsup.webp)
+- **Shape the route on the map.** Add points, drag a point or the line, and change the sport or style for any leg. Undo lets you try another way.
+- **Choose how you want to travel.** Look for flowing trails, technical riding, paved roads, nature paths or a route near the shore. Apply a style to the whole route or just one part.
+- **Let Polku suggest a round trip.** Pick a start, distance or duration, and direction, including into the wind first. Compare three loops by distance, time, climbing, trail share, repeated stretches and warnings. Generate more, or edit the one you like. Paddling and swimming loops work too; on rivers they go out and back.
+- **Understand the effort.** An elevation profile shows climbs and descents, with colours for gradient, trail difficulty, surface, width, visibility or weather. Use preset or personal speeds, with travel times adjusted for wind and snow.
+- **Make room for breaks and nights.** Add stops or set when to continue the next morning. The schedule and route weather follow, and Polku finds nearby places to sleep. It also warns if a trip leaves your bike or boat somewhere you do not return to.
 
 <p align="center">
-  <img src="docs/screenshots/phone-planner.webp" alt="The planner on a phone: a bottom sheet with the route's distance, time and climbing" width="32%">
-  <img src="docs/screenshots/phone-roundtrip.webp" alt="Round trips on a phone: three generated loops to choose from" width="32%">
-  <img src="docs/screenshots/phone-lipas.webp" alt="Riding an official LIPAS route: its own line, no routing needed" width="32%">
+  <img src="https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-phone-planner.jpg?raw=true" alt="Planning on a phone: the route above a bottom sheet with its distance, time, elevation profile and Route, Check and Go tabs" width="360">
 </p>
 
-## Round trips
+## Know what lies ahead
 
-Pick a start, a length in kilometres or time, and a direction ("into the wind first" works too). Polku makes three loops in your route style and compares them: distance, time, climbing, the share of trail, how much is ridden twice, and what Heads-up found. None of them right? **More loops** makes three more in other directions. Pick one and it becomes a normal route you can edit.
+**Weather follows your schedule.** See headwind, crosswind, tailwind, temperature and rain at the estimated time you reach each part of the route. A 48-hour map timeline lets you explore animated wind, rain and temperature, with FMI rain radar for current rainfall in Finland. Distance marks, passing times, sunrise and sunset help you plan your day.
 
-**On the water too:** paddling and swimming loops come from Polku's own water router, with no routing calls. They keep to your style (near the shore, across shipping lanes, out of rough water), and on a river they go out and back.
+**Check obstacles and conditions together.** The route's warning list, called **Heads-up**, brings together mapped obstacles and access restrictions, busy roads, incidents, road works, slippery roads, military areas and shooting ranges. Where a warning offers **Avoid**, use it to plan around that spot. Road weather cameras include a 24-hour time-lapse.
 
-![Three generated round trips from Tampere, compared side by side](docs/screenshots/roundtrip.webp)
+**Plan for winter.** Winter mode can follow local snow conditions or be set manually. See snow depth and FMI measurements, trails classified by how soon they open after snow, ploughed paths, winter access restrictions, ski tracks, skating and snowmobile routes, and FMI sea-ice charts. Route times allow for snow; warnings cover freezing rain, cold, darkness and the ice season on water.
 
-## Official routes and places
+![Warnings along a route at Tykkikallio, including access restrictions, a fallen tree and a hard-to-follow trail, with options to avoid them](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-trail-headsup.jpg?raw=true)
 
-Finland's national register of sports places, [LIPAS](https://lipas.fi), puts official hiking, MTB, cycling and paddling routes on the map, along with lean-tos, huts, campfire sites and landing places.
+## From land to water
 
-- **Search them by name:** "koko kierros", "laajavuori", "laavu". The results are grouped into places, routes, stops and trails.
-- **Ride this route** turns a LIPAS route into your plan using its own line, with no routing calls. **Add to route** joins it onto yours.
+Plan paddling and swimming routes across lakes, along rivers and through the archipelago, or connect them to the land sections of a multi-sport trip.
 
-![Searching "multam": LIPAS routes and stops grouped above the places](docs/screenshots/search.webp)
+- **Route across water and see where carrying is needed.** Paddling supports sea kayaks, canoes and SUPs.
+- **Account for wind and exposure.** Estimated waves depend on the wind's reach across open water, with different preferences for each craft.
+- **Check shipping lanes and mapped hazards.** Routes aim to cross shipping lanes directly rather than follow them, and keep clear of mapped danger marks, rocks and shoals.
+- **Explore the nautical layers.** See buoys, lights, sectors, fairways, speed limits, live ships and charted depths.
 
-## On the water
+**Water routes and nautical layers are for planning, not navigation.** Depths are displayed only and never used for routing. Carry an official chart; see the [limitations](#limitations) below.
 
-An open-water router for sea kayaks, canoes and SUPs. Routes stay on the water and flag the carries.
+![A paddling route from Kaivopuisto towards Suomenlinna crossing the Särkän väylä shipping lane, with route warnings alongside](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-water-crossing.jpg?raw=true)
 
-- **Shipping lanes are crossed straight and quickly,** not followed (Väylävirasto's fairways).
-- **Marked rocks and shoals are kept clear of:** danger and cardinal marks, and OpenStreetMap's rocks and reefs.
-- **Out of the wind:** waves build where the wind has a long way over open water, so a SUP keeps to calmer water than a kayak.
-- **A nautical chart** for the sea and lakes (buoys, lights and sectors, fairways, speed limits), Traficom's charted depths (not for navigation), and live ships.
+## Take Polku with you
 
-![Paddling from Kaivopuisto to Suomenlinna: the route crosses the Särkän väylä shipping lane straight, and Heads-up says so](docs/screenshots/water.webp)
+**Save before you lose signal.** Save the map and terrain along a route, together with the route and its profile. Polku can then load without a connection. **Preview offline** shows only what you have saved, so you can check coverage before leaving. On an iPhone, add Polku to the home screen to help keep offline data available.
 
-## Weather that follows your plan
+**Bring a route in, or take one out.** Import GPX or KML, export GPX, or share a planned route with a link. Your last route and settings stay on your device. For an imported track, use GPX to preserve its exact line: share links may route it again.
 
-- **A 48-hour timeline** drives everything that depends on time: the weather layers, your departure, road works and road conditions.
-- **Wind, rain and temperature on the map,** animated, with the rain radar for "now" (FMI in Finland).
-- **Along your route,** head-, cross- or tailwind, temperature and rain at the time you reach each part.
+**No account, cookies or analytics.** Polku runs in your browser and has no backend of its own. Settings, routes, cached data and offline areas stay in browser storage. Requests go directly to the data services below, which receive your IP address and the map area or route coordinates needed to answer them.
 
-![Wind and rain over southern Finland, with the timeline below](docs/screenshots/weather.webp)
+For controls and keyboard shortcuts, see [Using Polku](docs/USING.md).
 
-## Traffic and safety
+## Data & credits
 
-- **Busy roads** as a heat line (vehicles a day), live incidents, road works at your departure time, and slippery roads for the next 12 hours.
-- **Military areas and shooting ranges.**
-- **800+ road weather cameras,** each with a 24-hour time-lapse.
-- **A planned route is checked against all of these.**
+Polku brings together open data and free public services. Each source keeps its own terms and attribution requirements.
 
-![Road cycling in Tampere: busy roads coloured by traffic volume](docs/screenshots/traffic.webp)
-
-## Offline
-
-**Save offline** stores the map and terrain along a route, together with the route itself, so the map, the route and its profile work with no signal, and the app loads without a connection. **Preview offline** shows only what's saved, so you can check before you go. On an iPhone, add Polku to the home screen so the browser keeps it.
-
----
-
-## Private by design
-
-There are no accounts, cookies, analytics or servers of Polku's own. Your settings, your last route, cached map data and offline areas stay in your browser. The map talks directly to the open data services below, which see your IP address and the area you're looking at.
-
-## Keys and gestures
-
-| | |
+| Used for | Sources |
 |---|---|
-| <kbd>T</kbd> | timeline |
-| <kbd>L</kbd> | layers and the map key |
-| <kbd>R</kbd> | route planner |
-| <kbd>F</kbd> | show the whole route |
-| <kbd>/</kbd> | search |
-| <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Z</kbd>, +<kbd>Shift</kbd> | undo, redo |
-| <kbd>Esc</kbd> | close panels |
+| Map and trail data | [OpenStreetMap contributors](https://www.openstreetmap.org/copyright); [OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles) |
+| Terrain and base maps | [Mapterhorn](https://mapterhorn.com); Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0); Esri World Imagery |
+| Routes and outdoor places | [LIPAS](https://lipas.fi), University of Jyväskylä (CC BY 4.0); [Waymarked Trails](https://waymarkedtrails.org) |
+| Routing on land | [BRouter](https://brouter.de); [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers as a fallback |
+| Search and detailed map features | [Photon](https://photon.komoot.io); [Overpass API](https://overpass-api.de) |
+| Fairways and navigation marks | Väylävirasto (CC BY 4.0) |
+| Displayed water depths | Traficom: not for navigation; its licence excludes route planning |
+| Traffic and road conditions | Fintraffic [Digitraffic](https://www.digitraffic.fi/en/) and Digiroad (CC BY 4.0) |
+| Weather and radar | [Open-Meteo](https://open-meteo.com); [FMI open data](https://en.ilmatieteenlaitos.fi/open-data); [RainViewer](https://www.rainviewer.com/api.html) |
+| Map rendering | [MapLibre GL JS](https://maplibre.org); [maplibre-contour](https://github.com/onthegomap/maplibre-contour) |
 
-Pinching, or Ctrl+scrolling, over any panel zooms the map, not the page. In 3D, a two-finger trackpad scroll tilts and rotates, Shift+scroll tilts anywhere, and the orbit pad, right-drag and two-finger touch work too.
+Requests are paced, cached and counted; see **Settings → Data sources**. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
-## Data and credits
+These data and library licences are separate from Polku's application code. This repository does not currently include a licence for that code.
 
-[OpenStreetMap](https://www.openstreetmap.org/copyright) contributors · [OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles) · [Mapterhorn](https://mapterhorn.com) terrain · [BRouter](https://brouter.de) routing · [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers when BRouter pauses · [Photon](https://photon.komoot.io) search · [Overpass API](https://overpass-api.de) · [LIPAS](https://lipas.fi) (University of Jyväskylä, CC BY 4.0) · Väylävirasto (fairways and aids to navigation, CC BY 4.0) · Traficom (depths, shown only and not for navigation: its licence excludes route planning) · Fintraffic [Digitraffic](https://www.digitraffic.fi/en/) and Digiroad (CC BY 4.0) · Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0) · Esri World Imagery · [Waymarked Trails](https://waymarkedtrails.org) · [Open-Meteo](https://open-meteo.com) · [FMI open data](https://en.ilmatieteenlaitos.fi/open-data) rain radar · [RainViewer](https://www.rainviewer.com/api.html) · [MapLibre GL JS](https://maplibre.org) and [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
+## Limitations
 
-These are free public services, so Polku is gentle with them: requests are paced, cached and counted (Settings → Data sources). Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
+- **Estimates and mapped data have gaps.** Uphill grades, travel times and wave heights are estimates from terrain, tags and forecasts. They cannot confirm conditions on the ground.
+- **Water routing cannot assess every hazard.** It does not use depths and does not know currents, rapids, private shores or bird-protection areas. Use official charts and keep a lookout.
+- **A path on the map is not necessarily an official route or permission to enter.** Respect everyman's rights, access restrictions and local rules. Ski tracks are not for walking or cycling.
+- **Offline covers the saved map, terrain and route.** Routing, search, weather and traffic still need a connection.
+- **The full trail network appears from zoom 14.** Zoom in if trails seem to be missing.
+- **FMI weather and forest-fire warnings are not shown.** No open source currently allows Polku to fetch them directly from a browser.
 
-## Limits worth knowing
+## Development
 
-- The full trail network shows from **zoom 14**.
-- **Uphill grades, times and wave heights are estimates** from terrain, tags and forecasts, not ground truth.
-- **The nautical layer and the paddling routes are for planning, not navigation.** Polku doesn't know depths, so carry an official chart and keep a lookout. Water routes don't know currents, rapids, private shores or bird-protection areas.
-- **Paths on the map aren't necessarily official routes.** Everyman's rights apply; check local rules.
-- **Routing, search, weather and traffic need a connection.** Offline areas cover the map, terrain and your route.
-- No open source of FMI weather or forest-fire warnings allows access from a browser, so those aren't shown.
-
-## Developing
-
-It's a static site with no build step: `python3 serve.py` and open <http://localhost:8765>. How it's built, the tools and tests, and how to work on it are in [docs/DEVELOPING.md](docs/DEVELOPING.md). What's new is in the [changelog](CHANGELOG.md); what's coming is in [docs/ROADMAP.md](docs/ROADMAP.md).
-
-## Background
-
-Polku started as an experiment loosely inspired by [Trailmap](https://web.trailmap.fi): a trail map of Finland with MTB difficulty. It has since grown its own way, with uphill grades, paddling, weather, safety and offline maps. It's an independent project, not affiliated with Trailmap, and uses none of its data or services.
+Polku is a static site with no build step. Run `python3 serve.py` and open <http://localhost:8765>. See [Developing Polku](docs/DEVELOPING.md) for the architecture, tools, tests and project background, and the [roadmap](docs/ROADMAP.md) for planned work.
 
 Made by [@TommiContursi](https://github.com/TommiContursi).
