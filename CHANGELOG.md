@@ -4,6 +4,10 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Fixed: the map's credits took space on phones ([#58](https://github.com/TommiContursi/Polku/pull/58))
+- **The credits stay folded behind ⓘ on a phone** until you tap it. They used to open by themselves when the map's sources came in late.
+- **Narrowing a window** to phone width folds them too.
+
 ### Bug sweep ([#57](https://github.com/TommiContursi/Polku/pull/57))
 - **Heads-up is the same in every sport.** Fallen trees and other obstacles mapped in OpenStreetMap used to come only with the map's Trail details layer on, so a gravel ride past one heard nothing. Now every route on land gets them.
 - **Hide what you don't need:** the ⋯ on a Heads-up row hides that kind ("Fallen trees and logs") from now on. Hidden kinds on the route are listed at the end, to bring back with a tap.

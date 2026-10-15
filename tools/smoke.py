@@ -1286,6 +1286,9 @@ def check(chrome, w, h, phone, bottom=False):
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     time.sleep(1.0)
     fails += [f'closed: {o}' for o in overlaps(pg.js(BOXES))]
+    # on a phone the credits start folded behind their ⓘ (MapLibre opens them when their text comes in)
+    if phone and pg.js("document.querySelector('.maplibregl-ctrl-attrib').classList.contains('maplibregl-compact-show')"):
+        fails.append('the credits are open on a phone without a tap')
 
     pg.js("(() => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line');"
           " for (const q of [[23.80, 61.509], [23.817, 61.519], [23.838, 61.516]]) p.addPoint(q); })()")

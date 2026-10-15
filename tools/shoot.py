@@ -213,6 +213,9 @@ ROW_HIDDEN = ROW_MENU.replace(" await wait(300); return true; })()", " await wai
                               " const c = document.querySelector('.hidden-kinds'); if (c) c.scrollIntoView({ block: 'center' }); await wait(300); return true; })()")
 OPEN_MENU = ("(async () => { polku.planner.els.more.click(); await new Promise((r) => setTimeout(r, 400));"
              " const m = document.querySelector('.menu-pop'); if (m) m.scrollTop = m.scrollHeight; return true; })()")  # scrolled to its end, where it scrolls
+# MapLibre opening the credits by itself, as when their text comes in after the map has loaded
+CREDITS_REOPEN = ("(async () => { const a = document.querySelector('.maplibregl-ctrl-attrib'); a.classList.remove('maplibregl-compact');"
+                  " polku.map.fire('resize'); await new Promise((r) => setTimeout(r, 400)); return true; })()")
 OPEN_CREDITS = "(async () => { document.querySelector('.maplibregl-ctrl-attrib-button').click(); await new Promise((r) => setTimeout(r, 400)); return true; })()"
 
 SCENES = {
@@ -358,6 +361,7 @@ SCENES = {
     'phone-sweep-headsup': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='full', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),
     'short-menu': dict(w=1280, h=600, phone=False, timeline=False, route='route-kauppi-mtb.json', storage={'polku:plannerDock': '"left"'}, js=OPEN_MENU, settle=0.3),
     'phone-credits': dict(PHONE, timeline=True, js=OPEN_CREDITS, settle=0.3),
+    'phone-credits-late': dict(PHONE, timeline=True, js=CREDITS_REOPEN, settle=0.3),
     'phone360-summary': dict(w=360, h=740, phone=True, timeline=False, route='route-kauppi-mtb.json', state='half'),
     'desk-winter-route': dict(DESK, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('warnings')),
     'phone-winter-route': dict(PHONE, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('warnings')),
