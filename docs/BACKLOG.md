@@ -23,7 +23,7 @@ the table below is a navigation index, not another set of completion checkboxes.
 | Issue | Finding |
 |---|---|
 | [#65](https://github.com/TommiContursi/Polku/issues/65) | Back to start |
-| [#66](https://github.com/TommiContursi/Polku/issues/66) | Concurrent API pacing |
+| [#66](https://github.com/TommiContursi/Polku/issues/66) | Concurrent API pacing: fixed in [#78](https://github.com/TommiContursi/Polku/pull/78) |
 | [#67](https://github.com/TommiContursi/Polku/issues/67) | Incomplete water cache |
 | [#68](https://github.com/TommiContursi/Polku/issues/68) | Offline preview and recovery |
 | [#69](https://github.com/TommiContursi/Polku/issues/69) | Avoid areas in links |
