@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
-### Fixed: the uphill colours stayed blank after the terrain came back ([#PR](https://github.com/TommiContursi/Polku/pull/PR))
+### Fixed: the uphill colours stayed blank after the terrain came back ([#101](https://github.com/TommiContursi/Polku/pull/101))
 - **When the terrain didn't load,** the trails on the map stayed without their Uphill colours even after it came back, until you reloaded the page. Now they're coloured on your next move of the map once the terrain is in, the climbs tagged in OpenStreetMap too.
 - **Trails coloured with the terrain stay as they are,** so panning around asks for nothing again.
 
