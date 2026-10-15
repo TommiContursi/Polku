@@ -76,6 +76,8 @@ Each item says when (and, where it matters, in which phase) it came up.
 ### Planner
 - **The planner's layout** *(2026-10-15)*: tabs for drawing, checking and going; the ⋯ menu's tools out in the open; a panel to move and snap on desktop; the profile and the time as cards to pull out onto the map. Now ROADMAP phase 22 (22a next, with a mock-up).
 - **The leg you edit lit up on the map** *(2026-10-15)*: a leg opened in the waypoint list glows on the map and in the profile, the rest faded. In ROADMAP 22a.
+- **Round trip from the first click** *(2026-10-15)*: a loop is a way to start, not only a tool for a route you have. The empty drawer offers it, and the first click's popup offers a loop from there. In ROADMAP 22a.
+- **One profile, not two** *(2026-10-15)*: the short profile on top and the profile chart repeated each other. One profile stays on top, coloured as you choose, with the legs marked. In ROADMAP 22a.
 - **The time earlier, the speeds with the style** *(2026-10-15)*: Time & speed opened with the speed inputs, far down. The time goes first in Go, and the speed inputs move beside the route style ("How you go"). In ROADMAP 22a.
 - **Where you are, and the way on** *(2026-10-15)*: the location dot showing which way you face, following you on the map, how far along the route you are, and recording the track, with the phone's own GPS and compass. Now ROADMAP phase 23 (23a–23d).
 - The route's colour sits in the header and in the profile *(done in #37)*.

@@ -83,6 +83,8 @@ The agreed order (15b, then the bug sweep, then 21…) is done up to the sweep. 
 
 **What goes together** (so nothing is done twice):
 - **22a** takes:
+  - Round trip as a first choice at the start (the empty drawer, the first click);
+  - one profile on top instead of two charts;
   - the leg highlight (the leg you open in the waypoint list lit up on the map and in the profile);
   - the time moved up (the first thing in Go);
   - the speeds moved in beside the route style ("How you go");
@@ -1426,7 +1428,7 @@ Testing 15b showed the planner (the drawer) has outgrown its layout:
 
 | Moment | What you need | Where |
 |---|---|---|
-| An idea | a round trip from here, a LIPAS route, a place found in search | Route: Round trip; search |
+| An idea | a round trip from here, a LIPAS route, a place found in search | The start: the empty drawer's choices, and the first click's popup |
 | Drawing | points and legs, the sport and routing per leg, the style, undo | Route |
 | Checking | what's on the way, the climbs, the ground, the profile's colours | Check |
 | Setting off | when, how long, the weather, stops, taking it along | Go |
@@ -1434,18 +1436,27 @@ Testing 15b showed the planner (the drawer) has outgrown its layout:
 | Afterwards | the track you rode | 23c |
 
 **22a: three tabs (next).**
+- **The start (no route yet):** Round trip is a first choice, not only a tool for a route you already have.
+  - **The empty drawer** offers four choices:
+    - Draw it;
+    - **Round trip**, from where I am or a start picked on the map;
+    - Ride a marked route (LIPAS);
+    - Import a GPX or KML.
+
+    How you go sits under them, to set before drawing.
+  - **The first click on the map** sets the start right away, so drawing stays one click a point. Its popup offers a loop from there: a length or a time, then three loops.
 - **Always on top:**
   - the summary (distance, time and arrival, ascent and descent) and Done;
-  - a short profile, about 50 px, that marks the open leg, the heads-up places, and later where you are;
+  - **the profile, one, not two.** It's coloured as you choose (Gradient, Surface, Wind…, its chooser on it), with the legs and their points marked. It lights the open leg, marks the heads-up places, and later shows where you are. It's about 64 px, and ⤢ makes it taller; the separate profile chart goes;
   - the tabs, with undo, redo and ⋯ on the same row.
 - **Route:**
   - the routing modes;
   - the waypoints and legs. **The leg you open, or point at, lights up on the map** (a glow, the rest faded) **and in the profile**;
-  - Round trip, Reverse, Back to start and Import as buttons;
+  - Round trip, Reverse, Back to start and Import as buttons (Round trip stays here too, for a route you have);
   - **How you go:** the route style (which ways the router prefers) and your speed (how the time is counted), Easy / Normal / Fast / Custom, with the custom fields here. The speed inputs leave Time & speed.
 - **Check:**
   - Heads-up (with its ⋯ and the hidden kinds);
-  - the profile in full, with its colour choice and breakdown;
+  - the profile's colours in kilometres ("Gradient on this route": the breakdown bar and its key);
   - the climbs;
   - **On the map:** route colours, distance marks, times at the marks (out of ⋯).
 - **Go:**
@@ -1474,7 +1485,7 @@ Testing 15b showed the planner (the drawer) has outgrown its layout:
 
 ## Phase 23 — Out on the trail: where you are and the way on (planned 2026-10-15)
 
-Location in Polku today is a dot. On the trail it could do more: show which way you face, follow you, show how far along the route you are, and record where you went. All of it uses what the phone already has (its GPS and compass, through the browser) and no server.
+*(The approach below was confirmed on 2026-10-15.)* Location in Polku today is a dot. On the trail it could do more: show which way you face, follow you, show how far along the route you are, and record where you went. All of it uses what the phone already has (its GPS and compass, through the browser) and no server.
 
 **The rules:**
 - **Your position stays on your device.** It's never sent anywhere, not even to Polku, and a recorded track is yours to save or delete.
