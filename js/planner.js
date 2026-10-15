@@ -3571,7 +3571,7 @@ export class Planner {
     key('distance', fmtDist(a.total));
     // the time is from your departure: tapping it opens the clock (one control for both)
     const dep = this.startOffsetH ? new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now';
-    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? ', by distance only: no terrain' : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.reveal('depart') },
+    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.reveal('depart') },
       // over days: the time on the move, and how many days it's spread over
       h('b', {}, nights ? shortDuration((a.timeWind || a.time) - waitSec) : fmtDuration(a.timeWind || a.time)), h('small', {}, nights ? `${nights + 1} days` : `from ${dep}`));
     sum.append(time);
@@ -3779,7 +3779,7 @@ export class Planner {
     if (ter) {
       const next = ter.retry && ter.next ? ` · trying again at ${new Date(ter.next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
       box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${terrainTitle(ter)}</b><span>${ter.all ? 'The time is by distance only, and the climbing isn’t known' : 'The climbing and the time there are estimates'}${next}</span></span>` }),
+        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${terrainTitle(ter)}</b><span>${ter.all ? `${a.ways.some(([k]) => k === 'water') ? 'On land the time' : 'The time'} is by distance only, and the climbing isn’t known` : 'The climbing and the time there are estimates'}${next}</span></span>` }),
         ter.retry ? h('button', {
           type: 'button', class: 'btn', title: 'Load the terrain again',
           onclick: async () => {
