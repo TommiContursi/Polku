@@ -52,7 +52,9 @@ Also approved:
 | — | Docs: AGENTS.md as the one place for how to work (when bugs are fixed, PR titles, plain words, no chat quotes, the Traficom rule); every bug a GitHub issue, BACKLOG for ideas, limits and things to watch | `agent-docs` | [#77](https://github.com/TommiContursi/Polku/pull/77) | merged |
 | — | Fix: routing calls asked for together wait their turn (5 in 10 s for brouter.de, one a second for Valhalla), and every call that goes out is counted, retries too | `fix/request-pacing-66` | [#79](https://github.com/TommiContursi/Polku/pull/79) | merged |
 | — | Fix: a paddling route is routed again when OpenStreetMap's rocks come late (it kept the route made without them), and so is a leg still being routed when they come | `fix/water-hazards-recover-67` | [#81](https://github.com/TommiContursi/Polku/pull/81) | merged |
+| — | Docs: phase 24, a design review, planned (research first) | `docs-design-review` | [#98](https://github.com/TommiContursi/Polku/pull/98) | merged |
 | 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
+| 24 | Design review: the whole design looked at on a phone and a desktop with design skills made for coding agents; what's worth doing becomes issues | `design-review` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
 | 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
 | 23b | On the way: Start in Go; what's left at your pace, the next heads-up ahead, off the route, the screen kept awake | `on-the-way` | — | planned |
@@ -74,18 +76,19 @@ The agreed order (15b, then the bug sweep, then 21…) is done up to the sweep. 
 |---|---|---|---|
 | 1 | **22a, the drawer in three tabs** | big | The frame for everything after it: 21's explanations, 23b's On the way and 20's route glow all land in it. Mock-up first (below). |
 | 2 | **23a, which way you face** | small | Quick, on its own, and useful at once on a phone. A breather between two big ones. |
-| 3 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). |
-| 4 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. |
-| 5 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. |
-| 6 | **20, map style** | big | Builds on 21; the route's glow goes with the map's look. |
-| 7 | **17, weather layers** | medium | |
-| 8 | **23c, your track** | medium | After 23b: it records what 23b follows. |
-| 9 | **18, languages** | big | Once the words have settled through 21 and 22. |
-| 10 | **15c, skiing** | big | When there's snow to test on (December–January), whatever its place here. |
-| 11 | **22c, cards to pull out** | medium | Only if 22a and 22b haven't made it unnecessary. |
-| 12 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. |
-| 13 | **16, Strava & Garmin** | research | Outside accounts and terms. |
-| 14 | **19, help and a tutorial** | | Last, when the rest holds still. |
+| 3 | **24, design review** | research, then issues | Research only, no code. Its findings feed 21, 22b and 20, so it goes before them. |
+| 4 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). |
+| 5 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. |
+| 6 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. |
+| 7 | **20, map style** | big | Builds on 21; the route's glow goes with the map's look. |
+| 8 | **17, weather layers** | medium | |
+| 9 | **23c, your track** | medium | After 23b: it records what 23b follows. |
+| 10 | **18, languages** | big | Once the words have settled through 21 and 22. |
+| 11 | **15c, skiing** | big | When there's snow to test on (December–January), whatever its place here. |
+| 12 | **22c, cards to pull out** | medium | Only if 22a and 22b haven't made it unnecessary. |
+| 13 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. |
+| 14 | **16, Strava & Garmin** | research | Outside accounts and terms. |
+| 15 | **19, help and a tutorial** | | Last, when the rest holds still. |
 
 **Bugs from the review of 15 October** ([#63](https://github.com/TommiContursi/Polku/issues/63)) don't wait for a place in this list: the small ones are fixed in Fix PRs of their own between phases, Back to start (#65) first. Offline recovery (#68) and the route's own settings (#71) need a plan first; the review suggests #71 before 23b.
 
@@ -1624,6 +1627,43 @@ The goal: how roads and the other elements are drawn (the cartography), and LIPA
 - **Estonia:** Maa- ja Ruumiamet põhikaart and ortofoto (open data).
 - **Orienteering maps:** Mapant and Mapant España (CC BY 4.0).
 - **Trailmap's own stack** for comparison: GraphHopper and OSRM for routing, Planetiler, Tippecanoe and TileServer GL for tiles, OpenMapTiles, MapLibre.
+
+## Phase 24 — Design review (planned 2026-10-15; research first, no code)
+
+Polku has grown one phase at a time, each designed on its own. An idea from testing (2026-10-15): look at the whole of it once, on a phone and on a desktop, with the design guidance that now exists as skills for coding agents. Small things found in testing show the need, for example the sheet that's hard to swipe ([#96](https://github.com/TommiContursi/Polku/issues/96)) and the map that doesn't always fit above it ([#88](https://github.com/TommiContursi/Polku/issues/88)).
+
+**1. The tools, looked at first** (checked 2026-10-15; nothing installed yet):
+- **Impeccable** ([impeccable.style](https://impeccable.style)): a free design skill for coding agents, with a public GitHub repository (its licence still to check). It has critique and audit commands, a detector with 59 checks for common AI-made design defaults that runs without a model, and checks that can run on pull requests. It installs as a Claude Code plugin or into Codex, with hooks that need approving.
+- **Emil Kowalski's skills** ([emilkowal.ski/skill](https://emilkowal.ski/skill)): 16 skills, mostly about motion (review and improve animations, animation performance), plus Apple's interface principles for the web, small fixes that make a web app feel native on a phone, and a skill that tries to break a UI with worst-case data. The page doesn't state a licence; check the repository.
+- Others to compare: a taste skill, web interface guidelines, awesome-design lists, image to code, and the Playwright CLI for checking motion.
+
+Which to install, and where, is the user's call: plugins with hooks run on every session. They're tools for reviewing, never shipped in Polku.
+
+**2. The review.** Run the chosen audits on the main flows at 390 × 844 and 1440 × 900, in light and dark:
+- opening Polku;
+- drawing a route;
+- a round trip;
+- Check and Go;
+- Settings and the layers;
+- out on the trail (23a's heading).
+
+Look at:
+- touch targets;
+- how the sheet moves;
+- motion;
+- type and spacing;
+- contrast;
+- what a phone user can reach with one thumb.
+
+**3. The outcome:**
+- a report in `docs/reviews/<date>-design/`, with screenshots;
+- each finding worth doing becomes an issue labelled `enhancement`, or goes into the phase it belongs to (21, 22b, 20);
+- ROADMAP updated.
+
+**Not in it:**
+- a redesign for its own sake;
+- a new framework, dependency or build step;
+- a generic look in place of Polku's own: the map first, plain words.
 
 ## Phase 16 — Strava & Garmin (research and plan only)
 
