@@ -4,6 +4,10 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Fixed: share links left out the places to avoid ([#92](https://github.com/TommiContursi/Polku/pull/92))
+- **A share link carries your places to avoid,** so whoever opens it sees the red circles and is routed around them too. Before, the link left them out, and their route could go right through a place you meant to avoid.
+- **Older links open as before.** A link whose places to avoid can't be read still opens, and says that the route may go through them.
+
 ### Fixed: Back to start ([#64](https://github.com/TommiContursi/Polku/pull/64))
 - **Back to start adds the return leg again**, from the waypoint list, the finish point's menu and the wide planner toolbar. Undo removes that leg and restores your route. The button stays off once you are back at the start.
 

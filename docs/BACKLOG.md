@@ -15,6 +15,8 @@ labelled `enhancement`), which holds its status. The review of 15 October 2026 o
 ## Known limits and quirks
 
 ### Small
+- **A shared place to avoid has no name** *(found while fixing #69, 2026-10-15)*: share links carry each circle's centre and size, so whoever opens one sees "Avoided place", not "Fallen tree" or the road works' title. Names would make links much longer.
+- **Opening a share link replaces your own route and places to avoid** *(found while fixing #69, 2026-10-15)*: the link's route and circles are saved over the ones on this device, with no undo. Your places to avoid otherwise outlast a cleared route, so they may be missed. Keeping them aside, or asking first, would need a decision.
 - **After an Overpass error (not a slow answer), a water leg isn't routed again on its own** *(found while fixing #67, 2026-10-15)*: the leg goes without OSM's rocks and Heads-up says so. The tile is asked for again after two minutes, by the next leg that needs it, and a good answer then doesn't route the legs that went without it. Moving a point does. A tile that comes in fine after failing could route those legs again.
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.

@@ -64,6 +64,12 @@ The tests answer from recorded files in `tools/fixtures/` (a route, an Overpass 
   - **The grid:** forecasts are fetched per point of a fixed, nested lattice and kept an hour, so small moves reuse them. Open-Meteo counts every location as a call.
   - **Along the route:** the route is timed without wind, the forecast is sampled at each point for the hour you'd be there, and the time is estimated again with the head- and tailwind.
   - **Radar "now"** is FMI's rain-rate GeoTIFF, decoded in the browser.
+- **Share links** (`shareUrl()` and `parseShared()` in `js/planner.js`): the route in the query string. A part that's empty or the default is left out, and links from before a part was added still open.
+  - `r`: the points (an encoded polyline, 5 decimals); `m`: each leg's mode (`a` routed, `l` straight, `w` water); `a`: the sport.
+  - `p`, `ps`: the route's style, and legs with their own. `s`: each leg's sport; `cw`: changeover minutes you set.
+  - `st`: stops and nights (in `js/stops.js`); `cg`: points where the gear goes along. `lr`: LIPAS legs as references.
+  - `av`: places to avoid, `lon_lat_metres` each, comma-separated (`av=24.94012_60.17543_40`), about 24 characters a circle. At most 200 are read; anything that doesn't read as a circle is left out, and a toast says the route may go through it.
+  - Names of points and of places to avoid stay on the device.
 - **Offline** (`js/offline.js`, `sw.js`): the tiles along a route corridor at zoom 5–14 go into Cache Storage, and the service worker serves them when the network is slow (4 s) or gone. OpenFreeMap's weekly tile version is stripped from the cache key. The routed line is saved with the area.
 - **Hover** (`js/hover.js`): one `queryRenderedFeatures` call when the pointer rests, never while it moves. It uses the click popup's own layer priority, so the preview always matches the click.
 
