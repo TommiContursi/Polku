@@ -521,6 +521,9 @@ button { font: inherit; color: inherit; }
 @keyframes busy { from { background-position: -50% 0; } to { background-position: 150% 0; } }
 .sheet-resize { display: none; }
 @media (min-width: 721px) { .sheet-min { display: inline-flex; } }
+/* the panel's place (left or bottom): wide screens, where there's a choice */
+.sheet-dock { display: none; }
+@media (min-width: 900px) { .sheet-dock { display: inline-flex; } }
 .sheet[data-layout="side"] { right: auto; top: 64px; bottom: auto; width: var(--pl-w, 392px); height: auto; max-height: calc(100% - 76px); transition: none; }
 .sheet[data-layout="side"] .sheet-handle { display: none; }
 .sheet[data-layout="side"] .sheet-head { padding-top: 12px; touch-action: auto; }
@@ -546,6 +549,8 @@ button { font: inherit; color: inherit; }
 .pl-tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .pl-tab { height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .pl-tab:hover { color: var(--text); }
+.pl-tabs-gap { flex: 1; }
+.pl-tabs .sheet-dock { align-self: center; color: var(--muted); }
 .pl-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .pl-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
 .pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--warn); color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }

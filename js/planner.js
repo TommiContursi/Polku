@@ -44,6 +44,8 @@ const LOOP_CALLS = 6; // per generation
 const LOOP_CAP = 5; // generations per 10 minutes
 // bottom sheet sizes: the summary, + the elevation profile, half the screen, nearly all of it
 const SHEET_STATES = ['peek', 'profile', 'half', 'full'];
+// where the planner sits on a wide screen: on the left, unless you moved it to the bottom
+export const dockOf = () => store.get('plannerDock', 'left');
 // The drawer's tabs (22a): drawing, what's on the way, setting off. Each section lives in one.
 const TABS = [
   { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: points, legs, round trips, how you go' },
@@ -2768,7 +2770,7 @@ export class Planner {
     this.els.fit = tool('fit', 'Show the whole route (F)', () => this.fitRoute());
     this.els.undo = tool('undo', 'Undo (Ctrl+Z)', () => this.undo());
     this.els.redo = tool('redo', 'Redo', () => this.redo());
-    this.els.more = tool('more', 'More: import a file, clear the route, the panel’s place', () => this.toggleMore());
+    this.els.more = tool('more', 'More: import, export, share, save offline, clear, the panel’s place', () => this.toggleMore());
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.sum = h('div', { class: 'sheet-sum', 'aria-live': 'polite' });
     this.els.min = tool('chevronUp', 'Minimise', () => {
@@ -2776,6 +2778,7 @@ export class Planner {
       if (this.layout() === 'side') this.setSheetState(st === 'min' ? 'open' : 'min');
       else this.setSheetState(st === 'peek' ? (this.lastOpen || 'half') : 'peek');
     }, 'sheet-min');
+    this.els.dockBtn = tool('panelBottom', 'Move to the bottom', () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), 'sheet-dock');
     this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
     // the two big choices, always in sight: let Polku make loops, and how the route is chosen
     this.els.quickLoop = h('button', { type: 'button', class: 'btn quick quick-loop', 'aria-pressed': 'false', 'aria-label': 'Round trip', title: 'Let Polku make loops of the length you choose', onclick: () => (this.loop.open ? this.closeLoop() : this.openLoop()), html: `${icon('roundtrip', 16)}<span>Round trip</span>` });
@@ -2843,7 +2846,9 @@ export class Planner {
     ...TABS.map((t) => (this.els.tabBtn[t.id] = h('button', {
       type: 'button', role: 'tab', class: 'pl-tab', id: `pl-tab-${t.id}`, 'aria-controls': `pl-pane-${t.id}`, title: t.title,
       onclick: () => this.setTab(t.id, { user: true }),
-    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-t' })))));
+    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-t' })))),
+    // the panel's place, at the end of the tabs' row (wide screens; dragging it comes in 22b)
+    h('span', { class: 'pl-tabs-gap', 'aria-hidden': 'true' }), this.els.dockBtn);
     const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
     // the start, before there's a route: what you can do (Round trip is one of the first choices)
     this.els.start = h('div', { class: 'pl-start' });
@@ -2935,8 +2940,6 @@ export class Planner {
       if (this.layout() === 'sheet' && (st === 'peek' || st === 'profile')) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'min') this.setSheetState('open');
     }
-    // the docked timeline and the like measure themselves when they come into sight
-    if (changed) requestAnimationFrame(() => dispatchEvent(new Event('resize')));
   }
 
   // The profile at its size, or smaller (yours, kept)
@@ -3038,19 +3041,29 @@ export class Planner {
 
 
   // ---------------------------------------------------------------- panel layout & states
-  // Wide screens choose: a side panel on the left (default) or a bottom panel
-  // (⋯ → Move to the bottom). Phones and narrow windows always get the bottom sheet.
-  layout() { return this.sideMQ.matches && store.get('plannerDock', 'bottom') === 'left' ? 'side' : 'sheet'; } // bottom unless you chose the side (the default for everyone new)
+  // Wide screens choose: a side panel on the left (the default since the tabs, 22a) or a bottom
+  // panel (the button beside the fold, ⋯, or Settings). Phones and narrow windows always get the sheet.
+  layout() { return this.sideMQ.matches && dockOf() === 'left' ? 'side' : 'sheet'; }
 
   setDock(where) {
     store.set('plannerDock', where);
+    this.renderDockBtn();
     this.setSheetState(store.get('sheetState', {})[this.layout()], { remember: false });
     this.app.onActiveChange(this.active); // padding vars, button states
     requestAnimationFrame(() => this.chart.draw());
   }
 
+  renderDockBtn() {
+    const side = this.layout() === 'side', b = this.els.dockBtn;
+    if (!b) return;
+    b.innerHTML = icon(side ? 'panelBottom' : 'panelLeft', 19);
+    b.title = side ? 'Move the planner to the bottom' : 'Move the planner to the left';
+    b.setAttribute('aria-label', b.title);
+  }
+
   setSheetState(st, { remember = true } = {}) {
     const lay = this.layout();
+    this.renderDockBtn();
     const ok = lay === 'side' ? ['open', 'min'] : SHEET_STATES;
     if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
     this.panel.dataset.layout = lay;
@@ -3210,6 +3223,9 @@ export class Planner {
       this.sideMQ.matches ? { icon: side ? 'panelBottom' : 'panelLeft', label: side ? 'Move to the bottom' : 'Move to the left', fn: () => this.setDock(side ? 'bottom' : 'left') } : null,
       this.sideMQ.matches ? 'hr' : null,
       { icon: 'upload', label: 'Import GPX / KML…', fn: () => $('#file-input').click() },
+      { icon: 'download', label: 'Export GPX', fn: () => this.exportGpx(), disabled: this.points.length < 2 },
+      { icon: 'share', label: 'Copy share link', fn: () => this.share(), disabled: this.points.length < 2 },
+      { icon: 'offline', label: 'Save offline…', fn: () => this.app.saveOffline(), disabled: this.points.length < 2 },
       'hr',
       { icon: 'trash', label: 'Clear route', fn: () => this.clear(), cls: 'danger', disabled: !this.points.length },
     ], { label: 'Route actions', onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
@@ -3574,6 +3590,9 @@ export class Planner {
       }
     }
     this.chart.placeholder = a.windError ? (typeof a.windError === 'string' ? a.windError : 'Wind forecast unavailable right now.') : '';
+    // the route's points on the profile where they are along it (a loop's finish at its end, not at its start)
+    const last = this.points.length - 1;
+    this.chart.setPoints(this.points.map((_, i) => ({ d: this.lengthTo(i), kind: i === 0 ? 'start' : i === last ? 'end' : 'via', n: i })));
     this.chart.setData(a, this.colorMode, paddle ? 'conditions' : 'elevation');
     this.setSection('profile', { title: paddle ? 'Conditions' : 'Profile', summary: this.profileSummary() });
     this.renderBreakdown();

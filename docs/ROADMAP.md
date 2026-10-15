@@ -45,7 +45,8 @@ Also approved:
 | — | Bug sweep: Heads-up the same in every sport (and yours to hide, with links to correct OpenStreetMap), the route menu inside the window, a notice for the saved copy, the planner in the route's own sport, and the backlog's small bugs | `bug-sweep` | [#57](https://github.com/TommiContursi/Polku/pull/57) | merged |
 | — | Fix: the map's credits stay folded on phones (MapLibre opened them when their text came in late) and fold when the window narrows | `credits-fold` | [#58](https://github.com/TommiContursi/Polku/pull/58) | merged |
 | — | Docs: the plan from here (the drawer in steps 22a–c, out on the trail 23a–d, what goes together), the drawer mock-up | `docs-plan` | [#59](https://github.com/TommiContursi/Polku/pull/59) | merged |
-| 22a | The drawer in three tabs (Route / Check / Go): the summary and a short profile always on top, the ⋯ menu's tools out in the open, route style and speeds together, the time first in Go, the leg you open lit up on the map | `drawer-tabs` | [#60](https://github.com/TommiContursi/Polku/pull/60) | PR open |
+| 22a | The drawer in three tabs (Route / Check / Go): the summary and a short profile always on top, the ⋯ menu's tools out in the open, route style and speeds together, the time first in Go, the leg you open lit up on the map | `drawer-tabs` | [#60](https://github.com/TommiContursi/Polku/pull/60) | merged |
+| — | After 22a: the side panel by default on desktop, its place one button away; export, share and offline back in ⋯; the route's points on the profile (the numbered marks were climbs) | `drawer-fixes` | [#61](https://github.com/TommiContursi/Polku/pull/61) | PR open |
 | 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
 | 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
@@ -1514,6 +1515,12 @@ New in 22a:
   - the start's choices, the first click's offer and the click after it;
   - the lit leg;
   - the arrow keys and the remembered tab.
+
+**After 22a (#61, 2026-10-15), from testing it:**
+- **The side panel is the default on desktop.** With the tabs it suits the map best: the map stays wide, and the tabs have the height. The bottom panel is one button away, at the end of the tabs' row, and in ⋯ and Settings as before. Dragging it comes in 22b.
+- **Export GPX, Copy share link and Save offline are back in ⋯,** as well as in Go: they're wanted from any tab.
+- **The route's points on the profile.** The numbered round marks on the profile were the climbs, and they looked like the waypoints, so on a round route they seemed to be in the wrong places. The profile now draws the route's own points as on the map: the start green, the vias numbered, the finish a dark square, with a faint line. The climbs became tags ("↑1") in their colour.
+- **Fixed on the way:** switching tabs no longer sends the page a resize (it closed a menu opened just then). A key sent to the page itself no longer trips the keyboard shortcuts.
 
 **22b: the panel on desktop moves.**
 - Drag its header to dock it left, right or at the bottom; drop zones show while dragging.

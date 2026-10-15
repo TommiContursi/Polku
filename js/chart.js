@@ -110,6 +110,13 @@ function niceStep(range, target) {
   return 10 * p;
 }
 
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
 export class ProfileChart {
   constructor(canvas, tip) {
     this.canvas = canvas;
@@ -200,6 +207,8 @@ export class ProfileChart {
     this.draw();
   }
   setMode(mode) { this.mode = mode; this.draw(); }
+  // the route's points along it (metres), drawn as on the map: the start, the numbered vias, the finish
+  setPoints(list) { this.points = list || []; }
   setHighlight(range) { this.highlight = range; this.draw(); }
 
   domain() { return this.view || [0, this.a ? this.a.total : 1]; }
@@ -423,18 +432,21 @@ export class ProfileChart {
         ctx.restore();
       }
     } else {
-      // climb markers
-      ctx.font = '600 10px system-ui, sans-serif';
+      // climb markers: a tag with an arrow ("↑1"), coloured by the climb, so they don't look like
+      // the route's numbered points (those are round, below)
+      ctx.font = '700 10px system-ui, sans-serif';
       a.climbs.forEach((cl, k) => {
         const x = X((cl.from + cl.to) / 2);
-        const y = Y(a.ele[cl.end]) - 6;
+        const y = Y(a.ele[cl.end]) - 9;
+        const label = `↑${k + 1}`, w = ctx.measureText(label).width + 8;
         ctx.fillStyle = OFFROAD_BIKE.has(a.activity) ? DIFF_COLORS[cl.cls] : gradeColor(cl.avg);
-        ctx.beginPath(); ctx.arc(x, y - 3, 7, 0, Math.PI * 2); ctx.fill();
+        roundRect(ctx, x - w / 2, y - 7, w, 14, 4); ctx.fill();
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'center';
-        ctx.fillText(`${k + 1}`, x, y);
+        ctx.fillText(label, x, y + 3.5);
       });
     }
+
 
     // a multisport route: each stretch's sport, as a band under the profile (whatever the colours above)
     this.drawSports(ctx, g, X);
@@ -459,6 +471,31 @@ export class ProfileChart {
       ctx.beginPath(); ctx.arc(x, Y(val[this.hoverIdx]), 4, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
+
+    // the route's points where they are along it: a faint line, and the point as on the map
+    // (the start green, the vias numbered, the finish a dark square) on the baseline
+    const pts = (this.points || []).filter((p) => p.d >= v0 - 1 && p.d <= v1 + 1);
+    if (pts.length) {
+      ctx.save();
+      ctx.font = '700 9.5px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      for (const p of pts) {
+        const x = Math.round(X(p.d)) + 0.5, y = g.y1 - 8;
+        ctx.strokeStyle = ink; ctx.globalAlpha = 0.35; ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, g.y0); ctx.lineTo(x, y - 7); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.lineWidth = 1.5;
+        if (p.kind === 'end') {
+          ctx.fillStyle = '#111827'; ctx.strokeStyle = '#fff';
+          roundRect(ctx, x - 6, y - 6, 12, 12, 3); ctx.fill(); ctx.stroke();
+        } else {
+          ctx.beginPath(); ctx.arc(x, y, p.kind === 'start' ? 6.5 : 7, 0, Math.PI * 2);
+          ctx.fillStyle = p.kind === 'start' ? '#16a34a' : '#fff'; ctx.fill();
+          ctx.strokeStyle = p.kind === 'start' ? '#fff' : '#111827'; ctx.stroke();
+          if (p.kind === 'via') { ctx.fillStyle = '#111827'; ctx.fillText(String(p.n), x, y + 3.5); }
+        }
+      }
+      ctx.restore();
+    }
   }
 
   // The sport strip: a band under the plot in each stretch's sport colour, its icon over it

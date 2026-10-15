@@ -4,6 +4,11 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### After the three tabs ([#61](https://github.com/TommiContursi/Polku/pull/61))
+- **The planner opens on the left on desktop.** A button at the end of its tabs moves it to the bottom and back (it's also in ⋯ and Settings).
+- **Export GPX, Copy share link and Save offline are in ⋯ again,** as well as in Go.
+- **The profile shows your route's points** where they are along it: the start, the numbered via points, the finish. On a round route the finish is at the end, where it belongs. The climbs are marked "↑1", "↑2"… so they're not mistaken for points.
+
 ### The route planner in three tabs ([#60](https://github.com/TommiContursi/Polku/pull/60))
 - **Route, Check and Go:**
   - **Route** is for drawing: the waypoints and legs, a round trip, and **How you go** (the route style and your speeds together);

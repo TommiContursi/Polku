@@ -880,7 +880,7 @@ DRAWER = """(async () => {
   // ⋯: what's left there
   p.els.more.click(); await wait(100);
   const items = [...document.querySelectorAll('.menu-pop .menu-item')].map(txt);
-  if (!items.some((t) => /Import/.test(t)) || !items.some((t) => /Clear route/.test(t))) errs.push(`⋯: ${items.join(', ')}`);
+  for (const want of ['Import', 'Export GPX', 'Copy share link', 'Save offline', 'Clear route']) if (!items.some((t) => t.includes(want))) errs.push(`⋯ lacks ${want}: ${items.join(', ')}`);
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   // Check: at a glance, the marks' switches (once in ⋯)
   p.setTab('check'); await wait(100);
@@ -899,6 +899,19 @@ DRAWER = """(async () => {
   if (!head || !/→/.test(txt(head))) errs.push(`Time doesn't open with the total: ${txt(head)}`);
   if ([...document.querySelectorAll('.take-along button')].map(txt).join('|') !== 'Export GPX|Copy share link|Save offline…') errs.push('Take it along');
   if (!document.querySelector('#pl-tab-go .pl-tab-t').textContent) errs.push('Go’s tab shows no time');
+  // the route's points on the profile where they are along it (a loop's finish at the end)
+  const cp = p.chart.points || [];
+  if (cp.length !== p.points.length || Math.abs(cp[cp.length - 1].d - p.analysis.total) > 2 || cp[0].kind !== 'start' || cp[cp.length - 1].kind !== 'end') errs.push(`points on the profile: ${JSON.stringify(cp.map((x) => [x.kind, Math.round(x.d)]))}`);
+  // the panel's place: a button beside the fold on a wide screen (the side panel by default)
+  if (innerWidth >= 900) {
+    if (!p.els.dockBtn.offsetWidth) errs.push('no button for the panel’s place');
+    else {
+      const lay = p.layout();
+      p.els.dockBtn.click(); await wait(200);
+      if (p.layout() === lay) errs.push('the panel’s place button did nothing');
+      p.els.dockBtn.click(); await wait(200);
+    }
+  }
   // the leg you point at lights up on the map and in the profile
   p.setTab('route'); await wait(100);
   const row = document.querySelector('.wpl-row[data-i="1"]');
