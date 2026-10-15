@@ -5,6 +5,11 @@ issues hold subsequent reproduction, decisions, ownership and resolution. The
 approved order of work remains in [ROADMAP](../../ROADMAP.md); recommendations
 below have not changed it. No application fixes were made for this assessment.
 
+Start with [the GitHub findings index (#63)](https://github.com/TommiContursi/Polku/issues/63)
+for current work and the focused issues linked below. Active fix PRs and later
+browser results belong in those issues, so this snapshot does not become a
+competing account of what is currently fixed.
+
 ## Scope and baseline
 
 Codex reviewed the implementation and project documentation, then revisited the
@@ -28,17 +33,17 @@ need for a framework, backend, build system or architectural rewrite.
 
 | Finding | Evidence and impact | Classification / confidence |
 |---|---|---|
-| Back to start | Real button throws `TypeError: this.loop is not a function`; constructor state shadows the method. Two route points remain two. | Confirmed defect / high |
-| Concurrent API pacing | Three mocked Valhalla calls dispatch within 2.6 ms; eight BRouter calls within 1.08 ms. Sequential Valhalla control waits 1165 ms. Slots are checked before they are reserved; retry dispatch also bypasses fresh accounting. | Confirmed defect / high for one-tab concurrency |
-| Incomplete water cache | An identical retry reuses the incomplete result even after the mocked hazard source recovers. Changing the key reaches complete data. The missing-source warning remains visible: the failure is recovery, not concealed completeness. | Confirmed defect / high |
-| Offline preview and recovery | A missing shell module reaches the network during preview. HTTP 503 wins over a good cached module; a rejected network request correctly uses that cache. A preview can therefore overstate offline readiness, and a server error can prevent startup. | Confirmed worker-logic defects / high; full lifecycle still to test |
-| Avoid areas in links | A local avoidance circle is absent from the share URL and decoded route. Local saved routes retain it. A recipient can recalculate through the excluded place. | Confirmed serialization defect / high |
-| Weather completion order | On the same analysis object, the newer departure completes first, then the old response replaces its wind result (`startSec` 2 → 1 while current departure is 2). | Confirmed ordering defect / high under controlled responses; frequency unmeasured |
-| Map state affects route settings | A shared Flowy MTB style becomes saved Balanced when only map sport changes to Paddle. The route remains MTB but its routing key changes. Safety also takes map activity and a map-center Finland gate; that broader effect needs integration tests. | Confirmed style defect / high; broader safety impact remains a risk |
-| Missing terrain | Rejected terrain requests yield NaN hiking time, infinite elevation bounds and zero ascent for a 124 m route. Failed DEM loads remain cached without a retry lifetime. | Confirmed calculation defect / high |
-| Magnification | Restrictive viewport attributes and prevented Ctrl-wheel are confirmed. A synthetic event does not establish what every real browser permits. | Accessibility concern / high for policy, platform impact unverified |
-| Smoke synchronization | Weather highlight and sheet geometry vary with frame progress; see below. | Reproduced test instability / strong headless-scheduling evidence; exact cause unresolved |
-| Trail rendering | Historical MapLibre vertex-buffer length exception was not reproduced in three serial trail runs. | Unresolved renderer/dependency risk; no proven Polku root cause |
+| [Back to start (#65)](https://github.com/TommiContursi/Polku/issues/65) | Real button throws `TypeError: this.loop is not a function`; constructor state shadows the method. Two route points remain two. | Confirmed defect / high |
+| [Concurrent API pacing (#66)](https://github.com/TommiContursi/Polku/issues/66) | Three mocked Valhalla calls dispatch within 2.6 ms; eight BRouter calls within 1.08 ms. Sequential Valhalla control waits 1165 ms. Slots are checked before they are reserved; retry dispatch also bypasses fresh accounting. | Confirmed defect / high for one-tab concurrency |
+| [Incomplete water cache (#67)](https://github.com/TommiContursi/Polku/issues/67) | An identical retry reuses the incomplete result even after the mocked hazard source recovers. Changing the key reaches complete data. The missing-source warning remains visible: the failure is recovery, not concealed completeness. | Confirmed defect / high |
+| [Offline preview and recovery (#68)](https://github.com/TommiContursi/Polku/issues/68) | A missing shell module reaches the network during preview. HTTP 503 wins over a good cached module; a rejected network request correctly uses that cache. A preview can therefore overstate offline readiness, and a server error can prevent startup. | Confirmed worker-logic defects / high; full lifecycle still to test |
+| [Avoid areas in links (#69)](https://github.com/TommiContursi/Polku/issues/69) | A local avoidance circle is absent from the share URL and decoded route. Local saved routes retain it. A recipient can recalculate through the excluded place. | Confirmed serialization defect / high |
+| [Weather completion order (#70)](https://github.com/TommiContursi/Polku/issues/70) | On the same analysis object, the newer departure completes first, then the old response replaces its wind result (`startSec` 2 → 1 while current departure is 2). | Confirmed ordering defect / high under controlled responses; frequency unmeasured |
+| [Map state affects route settings (#71)](https://github.com/TommiContursi/Polku/issues/71) | A shared Flowy MTB style becomes saved Balanced when only map sport changes to Paddle. The route remains MTB but its routing key changes. Safety also takes map activity and a map-center Finland gate; that broader effect needs integration tests. | Confirmed style defect / high; broader safety impact remains a risk |
+| [Missing terrain (#72)](https://github.com/TommiContursi/Polku/issues/72) | Rejected terrain requests yield NaN hiking time, infinite elevation bounds and zero ascent for a 124 m route. Failed DEM loads remain cached without a retry lifetime. | Confirmed calculation defect / high |
+| [Magnification (#73)](https://github.com/TommiContursi/Polku/issues/73) | Restrictive viewport attributes and prevented Ctrl-wheel are confirmed. A synthetic event does not establish what every real browser permits. | Accessibility concern / high for policy, platform impact unverified |
+| [Smoke synchronization (#74)](https://github.com/TommiContursi/Polku/issues/74) | Weather highlight and sheet geometry vary with frame progress; see below. | Reproduced test instability / strong headless-scheduling evidence; exact cause unresolved |
+| [Trail rendering (#75)](https://github.com/TommiContursi/Polku/issues/75) | Historical MapLibre vertex-buffer length exception was not reproduced in three serial trail runs. | Unresolved renderer/dependency risk; no proven Polku root cause |
 
 ## Why 20/20 and later failures can both be true
 
