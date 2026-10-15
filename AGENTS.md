@@ -95,8 +95,10 @@ user's OK.
   `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
 - **In the same PR:**
   - CHANGELOG, in plain words for people using Polku (not for docs or tooling);
-  - the PR's row in ROADMAP's status table, written as **merged**: `main` only
-    says so once it is;
+  - for a phase, or a docs PR that changes the plan, its row in ROADMAP's
+    status table, written as **merged**: `main` only says so once it is. A Fix
+    PR gets no row: the CHANGELOG and the closed issue record it, and rows from
+    PRs open at the same time would conflict;
   - BACKLOG: take out what the PR does, add the ideas and risks you found.
 - **Never push to `main` or merge** unless the user says so.
 

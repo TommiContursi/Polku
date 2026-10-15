@@ -1,6 +1,6 @@
 # Polku roadmap: planner, layout, sports, editing, smarter routes
 
-Status: **approved 2026-10-13.** Each phase below ships as one PR. Do them in order unless this file says otherwise. Each PR updates its own row in the status table. Small confirmed bugs are fixed in Fix PRs of their own between phases. How to work on it is in [AGENTS.md](../AGENTS.md).
+Status: **approved 2026-10-13.** Each phase below ships as one PR. Do them in order unless this file says otherwise. Each phase's PR updates its own row in the status table. Small confirmed bugs are fixed in Fix PRs of their own between phases; those get no row here (the CHANGELOG and their closed issues record them). How to work on it is in [AGENTS.md](../AGENTS.md).
 
 Also approved:
 - On desktop the Plan button moves into the search bar (phase 1).
