@@ -8,10 +8,14 @@
 // - One quiet notice per episode says which service is limited and until when
 //   (see onStatus); listeners hear again when it may be used again.
 // - Usage: calls per source this session and today, weighted the way the
-//   provider counts them (Open-Meteo: one per location), for the readout.
+//   provider counts them (Open-Meteo: one per location), for the readout. Every
+//   call that goes out counts, the retry after a dropped connection too; one
+//   that's cancelled or refused before it goes doesn't.
 // - Pacing: a service with limits it enforces by refusing (`pace: [[ms, max],
-//   …]`) gets at most `max` calls per `ms` from this device, for each window;
-//   calls beyond that wait for a slot instead of being refused. `refused`
+//   …]`) gets at most `max` calls per `ms` from this tab, for each window;
+//   calls beyond that wait for a slot instead of being refused, in the order
+//   they were made. A slot is taken in the same step as it's found free, so
+//   calls made together can't all see the same one. `refused`
 //   names the answer the service gives when it's over its limit anyway (other
 //   tabs, a shared connection): a back-off that grows if it happens again.
 
@@ -66,20 +70,25 @@ const emit = (source, s) => { for (const fn of listeners) fn(source, s); };
 export async function request(source, url, opts = {}) {
   const { weight = 1, backoff = true, maxWait = Infinity, ...init } = opts;
   if (backoff && sourceStatus(source)) { const s = status.get(source); throw new Limited(source, s.until, s.reason); }
-  if (SOURCES[source] && SOURCES[source].pace && waitFor(source) > maxWait) throw new Limited(source, Date.now() + waitFor(source), 'pacing');
-  await slot(source, init.signal);
-  const s = status.get(source);
-  if (backoff && s && s.until > Date.now()) throw new Limited(source, s.until, s.reason);
-  count(source, weight);
+  // runs the moment the call may go: a back-off that began while it waited stops it, else it's counted
+  let s;
+  const take = () => {
+    s = status.get(source);
+    if (backoff && s && s.until > Date.now()) throw new Limited(source, s.until, s.reason);
+    count(source, weight);
+  };
+  await slot(source, init.signal, maxWait, take);
   let res;
   try {
-    res = await fetch(url, init).catch((err) => {
-      // a dropped connection gets one more try before it counts as a failure
+    res = await fetch(url, init).catch(async (err) => {
+      // a dropped connection gets one more try before it counts as a failure: a call like any other, paced and counted
       if (err.name === 'AbortError' || !navigator.onLine) throw err;
-      return sleep(800, init.signal).then(() => fetch(url, init));
+      await sleep(800, init.signal);
+      await slot(source, init.signal, maxWait, take);
+      return fetch(url, init);
     });
   } catch (err) {
-    if (err.name !== 'AbortError' && backoff && navigator.onLine) fail(source, 'down');
+    if (err.name !== 'AbortError' && err.name !== 'Limited' && backoff && navigator.onLine) fail(source, 'down');
     throw err;
   }
   const ref = SOURCES[source] && SOURCES[source].refused;
@@ -119,32 +128,71 @@ const sleep = (ms, signal) => new Promise((ok, no) => {
 });
 const inWindow = (source, ms) => (recent[source] || []).filter(([t]) => Date.now() - t < ms);
 
+const queues = {}; // source -> calls waiting for a paced slot, first come first served
+const timers = {}; // source -> the timer that lets the first of them go
+
 /** Calls this source can take right now without waiting (Infinity if it isn't paced). */
 export function headroom(source) {
   const p = SOURCES[source] && SOURCES[source].pace;
-  return p ? Math.max(0, Math.min(...p.map(([ms, max]) => max - inWindow(source, ms).length))) : Infinity;
+  const waiting = (queues[source] || []).length;
+  return p ? Math.max(0, Math.min(...p.map(([ms, max]) => max - inWindow(source, ms).length)) - waiting) : Infinity;
 }
 
-// ms until a call fits every window
-function waitFor(source) {
-  let wait = 0;
-  for (const [ms, max] of SOURCES[source].pace) {
-    const sent = inWindow(source, ms);
-    if (sent.length >= max) wait = Math.max(wait, sent[sent.length - max][0] + ms - Date.now() + 50);
+// ms until a call fits every window, behind `ahead` calls already waiting for one
+function waitFor(source, ahead = 0) {
+  const now = Date.now(), sent = (recent[source] || []).map(([t]) => t);
+  let at = now;
+  for (let k = 0; k <= ahead; k++) {
+    for (let moved = true; moved;) {
+      moved = false;
+      for (const [ms, max] of SOURCES[source].pace) {
+        const first = sent[sent.length - max]; // must leave the window before another call fits
+        if (first !== undefined && at - first < ms) { at = first + ms + 50; moved = true; }
+      }
+    }
+    sent.push(at);
   }
-  return wait;
+  return at - now;
+}
+
+// Take the source's next slot: `take` runs (and counts the call) in the same
+// step as the check that the slot is free, so calls made together can't all see
+// the same one. Paced calls that must wait queue in the order they were made;
+// one that would wait more than maxWait is refused at once (Limited 'pacing').
+function slot(source, signal, maxWait, take) {
+  const q = (queues[source] ||= []);
+  if (!(SOURCES[source] && SOURCES[source].pace) || (!q.length && waitFor(source) <= 0)) return take();
+  const wait = waitFor(source, q.length);
+  if (wait > maxWait) throw new Limited(source, Date.now() + wait, 'pacing');
+  if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+  return new Promise((ok, no) => {
+    // a call that's cancelled while it waits leaves the queue, and its place to the next
+    const quit = () => { q.splice(q.indexOf(me), 1); no(new DOMException('Aborted', 'AbortError')); pump(source); };
+    const me = () => {
+      if (signal) signal.removeEventListener('abort', quit);
+      try { take(); ok(); } catch (e) { no(e); }
+    };
+    if (signal) signal.addEventListener('abort', quit, { once: true });
+    q.push(me);
+    pump(source);
+  });
 }
 
 let pacingSaid = 0;
-async function slot(source, signal) {
-  const p = SOURCES[source] && SOURCES[source].pace;
-  if (!p) return;
-  for (;;) {
+// let waiting calls go while their slots are free, then wait for the next one
+function pump(source) {
+  const q = queues[source];
+  clearTimeout(timers[source]);
+  while (q.length) {
     const wait = waitFor(source);
-    if (wait <= 0) return;
-    // say it once in a while, so a dashed line that waits isn't a mystery
-    if (wait > 1500 && Date.now() - pacingSaid > 120e3) { pacingSaid = Date.now(); emit(source, { pacing: true, until: Date.now() + wait }); }
-    await sleep(wait, signal);
+    if (wait > 0) {
+      // say it once in a while, so a dashed line that waits isn't a mystery
+      const last = Date.now() - pacingSaid > 120e3 ? waitFor(source, q.length - 1) : 0;
+      if (last > 1500) { pacingSaid = Date.now(); emit(source, { pacing: true, until: Date.now() + last }); }
+      timers[source] = setTimeout(() => pump(source), wait);
+      return;
+    }
+    q.shift()();
   }
 }
 

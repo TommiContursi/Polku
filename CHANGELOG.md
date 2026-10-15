@@ -4,6 +4,11 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Fixed: routing calls asked for together went out all at once ([#79](https://github.com/TommiContursi/Polku/pull/79))
+- **Routing calls wait their turn.** Calls asked for at the same moment, such as a round trip's loops or several legs at once, all went to brouter.de together, even past Polku's own limit of 5 calls in 10 seconds, and brouter.de answers that by blocking your connection for a while. Now they go out one after another within the limit, in the order they were asked for. Valhalla gets at most one call a second, as its terms ask.
+- **A route that would wait more than a few seconds for its turn** is routed by Valhalla instead, as when brouter.de pauses. A drag's live preview pauses while calls are waiting.
+- **Settings → Data sources counts every call that goes out,** including the second try after a dropped connection. That second try now waits for its turn too.
+
 ### After the three tabs ([#61](https://github.com/TommiContursi/Polku/pull/61))
 - **The planner opens on the left on desktop.** A button at the end of its tabs moves it to the bottom and back (it's also in ⋯ and Settings).
 - **Export GPX, Copy share link and Save offline are in ⋯ again,** as well as in Go.
