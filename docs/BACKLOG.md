@@ -13,6 +13,13 @@ Each item says when (and, where it matters, in which phase) it came up.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
 ### Bigger: later
+- **From the water onto land, and back** *(multisport, 2026-10-15; a proposal waiting for a decision)*:
+  - **Today:** in Paddle or Swim, a point on land makes the leg carry over the land to it, drawn dotted orange and timed as a carry. Only a leg that's mostly land offers "Hike instead". A swimmer or a paddler walking from the beach to a lean-to gets a carry instead of a walk.
+  - **The proposal:** where a water leg reaches the shore on its way to a point on land, the leg splits at the landing. It's water to the landing, a changeover there, then on foot to the point. The other way round, a put-in where a leg on foot reaches the water.
+    - A paddle leg leaves the boat at the landing (the gear check says so, and "taken along?" makes it a carry).
+    - A note says what happened, with Undo, and with "Carry the boat instead" for paddling.
+    - A portage between two lakes stays a carry.
+  - **On foot is Hike today.** A **Walk** sport could follow (paths and streets at a walking pace, no trail grading), which would suit city walks too.
 - **The planner keeps the map's sport underneath** *(bug sweep, 2026-10-15)*: what it shows now follows the route's main sport, but the planner still takes the map's sport as the default for new legs, the round-trip presets and the share link's `a=`. A planner with a sport of its own (set by the route, changed by Route it as) would be the clean model, about 40 places in `planner.js`.
 - **Trail details along every route cost Overpass calls** *(bug sweep, 2026-10-15)*: they now load for gravel and road routes too (up to 40 tiles a route, cached a week), not only with the map's layer on. Watch the Overpass counter in Settings; a long road route over 40 tiles skips them.
 - **Winter routing that prefers ploughed ways** *(15b, 2026-10-15)*: BRouter has no winter tags, and its no-go lines block hard or barely steer, so winter only warns (with Avoid) for now. Polku's own graph router for skiing (15c) could take the winter classes and prefer ploughed and quick-opening ways for bikes too.
@@ -24,6 +31,8 @@ Each item says when (and, where it matters, in which phase) it came up.
 - **Smoke (headless Chrome) can fail the phone sheet heights** when the machine is short of network connections or CPU: seen once, not reproduced. *(2026-10-14)*
 
 ### Fixed
+- ~~**The profile's numbered marks looked like the waypoints**~~ *(2026-10-15)*: fixed in #61. They were the climbs. The profile draws the route's own points now, and the climbs as "↑1" tags.
+- ~~**Export, share and offline only in Go**~~ *(2026-10-15)*: fixed in #61. They're in ⋯ too.
 - ~~**The map's credits open on phones**~~ *(2026-10-15)*: fixed in #58. MapLibre opens them by itself when their text comes in after the map has loaded; now they stay folded behind ⓘ on phone-wide windows until tapped, and fold when a window narrows.
 - ~~**Heads-up was different in each sport**~~ *(2026-10-15)*: bug sweep (#57). Fallen trees and other mapped obstacles came only with the map's Trail details layer on. Now every route on land gets them, and each row's ⋯ can hide its kind or point to OpenStreetMap to correct it.
 - ~~**The route menu ran off a short window**~~ *(2026-10-15)*: bug sweep (#57). Menus measure themselves and scroll inside when they must.

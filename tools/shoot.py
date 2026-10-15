@@ -367,6 +367,9 @@ SCENES = {
     'desk-sport-switch': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'phone-sport-switch': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'desk-weather-flash': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="(async () => { document.querySelector('#btn-time').click(); await new Promise((r) => setTimeout(r, 600)); return true; })()", settle=0.1),
+    # a round route: the points on the profile where they are along it (the finish at the end)
+    'desk-loop-points': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE,
+                             js="(async () => { const p = polku.planner; p.setMode('line'); p.addPoint(p.points[0].slice()); await new Promise((r) => setTimeout(r, 1500)); p.reveal('points'); await new Promise((r) => setTimeout(r, 500)); return true; })()"),
     'desk-start': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START),
     'phone-start': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=START),
     'desk-start-tip': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START_TIP, settle=0.6),

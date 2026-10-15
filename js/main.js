@@ -11,7 +11,7 @@ import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
 import { buildStyle } from './style.js';
 import { installIcons, iconUrl } from './icons.js';
-import { Planner, parseShared } from './planner.js';
+import { Planner, parseShared, dockOf } from './planner.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
@@ -873,8 +873,8 @@ function renderSettingsPanel() {
 
   if (planner.sideMQ && planner.sideMQ.matches) {
     p.append(section('Route planner',
-      seg([['bottom', 'Bottom panel'], ['left', 'Side panel (left)']], store.get('plannerDock', 'bottom'), (v) => { planner.setDock(v); renderSettingsPanel(); }),
-      h('p', { class: 'note' }, 'Open it with Plan or R. Its ⋯ menu has the same switch. While planning, the departure clock lives inside it.')));
+      seg([['left', 'Side panel (left)'], ['bottom', 'Bottom panel']], dockOf(), (v) => { planner.setDock(v); renderSettingsPanel(); }),
+      h('p', { class: 'note' }, 'Open it with Plan or R. The button beside its fold, and its ⋯ menu, have the same switch. While planning, the departure clock lives inside it.')));
   }
 
   p.append(section('Display',
@@ -1007,7 +1007,7 @@ window.addEventListener('drop', (e) => {
 
 // ------------------------------------------------------------------ keyboard
 window.addEventListener('keydown', (e) => {
-  if (e.target.matches('input, textarea')) return;
+  if (e.target.matches && e.target.matches('input, textarea')) return; // (a key sent to the document has no .matches)
   const mod = e.metaKey || e.ctrlKey;
   if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? planner.redo() : planner.undo(); }
   else if (e.key === '/') { e.preventDefault(); $('#search-input').focus(); }
