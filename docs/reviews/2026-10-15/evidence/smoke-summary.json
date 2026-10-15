@@ -1,0 +1,125 @@
+{
+  "total": 20,
+  "passed": 16,
+  "failed": 4,
+  "groups": [
+    {
+      "name": "layers (every sport)",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "trail details",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "planner header fits",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "LIPAS search & ride",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "water routing",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "multisport",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "clicks and taps on the route",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "what the route shows",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "stops and nights",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "round trips on the water",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "winter on the map",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "changing the sport with a route",
+      "status": "fail",
+      "details": [
+        "the Weather button: Departure & weather not highlighted"
+      ]
+    },
+    {
+      "name": "winter on the route",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "the bug sweep",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "the drawer in three tabs",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "1440x900 (side)",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "1440x900 bottom (sheet)",
+      "status": "fail",
+      "details": [
+        "profile size is 70 px tall (8% of the screen)",
+        "planning/half: #planner \u00d7 .maplibregl-ctrl-attrib[0] (24\u00d724 px)",
+        "planning/half: #planner \u00d7 .maplibregl-ctrl-scale[0] (98\u00d722 px)"
+      ]
+    },
+    {
+      "name": "1024x768 (side)",
+      "status": "pass",
+      "details": []
+    },
+    {
+      "name": "390x844 (sheet)",
+      "status": "fail",
+      "details": [
+        "profile size is 152 px tall (18% of the screen)",
+        "planning/half: .map-ctrls \u00d7 #planner (54\u00d7124 px)",
+        "planning/half: #planner \u00d7 .maplibregl-ctrl-attrib[0] (24\u00d724 px)",
+        "planning/half: #planner \u00d7 .maplibregl-ctrl-scale[0] (100\u00d722 px)",
+        "half is 280 px tall"
+      ]
+    },
+    {
+      "name": "360x740 (sheet)",
+      "status": "fail",
+      "details": [
+        "the profile size does not show the whole chart",
+        "planning/half: .map-ctrls \u00d7 #planner (54\u00d7124 px)",
+        "planning/half: #planner \u00d7 .maplibregl-ctrl-attrib[0] (24\u00d724 px)",
+        "planning/half: #planner \u00d7 .maplibregl-ctrl-scale[0] (100\u00d722 px)",
+        "half is 278 px tall"
+      ]
+    }
+  ]
+}

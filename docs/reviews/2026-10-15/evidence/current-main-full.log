@@ -1,0 +1,38 @@
+{"repo": "/workspace/Polku-agent-instructions", "commit": "85f73ca35f2ef05c916c38591f0e3ea884c5d490", "mode": "validated", "extra_flags": ["--no-sandbox", "--proxy-server=http://proxy:8080", "--proxy-bypass-list=localhost;127.0.0.1", "--disable-dev-shm-usage", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"], "profile": "/tmp/polku-audit/current-main", "groups": "all 20", "python": "3.12.14", "chromium": "Chromium 154.0.8037.57 built on Debian GNU/Linux 13 (trixie)"}
+tools/smoke.py:596: SyntaxWarning: invalid escape sequence '\('
+  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+ok   layers (every sport)
+ok   trail details
+ok   planner header fits
+ok   LIPAS search & ride
+ok   water routing
+ok   multisport
+ok   clicks and taps on the route
+ok   what the route shows
+ok   stops and nights
+ok   round trips on the water
+ok   winter on the map
+FAIL changing the sport with a route
+     - the Weather button: Departure & weather not highlighted
+ok   winter on the route
+ok   the bug sweep
+ok   the drawer in three tabs
+ok   1440x900 (side)
+FAIL 1440x900 bottom (sheet)
+     - profile size is 70 px tall (8% of the screen)
+     - planning/half: #planner × .maplibregl-ctrl-attrib[0] (24×24 px)
+     - planning/half: #planner × .maplibregl-ctrl-scale[0] (98×22 px)
+ok   1024x768 (side)
+FAIL 390x844 (sheet)
+     - profile size is 152 px tall (18% of the screen)
+     - planning/half: .map-ctrls × #planner (54×124 px)
+     - planning/half: #planner × .maplibregl-ctrl-attrib[0] (24×24 px)
+     - planning/half: #planner × .maplibregl-ctrl-scale[0] (100×22 px)
+     - half is 280 px tall
+FAIL 360x740 (sheet)
+     - the profile size does not show the whole chart
+     - planning/half: .map-ctrls × #planner (54×124 px)
+     - planning/half: #planner × .maplibregl-ctrl-attrib[0] (24×24 px)
+     - planning/half: #planner × .maplibregl-ctrl-scale[0] (100×22 px)
+     - half is 278 px tall
+{"elapsed_s": 785.11}

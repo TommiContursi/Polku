@@ -19,6 +19,7 @@
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
   python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
+  python3 tools/smoke.py pacing     # calls made together go out paced and counted (mocked services, a fake clock)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -30,7 +31,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cdp import Chrome  # noqa: E402
+from cdp import BASE, Chrome  # noqa: E402
 
 # (width, height, phone, planner docked at the bottom on desktop)
 VIEWPORTS = [(1440, 900, False, False), (1440, 900, False, True), (1024, 768, False, False), (390, 844, True, False), (360, 740, True, False)]
@@ -1482,6 +1483,153 @@ def layers(chrome):
     return not fails
 
 
+# Pacing (issue #66): calls made together through net.js's request() go out one
+# by one within each service's windows, in the order they were made, and every
+# call that goes out is counted, the retry after a dropped connection too. A
+# page with no app, so Date.now and the timers can be a fake clock; the services
+# are a mocked fetch, and each case gets a fresh net.js with nothing sent yet.
+PACING = """(async () => {
+  const errs = [], real = window.setTimeout.bind(window);
+  let now = Date.now(), seq = 0, sent = [], answer = null, n = 0;
+  const timers = new Map();
+  Date.now = () => now;
+  window.setTimeout = (fn, ms = 0, ...a) => { timers.set(++seq, { at: now + Math.max(0, +ms || 0), fn: () => fn(...a) }); return seq; };
+  window.clearTimeout = (id) => { timers.delete(id); };
+  const settle = async () => { for (let k = 0; k < 5; k++) await new Promise((ok) => real(ok, 0)); };
+  // move the clock on, running each timer that falls due on the way, in time order
+  const advance = async (ms) => {
+    const end = now + ms;
+    for (;;) {
+      await settle();
+      let id = null;
+      for (const [k, t] of timers) if (t.at <= end && (id === null || t.at < timers.get(id).at)) id = k;
+      if (id === null) break;
+      const t = timers.get(id);
+      timers.delete(id);
+      now = Math.max(now, t.at);
+      t.fn();
+    }
+    now = end;
+    await settle();
+  };
+  window.fetch = async (url) => {
+    sent.push({ url: String(url), at: Date.now() });
+    const a = answer && answer(String(url));
+    if (a instanceof Error) throw a;
+    return a || new Response('{}');
+  };
+  const fresh = () => {
+    localStorage.removeItem('polku.usage');
+    timers.clear();
+    sent = [];
+    answer = null;
+    return import(`${location.origin}/js/net.js?pacing=${++n}`);
+  };
+  const track = (p) => { const o = {}; p.then(() => { o.ok = true; }, (e) => { o.err = e; }); return o; };
+  const ids = (re) => sent.filter((s) => re.test(s.url)).map((s) => s.url.split('/').pop()).join();
+  const times = (re, t0) => sent.filter((s) => re.test(s.url)).map((s) => s.at - t0);
+  const session = (net, id) => net.usage().find((u) => u.id === id).session;
+  // the first of the service's windows that got more calls than it takes
+  const over = (net, id, at) => {
+    for (const [ms, max] of net.SOURCES[id].pace) {
+      for (const t of at) {
+        const k = at.filter((u) => u >= t && u < t + ms).length;
+        if (k > max) return `${k} calls within ${ms / 1000} s (it takes ${max})`;
+      }
+    }
+    return '';
+  };
+
+  { // three Valhalla calls made together: one a second, in order
+    const net = await fresh(), t0 = now;
+    const calls = [1, 2, 3].map((i) => track(net.request('valhalla', `https://mock.invalid/valhalla/${i}`)));
+    await advance(5000);
+    const at = times(/valhalla/, t0), o = over(net, 'valhalla', at);
+    if (o) errs.push(`Valhalla, three calls made together: ${o}; sent at ${at.join(', ')} ms`);
+    if (ids(/valhalla/) !== '1,2,3') errs.push(`Valhalla: sent in the order ${ids(/valhalla/)}, not 1,2,3`);
+    if (!calls.every((c) => c.ok)) errs.push('Valhalla: not every call was answered');
+    if (session(net, 'valhalla') !== 3) errs.push(`Valhalla: ${session(net, 'valhalla')} calls counted for 3 sent`);
+  }
+
+  { // fourteen BRouter calls made together: 5 in 10 s and 12 a minute, in order; others don't wait behind them
+    const net = await fresh(), t0 = now;
+    const calls = Array.from({ length: 14 }, (_, i) => track(net.request('brouter', `https://mock.invalid/brouter/${i + 1}`)));
+    if (net.headroom('brouter') !== 0) errs.push(`BRouter: headroom ${net.headroom('brouter')} with calls waiting, so a drag's live preview would still ask`);
+    const vh = track(net.request('valhalla', 'https://mock.invalid/valhalla/1'));
+    [1, 2, 3].forEach((i) => track(net.request('photon', `https://mock.invalid/photon/${i}`)));
+    await advance(0);
+    if (!vh.ok) errs.push('Valhalla waited behind BRouter’s calls');
+    if (ids(/photon/) !== '1,2,3') errs.push(`Photon (not paced): ${ids(/photon/) || 'nothing'} went out at once, not 1,2,3`);
+    await advance(70e3);
+    const at = times(/brouter/, t0), o = over(net, 'brouter', at);
+    if (o) errs.push(`BRouter, 14 calls made together: ${o}; sent at ${at.map((t) => (t / 1000).toFixed(2)).join(', ')} s`);
+    const order = Array.from({ length: 14 }, (_, i) => i + 1).join();
+    if (ids(/brouter/) !== order) errs.push(`BRouter: sent ${ids(/brouter/)}, not ${order}`);
+    if (!calls.every((c) => c.ok)) errs.push(`BRouter: ${calls.filter((c) => !c.ok).length} of 14 calls weren't answered`);
+    if (session(net, 'brouter') !== 14) errs.push(`BRouter: ${session(net, 'brouter')} calls counted for 14 sent`);
+  }
+
+  { // a waiting call that's cancelled leaves its place to the next; one that would wait past maxWait is refused at once
+    const net = await fresh(), t0 = now, ctrl = new AbortController();
+    track(net.request('valhalla', 'https://mock.invalid/valhalla/1'));
+    const b = track(net.request('valhalla', 'https://mock.invalid/valhalla/2', { signal: ctrl.signal }));
+    track(net.request('valhalla', 'https://mock.invalid/valhalla/3'));
+    const d = track(net.request('valhalla', 'https://mock.invalid/valhalla/4', { maxWait: 2000 }));
+    await advance(500);
+    ctrl.abort();
+    await advance(0);
+    if (!(b.err && b.err.name === 'AbortError')) errs.push(`a waiting call that was cancelled: ${b.err ? b.err.name : b.ok ? 'answered' : 'still waiting'}`);
+    if (!(d.err && d.err.name === 'Limited' && d.err.reason === 'pacing')) errs.push(`a call that would wait past its maxWait: ${d.err ? `${d.err.name} ${d.err.reason || ''}` : d.ok ? 'answered' : 'still waiting'}`);
+    await advance(5000);
+    const at = times(/valhalla/, t0);
+    if (ids(/valhalla/) !== '1,3') errs.push(`cancelled and too-late calls: sent ${ids(/valhalla/)}, not 1,3`);
+    else if (at[1] > 1200) errs.push(`the call behind a cancelled one went at ${at[1]} ms, not in its place`);
+    if (session(net, 'valhalla') !== sent.length) errs.push(`${session(net, 'valhalla')} calls counted for ${sent.length} sent`);
+  }
+
+  if (navigator.onLine) { // the retry after a dropped connection waits for a slot, and counts
+    const net = await fresh(), t0 = now;
+    let tries = 0;
+    answer = () => (tries++ ? null : new TypeError('Failed to fetch'));
+    const r = track(net.request('valhalla', 'https://mock.invalid/valhalla/1'));
+    await advance(5000);
+    const at = times(/valhalla/, t0);
+    if (at.length !== 2 || !r.ok) errs.push(`a dropped connection: ${at.length} tries, ${r.ok ? 'answered' : r.err ? r.err.message : 'still waiting'}`);
+    else if (over(net, 'valhalla', at)) errs.push(`the retry after a dropped connection went at ${at[1]} ms, inside Valhalla's second`);
+    if (session(net, 'valhalla') !== at.length) errs.push(`a dropped connection: ${session(net, 'valhalla')} calls counted for ${at.length} sent`);
+  }
+
+  { // a 429 with Retry-After while calls wait: they aren't sent; the service is left alone until then
+    const net = await fresh();
+    answer = (url) => (/\\/1$/.test(url) ? new Response('', { status: 429, headers: { 'Retry-After': '30' } }) : null);
+    const calls = [1, 2, 3].map((i) => track(net.request('valhalla', `https://mock.invalid/valhalla/${i}`)));
+    await advance(5000);
+    if (ids(/valhalla/) !== '1') errs.push(`after a 429, sent ${ids(/valhalla/)}, not just 1`);
+    if (!calls.every((c) => c.err && c.err.name === 'Limited' && c.err.reason === 'limit')) errs.push(`after a 429: ${calls.map((c) => (c.err ? `${c.err.name} ${c.err.reason || ''}` : c.ok ? 'answered' : 'waiting')).join(', ')}`);
+    const late = track(net.request('valhalla', 'https://mock.invalid/valhalla/4'));
+    await advance(0);
+    if (!(late.err && late.err.name === 'Limited')) errs.push('a call during the back-off was not refused');
+    await advance(30e3);
+    const again = track(net.request('valhalla', 'https://mock.invalid/valhalla/5'));
+    await advance(0);
+    if (!again.ok) errs.push('Valhalla was not asked again after its Retry-After');
+    if (session(net, 'valhalla') !== sent.length) errs.push(`after a 429: ${session(net, 'valhalla')} calls counted for ${sent.length} sent`);
+  }
+  localStorage.removeItem('polku.usage');
+  return errs;
+})()"""
+
+
+def pacing(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.goto(BASE + 'sw.js')  # this origin, without the app
+    fails = pg.js(PACING)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} calls made together go out paced" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -1563,6 +1711,8 @@ def main():
     chrome = Chrome()
     ok = True
     try:
+        if not only or 'pacing' in only:
+            ok = pacing(chrome) and ok
         if not only or 'layers' in only:
             ok = layers(chrome) and ok
         if not only or 'trails' in only:

@@ -1,4 +1,4 @@
-# Polku backlog: bugs, ideas, things to watch
+# Polku backlog: ideas, known limits, things to watch
 
 Everything noticed but not done yet, so nothing gets lost between phases. The
 ordered plan lives in [ROADMAP.md](ROADMAP.md); when an item here becomes
@@ -6,9 +6,15 @@ work, it moves there (or into a fix PR) and is ticked off here.
 
 Each item says when (and, where it matters, in which phase) it came up.
 
-## Bugs and quirks
+**Bugs aren't listed here.** Each one is a
+[GitHub issue](https://github.com/TommiContursi/Polku/issues), which holds its
+status. The review of 15 October 2026 opened #65–#75, listed in
+[#63](https://github.com/TommiContursi/Polku/issues/63) (the
+[review with its evidence](reviews/2026-10-15/README.md)).
 
-### Small: the next bug sweep
+## Known limits and quirks
+
+### Small
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
@@ -20,18 +26,14 @@ Each item says when (and, where it matters, in which phase) it came up.
     - A note says what happened, with Undo, and with "Carry the boat instead" for paddling.
     - A portage between two lakes stays a carry.
   - **On foot is Hike today.** A **Walk** sport could follow (paths and streets at a walking pace, no trail grading), which would suit city walks too.
-- **The planner keeps the map's sport underneath** *(bug sweep, 2026-10-15)*: what it shows now follows the route's main sport, but the planner still takes the map's sport as the default for new legs, the round-trip presets and the share link's `a=`. A planner with a sport of its own (set by the route, changed by Route it as) would be the clean model, about 40 places in `planner.js`.
+- **The planner keeps the map's sport underneath** *(bug sweep, 2026-10-15)*: what it shows now follows the route's main sport, but the planner still takes the map's sport as the default for new legs, the round-trip presets and the share link's `a=`. A planner with a sport of its own (set by the route, changed by Route it as) would be the clean model, about 40 places in `planner.js`. Shared-style loss is now reproduced; route/safety boundaries are tracked in [#71](https://github.com/TommiContursi/Polku/issues/71).
 - **Trail details along every route cost Overpass calls** *(bug sweep, 2026-10-15)*: they now load for gravel and road routes too (up to 40 tiles a route, cached a week), not only with the map's layer on. Watch the Overpass counter in Settings; a long road route over 40 tiles skips them.
 - **Winter routing that prefers ploughed ways** *(15b, 2026-10-15)*: BRouter has no winter tags, and its no-go lines block hard or barely steer, so winter only warns (with Avoid) for now. Polku's own graph router for skiing (15c) could take the winter classes and prefer ploughed and quick-opening ways for bikes too.
 - **The uphill band has one width.** Uphill grades come from the vector tiles, which have no width, so in Uphill mode the band doesn't follow the trail's width; the centre line does. Grading the trail-details ways instead would fix it. *(2026-10-14)*
 - **Trail-detail tiles are cached a week,** so a fallen tree cleared yesterday still shows. *(2026-10-14; see "Fresher trail data" below)*
 - **Share links re-route imported GPX tracks.** A fixed leg from a file travels as its two ends only, so whoever opens the link gets a routed leg, not your track. LIPAS legs now travel as references (12c); a GPX track would need its line in the link (too long for a URL) or a short-link service. *(2026-10-14)*
 
-### To watch
-- **Smoke (headless Chrome) can fail the phone sheet heights** when the machine is short of network connections or CPU: seen once, not reproduced. *(2026-10-14)*
-
-### Fixed
-- ~~**Back to start did nothing**~~ *(verified 2026-10-15; assessment in #62)*: fixed in #64. The round-trip state hid the action with the same name. The action now has its own name; regression checks click all three buttons and verify the return leg and Undo.
+### Fixed (until 15 October 2026; since then, fixed bugs are closed issues)
 - ~~**The profile's numbered marks looked like the waypoints**~~ *(2026-10-15)*: fixed in #61. They were the climbs. The profile draws the route's own points now, and the climbs as "↑1" tags.
 - ~~**Export, share and offline only in Go**~~ *(2026-10-15)*: fixed in #61. They're in ⋯ too.
 - ~~**The map's credits open on phones**~~ *(2026-10-15)*: fixed in #58. MapLibre opens them by itself when their text comes in after the map has loaded; now they stay folded behind ⓘ on phone-wide windows until tapped, and fold when a window narrows.
@@ -80,7 +82,7 @@ Each item says when (and, where it matters, in which phase) it came up.
 
 ### Trail details
 - **Fresher trail data:** show a tile's age in the key, a "Refresh trail details here" action, or a background refresh for tiles over a day old (Trailmap's makers have had trouble with data that only updates a few times a day). *(2026-10-14)*
-- **Uphill band at the trail's width:** see Bugs.
+- **Uphill band at the trail's width:** see Known limits.
 - **Static trail tiles** (PMTiles built weekly by a GitHub Action from Geofabrik's Finland extract) if Overpass stays flaky. *(phase 12 design)*
 
 ### Planner
@@ -121,7 +123,7 @@ Each item says when (and, where it matters, in which phase) it came up.
 
 - **FMI retires its old radar layers at the end of November 2026,** including `suomi_rr_eureffin`, which "now" reads. Polku falls back to reflectivity on its own, but that overstates drizzle. Find the replacement before then (ROADMAP, phase 12 "Later"). **Dated.**
 - **brouter.de pauses busy devices** ("retry later"; escalates to about 30 minutes). Never burst-test it: use the local BRouter (`tools/brouter-local.sh`). Valhalla on FOSSGIS stands in.
-- **Overpass mirrors are flaky:** 504s on every mirror at times while building phases 12 and 13. Trail details are best-effort and cached; route warnings from BRouter don't depend on it. The water router waits 2.5 s for OSM's rocks, then routes without them and re-routes when they arrive.
+- **Overpass mirrors are flaky:** 504s on every mirror at times while building phases 12 and 13. Trail details are best-effort and cached; route warnings from BRouter don't depend on it. The water router waits 2.5 s for OSM's rocks, then routes without them and is intended to re-route when they arrive. The outer leg cache currently blocks identical-leg recovery: [#67](https://github.com/TommiContursi/Polku/issues/67).
 - **Traficom's licence:** its depth layers are shown "not for navigation" and never used for routing. If Traficom changes the licence or asks, the layers can be dropped from Paddle's defaults. **Watch.**
 - **Free tiers if Polku gets popular:**
   - Open-Meteo: 10 000 calls a day per IP, non-commercial;

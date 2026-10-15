@@ -4,6 +4,13 @@ Polku is a static site with no build step and no backend: `index.html`, plain ES
 
 The plan for upcoming work is in [ROADMAP.md](ROADMAP.md); bugs, ideas and things to watch are in [BACKLOG.md](BACKLOG.md); what's shipped is in the [changelog](../CHANGELOG.md).
 
+How to work on it (what to work on, testing, pull requests, bugs and findings, writing) is in [AGENTS.md](../AGENTS.md), for people and coding agents alike.
+
+## Bugs and reviews
+
+- Every bug is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status. BACKLOG keeps ideas, known limits and things to watch; ROADMAP plans the phases.
+- `docs/reviews/` keeps dated reviews of the code with the evidence they were based on. They aren't updated afterwards: what has happened since is in the issues. The first is the [review of 15 October 2026](reviews/2026-10-15/README.md), listed in [#63](https://github.com/TommiContursi/Polku/issues/63).
+
 ## Running it
 
 ```bash
@@ -110,8 +117,4 @@ docs/               ROADMAP, BACKLOG, this file, screenshots
 
 ## Working on it
 
-- One phase per pull request, from a branch. Before/after screenshots at 1440 and 390 px go on the `pr-screenshots` branch.
-- `tools/smoke.py` must pass.
-- Update `docs/ROADMAP.md` and `CHANGELOG.md` (in plain words, for people using Polku), and note bugs and ideas in `docs/BACKLOG.md`.
-- **Only free public services, and every request goes through `js/net.js`.** It paces them, backs off, and counts calls for Settings → Data sources.
-- Share links must keep working.
+The rules are in [AGENTS.md](../AGENTS.md). In short: one phase or one fix per pull request, `tools/smoke.py` passes, CHANGELOG, ROADMAP and BACKLOG updated in the same PR, every request through `js/net.js`, share links keep working, and only the user merges.
