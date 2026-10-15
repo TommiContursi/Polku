@@ -16,7 +16,7 @@
 
 import { OFM_TILEJSON } from './config.js';
 import { dist } from './geo.js';
-import { waterInputs, waveHeight, COMFORT_WAVE } from './waterdata.js';
+import { waterInputs, lateAnswers, waveHeight, COMFORT_WAVE } from './waterdata.js';
 
 const MAX_PX = 1400;
 const MIN_RES_M = 3; // never rasterise finer than this (ground metres per pixel)
@@ -568,18 +568,28 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
   const tWind = Math.round(performance.now() - t0);
   const key = JSON.stringify([from, to, allowPortage, shore, carry, fairways, hazards, wind, craft, windKey, nogos.map((n) => [n.ll, n.r])]);
   if (memo.has(key)) return memo.get(key);
-  let best = await attempt(from, to, 0.35, allowPortage, style, inputsOf);
-  best.times.windKey = tWind;
-  best.times.tries = 1;
-  const total = best.coords.length > 1 ? best.coords.reduce((s, c, i, a) => (i ? s + dist(a[i - 1], c) : 0), 0) : 0;
-  // A large carry often means the real water route leaves the search window
-  // (around a long peninsula). Look wider once before accepting it.
-  if (best.portageM > Math.max(150, total * 0.12)) {
-    try {
-      const wide = await attempt(from, to, 1.1, allowPortage, style, inputsOf);
-      if (wide.portageM < best.portageM * 0.7) { wide.times.tries = 2; best = wide; } else best.times.tries = 2;
-    } catch { /* keep first result */ }
+  const route = async () => {
+    let best = await attempt(from, to, 0.35, allowPortage, style, inputsOf);
+    best.times.tries = 1;
+    const total = best.coords.length > 1 ? best.coords.reduce((s, c, i, a) => (i ? s + dist(a[i - 1], c) : 0), 0) : 0;
+    // A large carry often means the real water route leaves the search window
+    // (around a long peninsula). Look wider once before accepting it.
+    if (best.portageM > Math.max(150, total * 0.12)) {
+      try {
+        const wide = await attempt(from, to, 1.1, allowPortage, style, inputsOf);
+        if (wide.portageM < best.portageM * 0.7) { wide.times.tries = 2; best = wide; } else best.times.tries = 2;
+      } catch { /* keep first result */ }
+    }
+    return best;
+  };
+  const seen = lateAnswers();
+  let best = await route();
+  // A source it went without answered while it was being routed (the planner
+  // routes again only the legs done by then): once more, with the answer.
+  if (best.missing.length && lateAnswers() !== seen) {
+    try { best = await route(); best.times.again = 1; } catch { /* keep the first */ }
   }
+  best.times.windKey = tWind;
   const note = best.portageM > 30 ? `Includes ${Math.round(best.portageM)} m of carrying` : '';
   const out = {
     coords: best.coords, tags: best.tags, portage: best.portage, note,

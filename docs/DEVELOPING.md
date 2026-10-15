@@ -53,6 +53,7 @@ The tests answer from recorded files in `tools/fixtures/` (a route, an Overpass 
     - places you avoid.
   - **Wind:** each water cell's open-water fetch upwind gives a wave height (JONSWAP), and rough water costs more for the craft.
   - **The path:** A* runs on the grid, and the cell path is string-pulled into straight lines that may not cost more than A*'s way. Land is passable at a high cost, which gives carries.
+  - **Slow sources:** each source gets 2.5 s; then the leg is routed without it, Heads-up says so, and neither `router.js` nor `water.js` keeps that leg. When the answer comes (`onWaterData`), the planner routes those legs again, and a leg still being routed then is routed once more in `water.js`.
   - **No depths.** Traficom's depth data isn't used: its licence excludes route planning. See ROADMAP, phase 13.
 - **LIPAS routes** (`js/lipas.js`, `js/search.js`):
   - **Precision:** geometry comes in EPSG:3067 at full precision and is converted in `js/geo.js`, because LIPAS's EPSG:4326 output is rounded to about 10 m.
