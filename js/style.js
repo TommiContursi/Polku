@@ -90,6 +90,7 @@ export function buildStyle(s, ctx) {
     routeMarks: { type: 'geojson', data: ctx.data.routeMarks || EMPTY }, // distance (and time) marks along the route
     routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
+    routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
     routeWind: { type: 'geojson', data: ctx.data.routeWind || EMPTY },
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
@@ -463,6 +464,8 @@ export function buildStyle(s, ctx) {
 
   // a point the route couldn't reach: a thin dashed line to it (planner.js drawRoute)
   add({ id: 'route-gap', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'gap'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#64748b', 'line-width': zi(8, 1, 16, 2), 'line-dasharray': [1, 2] } });
+  // the leg lit from the waypoint list: a soft glow under the line
+  add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#e11d48', 'line-width': zi(8, 16, 16, 30), 'line-opacity': 0.4, 'line-blur': zi(8, 4, 16, 9) } });
   add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
   add({
     id: 'route-line', type: 'line', source: 'route', filter: ['all', ['!=', ['get', 'kind'], 'portage'], ['!=', ['get', 'kind'], 'gap']],

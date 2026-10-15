@@ -16,6 +16,7 @@
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
   python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
+  python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
@@ -795,6 +796,145 @@ def winter_route(chrome):
     return not fails
 
 
+# The drawer in three tabs (22a). Nothing the drawer had may go missing: the header's controls
+# as they were, every section in its tab (and a jump to it opens that tab), the profile under the
+# header at the sheet's sizes, the route's tools out of ⋯, the speeds beside the style, the time
+# first in Go, the start's choices and the first click's loop offer, the leg lit from the list.
+DRAWER = """(async () => {
+  const p = polku.planner, m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const txt = (el) => (el ? el.textContent.replace(/\\s+/g, ' ').trim() : '');
+  p.setActive(true);
+  p.clear();
+  p.generateLoops = async () => { p.loopsAsked = (p.loopsAsked || 0) + 1; }; // no routing calls here
+  // the start: four ways to begin, Round trip among them
+  p.setTab('route');
+  await wait(200);
+  const choices = [...document.querySelectorAll('.pl-start .pl-choice b')].map(txt);
+  if (choices.join('|') !== 'Draw it|Round trip|Ride a marked route|Import a GPX or KML') errs.push(`start choices: ${choices.join(' | ') || 'none'}`);
+  if (document.querySelector('.pl-empty').hidden) errs.push('Check says nothing before there is a route');
+  // the first click: the start goes down and a loop from there is offered; the next click adds a point
+  p.setMode('line');
+  const c = m.getCenter(), q = m.project(c);
+  m.fire('click', { point: q, lngLat: c, originalEvent: new MouseEvent('click') });
+  await wait(300);
+  const tip = document.querySelector('.start-tip');
+  if (!tip || !/make a loop from here/.test(txt(tip))) errs.push('no loop offered at the first click');
+  if (/\bnull\b|undefined/.test(p.panel.textContent)) errs.push('“null” written in the drawer with one point');
+  const q2 = { x: q.x + 120, y: q.y - 60 }, ll2 = m.unproject([q2.x, q2.y]);
+  m.fire('mousedown', { point: q2, lngLat: ll2, originalEvent: new MouseEvent('mousedown', { button: 0 }) });
+  m.fire('click', { point: q2, lngLat: ll2, originalEvent: new MouseEvent('click') });
+  await wait(300);
+  if (p.points.length !== 2) errs.push(`the click after the start added ${p.points.length - 1} points`);
+  if (document.querySelector('.start-tip')) errs.push('the start’s offer stayed open after the next click');
+  if (!document.querySelector('.pl-start').hidden) errs.push('the start choices stay with a route');
+  // a loop from the start's offer: the round trip opens at that length
+  p.clear(); p.addPoint([c.lng, c.lat]); p.startTip([c.lng, c.lat]);
+  await wait(200);
+  const chip = document.querySelector('.start-tip .chip');
+  const km = chip ? parseInt(txt(chip), 10) : 0;
+  if (chip) chip.click();
+  await wait(300);
+  if (!p.loop.open || p.loop.km !== km || !p.loopsAsked) errs.push(`the start’s ${km} km loop: open ${p.loop.open}, ${p.loop.km} km, asked ${p.loopsAsked || 0}`);
+  p.closeLoop();
+  // a route of three straight legs
+  p.clear();
+  for (const d of [[0, 0], [0.01, 0.004], [0.022, 0.001], [0.03, 0.008]]) p.addPoint([c.lng + d[0], c.lat + d[1]]);
+  for (let k = 0; k < 30 && !p.analysis; k++) await wait(200);
+  if (!p.analysis) return errs.concat('no route');
+  // the header as it was
+  for (const [k, what] of [['quickColor', 'the route’s colours'], ['quickSport', 'the sport'], ['quickLoop', 'Round trip'], ['quickStyle', 'the style'], ['fit', 'show all'], ['undo', 'undo'], ['redo', 'redo'], ['more', '⋯']]) {
+    if (!p.els[k] || !p.els.head.contains(p.els[k])) errs.push(`header lost ${what}`);
+  }
+  if (p.els.head.querySelectorAll('.seg.modes button').length !== 3) errs.push('header lost the routing modes');
+  // every section in its tab, and a jump to it opens that tab
+  const where = { points: 'route', style: 'route', loop: 'route', warnings: 'check', climbs: 'check', colours: 'check', onmap: 'check', speed: 'go', depart: 'go', take: 'go' };
+  for (const [id, tab] of Object.entries(where)) {
+    const el = document.querySelector(`[data-sec=${id}]`);
+    if (!el || el.closest('.pl-pane')?.dataset.tab !== tab) { errs.push(`${id} is not in ${tab}`); continue; }
+    if (id === 'loop') continue;
+    p.setTab(tab === 'go' ? 'route' : 'go');
+    p.reveal(id);
+    await wait(80);
+    if (p.tab !== tab || el.closest('.pl-pane').hidden) errs.push(`reveal(${id}) didn’t open ${tab}`);
+  }
+  // the profile: under the header, out of the tabs; at the profile size, not at peek
+  const cv = document.querySelector('#profile-canvas');
+  if (!cv || !cv.closest('.pl-profile') || cv.closest('.pl-pane')) errs.push('the profile isn’t under the header');
+  if (p.layout() === 'sheet') {
+    p.setSheetState('peek', { remember: false }); await wait(400);
+    if (cv.offsetHeight) errs.push('the profile shows at peek');
+    p.setSheetState('profile', { remember: false }); await wait(400);
+    if (cv.offsetHeight < 100) errs.push(`the profile is ${cv.offsetHeight} px at the profile size`);
+    p.setSheetState('half', { remember: false }); await wait(400);
+  }
+  const h0 = cv.offsetHeight;
+  p.setProfileCompact(!p.profCompact); await wait(200);
+  if (p.layout() === 'side' && cv.offsetHeight === h0) errs.push('the profile’s size button changed nothing');
+  p.setProfileCompact(!p.profCompact); await wait(100);
+  // Route: the tools out of ⋯, How you go with the style and the speeds
+  p.setTab('route'); await wait(100);
+  const foot = [...p.els.pointsFoot.querySelectorAll('button')].map(txt);
+  for (const b of ['Round trip', 'Reverse', 'Back to start', 'Import', 'All leg settings']) if (!foot.includes(b)) errs.push(`Route lacks ${b}: ${foot.join(', ')}`);
+  const how = document.querySelector('[data-sec=style]');
+  if (!how.querySelector('.style-presets') || !how.querySelector('.speed-wrap .speed-box').children.length) errs.push('How you go lacks the style or the speeds');
+  // ⋯: what's left there
+  p.els.more.click(); await wait(100);
+  const items = [...document.querySelectorAll('.menu-pop .menu-item')].map(txt);
+  if (!items.some((t) => /Import/.test(t)) || !items.some((t) => /Clear route/.test(t))) errs.push(`⋯: ${items.join(', ')}`);
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  // Check: at a glance, the marks' switches (once in ⋯)
+  p.setTab('check'); await wait(100);
+  if (p.els.stats.hidden || !p.els.stats.children.length) errs.push('Check lacks the stats');
+  const marks = [...document.querySelectorAll('.onmap input')];
+  if (marks.length !== 2) errs.push(`On the map has ${marks.length} switches`);
+  else {
+    const was = p.marks.km;
+    marks[0].click(); await wait(100);
+    if (p.marks.km === was) errs.push('Distance marks switch did nothing');
+    p.setMarks({ km: was });
+  }
+  // Go: the time first, and taking it along
+  p.setTab('go'); await wait(100);
+  const head = document.querySelector('.time-head');
+  if (!head || !/→/.test(txt(head))) errs.push(`Time doesn't open with the total: ${txt(head)}`);
+  if ([...document.querySelectorAll('.take-along button')].map(txt).join('|') !== 'Export GPX|Copy share link|Save offline…') errs.push('Take it along');
+  if (!document.querySelector('#pl-tab-go .pl-tab-t').textContent) errs.push('Go’s tab shows no time');
+  // the leg you point at lights up on the map and in the profile
+  p.setTab('route'); await wait(100);
+  const row = document.querySelector('.wpl-row[data-i="1"]');
+  row.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
+  await wait(150);
+  const lit = m.getSource('routeLit').serialize().data;
+  if (!(lit.features && lit.features.length === 1)) errs.push('pointing at a waypoint lit nothing on the map');
+  const hl = p.chart.highlight;
+  if (!hl || Math.abs(hl[0] - p.lengthTo(1)) > 1 || Math.abs(hl[1] - p.lengthTo(2)) > 1) errs.push(`the profile lit ${JSON.stringify(hl)}`);
+  row.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+  await wait(150);
+  if ((m.getSource('routeLit').serialize().data.features || []).length) errs.push('the leg stayed lit');
+  if (/\bnull\b|undefined/.test(p.panel.textContent)) errs.push('“null” written in the drawer');
+  // the tab is remembered, and the arrow keys move along the tabs
+  p.setTab('route');
+  p.els.tabs.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  if (p.tab !== 'check' || JSON.parse(localStorage.getItem('polku:plannerTab')) !== 'check') errs.push('arrow keys / remembering the tab');
+  p.setTab('route');
+  p.clear();
+  return errs;
+})()"""
+
+
+def drawer(chrome):
+    fails = []
+    for w, h_, phone, dock in [(1440, 900, False, 'left'), (390, 844, True, 'bottom')]:
+        pg = chrome.page(w, h_, phone)
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': json.dumps(dock)}, '#13/61.50/23.78')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        fails += [f'{w}: {e}' for e in pg.js(DRAWER, timeout=60000)]
+        fails += [f'{w} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the drawer in three tabs" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The bug sweep after 15b. On the recorded Tykkikallio route with the map's Trail details off:
 # the trail details along the route still come in (Heads-up was the same only with the layer
 # on, so a gravel ride missed the fallen trees); a heads-up row's ⋯ hides its kind (listed at
@@ -858,7 +998,8 @@ SWEEP = """(async () => {
   await wait(600);
   if (p.isMulti()) errs.push('an MTB route counts as multisport with the map on Paddle');
   const sum = speedSummary('mtb', p.craft);
-  if (!p.sec.speed.sum.textContent.startsWith(sum.name)) errs.push(`Time & speed: ${p.sec.speed.sum.textContent} (MTB: ${sum.name} · ${sum.txt})`);
+  // the speeds (Route › How you go, and Check's glance) are MTB's, not the paddler's
+  if (!p.els.stats.textContent.includes(sum.name) || /Sea kayak|Canoe|SUP/.test(p.els.speedBox.textContent)) errs.push(`speeds: ${p.els.stats.textContent.slice(0, 80)} / ${p.els.speedBox.textContent.slice(0, 80)} (MTB: ${sum.name})`);
   if (p.panel.classList.contains('is-paddle')) errs.push('the planner looks like paddling for an MTB route');
   if (!p.modeApplies('grade')) errs.push('the gradient colours went with the map’s sport');
   polku.set({ activity: 'mtb' });
@@ -1375,6 +1516,8 @@ def main():
             ok = winter_route(chrome) and ok
         if not only or 'sweep' in only:
             ok = sweep(chrome) and ok
+        if not only or 'drawer' in only:
+            ok = drawer(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

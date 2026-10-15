@@ -218,6 +218,17 @@ CREDITS_REOPEN = ("(async () => { const a = document.querySelector('.maplibregl-
                   " polku.map.fire('resize'); await new Promise((r) => setTimeout(r, 400)); return true; })()")
 OPEN_CREDITS = "(async () => { document.querySelector('.maplibregl-ctrl-attrib-button').click(); await new Promise((r) => setTimeout(r, 400)); return true; })()"
 
+# 22a: the drawer in three tabs, in the side panel: the start (no route), the first click's loop
+# offer, the leg you point at, and each tab (older code shows its single list at the same spot)
+SIDE = {'polku:plannerDock': '"left"'}
+START = ("(async () => { const p = polku.planner; p.setActive(true); p.clear(); if (p.setTab) p.setTab('route');"
+         " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); await new Promise((r) => setTimeout(r, 600)); return true; })()")
+START_TIP = START.replace("return true; })()", "const m = polku.map, c = m.getCenter(); m.fire('click', { point: m.project(c), lngLat: c, originalEvent: new MouseEvent('click') });"
+                          " await new Promise((r) => setTimeout(r, 700)); return true; })()")
+LEG_LIT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); if (p.setTab) p.setTab('route'); p.reveal('points'); await wait(400);"
+           " const r = document.querySelector('.wpl-row[data-i=\"0\"]'); if (r) r.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(400); return true; })()")
+TAB = lambda sec: f"(async () => {{ polku.planner.reveal({json.dumps(sec)}); await new Promise((r) => setTimeout(r, 600)); return true; }})()"
+
 SCENES = {
     'desk-closed': dict(DESK, timeline=True),
     'desk-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json'),
@@ -356,6 +367,13 @@ SCENES = {
     'desk-sport-switch': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'phone-sport-switch': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'desk-weather-flash': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="(async () => { document.querySelector('#btn-time').click(); await new Promise((r) => setTimeout(r, 600)); return true; })()", settle=0.1),
+    'desk-start': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START),
+    'phone-start': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=START),
+    'desk-start-tip': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START_TIP, settle=0.6),
+    'desk-leg-lit': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=LEG_LIT),
+    'desk-tab-check': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('warnings')),
+    'desk-tab-go': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('speed')),
+    'phone-tab-check': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=TAB('warnings')),
     'desk-sweep-headsup': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),
     'desk-sweep-hidden': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_HIDDEN),
     'phone-sweep-headsup': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='full', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),

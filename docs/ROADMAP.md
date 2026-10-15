@@ -43,9 +43,9 @@ Also approved:
 | — | Docs: plans and ideas written as plans (no chat quotes), the backlog sorted by size, this order | `docs-tidy` | [#55](https://github.com/TommiContursi/Polku/pull/55) | merged |
 | 15b | Winter on the route: time in snow, winter Heads-up (snow, snowfall, slippery, the cold, ways closed in winter, beside ski tracks, unploughed), lit stretches in the dark, the ice season on the water | `winter-route` | [#56](https://github.com/TommiContursi/Polku/pull/56) | merged |
 | — | Bug sweep: Heads-up the same in every sport (and yours to hide, with links to correct OpenStreetMap), the route menu inside the window, a notice for the saved copy, the planner in the route's own sport, and the backlog's small bugs | `bug-sweep` | [#57](https://github.com/TommiContursi/Polku/pull/57) | merged |
-| — | Fix: the map's credits stay folded on phones (MapLibre opened them when their text came in late) and fold when the window narrows | `credits-fold` | [#58](https://github.com/TommiContursi/Polku/pull/58) | PR open |
-| — | Docs: the plan from here (the drawer in steps 22a–c, out on the trail 23a–d, what goes together), the drawer mock-up | `docs-plan` | [#59](https://github.com/TommiContursi/Polku/pull/59) | PR open |
-| 22a | The drawer in three tabs (Route / Check / Go): the summary and a short profile always on top, the ⋯ menu's tools out in the open, route style and speeds together, the time first in Go, the leg you open lit up on the map | `drawer-tabs` | — | next |
+| — | Fix: the map's credits stay folded on phones (MapLibre opened them when their text came in late) and fold when the window narrows | `credits-fold` | [#58](https://github.com/TommiContursi/Polku/pull/58) | merged |
+| — | Docs: the plan from here (the drawer in steps 22a–c, out on the trail 23a–d, what goes together), the drawer mock-up | `docs-plan` | [#59](https://github.com/TommiContursi/Polku/pull/59) | merged |
+| 22a | The drawer in three tabs (Route / Check / Go): the summary and a short profile always on top, the ⋯ menu's tools out in the open, route style and speeds together, the time first in Go, the leg you open lit up on the map | `drawer-tabs` | [#60](https://github.com/TommiContursi/Polku/pull/60) | PR open |
 | 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
 | 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
@@ -1474,6 +1474,46 @@ Testing 15b showed the planner (the drawer) has outgrown its layout:
   - the leg highlight on the map;
   - every section reachable;
   - before and after shots of each tab.
+
+**Built (22a), 2026-10-15.** One rule held it together: nothing the drawer had goes missing, and every part only moves. The header stays exactly as it was, since it's what you use while drawing on a phone (the routing modes, undo, Round trip) and it's what peek shows. The mock-up's slimmer header would have cost a tap per mode change. Below it, the profile, then the tabs.
+
+| Part | Was | Now |
+|---|---|---|
+| Summary (distance, time from your departure, ascent and descent or carries), fold, Done, the sheet's handle and sizes, the side panel's width | header, edges | unchanged |
+| Routing modes, the route's colours, the sport, Round trip, Style; show all, undo, redo, ⋯ (and the wide bar's extra tools) | header | unchanged |
+| The profile: hover readout, drag to zoom, Whole route, the points on it, a climb's or heads-up's stretch, conditions for paddling | Profile section | **under the header, in sight at the profile size, half (short) and full**, with its colour choice and On map. A size button, kept. |
+| The colours in kilometres | under the profile | Check, "Gradient on the route" (named by the colour shown) |
+| At a glance: hardest climb (or headwind, high point), speed, style | top of the list | Check, at the top |
+| Round trip: start, length, direction, the loops, More loops | its section | Route |
+| Waypoints: names, drag to reorder, stops and nights, departure, changeovers, a leg's settings, up and down, remove; Reverse, All leg settings | its section | Route, as it was. Round trip, Back to start and Import are now beside Reverse. |
+| Heads-up (Avoid, ⋯ to hide or correct OSM), climbs | their sections | Check |
+| Departure and weather: the docked timeline, the weather on the route, the days | its section | Go |
+| Route style: presets, its controls, wet ground, a leg's own | its section | Route, **How you go** |
+| Your speeds (Easy / Normal / Fast / Custom, per sport, the craft) | Time & speed | Route, **How you go**, under the style |
+| Where the time goes (by surface, uphill, the wind and snow, by sport, stops and nights) | Time & speed | Go, **Time**, opening with the total and the arrival. "Counted at your speed … change it" leads to How you go. |
+| Distance marks, times at the marks | ⋯ | Check, **On the map** |
+| Export GPX, Copy share link, Save offline | ⋯ | Go, **Take it along** |
+| Reverse, Back to start | ⋯ | Route, under the list |
+| Import GPX / KML; Clear route; the panel's place | ⋯ | still ⋯ (Import in Route too) |
+| Each section's open or closed state | remembered | remembered |
+
+New in 22a:
+- **The tabs:** Route, Check (with the heads-up count) and Go (with the arrival time). The tab is remembered, and the arrow keys move between tabs. A jump to a section (the Weather button, the summary's time, Speed, Style, a link in the menus) opens its tab and lights the section up. A tap on a tab opens a folded sheet.
+- **The start:** with no route, Route offers four choices:
+  - Draw it;
+  - Round trip, from where I am or a start on the map;
+  - Ride a marked route;
+  - Import.
+- **The first click:** it sets the start, and a small card offers a loop from there in three lengths. The next click goes on drawing as before.
+- **The lit leg:** pointing at a waypoint, a folded leg or a leg's settings lights that leg on the map (a soft glow) and in the profile. An open leg stays lit, which is how it works on a phone.
+- **Tests:** `tools/smoke.py drawer` (at 1440 and 390 px) checks:
+  - the header's controls;
+  - every section in its tab, and each jump opening it;
+  - the profile at the sheet's sizes and its size button;
+  - the Route tools, How you go, ⋯, the stats, the marks' switches, Time and Take it along;
+  - the start's choices, the first click's offer and the click after it;
+  - the lit leg;
+  - the arrow keys and the remembered tab.
 
 **22b: the panel on desktop moves.**
 - Drag its header to dock it left, right or at the bottom; drop zones show while dragging.

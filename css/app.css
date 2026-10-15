@@ -533,6 +533,63 @@ button { font: inherit; color: inherit; }
 .sheet-resize:focus-visible { outline: none; }
 .sheet.resizing { user-select: none; }
 
+/* the drawer in three tabs (22a): the header (summary and tools) as before; under it the profile,
+   always in sight once there's a route; then the tabs and the active tab's sections */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.pl-profile { flex: none; padding: 0 16px 6px; container-type: inline-size; }
+.pl-profile[hidden] { display: none; }
+.pl-profile .profile-top { margin: 0 0 4px; flex-wrap: nowrap; }
+.pl-profile .mode-select { flex: 0 1 auto; }
+.pl-profile .tg-inline { flex: none; }
+.pl-profile .prof-size { flex: none; color: var(--muted); }
+.pl-profile.compact #profile-canvas { height: 72px; }
+.pl-tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.pl-tab { height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.pl-tab:hover { color: var(--text); }
+.pl-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.pl-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+.pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--warn); color: #fff; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.pl-tab-t { font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pl-pane[hidden] { display: none !important; }
+.pl-empty { margin: 14px 0; }
+/* the sheet's sizes: peek is the header; the profile size adds the profile; half and full the tabs too */
+.sheet[data-state="peek"]:not(.dragging) :is(.pl-profile, .pl-tabs) { display: none; }
+.sheet[data-state="profile"]:not(.dragging) :is(.pl-tabs, .sheet-body) { display: none; }
+.sheet[data-layout="side"][data-state="min"] :is(.pl-profile, .pl-tabs) { display: none; }
+/* half a sheet: a short profile, so the tab has room (the profile size and full show it whole) */
+.sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile #profile-canvas { height: 64px; }
+.sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile .profile-top { display: none; }
+/* the start, before there's a route */
+.pl-start { display: grid; gap: 8px; padding: 12px 0 6px; flex-basis: 100%; }
+.pl-start[hidden] { display: none; }
+.pl-choice { display: flex; gap: 12px; align-items: flex-start; width: 100%; padding: 12px; border: 0; border-radius: 14px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.pl-choice:hover { background: var(--accent-soft); }
+.pl-choice.main { box-shadow: inset 0 0 0 2px var(--accent); }
+.pl-choice-ic { width: 38px; height: 38px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.pl-choice-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pl-choice-main b { font-size: 14px; }
+.pl-choice-main small { font-size: 12px; color: var(--muted); }
+.pl-choice-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+@container (min-width: 700px) { .pl-start { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* How you go: the route style, then your speed */
+.how-h { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 8px; font-size: 12px; font-weight: 700; }
+.how-h small { font-weight: 500; color: var(--muted); }
+.speed-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); border-radius: 0; }
+.speed-at { margin: 8px 0 0; }
+.time-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 8px; }
+.time-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.time-head span { font-size: 12.5px; color: var(--muted); }
+.wpl-foot .btn { white-space: nowrap; }
+.speed-at .link { padding: 0; font-size: inherit; }
+.onmap .tg { max-width: 360px; }
+.onmap .tg.off { opacity: .5; }
+.take-along { display: flex; flex-wrap: wrap; gap: 8px; }
+.start-menu { display: flex; flex-direction: column; gap: 2px; max-width: 250px; padding-right: 14px; }
+.start-menu .st-title { font-size: 14px; font-weight: 700; }
+.start-menu .st-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.start-menu .st-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.start-menu .chip { display: inline-flex; flex-direction: row; align-items: center; gap: 5px; }
+
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
 body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right) { visibility: hidden; }
@@ -757,7 +814,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-name:focus { border-color: var(--accent); background: var(--surface-solid); outline: none; }
 .wpl-main small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wpl-tools { display: flex; gap: 0; }
-.wpl-foot { display: flex; gap: 6px; margin-top: 8px; }
+.wpl-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .wpl-foot:empty { display: none; }
 .tool.small { width: 28px; height: 28px; }
 @media (hover: hover) { .wpl-tools { opacity: .45; transition: opacity .12s; } .wpl-row:hover .wpl-tools, .wpl-row:focus-within .wpl-tools { opacity: 1; } }

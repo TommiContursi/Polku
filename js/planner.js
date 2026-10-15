@@ -44,6 +44,13 @@ const LOOP_CALLS = 6; // per generation
 const LOOP_CAP = 5; // generations per 10 minutes
 // bottom sheet sizes: the summary, + the elevation profile, half the screen, nearly all of it
 const SHEET_STATES = ['peek', 'profile', 'half', 'full'];
+// The drawer's tabs (22a): drawing, what's on the way, setting off. Each section lives in one.
+const TABS = [
+  { id: 'route', label: 'Route', icon: 'route', title: 'Draw and change the route: points, legs, round trips, how you go' },
+  { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: heads-up, climbs, the ground' },
+  { id: 'go', label: 'Go', icon: 'clock', title: 'When and how long, the weather, taking it along' },
+];
+const TAB_OF = { loop: 'route', points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', onmap: 'check', speed: 'go', depart: 'go', take: 'go' };
 // "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
 const WET_MM = 3;
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
@@ -161,7 +168,7 @@ export class Planner {
     map.on('mousemove', (e) => this.onMapMove(e));
     map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     // was a menu or card open when this press began? (MapLibre closes it on the click; the click shouldn't add a point too)
-    const pressed = () => { this.popupAtPress = !!this.map.getContainer().querySelector('.maplibregl-popup'); };
+    const pressed = () => { this.popupAtPress = !!this.map.getContainer().querySelector('.maplibregl-popup:not(.start-tip)'); };
     map.on('mousedown', pressed);
     map.on('touchstart', pressed);
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
@@ -487,6 +494,8 @@ export class Planner {
     this.commit();
     this.points = [];
     this.legs = [];
+    this.closeStartTip();
+    this.litLeg(null);
     this.update();
   }
 
@@ -780,7 +789,7 @@ export class Planner {
   setActive(on) {
     this.active = on;
     this.panel.hidden = !on;
-    if (!on) { this.closeMore(); delete document.body.dataset.sheet; delete document.body.dataset.pl; }
+    if (!on) { this.closeMore(); this.closeStartTip(); this.litLeg(null); delete document.body.dataset.sheet; delete document.body.dataset.pl; }
     if (on) this.renderQuickSport();
     // an empty route opens small, so the map is there to tap; otherwise as you left it
     if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
@@ -955,6 +964,7 @@ export class Planner {
     const sport = this.app.activity();
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
     if (L.km == null || L.sport !== sport) { L.km = pre.km[1]; L.min = pre.min[1]; L.sport = sport; }
+    this.closeStartTip();
     if (start) this.setLoopStart(start, 'the spot you chose', false);
     else if (this.points.length) this.setLoopStart(this.points[0].slice(), 'your route’s start', false);
     else { const c = this.map.getCenter(); this.setLoopStart([+c.lng.toFixed(6), +c.lat.toFixed(6)], 'the map centre', false); }
@@ -1188,6 +1198,7 @@ export class Planner {
     this.els.quickLoop.setAttribute('aria-pressed', String(L.open));
     this.els.quickLoop.hidden = !roundTripSports.includes(this.app.activity());
     this.setSection('loop', { empty: !L.open, summary: L.results.length ? `${L.results.length} loops` : '' });
+    this.renderStart();
     if (!L.open) { box.innerHTML = ''; return; }
     const sport = this.app.activity();
     box.innerHTML = '';
@@ -1841,7 +1852,13 @@ export class Planner {
     // added by mistake is easy, and there's more to do with a part of the route than add one);
     // "Add a point here" comes first in it, and a drag still reshapes the route
     if (hit && !hit.properties.loading) this.openLegMenu(hit.properties.leg, e.lngLat);
-    else { this.addPoint(ll); this.sportHint(); }
+    else {
+      const first = !this.points.length;
+      this.closeStartTip();
+      this.addPoint(ll);
+      this.sportHint();
+      if (first) this.startTip(ll); // the start is down: a loop from here is one tap more
+    }
     this.autoPeek();
   }
 
@@ -1929,11 +1946,15 @@ export class Planner {
     // the whole list the other way round (the same as Reverse in the tools)
     const showLegs = n > 1 && store.get('legSettings', false);
     for (const k of this.openLegs) if (k >= n - 1) this.openLegs.delete(k); // rows that are gone
-    this.els.pointsFoot.replaceChildren(...(n > 1 ? [
-      h('button', { type: 'button', class: 'btn', title: 'The finish becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse direction` }),
+    const loops = roundTripSports.includes(this.app.activity());
+    this.els.pointsFoot.replaceChildren(...[
+      loops ? h('button', { type: 'button', class: 'btn', title: 'Loops of the length you choose, from your start', onclick: () => this.openLoop(), html: `${icon('roundtrip', 16)} Round trip` }) : null,
+      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The finish becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
+      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.loop(), html: `${icon('loop', 16)} Back to start` }) : null,
+      h('button', { type: 'button', class: 'btn', title: 'Import a GPX or KML file (or drop it on the map)', onclick: () => $('#file-input').click(), html: `${icon('upload', 16)} Import` }),
       // each leg's routing and style, between its points (folded away by default)
-      h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showLegs), title: 'Every leg’s routing and style (or open one with the route button on its row)', onclick: () => { store.set('legSettings', !showLegs); this.openLegs.clear(); this.renderWaypoints(); }, html: `${icon('route', 16)} All leg settings` }),
-    ] : []));
+      n > 1 ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showLegs), title: 'Every leg’s routing and style (or open one with the route button on its row)', onclick: () => { store.set('legSettings', !showLegs); this.openLegs.clear(); this.renderWaypoints(); }, html: `${icon('route', 16)} All leg settings` }) : null,
+    ].filter(Boolean)); // (replaceChildren would write a null as "null")
     const loop = this.isLoop();
     const btn = (ic, label, fn, disabled = false, cls = '') => h('button', { type: 'button', class: `tool small ${cls}`, title: label, 'aria-label': label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 16) });
     this.points.forEach((p, i) => {
@@ -1974,11 +1995,17 @@ export class Planner {
           btn('chevronDown', `Move ${this.nameOf(i)} later`, () => this.movePointTo(i, i + 1), i === n - 1),
           btn('trash', `Remove ${this.nameOf(i)}`, () => this.removePoint(i), false, 'danger')));
       row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => this.dragRow(e, row, i));
+      row.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
+      row.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
       box.append(row);
       const leg = this.legs[i];
       if (!leg) return;
-      if (showLegs || this.openLegs.has(i)) box.append(this.legSettingsRow(i));
-      else {
+      if (showLegs || this.openLegs.has(i)) {
+        const legRow = this.legSettingsRow(i);
+        legRow.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i); });
+        legRow.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
+        box.append(legRow);
+      } else {
         // folded: only what differs from the defaults
         const bits = [];
         const sp = this.legSport(i), main = this.mainSport(); // differs from the route's sport
@@ -1988,11 +2015,14 @@ export class Planner {
         if (leg.mode === 'fixed') bits.push(leg.src ? 'LIPAS route' : 'Imported track');
         if (leg.style) bits.push(`style: ${styleName(sp, leg.style)}`);
         if (bits.length) {
-          box.append(h('li', { class: 'wpl-leg', title: 'This leg differs from the rest — click for its settings', onclick: () => { this.openLegs.add(i); this.renderWaypoints(); } },
+          box.append(h('li', { class: 'wpl-leg', title: 'This leg differs from the rest — click for its settings', onclick: () => { this.openLegs.add(i); this.renderWaypoints(); },
+            onpointerenter: (e) => { if (e.pointerType === 'mouse') this.litLeg(i); }, onpointerleave: (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); } },
             h('span', { html: icon('route', 14) }), [...new Set(bits)].join(' · ')));
         }
       }
     });
+    // an open leg stays lit (on a phone that's how a leg shows itself); otherwise nothing is
+    if (!box.matches(':hover')) this.unlitLeg();
   }
 
   // Which sport leg i is in (a native select, with the sport's icon): the route's, or its own.
@@ -2738,7 +2768,7 @@ export class Planner {
     this.els.fit = tool('fit', 'Show the whole route (F)', () => this.fitRoute());
     this.els.undo = tool('undo', 'Undo (Ctrl+Z)', () => this.undo());
     this.els.redo = tool('redo', 'Redo', () => this.redo());
-    this.els.more = tool('more', 'More: reverse, back to start, import, export, share, offline, clear', () => this.toggleMore());
+    this.els.more = tool('more', 'More: import a file, clear the route, the panel’s place', () => this.toggleMore());
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.sum = h('div', { class: 'sheet-sum', 'aria-live': 'polite' });
     this.els.min = tool('chevronUp', 'Minimise', () => {
@@ -2787,27 +2817,65 @@ export class Planner {
       ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for options · hold the map for more'
       : 'Click the map to add points · drag a point or the line to reshape · click a point or the line for options · right-click the map for more');
     this.els.dock = h('div', { class: 'dock' }); // the timeline docks here while planning (main.js)
-    this.els.body = h('div', { class: 'sheet-body' }, this.els.stats, h('div', { class: 'sheet-cols' },
-      // a round trip being made (shown only then)
-      this.section('loop', 'Round trip', this.els.loopBox = h('div', { class: 'loop-box' })),
-      // the chart first; then one line to choose what colours it (a menu, or chips where they fit in a row)
-      this.section('profile', 'Profile',
-        h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })),
-        h('div', { class: 'profile-top' }, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow),
-        this.els.breakdown),
-      // one reading order, in a column or in rows (wide panel): your points and what the route is like, then the settings
-      h('div', { class: 'sec-break', 'aria-hidden': 'true' }), // wide panel: a new row
-      this.section('points', 'Waypoints', this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order' }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
-      // the two short lists share a column in a wide panel
-      h('div', { class: 'sec-stack' }, this.section('warnings', 'Heads-up', this.els.warnings), this.section('climbs', 'Climbs', this.els.climbs)),
-      this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
-      h('div', { class: 'sec-break', 'aria-hidden': 'true' }), // wide panel: a new row
-      this.section('style', 'Route style', this.els.styleBox = h('div', { class: 'style-box' })),
-      this.section('speed', 'Time & speed', this.els.speedBox = h('div', { class: 'speed-box' }), this.els.speedRoute = h('div', { class: 'speed-route' }))),
-      this.els.hint);
+
+    // The profile, one, under the header: always in sight (but at the summary size), with the
+    // legs and their points on it and what colours it right above it (22a)
+    this.profCompact = store.get('profileCompact', false);
+    this.els.profSize = h('button', { type: 'button', class: 'tool small prof-size', onclick: () => this.setProfileCompact(!this.profCompact) });
+    const profTitle = h('span', { class: 'sr-only' }, 'Profile');
+    this.els.profZone = h('section', { class: `pl-profile${this.profCompact ? ' compact' : ''}`, 'data-sec': 'profile', 'aria-label': 'Profile' },
+      h('div', { class: 'profile-top' }, profTitle, this.els.modeSelect, this.els.modesBar, this.els.mapToggleRow, this.els.profSize),
+      h('div', { class: 'profile-box' }, h('canvas', { id: 'profile-canvas' }), h('div', { id: 'profile-tip', class: 'profile-tip', hidden: true })));
+    this.sec.profile = { el: this.els.profZone, head: null, titleEl: profTitle, count: h('span'), sum: h('span') };
+    this.renderProfileSize();
+
+    // Three tabs for three moments: drawing (Route), what's on the way (Check), setting off (Go)
+    this.tab = TABS.some((t) => t.id === store.get('plannerTab', 'route')) ? store.get('plannerTab', 'route') : 'route';
+    this.els.tabBtn = {};
+    this.els.tabs = h('div', { class: 'pl-tabs', role: 'tablist', 'aria-label': 'Planner',
+      onkeydown: (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const k = TABS.findIndex((t) => t.id === this.tab), next = TABS[(k + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length].id;
+        this.setTab(next, { user: true });
+        this.els.tabBtn[next].focus();
+      } },
+    ...TABS.map((t) => (this.els.tabBtn[t.id] = h('button', {
+      type: 'button', role: 'tab', class: 'pl-tab', id: `pl-tab-${t.id}`, 'aria-controls': `pl-pane-${t.id}`, title: t.title,
+      onclick: () => this.setTab(t.id, { user: true }),
+    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-t' })))));
+    const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
+    // the start, before there's a route: what you can do (Round trip is one of the first choices)
+    this.els.start = h('div', { class: 'pl-start' });
+    this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
+    this.els.panes = {
+      route: pane('route',
+        this.els.start,
+        // a round trip being made (shown only then)
+        this.section('loop', 'Round trip', this.els.loopBox = h('div', { class: 'loop-box' })),
+        this.section('points', 'Waypoints', this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order' }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
+        // how you go: which ways the router prefers, and how fast the time is counted
+        this.section('style', 'How you go', h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap),
+        this.els.hint),
+      check: pane('check',
+        this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: heads-up, climbs, the ground.'),
+        this.els.stats,
+        // the two short lists share a column in a wide panel
+        h('div', { class: 'sec-stack' }, this.section('warnings', 'Heads-up', this.els.warnings), this.section('climbs', 'Climbs', this.els.climbs)),
+        this.section('colours', 'On the route', this.els.breakdown),
+        this.section('onmap', 'On the map', this.els.onMap = h('div', { class: 'onmap' }))),
+      go: pane('go',
+        this.section('speed', 'Time', this.els.speedRoute = h('div', { class: 'speed-route' })),
+        this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
+        this.section('take', 'Take it along', this.els.take = h('div', { class: 'take-along' }))),
+    };
+    this.els.body = h('div', { class: 'sheet-body' }, this.els.panes.route, this.els.panes.check, this.els.panes.go);
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
-    p.append(this.els.handle, this.els.head, this.els.body, this.els.grip);
+    p.append(this.els.handle, this.els.head, this.els.profZone, this.els.tabs, this.els.body, this.els.grip);
+    this.setTab(this.tab);
+    this.renderOnMap();
+    this.renderTake();
     this.renderLoop();
     this.renderStyle();
     this.renderModeChips();
@@ -2830,6 +2898,7 @@ export class Planner {
 
   toggleSection(id, open) {
     const s = this.sec[id];
+    if (!s.head) return; // the profile: always open (its size is the sheet's)
     open = open ?? s.el.dataset.open !== 'true';
     s.el.dataset.open = String(open);
     s.head.setAttribute('aria-expanded', String(open));
@@ -2844,7 +2913,129 @@ export class Planner {
     s.count.textContent = count === '' ? '' : String(count);
     s.sum.textContent = summary;
     s.el.hidden = empty;
+    if (id === 'warnings' && this.els.tabBtn) this.els.tabBtn.check.querySelector('.pl-tab-n').textContent = empty || !count ? '' : String(count);
   }
+
+  // ---------------------------------------------------------------- the tabs (22a)
+  // `user`: a tap on a tab, which opens a folded sheet at it
+  setTab(id, { user = false } = {}) {
+    if (!this.els.panes[id]) id = 'route';
+    const changed = id !== this.tab;
+    this.tab = id;
+    store.set('plannerTab', id);
+    for (const t of TABS) {
+      const on = t.id === id;
+      this.els.tabBtn[t.id].setAttribute('aria-selected', String(on));
+      this.els.tabBtn[t.id].tabIndex = on ? 0 : -1;
+      this.els.panes[t.id].hidden = !on;
+    }
+    if (changed) this.els.body.scrollTop = 0;
+    if (user) {
+      const st = this.panel.dataset.state;
+      if (this.layout() === 'sheet' && (st === 'peek' || st === 'profile')) this.setSheetState('half');
+      else if (this.layout() === 'side' && st === 'min') this.setSheetState('open');
+    }
+    // the docked timeline and the like measure themselves when they come into sight
+    if (changed) requestAnimationFrame(() => dispatchEvent(new Event('resize')));
+  }
+
+  // The profile at its size, or smaller (yours, kept)
+  setProfileCompact(on) {
+    this.profCompact = on;
+    store.set('profileCompact', on);
+    this.renderProfileSize();
+  }
+  renderProfileSize() {
+    this.els.profZone.classList.toggle('compact', this.profCompact);
+    this.els.profSize.innerHTML = icon(this.profCompact ? 'chevronDown' : 'chevronUp', 16);
+    this.els.profSize.title = this.profCompact ? 'A taller profile' : 'A smaller profile';
+    this.els.profSize.setAttribute('aria-label', this.els.profSize.title);
+  }
+
+  // Check › On the map: what the route shows on the map besides its line (once in ⋯)
+  renderOnMap() {
+    const box = this.els.onMap;
+    if (!box) return;
+    const sw = (label, on, fn, disabled = false, title = '') => h('label', { class: `tg${disabled ? ' off' : ''}`, title },
+      h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: on, disabled, onchange: (e) => fn(e.target.checked) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    box.replaceChildren(
+      sw('Distance marks', !!this.marks.km, (v) => this.setMarks({ km: v }), false, 'Every 1, 5, 10 or 25 km along the route, by its length'),
+      sw('Times at the marks', !!this.marks.time, (v) => this.setMarks({ time: v }), !this.marks.km, 'When you’d be at each mark, from your departure'));
+    this.setSection('onmap', { summary: [this.marks.km ? 'distance marks' : '', this.marks.km && this.marks.time ? 'times' : ''].filter(Boolean).join(' · ') || 'the line only', empty: !this.analysis });
+  }
+
+  // Go › Take it along: the route as a file, a link, or the map saved for offline
+  renderTake() {
+    const box = this.els.take;
+    if (!box) return;
+    const b = (ic, label, title, fn) => h('button', { type: 'button', class: 'btn', title, onclick: fn, html: `${icon(ic, 16)} ${label}` });
+    box.replaceChildren(
+      b('download', 'Export GPX', 'The route as a GPX file, for a GPS device or another app', () => this.exportGpx()),
+      b('share', 'Copy share link', 'A link that opens this route in Polku', () => this.share()),
+      b('offline', 'Save offline…', 'The map, terrain and this route on this device, for when there’s no signal', () => this.app.saveOffline()));
+    this.setSection('take', { empty: this.points.length < 2 });
+  }
+
+  // Route, before there's a route: the ways to begin (Round trip among the first)
+  renderStart() {
+    const box = this.els.start;
+    if (!box) return;
+    const show = !this.points.length && !this.loop.open;
+    box.hidden = !show;
+    if (!show) { box.innerHTML = ''; return; }
+    const tap = matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click';
+    const choice = (ic, title, text, extra = null, fn = null, cls = '') => h(fn ? 'button' : 'div', { type: fn ? 'button' : null, class: `pl-choice ${cls}`, onclick: fn },
+      h('span', { class: 'pl-choice-ic', html: icon(ic, 20) }), h('span', { class: 'pl-choice-main' }, h('b', {}, title), h('small', {}, text), extra));
+    const loops = roundTripSports.includes(this.app.activity());
+    box.replaceChildren(...[
+      choice('route', 'Draw it', `${tap} the map where you start, then each place on the way. Polku follows the paths between them.`, null, () => { this.autoPeek(); toast(`${tap} the map where you start`); }),
+      loops ? choice('roundtrip', 'Round trip', 'A loop from a start you pick: its length or time, and a direction. Three to choose from, then more.',
+        h('span', { class: 'pl-choice-acts' },
+          h('button', { type: 'button', class: 'chip', onclick: (e) => { e.stopPropagation(); this.openLoop(); this.loopFromHere(); } }, 'From where I am'),
+          h('button', { type: 'button', class: 'chip', onclick: (e) => { e.stopPropagation(); this.openLoop(); } }, 'Pick the start on the map')), null, 'main') : null,
+      choice('search', 'Ride a marked route', 'LIPAS routes near you: click one on the map, or find one by name in search', null, () => { const i = $('#search-input'); if (i) i.focus(); }),
+      choice('upload', 'Import a GPX or KML', 'or drop the file on the map', null, () => $('#file-input').click()),
+    ].filter(Boolean));
+  }
+
+  // The leg you open or point at in the waypoint list, lit up on the map and in the profile
+  litLeg(i) {
+    const leg = i == null ? null : this.legs[i];
+    if (!leg) {
+      this.app.setData('routeLit', EMPTY);
+      if (this.chart) this.chart.setHighlight(this.focusHl || null);
+      return;
+    }
+    const coords = leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]];
+    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] });
+    if (this.chart && this.analysis) this.chart.setHighlight([this.lengthTo(i), this.lengthTo(i + 1)]);
+  }
+  // back to the open leg (if one is open), else nothing lit
+  unlitLeg() { this.litLeg(this.openLegs.size ? [...this.openLegs].pop() : null); }
+
+  // The first click put the start down: a loop from there is one more tap (drawing goes on as usual)
+  startTip(ll) {
+    this.closeStartTip();
+    const sport = this.app.activity();
+    if (!roundTripSports.includes(sport)) return;
+    const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
+    const tap = this.isTouch() ? 'Tap' : 'Click';
+    const go = (km) => {
+      this.closeStartTip();
+      this.openLoop(ll);
+      const L = this.loop;
+      L.mode = 'km'; L.km = km; L.results = [];
+      this.renderLoop();
+      this.generateLoops();
+    };
+    const body = h('div', { class: 'start-menu' },
+      h('div', { class: 'st-title' }, 'Start'),
+      h('div', { class: 'st-sub' }, `${tap} the next place on the way, or make a loop from here:`),
+      h('div', { class: 'st-acts' }, ...pre.km.slice(0, 3).map((km) => h('button', { type: 'button', class: 'chip', title: `Three round trips of about ${km} km from here`, onclick: () => go(km), html: `${icon('roundtrip', 14)}<span>${km} km</span>` }))));
+    this.startPopup = new maplibregl.Popup({ offset: 14, closeButton: true, maxWidth: '300px', className: 'polku-popup start-tip' }).setLngLat(ll).setDOMContent(body).addTo(this.map);
+  }
+  closeStartTip() { if (this.startPopup) { this.startPopup.remove(); this.startPopup = null; } }
+
 
   // ---------------------------------------------------------------- panel layout & states
   // Wide screens choose: a side panel on the left (default) or a bottom panel
@@ -2890,11 +3081,13 @@ export class Planner {
     // the summary rows are always visible: the peek height is theirs; the
     // profile size adds the elevation chart and its colours (the stats row
     // folds away there), measured, so it fits whatever the sport shows
+    // the profile zone's height at the profile size: measured while it's in sight at that size
     const profileH = () => {
-      const hd = this.els.head, sec = this.sec.profile.el, top = sec.querySelector('.profile-top');
+      const hd = this.els.head, z = this.els.profZone;
       const peek = hd.offsetTop + hd.offsetHeight + 6;
-      if (sec.hidden || !top.offsetHeight) return Math.round(Math.min(innerHeight * 0.36, peek + 230));
-      return Math.round(Math.min(innerHeight * 0.45, peek + top.getBoundingClientRect().bottom - sec.getBoundingClientRect().top + 12));
+      const st = this.panel.dataset.state;
+      if (z.offsetHeight && (st === 'profile' || st === 'full')) this.profZoneH = z.offsetHeight;
+      return Math.round(Math.min(innerHeight * 0.45, peek + (this.profZoneH || (this.profCompact ? 120 : 190)) + 6));
     };
     const sizes = () => {
       const hd = this.els.head;
@@ -2903,7 +3096,7 @@ export class Planner {
     };
     new ResizeObserver(sizes).observe(this.els.head);
     new ResizeObserver(() => { if (this.els.head.clientWidth !== this.fitW) this.fitHeaderSoon(); }).observe(this.els.head);
-    new ResizeObserver(sizes).observe(this.sec.profile.el);
+    new ResizeObserver(sizes).observe(this.els.profZone);
     addEventListener('resize', sizes);
     const heights = () => {
       const r = this.panel.getBoundingClientRect();
@@ -3012,23 +3205,11 @@ export class Planner {
   // ---------------------------------------------------------------- the ⋯ menu
   toggleMore() {
     if (this.moreMenu) { this.moreMenu.close(); return; }
-    const two = this.points.length > 1;
     const side = this.layout() === 'side';
     this.moreMenu = popMenu(this.els.more, [
       this.sideMQ.matches ? { icon: side ? 'panelBottom' : 'panelLeft', label: side ? 'Move to the bottom' : 'Move to the left', fn: () => this.setDock(side ? 'bottom' : 'left') } : null,
       this.sideMQ.matches ? 'hr' : null,
-      { icon: 'reverse', label: 'Reverse direction', fn: () => this.reverse(), disabled: !two },
-      { icon: 'loop', label: 'Back to start', fn: () => this.loop(), disabled: !two },
-      { icon: 'roundtrip', label: 'Round trip…', fn: () => this.openLoop() },
-      'hr',
       { icon: 'upload', label: 'Import GPX / KML…', fn: () => $('#file-input').click() },
-      { icon: 'download', label: 'Export GPX', fn: () => this.exportGpx(), disabled: !two },
-      { icon: 'share', label: 'Copy share link', fn: () => this.share(), disabled: !two },
-      { icon: 'offline', label: 'Save offline…', fn: () => this.app.saveOffline(), disabled: !two },
-      'hr',
-      // what the route shows on the map
-      { icon: this.marks.km ? 'check' : 'route', label: 'Distance marks on the route', fn: () => this.setMarks({ km: !this.marks.km }), checked: this.marks.km },
-      { icon: this.marks.time ? 'check' : 'clock', label: 'Times at the marks', fn: () => this.setMarks({ time: !this.marks.time }), checked: this.marks.time, disabled: !this.marks.km },
       'hr',
       { icon: 'trash', label: 'Clear route', fn: () => this.clear(), cls: 'danger', disabled: !this.points.length },
     ], { label: 'Route actions', onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
@@ -3051,8 +3232,7 @@ export class Planner {
     const a = this.analysis;
     const act = this.mainSport();
     const sum = speedSummary(act, this.craft);
-    this.setSection('speed', { summary: `${sum.name} · ${sum.txt}`, empty: !a });
-    if (!a) return;
+    // your speeds: in Route › How you go, beside the route style (there before there's a route too)
     renderSpeedEditor(this.els.speedBox, act, { craft: this.craft, onCraft: (k) => this.setCraft(k), onChange: () => this.retime() });
     // a multisport route: the other sports' speeds too
     for (const sp of this.routeSports().filter((x) => x !== act)) {
@@ -3060,6 +3240,10 @@ export class Planner {
       this.els.speedBox.append(h('h4', { class: 'speed-sport', html: `${icon(this.sportIcon(sp), 14)} ${escapeHtml(ACTIVITIES[sp].label)}` }), sub);
       renderSpeedEditor(sub, sp, { craft: this.craft, onCraft: (k) => this.setCraft(k), onChange: () => this.retime() });
     }
+    // Go › Time: how long, and where the time goes
+    const total = a ? a.timeWind || a.time : 0;
+    this.setSection('speed', { summary: a ? `${fmtDuration(total)} · arrive ${this.clockOf(this.startSec() + total)}` : '', empty: !a });
+    if (!a) return;
     const box = this.els.speedRoute;
     box.innerHTML = '';
     const tAt = a.tAtWind || a.tAt;
@@ -3077,7 +3261,10 @@ export class Planner {
     const LABEL = { paved: 'Paved', unpaved: 'Gravel & unpaved', trail: act === 'hike' || runner ? 'Paths & trails' : 'Trails', water: 'On the water', carry: 'Carries' };
     const speedTxt = (d, t) => (t > 0 ? (runner ? `${pace((d / 1000) / (t / 3600))} /km` : `${((d / 1000) / (t / 3600)).toFixed(1)} km/h`) : '');
     const rows = ['paved', 'unpaved', 'trail', 'water', 'carry'].filter((k) => cats[k] && cats[k].d > 20);
-    box.append(h('h4', {}, 'On this route'),
+    // the total first: how long, and from when to when
+    const t0 = this.startSec();
+    box.append(h('div', { class: 'time-head' }, h('b', {}, fmtDuration(total)),
+      h('span', {}, `${this.startOffsetH ? `depart ${this.clockOf(t0)}` : 'from now'} → ${this.isLoop() ? 'back' : 'there'} ${this.clockOf(t0 + total)}`)),
       h('div', { class: 'speed-table' },
         ...rows.map((k) => h('div', { class: 'speed-row' }, h('span', {}, LABEL[k]), h('b', {}, fmtDist(cats[k].d)), h('b', {}, fmtDuration(cats[k].t)), h('small', {}, speedTxt(cats[k].d, cats[k].t)))),
         up > 30 && !isWater(act) ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which uphill (over 3 %)'), h('b', {}, ''), h('b', {}, fmtDuration(up)), h('small', {}, '')) : null,
@@ -3085,6 +3272,17 @@ export class Planner {
         a.snowSec >= 60 ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which the snow'), h('b', {}, ''), h('b', {}, `+${fmtDuration(a.snowSec)}`), h('small', {}, `${Math.round(a.snow.max)} cm at most (forecast)`)) : null,
         ...this.sportRows(a, tAt, speedTxt),
         h('div', { class: 'speed-row total' }, h('span', {}, waitSec ? 'Total time' : 'Moving time'), h('b', {}, fmtDist(a.total)), h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, speedTxt(a.total, (a.timeWind || a.time) - waitSec)))));
+    // what the time is counted at, a tap from changing it (Route › How you go)
+    box.append(h('p', { class: 'note speed-at' }, `Counted at your speed: ${sum.name} · ${sum.txt} · `,
+      h('button', { type: 'button', class: 'link', onclick: () => { this.reveal('style'); requestAnimationFrame(() => requestAnimationFrame(() => this.flash(this.els.speedWrap))); } }, 'change it')));
+  }
+
+  // Go's tab shows when you'd be back; Check's, the heads-up count (setSection)
+  renderTabTimes() {
+    const a = this.analysis, t = this.els.tabBtn && this.els.tabBtn.go.querySelector('.pl-tab-t');
+    if (!t) return;
+    t.textContent = a ? this.clockOf(this.startSec() + (a.timeWind || a.time)) : '';
+    this.els.tabBtn.go.title = a ? `When and how long: back at ${t.textContent} · the weather, taking it along` : TABS[2].title;
   }
 
   // A multisport route: each sport's distance and time, then the changeovers.
@@ -3215,20 +3413,24 @@ export class Planner {
 
   // Open a section and bring it into view (expanding a peeking sheet).
   reveal(id) {
+    if (TAB_OF[id] && TAB_OF[id] !== this.tab) this.setTab(TAB_OF[id]);
     this.toggleSection(id, true);
     const st = this.panel.dataset.state;
-    if (this.layout() === 'sheet' && (st === 'peek' || (st === 'profile' && id !== 'profile'))) this.setSheetState('half');
+    if (this.layout() === 'sheet' && id === 'profile' && st === 'peek') this.setSheetState('profile');
+    else if (this.layout() === 'sheet' && (st === 'peek' || (st === 'profile' && id !== 'profile'))) this.setSheetState('half');
     else if (this.layout() === 'side' && this.panel.dataset.state === 'min') this.setSheetState('open');
     // and show where: the section lights up for a moment (the Weather button, Speed, Style, a link…)
-    requestAnimationFrame(() => {
-      const el = this.sec[id].el;
-      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      el.classList.remove('sec-flash');
-      void el.offsetWidth; // restart the animation
-      el.classList.add('sec-flash');
-      clearTimeout(el.flashTimer);
-      el.flashTimer = setTimeout(() => el.classList.remove('sec-flash'), 1600);
-    });
+    requestAnimationFrame(() => this.flash(this.sec[id].el));
+  }
+
+  flash(el) {
+    if (!el) return;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    el.classList.remove('sec-flash');
+    void el.offsetWidth; // restart the animation
+    el.classList.add('sec-flash');
+    clearTimeout(el.flashTimer);
+    el.flashTimer = setTimeout(() => el.classList.remove('sec-flash'), 1600);
   }
 
   profileSummary() {
@@ -3273,6 +3475,7 @@ export class Planner {
     this.marks = { ...this.marks, ...change };
     store.set('routeMarks', this.marks);
     this.drawMarks();
+    this.renderOnMap();
   }
 
   renderAnalysis() {
@@ -3285,8 +3488,14 @@ export class Planner {
     sum.innerHTML = '';
     const stat = (label, value, sub = '') => st.append(h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: 'stat-value', html: value }), sub ? h('span', { class: 'stat-sub', title: sub }, sub) : null));
     const key = (label, value, title = '') => sum.append(h('div', { class: 'sum-item', title }, h('b', {}, value), h('small', {}, label)));
-    for (const id of ['profile', 'climbs', 'warnings', 'speed']) this.setSection(id, { empty: !a });
+    for (const id of ['profile', 'climbs', 'warnings', 'speed', 'colours']) this.setSection(id, { empty: !a });
+    this.els.checkEmpty.hidden = !!a;
+    this.els.stats.hidden = !a;
     this.renderWaypoints(); // distances along the route
+    this.renderStart();
+    this.renderOnMap();
+    this.renderTake();
+    this.renderTabTimes();
     // the clock stays reachable before there's a route: set the time, then draw
     if (!a) this.setSection('depart', { summary: this.startOffsetH ? `Depart ${new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Depart now' });
     if (!a) {
@@ -3346,7 +3555,7 @@ export class Planner {
     }
     // what the time assumes, one tap from changing it
     const sp = speedSummary(act, this.craft);
-    st.append(h('button', { type: 'button', class: 'stat stat-btn', title: 'Your speeds for this sport — tap to see or change them', onclick: () => this.reveal('speed') },
+    st.append(h('button', { type: 'button', class: 'stat stat-btn', title: 'Your speeds for this sport — tap to see or change them', onclick: () => { this.reveal('style'); requestAnimationFrame(() => requestAnimationFrame(() => this.flash(this.els.speedWrap))); } },
       h('span', { class: 'stat-label' }, 'Speed'), h('span', { class: 'stat-value' }, sp.name), h('span', { class: 'stat-sub' }, sp.txt)));
     // and how the route is chosen
     const ownStyles = this.legs.filter((l) => l.style).length;
@@ -3382,6 +3591,8 @@ export class Planner {
     const box = this.els.breakdown;
     box.innerHTML = '';
     if (!a) return;
+    // Check: the profile's colours in kilometres, named by what they show
+    this.setSection('colours', { title: `${COLOR_MODES[this.colorMode] || 'The colours'} on the route`, summary: '' });
     let rows;
     const n = a.along.length;
     const sumBy = (fn) => {
@@ -3579,7 +3790,8 @@ export class Planner {
   focusRange(i0, i1, sel) {
     const a = this.analysis;
     this.selected = sel;
-    this.chart.setHighlight([a.along[i0], a.along[i1]]);
+    this.focusHl = [a.along[i0], a.along[i1]];
+    this.chart.setHighlight(this.focusHl);
     const b = bbox(a.pts.slice(i0, i1 + 1));
     this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, duration: 700 });
   }

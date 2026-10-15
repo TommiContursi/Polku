@@ -4,6 +4,19 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### The route planner in three tabs ([#60](https://github.com/TommiContursi/Polku/pull/60))
+- **Route, Check and Go:**
+  - **Route** is for drawing: the waypoints and legs, a round trip, and **How you go** (the route style and your speeds together);
+  - **Check** shows what's on the way: heads-up, climbs, the ground in kilometres, and what the route shows on the map;
+  - **Go** is for setting off: **the time first** (how long and when you'll be there), the departure and weather, and taking the route along (GPX, a share link, offline).
+
+  Check shows how many heads-up there are, and Go when you'd arrive.
+- **The profile stays in sight** under the summary, with its colours and On map. A button makes it smaller or taller.
+- **The tools that hid in ⋯ are out in the open:** Round trip, Reverse and Back to start under the waypoints; distance marks and times in Check; export, share and save offline in Go.
+- **Nothing else moved:** the top of the planner (summary, routing modes, the route's colours, sport, Round trip, Style, undo) is as it was.
+- **Start with a round trip:** with no route yet, the planner offers Draw it, Round trip, a marked route, or a file. After your first click, a small card offers a loop from that spot in three lengths, and the next click goes on drawing as before.
+- **The leg you point at lights up:** a waypoint or a leg in the list glows on the map and is marked in the profile. An open leg stays lit.
+
 ### Fixed: the map's credits took space on phones ([#58](https://github.com/TommiContursi/Polku/pull/58))
 - **The credits stay folded behind ⓘ on a phone** until you tap it. They used to open by themselves when the map's sources came in late.
 - **Narrowing a window** to phone width folds them too.
