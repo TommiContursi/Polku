@@ -1,0 +1,25 @@
+ok   calls made together go out paced
+ok   layers (every sport)
+ok   trail details
+ok   planner header fits
+ok   LIPAS search & ride
+ok   water routing
+ok   multisport
+ok   clicks and taps on the route
+ok   Back to start: waypoints (1440x900)
+ok   Back to start: finish (390x844)
+ok   Back to start: toolbar (1920x1080)
+ok   what the route shows
+ok   stops and nights
+ok   round trips on the water
+ok   winter on the map
+FAIL changing the sport with a route
+     - the Weather button: Departure & weather not highlighted
+ok   winter on the route
+ok   the bug sweep
+ok   the drawer in three tabs
+ok   1440x900 (side)
+ok   1440x900 bottom (sheet)
+ok   1024x768 (side)
+ok   390x844 (sheet)
+ok   360x740 (sheet)

@@ -1,0 +1,15 @@
+FAIL Back to start: waypoints (1440x900)
+     - waypoints: did not add one closing point
+     - console: TypeError: this.loop is not a function
+    at HTMLButtonElement.onclick (http://127.0.0.1:8766/js/planner.js:1955:146)
+    at <anonymous>:29:10
+FAIL Back to start: finish (390x844)
+     - finish: did not add one closing point
+     - console: TypeError: this.loop is not a function
+    at http://127.0.0.1:8766/js/planner.js:2460:103
+    at HTMLButtonElement.onclick (http://127.0.0.1:8766/js/planner.js
+FAIL Back to start: toolbar (1920x1080)
+     - toolbar: did not add one closing point
+     - console: TypeError: this.loop is not a function
+    at HTMLButtonElement.<anonymous> (http://127.0.0.1:8766/js/planner.js:2800:50)
+    at <anonymous>:29:10

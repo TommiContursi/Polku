@@ -1,0 +1,4 @@
+assertions: []
+before screenshot: {'probe': {'frame': 17497.100000023842, 'click': 17412.200000047684, 'flashes': [{'time': 17497.200000047684, 'depart': True}], 'atAssertion': {'time': 17591, 'frame': 17497.100000023842, 'flash': True, 'visibility': 'visible'}}, 'flash': True, 'tab': 'go', 'visibility': 'visible'}
+after screenshot: {'probe': {'frame': 17497.100000023842, 'click': 17412.200000047684, 'flashes': [{'time': 17497.200000047684, 'depart': True}], 'atAssertion': {'time': 17591, 'frame': 17497.100000023842, 'flash': True, 'visibility': 'visible'}}, 'flash': False, 'tab': 'go', 'visibility': 'visible'}
+console: []

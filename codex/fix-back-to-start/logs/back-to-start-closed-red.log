@@ -1,0 +1,7 @@
+ok   Back to start: waypoints (1440x900)
+ok   Back to start: finish (390x844)
+FAIL Back to start: toolbar (1920x1080)
+     - Back to start is still enabled on a closed route
+     - closed route gained another closing leg or undo step
+     - Undo did not restore the original route
+     - Undo did not restore the history position
