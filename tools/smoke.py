@@ -13,6 +13,7 @@
   python3 tools/smoke.py backtostart  # Back to start buttons, closing leg and undo (straight legs)
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
+  python3 tools/smoke.py avoid      # places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
   python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
@@ -791,6 +792,129 @@ def stops(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} stops and nights" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Places to avoid in share links (#69): three Avoid circles and a route around them,
+# routed by a mocked BRouter, are shared and opened in a clean page. The circles come
+# back, on the map and in the router's calls; a reload keeps them; a link from before
+# them, or one whose circles can't be read, still opens. No routing call goes out: the
+# mock answers brouter.de and Valhalla in every page it's added to.
+AVOID_ROUTER = """(() => {
+  const real = window.fetch.bind(window), calls = (window.routerCalls = []);
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/(brouter\\.de|valhalla1\\.openstreetmap\\.de)\\//.test(url)) return real(input, init);
+    calls.push(url);
+    if (/valhalla/.test(url)) return new Response('{}', { status: 503 });
+    const prof = url.match(/\\/profile\\/([\\w-]+)/);
+    if (prof) return new Response(JSON.stringify({ profileid: prof[1] }));
+    // a straight line through the points, with a vertex halfway along each stretch
+    const ll = new URL(url).searchParams.get('lonlats').split('|').map((q) => q.split(',').map(Number)), c = [];
+    ll.forEach((q, i) => { if (i) c.push([(ll[i - 1][0] + q[0]) / 2, (ll[i - 1][1] + q[1]) / 2]); c.push(q); });
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [] }, geometry: { type: 'LineString', coordinates: c } }] }));
+  };
+})()"""
+AVOID_ROUTED = """const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner;
+  const routed = async (n) => { for (let k = 0; k < 100 && !(p.legs.length === n && p.legs.every((l) => l.status === 'ok') && p.analysis); k++) await wait(200); return p.legs.length === n && p.legs.every((l) => l.status === 'ok'); };
+  const circles = (list) => (list || []).map((c) => `${c.ll[0]},${c.ll[1]},${c.r}`).join(' ') || 'none';
+  const drawn = async () => { const s = polku.map.getSource('nogo'); const d = s && (s.getData ? await s.getData() : s._data); return d ? d.features.length : 0; };
+  const toastSays = () => { const t = document.querySelector('#toast'); return t && !t.hidden ? t.textContent : ''; };"""
+AVOID_SHARE = """(async () => {
+  """ + AVOID_ROUTED + """
+  const errs = [];
+  p.checkWet = async () => {}; // dry ground whatever the weather, so no leg is routed twice
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  p.setActive(true);
+  p.setMode('auto');
+  // the places first, the route then: each leg is routed once, around them
+  p.addNogo([24.9401234, 60.1754321], 40, 'Avoided place');
+  p.addNogos([{ ll: [24.962, 60.1781], r: 25, label: 'Fallen tree' }, { ll: [24.96251, 60.17826], r: 137.4, label: 'Fallen tree' }]);
+  for (const q of [[24.930, 60.170], [24.950, 60.180], [24.975, 60.175]]) p.addPoint(q);
+  if (!(await routed(2))) errs.push(`the route: ${p.legs.map((l) => l.status).join(', ')}`);
+  if (!window.routerCalls.some((u) => /[?&]nogos=/.test(u))) errs.push('no circle in the first page\\'s router calls');
+  const url = p.shareUrl(), bad = new URL(url);
+  if (!new URL(url).searchParams.get('av')) errs.push(`no places to avoid in the share link: ${url.split('?')[1]}`);
+  bad.searchParams.set('av', 'nonsense,24.9_60.1');
+  return { errs, url, bad: bad.toString(), sent: p.nogos.map((n) => ({ ll: n.ll, r: n.r })) };
+})()"""
+# the link in a clean page: the circles at 5 decimals (about 1 m), each in a router call
+AVOID_OPENED = """(async (sent) => {
+  """ + AVOID_ROUTED + """
+  const errs = [], want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r }));
+  if (!(await routed(2))) errs.push(`the route from the link: ${p.legs.map((l) => l.status).join(', ') || 'no legs'}`);
+  if (circles(p.nogos) !== circles(want)) errs.push(`circles from the link: ${circles(p.nogos)}, not ${circles(want)}`);
+  if (await drawn() !== want.length) errs.push(`${await drawn()} circles drawn on the map, not ${want.length}`);
+  const got = new Set(window.routerCalls.filter((u) => /[?&]lonlats=/.test(u)).flatMap((u) => (new URL(u).searchParams.get('nogos') || '').split('|')));
+  for (const n of want) { const k = `${n.ll[0].toFixed(6)},${n.ll[1].toFixed(6)},${n.r}`; if (!got.has(k)) errs.push(`the router never got ${k}`); }
+  if (window.routerCalls.some((u) => /valhalla/.test(u))) errs.push('Valhalla was asked');
+  if (/couldn/.test(toastSays())) errs.push(`a good link says: ${toastSays()}`);
+  // a link from before av=: the same route, no circles
+  const P = await import(location.origin + '/js/planner.js');
+  const q = new URL(%s).searchParams;
+  q.delete('av');
+  const old = P.parseShared(q);
+  if (!old || old.points.length !== 3 || (old.nogos && old.nogos.length)) errs.push(`a link without av=: ${old ? `${old.points.length} points, ${circles(old.nogos)}` : 'did not open'}`);
+  // values that can't be read are left out (and said so); the rest of the link stays
+  q.set('av', '24.94_60.17_40,abc,24.95_95_40,24.95_60.18_0,24.95_60.18_1e9,24.95_60.18_10001,24.95_60.18,24.95_60.18_40_1,_60.18_40,Infinity_60.18_40');
+  const mix = P.parseShared(q);
+  if (!mix || mix.points.length !== 3 || circles(mix.nogos) !== '24.94,60.17,40' || !mix.nogosLost) errs.push(`a link with one good circle among bad ones: ${mix ? `${circles(mix.nogos)}, lost: ${mix.nogosLost}` : 'did not open'}`);
+  q.set('av', Array.from({ length: 205 }, (_, i) => `24.9_60.${100 + i}_30`).join(','));
+  const many = P.parseShared(q);
+  if (!many || (many.nogos || []).length !== 200 || !many.nogosLost) errs.push(`205 circles in a link: ${many ? `${(many.nogos || []).length} read, lost: ${many.nogosLost}` : 'did not open'}`);
+  return errs;
+})"""
+# a reload: the saved route keeps them
+AVOID_RELOADED = """(async (sent) => {
+  """ + AVOID_ROUTED + """
+  const want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r }));
+  return circles(p.nogos) !== circles(want) ? [`after a reload: ${circles(p.nogos)}, not ${circles(want)}`] : [];
+})"""
+# a link whose circles can't be read: it opens, says so, and shares without av=
+AVOID_BAD = """(async () => {
+  """ + AVOID_ROUTED + """
+  const errs = [];
+  if (!(await routed(2))) errs.push(`the route from a link with bad circles: ${p.legs.map((l) => l.status).join(', ') || 'no legs'}`);
+  if (p.points.length !== 3) errs.push(`${p.points.length} points from a link with bad circles`);
+  if (p.nogos.length) errs.push(`circles from a bad value: ${circles(p.nogos)}`);
+  if (!/couldn/.test(toastSays())) errs.push(`nothing says the circles couldn't be read (toast: ${toastSays() || 'none'})`);
+  if (new URL(p.shareUrl()).searchParams.has('av')) errs.push('a route without circles shares av=');
+  return errs;
+})()"""
+LOADED = "new Promise((ok) => { const go = () => window.polku && polku.map.loaded() ? ok() : setTimeout(go, 200); go(); })"
+
+
+def avoid_link(chrome):
+    fails, shared = [], None
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': AVOID_ROUTER}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.175/24.95')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        shared = pg.js(AVOID_SHARE, timeout=60000)
+        fails += shared['errs']
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': AVOID_ROUTER}, pg.s)
+        # a clean page: nothing saved on this device, only the link
+        pg.goto(BASE + 'sw.js')
+        pg.js('localStorage.clear(); true')
+        pg.goto(shared['url'])
+        pg.js(LOADED)
+        sent = json.dumps(shared['sent'])
+        fails += pg.js((AVOID_OPENED % json.dumps(shared['url'])) + f'({sent})', timeout=60000)
+        pg.reload()
+        fails += pg.js(AVOID_RELOADED + f'({sent})')
+        pg.goto(shared['bad'])
+        pg.js(LOADED)
+        fails += pg.js(AVOID_BAD, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} places to avoid in share links" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -1886,6 +2010,8 @@ def main():
             ok = route_bits(chrome) and ok
         if not only or 'stops' in only:
             ok = stops(chrome) and ok
+        if not only or 'avoid' in only:
+            ok = avoid_link(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
         if not only or 'winter' in only:
