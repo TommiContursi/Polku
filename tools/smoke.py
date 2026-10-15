@@ -14,6 +14,7 @@
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
+  python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
@@ -725,6 +726,74 @@ def loops(chrome):
     return not fails
 
 
+# Winter on the route (15b), with a made-up forecast (it's not snowing in the test): a ride
+# along a ploughed cycleway from the recorded Laajavuori tile. The ways' winter classes come
+# along the route; the snow makes the time longer (less on the ploughed way than off it);
+# Heads-up has the snow, the snowfall, slippery, the cold; a water leg has the ice season.
+WINTER_ROUTE = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const W = await import(location.origin + '/js/winter.js');
+  const A = await import(location.origin + '/js/analysis.js');
+  const fx = await (await fetch(location.origin + '/tools/fixtures/winter-laajavuori.json')).json();
+  W.holdWinterFetches(true);
+  W.seedWinterTile(fx.x, fx.y, fx.data);
+  W.setWinterSetting('on');
+  const way = fx.data.w.find((x) => x[0] === 41894526), c = [];
+  for (let i = 0; i < way[2].length; i += 2) c.push([way[2][i], way[2][i + 1]]);
+  const p = polku.planner;
+  p.setActive(true);
+  p.clear();
+  p.loadTrack(c, 'Ploughed cycleway');
+  for (let k = 0; k < 40 && !p.analysis; k++) await wait(200);
+  const a = p.analysis;
+  if (!a) return ['no analysis'];
+  const n = a.along.length, half = Math.floor(n / 2);
+  // the forecast: 15 cm of snow, heavy snowfall (the ride is short); rain at -1 °C on the first half, -20 °C and wind on the second
+  const fill = (v) => new Float32Array(n).fill(v);
+  const temp = fill(-1); for (let i = half; i < n; i++) temp[i] = -20;
+  const precip = fill(0); for (let i = 0; i < half; i++) precip[i] = 0.4;
+  a.wind = { snow: fill(15), snowfall: fill(30), temp, precip, speed: fill(5), gust: fill(8), head: fill(0), dir: fill(180), cross: fill(0), startSec: Date.now() / 1000 };
+  // the classes along it
+  const cls = await W.winterAlong(a);
+  const share = cls ? cls.filter((x) => x === 'ploughed').length / n : 0;
+  if (share < 0.7) errs.push(`ploughed along the way: ${Math.round(share * 100)} %`);
+  a.winterCls = cls;
+  // the time: snow on a ploughed way slows it a little; the same snow on an unknown way more
+  const opt = p.timeOpt();
+  const t0 = A.estimateTime(a, opt).total, tPl = A.estimateTime(a, opt, null, { cm: a.wind.snow, cls }).total, tUnk = A.estimateTime(a, opt, null, { cm: a.wind.snow, cls: null }).total;
+  if (!(tPl > t0 * 1.05 && tPl < t0 * 1.25)) errs.push(`ploughed in 15 cm: ${Math.round(tPl / t0 * 100)} % of the summer time`);
+  if (!(tUnk > tPl)) errs.push(`unknown ways in 15 cm (${Math.round(tUnk)} s) not slower than ploughed (${Math.round(tPl)} s)`);
+  const snow = p.snowOf(a, a.wind);
+  if (!snow || snow.max !== 15) errs.push(`snowOf: ${JSON.stringify(snow && snow.max)}`);
+  p.setSnow(a, snow);
+  if (!(a.snowSec > 0)) errs.push(`snow seconds: ${a.snowSec}`);
+  const texts = p.winterWarnings(a).map((x) => x.text);
+  for (const re of [/^Snow on the way: 15 cm/, /^Snowing on the way/, /^Slippery/, /^Frostbite risk/]) if (!texts.some((t) => re.test(t))) errs.push(`no Heads-up ${re}: ${texts.join(' / ')}`);
+  if (texts.some((t) => /^Not ploughed/.test(t))) errs.push('a ploughed way said unploughed');
+  // the Off setting: none of it
+  W.setWinterSetting('off');
+  if (p.winterWarnings(a).length || p.snowOf(a, a.wind)) errs.push('winter Heads-up with winter Off');
+  // a water leg in the ice season
+  W.setWinterSetting('on');
+  for (let i = 0; i < n; i++) a.attr[i] = { ...a.attr[i], mode: 'water' };
+  if (!p.winterWarnings(a).some((x) => /^Ice season/.test(x.text))) errs.push('no ice season on the water');
+  W.setWinterSetting('auto');
+  p.clear();
+  return errs;
+})()"""
+
+
+def winter_route(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/62.258/25.715')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WINTER_ROUTE, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} winter on the route" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The sport changes with a route drawn (#54: it used to route the legs again in the new sport,
 # leaving a mixed route). From the map's sport pill the route keeps its sports (nothing routed
 # again) and a toast offers to route it as the new one; that, and the planner's own picker, route
@@ -1215,6 +1284,8 @@ def main():
             ok = winter(chrome) and ok
         if not only or 'sports' in only:
             ok = sport_switch(chrome) and ok
+        if not only or 'winterroute' in only:
+            ok = winter_route(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

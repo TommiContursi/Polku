@@ -13,6 +13,7 @@ import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bb
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
+import { winterAlong, windChill, WINTER_TEXT } from './winter.js';
 import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
@@ -1473,9 +1474,13 @@ export class Planner {
       // the sun's own times (sunset, dusk, sunrise), not where the trip happens to start or end in them
       const evening = new Date(x.sunFrom * 1000).getHours() >= 12;
       const already = x.sunFrom < x.from - 60; // dark (or after sunset) already when that part begins
+      // how much of it is lit, where OSM says (lit=yes on the ways the router took)
+      let litM = 0;
+      for (let k = i + 1; k <= j; k++) if (((a.attr[k] || {}).tags || {}).lit === 'yes') litM += a.along[k] - a.along[k - 1];
+      const lit = x.kind === 'dark' ? (litM >= 50 ? ` · ${fmtDist(litM)} of it lit` : ' · none of it lit, as far as OpenStreetMap says') : '';
       out.push(x.kind === 'twilight'
         ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light' }
-        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${water ? ' · on the water a light is required after dark' : ' · take a light'}` });
+        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${lit}${water ? ' · on the water a light is required after dark' : ' · take a light'}` });
     }
     return out;
   }
@@ -1550,6 +1555,111 @@ export class Planner {
     } catch { /* the router's tags still stand */ }
   }
 
+  // ---------------------------------------------------------------- winter on the route (15b)
+  // The snow on the ground along the route (the forecast's, at the hour you'd be there) when it
+  // counts: 3 cm or more somewhere on it, and winter isn't set Off. With the winter classes of
+  // the ways (OSM, winterAlong) once they're in. null: no snow to reckon with.
+  snowOf(a, w) {
+    const set = this.app.winter ? this.app.winter().setting : 'auto';
+    if (set === 'off' || !w || !w.snow) return null;
+    let max = 0;
+    for (const v of w.snow) if (v > max) max = v;
+    if (!(max >= 3)) return null;
+    return { cm: w.snow, cls: a.winterCls || null, max };
+  }
+  // how much longer the snow makes the moving time (seconds), for Time & speed and Heads-up
+  setSnow(a, snow) {
+    a.snow = snow;
+    a.snowSec = snow && a.wind ? estimateTime(a, this.timeOpt(), a.wind.head, snow).total - estimateTime(a, this.timeOpt(), a.wind.head).total : 0;
+  }
+  // the ways' winter classes along the route (Overpass's winter tiles, cached a week): the time
+  // and Heads-up again with them
+  async loadWinterAlong(a) {
+    a.winterLoading = true;
+    let cls = null;
+    try { cls = await winterAlong(a); } catch { /* without: by surface only */ }
+    if (this.analysis !== a || !cls || !a.wind) return;
+    a.winterCls = cls;
+    const snow = this.snowOf(a, a.wind);
+    const t = this.timed(a, a.wind.head, snow);
+    a.timeWind = t.total;
+    a.tAtWind = t.tAt;
+    a.waits = t.waits;
+    this.setSnow(a, snow);
+    this.renderAnalysis();
+  }
+
+  // Heads-up in winter: snow and fresh snow, slippery, the cold, the ways in winter, ice on the water
+  winterWarnings(a) {
+    const set = this.app.winter ? this.app.winter() : { on: false, setting: 'auto' };
+    const w = a.wind;
+    if (set.setting === 'off' || !w) return [];
+    const winter = set.on || !!a.snow;
+    const n = a.along.length, out = [];
+    const tAt = a.tAtWind || a.tAt;
+    const water = (i) => { const at = a.attr[i] || {}; return at.mode === 'water' || (at.tags || {}).route === 'water'; };
+    // stretches where pred(i) holds: [{ i0, i1, len }]
+    const stretches = (pred) => {
+      const list = [];
+      let cur = null;
+      for (let i = 1; i < n; i++) {
+        if (pred(i)) { if (!cur) cur = { i0: i - 1, i1: i, len: 0 }; cur.i1 = i; cur.len += a.along[i] - a.along[i - 1]; }
+        else if (cur) { list.push(cur); cur = null; }
+      }
+      if (cur) list.push(cur);
+      return list;
+    };
+    const sum = (list) => list.reduce((t, x) => t + x.len, 0);
+    const bikeAt = (i) => groupOf((a.attr[i] && a.attr[i].sport) || this.app.activity()) === 'bike';
+    if (winter && a.snow) {
+      let lo = Infinity, hi = 0;
+      for (let i = 1; i < n; i++) if (!water(i) && Number.isFinite(a.snow.cm[i])) { lo = Math.min(lo, a.snow.cm[i]); hi = Math.max(hi, a.snow.cm[i]); }
+      if (hi >= 3) {
+        const range = Math.round(lo) === Math.round(hi) ? `${Math.round(hi)} cm` : `${Math.round(Math.max(0, lo))}–${Math.round(hi)} cm`;
+        out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snow on the way: ${range}`, note: `the forecast's depth${a.snowSec >= 60 ? ` · slower going: about ${fmtDuration(a.snowSec)} more, in the time` : ''}${a.winterCls ? '' : ' · ploughed ways not known yet'}` });
+      }
+    }
+    // snowing while you're out
+    if (winter && w.snowfall) {
+      let cm = 0;
+      for (let i = 1; i < n; i++) if (Number.isFinite(w.snowfall[i])) cm += (w.snowfall[i] * (tAt[i] - tAt[i - 1])) / 3600;
+      if (cm >= 2) out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snowing on the way: about ${Math.round(cm)} cm while you’re out`, note: 'tracks fill in and trails close up as it falls' });
+    }
+    // slippery: rain or sleet around freezing, on land
+    const slip = stretches((i) => !water(i) && w.temp[i] >= -2 && w.temp[i] <= 1.5 && w.precip[i] >= 0.1);
+    if (sum(slip) >= 100) out.push({ at: a.along[slip[0].i0], len: sum(slip), kind: 'winter', ic: 'warn', noAvoid: true, text: `Slippery: rain or sleet around 0 °C for ${fmtDist(sum(slip))}`, note: 'water on ice is the worst: care on bridges, boardwalks and slopes; studded tyres if you have them' });
+    // the cold, as it feels at your own speed (on land)
+    let wc = Infinity, wcAt = 0;
+    for (let i = 1; i < n; i++) {
+      if (water(i)) continue;
+      const kmh = ((a.along[i] - a.along[i - 1]) / Math.max(1, tAt[i] - tAt[i - 1])) * 3.6;
+      const f = windChill(w.temp[i], w.speed[i], Math.min(40, kmh));
+      if (f < wc) { wc = f; wcAt = i; }
+    }
+    if (wc <= -27) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Frostbite risk: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · bare skin can freeze within half an hour: cover face and fingers' });
+    else if (wc <= -15) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Very cold: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · cover up, and keep a dry layer for stops' });
+    // the ways in winter (OSM's winter tags along the route)
+    if (winter && a.winterCls) {
+      const c = a.winterCls, cls = (k) => (i) => c[i] === k && !water(i);
+      const closed = stretches(cls('closed'));
+      for (const x of closed.slice(0, 3)) if (x.len >= 20) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', text: `No access in winter: ${fmtDist(x.len)}`, note: 'marked closed to walking or cycling in winter (usually a ski track): Avoid routes round it' });
+      const groomed = stretches(cls('groomed'));
+      if (sum(groomed) >= 100) out.push({ at: a.along[groomed[0].i0], len: sum(groomed), kind: 'winter', ic: 'snow', noAvoid: true, text: `Beside a ski track for ${fmtDist(sum(groomed))}`, note: 'walking and cycling allowed: keep off the groomed track itself' });
+      const unploughed = stretches((i) => c[i] === 'unploughed' && bikeAt(i));
+      if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike' });
+      const slowOpen = stretches((i) => c[i] === 'open3' && bikeAt(i) && a.snow && a.snow.cm[i] >= 5);
+      if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet' });
+    }
+    // on the water in the ice season
+    const wet = stretches(water);
+    if (sum(wet) > 0) {
+      let cold = Infinity;
+      for (let i = 1; i < n; i++) if (water(i)) cold = Math.min(cold, w.temp[i]);
+      if (set.on || cold <= 0.5) out.push({ at: a.along[wet[0].i0], len: sum(wet), kind: 'water', ic: 'warn', noAvoid: true, text: 'Ice season: the water may be frozen or partly frozen', note: 'Polku can’t see the ice: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked' });
+    }
+    return out;
+  }
+
   // what the time estimate needs: the sport, the craft and your speeds
   timeOpt() {
     const activity = this.app.activity();
@@ -1572,8 +1682,8 @@ export class Planner {
   // The time along the route: moving at each stretch's own sport, plus the changeovers
   // and stops (so arrival times, and the weather when you get there, move on by them).
   // A night lasts until its morning hour after you arrive, so it's timed on the way.
-  timed(a, head = null) {
-    const t = estimateTime(a, this.timeOpt(), head);
+  timed(a, head = null, snow = null) {
+    const t = estimateTime(a, this.timeOpt(), head, snow);
     const waits = this.waitsAlong();
     // waitAt[i]: the wait that starts with sample i (so breakdowns can leave it out of moving time)
     const waitAt = new Float32Array(a.along.length);
@@ -1666,14 +1776,17 @@ export class Planner {
     a.darkWarn = this.darkWarnings(a); // the departure may have moved (without the wind's times, these do)
     try {
       let w = await windAlong(a.pts, a.along, a.tAt, startSec);
-      let t = this.timed(a, w.head);
+      let t = this.timed(a, w.head, this.snowOf(a, w));
       w = await windAlong(a.pts, a.along, t.tAt, startSec); // same forecast, cached
-      t = this.timed(a, w.head);
+      const snow = this.snowOf(a, w);
+      t = this.timed(a, w.head, snow);
       if (this.analysis !== a) return;
       a.wind = { ...w, startSec };
       a.timeWind = t.total;
       a.tAtWind = t.tAt;
       a.waits = t.waits; // nights timed with the wind's arrival times
+      this.setSnow(a, snow);
+      if (snow && !a.winterCls && !a.winterLoading) this.loadWinterAlong(a);
       a.darkWarn = this.darkWarnings(a);
     } catch (err) {
       if (this.analysis !== a) return;
@@ -2963,7 +3076,8 @@ export class Planner {
       h('div', { class: 'speed-table' },
         ...rows.map((k) => h('div', { class: 'speed-row' }, h('span', {}, LABEL[k]), h('b', {}, fmtDist(cats[k].d)), h('b', {}, fmtDuration(cats[k].t)), h('small', {}, speedTxt(cats[k].d, cats[k].t)))),
         up > 30 && !isWater(act) ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which uphill (over 3 %)'), h('b', {}, ''), h('b', {}, fmtDuration(up)), h('small', {}, '')) : null,
-        a.timeWind ? h('div', { class: 'speed-row sub' }, h('span', {}, 'the wind'), h('b', {}, ''), h('b', {}, Math.abs(a.timeWind - a.time) < 60 ? 'about ±0' : `${a.timeWind > a.time ? '+' : '−'}${fmtDuration(Math.abs(a.timeWind - a.time))}`), h('small', {}, 'included above')) : null,
+        a.timeWind ? h('div', { class: 'speed-row sub' }, h('span', {}, a.snowSec >= 60 ? 'the wind and the snow' : 'the wind'), h('b', {}, ''), h('b', {}, Math.abs(a.timeWind - a.time) < 60 ? 'about ±0' : `${a.timeWind > a.time ? '+' : '−'}${fmtDuration(Math.abs(a.timeWind - a.time))}`), h('small', {}, 'included above')) : null,
+        a.snowSec >= 60 ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which the snow'), h('b', {}, ''), h('b', {}, `+${fmtDuration(a.snowSec)}`), h('small', {}, `${Math.round(a.snow.max)} cm at most (forecast)`)) : null,
         ...this.sportRows(a, tAt, speedTxt),
         h('div', { class: 'speed-row total' }, h('span', {}, waitSec ? 'Total time' : 'Moving time'), h('b', {}, fmtDist(a.total)), h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, speedTxt(a.total, (a.timeWind || a.time) - waitSec)))));
   }
@@ -3359,7 +3473,7 @@ export class Planner {
     box.innerHTML = '';
     if (!a) return;
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...this.stopWarnings(a)].sort((x, y) => x.at - y.at);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a)].sort((x, y) => x.at - y.at);
     const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
     const count = all.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
     this.setSection('warnings', { count: count || '', empty: !count, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });

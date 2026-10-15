@@ -52,6 +52,18 @@ WINTER_LAYERS = ("(async () => { const wait = (ms) => new Promise((r) => setTime
                  " if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); } await wait(600); return true; })()")
 SNOW_ON = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const c = document.querySelector('.tl-layers [data-k=snow]'); if (c) c.click();"
            " await wait(5000); return true; })()")
+# Phase 15b: winter on a route through Laajavuori (local BRouter), with a made-up forecast of
+# 15 cm of snow at -8 °C put in once the real one is in (it doesn't snow in October). Older code
+# has no winter on the route: the same route, as it was.
+def WINTER_ROUTE(sec='warnings'):
+    return ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); " + SEED_WINTER +
+            " p.setActive(true); p.clear(); p.setMode('auto'); p.addPoint([25.700, 62.287]); p.addPoint([25.724, 62.259]);"
+            " const t0 = Date.now(); while (!(p.legs.every((l) => l.status === 'ok') && p.analysis && (p.analysis.wind || p.analysis.windError)) && Date.now() - t0 < 40000) await wait(300);"
+            " const a = p.analysis; if (p.snowOf && a && a.wind) { const n = a.along.length, fill = (v) => new Float32Array(n).fill(v);"
+            " a.wind = { ...a.wind, snow: fill(15), snowfall: fill(0.2), temp: fill(-8), precip: fill(0) };"
+            " const W = await import(location.origin + '/js/winter.js'); a.winterCls = await W.winterAlong(a);"
+            " const snow = p.snowOf(a, a.wind), t = p.timed(a, a.wind.head, snow); a.timeWind = t.total; a.tAtWind = t.tAt; a.waits = t.waits; p.setSnow(a, snow); p.renderAnalysis(); }"
+            f" p.setSheetState({json.dumps('full' if sec == 'speed' else 'half')}, {{ remember: false }}); await wait(300); p.fitRoute({{ animate: false }}); p.reveal({json.dumps(sec)}); await wait(700); return true; }})()")
 # Phase 14: paddling loops off Kaivopuisto (Polku's own water router, live water data), and
 # "More loops" (three more, in other directions) for the MTB loops above. Older code shows
 # what it did then: no paddling round trips, and "Other directions" in place of "More loops".
@@ -328,6 +340,9 @@ SCENES = {
     'desk-sport-switch': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'phone-sport-switch': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'desk-weather-flash': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="(async () => { document.querySelector('#btn-time').click(); await new Promise((r) => setTimeout(r, 600)); return true; })()", settle=0.1),
+    'desk-winter-route': dict(DESK, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('warnings')),
+    'phone-winter-route': dict(PHONE, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('warnings')),
+    'desk-winter-time': dict(DESK, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('speed')),
     'desk-winter-colours': dict(DESK, timeline=False, hash='#14/62.258/25.715', js=LAYERS_AT('^Trails', 'Winter').replace("(async () => { ", "(async () => { " + SEED_WINTER + " ")),
     'phone-winter-colours': dict(PHONE, timeline=False, hash='#14/62.258/25.715', js=LAYERS_AT('^Trails', 'Winter').replace("(async () => { ", "(async () => { " + SEED_WINTER + " ")),
     'desk-winter': dict(DESK, timeline=False, hash='#14/62.258/25.715', storage=WINTER_ON, js=WAIT),
