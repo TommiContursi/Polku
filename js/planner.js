@@ -487,7 +487,7 @@ export class Planner {
   }
 
   backToStart() {
-    if (this.points.length < 2) return;
+    if (this.points.length < 2 || this.isLoop()) return;
     this.addPoint(this.points[0].slice());
   }
 
@@ -2797,7 +2797,7 @@ export class Planner {
         // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
         h('span', { class: 'tool-sep tool-wide' }),
         tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
-        tool('loop', 'Back to start', () => this.backToStart(), 'tool-wide'),
+        this.els.backToStart = tool('loop', 'Back to start', () => this.backToStart(), 'tool-wide'),
         tool('download', 'Export GPX', () => this.exportGpx(), 'tool-wide'),
         tool('share', 'Copy share link', () => this.share(), 'tool-wide'),
         tool('offline', 'Save offline', () => this.app.saveOffline(), 'tool-wide'),
@@ -3462,6 +3462,7 @@ export class Planner {
     if (!this.els) return;
     this.els.undo.disabled = !this.past.length;
     this.els.redo.disabled = !this.future.length;
+    this.els.backToStart.disabled = this.points.length < 2 || this.isLoop();
     this.renderModeChips();
   }
 

@@ -5,7 +5,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 ## 2026-10-15
 
 ### Fixed: Back to start ([#64](https://github.com/TommiContursi/Polku/pull/64))
-- **Back to start adds the return leg again**, from the waypoint list, the finish point's menu and the wide planner toolbar. Undo removes that leg and restores your route.
+- **Back to start adds the return leg again**, from the waypoint list, the finish point's menu and the wide planner toolbar. Undo removes that leg and restores your route. The button stays off once you are back at the start.
 
 ### Fixed: routing calls asked for together went out all at once ([#79](https://github.com/TommiContursi/Polku/pull/79))
 - **Routing calls wait their turn.** Calls asked for at the same moment, such as a round trip's loops or several legs at once, all went to brouter.de together, even past Polku's own limit of 5 calls in 10 seconds, and brouter.de answers that by blocking your connection for a while. Now they go out one after another within the limit, in the order they were asked for. Valhalla gets at most one call a second, as its terms ask.
