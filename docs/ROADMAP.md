@@ -52,7 +52,7 @@ Also approved:
 | — | Docs: AGENTS.md as the one place for how to work (when bugs are fixed, PR titles, plain words, no chat quotes, the Traficom rule); every bug a GitHub issue, BACKLOG for ideas, limits and things to watch | `agent-docs` | [#77](https://github.com/TommiContursi/Polku/pull/77) | merged |
 | — | Fix: routing calls asked for together wait their turn (5 in 10 s for brouter.de, one a second for Valhalla), and every call that goes out is counted, retries too | `fix/request-pacing-66` | [#79](https://github.com/TommiContursi/Polku/pull/79) | merged |
 | — | Fix: a paddling route is routed again when OpenStreetMap's rocks come late (it kept the route made without them), and so is a leg still being routed when they come | `fix/water-hazards-recover-67` | [#81](https://github.com/TommiContursi/Polku/pull/81) | merged |
-| — | Docs: phase 24, a design review, planned (research first) | `docs-design-review` | PRNUM | merged |
+| — | Docs: phase 24, a design review, planned (research first) | `docs-design-review` | [#98](https://github.com/TommiContursi/Polku/pull/98) | merged |
 | 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
 | 24 | Design review: the whole design looked at on a phone and a desktop with design skills made for coding agents; what's worth doing becomes issues | `design-review` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
