@@ -4,6 +4,13 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Fixed: a route over hills looked flat when the terrain didn't load ([#94](https://github.com/TommiContursi/Polku/pull/94))
+- **When the terrain doesn't load** (no network, or the terrain server failing), the route's time is worked out by the distance, as if flat, and Polku says so. The summary says "↑? ↓? m · no terrain" instead of "↑0 ↓0 m". The profile says the terrain didn't load, and the gradient on the route shows "No terrain" rather than "Flat". No more "NaN min" or "Infinity m", and Heads-up no longer goes blank.
+- **When only part of it loads,** the climbing and the time come from what did, with a straight line across the gap. In the profile the gap is grey and dashed, and the summary says "part estimated".
+- **Heads-up says what's missing** ("Terrain didn't load", "Terrain missing for 1.2 km") and when Polku tries again, with a Retry button.
+- **Polku tries again on its own,** after 20 seconds and then less often, and at once when your phone is back online. The route updates when the terrain comes in.
+- **A GPX export** has no height where the terrain is missing, rather than a guess.
+
 ### Fixed: Back to start ([#64](https://github.com/TommiContursi/Polku/pull/64))
 - **Back to start adds the return leg again**, from the waypoint list, the finish point's menu and the wide planner toolbar. Undo removes that leg and restores your route. The button stays off once you are back at the start.
 
