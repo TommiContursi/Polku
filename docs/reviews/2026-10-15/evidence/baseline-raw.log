@@ -1,0 +1,24 @@
+{"repo": "/workspace/Polku", "commit": "a737d9db715861b111b815cbf0ffaf54229f23e5", "mode": "raw", "extra_flags": ["--no-sandbox", "--proxy-server=http://proxy:8080", "--proxy-bypass-list=localhost;127.0.0.1"], "profile": "/tmp/polku-audit/raw", "groups": ["trails", "loops", "sports", "1440x900", "390x844", "360x740"], "python": "3.12.14", "chromium": "Chromium 154.0.8037.57 built on Debian GNU/Linux 13 (trixie)"}
+tools/smoke.py:596: SyntaxWarning: invalid escape sequence '\('
+  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+ok   trail details
+ok   round trips on the water
+FAIL changing the sport with a route
+     - the Weather button: Departure & weather not highlighted
+ok   1440x900 (side)
+FAIL 1440x900 bottom (sheet)
+     - profile size is 70 px tall (8% of the screen)
+     - half is 70 px tall
+FAIL 390x844 (sheet)
+     - planning/peek: .map-ctrls × #planner (54×65 px)
+     - planning/peek: #planner × .maplibregl-ctrl-attrib[0] (24×24 px)
+     - planning/peek: #planner × .maplibregl-ctrl-scale[0] (100×22 px)
+     - profile size is 152 px tall (18% of the screen)
+     - half is 152 px tall
+FAIL 360x740 (sheet)
+     - the profile size does not show the whole chart
+     - planning/half: .map-ctrls × #planner (54×124 px)
+     - planning/half: #planner × .maplibregl-ctrl-attrib[0] (24×24 px)
+     - planning/half: #planner × .maplibregl-ctrl-scale[0] (100×22 px)
+     - half is 278 px tall
+{"elapsed_s": 453.17}

@@ -1,0 +1,12 @@
+{"repo": "/workspace/Polku-agent-instructions", "commit": "85f73ca35f2ef05c916c38591f0e3ea884c5d490", "mode": "screencast", "extra_flags": ["--no-sandbox", "--proxy-server=http://proxy:8080", "--proxy-bypass-list=localhost;127.0.0.1"], "profile": "/tmp/polku-audit/current-main", "groups": ["sports", "390x844"], "python": "3.12.14", "chromium": "Chromium 154.0.8037.57 built on Debian GNU/Linux 13 (trixie)"}
+tools/smoke.py:596: SyntaxWarning: invalid escape sequence '\('
+  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+FAIL changing the sport with a route
+     - the Weather button: Departure & weather not highlighted
+FAIL 390x844 (sheet)
+     - profile size is 152 px tall (18% of the screen)
+     - planning/half: .map-ctrls × #planner (54×124 px)
+     - planning/half: #planner × .maplibregl-ctrl-attrib[0] (24×24 px)
+     - planning/half: #planner × .maplibregl-ctrl-scale[0] (100×22 px)
+     - half is 280 px tall
+{"elapsed_s": 96.98}

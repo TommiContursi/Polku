@@ -1,0 +1,92 @@
+{
+  "repo": "/workspace/Polku-agent-instructions",
+  "results": [
+    {
+      "name": "parallel pacing valhalla",
+      "calls": 3,
+      "spreadMs": 2.6
+    },
+    {
+      "name": "parallel pacing brouter",
+      "calls": 8,
+      "spreadMs": 1.08
+    },
+    {
+      "name": "sequential pacing control",
+      "calls": 2,
+      "gapMs": 1165
+    },
+    {
+      "name": "incomplete water cache",
+      "callsAfterRetryAndChangedKey": 2,
+      "retrySameObject": true,
+      "retryMissing": [
+        "OpenStreetMap"
+      ],
+      "changedKeyMissing": []
+    },
+    {
+      "name": "cached shell HTTP 503",
+      "status": 503,
+      "body": "server error"
+    },
+    {
+      "name": "cached shell network rejection control",
+      "status": 200,
+      "body": "saved-working-app"
+    },
+    {
+      "name": "offline preview missing module",
+      "networkCalls": 1,
+      "body": "network-only module"
+    },
+    {
+      "name": "weather completion order",
+      "afterNew": 2,
+      "afterOld": 1,
+      "currentDeparture": 2
+    },
+    {
+      "name": "map sport vs shared route style",
+      "routeSport": "mtb",
+      "styleAfter": "balanced",
+      "keyChanged": true
+    },
+    {
+      "name": "Avoid serialization",
+      "localAvoidCount": 1,
+      "url": "https://polku.si/?r=o%7DfnJ_bfwCo%7D%40o%7D%40&m=a&a=mtb",
+      "decoded": {
+        "points": [
+          [
+            24.94,
+            60.17
+          ],
+          [
+            24.95,
+            60.18
+          ]
+        ],
+        "modes": [
+          "a"
+        ],
+        "activity": "mtb",
+        "style": "",
+        "legStyles": "",
+        "lipas": [],
+        "sports": [],
+        "changes": [],
+        "stops": [],
+        "carry": []
+      }
+    },
+    {
+      "name": "missing terrain",
+      "distance": 124.19187988726985,
+      "time": "NaN",
+      "minElevation": "Infinity",
+      "maxElevation": "-Infinity",
+      "ascent": 0
+    }
+  ]
+}
