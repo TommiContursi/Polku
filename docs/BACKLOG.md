@@ -9,8 +9,8 @@ Each item says when (and, where it matters, in which phase) it came up.
 ## Bugs and quirks
 
 ### Small: the next bug sweep
-- **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
-- **Snow below Auto's threshold says nothing where you look** *(2026-10-15)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
+- **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
+- **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
 ### Bigger: later
 - **The planner keeps the map's sport underneath** *(bug sweep, 2026-10-15)*: what it shows now follows the route's main sport, but the planner still takes the map's sport as the default for new legs, the round-trip presets and the share link's `a=`. A planner with a sport of its own (set by the route, changed by Route it as) would be the clean model, about 40 places in `planner.js`.
@@ -39,8 +39,8 @@ Each item says when (and, where it matters, in which phase) it came up.
 ## Ideas
 
 - **Hidden settings** *(2026-10-15)*: the map shows different places for each sport (harbours, beaches and toilets for paddling and swimming, lean-tos for hiking…). One switch ("Lean-tos, huts, campfire & landing sites (LIPAS)", "OSM outdoor places") hides which kinds it has, and they change with the sport behind your back. Show the kinds under each switch, each yours to turn on or off, with the sport's defaults marked. LIPAS routes the same (phase 20). Look for other per-sport defaults that change silently. *(phase 21)*
-- **A glowing route line** *(2026-10-15)*: a stronger neon halo as an option beside the plain red line, to make the route stand out over busy layers.
-- **A clicked road highlighted** *(2026-10-15)*: when not planning, a click on a road or trail could highlight the whole OSM way. The tiles cut a way at their edges; the exact way comes with "Show all OSM tags" (Overpass `out geom`), so highlight the tiles' part at once and the whole way once it's fetched.
+- **A glowing route line** *(2026-10-15; in ROADMAP phase 20)*: a stronger neon halo as an option beside the plain red line, to make the route stand out over busy layers.
+- **A clicked road highlighted** *(2026-10-15; in ROADMAP phase 21)*: when not planning, a click on a road or trail could highlight the whole OSM way. The tiles cut a way at their edges; the exact way comes with "Show all OSM tags" (Overpass `out geom`), so highlight the tiles' part at once and the whole way once it's fetched.
 ### Weather *(now ROADMAP phase 17, with a check before heavy loads)*
 - **More weather on the map** *(2026-10-14)*:
   - **clouds:** Open-Meteo has low, mid and high cloud cover;
@@ -74,7 +74,10 @@ Each item says when (and, where it matters, in which phase) it came up.
 - **Static trail tiles** (PMTiles built weekly by a GitHub Action from Geofabrik's Finland extract) if Overpass stays flaky. *(phase 12 design)*
 
 ### Planner
-- **The planner's layout** *(2026-10-15)*: tabs for drawing, checking and going; the ⋯ menu's tools out in the open; a panel to move and snap on desktop; the profile and the time as cards to pull out onto the map. Now ROADMAP phase 22 (proposed).
+- **The planner's layout** *(2026-10-15)*: tabs for drawing, checking and going; the ⋯ menu's tools out in the open; a panel to move and snap on desktop; the profile and the time as cards to pull out onto the map. Now ROADMAP phase 22 (22a next, with a mock-up).
+- **The leg you edit lit up on the map** *(2026-10-15)*: a leg opened in the waypoint list glows on the map and in the profile, the rest faded. In ROADMAP 22a.
+- **The time earlier, the speeds with the style** *(2026-10-15)*: Time & speed opened with the speed inputs, far down. The time goes first in Go, and the speed inputs move beside the route style ("How you go"). In ROADMAP 22a.
+- **Where you are, and the way on** *(2026-10-15)*: the location dot showing which way you face, following you on the map, how far along the route you are, and recording the track, with the phone's own GPS and compass. Now ROADMAP phase 23 (23a–23d).
 - The route's colour sits in the header and in the profile *(done in #37)*.
 - **A quick point on the line** (Alt-click, say) if two clicks for a point (#48: a click opens the part's menu, "Add a point here" is its first button) feel slow. Dragging already makes one. *(2026-10-14)*
 - **Departure more than 48 hours ahead** *(13c, 2026-10-14)*: a weekend trip planned on Monday. The route's 10-day forecast would cover it; the timeline (and its weather map) stops at 48 h, so this needs a date picker that leaves the map's timeline alone.
