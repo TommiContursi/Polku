@@ -581,9 +581,12 @@ export class Planner {
     this.update();
   }
 
-  restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry }) {
+  restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry, nogos, nogosLost }) {
     const sport = this.app.activity();
     this.points = points;
+    // the link's places to avoid (none in links from before av=)
+    this.nogos = (nogos || []).map((n) => ({ ...n }));
+    if (nogosLost) toast('Some places to avoid in this link couldn’t be read, so the route may go through them', { tone: 'warn', ms: 8000 });
     this.legs = points.slice(1).map((_, i) => ({ mode: CODE_MODE[modes[i]] || modes[i] || 'auto', sport: (sports && sports[i]) || undefined }))
       .map((l) => (l.mode === 'fixed' ? { mode: 'auto', sport: l.sport } : l));
     for (const [i, m] of changes || []) if (this.points[i]) this.pchange.set(this.points[i], m);
@@ -2762,6 +2765,8 @@ export class Planner {
     // LIPAS legs as references (a few characters, not their line); older links route these legs
     const lr = this.legs.map((l, i) => (l.mode === 'fixed' && l.src ? `${i}:${l.src.t}.${l.src.id}.${l.src.seq}.${Math.round(l.src.a)}.${Math.round(l.src.b)}` : '')).filter(Boolean).join(',');
     if (lr) u.searchParams.set('lr', lr);
+    // places to avoid, so whoever opens it is routed around them too
+    if (this.nogos.length) u.searchParams.set('av', encodeAvoid(this.nogos));
     return u.toString();
   }
 
@@ -4000,6 +4005,23 @@ function alongAt(c, m) {
   return { i: c.length - 2, t: 1 };
 }
 
+// Places to avoid in a share link (av=): lon_lat_metres, comma-separated, the
+// centre to 5 decimals (about a metre, like the route's points). A link holds at
+// most AVOID_MAX; anything that doesn't read as a circle is left out, and `lost` says so.
+const AVOID_MAX = 200;
+const encodeAvoid = (nogos) => nogos.map((n) => `${+n.ll[0].toFixed(5)}_${+n.ll[1].toFixed(5)}_${Math.round(n.r)}`).join(',');
+function decodeAvoid(s) {
+  const nogos = [];
+  let lost = false;
+  for (const part of s ? s.split(',') : []) {
+    const m = part.match(/^(-?\d{1,3}(?:\.\d{1,7})?)_(-?\d{1,2}(?:\.\d{1,7})?)_(\d{1,5})$/);
+    if (m && Math.abs(+m[1]) <= 180 && Math.abs(+m[2]) <= 90 && +m[3] >= 1 && +m[3] <= 10000 && nogos.length < AVOID_MAX) {
+      nogos.push({ ll: [+m[1], +m[2]], r: +m[3], label: 'Avoided place' });
+    } else lost = true;
+  }
+  return { nogos, lost };
+}
+
 export function parseShared(params) {
   const r = params.get('r');
   if (!r) return null;
@@ -4014,7 +4036,8 @@ export function parseShared(params) {
     const changes = (params.get('cw') || '').split(',').map((x) => x.split(':').map(Number)).filter(([i, m]) => Number.isFinite(i) && Number.isFinite(m));
     const stops = decodeStops(params.get('st'));
     const carry = (params.get('cg') || '').split(',').filter((x) => /^\d+$/.test(x)).map(Number);
-    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas, sports, changes, stops, carry };
+    const avoid = decodeAvoid(params.get('av'));
+    return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas, sports, changes, stops, carry, nogos: avoid.nogos, nogosLost: avoid.lost };
   } catch {
     return null;
   }
