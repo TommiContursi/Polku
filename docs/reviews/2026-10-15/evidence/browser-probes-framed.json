@@ -1,0 +1,176 @@
+[
+  {
+    "test": "page",
+    "visibility": "visible",
+    "hidden": false,
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+    "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+  },
+  {
+    "test": "layout",
+    "phase": "ordinary",
+    "state": "peek",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 681.859375,
+    "visibility": "visible",
+    "frames": 4
+  },
+  {
+    "test": "layout",
+    "phase": "ordinary",
+    "state": "profile",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 5
+  },
+  {
+    "test": "layout",
+    "phase": "ordinary",
+    "state": "half",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 6
+  },
+  {
+    "test": "layout",
+    "phase": "ordinary",
+    "state": "full",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 6
+  },
+  {
+    "test": "weather-highlight",
+    "phase": "ordinary",
+    "flash": false,
+    "tab": "go",
+    "visibility": "visible",
+    "frames": 6
+  },
+  {
+    "test": "layout",
+    "phase": "foreground",
+    "state": "peek",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 6
+  },
+  {
+    "test": "layout",
+    "phase": "foreground",
+    "state": "profile",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 6
+  },
+  {
+    "test": "layout",
+    "phase": "foreground",
+    "state": "half",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 7
+  },
+  {
+    "test": "layout",
+    "phase": "foreground",
+    "state": "full",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 7
+  },
+  {
+    "test": "weather-highlight",
+    "phase": "foreground",
+    "flash": true,
+    "tab": "go",
+    "visibility": "visible",
+    "frames": 7
+  },
+  {
+    "test": "layout",
+    "phase": "captured-frame",
+    "state": "peek",
+    "height": 152,
+    "top": 684,
+    "controlBottom": 680,
+    "visibility": "visible",
+    "frames": 44
+  },
+  {
+    "test": "layout",
+    "phase": "captured-frame",
+    "state": "profile",
+    "height": 280,
+    "top": 556,
+    "controlBottom": 552,
+    "visibility": "visible",
+    "frames": 68
+  },
+  {
+    "test": "layout",
+    "phase": "captured-frame",
+    "state": "half",
+    "height": 422,
+    "top": 414,
+    "controlBottom": 410,
+    "visibility": "visible",
+    "frames": 106
+  },
+  {
+    "test": "layout",
+    "phase": "captured-frame",
+    "state": "full",
+    "height": 768,
+    "top": 68,
+    "controlBottom": 64,
+    "visibility": "visible",
+    "frames": 138
+  },
+  {
+    "test": "weather-highlight",
+    "phase": "captured-frame",
+    "flash": true,
+    "tab": "go",
+    "visibility": "visible",
+    "frames": 154
+  },
+  {
+    "test": "Back to start button",
+    "before": 2,
+    "after": 2,
+    "loopType": "object"
+  },
+  {
+    "test": "Back to start exceptions",
+    "errors": [
+      "TypeError: this.loop is not a function\n    at HTMLButtonElement.onclick (http://localhost:8766/js/planner.js:1955:146)\n    at <anonymous>:1:151\n    at <anonymous>:1:249"
+    ]
+  },
+  {
+    "test": "Avoid share",
+    "localAvoid": 1,
+    "url": "http://localhost:8766/?r=gnlvJ_mgpCo%7D%40giB&m=l&a=mtb#13.6/61.5135/23.817"
+  },
+  {
+    "test": "panel magnification policy",
+    "ctrlWheelPrevented": true,
+    "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+    "scale": 1
+  }
+]

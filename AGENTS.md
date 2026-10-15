@@ -70,6 +70,9 @@ requires a demonstrated need and the user's approval.
   alternative; avoid subjective criticism and unnecessary rewrites.
 - GitHub and repository documentation are the shared source of truth. Explain
   each change's user impact, validation and remaining limitations in the PR.
+  Record actionable findings in GitHub issues, link them from BACKLOG, and
+  follow DEVELOPING's finding lifecycle. Check existing issues before creating
+  one; keep confirmed defects separate from risks and test-environment failures.
   Follow DEVELOPING's changelog, roadmap, backlog and screenshot conventions
   when shipping behavior or advancing a phase; keep infrastructure-only PRs
   focused and describe their scope in the PR.

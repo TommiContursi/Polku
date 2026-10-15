@@ -4,6 +4,36 @@ Polku is a static site with no build step and no backend: `index.html`, plain ES
 
 The plan for upcoming work is in [ROADMAP.md](ROADMAP.md); bugs, ideas and things to watch are in [BACKLOG.md](BACKLOG.md); what's shipped is in the [changelog](../CHANGELOG.md).
 
+## Recording and resolving findings
+
+- Use [GitHub issues](https://github.com/TommiContursi/Polku/issues) for actionable
+  bugs and investigations. Search open and closed issues first; add evidence to
+  an existing item instead of creating another. Small ideas can stay in BACKLOG
+  until they need investigation or a PR.
+- Record the affected commit, user impact, reproduction and expected/actual
+  behavior, evidence and its limits, and regression/acceptance checks. Say
+  **confirmed defect**, **risk / needs investigation**, **test/environment
+  failure**, or **optional improvement**. Confidence and proposed priority need
+  reasons; severity alone does not change the approved roadmap. Use the finding
+  template when helpful; leave unknowns explicit.
+- BACKLOG is the short index: link to the issue for live status and detail.
+  ROADMAP holds approved scheduling, and CHANGELOG records shipped behavior.
+  Dated assessments under `docs/reviews/` preserve evidence at a particular
+  revision; subsequent corrections and resolutions belong in the linked issue.
+- Before implementation, note the active branch/PR and contributor in the issue
+  so Claude and Codex do not duplicate or overwrite work. Link the issue in the
+  PR; either agent may independently review the other's evidence and solution.
+- A fix PR should show the failing reproduction and the passing regression,
+  relevant existing checks and any unresolved environment failures. Close as
+  completed when the fix is merged and verified; update the BACKLOG pointer in
+  that PR. For duplicates, unreproduced reports or work not planned, state the
+  reason and evidence instead of implying a fix. Reopen if later evidence
+  contradicts the resolution.
+
+The [15 October 2026 assessment](reviews/2026-10-15/README.md) is the first
+record using this convention. It includes the inconsistent smoke results and
+their diagnostic scripts; those snapshots do not replace maintained tests.
+
 ## Running it
 
 ```bash

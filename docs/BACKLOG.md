@@ -6,6 +6,21 @@ work, it moves there (or into a fix PR) and is ticked off here.
 
 Each item says when (and, where it matters, in which phase) it came up.
 
+Actionable findings have a linked GitHub issue for reproduction, current status,
+ownership and resolution; this file remains the short index. See
+[the finding lifecycle](DEVELOPING.md#recording-and-resolving-findings).
+
+## Independent technical assessment — 2026-10-15
+
+The [assessment and retained evidence](reviews/2026-10-15/README.md) distinguish
+confirmed defects, unresolved rendering/test failures and optional improvements.
+Suggested maintenance priorities are proposals, not a change to ROADMAP.
+
+The assessment also covers partial offline saves, water-grid completeness and
+performance, and optional input/CDN hardening. These remain risks to investigate,
+not newly confirmed failures. The existing FMI deadline and cold-area loop
+latency items below remain their project context.
+
 ## Bugs and quirks
 
 ### Small: the next bug sweep

@@ -1,0 +1,19 @@
+{"repo": "/workspace/Polku", "commit": "a737d9db715861b111b815cbf0ffaf54229f23e5", "mode": "validated", "extra_flags": ["--no-sandbox", "--proxy-server=http://proxy:8080", "--proxy-bypass-list=localhost;127.0.0.1", "--disable-dev-shm-usage", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"], "profile": "/tmp/polku-audit/validated", "groups": ["trails", "loops", "sports", "1440x900", "390x844", "360x740"], "python": "3.12.14", "chromium": "Chromium 154.0.8037.57 built on Debian GNU/Linux 13 (trixie)"}
+tools/smoke.py:596: SyntaxWarning: invalid escape sequence '\('
+  if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
+ok   trail details
+ok   round trips on the water
+FAIL changing the sport with a route
+     - the Weather button: Departure & weather not highlighted
+ok   1440x900 (side)
+FAIL 1440x900 bottom (sheet)
+     - planning/peek: #planner × .maplibregl-ctrl-attrib[0] (24×24 px)
+     - planning/peek: #planner × .maplibregl-ctrl-scale[0] (98×22 px)
+     - profile size is 70 px tall (8% of the screen)
+     - half is 70 px tall
+FAIL 390x844 (sheet)
+     - planning/profile: .map-ctrls × #planner (54×16 px)
+     - planning/profile: #planner × .maplibregl-ctrl-attrib[0] (24×14 px)
+     - planning/profile: #planner × .maplibregl-ctrl-scale[0] (100×14 px)
+ok   360x740 (sheet)
+{"elapsed_s": 403.41}
