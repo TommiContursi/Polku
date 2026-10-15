@@ -725,8 +725,8 @@ def loops(chrome):
     return not fails
 
 
-# The sport changes with a route drawn (user, 2026-10-15: "this changes setting of legs … this
-# can mess badly a route"). From the map's sport pill the route keeps its sports (nothing routed
+# The sport changes with a route drawn (#54: it used to route the legs again in the new sport,
+# leaving a mixed route). From the map's sport pill the route keeps its sports (nothing routed
 # again) and a toast offers to route it as the new one; that, and the planner's own picker, route
 # the main sport only (the paddle leg stays) and Undo brings the route back.
 SPORT_SWITCH = """(async () => {

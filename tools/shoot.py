@@ -161,7 +161,7 @@ def LINE_PICK(how):
             + " await wait(700); return true; })()")
 
 
-# points clicked beside the trails at Konnevesi (the user's test spot), snapped onto them (local BRouter)
+# points clicked beside the trails at Konnevesi (a test spot), snapped onto them (local BRouter)
 SNAP_JS = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setMode('auto');"
            " for (const q of [[25.2135, 61.8735], [25.2190, 61.8712], [25.2160, 61.8690], [25.2240, 61.8725]]) p.addPoint(q);"
            " const t0 = Date.now(); while (!(p.legs.every((l) => l.status === 'ok') && p.analysis) && Date.now() - t0 < 30000) await wait(300);"
