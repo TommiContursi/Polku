@@ -4,6 +4,9 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Fixed: Back to start
+- **Back to start adds the return leg again**, from the waypoint list, the finish point's menu and the wide planner toolbar. Undo removes that leg and restores your route.
+
 ### After the three tabs ([#61](https://github.com/TommiContursi/Polku/pull/61))
 - **The planner opens on the left on desktop.** A button at the end of its tabs moves it to the bottom and back (it's also in ⋯ and Settings).
 - **Export GPX, Copy share link and Save offline are in ⋯ again,** as well as in Go.
