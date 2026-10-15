@@ -25,9 +25,13 @@ user's OK.
 - **Confirmed bugs with a small fix** get a Fix PR of their own, between
   phases, at any time. Don't mix them into a phase. A bug that needs a design
   first gets a place in ROADMAP, with the user's OK.
-- **A bug you notice but don't fix now** gets a GitHub issue at once. Ideas
-  and risks go into BACKLOG as they come up, dated, saying where they came
-  from.
+- **An improvement the user wants done** gets a GitHub issue labelled
+  `enhancement`, like a bug, so it can be claimed. A small one is done in a PR
+  of its own when the user picks it; a bigger one goes with its phase in
+  ROADMAP.
+- **A bug you notice but don't fix now** gets a GitHub issue at once. Loose
+  ideas and risks go into BACKLOG as they come up, dated, saying where they
+  came from.
 - Docs and tooling PRs stay on their one subject.
 
 ## In the code
@@ -61,6 +65,10 @@ user's OK.
 
 - `python3 serve.py` serves http://localhost:8765. `window.polku` gives
   scripted access to the planner, the map and the state.
+- **When other agents are working too,** serve on a port of your own
+  (`python3 serve.py 8771`) and point the tests at it
+  (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
+  another agent's server.
 - **Do what a user does:** click, drag, undo, reload. A button being there
   proves nothing.
 - **Every bug fix gets a check in `tools/smoke.py`** that fails before the fix
@@ -104,17 +112,19 @@ user's OK.
 
 ## Bugs and findings
 
-- **Every bug gets a GitHub issue,** small ones too. Search first, and add to
-  the one that exists. BACKLOG is for ideas, known limits and things to watch;
-  phases are planned in ROADMAP, not in issues.
+- **Every bug gets a GitHub issue,** small ones too, and so does an
+  improvement the user wants done (`enhancement`). Search first, and add to
+  the one that exists. BACKLOG is for loose ideas, known limits and things to
+  watch; phases are planned in ROADMAP, not in issues.
 - The issue says what goes wrong and for whom, how to make it happen, what
   should happen, the commit, and whether it's a **confirmed bug**, **a risk to
   look into**, or **a problem with the test machine**. There's a template:
   "Bug or technical finding".
-- When you start on an issue, comment with your branch, so the other agent
-  doesn't start on it too.
-- **The issue is the one place for its status,** so bugs aren't listed in
-  BACKLOG or ROADMAP. "Fixes #n" closes it when the PR merges; anything closed
+- When you start on an issue, comment with your branch and say which agent
+  you are (Claude Code or Codex: both post as the user's GitHub account), so
+  the other doesn't start on it too.
+- **The issue is the one place for its status,** so what has an issue isn't
+  listed in BACKLOG or ROADMAP. "Fixes #n" closes it when the PR merges; anything closed
   without a fix says why.
 - Claude and Codex may review each other's work. Disagree with evidence;
   neither one's earlier conclusion is final.

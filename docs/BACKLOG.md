@@ -6,9 +6,9 @@ work, it moves there (or into a fix PR) and is ticked off here.
 
 Each item says when (and, where it matters, in which phase) it came up.
 
-**Bugs aren't listed here.** Each one is a
-[GitHub issue](https://github.com/TommiContursi/Polku/issues), which holds its
-status. The review of 15 October 2026 opened #65–#75, listed in
+**Bugs aren't listed here,** nor improvements the user wants done. Each one is
+a [GitHub issue](https://github.com/TommiContursi/Polku/issues) (improvements
+labelled `enhancement`), which holds its status. The review of 15 October 2026 opened #65–#75, listed in
 [#63](https://github.com/TommiContursi/Polku/issues/63) (the
 [review with its evidence](reviews/2026-10-15/README.md)).
 
