@@ -4,7 +4,7 @@
   python3 tools/smoke.py            # all viewports
   python3 tools/smoke.py 390x844    # just one size
   python3 tools/smoke.py layers     # just the Layers panel in every sport
-  python3 tools/smoke.py trails     # just the trail details (from a recorded tile)
+  python3 tools/smoke.py trails     # just the trail details (from a recorded tile), and the uphill colours when the terrain comes late (mocked)
   python3 tools/smoke.py header     # just the planner header fitting its sheet
   python3 tools/smoke.py lipas      # just LIPAS search and riding a LIPAS route (recorded answers)
   python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind), and OSM's rocks coming late (mocked)
@@ -319,6 +319,80 @@ def trails(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} trail details" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Before the page loads: the terrain tiles fail (window.__dem.mode = 'ok' makes
+# them load: heights by the longitude, a hill every 0.02°), Overpass is held
+# back and the recorded Tykkikallio tile seeded (16 ways tagged mtb:scale:uphill).
+DEM_MOCK = """(() => {
+  if (!/^\\/(#|$)/.test(location.pathname + location.hash)) return;
+  const realFetch = window.fetch, D = window.__dem = { mode: 'fail', asked: [] };
+  const tile = async (z, x) => {
+    const S = 256, c = new OffscreenCanvas(S, S), ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
+    for (let px = 0; px < S; px++) {
+      const lon = ((x + (px + 0.5) / S) / 2 ** z) * 360 - 180, v = 120 + 20 * Math.sin((lon * Math.PI * 2) / 0.02) + 32768;
+      for (let py = 0; py < S; py++) img.data.set([Math.floor(v / 256), Math.floor(v) % 256, Math.floor((v % 1) * 256), 255], (py * S + px) * 4);
+    }
+    ctx.putImageData(img, 0, 0);
+    return new Response(await c.convertToBlob({ type: 'image/png' }));
+  };
+  window.fetch = (url, init) => {
+    const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\/(\\d+)/.exec(String(url));
+    if (!m) return realFetch(url, init);
+    D.asked.push(`${D.mode} ${m[1]}/${m[2]}/${m[3]}`);
+    return D.mode === 'fail' ? Promise.reject(new TypeError('Failed to fetch')) : tile(+m[1], +m[2]);
+  };
+  import(location.origin + '/js/trails.js').then(async (T) => {
+    T.holdFetches();
+    T.seedTile(4682, 2273, await (await realFetch(location.origin + '/tools/fixtures/trails-tykkikallio.json')).json());
+  });
+})()"""
+
+# The uphill colours when the terrain comes back late (#93): blank while it fails, then
+# every trail in view coloured after a small pan (as many pieces as with the terrain
+# there from the start), the OSM-tagged climbs too; trails coloured with the terrain
+# stay cached, so panning back and forth grades nothing again.
+UPHILL_LATE = """(async () => {
+  const m = polku.map, U = polku.uphill, D = window.__dem, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const pieces = () => U.fc.features.length, tagged = () => U.fc.features.filter((f) => f.properties.osm).length;
+  // until the colours stop changing for 2 s
+  const settle = async () => { let n = -1, t = Date.now(); const t0 = t; while (Date.now() - t0 < 30000 && Date.now() - t < 2000) { await wait(250); if (pieces() !== n) { n = pieces(); t = Date.now(); } } };
+  const nudge = async () => { for (const dx of [60, -60]) { m.panBy([dx, 0], { duration: 0 }); await wait(500); } await settle(); };
+  await wait(1500); await settle();
+  if (!U.enabled) return ['the uphill colours are not on'];
+  if (!D.asked.length) return ['(the test) the terrain was never asked for'];
+  if (pieces()) errs.push(`no terrain: ${pieces()} pieces coloured`);
+  // the terrain is back: failed tiles are asked for again after 15 s, on the next map move
+  D.mode = 'ok';
+  await wait(16000);
+  await nudge();
+  const back = pieces(), backTagged = tagged();
+  // panning back and forth: the trails graded with the terrain are kept, not graded again
+  const kept = new Map(U.done), asked = D.asked.length;
+  await nudge();
+  const again = [...kept].filter(([k, v]) => U.done.get(k) !== v).length;
+  if (again) errs.push(`${again} of ${kept.size} trails graded again after a pan`);
+  if (D.asked.length !== asked) errs.push(`${D.asked.length - asked} terrain tiles asked for again after a pan`);
+  // the same view graded from scratch, with the terrain there all along
+  U.done.clear(); U.osmTiles.clear(); U.schedule();
+  await settle();
+  const all = pieces(), allTagged = tagged();
+  if (all < 100 || allTagged < 5) errs.push(`(the test) only ${all} pieces, ${allTagged} from OSM tags, with the terrain loaded`);
+  if (back < all * 0.95) errs.push(`terrain back: ${back} pieces coloured, against ${all} with the terrain there from the start`);
+  if (backTagged < allTagged) errs.push(`terrain back: ${backTagged} pieces from OSM's uphill tags, against ${allTagged}`);
+  return errs;
+})()"""
+
+
+def uphill_late(chrome):
+    pg = chrome.page(1440, 900, False)
+    chrome.send('Page.addScriptToEvaluateOnNewDocument', {'source': DEM_MOCK}, pg.s)
+    pg.open_app({'activity': 'mtb', 'trailsByActivity': {'mtb': {'trailColors': 'up'}}}, {'polku:plannerDock': '"left"'}, '#15/62.2289/25.7652')
+    fails = pg.js(UPHILL_LATE, timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} uphill colours when the terrain comes back" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -2092,6 +2166,7 @@ def main():
             ok = layers(chrome) and ok
         if not only or 'trails' in only:
             ok = trails(chrome) and ok
+            ok = uphill_late(chrome) and ok
         if not only or 'header' in only:
             ok = header_fit(chrome) and ok
         if not only or 'lipas' in only:
