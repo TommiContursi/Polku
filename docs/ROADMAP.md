@@ -1,6 +1,6 @@
 # Polku roadmap: planner, layout, sports, editing, smarter routes
 
-Status: **approved 2026-10-13.** Each phase below ships as one PR. Do them in order unless this file says otherwise, and update the status table after every PR.
+Status: **approved 2026-10-13.** Each phase below ships as one PR. Do them in order unless this file says otherwise. Each PR updates its own row in the status table. Small confirmed bugs are fixed in Fix PRs of their own between phases. How to work on it is in [AGENTS.md](../AGENTS.md).
 
 Also approved:
 - On desktop the Plan button moves into the search bar (phase 1).
@@ -46,7 +46,10 @@ Also approved:
 | — | Fix: the map's credits stay folded on phones (MapLibre opened them when their text came in late) and fold when the window narrows | `credits-fold` | [#58](https://github.com/TommiContursi/Polku/pull/58) | merged |
 | — | Docs: the plan from here (the drawer in steps 22a–c, out on the trail 23a–d, what goes together), the drawer mock-up | `docs-plan` | [#59](https://github.com/TommiContursi/Polku/pull/59) | merged |
 | 22a | The drawer in three tabs (Route / Check / Go): the summary and a short profile always on top, the ⋯ menu's tools out in the open, route style and speeds together, the time first in Go, the leg you open lit up on the map | `drawer-tabs` | [#60](https://github.com/TommiContursi/Polku/pull/60) | merged |
-| — | After 22a: the side panel by default on desktop, its place one button away; export, share and offline back in ⋯; the route's points on the profile (the numbered marks were climbs) | `drawer-fixes` | [#61](https://github.com/TommiContursi/Polku/pull/61) | PR open |
+| — | After 22a: the side panel by default on desktop, its place one button away; export, share and offline back in ⋯; the route's points on the profile (the numbered marks were climbs) | `drawer-fixes` | [#61](https://github.com/TommiContursi/Polku/pull/61) | merged |
+| — | Docs: one set of instructions for Claude Code and Codex (AGENTS.md) | `codex/shared-agent-instructions` | [#62](https://github.com/TommiContursi/Polku/pull/62) | merged |
+| — | Docs: the review of 15 October 2026, its evidence, and GitHub issues for its findings ([#63](https://github.com/TommiContursi/Polku/issues/63)) | — | [#76](https://github.com/TommiContursi/Polku/pull/76) | merged |
+| — | Docs: AGENTS.md as the one place for how to work (when bugs are fixed, PR titles, plain words, no chat quotes, the Traficom rule); every bug a GitHub issue, BACKLOG for ideas, limits and things to watch | `agent-docs` | [#77](https://github.com/TommiContursi/Polku/pull/77) | merged |
 | 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
 | 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
@@ -81,6 +84,8 @@ The agreed order (15b, then the bug sweep, then 21…) is done up to the sweep. 
 | 12 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. |
 | 13 | **16, Strava & Garmin** | research | Outside accounts and terms. |
 | 14 | **19, help and a tutorial** | | Last, when the rest holds still. |
+
+**Bugs from the review of 15 October** ([#63](https://github.com/TommiContursi/Polku/issues/63)) don't wait for a place in this list: the small ones are fixed in Fix PRs of their own between phases, Back to start (#65) first. Offline recovery (#68) and the route's own settings (#71) need a plan first; the review suggests #71 before 23b.
 
 **What goes together** (so nothing is done twice):
 - **22a** takes:
@@ -1686,23 +1691,4 @@ The smallest first step is expected to be option A plus a FIT course export. Pha
 
 ## How to work on this (for any session)
 
-- **Branches:** one per phase, from `main` after the previous phase is merged. If it isn't merged yet, branch from it and say so in the PR.
-- **Bugs, ideas and things to watch** go into [BACKLOG.md](BACKLOG.md) as they come up. An item moves here when it becomes work, and is ticked off there.
-- **Testing:**
-  - Work in the browser pane inside Claude Code (it can be watched there). `python3 serve.py` serves http://localhost:8765.
-  - Check MTB, gravel, hike and paddle (plus the new sports once they exist) at **1440 × 900** and **390 × 844**, with a route drawn and the timeline open.
-  - Run `tools/smoke.py` once it exists. `window.polku` gives scripted access (planner, map, state).
-- **Screenshots:**
-  - `tools/shoot.py OUTDIR before|after [scenes]` while on `main` and on the branch.
-  - Convert to JPEG and push them to the `pr-screenshots` branch under `<branch>/`, so no images go into `main`.
-  - Link them in the PR as `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
-- **Network:**
-  - Every network call goes through `request()` in [js/net.js](../js/net.js), so limits, back-off and the usage readout keep working.
-  - Only free public services, and no backend: polku.si is GitHub Pages, and the user doesn't want a server. If a service doesn't hold up for our use, add a fallback or switch, don't get stuck on it.
-  - **Never burst brouter.de while testing.** It blocks the whole connection (the user's too): 40 s for ~20 calls in 8 s, then half an hour after repeated bursts (2026-10-13). Test routing against `tools/brouter-local.sh` (Settings → Routing server) or a stand-in that answers in BRouter's GeoJSON format; one-off real calls are fine.
-- **Don't regress:**
-  - weather along the route, warnings and Avoid, water routing and carries;
-  - offline save and preview, GPX/KML import and GPX export;
-  - share links (`r`, `m`, `a`), 3D and hover details.
-- **Merging publishes to polku.si,** so merge only when the user says so.
-- **After each PR,** update the status table at the top and note anything that changed in the plan.
+Branches, testing, screenshots, the network rules, what not to break and merging are in [AGENTS.md](../AGENTS.md), for Claude Code, Codex and people alike.
