@@ -44,27 +44,58 @@ Also approved:
 | 15b | Winter on the route: time in snow, winter Heads-up (snow, snowfall, slippery, the cold, ways closed in winter, beside ski tracks, unploughed), lit stretches in the dark, the ice season on the water | `winter-route` | [#56](https://github.com/TommiContursi/Polku/pull/56) | merged |
 | — | Bug sweep: Heads-up the same in every sport (and yours to hide, with links to correct OpenStreetMap), the route menu inside the window, a notice for the saved copy, the planner in the route's own sport, and the backlog's small bugs | `bug-sweep` | [#57](https://github.com/TommiContursi/Polku/pull/57) | merged |
 | — | Fix: the map's credits stay folded on phones (MapLibre opened them when their text came in late) and fold when the window narrows | `credits-fold` | [#58](https://github.com/TommiContursi/Polku/pull/58) | PR open |
-| 22 | The planner, rearranged: tabs for drawing, checking and going; the ⋯ menu's tools out in the open; on desktop a panel you move and snap, and cards you pull out onto the map | `planner-layout` | — | proposed, next |
-| 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, and the per-sport place kinds visible as switches | `explain` | — | planned |
-| 20 | Map style: how roads, cycleways, paths and the rest are drawn (Trailmap's cartography as a guide); LIPAS routes by category (cycling, MTB, hiking, walking) | `map-style` | — | planned |
+| — | Docs: the plan from here (the drawer in steps 22a–c, out on the trail 23a–d, what goes together), the drawer mock-up | `docs-plan` | [#59](https://github.com/TommiContursi/Polku/pull/59) | PR open |
+| 22a | The drawer in three tabs (Route / Check / Go): the summary and a short profile always on top, the ⋯ menu's tools out in the open, route style and speeds together, the time first in Go, the leg you open lit up on the map | `drawer-tabs` | — | next |
+| 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
+| 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
+| 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
+| 23b | On the way: Start in Go; what's left at your pace, the next heads-up ahead, off the route, the screen kept awake | `on-the-way` | — | planned |
+| 20 | Map style: how roads, cycleways, paths and the rest are drawn (Trailmap's cartography as a guide); LIPAS routes by category; a glowing route line as an option | `map-style` | — | planned |
 | 17 | Weather: clouds, thunder, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
+| 23c | Your track: recorded on the device, saved as GPX, compared with the plan | `track` | — | planned |
 | 18 | Languages: English, Finnish and Swedish, with a switcher in Settings (your browser's language by default) | `languages` | — | planned |
-| 15c | Skiing (in December–January, with snow to test on) | `skiing` | — | planned |
+| 15c | Skiing (when there's snow to test on, December–January, whatever its place in this list) | `skiing` | — | planned |
+| 22c | Cards to pull out onto the map: the profile, the time (only if still wanted after 22a and 22b) | `drawer-cards` | — | maybe |
+| 23d | Alerts on the way (a buzz before a heads-up, off the route) and the route handed to a navigation app | `alerts` | — | later |
 | 16 | Strava & Garmin (research and plan only; no code until OK) | `strava-garmin` | — | later |
 | 19 | Help and a tutorial (the last phase: when the rest has settled) | `help` | — | planned, last |
 
-## The order from here (agreed 2026-10-15)
+## The order from here (re-planned 2026-10-15, after the bug sweep)
 
-1. **15b, winter on the route.** It's timely (winter is close), and the winter map (15a) is in. *(Done, #56.)*
-2. **A bug sweep:** the backlog's small bugs in one quick PR. *(#57.)*
-3. **22, the planner rearranged** *(proposed 2026-10-15, after testing 15b)*: the planner has outgrown one long scroll and a ⋯ menu. 21 and 20 add more to it, so its structure comes first, or they'd be laid out twice.
-4. **21, say what it means.** Every colour explained, nothing that Polku works out kept hidden, and the per-sport place kinds as visible switches. It touches every layer, so it goes before the map's look changes.
-5. **20, map style.** It builds on 21's explanations.
-6. **17, weather layers,** with the check before heavy loads.
-7. **18, languages,** once the wording has settled through 21.
-8. **15c, skiing,** when there's snow to test on.
-9. **16, Strava & Garmin** (research and a plan): big, and it depends on outside accounts and terms, so it moved later.
-10. **19, help and a tutorial,** last, when the rest holds still.
+The agreed order (15b, then the bug sweep, then 21…) is done up to the sweep. Testing it brought new needs: the planner's layout, the leg you edit lit up, the time earlier, and location and navigation. So the rest is planned again, in small steps, with what belongs together done together.
+
+| # | Phase | Size | Why here |
+|---|---|---|---|
+| 1 | **22a, the drawer in three tabs** | big | The frame for everything after it: 21's explanations, 23b's On the way and 20's route glow all land in it. Mock-up first (below). |
+| 2 | **23a, which way you face** | small | Quick, on its own, and useful at once on a phone. A breather between two big ones. |
+| 3 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). |
+| 4 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. |
+| 5 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. |
+| 6 | **20, map style** | big | Builds on 21; the route's glow goes with the map's look. |
+| 7 | **17, weather layers** | medium | |
+| 8 | **23c, your track** | medium | After 23b: it records what 23b follows. |
+| 9 | **18, languages** | big | Once the words have settled through 21 and 22. |
+| 10 | **15c, skiing** | big | When there's snow to test on (December–January), whatever its place here. |
+| 11 | **22c, cards to pull out** | medium | Only if 22a and 22b haven't made it unnecessary. |
+| 12 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. |
+| 13 | **16, Strava & Garmin** | research | Outside accounts and terms. |
+| 14 | **19, help and a tutorial** | | Last, when the rest holds still. |
+
+**What goes together** (so nothing is done twice):
+- **22a** takes:
+  - Round trip as a first choice at the start (the empty drawer, the first click);
+  - one profile on top instead of two charts;
+  - the leg highlight (the leg you open in the waypoint list lit up on the map and in the profile);
+  - the time moved up (the first thing in Go);
+  - the speeds moved in beside the route style ("How you go");
+  - the hidden Heads-up kinds listed in Check.
+- **21** takes:
+  - the per-sport place kinds as switches;
+  - a clicked road or trail highlighted as one OSM way (what its card is about);
+  - "not winter here: 3 cm" said on the sport pill;
+  - hovers on the weather fields.
+- **20** takes the glowing route line as an option, with the rest of how the route is drawn.
+- **23a–23d** share one rule: where you are stays on your device. It's never sent anywhere, not even to Polku.
 
 ## Why this order (phases 0–10)
 
@@ -1382,31 +1413,112 @@ The backlog's small bugs, and what testing 15b turned up:
   - the route menu in a 600 px window (and Escape);
   - the planner keeping MTB with the map on Paddle.
 
-## Phase 22 — The planner, rearranged (proposed 2026-10-15)
+## Phase 22 — The drawer (planned 2026-10-15)
 
-Testing 15b showed the planner has outgrown its layout:
-- it's one long scroll, so drawing, checking and setting off mean scrolling back and forth;
-- handy tools are buried in the ⋯ menu (Round trip, Reverse, Back to start, distance marks and times), where a new user won't look;
-- "Move to the left" is a yes/no dock, where a panel you can move, resize and snap would fit a desktop better;
-- some things are worth keeping in view while drawing: the profile, the time.
+Testing 15b showed the planner (the drawer) has outgrown its layout:
+- **One long scroll:** drawing, checking and setting off all mean scrolling back and forth.
+- **Handy tools buried in the ⋯ menu:** Round trip, Reverse, Back to start, distance marks and times. A new user won't look there.
+- **Time & speed opens with the speed inputs,** far down the list. The time is what you want early; the speeds are a setting like the route style.
+- **The leg you edit isn't marked on the map:** a leg opened in the waypoint list doesn't show which part of the line it is.
+- **"Move to the left" is a yes/no dock,** where a panel you can move, resize and snap would suit a desktop better.
 
-**The idea: three moments, and the panel shaped around them.**
-1. **Tabs for the moment you're in**, under the summary and the profile, which always stay:
-   - **Route:** the waypoints and legs, sports, style, round trip, reverse and back to start as buttons, not menu items;
-   - **Check:** Heads-up, climbs, surfaces and way types, the trail details;
-   - **Go:** departure and the weather on the route, time and speed, stops and days, and share, export and save offline.
+**Mock-up:** a design canvas of the drawer at 1440 and 390 px, with Route, Check and Go, the phone's peek, and the later ideas (22b, 22c, 23b). Its tabs link to each other in Play. It's a private canvas: https://claude.ai/artifact/VRcRprH6FnJQ8RTMGQk9By
 
-   A jump to a section (the Weather button, a link in the summary) opens its tab. Each tab should fit without much scrolling.
-2. **The ⋯ menu shrinks** to what's rarely needed (import, clear), and the route's look on the map (distance marks, times at the marks) moves next to the profile's own colour menu as "On the map".
-3. **On desktop, the panel moves:** drag its header to dock it left, right or at the bottom (the drop zones show while dragging), resize it from its edge, and fold it to a pill. That replaces "Move to the left".
-4. **Cards to pull out (desktop):** the profile and the time could leave the panel as small cards on the map, snapping to its corners, staying while the panel is folded, and going back with a click. On phones the sheet's small size already shows the summary and a short profile, so no floating cards there.
+**What it's for, moment by moment:**
 
-**In steps, each its own PR:**
-- **22a:** tabs and the menu's tools out in the open (the most help for the least risk);
-- **22b:** the panel docked by dragging, with snapping;
-- **22c:** cards to pull out, if 22a hasn't already made them unnecessary.
+| Moment | What you need | Where |
+|---|---|---|
+| An idea | a round trip from here, a LIPAS route, a place found in search | The start: the empty drawer's choices, and the first click's popup |
+| Drawing | points and legs, the sport and routing per leg, the style, undo | Route |
+| Checking | what's on the way, the climbs, the ground, the profile's colours | Check |
+| Setting off | when, how long, the weather, stops, taking it along | Go |
+| On the way | what's left, what's next, where you are | On the way (23b) |
+| Afterwards | the track you rode | 23c |
 
-**Before building:** a clickable mock-up of 22a at 1440 and 390 px to agree on what goes in which tab.
+**22a: three tabs (next).**
+- **The start (no route yet):** Round trip is a first choice, not only a tool for a route you already have.
+  - **The empty drawer** offers four choices:
+    - Draw it;
+    - **Round trip**, from where I am or a start picked on the map;
+    - Ride a marked route (LIPAS);
+    - Import a GPX or KML.
+
+    How you go sits under them, to set before drawing.
+  - **The first click on the map** sets the start right away, so drawing stays one click a point. Its popup offers a loop from there: a length or a time, then three loops.
+- **Always on top:**
+  - the summary (distance, time and arrival, ascent and descent) and Done;
+  - **the profile, one, not two.** It's coloured as you choose (Gradient, Surface, Wind…, its chooser on it), with the legs and their points marked. It lights the open leg, marks the heads-up places, and later shows where you are. It's about 64 px, and ⤢ makes it taller; the separate profile chart goes;
+  - the tabs, with undo, redo and ⋯ on the same row.
+- **Route:**
+  - the routing modes;
+  - the waypoints and legs. **The leg you open, or point at, lights up on the map** (a glow, the rest faded) **and in the profile**;
+  - Round trip, Reverse, Back to start and Import as buttons (Round trip stays here too, for a route you have);
+  - **How you go:** the route style (which ways the router prefers) and your speed (how the time is counted), Easy / Normal / Fast / Custom, with the custom fields here. The speed inputs leave Time & speed.
+- **Check:**
+  - Heads-up (with its ⋯ and the hidden kinds);
+  - the profile's colours in kilometres ("Gradient on this route": the breakdown bar and its key);
+  - the climbs;
+  - **On the map:** route colours, distance marks, times at the marks (out of ⋯).
+- **Go:**
+  - **the time first:** total, depart and arrive, and where it goes (by surface, uphill, the wind and snow, stops), with "your speed: Custom · change" leading to Route;
+  - departure and the weather on the route;
+  - stops and days;
+  - Take it along: GPX, share link, save offline;
+  - later, Start (23b).
+- **⋯** keeps only Clear and the panel's place.
+- **The phone's peek** is the summary, the short profile and the tabs. A tab opens the sheet at that tab, and the sheet's sizes stay as they are.
+- **What stays:** a jump to a section (the Weather button, a summary link, a heads-up's place) opens its tab and lights the section up; share links and saved routes are unchanged.
+- **Tests:**
+  - tabs and jumps;
+  - the header fitting at 360, 390 and 1440 px;
+  - the leg highlight on the map;
+  - every section reachable;
+  - before and after shots of each tab.
+
+**22b: the panel on desktop moves.**
+- Drag its header to dock it left, right or at the bottom; drop zones show while dragging.
+- Resize it from its edge (the width is already yours on the side).
+- Fold it to a pill.
+- This replaces "Move to the left", and the map's controls make room on whichever side it's on.
+
+**22c: cards to pull out (maybe).** A section's pop-out turns the profile or the time into a small card on the map. It snaps to the map's corners, stays while the panel is folded, and goes back with a click. Desktop only. Built only if 22a and 22b leave a need for it.
+
+## Phase 23 — Out on the trail: where you are and the way on (planned 2026-10-15)
+
+*(The approach below was confirmed on 2026-10-15.)* Location in Polku today is a dot. On the trail it could do more: show which way you face, follow you, show how far along the route you are, and record where you went. All of it uses what the phone already has (its GPS and compass, through the browser) and no server.
+
+**The rules:**
+- **Your position stays on your device.** It's never sent anywhere, not even to Polku, and a recorded track is yours to save or delete.
+- **It works offline** in areas saved with Save offline.
+- **The browser's limits:**
+  - location needs HTTPS and your OK;
+  - the compass needs a tap to allow it on iPhones;
+  - a web page isn't tracked with the screen off, so On the way keeps the screen awake (Wake Lock) and says so;
+  - Polku added to the home screen runs full screen.
+- **Battery:** On the way asks for positions about once a second while it's on, and stops when you Stop or Pause.
+
+**23a: which way you face (small).**
+- The dot gets a cone for your heading: the compass when standing, the GPS's own course when moving (above about 1 m/s, where the compass in a pocket is unreliable).
+- Its accuracy circle stays.
+- A follow-me button keeps the map on you, north up or facing ahead.
+
+**23b: on the way.**
+- **Start** in Go turns the drawer into On the way (see the mock-up). Your position is snapped to the route, only ever forwards, so a loop's crossings don't confuse it.
+- **On the map and the profile:** the done part is grey, and your place is marked in the profile.
+- **The numbers:** what's left (distance, time at your pace today, from how you've gone so far against the plan) and when you'll arrive.
+- **The next heads-up ahead,** with how far ("In 600 m: log across the trail"), and the weather ahead ("light rain from 12:10").
+- **Off the route:** about 40 m off for 20 s says by how much and where the route is, with "Route from here" (one routing call) to rejoin it.
+- **Pause and Stop;** the screen stays awake while it's on.
+
+**23c: your track.**
+- Recorded while On the way runs: time, position, height and accuracy, kept on the device (IndexedDB).
+- Shown on the map in its own colour.
+- Saved as GPX.
+- Compared with the plan (moving time, pace by surface), which can tune your speeds if you want.
+
+**23d: alerts, and handing the route on (later).**
+- **A buzz and a short sound** before a heads-up item and when off the route. Vibration works on Android, not on iPhones.
+- **"Open in a navigation app":** the GPX through the phone's share sheet to OsmAnd, Organic Maps or the like, for turn-by-turn directions Polku won't do itself. BRouter can add turn hints to its GPX, worth a look then.
 
 ## Phase 21 — Say what it means (planned 2026-10-15; after 15b)
 
