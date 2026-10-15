@@ -815,13 +815,13 @@ AVOID_ROUTER = """(() => {
     return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [] }, geometry: { type: 'LineString', coordinates: c } }] }));
   };
 })()"""
-AVOID_ROUTED = """const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner;
+AVOID_HELPERS = """const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner;
   const routed = async (n) => { for (let k = 0; k < 100 && !(p.legs.length === n && p.legs.every((l) => l.status === 'ok') && p.analysis); k++) await wait(200); return p.legs.length === n && p.legs.every((l) => l.status === 'ok'); };
   const circles = (list) => (list || []).map((c) => `${c.ll[0]},${c.ll[1]},${c.r}`).join(' ') || 'none';
   const drawn = async () => { const s = polku.map.getSource('nogo'); const d = s && (s.getData ? await s.getData() : s._data); return d ? d.features.length : 0; };
   const toastSays = () => { const t = document.querySelector('#toast'); return t && !t.hidden ? t.textContent : ''; };"""
 AVOID_SHARE = """(async () => {
-  """ + AVOID_ROUTED + """
+  """ + AVOID_HELPERS + """
   const errs = [];
   p.checkWet = async () => {}; // dry ground whatever the weather, so no leg is routed twice
   p.wet = { on: false, mm: 0, at: Date.now() };
@@ -840,7 +840,7 @@ AVOID_SHARE = """(async () => {
 })()"""
 # the link in a clean page: the circles at 5 decimals (about 1 m), each in a router call
 AVOID_OPENED = """(async (sent) => {
-  """ + AVOID_ROUTED + """
+  """ + AVOID_HELPERS + """
   const errs = [], want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r }));
   if (!(await routed(2))) errs.push(`the route from the link: ${p.legs.map((l) => l.status).join(', ') || 'no legs'}`);
   if (circles(p.nogos) !== circles(want)) errs.push(`circles from the link: ${circles(p.nogos)}, not ${circles(want)}`);
@@ -866,13 +866,13 @@ AVOID_OPENED = """(async (sent) => {
 })"""
 # a reload: the saved route keeps them
 AVOID_RELOADED = """(async (sent) => {
-  """ + AVOID_ROUTED + """
+  """ + AVOID_HELPERS + """
   const want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r }));
   return circles(p.nogos) !== circles(want) ? [`after a reload: ${circles(p.nogos)}, not ${circles(want)}`] : [];
 })"""
 # a link whose circles can't be read: it opens, says so, and shares without av=
 AVOID_BAD = """(async () => {
-  """ + AVOID_ROUTED + """
+  """ + AVOID_HELPERS + """
   const errs = [];
   if (!(await routed(2))) errs.push(`the route from a link with bad circles: ${p.legs.map((l) => l.status).join(', ') || 'no legs'}`);
   if (p.points.length !== 3) errs.push(`${p.points.length} points from a link with bad circles`);
