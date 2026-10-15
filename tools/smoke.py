@@ -1285,6 +1285,11 @@ BACK_TO_START = """(async (entry) => {
   p.setMode('line');
   for (const q of [[23.750, 61.500], [23.770, 61.505], [23.760, 61.495]]) p.addPoint(q);
   if (!await ready(2)) return ['initial straight legs did not finish'];
+  if (entry === 'finish') {
+    p.setLegSport(1, 'paddle');
+    if (!await ready(2)) return ['mixed-sport straight legs did not finish'];
+  }
+  const sports = p.legs.map((_, i) => p.legSport(i));
   p.reveal('points');
   const before = p.snapshot(), past = p.past.length;
   if (entry === 'finish') p.markers[p.markers.length - 1].getElement().click();
@@ -1302,8 +1307,17 @@ BACK_TO_START = """(async (entry) => {
   else {
     const leg = p.legs[p.legs.length - 1], coords = leg.result.coords;
     if (leg.mode !== 'line') errs.push('closing leg ignored the selected routing mode');
+    if (!same(p.legs.map((_, i) => p.legSport(i)), [...sports, sports[sports.length - 1]])) errs.push('closing leg changed the route sports or did not continue the last sport');
     if (!same(coords[0], before.points[before.points.length - 1]) || !same(coords[coords.length - 1], before.points[0])) errs.push('closing geometry does not join the old finish to the start');
   }
+  const closed = p.snapshot(), closedPast = p.past.length;
+  if (entry === 'finish') p.markers[p.markers.length - 1].getElement().click();
+  const again = document.querySelector(selector);
+  if (again) {
+    if (!again.disabled) errs.push('Back to start is still enabled on a closed route');
+    again.click();
+  }
+  if (!same(p.snapshot(), closed) || p.past.length !== closedPast) errs.push('closed route gained another closing leg or undo step');
   p.els.undo.click();
   if (!await ready(2) || !same(p.snapshot(), before)) errs.push('Undo did not restore the original route');
   if (p.past.length !== past) errs.push('Undo did not restore the history position');
