@@ -40,9 +40,10 @@ Also approved:
 | 15a | Winter on the map: Auto / On / Off, the snow layer with FMI's measured depths, OSM's winter ways, LIPAS ski tracks, skating and snowmobile routes, sea ice | `winter-conditions` | [#52](https://github.com/TommiContursi/Polku/pull/52) | merged |
 | — | Winter as a trail colour (Trails & difficulty: Off / Difficulty / Uphill / Both / Winter), any time of year; winter on the trail cards | `winter-colours` | [#53](https://github.com/TommiContursi/Polku/pull/53) | merged |
 | — | Fix: changing the sport re-routed a drawn route (it keeps its sports now, "Route it as …" asks, Undo works); the planner's section jumps light up | `sport-switch` | [#54](https://github.com/TommiContursi/Polku/pull/54) | merged |
-| — | Docs: plans and ideas written as plans (no chat quotes), the backlog sorted by size, this order | `docs-tidy` | [#55](https://github.com/TommiContursi/Polku/pull/55) | PR open |
-| 15b | Winter on the route: time in snow, winter Heads-up (snow, snowfall, slippery, the cold, ways closed in winter, beside ski tracks, unploughed), lit stretches in the dark, the ice season on the water | `winter-route` | [#56](https://github.com/TommiContursi/Polku/pull/56) | PR open |
-| — | Bug sweep: the backlog's small bugs in one PR (see BACKLOG, "Small") | `bug-sweep` | — | next |
+| — | Docs: plans and ideas written as plans (no chat quotes), the backlog sorted by size, this order | `docs-tidy` | [#55](https://github.com/TommiContursi/Polku/pull/55) | merged |
+| 15b | Winter on the route: time in snow, winter Heads-up (snow, snowfall, slippery, the cold, ways closed in winter, beside ski tracks, unploughed), lit stretches in the dark, the ice season on the water | `winter-route` | [#56](https://github.com/TommiContursi/Polku/pull/56) | merged |
+| — | Bug sweep: Heads-up the same in every sport (and yours to hide, with links to correct OpenStreetMap), the route menu inside the window, a notice for the saved copy, the planner in the route's own sport, and the backlog's small bugs | `bug-sweep` | [#57](https://github.com/TommiContursi/Polku/pull/57) | PR open |
+| 22 | The planner, rearranged: tabs for drawing, checking and going; the ⋯ menu's tools out in the open; on desktop a panel you move and snap, and cards you pull out onto the map | `planner-layout` | — | proposed, next |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, and the per-sport place kinds visible as switches | `explain` | — | planned |
 | 20 | Map style: how roads, cycleways, paths and the rest are drawn (Trailmap's cartography as a guide); LIPAS routes by category (cycling, MTB, hiking, walking) | `map-style` | — | planned |
 | 17 | Weather: clouds, thunder, the timeline back in time; a check before heavy loads | `weather-layers` | — | planned |
@@ -53,15 +54,16 @@ Also approved:
 
 ## The order from here (agreed 2026-10-15)
 
-1. **15b, winter on the route.** It's timely (winter is close), and the winter map (15a) is in.
-2. **A bug sweep:** the backlog's small bugs in one quick PR.
-3. **21, say what it means.** Every colour explained, nothing that Polku works out kept hidden, and the per-sport place kinds as visible switches. It touches every layer, so it goes before the map's look changes.
-4. **20, map style.** It builds on 21's explanations.
-5. **17, weather layers,** with the check before heavy loads.
-6. **18, languages,** once the wording has settled through 21.
-7. **15c, skiing,** when there's snow to test on.
-8. **16, Strava & Garmin** (research and a plan): big, and it depends on outside accounts and terms, so it moved later.
-9. **19, help and a tutorial,** last, when the rest holds still.
+1. **15b, winter on the route.** It's timely (winter is close), and the winter map (15a) is in. *(Done, #56.)*
+2. **A bug sweep:** the backlog's small bugs in one quick PR. *(#57.)*
+3. **22, the planner rearranged** *(proposed 2026-10-15, after testing 15b)*: the planner has outgrown one long scroll and a ⋯ menu. 21 and 20 add more to it, so its structure comes first, or they'd be laid out twice.
+4. **21, say what it means.** Every colour explained, nothing that Polku works out kept hidden, and the per-sport place kinds as visible switches. It touches every layer, so it goes before the map's look changes.
+5. **20, map style.** It builds on 21's explanations.
+6. **17, weather layers,** with the check before heavy loads.
+7. **18, languages,** once the wording has settled through 21.
+8. **15c, skiing,** when there's snow to test on.
+9. **16, Strava & Garmin** (research and a plan): big, and it depends on outside accounts and terms, so it moved later.
+10. **19, help and a tutorial,** last, when the rest holds still.
 
 ## Why this order (phases 0–10)
 
@@ -1353,6 +1355,57 @@ The research brief this replaces asked about: sports for a snow group; ski track
   - **A ski track on a path, track or cycleway that walking and cycling aren't barred from is "groomed"** (teal, as on Trailmap: walking and cycling allowed, off the ski track itself). Only a ski track on its own, or one marked closed in winter, says keep off. A ski track running beside a cycleway is "beside it" on the cycleway's card, not the cycleway's own winter class (the nearest winter way within 10 m of the click).
 - **Trail cards** say what winter means on a way where the winter ways are drawn ("In winter: Opens quickly after snow"). "Show all OSM tags" lists the winter tags (`mtb:winter`, `snowplowing`, `winter_service`, `bicycle:winter`, `foot:winter`, `seasonal`, the piste tags).
 - **Tests:** `smoke.py winter` also picks Winter in the trail colours with winter off.
+
+## Bug sweep (after 15b, 2026-10-15)
+
+The backlog's small bugs, and what testing 15b turned up:
+- **Heads-up was different in each sport.** A fallen tree mapped as a point came only from the trail-detail tiles, and those loaded along the route only when the map's Trail details layer was on (MTB, hiking and trail running by default). A gravel ride past the same tree heard nothing. Now the details load along every route on land, whatever the map shows. Some items are about the sport on purpose: steps to carry a bike, steep climbs for bikes, very steep for walkers.
+- **Heads-up is yours to trim.** Each row has a ⋯ with **Hide "Fallen trees and logs"** (that kind, everywhere, kept on the device). Hidden kinds on the route are listed at the end of Heads-up, to bring back with a tap, and the section's summary counts them.
+- **Wrong in OpenStreetMap?** A row from OSM's data (an obstacle, a trail's condition, access, winter tags) says where to correct it in the same menu: **Fix the map** (the node in OSM's editor, which needs an account) or **Leave a note** (an OSM note at the spot, for the mappers to check). The obstacle's map card has the note link too.
+- **The ⋯ menu ran off the window** in a short window: it assumed 260 px and has 12 items. Menus now measure themselves, open below or above, whichever fits, and scroll inside when neither does. It's one shared helper (`popMenu` in `ui.js`), which the Heads-up rows use too. Escape and the arrow keys work in it.
+- **The saved copy said nothing.** The service worker serves the copy saved on the device when the server doesn't answer within 3 s (offline, or a stopped dev server). Polku looked current but could be days old: likely what a test of 15b ran on, since its "In the dark" row lacked 15b's lit share. The page now asks the service worker and shows **"Saved copy: the server didn't answer, so this may be an older Polku · Reload"**.
+- **The planner spoke the map's sport** (found in #54). With the map moved to Paddle and the route kept MTB, its summary, Time & speed, style, colour modes, climbs and weather title followed Paddle. They follow the route's main sport now. The route style edits that sport's style, and a route is multisport only when its legs differ.
+- **Short routes said "at km 0.0"** for everything. Under 2 km, Heads-up says metres ("at 40 m") and "at the start".
+- **Rain labels at "now"** came from the forecast while the radar drew the map. Now they're the radar's own amounts (FMI's, where it covers). The timeline says "FMI radar" in Finland from the start, not only once the image is in.
+- **Phones:**
+  - the summary keeps clear of Done at 360 px;
+  - the opened credits are a readable card beside the buttons and above the timeline;
+  - the scale and ⓘ ride above the floating timeline, where they were under it.
+- **A card that grows after it opens** (a LIPAS route's, with Ride) moves back into view, where it grew up under the top bar on short screens.
+- **Checked, not a bug:** LIPAS lists only 3 lean-tos, 2 lodges and a tent area in Nuuksio. The park's other shelters are in OpenStreetMap, which "Places to sleep" merges in.
+- **Winter's Auto at Paljakka (checked):** FMI measured 12 cm on 14 October, thawing to 3 cm by the next morning. Auto turns winter on from 5 cm (and off below 2), so it was right to stay off by then, while the route still counted the snow (the forecast's 6 cm: "Snow on the way", +3 min). The layers panel says why ("Not winter here: 3 cm of snow, FMI, 1 km away"). Making that visible where you'd look is in the backlog.
+- **Tests:** `tools/smoke.py sweep` covers:
+  - the recorded Tykkikallio route with the map's Trail details off (the log still comes, with its OSM node);
+  - Hide and bringing a kind back;
+  - the row menu's OSM links;
+  - the route menu in a 600 px window (and Escape);
+  - the planner keeping MTB with the map on Paddle.
+
+## Phase 22 — The planner, rearranged (proposed 2026-10-15)
+
+Testing 15b showed the planner has outgrown its layout:
+- it's one long scroll, so drawing, checking and setting off mean scrolling back and forth;
+- handy tools are buried in the ⋯ menu (Round trip, Reverse, Back to start, distance marks and times), where a new user won't look;
+- "Move to the left" is a yes/no dock, where a panel you can move, resize and snap would fit a desktop better;
+- some things are worth keeping in view while drawing: the profile, the time.
+
+**The idea: three moments, and the panel shaped around them.**
+1. **Tabs for the moment you're in**, under the summary and the profile, which always stay:
+   - **Route:** the waypoints and legs, sports, style, round trip, reverse and back to start as buttons, not menu items;
+   - **Check:** Heads-up, climbs, surfaces and way types, the trail details;
+   - **Go:** departure and the weather on the route, time and speed, stops and days, and share, export and save offline.
+
+   A jump to a section (the Weather button, a link in the summary) opens its tab. Each tab should fit without much scrolling.
+2. **The ⋯ menu shrinks** to what's rarely needed (import, clear), and the route's look on the map (distance marks, times at the marks) moves next to the profile's own colour menu as "On the map".
+3. **On desktop, the panel moves:** drag its header to dock it left, right or at the bottom (the drop zones show while dragging), resize it from its edge, and fold it to a pill. That replaces "Move to the left".
+4. **Cards to pull out (desktop):** the profile and the time could leave the panel as small cards on the map, snapping to its corners, staying while the panel is folded, and going back with a click. On phones the sheet's small size already shows the summary and a short profile, so no floating cards there.
+
+**In steps, each its own PR:**
+- **22a:** tabs and the menu's tools out in the open (the most help for the least risk);
+- **22b:** the panel docked by dragging, with snapping;
+- **22c:** cards to pull out, if 22a hasn't already made them unnecessary.
+
+**Before building:** a clickable mock-up of 22a at 1440 and 390 px to agree on what goes in which tab.
 
 ## Phase 21 — Say what it means (planned 2026-10-15; after 15b)
 

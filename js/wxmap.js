@@ -435,13 +435,22 @@ export class WeatherOverlay {
     const forecastRain = this.on.rain && this.hour >= 0.5;
     this.app.setImage('wxRain', forecastRain ? draw((s) => (s.rain < 0.05 ? null : [...ramp(RAIN_RAMP, s.rain), Math.round(Math.min(235, 150 + s.rain * 45))])) : null);
     this.syncRadar();
-    // labels: °C on a sparse grid, and precipitation amounts where it rains
+    this.renderLabels();
+  }
+
+  // labels: °C on a sparse grid, and precipitation amounts where it rains. At "now" the
+  // amounts are the radar's (FMI's, where it covers), so they match what the map draws;
+  // RainViewer has no amounts, so outside FMI's radar there are none at "now"
+  renderLabels() {
+    const g = this.grid;
+    if (!g || !this.cur) return;
     const feats = [];
+    const nowRain = this.on.rain && this.hour < 0.5;
     for (let r = 1; r < g.rows - 1; r++) {
       for (let c = 1; c < g.cols - 1; c++) {
         const k = r * g.cols + c;
         if (this.on.temp) feats.push({ type: 'Feature', properties: { kind: 'temp', t: `${Math.round(this.cur.temp[k])}°` }, geometry: { type: 'Point', coordinates: g.pts[k] } });
-        const rr = this.cur.rain[k];
+        const rr = nowRain ? (this.fiRate ? this.fiRate(g.pts[k][0], g.pts[k][1]) : null) : this.cur.rain[k];
         if (this.on.rain && rr >= 0.1) {
           const snow = this.cur.temp[k] < 0.5;
           feats.push({ type: 'Feature', properties: { kind: 'rain', t: `${snow ? 'snow ' : ''}${rr < 1 ? rr.toFixed(1) : Math.round(rr)} mm/h` }, geometry: { type: 'Point', coordinates: g.pts[k] } });
@@ -504,6 +513,8 @@ export class WeatherOverlay {
       this.fi = { box, t: Date.now(), zoomed: z >= 7.5, rv: full }; // rv: RainViewer still needed around it
       this.app.setImage('wxRadarFi', img);
       this.fiRate = img.rateAt;
+      this.renderLabels(); // the amounts at "now" are the radar's
+      this.renderTime();
       this.buildField();
       this.syncRadarRv();
       clearTimeout(this.fiTimer);
@@ -974,13 +985,19 @@ export class WeatherOverlay {
     this.emitHour();
   }
 
+  // the view's centre in Finland: FMI's radar draws "now" there (its image may still be on the way)
+  inFinland() {
+    const c = this.map.getCenter();
+    return c.lng >= FI_BOUNDS[0] && c.lng <= FI_BOUNDS[2] && c.lat >= FI_BOUNDS[1] && c.lat <= FI_BOUNDS[3];
+  }
+
   renderTime() {
     if (!this.timeEl) return;
     const t = new Date(timeAtHour(this.hour) * 1000);
     const day = t.toLocaleDateString([], { weekday: 'short' });
     const clock = t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let label = this.hour < 0.5 ? `Now · ${clock}` : `${day} ${clock} · +${Math.round(this.hour)} h`;
-    if (this.on.rain && this.hour < 0.5) label += this.fi ? ' · FMI radar' : ' · radar';
+    if (this.on.rain && this.hour < 0.5) label += this.fi || (this.inFinland() && !this.fiFailed) ? ' · FMI radar' : ' · radar';
     if (this.loading) label += ' · loading…';
     this.timeEl.textContent = label;
     // linked with the route's departure time

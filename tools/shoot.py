@@ -202,6 +202,19 @@ SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); 
 
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
+# the bug sweep: Heads-up with the map's Trail details off (the log comes all the same) and a
+# row's ⋯ (hide its kind, correct OpenStreetMap), then the kind hidden; the route menu in a
+# short window; phones: the credits opened over the timeline, the summary at 360 px
+NO_DETAILS = {'polku:settings': json.dumps({'activity': 'mtb', 'timeline': False, 'trailsByActivity': {'mtb': {'trailDetails': False}}}), 'polku:plannerDock': '"left"'}
+ROW_MENU = TRAIL_ROUTE('warnings').replace(" await wait(400); return true; })()",
+                                           " await wait(400); const r = [...document.querySelectorAll('[data-sec=warnings] .li-row')].find((x) => /Log across/.test(x.textContent));"
+                                           " if (r) { r.scrollIntoView({ block: 'center' }); await wait(200); const m = r.querySelector('.li-more'); if (m) m.click(); } await wait(300); return true; })()")
+ROW_HIDDEN = ROW_MENU.replace(" await wait(300); return true; })()", " await wait(300); const h = document.querySelector('.menu-pop .menu-item'); if (h) h.click(); await wait(400);"
+                              " const c = document.querySelector('.hidden-kinds'); if (c) c.scrollIntoView({ block: 'center' }); await wait(300); return true; })()")
+OPEN_MENU = ("(async () => { polku.planner.els.more.click(); await new Promise((r) => setTimeout(r, 400));"
+             " const m = document.querySelector('.menu-pop'); if (m) m.scrollTop = m.scrollHeight; return true; })()")  # scrolled to its end, where it scrolls
+OPEN_CREDITS = "(async () => { document.querySelector('.maplibregl-ctrl-attrib-button').click(); await new Promise((r) => setTimeout(r, 400)); return true; })()"
+
 SCENES = {
     'desk-closed': dict(DESK, timeline=True),
     'desk-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json'),
@@ -340,6 +353,12 @@ SCENES = {
     'desk-sport-switch': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'phone-sport-switch': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', storage=LOCAL, js="(async () => { polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 6000)); return true; })()", settle=0.2),
     'desk-weather-flash': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="(async () => { document.querySelector('#btn-time').click(); await new Promise((r) => setTimeout(r, 600)); return true; })()", settle=0.1),
+    'desk-sweep-headsup': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),
+    'desk-sweep-hidden': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_HIDDEN),
+    'phone-sweep-headsup': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='full', storage=NO_DETAILS, pre=TRAILS_PRE, js=ROW_MENU),
+    'short-menu': dict(w=1280, h=600, phone=False, timeline=False, route='route-kauppi-mtb.json', storage={'polku:plannerDock': '"left"'}, js=OPEN_MENU, settle=0.3),
+    'phone-credits': dict(PHONE, timeline=True, js=OPEN_CREDITS, settle=0.3),
+    'phone360-summary': dict(w=360, h=740, phone=True, timeline=False, route='route-kauppi-mtb.json', state='half'),
     'desk-winter-route': dict(DESK, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('warnings')),
     'phone-winter-route': dict(PHONE, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('warnings')),
     'desk-winter-time': dict(DESK, timeline=False, hash='#13/62.27/25.71', storage={**LOCAL, **WINTER_ON}, js=WINTER_ROUTE('speed')),

@@ -392,8 +392,11 @@ export async function detailsAlong(a, { maxTiles = 40 } = {}) {
         if (d < bd) { bd = d; bi = i; }
       }
     }
-    // the router may have reported the same node (barrier=log): one place, one heads-up
-    if (bi < 0 || td.points.some((p) => p.kind === nd.kind && p.ll && dist(p.ll, nd.ll) < 15)) continue;
+    // the router may have reported the same node (barrier=log): one place, one heads-up, with
+    // the node's OSM id (so the heads-up can link to it)
+    if (bi < 0) continue;
+    const same = td.points.find((p) => p.kind === nd.kind && p.ll && dist(p.ll, nd.ll) < 15);
+    if (same) { same.osm ||= nd.osm; continue; }
     td.points.push({ i: bi, at: along[bi], ll: nd.ll, kind: nd.kind, barrier: nd.barrier, ford: nd.ford, access: nd.access, osm: nd.osm });
   }
   td.points.sort((p, q) => p.at - q.at);

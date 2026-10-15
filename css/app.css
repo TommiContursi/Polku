@@ -299,6 +299,19 @@ button { font: inherit; color: inherit; }
 .maplibregl-ctrl-attrib .attrib-own { display: none; }
 .maplibregl-ctrl-attrib:not(.maplibregl-compact) .attrib-own, .maplibregl-ctrl-attrib.maplibregl-compact-show .attrib-own { display: inline; }
 .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner { display: inline; }
+/* on a phone, the scale and ⓘ ride above the floating timeline (as the buttons on the right do),
+   and the opened credits are a card beside the buttons, not three lines under them and the
+   timeline; ⓘ or dragging the map folds them away. The map is a stacking context of its own,
+   so the card can't go over the timeline or the buttons: it keeps clear of them */
+@media (max-width: 719px) {
+  .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 4px); }
+  .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib.maplibregl-compact-show {
+    position: fixed; left: 8px; right: 76px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 8px); z-index: 21; margin: 0;
+    padding: 8px 12px 8px 38px; border-radius: 12px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font-size: 12px; line-height: 1.5;
+  }
+  .maplibregl-ctrl-attrib.maplibregl-compact-show a { color: inherit; }
+  .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button { top: 6px; left: 6px; }
+}
 .maplibregl-ctrl-scale { border-radius: 4px; background: rgba(255,255,255,0.8); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
@@ -479,6 +492,8 @@ button { font: inherit; color: inherit; }
 .sheet-row + .sheet-row { margin-top: 8px; }
 .sheet-sum { flex: 1; min-width: 0; display: flex; gap: 6px 20px; align-items: flex-end; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }
+/* a 360 px phone: the three figures and Done in one row without touching */
+@container (max-width: 340px) { .sheet-sum { column-gap: 12px; } .sheet-sum .sum-item b { font-size: 16.5px; } }
 .sum-item b { font-size: 19px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sum-item small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sum-elev .sum-down { color: var(--muted); font-weight: 600; }
@@ -536,6 +551,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 
 /* the ⋯ menu */
 .menu { position: absolute; z-index: 10; min-width: 220px; padding: 6px; border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.menu-pop { position: fixed; z-index: 25; overflow-y: auto; overscroll-behavior: contain; }
+.menu-pop > * { flex: none; }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 .menu-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; font: inherit; font-size: 13px; text-align: left; color: var(--text); }
 .menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--surface-2); outline: none; }
@@ -664,6 +681,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .li-row .li { flex: 1; min-width: 0; }
 .btn.avoid { height: 26px; padding: 0 9px; font-size: 12px; color: var(--bad); border-color: rgba(220,38,38,.35); }
 .btn.avoid:hover { background: rgba(220,38,38,.08); }
+.li-more { flex: none; color: var(--muted); }
+.hidden-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 2px 2px; font-size: 12px; color: var(--muted); }
+.hidden-kinds .on-chip { background: var(--surface-2); color: var(--muted); }
 .kind-incident .li .ic, .kind-roadwork .li .ic { color: var(--bad); }
 .kind-busy .li .ic { color: #b45309; }
 .kind-roadcond .li .ic { color: #7e22ce; }
@@ -1040,8 +1060,11 @@ body.dropping .drop-hint { display: flex; }
 }
 .offline-banner span { display: inline-flex; align-items: center; gap: 6px; }
 .offline-banner .btn { height: 28px; padding: 0 12px; font-size: 12px; background: rgba(255,255,255,.18); border-color: transparent; color: #fff; }
+.offline-banner .tool { color: #fff; }
+.offline-banner .tool:hover { background: rgba(255,255,255,.18); }
 @media (max-width: 719px) {
   .offline-banner { top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(var(--sheet-h) + 72px); white-space: nowrap; }
+  .offline-banner.saved-copy { white-space: normal; width: max-content; max-width: calc(100vw - 32px); border-radius: 16px; }
   body:not(.planning) .offline-banner { bottom: 104px; }
 }
 

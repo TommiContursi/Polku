@@ -17,7 +17,7 @@ import { winterAlong, windChill, WINTER_TEXT } from './winter.js';
 import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
-import { icon, h, $, toast, store, escapeHtml } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu } from './ui.js';
 import { keepInView } from './inspect.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -91,10 +91,24 @@ function groupTrail(list) {
   const out = list.filter((w) => !w.group || by.get(w.group).length < 3);
   for (const [g, items] of by) {
     if (items.length < 3) continue;
-    out.push({ at: items[0].at, len: 0, text: `${GROUP_TEXT[g] || items[0].text} ×${items.length}`, note: items[0].note, kind: 'trail', icon: items[0].icon, lngLat: items[0].lngLat, items });
+    out.push({ at: items[0].at, len: 0, text: `${GROUP_TEXT[g] || items[0].text} ×${items.length}`, note: items[0].note, kind: 'trail', icon: items[0].icon, lngLat: items[0].lngLat, items, osm: items[0].osm });
   }
   return out;
 }
+
+// Heads-up kinds you can hide (the ⋯ on a row): by the row's own key, its obstacle icon or its
+// kind, else the start of its text ("Wet or muddy", "Snow on the way", "Steep climb").
+const HIDE_LABEL = { ...GROUP_TEXT, gate: 'Gates', dark: 'Darkness and twilight', roadwork: 'Road works', incident: 'Traffic incidents', roadcond: 'Road conditions', busy: 'Busy roads', gear: 'Gear left behind' };
+function hideKind(w) {
+  if (w.noHide) return null;
+  const key = w.hide || (w.icon && w.icon.startsWith('td-') ? w.icon.slice(3) : null) || (HIDE_LABEL[w.kind] ? w.kind : null)
+    || w.text.split(/ — |[:(,×]| for | up to | S\d| \d/)[0].trim();
+  return key ? { key, label: HIDE_LABEL[key] || key } : null;
+}
+const hiddenKinds = () => store.get('hideWarn', {}); // { key: label }
+// "Not right?": a note on OpenStreetMap at the place asks its mappers to look; fixing the
+// map yourself needs an OpenStreetMap account
+const osmNote = ([lon, lat]) => `https://www.openstreetmap.org/note/new#map=19/${lat.toFixed(6)}/${lon.toFixed(6)}`;
 
 export class Planner {
   constructor(map, app) {
@@ -215,7 +229,7 @@ export class Planner {
     if (leg.sport) return leg.sport;
     return leg.mode === 'water' && !isWater(route) ? 'paddle' : route;
   }
-  isMulti() { return this.legs.some((_, i) => this.legSport(i) !== this.app.activity()); }
+  isMulti() { return this.routeSports().length > 1; }
   sportIcon(sp) { const x = this.app.sports && this.app.sports().find((y) => y.k === sp); return (x && x.icon) || 'route'; }
   // the sports in the route, in order (each once)
   routeSports() { return [...new Set(this.legs.map((_, i) => this.legSport(i)))]; }
@@ -717,7 +731,7 @@ export class Planner {
     for (const l of this.legs) if (l.sport === sport) l.sport = undefined; // already in the new sport: follows it
     this.renderQuickSport(); // the route's sport, now that its legs keep theirs
     this.setMode(ACTIVITIES[sport].mode);
-    this.panel.classList.toggle('is-paddle', isWater(this.app.activity()));
+    this.panel.classList.toggle('is-paddle', isWater(this.mainSport()));
     this.renderToolbarState();
     if (!route) { if (this.points.length > 1) this.update(); return false; }
     if (from === 'planner') { this.routeAs(sport); return true; }
@@ -816,7 +830,7 @@ export class Planner {
   // the router parameters for leg i: its own style, else its sport's (the route's, or your saved one for another sport)
   routerFor(i) {
     const leg = this.legs[i], sport = this.legSport(i);
-    const base = sport === this.app.activity() ? this.style : this.savedStyle(sport);
+    const base = this.styleOf(sport);
     return routerOf(sport, (leg && leg.style) || base, this.wet.on);
   }
 
@@ -1278,6 +1292,8 @@ export class Planner {
 
   // ---------------------------------------------------------------- route style
   savedStyle(sport) { return store.get('styles', {})[sport] || defaultStyle(); }
+  // the style a leg in `sport` is routed with (unless it has its own): the route's for the map's sport, else yours for that sport
+  styleOf(sport) { return sport === this.app.activity() ? this.style : this.savedStyle(sport); }
 
   wetFor(style) { const w = (style && style.wet) || 'auto'; return w === 'yes' || (w === 'auto' && this.wet.on); }
 
@@ -1286,14 +1302,14 @@ export class Planner {
   renderStyle() {
     const box = this.els && this.els.styleBox;
     if (!box) return;
-    const route = this.app.activity();
-    this.els.quickStyle.innerHTML = `${icon('sliders', 16)}<span><span class="q-pre">Style: </span><b>${escapeHtml(styleName(route, this.style))}</b></span>`;
+    const route = this.mainSport(), rs = this.styleOf(route); // the route's sport: the map's may have moved on
+    this.els.quickStyle.innerHTML = `${icon('sliders', 16)}<span><span class="q-pre">Style: </span><b>${escapeHtml(styleName(route, rs))}</b></span>`;
     this.fitHeaderSoon();
     if (this.styleLeg != null && !this.legs[this.styleLeg]) this.styleLeg = null;
     const leg = this.styleLeg;
     // a leg in another sport is styled in that sport's terms, from your style for it
     const sport = leg != null ? this.legSport(leg) : route;
-    const base = sport === route ? this.style : this.savedStyle(sport);
+    const base = this.styleOf(sport);
     const cat = STYLES[sport] || STYLES.mtb;
     const own = leg != null ? this.legs[leg].style : null;
     const st = (leg != null && own) || base;
@@ -1301,13 +1317,13 @@ export class Planner {
     const custom = isCustom(sport, st);
     const set = (next) => this.setStyle(next, leg);
     const ownCount = this.legs.filter((l) => l.style).length;
-    this.setSection('style', { summary: `${styleName(route, this.style)}${ownCount ? ` · ${ownCount} leg${ownCount > 1 ? 's' : ''} with their own` : ''}` });
+    this.setSection('style', { summary: `${styleName(route, rs)}${ownCount ? ` · ${ownCount} leg${ownCount > 1 ? 's' : ''} with their own` : ''}` });
     box.innerHTML = '';
     if (leg != null) {
       box.append(h('div', { class: 'seg small full style-scope', role: 'group', 'aria-label': 'What the style is for' },
         h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => { this.styleLeg = null; this.renderStyle(); } }, 'Whole route'),
         h('button', { type: 'button', 'aria-pressed': 'true' }, `${this.nameOf(leg)} → ${this.nameOf(leg + 1)}`)),
-      h('p', { class: 'note' }, own ? 'This leg has its own style; the rest of the route keeps the route’s.' : sport === route ? `This leg follows the route’s style (${styleName(sport, this.style)}). Pick one to give it its own.` : `This ${ACTIVITIES[sport].label.toLowerCase()} leg has your ${ACTIVITIES[sport].label} style (${styleName(sport, base)}). Pick one to give it its own.`));
+      h('p', { class: 'note' }, own ? 'This leg has its own style; the rest of the route keeps the route’s.' : sport === route ? `This leg follows the route’s style (${styleName(sport, rs)}). Pick one to give it its own.` : `This ${ACTIVITIES[sport].label.toLowerCase()} leg has your ${ACTIVITIES[sport].label} style (${styleName(sport, base)}). Pick one to give it its own.`));
     }
     // presets, in the sport's words
     box.append(h('div', { class: 'style-presets', role: 'group', 'aria-label': 'Route style' },
@@ -1344,7 +1360,7 @@ export class Planner {
       : `${cat.note || `“${cat.presets[0][1]}” is the routing service’s own profile for the sport.`} A change re-routes the route, usually in one call. To give one leg a different style, open a point’s menu.`));
   }
 
-  renderStyleWet(st = (this.styleLeg != null && this.legs[this.styleLeg] && this.legs[this.styleLeg].style) || this.style) {
+  renderStyleWet(st = (this.styleLeg != null && this.legs[this.styleLeg] && this.legs[this.styleLeg].style) || this.styleOf(this.mainSport())) {
     const el = this.els && this.els.wetNote;
     if (!el) return;
     const w = (st && st.wet) || 'auto';
@@ -1361,11 +1377,11 @@ export class Planner {
    * clicking through a few controls costs one batch of calls, not several.
    */
   setStyle(style, leg = null) {
-    const sport = this.app.activity();
+    const sport = this.mainSport(); // the route's (the map's sport may have moved on)
     this.commit();
     this.styleBefore = { stats: this.styleStats(), a: this.analysis }; // compared once the new route is in
     if (leg == null) {
-      this.style = style;
+      if (sport === this.app.activity()) this.style = style;
       store.set('styles', { ...store.get('styles', {}), [sport]: style });
     } else if (this.legs[leg]) {
       this.legs[leg].style = style; // null: back to the route's
@@ -1378,9 +1394,9 @@ export class Planner {
 
   // Wet ground "auto": rain in the last 24 h at the start (one cached call an hour).
   async checkWet() {
-    const sport = this.app.activity();
+    const sport = this.mainSport();
     if (!hasWet(sport) || !this.points.length) return;
-    const uses = [this.style, ...this.legs.map((l) => l.style)].some((st) => st && (st.wet || 'auto') === 'auto');
+    const uses = [this.styleOf(sport), ...this.legs.map((l) => l.style)].some((st) => st && (st.wet || 'auto') === 'auto');
     if (!uses) return;
     try {
       const mm = await recentRain(this.points[0]);
@@ -1396,7 +1412,7 @@ export class Planner {
     const a = this.analysis;
     if (!a) return null;
     const share = (pairs, keys) => { const m = pairs.filter(([k]) => keys.includes(k)).reduce((s, [, d]) => s + d, 0); return Math.round((100 * m) / a.total); };
-    const sport = this.app.activity();
+    const sport = this.mainSport();
     const PAVED_S = ['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates'];
     let what = null;
     if (sport === 'road' || sport === 'gravel') what = ['unpaved', 100 - share(a.surfaces, PAVED_S.concat(['unknown', 'water']))];
@@ -1523,29 +1539,31 @@ export class Planner {
         const at = base + e.at, len = e.len;
         if (e.kind === 'ship') {
           out.push(len > 600
-            ? { at, len, kind: 'water', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn` }
-            : { at, len, kind: 'water', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn' });
-        } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going' });
-        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap' });
+            ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn` }
+            : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn' });
+        } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going' });
+        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap' });
         else if (e.kind === 'rough') {
           const w = wr.wind;
-          out.push({ at, len, kind: 'water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast` : 'an estimate from the forecast' });
+          out.push({ at, len, kind: 'water', hide: 'Rough water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast` : 'an estimate from the forecast' });
         }
       }
     });
-    if (missing.size) out.push({ at: 0, len: 0, kind: 'water', noAvoid: true, text: `Not checked on the water: ${[...missing].join(', ')} didn’t answer`, note: 'routed without it; Retry by moving a point' });
+    if (missing.size) out.push({ at: 0, len: 0, kind: 'water', noHide: true, noAvoid: true, text: `Not checked on the water: ${[...missing].join(', ')} didn’t answer`, note: 'routed without it; Retry by moving a point' });
     return out;
   }
 
   // Trail details along the route: the router's tags gave the first heads-up
-  // (analysis.js); with trail details on, the map's Overpass tiles add width
-  // and fallen trees mapped as points (js/trails.js), and it's re-checked for
-  // boardwalks once we know whether it has rained.
+  // (analysis.js); the trail-detail tiles (Overpass, the same as the map's Trail
+  // details) add width and fallen trees mapped as points (js/trails.js), and it's
+  // re-checked for boardwalks once we know whether it has rained. For every sport
+  // on land, whether or not the map shows the layer: a fallen tree is in the way
+  // of a gravel bike too.
   async loadTrail(a) {
     const opt = () => ({ activity: this.app.activity(), wet: this.wetFor(this.style) });
     a.trailWarn = trailWarnings(a, opt());
     this.renderWarnings();
-    if (!this.app.trailDetails || !this.app.trailDetails() || this.routeSports().every(isWater)) return;
+    if (this.routeSports().every(isWater)) return;
     try {
       if (!(await detailsAlong(a)) || this.analysis !== a) return;
       a.trailWarn = trailWarnings(a, opt());
@@ -1642,13 +1660,13 @@ export class Planner {
     if (winter && a.winterCls) {
       const c = a.winterCls, cls = (k) => (i) => c[i] === k && !water(i);
       const closed = stretches(cls('closed'));
-      for (const x of closed.slice(0, 3)) if (x.len >= 20) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', text: `No access in winter: ${fmtDist(x.len)}`, note: 'marked closed to walking or cycling in winter (usually a ski track): Avoid routes round it' });
+      for (const x of closed.slice(0, 3)) if (x.len >= 20) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', osm: true, lngLat: a.pts[x.i0], text: `No access in winter: ${fmtDist(x.len)}`, note: 'marked closed to walking or cycling in winter (usually a ski track): Avoid routes round it' });
       const groomed = stretches(cls('groomed'));
-      if (sum(groomed) >= 100) out.push({ at: a.along[groomed[0].i0], len: sum(groomed), kind: 'winter', ic: 'snow', noAvoid: true, text: `Beside a ski track for ${fmtDist(sum(groomed))}`, note: 'walking and cycling allowed: keep off the groomed track itself' });
+      if (sum(groomed) >= 100) out.push({ at: a.along[groomed[0].i0], len: sum(groomed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[groomed[0].i0], text: `Beside a ski track for ${fmtDist(sum(groomed))}`, note: 'walking and cycling allowed: keep off the groomed track itself' });
       const unploughed = stretches((i) => c[i] === 'unploughed' && bikeAt(i));
-      if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike' });
+      if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[unploughed[0].i0], text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike' });
       const slowOpen = stretches((i) => c[i] === 'open3' && bikeAt(i) && a.snow && a.snow.cm[i] >= 5);
-      if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet' });
+      if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[slowOpen[0].i0], text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet' });
     }
     // on the water in the ice season
     const wet = stretches(water);
@@ -1963,10 +1981,10 @@ export class Planner {
       else {
         // folded: only what differs from the defaults
         const bits = [];
-        const sp = this.legSport(i);
-        if (sp !== this.app.activity()) bits.push(ACTIVITIES[sp].label);
-        else if (leg.mode === 'line' || (leg.mode === 'water') !== isWater(this.app.activity())) bits.push(MODE_LABEL[leg.mode] || 'Imported track');
-        if (leg.mode === 'line' && sp !== this.app.activity()) bits.push(MODE_LABEL.line);
+        const sp = this.legSport(i), main = this.mainSport(); // differs from the route's sport
+        if (sp !== main) bits.push(ACTIVITIES[sp].label);
+        else if (leg.mode === 'line' || (leg.mode === 'water') !== isWater(main)) bits.push(MODE_LABEL[leg.mode] || 'Imported track');
+        if (leg.mode === 'line' && sp !== main) bits.push(MODE_LABEL.line);
         if (leg.mode === 'fixed') bits.push(leg.src ? 'LIPAS route' : 'Imported track');
         if (leg.style) bits.push(`style: ${styleName(sp, leg.style)}`);
         if (bits.length) {
@@ -2521,7 +2539,7 @@ export class Planner {
     }
     for (const w of a.waits || []) {
       if (!isNight(w.stop) || w.rest >= 5 * 3600) continue;
-      out.push({ at: w.at, len: 0, kind: 'dark', ic: 'moon', noAvoid: true, text: `A short night at ${this.nameOf(w.i)}: ${fmtDuration(w.rest)}`, note: `you’d get there ${this.clockOf(w.arrive)} and go on at ${hhmm(w.stop.on)}` });
+      out.push({ at: w.at, len: 0, kind: 'dark', hide: 'Short night', ic: 'moon', noAvoid: true, text: `A short night at ${this.nameOf(w.i)}: ${fmtDuration(w.rest)}`, note: `you’d get there ${this.clockOf(w.arrive)} and go on at ${hhmm(w.stop.on)}` });
     }
     return out;
   }
@@ -2993,45 +3011,32 @@ export class Planner {
 
   // ---------------------------------------------------------------- the ⋯ menu
   toggleMore() {
-    if (this.moreEl) { this.closeMore(); return; }
-    const item = (name, label, fn, cls = '') => h('button', { type: 'button', role: 'menuitem', class: `menu-item ${cls}`, onclick: () => { this.closeMore(); fn(); }, html: `${icon(name, 17)}<span>${label}</span>` });
+    if (this.moreMenu) { this.moreMenu.close(); return; }
     const two = this.points.length > 1;
     const side = this.layout() === 'side';
-    const el = h('div', { class: 'menu', role: 'menu', 'aria-label': 'Route actions' },
-      this.sideMQ.matches ? item(side ? 'panelBottom' : 'panelLeft', side ? 'Move to the bottom' : 'Move to the left', () => this.setDock(side ? 'bottom' : 'left')) : null,
-      this.sideMQ.matches ? h('hr') : null,
-      Object.assign(item('reverse', 'Reverse direction', () => this.reverse()), { disabled: !two }),
-      Object.assign(item('loop', 'Back to start', () => this.loop()), { disabled: !two }),
-      item('roundtrip', 'Round trip…', () => this.openLoop()),
-      h('hr'),
-      item('upload', 'Import GPX / KML…', () => $('#file-input').click()),
-      Object.assign(item('download', 'Export GPX', () => this.exportGpx()), { disabled: !two }),
-      Object.assign(item('share', 'Copy share link', () => this.share()), { disabled: !two }),
-      Object.assign(item('offline', 'Save offline…', () => this.app.saveOffline()), { disabled: !two }),
-      h('hr'),
+    this.moreMenu = popMenu(this.els.more, [
+      this.sideMQ.matches ? { icon: side ? 'panelBottom' : 'panelLeft', label: side ? 'Move to the bottom' : 'Move to the left', fn: () => this.setDock(side ? 'bottom' : 'left') } : null,
+      this.sideMQ.matches ? 'hr' : null,
+      { icon: 'reverse', label: 'Reverse direction', fn: () => this.reverse(), disabled: !two },
+      { icon: 'loop', label: 'Back to start', fn: () => this.loop(), disabled: !two },
+      { icon: 'roundtrip', label: 'Round trip…', fn: () => this.openLoop() },
+      'hr',
+      { icon: 'upload', label: 'Import GPX / KML…', fn: () => $('#file-input').click() },
+      { icon: 'download', label: 'Export GPX', fn: () => this.exportGpx(), disabled: !two },
+      { icon: 'share', label: 'Copy share link', fn: () => this.share(), disabled: !two },
+      { icon: 'offline', label: 'Save offline…', fn: () => this.app.saveOffline(), disabled: !two },
+      'hr',
       // what the route shows on the map
-      Object.assign(item(this.marks.km ? 'check' : 'route', 'Distance marks on the route', () => this.setMarks({ km: !this.marks.km })), { role: 'menuitemcheckbox', ariaChecked: String(this.marks.km) }),
-      Object.assign(item(this.marks.time ? 'check' : 'clock', 'Times at the marks', () => this.setMarks({ time: !this.marks.time })), { role: 'menuitemcheckbox', ariaChecked: String(this.marks.time), disabled: !this.marks.km }),
-      h('hr'),
-      Object.assign(item('trash', 'Clear route', () => this.clear(), 'danger'), { disabled: !this.points.length }));
-    this.panel.append(el);
-    const b = this.els.more.getBoundingClientRect(), pr = this.panel.getBoundingClientRect();
-    const below = b.bottom + 260 < innerHeight;
-    el.style.right = `${Math.max(8, pr.right - b.right)}px`;
-    if (below) el.style.top = `${b.bottom - pr.top + 4}px`; else el.style.bottom = `${pr.bottom - b.top + 4}px`;
-    this.moreEl = el;
+      { icon: this.marks.km ? 'check' : 'route', label: 'Distance marks on the route', fn: () => this.setMarks({ km: !this.marks.km }), checked: this.marks.km },
+      { icon: this.marks.time ? 'check' : 'clock', label: 'Times at the marks', fn: () => this.setMarks({ time: !this.marks.time }), checked: this.marks.time, disabled: !this.marks.km },
+      'hr',
+      { icon: 'trash', label: 'Clear route', fn: () => this.clear(), cls: 'danger', disabled: !this.points.length },
+    ], { label: 'Route actions', onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
     this.els.more.setAttribute('aria-expanded', 'true');
-    el.querySelector('.menu-item:not(:disabled)')?.focus();
-    this.offMore = (e) => { if (!el.contains(e.target) && !this.els.more.contains(e.target)) this.closeMore(); };
-    setTimeout(() => document.addEventListener('pointerdown', this.offMore, true));
   }
 
   closeMore() {
-    if (!this.moreEl) return;
-    this.moreEl.remove();
-    this.moreEl = null;
-    this.els.more.setAttribute('aria-expanded', 'false');
-    document.removeEventListener('pointerdown', this.offMore, true);
+    if (this.moreMenu) this.moreMenu.close();
   }
 
   setCraft(k) {
@@ -3044,7 +3049,7 @@ export class Planner {
   // "Time & speed": your speeds for this sport (editable) and where the time goes on this route.
   renderSpeed() {
     const a = this.analysis;
-    const act = this.app.activity();
+    const act = this.mainSport();
     const sum = speedSummary(act, this.craft);
     this.setSection('speed', { summary: `${sum.name} · ${sum.txt}`, empty: !a });
     if (!a) return;
@@ -3101,7 +3106,7 @@ export class Planner {
 
   // which colour modes make sense for the sport
   modeApplies(k) {
-    const act = this.app.activity();
+    const act = this.mainSport();
     if (k === 'sport') return this.isMulti(); // only a route that mixes sports
     if (isWater(act)) return ['way', 'wind', 'temp', 'rain'].includes(k);
     return k === 'down' || k === 'uphill' || k === 'both' ? OFFROAD_BIKE.has(act) : k === 'width' || k === 'vis' ? act !== 'road' : true;
@@ -3142,7 +3147,7 @@ export class Planner {
   }
 
   renderModeChips() {
-    const act = this.app.activity();
+    const act = this.mainSport();
     const applies = (k) => this.modeApplies(k);
     if (!applies(this.colorMode)) this.colorMode = isWater(act) ? 'wind' : 'grade';
     this.els.modesBar.innerHTML = '';
@@ -3273,7 +3278,7 @@ export class Planner {
   renderAnalysis() {
     this.drawMarks();
     const a = this.analysis;
-    const act = this.app.activity();
+    const act = this.mainSport(); // the route's (the map's sport may have moved on)
     const st = this.els.stats;
     const sum = this.els.sum;
     st.innerHTML = '';
@@ -3443,7 +3448,7 @@ export class Planner {
     const a = this.analysis;
     const box = this.els.climbs;
     box.innerHTML = '';
-    const bike = OFFROAD_BIKE.has(this.app.activity()); // uphill grades; others read the average gradient
+    const bike = OFFROAD_BIKE.has(this.mainSport()); // uphill grades; others read the average gradient
     const hardest = a.climbs.reduce((m, c) => (!m || c.gain > m.gain ? c : m), null);
     this.setSection('climbs', {
       count: a.climbs.length || '', empty: !a.climbs.length,
@@ -3474,9 +3479,18 @@ export class Planner {
     if (!a) return;
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
     const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a)].sort((x, y) => x.at - y.at);
+    // the kinds you've hidden stay out (and are listed at the end, to bring back)
+    const hidden = hiddenKinds(), hiddenHere = new Map();
+    const shown = all.filter((w) => {
+      const k = hideKind(w);
+      if (!k || !hidden[k.key]) return true;
+      hiddenHere.set(k.key, (hiddenHere.get(k.key) || 0) + 1);
+      return false;
+    });
     const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
-    const count = all.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
-    this.setSection('warnings', { count: count || '', empty: !count, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : all.length ? all[0].text + (all.length > 1 ? ` · +${all.length - 1} more` : '') : '' });
+    const count = shown.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
+    const nHidden = all.length - shown.length;
+    this.setSection('warnings', { count: count || '', empty: !count && !nHidden, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : shown.length ? shown[0].text + (shown.length > 1 ? ` · +${shown.length - 1} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '') : nHidden ? `${nHidden} hidden` : '' });
     if (unrouted) {
       const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
       const waiting = w && (w.reason === 'limit'
@@ -3494,7 +3508,9 @@ export class Planner {
     }
     if (!all.length) return;
     const KIND_ICON = { roadwork: 'warn', incident: 'warn', roadcond: 'warn', busy: 'warn', dark: 'moon' };
-    for (const w of all.slice(0, 40)) {
+    // where along: in metres on a short route ("at 40 m"), else "at km 12.3"
+    const atKm = (m) => (m < 10 ? 'the start' : a.along[a.along.length - 1] < 2000 ? `${Math.round(m / 10) * 10} m` : `km ${(m / 1000).toFixed(1)}`);
+    for (const w of shown.slice(0, 40)) {
       const i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
       let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len, 30));
       if (i1 < 0) i1 = a.along.length - 1;
@@ -3502,13 +3518,41 @@ export class Planner {
       const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
         : w.avoid ? [{ ...w.avoid, label: w.text }]
           : w.noAvoid || /^(Straight line|Carry)/.test(w.text) ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
-      const where = w.items ? `at km ${w.items.map((p) => (p.at / 1000).toFixed(1)).join(', ')}` : `at km ${(w.at / 1000).toFixed(1)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
+      const where = w.items ? `at ${w.items.map((p) => atKm(p.at)).join(', ')}` : `at ${atKm(w.at)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
       const ico = w.icon ? `<img class="li-ico" src="${iconUrl(w.icon)}" alt="">` : icon(w.ic || KIND_ICON[w.kind] || 'warn', 16);
+      const kind = hideKind(w);
       const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
         h('button', { type: 'button', class: 'li', html: `${ico}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${where}${w.note ? ` · ${escapeHtml(w.note)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
-        avoid && this.legs.some((l) => l.mode === 'auto' || l.mode === 'water') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null);
+        avoid && this.legs.some((l) => l.mode === 'auto' || l.mode === 'water') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null,
+        kind || (w.osm && w.lngLat) ? h('button', {
+          type: 'button', class: 'tool small li-more', title: 'More: hide this kind, or correct the map', 'aria-label': `More for “${w.text}”`, 'aria-haspopup': 'menu', html: icon('more', 16),
+          onclick: (e) => {
+            const at = e.currentTarget, open1 = this.rowMenu;
+            if (open1) { open1.close(); if (open1.at === at) return; } // its own ⋯ again: just closed
+            this.rowMenu = popMenu(at, [
+              kind ? { icon: 'eyeOff', label: `Hide “${escapeHtml(kind.label)}” in Heads-up`, fn: () => this.hideWarnKind(kind) } : null,
+              w.osm && w.osm.id ? { icon: 'external', label: 'Gone? Fix the map (OpenStreetMap)', fn: () => open(`https://www.openstreetmap.org/edit?${w.osm.type}=${w.osm.id}`, '_blank', 'noopener') } : null,
+              w.osm && w.lngLat ? { icon: 'external', label: 'Not right? Leave a note on OpenStreetMap', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') } : null,
+            ], { label: w.text, onClose: () => { this.rowMenu = null; } });
+            this.rowMenu.at = at;
+          },
+        }) : null);
       box.append(row);
     }
+    if (hiddenHere.size) {
+      box.append(h('div', { class: 'hidden-kinds' },
+        h('span', {}, 'Hidden:'),
+        ...[...hiddenHere].map(([k, n]) => h('button', { type: 'button', class: 'on-chip', title: 'Show these in Heads-up again', 'aria-label': `Show “${hidden[k]}” in Heads-up again`, html: `<span>${escapeHtml(hidden[k])}${n > 1 ? ` ×${n}` : ''}</span>${icon('close', 12)}`, onclick: () => this.hideWarnKind({ key: k }, false) }))));
+    }
+  }
+
+  // Hide a kind of heads-up everywhere (it's yours: kept on this device), or show it again
+  hideWarnKind(kind, hide = true) {
+    const all = { ...hiddenKinds() };
+    if (hide) all[kind.key] = kind.label; else delete all[kind.key];
+    store.set('hideWarn', all);
+    this.renderWarnings();
+    if (hide) toast(`“${kind.label}” hidden in Heads-up: it’s listed at the end to show again`, { ms: 5000, action: { label: 'Undo', fn: () => this.hideWarnKind(kind, false) } });
   }
 
   // the route's extent: its points and routed lines
@@ -3543,7 +3587,7 @@ export class Planner {
   renderWind() {
     const a = this.analysis;
     const box = this.els.wind;
-    const act = this.app.activity();
+    const act = this.mainSport();
     box.innerHTML = '';
     if (!a) return;
     // departure → back, for the section summary
