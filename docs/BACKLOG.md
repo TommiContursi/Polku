@@ -24,6 +24,7 @@ Each item says when (and, where it matters, in which phase) it came up.
 - **Smoke (headless Chrome) can fail the phone sheet heights** when the machine is short of network connections or CPU: seen once, not reproduced. *(2026-10-14)*
 
 ### Fixed
+- ~~**The map's credits open on phones**~~ *(2026-10-15)*: fixed in #58. MapLibre opens them by itself when their text comes in after the map has loaded; now they stay folded behind ⓘ on phone-wide windows until tapped, and fold when a window narrows.
 - ~~**Heads-up was different in each sport**~~ *(2026-10-15)*: bug sweep (#57). Fallen trees and other mapped obstacles came only with the map's Trail details layer on. Now every route on land gets them, and each row's ⋯ can hide its kind or point to OpenStreetMap to correct it.
 - ~~**The route menu ran off a short window**~~ *(2026-10-15)*: bug sweep (#57). Menus measure themselves and scroll inside when they must.
 - ~~**The saved copy looked current**~~ *(2026-10-15)*: bug sweep (#57). When the server doesn't answer, a banner says it's the saved copy, with Reload.
