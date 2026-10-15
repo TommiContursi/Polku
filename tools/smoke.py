@@ -51,6 +51,32 @@ BOXES = """(() => {
   return out;
 })()"""
 
+# After the planner changes size: wait until it has settled, on two animation frames in a row:
+# no CSS transition still running (the sheet's height, the controls riding above it) and the
+# map's room for the sheet (--sheet-h) matching it. Software rendering can take seconds to draw
+# a frame, so a fixed wait sometimes looked mid-way (#74). '' when settled, else what was still moving.
+SETTLED = """new Promise((done) => {
+  const pl = document.querySelector('#planner'), t0 = performance.now();
+  let frames = 0, calm = 0;
+  const moving = () => {
+    const out = document.getAnimations().filter((a) => a instanceof CSSTransition && a.playState === 'running')
+      .map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`);
+    const open = polku.planner.active && !pl.hidden && polku.planner.layout() === 'sheet';
+    const room = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
+    if (room !== (open ? pl.offsetHeight : 0)) out.push(`--sheet-h ${room} px for a ${pl.offsetHeight} px sheet`);
+    return out;
+  };
+  const late = () => `not settled after 10 s (${frames} frames): ${moving().join(', ') || 'still, but no next frame to confirm it'}`;
+  const timer = setTimeout(() => done(late()), 10000);
+  const frame = () => {
+    frames++;
+    calm = moving().length ? 0 : calm + 1;
+    if (calm >= 2) { clearTimeout(timer); done(''); }
+    else if (performance.now() - t0 < 10000) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+})"""
+
 
 # Drag the middle of the first leg (straight-line legs: no routing requests):
 # with the mouse on desktop, hold-then-drag on touch. Expect one new point under
@@ -1219,10 +1245,11 @@ SPORT_SWITCH = """(async () => {
   p.undo();
   await wait(400);
   if (sports() !== 'mtb,paddle,mtb') errs.push(`undo after the planner’s picker: ${sports()}`);
-  // the Weather button while planning opens the planner's weather, and the section shows itself
-  document.querySelector('#btn-time').click();
-  await wait(150);
-  if (!p.sec.depart.el.classList.contains('sec-flash')) errs.push('the Weather button: Departure & weather not highlighted');
+  // the Weather button while planning opens the planner's weather, and the section shows itself:
+  // it lights up on the next animation frame (ours runs after it), which software rendering can be slow to draw (#74)
+  const frame = new Promise((r) => { document.querySelector('#btn-time').click(); requestAnimationFrame(() => r(true)); });
+  if (!(await Promise.race([frame, wait(5000).then(() => false)]))) errs.push('the Weather button: no animation frame in 5 s');
+  else if (!p.sec.depart.el.classList.contains('sec-flash')) errs.push('the Weather button: Departure & weather not highlighted');
   if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (straight legs need none)');
   p.clear();
   polku.set({ activity: 'mtb' });
@@ -1817,7 +1844,9 @@ def check(chrome, w, h, phone, bottom=False):
     states = ['open', 'min'] if layout == 'side' else ['peek', 'profile', 'half', 'full']
     for st in states:
         pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
-        time.sleep(1.0)  # the sheet's and the controls' transitions (slow in software rendering)
+        late = pg.js(SETTLED)  # the sheet's and the controls' transitions (slow in software rendering)
+        if late:
+            fails.append(f'planning/{st}: {late}')
         ov = overlaps(pg.js(BOXES))
         fails += [f'planning/{st}: {o}' for o in ov]
         r = pg.js("(() => { const r = document.querySelector('#planner').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, h: r.height }; })()")
