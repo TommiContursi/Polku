@@ -22,8 +22,9 @@ export class UphillLayer {
     this.onData = onData;
     this.enabled = false;
     this.fc = { type: 'FeatureCollection', features: [] };
-    this.done = new Map(); // feature key -> features
-    this.osmTiles = new Map(); // z13 trail-details tile -> { result }
+    // feature key -> features; `partial` on the list when a terrain tile didn't load for it
+    this.done = new Map();
+    this.osmTiles = new Map(); // z13 trail-details tile -> { result, partial }
     this.timer = 0;
     this.run = 0;
     map.on('moveend', () => this.schedule());
@@ -74,7 +75,8 @@ export class UphillLayer {
         if (line.length < 2) continue;
         const a = line[0], z = line[line.length - 1];
         const key = `${a[0].toFixed(5)},${a[1].toFixed(5)},${z[0].toFixed(5)},${z[1].toFixed(5)},${line.length}`;
-        if (this.done.has(key)) continue;
+        const had = this.done.get(key);
+        if (had && !had.partial) continue; // graded without some of its terrain: again, once it loads
         if (!intersects(line, view)) continue;
         todo.push({ key, line, props: f.properties });
       }
@@ -92,7 +94,10 @@ export class UphillLayer {
         const s = samples[ci];
         const e = ele.subarray(off, off + s.pts.length);
         off += s.pts.length;
-        this.done.set(t.key, grade(s, e, t.props));
+        const list = grade(s, e, t.props);
+        // a tile that failed leaves its points without heights (dem.js asks for it again after a while)
+        if (ele.failed && e.some(Number.isNaN)) list.partial = true;
+        this.done.set(t.key, list);
       });
       this.publish();
     }
@@ -119,12 +124,14 @@ export class UphillLayer {
     if (list.length > 12) return;
     for (const [x, y] of list) {
       const key = `${x}/${y}`;
-      if (this.osmTiles.has(key)) continue;
-      const entry = { result: null };
+      const had = this.osmTiles.get(key);
+      if (had && !had.partial) continue;
+      const entry = { result: had ? had.result : null }; // what's shown stays until it's graded again
       this.osmTiles.set(key, entry);
       trailTile(x, y)
         .then(async (data) => {
           const out = [];
+          let failed = 0;
           for (const [, t, flat] of data.w) {
             const forced = parseInt(t['mtb:scale:uphill'], 10);
             if (!Number.isFinite(forced)) continue;
@@ -132,9 +139,11 @@ export class UphillLayer {
             for (let i = 0; i < flat.length; i += 2) line.push([flat[i], flat[i + 1]]);
             const s2 = densify(line, 8);
             const el = await elevations(s2.pts, 14);
+            failed += el.failed;
             out.push(...grade(s2, el, { 'mtb_scale': t['mtb:scale'] }, forced));
           }
           entry.result = out;
+          entry.partial = failed > 0; // graded again on a later map move
           if (run === this.run || this.enabled) this.publish();
         })
         .catch(() => { this.osmTiles.delete(key); }); // trailTile waits 2 min before asking again
