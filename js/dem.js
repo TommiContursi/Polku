@@ -5,7 +5,10 @@ import { DEM_URL, DEM_MAXZOOM } from './config.js';
 import { lonLatToTile } from './geo.js';
 
 const MAX_TILES = 220;
-const cache = new Map(); // "z/x/y" -> Promise<{w,h,el}|null>
+// A tile that didn't load (no network, a server error, bad data) is asked for again after this.
+const RETRY_MS = 15000;
+const FAILED = Object.freeze({ failed: true });
+const cache = new Map(); // "z/x/y" -> { p: Promise<{w,h,el}|null|FAILED>, failed: when it failed, or 0 }
 
 function decode(img) {
   const w = img.width, h = img.height;
@@ -22,23 +25,35 @@ function decode(img) {
   return { w, h, el };
 }
 
+// The tile, null where there's none (a coarser one may have it), or FAILED when it didn't
+// load: that one is asked for again once RETRY_MS have passed.
 function loadTile(z, x, y) {
   const key = `${z}/${x}/${y}`;
-  if (cache.has(key)) {
-    const p = cache.get(key);
+  const hit = cache.get(key);
+  if (hit && !(hit.failed && Date.now() - hit.failed > RETRY_MS)) {
     cache.delete(key);
-    cache.set(key, p);
-    return p;
+    cache.set(key, hit);
+    return hit.p;
   }
   const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-  const p = fetch(url)
-    .then((r) => (r.ok ? r.blob() : null))
-    .then((b) => (b ? createImageBitmap(b) : null))
-    .then((img) => (img ? decode(img) : null))
-    .catch(() => null);
-  cache.set(key, p);
+  const entry = { failed: 0 };
+  entry.p = fetch(url)
+    .then((r) => {
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error(`terrain tile: HTTP ${r.status}`);
+      return r.blob();
+    })
+    .then((b) => (b ? createImageBitmap(b).then(decode) : null))
+    .catch(() => { entry.failed = Date.now(); return FAILED; });
+  cache.delete(key);
+  cache.set(key, entry);
   while (cache.size > MAX_TILES) cache.delete(cache.keys().next().value);
-  return p;
+  return entry.p;
+}
+
+/** Ask for the tiles that didn't load again now, not after a while (Retry, or back online). */
+export function retryFailed() {
+  for (const [key, e] of cache) if (e.failed) cache.delete(key);
 }
 
 function sample(tile, fx, fy) {
@@ -56,10 +71,12 @@ function sample(tile, fx, fy) {
 /**
  * Elevation for many points at once. Points are grouped per tile so each tile
  * is fetched and decoded once. Missing tiles fall back to a coarser zoom.
- * @returns {Promise<Float32Array>} metres, NaN where nothing is available
+ * @returns {Promise<Float32Array>} metres, NaN where nothing is available. Its `failed`
+ *   counts the points left without because a tile didn't load (worth asking again later).
  */
 export async function elevations(points, z = DEM_MAXZOOM) {
   const out = new Float32Array(points.length).fill(NaN);
+  const failed = new Uint8Array(points.length);
   let pending = points.map((_, i) => i);
   for (let zz = z; zz >= Math.max(0, z - 4) && pending.length; zz -= 2) {
     const groups = new Map();
@@ -78,7 +95,8 @@ export async function elevations(points, z = DEM_MAXZOOM) {
           const [x, y] = key.split('/').map(Number);
           const tile = await loadTile(zz, x, y);
           for (const i of groups.get(key)) {
-            if (!tile) { next.push(i); continue; }
+            if (tile === FAILED) failed[i] = 1;
+            if (!tile || tile === FAILED) { next.push(i); continue; }
             const [tx, ty] = lonLatToTile(points[i][0], points[i][1], zz);
             const v = sample(tile, tx - x, ty - y);
             if (Number.isFinite(v) && v > -500) out[i] = v;
@@ -89,6 +107,7 @@ export async function elevations(points, z = DEM_MAXZOOM) {
     }
     pending = next;
   }
+  out.failed = pending.filter((i) => failed[i]).length;
   return out;
 }
 

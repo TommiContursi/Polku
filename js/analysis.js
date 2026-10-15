@@ -62,17 +62,22 @@ export function techBump(t, grade) {
   return 0;
 }
 
-function fillGaps(arr) {
-  let last = NaN;
-  for (let i = 0; i < arr.length; i++) {
-    if (Number.isFinite(arr[i])) last = arr[i];
-    else if (Number.isFinite(last)) arr[i] = last;
+// Heights where the terrain is missing: across a gap, a straight line between the heights
+// either side (a step there would read as a cliff); before the first and after the last
+// height, level with it. Nothing known: stays NaN.
+function fillGaps(arr, along) {
+  const n = arr.length;
+  let prev = -1;
+  for (let i = 0; i < n; i++) {
+    if (!Number.isFinite(arr[i])) continue;
+    if (prev < 0) arr.fill(arr[i], 0, i);
+    else {
+      const d = along[i] - along[prev];
+      for (let k = prev + 1; k < i; k++) arr[k] = arr[prev] + (d > 0 ? ((arr[i] - arr[prev]) * (along[k] - along[prev])) / d : 0);
+    }
+    prev = i;
   }
-  last = NaN;
-  for (let i = arr.length - 1; i >= 0; i--) {
-    if (Number.isFinite(arr[i])) last = arr[i];
-    else if (Number.isFinite(last)) arr[i] = last;
-  }
+  if (prev >= 0) arr.fill(arr[prev], prev + 1);
   return arr;
 }
 
@@ -87,8 +92,12 @@ export async function analyse(line, opt) {
   const { pts, along, src } = densify(coords, step);
   const n = pts.length;
   const z = total < 40000 ? 14 : total < 150000 ? 13 : 12;
-  const raw = fillGaps(await elevations(pts, z));
-  const ele = smooth(raw, along, 30);
+  const raw = await elevations(pts, z);
+  // where the terrain is missing (a tile that didn't load): estimated, and said so
+  const gap = new Uint8Array(n);
+  let known = 0;
+  for (let i = 0; i < n; i++) if (Number.isFinite(raw[i])) known++; else gap[i] = 1;
+  const ele = smooth(fillGaps(raw, along), along, 30);
   const sAttr = src.map((i) => attrs[Math.min(i, attrs.length - 1)] || {});
 
   // Grades over ±20 m
@@ -99,7 +108,7 @@ export async function analyse(line, opt) {
     while (hi < n - 1 && along[hi] - along[i] < 20) hi++;
     const d = along[hi] - along[lo];
     grade[i] = d > 0 ? ((ele[hi] - ele[lo]) / d) * 100 : 0;
-    if (sAttr[i].tags && (sAttr[i].tags.route === 'water')) grade[i] = 0;
+    if (!Number.isFinite(grade[i]) || (sAttr[i].tags && (sAttr[i].tags.route === 'water'))) grade[i] = 0; // no terrain: timed as flat
   }
 
   // Ascent with a 2 m hysteresis (lidar DEM is clean, so this stays honest).
@@ -114,6 +123,11 @@ export async function analyse(line, opt) {
   }
   let minE = Infinity, maxE = -Infinity;
   for (const e of ele) { if (e < minE) minE = e; if (e > maxE) maxE = e; }
+  // no terrain anywhere: the climbing and the heights are unknown, not 0 m
+  if (!known) up = down = minE = maxE = NaN;
+  // how much of the land has no terrain (on open water it isn't needed)
+  let gapM = 0;
+  for (let i = 1; i < n; i++) if (gap[i] && !onWater(i)) gapM += along[i] - along[i - 1];
 
   // Per-sample categories
   const surf = sAttr.map((a) => (a.mode === 'water' ? (a.tags && a.tags.portage ? 'ground' : 'water') : a.mode === 'line' ? 'unknown' : surfaceOf(a.tags)));
@@ -122,7 +136,7 @@ export async function analyse(line, opt) {
   const upCls = new Int8Array(n).fill(-1);
   for (let i = 0; i < n; i++) {
     const g = grade[i];
-    if (g >= 3) upCls[i] = uphillClass(g, g, techBump(sAttr[i].tags, g));
+    if (g >= 3 && !gap[i]) upCls[i] = uphillClass(g, g, techBump(sAttr[i].tags, g));
   }
 
   const breakdown = (cats) => {
@@ -131,12 +145,16 @@ export async function analyse(line, opt) {
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   };
 
-  const climbs = findClimbs(along, ele, grade, sAttr, pts);
+  const climbs = known ? findClimbs(along, ele, grade, sAttr, pts) : [];
   const warnings = findWarnings(along, grade, sAttr, pts, opt.activity);
   const out = {
     activity: opt.activity,
     pts, along, ele, grade, surf, way, down6, upCls,
     total, up, down, minE, maxE, climbs, warnings,
+    // terrain missing on land: how many metres, none at all, and whether a tile didn't load
+    // (asked for again later) rather than there being none; eleGap: 1 where it's missing
+    terrain: gapM ? { missing: gapM, all: !known, retry: raw.failed > 0 } : null,
+    eleGap: gapM ? gap : null,
     surfaces: breakdown(surf),
     ways: breakdown(way),
     attr: sAttr,

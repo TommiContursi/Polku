@@ -12,6 +12,7 @@
   python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
   python3 tools/smoke.py backtostart  # Back to start buttons, closing leg and undo (straight legs)
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
+  python3 tools/smoke.py terrain    # terrain tiles that don't load, load in part, then come back (mocked tiles, straight legs)
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
@@ -1572,6 +1573,104 @@ def route_bits(chrome):
     return not fails
 
 
+# Terrain that doesn't load (#72), on a straight hiking route over made-up hills: first no
+# terrain tile at all, then some (one a bad file, the coarser zooms failing) after a tap
+# on Retry, then all of them, with no tap: Polku tries again on its own.
+TERRAIN = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const A = await import(location.origin + '/js/analysis.js');
+  const p = polku.planner, realFetch = window.fetch;
+  // terrarium tiles whose height goes by the longitude: 120 m ± 20, a hill every 0.02° (about 1 km)
+  const tile = async (z, x) => {
+    const S = 256, c = new OffscreenCanvas(S, S), ctx = c.getContext('2d'), img = ctx.createImageData(S, S);
+    for (let px = 0; px < S; px++) {
+      const lon = ((x + (px + 0.5) / S) / 2 ** z) * 360 - 180, v = 120 + 20 * Math.sin((lon * Math.PI * 2) / 0.02) + 32768;
+      for (let py = 0; py < S; py++) img.data.set([Math.floor(v / 256), Math.floor(v) % 256, Math.floor((v % 1) * 256), 255], (py * S + px) * 4);
+    }
+    ctx.putImageData(img, 0, 0);
+    return new Response(await c.convertToBlob({ type: 'image/png' }));
+  };
+  let mode = 'fail';
+  const asked = [];
+  window.fetch = (url, init) => {
+    const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\/(\\d+)/.exec(String(url));
+    if (!m) return realFetch(url, init);
+    const [z, x] = [+m[1], +m[2]];
+    asked.push(`${mode} ${z}/${x}/${m[3]}`);
+    if (mode === 'fail' || (mode === 'some' && z < 14)) return Promise.reject(new TypeError('Failed to fetch'));
+    if (mode === 'some' && x === 9276) return Promise.resolve(new Response('not a picture')); // the route's middle tile
+    return tile(z, x);
+  };
+  const next = async (old, ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (p.analysis && p.analysis !== old && p.analysis.pts.length > 100) return p.analysis; await wait(200); } return null; };
+  const shown = () => document.querySelector('#planner').innerText;
+  const heads = () => document.querySelector('[data-sec=warnings]').textContent;
+  const elev = () => (document.querySelector('.sum-elev') || {}).textContent || '';
+  const garbled = (when) => { const m = /NaN|Infinity|Invalid Date/.exec(shown()); if (m) errs.push(`${when}: the planner shows ${m[0]}`); };
+  try {
+    p.setActive(true);
+    p.clear();
+    p.setMode('line');
+    for (const q of [[23.80, 61.509], [23.817, 61.519], [23.838, 61.516], [23.86, 61.51]]) p.addPoint(q);
+    p.reveal('warnings');
+    // 1. no terrain at all: timed by distance on the flat, the climbing unknown, and said so
+    const a1 = await next(null, 20000);
+    if (!a1) return ['the route was not analysed'];
+    if (asked.length && !asked.some((s) => s.startsWith('fail'))) errs.push('(the test) the terrain was loaded before the mock');
+    const flat = A.estimateTime({ ...a1, grade: new Float32Array(a1.along.length) }, p.timeOpt()).total;
+    if (!(Number.isFinite(a1.time) && Math.abs(a1.time - flat) < 1)) errs.push(`no terrain: the time is ${a1.time} s, not ${Math.round(flat)} s by the distance on the flat`);
+    if (/↑0\\b|↓0\\b/.test(elev()) || !/\\?/.test(elev())) errs.push(`no terrain: the summary says ${elev()}`);
+    if (!/no terrain/.test(p.profileSummary())) errs.push(`no terrain: the profile says ${p.profileSummary()}`);
+    if (!/Terrain didn.t load/.test(heads())) errs.push('no terrain: Heads-up does not say so');
+    garbled('no terrain');
+    // 2. some of it, after Retry: a bad file in the middle, no coarser tile to stand in
+    mode = 'some';
+    const row = [...document.querySelectorAll('[data-sec=warnings] .li-row')].find((r) => /Terrain didn.t load/.test(r.textContent));
+    const retry = row && [...row.querySelectorAll('button')].find((b) => b.textContent === 'Retry');
+    if (!retry) return [...errs, 'no Retry for the terrain in Heads-up'];
+    retry.click();
+    const a2 = await next(a1, 15000);
+    if (!a2) return [...errs, 'Retry: the route was not analysed again with the terrain that loaded'];
+    const t2 = a2.terrain;
+    if (!t2 || t2.all || !(t2.missing > 700 && t2.missing < 1800)) errs.push(`some terrain: missing ${t2 ? `${Math.round(t2.missing)} m${t2.all ? ', all of it' : ''}` : 'nothing'}, not about 1.2 km`);
+    if (!(Number.isFinite(a2.time) && a2.time > 0)) errs.push(`some terrain: the time is ${a2.time}`);
+    if (!(a2.up > 20 && Number.isFinite(a2.maxE))) errs.push(`some terrain: ↑${a2.up} m, high point ${a2.maxE}`);
+    const steep = Math.max(...Array.from(a2.grade, Math.abs));
+    if (steep > 15) errs.push(`some terrain: a ${Math.round(steep)} % grade where the gap meets the terrain (the hills are 12 % at most)`);
+    if (!/^↑\\d+/.test(elev())) errs.push(`some terrain: the summary says ${elev()}`);
+    if (!/Terrain missing for/.test(heads())) errs.push('some terrain: Heads-up does not say what is missing');
+    garbled('some terrain');
+    // 3. it comes back: tried again on its own, and the tiles that loaded aren't asked for again
+    mode = 'ok';
+    const n0 = asked.length;
+    const a3 = await next(a2, 45000);
+    if (!a3) errs.push('the route was not analysed again when the terrain came back (45 s)');
+    else {
+      if (a3.terrain) errs.push(`terrain back: still missing ${Math.round(a3.terrain.missing)} m`);
+      if (!(a3.up > a2.up + 15)) errs.push(`terrain back: ↑${Math.round(a3.up)} m, was ${Math.round(a2.up)} m without the middle tile`);
+      if (/Terrain (didn.t load|missing)/.test(heads())) errs.push('terrain back: Heads-up still says it is missing');
+      const again = asked.slice(n0).filter((s) => / 14\\/927[57]\\//.test(s));
+      if (again.length) errs.push(`tiles that had loaded were asked for again: ${again.join(', ')}`);
+      garbled('terrain back');
+    }
+    return errs;
+  } finally {
+    window.fetch = realFetch;
+    try { p.clear(); } catch (e) { errs.push(`clearing the route: ${e.message}`); }
+  }
+})()"""
+
+
+def terrain(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'hike', 'timeline': True}, {'polku:plannerDock': '"left"'}, '#13/61.513/23.83')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(TERRAIN, timeout=90000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} terrain that doesn't load, loads in part, comes back" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The planner header never spills out of the sheet (labels vary: a measured layout,
 # planner.js fitHeader). Narrow desktop windows with the bottom dock, a small phone.
 HEADER_OUT = """(() => {
@@ -1884,6 +1983,8 @@ def main():
             ok = back_to_start(chrome) and ok
         if not only or 'routebits' in only:
             ok = route_bits(chrome) and ok
+        if not only or 'terrain' in only:
+            ok = terrain(chrome) and ok
         if not only or 'stops' in only:
             ok = stops(chrome) and ok
         if not only or 'loops' in only:

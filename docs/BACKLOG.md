@@ -16,6 +16,7 @@ labelled `enhancement`), which holds its status. The review of 15 October 2026 o
 
 ### Small
 - **After an Overpass error (not a slow answer), a water leg isn't routed again on its own** *(found while fixing #67, 2026-10-15)*: the leg goes without OSM's rocks and Heads-up says so. The tile is asked for again after two minutes, by the next leg that needs it, and a good answer then doesn't route the legs that went without it. Moving a point does. A tile that comes in fine after failing could route those legs again.
+- **Where the terrain is missing, the route's heights are a guess** *(found while fixing #72, 2026-10-15)*: when no zoom of a terrain tile loads, the height runs in a straight line across the gap, so the climb from one side to the other counts but the hills in between don't, and a gap at the start or end is taken as level. Heads-up, the summary and the dashed line in the profile say so, and Polku keeps trying.
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 

@@ -5,10 +5,11 @@ import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BAND
 import { routeLeg, routeRun, routeLoop, routerHeadroom } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit } from './analysis.js';
+import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong } from './trails.js';
 import { iconUrl } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
-import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout } from './chart.js';
+import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater } from './waterdata.js';
@@ -182,6 +183,8 @@ export class Planner {
       for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; again = true; }
       if (again) this.routeAll();
     });
+    // back online: the terrain that didn't load, now
+    addEventListener('online', () => { if (this.analysis && this.analysis.terrain && this.analysis.terrain.retry) this.retryTerrain(this.analysis, 0, true); });
     // names of roads come with the tiles: when new ones arrive, the list may know more
     map.on('idle', () => {
       if (!this.active || !this.points.length) return;
@@ -1282,7 +1285,7 @@ export class Planner {
       }
       const card = h('div', { class: `loop-card${i === L.on ? ' on' : ''}`, role: 'button', tabindex: '0', onmouseenter: () => pick(i), onfocus: () => pick(i), onclick: () => pick(i) },
         h('div', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === best ? h('span', { class: 'loop-best' }, 'Closest match') : null),
-        h('div', { class: 'loop-card-line' }, `${fmtDuration(a.time)} · ${wet ? '' : `↑${Math.round(a.up)} m · `}${what}`),
+        h('div', { class: 'loop-card-line' }, `${fmtDuration(a.time)} · ${wet ? '' : `↑${Number.isFinite(a.up) ? Math.round(a.up) : '?'} m · `}${what}`),
         h('div', { class: 'loop-card-line muted' }, notes.filter(Boolean).join(' · ')),
         h('button', { type: 'button', class: 'btn', onclick: (e) => { e.stopPropagation(); this.pickLoop(i); } }, 'Use this loop'));
       list.append(card);
@@ -1474,13 +1477,44 @@ export class Planner {
     }
     const a = await analyse(line, this.timeOpt());
     if (gen !== this.gen) return;
+    this.useAnalysis(a);
+  }
+
+  useAnalysis(a) {
     this.analysis = a;
     Object.assign(a, (({ total, tAt, waits }) => ({ time: total, tAt, waits }))(this.timed(a)));
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
+    this.watchTerrain(a);
     this.renderAnalysis();
     this.loadWind(a);
     this.loadTrail(a);
+  }
+
+  // Terrain tiles that didn't load are asked for again after a while (dem.js): analyse the
+  // route again then, more rarely each time, and take the new analysis once more terrain is in.
+  watchTerrain(a, tries = 0) {
+    clearTimeout(this.terrainTimer);
+    if (!a.terrain || !a.terrain.retry) return;
+    const ms = Math.min(5 * 60e3, 20e3 * 2 ** tries);
+    a.terrain.next = Date.now() + ms;
+    this.terrainTimer = setTimeout(() => this.retryTerrain(a, tries + 1), ms);
+  }
+
+  async retryTerrain(a, tries = 0, now = false) {
+    if (this.analysis !== a) return;
+    clearTimeout(this.terrainTimer);
+    if (!now && !navigator.onLine) { this.watchTerrain(a, tries); this.renderWarnings(); return; } // offline: when it's back ('online')
+    if (now) retryTerrainTiles();
+    const gen = this.gen;
+    const b = await analyse(this.mergedLine(), this.timeOpt());
+    if (gen !== this.gen || this.analysis !== a) return;
+    if (b.terrain && b.terrain.missing >= a.terrain.missing - 1) {
+      this.watchTerrain(a, tries);
+      this.renderWarnings(); // when it tries next
+      return;
+    }
+    this.useAnalysis(b);
   }
 
   // Heads-up when part of the trip is after sunset, or in the dark (past civil dusk), at
@@ -3455,7 +3489,7 @@ export class Planner {
       if (!a.wind) return 'wind along the route';
       return `${COLOR_MODES[this.colorMode]} · up to ${Math.max(...a.wind.speed).toFixed(0)} m/s`;
     }
-    return `${COLOR_MODES[this.colorMode]} · ${Math.round(a.minE)}–${Math.round(a.maxE)} m`;
+    return `${COLOR_MODES[this.colorMode]} · ${Number.isFinite(a.minE) ? `${Math.round(a.minE)}–${Math.round(a.maxE)} m` : 'no terrain'}`;
   }
 
   renderToolbarState() {
@@ -3537,24 +3571,30 @@ export class Planner {
     key('distance', fmtDist(a.total));
     // the time is from your departure: tapping it opens the clock (one control for both)
     const dep = this.startOffsetH ? new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now';
-    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''} · set the departure`, onclick: () => this.reveal('depart') },
+    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? ', by distance only: no terrain' : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.reveal('depart') },
       // over days: the time on the move, and how many days it's spread over
       h('b', {}, nights ? shortDuration((a.timeWind || a.time) - waitSec) : fmtDuration(a.timeWind || a.time)), h('small', {}, nights ? `${nights + 1} days` : `from ${dep}`));
     sum.append(time);
     const carry = a.ways.find(([k]) => k === 'portage');
     if (paddle) key('carry', carry ? fmtDist(carry[1]) : '0 m');
     else {
-      // climbing and descent together, in the line that's always visible
-      sum.append(h('div', { class: 'sum-item sum-elev', title: `${Math.round(a.up)} m of climbing, ${Math.round(a.down)} m of descent` },
-        h('b', {}, `↑${Math.round(a.up)} `, h('span', { class: 'sum-down' }, `↓${Math.round(a.down)}`), ' m'), h('small', {}, 'ascent · descent')));
+      // climbing and descent together, in the line that's always visible (unknown without terrain, not 0 m)
+      const ter = a.terrain;
+      if (ter && ter.all) {
+        sum.append(h('div', { class: 'sum-item sum-elev', title: `${terrainTitle(ter)}: the climbing isn’t known` },
+          h('b', {}, '↑? ', h('span', { class: 'sum-down' }, '↓?'), ' m'), h('small', {}, 'no terrain')));
+      } else {
+        sum.append(h('div', { class: 'sum-item sum-elev', title: `${Math.round(a.up)} m of climbing, ${Math.round(a.down)} m of descent${ter ? `; terrain missing for ${fmtDist(ter.missing)}, estimated there` : ''}` },
+          h('b', {}, `↑${Math.round(a.up)} `, h('span', { class: 'sum-down' }, `↓${Math.round(a.down)}`), ' m'), h('small', {}, ter ? 'part estimated' : 'ascent · descent')));
+      }
     }
     if (OFFROAD_BIKE.has(act)) {
       const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);
-      stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : '');
+      stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : a.terrain && a.terrain.all ? 'no terrain' : '');
     } else if (act === 'road') {
       // road cyclists read climbs by height and average gradient
       const hardest = a.climbs.reduce((m, c) => (!m || c.gain * c.avg > m.gain * m.avg ? c : m), null);
-      stat('Hardest climb', hardest ? `<i class="dot" style="background:${gradeColor(hardest.avg)}"></i>${Math.round(hardest.avg)} %` : '—', hardest ? `${Math.round(hardest.gain)} m over ${fmtDist(hardest.len)}` : '');
+      stat('Hardest climb', hardest ? `<i class="dot" style="background:${gradeColor(hardest.avg)}"></i>${Math.round(hardest.avg)} %` : '—', hardest ? `${Math.round(hardest.gain)} m over ${fmtDist(hardest.len)}` : a.terrain && a.terrain.all ? 'no terrain' : '');
     } else if (paddle) {
       const w = a.wind;
       if (w) {
@@ -3568,7 +3608,7 @@ export class Planner {
       }
       if (a.up >= 5) stat('Carry ascent', `${Math.round(a.up)} m`);
     } else {
-      stat('High point', `${Math.round(a.maxE)} m`);
+      stat('High point', Number.isFinite(a.maxE) ? `${Math.round(a.maxE)} m` : '—', Number.isFinite(a.maxE) ? '' : 'no terrain');
     }
     // what the time assumes, one tap from changing it
     const sp = speedSummary(act, this.craft);
@@ -3586,7 +3626,7 @@ export class Planner {
       if (b && n) {
         const sg = (v, unit, dp = 0) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(dp)} ${unit}`;
         const what = n.what[0] === 'carries' ? `carries ${b.what[1]} → ${n.what[1]} m` : `${n.what[0]} ${b.what[1]} → ${n.what[1]} %`;
-        this.styleDelta = `${sg(n.km - b.km, 'km', 1)} · ${what} · climbing ${sg(n.up - b.up, 'm')}`;
+        this.styleDelta = `${sg(n.km - b.km, 'km', 1)} · ${what}${Number.isFinite(n.up - b.up) ? ` · climbing ${sg(n.up - b.up, 'm')}` : ''}`;
         toast(`${styleName(act, this.style)}: ${this.styleDelta}`, { ms: 5000 });
       }
     }
@@ -3647,9 +3687,10 @@ export class Planner {
       rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color]);
     }
     else if (this.colorMode === 'uphill') {
-      const m = sumBy((i) => (a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down'));
-      rows = [...m.entries()].sort((x, y) => (x[0] === 'flat / down' ? 1 : y[0] === 'flat / down' ? -1 : x[0] - y[0]))
-        .map(([k, d]) => [k === 'flat / down' ? k : UPHILL_TEXT[k], d, k === 'flat / down' ? '#d6dde3' : DIFF_COLORS[k]]);
+      const m = sumBy((i) => (noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down'));
+      const last = (k) => (k === 'no terrain' ? 2 : k === 'flat / down' ? 1 : 0);
+      rows = [...m.entries()].sort((x, y) => last(x[0]) - last(y[0]) || x[0] - y[0])
+        .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k]]);
     } else if (this.colorMode === 'both') {
       // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
       const m = sumBy((i) => (a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99));
@@ -3660,8 +3701,9 @@ export class Planner {
       rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
         .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k]]);
     } else {
-      const m = sumBy((i) => GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min));
-      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1]]);
+      // where the terrain is missing: not flat, unknown
+      const m = sumBy((i) => (noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min)));
+      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (GRADE_BANDS[k] ? [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1]] : ['no terrain', d, NO_TERRAIN]));
     }
     const bar = h('div', { class: 'bd-bar' });
     const legend = h('div', { class: 'bd-legend' });
@@ -3719,9 +3761,12 @@ export class Planner {
       return false;
     });
     const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
-    const count = shown.length + (unrouted ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
+    const ter = a.terrain;
+    const count = shown.length + (unrouted ? 1 : 0) + (ter ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
     const nHidden = all.length - shown.length;
-    this.setSection('warnings', { count: count || '', empty: !count && !nHidden, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed` : shown.length ? shown[0].text + (shown.length > 1 ? ` · +${shown.length - 1} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '') : nHidden ? `${nHidden} hidden` : '' });
+    this.setSection('warnings', { count: count || '', empty: !count && !nHidden, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed`
+      : ter ? terrainTitle(ter) + (shown.length ? ` · +${shown.length} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '')
+        : shown.length ? shown[0].text + (shown.length > 1 ? ` · +${shown.length - 1} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '') : nHidden ? `${nHidden} hidden` : '' });
     if (unrouted) {
       const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
       const waiting = w && (w.reason === 'limit'
@@ -3730,6 +3775,18 @@ export class Planner {
       box.append(h('div', { class: 'li-row kind-route' },
         h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${unrouted === 1 ? 'One leg isn’t' : `${unrouted} legs aren’t`} routed yet</b><span>${waiting || `Drawn as straight line${unrouted === 1 ? '' : 's'}`}</span></span>` }),
         h('button', { type: 'button', class: 'btn', title: 'Ask the router again', onclick: () => this.retryFailed() }, 'Retry')));
+    }
+    if (ter) {
+      const next = ter.retry && ter.next ? ` · trying again at ${new Date(ter.next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
+      box.append(h('div', { class: 'li-row kind-route' },
+        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${terrainTitle(ter)}</b><span>${ter.all ? 'The time is by distance only, and the climbing isn’t known' : 'The climbing and the time there are estimates'}${next}</span></span>` }),
+        ter.retry ? h('button', {
+          type: 'button', class: 'btn', title: 'Load the terrain again',
+          onclick: async () => {
+            await this.retryTerrain(a, 0, true);
+            if (this.analysis === a) toast('The terrain still didn’t load: Polku keeps trying');
+          },
+        }, 'Retry') : null));
     }
     const byValhalla = this.legs.filter((l) => l.status === 'ok' && l.result && l.result.provider === 'valhalla').length;
     if (byValhalla) {
@@ -3906,7 +3963,8 @@ function hourStrip(s, startSec) {
   return out;
 }
 
-// DEM elevation for each routed vertex, taken from the nearest analysed sample.
+// DEM elevation for each routed vertex, taken from the nearest analysed sample (none where
+// the terrain is missing: the GPX gets no height there rather than an estimate).
 function sampleEle(a, coords) {
   const out = new Float32Array(coords.length);
   let j = 0;
@@ -3917,10 +3975,13 @@ function sampleEle(a, coords) {
       if (d < best) { best = d; j = k; }
       if (d === 0) break;
     }
-    out[i] = a.ele[j];
+    out[i] = a.eleGap && a.eleGap[j] ? NaN : a.ele[j];
   }
   return out;
 }
+
+// what's missing of the terrain (analysis.js), for Heads-up and the summary
+const terrainTitle = (t) => (t.all ? (t.retry ? 'Terrain didn’t load' : 'No terrain here') : `Terrain missing for ${fmtDist(t.missing)}`);
 
 // "2 h 13" or "54 min": a duration where there's little room
 const shortDuration = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };

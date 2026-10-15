@@ -49,7 +49,12 @@ export const TRAIL_SCALES = {
   },
 };
 
+// where the terrain is missing (analysis.js): no height or grade to give there
+export const noTerrain = (a, i) => !!(a.eleGap && a.eleGap[i]);
+export const NO_TERRAIN = '#d6dde3';
+
 export function colorAt(a, i, mode) {
+  if ((mode === 'grade' || mode === 'uphill') && noTerrain(a, i)) return NO_TERRAIN; // no grade to colour by
   switch (mode) {
     case 'width': case 'vis': return a.td ? TRAIL_SCALES[mode].colors[a.td[mode][i] + 2] : '#d6dde3';
     case 'uphill': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : '#d6dde3';
@@ -98,7 +103,7 @@ export function routeReadout(a, i, road = '') {
     return { title: `${fmtDist(a.along[i])} · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : a.way[i]}`, lines: [when.join(' · ')].filter(Boolean) };
   }
   return {
-    title: `${fmtDist(a.along[i])} · ${Math.round(a.ele[i])} m · ${g >= 0 ? '+' : ''}${g.toFixed(1)} %`,
+    title: `${fmtDist(a.along[i])} · ${noTerrain(a, i) ? 'no terrain here' : `${Math.round(a.ele[i])} m · ${g >= 0 ? '+' : ''}${g.toFixed(1)} %`}`,
     lines: [trail.join(' · '), when.join(' · ')].filter(Boolean),
   };
 }
@@ -276,7 +281,8 @@ export class ProfileChart {
     const x = g.x0 + ((a.along[i] - v0) / (v1 - v0)) * (g.x1 - g.x0);
     const rows = this.kind === 'conditions'
       ? [`<b>${fmtDist(a.along[i])}</b> · ${a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'on the water' : a.way[i]}`]
-      : [`<b>${fmtDist(a.along[i])}</b> · ${Math.round(a.ele[i])} m`, `Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`];
+      : noTerrain(a, i) ? [`<b>${fmtDist(a.along[i])}</b> · no terrain here`]
+        : [`<b>${fmtDist(a.along[i])}</b> · ${Math.round(a.ele[i])} m`, `Grade ${a.grade[i] >= 0 ? '+' : ''}${a.grade[i].toFixed(1)} %`];
     if (this.kind !== 'conditions') {
       if (a.upCls[i] >= 0) rows.push(`Uphill ${UPHILL_TEXT[a.upCls[i]].split(' · ')[0]}`);
       if (a.down6[i] >= 0) rows.push(MTB_SCALE_TEXT[a.down6[i]].split(' · ')[0] + ' downhill');
@@ -325,6 +331,7 @@ export class ProfileChart {
       if (v < lo) lo = v;
       if (v > hi) hi = v;
     }
+    if (!cond && !(hi >= lo)) { note(a.terrain && !a.terrain.retry ? 'No terrain here: no elevation profile' : 'The terrain didn’t load: no elevation profile yet'); return; }
     let yMin, yMax;
     if (cond) { yMin = 0; yMax = Math.max(4, hi * 1.15); } else {
       const span = Math.max(20, hi - lo);
@@ -381,15 +388,24 @@ export class ProfileChart {
       ctx.fill();
       i = j;
     }
-    // outline
-    ctx.beginPath();
-    for (let k = iA; k <= iB; k++) {
-      const x = X(a.along[k]), y = Y(val[k]);
-      if (k > iA) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    // outline, dashed where the terrain is missing (a straight line across: an estimate)
+    const est = (k) => !cond && noTerrain(a, k);
+    for (let k0 = iA; k0 < iB;) {
+      const dash = est(k0 + 1);
+      let k1 = k0 + 1;
+      while (k1 < iB && est(k1 + 1) === dash) k1++;
+      ctx.beginPath();
+      for (let k = k0; k <= k1; k++) {
+        const x = X(a.along[k]), y = Y(val[k]);
+        if (k > k0) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.setLineDash(dash ? [4, 3] : []);
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      k0 = k1;
     }
-    ctx.strokeStyle = ink;
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
+    ctx.setLineDash([]);
 
     if (cond) {
       const w = a.wind;

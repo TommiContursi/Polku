@@ -229,7 +229,19 @@ LEG_LIT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((
            " const r = document.querySelector('.wpl-row[data-i=\"0\"]'); if (r) r.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(400); return true; })()")
 TAB = lambda sec: f"(async () => {{ polku.planner.reveal({json.dumps(sec)}); await new Promise((r) => setTimeout(r, 600)); return true; }})()"
 
+# #72: terrain tiles that don't load, before the route is in: none at all, or (part) the
+# route's eastern tile at zoom 14 and every coarser one
+def NO_TERRAIN(part=False):
+    fail = '+m[1] < 14 || +m[2] === 9276' if part else 'true'
+    return ("(() => { const real = window.fetch; window.fetch = (u, i) => { const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\//.exec(String(u));"
+            f" if (m && ({fail})) return Promise.reject(new TypeError('Failed to fetch')); return real(u, i); }}; return true; }})()")
+
 SCENES = {
+    # #72: no terrain, and part of it missing (the summary, the profile, Heads-up)
+    'desk-no-terrain': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=NO_TERRAIN(), js=TAB('warnings')),
+    'phone-no-terrain': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=NO_TERRAIN(), js=TAB('warnings')),
+    'desk-part-terrain': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=NO_TERRAIN(True), js=TAB('warnings')),
+    'phone-part-terrain': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=NO_TERRAIN(True), js=TAB('warnings')),
     'desk-closed': dict(DESK, timeline=True),
     'desk-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json'),
     'desk-settings': dict(DESK, timeline=False, js="document.querySelector('#btn-settings') && document.querySelector('#btn-settings').click(); true"),
