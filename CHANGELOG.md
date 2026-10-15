@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
-### Fixed: Back to start
+### Fixed: Back to start ([#64](https://github.com/TommiContursi/Polku/pull/64))
 - **Back to start adds the return leg again**, from the waypoint list, the finish point's menu and the wide planner toolbar. Undo removes that leg and restores your route.
 
 ### After the three tabs ([#61](https://github.com/TommiContursi/Polku/pull/61))

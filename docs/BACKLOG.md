@@ -31,7 +31,7 @@ Each item says when (and, where it matters, in which phase) it came up.
 - **Smoke (headless Chrome) can fail the phone sheet heights** when the machine is short of network connections or CPU: seen once, not reproduced. *(2026-10-14)*
 
 ### Fixed
-- ~~**Back to start did nothing**~~ *(verified 2026-10-15; assessment in #62)*: the round-trip state hid the action with the same name. The action now has its own name; regression checks click all three buttons and verify the return leg and Undo.
+- ~~**Back to start did nothing**~~ *(verified 2026-10-15; assessment in #62)*: fixed in #64. The round-trip state hid the action with the same name. The action now has its own name; regression checks click all three buttons and verify the return leg and Undo.
 - ~~**The profile's numbered marks looked like the waypoints**~~ *(2026-10-15)*: fixed in #61. They were the climbs. The profile draws the route's own points now, and the climbs as "↑1" tags.
 - ~~**Export, share and offline only in Go**~~ *(2026-10-15)*: fixed in #61. They're in ⋯ too.
 - ~~**The map's credits open on phones**~~ *(2026-10-15)*: fixed in #58. MapLibre opens them by itself when their text comes in after the map has loaded; now they stay folded behind ⓘ on phone-wide windows until tapped, and fold when a window narrows.
