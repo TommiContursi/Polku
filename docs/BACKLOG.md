@@ -1,4 +1,4 @@
-# Polku backlog: bugs, ideas, things to watch
+# Polku backlog: ideas, known limits, things to watch
 
 Everything noticed but not done yet, so nothing gets lost between phases. The
 ordered plan lives in [ROADMAP.md](ROADMAP.md); when an item here becomes
@@ -6,43 +6,15 @@ work, it moves there (or into a fix PR) and is ticked off here.
 
 Each item says when (and, where it matters, in which phase) it came up.
 
-Actionable findings have a linked GitHub issue for reproduction, current status,
-ownership and resolution; this file remains the short index. See
-[the finding lifecycle](DEVELOPING.md#recording-and-resolving-findings).
+**Bugs aren't listed here.** Each one is a
+[GitHub issue](https://github.com/TommiContursi/Polku/issues), which holds its
+status. The review of 15 October 2026 opened #65–#75, listed in
+[#63](https://github.com/TommiContursi/Polku/issues/63) (the
+[review with its evidence](reviews/2026-10-15/README.md)).
 
-## Independent technical assessment — 2026-10-15
+## Known limits and quirks
 
-The [assessment and retained evidence](reviews/2026-10-15/README.md) distinguish
-confirmed defects, unresolved rendering/test failures and optional improvements.
-Suggested maintenance priorities are proposals, not a change to ROADMAP.
-
-[GitHub index #63](https://github.com/TommiContursi/Polku/issues/63) records the
-recommended sequence and links current work. Individual issues own live status;
-the table below is a navigation index, not another set of completion checkboxes.
-
-| Issue | Finding |
-|---|---|
-| [#65](https://github.com/TommiContursi/Polku/issues/65) | Back to start |
-| [#66](https://github.com/TommiContursi/Polku/issues/66) | Concurrent API pacing: fixed in [#79](https://github.com/TommiContursi/Polku/pull/79) |
-| [#67](https://github.com/TommiContursi/Polku/issues/67) | Incomplete water cache |
-| [#68](https://github.com/TommiContursi/Polku/issues/68) | Offline preview and recovery |
-| [#69](https://github.com/TommiContursi/Polku/issues/69) | Avoid areas in links |
-| [#70](https://github.com/TommiContursi/Polku/issues/70) | Weather completion order |
-| [#71](https://github.com/TommiContursi/Polku/issues/71) | Map state affects route settings |
-| [#72](https://github.com/TommiContursi/Polku/issues/72) | Missing terrain |
-| [#73](https://github.com/TommiContursi/Polku/issues/73) | Magnification |
-| [#74](https://github.com/TommiContursi/Polku/issues/74) | Smoke synchronization |
-| [#75](https://github.com/TommiContursi/Polku/issues/75) | Trail rendering |
-
-The assessment also covers partial offline saves, water-grid completeness and
-performance, and optional input/CDN hardening. These remain risks to investigate,
-not newly confirmed failures. The existing FMI deadline and cold-area loop
-latency items below remain their project context.
-
-## Bugs and quirks
-
-### Small: the next bug sweep
-- **Legs left waiting for a routing slot aren't routed again** *(found while fixing #66, 2026-10-15)*: when more legs need BRouter than its pacing allows and Valhalla can't stand in either, they stay straight lines while Heads-up says the service "isn't answering — trying again at …"; nothing tries again. See [#78](https://github.com/TommiContursi/Polku/issues/78).
+### Small
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
@@ -61,10 +33,7 @@ latency items below remain their project context.
 - **Trail-detail tiles are cached a week,** so a fallen tree cleared yesterday still shows. *(2026-10-14; see "Fresher trail data" below)*
 - **Share links re-route imported GPX tracks.** A fixed leg from a file travels as its two ends only, so whoever opens the link gets a routed leg, not your track. LIPAS legs now travel as references (12c); a GPX track would need its line in the link (too long for a URL) or a short-link service. *(2026-10-14)*
 
-### To watch
-- **Smoke (headless Chrome) can fail the phone sheet heights** *(2026-10-14; rechecked 2026-10-15)*: serial runs reproduced stale geometry and an intermittent Weather highlight, with strong frame-scheduling evidence but an unresolved exact cause. See [#74](https://github.com/TommiContursi/Polku/issues/74) and the dated assessment; the separate MapLibre buffer exception is tracked in [#75](https://github.com/TommiContursi/Polku/issues/75).
-
-### Fixed
+### Fixed (until 15 October 2026; since then, fixed bugs are closed issues)
 - ~~**The profile's numbered marks looked like the waypoints**~~ *(2026-10-15)*: fixed in #61. They were the climbs. The profile draws the route's own points now, and the climbs as "↑1" tags.
 - ~~**Export, share and offline only in Go**~~ *(2026-10-15)*: fixed in #61. They're in ⋯ too.
 - ~~**The map's credits open on phones**~~ *(2026-10-15)*: fixed in #58. MapLibre opens them by itself when their text comes in after the map has loaded; now they stay folded behind ⓘ on phone-wide windows until tapped, and fold when a window narrows.
@@ -113,7 +82,7 @@ latency items below remain their project context.
 
 ### Trail details
 - **Fresher trail data:** show a tile's age in the key, a "Refresh trail details here" action, or a background refresh for tiles over a day old (Trailmap's makers have had trouble with data that only updates a few times a day). *(2026-10-14)*
-- **Uphill band at the trail's width:** see Bugs.
+- **Uphill band at the trail's width:** see Known limits.
 - **Static trail tiles** (PMTiles built weekly by a GitHub Action from Geofabrik's Finland extract) if Overpass stays flaky. *(phase 12 design)*
 
 ### Planner
