@@ -8,16 +8,13 @@ Each item says when (and, where it matters, in which phase) it came up.
 
 ## Bugs and quirks
 
-### Small: the next bug sweep (after 15b)
-- **The planner's summary follows the map's sport** *(found in #54, 2026-10-15)*: with the map on Paddle and the route kept MTB, the summary shows "carry" (paddling's figure), and the speeds, styles and colour modes follow the map's sport too. The planner could use the route's own main sport (`mainSport()`) wherever it means the route.
-- **Rain labels at "now" come from the forecast.** The small "0.2 mm/h" labels stay on while the FMI radar draws "now", so they can disagree. Show the radar's rate at "now", or hide them. *(2026-10-14, while fixing the radar)*
-- **The timeline can say "· radar" instead of "· FMI radar"** until it redraws: the label is set before FMI's image arrives. *(2026-10-14)*
-- **On a 360 px phone the summary's "↓57 m" nearly touches Done.** *(2026-10-14)*
-- **The opened attribution on a phone** (tap the ⓘ) runs three lines and under the Plan button until it's closed again. *(2026-10-14)*
-- **A tall card on a short screen** (a LIPAS route's card with Ride, about 330 px) can sit under the top bar at 600 px of height. *(2026-10-14)*
-- **LIPAS has few lean-tos in Nuuksio:** "Places to sleep" found one LIPAS lean-to within 6 km against seven OSM campsites and huts. Check whether more are under another LIPAS type, or missing. *(13c, 2026-10-14)*
+### Small: the next bug sweep
+- **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
+- **Snow below Auto's threshold says nothing where you look** *(2026-10-15)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
 ### Bigger: later
+- **The planner keeps the map's sport underneath** *(bug sweep, 2026-10-15)*: what it shows now follows the route's main sport, but the planner still takes the map's sport as the default for new legs, the round-trip presets and the share link's `a=`. A planner with a sport of its own (set by the route, changed by Route it as) would be the clean model, about 40 places in `planner.js`.
+- **Trail details along every route cost Overpass calls** *(bug sweep, 2026-10-15)*: they now load for gravel and road routes too (up to 40 tiles a route, cached a week), not only with the map's layer on. Watch the Overpass counter in Settings; a long road route over 40 tiles skips them.
 - **Winter routing that prefers ploughed ways** *(15b, 2026-10-15)*: BRouter has no winter tags, and its no-go lines block hard or barely steer, so winter only warns (with Avoid) for now. Polku's own graph router for skiing (15c) could take the winter classes and prefer ploughed and quick-opening ways for bikes too.
 - **The uphill band has one width.** Uphill grades come from the vector tiles, which have no width, so in Uphill mode the band doesn't follow the trail's width; the centre line does. Grading the trail-details ways instead would fix it. *(2026-10-14)*
 - **Trail-detail tiles are cached a week,** so a fallen tree cleared yesterday still shows. *(2026-10-14; see "Fresher trail data" below)*
@@ -27,6 +24,13 @@ Each item says when (and, where it matters, in which phase) it came up.
 - **Smoke (headless Chrome) can fail the phone sheet heights** when the machine is short of network connections or CPU: seen once, not reproduced. *(2026-10-14)*
 
 ### Fixed
+- ~~**Heads-up was different in each sport**~~ *(2026-10-15)*: bug sweep (#57). Fallen trees and other mapped obstacles came only with the map's Trail details layer on. Now every route on land gets them, and each row's ⋯ can hide its kind or point to OpenStreetMap to correct it.
+- ~~**The route menu ran off a short window**~~ *(2026-10-15)*: bug sweep (#57). Menus measure themselves and scroll inside when they must.
+- ~~**The saved copy looked current**~~ *(2026-10-15)*: bug sweep (#57). When the server doesn't answer, a banner says it's the saved copy, with Reload.
+- ~~**The planner's summary follows the map's sport**~~ *(found in #54)*: bug sweep (#57). The summary, Time & speed, style, colours, climbs and weather follow the route's main sport.
+- ~~**Rain labels at "now" come from the forecast**~~ and ~~**"· radar" instead of "· FMI radar"**~~ *(2026-10-14)*: bug sweep (#57).
+- ~~**On a 360 px phone the summary nearly touches Done**~~, ~~**the opened attribution runs under the Plan button**~~ (and the ⓘ was under the timeline), ~~**a tall card sits under the top bar**~~ *(2026-10-14)*: bug sweep (#57).
+- ~~**LIPAS has few lean-tos in Nuuksio**~~ *(13c)*: checked in the bug sweep: LIPAS lists 3 lean-tos, 2 lodges and a tent area there. The park's other shelters are in OpenStreetMap, which Places to sleep merges in.
 - ~~**Changing the sport in the top menu re-routed a drawn route**~~ *(2026-10-15)*: fixed in #54. The route keeps its sports when the map's sport changes, and a toast offers "Route it as …". The planner's own picker shows the route's sport, routes its main sport only, and Undo brings it back.
 - ~~**The planner's section links didn't show where they lead**~~ *(2026-10-15)*: fixed in #54. Every jump to a section (the Weather button, Speed, Style, links in the summary) lights that section up for a moment.
 - ~~**The tests ran on cached files when the dev server was down**~~ *(2026-10-14)*: fixed then. `tools/cdp.py` stops without a dev server and bypasses the service worker.
@@ -69,6 +73,7 @@ Each item says when (and, where it matters, in which phase) it came up.
 - **Static trail tiles** (PMTiles built weekly by a GitHub Action from Geofabrik's Finland extract) if Overpass stays flaky. *(phase 12 design)*
 
 ### Planner
+- **The planner's layout** *(2026-10-15)*: tabs for drawing, checking and going; the ⋯ menu's tools out in the open; a panel to move and snap on desktop; the profile and the time as cards to pull out onto the map. Now ROADMAP phase 22 (proposed).
 - The route's colour sits in the header and in the profile *(done in #37)*.
 - **A quick point on the line** (Alt-click, say) if two clicks for a point (#48: a click opens the part's menu, "Add a point here" is its first button) feel slow. Dragging already makes one. *(2026-10-14)*
 - **Departure more than 48 hours ahead** *(13c, 2026-10-14)*: a weekend trip planned on Monday. The route's 10-day forecast would cover it; the timeline (and its weather map) stops at 48 h, so this needs a date picker that leaves the map's timeline alone.

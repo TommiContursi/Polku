@@ -168,6 +168,22 @@ export async function initOfflineStatus() {
       h('span', { html: `${icon('offline', 16)} Offline preview: only saved areas load` }),
       h('button', { type: 'button', class: 'btn', onclick: () => setPreview(false) }, 'Exit')));
   }
+  // the app itself from the saved copy (the server didn't answer within 3 s): it may be an older Polku
+  const sw = navigator.serviceWorker;
+  if (sw.controller) {
+    const onMsg = (e) => {
+      if (!e.data || e.data.type !== 'saved-copy') return;
+      sw.removeEventListener('message', onMsg);
+      if (!e.data.saved) return;
+      const bar = h('div', { class: 'offline-banner saved-copy', role: 'status' },
+        h('span', { html: `${icon('offline', 16)} Saved copy: the server didn’t answer, so this may be an older Polku` }),
+        h('button', { type: 'button', class: 'btn', onclick: () => location.reload() }, 'Reload'),
+        h('button', { type: 'button', class: 'tool small', 'aria-label': 'Close', onclick: () => bar.remove(), html: icon('close', 14) }));
+      document.body.append(bar);
+    };
+    sw.addEventListener('message', onMsg);
+    sw.controller.postMessage({ type: 'saved-copy?' });
+  }
   window.addEventListener('offline', async () => {
     const n = (await listAreas()).length;
     toast(n ? 'You’re offline — saved areas and their routes still work' : 'You’re offline — the map needs a connection (save an area from the route panel next time)', { ms: 6000 });

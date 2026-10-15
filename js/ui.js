@@ -62,6 +62,7 @@ const P = {
   cloudSun: '<path d="M8 2.5v1.5M2.5 8H4M3.9 3.9l1 1M12.1 3.9l-1 1"/><path d="M5 10.5a3.5 3.5 0 0 1 6.3-3.4"/><path d="M8 20a4 4 0 1 1 1.3-7.8A5 5 0 0 1 19 14a3 3 0 0 1-1 6H8Z"/>',
   snow: '<path d="M7 15a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 9a4 4 0 0 1-2 6"/><path d="M8 18.5h.01M12 18h.01M16 18.5h.01M10 21.5h.01M14 21.5h.01" stroke-width="2.6"/>',
   drop: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/>',
+  eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1Q11.3 5 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-2.7 3.8M6.6 6.6C4.3 8 2.7 10.2 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
 
 export const icon = (name, size = 20) =>
@@ -87,6 +88,66 @@ export function h(tag, attrs = {}, ...children) {
 }
 
 export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+/**
+ * A small menu at `anchor`: below it when it fits, else above, else on the roomier side with
+ * its own scroll, so its last items never fall off the window. It closes on a pick, a click
+ * outside, Escape or a resize. items: [{ icon, label, fn, disabled, cls, checked } | 'hr' | null]
+ * Returns { el, close }.
+ */
+export function popMenu(anchor, items, { label = '', onClose = null } = {}) {
+  const el = h('div', { class: 'menu menu-pop', role: 'menu', 'aria-label': label || null });
+  let open = true;
+  const close = (refocus = false) => {
+    if (!open) return;
+    open = false;
+    el.remove();
+    document.removeEventListener('pointerdown', off, true);
+    document.removeEventListener('keydown', key, true);
+    removeEventListener('resize', onResize);
+    if (refocus) anchor.focus();
+    if (onClose) onClose();
+  };
+  const off = (e) => { if (!el.contains(e.target) && !anchor.contains(e.target)) close(); };
+  const onResize = () => close();
+  const key = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const list = [...el.querySelectorAll('.menu-item:not(:disabled)')];
+    if (!list.length) return;
+    e.preventDefault();
+    const k = list.indexOf(document.activeElement);
+    list[(k + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length].focus();
+  };
+  for (const it of items) {
+    if (!it) continue;
+    if (it === 'hr') { el.append(h('hr')); continue; }
+    const b = h('button', { type: 'button', role: it.checked != null ? 'menuitemcheckbox' : 'menuitem', class: `menu-item ${it.cls || ''}`, html: `${icon(it.icon, 17)}<span>${it.label}</span>`, onclick: () => { close(); it.fn(); } });
+    if (it.disabled) b.disabled = true;
+    if (it.checked != null) b.setAttribute('aria-checked', String(!!it.checked));
+    el.append(b);
+  }
+  document.body.append(el);
+  const r = anchor.getBoundingClientRect(), gap = 8;
+  const mh = el.scrollHeight, mw = el.offsetWidth;
+  const below = innerHeight - r.bottom - gap - 4, above = r.top - gap - 4;
+  if (mh <= below || (mh > above && below >= above)) {
+    el.style.top = `${r.bottom + 4}px`;
+    if (mh > below) el.style.maxHeight = `${below}px`;
+  } else {
+    el.style.top = `${Math.max(gap, r.top - 4 - mh)}px`;
+    if (mh > above) el.style.maxHeight = `${above}px`;
+  }
+  el.style.left = `${Math.max(gap, Math.min(innerWidth - gap - mw, r.right - mw))}px`;
+  el.querySelector('.menu-item:not(:disabled)')?.focus({ preventScroll: true });
+  setTimeout(() => {
+    if (!open) return;
+    document.addEventListener('pointerdown', off, true);
+    document.addEventListener('keydown', key, true);
+    addEventListener('resize', onResize);
+  });
+  return { el, close };
+}
 
 let toastTimer = 0;
 export function toast(msg, { tone = 'info', ms = 3500, action = null } = {}) {

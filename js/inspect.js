@@ -171,7 +171,7 @@ export function initInspector(map, app) {
 // Pan so the popup clears the top bar and the control column; `pad` also keeps
 // it off a panel ({left, bottom} in px from the window's edges).
 export function keepInView(map, popup, pad = {}) {
-  requestAnimationFrame(() => {
+  const check = () => {
     const el = popup.getElement();
     if (!el || !popup.isOpen()) return; // closed already
     const r = el.getBoundingClientRect();
@@ -180,7 +180,22 @@ export function keepInView(map, popup, pad = {}) {
     const dx = r.right > right ? r.right - right : r.left < left ? r.left - left : 0;
     const dy = r.top < 120 ? r.top - 120 : r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - 120) : 0;
     if (dx || dy) map.panBy([dx, dy], { duration: 250 });
+  };
+  requestAnimationFrame(check);
+  // a card that grows once its details are in (a LIPAS route's, with Ride) grows upwards from
+  // the point it marks: look again then, so its top stays clear of the top bar
+  const el = popup.getElement && popup.getElement();
+  if (!el || el.polkuKeep || typeof ResizeObserver === 'undefined') return;
+  let h0 = el.offsetHeight, timer = 0;
+  const ro = new ResizeObserver(() => {
+    if (Math.abs(el.offsetHeight - h0) < 8) return;
+    h0 = el.offsetHeight;
+    clearTimeout(timer);
+    timer = setTimeout(check, 60);
   });
+  ro.observe(el);
+  el.polkuKeep = ro;
+  popup.once('close', () => { ro.disconnect(); clearTimeout(timer); });
 }
 
 function row(label, value, html = false) {
@@ -281,9 +296,12 @@ function renderObstacle(body, f, app) {
   if (p.barrier) body.append(row('OSM', `barrier=${p.barrier}${p.obstacle ? ` · obstacle=${p.obstacle}` : ''}`));
   else if (p.obstacle) body.append(row('OSM', `obstacle=${p.obstacle}`));
   const kind = p.kind ? 'node' : 'way';
+  const ll = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates : null;
   body.append(h('div', { class: 'insp-links' },
     h('a', { href: `https://www.openstreetmap.org/${kind}/${p.osm}`, target: '_blank', rel: 'noopener', html: `OSM ${kind} ${p.osm} ${icon('external', 13)}` }),
-    h('a', { href: `https://www.openstreetmap.org/edit?${kind}=${p.osm}`, target: '_blank', rel: 'noopener', html: `Gone? Fix the map ${icon('external', 13)}` })));
+    h('a', { href: `https://www.openstreetmap.org/edit?${kind}=${p.osm}`, target: '_blank', rel: 'noopener', html: `Gone? Fix the map ${icon('external', 13)}` }),
+    // without an OpenStreetMap account to edit with: a note asks the mappers to look
+    ll ? h('a', { href: `https://www.openstreetmap.org/note/new#map=19/${ll[1].toFixed(6)}/${ll[0].toFixed(6)}`, target: '_blank', rel: 'noopener', title: 'A note on the map asks OpenStreetMap’s mappers to check it', html: `or leave a note ${icon('external', 13)}` }) : null));
   body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
 }
 

@@ -245,7 +245,6 @@ const nautical = new NauticalLayer(map, { setData });
 
 const planner = new Planner(map, {
   activity: () => state.activity,
-  trailDetails: () => !!state.trailDetails, // width and fallen trees along the route from the same tiles
   winter: () => ({ on: !!state.winterOn, setting: winterSetting() }), // winter on the route (15b): snow in the time, Heads-up
   sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),
   // the planner's own picker: the route's sport (the map's too); the map in it already: just the route

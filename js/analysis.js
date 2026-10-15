@@ -198,14 +198,15 @@ function findWarnings(along, grade, sAttr, pts, activity) {
   const sp = (i) => sAttr[i].sport || activity;
   const bikeAt = (i) => groupOf(sp(i)) === 'bike';
   const out = [];
-  const pushRun = (test, text, minLen = 0) => {
+  // osm: a fact from OpenStreetMap's tags (the row can say where to correct it), not from the terrain model
+  const pushRun = (test, text, minLen = 0, osm = true) => {
     let s = -1;
     for (let i = 0; i <= along.length; i++) {
       const on = i < along.length && test(i);
       if (on && s < 0) s = i;
       if (!on && s >= 0) {
         const len = along[i - 1] - along[s];
-        if (len >= minLen) out.push({ at: along[s], len, text: typeof text === 'function' ? text(s, i - 1) : text, lngLat: pts[s] });
+        if (len >= minLen) out.push({ at: along[s], len, text: typeof text === 'function' ? text(s, i - 1) : text, lngLat: pts[s], osm });
         s = -1;
       }
     }
@@ -214,14 +215,14 @@ function findWarnings(along, grade, sAttr, pts, activity) {
   pushRun((i) => bikeAt(i) && t(i).highway === 'steps', 'Steps — carry the bike');
   pushRun((i) => bikeAt(i) && ['no', 'dismount'].includes(t(i).bicycle), 'Cycling not allowed here');
   pushRun((i) => bikeAt(i) && mtbScale(t(i)) >= 3, (s) => `Technical trail S${mtbScale(t(s))}`);
-  pushRun((i) => bikeAt(i) && grade[i] >= 15, (s, e) => `Steep climb, up to ${Math.round(Math.max(...Array.from(grade.slice(s, e + 1))))} %`, 50);
-  pushRun((i) => bikeAt(i) && grade[i] <= -18, 'Steep descent', 40);
+  pushRun((i) => bikeAt(i) && grade[i] >= 15, (s, e) => `Steep climb, up to ${Math.round(Math.max(...Array.from(grade.slice(s, e + 1))))} %`, 50, false);
+  pushRun((i) => bikeAt(i) && grade[i] <= -18, 'Steep descent', 40, false);
   // road tyres: anything that isn't paved, over a stretch worth mentioning
   pushRun((i) => sp(i) === 'road' && sAttr[i].mode !== 'water' && !PAVED.has(surfaceOf(t(i))) && surfaceOf(t(i)) !== 'unknown', (s, e) => `Unpaved for ${Math.round(along[e] - along[s])} m — rough on road tyres`, 150);
   const footAt = (i) => sp(i) === 'hike' || sp(i) === 'trailrun';
   pushRun((i) => footAt(i) && /^(demanding_alpine|difficult_alpine|alpine)/.test(t(i).sac_scale || ''), 'Alpine terrain (SAC T4+)');
-  pushRun((i) => footAt(i) && grade[i] >= 25, (s) => (sp(s) === 'trailrun' ? 'Very steep — walk it' : 'Very steep section'), 40);
-  pushRun((i) => sAttr[i].mode === 'line', 'Straight line — not following paths', 150);
+  pushRun((i) => footAt(i) && grade[i] >= 25, (s) => (sp(s) === 'trailrun' ? 'Very steep — walk it' : 'Very steep section'), 40, false);
+  pushRun((i) => sAttr[i].mode === 'line', 'Straight line — not following paths', 150, false);
   pushRun((i) => t(i).portage === 'yes', (s, e) => `Carry / portage ${Math.round(along[e] - along[s])} m`);
   pushRun((i) => ['private', 'no'].includes(t(i).access), 'Private or no access');
   pushRun((i) => t(i).route === 'ferry', 'Ferry crossing');
@@ -292,7 +293,7 @@ export function trailWarnings(a, opt = {}) {
       if (on && s < 0) s = i;
       if (!on && s >= 0) {
         const len = along[i - 1] - along[s];
-        if (len >= minLen) out.push({ at: along[s], len, text: text(s, i - 1), lngLat: pts[s], kind: 'trail', icon });
+        if (len >= minLen) out.push({ at: along[s], len, text: text(s, i - 1), lngLat: pts[s], kind: 'trail', icon, osm: true });
         s = -1;
       }
     }
@@ -306,7 +307,7 @@ export function trailWarnings(a, opt = {}) {
   for (const p of td.points) {
     if (isWater(sp(p.i))) continue;
     const { title, note } = obstacleText(p, groupOf(sp(p.i)) === 'bike');
-    out.push({ at: p.at, len: 0, text: title, note, lngLat: p.ll || pts[p.i], kind: 'trail', icon: `td-${p.kind}`, group: p.kind });
+    out.push({ at: p.at, len: 0, text: title, note, lngLat: p.ll || pts[p.i], kind: 'trail', icon: `td-${p.kind}`, group: p.kind, osm: p.osm ? { type: 'node', id: p.osm } : true });
   }
   return out.sort((x, y) => x.at - y.at);
 }

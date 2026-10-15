@@ -16,6 +16,7 @@
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
   python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
+  python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -794,6 +795,89 @@ def winter_route(chrome):
     return not fails
 
 
+# The bug sweep after 15b. On the recorded Tykkikallio route with the map's Trail details off:
+# the trail details along the route still come in (Heads-up was the same only with the layer
+# on, so a gravel ride missed the fallen trees); a heads-up row's ⋯ hides its kind (listed at
+# the end, to bring back) and says where to correct OpenStreetMap; the route menu stays inside
+# a short window; with the map's sport changed, the planner still speaks the route's sport.
+SWEEP = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const fx = await (await fetch(location.origin + '/tools/fixtures/route-tykkikallio-mtb.json')).json();
+  const { speedSummary } = await import(location.origin + '/js/speeds.js');
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  if (polku.state.trailDetails) errs.push('the map’s trail details should be off for this test');
+  p.setActive(true);
+  p.restoreSnapshot(fx);
+  const t0 = Date.now();
+  while (!(p.analysis && p.analysis.trailMore) && Date.now() - t0 < 30000) await wait(250);
+  const a = p.analysis;
+  if (!a || !a.trailMore) return ['the trail details along the route never came in with the layer off'];
+  const log = (a.trailWarn || []).find((w) => /^Log across/.test(w.text));
+  if (!log) errs.push(`no log in Heads-up with the layer off: ${(a.trailWarn || []).map((w) => w.text).join(' / ')}`);
+  else if (!(log.osm && log.osm.type === 'node' && log.osm.id > 0)) errs.push(`the log has no OSM node: ${JSON.stringify(log.osm)}`);
+  p.reveal('warnings');
+  await wait(300);
+  const box = p.els.warnings;
+  const row = () => [...box.querySelectorAll('.li-row')].find((r) => /Log across/.test(r.textContent));
+  const more = row() && row().querySelector('.li-more');
+  if (!more) errs.push('the log row has no ⋯');
+  else {
+    more.click();
+    await wait(100);
+    const menu = document.querySelector('.menu-pop');
+    const items = menu ? [...menu.querySelectorAll('.menu-item')].map((b) => b.textContent) : [];
+    if (!items.some((t) => /^Hide “Fallen trees and logs”/.test(t))) errs.push(`row menu: ${items.join(' / ') || 'none'}`);
+    if (!items.some((t) => /Fix the map/.test(t)) || !items.some((t) => /Leave a note/.test(t))) errs.push(`row menu has no OpenStreetMap links: ${items.join(' / ')}`);
+    [...(menu ? menu.querySelectorAll('.menu-item') : [])].find((b) => /^Hide/.test(b.textContent))?.click();
+    await wait(150);
+    if (row()) errs.push('the log row still shows after Hide');
+    const chip = box.querySelector('.hidden-kinds .on-chip');
+    if (!chip || !/Fallen trees and logs/.test(chip.textContent)) errs.push(`hidden kinds: ${box.querySelector('.hidden-kinds')?.textContent || 'none'}`);
+    if (!(JSON.parse(localStorage.getItem('polku:hideWarn') || '{}').tree)) errs.push('Hide wasn’t kept');
+    if (!/hidden/.test(p.sec.warnings.sum.textContent)) errs.push(`Heads-up summary: ${p.sec.warnings.sum.textContent}`);
+    chip?.click();
+    await wait(150);
+    if (!row()) errs.push('the log row didn’t come back from the hidden list');
+  }
+  // the route menu in a window too short for it: inside the window, every item reachable
+  p.els.more.click();
+  await wait(100);
+  const m = document.querySelector('.menu-pop');
+  if (!m) errs.push('the route menu didn’t open');
+  else {
+    const r = m.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > innerHeight) errs.push(`route menu ${Math.round(r.top)}–${Math.round(r.bottom)} in a ${innerHeight} px window`);
+    if (m.scrollHeight > m.clientHeight + 1 && getComputedStyle(m).overflowY !== 'auto') errs.push('the route menu is cut off without a scroll');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await wait(100);
+    if (document.querySelector('.menu-pop')) errs.push('Escape didn’t close the route menu');
+  }
+  // the map's sport moves on, the route stays MTB: its time, style and colours stay MTB's
+  polku.set({ activity: 'paddle' });
+  await wait(600);
+  if (p.isMulti()) errs.push('an MTB route counts as multisport with the map on Paddle');
+  const sum = speedSummary('mtb', p.craft);
+  if (!p.sec.speed.sum.textContent.startsWith(sum.name)) errs.push(`Time & speed: ${p.sec.speed.sum.textContent} (MTB: ${sum.name} · ${sum.txt})`);
+  if (p.panel.classList.contains('is-paddle')) errs.push('the planner looks like paddling for an MTB route');
+  if (!p.modeApplies('grade')) errs.push('the gradient colours went with the map’s sport');
+  polku.set({ activity: 'mtb' });
+  localStorage.removeItem('polku:hideWarn');
+  return errs;
+})()"""
+
+
+def sweep(chrome):
+    pg = chrome.page(1280, 600, False)
+    pg.open_app({'activity': 'mtb', 'trailsByActivity': {'mtb': {'trailDetails': False}}}, {'polku:plannerDock': '"left"'}, '#12/62.2289/25.7652')
+    pg.js(SEED_TRAILS)
+    fails = pg.js(SWEEP, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the bug sweep" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The sport changes with a route drawn (#54: it used to route the legs again in the new sport,
 # leaving a mixed route). From the map's sport pill the route keeps its sports (nothing routed
 # again) and a toast offers to route it as the new one; that, and the planner's own picker, route
@@ -1286,6 +1370,8 @@ def main():
             ok = sport_switch(chrome) and ok
         if not only or 'winterroute' in only:
             ok = winter_route(chrome) and ok
+        if not only or 'sweep' in only:
+            ok = sweep(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

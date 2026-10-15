@@ -4,6 +4,18 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-15
 
+### Bug sweep ([#57](https://github.com/TommiContursi/Polku/pull/57))
+- **Heads-up is the same in every sport.** Fallen trees and other obstacles mapped in OpenStreetMap used to come only with the map's Trail details layer on, so a gravel ride past one heard nothing. Now every route on land gets them.
+- **Hide what you don't need:** the ⋯ on a Heads-up row hides that kind ("Fallen trees and logs") from now on. Hidden kinds on the route are listed at the end, to bring back with a tap.
+- **Wrong in the map?** The same ⋯ on anything from OpenStreetMap opens **Fix the map**, or **Leave a note** for OpenStreetMap's mappers to check, right at the spot.
+- **The route menu (⋯) stays inside the window,** opening upwards or scrolling when the window is short. Before, its last items could fall off the bottom.
+- **A saved copy says so:** when the server doesn't answer, Polku runs from the copy saved on your device, and now a banner says it may be older, with Reload.
+- **The planner sticks to your route's sport** when you change the map's sport: its time, speeds, style and colours stay the route's.
+- **Short routes** say "at 40 m" in Heads-up instead of "at km 0.0".
+- **Rain amounts at "now"** are the radar's, matching what the map draws; the timeline says "FMI radar" in Finland straight away.
+- **On phones:** the summary keeps clear of Done on small screens, the map's credits open as a readable card, and the ⓘ is no longer hidden under the timeline.
+- **Map cards that grow after opening** (a LIPAS route's, with Ride) move back into view instead of sliding under the top bar.
+
 ### Winter on the route ([#56](https://github.com/TommiContursi/Polku/pull/56))
 - **Snow in the time:** where the forecast has snow on your route, the time allows for it: little on ploughed ways and streets, more on trails, most where a trail is slow to open after snow. Time & speed shows how much the snow adds.
 - **Winter Heads-up:**

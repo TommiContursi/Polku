@@ -27,7 +27,15 @@ previewOn();
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
+// pages that got the saved copy of an app file (the server didn't answer in time), so the
+// page can say it may be an older Polku
+const savedFor = new Set();
+
 self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'saved-copy?') {
+    if (e.source) e.source.postMessage({ type: 'saved-copy', saved: savedFor.has(e.source.id) });
+    return;
+  }
   if (!e.data || e.data.type !== 'offline-preview') return;
   const on = !!e.data.on;
   preview = Promise.resolve(on);
@@ -44,7 +52,7 @@ self.addEventListener('fetch', (e) => {
     if (url.pathname === FLAG) return;
     // navigations are stored without the query (?r=… share links) and hash
     const key = req.mode === 'navigate' ? url.origin + url.pathname : req;
-    e.respondWith(networkFirst(req, key, 3000));
+    e.respondWith(networkFirst(req, key, 3000, e.resultingClientId || e.clientId));
   } else if (url.hostname === 'unpkg.com') e.respondWith(cacheFirst(req));
   else if (OFM_TILE.test(req.url)) e.respondWith(tile(req, ofmKey(req.url)));
   else if (DEM_TILE.test(req.url)) e.respondWith(tile(req, req.url));
@@ -52,10 +60,16 @@ self.addEventListener('fetch', (e) => {
   else if (previewNow !== false) e.respondWith(previewOn().then((on) => (on ? Response.error() : fetch(req))));
 });
 
-async function networkFirst(req, key, ms) {
+async function networkFirst(req, key, ms, client = '') {
   const cache = await caches.open(SHELL);
-  const saved = () => cache.match(key);
-  if (await previewOn()) return (await saved()) || fetch(req);
+  const match = () => cache.match(key);
+  if (await previewOn()) return (await match()) || fetch(req);
+  // the saved copy instead of the network's: remember which page got it
+  const saved = async () => {
+    const r = await match();
+    if (r && client) { savedFor.add(client); if (savedFor.size > 50) savedFor.delete(savedFor.values().next().value); }
+    return r;
+  };
   const net = fetch(req).then((res) => {
     if (res.ok) cache.put(key, res.clone()).catch(() => {});
     return res;
