@@ -25,8 +25,9 @@ user's OK.
 - **Confirmed bugs with a small fix** get a Fix PR of their own, between
   phases, at any time. Don't mix them into a phase. A bug that needs a design
   first gets a place in ROADMAP, with the user's OK.
-- **Bugs, ideas and risks you notice but don't do now** go into BACKLOG as they
-  come up, dated, saying where they came from.
+- **A bug you notice but don't fix now** gets a GitHub issue at once. Ideas
+  and risks go into BACKLOG as they come up, dated, saying where they came
+  from.
 - Docs and tooling PRs stay on their one subject.
 
 ## In the code
@@ -96,22 +97,23 @@ user's OK.
   - CHANGELOG, in plain words for people using Polku (not for docs or tooling);
   - the PR's row in ROADMAP's status table, written as **merged**: `main` only
     says so once it is;
-  - BACKLOG: strike out what's fixed, add what you found.
+  - BACKLOG: take out what the PR does, add the ideas and risks you found.
 - **Never push to `main` or merge** unless the user says so.
 
 ## Bugs and findings
 
-- **A bug to reproduce or discuss gets a GitHub issue.** Search first, and add
-  to the one that exists. Small ideas stay in BACKLOG.
+- **Every bug gets a GitHub issue,** small ones too. Search first, and add to
+  the one that exists. BACKLOG is for ideas, known limits and things to watch;
+  phases are planned in ROADMAP, not in issues.
 - The issue says what goes wrong and for whom, how to make it happen, what
   should happen, the commit, and whether it's a **confirmed bug**, **a risk to
   look into**, or **a problem with the test machine**. There's a template:
   "Bug or technical finding".
 - When you start on an issue, comment with your branch, so the other agent
   doesn't start on it too.
-- **The issue is the one place for its status.** BACKLOG links to it in one
-  line. "Fixes #n" closes it when the PR merges; anything closed without a fix
-  says why.
+- **The issue is the one place for its status,** so bugs aren't listed in
+  BACKLOG or ROADMAP. "Fixes #n" closes it when the PR merges; anything closed
+  without a fix says why.
 - Claude and Codex may review each other's work. Disagree with evidence;
   neither one's earlier conclusion is final.
 

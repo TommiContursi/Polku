@@ -8,7 +8,7 @@ How to work on it (what to work on, testing, pull requests, bugs and findings, w
 
 ## Bugs and reviews
 
-- Bugs to reproduce or discuss are [GitHub issues](https://github.com/TommiContursi/Polku/issues), each the one place for its status. BACKLOG links to them in one line.
+- Every bug is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status. BACKLOG keeps ideas, known limits and things to watch; ROADMAP plans the phases.
 - `docs/reviews/` keeps dated reviews of the code with the evidence they were based on. They aren't updated afterwards: what has happened since is in the issues. The first is the [review of 15 October 2026](reviews/2026-10-15/README.md), listed in [#63](https://github.com/TommiContursi/Polku/issues/63).
 
 ## Running it

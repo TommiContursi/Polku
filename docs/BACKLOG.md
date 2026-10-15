@@ -1,4 +1,4 @@
-# Polku backlog: bugs, ideas, things to watch
+# Polku backlog: ideas, known limits, things to watch
 
 Everything noticed but not done yet, so nothing gets lost between phases. The
 ordered plan lives in [ROADMAP.md](ROADMAP.md); when an item here becomes
@@ -6,21 +6,15 @@ work, it moves there (or into a fix PR) and is ticked off here.
 
 Each item says when (and, where it matters, in which phase) it came up.
 
-A bug that needs reproducing or discussing gets a GitHub issue, which holds its
-status; its item here is one line with the link.
+**Bugs aren't listed here.** Each one is a
+[GitHub issue](https://github.com/TommiContursi/Polku/issues), which holds its
+status. The review of 15 October 2026 opened #65–#75, listed in
+[#63](https://github.com/TommiContursi/Polku/issues/63) (the
+[review with its evidence](reviews/2026-10-15/README.md)).
 
-## Bugs and quirks
+## Known limits and quirks
 
-### From the review of 15 October 2026
-- **Eight confirmed bugs and three things to look into,** each a GitHub issue,
-  listed in [#63](https://github.com/TommiContursi/Polku/issues/63) (the
-  [review with its evidence](reviews/2026-10-15/README.md)). The small ones are
-  fixed in Fix PRs of their own between phases; offline recovery (#68) and the
-  route's own settings (#71) need a plan first. Its watch list (partly saved
-  offline areas, the water grid's cost on phones, input and CDN hardening)
-  stays in the review until there's evidence of a bug.
-
-### Small: the next bug sweep
+### Small
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
@@ -39,10 +33,7 @@ status; its item here is one line with the link.
 - **Trail-detail tiles are cached a week,** so a fallen tree cleared yesterday still shows. *(2026-10-14; see "Fresher trail data" below)*
 - **Share links re-route imported GPX tracks.** A fixed leg from a file travels as its two ends only, so whoever opens the link gets a routed leg, not your track. LIPAS legs now travel as references (12c); a GPX track would need its line in the link (too long for a URL) or a short-link service. *(2026-10-14)*
 
-### To watch
-- **Smoke (headless Chrome) can fail the phone sheet heights** *(2026-10-14; rechecked 2026-10-15)*: serial runs reproduced stale geometry and an intermittent Weather highlight, with strong frame-scheduling evidence but an unresolved exact cause. See [#74](https://github.com/TommiContursi/Polku/issues/74) and the dated assessment; the separate MapLibre buffer exception is tracked in [#75](https://github.com/TommiContursi/Polku/issues/75).
-
-### Fixed
+### Fixed (until 15 October 2026; since then, fixed bugs are closed issues)
 - ~~**The profile's numbered marks looked like the waypoints**~~ *(2026-10-15)*: fixed in #61. They were the climbs. The profile draws the route's own points now, and the climbs as "↑1" tags.
 - ~~**Export, share and offline only in Go**~~ *(2026-10-15)*: fixed in #61. They're in ⋯ too.
 - ~~**The map's credits open on phones**~~ *(2026-10-15)*: fixed in #58. MapLibre opens them by itself when their text comes in after the map has loaded; now they stay folded behind ⓘ on phone-wide windows until tapped, and fold when a window narrows.
@@ -91,7 +82,7 @@ status; its item here is one line with the link.
 
 ### Trail details
 - **Fresher trail data:** show a tile's age in the key, a "Refresh trail details here" action, or a background refresh for tiles over a day old (Trailmap's makers have had trouble with data that only updates a few times a day). *(2026-10-14)*
-- **Uphill band at the trail's width:** see Bugs.
+- **Uphill band at the trail's width:** see Known limits.
 - **Static trail tiles** (PMTiles built weekly by a GitHub Action from Geofabrik's Finland extract) if Overpass stays flaky. *(phase 12 design)*
 
 ### Planner
