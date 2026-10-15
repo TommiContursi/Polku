@@ -6,40 +6,19 @@ work, it moves there (or into a fix PR) and is ticked off here.
 
 Each item says when (and, where it matters, in which phase) it came up.
 
-Actionable findings have a linked GitHub issue for reproduction, current status,
-ownership and resolution; this file remains the short index. See
-[the finding lifecycle](DEVELOPING.md#recording-and-resolving-findings).
-
-## Independent technical assessment — 2026-10-15
-
-The [assessment and retained evidence](reviews/2026-10-15/README.md) distinguish
-confirmed defects, unresolved rendering/test failures and optional improvements.
-Suggested maintenance priorities are proposals, not a change to ROADMAP.
-
-[GitHub index #63](https://github.com/TommiContursi/Polku/issues/63) records the
-recommended sequence and links current work. Individual issues own live status;
-the table below is a navigation index, not another set of completion checkboxes.
-
-| Issue | Finding |
-|---|---|
-| [#65](https://github.com/TommiContursi/Polku/issues/65) | Back to start |
-| [#66](https://github.com/TommiContursi/Polku/issues/66) | Concurrent API pacing |
-| [#67](https://github.com/TommiContursi/Polku/issues/67) | Incomplete water cache |
-| [#68](https://github.com/TommiContursi/Polku/issues/68) | Offline preview and recovery |
-| [#69](https://github.com/TommiContursi/Polku/issues/69) | Avoid areas in links |
-| [#70](https://github.com/TommiContursi/Polku/issues/70) | Weather completion order |
-| [#71](https://github.com/TommiContursi/Polku/issues/71) | Map state affects route settings |
-| [#72](https://github.com/TommiContursi/Polku/issues/72) | Missing terrain |
-| [#73](https://github.com/TommiContursi/Polku/issues/73) | Magnification |
-| [#74](https://github.com/TommiContursi/Polku/issues/74) | Smoke synchronization |
-| [#75](https://github.com/TommiContursi/Polku/issues/75) | Trail rendering |
-
-The assessment also covers partial offline saves, water-grid completeness and
-performance, and optional input/CDN hardening. These remain risks to investigate,
-not newly confirmed failures. The existing FMI deadline and cold-area loop
-latency items below remain their project context.
+A bug that needs reproducing or discussing gets a GitHub issue, which holds its
+status; its item here is one line with the link.
 
 ## Bugs and quirks
+
+### From the review of 15 October 2026
+- **Eight confirmed bugs and three things to look into,** each a GitHub issue,
+  listed in [#63](https://github.com/TommiContursi/Polku/issues/63) (the
+  [review with its evidence](reviews/2026-10-15/README.md)). The small ones are
+  fixed in Fix PRs of their own between phases; offline recovery (#68) and the
+  route's own settings (#71) need a plan first. Its watch list (partly saved
+  offline areas, the water grid's cost on phones, input and CDN hardening)
+  stays in the review until there's evidence of a bug.
 
 ### Small: the next bug sweep
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.

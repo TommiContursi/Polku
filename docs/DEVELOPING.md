@@ -4,35 +4,12 @@ Polku is a static site with no build step and no backend: `index.html`, plain ES
 
 The plan for upcoming work is in [ROADMAP.md](ROADMAP.md); bugs, ideas and things to watch are in [BACKLOG.md](BACKLOG.md); what's shipped is in the [changelog](../CHANGELOG.md).
 
-## Recording and resolving findings
+How to work on it (what to work on, testing, pull requests, bugs and findings, writing) is in [AGENTS.md](../AGENTS.md), for people and coding agents alike.
 
-- Use [GitHub issues](https://github.com/TommiContursi/Polku/issues) for actionable
-  bugs and investigations. Search open and closed issues first; add evidence to
-  an existing item instead of creating another. Small ideas can stay in BACKLOG
-  until they need investigation or a PR.
-- Record the affected commit, user impact, reproduction and expected/actual
-  behavior, evidence and its limits, and regression/acceptance checks. Say
-  **confirmed defect**, **risk / needs investigation**, **test/environment
-  failure**, or **optional improvement**. Confidence and proposed priority need
-  reasons; severity alone does not change the approved roadmap. Use the finding
-  template when helpful; leave unknowns explicit.
-- BACKLOG is the short index: link to the issue for live status and detail.
-  ROADMAP holds approved scheduling, and CHANGELOG records shipped behavior.
-  Dated assessments under `docs/reviews/` preserve evidence at a particular
-  revision; subsequent corrections and resolutions belong in the linked issue.
-- Before implementation, note the active branch/PR and contributor in the issue
-  so Claude and Codex do not duplicate or overwrite work. Link the issue in the
-  PR; either agent may independently review the other's evidence and solution.
-- A fix PR should show the failing reproduction and the passing regression,
-  relevant existing checks and any unresolved environment failures. Close as
-  completed when the fix is merged and verified; update the BACKLOG pointer in
-  that PR. For duplicates, unreproduced reports or work not planned, state the
-  reason and evidence instead of implying a fix. Reopen if later evidence
-  contradicts the resolution.
+## Bugs and reviews
 
-The [15 October 2026 assessment](reviews/2026-10-15/README.md) is the first
-record using this convention. It includes the inconsistent smoke results and
-their diagnostic scripts; those snapshots do not replace maintained tests.
+- Bugs to reproduce or discuss are [GitHub issues](https://github.com/TommiContursi/Polku/issues), each the one place for its status. BACKLOG links to them in one line.
+- `docs/reviews/` keeps dated reviews of the code with the evidence they were based on. They aren't updated afterwards: what has happened since is in the issues. The first is the [review of 15 October 2026](reviews/2026-10-15/README.md), listed in [#63](https://github.com/TommiContursi/Polku/issues/63).
 
 ## Running it
 
@@ -140,8 +117,4 @@ docs/               ROADMAP, BACKLOG, this file, screenshots
 
 ## Working on it
 
-- One phase per pull request, from a branch. Before/after screenshots at 1440 and 390 px go on the `pr-screenshots` branch.
-- `tools/smoke.py` must pass.
-- Update `docs/ROADMAP.md` and `CHANGELOG.md` (in plain words, for people using Polku), and note bugs and ideas in `docs/BACKLOG.md`.
-- **Only free public services, and every request goes through `js/net.js`.** It paces them, backs off, and counts calls for Settings → Data sources.
-- Share links must keep working.
+The rules are in [AGENTS.md](../AGENTS.md). In short: one phase or one fix per pull request, `tools/smoke.py` passes, CHANGELOG, ROADMAP and BACKLOG updated in the same PR, every request through `js/net.js`, share links keep working, and only the user merges.
