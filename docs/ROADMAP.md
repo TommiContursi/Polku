@@ -51,6 +51,7 @@ Also approved:
 | — | Docs: the review of 15 October 2026, its evidence, and GitHub issues for its findings ([#63](https://github.com/TommiContursi/Polku/issues/63)) | — | [#76](https://github.com/TommiContursi/Polku/pull/76) | merged |
 | — | Docs: AGENTS.md as the one place for how to work (when bugs are fixed, PR titles, plain words, no chat quotes, the Traficom rule); every bug a GitHub issue, BACKLOG for ideas, limits and things to watch | `agent-docs` | [#77](https://github.com/TommiContursi/Polku/pull/77) | merged |
 | — | Fix: routing calls asked for together wait their turn (5 in 10 s for brouter.de, one a second for Valhalla), and every call that goes out is counted, retries too | `fix/request-pacing-66` | [#79](https://github.com/TommiContursi/Polku/pull/79) | merged |
+| — | Fix: a paddling route is routed again when OpenStreetMap's rocks come late (it kept the route made without them), and so is a leg still being routed when they come | `fix/water-hazards-recover-67` | [#81](https://github.com/TommiContursi/Polku/pull/81) | merged |
 | 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
 | 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
