@@ -23,7 +23,7 @@ the table below is a navigation index, not another set of completion checkboxes.
 | Issue | Finding |
 |---|---|
 | [#65](https://github.com/TommiContursi/Polku/issues/65) | Back to start |
-| [#66](https://github.com/TommiContursi/Polku/issues/66) | Concurrent API pacing: fixed in [#78](https://github.com/TommiContursi/Polku/pull/78) |
+| [#66](https://github.com/TommiContursi/Polku/issues/66) | Concurrent API pacing: fixed in [#79](https://github.com/TommiContursi/Polku/pull/79) |
 | [#67](https://github.com/TommiContursi/Polku/issues/67) | Incomplete water cache |
 | [#68](https://github.com/TommiContursi/Polku/issues/68) | Offline preview and recovery |
 | [#69](https://github.com/TommiContursi/Polku/issues/69) | Avoid areas in links |
@@ -42,6 +42,7 @@ latency items below remain their project context.
 ## Bugs and quirks
 
 ### Small: the next bug sweep
+- **Legs left waiting for a routing slot aren't routed again** *(found while fixing #66, 2026-10-15)*: when more legs need BRouter than its pacing allows and Valhalla can't stand in either, they stay straight lines while Heads-up says the service "isn't answering — trying again at …"; nothing tries again. See [#78](https://github.com/TommiContursi/Polku/issues/78).
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 

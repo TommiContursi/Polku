@@ -47,7 +47,7 @@ Also approved:
 | — | Docs: the plan from here (the drawer in steps 22a–c, out on the trail 23a–d, what goes together), the drawer mock-up | `docs-plan` | [#59](https://github.com/TommiContursi/Polku/pull/59) | merged |
 | 22a | The drawer in three tabs (Route / Check / Go): the summary and a short profile always on top, the ⋯ menu's tools out in the open, route style and speeds together, the time first in Go, the leg you open lit up on the map | `drawer-tabs` | [#60](https://github.com/TommiContursi/Polku/pull/60) | merged |
 | — | After 22a: the side panel by default on desktop, its place one button away; export, share and offline back in ⋯; the route's points on the profile (the numbered marks were climbs) | `drawer-fixes` | [#61](https://github.com/TommiContursi/Polku/pull/61) | PR open |
-| — | Fix: routing calls asked for together wait their turn (5 in 10 s for brouter.de, one a second for Valhalla), and every call that goes out is counted, retries too | `fix/request-pacing-66` | [#78](https://github.com/TommiContursi/Polku/pull/78) | merged |
+| — | Fix: routing calls asked for together wait their turn (5 in 10 s for brouter.de, one a second for Valhalla), and every call that goes out is counted, retries too | `fix/request-pacing-66` | [#79](https://github.com/TommiContursi/Polku/pull/79) | merged |
 | 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
 | 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
