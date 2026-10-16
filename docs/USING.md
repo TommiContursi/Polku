@@ -6,7 +6,7 @@
 
 Open **Plan**, choose a sport and add points on the map. Drag a point or the route line to change the plan. On a phone, hold the line before dragging it.
 
-Select a part of the route to add a point there, change that leg's sport, routing mode or style, or ask for **Other ways**. After you add a point, up to two other ways to it may appear dashed on the map, labelled with how much longer or shorter they are and their share of trails: select one to take it, or carry on and the route stays as it is. Selecting your route with the planner closed opens it again. Undo and redo let you try changes.
+Select a part of the route to add a point there, change that leg's sport, routing mode or style, or ask for **Other ways**. After you add a point and stop for a moment, another way to it may appear dashed on the map, labelled with how much longer or shorter it is and its share of trails: select it to take it, or carry on and the route stays as it is. **Other ways** in the menu shows up to two. Selecting your route with the planner closed opens it again. Undo and redo let you try changes.
 
 The planner has three tabs:
 

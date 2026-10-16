@@ -40,6 +40,8 @@ const LOOP_PRESETS = {
 // up to nine loops ("More loops" makes three at a time): a letter and a colour each
 // other ways for a leg (#95): not the route's red, the water's blue, or the purple of ways marked private
 const ALT_COLORS = ['#ea580c', '#0d9488', '#b45309'];
+const ALT_PAUSE = 3000; // ms you stop adding points before a new leg gets its other way
+const ALT_MIN = 300; // m: a shorter new leg gets none on its own (rarely one 100 m apart)
 const LOOP_COLORS = ['#2563eb', '#ea580c', '#9333ea', '#0d9488', '#db2777', '#65a30d', '#0891b2', '#b45309', '#4f46e5'];
 const LOOP_LETTERS = 'ABCDEFGHI';
 const LOOP_MAX = 9;
@@ -894,22 +896,30 @@ export class Planner {
   }
 
   // ---------------------------------------------------------------- other ways (#95)
-  // Up to two other ways for leg li: BRouter's alternatives 1 and 2, one call each (BRouter
-  // runs k+1 searches in one), so a leg you've just added gets them only with room to spare
-  // under the pacing (headroom 4, maxWait 0: never ahead of your next point's leg); otherwise,
-  // and any time, the leg's menu has Other ways (asked: they may wait their turn). Your own
-  // routing server has no limit. A way within 100 m of the leg all along is left out. They're
-  // drawn where they differ; a tap takes one (leg.alt). The short cut through a way marked
-  // private (#104) is one more, where Heads-up has it for the leg.
+  // Other ways for leg li, from BRouter's alternatives (one call each; BRouter runs k+1
+  // searches for alternative k). On its own, a leg you've just added gets one, alternative 1,
+  // once you've stopped adding points for a moment (ALT_PAUSE: no calls while you sketch),
+  // when it's at least ALT_MIN long, and only with room under the pacing (headroom 3, maxWait
+  // 0: never ahead of your next point's leg). The leg's menu has Other ways for any leg, any
+  // time: alternatives 1 and 2, which may wait their turn. Your own routing server has no
+  // limit. A way within 100 m of the leg all along is left out. They're drawn where they
+  // differ; a tap takes one (leg.alt). The short cut through a way marked private (#104) is
+  // one more, where Heads-up has it for the leg.
+  offerAltsSoon(li) {
+    const leg = this.legs[li], key = leg && leg.key;
+    clearTimeout(this.altTimer);
+    this.altTimer = setTimeout(() => { if (this.legs[li] === leg && leg.key === key) this.offerAlts(li); }, ALT_PAUSE);
+  }
+
   async offerAlts(li, asked = false) {
     const leg = this.legs[li];
     if (!this.active || !leg || leg.mode !== 'auto' || leg.status !== 'ok' || !leg.result || leg.result.provider === 'valhalla') return;
-    if (!asked && (li !== this.legs.length - 1 || routerHeadroom() < 4)) return;
+    if (!asked && (li !== this.legs.length - 1 || lineLength(leg.result.coords) < ALT_MIN || routerHeadroom() < 3)) return;
     this.clearAlts();
     const ctrl = new AbortController(), t = { i: li, leg, ...this.legKey(li) };
     const mine = (this.alts = { li, key: leg.key, base: t.base, ways: [], ctrl });
     if (asked) toast('Looking for other ways for this part…', { ms: 2500 });
-    const got = await Promise.all([0, 1, 2].filter((k) => k !== (leg.alt || 0)).map(async (k) => {
+    const got = await Promise.all((asked ? [0, 1, 2] : [0, 1]).filter((k) => k !== (leg.alt || 0)).map(async (k) => {
       try {
         const r = await routeLeg({ from: t.from, to: t.to, mode: 'auto', profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: asked ? 20000 : 0, fallback: false, ...this.styleOpts(t), alt: k } }, ctrl.signal);
         return { k, r };
@@ -932,7 +942,7 @@ export class Planner {
     if (!mine.ways.length) { if (asked) toast('No other way here that’s more than 100 m apart from this one'); this.clearAlts(); return; }
     this.drawAlts();
     const n = mine.ways.length;
-    toast(`${n === 1 ? 'Another way' : `${n} other ways`} for this part: tap one on the map to take it`, { ms: 6000 });
+    toast(n === 1 ? 'Another way for this part: tap it on the map to take it' : `${n} other ways for this part: tap one on the map to take it`, { ms: 6000 });
   }
 
   // the stretches of `coords` more than 15 m from all of `lines` (at least two points each)
@@ -961,6 +971,7 @@ export class Planner {
   }
 
   clearAlts() {
+    clearTimeout(this.altTimer); // a point added, a drag, Undo…: no other way for the leg before
     if (!this.alts) return;
     this.alts.ctrl.abort();
     this.alts = null;
@@ -1028,7 +1039,7 @@ export class Planner {
     await this.runAnalysis(gen);
     if (gen !== this.gen) return;
     // the leg you've just added: other ways for it, if there's room (#95)
-    if (this.altFor != null) { const li = this.altFor; this.altFor = null; this.offerAlts(li); }
+    if (this.altFor != null) { const li = this.altFor; this.altFor = null; this.offerAltsSoon(li); }
   }
 
   async routeRunOf(run) {
@@ -2703,7 +2714,7 @@ export class Planner {
         : h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
           h('button', { type: 'button', 'aria-pressed': String(leg.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(li, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))),
       leg.mode === 'auto' || leg.mode === 'water' ? this.legStylePicker(li, () => this.menu.remove()) : null,
-      leg.mode === 'auto' && leg.status === 'ok' && leg.result && leg.result.provider !== 'valhalla' ? act('route', 'Other ways', 'Up to two other ways for this part, on the map (2 routing calls)', () => this.offerAlts(li, true)) : null,
+      leg.mode === 'auto' && leg.status === 'ok' && leg.result && leg.result.provider !== 'valhalla' ? act('route', 'Other ways', 'Up to two other ways for this part, on the map (up to 2 routing calls)', () => this.offerAlts(li, true)) : null,
       h('div', { class: 'pt-row' },
         act('pause', 'Stop here', 'A break or a night at this spot: a point with a stop', () => this.stopHere(li, ll)),
         act('close', 'Avoid this spot', 'The route goes around it (40 m)', () => this.addNogo(ll, 40, 'Avoided place'))),

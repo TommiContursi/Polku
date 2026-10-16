@@ -5,8 +5,9 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 ## 2026-10-16
 
 ### Other ways for a new leg ([#125](https://github.com/TommiContursi/Polku/pull/125))
-- **When you add a point, Polku may show up to two other ways to get there,** dashed on the map in orange and teal, each with a label: how much longer or shorter it is, and how much of it is on trails ("+600 m · 100 % trails"). Tap one to take it; otherwise the route stays as it was. A way that leaves the route for less than 100 m in all isn't shown.
-- **Only when there's room.** The routing service is free and paced (about 5 routes in 10 seconds), and each other way is one more route, so they come only when that leaves room for your next point. Otherwise, or for any part of the route, tap the route and pick **Other ways** in its menu. With your own routing server (Settings) they always come.
+- **When you add a point and stop for a moment, Polku may show another way to get there,** dashed on the map in orange, with a label: how much longer or shorter it is, and how much of it is on trails ("+600 m · 100 % trails"). Tap it to take it; otherwise the route stays as it was. A way that leaves the route for less than 100 m in all isn't shown.
+- **Not while you're adding points, and not on short legs.** It comes about 3 seconds after you've stopped, for a new leg of 300 m or more. The routing service is free and paced (about 5 routes in 10 seconds), and the other way is one more route, so it comes only when that leaves room for your next point. With your own routing server (Settings) the pacing never stops it.
+- **Want more?** Tap any part of the route and pick **Other ways** in its menu: up to two, whenever you like.
 - **The short cut through a way marked private** is one of them where Heads-up has one for that part (purple), and taking it works like its Short cut button.
 - **The way you took stays,** through Undo, a reload, Save offline and share links (the link says which; older links take the first way). Changing that part's sport, style or points goes back to the first way of the new route.
 - **It waits for the routing service** rather than letting the stand-in router take it, since the stand-in can't give the same other way.

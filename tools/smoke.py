@@ -18,7 +18,7 @@
   python3 tools/smoke.py access     # ways marked private or closed in Heads-up, from BRouter's tags and, when Valhalla stands in, the map's (mocked)
   python3 tools/smoke.py detour     # a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)
   python3 tools/smoke.py shortcut   # Short cuts ok: Polku's profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)
-  python3 tools/smoke.py otherways  # other ways for a new leg: offered with room under the pacing, a tap takes one, links, Undo (mocked BRouter)
+  python3 tools/smoke.py otherways  # other ways for a new leg: one after a pause, none while adding points or on a short leg, two from the menu, links, Undo (mocked BRouter)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
@@ -1346,10 +1346,12 @@ def shortcut(chrome):
 
 
 # Other ways for a new leg (#95), from a mocked BRouter: alternative 1 goes 450 m north, 2 is
-# within 5 m of the first (left out). A new leg gets them (one call each, with room under the
-# pacing); a tap on the map takes one without routing again; it's kept in the share link
-# (al=0:1), a reload and Undo, and goes when the leg's style changes. With no room (calls just
-# made), none are fetched, and the leg's menu has Other ways. No routing call goes out.
+# within 5 m of the first (left out), or 450 m south. Once you stop adding points for 3 s, a
+# new leg gets one other way (alternative 1, one call, with room under the pacing); a tap on the
+# map takes it without routing again; it's kept in the share link (al=0:1), a reload and Undo,
+# and goes when the leg's style changes. Points added quickly get none until the last; a short
+# leg gets none; with no room, none; the leg's menu has Other ways, two of them. No routing
+# call goes out.
 OTHERWAYS_ROUTER = """(() => {
   const real = window.fetch.bind(window), calls = (window.routerCalls = []);
   window.fetch = async (input, init) => {
@@ -1361,7 +1363,7 @@ OTHERWAYS_ROUTER = """(() => {
     const ll = q.get('lonlats').split('|').map((x) => x.split(',').map(Number)), c = [];
     ll.forEach((p, i) => {
       if (i) {
-        const a = ll[i - 1], dy = k === 1 ? 0.004 : k === 2 ? 0.00004 : 0;
+        const a = ll[i - 1], dy = k === 1 ? 0.004 : k === 2 ? (window.alt2Far ? -0.004 : 0.00004) : 0;
         for (const t of [0.25, 0.5, 0.75]) c.push([+(a[0] + (p[0] - a[0]) * t).toFixed(6), +(a[1] + (p[1] - a[1]) * t + dy).toFixed(6)]);
       }
       c.push(p);
@@ -1383,7 +1385,7 @@ OTHERWAYS = """(async () => {
   p.addPoint(B.slice());
   await routed();
   for (let k = 0; k < 40 && !(p.alts && p.alts.ways.length); k++) await wait(200);
-  if (calls(1) !== 1 || calls(2) !== 1) errs.push(`other ways asked for: alternative 1 ×${calls(1)}, 2 ×${calls(2)}`);
+  if (calls(1) !== 1 || calls(2) !== 0) errs.push(`other ways asked for on their own: alternative 1 ×${calls(1)}, 2 ×${calls(2)} (one, alternative 1)`);
   const ways = p.alts ? p.alts.ways : [];
   if (ways.length !== 1 || ways[0].k !== 1) return [...errs, `ways offered: ${JSON.stringify(ways.map((w) => ({ k: w.k, label: w.label })))}`];
   const data = await m.getSource('routeAlts').getData();
@@ -1433,7 +1435,8 @@ OTHERWAYS = """(async () => {
   p.clear();
   return errs;
 })()"""
-# no room under the pacing (four calls in the last 10 s): none fetched; the leg's menu has them
+# Points added quickly get no other way until you stop; a short leg gets none; with no room under
+# the pacing (four calls in the last 10 s) none; the leg's menu has Other ways, two of them
 OTHERWAYS_BUSY = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
   const n = await import(location.origin + '/js/net.js');
@@ -1441,21 +1444,42 @@ OTHERWAYS_BUSY = """(async () => {
   p.wet = { on: false, mm: 0, at: Date.now() };
   const routed = async () => { for (let k = 0; k < 100; k++) { if (p.legs.length && p.legs.every((l) => l.status === 'ok') && p.analysis) return true; await wait(200); } return false; };
   const calls = (k) => window.routerCalls.filter((u) => /lonlats=/.test(u) && new URL(u).searchParams.get('alternativeidx') === String(k)).length;
-  for (let k = 0; k < 3; k++) await n.request('brouter', `https://brouter.de/brouter?lonlats=24.9,60.1|24.91,60.1${k}&profile=hiking-mountain&alternativeidx=0&format=geojson`);
   p.setActive(true);
   p.setMode('auto');
+  // three points, the third 1 s after the second leg is in: only the last leg gets its other way
   p.addPoint([24.930, 60.170]);
   p.addPoint([24.950, 60.170]);
   await routed();
-  await wait(1500);
-  if (calls(1) || calls(2) || (p.alts && p.alts.ways.length)) errs.push(`other ways fetched with no room: ${calls(1)} + ${calls(2)} calls`);
-  p.openLegMenu(0, { lng: 24.94, lat: 60.17 });
+  await wait(1000);
+  p.addPoint([24.970, 60.170]);
+  await routed();
+  await wait(4500);
+  if (calls(1) !== 1 || !p.alts || p.alts.li !== 1) errs.push(`points added quickly: ${calls(1)} calls for other ways, offered for leg ${p.alts ? p.alts.li : 'none'} (one, for the last leg)`);
+  // a short leg (about 110 m): none on its own
+  p.clear();
+  p.addPoint([24.930, 60.180]);
+  p.addPoint([24.932, 60.180]);
+  await routed();
+  await wait(4500);
+  if (calls(1) !== 1 || p.alts) errs.push(`a short leg: ${calls(1) - 1} calls for other ways`);
+  // no room under the pacing: none
+  await wait(10500); // the 10 s window clears
+  for (let k = 0; k < 3; k++) await n.request('brouter', `https://brouter.de/brouter?lonlats=24.9,60.1|24.91,60.1${k}&profile=hiking-mountain&alternativeidx=0&format=geojson`);
+  p.clear();
+  p.addPoint([24.930, 60.190]);
+  p.addPoint([24.950, 60.190]);
+  await routed();
+  await wait(4500);
+  if (calls(1) !== 1 || calls(2) || (p.alts && p.alts.ways.length)) errs.push(`other ways fetched with no room: ${calls(1) - 1} + ${calls(2)} calls`);
+  // the leg's menu: Other ways, both alternatives (they wait their turn)
+  window.alt2Far = true;
+  p.openLegMenu(0, { lng: 24.94, lat: 60.19 });
   await wait(200);
   const btn = [...document.querySelectorAll('.polku-popup .pt-menu button')].find((b) => /Other ways/.test(b.textContent));
   if (!btn) return [...errs, 'no Other ways in the leg\\'s menu'];
   btn.click();
-  for (let k = 0; k < 100 && !(p.alts && p.alts.ways.length); k++) await wait(200);
-  if (!p.alts || p.alts.ways.length !== 1) errs.push(`Other ways from the menu: ${p.alts ? p.alts.ways.length : 'none'} offered, ${calls(1)} + ${calls(2)} calls`);
+  for (let k = 0; k < 120 && !(p.alts && p.alts.ways.length); k++) await wait(200);
+  if (!p.alts || p.alts.ways.length !== 2) errs.push(`Other ways from the menu: ${p.alts ? p.alts.ways.length : 'none'} offered (two), ${calls(1) - 1} + ${calls(2)} calls`);
   p.clear();
   return errs;
 })()"""
@@ -1463,7 +1487,7 @@ OTHERWAYS_BUSY = """(async () => {
 
 def otherways(chrome):
     fails = []
-    for script, timeout in [(OTHERWAYS, 60000), (OTHERWAYS_BUSY, 60000)]:
+    for script, timeout in [(OTHERWAYS, 60000), (OTHERWAYS_BUSY, 120000)]:
         pg = chrome.page(1440, 900, False)
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': OTHERWAYS_ROUTER}, pg.s)
