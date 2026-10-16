@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
-### Short cuts through ways marked private, when you may go there (#106)
+### Short cuts through ways marked private, when you may go there ([#124](https://github.com/TommiContursi/Polku/pull/124))
 - **Route style has a new setting, Ways marked private: Keep off or Short cuts ok,** in every land sport. Keep off is how routes always were. With Short cuts ok, a route may go through a way marked private in OpenStreetMap where it saves a real distance (about 40 % of the private stretch's length); ways marked no access stay closed.
 - **Only where you may go.** Private usually means closed (factory and military sites, house yards, roads closed by a sign), but in Finland private roads and apartment-block yards are open on foot and by bike. So it's never on by itself: no preset sets it, round trips keep off, and on a leg that takes one Heads-up says "you allowed short cuts on this leg".
 - **From Heads-up, one tap:** "Goes round a way marked private or closed" has a **Short cut** button. It sets Short cuts ok for that leg only and puts back the points the router had moved off the way, so the leg can go through. Undo puts it all back.
