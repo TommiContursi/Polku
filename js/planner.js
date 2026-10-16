@@ -2707,6 +2707,9 @@ export class Planner {
   // for a moment first, so a swipe across it still pans the map.
   onLinePress(e) {
     if (!this.active || this.edit || this.panel.hidden) return;
+    // Marker presses bubble through the map too: their own drag must be the
+    // only edit, even when the marker sits directly over the route.
+    if (e.originalEvent.target?.closest?.('.maplibregl-marker, .maplibregl-popup')) return;
     const f = (e.features || []).find((x) => x.properties.kind === 'leg');
     if (!f || f.properties.loading) return;
     const touch = e.type === 'touchstart';

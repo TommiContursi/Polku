@@ -4,6 +4,9 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Fixed: dragging a route's midpoint adds just one point
+- **Dragging the middle handle now adds one via point,** which follows the pointer. The line underneath no longer starts a second edit from the same press, so it cannot leave an extra point and bend behind. One Undo puts the route back. This applies to mouse and touch.
+
 ### See where a route category occurs
 - **Hover a coloured bar segment or its legend row** to highlight all matching stretches on the map, including disconnected ones. Moving away restores the normal route without changing your chosen colours.
 - **Keyboard previews:** focus a breakdown button, use Left/Right (or Home/End) to explore its categories, and Escape to clear. Enter still selects the colours for the route and profile.
