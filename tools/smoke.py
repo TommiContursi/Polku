@@ -3207,21 +3207,37 @@ MARKS = r"""(async () => {
     if (data().length || !switches()[1].disabled || !switches()[2].disabled) errs.push('distance off: marks remain or dependent options enabled');
     switches()[0].click(); switches()[2].click();
   }
-  // Follow the estimate from Check, even when Waypoints and the sheet are folded.
-  p.toggleSection('points', false);
+  // Follow the estimate from Check, even when Go’s Time section and the sheet are folded.
+  p.toggleSection('speed', false);
   if (p.layout() === 'sheet') p.setSheetState('peek', { remember: false });
   document.querySelector('.sum-time').click(); await wait(500);
-  const select = p.els.points.querySelector('.wpl-depart select');
-  if (p.tab !== 'route' || p.sec.points.el.dataset.open !== 'true' || document.activeElement !== select) errs.push('estimate did not open and focus the start departure setting');
+  const settled = await __DEPARTURE_SETTLED__;
+  if (settled) errs.push(`departure sheet: ${settled}`);
+  const select = document.querySelector('#pl-pane-go .go-depart select');
+  if (p.tab !== 'go' || p.sec.speed.el.dataset.open !== 'true' || !select || document.activeElement !== select) errs.push('estimate did not open Go and focus its departure picker');
   if (select) {
     select.value = '4'; select.dispatchEvent(new Event('change', { bubbles: true }));
     if (p.startOffsetH !== 4) errs.push('departure setting did not change the departure');
     const r = select.getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('departure control is out of view');
+    if (r.height < 44 || parseFloat(getComputedStyle(select).fontSize) < 16) errs.push('Go departure picker is too small');
+    const waypoint = () => p.els.points.querySelector('.wpl-depart select');
+    if (waypoint()?.value !== '4' || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec()))) errs.push('Go departure did not sync the waypoint or schedule immediately');
+    waypoint().value = '5'; waypoint().dispatchEvent(new Event('change', { bubbles: true }));
+    if (select.value !== '5' || p.startOffsetH !== 5) errs.push('waypoint departure did not sync Go');
+    p.setStartOffset(6, { fromMap: true });
+    if (select.value !== '6' || waypoint()?.value !== '6') errs.push('timeline departure did not sync both pickers');
+    select.focus(); p.renderAnalysis();
+    if (document.activeElement !== select || !select.isConnected) errs.push('an analysis update replaced the focused departure picker');
+    // Crossing an hour refreshes options without replacing the select itself.
+    select.dataset.hour = 'old'; select.options[1].textContent = 'old hour';
+    p.renderSpeed();
+    if (select.options[1].textContent === 'old hour' || select.value !== '6' || document.activeElement !== select) errs.push('departure choices did not refresh while keeping selection and focus');
+
   }
   p.setMarks({ km: false, time: false, duration: false });
   return errs;
-})()"""
+})()""".replace("__DEPARTURE_SETTLED__", SETTLED)
 
 
 def marks(chrome):
