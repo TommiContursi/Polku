@@ -164,10 +164,11 @@ export class Planner {
       const a = this.analysis;
       if (!a) return;
       const [i0, i1] = v ? [this.chart.idxOfDist(v[0]), this.chart.idxOfDist(v[1])] : [0, a.pts.length - 1];
-      const b = bbox(a.pts.slice(i0, i1 + 1));
-      this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, duration: 600 });
+      // (zooming the chart in a full sheet doesn't lower it)
+      this.frame(bbox(a.pts.slice(i0, i1 + 1)), { lower: false, duration: 600 });
     };
     map.on('click', (e) => this.onMapClick(e));
+    map.on('movestart', (e) => { if (e.originalEvent) this.refit = false; }); // you moved the map
     map.on('mousemove', (e) => this.onMapMove(e));
     map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     // was a menu or card open when this press began? (MapLibre closes it on the click; the click shouldn't add a point too)
@@ -209,6 +210,7 @@ export class Planner {
     };
   }
   commit() {
+    this.refit = false; // you've changed the route: no framing it later
     this.past.push(this.snapshot());
     if (this.past.length > 100) this.past.shift();
     this.future = [];
@@ -579,6 +581,7 @@ export class Planner {
     this.routeName = name;
     this.setActive(true);
     this.update();
+    this.fitRoute(); // above the sheet that just opened
   }
 
   restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry, nogos, nogosLost }) {
@@ -678,8 +681,7 @@ export class Planner {
     }
     this.setActive(true);
     this.update();
-    const b = bbox(this.legs.flatMap((l, i) => (l.result ? l.result.coords : [this.points[i], this.points[i + 1]])));
-    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 15, duration: 700 });
+    this.frame(bbox(this.legs.flatMap((l, i) => (l.result ? l.result.coords : [this.points[i], this.points[i + 1]]))), { maxZoom: 15, duration: 700 });
     const km = fmtDist(ride.km * 1000);
     const what = ride.network ? `${p.name} is a network of trails: ${end ? 'added' : 'riding'} the stretch ${end ? 'you picked' : 'you clicked'} (${km})`
       : `${end ? 'Added' : 'Riding'} ${p.name} · ${km}${ride.loop ? ' loop' : ''}${ride.left >= 0.3 ? ` (${fmtDist(ride.left * 1000)} of side trails left out)` : ''}`;
@@ -885,6 +887,7 @@ export class Planner {
     await pool(jobs, 3);
     if (gen !== this.gen) return;
     this.panel.classList.remove('busy');
+    if (this.refit && this.legs.every((l) => l.result && l.status !== 'waiting')) { this.refit = false; this.fitRoute(); }
     if (this.snapPoints()) { this.renderMarkers(); this.drawRoute(); }
     if (jobs.length) this.save(); // now with the routed geometry
     await this.runAnalysis(gen);
@@ -1041,7 +1044,7 @@ export class Planner {
         // frame the loops' reach first: its water comes from the tiles the map loads
         const b = reach(start, radiusFor(sport, targetM));
         if (wet) prefetchWater(b); // fairways, marks and rocks for the whole area while the map loads (cached per tile)
-        this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), duration: 0, maxZoom: 15 });
+        this.frame(b, { duration: 0, maxZoom: 15 });
         await new Promise((ok) => { const t = setTimeout(ok, 8000); this.map.once('idle', () => { clearTimeout(t); ok(); }); });
         L.water = waterOf(this.map);
       }
@@ -1136,10 +1139,7 @@ export class Planner {
       L.note = !ok.length ? (limited ? limited.err.message : more ? 'No more loops worked out here — try another length or start.'
         : wet ? 'No loop worked out on the water here — try another length, or a start on a bigger lake or the sea.' : 'No loop worked out here — try another length or start, or click the map nearer to paths.') : '';
       this.drawLoops();
-      if (ok.length) {
-        const bb = bbox(L.results.flatMap((r) => r.line.coords));
-        this.map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: this.viewPadding(), duration: 600, maxZoom: 15 });
-      }
+      if (ok.length) this.frame(bbox(L.results.flatMap((r) => r.line.coords)), { duration: 600, maxZoom: 15 });
     } finally {
       L.busy = false;
       L.progress = 0;
@@ -1155,7 +1155,21 @@ export class Planner {
 
   drawLoops() {
     const L = this.loop;
-    this.app.setData('loops', { type: 'FeatureCollection', features: L.results.map((r, i) => ({ type: 'Feature', properties: { color: r.color, on: i === L.on }, geometry: { type: 'LineString', coordinates: r.line.coords } })) });
+    this.app.setData('loops', { type: 'FeatureCollection', features: L.results.map((r, i) => ({ type: 'Feature', properties: { color: r.color, on: i === L.on, i }, geometry: { type: 'LineString', coordinates: r.line.coords } })) });
+  }
+
+  // Loop i picked (a tap on its line or its card): drawn on top, its card marked and in view.
+  // `frame`: the map frames it too (not on hover, which also picks).
+  showLoop(i, { frame = false } = {}) {
+    const L = this.loop, r = L.results[i];
+    if (!r) return;
+    L.on = i;
+    this.drawLoops();
+    this.markLoopCards();
+    if (!frame) return;
+    this.frame(bbox(r.line.coords), { duration: 600, maxZoom: 15 });
+    const card = this.els.loopBox.querySelectorAll('.loop-card:not(.loop-more)')[i];
+    if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   // A loop picked: a normal route. Its via points move onto the line (the
@@ -1268,7 +1282,6 @@ export class Planner {
     const wet = waterLoop(sport);
     const list = h('div', { class: 'loop-cards' });
     const best = L.results.reduce((m, r, i) => (m < 0 || r.score < L.results[m].score ? i : m), -1);
-    const pick = (i) => { L.on = i; this.drawLoops(); this.markLoopCards(); };
     L.results.forEach((r, i) => {
       const a = r.a;
       let what, notes;
@@ -1286,7 +1299,7 @@ export class Planner {
         const hu = a.warnings.length + (a.trailWarn || []).length;
         notes = [r.twice > 0.05 ? `${Math.round(r.twice * 100)} % ridden twice` : 'no stretch twice', hu ? `${hu} heads-up` : 'no heads-up', r.line.provider === 'valhalla' ? 'via Valhalla' : ''];
       }
-      const card = h('div', { class: `loop-card${i === L.on ? ' on' : ''}`, role: 'button', tabindex: '0', onmouseenter: () => pick(i), onfocus: () => pick(i), onclick: () => pick(i) },
+      const card = h('div', { class: `loop-card${i === L.on ? ' on' : ''}`, role: 'button', tabindex: '0', onmouseenter: () => this.showLoop(i), onfocus: () => this.showLoop(i), onclick: () => this.showLoop(i, { frame: true }) },
         h('div', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === best ? h('span', { class: 'loop-best' }, 'Closest match') : null),
         h('div', { class: 'loop-card-line' }, `${fmtDuration(a.time)} · ${wet ? '' : `↑${Number.isFinite(a.up) ? Math.round(a.up) : '?'} m · `}${what}`),
         h('div', { class: 'loop-card-line muted' }, notes.filter(Boolean).join(' · ')),
@@ -1880,11 +1893,17 @@ export class Planner {
     if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
     // a menu or card was open: this click (a tap beside it) closes it, and adds nothing
     if (this.popupAtPress) { this.popupAtPress = false; return; }
-    if (this.loop.open && !this.loop.busy) { this.setLoopStart([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)], 'the spot you clicked'); return; }
-    const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
-    if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
     const touch = this.isTouch();
     const r = touch ? 12 : 6;
+    if (this.loop.open && !this.loop.busy) {
+      // a loop's line picks that loop (the others and the start stay); anywhere else moves the start
+      const loop = this.loop.results.length && this.map.getLayer('loops-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['loops-line', 'loops-casing'] })[0];
+      if (loop) this.showLoop(loop.properties.i, { frame: true });
+      else this.setLoopStart([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)], 'the spot you clicked');
+      return;
+    }
+    const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
+    if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
     const hit = this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
     // the line itself: a click or a tap gets that part's menu, mouse and finger alike (a point
@@ -3246,12 +3265,36 @@ export class Planner {
     addEventListener('resize', () => { const w = store.get('panelWidth', null); if (w) apply(w, false); });
   }
 
-  // Padding for camera moves so routes and climbs land in the visible part of the map.
+  // Padding for camera moves so routes and climbs land in the visible part of the map: below
+  // the top bar, beside the side panel or above the sheet as it settles. Never more than the
+  // map has room for: MapLibre skips a fit that can't be made, with only a console warning.
   viewPadding(m = 40) {
-    if (!this.active || this.panel.hidden) return { top: 80, bottom: m + 20, left: m, right: m + 50 };
-    const r = this.panel.getBoundingClientRect();
-    if (this.layout() === 'side') return { top: 80, bottom: m, left: r.right + m, right: m + 70 };
-    return { top: 80, bottom: innerHeight - r.top + m / 2, left: m / 2, right: m + 30 };
+    const top = Math.max(80, $('.topbar').getBoundingClientRect().bottom + 16);
+    let v;
+    if (!this.active || this.panel.hidden) v = { top, bottom: m + 20, left: m, right: m + 50 };
+    else if (this.layout() === 'side') v = { top, bottom: m, left: this.panel.getBoundingClientRect().right + m, right: m + 70 };
+    else v = { top, bottom: innerHeight - this.sheetTop() + m / 2, left: m / 2, right: m + 30 };
+    const room = 0.25; // of the map's height and width, at least, to fit into
+    v.bottom = Math.max(0, Math.min(v.bottom, innerHeight * (1 - room) - v.top));
+    v.right = Math.max(0, Math.min(v.right, innerWidth * (1 - room) - v.left));
+    return v;
+  }
+
+  // The sheet's top once it has settled. It changes height over 0.22 s (longer when frames
+  // are slow), so a fit made in the same step as a size change would measure the old height.
+  sheetTop() {
+    const pl = this.panel, r = pl.getBoundingClientRect();
+    if (!(pl.getAnimations && pl.getAnimations().some((a) => a.transitionProperty === 'height'))) return r.top;
+    const css = (k, d) => parseFloat(pl.style.getPropertyValue(k)) || d; // the heights in css/app.css
+    const h = { peek: css('--peek-h', 116), profile: css('--profile-h', 300), half: innerHeight * 0.5, full: innerHeight - 76 }[pl.dataset.state];
+    return h ? r.bottom - h : r.top;
+  }
+
+  /** Frame bounds [w, s, e, n] in the map the planner leaves free. A full sheet leaves no map
+   *  to frame in, so it comes down to half first (not remembered), unless `lower` is false. */
+  frame(b, { lower = true, ...opts } = {}) {
+    if (lower && this.active && this.layout() === 'sheet' && this.panel.dataset.state === 'full') this.setSheetState('half', { remember: false });
+    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, ...opts });
   }
 
   // ---------------------------------------------------------------- the ⋯ menu
@@ -3858,8 +3901,12 @@ export class Planner {
   fitRoute({ animate = true } = {}) {
     const b = this.routeBounds();
     if (!b) { toast('No route yet — click the map to start one'); return; }
-    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, duration: animate ? 700 : 0 });
+    this.frame(b, { duration: animate ? 700 : 0 });
   }
+
+  // A share link frames its points at once, and its routed line once every leg is in,
+  // unless you move the map or change the route before that.
+  frameWhenRouted() { this.refit = true; }
 
   // Is any of the route on screen?
   routeInView() {
@@ -3874,8 +3921,7 @@ export class Planner {
     this.selected = sel;
     this.focusHl = [a.along[i0], a.along[i1]];
     this.chart.setHighlight(this.focusHl);
-    const b = bbox(a.pts.slice(i0, i1 + 1));
-    this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, duration: 700 });
+    this.frame(bbox(a.pts.slice(i0, i1 + 1)), { duration: 700 });
   }
 
   renderWind() {

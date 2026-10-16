@@ -16,6 +16,7 @@
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py avoid      # places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
+  python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
   python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
@@ -1091,6 +1092,299 @@ def loops(chrome):
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} round trips on the water" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
+
+# Framing the route above the planner on phones (#88, #89). With the sheet at peek, profile,
+# half and full (a full sheet leaves no map to frame in, so it comes down to half), a fit puts
+# every point of the line below the top bar and above the sheet, filling the room: the fit
+# button, a GPX import with the planner open, Analyse & edit opening it, the first click's
+# round trip (the sheet rises while the loops' area is framed), a loop tapped on the map
+# (picked, the others and the start kept) or picked by its card, Use this loop, and a share
+# link once its legs are routed (BRouter mocked: straight lines; for the link, a detour south
+# of its points and an answer after 1.5 s). No routing calls. Desktop's padding stays as it was.
+FIT_ROUTER = """(() => {
+  const real = window.fetch.bind(window), detour = %s, delay = %s;
+  let gate = null;
+  window.holdRoutes = () => { let open; gate = new Promise((ok) => { open = ok; }); window.releaseRoutes = () => { gate = null; open(); }; };
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^(https:\\/\\/(brouter\\.de|valhalla1\\.openstreetmap\\.de)|http:\\/\\/localhost:17777)\\//.test(url)) return real(input, init);
+    if (gate) await gate;
+    if (delay) await new Promise((ok) => setTimeout(ok, delay));
+    if (/valhalla/.test(url)) return new Response('{}', { status: 503 });
+    const prof = url.match(/\\/profile\\/([\\w-]+)/);
+    if (prof) return new Response(JSON.stringify({ profileid: prof[1] }));
+    // a straight line through the points; with a detour, a vertex south of each stretch's middle
+    const ll = new URL(url).searchParams.get('lonlats').split('|').map((q) => q.split(',').map(Number)), c = [];
+    ll.forEach((q, i) => { if (i) c.push([(ll[i - 1][0] + q[0]) / 2, (ll[i - 1][1] + q[1]) / 2 - detour]); c.push(q); });
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [] }, geometry: { type: 'LineString', coordinates: c } }] }));
+  };
+})()"""
+FIT_ROUTE = [[23.80, 61.509], [23.817, 61.519], [23.838, 61.516]]
+LOCAL_BROUTER = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
+FIT_LIB = """(() => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, map = polku.map;
+  const T = (window.fitT = { errs: [] }), err = (s) => T.errs.push(s);
+  const settled = () => """ + SETTLED + """;
+  const state = async (st, remember = false) => { p.setSheetState(st, { remember }); const late = await settled(); if (late) err(`${st}: ${late}`); };
+  // the map you can see: below the top bar, above the sheet (once it has settled), the whole width
+  const free = () => {
+    const bar = document.querySelector('.topbar').getBoundingClientRect(), pl = document.querySelector('#planner');
+    return { top: bar.bottom, bottom: p.active && !pl.hidden ? pl.getBoundingClientRect().top : innerHeight, left: 0, right: innerWidth };
+  };
+  // a line framed: every point in the map you can see, filling at least a third of it one way
+  const framed = async (what, coords) => {
+    const late = await settled();
+    if (late) err(`${what}: ${late}`);
+    const f = free(), q = coords.map((c) => map.project(c)), st = p.panel.dataset.state;
+    const out = q.filter((s) => s.x < f.left - 2 || s.x > f.right + 2 || s.y < f.top - 2 || s.y > f.bottom + 2).length;
+    const span = (k) => Math.max(...q.map((s) => s[k])) - Math.min(...q.map((s) => s[k]));
+    const fill = Math.max(span('x') / (f.right - f.left), span('y') / Math.max(1, f.bottom - f.top));
+    if (f.bottom - f.top < 100) err(`${what}: ${Math.round(f.bottom - f.top)} px of map left above the sheet (${st})`);
+    else if (out) err(`${what}: ${out} of ${q.length} points outside the map above the sheet (${st})`);
+    else if (fill < 0.3) err(`${what}: the line fills ${Math.round(fill * 100)} % of the map above the sheet (${st})`);
+  };
+  T.framed = framed;
+  // far from everything, so a fit that doesn't happen shows
+  const away = () => map.jumpTo({ center: [25.6, 62.4], zoom: 9 });
+  // the camera's next stop (reduced motion: at once), or 5 s without one
+  const moved = () => new Promise((ok) => { const t = setTimeout(ok, 5000); map.once('moveend', () => { clearTimeout(t); ok(); }); });
+  const line = () => p.legs.flatMap((l, i) => (l.result ? l.result.coords : [p.points[i], p.points[i + 1]]));
+  const corners = (b) => [[b[0], b[1]], [b[2], b[3]], [b[0], b[3]], [b[2], b[1]]];
+  const TRACK = [[23.70, 61.45], [23.74, 61.47], [23.78, 61.455], [23.76, 61.43], [23.72, 61.435]];
+  const gpx = `<?xml version="1.0"?><gpx version="1.1" creator="smoke"><trk><name>Test track</name><trkseg>${TRACK.map(([x, y]) => `<trkpt lat="${y}" lon="${x}"></trkpt>`).join('')}</trkseg></trk></gpx>`;
+  const importTrack = async () => {
+    const input = document.querySelector('#file-input'), dt = new DataTransfer();
+    dt.items.add(new File([gpx], 'test.gpx', { type: 'application/gpx+xml' }));
+    input.files = dt.files;
+    const mv = moved();
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await mv;
+  };
+  const loopCoords = (k) => p.loop.results[k].line.coords;
+  // nothing over the map there (a toast, a button): a tap reaches the map
+  const onMap = (x, y) => document.elementFromPoint(x, y) === map.getCanvas();
+  // the screen spot on loop k farthest from the other loops' lines, well inside the map you can see
+  const spotOn = (k) => {
+    const f = free(), segs = (c) => c.slice(1).map((b, i) => [map.project(c[i]), map.project(b)]);
+    const others = p.loop.results.flatMap((r, i) => (i === k ? [] : segs(r.line.coords)));
+    const toSeg = (s, [a, b]) => { const dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((s.x - a.x) * dx + (s.y - a.y) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(s.x - a.x - t * dx, s.y - a.y - t * dy); };
+    let best = null;
+    for (const [a, b] of segs(loopCoords(k))) for (const t of [0.25, 0.5, 0.75]) {
+      const s = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      if (s.x < f.left + 30 || s.x > f.right - 90 || s.y < f.top + 30 || s.y > f.bottom - 30 || !onMap(s.x, s.y)) continue;
+      const d = Math.min(...others.map((g) => toSeg(s, g)));
+      if (!best || d > best.d) best = { x: s.x, y: s.y, d };
+    }
+    return best;
+  };
+  // a spot in the map you can see, 40 px or more from every loop
+  const spotOff = () => {
+    const f = free(), segs = p.loop.results.flatMap((r) => r.line.coords.slice(1).map((b, i) => [map.project(r.line.coords[i]), map.project(b)]));
+    const toSeg = (s, [a, b]) => { const dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((s.x - a.x) * dx + (s.y - a.y) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(s.x - a.x - t * dx, s.y - a.y - t * dy); };
+    for (let y = f.top + 40; y < f.bottom - 40; y += 10) for (let x = 40; x < f.right - 100; x += 10) if (onMap(x, y) && Math.min(...segs.map((g) => toSeg({ x, y }, g))) > 40) return { x, y };
+    return null;
+  };
+
+  // the fit button, the sheet at each size
+  T.button = async () => {
+    p.setActive(true); p.clear(); p.setMode('line');
+    for (const q of """ + json.dumps(FIT_ROUTE) + """) p.addPoint(q);
+    for (let k = 0; k < 100 && !p.analysis; k++) await wait(200);
+    for (const st of ['peek', 'profile', 'half', 'full']) {
+      await state(st);
+      away();
+      const mv = moved();
+      if (!p.els.fit.offsetParent) err(`no fit button at ${st}`);
+      p.els.fit.click();
+      await mv;
+      await framed(`the fit button at ${st}`, line());
+    }
+    return T.errs.splice(0);
+  };
+  // a GPX import: with the planner open, and Analyse & edit opening it
+  T.gpx = async () => {
+    for (const st of ['peek', 'half', 'full']) {
+      await state(st);
+      away();
+      await importTrack();
+      await framed(`a GPX import, the planner at ${st}`, TRACK);
+    }
+    for (const st of ['peek', 'half', 'full']) {
+      await state(st, true); // the planner opens at it
+      p.setActive(false);
+      away();
+      await importTrack();
+      const mv = moved();
+      document.querySelector('#track-card .btn.primary').click();
+      await mv;
+      await framed(`Analyse & edit, the planner opening at ${st}`, TRACK);
+    }
+    p.setSheetState('half');
+    return T.errs.splice(0);
+  };
+  // the first click: the empty planner at peek, a tap on the map (from Python) puts the start down
+  T.firstTap = async () => {
+    p.setActive(true); p.clear(); p.closeLoop();
+    p.setActive(false); p.setActive(true); // an empty planner opens at peek
+    const late = await settled();
+    if (late) err(`opening: ${late}`);
+    if (p.panel.dataset.state !== 'peek') err(`the empty planner opened at ${p.panel.dataset.state}`);
+    map.jumpTo({ center: [23.80, 61.50], zoom: 12 });
+    await new Promise((ok) => map.once('idle', ok));
+    window.holdRoutes();
+    T.start = [23.80, 61.50];
+    const q = map.project(T.start);
+    return { x: q.x, y: q.y };
+  };
+  // its card: a loop of the first length; the sheet rises to half as the loops' area is framed
+  T.loopFromStart = async () => {
+    const chip = document.querySelector('.start-tip .st-acts .chip');
+    if (!chip) { err('no round-trip choices on the first tap'); return T.errs.splice(0); }
+    chip.click();
+    await wait(100);
+    const R = await import(location.origin + '/js/roundtrip.js'), L = p.loop;
+    await framed('the round trip’s area as the sheet rises', corners(R.reach(L.start, R.radiusFor('mtb', L.km * 1000))));
+    window.releaseRoutes();
+    for (let k = 0; k < 450 && (L.busy || !L.results.length); k++) await wait(200);
+    if (L.results.length < 3) { err(`${L.results.length} loops (${L.note})`); return T.errs.splice(0); }
+    await framed('the three loops', L.results.flatMap((r) => r.line.coords));
+    return T.errs.splice(0);
+  };
+  // a loop that isn't picked, tapped on the map (the tap from Python)
+  T.loopSpot = () => {
+    const L = p.loop;
+    if (L.results.length < 3) return null;
+    const k = L.on === 1 ? 2 : 1, s = spotOn(k);
+    T.k = k; T.n = L.results.length; T.start = L.start.slice();
+    if (!s || s.d < 24) { err(`no spot on loop ${L.results[k].letter} clear of the others (${s ? Math.round(s.d) : 'none'} px)`); return null; }
+    return s;
+  };
+  T.loopTapped = async () => {
+    const L = p.loop, k = T.k;
+    await wait(300);
+    if (L.results.length !== T.n) err(`tapping loop ${'ABC'[k]} on the map left ${L.results.length} of ${T.n} loops`);
+    else {
+      if (L.on !== k) err(`tapping loop ${L.results[k].letter} on the map picked ${L.results[L.on] ? L.results[L.on].letter : L.on}`);
+      const cards = document.querySelectorAll('.loop-card:not(.loop-more)');
+      if (!cards[k] || !cards[k].classList.contains('on')) err('the tapped loop’s card isn’t marked');
+      await framed(`loop ${L.results[k].letter} tapped on the map`, loopCoords(k));
+    }
+    if (L.start.join() !== T.start.join()) err(`tapping a loop moved the start from ${T.start} to ${L.start}`);
+    // its card picks the other one, and the map follows
+    const j = [0, 1, 2].find((i) => i !== k && i !== L.on);
+    const card = L.results.length === T.n && document.querySelectorAll('.loop-card:not(.loop-more)')[j];
+    if (card) {
+      away();
+      const mv = moved();
+      card.click();
+      await mv;
+      if (L.on !== j) err(`the card of loop ${L.results[j].letter} picked ${L.on}`);
+      await framed(`loop ${L.results[j].letter} picked by its card`, loopCoords(j));
+    }
+    return T.errs.splice(0);
+  };
+  // away from the loops: the start moves there and the loops go, as before
+  T.offSpot = () => { T.n = p.loop.results.length; const s = spotOff(); if (!s) err('no spot clear of the loops'); else T.off = map.unproject([s.x, s.y]); return s; };
+  T.offTapped = async () => {
+    const L = p.loop;
+    await wait(300);
+    if (T.off && (!L.start || Math.abs(L.start[0] - T.off.lng) > 1e-3 || Math.abs(L.start[1] - T.off.lat) > 1e-3)) err(`a tap away from the loops left the start at ${L.start}`);
+    if (L.results.length) err(`a tap away from the loops kept ${L.results.length} loops`);
+    // new loops from there, and Use this loop with the sheet at full
+    await p.generateLoops();
+    if (!L.results.length) { err(`no loops the second time (${L.note})`); return T.errs.splice(0); }
+    await state('full');
+    away();
+    const mv = moved();
+    const use = document.querySelector('.loop-card.on .btn');
+    if (!use) err('no Use this loop'); else use.click();
+    await mv;
+    await framed('Use this loop at full', line());
+    return T.errs.splice(0);
+  };
+  // desktop: the padding as it was (the side panel, the bottom panel at half)
+  T.desktop = async () => {
+    p.setActive(true);
+    const r = () => p.panel.getBoundingClientRect(), same = (a, b) => ['top', 'bottom', 'left', 'right'].every((k) => Math.abs(a[k] - b[k]) < 0.5);
+    const was = (lay) => (lay === 'side' ? { top: 80, bottom: 40, left: r().right + 40, right: 110 } : { top: 80, bottom: innerHeight - r().top + 20, left: 20, right: 70 });
+    for (const dock of ['left', 'bottom']) {
+      p.setDock(dock);
+      await state(dock === 'left' ? 'open' : 'half');
+      const v = p.viewPadding(), w = was(p.layout());
+      if (!same(v, w)) err(`desktop, docked ${dock}: padding ${JSON.stringify(v)}, was ${JSON.stringify(w)}`);
+    }
+    p.setDock('left');
+    return T.errs.splice(0);
+  };
+  return true;
+})()"""
+# a share link in a clean page, opening with the sheet at `st`: the routed line in view once it's in
+FIT_SHARE = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner;
+  for (let k = 0; k < 150 && !(p.legs.length === 2 && p.legs.every((l) => l.status === 'ok') && p.analysis); k++) await wait(200);
+  if (!p.legs.every((l) => l.status === 'ok')) return [`the link's route: ${p.legs.map((l) => l.status).join(', ') || 'no legs'}`];
+  await fitT.framed(`a share link opening at ${%s}, routed`, p.legs.flatMap((l) => l.result.coords));
+  return fitT.errs.splice(0);
+})()"""
+
+
+def fit_phone(chrome):
+    ok = True
+    tap = lambda pg, s: pg.c.send('Input.synthesizeTapGesture', {'x': s['x'], 'y': s['y'], 'gestureSourceType': 'touch'}, pg.s)
+    for w, h in [(390, 844), (360, 740)]:
+        fails = []
+        pg = chrome.page(w, h, True)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0, 0)}, pg.s)
+            # a routing server of your own (Settings), so two rounds of loops aren't paced (the mock answers it)
+            pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', **LOCAL_BROUTER}, '#13/61.512/23.82')
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            pg.js(FIT_LIB)
+            fails += pg.js('fitT.button()', timeout=90000)
+            fails += pg.js('fitT.gpx()', timeout=90000)
+            tap(pg, pg.js('fitT.firstTap()'))
+            fails += pg.js('fitT.loopFromStart()', timeout=120000)
+            s = pg.js('fitT.loopSpot()')
+            if s:
+                tap(pg, s)
+                fails += pg.js('fitT.loopTapped()', timeout=30000)
+                s = pg.js('fitT.offSpot()')
+                if s:
+                    tap(pg, s)
+                    fails += pg.js('fitT.offTapped()', timeout=120000)
+            fails += pg.js('fitT.errs.splice(0)')
+            url = BASE + '?r=' + pg.js(f"import(location.origin + '/js/geo.js').then((G) => encodeURIComponent(G.encodePolyline({json.dumps(FIT_ROUTE)})))") + '&a=mtb'
+            fails += [f'console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+        for st in ('peek', 'half', 'full'):
+            pg = chrome.page(w, h, True)
+            try:
+                pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0.06, 1500)}, pg.s)
+                pg.goto(BASE + 'sw.js')
+                pg.js("localStorage.clear(); localStorage.setItem('polku:settings', '{\"activity\":\"mtb\"}'); localStorage.setItem('polku:plannerDock', '\"left\"');"
+                      f" localStorage.setItem('polku:sheetState', {json.dumps(json.dumps({'sheet': st}))}); true")
+                pg.goto(url)
+                pg.js(LOADED)
+                pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+                pg.js(FIT_LIB)
+                fails += pg.js(FIT_SHARE % json.dumps(st), timeout=60000)
+                fails += [f'console: {e[:160]}' for e in pg.errors()]
+            finally:
+                pg.close()
+        print(f"{'ok  ' if not fails else 'FAIL'} the route framed above the sheet ({w}x{h})" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+        ok = not fails and ok
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'})
+        pg.js(FIT_LIB)
+        fails = pg.js('fitT.desktop()')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} desktop framing as it was (1440x900)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails and ok
 
 
 # Winter on the route (15b), with a made-up forecast (it's not snowing in the test): a ride
@@ -2219,6 +2513,8 @@ def main():
             ok = avoid_link(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
+        if not only or 'fit' in only:
+            ok = fit_phone(chrome) and ok
         if not only or 'winter' in only:
             ok = winter(chrome) and ok
         if not only or 'sports' in only:
