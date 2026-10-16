@@ -279,6 +279,7 @@ flow = new RouteFlow(map, {
   },
 });
 if (data.route) flow.setData(data.route);
+map.on('mouseout', () => routeHoverLeg(null)); // off the map (onto the planner, say): no leg is under the pointer
 const planner = new Planner(map, {
   activity: () => state.activity,
   hoverLeg: routeHoverLeg,

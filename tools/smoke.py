@@ -1559,6 +1559,10 @@ FLOW = """(async () => {
   const away = m.project([24.950, 60.180]);
   p.onMapMove({ point: away, lngLat: { lng: 24.95, lat: 60.18 }, originalEvent: { clientX: away.x, clientY: away.y } });
   if ((m.getFeatureState({ source: 'route', id: 0 }) || {}).hover) errs.push('the glow stays after the pointer leaves');
+  // from the route straight off the map (onto the planner): the glow goes too
+  p.onMapMove({ point: pt, lngLat: { lng: c[0], lat: c[1] }, originalEvent: { clientX: pt.x, clientY: pt.y } });
+  m.getCanvasContainer().dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.querySelector('#planner') }));
+  if ((m.getFeatureState({ source: 'route', id: 0 }) || {}).hover) errs.push('the glow stays after the pointer leaves the map');
   // the switch off; the map left alone a while; a touch
   polku.set({ routeFlow: false });
   f.check();
