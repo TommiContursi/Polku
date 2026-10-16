@@ -4,13 +4,13 @@
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
-import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit } from './analysis.js';
+import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow } from './analysis.js';
 import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong } from './trails.js';
 import { iconUrl } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength } from './geo.js';
+import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
@@ -1478,7 +1478,7 @@ export class Planner {
       if (!coords.length) coords.push(r.coords[0]);
       for (let k = 1; k < r.coords.length; k++) {
         coords.push(r.coords[k]);
-        attrs.push({ mode, tags: r.tags[k - 1] || {}, sport });
+        attrs.push({ mode, tags: r.tags[k - 1] || {}, sport, by: r.provider });
       }
     });
     return { coords, attrs };
@@ -1501,6 +1501,7 @@ export class Planner {
     Object.assign(a, (({ total, tAt, waits }) => ({ time: total, tAt, waits }))(this.timed(a)));
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
+    a.accessWarn = this.standInAccess(a);
     this.watchTerrain(a);
     this.renderAnalysis();
     this.loadWind(a);
@@ -1531,6 +1532,49 @@ export class Planner {
       return;
     }
     this.useAnalysis(b);
+  }
+
+  // Valhalla's answer carries no access tags, and it walks through ways marked private where
+  // BRouter goes round: on its legs, the stretches along a way that the map's tiles mark private
+  // or no access (OpenMapTiles folds private into no). Only where the tiles are loaded: the
+  // Valhalla row in Heads-up says it may take others.
+  standInAccess(a) {
+    const out = [];
+    const on = a.attr.map((x) => !!x && x.by === 'valhalla' && x.mode === 'auto');
+    if (!on.some(Boolean) || !this.map.getSource('ofm')) return out;
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    a.pts.forEach((q, i) => { if (on[i]) { w = Math.min(w, q[0]); e = Math.max(e, q[0]); s = Math.min(s, q[1]); n = Math.max(n, q[1]); } });
+    const pad = 0.0005;
+    const segs = [];
+    for (const f of this.map.querySourceFeatures('ofm', { sourceLayer: 'transportation', filter: ['==', ['get', 'access'], 'no'] })) {
+      const g = f.geometry, lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+      for (const c of lines) {
+        for (let k = 1; k < c.length; k++) {
+          const p0 = c[k - 1], p1 = c[k];
+          if (Math.max(p0[0], p1[0]) < w - pad || Math.min(p0[0], p1[0]) > e + pad || Math.max(p0[1], p1[1]) < s - pad || Math.min(p0[1], p1[1]) > n + pad) continue;
+          segs.push({ p0, p1, tags: { access: 'no', foot: f.properties.foot, bicycle: f.properties.bicycle } });
+        }
+      }
+    }
+    if (!segs.length) return out;
+    // a sample on such a way: within 4 m of one, and the way not open to the sample's sport
+    const marked = (i) => {
+      if (!on[i]) return false;
+      const sport = a.attr[i].sport || a.activity;
+      return segs.some((g) => pointSegment(a.pts[i], g.p0, g.p1).d < 4 && accessOf(g.tags, sport));
+    };
+    let s0 = -1;
+    for (let i = 0; i <= a.pts.length; i++) {
+      const m = i < a.pts.length && marked(i);
+      if (m && s0 < 0) s0 = i;
+      if (!m && s0 >= 0) {
+        const len = a.along[i - 1] - a.along[s0];
+        // a crossing touches one for a metre or two: only stretches along one
+        if (len >= 10) out.push(accessRow({ no: false }, a.along[s0], len, a.pts[s0], 'from the map · Valhalla stood in and took it; Use BRouter goes round', 'Marked private or no access in OpenStreetMap'));
+        s0 = -1;
+      }
+    }
+    return out;
   }
 
   // Heads-up when part of the trip is after sunset, or in the dark (past civil dusk), at
@@ -3800,7 +3844,7 @@ export class Planner {
     box.innerHTML = '';
     if (!a) return;
     const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a)].sort((x, y) => x.at - y.at);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a)].sort((x, y) => x.at - y.at);
     // the kinds you've hidden stay out (and are listed at the end, to bring back)
     const hidden = hiddenKinds(), hiddenHere = new Map();
     const shown = all.filter((w) => {
@@ -3840,7 +3884,7 @@ export class Planner {
     const byValhalla = this.legs.filter((l) => l.status === 'ok' && l.result && l.result.provider === 'valhalla').length;
     if (byValhalla) {
       box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('info', 16)}<span class="li-main"><b>${byValhalla === 1 ? 'One leg' : `${byValhalla} legs`} routed by Valhalla</b><span>brouter.de asked for a pause, so the OpenStreetMap routing service stood in. Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> on FOSSGIS servers · <a href="${FIX_THE_MAP}" target="_blank" rel="noopener">fix the map</a></span></span>` }),
+        h('div', { class: 'li', html: `${icon('info', 16)}<span class="li-main"><b>${byValhalla === 1 ? 'One leg' : `${byValhalla} legs`} routed by Valhalla</b><span>brouter.de asked for a pause, so the OpenStreetMap routing service stood in. It may take ways marked private, and doesn’t say which: Heads-up lists those found on the map. Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> on FOSSGIS servers · <a href="${FIX_THE_MAP}" target="_blank" rel="noopener">fix the map</a></span></span>` }),
         h('button', { type: 'button', class: 'btn', title: 'Route these legs with BRouter (its trail profiles) once it’s free', onclick: () => this.rerouteWithBrouter() }, 'Use BRouter')));
     }
     if (!all.length) return;
@@ -3869,7 +3913,7 @@ export class Planner {
             this.rowMenu = popMenu(at, [
               kind ? { icon: 'eyeOff', label: `Hide “${escapeHtml(kind.label)}” in Heads-up`, fn: () => this.hideWarnKind(kind) } : null,
               w.osm && w.osm.id ? { icon: 'external', label: 'Gone? Fix the map (OpenStreetMap)', fn: () => open(`https://www.openstreetmap.org/edit?${w.osm.type}=${w.osm.id}`, '_blank', 'noopener') } : null,
-              w.osm && w.lngLat ? { icon: 'external', label: 'Not right? Leave a note on OpenStreetMap', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') } : null,
+              w.osm && w.lngLat ? { icon: 'external', label: w.fix || 'Not right? Leave a note on OpenStreetMap', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') } : null,
             ], { label: w.text, onClose: () => { this.rowMenu = null; } });
             this.rowMenu.at = at;
           },
