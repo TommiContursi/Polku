@@ -74,6 +74,7 @@ Headless Chrome draws the map in software, and one frame can take a second when 
   - `av`: places to avoid, `lon_lat_metres` each, comma-separated (`av=24.94012_60.17543_40`), about 24 characters a circle. At most 200 are read; anything that doesn't read as a circle is left out, and a toast says the route may go through it.
   - Names of points and of places to avoid stay on the device.
 - **Offline** (`js/offline.js`, `sw.js`): the tiles along a route corridor at zoom 5–14 go into Cache Storage, and the service worker serves them when the network is slow (4 s) or gone. OpenFreeMap's weekly tile version is stripped from the cache key. The routed line is saved with the area.
+- **Framing above the planner** (`frame()` in `js/planner.js`): every camera move that shows a route, a loop, a stretch or an imported track goes through it, not `map.fitBounds` with padding of its own. The padding keeps clear of the top bar and the side panel or sheet. A full sheet comes down to half first, and the padding never takes more than three quarters of the map, because MapLibre skips a fit that can't be made with only a console warning. While the sheet changes size, `sheetTop()` uses the height it's going to, from the heights in `css/app.css`: keep the two in step.
 - **Hover** (`js/hover.js`): one `queryRenderedFeatures` call when the pointer rests, never while it moves. It uses the click popup's own layer priority, so the preview always matches the click.
 
 ## Files
