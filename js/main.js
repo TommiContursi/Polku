@@ -33,6 +33,7 @@ import { renderUsage } from './usage.js';
 import { renderSpeedEditor } from './speeds.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
+import { RouteFlow } from './routeflow.js';
 
 // ------------------------------------------------------------------ state
 const DEFAULTS = {
@@ -45,6 +46,7 @@ const DEFAULTS = {
   terrain3d: false,
   trackpadTilt: true,
   hoverInfo: true,
+  routeFlow: true, // the route's moving chevrons (#198)
   timeline: false,
   labelsDown: false,
   labelsUp: false,
@@ -77,6 +79,7 @@ state.overlays = overlaysFor(state.activity);
 Object.assign(state, trailsFor(state.activity));
 
 const data = {}; // live GeoJSON per app source, so style rebuilds keep it
+let flow = null; // the route's moving chevrons (js/routeflow.js), made once the planner's map is up
 const saveSettings = () => {
   const { overlays, winterOn, winterSnow, ...rest } = state; // the overlays (per sport) and winter (found again) aren't saved here
   store.set('settings', rest);
@@ -179,6 +182,17 @@ function setData(id, fc) {
   data[id] = fc;
   const src = map.getSource(id);
   if (src) src.setData(fc);
+  if (id === 'route' && flow) flow.setData(fc);
+}
+
+// The route's moving chevrons (#198, js/routeflow.js; `flow`, made below). While they move,
+// the style's static arrows give way; the leg under the pointer glows brighter (route-glow-hover).
+function routeHoverLeg(leg) {
+  const v = leg == null ? null : leg;
+  if (ctx.hoverLeg === v || !map.getSource('route')) return;
+  if (ctx.hoverLeg != null) map.setFeatureState({ source: 'route', id: ctx.hoverLeg }, { hover: false });
+  ctx.hoverLeg = v;
+  if (v != null) map.setFeatureState({ source: 'route', id: v }, { hover: true });
 }
 
 function applyStyle() {
@@ -257,8 +271,17 @@ const safety = new SafetyLayers(map, { setData, time: () => timeAtHour(planner.s
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
 
+flow = new RouteFlow(map, {
+  enabled: () => state.routeFlow,
+  onMoving: (on) => {
+    ctx.flowMoving = on;
+    if (map.getLayer('route-arrows')) map.setLayoutProperty('route-arrows', 'visibility', on ? 'none' : 'visible');
+  },
+});
+if (data.route) flow.setData(data.route);
 const planner = new Planner(map, {
   activity: () => state.activity,
+  hoverLeg: routeHoverLeg,
   winter: () => ({ on: !!state.winterOn, setting: winterSetting() }), // winter on the route (15b): snow in the time, Heads-up
   sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),
   // the planner's own picker: the route's sport (the map's too); the map in it already: just the route
@@ -330,7 +353,7 @@ const inspector = initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
@@ -393,7 +416,7 @@ function setWeather(patch) {
 }
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, trailDetails: details, lipas, weather, safety, cameras, nautical, locate, heading, compass,
+  map, planner, state, uphill, trailDetails: details, flow, lipas, weather, safety, cameras, nautical, locate, heading, compass,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderSettingsPanel();
@@ -895,6 +918,7 @@ function renderSettingsPanel() {
   p.append(section('Display',
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight'),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
+    toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery'),
     hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null));
 
   const offlineBox = h('div', { class: 'off-list' });

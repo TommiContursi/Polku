@@ -86,7 +86,7 @@ export function buildStyle(s, ctx) {
     dem: { type: 'raster-dem', tiles: [ctx.demTiles], tileSize: DEM_TILESIZE, maxzoom: DEM_MAXZOOM, encoding: 'terrarium', attribution: '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>' },
     terrain: { type: 'raster-dem', tiles: [ctx.demTiles], tileSize: DEM_TILESIZE, maxzoom: 13, encoding: 'terrarium' },
     contours: { type: 'vector', tiles: [ctx.contourTiles], maxzoom: 16 },
-    route: { type: 'geojson', data: ctx.data.route || EMPTY },
+    route: { type: 'geojson', data: ctx.data.route || EMPTY, promoteId: 'leg' }, // the leg as the feature id: the glow under the pointer is its feature state
     routeMarks: { type: 'geojson', data: ctx.data.routeMarks || EMPTY }, // distance (and time) marks along the route
     routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
@@ -470,6 +470,13 @@ export function buildStyle(s, ctx) {
   add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#e11d48', 'line-width': zi(8, 16, 16, 30), 'line-opacity': 0.4, 'line-blur': zi(8, 4, 16, 9) } });
   // the short cut through a way marked private or closed that the route goes round: dashed, in the private dots' purple
   add({ id: 'access-cut', type: 'line', source: 'accessCut', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#c4b5fd' : '#7c3aed', 'line-width': zi(8, 3, 16, 6), 'line-dasharray': [1.5, 1.2] } });
+  // the route's glow (#198): a soft halo in its colour so it stands out on a busy map, and a
+  // brighter one on the leg under the pointer (ctx.hoverLeg, set while you point at it)
+  const routeGlowColor = ['case', ['==', ['get', 'mode'], 'water'], '#0369a1', '#e11d48'];
+  const glowable = ['all', ['!=', ['get', 'kind'], 'gap'], ['!', ['boolean', ['get', 'loading'], false]]];
+  add({ id: 'route-glow', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 12, 16, 26), 'line-blur': zi(8, 5, 16, 11), 'line-opacity': 0.3 } });
+  // fades in and out in 150 ms (a hover, often seen: short and soft)
+  add({ id: 'route-glow-hover', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 16, 16, 34), 'line-blur': zi(8, 6, 16, 13), 'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.55, 0], 'line-opacity-transition': { duration: 150, delay: 0 } } });
   add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
   add({
     id: 'route-line', type: 'line', source: 'route', filter: ['all', ['!=', ['get', 'kind'], 'portage'], ['!=', ['get', 'kind'], 'gap']],
@@ -482,7 +489,8 @@ export function buildStyle(s, ctx) {
   });
   add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
-  add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['all', ['!', ['get', 'loading']], ['!=', ['get', 'kind'], 'gap']], layout: { 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
+  // static arrows: hidden while the moving chevrons show the way instead (js/routeflow.js, ctx.flowMoving)
+  add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['all', ['!', ['get', 'loading']], ['!=', ['get', 'kind'], 'gap']], layout: { visibility: ctx.flowMoving ? 'none' : 'visible', 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
   add({
     id: 'route-wind', type: 'symbol', source: 'routeWind',
     layout: { 'icon-image': 'wind-arrow', 'icon-rotate': ['get', 'rot'], 'icon-rotation-alignment': 'map', 'icon-size': ['get', 'size'], 'icon-allow-overlap': true, 'icon-ignore-placement': true },

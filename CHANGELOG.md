@@ -4,6 +4,11 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### The route glows, and chevrons move along it the way it goes (#198)
+- **A soft glow round the route** makes it stand out on a busy map, and the part under your mouse glows brighter.
+- **White chevrons drift slowly along the route, the way it goes,** so you can see its direction at a glance. They take the place of the still arrows while they move.
+- **Easy on the battery:** they move only while the route is on screen and the page is in view, and they rest when you leave the map alone for a while (the still arrows come back); a touch of the map starts them again. With your system's reduced motion on, or with 3D terrain, they don't move. **Settings → Display → Moving arrows on the route** turns them off.
+
 ### Other ways for a new leg ([#125](https://github.com/TommiContursi/Polku/pull/125))
 - **When you add a point and stop for a moment, Polku may show another way to get there,** and a second one a few seconds later if you're still looking. They're drawn as see-through ghosts with a soft glow (orange, then teal), each labelled with what it is and how it compares: "Other way · +600 m · all on trails". Tap one to take it; otherwise the route stays as it was. A way that leaves the route for less than 100 m in all isn't shown.
 - **The way you had stays as a grey ghost** after you take another ("Way before"), so you can go back with one tap. It goes when you add the next point.

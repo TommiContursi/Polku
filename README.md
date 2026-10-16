@@ -24,7 +24,7 @@ Routing, speeds, route styles and warnings depend on the sport. A route can chan
 
 On land, BRouter calculates routes using sport-specific profiles. Polku keeps unchanged legs when you edit a route and reuses saved geometry after a reload. If the public BRouter service pauses, a Valhalla fallback can take over, with a notice in Heads-up.
 
-- Add points on the map and drag a point or the route line to change it. Change the sport or style for any leg, and undo changes.
+- Add points on the map and drag a point or the route line to change it. Change the sport or style for any leg, and undo changes. The route glows, and chevrons drift along it the way it goes (Settings can turn them off).
 - When you add a point and stop for a moment, another way to it can appear on the map as a see-through ghost, with its extra length and share of trails, and a second a few seconds later; select one to take it, and the way you had stays as a ghost to go back to. Any part of the route offers **Other ways** too. They cost extra routing calls, so on the public BRouter they come only when the service's pacing has room, and not on legs under 300 m.
 - Route styles change the router's preferences for terrain, surface, climbing and roads, with presets for flowing trails, technical riding, paved roads, nature paths or routes near the shore. Set a style for the whole route or one leg.
 - Routes keep off ways marked private in OpenStreetMap, and Heads-up says when a route goes round one. Where you may go there, the route style's **Short cuts ok** lets a route through such a way when it saves a real distance; ways marked no access stay closed.

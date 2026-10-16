@@ -2295,11 +2295,15 @@ export class Planner {
     if (this.alts && this.map.getLayer('route-alts-line') && !this.edit
       && this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-alts-line', 'route-alts-glow', 'route-alts-label'] }).length) {
       this.map.getCanvas().style.cursor = 'pointer'; // a way on offer: a click takes it
+      if (this.app.hoverLeg) this.app.hoverLeg(null);
       return;
     }
     const a = this.analysis;
-    if (!a || this.panel.hidden || this.edit) return;
-    const hit = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-casing'] }).length;
+    const glow = (leg) => this.app.hoverLeg && this.app.hoverLeg(leg); // the leg under the pointer glows brighter (#198)
+    if (!a || this.panel.hidden || this.edit) { glow(null); return; }
+    const over = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-casing'] }).find((f) => f.properties.kind !== 'gap');
+    const hit = !!over;
+    glow(over ? over.properties.leg : null);
     this.map.getCanvas().style.cursor = hit ? 'grab' : 'crosshair'; // the line can be dragged
     if (!hit) {
       if (this.mapHover) { this.mapHover = false; this.chart.setHover(-1); this.app.setData('routeHover', EMPTY); this.app.routeTip(null); }
