@@ -34,6 +34,8 @@ const OSM_KEYS = [
   ['mtb:winter', 'In winter (opens after snow)'], ['snowplowing', 'Ploughed'], ['winter_service', 'Winter maintenance'], ['bicycle:winter', 'Bicycle in winter'], ['foot:winter', 'Foot in winter'], ['seasonal', 'Seasonal'], ['piste:type', 'Piste'], ['piste:grooming', 'Grooming'],
 ];
 
+// "Tagged wrong?": a note on OpenStreetMap at the spot asks its mappers to look
+const osmNote = ([lon, lat]) => `https://www.openstreetmap.org/note/new#map=19/${lat.toFixed(6)}/${lon.toFixed(6)}`;
 const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https://${u}` : '';
 
 // Layers a click can inspect, and the order it picks from when several are
@@ -103,7 +105,7 @@ export function initInspector(map, app) {
     else if (/^winter-/.test(f.layer.id)) renderWinter(body, f.properties);
     else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
     else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
-    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb', (g) => { g.click = ll; show(g, ll, feats); });
+    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb', (g) => { g.click = ll; show(g, ll, feats); }, app.bike ? app.bike() : false);
     if (f.layer.id !== 'lipas-route') body.append(actions);
     const ele = await elevation(ll);
     const slot = body.querySelector('[data-ele]');
@@ -206,7 +208,7 @@ function chip(color, text) {
   return `<i class="dot" style="background:${color}"></i>${escapeHtml(text)}`;
 }
 
-function renderWay(body, f, feats, ll, mtb, open = null) {
+function renderWay(body, f, feats, ll, mtb, open = null, bike = false) {
   const p = f.properties;
   const isUphill = f.layer.id === 'uphill-line';
   const way = isUphill ? (feats.find((x) => /^(path|track)-/.test(x.layer.id)) || f) : f;
@@ -237,8 +239,13 @@ function renderWay(body, f, feats, ll, mtb, open = null) {
     }).catch(() => slot.remove());
   }
   if (wp.surface) body.append(row('Surface', wp.surface));
-  const access = ['bicycle', 'foot', 'horse'].filter((k) => wp[k]).map((k) => `${k} ${wp[k]}`).join(', ');
+  const access = [wp.access === 'no' ? 'private or no access' : '', ...['bicycle', 'foot', 'horse'].filter((k) => wp[k]).map((k) => `${k} ${wp[k]}`)].filter(Boolean).join(', ');
   if (access) body.append(row('Access', access));
+  // closed for your sport, as the map says (the tiles fold private into no): why routes go round
+  const own = bike ? 'bicycle' : 'foot';
+  if ((own === 'foot' && wp.foot === 'no') || (wp.access === 'no' && !['yes', 'designated', 'permissive'].includes(wp[own]))) {
+    body.append(h('p', { class: 'insp-info', html: `Marked ${own === 'foot' && wp.foot === 'no' ? 'no walking' : 'private or no access'} in OpenStreetMap, so routes keep off it. Private usually means closed: factory and military sites, house yards, roads closed by a sign. In Finland private roads and apartment-block yards are open on foot and by bike, so there it may be tagged wrong: <a href="${osmNote(ll)}" target="_blank" rel="noopener">leave a note on OpenStreetMap</a>.` }));
+  }
   if (wp.brunnel) body.append(row('Structure', wp.boardwalk ? 'boardwalk (pitkospuut)' : wp.brunnel));
   if (wp.osm) trailRows(body, wp);
   body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));

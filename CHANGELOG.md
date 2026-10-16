@@ -4,6 +4,12 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Fixed: a route that goes round a way marked private says so ([#117](https://github.com/TommiContursi/Polku/pull/117))
+- **Ways marked private or closed for your sport have purple dots beside them** on the map, from zoom 14: `access=private` or `no` without a yes for your sport, and on foot `foot=no`. Routes keep off them, so now you can see why a route goes round. The map key has them, and hover and the way's card say "marked private or no access" (the map's tiles can't tell the two apart).
+- **Heads-up says when a leg goes round one,** and how much a short cut through it would save: "Goes round a way marked private or closed · a short cut through it would save about 370 m". A tap on the row draws the short cut on the map. Polku works this out from the map it already has, with no extra calls.
+- **A point you put on such a way, that the router moved off it, says so too:** "Start moved 53 m off a way marked private or closed", or in the short cut's row when it's part of it. Polku remembers the spot you picked, through Undo, a reload and Save offline.
+- **It says what the map says, not what the law is.** Private usually means closed (factory and military sites, house yards, roads closed by a sign), but in Finland private roads and apartment-block yards are open on foot and by bike, so the rows and the card offer **Tagged wrong? Leave a note on OpenStreetMap**.
+
 ### Fixed: Heads-up says when the route takes a way marked private or closed ([#116](https://github.com/TommiContursi/Polku/pull/116))
 - **On foot, a way marked `foot=private` or `foot=no` gets a Heads-up row.** Before, a Run or Hike route could take 120 m of a delivery road marked foot=private without a word, because the routing service counts it as open when bikes may use it.
 - **The rows say what OpenStreetMap says, not what the law is:** "Marked private in OpenStreetMap", with the tag and what private usually means (factory and military sites, house yards, roads closed by a sign). In Finland private roads and apartment-block yards are open on foot and by bike, so a way there may be tagged wrong: the row's ⋯ has **Tagged wrong? Leave a note on OpenStreetMap**.
