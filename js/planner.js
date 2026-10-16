@@ -2,7 +2,7 @@
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS } from './config.js';
-import { routeLeg, routeRun, routeLoop, routerHeadroom } from './router.js';
+import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow } from './analysis.js';
 import { retryFailed as retryTerrainTiles } from './dem.js';
@@ -40,7 +40,8 @@ const LOOP_PRESETS = {
 // up to nine loops ("More loops" makes three at a time): a letter and a colour each
 // other ways for a leg (#95): not the route's red, the water's blue, or the purple of ways marked private
 const ALT_COLORS = ['#ea580c', '#0d9488', '#b45309'];
-const ALT_PAUSE = 3000; // ms you stop adding points before a new leg gets its other way
+const ALT_PAUSE = 1500; // ms you stop adding points before a new leg gets its other way
+const ALT_MORE = 5000; // …and ms more before a second one, if you're still looking
 const ALT_MIN = 300; // m: a shorter new leg gets none on its own (rarely one 100 m apart)
 const LOOP_COLORS = ['#2563eb', '#ea580c', '#9333ea', '#0d9488', '#db2777', '#65a30d', '#0891b2', '#b45309', '#4f46e5'];
 const LOOP_LETTERS = 'ABCDEFGHI';
@@ -897,52 +898,74 @@ export class Planner {
 
   // ---------------------------------------------------------------- other ways (#95)
   // Other ways for leg li, from BRouter's alternatives (one call each; BRouter runs k+1
-  // searches for alternative k). On its own, a leg you've just added gets one, alternative 1,
-  // once you've stopped adding points for a moment (ALT_PAUSE: no calls while you sketch),
-  // when it's at least ALT_MIN long, and only with room under the pacing (headroom 3, maxWait
-  // 0: never ahead of your next point's leg). The leg's menu has Other ways for any leg, any
-  // time: alternatives 1 and 2, which may wait their turn. Your own routing server has no
-  // limit. A way within 100 m of the leg all along is left out. They're drawn where they
-  // differ; a tap takes one (leg.alt). The short cut through a way marked private (#104) is
-  // one more, where Heads-up has it for the leg.
+  // searches for alternative k). On its own, a leg you've just added gets alternative 1 once
+  // you've stopped adding points for a moment (ALT_PAUSE: no calls while you sketch), and
+  // alternative 2 if you're still looking a while later (ALT_MORE); only for a leg at least
+  // ALT_MIN long, and only with room under the pacing (headroom 3, maxWait 0: never ahead of
+  // your next point's leg; the second also needs 6 calls free in the minute, so it doesn't use
+  // up the next legs' first ones). The leg's menu has Other ways for any leg, any time: both, which
+  // may wait their turn. Your own routing server has no limit. A way within 100 m of the leg
+  // (and of the ways shown) all along is left out. They're drawn as ghosts where they differ;
+  // a tap takes one (leg.alt), and the way you had stays as a ghost to go back to, until the
+  // next point. The short cut through a way marked private (#104) is one more, where Heads-up
+  // has it for the leg.
   offerAltsSoon(li) {
     const leg = this.legs[li], key = leg && leg.key;
+    const same = () => this.legs[li] === leg && leg.key === key;
     clearTimeout(this.altTimer);
-    this.altTimer = setTimeout(() => { if (this.legs[li] === leg && leg.key === key) this.offerAlts(li); }, ALT_PAUSE);
+    this.altTimer = setTimeout(async () => {
+      if (!same()) return;
+      await this.offerAlts(li, false, [1]);
+      if (!same()) return;
+      // still looking: alternative 2 (also when 1 was too close to show)
+      this.altTimer = setTimeout(() => { if (same()) this.offerAlts(li, false, [2]); }, ALT_MORE);
+    }, ALT_PAUSE);
   }
 
-  async offerAlts(li, asked = false) {
+  async offerAlts(li, asked = false, ks = null) {
     const leg = this.legs[li];
     if (!this.active || !leg || leg.mode !== 'auto' || leg.status !== 'ok' || !leg.result || leg.result.provider === 'valhalla') return;
     if (!asked && (li !== this.legs.length - 1 || lineLength(leg.result.coords) < ALT_MIN || routerHeadroom() < 3)) return;
-    this.clearAlts();
-    const ctrl = new AbortController(), t = { i: li, leg, ...this.legKey(li) };
-    const mine = (this.alts = { li, key: leg.key, base: t.base, ways: [], ctrl });
+    // the second one comes last: only with plenty of room left this minute, so the next legs still get their first
+    if (!asked && ks && ks.includes(2) && routerRoomThisMinute() < 6) return;
+    // the ways already shown for this leg stay; more are added to them
+    let mine = this.alts && this.alts.li === li && this.alts.key === leg.key ? this.alts : null;
+    if (!mine) { this.clearAlts(); mine = this.alts = { li, key: leg.key, base: this.legKey(li).base, ways: [], ctrl: new AbortController() }; }
+    const t = { i: li, leg, ...this.legKey(li) };
+    const want = (ks || [0, 1, 2]).filter((k) => k !== (leg.alt || 0) && !mine.ways.some((w) => w.k === k));
     if (asked) toast('Looking for other ways for this part…', { ms: 2500 });
-    const got = await Promise.all((asked ? [0, 1, 2] : [0, 1]).filter((k) => k !== (leg.alt || 0)).map(async (k) => {
+    const n0 = mine.ways.length;
+    const got = await Promise.all(want.map(async (k) => {
       try {
-        const r = await routeLeg({ from: t.from, to: t.to, mode: 'auto', profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: asked ? 20000 : 0, fallback: false, ...this.styleOpts(t), alt: k } }, ctrl.signal);
+        const r = await routeLeg({ from: t.from, to: t.to, mode: 'auto', profile: t.profile, opts: { portage: true, nogos: t.nogos, maxWait: asked ? 20000 : 0, fallback: false, ...this.styleOpts(t), alt: k } }, mine.ctrl.signal);
         return { k, r };
       } catch { return null; } // no room, or no such way: just fewer of them
     }));
     if (this.alts !== mine || leg.key !== mine.key) return;
-    const now = leg.result.coords, len0 = lineLength(now);
-    const trails = (r) => { let m = 0, all = 0; r.coords.forEach((c, j) => { if (!j) return; const d = dist(r.coords[j - 1], c); all += d; if (['path', 'track', 'bridleway'].includes((r.tags[j - 1] || {}).highway)) m += d; }); return all ? m / all : 0; };
     for (const g of got) {
-      if (!g || g.r.note) continue;
-      // where it leaves the leg (and every way already kept) by more than 15 m
-      const parts = this.altParts(g.r.coords, [now, ...mine.ways.map((w) => w.r.coords)]);
-      const apart = parts.reduce((m, c) => m + lineLength(c), 0);
-      if (apart < 100) continue;
-      const d = lineLength(g.r.coords) - len0;
-      mine.ways.push({ k: g.k, r: g.r, parts, label: `${d >= 0 ? '+' : '−'}${fmtDist(Math.abs(Math.round(d / 10) * 10))} · ${Math.round(trails(g.r) * 100)} % trails` });
+      const w = g && !g.r.note && this.altWay(g.r, g.k, leg.result.coords, mine.ways, 'Other way');
+      if (w) mine.ways.push(w);
     }
     const cut = this.analysis && (this.analysis.accessWarn || []).find((w) => w.cutLeg === li);
-    if (cut) mine.ways.push({ cut, parts: [cut.cut], label: 'Short cut, marked private' });
+    if (cut && !mine.ways.some((w) => w.cut)) mine.ways.push({ cut, parts: [cut.cut], label: `Short cut, marked private\n${cut.note.match(/save about [^·]+/) ? cut.note.match(/save about [^·]+/)[0].trim().replace('save', 'saves') : 'only where you may go'}` });
     if (!mine.ways.length) { if (asked) toast('No other way here that’s more than 100 m apart from this one'); this.clearAlts(); return; }
+    if (mine.ways.length === n0) return;
     this.drawAlts();
     const n = mine.ways.length;
-    toast(n === 1 ? 'Another way for this part: tap it on the map to take it' : `${n} other ways for this part: tap one on the map to take it`, { ms: 6000 });
+    if (!n0 || asked) toast(n === 1 ? 'Another way for this part: tap it on the map to take it' : `${n} other ways for this part: tap one on the map to take it`, { ms: 6000 });
+  }
+
+  // way k (its line r) as a ghost beside the leg's line `now`: where it's more than 15 m from it
+  // and from the ways already shown, if that's 100 m or more; labelled with its length against
+  // the leg and its share of trails. null: too close to show.
+  altWay(r, k, now, shown, title) {
+    const parts = this.altParts(r.coords, [now, ...shown.filter((w) => w.r).map((w) => w.r.coords)]);
+    if (parts.reduce((m, c) => m + lineLength(c), 0) < 100) return null;
+    let trail = 0, all = 0;
+    r.coords.forEach((c, j) => { if (!j) return; const d = dist(r.coords[j - 1], c); all += d; if (['path', 'track', 'bridleway'].includes((r.tags[j - 1] || {}).highway)) trail += d; });
+    const d = lineLength(r.coords) - lineLength(now), share = all ? Math.round((trail / all) * 100) : 0;
+    const diff = Math.abs(d) < 10 ? 'about as long' : `${d >= 0 ? '+' : '−'}${fmtDist(Math.abs(Math.round(d / 10) * 10))}`;
+    return { k, r, parts, label: `${title}\n${diff} · ${share === 100 ? 'all on trails' : `${share} % trails`}` };
   }
 
   // the stretches of `coords` more than 15 m from all of `lines` (at least two points each)
@@ -960,7 +983,9 @@ export class Planner {
   drawAlts() {
     const A = this.alts;
     const features = A ? A.ways.flatMap((w, i) => {
-      const color = w.cut ? '#7c3aed' : ALT_COLORS[i % ALT_COLORS.length]; // purple is the map's "marked private"
+      // each way keeps its colour (BRouter's alternative k); purple is the map's "marked private";
+      // the way you had, or the first way, is grey
+      const color = w.cut ? '#7c3aed' : w.before || !w.k ? '#64748b' : ALT_COLORS[(w.k - 1) % ALT_COLORS.length];
       const longest = w.parts.reduce((x, c) => (lineLength(c) > lineLength(x) ? c : x), w.parts[0]);
       return [
         { type: 'Feature', properties: { i, color, kind: 'line' }, geometry: { type: 'MultiLineString', coordinates: w.parts } },
@@ -978,14 +1003,16 @@ export class Planner {
     this.app.setData('routeAlts', EMPTY);
   }
 
-  // way i of the ones offered taken: the leg keeps BRouter's alternative k (its line is in
-  // already, so nothing is routed again), or takes the short cut. One step of Undo.
+  // way i of the ones on offer taken: the leg keeps BRouter's alternative k (its line is in
+  // already, so nothing is routed again), or takes the short cut. One step of Undo. The way
+  // you had stays as a ghost, with the others, to go back to until the next point.
   pickAlt(i) {
     const A = this.alts, w = A && A.ways[i], leg = A && this.legs[A.li];
     if (!w || !leg || leg.key !== A.key) return;
     const li = A.li;
     this.clearAlts();
     if (w.cut) { this.useShortCut(li, w.cut.picks || []); return; }
+    const before = { k: leg.alt || 0, r: leg.result };
     this.commit();
     leg.alt = w.k || 0;
     leg.altBase = A.base;
@@ -993,7 +1020,15 @@ export class Planner {
     leg.status = 'ok';
     leg.key = this.legKey(li).key;
     this.update();
-    toast(w.k ? 'This part takes the other way now' : 'This part takes the first way again', { ms: 5000, action: { label: 'Undo', fn: () => this.undo() } });
+    // what's still on offer, against the way taken: the way you had first, then the others
+    const mine = this.alts = { li, key: leg.key, base: A.base, ways: [], ctrl: new AbortController() };
+    for (const o of [{ ...before, title: 'Way before' }, ...A.ways.filter((x, j) => j !== i).map((x) => ({ ...x, title: x.before ? 'Way before' : 'Other way' }))]) {
+      if (o.cut) { mine.ways.push(o); continue; }
+      const g = this.altWay(o.r, o.k, leg.result.coords, mine.ways, o.title);
+      if (g) mine.ways.push(o.title === 'Way before' ? { ...g, before: true } : g);
+    }
+    if (mine.ways.length) this.drawAlts(); else this.alts = null;
+    toast(`This part takes ${w.k ? 'the other way' : 'its first way'} now${mine.ways.some((x) => x.before) ? ': the way before is still on the map' : ''}`, { ms: 5000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // what's on the water on leg i: a swimmer, or your craft
@@ -2209,7 +2244,7 @@ export class Planner {
       return;
     }
     // a way on offer for a leg (#95): a tap takes it
-    const alt = this.alts && this.map.getLayer('route-alts-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-alts-line', 'route-alts-label'] })[0];
+    const alt = this.alts && this.map.getLayer('route-alts-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-alts-line', 'route-alts-glow', 'route-alts-label'] })[0];
     if (alt) { this.pickAlt(alt.properties.i); return; }
     const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
     if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
@@ -2257,6 +2292,11 @@ export class Planner {
   }
 
   onMapMove(e) {
+    if (this.alts && this.map.getLayer('route-alts-line') && !this.edit
+      && this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-alts-line', 'route-alts-glow', 'route-alts-label'] }).length) {
+      this.map.getCanvas().style.cursor = 'pointer'; // a way on offer: a click takes it
+      return;
+    }
     const a = this.analysis;
     if (!a || this.panel.hidden || this.edit) return;
     const hit = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-casing'] }).length;

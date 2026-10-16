@@ -4,7 +4,7 @@
 
 import { BROUTER } from './config.js';
 import { routeWater } from './water.js';
-import { request, headroom } from './net.js';
+import { request, headroom, roomIn } from './net.js';
 import { valhallaRoute, valhallaCovers } from './valhalla.js';
 import { CUSTOM_PROFILES } from './styles.js';
 import { dist } from './geo.js';
@@ -15,6 +15,8 @@ export const routerUrl = () => (store.get('brouterUrl', '') || '').trim().replac
 const routerSource = () => (routerUrl() === BROUTER ? 'brouter' : 'brouterOwn');
 /** Calls the router takes right now without waiting (Infinity for your own). */
 export const routerHeadroom = () => headroom(routerSource());
+/** Calls the router can still take in the last minute (Infinity for your own). */
+export const routerRoomThisMinute = () => roomIn(routerSource(), 60e3);
 
 const cache = new Map();
 // Requests in flight, shared: a drag's live preview and the commit that follows
