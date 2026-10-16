@@ -90,6 +90,7 @@ export function buildStyle(s, ctx) {
     routeMarks: { type: 'geojson', data: ctx.data.routeMarks || EMPTY }, // distance (and time) marks along the route
     routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
+    routePreview: { type: 'geojson', data: ctx.data.routePreview || EMPTY }, // a breakdown category, while hovered or keyboard-previewed
     routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
     accessCut: { type: 'geojson', data: ctx.data.accessCut || EMPTY }, // a short cut through a way marked private, the one picked in Heads-up (#104)
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
@@ -497,6 +498,8 @@ export function buildStyle(s, ctx) {
   });
   add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
+  add({ id: 'route-preview-casing', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 15) } });
+  add({ id: 'route-preview', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 5, 16, 9) } });
   // static arrows: hidden while the moving chevrons show the way instead (js/routeflow.js, ctx.flowMoving)
   add({ id: 'route-arrows', type: 'symbol', source: 'route', minzoom: 12, filter: ['all', ['!', ['get', 'loading']], ['!=', ['get', 'kind'], 'gap']], layout: { visibility: ctx.flowMoving ? 'none' : 'visible', 'symbol-placement': 'line', 'symbol-spacing': 110, 'icon-image': 'route-arrow', 'icon-size': 0.7, 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-rotation-alignment': 'map' } });
   add({

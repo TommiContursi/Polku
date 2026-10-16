@@ -4,6 +4,10 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### See where a route category occurs
+- **Hover a coloured bar segment or its legend row** to highlight all matching stretches on the map, including disconnected ones. Moving away restores the normal route without changing your chosen colours.
+- **Keyboard previews:** focus a breakdown button, use Left/Right (or Home/End) to explore its categories, and Escape to clear. Enter still selects the colours for the route and profile.
+
 ### Other ways: sooner, side by side, and easy to compare ([#212](https://github.com/TommiContursi/Polku/pull/212))
 - **Other ways come sooner:** a moment after the new part of the route is in, without waiting for the climbing to be worked out. When you're taking your time between points, both come together instead of a few seconds apart. With your own routing server (Settings), both come after half a second.
 - **They look like the route:** as wide, with its white edge and glow, in blue, under your route. Blue isn't a trail colour, so they stand out on the trail map. The one under your mouse lights up. The way you had stays grey after you take another.

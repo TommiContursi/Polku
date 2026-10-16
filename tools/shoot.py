@@ -329,6 +329,15 @@ COLOURS_VIEW = """(async () => {
   return true;
 })()"""
 
+# A temporary category preview over a route coloured by a different kind.
+CATEGORY_PREVIEW_VIEW = COLOURS_VIEW[:COLOURS_VIEW.index('  const target =')] + """
+  const kind = p.breakdownKinds.grade;
+  const row = [...kind.legend.querySelectorAll('.bd-item')].find((el) => /^Flat/.test(el.textContent));
+  row.dataset.shotHover = 'true';
+  p.els.body.scrollTo({ top: p.els.body.scrollTop + kind.el.getBoundingClientRect().top - p.els.body.getBoundingClientRect().top - 30, behavior: 'instant' });
+  return true;
+})()"""
+
 MARKS_VIEW = """(async () => {
   const p = polku.planner;
   p.reveal('onmap');
@@ -351,6 +360,8 @@ SCENES = {
     'phone-route-times': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=COLOURS_PRE, js=MARKS_VIEW),
     'desk-departure-link': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=DEPARTURE_VIEW),
     'phone-departure-link': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=COLOURS_PRE, js=DEPARTURE_VIEW),
+    'desk-category-preview': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=CATEGORY_PREVIEW_VIEW, hover='[data-shot-hover=true]'),
+    'phone-category-preview': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', pre=COLOURS_PRE, js=CATEGORY_PREVIEW_VIEW, hover='[data-shot-hover=true]'),
     'desk-route-colours': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=COLOURS_VIEW),
     'phone-route-colours': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', pre=COLOURS_PRE, js=COLOURS_VIEW),
     # #88, #89: the fit button at full, a GPX import over the planner, a loop clicked on the map
@@ -626,6 +637,10 @@ def shoot(chrome, out_dir, label, name):
     else:
         time.sleep(2.8)  # timeline strip, weather, fades
         pg.idle()
+    if sc.get('hover'):
+        point = pg.js("(() => { const el = document.querySelector(" + json.dumps(sc['hover']) + "); if (!el) throw new Error('Missing screenshot hover target'); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()")
+        chrome.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', **point}, pg.s)
+        pg.idle()  # the native hover may update a map source
     path = pg.screenshot(os.path.join(out_dir, f'{label}-{name}.png'))
     errs = pg.errors()
     pg.close()

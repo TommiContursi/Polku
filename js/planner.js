@@ -831,6 +831,7 @@ export class Planner {
   }
 
   setActive(on) {
+    if (!on) this.clearCategoryPreview();
     this.active = on;
     this.panel.hidden = !on;
     if (!on) { this.closeMore(); this.closeStartTip(); this.litLeg(null); this.clearAlts(); delete document.body.dataset.sheet; delete document.body.dataset.pl; }
@@ -852,6 +853,7 @@ export class Planner {
   // ---------------------------------------------------------------- routing
   update() {
     this.clearAlts();
+    this.clearCategoryPreview();
     this.drawNogos();
     this.renderMarkers();
     this.renderWaypoints();
@@ -2214,6 +2216,7 @@ export class Planner {
   setStartOffset(k, { fromMap = false } = {}) {
     k = Math.max(0, Math.min(48, Math.round(k)));
     if (k === this.startOffsetH) return;
+    this.clearCategoryPreview();
     this.startOffsetH = k;
     for (const sel of this.panel.querySelectorAll('.departure-picker')) this.refreshDepartSelect(sel);
     const sel = this.els.wind.querySelector('.start-select');
@@ -2610,6 +2613,7 @@ export class Planner {
   // for the final spot is shared with it, not repeated.
   beginEdit(i, snap, keep = null) {
     if (this.edit) return;
+    this.clearCategoryPreview();
     this.edit = { i, snap, t0: Date.now(), timers: {}, reqs: {}, last: {} };
     if (this.menu) this.menu.remove();
     this.clearAlts();
@@ -3337,7 +3341,7 @@ export class Planner {
         this.els.stats,
         // the two short lists share a column in a wide panel
         h('div', { class: 'sec-stack' }, this.section('warnings', 'Heads-up', this.els.warnings), this.section('climbs', 'Climbs', this.els.climbs)),
-        this.section('colours', 'On the route', this.els.breakdown),
+        this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown),
         this.section('onmap', 'On the map', this.els.onMap = h('div', { class: 'onmap' }))),
       go: pane('go',
         this.section('speed', 'Time',
@@ -3347,6 +3351,14 @@ export class Planner {
         this.section('take', 'Take it along', this.els.take = h('div', { class: 'take-along' }))),
     };
     this.els.body = h('div', { class: 'sheet-body' }, this.els.panes.route, this.els.panes.check, this.els.panes.go);
+    this.els.body.addEventListener('scroll', () => {
+      const owner = this.categoryPreview?.owner;
+      if (!owner) return;
+      const r = owner.getBoundingClientRect(), b = this.els.body.getBoundingClientRect();
+      if (owner !== document.activeElement || r.bottom <= b.top || r.top >= b.bottom) this.clearCategoryPreview();
+    });
+    window.addEventListener('blur', () => this.clearCategoryPreview());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearCategoryPreview(); });
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
     p.append(this.els.handle, this.els.head, this.els.profZone, this.els.tabs, this.els.body, this.els.grip);
@@ -3377,6 +3389,7 @@ export class Planner {
     const s = this.sec[id];
     if (!s.head) return; // the profile: always open (its size is the sheet's)
     open = open ?? s.el.dataset.open !== 'true';
+    if (id === 'colours' && !open) this.clearCategoryPreview();
     s.el.dataset.open = String(open);
     s.head.setAttribute('aria-expanded', String(open));
     store.set('sections', { ...store.get('sections', {}), [id]: open });
@@ -3398,6 +3411,7 @@ export class Planner {
   setTab(id, { user = false } = {}) {
     if (!this.els.panes[id]) id = 'route';
     const changed = id !== this.tab;
+    if (changed) this.clearCategoryPreview();
     this.tab = id;
     store.set('plannerTab', id);
     for (const t of TABS) {
@@ -3535,6 +3549,7 @@ export class Planner {
   }
 
   setSheetState(st, { remember = true } = {}) {
+    if (['peek', 'profile', 'min'].includes(st)) this.clearCategoryPreview();
     const lay = this.layout();
     this.renderDockBtn();
     const ok = lay === 'side' ? ['open', 'min'] : SHEET_STATES;
@@ -4125,6 +4140,7 @@ export class Planner {
   // Every applicable kind with data, independent of the current profile colour.
   // Keep the controls in place during updates so focus and folded bars stay put.
   renderBreakdown() {
+    this.clearCategoryPreview();
     const a = this.analysis, box = this.els.breakdown;
     if (!a) { box.replaceChildren(); this.breakdownKinds = {}; this.breakdownGroups = null; return; }
     this.breakdownKinds ||= {};
@@ -4133,6 +4149,7 @@ export class Planner {
       const list = h('div', { class: 'bd-group-list', id });
       const fold = h('button', { type: 'button', class: 'bd-group-toggle', 'aria-controls': id }, title, h('span', { html: icon('chevronDown', 16), 'aria-hidden': 'true' }));
       const setOpen = (open) => {
+        if (!open) this.clearCategoryPreview();
         list.hidden = !open;
         fold.setAttribute('aria-expanded', String(open));
         fold.setAttribute('aria-label', `${open ? 'Fold' : 'Expand'} ${title.toLowerCase()} group`);
@@ -4158,7 +4175,24 @@ export class Planner {
           const active = h('small', { class: 'bd-active' }, 'Use colours');
           const bar = h('span', { class: 'bd-bar', 'aria-hidden': 'true' });
           const pick = h('button', { type: 'button', class: 'bd-title', title: `Colour the route and profile by ${label.toLowerCase()}`,
+            'aria-describedby': 'colour-preview-status', 'aria-description': 'Left and right arrow keys preview categories on the map. Escape clears the preview. Enter selects these colours.',
             onclick: () => this.pickColor(mode) }, h('span', { class: 'bd-heading' }, h('span', {}, label), active), bar);
+          let pointerFocus = false;
+          pick.addEventListener('pointerdown', () => { pointerFocus = true; this.clearCategoryPreview(); });
+          for (const type of ['pointerup', 'pointercancel', 'pointerleave']) pick.addEventListener(type, () => { pointerFocus = false; });
+          pick.addEventListener('focus', () => { if (!pointerFocus && pick.matches(':focus-visible')) this.previewCategory(mode, this.breakdownRows(mode)[0]?.[3], pick, true); });
+          pick.addEventListener('blur', () => this.clearCategoryPreview(pick));
+          pick.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.categoryPreview) { e.preventDefault(); e.stopPropagation(); this.clearCategoryPreview(); return; }
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+            e.preventDefault(); e.stopPropagation();
+            const rows = this.breakdownRows(mode), current = this.categoryPreview;
+            if (!rows.length) return;
+            const at = current?.mode === mode ? rows.findIndex((r) => r[3] === current.key) : -1;
+            const origin = at < 0 && e.key === 'ArrowLeft' ? 0 : at;
+            const next = e.key === 'Home' ? 0 : e.key === 'End' ? rows.length - 1 : (origin + (e.key === 'ArrowLeft' ? -1 : 1) + rows.length) % rows.length;
+            this.previewCategory(mode, rows[next][3], pick, true);
+          });
           const legend = h('div', { class: 'bd-legend' });
           const body = h('div', { class: 'bd-body' }, legend);
           const el = h('section', { class: 'bd-kind', 'data-colour': mode, 'aria-label': `${label} on the route` },
@@ -4175,13 +4209,17 @@ export class Planner {
         const { bar, legend } = kind;
         bar.replaceChildren();
         legend.replaceChildren();
-        for (const [label, d, color] of rows) {
+        for (const [label, d, color, key] of rows) {
           if (!(d > 0)) continue;
           const pct = (d / a.total) * 100;
-          bar.append(h('span', { style: `width:${pct}%;background:${color}`, title: `${label}: ${fmtDist(d)}` }));
+          const segment = h('span', { style: `width:${pct}%;background:${color}`, 'data-category': String(key), title: `${label}: ${fmtDist(d)}` });
+          this.bindCategoryPreview(segment, mode, key);
+          bar.append(segment);
           const text = String(label);
-          legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}`, 'aria-hidden': 'true' }),
-            h('span', {}, `${text[0].toUpperCase()}${text.slice(1)} `), h('b', {}, fmtDist(d))));
+          const item = h('span', { class: 'bd-item', 'data-category': String(key) }, h('i', { style: `background:${color}`, 'aria-hidden': 'true' }),
+            h('span', {}, `${text[0].toUpperCase()}${text.slice(1)} `), h('b', {}, fmtDist(d)));
+          this.bindCategoryPreview(item, mode, key);
+          legend.append(item);
         }
       }
       group.el.hidden = !shown;
@@ -4194,6 +4232,67 @@ export class Planner {
       }
     }
     this.setSection('colours', { title: 'On the route', count, empty: !count });
+  }
+
+  bindCategoryPreview(el, mode, key) {
+    el.addEventListener('pointerenter', (e) => { if (e.pointerType !== 'touch') this.previewCategory(mode, key, el); });
+    el.addEventListener('pointerleave', () => this.clearCategoryPreview(el));
+    el.addEventListener('pointercancel', () => this.clearCategoryPreview(el));
+  }
+
+  clearCategoryPreview(owner = null) {
+    const current = this.categoryPreview;
+    if (!current || (owner && owner !== current.owner)) return;
+    this.categoryPreview = null;
+    for (const el of current.marked) el.classList.remove('bd-preview');
+    this.app.setData('routePreview', EMPTY);
+    this.els.colourPreviewStatus.textContent = '';
+  }
+
+  // A category can occur in several disconnected stretches, and share a colour with another category.
+  previewCategory(mode, key, owner, announce = false) {
+    this.clearCategoryPreview();
+    const a = this.analysis;
+    if (!a || this.panel.hidden || this.tab !== 'check' || this.sec.colours.el.dataset.open !== 'true' || !owner?.isConnected || owner.closest('[hidden]')) return;
+    const row = this.breakdownRows(mode).find((r) => r[3] === key);
+    if (!row) return;
+    const features = [];
+    let run = [];
+    const finish = () => {
+      if (run.length > 1) features.push({ type: 'Feature', properties: { color: row[2] }, geometry: { type: 'LineString', coordinates: run } });
+      run = [];
+    };
+    for (let i = 1; i < a.pts.length; i++) {
+      if (a.along[i] > a.along[i - 1] && this.breakdownKey(mode, i) === key) {
+        if (!run.length) run.push(a.pts[i - 1]);
+        run.push(a.pts[i]);
+      } else finish();
+    }
+    finish();
+    if (!features.length) return;
+    const marked = [...this.breakdownKinds[mode].el.querySelectorAll('[data-category]')].filter((el) => el.dataset.category === String(key));
+    for (const el of marked) el.classList.add('bd-preview');
+    this.categoryPreview = { mode, key, owner, marked };
+    this.app.setData('routePreview', { type: 'FeatureCollection', features });
+    if (announce) this.els.colourPreviewStatus.textContent = `${COLOR_MODES[mode]}: ${row[0]}, ${fmtDist(row[1])} highlighted on the map.`;
+  }
+
+  // The same category key drives totals, bar segments and map previews.
+  breakdownKey(mode, i) {
+    const a = this.analysis;
+    switch (mode) {
+      case 'sport': return a.attr[i]?.sport || a.activity;
+      case 'surface': return a.surf[i];
+      case 'way': return a.way[i];
+      case 'width': case 'vis': return a.td?.[mode][i];
+      case 'wind': return a.wind && windClass(a.wind.head[i], a.wind.speed[i]).key;
+      case 'temp': return a.wind && tempBand(a.wind.temp[i]).key;
+      case 'rain': return a.wind && rainBand(a.wind.precip[i], a.wind.temp[i]).key;
+      case 'uphill': return noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down';
+      case 'both': return a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99;
+      case 'down': return a.down6[i] >= 0 ? a.down6[i] : 'not graded';
+      default: return noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min);
+    }
   }
 
   // Full distance accounting, including unknown stretches once a kind has data.
@@ -4209,54 +4308,49 @@ export class Planner {
     if (mode === 'both' && a.terrain?.all && !a.upCls.some((k) => k >= 0) && !a.down6.some((k) => k >= 0)) return [];
     let rows;
     const n = a.along.length;
-    const sumBy = (fn) => {
+    const sumBy = () => {
       const m = new Map();
       for (let i = 1; i < n; i++) {
-        const k = fn(i);
+        const k = this.breakdownKey(mode, i);
         if (k == null) continue;
         m.set(k, (m.get(k) || 0) + a.along[i] - a.along[i - 1]);
       }
       return m;
     };
     if (mode === 'sport') {
-      const m = sumBy((i) => (a.attr[i] && a.attr[i].sport) || a.activity);
-      rows = [...m.entries()].map(([k, d]) => [ACTIVITIES[k] ? ACTIVITIES[k].label : k, d, SPORT_COLORS[k] || '#64748b']);
-    } else if (mode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown]);
-    else if (mode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other]);
+      const m = sumBy();
+      rows = [...m.entries()].map(([k, d]) => [ACTIVITIES[k] ? ACTIVITIES[k].label : k, d, SPORT_COLORS[k] || '#64748b', k]);
+    } else if (mode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown, k]);
+    else if (mode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other, k]);
     else if ((mode === 'width' || mode === 'vis') && a.td) {
       const sc = TRAIL_SCALES[mode];
-      const m = sumBy((i) => a.td[mode][i]);
+      const m = sumBy();
       // narrow → wide (clear → barely visible), then the not-mapped and the roads
-      rows = [...m.entries()].sort((x, y) => (x[0] < 0) - (y[0] < 0) || (x[0] < 0 ? y[0] - x[0] : x[0] - y[0])).map(([k, d]) => [sc.labels[k + 2], d, sc.colors[k + 2]]);
+      rows = [...m.entries()].sort((x, y) => (x[0] < 0) - (y[0] < 0) || (x[0] < 0 ? y[0] - x[0] : x[0] - y[0])).map(([k, d]) => [sc.labels[k + 2], d, sc.colors[k + 2], k]);
     }
     else if (['wind', 'temp', 'rain'].includes(mode)) {
-      const w = a.wind;
-      const [classes, fn] = {
-        wind: [WIND_CLASSES, (i) => windClass(w.head[i], w.speed[i]).key],
-        temp: [TEMP_BANDS, (i) => tempBand(w.temp[i]).key],
-        rain: [RAIN_BANDS, (i) => rainBand(w.precip[i], w.temp[i]).key],
-      }[mode];
-      const m = sumBy(fn);
-      rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color]);
+      const classes = { wind: WIND_CLASSES, temp: TEMP_BANDS, rain: RAIN_BANDS }[mode];
+      const m = sumBy();
+      rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color, c.key]);
     }
     else if (mode === 'uphill') {
-      const m = sumBy((i) => (noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down'));
+      const m = sumBy();
       const last = (k) => (k === 'no terrain' ? 2 : k === 'flat / down' ? 1 : 0);
       rows = [...m.entries()].sort((x, y) => last(x[0]) - last(y[0]) || x[0] - y[0])
-        .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k]]);
+        .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k], k]);
     } else if (mode === 'both') {
       // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
-      const m = sumBy((i) => (a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99));
-      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3']
-        : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10]] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k]]));
+      const m = sumBy();
+      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3', k]
+        : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10], k] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k], k]));
     } else if (mode === 'down') {
-      const m = sumBy((i) => (a.down6[i] >= 0 ? a.down6[i] : 'not graded'));
+      const m = sumBy();
       rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
-        .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k]]);
+        .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k], k]);
     } else {
       // where the terrain is missing: not flat, unknown
-      const m = sumBy((i) => (noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min)));
-      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (GRADE_BANDS[k] ? [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1]] : ['no terrain', d, NO_TERRAIN]));
+      const m = sumBy();
+      rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (GRADE_BANDS[k] ? [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1], k] : ['no terrain', d, NO_TERRAIN, k]));
     }
     return rows;
   }

@@ -754,10 +754,12 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .bd-body { padding: 4px 6px 0; }
 .bd-bar { display: flex; width: 100%; height: 8px; overflow: hidden; border-radius: 999px; }
 .bd-bar span { display: block; height: 8px; }
+.bd-bar .bd-preview { box-shadow: inset 0 0 0 2px var(--text); }
 .bd-legend { display: grid; gap: 3px 20px; font-size: 12px; line-height: 1.4; color: var(--muted); }
 .bd-item { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: baseline; gap: 6px; }
 .bd-item i { width: 9px; height: 9px; border-radius: 3px; align-self: center; }
 .bd-item b { color: var(--text); font-weight: 600; white-space: nowrap; }
+.bd-item.bd-preview { background: var(--accent-soft); color: var(--text); border-radius: 3px; box-shadow: 0 0 0 2px var(--accent-soft); }
 @container (min-width: 480px) { .bd-legend:has(> .bd-item:nth-child(2)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .list:empty { display: none; }
