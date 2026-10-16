@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
-### Fixed: Heads-up says when the route takes a way marked private or closed (#105)
+### Fixed: Heads-up says when the route takes a way marked private or closed ([#116](https://github.com/TommiContursi/Polku/pull/116))
 - **On foot, a way marked `foot=private` or `foot=no` gets a Heads-up row.** Before, a Run or Hike route could take 120 m of a delivery road marked foot=private without a word, because the routing service counts it as open when bikes may use it.
 - **The rows say what OpenStreetMap says, not what the law is:** "Marked private in OpenStreetMap", with the tag and what private usually means (factory and military sites, house yards, roads closed by a sign). In Finland private roads and apartment-block yards are open on foot and by bike, so a way there may be tagged wrong: the row's ⋯ has **Tagged wrong? Leave a note on OpenStreetMap**.
 - **The sport's own tag wins:** a footway marked `access=no` but `foot=yes` is open to walkers, and no longer gets a row on foot. On a bike it's `bicycle=yes` that opens it.
