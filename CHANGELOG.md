@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
-### Other ways: sooner, side by side, and easy to compare (#211)
+### Other ways: sooner, side by side, and easy to compare ([#212](https://github.com/TommiContursi/Polku/pull/212))
 - **Other ways come sooner:** a moment after the new part of the route is in, without waiting for the climbing to be worked out. When you're taking your time between points, both come together instead of a few seconds apart. With your own routing server (Settings), both come after half a second.
 - **They look like the route:** as wide, with its white edge and glow, in blue, under your route. Blue isn't a trail colour, so they stand out on the trail map. The one under your mouse lights up. The way you had stays grey after you take another.
 - **Your route gets a label too,** in the same form, so you can compare: "This way · 61 % trails" beside "Other way · +40 m · 22 % trails". The percentage is how much of that part is on paths and tracks. The labels always show; distance marks step aside for them while you choose.
