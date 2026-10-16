@@ -2,7 +2,7 @@
 
 **GitHub holds what to do; the repo holds how things work.** Every bug, improvement, idea and risk to watch is a GitHub issue, which holds its status. This file says how the order is decided, the order of the phases, and what holds for all of them. How to work on Polku is in [AGENTS.md](../AGENTS.md).
 
-- **The board:** [Polku's project](https://github.com/TommiContursi/Polku/projects): Now, Next, Later, Someday. Work is picked from Now, top first.
+- **The board:** [Polku](https://github.com/users/TommiContursi/projects/1): Now, Next, Later, Someday. Work is picked from Now, top first.
 - **[Milestones](https://github.com/TommiContursi/Polku/milestones):** one for each planned phase, with its phase issue and the issues that belong to it, and one for each round of fixes.
 - **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`.
 - **Designs:** [docs/plans/](plans/), one file for each planned phase. Finished phases are in [plans/done.md](plans/done.md).

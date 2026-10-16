@@ -27,7 +27,7 @@ status. ROADMAP holds the order of the phases, `docs/plans/` their designs,
 DEVELOPING how Polku works. Nothing to do is listed in the docs.
 
 - **Pick from the board's Now column,** top first
-  ([the project](https://github.com/TommiContursi/Polku/projects)), then the
+  ([the project](https://github.com/users/TommiContursi/projects/1)), then the
   open milestone it belongs to. Nothing from Later or Someday without the
   user's OK.
 - **Claim it first:** a comment on the issue with your branch, saying which

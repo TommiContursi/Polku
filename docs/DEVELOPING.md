@@ -2,7 +2,7 @@
 
 Polku is a static site with no build step and no backend: `index.html`, plain ES modules, and MapLibre GL JS from a CDN. [polku.si](https://polku.si) is served by GitHub Pages from `main`.
 
-What to do is on GitHub: the [issues](https://github.com/TommiContursi/Polku/issues), the [milestones](https://github.com/TommiContursi/Polku/milestones) and the [board](https://github.com/TommiContursi/Polku/projects). The order of the phases is in [ROADMAP.md](ROADMAP.md), their designs in [plans/](plans/), and what's shipped in the [changelog](../CHANGELOG.md). This file is how Polku works.
+What to do is on GitHub: the [issues](https://github.com/TommiContursi/Polku/issues), the [milestones](https://github.com/TommiContursi/Polku/milestones) and the [board](https://github.com/users/TommiContursi/projects/1). The order of the phases is in [ROADMAP.md](ROADMAP.md), their designs in [plans/](plans/), and what's shipped in the [changelog](../CHANGELOG.md). This file is how Polku works.
 
 How to work on it (what to work on, testing, pull requests, bugs and findings, writing) is in [AGENTS.md](../AGENTS.md), for people and coding agents alike.
 
