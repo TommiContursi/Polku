@@ -22,7 +22,7 @@ import { icon, h, $, toast, store, escapeHtml, popMenu } from './ui.js';
 import { keepInView } from './inspect.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
-import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom } from './styles.js';
+import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
@@ -459,6 +459,12 @@ export class Planner {
   }
 
   // metres along the route to point i
+  // the leg at m metres along the route (-1: none)
+  legAt(m) {
+    for (let i = 0; i < this.legs.length; i++) if (m < this.lengthTo(i + 1) + 0.5) return i;
+    return this.legs.length - 1;
+  }
+
   lengthTo(i) {
     let m = 0;
     for (let k = 0; k < i && k < this.legs.length; k++) {
@@ -853,9 +859,30 @@ export class Planner {
 
   // the router parameters for leg i: its own style, else its sport's (the route's, or your saved one for another sport)
   routerFor(i) {
-    const leg = this.legs[i], sport = this.legSport(i);
-    const base = this.styleOf(sport);
-    return routerOf(sport, (leg && leg.style) || base, this.wet.on);
+    return routerOf(this.legSport(i), this.legStyle(i), this.wet.on);
+  }
+  legStyle(i) { const leg = this.legs[i]; return (leg && leg.style) || this.styleOf(this.legSport(i)); }
+
+  // Heads-up's Short cut (#106): this leg's style with Short cuts ok, and its points that the
+  // router moved off the private way put back where you picked them, so it can take it. One
+  // step of Undo.
+  useShortCut(li, picks = []) {
+    if (!this.legs[li]) return;
+    const base = this.legStyle(li);
+    this.commit();
+    for (const k of picks) {
+      // a new array, as a drag makes (Undo's legs still hold the old one), with what belongs to the point
+      const old = this.points[k], spot = old && this.pspot.get(old);
+      if (!spot) continue;
+      const q = spot.slice();
+      for (const m of [this.pname, this.pchange, this.pstop, this.pcarry]) if (m.has(old)) m.set(q, m.get(old));
+      this.points[k] = q;
+    }
+    this.legs[li].style = { p: base.p, v: { ...(base.v || {}), a: 'cuts' }, wet: base.wet || 'auto' };
+    this.renderStyle();
+    this.renderToolbarState();
+    this.update();
+    toast('Short cuts through ways marked private on this leg: only where you may go', { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // what's on the water on leg i: a swimmer, or your craft
@@ -1065,7 +1092,7 @@ export class Planner {
       if (direction === 'wind') {
         try { const [s] = await pointForecasts([start]); direction = Math.round(sampleAt(s, Date.now() / 1000 + this.startOffsetH * 3600).dir); } catch { direction = null; }
       }
-      const rp = routerOf(sport, this.style, this.wet.on);
+      const rp = routerOf(sport, keepOff(this.style), this.wet.on); // round trips keep off ways marked private (#106)
       // directions not tried yet; when every one has been, the same ones turned a little
       let options = [];
       for (let k = 0; k < 3 && options.length < 3; k++) {
@@ -1507,6 +1534,10 @@ export class Planner {
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
     a.accessWarn = [...this.standInAccess(a), ...this.detourWarnings(a)];
+    for (const w of a.warnings) if (w.hide === 'Private or no access' && /^Marked private/.test(w.text)) {
+      const li = this.legAt(w.at);
+      if (li >= 0 && shortCuts(this.legSport(li), this.legStyle(li))) w.note += ' · you allowed short cuts on this leg: only where you may go';
+    }
     this.app.setData('accessCut', EMPTY);
     this.watchTerrain(a);
     this.renderAnalysis();
@@ -1574,7 +1605,7 @@ export class Planner {
     const said = new Set(); // points whose move a short cut's row explains
     this.legs.forEach((leg, li) => {
       const sport = this.legSport(li);
-      if (leg.mode !== 'auto' || leg.status !== 'ok' || !leg.result || isWater(sport)) return;
+      if (leg.mode !== 'auto' || leg.status !== 'ok' || !leg.result || isWater(sport) || shortCuts(sport, this.legStyle(li))) return;
       const from = this.lengthTo(li), to = this.lengthTo(li + 1);
       const spots = [];
       for (let i = 0; i < a.along.length; i++) if (a.along[i] >= from - 0.5 && a.along[i] <= to + 0.5) spots.push({ ll: a.pts[i], at: a.along[i] });
@@ -1638,7 +1669,7 @@ export class Planner {
       best.picks.forEach((k) => said.add(k));
       const by = best.picks.map((k, j) => `${j ? '' : `${this.label(k).toLowerCase()} was moved `}${j ? `the ${this.label(k).toLowerCase()} ` : ''}${fmtDist(dist(this.pspot.get(this.points[k]), this.points[k]))}`);
       const moved = by.length ? ` · the ${by.join(' and ')} off it` : '';
-      out.push(row({ at: best.at, lngLat: best.cut[0], cut: best.cut, text: 'Goes round a way marked private or closed', note: `a short cut through it would save about ${fmtDist(Math.round(best.saved / 10) * 10)}${moved} · from the map: routes keep off it` }));
+      out.push(row({ at: best.at, lngLat: best.cut[0], cut: best.cut, cutLeg: li, picks: best.picks, text: 'Goes round a way marked private or closed', note: `a short cut through it would save about ${fmtDist(Math.round(best.saved / 10) * 10)}${moved} · from the map: routes keep off it` }));
     });
     // a point moved off one, where no short cut says so
     this.points.forEach((p, i) => {
@@ -4013,6 +4044,7 @@ export class Planner {
       const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
         h('button', { type: 'button', class: 'li', html: `${ico}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${where}${w.note ? ` · ${escapeHtml(w.note)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
         avoid && this.legs.some((l) => l.mode === 'auto' || l.mode === 'water') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null,
+        w.cutLeg != null ? h('button', { type: 'button', class: 'btn', title: 'Let this leg take the short cut (Route style: Ways marked private → Short cuts ok). Only where you may go.', onclick: () => this.useShortCut(w.cutLeg, w.picks) }, 'Short cut') : null,
         kind || (w.osm && w.lngLat) ? h('button', {
           type: 'button', class: 'tool small li-more', title: 'More: hide this kind, or correct the map', 'aria-label': `More for “${w.text}”`, 'aria-haspopup': 'menu', html: icon('more', 16),
           onclick: (e) => {

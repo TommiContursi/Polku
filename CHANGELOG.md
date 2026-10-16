@@ -4,6 +4,13 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Short cuts through ways marked private, when you may go there (#106)
+- **Route style has a new setting, Ways marked private: Keep off or Short cuts ok,** in every land sport. Keep off is how routes always were. With Short cuts ok, a route may go through a way marked private in OpenStreetMap where it saves a real distance (about 40 % of the private stretch's length); ways marked no access stay closed.
+- **Only where you may go.** Private usually means closed (factory and military sites, house yards, roads closed by a sign), but in Finland private roads and apartment-block yards are open on foot and by bike. So it's never on by itself: no preset sets it, round trips keep off, and on a leg that takes one Heads-up says "you allowed short cuts on this leg".
+- **From Heads-up, one tap:** "Goes round a way marked private or closed" has a **Short cut** button. It sets Short cuts ok for that leg only and puts back the points the router had moved off the way, so the leg can go through. Undo puts it all back.
+- **It travels with the route:** in share links (an older link keeps off), saved routes and Undo. For a whole route, set it in Route style; for one leg, in the leg's own style.
+- **How:** Polku asks the routing service with its own copy of the sport's profile, uploaded once per visit. If the service won't take it, the leg keeps off and a note says so.
+
 ### Fixed: a route that goes round a way marked private says so ([#117](https://github.com/TommiContursi/Polku/pull/117))
 - **Ways marked private or closed for your sport have purple dots beside them** on the map, from zoom 14: `access=private` or `no` without a yes for your sport, and on foot `foot=no`. Routes keep off them, so now you can see why a route goes round. The map key has them, and hover and the way's card say "marked private or no access" (the map's tiles can't tell the two apart).
 - **Heads-up says when a leg goes round one,** and how much a short cut through it would save: "Goes round a way marked private or closed · a short cut through it would save about 370 m". A tap on the row draws the short cut on the map. Polku works this out from the map it already has, with no extra calls.

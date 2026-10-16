@@ -98,6 +98,13 @@ CASES = {
         'no-stairs': {'allow_steps': 0},
         'any-path': {'hiking_routes_preference': 0.05},
     }),
+    # Short cuts ok (#106): a private footway in Jyväskylä (OSM way 195601987) between two
+    # public ways; Polku's profile must be uploaded first (Short cuts ok once in the app, or
+    # POST profiles/polku-hike.brf to …/brouter/profile/custom_polku-hike-1)
+    'private-jkl': ('custom_polku-hike-1', [[25.749722, 62.247084], [25.748316, 62.246298]], {
+        'keep-off': {},
+        'short-cuts': {'allow_private': 1},
+    }),
 }
 
 PAVED = {'asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'chipseal', 'concrete:plates'}

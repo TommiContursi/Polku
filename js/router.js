@@ -97,6 +97,9 @@ function ensureProfile(profile, signal, again = false) {
   return uploaded.get(k);
 }
 
+// the variables only Polku's own profiles have (a stock profile can't take them)
+const OWN_VARS = new Set(['unpaved_mainroad_factor', 'allow_private']);
+
 async function brouter(pts, profile, signal, nogos, maxWait, params, retried = false) {
   const custom = !!CUSTOM_PROFILES[profile];
   if (custom) {
@@ -104,9 +107,10 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
       await ensureProfile(profile, signal);
     } catch (e) {
       if (e.name === 'AbortError' || e.name === 'Limited') throw e;
-      // can't use Polku's profile: the stock one it's made from, without its own variable
-      const r = await brouter(pts, CUSTOM_PROFILES[profile].stock, signal, nogos, maxWait, {});
-      return { ...r, note: 'Paved only isn’t available right now (the routing server didn’t take Polku’s road profile), so gravel main roads may be used.' };
+      // can't use Polku's profile: the stock one it's made from, without Polku's own variables
+      const rest = Object.fromEntries(Object.entries(params || {}).filter(([k]) => !OWN_VARS.has(k)));
+      const r = await brouter(pts, CUSTOM_PROFILES[profile].stock, signal, nogos, maxWait, rest);
+      return { ...r, note: CUSTOM_PROFILES[profile].note };
     }
   }
   // processUnusedTags: the answer carries every tag BRouter knows (trail visibility, obstacles,
