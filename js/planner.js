@@ -1808,7 +1808,7 @@ export class Planner {
       a.trailWarn = trailWarnings(a, opt());
       a.trailMore = true; // width and points from OSM are in
       if (this.colorMode === 'width' || this.colorMode === 'vis') this.renderAnalysis();
-      else this.renderWarnings();
+      else { this.renderWarnings(); this.renderBreakdown(); }
     } catch { /* the router's tags still stand */ }
   }
 
@@ -3787,7 +3787,7 @@ export class Planner {
         : this.points.length ? 'Add another point to make a route' : `${tap[0].toUpperCase()}${tap.slice(1)} the map to add a start point`));
 
       this.chart.setData(null);
-      this.els.breakdown.innerHTML = '';
+      this.renderBreakdown();
       this.els.climbs.innerHTML = '';
       this.els.warnings.innerHTML = '';
       this.els.wind.innerHTML = '';
@@ -3878,13 +3878,67 @@ export class Planner {
     if (this.app.onAnalysis) this.app.onAnalysis(a);
   }
 
+  // Every applicable kind with data, independent of the current profile colour.
+  // Keep the controls in place during updates so focus and folded bars stay put.
   renderBreakdown() {
+    const a = this.analysis, box = this.els.breakdown;
+    if (!a) { box.replaceChildren(); this.breakdownKinds = {}; return; }
+    this.breakdownKinds ||= {};
+    let count = 0;
+    for (const [mode, label] of Object.entries(COLOR_MODES)) {
+      const rows = this.modeApplies(mode) ? this.breakdownRows(mode) : [];
+      let kind = this.breakdownKinds[mode];
+      if (!rows.length) { if (kind) kind.el.hidden = true; continue; }
+      count++;
+      if (!kind) {
+        const id = `colour-${mode}`, open = store.get('sections', {})[id] !== false;
+        const active = h('small', { class: 'bd-active' }, 'Colour by');
+        const pick = h('button', { type: 'button', class: 'bd-title', title: `Colour the profile by ${label.toLowerCase()}`,
+          onclick: () => this.showMode(mode) }, label, active);
+        const body = h('div', { class: 'bd-body', id, hidden: !open });
+        const fold = h('button', { type: 'button', class: 'tool bd-fold', 'aria-label': `${open ? 'Fold' : 'Expand'} ${label.toLowerCase()} breakdown`,
+          'aria-expanded': String(open), 'aria-controls': id, html: icon('chevronDown', 16), onclick: () => {
+            body.hidden = !body.hidden;
+            fold.setAttribute('aria-expanded', String(!body.hidden));
+            fold.setAttribute('aria-label', `${body.hidden ? 'Expand' : 'Fold'} ${label.toLowerCase()} breakdown`);
+            store.set('sections', { ...store.get('sections', {}), [id]: !body.hidden });
+          } });
+        const el = h('section', { class: 'bd-kind', 'data-colour': mode, 'aria-label': `${label} on the route` },
+          h('div', { class: 'bd-head' }, pick, fold), body);
+        kind = this.breakdownKinds[mode] = { el, pick, active, body };
+      }
+      kind.el.hidden = false;
+      // Insert in the same order as Colour by, including kinds whose data arrived late.
+      const next = box.children[count - 1];
+      if (next !== kind.el) box.insertBefore(kind.el, next || null);
+      const selected = this.colorMode === mode;
+      kind.pick.setAttribute('aria-pressed', String(selected));
+      kind.active.hidden = !selected;
+      const bar = h('div', { class: 'bd-bar', 'aria-hidden': 'true' });
+      const legend = h('div', { class: 'bd-legend' });
+      for (const [label, d, color] of rows) {
+        if (!(d > 0)) continue;
+        const pct = (d / a.total) * 100;
+        bar.append(h('span', { style: `width:${pct}%;background:${color}`, title: `${label}: ${fmtDist(d)}` }));
+        const text = String(label);
+        legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}` }), `${text[0].toUpperCase()}${text.slice(1)} `, h('b', {}, fmtDist(d))));
+      }
+      kind.body.replaceChildren(bar, legend);
+    }
+    this.setSection('colours', { title: 'On the route', count, empty: !count });
+  }
+
+  // Full distance accounting, including unknown stretches once a kind has data.
+  breakdownRows(mode) {
     const a = this.analysis;
-    const box = this.els.breakdown;
-    box.innerHTML = '';
-    if (!a) return;
-    // Check: the profile's colours in kilometres, named by what they show
-    this.setSection('colours', { title: `${COLOR_MODES[this.colorMode] || 'The colours'} on the route`, summary: '' });
+    if (!a || !(a.total > 0)) return [];
+    if (['wind', 'temp', 'rain'].includes(mode) && !a.wind) return [];
+    if ((mode === 'width' || mode === 'vis') && (!a.td || !a.td[mode].some((k) => k >= 0))) return [];
+    if (mode === 'surface' && !a.surf.some((k) => k !== 'unknown')) return [];
+    if (mode === 'grade' && a.terrain?.all) return [];
+    if (mode === 'down' && !a.down6.some((k) => k >= 0)) return [];
+    if (mode === 'uphill' && a.terrain?.all && !a.upCls.some((k) => k >= 0)) return [];
+    if (mode === 'both' && a.terrain?.all && !a.upCls.some((k) => k >= 0) && !a.down6.some((k) => k >= 0)) return [];
     let rows;
     const n = a.along.length;
     const sumBy = (fn) => {
@@ -3896,39 +3950,38 @@ export class Planner {
       }
       return m;
     };
-    if (this.colorMode === 'sport') {
+    if (mode === 'sport') {
       const m = sumBy((i) => (a.attr[i] && a.attr[i].sport) || a.activity);
       rows = [...m.entries()].map(([k, d]) => [ACTIVITIES[k] ? ACTIVITIES[k].label : k, d, SPORT_COLORS[k] || '#64748b']);
-    } else if (this.colorMode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown]);
-    else if (this.colorMode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other]);
-    else if ((this.colorMode === 'width' || this.colorMode === 'vis') && a.td) {
-      const sc = TRAIL_SCALES[this.colorMode];
-      const m = sumBy((i) => a.td[this.colorMode][i]);
+    } else if (mode === 'surface') rows = a.surfaces.map(([k, d]) => [k.replace('_', ' '), d, SURFACE_COLORS[k] || SURFACE_COLORS.unknown]);
+    else if (mode === 'way') rows = a.ways.map(([k, d]) => [k, d, WAY_COLORS[k] || WAY_COLORS.other]);
+    else if ((mode === 'width' || mode === 'vis') && a.td) {
+      const sc = TRAIL_SCALES[mode];
+      const m = sumBy((i) => a.td[mode][i]);
       // narrow → wide (clear → barely visible), then the not-mapped and the roads
       rows = [...m.entries()].sort((x, y) => (x[0] < 0) - (y[0] < 0) || (x[0] < 0 ? y[0] - x[0] : x[0] - y[0])).map(([k, d]) => [sc.labels[k + 2], d, sc.colors[k + 2]]);
     }
-    else if (['wind', 'temp', 'rain'].includes(this.colorMode)) {
-      if (!a.wind) { box.append(h('p', { class: 'note' }, a.windError ? (typeof a.windError === 'string' ? a.windError : 'Weather forecast unavailable right now.') : 'Loading the forecast…')); return; }
+    else if (['wind', 'temp', 'rain'].includes(mode)) {
       const w = a.wind;
       const [classes, fn] = {
         wind: [WIND_CLASSES, (i) => windClass(w.head[i], w.speed[i]).key],
         temp: [TEMP_BANDS, (i) => tempBand(w.temp[i]).key],
         rain: [RAIN_BANDS, (i) => rainBand(w.precip[i], w.temp[i]).key],
-      }[this.colorMode];
+      }[mode];
       const m = sumBy(fn);
       rows = classes.filter((c) => m.has(c.key)).map((c) => [c.label, m.get(c.key), c.color]);
     }
-    else if (this.colorMode === 'uphill') {
+    else if (mode === 'uphill') {
       const m = sumBy((i) => (noTerrain(a, i) ? 'no terrain' : a.upCls[i] >= 0 ? a.upCls[i] : 'flat / down'));
       const last = (k) => (k === 'no terrain' ? 2 : k === 'flat / down' ? 1 : 0);
       rows = [...m.entries()].sort((x, y) => last(x[0]) - last(y[0]) || x[0] - y[0])
         .map(([k, d]) => [typeof k === 'string' ? k : UPHILL_TEXT[k], d, typeof k === 'string' ? '#d6dde3' : DIFF_COLORS[k]]);
-    } else if (this.colorMode === 'both') {
+    } else if (mode === 'both') {
       // climbs by uphill grade, the rest by MTB difficulty: S0…S6, then ↑S0…↑S5, then not graded
       const m = sumBy((i) => (a.upCls[i] >= 0 ? 10 + a.upCls[i] : a.down6[i] >= 0 ? a.down6[i] : 99));
       rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (k === 99 ? ['not graded', d, '#d6dde3']
         : k >= 10 ? [`${UPHILL_TEXT[k - 10].split(' · ')[0]} climbs`, d, DIFF_COLORS[k - 10]] : [MTB_SCALE_TEXT[k].split(':')[0], d, DIFF_COLORS[k]]));
-    } else if (this.colorMode === 'down') {
+    } else if (mode === 'down') {
       const m = sumBy((i) => (a.down6[i] >= 0 ? a.down6[i] : 'not graded'));
       rows = [...m.entries()].sort((x, y) => (x[0] === 'not graded' ? 1 : y[0] === 'not graded' ? -1 : x[0] - y[0]))
         .map(([k, d]) => [k === 'not graded' ? k : MTB_SCALE_TEXT[k].split(':')[0], d, k === 'not graded' ? '#d6dde3' : DIFF_COLORS[k]]);
@@ -3937,16 +3990,7 @@ export class Planner {
       const m = sumBy((i) => (noTerrain(a, i) ? GRADE_BANDS.length : GRADE_BANDS.findIndex(([min]) => a.grade[i] >= min)));
       rows = [...m.entries()].sort((x, y) => x[0] - y[0]).map(([k, d]) => (GRADE_BANDS[k] ? [GRADE_BANDS[k][2], d, GRADE_BANDS[k][1]] : ['no terrain', d, NO_TERRAIN]));
     }
-    const bar = h('div', { class: 'bd-bar' });
-    const legend = h('div', { class: 'bd-legend' });
-    for (const [label, d, color] of rows) {
-      const pct = (d / a.total) * 100;
-      if (pct < 0.3) continue;
-      bar.append(h('span', { style: `width:${pct}%;background:${color}`, title: `${label}: ${fmtDist(d)}` }));
-      const text = String(label);
-      legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}` }), `${text[0].toUpperCase()}${text.slice(1)} `, h('b', {}, fmtDist(d))));
-    }
-    box.append(bar, legend);
+    return rows;
   }
 
   renderClimbs() {

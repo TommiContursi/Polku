@@ -278,7 +278,28 @@ def LOCATE(deg=None, more=None, then='', ll=KAUPPI):
     return LOCATE_JS.replace('__S__', json.dumps({'ll': ll, 'deg': deg, 'more': more or {}})).replace('__THEN__', then)
 
 
+# #118: recorded route geometry and a fixed forecast, for matching before/after views.
+COLOURS_PRE = """(async () => {
+  const p = polku.planner, restore = p.restoreSnapshot.bind(p);
+  p.restoreSnapshot = (s) => { s.legs.forEach((l) => { l.mode = 'fixed'; }); restore(s); };
+  p.loadWind = async (a) => { a.windError = true; };
+  (await import(location.origin + '/js/trails.js')).holdFetches();
+  return true;
+})()"""
+COLOURS_VIEW = """(async () => {
+  const p = polku.planner, a = p.analysis, fill = (v) => new Float32Array(a.along.length).fill(v);
+  a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) };
+  p.showMode('way');
+  p.reveal('colours');
+  if (p.layout() === 'sheet') p.setSheetState('full', { remember: false });
+  await new Promise((r) => setTimeout(r, 600));
+  p.sec.colours.el.scrollIntoView({ block: 'start' });
+  return true;
+})()"""
+
 SCENES = {
+    'desk-route-colours': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=COLOURS_VIEW),
+    'phone-route-colours': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', pre=COLOURS_PRE, js=COLOURS_VIEW),
     # #88, #89: the fit button at full, a GPX import over the planner, a loop clicked on the map
     'phone-fit-full': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=FIT_BUTTON),
     'phone-gpx-import': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', js=GPX_IMPORT),

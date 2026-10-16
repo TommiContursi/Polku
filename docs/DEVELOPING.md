@@ -66,6 +66,7 @@ Headless Chrome draws the map in software, and one frame can take a second when 
   - **One line:** a route's parts are joined at junctions into one line where they can be ridden each once (an Euler path), and ridden as fixed legs, with no routing calls.
   - **Share links** carry those legs as references (`lr=`), not as lines.
   - **Search** asks LIPAS's combined layers by name: three small requests per query.
+- **Route colour breakdowns** (`js/planner.js`): Check's `renderBreakdown()` shows every applicable kind with data using `breakdownRows(mode)`, independently of `colorMode`. Each kind keeps its controls and fold state across redraws; fold preferences use `colour-<mode>` keys in the existing `sections` setting. Late weather and trail details refresh these bars even when another colour is selected. Unknown stretches remain in a kind's totals once that kind has data, and short categories stay in the bar and legend.
 - **Weather** (`js/weather.js`, `js/wxmap.js`):
   - **The grid:** forecasts are fetched per point of a fixed, nested lattice and kept an hour, so small moves reuse them. Open-Meteo counts every location as a call.
   - **Along the route:** the route is timed without wind, the forecast is sampled at each point for the hour you'd be there, and the time is estimated again with the head- and tailwind.
