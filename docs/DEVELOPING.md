@@ -75,6 +75,7 @@ Headless Chrome draws the map in software, and one frame can take a second when 
   - Names of points and of places to avoid stay on the device.
 - **Offline** (`js/offline.js`, `sw.js`): the tiles along a route corridor at zoom 5–14 go into Cache Storage, and the service worker serves them when the network is slow (4 s) or gone. OpenFreeMap's weekly tile version is stripped from the cache key. The routed line is saved with the area.
 - **Framing above the planner** (`frame()` in `js/planner.js`): every camera move that shows a route, a loop, a stretch or an imported track goes through it, not `map.fitBounds` with padding of its own. The padding keeps clear of the top bar and the side panel or sheet. A full sheet comes down to half first, and the padding never takes more than three quarters of the map, because MapLibre skips a fit that can't be made with only a console warning. While the sheet changes size, `sheetTop()` uses the height it's going to, from the heights in `css/app.css`: keep the two in step.
+- **Where you are** (`js/locate.js`, `js/heading.js`): Polku watches the GPS itself (not MapLibre's geolocate control) and stops while the page is hidden. The dot glides to each fix; while following, each frame moves the map so the dot stays in the middle of the free map (`planner.viewPadding`), and only until it has arrived. Map moves made for you carry `{ polkuFollow: true }`. A pan (`dragstart` with one finger) or any other move that shifts the map's middle stops following; zooms and turns about the middle keep it. The heading is the compass below 1 m/s and the GPS's course above it. Fixes stay in memory: while location is on, the map's view isn't saved. `tools/smoke.py heading` feeds a GPS and a compass of its own.
 - **Hover** (`js/hover.js`): one `queryRenderedFeatures` call when the pointer rests, never while it moves. It uses the click popup's own layer priority, so the preview always matches the click.
 
 ## Files
@@ -119,7 +120,10 @@ js/idb.js           IndexedDB key–value stores
 js/dem.js           DEM tile sampler
 js/gestures.js      pinch / wheel over the UI → map zoom, trackpad tilt
 js/view3d.js        tilt and rotate pad
-js/compass.js, modal.js, gpx.js, icons.js, geo.js, ui.js
+js/locate.js        where you are: the dot, its accuracy circle and cone, Follow me (the GPS watched here, never stored or sent)
+js/heading.js       which way you face: the compass standing, the GPS's course moving
+js/compass.js       the compass button: north up, drag to rotate, heading up
+js/modal.js, gpx.js, icons.js, geo.js, ui.js
 profiles/           Polku's own BRouter profile (road cycling)
 tools/              dev only: smoke.py, shoot.py, readme_shots.py, probes, cdp.py (headless Chrome), brouter-local.sh, fixtures
 img/base/           base map thumbnails (tools/thumbs.py)

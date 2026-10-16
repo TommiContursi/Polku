@@ -4,6 +4,13 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Which way you face, and Follow me (Phase 23a, [#111](https://github.com/TommiContursi/Polku/pull/111))
+- **The location dot shows which way you face.** A cone points where the top of your phone points, from its compass. While you move faster than a slow walk (about 1 m/s), it follows the way the GPS says you're going instead, which holds up with the phone in a pocket. The cone is narrow when it comes from the GPS and wider from the compass. On an iPhone, Polku asks for the compass when you tap Locate.
+- **Follow me.** A tap on Locate shows where you are and keeps the map on you as you move, north up. On a phone the next tap turns the map to face the way you face, and the one after that turns your location off. Zooming, pinching or turning the map keeps following. A pan, or the map moving somewhere else (a search, showing the route), stops it, and Locate turns into **Follow**: one tap brings you back. With the planner open, you stay in the part of the map it leaves free.
+- **The dot turns grey** when no new position has come for a minute, and Locate says so.
+- **Easier on the battery.** While the page is hidden, Polku stops listening to the GPS and the compass, and starts again when you're back.
+- **Where you are stays on your phone.** Polku keeps your position only in the open page: it isn't saved and isn't sent anywhere. While your location is on, the map's view isn't remembered for your next visit. Share links no longer carry the map's view, and search ("nearer places first") and the ships layer send the map's middle only to about a kilometre.
+
 ### Fixed: on a phone, the map frames your route above the planner ([#110](https://github.com/TommiContursi/Polku/pull/110))
 - **With the planner at full height,** Show the whole route, Use this loop, a new round trip and a tap on a climb or a Heads-up did nothing on the map. Now the planner comes down to half and the map frames the route above it.
 - **A GPX or KML import** lands above the planner when it's open (beside it on desktop), and Analyse & edit frames the track above the planner it opens.

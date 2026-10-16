@@ -124,7 +124,8 @@ export function initSearch(map, input, list, app) {
     const c = map.getCenter();
     const center = [c.lng, c.lat];
     const settle = () => { if (my !== run) return; if (active < 0 && flat.length) active = 0; render(); };
-    const places = request('photon', `${PHOTON}?q=${encodeURIComponent(q)}&limit=7&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}&location_bias_scale=0.4`, { signal })
+    // nearer places first: the map's middle to about a kilometre (while the map follows you, it's where you are)
+    const places = request('photon', `${PHOTON}?q=${encodeURIComponent(q)}&limit=7&lat=${c.lat.toFixed(2)}&lon=${c.lng.toFixed(2)}&location_bias_scale=0.4`, { signal })
       .then((res) => res.json())
       .then((gj) => {
         // a path Photon finds is usually one already under "Trails on the map" (both are OSM)

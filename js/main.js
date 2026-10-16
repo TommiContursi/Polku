@@ -26,6 +26,8 @@ import { $, $$, h, icon, toast, store } from './ui.js';
 import { initGestures } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
+import { Heading } from './heading.js';
+import { Locate } from './locate.js';
 import { onStatus, SOURCES, clock } from './net.js';
 import { renderUsage } from './usage.js';
 import { renderSpeedEditor } from './speeds.js';
@@ -146,15 +148,18 @@ map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-lef
   addEventListener('resize', () => { const n = narrow(); if (n && !wasNarrow) fold(); wasNarrow = n; });
 }
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), 'bottom-left');
-// Zoom, compass and locate live in Polku's own control column (bottom right);
-// MapLibre's geolocate stays for the location dot, out of sight.
-$('.ctrl-compass').append(new CompassControl({ toast }).onAdd(map));
-const geolocate = new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showAccuracyCircle: true });
-map.addControl(geolocate, 'top-right');
+// Zoom, compass and locate live in Polku's own control column (bottom right).
+// Which way you face (heading.js) turns the dot's cone and, heading up, the map.
+const heading = new Heading();
+const compass = new CompassControl({ toast, heading });
+$('.ctrl-compass').append(compass.onAdd(map));
 let viewTimer = 0;
-map.on('moveend', () => {
+map.on('moveend', (e) => {
+  // while your location is on, the view isn't kept (it's around where you are): your position is never stored
+  if (locate.on || e.polkuFollow) return;
   clearTimeout(viewTimer);
-  viewTimer = setTimeout(() => { const c = map.getCenter(); store.set('view', { c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2) }); }, 800);
+  const c = map.getCenter(), view = { c: [+c.lng.toFixed(5), +c.lat.toFixed(5)], z: +map.getZoom().toFixed(2) };
+  viewTimer = setTimeout(() => store.set('view', view), 800);
 });
 // paddling, zoomed in: what the water router will want (rocks, fairways) comes ahead, cached
 map.on('moveend', () => {
@@ -162,9 +167,8 @@ map.on('moveend', () => {
   const b = map.getBounds();
   prefetchWater([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
 });
-// where you were last seen (a LIPAS route you ride starts at the end nearer you)
+// where you were last seen (a LIPAS route you ride starts at the end nearer you), in memory only
 let lastFix = null;
-geolocate.on('geolocate', (p) => { lastFix = { ll: [p.coords.longitude, p.coords.latitude], t: Date.now() }; });
 const whereYouAre = () => (lastFix && Date.now() - lastFix.t < 30 * 60e3 ? lastFix.ll : null);
 map.on('error', (e) => {
   // Tile 404s outside DEM coverage are expected; surface everything else in the console only.
@@ -279,6 +283,16 @@ const planner = new Planner(map, {
   },
 });
 
+// Where you are: the dot, its cone and Follow me. While following, the dot sits in the middle
+// of the map the planner leaves free.
+const locate = new Locate(map, {
+  button: $('#btn-locate'), heading, compass, toast,
+  room: () => (planner.active && !planner.panel.hidden ? planner.viewPadding(0) : null),
+  onFix: (ll) => { lastFix = { ll, t: Date.now() }; },
+});
+// the planner opening, closing or changing size moves the free map: the dot goes with it
+new ResizeObserver(() => locate.kick()).observe($('#planner'));
+
 // MTB difficulty in hover and click details: in MTB, and in any sport with trail colours on
 const showsDifficulty = () => state.activity === 'mtb' || state.trailColors !== 'off';
 const isBike = () => ACTIVITIES[state.activity].group === 'bike';
@@ -379,7 +393,7 @@ function setWeather(patch) {
 }
 // Console debugging: polku.set({ base: 'night' }) etc.
 window.polku = {
-  map, planner, state, uphill, trailDetails: details, lipas, weather, safety, cameras, nautical,
+  map, planner, state, uphill, trailDetails: details, lipas, weather, safety, cameras, nautical, locate, heading, compass,
   set(patch) {
     if (patch.activity) { setActivity(patch.activity); delete patch.activity; }
     Object.assign(state, patch); applyStyle(); configureLayers(); renderLayersPanel(); renderSettingsPanel();
@@ -948,21 +962,6 @@ $('#btn-time').addEventListener('click', toggleTimeline);
 $('#btn-zoom-in').addEventListener('click', () => map.zoomIn());
 $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 
-// Locate drives MapLibre's geolocate control (kept for the location dot, hidden).
-$('#btn-locate').addEventListener('click', () => geolocate.trigger());
-{
-  const sync = () => {
-    const g = $('.maplibregl-ctrl-geolocate');
-    if (!g) return;
-    const b = $('#btn-locate');
-    const on = g.classList.contains('maplibregl-ctrl-geolocate-active') || g.classList.contains('maplibregl-ctrl-geolocate-background');
-    b.setAttribute('aria-pressed', String(on));
-    b.classList.toggle('waiting', g.classList.contains('maplibregl-ctrl-geolocate-waiting'));
-    b.classList.toggle('background', g.classList.contains('maplibregl-ctrl-geolocate-background'));
-  };
-  map.once('load', () => { const g = $('.maplibregl-ctrl-geolocate'); if (g) new MutationObserver(sync).observe(g, { attributes: true, attributeFilter: ['class'] }); });
-}
-
 // Phones: the floating timeline sits above the Plan pill; the map controls ride above it.
 new ResizeObserver(() => {
   const b = $('#wx-bar');
@@ -1093,7 +1092,7 @@ map.on('load', () => {
   syncView3d();
   if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
   // a first visit: show where you are, if the browser may tell (Helsinki stays otherwise)
-  if (firstVisit && navigator.geolocation) setTimeout(() => geolocate.trigger(), 600);
+  if (firstVisit && navigator.geolocation) setTimeout(() => locate.start({ quiet: true }), 600);
   if (state.timeline) setTimeline(true);
   if (shared && shared.points.length) {
     planner.restore(shared);
