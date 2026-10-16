@@ -2744,6 +2744,7 @@ export class Planner {
   shareUrl() {
     const u = new URL(location.href);
     u.search = '';
+    u.hash = ''; // the map's view isn't shared (the link fits the route): while it follows you, it's where you are
     u.searchParams.set('r', encodePolyline(this.points));
     u.searchParams.set('m', this.legs.map((l) => MODE_CODE[l.mode]).join(''));
     u.searchParams.set('a', this.app.activity());

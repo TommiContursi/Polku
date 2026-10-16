@@ -22,6 +22,7 @@
   python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
   python3 tools/smoke.py pacing     # calls made together go out paced and counted (mocked services, a fake clock)
+  python3 tools/smoke.py heading    # where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -2106,6 +2107,241 @@ def pacing(chrome):
     return not fails
 
 
+# 23a, which way you face. Headless Chrome has no GPS and no compass, so the page gets its own:
+# fixes handed to the watch, deviceorientationabsolute events. The dot follows the fixes and the
+# map follows the dot; the cone turns with the compass, and with the GPS's course while moving;
+# turning or zooming the map keeps following, a pan or a move elsewhere stops it and Follow
+# brings it back; the map faces ahead on a phone; nothing runs while the page is hidden, and a
+# dot over a minute old looks it; no fix is sent or stored. The real check is on a phone outdoors.
+HEADING = """(async () => {
+  const errs = [], map = polku.map, L = polku.locate, H = polku.heading, C = polku.compass;
+  const btn = document.querySelector('#btn-locate'), touch = matchMedia('(pointer: coarse)').matches;
+  const frames = (n = 2) => new Promise((ok) => { const f = () => (--n <= 0 ? ok() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+  // until nothing moves: the map, the dot's frames, the compass's turning, the heading's next frame
+  const settle = () => new Promise((ok) => {
+    const t0 = performance.now();
+    let calm = 0;
+    const f = () => {
+      calm = map.isMoving() || L.raf || C.raf || H.frame ? 0 : calm + 1;
+      if (calm >= 2 || performance.now() - t0 > 5000) ok(); else requestAnimationFrame(f);
+    };
+    requestAnimationFrame(f);
+  });
+  // what leaves the page, and what it keeps
+  const out = [], kept = [];
+  const realFetch = window.fetch;
+  window.fetch = (u, o) => { out.push(`${(u && u.url) || u} ${o && typeof o.body === 'string' ? o.body : ''}`); return realFetch(u, o); };
+  const xo = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (m, u) { out.push(String(u)); return xo.apply(this, arguments); };
+  if (navigator.sendBeacon) { const sb = navigator.sendBeacon.bind(navigator); navigator.sendBeacon = (u, d) => { out.push(`${u} ${d}`); return sb(u, d); }; }
+  const si = Storage.prototype.setItem;
+  Storage.prototype.setItem = function (k, v) { kept.push(`${k}=${v}`); return si.call(this, k, v); };
+  // a GPS of our own
+  const watchers = new Map();
+  let wid = 0;
+  Object.defineProperty(navigator, 'geolocation', { configurable: true, value: {
+    watchPosition(ok, err) { watchers.set(++wid, { ok, err }); return wid; },
+    clearWatch(i) { watchers.delete(i); },
+    getCurrentPosition() {},
+  } });
+  const at = (ll, more = {}) => { for (const w of [...watchers.values()]) w.ok({ coords: { longitude: ll[0], latitude: ll[1], accuracy: 10, speed: 0, heading: null, ...more }, timestamp: Date.now() }); };
+  // and a compass: the phone held a little tilted, its top towards `deg`
+  const face = async (deg) => {
+    for (let i = 0; i < 12; i++) {
+      window.dispatchEvent(new DeviceOrientationEvent(H.evt, { alpha: (360 - deg) % 360, beta: 25, gamma: 0, absolute: true }));
+      await frames(1);
+    }
+  };
+  const near = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  const off = () => { const p = map.project(L.shown || [0, 0]), f = L.followPoint(); return Math.hypot(p.x - f[0], p.y - f[1]); };
+  const px = (n) => `${n.toFixed(0)} px`;
+  const drag = async (dx, dy) => {
+    const cv = map.getCanvas(), R = cv.getBoundingClientRect(), x = R.left + R.width / 2, y = R.top + R.height / 2;
+    if (touch) {
+      const t = (k) => [new Touch({ identifier: 1, target: cv, clientX: x + dx * k, clientY: y + dy * k })];
+      const ev = (type, k) => cv.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: type === 'touchend' ? [] : t(k), targetTouches: type === 'touchend' ? [] : t(k), changedTouches: t(k) }));
+      ev('touchstart', 0);
+      for (let k = 1; k <= 8; k++) { await frames(1); ev('touchmove', k / 8); }
+      ev('touchend', 1);
+    } else {
+      const ev = (type, k) => cv.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x + dx * k, clientY: y + dy * k, button: 0, buttons: type === 'mouseup' ? 0 : 1 }));
+      ev('mousedown', 0);
+      for (let k = 1; k <= 8; k++) { await frames(1); ev('mousemove', k / 8); }
+      ev('mouseup', 1);
+    }
+  };
+  const A = [23.82291, 61.51437], B = [23.82291, 61.51473], D = [23.82392, 61.51522];
+
+  // off, then a tap: waiting for the first fix, then following
+  if (L.state() !== 'off') errs.push(`Locate starts ${L.state()}, not off`);
+  btn.click();
+  if (L.state() !== 'waiting' || watchers.size !== 1) errs.push(`a tap on Locate: ${L.state()} with ${watchers.size} GPS watches`);
+  at(A);
+  await settle();
+  if (L.state() !== 'follow') errs.push(`after the first fix: ${L.state()}, not following`);
+  if (btn.getAttribute('aria-pressed') !== 'true') errs.push('Locate not shown pressed while following');
+  if (!document.querySelector('.you-dot') || !document.querySelector('.you-acc')) errs.push('no dot or accuracy circle');
+  if (off() > 2) errs.push(`the first fix is ${px(off())} from the middle of the map`);
+  if (map.getZoom() < 14.9) errs.push(`zoomed to ${map.getZoom().toFixed(1)} for the first fix, not 15`);
+
+  // the cone: the compass where there is one
+  const cone = document.querySelector('.you-cone');
+  if (touch) {
+    if (!cone.hidden) errs.push('a cone before any compass reading');
+    await face(90);
+    await settle();
+    if (cone.hidden || near(L.cone.getRotation(), 90) > 2) errs.push(`facing east, the cone is ${cone.hidden ? 'hidden' : `at ${L.cone.getRotation().toFixed(0)}°`}`);
+    await face(200);
+    await settle();
+    if (near(L.cone.getRotation(), 200) > 2) errs.push(`the cone did not turn to 200°: ${L.cone.getRotation().toFixed(0)}°`);
+  } else if (!cone.hidden) errs.push('a cone on a desktop without a compass or a GPS course');
+
+  // turning the map keeps following, and the cone keeps its direction on the ground
+  map.jumpTo({ bearing: 40 });
+  await settle();
+  if (L.state() !== 'follow' || off() > 2) errs.push(`turning the map: ${L.state()}, the dot ${px(off())} from its place`);
+  if (touch) {
+    const z = /rotateZ\\((-?[\\d.]+)deg\\)/.exec(cone.style.transform);
+    if (!z || near(+z[1], 160) > 2) errs.push(`on a map turned 40°, the cone is drawn at ${z && z[1]}°, not 160°`);
+  }
+  map.jumpTo({ bearing: 0 });
+  await settle();
+
+  // moving: the GPS's own course wins over the compass, and the map follows
+  at(B, { speed: 3, heading: 10 });
+  await settle();
+  const hd = H.current();
+  if (!hd || hd.source !== 'course' || cone.hidden || near(L.cone.getRotation(), 10) > 2) errs.push(`moving at 3 m/s: the cone is ${cone.hidden ? 'hidden' : `at ${L.cone.getRotation().toFixed(0)}° from the ${hd && hd.source}`}, not on the GPS course (10°)`);
+  if (off() > 2) errs.push(`the map did not follow a new fix: the dot is ${px(off())} from its place`);
+  at(B, { speed: 0, heading: null });
+  await settle();
+  if (touch && (!H.current() || H.current().source !== 'compass')) errs.push('standing still again, the cone did not go back to the compass');
+  if (!touch && !cone.hidden) errs.push('standing still on a desktop, the cone stays');
+
+  // the zoom button keeps following
+  document.querySelector('#btn-zoom-in').click();
+  await settle();
+  if (L.state() !== 'follow' || off() > 2) errs.push(`zoom in: ${L.state()}, the dot ${px(off())} from its place`);
+
+  // a pinch (a phone) zooms and keeps following, though its fingers drift
+  if (touch) {
+    const cv = map.getCanvas(), R = cv.getBoundingClientRect(), x = R.left + R.width / 2 + 100, y = R.top + R.height / 2 + 120, z0 = map.getZoom();
+    const t = (k) => [new Touch({ identifier: 1, target: cv, clientX: x - 40 - 30 * k, clientY: y - 40 - 40 * k }), new Touch({ identifier: 2, target: cv, clientX: x + 40 + 90 * k, clientY: y + 40 + 40 * k })];
+    const ev = (type, k) => cv.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: type === 'touchend' ? [] : t(k), targetTouches: type === 'touchend' ? [] : t(k), changedTouches: t(k) }));
+    ev('touchstart', 0);
+    for (let k = 1; k <= 12; k++) { await frames(1); ev('touchmove', k / 12); }
+    ev('touchend', 1);
+    await settle();
+    if (map.getZoom() < z0 + 0.5 || L.state() !== 'follow' || off() > 2) errs.push(`a pinch: zoom ${z0.toFixed(1)} → ${map.getZoom().toFixed(1)}, ${L.state()}, the dot ${px(off())} from its place`);
+  }
+
+  // a pan stops following: Follow, and a new fix moves the dot but not the map
+  await drag(120, 80);
+  await settle();
+  if (L.state() !== 'free') errs.push(`a pan left Locate ${L.state()}, not Follow`);
+  if (!/Follow/.test(btn.textContent) || btn.getAttribute('aria-pressed') !== 'false') errs.push('no Follow on the button after a pan');
+  const c1 = map.getCenter();
+  at(D);
+  await settle();
+  if (map.getCenter().lng !== c1.lng || map.getCenter().lat !== c1.lat) errs.push('the map moved to a new fix after a pan');
+  const pd = map.project(D), ps = map.project(L.shown);
+  if (Math.hypot(pd.x - ps.x, pd.y - ps.y) > 1) errs.push('the dot did not move to the new fix after a pan');
+  btn.click();
+  await settle();
+  if (L.state() !== 'follow' || off() > 2) errs.push(`Follow did not bring the map back: ${L.state()}, the dot ${px(off())} from its place`);
+
+  // a move elsewhere (a fit to the route, a search) stops it too
+  map.jumpTo({ center: [23.70, 61.45] });
+  await settle();
+  if (L.state() !== 'free') errs.push(`a move elsewhere left Locate ${L.state()}, not Follow`);
+  btn.click();
+  await settle();
+
+  // the planner open: the dot sits in the map it leaves free
+  polku.planner.setActive(true);
+  await settle();
+  at(A);
+  await settle();
+  const pr = document.querySelector('#planner').getBoundingClientRect(), pa = map.project(L.shown);
+  if (L.state() !== 'follow' || off() > 2) errs.push(`with the planner open: ${L.state()}, the dot ${px(off())} from its place`);
+  else if (touch ? pa.y > pr.top - 20 : pa.x < pr.right + 20) errs.push('with the planner open, the dot is behind it');
+  polku.planner.setActive(false);
+  await settle();
+
+  // facing ahead (a phone): the next tap turns the map with you, about your dot
+  if (touch) {
+    btn.click();
+    await face(200);
+    await settle();
+    if (L.state() !== 'ahead') errs.push(`the second tap: ${L.state()}, not facing ahead`);
+    if (near(map.getBearing(), 200) > 3) errs.push(`facing ahead, the map's bearing is ${map.getBearing().toFixed(0)}°, not 200°`);
+    if (off() > 2) errs.push(`facing ahead, the dot is ${px(off())} from its place`);
+    await face(150);
+    await settle();
+    if (near(map.getBearing(), 150) > 3) errs.push(`turning to 150°, the map's bearing is ${map.getBearing().toFixed(0)}°`);
+  }
+  // the last tap: off, the GPS let go, north up again
+  btn.click();
+  await settle();
+  if (L.state() !== 'off' || watchers.size || document.querySelector('.you-dot')) errs.push(`the last tap: ${L.state()}, ${watchers.size} GPS watches, ${document.querySelector('.you-dot') ? 'a dot' : 'no dot'}`);
+  if (Math.abs(map.getBearing()) > 0.5) errs.push(`off again, the map stays turned (${map.getBearing().toFixed(0)}°)`);
+  if (H.listening) errs.push('off again, the compass is still listened to');
+
+  // hidden: no GPS, no compass, no frames; back after a minute: the dot looks old until a new fix
+  btn.click();
+  at(A);
+  await settle();
+  const hide = (v) => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => v });
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (v ? 'hidden' : 'visible') });
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+  if (L.state() !== 'follow') { errs.push(`Locate again: ${L.state()}, not following`); return errs; }
+  hide(true);
+  if (watchers.size || L.raf || H.listening) errs.push(`hidden: ${watchers.size} GPS watches, ${L.raf ? 'frames' : 'no frames'}, the compass ${H.listening ? 'listened to' : 'let go'}`);
+  L.fix.t -= 61e3;
+  hide(false);
+  delete document.hidden;
+  delete document.visibilityState;
+  if (watchers.size !== 1 || !H.listening) errs.push(`visible again: ${watchers.size} GPS watches, the compass ${H.listening ? 'listened to' : 'let go'}`);
+  const dot = document.querySelector('.you-dot');
+  if (!dot.classList.contains('stale') || !/no newer position/.test(btn.getAttribute('aria-label'))) errs.push('back after a minute, the dot does not look old, or Locate does not say so');
+  at(A);
+  if (dot.classList.contains('stale')) errs.push('a new fix left the dot looking old');
+  L.stop();
+
+  // a GPS that gives no course or speed (some do while still): worked out from the way covered
+  const { Heading } = await import(location.origin + '/js/heading.js');
+  const g = new Heading(), t0 = Date.now() - 5000;
+  g.fix({ longitude: A[0], latitude: A[1], accuracy: 5, speed: null, heading: null }, t0);
+  g.fix({ longitude: A[0] + 0.0004, latitude: A[1] + 0.0002, accuracy: 5, speed: null, heading: null }, t0 + 5000);
+  const gc = g.current();
+  if (!gc || gc.source !== 'course' || near(gc.deg, 43) > 3) errs.push(`no course worked out from two fixes 5 s and 30 m apart: ${gc ? `${gc.deg.toFixed(0)}° from the ${gc.source}` : 'none'}`);
+
+  // nothing about where you were left the page or was kept
+  const fixRe = /61\\.514[0-9]|61\\.5152|23\\.8229|23\\.8239/;
+  for (const s of out.filter((s) => fixRe.test(s))) errs.push(`sent: ${s.slice(0, 140)}`);
+  for (const s of kept.filter((s) => fixRe.test(s))) errs.push(`stored: ${s.slice(0, 140)}`);
+  return errs;
+})()"""
+
+
+def heading(chrome):
+    ok = True
+    for w, h, phone in [(390, 844, True), (1440, 900, False)]:
+        pg = chrome.page(w, h, phone)
+        try:
+            pg.open_app({'activity': 'hike'}, {'polku:plannerDock': '"left"'})
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            fails = pg.js(HEADING)
+            fails += [f'console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+        print(f"{'ok  ' if not fails else 'FAIL'} where you are, which way you face, follow me ({w}x{h})" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+        ok = not fails and ok
+    return ok
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -2229,6 +2465,8 @@ def main():
             ok = sweep(chrome) and ok
         if not only or 'drawer' in only:
             ok = drawer(chrome) and ok
+        if not only or 'heading' in only:
+            ok = heading(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue

@@ -53,7 +53,7 @@ Also approved:
 | — | Fix: routing calls asked for together wait their turn (5 in 10 s for brouter.de, one a second for Valhalla), and every call that goes out is counted, retries too | `fix/request-pacing-66` | [#79](https://github.com/TommiContursi/Polku/pull/79) | merged |
 | — | Fix: a paddling route is routed again when OpenStreetMap's rocks come late (it kept the route made without them), and so is a leg still being routed when they come | `fix/water-hazards-recover-67` | [#81](https://github.com/TommiContursi/Polku/pull/81) | merged |
 | — | Docs: phase 24, a design review, planned (research first) | `docs-design-review` | [#98](https://github.com/TommiContursi/Polku/pull/98) | merged |
-| 23a | Which way you face: the location dot shows your heading; follow me | `heading` | — | planned |
+| 23a | Which way you face: the location dot shows your heading; follow me | `heading` | [#PRNUM](https://github.com/TommiContursi/Polku/pull/PRNUM) | merged |
 | 24 | Design review: the whole design looked at on a phone and a desktop with design skills made for coding agents; what's worth doing becomes issues | `design-review` | — | planned |
 | 21 | Say what it means: every colour and line explained in its hover and card, everything Polku works out shown, the per-sport place kinds as switches, a clicked road highlighted | `explain` | — | planned |
 | 22b | The panel on desktop moves: drag it to dock left, right or at the bottom, resize it, fold it | `panel-dock` | — | planned |
@@ -1558,6 +1558,14 @@ New in 22a:
 - The dot gets a cone for your heading: the compass when standing, the GPS's own course when moving (above about 1 m/s, where the compass in a pocket is unreliable).
 - Its accuracy circle stays.
 - A follow-me button keeps the map on you, north up or facing ahead.
+
+**Built (23a), 2026-10-16** (`js/locate.js`, `js/heading.js`, `js/compass.js`; PR #PRNUM):
+- **Polku watches the GPS itself** instead of MapLibre's geolocate control, so it can stop while the page is hidden, glide the dot between fixes and follow without resetting your zoom (MapLibre's zoomed back to 15 on every fix, and any zoom stopped it).
+- **Locate goes off → following (north stays up) → facing ahead → off.** Facing ahead is the compass button's heading-up, so either button turns it on or off, and on a desktop (no compass) the second tap turns location off. Following stops on a pan or when something else moves the map elsewhere; zooming, pinching and turning keep it. After a pan Locate reads **Follow**.
+- **The heading:** the compass when slower than 1 m/s (back below 0.7), the GPS's course above it, or a course worked out from 8 m of way when the GPS gives none. On Android, from the absolute orientation with the phone's tilt allowed for; on iOS, its own compass heading, asked for on the Locate tap. Both read magnetic north (BACKLOG).
+- **Where the dot sits:** the middle of the map that the planner leaves free (its `viewPadding`). Facing ahead turns the map about the dot.
+- **Battery:** the GPS at high accuracy, fixes up to a second old; the compass only while the cone or heading-up shows; frames only while the dot or the map is still moving; a small dead band before the map turns; nothing while hidden.
+- **Privacy:** fixes stay in the page's memory. While location is on, `main.js` keeps no map view; share links drop the `#zoom/lat/lon`; search's bias and the ships query use the map's middle to two decimals. The smoke check feeds a GPS and a compass of its own and checks nothing it sends or stores has the fixes.
 
 **23b: on the way.**
 - **Start** in Go turns the drawer into On the way (see the mock-up). Your position is snapped to the route, only ever forwards, so a loop's crossings don't confuse it.

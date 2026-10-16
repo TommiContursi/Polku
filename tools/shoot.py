@@ -236,7 +236,46 @@ def NO_TERRAIN(part=False):
     return ("(() => { const real = window.fetch; window.fetch = (u, i) => { const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\//.exec(String(u));"
             f" if (m && ({fail})) return Promise.reject(new TypeError('Failed to fetch')); return real(u, i); }}; return true; }})()")
 
+# Phase 23a: where you are, with a GPS and a compass of the page's own (headless Chrome has
+# neither): a fix every second, the phone facing `deg` (the compass keeps talking), or `more`
+# for the fix (a speed and a course: moving); then the scene's own steps. Older code shows
+# MapLibre's dot.
+LOCATE_JS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), oks = [], S = __S__;
+  Object.defineProperty(navigator, 'geolocation', { configurable: true, value: {
+    watchPosition(ok) { oks.push(ok); return oks.length; }, clearWatch() {}, getCurrentPosition(ok) { oks.push(ok); } } });
+  const fix = () => { for (const ok of oks) ok({ coords: { longitude: S.ll[0], latitude: S.ll[1], accuracy: 18, altitude: null, altitudeAccuracy: null, speed: 0, heading: null, ...S.more }, timestamp: Date.now() }); };
+  const face = () => window.dispatchEvent(new DeviceOrientationEvent(polku.heading ? polku.heading.evt : 'deviceorientationabsolute', { alpha: (360 - S.deg) % 360, beta: 25, gamma: 0, absolute: true }));
+  document.querySelector('#btn-locate').click();
+  fix();
+  if (S.deg != null) setInterval(face, 150);
+  setInterval(fix, 1000);
+  await wait(1500);
+  __THEN__
+  return true;
+})()"""
+KAUPPI = [23.80461, 61.51217]  # on the Kauppi route (tools/fixtures/route-kauppi-mtb.json)
+AHEAD = "document.querySelector('#btn-locate').click(); await wait(1500);"
+PANNED = "polku.map.panBy([-90, 140], { duration: 0 }); await wait(800);"
+
+
+def LOCATE(deg=None, more=None, then='', ll=KAUPPI):
+    return LOCATE_JS.replace('__S__', json.dumps({'ll': ll, 'deg': deg, 'more': more or {}})).replace('__THEN__', then)
+
+
 SCENES = {
+    # 23a: the dot's cone (the compass; on the desktop, the GPS's course while moving), facing
+    # ahead, Follow after a pan, the planner open with a route, and the same in the dark
+    'phone-locate': dict(PHONE, timeline=False, activity='hike', js=LOCATE(deg=35)),
+    'phone-locate-ahead': dict(PHONE, timeline=False, activity='mtb', js=LOCATE(deg=35, then=AHEAD)),
+    'phone-locate-free': dict(PHONE, timeline=False, activity='gravel', js=LOCATE(deg=35, then=PANNED)),
+    'phone-locate-planner': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=LOCATE(deg=35)),
+    'phone-locate-dark': dict(PHONE, timeline=False, activity='hike', dark=True, base='night', js=LOCATE(deg=35)),
+    'phone-locate-paddle': dict(PHONE, timeline=False, activity='paddle', js=LOCATE(deg=300, ll=[23.7600, 61.5250])),  # on Näsijärvi
+    'desk-locate': dict(DESK, timeline=False, activity='hike', js=LOCATE(more={'speed': 3, 'heading': 60})),
+    'desk-locate-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=LOCATE(more={'speed': 3, 'heading': 60})),
+    'desk-locate-free': dict(DESK, timeline=False, activity='mtb', js=LOCATE(more={'speed': 3, 'heading': 60}, then=PANNED)),
+    'desk-locate-dark': dict(DESK, timeline=False, activity='hike', dark=True, base='night', js=LOCATE(more={'speed': 3, 'heading': 60})),
     # #72: no terrain, and part of it missing (the summary, the profile, Heads-up)
     'desk-no-terrain': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=NO_TERRAIN(), js=TAB('warnings')),
     'phone-no-terrain': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=NO_TERRAIN(), js=TAB('warnings')),
@@ -452,7 +491,10 @@ FIT = ("(() => { const p = polku.planner, a = p.analysis; if (!a) return;"
 def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
-    pg.open_app({'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False)}, sc.get('storage'), **({'hash_': sc['hash']} if 'hash' in sc else {}))
+    if sc.get('dark'):
+        chrome.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'dark'}, {'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+    settings = {'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False), **({'base': sc['base']} if 'base' in sc else {})}
+    pg.open_app(settings, sc.get('storage'), **({'hash_': sc['hash']} if 'hash' in sc else {}))
     if sc.get('pre'):
         pg.js(sc['pre'])  # before any route: e.g. trail-detail tiles the route's analysis will read
     if sc.get('route') or sc.get('water'):

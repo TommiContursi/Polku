@@ -242,11 +242,14 @@ export class SafetyLayers {
     if (!this.on.ships || this.map.getZoom() < 8 || this.loadingShips) return;
     const c = this.map.getCenter();
     const b = this.map.getBounds();
-    const r = Math.min(80, Math.max(5, dist([c.lng, c.lat], [b.getEast(), b.getNorth()]) / 1000));
+    // the view's middle to about a kilometre, and a kilometre more round it: while the map
+    // follows you, the middle is where you are, and that isn't sent
+    const lat = +c.lat.toFixed(2), lon = +c.lng.toFixed(2);
+    const r = Math.min(80, Math.max(5, dist([lon, lat], [b.getEast(), b.getNorth()]) / 1000 + 1));
     this.loadingShips = true;
     try {
       if (!this.metaLoaded) this.loadMeta();
-      const gj = await get(`${MARINE}/api/ais/v1/locations?latitude=${c.lat.toFixed(4)}&longitude=${c.lng.toFixed(4)}&radius=${Math.round(r)}`);
+      const gj = await get(`${MARINE}/api/ais/v1/locations?latitude=${lat}&longitude=${lon}&radius=${Math.round(r)}`);
       const now = Date.now();
       this.ships = (gj.features || []).filter((f) => now - (f.properties.timestampExternal || 0) < 20 * 60 * 1000).map((f) => {
         const p = f.properties;

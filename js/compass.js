@@ -1,17 +1,23 @@
 // Compass button: the needle always points north (and leans with the tilt).
 // Click: north up. Drag the needle sideways to rotate. On a phone, tapping it
-// while north is up makes the map follow the direction the phone points
-// (heading up, from the device compass); rotating by hand or tapping again ends it.
+// while north is up turns the map to face the way you face (heading up: the
+// compass, or the GPS's course while you move, from heading.js); rotating by
+// hand or tapping again ends it. While the map follows you (locate.js) it turns
+// about your dot, not the middle of the map.
 
 import { h } from './ui.js';
+import { hasCompass } from './heading.js';
+import { FOLLOW } from './locate.js';
 
 const NEEDLE = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2.5 15.6 12H8.4Z" fill="#e5484d"/><path d="M12 21.5 8.4 12h7.2Z" fill="currentColor" opacity=".5"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/></svg>';
-const phoneCompass = () => 'DeviceOrientationEvent' in window && matchMedia('(pointer: coarse)').matches;
 
 export class CompassControl {
-  constructor({ toast }) {
+  constructor({ toast, heading }) {
     this.toast = toast;
+    this.heading = heading;
     this.mode = 'north'; // north | free | heading
+    this.pivot = () => null; // where the map turns about: you, while it follows you
+    this.onMode = () => {};
   }
 
   onAdd(map) {
@@ -39,67 +45,77 @@ export class CompassControl {
     this.needle.style.transform = `rotateX(${this.map.getPitch() * 0.6}deg) rotate(${-b}deg)`;
     if (this.mode !== 'heading') this.mode = Math.abs(b) < 0.5 ? 'north' : 'free';
     this.btn.classList.toggle('heading', this.mode === 'heading');
-    const label = this.mode === 'heading' ? 'Map follows your phone — tap for north up'
+    const label = this.mode === 'heading' ? 'The map faces the way you face — tap for north up'
       : this.mode === 'free' ? 'North up (drag to rotate)'
-        : phoneCompass() ? 'North is up — tap to follow your phone’s direction' : 'North is up — drag here or scroll sideways with two fingers to rotate';
-    this.btn.title = label;
-    this.btn.setAttribute('aria-label', label);
+        : hasCompass() ? 'North is up — tap to face the way you face' : 'North is up — drag here or scroll sideways with two fingers to rotate';
+    if (label !== this.label) {
+      this.label = label;
+      this.btn.title = label;
+      this.btn.setAttribute('aria-label', label);
+    }
+    this.onMode(this.mode);
+  }
+
+  around() {
+    const p = this.pivot();
+    return p ? { around: p } : {};
   }
 
   click() {
     if (this.dragged) { this.dragged = false; return; }
-    if (this.mode === 'north' && phoneCompass()) { this.startHeading(); return; }
+    if (this.mode === 'north' && hasCompass()) { this.startHeading(); return; }
     this.stopHeading();
-    this.map.easeTo({ bearing: 0, duration: 400 });
+    this.map.easeTo({ bearing: 0, duration: 400, ...this.around() }, this.pivot() ? FOLLOW : undefined);
   }
 
+  // Heading up. Called from a tap: heading.ask() reaches iOS's permission request before any await.
   async startHeading() {
-    try {
-      // iOS asks for permission, and only from a tap
-      if (typeof DeviceOrientationEvent.requestPermission === 'function' && (await DeviceOrientationEvent.requestPermission()) !== 'granted') {
-        this.toast('Compass access was declined');
-        return;
-      }
-    } catch {
-      this.toast('The compass isn’t available here');
+    const allowed = await this.heading.ask();
+    if (allowed !== 'granted' && !this.heading.current()) {
+      this.toast('Compass access was declined');
       return;
     }
+    if (this.mode === 'heading') return;
     this.mode = 'heading';
+    this.seen = false;
+    this.heading.need('map', true);
+    this.unsub = this.heading.on(() => this.kick());
     this.sync();
-    let got = false;
-    let target = null;
-    this.evt = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
-    this.onOrient = (e) => {
-      // iOS: webkitCompassHeading (clockwise from north); others: absolute alpha (counter-clockwise)
-      let hd = e.webkitCompassHeading != null ? e.webkitCompassHeading : e.absolute && e.alpha != null ? 360 - e.alpha : null;
-      if (hd == null) return;
-      hd += (screen.orientation && screen.orientation.angle) || 0;
-      got = true;
-      target = hd;
-      if (!this.raf) this.raf = requestAnimationFrame(step);
-    };
-    // ease towards the reading so the map doesn't jitter
-    const step = () => {
-      this.raf = 0;
-      if (this.mode !== 'heading' || target == null) return;
-      const b = this.map.getBearing();
-      const diff = ((target - b + 540) % 360) - 180;
-      if (Math.abs(diff) < 0.8) return;
-      this.map.jumpTo({ bearing: b + diff * 0.3 });
-      this.raf = requestAnimationFrame(step);
-    };
-    window.addEventListener(this.evt, this.onOrient);
-    setTimeout(() => {
-      if (this.mode === 'heading' && !got) { this.stopHeading(); this.toast('No compass reading from this device'); }
+    this.kick();
+    clearTimeout(this.noneTimer);
+    this.noneTimer = setTimeout(() => {
+      if (this.mode === 'heading' && !this.seen && !this.heading.current()) { this.stopHeading(); this.toast('No compass reading from this device'); }
     }, 2500);
   }
 
   stopHeading() {
-    if (this.onOrient) window.removeEventListener(this.evt, this.onOrient);
-    this.onOrient = null;
+    clearTimeout(this.noneTimer);
+    if (this.unsub) { this.unsub(); this.unsub = null; }
+    if (this.heading) this.heading.need('map', false);
     cancelAnimationFrame(this.raf);
     this.raf = 0;
+    this.turning = false;
     if (this.mode === 'heading') { this.mode = 'free'; this.sync(); }
+  }
+
+  kick() {
+    if (!this.raf && this.mode === 'heading') this.raf = requestAnimationFrame(() => this.step());
+  }
+
+  // Ease towards the reading so the map doesn't jitter. A small dead band keeps a hand's
+  // tremble from redrawing the map all the time; it waits while a gesture or animation runs.
+  step() {
+    this.raf = 0;
+    const hd = this.mode === 'heading' && this.heading.current();
+    if (!hd) return;
+    this.seen = true;
+    const b = this.map.getBearing();
+    const diff = ((hd.deg - b + 540) % 360) - 180;
+    if (!this.turning && Math.abs(diff) < 3) return;
+    this.turning = Math.abs(diff) > 0.6;
+    if (!this.turning) return;
+    if (!this.map.isMoving()) this.map.easeTo({ bearing: b + diff * 0.3, duration: 0, ...this.around() }, FOLLOW);
+    this.kick();
   }
 
   // Drag the needle sideways to rotate (MapLibre's compass did this too, but hid it).

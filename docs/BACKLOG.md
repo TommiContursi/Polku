@@ -23,6 +23,11 @@ labelled `enhancement`), which holds its status. The review of 15 October 2026 o
 - **Hidden Heads-up kinds in one place** *(bug sweep, 2026-10-15; goes with ROADMAP 22a's Check tab)*: a kind you hide shows at the end of Heads-up only on a route that has it. Settings could list them all, to bring any back.
 - **Snow below Auto's threshold says nothing where you look** *(2026-10-15; goes with ROADMAP 21)*: at Paljakka a thawing first snow (FMI: 12 cm on 14 October, 3 cm the next morning) left winter off, right by the rule (on from 5 cm), while the route counted the forecast's 6 cm. Only the layers panel says why. A dim ❄ on the sport pill with "Not winter here: 3 cm of snow" would answer it where you look.
 
+- **The compass reads magnetic north** *(found building 23a, 2026-10-16)*: iPhones and Android phones give the heading from magnetic north, which in Finland lies several degrees east of true north, more in the north. The cone and facing ahead are off by that much. A correction from a magnetic model would need its numbers checked; first see how much it shows outdoors.
+- **The address bar shows the map's view** *(23a, 2026-10-16)*: MapLibre writes `#zoom/lat/lon` into the address, so while the map follows you it's where you are, in this browser's history. Polku's share links no longer carry it, but an address copied by hand does.
+- **Facing ahead keeps you in the middle** *(23a, 2026-10-16)*: navigation apps put you lower down with more of the way ahead in view. Worth trying with 23b's On the way.
+- **A tap on the map can stop following** *(23a, 2026-10-16)*: a card near the edge moves the map to show itself, which counts as moving elsewhere. Watch it on the trail.
+
 ### Bigger: later
 - **From the water onto land, and back** *(multisport, 2026-10-15; a proposal waiting for a decision)*:
   - **Today:** in Paddle or Swim, a point on land makes the leg carry over the land to it, drawn dotted orange and timed as a carry. Only a leg that's mostly land offers "Hike instead". A swimmer or a paddler walking from the beach to a lean-to gets a carry instead of a walk.
@@ -96,7 +101,7 @@ labelled `enhancement`), which holds its status. The review of 15 October 2026 o
 - ~~**Round trip from the first click**~~ *(2026-10-15)*: done in 22a (#60). The empty planner offers it, and the first click's card offers a loop from there.
 - ~~**One profile, not two**~~ *(2026-10-15)*: done in 22a (#60). The profile chart itself moved under the summary, with all it had.
 - ~~**The time earlier, the speeds with the style**~~ *(2026-10-15; done in 22a, #60)*: Time & speed opened with the speed inputs, far down. The time goes first in Go, and the speed inputs move beside the route style ("How you go"). In ROADMAP 22a.
-- **Where you are, and the way on** *(2026-10-15)*: the location dot showing which way you face, following you on the map, how far along the route you are, and recording the track, with the phone's own GPS and compass. Now ROADMAP phase 23 (23a–23d).
+- **Where you are, and the way on** *(2026-10-15)*: the location dot showing which way you face, following you on the map, how far along the route you are, and recording the track, with the phone's own GPS and compass. Now ROADMAP phase 23 (23a–23d); 23a done in #PRNUM.
 - The route's colour sits in the header and in the profile *(done in #37)*.
 - **A quick point on the line** (Alt-click, say) if two clicks for a point (#48: a click opens the part's menu, "Add a point here" is its first button) feel slow. Dragging already makes one. *(2026-10-14)*
 - **Departure more than 48 hours ahead** *(13c, 2026-10-14)*: a weekend trip planned on Monday. The route's 10-day forecast would cover it; the timeline (and its weather map) stops at 48 h, so this needs a date picker that leaves the map's timeline alone.
