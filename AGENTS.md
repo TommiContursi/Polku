@@ -130,6 +130,11 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
 - **In the same PR:**
   - CHANGELOG, in plain words for people using Polku (not for docs or tooling);
+  - Review README.md when adding, changing or removing a user-facing
+    capability. Update the relevant sections when the description becomes
+    incomplete or inaccurate, preserving the existing factual style and useful
+    qualifications. Update docs/USING.md when controls or workflows change.
+    Keep release-by-release details in CHANGELOG.md;
   - for a phase: what was built, in its plan in `docs/plans/`, and its row
     taken out of ROADMAP's order. A Fix PR changes neither: the CHANGELOG and
     the closed issue record it;
