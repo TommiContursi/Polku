@@ -2,13 +2,14 @@
 
 Polku is a static site with no build step and no backend: `index.html`, plain ES modules, and MapLibre GL JS from a CDN. [polku.si](https://polku.si) is served by GitHub Pages from `main`.
 
-The plan for upcoming work is in [ROADMAP.md](ROADMAP.md); bugs, ideas and things to watch are in [BACKLOG.md](BACKLOG.md); what's shipped is in the [changelog](../CHANGELOG.md).
+What to do is on GitHub: the [issues](https://github.com/TommiContursi/Polku/issues), the [milestones](https://github.com/TommiContursi/Polku/milestones) and the [board](https://github.com/users/TommiContursi/projects/1). The order of the phases is in [ROADMAP.md](ROADMAP.md), their designs in [plans/](plans/), and what's shipped in the [changelog](../CHANGELOG.md). This file is how Polku works.
 
 How to work on it (what to work on, testing, pull requests, bugs and findings, writing) is in [AGENTS.md](../AGENTS.md), for people and coding agents alike.
 
 ## Bugs and reviews
 
-- Every bug, and every improvement the user wants done (labelled `enhancement`), is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status. BACKLOG keeps loose ideas, known limits and things to watch; ROADMAP plans the phases.
+- Every bug, improvement, idea and risk to watch is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status, labelled by kind (`bug`, `enhancement`, `idea`, `watch`) and size (`small`, `medium`, `big`). Each planned phase, and each round of fixes, is a milestone. ROADMAP orders the phases.
+- `docs/retros/` keeps a short retro for each finished milestone: what cost time, what to keep, and what changed in AGENTS.md because of it.
 - `docs/reviews/` keeps dated reviews of the code with the evidence they were based on. They aren't updated afterwards: what has happened since is in the issues. The first is the [review of 15 October 2026](reviews/2026-10-15/README.md), listed in [#63](https://github.com/TommiContursi/Polku/issues/63).
 
 ## Running it
@@ -59,7 +60,7 @@ Headless Chrome draws the map in software, and one frame can take a second when 
   - **Wind:** each water cell's open-water fetch upwind gives a wave height (JONSWAP), and rough water costs more for the craft.
   - **The path:** A* runs on the grid, and the cell path is string-pulled into straight lines that may not cost more than A*'s way. Land is passable at a high cost, which gives carries.
   - **Slow sources:** each source gets 2.5 s; then the leg is routed without it, Heads-up says so, and neither `router.js` nor `water.js` keeps that leg. When the answer comes (`onWaterData`), the planner routes those legs again, and a leg still being routed then is routed once more in `water.js`.
-  - **No depths.** Traficom's depth data isn't used: its licence excludes route planning. See ROADMAP, phase 13.
+  - **No depths.** Traficom's depth data isn't used: its licence excludes route planning. See phase 13 in [plans/done.md](plans/done.md).
 - **LIPAS routes** (`js/lipas.js`, `js/search.js`):
   - **Precision:** geometry comes in EPSG:3067 at full precision and is converted in `js/geo.js`, because LIPAS's EPSG:4326 output is rounded to about 10 m.
   - **One line:** a route's parts are joined at junctions into one line where they can be ridden each once (an Euler path), and ridden as fixed legs, with no routing calls.
@@ -79,6 +80,22 @@ Headless Chrome draws the map in software, and one frame can take a second when 
 - **Framing above the planner** (`frame()` in `js/planner.js`): every camera move that shows a route, a loop, a stretch or an imported track goes through it, not `map.fitBounds` with padding of its own. The padding keeps clear of the top bar and the side panel or sheet. A full sheet comes down to half first, and the padding never takes more than three quarters of the map, because MapLibre skips a fit that can't be made with only a console warning. While the sheet changes size, `sheetTop()` uses the height it's going to, from the heights in `css/app.css`: keep the two in step.
 - **Where you are** (`js/locate.js`, `js/heading.js`): Polku watches the GPS itself (not MapLibre's geolocate control) and stops while the page is hidden. The dot glides to each fix; while following, each frame moves the map so the dot stays in the middle of the free map (`planner.viewPadding`), and only until it has arrived. Map moves made for you carry `{ polkuFollow: true }`. A pan (`dragstart` with one finger) or any other move that shifts the map's middle stops following; zooms and turns about the middle keep it. The heading is the compass below 1 m/s and the GPS's course above it. Fixes stay in memory: while location is on, the map's view isn't saved. `tools/smoke.py heading` feeds a GPS and a compass of its own.
 - **Hover** (`js/hover.js`): one `queryRenderedFeatures` call when the pointer rests, never while it moves. It uses the click popup's own layer priority, so the preview always matches the click.
+
+## Known limits
+
+How Polku works where data or services fall short, with nothing planned to change. Anything that could be changed is an issue (`idea` or `watch`).
+
+- **Where the terrain is missing, the route's heights are a guess** (found while fixing #72, 2026-10-15): when no zoom of a terrain tile loads, the height runs in a straight line across the gap, so the climb from one side to the other counts but the hills in between don't, and a gap at the start or end is taken as level. Heads-up, the summary and the dashed line in the profile say so, and Polku keeps trying.
+- **Trail details along every route cost Overpass calls** (bug sweep, 2026-10-15): they load for every route on land, gravel and road too (up to 40 tiles a route, cached a week), not only with the map's layer on. Watch the Overpass counter in Settings; a long road route over 40 tiles skips them.
+
+## The free services: limits and quirks
+
+- **brouter.de pauses busy devices** ("retry later", escalating to about 30 minutes). Never burst-test it: use the local BRouter (`tools/brouter-local.sh`). Valhalla on FOSSGIS stands in.
+- **Overpass mirrors are flaky:** 504s on every mirror at times while building phases 12 and 13. Trail details are best-effort and cached; route warnings from BRouter don't depend on it. The water router waits 2.5 s for OSM's rocks, then routes without them (Heads-up says so) and routes the leg again when they arrive (#67, #81). If it gets worse, there's an idea for static data built weekly.
+- **Free tiers, if Polku gets popular:** Open-Meteo 10 000 calls a day per IP, non-commercial; Overpass 10 000 a day in `net.js`; FMI 20 000 a day; GitHub Pages about 100 GB a month of bandwidth. The counters are in Settings → Data sources.
+- **OpenFreeMap's tile URLs change weekly;** saved offline areas use version-free keys (`sw.js`).
+- **LIPAS search costs three requests** per query (12c: the combined layers `lipas_kaikki_reitit` / `lipas_kaikki_pisteet` take one filter for every type). If LIPAS renames or drops those layers, search loses its routes and stops (Places still work).
+- **Traficom's depth layers** are shown "not for navigation" and never used for routing (its licence). If Traficom changes the licence or asks, the layers can be dropped from Paddle's defaults.
 
 ## Files
 
@@ -129,9 +146,9 @@ js/modal.js, gpx.js, icons.js, geo.js, ui.js
 profiles/           Polku's own BRouter profile (road cycling)
 tools/              dev only: smoke.py, shoot.py, readme_shots.py, probes, cdp.py (headless Chrome), brouter-local.sh, fixtures
 img/base/           base map thumbnails (tools/thumbs.py)
-docs/               ROADMAP, BACKLOG, this file, screenshots
+docs/               ROADMAP (the order), plans/ (phase designs), retros/, reviews/, this file, screenshots
 ```
 
 ## Working on it
 
-The rules are in [AGENTS.md](../AGENTS.md). In short: one phase or one fix per pull request, `tools/smoke.py` passes, CHANGELOG, ROADMAP and BACKLOG updated in the same PR, every request through `js/net.js`, share links keep working, and only the user merges.
+The rules are in [AGENTS.md](../AGENTS.md). In short: pick from the board's Now column and claim the issue; one phase or one fix per pull request, with "Fixes #n" and the issue's milestone; `tools/smoke.py` passes; CHANGELOG updated in the same PR (and a phase's plan); every request through `js/net.js`; share links keep working; and only the user merges.

@@ -12,26 +12,43 @@ GitHub Pages from `main`, so **merging a PR publishes it.**
 
 Before bigger work, read [README.md](README.md),
 [docs/DEVELOPING.md](docs/DEVELOPING.md) (the modules, the commands, how the
-trickier parts work), the part of [docs/ROADMAP.md](docs/ROADMAP.md) you're
-working on, [docs/BACKLOG.md](docs/BACKLOG.md) and the latest
-[CHANGELOG.md](CHANGELOG.md) entries.
+trickier parts work), [docs/ROADMAP.md](docs/ROADMAP.md) (the order), your
+phase's plan in [docs/plans/](docs/plans/), the issues in its milestone, and
+the latest [CHANGELOG.md](CHANGELOG.md) entries.
 
 No framework, dependency, backend or build step without a real need and the
 user's OK.
 
 ## What to work on
 
+**GitHub holds what to do; the repo holds how things work.** Every bug,
+improvement, idea and risk to watch is a GitHub issue, and the issue holds its
+status. ROADMAP holds the order of the phases, `docs/plans/` their designs,
+DEVELOPING how Polku works. Nothing to do is listed in the docs.
+
+- **Pick from the board's Now column,** top first
+  ([the project](https://github.com/users/TommiContursi/projects/1)), then the
+  open milestone it belongs to. Nothing from Later or Someday without the
+  user's OK.
+- **Claim it first:** a comment on the issue with your branch, saying which
+  agent you are (Claude Code or Codex: both post as the user's GitHub
+  account), so the other doesn't start on it too. A phase is claimed on its
+  phase issue.
 - **Phases** in ROADMAP's order, one phase per PR, unless the user changes it.
+  Each has a phase issue and a milestone with the issues that go with it.
 - **Confirmed bugs with a small fix** get a Fix PR of their own, between
-  phases, at any time. Don't mix them into a phase. A bug that needs a design
-  first gets a place in ROADMAP, with the user's OK.
-- **An improvement the user wants done** gets a GitHub issue labelled
-  `enhancement`, like a bug, so it can be claimed. A small one is done in a PR
-  of its own when the user picks it; a bigger one goes with its phase in
-  ROADMAP.
-- **A bug you notice but don't fix now** gets a GitHub issue at once. Loose
-  ideas and risks go into BACKLOG as they come up, dated, saying where they
-  came from.
+  phases, at any time, in the open "Fixes" milestone. Don't mix them into a
+  phase. A bug that needs a design first goes into a phase's milestone, with
+  the user's OK.
+- **An improvement the user wants done** is an `enhancement` issue. A small one
+  is done in a PR of its own when the user picks it; a bigger one goes into its
+  phase's milestone.
+- **What you notice but don't do now** gets an issue at once: `bug` for a
+  bug, `idea` for an idea, `watch` for a risk (with a date or a trigger for
+  looking again). Say when and where it came from, and give it a size:
+  `small`, `medium` or `big`. Search first, and add to the one that exists.
+- **Two coding sessions at a time,** unless the user asks for more: more ran
+  into the usage limits ([retro](docs/retros/2026-10-15-16.md)).
 - Docs and tooling PRs stay on their one subject.
 
 ## In the code
@@ -69,6 +86,10 @@ user's OK.
   (`python3 serve.py 8771`) and point the tests at it
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
+- **To test another branch** (a PR to review, `main` to compare), make a
+  worktree of its own (`git worktree add --detach <dir> <commit>`) and serve
+  that on its own port. Never switch the branch of a checkout another session
+  may be using: a test then runs half on one branch and half on the other.
 - **Do what a user does:** click, drag, undo, reload. A button being there
   proves nothing.
 - **Every bug fix gets a check in `tools/smoke.py`** that fails before the fix
@@ -89,43 +110,52 @@ user's OK.
 
 ## Pull requests
 
-- Branch from `main`, or from the previous phase if it isn't merged yet (say so
+- Branch from `main`, or from the PR below yours if it isn't merged yet (say so
   in the PR). First check the branch and any uncommitted changes. Never work on
   another agent's branch.
+- **The repo squash-merges.** When the PR below yours is merged, rebase yours
+  onto `main` without its commits (`git rebase --onto origin/main <old base>`),
+  or it conflicts with the squashed copy of them.
 - **Title** like the history, saying what changes for people using Polku:
   "Phase 22a: the drawer in three tabs", "Fix: the map's credits stay folded on
   phones", "Docs: …". Not `feat:` or `docs:`.
 - **Body:** what changes for the user, how you tested it, what isn't done or
-  is still unknown. "Fixes #65" for the issue it fixes.
+  is still unknown. "Fixes #65" for each issue it fixes (a phase PR: its phase
+  issue, and the milestone's issues it fixes too), and the issues it found.
+- **Milestone:** the PR goes into its issue's milestone. An issue left open in
+  a phase's milestone is moved on, with a reason, before the milestone closes.
 - **Screenshots:** `tools/shoot.py OUTDIR before|after [scenes]` on `main` and
   on the branch, as JPEG on the `pr-screenshots` branch under `<branch>/`
   (no images in `main`), linked as
   `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
 - **In the same PR:**
   - CHANGELOG, in plain words for people using Polku (not for docs or tooling);
-  - for a phase, or a docs PR that changes the plan, its row in ROADMAP's
-    status table, written as **merged**: `main` only says so once it is. A Fix
-    PR gets no row: the CHANGELOG and the closed issue record it, and rows from
-    PRs open at the same time would conflict;
-  - BACKLOG: take out what the PR does, add the ideas and risks you found.
+  - for a phase: what was built, in its plan in `docs/plans/`, and its row
+    taken out of ROADMAP's order. A Fix PR changes neither: the CHANGELOG and
+    the closed issue record it;
+  - DEVELOPING, where how something works has changed.
 - **Never push to `main` or merge** unless the user says so.
+- **When a milestone's last issue closes,** a short retro in `docs/retros/`:
+  what cost time and what to keep, with the PRs and issues as evidence, and
+  what changes in AGENTS.md because of it. Then the milestone is closed.
 
 ## Bugs and findings
 
-- **Every bug gets a GitHub issue,** small ones too, and so does an
-  improvement the user wants done (`enhancement`). Search first, and add to
-  the one that exists. BACKLOG is for loose ideas, known limits and things to
-  watch; phases are planned in ROADMAP, not in issues.
+- **Every bug gets a GitHub issue,** small ones too, and so does every
+  improvement, idea and risk to watch, each with its kind (`bug`,
+  `enhancement`, `idea`, `watch`) and its size. Search first, and add to the
+  one that exists.
 - The issue says what goes wrong and for whom, how to make it happen, what
   should happen, the commit, and whether it's a **confirmed bug**, **a risk to
   look into**, or **a problem with the test machine**. There's a template:
-  "Bug or technical finding".
-- When you start on an issue, comment with your branch and say which agent
-  you are (Claude Code or Codex: both post as the user's GitHub account), so
-  the other doesn't start on it too.
-- **The issue is the one place for its status,** so what has an issue isn't
-  listed in BACKLOG or ROADMAP. "Fixes #n" closes it when the PR merges; anything closed
-  without a fix says why.
+  "Bug or technical finding", and one for an idea. Write it so that someone
+  who wasn't there can act on it: what you found, where in the code, what's
+  still unknown.
+- **The issue is the one place for its status,** so nothing to do is listed in
+  the docs. "Fixes #n" closes it when the PR merges; anything closed without a
+  fix says why (`duplicate`, `wontfix`, or done elsewhere).
+- **Known limits** that are simply how Polku works, with nothing to do, go into
+  DEVELOPING's "Known limits".
 - Claude and Codex may review each other's work. Disagree with evidence;
   neither one's earlier conclusion is final.
 

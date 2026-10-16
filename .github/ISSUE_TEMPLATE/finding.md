@@ -21,5 +21,9 @@ For an investigation, describe what evidence would resolve it.
 
 ## Related work
 
-Existing issue/backlog/roadmap links, dependencies, active contributor and branch/PR
-when work starts. A recommendation here does not change approved priorities.
+Existing issues, the milestone or phase plan (docs/plans/) it belongs to,
+dependencies, active contributor and branch/PR when work starts. A
+recommendation here does not change approved priorities.
+
+Labels: the kind (`bug` for a confirmed defect, `watch` for a risk to look
+into) and the size (`small`, `medium`, `big`).
