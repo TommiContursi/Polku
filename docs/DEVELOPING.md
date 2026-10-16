@@ -130,7 +130,3 @@ docs/               ROADMAP, BACKLOG, this file, screenshots
 ## Working on it
 
 The rules are in [AGENTS.md](../AGENTS.md). In short: one phase or one fix per pull request, `tools/smoke.py` passes, CHANGELOG, ROADMAP and BACKLOG updated in the same PR, every request through `js/net.js`, share links keep working, and only the user merges.
-
-## Project background
-
-Polku started as an experiment loosely inspired by [Trailmap](https://web.trailmap.fi): a trail map of Finland with MTB difficulty. It has since grown its own way, with uphill grades, paddling, weather, safety and offline maps. It is an independent project, not affiliated with Trailmap, and uses none of its data or services.

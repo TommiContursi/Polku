@@ -2,7 +2,10 @@
 
 Polku is a free outdoor map and multi-sport route planner for Finland. It supports mountain biking, gravel and road cycling, hiking, trail running, running, paddling and swimming, including trips that combine sports.
 
-**[Open Polku →](https://polku.si)** · Free to use · No account needed · Works on mobile · [What's new](CHANGELOG.md)
+- [Open Polku](https://polku.si) in your browser.
+- Free to use, no account needed, works on mobile.
+- [Using Polku](docs/USING.md): controls and keyboard shortcuts.
+- [What's new](CHANGELOG.md).
 
 ![An MTB route at Kauppi, Tampere, with the route planner, detailed terrain and an elevation profile](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-planner.jpg?raw=true)
 
@@ -68,8 +71,6 @@ Routes can be imported from GPX or KML, exported as GPX, or shared with a link. 
 
 Polku runs in your browser, with no account, cookies, analytics or backend of its own. Settings, routes (including your last route), cached data and offline areas stay in browser storage. Requests go directly to the data services below, which receive your IP address and the map area or route coordinates needed to answer them.
 
-For controls and keyboard shortcuts, see [Using Polku](docs/USING.md).
-
 ## Data & credits
 
 Polku brings together open data and free public services. Each source keeps its own terms and attribution requirements.
@@ -100,8 +101,10 @@ These data and library licences are separate from Polku's application code. This
 - **The full trail network appears from zoom 14.** Zoom in if trails seem to be missing.
 - **FMI weather and forest-fire warnings are not shown.** No open source currently allows Polku to fetch them directly from a browser.
 
-## Development
+## Background
 
-Polku is a static site with no build step. Run `python3 serve.py` and open <http://localhost:8765>. See [Developing Polku](docs/DEVELOPING.md) for the architecture, tools, tests and project background, and the [roadmap](docs/ROADMAP.md) for planned work.
+Polku grew out of planning outdoor trips with Trailmap, Strava, Komoot, Windy.app, Orca and the National Land Survey's maps. It combines detailed trail maps, multi-sport routes, weather at estimated arrival times and water-route planning in one browser app.
+
+Polku is an independent project. Use it at [polku.si](https://polku.si).
 
 Made by [@TommiContursi](https://github.com/TommiContursi).
