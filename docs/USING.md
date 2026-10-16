@@ -18,6 +18,8 @@ In **Check → On the route**, available colour kinds are grouped into **Terrain
 
 In **Check → On the map**, distance marks, arrival times and elapsed times default on. Arrival is the clock time you reach a mark; elapsed time is the hours, minutes and seconds since departure, including stops and changeovers. Switch them off separately if needed; saved choices are kept. Tap the summary's time estimate to open **Go → Time** and focus its large **Depart** picker. It uses the same departure setting as the start waypoint and weather timeline.
 
+The route glows on the map, and white chevrons drift along it the way it goes; they rest when you leave the map alone, and **Settings → Display → Moving arrows on the route** turns them off.
+
 On a phone, drag the planner's handle to change how much of it is visible. On a desktop, the button at the end of the tabs moves the planner between the side and bottom of the map.
 
 ## Read the map

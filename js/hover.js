@@ -38,9 +38,11 @@ export function initHover(map, app) {
   let route = false; // showing the planner's route readout
   let current = null; // what the tooltip shows
 
+  let glowing = false; // a leg of your route glows brighter because the pointer rests on it
   const hide = () => {
     clearTimeout(timer);
     timer = 0;
+    if (glowing && app.hoverLeg) { app.hoverLeg(null); glowing = false; }
     route = false;
     current = null;
     if (tip.hidden) return;
@@ -65,8 +67,10 @@ export function initHover(map, app) {
     const [x, y] = at;
     const feats = map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers });
     let d = null;
-    if (!planning && map.getLayer('route-casing') && map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers: ['route-casing'] }).length) {
+    const onRoute = !planning && map.getLayer('route-casing') && map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers: ['route-casing'] }).find((f) => f.properties.kind !== 'gap');
+    if (onRoute) {
       d = { title: 'Your route', bits: ['click to edit it'] }; // the planner is closed: a click opens it there
+      if (app.hoverLeg) { app.hoverLeg(onRoute.properties.leg); glowing = true; } // that leg glows brighter (#198)
     }
     if (planning) {
       // the route line has its own live readout (see route() below)

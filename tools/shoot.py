@@ -227,6 +227,15 @@ START_TIP = START.replace("return true; })()", "const m = polku.map, c = m.getCe
                           " await new Promise((r) => setTimeout(r, 700)); return true; })()")
 LEG_LIT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); if (p.setTab) p.setTab('route'); p.reveal('points'); await wait(400);"
            " const r = document.querySelector('.wpl-row[data-i=\"0\"]'); if (r) r.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(400); return true; })()")
+# #198: the route close up with its chevrons moving (reduced motion off), and the leg under the
+# mouse glowing brighter (a real mousemove on the map; older code has no glow)
+FLOW_CLOSE = ("(async () => { const p = polku.planner, m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), a = p.analysis;"
+              " m.jumpTo({ center: a.pts[Math.floor(a.pts.length * 0.35)], zoom: 15.4, ...(p.viewPadding ? { padding: p.viewPadding() } : {}) }); await wait(300);"
+              " await new Promise((ok) => { const t = setTimeout(ok, 8000); if (m.loaded() && m.areTilesLoaded()) ok(); else m.once('idle', () => { clearTimeout(t); ok(); }); }); return true; })()")
+FLOW_HOVER = FLOW_CLOSE.replace("return true; })()", "const cv = m.getCanvas(), R = cv.getBoundingClientRect(), W = cv.clientWidth, H = cv.clientHeight;"
+                                " const q = a.pts.map((x) => m.project(x)).filter((x) => x.x > W * 0.45 && x.x < W * 0.9 && x.y > 120 && x.y < H - 120)[0];"
+                                " if (q) for (let k = 0; k < 3; k++) { cv.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: R.left + q.x, clientY: R.top + q.y + k })); await wait(120); }"
+                                " await wait(400); return true; })()")
 TAB = lambda sec: f"(async () => {{ polku.planner.reveal({json.dumps(sec)}); await new Promise((r) => setTimeout(r, 600)); return true; }})()"
 
 # #72: terrain tiles that don't load, before the route is in: none at all, or (part) the
@@ -488,6 +497,13 @@ SCENES = {
     # a round route: the points on the profile where they are along it (the finish at the end)
     'desk-loop-points': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE,
                              js="(async () => { const p = polku.planner; p.setMode('line'); p.addPoint(p.points[0].slice()); await new Promise((r) => setTimeout(r, 1500)); p.reveal('points'); await new Promise((r) => setTimeout(r, 500)); return true; })()"),
+    'desk-flow': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, motion=True),
+    'desk-flow-close': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, motion=True, js=FLOW_CLOSE),
+    'desk-flow-hover': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, motion=True, js=FLOW_HOVER, settle=0.6),
+    'phone-flow': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', motion=True),
+    'phone-flow-close': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', motion=True, js=FLOW_CLOSE),
+    'desk-flow-paddle': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], storage=SIDE, motion=True),
+    'phone-flow-paddle': dict(PHONE, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='peek', motion=True),
     'desk-start': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START),
     'phone-start': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=START),
     'desk-start-tip': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START_TIP, settle=0.6),
@@ -558,8 +574,9 @@ FIT = ("(() => { const p = polku.planner, a = p.analysis; if (!a) return;"
 def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
-    if sc.get('dark'):
-        chrome.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'dark'}, {'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+    if sc.get('dark') or sc.get('motion'):
+        motion = 'no-preference' if sc.get('motion') else 'reduce'  # motion: what moves (#198's chevrons) moves
+        chrome.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'dark' if sc.get('dark') else 'light'}, {'name': 'prefers-reduced-motion', 'value': motion}]}, pg.s)
     settings = {'activity': sc.get('activity', 'mtb'), 'timeline': sc.get('timeline', False), **({'base': sc['base']} if 'base' in sc else {})}
     pg.open_app(settings, sc.get('storage'), **({'hash_': sc['hash']} if 'hash' in sc else {}))
     if sc.get('pre'):

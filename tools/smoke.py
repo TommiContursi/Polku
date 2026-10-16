@@ -18,6 +18,7 @@
   python3 tools/smoke.py access     # ways marked private or closed in Heads-up, from BRouter's tags and, when Valhalla stands in, the map's (mocked)
   python3 tools/smoke.py detour     # a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)
   python3 tools/smoke.py shortcut   # Short cuts ok: Polku's profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)
+  python3 tools/smoke.py flow       # the route's glow and moving chevrons: they move, survive a style change, stop with reduced motion, the switch off or left alone
   python3 tools/smoke.py otherways  # other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo (mocked BRouter)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
@@ -1520,6 +1521,85 @@ def otherways(chrome):
         finally:
             pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} other ways for a new leg" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The route's glow and moving chevrons (#198), on a straight-line route (no routing): the
+# chevrons draw and move (frames go on, no WebGL error), the static arrows give way while they
+# do, and both survive a style change; the leg under the pointer glows brighter, and stops when
+# the pointer leaves; with reduced motion, the switch off, or the map left alone a while, the
+# chevrons stop and the arrows come back; a touch of the map starts them again.
+FLOW = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map, f = polku.flow;
+  if (!f) return ['no moving chevrons (polku.flow)'];
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  p.setActive(true);
+  p.setMode('line');
+  p.addPoint([24.930, 60.170]);
+  p.addPoint([24.940, 60.172]);
+  await wait(1500);
+  m.jumpTo({ center: [24.935, 60.171], zoom: 15 });
+  await new Promise((ok) => { const t = setTimeout(ok, 5000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+  if (!m.getLayer('route-glow') || !m.getLayer('route-glow-hover')) errs.push('no glow layers');
+  const arrows = () => m.getLayoutProperty('route-arrows', 'visibility');
+  const moves = async () => { const f0 = f.frames; await wait(1500); return f.frames > f0 + 3; };
+  if (!m.getLayer('route-flow') || !f.moving || !(await moves())) errs.push(`chevrons: layer ${!!m.getLayer('route-flow')}, moving ${f.moving}, frames ${f.frames}`);
+  if (arrows() !== 'none') errs.push(`the static arrows show while the chevrons move: ${arrows()}`);
+  const gl = m.painter && m.painter.context && m.painter.context.gl;
+  if (gl && gl.getError()) errs.push('a WebGL error');
+  // a style change (another base map)
+  polku.set({ base: polku.state.base === 'trail' ? 'topo' : 'trail' });
+  await wait(2000);
+  if (!m.getLayer('route-flow') || !f.moving || arrows() !== 'none' || !(await moves())) errs.push(`after a style change: layer ${!!m.getLayer('route-flow')}, moving ${f.moving}, arrows ${arrows()}`);
+  // the leg under the pointer glows brighter
+  const c = [24.935, 60.171], pt = m.project(c);
+  p.onMapMove({ point: pt, lngLat: { lng: c[0], lat: c[1] }, originalEvent: { clientX: pt.x, clientY: pt.y } });
+  if (!(m.getFeatureState({ source: 'route', id: 0 }) || {}).hover) errs.push('the leg under the pointer doesn\\'t glow');
+  const away = m.project([24.950, 60.180]);
+  p.onMapMove({ point: away, lngLat: { lng: 24.95, lat: 60.18 }, originalEvent: { clientX: away.x, clientY: away.y } });
+  if ((m.getFeatureState({ source: 'route', id: 0 }) || {}).hover) errs.push('the glow stays after the pointer leaves');
+  // from the route straight off the map (onto the planner): the glow goes too
+  p.onMapMove({ point: pt, lngLat: { lng: c[0], lat: c[1] }, originalEvent: { clientX: pt.x, clientY: pt.y } });
+  m.getCanvasContainer().dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.querySelector('#planner') }));
+  if ((m.getFeatureState({ source: 'route', id: 0 }) || {}).hover) errs.push('the glow stays after the pointer leaves the map');
+  // the switch off; the map left alone a while; a touch
+  polku.set({ routeFlow: false });
+  f.check();
+  if (f.moving || arrows() !== 'visible') errs.push(`switched off: moving ${f.moving}, arrows ${arrows()}`);
+  polku.set({ routeFlow: true });
+  f.touched = Date.now() - 60e3;
+  f.check();
+  if (f.moving || arrows() !== 'visible') errs.push(`left alone: moving ${f.moving}, arrows ${arrows()}`);
+  m.fire('movestart');
+  if (!f.moving || arrows() !== 'none') errs.push(`after a touch: moving ${f.moving}, arrows ${arrows()}`);
+  return errs;
+})()"""
+FLOW_REDUCED = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), f = polku.flow, m = polku.map;
+  if (!f) return [];
+  await wait(300);
+  f.touched = Date.now();
+  f.check();
+  const out = (f.moving || m.getLayoutProperty('route-arrows', 'visibility') !== 'visible') ? [`with reduced motion: moving ${f.moving}`] : [];
+  polku.planner.clear();
+  return out;
+})()"""
+
+
+def flow(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        # headless Chrome asks for reduced motion; a person usually doesn't
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+        pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#15/60.171/24.935')
+        fails = pg.js(FLOW, timeout=60000)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+        fails += pg.js(FLOW_REDUCED, timeout=30000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the route's glow and moving chevrons" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -3522,6 +3602,8 @@ def main():
             ok = shortcut(chrome) and ok
         if not only or 'otherways' in only:
             ok = otherways(chrome) and ok
+        if not only or 'flow' in only:
+            ok = flow(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
         if not only or 'fit' in only:

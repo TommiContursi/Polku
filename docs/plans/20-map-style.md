@@ -33,4 +33,6 @@ From docs/BACKLOG.md (line [70](https://github.com/TommiContursi/Polku/blob/9bb3
 
 - **A glowing route line** *(2026-10-15; in ROADMAP phase 20)*: a stronger neon halo as an option beside the plain red line, to make the route stand out over busy layers.
 
+**Done ahead of the phase in #198 (2026-10-16):** a soft glow, brighter on the leg under the pointer, and chevrons moving along the route the way it goes (`js/routeflow.js`). What's left for this phase: how strong the glow is against the new map style.
+
 Other countries' maps are an idea of their own now: #176.
