@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
-### The route glows, and chevrons move along it the way it goes (#198)
+### The route glows, and chevrons move along it the way it goes ([#210](https://github.com/TommiContursi/Polku/pull/210))
 - **A soft glow round the route** makes it stand out on a busy map, and the part under your mouse glows brighter.
 - **White chevrons drift slowly along the route, the way it goes,** so you can see its direction at a glance. They take the place of the still arrows while they move.
 - **Easy on the battery:** they move only while the route is on screen and the page is in view, and they rest when you leave the map alone for a while (the still arrows come back); a touch of the map starts them again. With your system's reduced motion on, or with 3D terrain, they don't move. **Settings → Display → Moving arrows on the route** turns them off.
