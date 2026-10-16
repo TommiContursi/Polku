@@ -20,7 +20,7 @@ Which to install, and where, is the user's call: plugins with hooks run on every
 - drawing a route;
 - a round trip;
 - Check and Go;
-- Settings and the layers;
+- Settings and the layers (the quick layer drawer, #123, has a mock-up and a plan to start from: [issue-123-layer-drawer.md](issue-123-layer-drawer.md));
 - out on the trail (23a's heading).
 
 Look at:

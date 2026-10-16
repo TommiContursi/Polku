@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polku layer drawer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A clickable mock-up of Polku's quick layer drawer (issue #123): phone and desktop, light and dark. Not wired to the app.">
+<!--
+  A mock-up for https://github.com/TommiContursi/Polku/issues/123, kept beside its plan
+  (docs/plans/issue-123-layer-drawer.md). Not wired to the app: nothing here is loaded by
+  Polku. The tokens and icons are copied from css/app.css and js/ui.js. The map
+  backgrounds and base-map thumbnails are screenshots of Polku on the pr-screenshots
+  branch (no images in main).
+
+  Clickable: maps, tiles, a tile's › for its settings, Edit, More, ✕ and Layers work, and
+  the phone sheets follow a swipe (down to close, up for all layers). It's a prototype of
+  the look and the feel, so its swipe code is short; the plan says what the real one needs.
+
+  ?frame=<id>            one frame alone at full size (for screenshots), e.g. ?frame=phone-mtb
+  &w=360&h=740           that frame at another size (a 390 phone at 200 % zoom: &w=195&h=422)
+  ?data=worst or #worst  the realistic worst case: Finnish (phase 18), an MML key, a dozen more on
+  ?bg=<url/>             the pictures from somewhere else (window.MOCK_IMAGES, when set, has them inline)
+-->
+<style>
+:root, .fr {
+  --accent: #1f6f4a; --accent-2: #2f8f62; --accent-soft: #e3f1e9; --route: #e11d48;
+  --surface: rgba(255, 255, 255, 0.94); --surface-solid: #ffffff; --surface-2: #f3f4f1;
+  --text: #1c2420; --muted: #5f6b65; --line: rgba(28, 36, 32, 0.12);
+  --shadow: 0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12);
+  --radius: 14px; --grab: rgba(95, 107, 101, 0.4); --accent-line: rgba(31, 111, 74, 0.3);
+  color-scheme: light;
+}
+.fr.dark {
+  --accent: #3fb07a; --accent-2: #56c48f; --accent-soft: rgba(63, 176, 122, 0.16);
+  --surface: rgba(24, 28, 26, 0.94); --surface-solid: #181c1a; --surface-2: #232825;
+  --text: #e8ece9; --muted: #9aa69f; --line: rgba(232, 236, 233, 0.12);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --grab: rgba(154, 166, 159, 0.4); --accent-line: rgba(63, 176, 122, 0.35);
+  color-scheme: dark;
+}
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #ffffff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #ffffff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding-block: 28px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased;
+}
+.cv a { color: var(--page-link); }
+button { font: inherit; color: inherit; }
+.ic { flex: none; display: block; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ------------------------------------------------ the canvas around the frames */
+.cv { max-width: 1520px; margin: 0 auto; }
+.cv-head h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.01em; }
+.cv-head p { margin: 0 0 6px; max-width: 920px; opacity: .8; }
+.cv-q { margin: 18px 0 8px; padding: 14px 18px; border-radius: 14px; background: var(--page-card); max-width: 980px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.cv-q h2 { margin: 0 0 6px; font-size: 15px; }
+.cv-q ul { margin: 0; padding-left: 20px; }
+.cv-q li { margin: 4px 0; }
+.cv-row { margin-top: 40px; }
+.cv-row > h2 { margin: 0 0 4px; font-size: 18px; }
+.cv-row > p { margin: 0 0 16px; max-width: 920px; opacity: .8; }
+.cv-frames { display: flex; flex-wrap: wrap; gap: 28px 32px; align-items: flex-start; }
+.fr { margin: 0; display: flex; flex-direction: column; gap: 10px; background: none; }
+.fr figcaption { max-width: var(--cap, 260px); font-size: 13px; color: var(--page-cap); }
+.fr figcaption b { display: block; font-size: 13.5px; color: inherit; }
+.tag { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .03em; color: #fff; background: #1f6f4a; vertical-align: 1px; }
+.tag.later { background: #7c5a12; }
+
+/* a frame: one screen at its real size, shown smaller */
+.screen {
+  position: relative; overflow: hidden; width: 390px; height: 844px; zoom: .62;
+  border-radius: 28px; box-shadow: 0 0 0 1px rgba(16,24,20,.18), 0 18px 48px rgba(16,24,20,.22);
+  background: #e8eee6 center top / cover no-repeat; color: var(--text);
+  font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.fr.dark .screen { background-color: #1d2320; }
+.fr.desk .screen { width: 1440px; height: 900px; zoom: .5; border-radius: 12px; }
+.fr.phone { --cap: 242px; }
+.fr.desk { --cap: 720px; }
+@media (max-width: 760px) {
+  .fr.desk .screen { zoom: .24; }
+  .fr.desk { --cap: 346px; }
+  .cv-frames { gap: 24px 16px; }
+}
+
+/* one frame alone, at full size (for screenshots) */
+body.single { padding: 0; background: #000; }
+body.single .cv > :not(.cv-row), body.single .cv-row > :not(.cv-frames), body.single .fr:not(.only), body.single .cv-row:not(:has(.only)), body.single figcaption { display: none !important; }
+body.single .cv-row { margin: 0; }
+body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
+
+/* the dev-only data switch, bottom centre: chrome, not part of the design */
+.data-switch { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--switch-bg); box-shadow: 0 2px 10px rgba(0,0,0,.15); font: 600 12px/1 system-ui, sans-serif; }
+.data-switch a { padding: 12px 14px; border-radius: 999px; color: var(--switch-fg); text-decoration: none; }
+.data-switch a[aria-current="true"] { background: var(--switch-on); }
+.data-switch a:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
+
+/* ------------------------------------------------ Polku's map controls (as today) */
+.ctrls { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 5; }
+.cbtn { width: 40px; height: 40px; border: 0; border-radius: 12px; display: grid; place-items: center; padding: 0; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+.czoom { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.czoom .cbtn { border-radius: 0; box-shadow: none; }
+.czoom .cbtn + .cbtn { border-top: 1px solid var(--line); }
+.fab { width: 60px; height: 56px; border: 0; border-radius: 16px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-size: 11px; font-weight: 600; cursor: pointer; }
+.fab-layers { position: relative; overflow: hidden; justify-content: flex-end; color: #fff; border: 2px solid #fff; }
+.fab-layers img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fab-layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+.fab-layers[aria-expanded="true"] { box-shadow: var(--shadow), 0 0 0 3px var(--accent); }
+.plan { margin-top: 4px; width: 60px; height: 56px; border: 0; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--route); color: #fff; box-shadow: var(--shadow); font-size: 11px; font-weight: 700; padding: 0; }
+.plan.done { background: var(--surface-solid); color: var(--route); box-shadow: var(--shadow), inset 0 0 0 2px var(--route); }
+.phone .cbtn { width: 44px; height: 44px; }
+.phone .fab, .phone .plan { width: 54px; height: 52px; }
+.needle .n { fill: #e11d48; stroke: #e11d48; }
+
+/* ------------------------------------------------ the quick drawer (new) */
+.qd {
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  position: absolute; z-index: 10; display: flex; flex-direction: column; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); color: var(--text);
+  container: qd / inline-size;
+  transition: transform 260ms var(--ease-drawer), opacity 200ms var(--ease-out);
+}
+.qd.dragging { transition: none; }
+/* never taller than the room below the top bar: the body scrolls, the header with ✕ stays */
+.qd-body { min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; margin: 0 -4px; padding: 0 4px 2px; }
+.qd-body.from-right { animation: from-right 220ms var(--ease-out); }
+.qd-body.from-left { animation: from-left 220ms var(--ease-out); }
+@keyframes from-right { from { opacity: 0; transform: translateX(28px); } }
+@keyframes from-left { from { opacity: 0; transform: translateX(-28px); } }
+/* phones: a sheet from the bottom, over the planner's peek, clear of the home indicator; its header takes the swipe */
+.qd.sheet { left: 0; right: 0; bottom: 0; max-height: calc(100% - 64px); padding: 4px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2); }
+.qd.sheet.tall { top: 64px; }
+.qd.sheet::before { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 240px; background: var(--surface); } /* pulled up, no gap under it */
+.qd.sheet .qd-grab, .qd.sheet .qd-head { touch-action: none; cursor: grab; }
+.qd.sheet.closed { transform: translateY(100%); transition-duration: 180ms; }
+/* desktop: beside the Layers button, its bottom level with the button's; it grows from the button */
+.qd.pop { right: 84px; bottom: 80px; width: 384px; max-height: calc(100% - 144px); padding: 2px 14px 14px; border-radius: var(--radius); transform-origin: 100% calc(100% - 28px); }
+.qd.pop::after { content: ""; position: absolute; right: -6px; bottom: 22px; width: 12px; height: 12px; background: var(--surface-solid); transform: rotate(45deg); box-shadow: 3px -3px 4px rgba(0, 0, 0, .05); }
+.qd.pop.tall { max-height: calc(100% - 144px); height: calc(100% - 144px); }
+@media (max-height: 560px) { .qd.pop { bottom: 12px; max-height: calc(100% - 76px); } }
+.fr.short .qd.pop { bottom: 12px; max-height: calc(100% - 76px); }
+.fr.short .qd.pop::after { display: none; }
+.qd.pop.closed { opacity: 0; transform: scale(0.96); transition-duration: 120ms; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .qd { transition: opacity 150ms ease; }
+  .qd.closed, .qd.sheet.closed { opacity: 0; transform: none; pointer-events: none; }
+  .qd-body.from-right, .qd-body.from-left { animation: none; }
+}
+@media (prefers-reduced-transparency: reduce) { .qd, .fp { background: var(--surface-solid); backdrop-filter: none; } }
+
+.qd-grab { width: 36px; height: 4px; margin: 6px auto 0; border-radius: 2px; background: var(--grab); flex: none; }
+.qd-head { display: flex; align-items: center; gap: 2px; min-height: 48px; flex: none; }
+.qd-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; overflow-wrap: anywhere; hyphens: auto; }
+.qd-x, .qd-back { flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; display: grid; place-items: center; background: none; color: var(--muted); }
+.qd-x { margin-right: -12px; }
+.qd-back { margin-left: -12px; color: var(--accent); }
+.qd-lab { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; overflow-wrap: anywhere; margin: 4px 0 6px; min-height: 22px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.qd-lab b { color: var(--accent); }
+.qd-lab .qd-edit-btn { margin: -11px 0 -11px auto; padding-right: 2px; }
+.qd-edit-btn { min-width: 44px; height: 44px; padding: 0 10px; border: 0; background: none; color: var(--accent); font-size: 12.5px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.qd-lab + .qd-bases, .qd-lab + .qd-tiles { margin-bottom: 12px; }
+.qd-bases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+.qd-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.qd-base { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
+.qd-base img { display: block; width: 100%; height: 44px; object-fit: cover; border-radius: 12px; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--line); background: var(--surface-2); }
+.qd-base > span { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+.qd-base[aria-checked="true"] { color: var(--text); }
+.qd-base[aria-checked="true"] img { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.qd-base[aria-checked="true"]::after, .qt.on .qt-ic::after {
+  content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+.qd-base[aria-checked="true"]::after { top: 6px; right: 6px; }
+
+/* a tile: one button turns its layer on and off; a tile with more settings has a › side
+   (Android's and Windows' quick settings), its own 44 px button */
+.qt { position: relative; display: flex; min-height: 52px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); overflow: hidden; }
+.qt-tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: 600; line-height: 1.2; color: var(--text); }
+.qt-ic { position: relative; flex: none; color: var(--muted); }
+.qt.on .qt-ic::after { top: -8px; left: -8px; width: 16px; height: 16px; background-size: 11px; box-shadow: 0 0 0 2px var(--accent-soft); }
+.qt-l { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+.qt-l small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.qt-opt { flex: none; width: 44px; border: 0; border-left: 1px solid var(--line); background: none; display: grid; place-items: center; color: var(--muted); }
+.qt.on { border: 2px solid var(--accent); background: var(--accent-soft); }
+.qt.on .qt-tog { padding: 7px 9px; color: var(--accent); }
+.qt.on .qt-ic, .qt.on .qt-l small, .qt.on .qt-opt { color: var(--accent); }
+.qt.on .qt-opt { border-left-color: var(--accent-line); }
+.qt-more { width: 100%; align-items: center; gap: 10px; padding: 8px 4px 8px 10px; background: var(--surface-solid); text-align: left; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.qt-more .qt-l { flex: 1; }
+.qt-more .chev { color: var(--muted); margin-right: 8px; }
+.qt-tog.focus { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 12px; }
+/* press feedback on press; hover only with a mouse; no grey flash or text selection on a tap */
+.qt-tog, .qt-opt, .qt-more, .qd-base, .qd-chip, .qd-x, .qd-back, .qd-done, .qd-edit-btn, .qd-link, .seg2 button, .fab-layers {
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;
+  transition: transform 120ms var(--ease-out, ease-out), background-color 120ms ease;
+}
+.qt:has(.qt-tog:active), .qt-more:active, .qd-base:active, .qd-chip:active { transform: scale(0.97); }
+.qt { transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (hover: hover) and (pointer: fine) {
+  .qt:not(.on) .qt-tog:hover, .qt-more:hover { background: var(--surface-solid); }
+  .qt-opt:hover { background: var(--line); }
+  .qd-base:not([aria-checked="true"]):hover img { border-color: var(--line); }
+}
+/* narrow (200 % zoom on a phone): maps in two columns, tiles in one */
+@container qd (max-width: 300px) {
+  .qd-bases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qd-tiles { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* a tile's settings, inside the drawer */
+.qd-opts .note { margin: 6px 0 10px; font-size: 12px; color: var(--muted); }
+.seg2 { display: flex; padding: 3px; gap: 2px; margin: 2px 0 4px; background: var(--surface-2); border-radius: 12px; }
+.seg2 button { flex: 1; min-width: 0; height: 44px; border: 0; border-radius: 9px; background: none; font-size: 12px; font-weight: 600; color: var(--muted); }
+.seg2 button[aria-pressed="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.tg { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 4px 0; font-size: 14px; border-top: 1px solid var(--line); }
+.tg > span { flex: 1; display: flex; flex-direction: column; }
+.tg small { color: var(--muted); font-size: 11px; }
+.tg i { width: 36px; height: 21px; border-radius: 999px; background: var(--line); position: relative; flex: none; }
+.tg i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.tg.on i { background: var(--accent); }
+.tg.on i::after { transform: translateX(15px); }
+.rng { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; }
+.rng input { flex: 1; accent-color: var(--accent); }
+.rng b { width: 44px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.qd-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 12.5px; text-align: left; }
+
+/* Edit: your own tiles; Reset and Done at the bottom, in thumb reach */
+.qd-edit .qt { cursor: pointer; }
+.qt-rm { display: flex; width: 100%; align-items: center; gap: 10px; padding: 8px 8px 8px 10px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.qt-rm .qt-l { flex: 1; }
+.qt-rm .rm { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--text); color: var(--surface-solid); }
+.qd-slot { min-height: 52px; border: 1.5px dashed var(--line); border-radius: 14px; display: grid; place-items: center; color: var(--muted); font-size: 12px; font-weight: 600; background: none; padding: 6px; text-align: center; }
+.qd-add { display: flex; flex-wrap: wrap; gap: 8px; }
+.qd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px 0 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); font-size: 12.5px; font-weight: 600; }
+.qd-chip .ic { color: var(--accent); }
+.qd-chip:disabled { opacity: .45; cursor: default; }
+.qd-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px -16px 0; padding: 10px 16px 0; border-top: 1px solid var(--line); }
+.qd-done { min-width: 96px; height: 48px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; }
+
+/* ------------------------------------------------ the full panel behind More */
+.fp { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; z-index: 10; display: flex; flex-direction: column; padding: 4px 16px 0; border-radius: 20px 20px 0 0; background: var(--surface); box-shadow: 0 -6px 28px rgba(16, 24, 20, .2); overflow: hidden; }
+.lp-sport { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 9px 12px; border-radius: 12px; background: var(--accent-soft); font-size: 13px; }
+.lp-sport > .ic { color: var(--accent); }
+.lp-sport > span { flex: 1; display: grid; }
+.lp-sport small { color: var(--muted); font-size: 11.5px; }
+.lp-sport .lnk { color: var(--accent); font-weight: 600; font-size: 12px; }
+.on-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 6px; }
+.on-chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; }
+.grp { display: flex; align-items: center; gap: 8px; min-height: 44px; border-top: 1px solid var(--line); }
+.grp .t { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.grp .n { font-size: 11px; font-weight: 700; color: var(--accent); }
+.grp .new { font-size: 11px; font-weight: 600; color: #7c5a12; }
+.dark .grp .new { color: #fbbf24; }
+.grp::after { content: ""; width: 8px; height: 8px; margin: 0 4px 0 auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
+.grp.open::after { transform: rotate(45deg); }
+.fp-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(transparent, var(--surface-solid)); pointer-events: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- Polku's own icons (js/ui.js) -->
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/><path d="m2 18 10 5 10-5" opacity=".55"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-chevR" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-chevL" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-needle" viewBox="0 0 24 24"><path class="n" d="m12 3 3.2 9H8.8Z"/><path d="m12 21-3.2-9h6.4Z"/></symbol>
+  <symbol id="i-weather" viewBox="0 0 24 24"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></symbol>
+  <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"/></symbol>
+  <symbol id="i-swim" viewBox="0 0 24 24"><circle cx="16" cy="6" r="2"/><path d="m4 13 5-3.5 3.5 2.5"/><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M2 21c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5" opacity=".55"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="M12 22V12M21 7l-9 5-9-5"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 16a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 10a4 4 0 0 1-2 6"/><path d="m9 19-1 2M13 19l-1 2M17 19l-1 2"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></symbol>
+  <symbol id="i-temp" viewBox="0 0 24 24"><path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z"/><path d="M12 10v6"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+  <!-- new, in the same style: one per quick tile -->
+  <symbol id="i-trailcolors" viewBox="0 0 24 24"><path d="M3 20c2.5-.5 4-2.6 5.6-4.6" stroke="#22a447" stroke-width="2.6"/><path d="M8.6 15.4c1.5-1.9 2.7-3.7 5-4.6" stroke="#f59e0b" stroke-width="2.6"/><path d="M13.6 10.8C16.5 9.6 18 6.5 21 4" stroke="#ef4444" stroke-width="2.6"/></symbol>
+  <symbol id="i-details" viewBox="0 0 24 24"><path d="M3 20.5c1.8-1 3-2.6 4.4-4.4" stroke-width="3.6"/><path d="M7.4 16.1c1.5-2 3-4 5.6-5.2"/><path d="M13 10.9c2.8-1.3 4.6-3.8 7.5-6.6" stroke-dasharray=".1 3.4" stroke-width="2.5"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24"><path d="M12 22V3"/><path d="M5 5.5h11.5l2.5 2.5-2.5 2.5H5Z"/><path d="M19 13H7.5L5 15.5 7.5 18H19Z"/></symbol>
+  <symbol id="i-hut" viewBox="0 0 24 24"><path d="M2 20h20"/><path d="M4 20 12 5l8 15"/><path d="M9 20l3-6 3 6"/></symbol>
+  <symbol id="i-buoy" viewBox="0 0 24 24"><path d="M2 20c2.5 1.4 5 1.4 7.5 0s5-1.4 7.5 0 3.5 1 5 .5"/><path d="M8 17h8l-1.6-8H9.6Z"/><path d="M12 9V3.5M9.5 3.5h5"/></symbol>
+  <symbol id="i-depth" viewBox="0 0 24 24"><path d="M3 6.5c3 2 6 2 9 0s6-2 9 0"/><path d="M3 12c3 2 6 2 9 0s6-2 9 0" opacity=".75"/><path d="M3 17.5c3 2 6 2 9 0s6-2 9 0" opacity=".5"/></symbol>
+  <symbol id="i-ship" viewBox="0 0 24 24"><path d="M3 15h18l-2.6 5H5.6Z"/><path d="M6 15V9.5h9.5L18 15"/><path d="M9 9.5V5.5h3.5v4"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16.5v-4.3L6 7h12l2 5.2v4.3Z"/><path d="M4 12.2h16"/><circle cx="7.8" cy="16.6" r="1.7"/><circle cx="16.2" cy="16.6" r="1.7"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+  <symbol id="i-flake" viewBox="0 0 24 24"><path d="M12 2v20M3.5 7l17 10M20.5 7l-17 10"/><path d="m9.5 3.8 2.5 2 2.5-2M9.5 20.2l2.5-2 2.5 2"/></symbol>
+  <symbol id="i-zone" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3 2.4"/><path d="m8 8 8 8"/></symbol>
+  <symbol id="i-num" viewBox="0 0 24 24"><path d="M4 20c4-1 6-6 9-8s5-4 7-8" opacity=".5"/><rect x="11" y="4" width="10" height="7" rx="2"/><path d="M14 7.5h4"/></symbol>
+</svg>
+
+<main class="cv">
+  <header class="cv-head">
+    <h1>A quick layer drawer, before the full Layers panel</h1>
+    <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/123">#123</a>, 2026-10-16, reviewed with design skills for coding agents and changed after the first round of answers. Not wired to the app: the map behind each frame is a screenshot of Polku; the drawer, buttons and panels are drawn in Polku's own colours and icons. The plan is <code>docs/plans/issue-123-layer-drawer.md</code>.</p>
+    <p><b>Try it:</b> tap maps and tiles; › on a tile opens its settings; Edit changes the tiles; More opens all layers. On a phone frame, drag the sheet down to close it or up for all layers; Layers opens it again.</p>
+  </header>
+
+  <section class="cv-q" aria-labelledby="q-h">
+    <h2 id="q-h">Decided (2026-10-16)</h2>
+    <ul>
+      <li><b>Tiles follow the sport:</b> five and More. A tile that holds more settings (trail colours, depths, rain, 3D) has a › side that opens them in the drawer.</li>
+      <li><b>Your own tiles:</b> Edit beside the tiles, and a reset to the sport's tiles.</li>
+      <li><b>A sheet on a phone</b>, closed with a swipe, with the same swipe as the planner's sheet (#96): one gesture for every sheet.</li>
+      <li><b>More opens the full panel as it is</b>, with a way back; regrouping it waits for phase 21 (#119, #121).</li>
+    </ul>
+  </section>
+
+  <section class="cv-row">
+    <h2>1 · The quick drawer</h2>
+    <p>Layers opens the drawer instead of the full panel: the base maps as thumbnails, five layers for your sport as tiles, and More for everything else. A tap changes the map at once and the drawer stays; ✕, a swipe down, a tap on the map or Layers again closes it.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-mtb" data-bg="phone-mtb" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"mtb"}'>
+        <figcaption><b>Phone: a sheet from the bottom</b>About half the screen; the map changes above it. Tiles in thumb reach; every target 44 px or more. Swipe it down to close.</figcaption>
+      </figure>
+      <figure class="fr desk" id="desk-mtb" data-bg="desk-mtb" data-ctrls='{"base":"trail"}' data-qd='{"kind":"pop","sport":"mtb","focus":"d3"}'>
+        <figcaption><b>Desktop: a card beside the button</b>Its bottom level with Layers, where today's panel opens. <kbd>L</kbd> opens it at once (no animation for the keyboard), Tab and the arrow keys move through it (the ring shows the keyboard on 3D terrain), <kbd>Esc</kbd> closes it and goes back to the button.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>2 · The settings behind a tile</h2>
+    <p>A tile turns its layer on and off. When it holds more than one setting, its › side opens them in the drawer, one step in, with ‹ back: the same switches as its group in the full panel.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-opts" data-bg="phone-mtb" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"mtb","view":"opts:trailcolors"}'>
+        <figcaption><b>Trail colours</b>Difficulty, uphill, both or winter; how strong; the numbers beside the trails; the map key.</figcaption>
+      </figure>
+      <figure class="fr phone" id="phone-opts-paddle" data-bg="phone-paddle" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"paddle","view":"opts:depths"}'>
+        <figcaption><b>Depths (Paddle)</b>One tile for Traficom's three depth layers; here each one, with its opacity. Shown, never routed on.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>3 · With the planner open</h2>
+    <p>The drawer is a moment's detour from planning: it never moves the planner or changes its size.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-planner" data-bg="phone-mtb-planner" data-ctrls='{"base":"trail","phone":true,"planning":true,"bottom":172}' data-qd='{"kind":"sheet","sport":"mtb"}'>
+        <figcaption><b>Phone: over the peek</b>The sheet covers the planner's peek while it's open, and the peek comes back as it was. The tap on the map that closes it adds no point.</figcaption>
+      </figure>
+      <figure class="fr desk" id="desk-planner" data-bg="desk-mtb-planner" data-ctrls='{"base":"trail","planning":true}' data-qd='{"kind":"pop","sport":"mtb"}'>
+        <figcaption><b>Desktop: the side panel stays</b>The planner keeps the left, the drawer opens on the right by the buttons. With the bottom panel it sits above it, like today's Layers panel.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>4 · Other sports, and dark</h2>
+    <p>The tiles follow the sport; each turns the same switch as in the full panel, so what you choose is remembered per sport as today.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-paddle" data-bg="phone-paddle" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"paddle"}'>
+        <figcaption><b>Paddle</b>Nautical marks, depths (shown, never routed on: “not for navigation”), ships, landing sites, wind.</figcaption>
+      </figure>
+      <figure class="fr phone dark" id="phone-hike-dark" data-bg="phone-hike-dark" data-ctrls='{"base":"night","phone":true}' data-qd='{"kind":"sheet","sport":"hike","base":"night"}'>
+        <figcaption><b>Hike, dark, Night map</b>Waymarked hiking, official routes, huts and lean-tos, trail details, rain radar.</figcaption>
+      </figure>
+      <figure class="fr desk dark" id="desk-dark" data-bg="desk-mtb-dark" data-ctrls='{"base":"night"}' data-qd='{"kind":"pop","sport":"mtb","base":"night","on":["trailcolors","details","lipasroutes","rain"]}'>
+        <figcaption><b>Desktop, dark</b>The same card in the dark colours; Night map chosen, rain radar on.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>5 · Your own tiles</h2>
+    <p>Edit, beside the tiles, swaps them for any switch in the full panel: five per sport, kept with your settings. Reset and Done sit at the bottom, in thumb reach; a swipe down is Done too.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-edit" data-bg="phone-mtb" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"mtb","view":"edit","tiles":["trailcolors","details","lipasroutes","rain"]}'>
+        <figcaption><b>Edit the tiles for MTB</b>A tap on a tile takes it off; a chip adds one. “Reset to MTB's tiles” puts back the sport's five.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>6 · Behind More: the full panel</h2>
+    <p>More, or a swipe up, grows the same sheet into the full panel; ‹ or a swipe down goes back to the drawer.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-more" data-bg="phone-mtb" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"mtb","view":"all"}'>
+        <figcaption><b>All layers, as today</b>Today's groups and switches, unchanged, with ‹ back to the drawer. The groups are shown folded here.</figcaption>
+      </figure>
+      <figure class="fr phone" id="phone-regrouped" data-bg="phone-mtb">
+        <div class="fp" role="dialog" aria-label="All map layers">
+          <div class="qd-grab" aria-hidden="true"></div>
+          <div class="qd-head"><button type="button" class="qd-back" aria-label="Back to quick layers"><svg class="ic" width="22" height="22"><use href="#i-chevL"/></svg></button><h2>All layers</h2><button type="button" class="qd-x" aria-label="Close"><svg class="ic" width="18" height="18"><use href="#i-close"/></svg></button></div>
+          <div class="lp-sport"><svg class="ic" width="18" height="18"><use href="#i-bike"/></svg><span><span>Map for <b>MTB</b></span><small>Your sport sets the trail colours and which layers start on.</small></span><span class="lnk">Change</span></div>
+          <div class="grp open"><span class="t">Trails &amp; routes</span><span class="n">3 on</span></div>
+          <div class="seg2"><button type="button">Off</button><button type="button" aria-pressed="true">Difficulty</button><button type="button">Uphill</button><button type="button">Both</button><button type="button">Winter</button></div>
+          <div class="tg on"><span>Trail details<small>Width, faint trails, wet stretches, fallen trees, gates</small></span><i></i></div>
+          <div class="tg on"><span>Official routes (LIPAS)<small>LIPAS, Finland</small></span><i></i></div>
+          <div class="tg"><span>Waymarked MTB routes<small>waymarkedtrails.org</small></span><i></i></div>
+          <div class="grp"><span class="t">Terrain &amp; 3D</span></div>
+          <div class="grp"><span class="t">Places</span><span class="n">2 on</span><span class="new">by kind: #121</span></div>
+          <div class="grp"><span class="t">Water</span><span class="new">Ships here: #119</span></div>
+          <div class="grp"><span class="t">Roads &amp; traffic</span><span class="n">1 on</span></div>
+          <div class="grp"><span class="t">Winter</span></div>
+          <div class="grp"><span class="t">Weather on the map</span></div>
+          <div class="fp-fade"></div>
+        </div>
+        <figcaption><span class="tag later">Later: phase 21</span><b>All layers, regrouped</b>Base maps only in the drawer; trails and marked routes one group; Ships under Water (#119); Places by kind (#121); Digiroad and Fintraffic one “Roads &amp; traffic”.</figcaption>
+      </figure>
+    </div>
+  </section>
+</main>
+
+<script>
+// Builds the drawers from the frames' data-* attributes and makes them clickable. Nothing here talks to Polku.
+const Q = new URLSearchParams(location.search);
+// the pictures at the pr-screenshots commit that added them (a commit's files never change, so the CDN never shows old ones)
+const BG = Q.get('bg') || 'https://raw.githubusercontent.com/TommiContursi/Polku/009ffc901ce90181aaf37f25d6d6bd70b2ab895d/claude/layer-drawer-plan-aa330d/mockup-bg/';
+const BASES = [['trail', 'Trail map'], ['maasto', 'Maastokartta'], ['mml', 'Maastokartta (MML)'], ['aerial', 'Aerial'], ['ortofi', 'Aerial FI'], ['plain', 'Plain'], ['night', 'Night']];
+// tile → icon, label, small print; the plan's table says which switch each one turns
+const TILES = {
+  trailcolors: ['trailcolors', 'Trail colours', 'Difficulty'],
+  details: ['details', 'Trail details'],
+  lipasroutes: ['flag', 'Official routes', 'LIPAS'],
+  wmthiking: ['sign', 'Waymarked hiking'],
+  wmtmtb: ['sign', 'Waymarked MTB'],
+  huts: ['hut', 'Huts & lean-tos'],
+  landing: ['hut', 'Landing sites & lean-tos'],
+  nautical: ['buoy', 'Nautical marks'],
+  depths: ['depth', 'Depths', 'Not for navigation'],
+  ships: ['ship', 'Ships', 'Live AIS'],
+  traffic: ['car', 'Busy roads'],
+  places: ['pin', 'Outdoor places'],
+  restricted: ['zone', 'Military areas'],
+  numbers: ['num', 'Difficulty numbers'],
+  d3: ['cube', '3D terrain'],
+  rain: ['rain', 'Rain radar'],
+  wind: ['wind', 'Wind'],
+  temp: ['temp', 'Temperature'],
+  winter: ['flake', 'Winter ways'],
+};
+// the tiles whose › opens more settings (their group in the full panel)
+const HAS_OPTS = new Set(['trailcolors', 'depths', 'rain', 'temp', 'd3']);
+const SPORTS = {
+  mtb: { label: 'MTB', tiles: ['trailcolors', 'details', 'lipasroutes', 'd3', 'rain'], on: ['trailcolors', 'details', 'lipasroutes'], more: 3 },
+  hike: { label: 'Hike', tiles: ['wmthiking', 'lipasroutes', 'huts', 'details', 'rain'], on: ['wmthiking', 'lipasroutes', 'huts', 'details'], more: 2 },
+  paddle: { label: 'Paddle', tiles: ['nautical', 'depths', 'ships', 'landing', 'wind'], on: ['nautical', 'depths', 'ships', 'landing'], more: 4 },
+};
+const ADDABLE = ['d3', 'wmtmtb', 'huts', 'places', 'numbers', 'restricted', 'wind', 'traffic', 'winter'];
+
+// Worst case (?data=worst, a dev-only switch): the realistic worst data. Finnish, as phase 18 will bring
+// it (long compound words); an MML key with MML WMTS on (the longest map name); a dozen more layers on.
+const WORST = Q.get('data') === 'worst' || location.hash === '#worst';
+addEventListener('hashchange', () => location.reload());
+const T = WORST
+  ? { lang: 'fi', title: 'Karttatasot', maps: 'Kartta', onMap: 'Kartalla', more: 'Lisää', moreOn: (n) => `${n} muuta päällä`, all: 'Kaikki tasot', edit: 'Muokkaa',
+      sports: { mtb: 'Maastopyöräily', paddle: 'Melonta', hike: 'Vaellus' } }
+  : { lang: 'en', title: 'Map layers', maps: 'Map', onMap: 'On the map', more: 'More', moreOn: (n) => `${n} more on`, all: 'All layers', edit: 'Edit', sports: {} };
+if (WORST) {
+  BASES.splice(0, BASES.length, ['trail', 'Polkukartta'], ['maasto', 'Maastokartta'], ['mml', 'Maastokartta (MML, oma avain)'], ['aerial', 'Ilmakuva'],
+    ['ortofi', 'Ilmakuva (Suomi)'], ['plain', 'Pelkistetty'], ['night', 'Yökartta']);
+  Object.assign(TILES, {
+    trailcolors: ['trailcolors', 'Polkujen vaikeusvärit', 'Vaikeus'],
+    details: ['details', 'Polkujen yksityiskohdat'],
+    lipasroutes: ['flag', 'Viralliset reitit', 'LIPAS-liikuntapaikat'],
+    wmthiking: ['sign', 'Merkityt retkeilyreitit'],
+    huts: ['hut', 'Laavut, kodat ja tulipaikat'],
+    landing: ['hut', 'Rantautumispaikat ja laavut'],
+    nautical: ['buoy', 'Merimerkit ja turvalaitteet'],
+    depths: ['depth', 'Syvyystiedot', 'Ei navigointiin'],
+    ships: ['ship', 'Alukset', 'AIS, reaaliaikainen'],
+    d3: ['cube', 'Kolmiulotteinen maasto'],
+    rain: ['rain', 'Sadetutka'],
+    wind: ['wind', 'Tuuli'],
+  });
+}
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const ic = (id, size = 22, cls = '') => `<svg class="ic${cls ? ` ${cls}` : ''}" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const PIC = (f) => (window.MOCK_IMAGES && window.MOCK_IMAGES[f]) || BG + f;
+const thumb = (k) => PIC(`thumb-${{ mml: 'maasto' }[k] || k}.jpg`);
+
+// ---- the drawer's views: quick (maps and tiles), a tile's settings, edit, and all layers
+function head(o, title, back) {
+  return `${o.kind === 'sheet' ? '<div class="qd-grab" aria-hidden="true"></div>' : ''}
+    <div class="qd-head">${back ? `<button type="button" class="qd-back" data-act="back" aria-label="Back to quick layers">${ic('chevL')}</button>` : ''}<h2>${title}</h2>${o.view === 'edit' ? '' : `<button type="button" class="qd-x" data-act="close" aria-label="Close">${ic('close', 18)}</button>`}</div>`;
+}
+function quick(o) {
+  // always six maps: with an MML key, MML WMTS takes Maastokartta's place while it's the map you have on
+  const bases = BASES.filter(([k]) => (o.base === 'mml' ? k !== 'maasto' : k !== 'mml')).map(([k, label]) =>
+    `<button type="button" class="qd-base" role="radio" aria-checked="${o.base === k}" data-base="${k}"><img src="${thumb(k)}" alt=""><span>${esc(label)}</span></button>`).join('');
+  const tiles = o.tiles.map((id) => {
+    const [icon, label, small] = TILES[id], on = o.on.includes(id);
+    return `<div class="qt${on ? ' on' : ''}"><button type="button" class="qt-tog${o.focus === id ? ' focus' : ''}" aria-pressed="${on}" data-tile="${id}"><span class="qt-ic">${ic(icon)}</span><span class="qt-l">${esc(label)}${small ? `<small>${esc(small)}</small>` : ''}</span></button>${HAS_OPTS.has(id) ? `<button type="button" class="qt-opt" data-opts="${id}" aria-label="${esc(label)}: settings">${ic('chevR', 18)}</button>` : ''}</div>`;
+  }).join('');
+  const n = WORST ? 12 : SPORTS[o.sport].more;
+  const more = `<button type="button" class="qt qt-more" data-act="more" aria-label="${T.more}: ${T.all}${n ? `, ${T.moreOn(n)}` : ''}">${ic('layers', 22, 'qt-ic')}<span class="qt-l">${T.more}<small>${n ? T.moreOn(n) : T.all}</small></span>${ic('chevR', 18, 'chev')}</button>`;
+  return `${head(o, T.title)}
+    <div class="qd-body">
+      <h3 class="qd-lab" id="${o.id}-maps">${T.maps}</h3>
+      <div class="qd-bases" role="radiogroup" aria-labelledby="${o.id}-maps">${bases}</div>
+      <h3 class="qd-lab">${T.onMap} · <b>${T.sports[o.sport] || SPORTS[o.sport].label}</b><button type="button" class="qd-edit-btn" data-act="edit">${T.edit}</button></h3>
+      <div class="qd-tiles">${tiles}${more}</div>
+    </div>`;
+}
+const tg = (label, small, on) => `<div class="tg${on ? ' on' : ''}" role="switch" aria-checked="${!!on}" tabindex="0"><span>${label}${small ? `<small>${small}</small>` : ''}</span><i></i></div>`;
+const rng = (label, v) => `<label class="rng"><span>${label}</span><input type="range" min="10" max="100" step="5" value="${v}"><b>${v} %</b></label>`;
+const OPTS = {
+  trailcolors: () => `<div class="seg2" role="group" aria-label="Trail colours">${['Off', 'Difficulty', 'Uphill', 'Both', 'Winter'].map((x) => `<button type="button" aria-pressed="${x === 'Difficulty'}">${x}</button>`).join('')}</div>
+    <p class="note">Halo colour is the MTB difficulty from OpenStreetMap (S0 green → S5 purple). White: not graded yet.</p>
+    ${rng('Strength', 100)}${tg('Difficulty numbers', 'S0–S6 beside graded trails · zoom 15+', false)}${tg('Uphill numbers', '↑S0–↑S5 on climbs of 6 %+ · zoom 15+', false)}
+    <button type="button" class="qd-link">Map key ›</button>`,
+  depths: () => `${tg('Depth areas', 'Traficom · zoom 10+', true)}${rng('Opacity', 45)}${tg('Depth contours', 'Traficom · zoom 11+', true)}${tg('Depth soundings', 'Traficom · zoom 14+', true)}
+    <p class="note">Traficom's nautical chart data: shown, never used for routing. Not for navigation.</p>`,
+  rain: () => `${tg('Rain radar', 'Radar now (FMI / RainViewer), forecast later', true)}${rng('Opacity', 85)}${tg('Timeline', '48 h clock for the weather · also the Weather button', false)}`,
+  temp: () => `${tg('Temperature', 'Colour field with °C labels', true)}${rng('Opacity', 50)}`,
+  d3: () => `${tg('3D terrain', 'Tilt with two fingers or right-drag', true)}<label class="rng"><span>Exaggeration</span><input type="range" min="1" max="3" step="0.1" value="1.4"><b>1.4×</b></label>`,
+};
+function opts(o, id) {
+  return `${head(o, esc(TILES[id][1]), true)}<div class="qd-body qd-opts">${OPTS[id]()}</div>`;
+}
+function edit(o) {
+  const tiles = o.tiles.map((id) => { const [icon, label] = TILES[id]; return `<div class="qt"><button type="button" class="qt-rm" data-rm="${id}" aria-label="Take off ${esc(label)}"><span class="qt-ic">${ic(icon)}</span><span class="qt-l">${esc(label)}</span><span class="rm">${ic('minus', 16)}</span></button></div>`; }).join('');
+  const slots = Array.from({ length: 5 - o.tiles.length }, () => '<div class="qd-slot">Room for one more: add it below</div>').join('');
+  const chips = ADDABLE.filter((id) => !o.tiles.includes(id)).map((id) => `<button type="button" class="qd-chip" data-add="${id}"${o.tiles.length >= 5 ? ' disabled' : ''}>${ic('plus', 16)}${esc(TILES[id][1])}</button>`).join('');
+  return `${head(o, `Your tiles for ${SPORTS[o.sport].label}`)}
+    <div class="qd-body qd-edit">
+      <h3 class="qd-lab">On the drawer · ${o.tiles.length} of 5</h3>
+      <div class="qd-tiles">${tiles}${slots}</div>
+      <h3 class="qd-lab">Add a tile</h3>
+      <div class="qd-add">${chips}</div>
+    </div>
+    <div class="qd-foot"><button type="button" class="qd-link" data-act="reset">Reset to ${SPORTS[o.sport].label}'s tiles</button><button type="button" class="qd-done" data-act="done">Done</button></div>`;
+}
+function all(o) {
+  return `${head(o, T.all, true)}
+    <div class="qd-body">
+      <div class="lp-sport">${ic('bike', 18)}<span><span>Map for <b>${SPORTS[o.sport].label}</b></span><small>Your sport sets the trail colours and which layers start on.</small></span><span class="lnk">Change</span></div>
+      <div class="grp open"><span class="t">On now</span><span class="n">6 on</span></div>
+      <div class="on-chips"><span class="on-chip">Difficulty colours ×</span><span class="on-chip">Trail details ×</span><span class="on-chip">Official routes (LIPAS) ×</span><span class="on-chip">Lean-tos, huts, campfire &amp; landing sites (LIPAS) ×</span><span class="on-chip">OSM outdoor places ×</span><span class="on-chip">Military areas &amp; shooting ranges ×</span></div>
+      <button type="button" class="qd-link">Reset to ${SPORTS[o.sport].label} defaults</button>
+      ${['Base map', 'Terrain', 'Trails & difficulty|2 on', 'Winter', 'Marked routes|1 on', 'Places|2 on', 'Water & nautical', 'Traffic & safety|1 on', 'Roads (Digiroad)', 'Weather on the map']
+        .map((g) => { const [t, n] = g.split('|'); return `<div class="grp"><span class="t">${esc(t)}</span>${n ? `<span class="n">${n}</span>` : ''}</div>`; }).join('')}
+    </div>`;
+}
+function render(qd, dir) {
+  const o = qd._o;
+  const v = o.view || 'quick';
+  // a step in (a tile's settings, Edit) keeps the sheet's height, so nothing jumps; all layers grows it
+  const h = qd.offsetHeight;
+  qd.style.minHeight = dir === 'in' && v !== 'all' && h ? `${h}px` : dir === 'in' || v === 'quick' || v === 'all' ? '' : qd.style.minHeight;
+  qd.classList.toggle('tall', v === 'all');
+  qd.setAttribute('aria-label', v === 'edit' ? `Your tiles for ${SPORTS[o.sport].label}` : v === 'all' ? T.all : T.title);
+  qd.innerHTML = v === 'quick' ? quick(o) : v === 'edit' ? edit(o) : v === 'all' ? all(o) : opts(o, v.slice(5));
+  if (dir) qd.querySelector('.qd-body').classList.add(dir === 'in' ? 'from-right' : 'from-left');
+}
+
+function ctrls(o) {
+  const phone = !!o.phone;
+  return `<div class="ctrls"${o.bottom ? ` style="bottom:${o.bottom}px"` : ''}>
+    <button type="button" class="cbtn" aria-label="Compass">${ic('needle', 20, 'needle')}</button>
+    <button type="button" class="cbtn" aria-label="Show my location">${ic('locate', 20)}</button>
+    ${phone ? '' : `<div class="czoom"><button type="button" class="cbtn" aria-label="Zoom in">${ic('plus', 18)}</button><button type="button" class="cbtn" aria-label="Zoom out">${ic('minus', 18)}</button></div>`}
+    <button type="button" class="fab" aria-label="Time & weather">${ic('weather', 22)}<span>Weather</span></button>
+    <button type="button" class="fab fab-layers" aria-expanded="true"><img src="${thumb(o.base)}" alt=""><span>Layers</span></button>
+    ${o.planning ? (phone ? '' : `<button type="button" class="plan done">${ic('check', 22)}<span>Done</span></button>`) : `<button type="button" class="plan">${ic('route', 22)}<span>Plan</span></button>`}
+  </div>`;
+}
+
+for (const fr of document.querySelectorAll('.fr')) {
+  const screen = document.createElement('div');
+  screen.className = 'screen';
+  screen.style.backgroundImage = `url(${PIC(`${fr.dataset.bg}.jpg`)})`;
+  for (const el of [...fr.children]) if (el.tagName !== 'FIGCAPTION') screen.append(el); // hand-written contents
+  if (fr.dataset.ctrls) screen.insertAdjacentHTML('beforeend', ctrls(JSON.parse(fr.dataset.ctrls)));
+  fr.prepend(screen);
+  if (fr.dataset.qd) {
+    const d = JSON.parse(fr.dataset.qd), sp = SPORTS[d.sport];
+    const o = { id: fr.id, base: 'trail', view: 'quick', ...d, tiles: d.tiles || [...sp.tiles], on: d.on || [...sp.on] };
+    if (WORST) o.base = o.base === 'trail' ? 'mml' : o.base; // the worst case has MML WMTS on
+    const qd = document.createElement('div');
+    qd.className = `qd ${o.kind}`;
+    qd.setAttribute('role', 'dialog');
+    qd.lang = T.lang;
+    qd._o = o;
+    screen.append(qd);
+    // a frame that shows a step in starts from the quick drawer, so it has the quick drawer's height
+    const view = o.view;
+    o.view = 'quick';
+    render(qd);
+    if (view !== 'quick') { o.view = view; render(qd, view === 'all' ? null : 'in'); qd.querySelector('.qd-body').className = qd.querySelector('.qd-body').className.replace(/ from-(right|left)/, ''); }
+    if (o.kind === 'sheet') swipe(qd);
+  }
+}
+
+// ---- clicks: a map or a tile changes at once and the drawer stays
+document.addEventListener('click', (e) => {
+  const scr = e.target.closest('.screen');
+  if (!scr || scr._swiped) { if (scr) scr._swiped = false; return; }
+  const qd = scr.querySelector('.qd'), layers = scr.querySelector('.fab-layers');
+  if (!qd) return;
+  const o = qd._o;
+  const setOpen = (open) => { qd.classList.toggle('closed', !open); if (layers) layers.setAttribute('aria-expanded', String(open)); if (!open && o.view !== 'quick') { o.view = 'quick'; setTimeout(() => render(qd), 200); } };
+  const go = (view, dir) => { o.view = view; render(qd, dir); };
+  const t = e.target;
+  const base = t.closest('[data-base]');
+  if (base) { o.base = base.dataset.base; render(qd); if (layers) layers.querySelector('img').src = thumb(o.base); return; }
+  const tile = t.closest('[data-tile]');
+  if (tile) { const id = tile.dataset.tile; o.on = o.on.includes(id) ? o.on.filter((x) => x !== id) : [...o.on, id]; render(qd); return; }
+  const op = t.closest('[data-opts]');
+  if (op) { go(`opts:${op.dataset.opts}`, 'in'); return; }
+  const rm = t.closest('[data-rm]');
+  if (rm) { o.tiles = o.tiles.filter((x) => x !== rm.dataset.rm); render(qd); return; }
+  const add = t.closest('[data-add]');
+  if (add) { if (o.tiles.length < 5) o.tiles = [...o.tiles, add.dataset.add]; render(qd); return; }
+  const seg = t.closest('.seg2 button');
+  if (seg) { for (const b of seg.parentElement.children) b.setAttribute('aria-pressed', String(b === seg)); return; }
+  const sw = t.closest('.tg');
+  if (sw) { sw.classList.toggle('on'); sw.setAttribute('aria-checked', String(sw.classList.contains('on'))); return; }
+  const act = t.closest('[data-act]');
+  if (act) {
+    const a = act.dataset.act;
+    if (a === 'close') setOpen(false);
+    else if (a === 'back') go('quick', 'out');
+    else if (a === 'more') go('all', 'in');
+    else if (a === 'edit') go('edit', 'in');
+    else if (a === 'done') go('quick', 'out');
+    else if (a === 'reset') { o.tiles = [...SPORTS[o.sport].tiles]; render(qd); }
+    return;
+  }
+  if (t.closest('.fab-layers')) { setOpen(qd.classList.contains('closed')); return; }
+  // a tap on the map closes the phone sheet and does nothing else (no waypoint while planning)
+  if (qd.classList.contains('sheet') && !qd.classList.contains('closed') && !t.closest('.qd, .ctrls')) setOpen(false);
+});
+
+// ---- one swipe for every sheet (a prototype of the plan's gesture; the real one also hands the body's
+// scroll over to the sheet on iOS). It follows the finger 1:1 after 10 px, aims for where a flick would
+// come to rest, resists past the ends, and settles with a spring that can be grabbed again mid-way.
+function swipe(qd) {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let g = null, raf = 0, y = 0; // y: the sheet's offset in its own pixels (+ down)
+  const zoomOf = () => { const s = qd.closest('.screen'); return s.getBoundingClientRect().width / s.offsetWidth || 1; };
+  const set = (v) => { y = v; qd.style.transform = v ? `translateY(${v}px)` : ''; };
+  const rubber = (over, dim) => (over * dim * 0.55) / (dim + 0.55 * Math.abs(over));
+  const project = (v) => (v / 1000) * 0.998 / (1 - 0.998); // Apple's: where a flick of v px/s comes to rest
+  // a critically damped-ish spring (damping 0.85, response 0.3 s), starting from the finger's speed
+  const settle = (to, v0, done) => {
+    cancelAnimationFrame(raf);
+    if (reduce) { set(to); done && done(); return; }
+    const k = (2 * Math.PI / 0.3) ** 2, c = 4 * Math.PI * 0.85 / 0.3;
+    let v = v0, last = performance.now();
+    const step = (now) => {
+      const dt = Math.min(0.032, (now - last) / 1000); last = now;
+      for (let i = 0; i < 4; i++) { const h = dt / 4; v += (-k * (y - to) - c * v) * h; set(y + v * h); }
+      if (Math.abs(y - to) < 0.5 && Math.abs(v) < 8) { set(to); qd.classList.remove('dragging'); done && done(); return; }
+      raf = requestAnimationFrame(step);
+    };
+    qd.classList.add('dragging');
+    raf = requestAnimationFrame(step);
+  };
+  qd.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button > 0 || qd.classList.contains('closed')) return; // a second finger is ignored
+    if (e.target.closest('input[type=range]')) return;
+    const body = qd.querySelector('.qd-body');
+    const inBody = body && body.contains(e.target);
+    cancelAnimationFrame(raf); // grabbed mid-way: carry on from where it is
+    g = { id: e.pointerId, y0: e.clientY, x0: e.clientX, off: y, z: zoomOf(), on: false, inBody, body, hist: [[e.timeStamp, e.clientY]] };
+  });
+  qd.addEventListener('pointermove', (e) => {
+    if (!g || e.pointerId !== g.id) return;
+    const dy = (e.clientY - g.y0) / g.z, dx = (e.clientX - g.x0) / g.z;
+    g.hist.push([e.timeStamp, e.clientY]); if (g.hist.length > 6) g.hist.shift();
+    if (!g.on) {
+      if (Math.abs(dy) < 10 || Math.abs(dy) < Math.abs(dx)) return;
+      // from the body only when it can't scroll that way itself
+      if (g.inBody && ((dy > 0 && g.body.scrollTop > 0) || (dy < 0 && g.body.scrollHeight > g.body.clientHeight + 1))) { g = null; return; }
+      g.on = true; g.y0 = e.clientY; g.base = g.off; qd.classList.add('dragging');
+      try { qd.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+    }
+    const d = (e.clientY - g.y0) / g.z, h = qd.offsetHeight, want = g.base + d;
+    set(want < 0 ? rubber(want, h) : want); // above its size: resistance, not a wall
+  });
+  const up = (e) => {
+    if (!g || e.pointerId !== g.id) return;
+    const was = g; g = null;
+    if (!was.on) return;
+    const scr = qd.closest('.screen');
+    scr._swiped = true; // the swipe isn't also a click (which follows at once, if at all)
+    setTimeout(() => { scr._swiped = false; }, 60);
+    const [t0, y0] = was.hist[0], [t1, y1] = was.hist[was.hist.length - 1];
+    const v = t1 > t0 ? ((y1 - y0) / was.z) / ((t1 - t0) / 1000) : 0; // px/s, + down
+    const h = qd.offsetHeight, rest = y + project(v), o = qd._o;
+    if (rest > h * 0.4 || v > 1100) { // down far enough, or a flick: one size down
+      if (o.view === 'all' || o.view === 'edit' || o.view.startsWith('opts:')) { settle(0, 0); o.view = 'quick'; render(qd, 'out'); return; }
+      settle(h, v, () => { qd.classList.add('closed'); set(0); const l = qd.closest('.screen').querySelector('.fab-layers'); if (l) l.setAttribute('aria-expanded', 'false'); });
+    } else if (o.view === 'quick' && (rest < -70 || v < -1100)) { // up: all layers, the next size
+      settle(0, 0); o.view = 'all'; render(qd, 'in');
+    } else settle(0, v);
+  };
+  qd.addEventListener('pointerup', up);
+  qd.addEventListener('pointercancel', up);
+  qd.addEventListener('lostpointercapture', up);
+}
+
+const only = Q.get('frame');
+if (only && document.getElementById(only)) {
+  document.body.classList.add('single');
+  const fr = document.getElementById(only);
+  fr.classList.add('only');
+  const scr = fr.querySelector('.screen');
+  if (Q.get('w')) scr.style.width = `${+Q.get('w')}px`;
+  if (Q.get('h')) scr.style.height = `${+Q.get('h')}px`;
+  if (+Q.get('h') && +Q.get('h') <= 560) fr.classList.add('short'); // the app's (max-height: 560px) for this frame
+}
+if (!only) {
+  const link = (worst, label) => `<a href="#${worst ? 'worst' : 'demo'}" aria-current="${worst === WORST}">${label}</a>`;
+  document.body.insertAdjacentHTML('beforeend', `<nav class="data-switch" aria-label="Data">${link(false, 'Demo data')}${link(true, 'Worst case')}</nav>`);
+}
+</script>
+</body>
+</html>
