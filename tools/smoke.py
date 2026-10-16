@@ -789,10 +789,11 @@ def multi(chrome):
     return not fails
 
 
-# Stops and nights: a break and a night on via points (straight legs, no routing). The night
-# lasts until its morning hour; the trip gets days; the bike left at a changeover is in
-# Heads-up until it's taken along; a night too short to sleep is too; stops survive a drag,
-# undo, the share link (st=, cg=) and the saved route.
+# Stops and nights: a break and a night on via points (straight legs, no routing), departing
+# at 10:00 whatever the hour of the run. The night lasts until its morning hour; the trip
+# gets days; the bike left at a changeover is in Heads-up until it's taken along; a night too
+# short to sleep is too; stops survive a drag, undo, the share link (st=, cg=) and the saved
+# route.
 STOPS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const P = await import(location.origin + '/js/planner.js');
@@ -802,6 +803,13 @@ STOPS = """(async () => {
   p.setActive(true);
   p.clear();
   p.setMode('line');
+  // depart at 10:00 (tomorrow once it's past), not now: run in the early morning, you'd reach
+  // point 2 just before 08:00 and its night would be too short (#112)
+  const ten = new Date();
+  ten.setHours(10, 0, 0, 0);
+  if (ten <= Date.now()) ten.setDate(ten.getDate() + 1);
+  p.setStartOffset(Math.round(ten / 3600000 - Math.floor(Date.now() / 3600000)));
+  if (new Date(p.startSec() * 1000).getHours() !== 10) errs.push(`departure at ${new Date(p.startSec() * 1000)}`);
   for (const q of [[23.700, 61.500], [23.720, 61.506], [23.745, 61.509], [23.760, 61.504]]) p.addPoint(q);
   p.setLegSport(1, 'paddle'); // mtb → paddle → mtb: the bike stays at point 1
   const ready = (k) => p.analysis && p.analysis.waits && p.analysis.waits.length === k;
