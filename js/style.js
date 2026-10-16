@@ -93,7 +93,7 @@ export function buildStyle(s, ctx) {
     routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
     accessCut: { type: 'geojson', data: ctx.data.accessCut || EMPTY }, // a short cut through a way marked private, the one picked in Heads-up (#104)
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
-    routeAlts: { type: 'geojson', data: ctx.data.routeAlts || EMPTY }, // other ways for a leg, where they differ (#95)
+    routeAlts: { type: 'geojson', data: ctx.data.routeAlts || EMPTY, promoteId: 'i' }, // other ways for a leg, where they differ (#95); i: the way (hover)
     routeWind: { type: 'geojson', data: ctx.data.routeWind || EMPTY },
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
     trailWays: { type: 'geojson', data: ctx.data.trailWays || EMPTY }, // trail details (js/trails.js)
@@ -470,6 +470,14 @@ export function buildStyle(s, ctx) {
   add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#e11d48', 'line-width': zi(8, 16, 16, 30), 'line-opacity': 0.4, 'line-blur': zi(8, 4, 16, 9) } });
   // the short cut through a way marked private or closed that the route goes round: dashed, in the private dots' purple
   add({ id: 'access-cut', type: 'line', source: 'accessCut', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#c4b5fd' : '#7c3aed', 'line-width': zi(8, 3, 16, 6), 'line-dasharray': [1.5, 1.2] } });
+  // other ways for a leg (#95, #211): drawn like the route where they leave it (the same width,
+  // white casing and glow), in their own colour, under it; the one under the pointer brighter.
+  // A tap takes one (planner.js pickAlt); their labels are further up
+  const altLine = ['==', ['get', 'kind'], 'line'];
+  const altLit = (on, off) => ['case', ['boolean', ['feature-state', 'hover'], false], on, off];
+  add({ id: 'route-alts-glow', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 12, 16, 26), 'line-blur': zi(8, 5, 16, 11), 'line-opacity': altLit(0.55, 0.3), 'line-opacity-transition': { duration: 150, delay: 0 } } });
+  add({ id: 'route-alts-casing', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
+  add({ id: 'route-alts-line', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5), 'line-opacity': altLit(1, 0.75), 'line-opacity-transition': { duration: 150, delay: 0 } } });
   // the route's glow (#198): a soft halo in its colour so it stands out on a busy map, and a
   // brighter one on the leg under the pointer (ctx.hoverLeg, set while you point at it)
   const routeGlowColor = ['case', ['==', ['get', 'mode'], 'water'], '#0369a1', '#e11d48'];
@@ -497,14 +505,6 @@ export function buildStyle(s, ctx) {
     paint: { 'icon-color': ['get', 'color'], 'icon-halo-color': '#111827', 'icon-halo-width': 1.5 },
   });
   // round-trip candidates (planner): the one you're looking at wider and on top
-  // other ways for a leg (#95): ghosts where they leave it, see-through over a soft glow in
-  // their colour, each with a two-line label (what it is, its length and trails); a tap takes one
-  const altLine = ['==', ['get', 'kind'], 'line'];
-  add({ id: 'route-alts-glow', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 10, 16, 24), 'line-blur': zi(8, 5, 16, 12), 'line-opacity': 0.35 } });
-  add({ id: 'route-alts-line', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6), 'line-opacity': 0.6 } });
-  add({ id: 'route-alts-label', type: 'symbol', source: 'routeAlts', filter: ['==', ['get', 'kind'], 'label'],
-    layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 12.5, 'text-line-height': 1.25, 'text-offset': [0, -1.6], 'text-allow-overlap': true },
-    paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#ffffff', 'text-halo-width': 2.5 } });
   add({ id: 'loops-casing', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 6, 4], 16, ['case', ['get', 'on'], 12, 8]], 'line-opacity': 0.9 } });
   add({ id: 'loops-line', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 3.5, 2], 16, ['case', ['get', 'on'], 7, 4]], 'line-opacity': ['case', ['get', 'on'], 1, 0.7] } });
   // distance marks: distance and arrival on the first line, elapsed time below
@@ -514,6 +514,18 @@ export function buildStyle(s, ctx) {
     layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 11, 'text-anchor': 'left', 'text-offset': [0.7, 0], 'text-padding': 4, 'text-optional': true, 'text-max-width': 18, 'text-justify': 'left' },
     paint: { 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
   });
+  // the labels of the other ways for a leg (#95, #211): what it is, its length and trails; over
+  // everything, distance marks too (they step aside), always shown. Under them the route's own label, in the same form, so the two
+  // compare: it moves to a side of its line where it doesn't cover theirs, and gives way if
+  // there's no room
+  const altLabel = { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 12.5, 'text-line-height': 1.25 };
+  const altLabelPaint = { 'text-color': ['get', 'color'], 'text-halo-color': '#ffffff', 'text-halo-width': 2.5 };
+  add({ id: 'route-alts-label-route', type: 'symbol', source: 'routeAlts', filter: ['all', ['==', ['get', 'kind'], 'label'], ['boolean', ['get', 'route'], false]],
+    layout: { ...altLabel, 'text-variable-anchor': ['bottom', 'top', 'left', 'right', 'bottom-left', 'bottom-right', 'top-left', 'top-right'], 'text-radial-offset': 1.1, 'text-justify': 'auto', 'text-padding': 3 },
+    paint: altLabelPaint });
+  add({ id: 'route-alts-label', type: 'symbol', source: 'routeAlts', filter: ['all', ['==', ['get', 'kind'], 'label'], ['!', ['boolean', ['get', 'route'], false]]],
+    layout: { ...altLabel, 'text-offset': [0, -1.6], 'text-allow-overlap': true },
+    paint: altLabelPaint });
   add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
 
   const style = {

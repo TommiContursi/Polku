@@ -236,6 +236,25 @@ FLOW_HOVER = FLOW_CLOSE.replace("return true; })()", "const cv = m.getCanvas(), 
                                 " const q = a.pts.map((x) => m.project(x)).filter((x) => x.x > W * 0.45 && x.x < W * 0.9 && x.y > 120 && x.y < H - 120)[0];"
                                 " if (q) for (let k = 0; k < 3; k++) { cv.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: R.left + q.x, clientY: R.top + q.y + k })); await wait(120); }"
                                 " await wait(400); return true; })()")
+# #211: other ways for a new leg, hiking in Nuuksio or riding in Raisio (routing goes to a local
+# BRouter: tools/brouter-local.sh), on offer and one taken, framed with the route; older code
+# draws them later, as see-through ghosts
+NUUKSIO = [[24.5800, 60.3100], [24.6050, 60.3220]]
+RAISIO = [[22.190, 60.470], [22.215, 60.485]]
+
+
+def OTHER_WAYS(pick=False, peek=False, pts=NUUKSIO):
+    return ("(async () => { const p = polku.planner, m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));"
+            " p.setActive(true);" + (" if (p.setSheetState) p.setSheetState('peek', { remember: false });" if peek else "") +
+            " p.clear(); p.addPoint(" + json.dumps(pts[0]) + "); await wait(300); p.addPoint(" + json.dumps(pts[1]) + ");"
+            " for (let k = 0; k < 120 && !(p.alts && p.alts.ways.length >= 2); k++) await wait(100);"
+            + (" if (p.alts) { const i = p.alts.ways.findIndex((w) => /^Other way\\n[+]/.test(w.label)); p.pickAlt(i < 0 ? 0 : i); } await wait(300);" if pick else "") +
+            " const cs = [p.legs[0].result.coords, ...(p.alts ? p.alts.ways.filter((w) => w.r).map((w) => w.r.coords) : [])].flat();"
+            " const xs = cs.map((c) => c[0]), ys = cs.map((c) => c[1]);"
+            " m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: p.viewPadding ? p.viewPadding() : 80, duration: 0 });"
+            " await wait(1500); return true; })()")
+
+
 TAB = lambda sec: f"(async () => {{ polku.planner.reveal({json.dumps(sec)}); await new Promise((r) => setTimeout(r, 600)); return true; }})()"
 
 # #72: terrain tiles that don't load, before the route is in: none at all, or (part) the
@@ -497,6 +516,12 @@ SCENES = {
     # a round route: the points on the profile where they are along it (the finish at the end)
     'desk-loop-points': dict(DESK, timeline=False, route='route-kauppi-mtb.json', storage=SIDE,
                              js="(async () => { const p = polku.planner; p.setMode('line'); p.addPoint(p.points[0].slice()); await new Promise((r) => setTimeout(r, 1500)); p.reveal('points'); await new Promise((r) => setTimeout(r, 500)); return true; })()"),
+    'desk-other-ways': dict(DESK, timeline=True, activity='hike', hash='#13/60.316/24.592', storage={**LOCAL, **SIDE}, js=OTHER_WAYS()),
+    'desk-other-ways-picked': dict(DESK, timeline=True, activity='hike', hash='#13/60.316/24.592', storage={**LOCAL, **SIDE}, js=OTHER_WAYS(pick=True)),
+    'desk-other-ways-mtb': dict(DESK, timeline=True, activity='mtb', hash='#13/60.477/22.20', storage={**LOCAL, **SIDE}, js=OTHER_WAYS(pts=RAISIO)),
+    'phone-other-ways-mtb': dict(PHONE, timeline=True, activity='mtb', hash='#13/60.477/22.20', storage=LOCAL, js=OTHER_WAYS(peek=True, pts=RAISIO)),
+    'phone-other-ways': dict(PHONE, timeline=True, activity='hike', hash='#13/60.316/24.592', storage=LOCAL, js=OTHER_WAYS(peek=True)),
+    'phone-other-ways-picked': dict(PHONE, timeline=True, activity='hike', hash='#13/60.316/24.592', storage=LOCAL, js=OTHER_WAYS(pick=True, peek=True)),
     'desk-flow': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, motion=True),
     'desk-flow-close': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, motion=True, js=FLOW_CLOSE),
     'desk-flow-hover': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, motion=True, js=FLOW_HOVER, settle=0.6),

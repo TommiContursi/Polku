@@ -39,9 +39,14 @@ const LOOP_PRESETS = {
 };
 // up to nine loops ("More loops" makes three at a time): a letter and a colour each
 // other ways for a leg (#95): not the route's red, the water's blue, or the purple of ways marked private
-const ALT_COLORS = ['#ea580c', '#0d9488', '#b45309'];
-const ALT_PAUSE = 1500; // ms you stop adding points before a new leg gets its other way
-const ALT_MORE = 5000; // …and ms more before a second one, if you're still looking
+// other ways (#95, #211): blue, a colour the trail map doesn't use; the way you had grey; the
+// short cut through a way marked private in the private dots' purple; the route's own label red
+const ALT_COLOR = '#2563eb', ALT_BEFORE = '#64748b', ALT_CUT = '#7c3aed', ALT_ROUTE = '#e11d48';
+const ALT_ROUTE_ID = 1000; // the route's label among the ways' (feature ids: a way's index)
+const ALT_PAUSE = 1500; // ms after a new leg is in, with no point added, before its other ways (no calls while you sketch)
+const ALT_PAUSE_OWN = 500; // …with your own routing server, which has no limit
+const ALT_MORE = 5000; // …and ms more before the second one, when it doesn't come with the first
+const ALT_CALM = 10e3; // ms since the point before: you're planning, not sketching, and both ways can come together
 const ALT_MIN = 300; // m: a shorter new leg gets none on its own (rarely one 100 m apart)
 const LOOP_COLORS = ['#2563eb', '#ea580c', '#9333ea', '#0d9488', '#db2777', '#65a30d', '#0891b2', '#b45309', '#4f46e5'];
 const LOOP_LETTERS = 'ABCDEFGHI';
@@ -114,6 +119,14 @@ function groupTrail(list) {
 // Heads-up kinds you can hide (the ⋯ on a row): by the row's own key, its obstacle icon or its
 // kind, else the start of its text ("Wet or muddy", "Snow on the way", "Steep climb").
 const HIDE_LABEL = { ...GROUP_TEXT, 'Goes round': 'Ways marked private the route goes round', gate: 'Gates', dark: 'Darkness and twilight', roadwork: 'Road works', incident: 'Traffic incidents', roadcond: 'Road conditions', busy: 'Busy roads', gear: 'Gear left behind' };
+// a routed line's share on paths and tracks (from its ways' tags), in %
+function trailShare(r) {
+  let trail = 0, all = 0;
+  r.coords.forEach((c, j) => { if (!j) return; const d = dist(r.coords[j - 1], c); all += d; if (['path', 'track', 'bridleway'].includes(((r.tags || [])[j - 1] || {}).highway)) trail += d; });
+  return all ? Math.round((trail / all) * 100) : 0;
+}
+const trailsText = (share) => (share === 100 ? 'all on trails' : `${share} % trails`);
+
 function hideKind(w) {
   if (w.noHide) return null;
   const key = w.hide || (w.icon && w.icon.startsWith('td-') ? w.icon.slice(3) : null) || (HIDE_LABEL[w.kind] ? w.kind : null)
@@ -389,8 +402,11 @@ export class Planner {
   addPoint(ll) {
     this.commit();
     this.points.push(ll);
+    const since = Date.now() - (this.lastAddAt || 0);
+    this.lastAddAt = Date.now();
     if (this.points.length > 1) {
       this.altFor = this.points.length - 2; // a new leg at the end: other ways for it once it's routed (#95)
+      this.altCalm = since >= ALT_CALM; // and both together, if you're taking your time (#211)
       // a new leg goes on in the sport of the one before (after a change, you keep paddling)
       const prev = this.legs[this.legs.length - 1], sport = prev && prev.sport;
       const mode = !sport ? this.mode : isWater(sport) ? (this.mode === 'line' ? 'line' : 'water') : this.mode === 'water' ? 'auto' : this.mode;
@@ -898,28 +914,35 @@ export class Planner {
 
   // ---------------------------------------------------------------- other ways (#95)
   // Other ways for leg li, from BRouter's alternatives (one call each; BRouter runs k+1
-  // searches for alternative k). On its own, a leg you've just added gets alternative 1 once
-  // you've stopped adding points for a moment (ALT_PAUSE: no calls while you sketch), and
-  // alternative 2 if you're still looking a while later (ALT_MORE); only for a leg at least
+  // searches for alternative k). On its own, a leg you've just added gets them a moment after
+  // it's routed (not after the terrain), if you haven't added the next point by then
+  // (ALT_PAUSE: no calls while you sketch). Alternatives 1 and 2 come together when you're
+  // taking your time (ALT_CALM since the point before) and the pacing is quiet (only this leg
+  // in the last 10 s, 8 calls free in the minute), or always with your own routing server;
+  // else alternative 1 and, if you're still looking a while later (ALT_MORE), alternative 2.
+  // Points every 2 s fill brouter.de's pacing on their own, so the pause stays: with a
+  // shorter one, legs would wait (the table in #211's pull request). Only for a leg at least
   // ALT_MIN long, and only with room under the pacing (headroom 3, maxWait 0: never ahead of
-  // your next point's leg; the second also needs 6 calls free in the minute, so it doesn't use
-  // up the next legs' first ones). The leg's menu has Other ways for any leg, any time: both, which
-  // may wait their turn. Your own routing server has no limit. A way within 100 m of the leg
-  // (and of the ways shown) all along is left out. They're drawn as ghosts where they differ;
-  // a tap takes one (leg.alt), and the way you had stays as a ghost to go back to, until the
-  // next point. The short cut through a way marked private (#104) is one more, where Heads-up
-  // has it for the leg.
+  // your next point's leg; the second on its own also needs 6 calls free in the minute, so it
+  // doesn't use up the next legs' first ones). The leg's menu has Other ways for any leg, any
+  // time: both, which may wait their turn. A way within 100 m of the leg (and of the ways shown) all
+  // along is left out. They're drawn like the route, in blue, under it, where they differ; a
+  // tap takes one (leg.alt), and the way you had stays, grey, to go back to, until the next
+  // point. The short cut through a way marked private (#104) is one more, where Heads-up has
+  // it for the leg.
   offerAltsSoon(li) {
     const leg = this.legs[li], key = leg && leg.key;
     const same = () => this.legs[li] === leg && leg.key === key;
+    const own = routerHeadroom() === Infinity, calm = this.altCalm;
     clearTimeout(this.altTimer);
     this.altTimer = setTimeout(async () => {
       if (!same()) return;
-      await this.offerAlts(li, false, [1]);
-      if (!same()) return;
+      const both = own || (calm && routerHeadroom() >= 4 && routerRoomThisMinute() >= 8);
+      await this.offerAlts(li, false, both ? [1, 2] : [1]);
+      if (both || !same()) return;
       // still looking: alternative 2 (also when 1 was too close to show)
       this.altTimer = setTimeout(() => { if (same()) this.offerAlts(li, false, [2]); }, ALT_MORE);
-    }, ALT_PAUSE);
+    }, own ? ALT_PAUSE_OWN : ALT_PAUSE);
   }
 
   async offerAlts(li, asked = false, ks = null) {
@@ -941,6 +964,8 @@ export class Planner {
         return { k, r };
       } catch { return null; } // no room, or no such way: just fewer of them
     }));
+    // the short cut comes from this route's analysis, which may still be on its way
+    if (this.analysing) await this.analysing.catch(() => {});
     if (this.alts !== mine || leg.key !== mine.key) return;
     for (const g of got) {
       const w = g && !g.r.note && this.altWay(g.r, g.k, leg.result.coords, mine.ways, 'Other way');
@@ -955,17 +980,16 @@ export class Planner {
     if (!n0 || asked) toast(n === 1 ? 'Another way for this part: tap it on the map to take it' : `${n} other ways for this part: tap one on the map to take it`, { ms: 6000 });
   }
 
-  // way k (its line r) as a ghost beside the leg's line `now`: where it's more than 15 m from it
-  // and from the ways already shown, if that's 100 m or more; labelled with its length against
-  // the leg and its share of trails. null: too close to show.
+  // way k (its line r) beside the leg's line `now`: where it's more than 15 m from it and from
+  // the ways already shown, if that's 100 m or more; labelled with its length against the leg
+  // and its share of trails (the leg's own share is on the route's label: drawAlts). null: too
+  // close to show.
   altWay(r, k, now, shown, title) {
     const parts = this.altParts(r.coords, [now, ...shown.filter((w) => w.r).map((w) => w.r.coords)]);
     if (parts.reduce((m, c) => m + lineLength(c), 0) < 100) return null;
-    let trail = 0, all = 0;
-    r.coords.forEach((c, j) => { if (!j) return; const d = dist(r.coords[j - 1], c); all += d; if (['path', 'track', 'bridleway'].includes((r.tags[j - 1] || {}).highway)) trail += d; });
-    const d = lineLength(r.coords) - lineLength(now), share = all ? Math.round((trail / all) * 100) : 0;
+    const d = lineLength(r.coords) - lineLength(now);
     const diff = Math.abs(d) < 10 ? 'about as long' : `${d >= 0 ? '+' : '−'}${fmtDist(Math.abs(Math.round(d / 10) * 10))}`;
-    return { k, r, parts, label: `${title}\n${diff} · ${share === 100 ? 'all on trails' : `${share} % trails`}` };
+    return { k, r, parts, label: `${title}\n${diff} · ${trailsText(trailShare(r))}` };
   }
 
   // the stretches of `coords` more than 15 m from all of `lines` (at least two points each)
@@ -980,19 +1004,34 @@ export class Planner {
     return out.filter((c) => c.length > 1);
   }
 
+  // the ways on offer, drawn like the route where they leave it (style.js: under it, the same
+  // width and white casing), each labelled; and a label on the route's own leg in the same
+  // form, so the two compare (its share of trails, where it differs from them)
   drawAlts() {
-    const A = this.alts;
+    const A = this.alts, leg = A && this.legs[A.li];
+    this.altHover(null);
+    const mid = (parts) => { const c = parts.reduce((x, p) => (lineLength(p) > lineLength(x) ? p : x), parts[0]); return c[Math.floor(c.length / 2)]; };
     const features = A ? A.ways.flatMap((w, i) => {
-      // each way keeps its colour (BRouter's alternative k); purple is the map's "marked private";
-      // the way you had, or the first way, is grey
-      const color = w.cut ? '#7c3aed' : w.before || !w.k ? '#64748b' : ALT_COLORS[(w.k - 1) % ALT_COLORS.length];
-      const longest = w.parts.reduce((x, c) => (lineLength(c) > lineLength(x) ? c : x), w.parts[0]);
+      const color = w.cut ? ALT_CUT : w.before || !w.k ? ALT_BEFORE : ALT_COLOR;
       return [
         { type: 'Feature', properties: { i, color, kind: 'line' }, geometry: { type: 'MultiLineString', coordinates: w.parts } },
-        { type: 'Feature', properties: { i, color, kind: 'label', label: w.label }, geometry: { type: 'Point', coordinates: longest[Math.floor(longest.length / 2)] } },
+        { type: 'Feature', properties: { i, color, kind: 'label', label: w.label }, geometry: { type: 'Point', coordinates: mid(w.parts) } },
       ];
     }) : [];
+    if (A && A.ways.length && leg && leg.result) {
+      const own = this.altParts(leg.result.coords, A.ways.map((w) => (w.r ? w.r.coords : w.parts.flat())));
+      const at = own.length ? mid(own) : leg.result.coords[Math.floor(leg.result.coords.length / 2)];
+      features.push({ type: 'Feature', properties: { i: ALT_ROUTE_ID, color: ALT_ROUTE, kind: 'label', route: true, label: `This way\n${trailsText(trailShare(leg.result))}` }, geometry: { type: 'Point', coordinates: at } });
+    }
     this.app.setData('routeAlts', { type: 'FeatureCollection', features });
+  }
+
+  // the way under the pointer (its index, or null) shows brighter
+  altHover(i) {
+    if (this.altLit === i || !this.map.getSource('routeAlts')) return;
+    if (this.altLit != null) this.map.setFeatureState({ source: 'routeAlts', id: this.altLit }, { hover: false });
+    this.altLit = i;
+    if (i != null) this.map.setFeatureState({ source: 'routeAlts', id: i }, { hover: true });
   }
 
   clearAlts() {
@@ -1000,6 +1039,7 @@ export class Planner {
     if (!this.alts) return;
     this.alts.ctrl.abort();
     this.alts = null;
+    this.altHover(null);
     this.app.setData('routeAlts', EMPTY);
   }
 
@@ -1071,10 +1111,11 @@ export class Planner {
     if (this.refit && this.legs.every((l) => l.result && l.status !== 'waiting')) { this.refit = false; this.fitRoute(); }
     if (this.snapPoints()) { this.renderMarkers(); this.drawRoute(); }
     if (jobs.length) this.save(); // now with the routed geometry
-    await this.runAnalysis(gen);
-    if (gen !== this.gen) return;
-    // the leg you've just added: other ways for it, if there's room (#95)
+    // the leg you've just added: other ways for it, if there's room (#95); they don't wait for
+    // the analysis (terrain), only the short cut among them does (offerAlts)
     if (this.altFor != null) { const li = this.altFor; this.altFor = null; this.offerAltsSoon(li); }
+    this.analysing = this.runAnalysis(gen);
+    await this.analysing;
   }
 
   async routeRunOf(run) {
@@ -2244,7 +2285,7 @@ export class Planner {
       return;
     }
     // a way on offer for a leg (#95): a tap takes it
-    const alt = this.alts && this.map.getLayer('route-alts-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-alts-line', 'route-alts-glow', 'route-alts-label'] })[0];
+    const alt = this.alts && this.map.getLayer('route-alts-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label'] }).find((f) => !f.properties.route);
     if (alt) { this.pickAlt(alt.properties.i); return; }
     const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
     if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
@@ -2292,8 +2333,10 @@ export class Planner {
   }
 
   onMapMove(e) {
-    if (this.alts && this.map.getLayer('route-alts-line') && !this.edit
-      && this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-alts-line', 'route-alts-glow', 'route-alts-label'] }).length) {
+    const way = this.alts && this.map.getLayer('route-alts-line') && !this.edit
+      && this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label'] }).find((f) => !f.properties.route);
+    if (this.alts) this.altHover(way ? way.properties.i : null);
+    if (way) {
       this.map.getCanvas().style.cursor = 'pointer'; // a way on offer: a click takes it
       if (this.app.hoverLeg) this.app.hoverLeg(null);
       return;

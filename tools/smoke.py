@@ -1467,10 +1467,11 @@ OTHERWAYS_BUSY = """(async () => {
   p.setActive(true);
   p.setMode('auto');
   window.alt2Far = true;
-  // three points, the third 0.8 s after the second leg is in: only the last leg gets other ways
+  // three points, the third 0.8 s after the second leg is in (routed: the pause doesn't wait for
+  // the terrain): only the last leg gets other ways
   p.addPoint([24.930, 60.170]);
   p.addPoint([24.950, 60.170]);
-  await routed();
+  for (let k = 0; k < 100 && !(p.legs.length && p.legs.every((l) => l.status === 'ok')); k++) await wait(50);
   await wait(800);
   p.addPoint([24.970, 60.170]);
   await routed();
@@ -1507,10 +1508,56 @@ OTHERWAYS_BUSY = """(async () => {
   return errs;
 })()"""
 
+# #211: taking your time (10 s or more since the point before, the pacing quiet), both other
+# ways come together a moment after the leg is in (not 5 s apart, and not after the terrain);
+# they're drawn under the route, the route's leg gets a label in the same form, and the way
+# under the pointer lights up; with your own routing server, both after half a second
+OTHERWAYS_CALM = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  const calls = (k) => window.routerCalls.filter((u) => /lonlats=/.test(u) && new URL(u).searchParams.get('alternativeidx') === String(k)).length;
+  const legIn = async () => { for (let k = 0; k < 100 && !(p.legs.length && p.legs.every((l) => l.status === 'ok')); k++) await wait(50); };
+  const both = async () => { const t = performance.now(); for (let k = 0; k < 160 && !(p.alts && p.alts.ways.length >= 2); k++) await wait(50); return performance.now() - t; };
+  window.alt2Far = true;
+  p.setActive(true);
+  p.setMode('auto');
+  p.addPoint([24.930, 60.170]);
+  await wait(10200); // taking your time
+  p.addPoint([24.950, 60.170]);
+  await legIn();
+  let took = await both();
+  if (calls(1) !== 1 || calls(2) !== 1 || took > 3500) errs.push(`taking your time: alternative 1 ×${calls(1)}, 2 ×${calls(2)}, both shown ${Math.round(took)} ms after the leg (together, within 3.5 s)`);
+  if (!p.alts || p.alts.ways.length !== 2) return [...errs, `ways offered: ${p.alts ? p.alts.ways.length : 'none'}`];
+  const ids = m.getStyle().layers.map((l) => l.id);
+  if (!(ids.indexOf('route-alts-line') < ids.indexOf('route-casing'))) errs.push('the other ways are drawn over the route');
+  const data = await m.getSource('routeAlts').getData(), own = data.features.find((f) => f.properties.route);
+  if (!own || !/^This way\\n(\\d+ % trails|all on trails)$/.test(own.properties.label)) errs.push(`the route's own label: ${own && JSON.stringify(own.properties.label)}`);
+  // the way under the pointer lights up, and goes back when the pointer leaves it
+  const w = p.alts.ways[0], c = w.parts[0][Math.floor(w.parts[0].length / 2)];
+  m.jumpTo({ center: c, zoom: 14 });
+  await new Promise((ok) => { const t = setTimeout(ok, 5000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+  const at = (ll) => { const q = m.project(ll); p.onMapMove({ point: q, lngLat: { lng: ll[0], lat: ll[1] }, originalEvent: { clientX: q.x, clientY: q.y } }); };
+  at(c);
+  if (!(m.getFeatureState({ source: 'routeAlts', id: 0 }) || {}).hover) errs.push('the way under the pointer doesn\\'t light up');
+  at([c[0] + 0.004, c[1] + 0.003]);
+  if ((m.getFeatureState({ source: 'routeAlts', id: 0 }) || {}).hover) errs.push('the way stays lit after the pointer leaves it');
+  // your own routing server: both, half a second after the leg is in, even while you sketch
+  localStorage.setItem('polku:brouterUrl', JSON.stringify('https://brouter.de/own'));
+  const c1 = calls(1), c2 = calls(2);
+  p.addPoint([24.960, 60.175]);
+  await legIn();
+  took = await both();
+  if (calls(1) !== c1 + 1 || calls(2) !== c2 + 1 || took > 1500) errs.push(`your own server: alternative 1 ×${calls(1) - c1}, 2 ×${calls(2) - c2}, both shown ${Math.round(took)} ms after the leg (within 1.5 s)`);
+  localStorage.removeItem('polku:brouterUrl');
+  p.clear();
+  return errs;
+})()"""
+
 
 def otherways(chrome):
     fails = []
-    for script, timeout in [(OTHERWAYS, 90000), (OTHERWAYS_BUSY, 120000)]:
+    for script, timeout in [(OTHERWAYS, 90000), (OTHERWAYS_BUSY, 120000), (OTHERWAYS_CALM, 90000)]:
         pg = chrome.page(1440, 900, False)
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': OTHERWAYS_ROUTER}, pg.s)
