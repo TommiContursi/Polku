@@ -290,7 +290,8 @@ COLOURS_PRE = """(async () => {
 COLOURS_VIEW = """(async () => {
   const p = polku.planner, a = p.analysis, fill = (v) => new Float32Array(a.along.length).fill(v);
   a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) };
-  p.showMode('way');
+  const pick = p.breakdownKinds?.way?.pick;
+  if (pick) pick.click(); else p.showMode('way');
   p.reveal('colours');
   if (p.layout() === 'sheet') p.setSheetState('full', { remember: false });
   await new Promise((r) => setTimeout(r, 600));

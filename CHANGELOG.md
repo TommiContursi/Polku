@@ -4,6 +4,10 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Route colour breakdowns, grouped and easier to scan
+- **Terrain, Ground and Weather have their own groups,** side by side when the panel is wide and stacked on phones. Groups without data stay out of the way.
+- **Each breakdown groups its title and bar into one colour button,** and colours the route on the map as well as the profile. Bars use the full row, and category distances line up below. Fold Terrain, Ground or Weather from the group header.
+
 ### A clear departure picker in Go
 - **Go → Time starts with a full-size Depart picker,** above the time estimate and arrival schedule.
 - **Tap the summary estimate to open Go at that picker.** It stays in step with the start waypoint and weather timeline, and keeps focus when the forecast updates.
