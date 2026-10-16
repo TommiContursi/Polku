@@ -1,6 +1,6 @@
 # Changelog
 
-What's new in Polku, newest first. Every change ships to [polku.si](https://polku.si) when its pull request is merged. Plans and ideas are in [docs/ROADMAP.md](docs/ROADMAP.md) and [docs/BACKLOG.md](docs/BACKLOG.md).
+What's new in Polku, newest first. Every change ships to [polku.si](https://polku.si) when its pull request is merged. What's planned is on GitHub, in the [issues](https://github.com/TommiContursi/Polku/issues) and [milestones](https://github.com/TommiContursi/Polku/milestones); the order of the phases is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## 2026-10-16
 
