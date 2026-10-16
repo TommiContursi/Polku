@@ -91,6 +91,7 @@ export function buildStyle(s, ctx) {
     routeHover: { type: 'geojson', data: ctx.data.routeHover || EMPTY },
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
     routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
+    accessCut: { type: 'geojson', data: ctx.data.accessCut || EMPTY }, // a short cut through a way marked private, the one picked in Heads-up (#104)
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
     routeWind: { type: 'geojson', data: ctx.data.routeWind || EMPTY },
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
@@ -466,6 +467,8 @@ export function buildStyle(s, ctx) {
   add({ id: 'route-gap', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'gap'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#64748b', 'line-width': zi(8, 1, 16, 2), 'line-dasharray': [1, 2] } });
   // the leg lit from the waypoint list: a soft glow under the line
   add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#e11d48', 'line-width': zi(8, 16, 16, 30), 'line-opacity': 0.4, 'line-blur': zi(8, 4, 16, 9) } });
+  // the short cut through a way marked private or closed that the route goes round: dashed, in the private dots' purple
+  add({ id: 'access-cut', type: 'line', source: 'accessCut', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#c4b5fd' : '#7c3aed', 'line-width': zi(8, 3, 16, 6), 'line-dasharray': [1.5, 1.2] } });
   add({ id: 'route-casing', type: 'line', source: 'route', filter: ['!=', ['get', 'kind'], 'gap'], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
   add({
     id: 'route-line', type: 'line', source: 'route', filter: ['all', ['!=', ['get', 'kind'], 'portage'], ['!=', ['get', 'kind'], 'gap']],
@@ -750,6 +753,23 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-width': zi(12, 0.6, 15, 1.6 * k * (roadBike ? 1.5 : 1), 18, 3.5 * k * (roadBike ? 1.4 : 1)),
         'line-opacity': 0.85 * roadsDim,
       },
+    });
+  }
+
+  // Ways marked private or closed for your sport (#104): purple dots beside the line, on the
+  // other side from no-bike's red ones. The tiles fold access=private into access=no; the
+  // sport's own yes wins (a footway closed to cars is open on foot), and on foot, foot=no.
+  // Routes keep off them, so this is why a route goes round. It says what the map says, not
+  // the law: Finnish private roads and apartment-block yards are open on foot and by bike.
+  if (bikeAct || footAct) {
+    const own = bikeAct ? 'bicycle' : 'foot';
+    const opens = ['in', ['coalesce', ['get', own], ''], ['literal', ['yes', 'designated', 'permissive']]];
+    add({
+      id: 'way-noaccess', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14,
+      filter: ['all',
+        ['in', ['get', 'class'], ['literal', ['path', 'track', 'service', 'minor', 'tertiary']]],
+        ['any', ['all', ['==', ['get', 'access'], 'no'], ['!', opens]], ...(footAct ? [['==', ['get', 'foot'], 'no']] : [])]],
+      paint: { 'line-color': darkBase ? '#c4b5fd' : '#7c3aed', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, -3, 18, -8), 'line-dasharray': [0.4, 1.6] },
     });
   }
 

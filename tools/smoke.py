@@ -16,6 +16,7 @@
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py avoid      # places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)
   python3 tools/smoke.py access     # ways marked private or closed in Heads-up, from BRouter's tags and, when Valhalla stands in, the map's (mocked)
+  python3 tools/smoke.py detour     # a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
@@ -1117,6 +1118,105 @@ ACCESS = """(async () => {
   p.clear();
   return errs;
 })()"""
+
+
+# Detours round ways marked private (#104), with a mocked BRouter and the map's tiles stubbed:
+# both points are put on a private footway; the router starts and ends 55 m off it and goes
+# round (444 m). Heads-up says the route goes round, how much a short cut would save, and that
+# the start and finish were moved off it; the row draws the short cut on the map; the spots
+# outlast Undo and a reload. Without the private way in the tiles, nothing is said. The map
+# draws such ways in Run and MTB (not in Paddle). No routing call goes out.
+DETOUR_ROUTER = """(() => {
+  const real = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:[/][/](brouter[.]de|valhalla1[.]openstreetmap[.]de)[/]/.test(url)) return real(input, init);
+    if (/valhalla/.test(url)) return new Response('{}', { status: 503 });
+    // from 55 m north of each point, round to the north (a straight footway joins the points)
+    const [a, b] = new URL(url).searchParams.get('lonlats').split('|').map((q) => q.split(',').map(Number));
+    const c = [[a[0], +(a[1] + 0.0005).toFixed(6)], [a[0], +(a[1] + 0.0015).toFixed(6)], [b[0], +(b[1] + 0.0015).toFixed(6)], [b[0], +(b[1] + 0.0005).toFixed(6)]];
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [] }, geometry: { type: 'LineString', coordinates: c } }] }));
+  };
+})()"""
+DETOUR = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  const A = [24.930, 60.175], B = [24.934, 60.175];
+  let closed = true;
+  const realQuery = m.querySourceFeatures.bind(m);
+  m.querySourceFeatures = (src, o) => (src === 'ofm' && o && /access/.test(JSON.stringify(o.filter || ''))
+    ? (closed ? [{ type: 'Feature', properties: { class: 'path', subclass: 'footway', access: 'no' }, geometry: { type: 'LineString', coordinates: [A, B] } }] : [])
+    : realQuery(src, o));
+  const routed = async () => { for (let k = 0; k < 100 && !(p.legs.length === 1 && p.legs[0].status === 'ok' && p.analysis); k++) await wait(200); return p.legs.length === 1 && p.legs[0].status === 'ok'; };
+  const rows = () => [...document.querySelectorAll('.warnings .li-row')].map((r) => r.textContent);
+  p.setActive(true);
+  p.setMode('auto');
+  p.addPoint(A.slice());
+  p.addPoint(B.slice());
+  if (!(await routed())) return [`the leg: ${p.legs.map((l) => l.status).join(', ')}`];
+  await wait(300);
+  p.reveal('warnings');
+  await wait(300);
+  const round = rows().filter((t) => /Goes round a way marked private/.test(t));
+  if (round.length !== 1) errs.push(`goes round: ${rows().join(' / ') || 'no rows'}`);
+  else {
+    if (!/save about 3[23]0 m/.test(round[0])) errs.push(`the short cut's saving: ${round[0]}`);
+    if (!/start was moved 5\\d m and the finish 5\\d m off it/.test(round[0])) errs.push(`the moved points: ${round[0]}`);
+  }
+  if (rows().some((t) => /moved .* off a way marked private/.test(t))) errs.push('a moved-point row as well as the short cut');
+  // the row draws the short cut
+  [...document.querySelectorAll('.warnings .li-row')].find((r) => /Goes round/.test(r.textContent))?.querySelector('.li').click();
+  await wait(400);
+  const src = m.getSource('accessCut'), cut = src ? await src.getData() : { features: [] };
+  if (!cut.features.length || cut.features[0].geometry.coordinates.length < 2) errs.push('the short cut isn\\'t drawn');
+  // the spots outlast Undo and a reload (the saved route)
+  const spots = () => JSON.stringify(p.points.map((q) => (p.pspot && p.pspot.get(q)) || null));
+  const want = JSON.stringify([A, B]);
+  if (spots() !== want) errs.push(`the spots: ${spots()}`);
+  p.addPoint([24.938, 60.175]);
+  await wait(300);
+  p.undo();
+  await wait(300);
+  if (spots() !== want) errs.push(`after Undo: ${spots()}`);
+  p.save();
+  p.legs = []; p.points = [];
+  p.loadSaved();
+  await wait(300);
+  if (spots() !== want) errs.push(`after a reload: ${spots()}`);
+  // nothing marked in the tiles: nothing said (another leg, so the router asks again)
+  closed = false;
+  p.clear();
+  p.addPoint([24.930, 60.180]);
+  p.addPoint([24.934, 60.180]);
+  if (!(await routed())) errs.push('the second leg');
+  await wait(300);
+  if (rows().some((t) => /private or closed/.test(t))) errs.push(`no private way, still a row: ${rows().join(' / ')}`);
+  // the map draws ways marked private or closed on land, not on the water
+  for (const [sport, want] of [['run', true], ['mtb', true], ['paddle', false]]) {
+    polku.set({ activity: sport });
+    await wait(500);
+    if (!!m.getLayer('way-noaccess') !== want) errs.push(`${sport}: the private-ways layer ${want ? 'missing' : 'drawn'}`);
+  }
+  polku.set({ activity: 'run' });
+  m.querySourceFeatures = realQuery;
+  p.clear();
+  return errs;
+})()"""
+
+
+def detour(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': DETOUR_ROUTER}, pg.s)
+        pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#16/60.176/24.932')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        fails = pg.js(DETOUR, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} detours round ways marked private" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 def access(chrome):
@@ -2861,6 +2961,8 @@ def main():
             ok = avoid_link(chrome) and ok
         if not only or 'access' in only:
             ok = access(chrome) and ok
+        if not only or 'detour' in only:
+            ok = detour(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
         if not only or 'fit' in only:

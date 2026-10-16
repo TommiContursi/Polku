@@ -108,7 +108,7 @@ function groupTrail(list) {
 
 // Heads-up kinds you can hide (the ⋯ on a row): by the row's own key, its obstacle icon or its
 // kind, else the start of its text ("Wet or muddy", "Snow on the way", "Steep climb").
-const HIDE_LABEL = { ...GROUP_TEXT, gate: 'Gates', dark: 'Darkness and twilight', roadwork: 'Road works', incident: 'Traffic incidents', roadcond: 'Road conditions', busy: 'Busy roads', gear: 'Gear left behind' };
+const HIDE_LABEL = { ...GROUP_TEXT, 'Goes round': 'Ways marked private the route goes round', gate: 'Gates', dark: 'Darkness and twilight', roadwork: 'Road works', incident: 'Traffic incidents', roadcond: 'Road conditions', busy: 'Busy roads', gear: 'Gear left behind' };
 function hideKind(w) {
   if (w.noHide) return null;
   const key = w.hide || (w.icon && w.icon.startsWith('td-') ? w.icon.slice(3) : null) || (HIDE_LABEL[w.kind] ? w.kind : null)
@@ -137,6 +137,7 @@ export class Planner {
     this.pchange = new WeakMap(); // point → your changeover minutes there (where the sport changes)
     this.pstop = new WeakMap(); // point → a stop there: { min } a break, { on } a night (go on at that minute of the day)
     this.pcarry = new WeakMap(); // point → true: the gear of the sport you change out of there goes along
+    this.pspot = new WeakMap(); // point → the spot you put it at, when the router moved it off a way marked private or closed (#104)
     this.marks = { km: true, time: false, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.openLegs = new Set(); // waypoint rows whose leg settings are open (by point index)
@@ -203,6 +204,7 @@ export class Planner {
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
       carry: this.points.map((p) => !!this.pcarry.get(p)),
+      spots: this.points.map((p) => this.pspot.get(p) || null),
       legs: this.legs.map((l) => ({ mode: l.mode, result: l.result, key: l.key, status: l.status, style: l.style, src: l.src, sport: l.sport })),
       nogos: this.nogos.map((n) => ({ ...n })),
       routeName: this.routeName || '',
@@ -221,6 +223,7 @@ export class Planner {
     this.changeAll(s.changes);
     this.stopAll(s.stops);
     this.carryAll(s.carry);
+    this.spotAll(s.spots);
     this.legs = s.legs.map((l) => ({ ...l }));
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
@@ -233,6 +236,8 @@ export class Planner {
   changeAll(list) { this.points.forEach((p, i) => { if (list && list[i] != null) this.pchange.set(p, list[i]); else this.pchange.delete(p); }); }
   stopAll(list) { this.points.forEach((p, i) => { const st = cleanStop(list && list[i]); if (st) this.pstop.set(p, st); else this.pstop.delete(p); }); }
   carryAll(list) { this.points.forEach((p, i) => { if (list && list[i]) this.pcarry.set(p, true); else this.pcarry.delete(p); }); }
+  // older saved routes and snapshots have none
+  spotAll(list) { this.points.forEach((p, i) => { const q = list && list[i]; if (Array.isArray(q) && q.length === 2 && q.every(Number.isFinite)) this.pspot.set(p, q); else this.pspot.delete(p); }); }
 
   // ---------------------------------------------------------------- a sport per leg (multisport)
   // A leg's own sport, else the route's. A water leg in a land sport has always
@@ -1501,7 +1506,8 @@ export class Planner {
     Object.assign(a, (({ total, tAt, waits }) => ({ time: total, tAt, waits }))(this.timed(a)));
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
-    a.accessWarn = this.standInAccess(a);
+    a.accessWarn = [...this.standInAccess(a), ...this.detourWarnings(a)];
+    this.app.setData('accessCut', EMPTY);
     this.watchTerrain(a);
     this.renderAnalysis();
     this.loadWind(a);
@@ -1534,6 +1540,114 @@ export class Planner {
     this.useAnalysis(b);
   }
 
+  // The ways the map's tiles mark private or closed (the tiles fold access=private into no),
+  // and on foot foot=no: segments [p0, p1, tags] near the box [w, s, e, n] (degrees of pad).
+  closedSegments(box, pad = 0.0005) {
+    if (!this.map.getSource('ofm')) return [];
+    const [w, s, e, n] = box, out = [];
+    for (const f of this.map.querySourceFeatures('ofm', { sourceLayer: 'transportation', filter: ['any', ['==', ['get', 'access'], 'no'], ['==', ['get', 'foot'], 'no']] })) {
+      const g = f.geometry, lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
+      const tags = { access: f.properties.access, foot: f.properties.foot, bicycle: f.properties.bicycle };
+      for (const c of lines) {
+        for (let k = 1; k < c.length; k++) {
+          const p0 = c[k - 1], p1 = c[k];
+          if (Math.max(p0[0], p1[0]) < w - pad || Math.min(p0[0], p1[0]) > e + pad || Math.max(p0[1], p1[1]) < s - pad || Math.min(p0[1], p1[1]) > n + pad) continue;
+          out.push({ p0, p1, tags });
+        }
+      }
+    }
+    return out;
+  }
+  // a spot on (within 8 m of) a way closed to the sport, as the map says
+  closedAt(ll, sport) {
+    return this.closedSegments([ll[0], ll[1], ll[0], ll[1]], 0.0002).some((g) => accessOf(g.tags, sport) && pointSegment(ll, g.p0, g.p1).d < 8);
+  }
+
+  // Where a leg goes round a way marked private or closed for its sport (#104), from the map's
+  // tiles, no calls: a way through such ways between two spots near the leg (or the spots you
+  // picked, where the router moved a point off one) that's much shorter than the leg between
+  // them. And a point moved off one says so. Only where the tiles are loaded (zoom 14 carries
+  // access); a short cut joined to the leg by open paths isn't seen.
+  detourWarnings(a) {
+    const out = [];
+    const row = (o) => ({ len: 0, kind: 'access', ic: 'warn', noAvoid: true, osm: true, fix: 'Tagged wrong? Leave a note on OpenStreetMap', hide: 'Goes round', ...o });
+    const said = new Set(); // points whose move a short cut's row explains
+    this.legs.forEach((leg, li) => {
+      const sport = this.legSport(li);
+      if (leg.mode !== 'auto' || leg.status !== 'ok' || !leg.result || isWater(sport)) return;
+      const from = this.lengthTo(li), to = this.lengthTo(li + 1);
+      const spots = [];
+      for (let i = 0; i < a.along.length; i++) if (a.along[i] >= from - 0.5 && a.along[i] <= to + 0.5) spots.push({ ll: a.pts[i], at: a.along[i] });
+      if (spots.length < 2) return;
+      const s0 = this.pspot.get(this.points[li]), s1 = this.pspot.get(this.points[li + 1]);
+      if (s0) spots.unshift({ ll: s0, at: from - dist(s0, this.points[li]), pick: li });
+      if (s1) spots.push({ ll: s1, at: to + dist(s1, this.points[li + 1]), pick: li + 1 });
+      const segs = this.closedSegments(bbox(spots.map((x) => x.ll)), 0.003).filter((g) => accessOf(g.tags, sport));
+      if (!segs.length) return;
+      // the closed ways as a graph (vertices joined to about a metre: tiles cut ways at their edges)
+      const key = (q) => `${q[0].toFixed(5)},${q[1].toFixed(5)}`, nodes = new Map();
+      const node = (q) => { const k = key(q); if (!nodes.has(k)) nodes.set(k, { ll: q, e: [] }); return k; };
+      for (const g of segs) { const u = node(g.p0), v = node(g.p1), d = dist(g.p0, g.p1); nodes.get(u).e.push([v, d]); nodes.get(v).e.push([u, d]); }
+      // where they touch the leg: within 25 m of it (the nearest spot along it), found through a
+      // grid of about 55 m cells, so a long leg in a town stays quick
+      const C = 0.0005, cell = (q) => `${Math.floor(q[0] / (C * 2))},${Math.floor(q[1] / C)}`, grid = new Map();
+      for (const x of spots) { const c = cell(x.ll); if (!grid.has(c)) grid.set(c, []); grid.get(c).push(x); }
+      const touch = [];
+      for (const [k, nd] of nodes) {
+        let best = null;
+        const cx = Math.floor(nd.ll[0] / (C * 2)), cy = Math.floor(nd.ll[1] / C);
+        for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+          for (const x of grid.get(`${cx + dx},${cy + dy}`) || []) { const d = dist(nd.ll, x.ll); if (d < 25 && (!best || d < best.d)) best = { d, at: x.at, pick: x.pick }; }
+        }
+        if (best) touch.push({ k, ...best });
+      }
+      // only ways that touch the leg twice can be a short cut: each touch's group of joined ways
+      const group = new Map();
+      for (const k of nodes.keys()) {
+        if (group.has(k)) continue;
+        const stack = [k];
+        group.set(k, k);
+        while (stack.length) for (const [v] of nodes.get(stack.pop()).e) if (!group.has(v)) { group.set(v, k); stack.push(v); }
+      }
+      const twice = new Map();
+      for (const t of touch) twice.set(group.get(t.k), (twice.get(group.get(t.k)) || 0) + 1);
+      let best = null;
+      for (const t of touch) {
+        if (twice.get(group.get(t.k)) < 2) continue;
+        // the shortest way through the closed ways from t (a small graph: a plain Dijkstra)
+        const D = new Map([[t.k, 0]]), prev = new Map(), done = new Set(), queue = [[0, t.k]];
+        while (queue.length) {
+          queue.sort((x, y) => x[0] - y[0]);
+          const [du, u] = queue.shift();
+          if (done.has(u)) continue;
+          done.add(u);
+          if (du > 3000) break; // a short cut, not a way of its own
+          for (const [v, w] of nodes.get(u).e) if (du + w < (D.get(v) ?? Infinity)) { D.set(v, du + w); prev.set(v, u); queue.push([du + w, v]); }
+        }
+        for (const v of touch) {
+          if (v.k === t.k || !D.has(v.k) || v.at <= t.at) continue;
+          const through = D.get(v.k) + t.d + v.d, round = v.at - t.at, saved = round - through;
+          if (saved >= 100 && saved >= 0.25 * round && (!best || saved > best.saved)) {
+            const cut = [];
+            for (let k = v.k; k; k = prev.get(k)) cut.unshift(nodes.get(k).ll);
+            best = { saved, at: Math.max(0, t.at), cut, picks: [t.pick, v.pick].filter((k) => k != null) };
+          }
+        }
+      }
+      if (!best) return;
+      best.picks.forEach((k) => said.add(k));
+      const by = best.picks.map((k, j) => `${j ? '' : `${this.label(k).toLowerCase()} was moved `}${j ? `the ${this.label(k).toLowerCase()} ` : ''}${fmtDist(dist(this.pspot.get(this.points[k]), this.points[k]))}`);
+      const moved = by.length ? ` · the ${by.join(' and ')} off it` : '';
+      out.push(row({ at: best.at, lngLat: best.cut[0], cut: best.cut, text: 'Goes round a way marked private or closed', note: `a short cut through it would save about ${fmtDist(Math.round(best.saved / 10) * 10)}${moved} · from the map: routes keep off it` }));
+    });
+    // a point moved off one, where no short cut says so
+    this.points.forEach((p, i) => {
+      const spot = this.pspot.get(p);
+      if (spot && !said.has(i)) out.push(row({ at: this.lengthTo(i), lngLat: spot, text: `${this.label(i)} moved ${fmtDist(dist(spot, p))} off a way marked private or closed`, note: 'the spot you picked is on it, and routes keep off it · from the map' }));
+    });
+    return out;
+  }
+
   // Valhalla's answer carries no access tags, and it walks through ways marked private where
   // BRouter goes round: on its legs, the stretches along a way that the map's tiles mark private
   // or no access (OpenMapTiles folds private into no). Only where the tiles are loaded: the
@@ -1542,20 +1656,7 @@ export class Planner {
     const out = [];
     const on = a.attr.map((x) => !!x && x.by === 'valhalla' && x.mode === 'auto');
     if (!on.some(Boolean) || !this.map.getSource('ofm')) return out;
-    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
-    a.pts.forEach((q, i) => { if (on[i]) { w = Math.min(w, q[0]); e = Math.max(e, q[0]); s = Math.min(s, q[1]); n = Math.max(n, q[1]); } });
-    const pad = 0.0005;
-    const segs = [];
-    for (const f of this.map.querySourceFeatures('ofm', { sourceLayer: 'transportation', filter: ['==', ['get', 'access'], 'no'] })) {
-      const g = f.geometry, lines = g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : [];
-      for (const c of lines) {
-        for (let k = 1; k < c.length; k++) {
-          const p0 = c[k - 1], p1 = c[k];
-          if (Math.max(p0[0], p1[0]) < w - pad || Math.min(p0[0], p1[0]) > e + pad || Math.max(p0[1], p1[1]) < s - pad || Math.min(p0[1], p1[1]) > n + pad) continue;
-          segs.push({ p0, p1, tags: { access: 'no', foot: f.properties.foot, bicycle: f.properties.bicycle } });
-        }
-      }
-    }
+    const segs = this.closedSegments(bbox(a.pts.filter((_, i) => on[i])));
     if (!segs.length) return out;
     // a sample on such a way: within 4 m of one, and the way not open to the sample's sport
     const marked = (i) => {
@@ -2410,6 +2511,9 @@ export class Planner {
       if (ends.length === 2 && dist(ends[0], ends[1]) > 5) continue;
       const p = this.points[i], q = ends[0], d = dist(p, q);
       if (d < 1 || d > 400) continue;
+      // put on a way marked private or closed, and moved off it: remember where (#104)
+      if (d > 15 && this.closedAt(p, this.legSport(legs[1] ? i : i - 1))) this.pspot.set(p, [p[0], p[1]]);
+      else this.pspot.delete(p);
       p[0] = +q[0].toFixed(6); p[1] = +q[1].toFixed(6); // the same point (names and changeovers stay with it)
       if (legs[0]) legs[0].result.coords[legs[0].result.coords.length - 1] = p;
       if (legs[1]) legs[1].result.coords[0] = p;
@@ -2717,6 +2821,7 @@ export class Planner {
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
       carry: this.points.map((p) => !!this.pcarry.get(p)),
+      spots: this.points.map((p) => this.pspot.get(p) || null),
       sports: this.legs.map((l) => l.sport || null),
       style: encodeStyle(this.app.activity(), this.style),
       legStyles: this.legs.map((l, i) => (l.style ? encodeStyle(this.legSport(i), l.style) || 'balanced' : null)),
@@ -2738,6 +2843,7 @@ export class Planner {
     this.changeAll(r.changes);
     this.stopAll(r.stops);
     this.carryAll(r.carry);
+    this.spotAll(r.spots);
     if (r.style != null) this.style = decodeStyle(this.app.activity(), r.style);
     this.legs = r.points.slice(1).map((_, i) => {
       if (r.modes[i] === 'fixed' && r.fixed && r.fixed[i]) {
@@ -2771,6 +2877,7 @@ export class Planner {
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
       carry: this.points.map((p) => !!this.pcarry.get(p)),
+      spots: this.points.map((p) => this.pspot.get(p) || null),
       style: encodeStyle(this.app.activity(), this.style),
       legStyles: this.legs.map((l, i) => (l.style ? encodeStyle(this.legSport(i), l.style) || 'balanced' : null)),
       nogos: this.nogos,
@@ -2784,6 +2891,7 @@ export class Planner {
     this.changeAll(s.changes);
     this.stopAll(s.stops);
     this.carryAll(s.carry);
+    this.spotAll(s.spots);
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
     if (s.style != null) this.style = decodeStyle(s.activity || this.app.activity(), s.style);
@@ -3966,7 +4074,10 @@ export class Planner {
     this.selected = sel;
     this.focusHl = [a.along[i0], a.along[i1]];
     this.chart.setHighlight(this.focusHl);
-    this.frame(bbox(a.pts.slice(i0, i1 + 1)), { duration: 700 });
+    // a short cut the route didn't take (#104): drawn while its row is the one picked
+    const cut = sel && sel.cut;
+    this.app.setData('accessCut', cut ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cut } }] } : EMPTY);
+    this.frame(bbox([...a.pts.slice(i0, i1 + 1), ...(cut || [])]), { duration: 700 });
   }
 
   renderWind() {

@@ -214,6 +214,10 @@ function way(feats, ctx) {
   const upAt = bits.length;
   if (wp.surface) bits.push(e(String(wp.surface).replace(/_/g, ' ')));
   if (wp.bicycle === 'no') bits.push('no bikes');
+  // marked private or closed for your sport (the tiles fold private into no): routes keep off it
+  const own = ctx && ctx.bike ? 'bicycle' : 'foot';
+  if (own === 'foot' && wp.foot === 'no') bits.push('no walking');
+  else if (wp.access === 'no' && !['yes', 'designated', 'permissive'].includes(wp[own])) bits.push('marked private or no access');
   if (wp.brunnel === 'bridge' && !wp.boardwalk) bits.push('bridge');
   if (wp.osm) bits.push(...detailBits(wp).map(e)); // trail details, drawn from OSM
   // what its winter colour means, where the winter ways are drawn

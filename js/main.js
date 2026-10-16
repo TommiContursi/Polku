@@ -633,6 +633,7 @@ const KEYS = {
     keyItem(keyLine('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
     keyItem(keyLine('background:#5b7fa8;height:2px'), 'Cycleway (paved)'),
     keyItem(keyLine('border-top:3px dotted #dc2626'), 'No bikes (beside a path)'),
+    keyItem(keyLine('border-top:3px dotted #7c3aed'), 'Marked private or no access for your sport (beside the way): routes keep off it'),
     state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
     keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
     h('h4', {}, 'Your route'),
