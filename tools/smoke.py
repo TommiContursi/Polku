@@ -17,6 +17,7 @@
   python3 tools/smoke.py avoid      # places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)
   python3 tools/smoke.py access     # ways marked private or closed in Heads-up, from BRouter's tags and, when Valhalla stands in, the map's (mocked)
   python3 tools/smoke.py detour     # a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)
+  python3 tools/smoke.py shortcut   # Short cuts ok: Polku's profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
@@ -1216,6 +1217,126 @@ def detour(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} detours round ways marked private" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Short cuts through ways marked private (#106), with a mocked BRouter and the map's tiles
+# stubbed as in the detour check. When Polku's profile can't be uploaded, the leg keeps off
+# and a toast says so. Then: the detour row's Short cut uploads Polku's profile once, routes the
+# leg with allow_private=1 from the spots you picked, says so in Heads-up, and Undo puts the
+# leg back. The style travels in share links (ps=…~a1), an old link keeps off, and round trips
+# keep off. No routing call goes out.
+SHORTCUT_ROUTER = """(() => {
+  const real = window.fetch.bind(window), calls = (window.routerCalls = []);
+  window.failUpload = false;
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:[/][/](brouter[.]de|valhalla1[.]openstreetmap[.]de)[/]/.test(url)) return real(input, init);
+    calls.push(url);
+    if (/valhalla/.test(url)) return new Response('{}', { status: 503 });
+    const prof = url.match(/[/]profile[/]([\\w-]+)/);
+    if (prof) return new Response(window.failUpload ? '{"error":"not taken"}' : JSON.stringify({ profileid: prof[1] })); // an error, not an outage: no back-off
+    const q = new URL(url).searchParams, [a, b] = q.get('lonlats').split('|').map((x) => x.split(',').map(Number));
+    // allowed through: straight along the private footway; else round it to the north, 55 m off
+    if (q.get('profile:allow_private') === '1') {
+      const head = ['Longitude', 'Latitude', 'Elevation', 'Distance', 'CostPerKm', 'ElevCost', 'TurnCost', 'NodeCost', 'InitialCost', 'WayTags', 'NodeTags'];
+      const messages = [head, [String(Math.round(b[0] * 1e6)), String(Math.round(b[1] * 1e6)), '0', '0', '0', '0', '0', '0', '0', 'highway=footway access=private', '']];
+      return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages }, geometry: { type: 'LineString', coordinates: [a, b] } }] }));
+    }
+    const c = [[a[0], +(a[1] + 0.0005).toFixed(6)], [a[0], +(a[1] + 0.0015).toFixed(6)], [b[0], +(b[1] + 0.0015).toFixed(6)], [b[0], +(b[1] + 0.0005).toFixed(6)]];
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [] }, geometry: { type: 'LineString', coordinates: c } }] }));
+  };
+})()"""
+SHORTCUT = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;
+  const S = await import(location.origin + '/js/styles.js');
+  const P = await import(location.origin + '/js/planner.js');
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  const realQuery = m.querySourceFeatures.bind(m);
+  const stub = (A, B) => { m.querySourceFeatures = (src, o) => (src === 'ofm' && o && /access/.test(JSON.stringify(o.filter || ''))
+    ? [{ type: 'Feature', properties: { class: 'path', subclass: 'footway', access: 'no' }, geometry: { type: 'LineString', coordinates: [A, B] } }] : realQuery(src, o)); };
+  const routed = async () => { for (let k = 0; k < 100; k++) { if (p.legs.length && p.legs.every((l) => l.status === 'ok') && p.analysis) return true; await wait(200); } return false; };
+  const settle = async () => { await wait(900); return routed(); };
+  const rows = () => [...document.querySelectorAll('.warnings .li-row')].map((r) => r.textContent);
+  const toastSays = () => { const t = document.querySelector('#toast'); return t && !t.hidden ? t.textContent : ''; };
+  const calls = (re) => window.routerCalls.filter((u) => re.test(u));
+  p.setActive(true);
+  p.setMode('auto');
+  // the server won't take Polku's profile: the leg keeps off, and a toast says so
+  window.failUpload = true;
+  const A0 = [24.930, 60.185], B0 = [24.934, 60.185];
+  stub(A0, B0);
+  p.setStyle({ p: 'balanced', v: { a: 'cuts' }, wet: 'auto' });
+  p.addPoint(A0.slice());
+  p.addPoint(B0.slice());
+  await settle();
+  if (!/Short cuts through ways marked private aren.t available/.test(toastSays())) errs.push(`no note when the profile can't be uploaded (toast: ${toastSays() || 'none'})`);
+  if (calls(/profile=hiking-mountain/).length < 1 || calls(/allow_private/).some((u) => /profile=hiking-mountain/.test(u))) errs.push('the fallback: not the stock profile without allow_private');
+  window.failUpload = false;
+  p.setStyle({ p: 'balanced', v: {}, wet: 'auto' });
+  p.clear();
+  await wait(300);
+  // Short cut from Heads-up
+  const A = [24.930, 60.175], B = [24.934, 60.175];
+  stub(A, B);
+  p.addPoint(A.slice());
+  p.addPoint(B.slice());
+  await settle();
+  p.reveal('warnings');
+  await wait(300);
+  const btn = [...document.querySelectorAll('.warnings .li-row')].find((r) => /Goes round/.test(r.textContent))?.querySelector('button.btn:not(.avoid)');
+  if (!btn || btn.textContent !== 'Short cut') return [...errs, `no Short cut on the row: ${rows().join(' / ')}`];
+  const before = JSON.stringify(p.points);
+  window.routerCalls.length = 0;
+  btn.click();
+  await settle();
+  if (calls(/[/]profile[/]custom_polku-hike-1/).length !== 1) errs.push(`Polku's profile uploaded ${calls(/[/]profile[/]custom_polku-hike-1/).length} times`);
+  const leg = calls(/profile=custom_polku-hike-1/).find((u) => /profile:allow_private=1/.test(u));
+  if (!leg) errs.push(`no routing call with Polku's profile and allow_private=1: ${window.routerCalls.join(' ')}`);
+  else if (!new URL(leg).searchParams.get('lonlats').startsWith(`${A[0].toFixed(6)},${A[1].toFixed(6)}`)) errs.push(`not from the spot you picked: ${new URL(leg).searchParams.get('lonlats')}`);
+  if (JSON.stringify(p.points) !== JSON.stringify([A, B])) errs.push(`the points: ${JSON.stringify(p.points)}`);
+  if (!S.shortCuts('run', p.legs[0].style)) errs.push(`the leg's style: ${JSON.stringify(p.legs[0].style)}`);
+  p.reveal('warnings');
+  await wait(300);
+  if (!rows().some((t) => /Marked private in OpenStreetMap/.test(t) && /you allowed short cuts on this leg/.test(t))) errs.push(`Heads-up on the short cut: ${rows().join(' / ')}`);
+  if (rows().some((t) => /Goes round/.test(t))) errs.push('still "Goes round" with short cuts allowed');
+  // the share link carries it; an old link without it keeps off
+  const q = new URL(p.shareUrl()).searchParams;
+  if (!/~a1/.test(q.get('ps') || '')) errs.push(`the share link: ps=${q.get('ps')}`);
+  const back = P.parseShared(q);
+  if (!back || !/~a1/.test(back.legStyles || '')) errs.push(`from the link: ${back && back.legStyles}`);
+  q.delete('ps');
+  const old = P.parseShared(q);
+  if (old && old.legStyles) errs.push(`an old link: ${old.legStyles}`);
+  // Undo: the points where the router had moved them, the leg as it was
+  p.undo();
+  await settle();
+  if (JSON.stringify(p.points) === JSON.stringify([A, B]) || JSON.stringify(p.points) !== before) errs.push(`after Undo: ${JSON.stringify(p.points)}, not ${before}`);
+  if (p.legs[0].style) errs.push(`after Undo the leg's style: ${JSON.stringify(p.legs[0].style)}`);
+  // round trips keep off; no preset sets short cuts
+  if (S.routerOf('run', S.keepOff({ p: 'balanced', v: { a: 'cuts' } })).profile) errs.push('keepOff');
+  for (const sp of ['mtb', 'gravel', 'road', 'hike', 'trailrun', 'run']) {
+    for (const [k] of S.STYLES[sp].presets) if (S.shortCuts(sp, { p: k, v: {} })) errs.push(`${sp} preset ${k} sets short cuts`);
+    if (!S.STYLES[sp].controls.some((c) => c.id === 'a')) errs.push(`${sp}: no "Ways marked private"`);
+  }
+  m.querySourceFeatures = realQuery;
+  p.clear();
+  return errs;
+})()"""
+
+
+def shortcut(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': SHORTCUT_ROUTER}, pg.s)
+        pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#16/60.176/24.932')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        fails = pg.js(SHORTCUT, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} short cuts through ways marked private" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -2963,6 +3084,8 @@ def main():
             ok = access(chrome) and ok
         if not only or 'detour' in only:
             ok = detour(chrome) and ok
+        if not only or 'shortcut' in only:
+            ok = shortcut(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
         if not only or 'fit' in only:

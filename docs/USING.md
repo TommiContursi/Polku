@@ -22,7 +22,7 @@ Open **Layers** for map layers and their keys. Trail difficulty uses mountain bi
 
 Search finds places, official LIPAS routes and stops, trails and coordinates. **Ride this route** puts an official route into the planner using its recorded line; **Add to route** joins it to your existing plan.
 
-Route warnings appear under **Heads-up** in Check. **Avoid** asks the planner to route around that place. Weather along the route uses the estimated time you reach each section, so check your departure in Go and your speeds in Route.
+Route warnings appear under **Heads-up** in Check. **Avoid** asks the planner to route around that place. When a route goes round a way marked private, Heads-up says how much a short cut would save, and **Short cut** lets that leg through it (the leg's route style becomes **Ways marked private: Short cuts ok**). Use it only where you may go: private usually means a factory or military site, a house yard or a road closed by a sign, though in Finland private roads and apartment-block yards are open on foot and by bike. Weather along the route uses the estimated time you reach each section, so check your departure in Go and your speeds in Route.
 
 ## Keyboard shortcuts
 

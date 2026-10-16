@@ -13,10 +13,18 @@
 // A style is { p: preset key, v: { control: step | [flags] } (changes from the
 // preset), wet: 'auto' | 'yes' | 'no' }. No DOM in here: tools and tests use it.
 
-// Polku's road profile: the stock fastbike-lowtraffic plus unpaved_mainroad_factor.
-// Uploaded to the routing server under this id (bump the number when the file changes).
+// Polku's own profiles, uploaded to the routing server under these ids (bump the number when
+// a file changes). The road profile: the stock fastbike-lowtraffic plus unpaved_mainroad_factor.
+// The short-cut ones (#106, made by tools/make_profiles.py): the stock profile plus
+// allow_private, used only on legs whose style says Short cuts ok. note: what Heads-up says
+// when the server won't take it and the leg goes by the stock profile instead.
+const NO_CUTS = 'Short cuts through ways marked private aren’t available right now (the routing server didn’t take Polku’s profile), so this leg keeps off them.';
 export const CUSTOM_PROFILES = {
-  'custom_polku-road-1': { file: 'profiles/polku-road.brf', stock: 'fastbike-lowtraffic' },
+  'custom_polku-road-1': { file: 'profiles/polku-road.brf', stock: 'fastbike-lowtraffic', note: 'Paved only isn’t available right now (the routing server didn’t take Polku’s road profile), so gravel main roads may be used.' },
+  'custom_polku-road-shortcuts-1': { file: 'profiles/polku-road-shortcuts.brf', stock: 'fastbike-lowtraffic', note: NO_CUTS },
+  'custom_polku-hike-1': { file: 'profiles/polku-hike.brf', stock: 'hiking-mountain', note: NO_CUTS },
+  'custom_polku-mtb-1': { file: 'profiles/polku-mtb.brf', stock: 'mtb', note: NO_CUTS },
+  'custom_polku-gravel-1': { file: 'profiles/polku-gravel.brf', stock: 'gravel', note: NO_CUTS },
 };
 
 // [key, label, BRouter variables, Valhalla options, extra] — extra: { profile } or { water }
@@ -26,6 +34,20 @@ const control = (id, label, help, steps, def) => ({ id, label, help, steps: step
 const flags = (id, label, help, list) => ({ id, label, help, type: 'flags', flags: list.map(step), def: [] });
 
 const WET = { mtb: 'iswet', gravel: 'assume_wet_conditions', hike: 'iswet', trailrun: 'iswet' };
+
+// Ways marked private (#106): Keep off is the stock profile; Short cuts ok is Polku's copy of
+// it with allow_private, which lets access=private through at a cost, so a route takes one
+// only where it saves a real distance (about 40 % of its length). access=no stays closed. The
+// user's choice only: no preset sets it, and round trips keep off. Valhalla, the stand-in,
+// walks through private ways on foot anyway and has no switch for it.
+const privateWays = (profile) => control('a', 'Ways marked private', 'Short cuts ok lets the route through a way marked private in OpenStreetMap where it saves a real distance; ways marked no access stay closed. Only where you may go: private usually means closed (factory and military sites, house yards, roads closed by a sign), but in Finland private roads and apartment-block yards are open on foot and by bike.', [
+  ['keep', 'Keep off', {}],
+  ['cuts', 'Short cuts ok', { allow_private: 1 }, {}, { profile }],
+]);
+/** The style with Keep off (round trips, and anything that must not take short cuts). */
+export const keepOff = (style) => (style ? { ...style, v: { ...(style.v || {}), a: 'keep' } } : style);
+/** Short cuts ok, in this style? */
+export const shortCuts = (sport, style) => !!STYLES[sport] && STYLES[sport].controls.some((c) => c.id === 'a') && valuesOf(sport, style).a === 'cuts';
 
 const footControls = (extra = []) => [
   control('d', 'Difficulty', 'Easy keeps to paths without scrambling (SAC T1). Mountain lets demanding paths in. SAC grades are mostly tagged in the fells.', [
@@ -49,6 +71,7 @@ const footControls = (extra = []) => [
     ['quiet', 'Quiet', { consider_noise: 1 }],
     ['towns', 'Away from towns', { consider_town: 1 }],
   ]),
+  privateWays('custom_polku-hike-1'),
 ];
 
 export const STYLES = {
@@ -72,6 +95,7 @@ export const STYLES = {
         ['ok', 'If needed', {}],
         ['avoid', 'Avoid', { avoid_unsafe: 1 }, { use_roads: 0.05 }],
       ]),
+      privateWays('custom_polku-mtb-1'),
     ],
     presets: [
       ['balanced', 'Balanced', {}],
@@ -106,6 +130,7 @@ export const STYLES = {
         ['towns', 'Away from towns', { avoid_towns: 1 }],
         ['quiet', 'Quiet', { avoid_noise: 1 }],
       ]),
+      privateWays('custom_polku-gravel-1'),
     ],
     presets: [
       ['balanced', 'Balanced', {}],
@@ -130,6 +155,8 @@ export const STYLES = {
         ['any', 'Don’t mind', {}],
         ['fewer', 'Fewer', { uphillcost: 60 }, { use_hills: 0.1 }],
       ]),
+      // last: its profile has Paved only's variable too, so it replaces custom_polku-road-1
+      privateWays('custom_polku-road-shortcuts-1'),
     ],
     presets: [
       ['balanced', 'Paved roads', {}],
@@ -175,6 +202,7 @@ export const STYLES = {
         ['quiet', 'Quiet', { consider_noise: 1 }],
         ['towns', 'Away from town', { consider_town: 1 }],
       ]),
+      privateWays('custom_polku-hike-1'),
     ],
     presets: [
       ['balanced', 'Balanced', {}],

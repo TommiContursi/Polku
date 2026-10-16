@@ -51,7 +51,7 @@ Headless Chrome draws the map in software, and one frame can take a second when 
     - the routed geometry saved with your route;
     - a drag's live preview only while there's budget to spare.
   - **Valhalla stands in** when brouter.de pauses: the FOSSGIS servers that openstreetmap.org uses, at one call a second at most, as their terms ask. Heads-up says so.
-- **Route styles** (`js/styles.js`): BRouter's `profile:name=value` parameters override a stock profile's global variables, so most styles need no custom profile. The exception is road cycling: `profiles/polku-road.brf` costs gravel main roads as rough, and is uploaded once per session. Every preset was checked to change real routes (`tools/style_probe.py`).
+- **Route styles** (`js/styles.js`): BRouter's `profile:name=value` parameters override a stock profile's global variables, so most styles need no custom profile. The exceptions are Polku's own profiles, each uploaded once per session: road cycling's `profiles/polku-road.brf` costs gravel main roads as rough, and Short cuts ok (Ways marked private, #106) uses copies of the four stock profiles with an `allow_private` variable (`profiles/polku-hike.brf`, `polku-mtb.brf`, `polku-gravel.brf`, `polku-road-shortcuts.brf`, made by `tools/make_profiles.py`; with it off they route exactly as the stock ones). Every preset was checked to change real routes (`tools/style_probe.py`).
 - **Water routing** (`js/water.js`, `js/waterdata.js`):
   - **The grid:** a hidden MapLibre map renders only water, white on black, for the leg's area, and the pixels become a grid. A second drawing on a canvas, in the same projection, marks the costs:
     - Väylävirasto's fairways, by class (shipping lanes are crossed straight);
@@ -143,7 +143,7 @@ js/locate.js        where you are: the dot, its accuracy circle and cone, Follow
 js/heading.js       which way you face: the compass standing, the GPS's course moving
 js/compass.js       the compass button: north up, drag to rotate, heading up
 js/modal.js, gpx.js, icons.js, geo.js, ui.js
-profiles/           Polku's own BRouter profile (road cycling)
+profiles/           Polku's own BRouter profiles (road cycling; short cuts through ways marked private)
 tools/              dev only: smoke.py, shoot.py, readme_shots.py, probes, cdp.py (headless Chrome), brouter-local.sh, fixtures
 img/base/           base map thumbnails (tools/thumbs.py)
 docs/               ROADMAP (the order), plans/ (phase designs), retros/, reviews/, this file, screenshots
