@@ -23,6 +23,7 @@
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
   python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
+  python3 tools/smoke.py marks      # distance, arrival/elapsed times, default and saved settings, the departure link
   python3 tools/smoke.py colours    # every available route breakdown, choosing colours, folds and late data
   python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
@@ -1882,7 +1883,7 @@ DRAWER = """(async () => {
   p.setTab('check'); await wait(100);
   if (p.els.stats.hidden || !p.els.stats.children.length) errs.push('Check lacks the stats');
   const marks = [...document.querySelectorAll('.onmap input')];
-  if (marks.length !== 2) errs.push(`On the map has ${marks.length} switches`);
+  if (marks.length !== 3) errs.push(`On the map has ${marks.length} switches`);
   else {
     const was = p.marks.km;
     marks[0].click(); await wait(100);
@@ -3098,6 +3099,16 @@ COLOURS = """(async () => {
   pick.focus(); pick.click();
   if (p.colorMode !== 'way' || p.chart.mode !== 'way' || p.els.modeSel.value !== 'way' || pick.getAttribute('aria-pressed') !== 'true') errs.push('title did not select Colour by');
   if (document.activeElement !== pick) errs.push('selecting a colour lost focus');
+  const other = kinds().find((x) => x.dataset.colour !== 'way');
+  if (other) {
+    if (!/Use colours/.test(other.querySelector('.bd-title').textContent)) errs.push('no visible colour-selection action');
+    other.querySelector('.bd-title').click();
+    const bar = way.querySelector('.bd-bar');
+    bar.focus(); bar.click();
+    if (p.colorMode !== 'way' || p.chart.mode !== 'way' || bar.getAttribute('aria-pressed') !== 'true') errs.push('bar did not select Colour by');
+    if (document.activeElement !== bar) errs.push('selecting a bar lost focus');
+  }
+
   const fold = way.querySelector('.bd-fold'); fold.click();
   if (!way.querySelector('.bd-body').hidden || fold.getAttribute('aria-expanded') !== 'false') errs.push('fold did not hide its bar');
   // A forecast arrives while a different kind is selected; all three bars appear.
@@ -3122,7 +3133,7 @@ COLOURS = """(async () => {
   // No sideways scrolling in the drawer, and distinct controls with touch-sized targets.
   for (const el of kinds()) {
     if (el.scrollWidth > el.clientWidth + 1) errs.push(`${el.dataset.colour} overflows the panel`);
-    for (const b of el.querySelectorAll('button')) if (b.getBoundingClientRect().height < 40) errs.push('small breakdown target');
+    for (const b of el.querySelectorAll('button')) if (!b.closest('[hidden]') && b.getBoundingClientRect().height < 40) errs.push(`small breakdown target: ${el.dataset.colour} ${b.className}`);
   }
   window.colourTestFold = 'colour-way';
   return errs;
@@ -3145,6 +3156,91 @@ def colours(chrome):
             pg.close()
             print(f'checked route breakdowns: {w} {sport}', flush=True)
     print(f"{'ok  ' if not fails else 'FAIL'} all route colour breakdowns" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #201: route mark defaults, independent options, elapsed times and the departure link.
+MARKS = r"""(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  p.loadWind = async () => {};
+  (await import(location.origin + '/js/trails.js')).holdFetches();
+  if (!p.marks.km || !p.marks.time || !p.marks.duration) errs.push('distance, arrival and elapsed time are not all on by default');
+  p.setActive(true); p.setMode('line');
+  for (const q of [[23.700, 61.500], [23.705, 61.501], [23.760, 61.504]]) p.addPoint(q);
+  for (let k = 0; k < 100 && !p.analysis; k++) await wait(100);
+  if (!p.analysis) return ['no route'];
+  const data = () => polku.map.getSource('routeMarks').serialize().data.features;
+  const label = () => data()[0]?.properties.label || '';
+  if (!/^1 km · .+\n.+ elapsed$/.test(label())) errs.push(`default mark has no arrival/elapsed times: ${label()}`);
+  const seconds = (text) => {
+    const h = /([0-9]+) h/.exec(text), m = /([0-9]+) min/.exec(text), s = /([0-9]+) s/.exec(text);
+    return (h ? +h[1] * 3600 : 0) + (m ? +m[1] * 60 : 0) + (s ? +s[1] : 0);
+  };
+  const before = seconds(label().split('\n')[1] || '');
+  p.setStop(1, { min: 45 });
+  const after = seconds(label().split('\n')[1] || '');
+  if (Math.abs(after - before - 2700) > 1) errs.push(`elapsed time ignored the break: ${before} → ${after}`);
+  p.setStop(1, null);
+  // Exact seconds and hour rollover, independent of the forecast and sport's speed.
+  const a = p.analysis, original = a.tAt;
+  a.tAt = Float64Array.from(a.along, (d) => d * 0.045); p.drawMarks();
+  if (!/45 s elapsed/.test(label())) errs.push(`seconds-only duration: ${label()}`);
+  a.tAt = Float64Array.from(a.along, (d) => d * 4); p.drawMarks();
+  if (!/1 h 6 min 40 s elapsed/.test(label())) errs.push(`hour/minute/second duration: ${label()}`);
+  // Arrival times move immediately, while the old weather is still in memory.
+  a.wind = { startSec: p.startSec() }; a.tAtWind = a.tAt;
+  p.setStartOffset(3);
+  const arrival = p.clockOf(p.startSec() + 4000);
+  if (!label().includes(`1 km · ${arrival}`)) errs.push(`departure did not move the mark immediately: ${label()}`);
+  a.wind = null; a.tAtWind = null; a.tAt = original;
+  p.renderAnalysis(); p.reveal('onmap');
+  const switches = () => [...p.els.onMap.querySelectorAll('input')];
+  if (switches().length !== 3 || switches().some((x) => !x.checked)) errs.push('not three enabled mark controls');
+  else {
+    switches()[1].click();
+    if (/ · /.test(label()) || !/elapsed/.test(label())) errs.push('arrival toggle also removed elapsed time');
+    switches()[2].click();
+    if (label() !== '1 km') errs.push(`distance-only mark: ${label()}`);
+    switches()[1].click();
+    if (!/ · /.test(label()) || /elapsed/.test(label())) errs.push('arrival-only mark');
+    switches()[0].click();
+    if (data().length || !switches()[1].disabled || !switches()[2].disabled) errs.push('distance off: marks remain or dependent options enabled');
+    switches()[0].click(); switches()[2].click();
+  }
+  // Follow the estimate from Check, even when Waypoints and the sheet are folded.
+  p.toggleSection('points', false);
+  if (p.layout() === 'sheet') p.setSheetState('peek', { remember: false });
+  document.querySelector('.sum-time').click(); await wait(500);
+  const select = p.els.points.querySelector('.wpl-depart select');
+  if (p.tab !== 'route' || p.sec.points.el.dataset.open !== 'true' || document.activeElement !== select) errs.push('estimate did not open and focus the start departure setting');
+  if (select) {
+    select.value = '4'; select.dispatchEvent(new Event('change', { bubbles: true }));
+    if (p.startOffsetH !== 4) errs.push('departure setting did not change the departure');
+    const r = select.getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
+    if (r.top < body.top || r.bottom > body.bottom) errs.push('departure control is out of view');
+  }
+  p.setMarks({ km: false, time: false, duration: false });
+  return errs;
+})()"""
+
+
+def marks(chrome):
+    fails = []
+    for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
+        for sport in ['mtb', 'paddle']:
+            pg = chrome.page(w, h_, phone)
+            pg.open_app({'activity': sport, 'timeline': True})
+            fails += [f'{w} {sport}: {e}' for e in pg.js(MARKS)]
+            pg.reload()
+            if pg.js("Object.values(polku.planner.marks).some(Boolean)"):
+                fails.append(f'{w} {sport}: explicitly saved off choices lost on reload')
+            # Old settings without a duration field keep their old choices and enable the new option.
+            pg.open_app({'activity': sport}, {'polku:routeMarks': '{"km":true,"time":false}'})
+            if pg.js("!polku.planner.marks.km || polku.planner.marks.time || !polku.planner.marks.duration"):
+                fails.append(f'{w} {sport}: old mark settings not read correctly')
+            fails += [f'{w} {sport}: console: {e[:160]}' for e in pg.errors()]
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} route marks and departure link" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -3199,6 +3295,8 @@ def main():
             ok = winter_route(chrome) and ok
         if not only or 'sweep' in only:
             ok = sweep(chrome) and ok
+        if not only or 'marks' in only:
+            ok = marks(chrome) and ok
         if not only or 'colours' in only:
             ok = colours(chrome) and ok
         if not only or 'drawer' in only:

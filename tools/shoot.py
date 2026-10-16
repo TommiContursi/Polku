@@ -283,6 +283,7 @@ COLOURS_PRE = """(async () => {
   const p = polku.planner, restore = p.restoreSnapshot.bind(p);
   p.restoreSnapshot = (s) => { s.legs.forEach((l) => { l.mode = 'fixed'; }); restore(s); };
   p.loadWind = async (a) => { a.windError = true; };
+  p.loadTrail = async () => {}; // keep the recorded tags stable for before/after views
   (await import(location.origin + '/js/trails.js')).holdFetches();
   return true;
 })()"""
@@ -293,11 +294,34 @@ COLOURS_VIEW = """(async () => {
   p.reveal('colours');
   if (p.layout() === 'sheet') p.setSheetState('full', { remember: false });
   await new Promise((r) => setTimeout(r, 600));
-  p.sec.colours.el.scrollIntoView({ block: 'start' });
+  await new Promise((r) => setTimeout(r, 2000));
+  const target = p.breakdownKinds?.way?.el || p.sec.colours.el;
+  p.els.body.scrollTo({ top: p.els.body.scrollTop + target.getBoundingClientRect().top - p.els.body.getBoundingClientRect().top, behavior: 'instant' });
+  return true;
+})()"""
+
+MARKS_VIEW = """(async () => {
+  const p = polku.planner;
+  p.reveal('onmap');
+  if (p.layout() === 'sheet') p.setSheetState('half', { remember: false });
+  await new Promise((r) => setTimeout(r, 600));
+  p.sec.onmap.el.scrollIntoView({ block: 'start' });
+  return true;
+})()"""
+DEPARTURE_VIEW = """(async () => {
+  const p = polku.planner;
+  p.setTab('check'); p.toggleSection('points', false);
+  if (p.layout() === 'sheet') p.setSheetState('half', { remember: false });
+  document.querySelector('.sum-time').click();
+  await new Promise((r) => setTimeout(r, 900));
   return true;
 })()"""
 
 SCENES = {
+    'desk-route-times': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=MARKS_VIEW),
+    'phone-route-times': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=COLOURS_PRE, js=MARKS_VIEW),
+    'desk-departure-link': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=DEPARTURE_VIEW),
+    'phone-departure-link': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', pre=COLOURS_PRE, js=DEPARTURE_VIEW),
     'desk-route-colours': dict(DESK, timeline=True, route='route-kauppi-mtb.json', pre=COLOURS_PRE, js=COLOURS_VIEW),
     'phone-route-colours': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', pre=COLOURS_PRE, js=COLOURS_VIEW),
     # #88, #89: the fit button at full, a GPX import over the planner, a loop clicked on the map
