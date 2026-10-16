@@ -2,10 +2,9 @@
 
 Polku is a free outdoor map and multi-sport route planner for Finland. It supports mountain biking, gravel and road cycling, hiking, trail running, running, paddling and swimming, including trips that combine sports.
 
-- [Open Polku](https://polku.si) in your browser.
-- Free to use, no account needed, works on mobile.
-- [Using Polku](docs/USING.md): controls and keyboard shortcuts.
-- [What's new](CHANGELOG.md).
+[**Open Polku →**](https://polku.si/)
+
+Works in your browser, on your phone or computer. No installation or account needed.
 
 ![An MTB route at Kauppi, Tampere, with the route planner, detailed terrain and an elevation profile](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-planner.jpg?raw=true)
 
@@ -100,6 +99,14 @@ These data and library licences are separate from Polku's application code. This
 - **Offline covers the saved map, terrain and route.** Routing, search, weather and traffic still need a connection.
 - **The full trail network appears from zoom 14.** Zoom in if trails seem to be missing.
 - **FMI weather and forest-fire warnings are not shown.** No open source currently allows Polku to fetch them directly from a browser.
+
+## Using Polku
+
+See the [user guide](docs/USING.md) for controls and keyboard shortcuts.
+
+## Changelog
+
+See the [changelog](CHANGELOG.md) for recent changes.
 
 ## Background
 
