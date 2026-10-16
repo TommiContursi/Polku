@@ -10,19 +10,21 @@ Polku is a free outdoor map and multi-sport route planner for Finland. It suppor
 
 The map has hillshade, 5 m contours and 3D terrain. Base maps include the trail map, the National Land Survey's terrain map and aerial photos.
 
-- Trail colours show mountain biking difficulty and estimated uphill difficulty separately, with arrows pointing uphill.
+- Trail colours show mountain biking difficulty (S0–S6) and estimated uphill difficulty (↑S0–↑S5), separately or together, with arrows pointing uphill. Polku samples the elevation model along trails, smooths the heights and grades short sections by climbing gradient, with adjustments for loose surfaces and mapped technical difficulty. Explicit OpenStreetMap uphill grades take precedence.
 - Trail width and visibility, wet or overgrown stretches, fallen trees, gates, fences and fords come from OpenStreetMap. Select a feature for details and a link to help correct the map.
 - Search finds official hiking, MTB, cycling and paddling routes from Finland's [LIPAS](https://lipas.fi) register, alongside lean-tos, huts, campfire sites and landing places. Add an official route to your plan using its recorded line.
 
-![Trail details at Tykkikallio, Jyväskylä: narrow and faint trails, fallen trees, a gate and a fence](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-trails-close.jpg?raw=true)
+![Warnings along a route at Tykkikallio, including access restrictions, a fallen tree and a hard-to-follow trail, with options to avoid them](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-trail-headsup.jpg?raw=true)
 
 ## Route planning
 
 Routing, speeds, route styles and warnings depend on the sport. A route can change sports between legs: cycle to the shore, paddle across and run on an island. The time estimate includes changeovers.
 
+On land, BRouter calculates routes using sport-specific profiles. Polku keeps unchanged legs when you edit a route and reuses saved geometry after a reload. If the public BRouter service pauses, a Valhalla fallback can take over, with a notice in Heads-up.
+
 - Add points on the map and drag a point or the route line to change it. Change the sport or style for any leg, and undo changes.
-- Route styles favour flowing trails, technical riding, paved roads, nature paths or routes near the shore. Set a style for the whole route or one leg.
-- For a round trip, choose a start point, a distance or duration, and a direction, including into the wind first. Polku generates three loops to compare by distance, time, climbing, trail share, repeated stretches and warnings. Generate more loops or edit one. Paddling and swimming loops work too; on rivers they go out and back.
+- Route styles change the router's preferences for terrain, surface, climbing and roads, with presets for flowing trails, technical riding, paved roads, nature paths or routes near the shore. Set a style for the whole route or one leg.
+- For a round trip, choose a start point, a distance or duration, and a direction, including into the wind first. Polku generates three loops to compare by distance, time, climbing, trail share, repeated stretches and warnings. Its ranking penalises distance from the target, repeated sections, warnings and carries. Generate more loops or edit one. Paddling and swimming loops work too; on rivers they go out and back.
 - The elevation profile shows climbs and descents, coloured by gradient, trail difficulty, surface, trail width or visibility, or weather. Time estimates use preset or personal speeds and allow for wind and snow.
 - Stops and overnight stays update the schedule and route weather. Set a break or a time to continue the next morning. For overnight stops, Polku finds nearby lean-tos, huts and campsites. It also warns if a trip leaves your bike or boat somewhere you do not return to.
 
@@ -34,20 +36,25 @@ Routing, speeds, route styles and warnings depend on the sport. A route can chan
 
 Route weather shows headwind, crosswind, tailwind, temperature and rain at the estimated time you reach each part of the route. A 48-hour map timeline shows animated wind, rain and temperature, with FMI rain radar for current rainfall in Finland. Distance marks can show estimated passing times, and the planner includes sunrise and sunset.
 
+Polku first estimates the route's timing, then samples forecasts for the expected arrival times along it. It recalculates travel times with the wind and samples the forecasts again for the revised schedule. Stops, overnight stays and changeovers are included in that schedule.
+
 The route's **Heads-up** list brings together mapped obstacles and access restrictions, busy roads, incidents, road works, slippery roads, military areas and shooting ranges. Where a warning offers **Avoid**, use it to plan around that spot. Road weather cameras include a 24-hour time-lapse.
 
 Winter mode can follow local snow conditions automatically or be set manually. Its layers show snow depth and FMI measurements, trails classified by how soon they open after snow, ploughed paths, winter access restrictions, ski tracks, skating and snowmobile routes, and FMI sea-ice charts. Route time estimates allow for snow; warnings cover freezing rain, cold, darkness and the ice season on water.
 
-![Warnings along a route at Tykkikallio, including access restrictions, a fallen tree and a hard-to-follow trail, with options to avoid them](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-trail-headsup.jpg?raw=true)
+![Wind-speed colours and wind-direction particles over southern Finland, with the wind and rain layers enabled and the 48-hour weather timeline open](https://github.com/TommiContursi/Polku/blob/pr-screenshots/codex/readme-introduction/after-desk-weather-overlay.jpg?raw=true)
 
 ## Water routes
 
 Water routes support paddling and swimming on lakes, rivers and through the archipelago, including legs in a multi-sport trip.
 
 - Paddling routes support sea kayaks, canoes and SUPs and flag sections where carrying is needed.
-- Wave estimates depend on the wind's reach across open water, with routing preferences for each craft.
+- Wave estimates use the length of open water upwind, with routing preferences for each craft. An exposed crossing can cost more than a sheltered detour, especially for a SUP.
 - Routes aim to cross shipping lanes directly rather than follow them, and keep clear of mapped danger marks, rocks and shoals.
-- Nautical layers show buoys, lights, sectors, fairways, speed limits, live ships and charted depths.
+- Nautical layers show buoys, lights, sectors, fairways, speed limits and charted depths.
+- Live ship positions come from Fintraffic's AIS feed. Select a vessel for its name, type, speed, course, destination and position age, where reported, or use **Follow on map**. Tracks record positions received while the map is open; a dashed ten-minute projection assumes the ship keeps its reported course and speed.
+
+Water routes are calculated in the browser. Polku turns the map's water polygons into a grid and uses A* to find a path weighted by shipping lanes, mapped hazards, wind exposure and places you have chosen to avoid. It then simplifies the result into straighter legs while checking the same routing costs.
 
 **Water routes and nautical layers are for planning, not navigation.** Depths are displayed only and never used for routing. Carry an official chart; see the [limitations](#limitations) below.
 
