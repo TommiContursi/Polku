@@ -100,7 +100,8 @@ function ensureProfile(profile, signal, again = false) {
 // the variables only Polku's own profiles have (a stock profile can't take them)
 const OWN_VARS = new Set(['unpaved_mainroad_factor', 'allow_private']);
 
-async function brouter(pts, profile, signal, nogos, maxWait, params, retried = false) {
+// alt: BRouter's alternative k (0 the first route, 1–3 other ways: #95)
+async function brouter(pts, profile, signal, nogos, maxWait, params, retried = false, alt = 0) {
   const custom = !!CUSTOM_PROFILES[profile];
   if (custom) {
     try {
@@ -109,7 +110,7 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
       if (e.name === 'AbortError' || e.name === 'Limited') throw e;
       // can't use Polku's profile: the stock one it's made from, without Polku's own variables
       const rest = Object.fromEntries(Object.entries(params || {}).filter(([k]) => !OWN_VARS.has(k)));
-      const r = await brouter(pts, CUSTOM_PROFILES[profile].stock, signal, nogos, maxWait, rest);
+      const r = await brouter(pts, CUSTOM_PROFILES[profile].stock, signal, nogos, maxWait, rest, false, alt);
       return { ...r, note: CUSTOM_PROFILES[profile].note };
     }
   }
@@ -117,12 +118,12 @@ async function brouter(pts, profile, signal, nogos, maxWait, params, retried = f
   // fords, boardwalks…), not just the ones the profile prices; the route itself doesn't change.
   // Not part of any cache key, so routes cached or saved before stay valid.
   const url = `${routerUrl()}?lonlats=${pts.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join('|')}` +
-    `&profile=${profile}&alternativeidx=0&format=geojson${nogoParam(nogos)}${paramStr(params)}&profile:processUnusedTags=1`;
+    `&profile=${profile}&alternativeidx=${alt}&format=geojson${nogoParam(nogos)}${paramStr(params)}&profile:processUnusedTags=1`;
   // a dropped custom profile answers 500: not an outage, so no back-off for those
   const res = await request(routerSource(), url, { signal, maxWait, ...(custom ? { backoff: false } : {}) });
   if (custom && res.status >= 500 && !retried) {
     await ensureProfile(profile, signal, true);
-    return brouter(pts, profile, signal, nogos, maxWait, params, true);
+    return brouter(pts, profile, signal, nogos, maxWait, params, true, alt);
   }
   const text = await res.text();
   if (!res.ok) throw Object.assign(new Error(explain(text) || `BRouter ${res.status}`), { busy: /killed by thread-priority-watchdog|timeout|retry later/i.test(text) });
@@ -160,10 +161,10 @@ const pause = (ms, signal) => new Promise((ok, no) => {
   if (signal) signal.addEventListener('abort', () => { clearTimeout(t); no(new DOMException('Aborted', 'AbortError')); }, { once: true });
 });
 
-const legKey = (mode, profile, opts, from, to) => `${mode}|${profile}|${opts.portage}|${from.join(',')}|${to.join(',')}|${nogoParam(opts.nogos)}|${paramStr(opts.params)}|${JSON.stringify(opts.water || {})}|${routerUrl()}`;
+const legKey = (mode, profile, opts, from, to) => `${mode}|${profile}|${opts.portage}|${from.join(',')}|${to.join(',')}|${nogoParam(opts.nogos)}|${paramStr(opts.params)}|${JSON.stringify(opts.water || {})}|${routerUrl()}${opts.alt ? `|alt${opts.alt}` : ''}`;
 // a busy server drops the oldest request it's running: one more try after a moment
-const brouterRetry = (pts, profile, sig, opts) => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params)
-  .catch((e) => (e.busy ? pause(2000, sig).then(() => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params)) : Promise.reject(e)));
+const brouterRetry = (pts, profile, sig, opts) => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)
+  .catch((e) => (e.busy ? pause(2000, sig).then(() => brouter(pts, profile, sig, opts.nogos, opts.maxWait, opts.params, false, opts.alt || 0)) : Promise.reject(e)));
 
 // When BRouter can't take the call now (a pause, a long wait for a paced slot,
 // an outage) or can't route it, Valhalla does (not for paddling, and never for
@@ -172,7 +173,7 @@ const brouterRetry = (pts, profile, sig, opts) => brouter(pts, profile, sig, opt
 // fails too, the original reason stands.
 async function standIn(err, points, profile, opts, signal) {
   const base = CUSTOM_PROFILES[profile] ? CUSTOM_PROFILES[profile].stock : profile;
-  if (err.name === 'AbortError' || opts.fallback === false || !valhallaCovers(base)) throw err;
+  if (err.name === 'AbortError' || opts.fallback === false || opts.alt || !valhallaCovers(base)) throw err; // Valhalla can't give BRouter's other ways
   const key = `vh|${base}|${points.map((p) => p.join(',')).join('|')}|${nogoParam(opts.nogos)}|${JSON.stringify(opts.valhalla || {})}`;
   if (cache.has(key)) return cache.get(key);
   try {

@@ -93,6 +93,7 @@ export function buildStyle(s, ctx) {
     routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
     accessCut: { type: 'geojson', data: ctx.data.accessCut || EMPTY }, // a short cut through a way marked private, the one picked in Heads-up (#104)
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
+    routeAlts: { type: 'geojson', data: ctx.data.routeAlts || EMPTY }, // other ways for a leg, where they differ (#95)
     routeWind: { type: 'geojson', data: ctx.data.routeWind || EMPTY },
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
     trailWays: { type: 'geojson', data: ctx.data.trailWays || EMPTY }, // trail details (js/trails.js)
@@ -488,6 +489,13 @@ export function buildStyle(s, ctx) {
     paint: { 'icon-color': ['get', 'color'], 'icon-halo-color': '#111827', 'icon-halo-width': 1.5 },
   });
   // round-trip candidates (planner): the one you're looking at wider and on top
+  // other ways for a leg (#95): where they leave it, in the round trips' colours, each with a short label; a tap takes one
+  const altLine = ['==', ['get', 'kind'], 'line'];
+  add({ id: 'route-alts-casing', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 10), 'line-opacity': 0.9 } });
+  add({ id: 'route-alts-line', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6), 'line-dasharray': [2, 1] } });
+  add({ id: 'route-alts-label', type: 'symbol', source: 'routeAlts', filter: ['==', ['get', 'kind'], 'label'],
+    layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 12, 'text-offset': [0, -1.2], 'text-allow-overlap': true },
+    paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#ffffff', 'text-halo-width': 2 } });
   add({ id: 'loops-casing', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 6, 4], 16, ['case', ['get', 'on'], 12, 8]], 'line-opacity': 0.9 } });
   add({ id: 'loops-line', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 3.5, 2], 16, ['case', ['get', 'on'], 7, 4]], 'line-opacity': ['case', ['get', 'on'], 1, 0.7] } });
   // distance marks: distance and arrival on the first line, elapsed time below

@@ -76,6 +76,7 @@ Headless Chrome draws the map in software, and one frame can take a second when 
   - `r`: the points (an encoded polyline, 5 decimals); `m`: each leg's mode (`a` routed, `l` straight, `w` water); `a`: the sport.
   - `p`, `ps`: the route's style, and legs with their own. `s`: each leg's sport; `cw`: changeover minutes you set.
   - `st`: stops and nights (in `js/stops.js`); `cg`: points where the gear goes along. `lr`: LIPAS legs as references.
+  - `al`: another way taken for a leg (#95), BRouter's alternative `k` as `leg:k`, comma-separated; left out when every leg takes its first way.
   - `av`: places to avoid, `lon_lat_metres` each, comma-separated (`av=24.94012_60.17543_40`), about 24 characters a circle. At most 200 are read; anything that doesn't read as a circle is left out, and a toast says the route may go through it.
   - Names of points and of places to avoid stay on the device.
 - **Offline** (`js/offline.js`, `sw.js`): the tiles along a route corridor at zoom 5–14 go into Cache Storage, and the service worker serves them when the network is slow (4 s) or gone. OpenFreeMap's weekly tile version is stripped from the cache key. The routed line is saved with the area.

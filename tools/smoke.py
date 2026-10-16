@@ -18,6 +18,7 @@
   python3 tools/smoke.py access     # ways marked private or closed in Heads-up, from BRouter's tags and, when Valhalla stands in, the map's (mocked)
   python3 tools/smoke.py detour     # a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)
   python3 tools/smoke.py shortcut   # Short cuts ok: Polku's profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)
+  python3 tools/smoke.py otherways  # other ways for a new leg: offered with room under the pacing, a tap takes one, links, Undo (mocked BRouter)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
@@ -1341,6 +1342,138 @@ def shortcut(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} short cuts through ways marked private" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Other ways for a new leg (#95), from a mocked BRouter: alternative 1 goes 450 m north, 2 is
+# within 5 m of the first (left out). A new leg gets them (one call each, with room under the
+# pacing); a tap on the map takes one without routing again; it's kept in the share link
+# (al=0:1), a reload and Undo, and goes when the leg's style changes. With no room (calls just
+# made), none are fetched, and the leg's menu has Other ways. No routing call goes out.
+OTHERWAYS_ROUTER = """(() => {
+  const real = window.fetch.bind(window), calls = (window.routerCalls = []);
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:[/][/](brouter[.]de|valhalla1[.]openstreetmap[.]de)[/]/.test(url)) return real(input, init);
+    calls.push(url);
+    if (/valhalla/.test(url)) return new Response('{}', { status: 503 });
+    const q = new URL(url).searchParams, k = +q.get('alternativeidx') || 0;
+    const ll = q.get('lonlats').split('|').map((x) => x.split(',').map(Number)), c = [];
+    ll.forEach((p, i) => {
+      if (i) {
+        const a = ll[i - 1], dy = k === 1 ? 0.004 : k === 2 ? 0.00004 : 0;
+        for (const t of [0.25, 0.5, 0.75]) c.push([+(a[0] + (p[0] - a[0]) * t).toFixed(6), +(a[1] + (p[1] - a[1]) * t + dy).toFixed(6)]);
+      }
+      c.push(p);
+    });
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages: [] }, geometry: { type: 'LineString', coordinates: c } }] }));
+  };
+})()"""
+OTHERWAYS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;
+  const P = await import(location.origin + '/js/planner.js');
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  const routed = async () => { for (let k = 0; k < 100; k++) { if (p.legs.length && p.legs.every((l) => l.status === 'ok') && p.analysis) return true; await wait(200); } return false; };
+  const calls = (k) => window.routerCalls.filter((u) => /lonlats=/.test(u) && new URL(u).searchParams.get('alternativeidx') === String(k)).length;
+  p.setActive(true);
+  p.setMode('auto');
+  const A = [24.930, 60.170], B = [24.950, 60.170];
+  p.addPoint(A.slice());
+  p.addPoint(B.slice());
+  await routed();
+  for (let k = 0; k < 40 && !(p.alts && p.alts.ways.length); k++) await wait(200);
+  if (calls(1) !== 1 || calls(2) !== 1) errs.push(`other ways asked for: alternative 1 ×${calls(1)}, 2 ×${calls(2)}`);
+  const ways = p.alts ? p.alts.ways : [];
+  if (ways.length !== 1 || ways[0].k !== 1) return [...errs, `ways offered: ${JSON.stringify(ways.map((w) => ({ k: w.k, label: w.label })))}`];
+  const data = await m.getSource('routeAlts').getData();
+  if (data.features.length < 2) errs.push('the other way isn\\'t drawn');
+  if (!/^[+]\\d+ m/.test(ways[0].label)) errs.push(`its label: ${ways[0].label}`);
+  // a tap on it takes it, with no routing call
+  const part = ways[0].parts[0], mid = part[Math.floor(part.length / 2)], pt = m.project(mid);
+  const before = window.routerCalls.length;
+  p.onMapClick({ point: pt, lngLat: { lng: mid[0], lat: mid[1] } });
+  await wait(600);
+  await routed();
+  if (p.legs[0].alt !== 1 || !/[|]alt1$/.test(p.legs[0].key)) errs.push(`after the tap: alt ${p.legs[0].alt}, key …${(p.legs[0].key || '').slice(-8)}`);
+  if (window.routerCalls.length !== before) errs.push(`${window.routerCalls.length - before} routing calls for a way already in`);
+  if (p.alts) errs.push('the ways on offer are still drawn');
+  const north = () => Math.max(...p.legs[0].result.coords.map((c) => c[1])) - A[1]; // the other way: 0.004° north
+  if (Math.abs(north() - 0.004) > 0.0005) errs.push('the route isn\\'t the other way');
+  // the share link, a reload, Undo
+  const q = new URL(p.shareUrl()).searchParams;
+  if (q.get('al') !== '0:1') errs.push(`share link: al=${q.get('al')}`);
+  const back = P.parseShared(q);
+  if (!back || JSON.stringify(back.alts) !== '[[0,1]]') errs.push(`from the link: ${back && JSON.stringify(back.alts)}`);
+  q.delete('al');
+  if ((P.parseShared(q).alts || []).length) errs.push('a link without al= has other ways');
+  p.save();
+  p.legs = []; p.points = [];
+  p.loadSaved();
+  await routed();
+  if (p.legs[0].alt !== 1 || window.routerCalls.length !== before) errs.push(`after a reload: alt ${p.legs[0].alt}, ${window.routerCalls.length - before} calls`);
+  p.undo();
+  await routed();
+  if (p.legs[0] && p.legs[0].alt) errs.push(`after Undo: alt ${p.legs[0].alt}`);
+  p.redo();
+  await routed();
+  if (!p.legs[0] || p.legs[0].alt !== 1) errs.push(`after Redo: alt ${p.legs[0] && p.legs[0].alt}`);
+  // another style for the leg: the first way of the new style
+  const c0 = calls(0);
+  p.setStyle({ p: 'balanced', v: { c: 'fewer' }, wet: 'auto' }, 0);
+  await wait(1000);
+  await routed();
+  if (p.legs[0].alt || calls(0) !== c0 + 1) errs.push(`after a style change: alt ${p.legs[0].alt}, ${calls(0) - c0} first-way calls`);
+  // opened from the link, the leg takes alternative 1 (the router has it already: no call)
+  p.clear();
+  p.restore(back);
+  await wait(600);
+  await routed();
+  if (p.legs[0].alt !== 1 || Math.abs(north() - 0.004) > 0.0005) errs.push(`from the link: alt ${p.legs[0].alt}, ${north().toFixed(4)}° north`);
+  p.clear();
+  return errs;
+})()"""
+# no room under the pacing (four calls in the last 10 s): none fetched; the leg's menu has them
+OTHERWAYS_BUSY = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
+  const n = await import(location.origin + '/js/net.js');
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  const routed = async () => { for (let k = 0; k < 100; k++) { if (p.legs.length && p.legs.every((l) => l.status === 'ok') && p.analysis) return true; await wait(200); } return false; };
+  const calls = (k) => window.routerCalls.filter((u) => /lonlats=/.test(u) && new URL(u).searchParams.get('alternativeidx') === String(k)).length;
+  for (let k = 0; k < 3; k++) await n.request('brouter', `https://brouter.de/brouter?lonlats=24.9,60.1|24.91,60.1${k}&profile=hiking-mountain&alternativeidx=0&format=geojson`);
+  p.setActive(true);
+  p.setMode('auto');
+  p.addPoint([24.930, 60.170]);
+  p.addPoint([24.950, 60.170]);
+  await routed();
+  await wait(1500);
+  if (calls(1) || calls(2) || (p.alts && p.alts.ways.length)) errs.push(`other ways fetched with no room: ${calls(1)} + ${calls(2)} calls`);
+  p.openLegMenu(0, { lng: 24.94, lat: 60.17 });
+  await wait(200);
+  const btn = [...document.querySelectorAll('.polku-popup .pt-menu button')].find((b) => /Other ways/.test(b.textContent));
+  if (!btn) return [...errs, 'no Other ways in the leg\\'s menu'];
+  btn.click();
+  for (let k = 0; k < 100 && !(p.alts && p.alts.ways.length); k++) await wait(200);
+  if (!p.alts || p.alts.ways.length !== 1) errs.push(`Other ways from the menu: ${p.alts ? p.alts.ways.length : 'none'} offered, ${calls(1)} + ${calls(2)} calls`);
+  p.clear();
+  return errs;
+})()"""
+
+
+def otherways(chrome):
+    fails = []
+    for script, timeout in [(OTHERWAYS, 60000), (OTHERWAYS_BUSY, 60000)]:
+        pg = chrome.page(1440, 900, False)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': OTHERWAYS_ROUTER}, pg.s)
+            pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#14/60.171/24.94')
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            fails += pg.js(script, timeout=timeout)
+            fails += [f'console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} other ways for a new leg" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -3341,6 +3474,8 @@ def main():
             ok = detour(chrome) and ok
         if not only or 'shortcut' in only:
             ok = shortcut(chrome) and ok
+        if not only or 'otherways' in only:
+            ok = otherways(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
         if not only or 'fit' in only:
