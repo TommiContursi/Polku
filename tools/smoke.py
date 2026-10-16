@@ -9,6 +9,7 @@
   python3 tools/smoke.py lipas      # just LIPAS search and riding a LIPAS route (recorded answers)
   python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind), and OSM's rocks coming late (mocked)
   python3 tools/smoke.py multi      # just multisport: a sport per leg, changeovers, share links (straight legs)
+  python3 tools/smoke.py editing    # midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports
   python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
   python3 tools/smoke.py backtostart  # Back to start buttons, closing leg and undo (straight legs)
   python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
@@ -122,6 +123,82 @@ EDIT = """(async () => {
   p.undo();
   return errs;
 })()"""
+
+
+# Press the DOM midpoint handle, rather than the canvas beneath it. Both receive
+# the bubbling press; only the marker should own the gesture (#215).
+MIDPOINT_EDIT = """(async () => {
+  const p = polku.planner, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  p.setActive(true); p.clear(); p.setMode('line');
+  p.addPoint([23.800, 61.509]); p.addPoint([23.838, 61.516]);
+  await p.analysing;
+  p.fitRoute();
+  await wait(900);
+  const ghost = p.ghosts[0], el = ghost.getElement();
+  // Wait for the route beneath the handle to be drawn: otherwise only the
+  // marker gets the press and the conflicting line gesture is never tested.
+  const hit = () => map.queryRenderedFeatures(map.project(ghost.getLngLat()), { layers: ['route-casing'] })
+    .some((f) => f.properties.kind === 'leg');
+  for (let k = 0; k < 100 && !hit(); k++) await wait(100);
+  if (!hit()) return ['route beneath the midpoint handle was not rendered'];
+  const R = el.getBoundingClientRect();
+  const x = R.left + R.width / 2, y = R.top + R.height / 2;
+  if (el.hidden || !R.width) return ['no visible midpoint handle'];
+  const cv = map.getCanvas(), touch = matchMedia('(pointer: coarse)').matches;
+  const n0 = p.points.length, u0 = p.past.length, c0 = map.getCenter(), before = JSON.stringify(p.points);
+  const fire = (type, target, dx = 0, dy = 0) => {
+    if (!touch) {
+      target.dispatchEvent(new MouseEvent(type.replace('touch', 'mouse').replace('start', 'down').replace('end', 'up'), {
+        bubbles: true, cancelable: true, clientX: x + dx, clientY: y + dy, button: 0, buttons: type === 'touchend' ? 0 : 1
+      }));
+    } else {
+      const t = [new Touch({ identifier: 1, target: el, clientX: x + dx, clientY: y + dy })];
+      target.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: type === 'touchend' ? [] : t, targetTouches: type === 'touchend' ? [] : t, changedTouches: t }));
+    }
+  };
+  fire('touchstart', el.querySelector('.wp-ghost'));
+  // The same bubbling press must not arm a second, delayed line edit on touch.
+  if (touch) await wait(400);
+  for (let k = 1; k <= 8; k++) { fire('touchmove', cv, k * 5, -k * 5); await wait(30); }
+  fire('touchend', cv, 40, -40);
+  if (!touch) window.dispatchEvent(new MouseEvent('mouseup'));
+  await wait(400);
+  if (p.points.length !== n0 + 1) errs.push(`${p.points.length - n0} via points added by one handle drag`);
+  else {
+    const q = map.project(p.points[1]), C = cv.getBoundingClientRect();
+    if (Math.hypot(C.left + q.x - x - 40, C.top + q.y - y + 40) > 3) errs.push('via point did not follow the handle');
+  }
+  if (p.past.length !== u0 + 1) errs.push(`${p.past.length - u0} undo steps for one handle drag`);
+  if (p.edit) errs.push('handle drag did not end');
+  if (!map.dragPan.isEnabled()) errs.push('map panning left off');
+  if (map.getCenter().lng !== c0.lng || map.getCenter().lat !== c0.lat) errs.push('map panned during handle drag');
+  p.undo();
+  if (JSON.stringify(p.points) !== before) errs.push('Undo did not restore the route before the handle drag');
+  p.redo();
+  if (p.points.length !== n0 + 1) errs.push('Redo did not restore exactly one via point');
+  p.undo();
+  await wait(500);
+  return errs;
+})()"""
+
+
+def editing(chrome):
+    ok = True
+    for sport in ('mtb', 'gravel', 'hike', 'paddle'):
+        for w, h, phone in [(1440, 900, False), (390, 844, True)]:
+            pg = chrome.page(w, h, phone)
+            try:
+                pg.open_app({'activity': sport, 'timeline': True}, {'polku:plannerDock': '"left"'})
+                pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+                fails = pg.js(MIDPOINT_EDIT)
+                fails += [f'line: {e}' for e in pg.js(EDIT)]
+                fails += [f'console: {e[:160]}' for e in pg.errors()]
+            finally:
+                pg.close()
+            print(f"{'ok  ' if not fails else 'FAIL'} midpoint and line drag ({sport}, {w}x{h})" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+            ok = not fails and ok
+    return ok
 
 
 # The waypoint list: a row per point, ↓ reorders and undo puts it back, a row
@@ -3766,6 +3843,8 @@ def main():
             ok = water_late(chrome) and ok
         if not only or 'multi' in only:
             ok = multi(chrome) and ok
+        if not only or 'editing' in only:
+            ok = editing(chrome) and ok
         if not only or 'routemenu' in only:
             ok = route_menu(chrome) and ok
         if not only or 'backtostart' in only:
