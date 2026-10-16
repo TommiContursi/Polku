@@ -26,6 +26,7 @@
   python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
   python3 tools/smoke.py marks      # distance, arrival/elapsed times, default and saved settings, the departure link
+  python3 tools/smoke.py previews   # bar/legend hover highlights, keyboard previews and cleanup
   python3 tools/smoke.py colours    # every available route breakdown, choosing colours, folds and late data
   python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
@@ -3507,6 +3508,142 @@ def colours(chrome):
     return not fails
 
 
+# #207: preview categories without changing route, colours or camera.
+PREVIEWS = r"""(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  p.setActive(true); p.loadWind = async () => {}; p.loadTrail = async () => {};
+  await (await import(location.origin + '/js/trails.js')).holdFetches();
+  const fx = await (await fetch(location.origin + '/tools/fixtures/route-kauppi-mtb.json')).json();
+  fx.activity = polku.state.activity; fx.legs.forEach((l) => { l.mode = 'fixed'; });
+  p.restoreSnapshot(fx);
+  for (let k = 0; k < 100 && !p.analysis; k++) await wait(100);
+  if (!p.analysis) return ['no analysed route'];
+  p.reveal('colours'); if (p.layout() === 'sheet') p.setSheetState('full', { remember: false });
+  const settled = await __PREVIEW_SETTLED__; if (settled) errs.push(settled);
+  if (!polku.map.getSource('routePreview')) return ['no category preview source'];
+  const a = p.analysis, n = a.pts.length;
+  const fill = (v) => new Float32Array(n).fill(v);
+  a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) };
+  a.td.width.fill(0); a.td.vis.fill(1);
+  p.showMode('way'); p.setColorOnMap(false);
+  const data = () => polku.map.getSource('routePreview').serialize().data.features;
+  const empty = (why) => { if (data().length || p.els.breakdown.querySelector('.bd-preview')) errs.push(`preview remains after ${why}`); };
+  const fire = (el, type, pointerType = 'mouse') => el.dispatchEvent(new PointerEvent(type, { pointerType }));
+  const cell = (mode, key, legend = false) => [...p.breakdownKinds[mode].el.querySelectorAll(legend ? '.bd-item' : '.bd-bar span')].find((el) => el.dataset.category === String(key));
+  const saved = JSON.stringify({ mode: p.colorMode, onMap: p.colorOnMap, offset: p.startOffsetH, points: p.points, camera: [polku.map.getCenter().toArray(), polku.map.getZoom(), polku.map.getBearing(), polku.map.getPitch()], settings: [localStorage.getItem('polku:colorMode'), localStorage.getItem('polku:colorOnMap')] });
+  const unchanged = () => JSON.stringify({ mode: p.colorMode, onMap: p.colorOnMap, offset: p.startOffsetH, points: p.points, camera: [polku.map.getCenter().toArray(), polku.map.getZoom(), polku.map.getBearing(), polku.map.getPitch()], settings: [localStorage.getItem('polku:colorMode'), localStorage.getItem('polku:colorOnMap')] }) === saved;
+  const { lineLength } = await import(location.origin + '/js/geo.js');
+  // All rendered categories highlight the distance printed in their legend, including weather and trail details.
+  for (const [mode, kind] of Object.entries(p.breakdownKinds)) {
+    if (kind.el.hidden) continue;
+    for (const row of p.breakdownRows(mode)) {
+      const el = cell(mode, row[3], true); fire(el, 'pointerenter');
+      const length = data().reduce((sum, f) => sum + lineLength(f.geometry.coordinates), 0);
+      if (!data().length || Math.abs(length - row[1]) > Math.max(1, row[1] * 0.0001)) errs.push(`${mode} ${row[0]}: highlighted ${length}, legend ${row[1]}`);
+      if (kind.el.querySelectorAll('.bd-preview').length !== 2) errs.push(`${mode}: bar and legend are not linked`);
+      if (!unchanged()) errs.push(`${mode}: preview changed a saved choice, departure, route or camera`);
+      fire(el, 'pointerleave'); empty(`${mode} leave`);
+    }
+  }
+  // Alternate two flat samples and two steep ones. Every disconnected flat run must stay separate.
+  a.eleGap = null; a.terrain = null; a.grade = Array.from({ length: n }, (_, i) => i % 4 < 2 ? 0 : 12);
+  p.renderBreakdown();
+  const flat = p.breakdownRows('grade').find((r) => r[0] === 'flat');
+  if (!flat) return [...errs, 'no flat test category'];
+  let expectedRuns = 0, expectedEdges = 0, running = false;
+  const flatEdges = new Set();
+  for (let i = 1; i < n; i++) { const hit = i % 4 < 2; if (hit) { expectedEdges++; flatEdges.add(JSON.stringify([a.pts[i - 1], a.pts[i]])); if (!running) expectedRuns++; } running = hit; }
+  const checkFlat = () => {
+    const actualEdges = data().reduce((sum, f) => sum + f.geometry.coordinates.length - 1, 0);
+    if (data().length !== expectedRuns || actualEdges !== expectedEdges) errs.push('flat preview joins gaps or omits matching runs');
+    for (const f of data()) for (let j = 1; j < f.geometry.coordinates.length; j++) {
+      // A recorded route may visit the same coordinate more than once; compare edges, not the first matching point.
+      if (!flatEdges.has(JSON.stringify(f.geometry.coordinates.slice(j - 1, j + 1)))) errs.push('flat preview contains a non-flat edge');
+    }
+  };
+  const segment = cell('grade', flat[3]), legend = cell('grade', flat[3], true);
+  fire(segment, 'pointerenter'); checkFlat();
+  fire(segment, 'pointerleave'); empty('bar leave');
+  fire(legend, 'pointerenter'); checkFlat();
+  fire(legend, 'pointercancel'); empty('pointer cancel');
+  fire(segment, 'pointerenter', 'touch'); empty('touch enter');
+  fire(segment, 'pointerenter');
+  const steep = p.breakdownRows('grade').find((r) => r[0] !== 'flat'), next = cell('grade', steep[3], true);
+  fire(next, 'pointerenter'); const newer = JSON.stringify(data());
+  fire(segment, 'pointerleave');
+  if (!data().length || JSON.stringify(data()) !== newer) errs.push('a late leave cleared the newer category');
+  fire(next, 'pointerleave'); empty('newer leave');
+  // Unknown terrain and known flat/down share the same grey; they must not highlight one another.
+  a.eleGap = Uint8Array.from({ length: n }, (_, i) => i % 3 === 0 ? 1 : 0); a.upCls.fill(-1); p.renderBreakdown();
+  const unknown = p.breakdownRows('uphill').find((r) => r[0] === 'no terrain');
+  const known = p.breakdownRows('uphill').find((r) => r[0] === 'flat / down');
+  if (!unknown || !known || unknown[2] !== known[2]) return [...errs, 'no equal-colour test categories'];
+  for (const [row, gap] of [[unknown, true], [known, false]]) {
+    fire(cell('uphill', row[3], true), 'pointerenter');
+    const expected = [...a.eleGap].slice(1).filter((v) => !!v === gap).length;
+    if (data().reduce((sum, f) => sum + f.geometry.coordinates.length - 1, 0) !== expected) errs.push('categories sharing a colour were combined');
+  }
+  p.previewCategory('uphill', 'missing category', p.breakdownKinds.uphill.pick); empty('no matches');
+  const enter = () => fire(cell('grade', flat[3]), 'pointerenter');
+  enter(); p.renderBreakdown(); empty('data redraw');
+  enter(); p.setStartOffset(1); empty('departure update');
+  enter(); p.setTab('go'); empty('tab change'); p.setTab('check');
+  enter(); p.toggleSection('colours', false); empty('section fold'); p.toggleSection('colours', true);
+  enter(); const fold = p.breakdownKinds.grade.el.closest('.bd-group').querySelector('.bd-group-toggle'); fold.click(); empty('group fold'); fold.click();
+  enter(); p.setActive(false); empty('planner close'); p.setActive(true);
+  enter(); p.setSheetState(p.layout() === 'side' ? 'min' : 'peek', { remember: false }); empty('planner minimise'); p.reveal('colours');
+  const windRow = p.breakdownRows('wind')[0]; fire(cell('wind', windRow[3]), 'pointerenter');
+  a.wind = null; p.renderBreakdown(); empty('forecast loss');
+  a.eleGap = null; p.renderBreakdown();
+  p.showMode('way'); p.setColorOnMap(false);
+  p.setSheetState(p.layout() === 'side' ? 'open' : 'full', { remember: false });
+  const ready = await __PREVIEW_SETTLED__; if (ready) errs.push(ready);
+  window.categoryPreviewReady = true;
+  return errs;
+})()""".replace('__PREVIEW_SETTLED__', SETTLED)
+
+
+def previews(chrome):
+    fails = []
+    for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
+        pg = chrome.page(w, h_, phone)
+        pg.open_app({'activity': 'mtb', 'timeline': True})
+        fails += [f'{w}: {e}' for e in pg.js(PREVIEWS)]
+        if pg.js('!!window.categoryPreviewReady'):
+            pg.js("document.querySelector('.bd-group[aria-label=Terrain] .bd-group-toggle').focus(); true")
+            def key(name, code, vk, char=None):
+                for event in ['rawKeyDown'] + (['char'] if char is not None else []) + ['keyUp']:
+                    fields = {'type': event, 'key': name, 'code': code, 'windowsVirtualKeyCode': vk}
+                    if event == 'char':
+                        fields['text'] = char
+                    chrome.send('Input.dispatchKeyEvent', fields, pg.s)
+            key('Tab', 'Tab', 9)
+            if not pg.js("document.activeElement === polku.planner.breakdownKinds.grade.pick && polku.planner.categoryPreview?.mode === 'grade' && !!document.querySelector('#colour-preview-status').textContent"):
+                fails.append(f'{w}: keyboard focus did not preview and announce a category')
+            initial = pg.js('polku.planner.categoryPreview?.key')
+            key('ArrowRight', 'ArrowRight', 39)
+            if not pg.js("polku.planner.categoryPreview && polku.planner.colorMode === 'way' && !polku.planner.colorOnMap") or pg.js('polku.planner.categoryPreview?.key') == initial:
+                fails.append(f'{w}: arrow preview changed colours or did not change category')
+            key('Escape', 'Escape', 27)
+            if pg.js("polku.planner.categoryPreview || polku.planner.tab !== 'check' || polku.map.getSource('routePreview').serialize().data.features.length"):
+                fails.append(f'{w}: Escape did not clear only the preview')
+            key('ArrowLeft', 'ArrowLeft', 37)
+            if not pg.js("polku.planner.categoryPreview?.key === polku.planner.breakdownRows('grade').at(-1)[3]"):
+                fails.append(f'{w}: Left did not preview the last category')
+            key('Home', 'Home', 36)
+            key('End', 'End', 35)
+            key('Enter', 'Enter', 13, '\r')
+            if not pg.js("polku.planner.colorMode === 'grade' && polku.planner.colorOnMap && !polku.planner.categoryPreview"):
+                fails.append(f'{w}: Enter did not select colours and clear the preview')
+            pg.js("document.querySelector('[data-colour=grade] .bd-bar span').dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'})); polku.planner.clear(); true")
+            if pg.js("polku.map.getSource('routePreview').serialize().data.features.length"):
+                fails.append(f'{w}: clearing the route left a preview')
+        fails += [f'{w}: console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} category previews" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #201: route mark defaults, independent options, elapsed times and the departure link.
 MARKS = r"""(async () => {
   const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
@@ -3667,6 +3804,8 @@ def main():
             ok = marks(chrome) and ok
         if not only or 'colours' in only:
             ok = colours(chrome) and ok
+        if not only or 'previews' in only:
+            ok = previews(chrome) and ok
         if not only or 'drawer' in only:
             ok = drawer(chrome) and ok
         if not only or 'heading' in only:

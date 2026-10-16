@@ -626,6 +626,10 @@ def shoot(chrome, out_dir, label, name):
     else:
         time.sleep(2.8)  # timeline strip, weather, fades
         pg.idle()
+    if sc.get('hover'):
+        point = pg.js("(() => { const el = document.querySelector(" + json.dumps(sc['hover']) + "); if (!el) throw new Error('Missing screenshot hover target'); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()")
+        chrome.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', **point}, pg.s)
+        pg.idle()  # the native hover may update a map source
     path = pg.screenshot(os.path.join(out_dir, f'{label}-{name}.png'))
     errs = pg.errors()
     pg.close()
