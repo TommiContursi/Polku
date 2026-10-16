@@ -14,7 +14,7 @@ The planner has three tabs:
 - **Check:** warnings, climbs, ground conditions and route colours.
 - **Go:** departure, travel time, weather, GPX export, sharing and offline save.
 
-In **Check → On the route**, each available colour kind has a bar, legend and distances. Tap **Use colours** on its title or tap the bar to select it in **Colour by**; the current choice says **Selected**. Use the arrow beside each title to fold its bar. Weather bars appear once the forecast arrives; kinds without data or that do not apply to the sport are left out.
+In **Check → On the route**, available colour kinds are grouped into **Terrain**, **Ground**, **Weather**, and **Route** for mixed sports. Groups sit side by side in a wide panel and stack on phones. Each kind has a bar, legend and distances. The title and bar form one compact button: tap either (**Use colours**) to select it in **Colour by**; the current choice says **Selected**. The legend below lines up category distances. Use the separate arrow beside each title to fold its bar and legend. Weather bars appear once the forecast arrives; kinds without data or that do not apply to the sport are left out.
 
 In **Check → On the map**, distance marks, arrival times and elapsed times default on. Arrival is the clock time you reach a mark; elapsed time is the hours, minutes and seconds since departure, including stops and changeovers. Switch them off separately if needed; saved choices are kept. Tap the summary's time estimate to open **Go → Time** and focus its large **Depart** picker. It uses the same departure setting as the start waypoint and weather timeline.
 

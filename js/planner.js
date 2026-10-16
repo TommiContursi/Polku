@@ -3911,52 +3911,63 @@ export class Planner {
   // Keep the controls in place during updates so focus and folded bars stay put.
   renderBreakdown() {
     const a = this.analysis, box = this.els.breakdown;
-    if (!a) { box.replaceChildren(); this.breakdownKinds = {}; return; }
+    if (!a) { box.replaceChildren(); this.breakdownKinds = {}; this.breakdownGroups = null; return; }
     this.breakdownKinds ||= {};
+    this.breakdownGroups ||= COLOR_GROUPS.map(([title, modes]) => {
+      const list = h('div', { class: 'bd-group-list' });
+      const el = h('section', { class: 'bd-group', 'aria-label': title }, h('h4', { class: 'bd-group-title' }, title), list);
+      box.append(el);
+      return { el, list, modes };
+    });
     let count = 0;
-    for (const [mode, label] of Object.entries(COLOR_MODES)) {
-      const rows = this.modeApplies(mode) ? this.breakdownRows(mode) : [];
-      let kind = this.breakdownKinds[mode];
-      if (!rows.length) { if (kind) kind.el.hidden = true; continue; }
-      count++;
-      if (!kind) {
-        const id = `colour-${mode}`, open = store.get('sections', {})[id] !== false;
-        const active = h('small', { class: 'bd-active' }, 'Use colours');
-        const pick = h('button', { type: 'button', class: 'bd-title', title: `Colour the profile by ${label.toLowerCase()}`,
-          onclick: () => this.showMode(mode) }, label, active);
-        const bar = h('button', { type: 'button', class: 'bd-bar', 'aria-label': `Colour by ${label.toLowerCase()}`,
-          title: `Colour by ${label.toLowerCase()}`, onclick: () => this.showMode(mode) });
-        const legend = h('div', { class: 'bd-legend' });
-        const body = h('div', { class: 'bd-body', id, hidden: !open }, bar, legend);
-        const fold = h('button', { type: 'button', class: 'tool bd-fold', 'aria-label': `${open ? 'Fold' : 'Expand'} ${label.toLowerCase()} breakdown`,
-          'aria-expanded': String(open), 'aria-controls': id, html: icon('chevronDown', 16), onclick: () => {
-            body.hidden = !body.hidden;
-            fold.setAttribute('aria-expanded', String(!body.hidden));
-            fold.setAttribute('aria-label', `${body.hidden ? 'Expand' : 'Fold'} ${label.toLowerCase()} breakdown`);
-            store.set('sections', { ...store.get('sections', {}), [id]: !body.hidden });
-          } });
-        const el = h('section', { class: 'bd-kind', 'data-colour': mode, 'aria-label': `${label} on the route` },
-          h('div', { class: 'bd-head' }, pick, fold), body);
-        kind = this.breakdownKinds[mode] = { el, pick, active, body, bar, legend };
+    for (const group of this.breakdownGroups) {
+      let shown = 0;
+      for (const mode of group.modes) {
+        const label = COLOR_MODES[mode];
+        const rows = this.modeApplies(mode) ? this.breakdownRows(mode) : [];
+        let kind = this.breakdownKinds[mode];
+        if (!rows.length) { if (kind) kind.el.hidden = true; continue; }
+        count++;
+        if (!kind) {
+          const id = `colour-${mode}`, open = store.get('sections', {})[id] !== false;
+          const active = h('small', { class: 'bd-active' }, 'Use colours');
+          const bar = h('span', { class: 'bd-bar', id: `${id}-bar`, hidden: !open, 'aria-hidden': 'true' });
+          const pick = h('button', { type: 'button', class: 'bd-title', title: `Colour the profile by ${label.toLowerCase()}`,
+            onclick: () => this.showMode(mode) }, h('span', { class: 'bd-heading' }, h('span', {}, label), active), bar);
+          const legend = h('div', { class: 'bd-legend' });
+          const body = h('div', { class: 'bd-body', id, hidden: !open }, legend);
+          const fold = h('button', { type: 'button', class: 'tool bd-fold', 'aria-label': `${open ? 'Fold' : 'Expand'} ${label.toLowerCase()} breakdown`,
+            'aria-expanded': String(open), 'aria-controls': `${id} ${id}-bar`, html: icon('chevronDown', 16), onclick: () => {
+              body.hidden = !body.hidden;
+              bar.hidden = body.hidden;
+              fold.setAttribute('aria-expanded', String(!body.hidden));
+              fold.setAttribute('aria-label', `${body.hidden ? 'Expand' : 'Fold'} ${label.toLowerCase()} breakdown`);
+              store.set('sections', { ...store.get('sections', {}), [id]: !body.hidden });
+            } });
+          const el = h('section', { class: 'bd-kind', 'data-colour': mode, 'aria-label': `${label} on the route` },
+            h('div', { class: 'bd-head' }, pick, fold), body);
+          kind = this.breakdownKinds[mode] = { el, pick, active, body, bar, legend };
+        }
+        kind.el.hidden = false;
+        // Insert in the same order as Colour by, including kinds whose data arrived late.
+        const next = group.list.children[shown++];
+        if (next !== kind.el) group.list.insertBefore(kind.el, next || null);
+        const selected = this.colorMode === mode;
+        kind.pick.setAttribute('aria-pressed', String(selected));
+        kind.active.textContent = selected ? 'Selected' : 'Use colours';
+        const { bar, legend } = kind;
+        bar.replaceChildren();
+        legend.replaceChildren();
+        for (const [label, d, color] of rows) {
+          if (!(d > 0)) continue;
+          const pct = (d / a.total) * 100;
+          bar.append(h('span', { style: `width:${pct}%;background:${color}`, title: `${label}: ${fmtDist(d)}` }));
+          const text = String(label);
+          legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}`, 'aria-hidden': 'true' }),
+            h('span', {}, `${text[0].toUpperCase()}${text.slice(1)} `), h('b', {}, fmtDist(d))));
+        }
       }
-      kind.el.hidden = false;
-      // Insert in the same order as Colour by, including kinds whose data arrived late.
-      const next = box.children[count - 1];
-      if (next !== kind.el) box.insertBefore(kind.el, next || null);
-      const selected = this.colorMode === mode;
-      kind.pick.setAttribute('aria-pressed', String(selected));
-      kind.active.textContent = selected ? 'Selected' : 'Use colours';
-      const { bar, legend } = kind;
-      bar.setAttribute('aria-pressed', String(selected));
-      bar.replaceChildren();
-      legend.replaceChildren();
-      for (const [label, d, color] of rows) {
-        if (!(d > 0)) continue;
-        const pct = (d / a.total) * 100;
-        bar.append(h('span', { style: `width:${pct}%;background:${color}`, title: `${label}: ${fmtDist(d)}` }));
-        const text = String(label);
-        legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}` }), `${text[0].toUpperCase()}${text.slice(1)} `, h('b', {}, fmtDist(d))));
-      }
+      group.el.hidden = !shown;
     }
     this.setSection('colours', { title: 'On the route', count, empty: !count });
   }
