@@ -138,6 +138,12 @@ export function headroom(source) {
   return p ? Math.max(0, Math.min(...p.map(([ms, max]) => max - inWindow(source, ms).length)) - waiting) : Infinity;
 }
 
+/** Calls this source can still make in its pacing window of `ms` (Infinity if it has none). */
+export function roomIn(source, ms) {
+  const w = SOURCES[source] && SOURCES[source].pace && SOURCES[source].pace.find(([m]) => m === ms);
+  return w ? Math.max(0, w[1] - inWindow(source, ms).length - (queues[source] || []).length) : Infinity;
+}
+
 // ms until a call fits every window, behind `ahead` calls already waiting for one
 function waitFor(source, ahead = 0) {
   const now = Date.now(), sent = (recent[source] || []).map(([t]) => t);

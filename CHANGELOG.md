@@ -4,6 +4,15 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Other ways for a new leg ([#125](https://github.com/TommiContursi/Polku/pull/125))
+- **When you add a point and stop for a moment, Polku may show another way to get there,** and a second one a few seconds later if you're still looking. They're drawn as see-through ghosts with a soft glow (orange, then teal), each labelled with what it is and how it compares: "Other way · +600 m · all on trails". Tap one to take it; otherwise the route stays as it was. A way that leaves the route for less than 100 m in all isn't shown.
+- **The way you had stays as a grey ghost** after you take another ("Way before"), so you can go back with one tap. It goes when you add the next point.
+- **Not while you're adding points, and not on short legs.** The first comes about 1.5 seconds after you've stopped, for a new leg of 300 m or more. The routing service is free and paced (about 5 routes in 10 seconds, 12 a minute), and each other way is one more route, so they come only when that leaves room for your next points; the second only when there's plenty. With your own routing server (Settings) the pacing never stops them.
+- **Want them anyway?** Tap any part of the route and pick **Other ways** in its menu: up to two, whenever you like.
+- **The short cut through a way marked private** is one of them where Heads-up has one for that part (purple), and taking it works like its Short cut button.
+- **The way you took stays,** through Undo, a reload, Save offline and share links (the link says which; older links take the first way). Changing that part's sport, style or points goes back to the first way of the new route.
+- **It waits for the routing service** rather than letting the stand-in router take it, since the stand-in can't give the same other way.
+
 ### Route colour breakdowns, grouped and easier to scan
 - **Terrain, Ground and Weather have their own groups,** side by side when the panel is wide and stacked on phones. Groups without data stay out of the way.
 - **Each breakdown groups its title and bar into one colour button,** and colours the route on the map as well as the profile. Bars use the full row, and category distances line up below. Fold Terrain, Ground or Weather from the group header.
