@@ -236,6 +236,21 @@ def NO_TERRAIN(part=False):
     return ("(() => { const real = window.fetch; window.fetch = (u, i) => { const m = /tiles\\.mapterhorn\\.com\\/(\\d+)\\/(\\d+)\\//.exec(String(u));"
             f" if (m && ({fail})) return Promise.reject(new TypeError('Failed to fetch')); return real(u, i); }}; return true; }})()")
 
+# #88, #89: the fit button with the sheet at full, a GPX import (the Kauppi ride as a track) with
+# the planner open at half, and a round-trip loop clicked on its line (its farthest point from
+# the start). Older code leaves the full sheet up and the map unmoved, fits the track as if there
+# were no planner, and throws the loops away for a new start.
+FIT_BUTTON = "(async () => { polku.planner.els.fit.click(); await new Promise((r) => setTimeout(r, 1200)); return true; })()"
+GPX_IMPORT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setSheetState('half', { remember: false }); await wait(600);"
+              " const s = await (await fetch(location.origin + '/tools/fixtures/route-kauppi-mtb.json')).json(), c = s.legs.flatMap((l) => l.result.coords);"
+              " const gpx = `<?xml version=\"1.0\"?><gpx version=\"1.1\"><trk><name>Kauppi</name><trkseg>${c.map(([x, y]) => `<trkpt lat=\"${y}\" lon=\"${x}\"></trkpt>`).join('')}</trkseg></trk></gpx>`;"
+              " const input = document.querySelector('#file-input'), dt = new DataTransfer(); dt.items.add(new File([gpx], 'kauppi.gpx')); input.files = dt.files;"
+              " input.dispatchEvent(new Event('change', { bubbles: true })); await wait(1500); return true; })()")
+LOOP_CLICK = LOOP_JS.replace("return true; })()", "await new Promise((r) => setTimeout(r, 800)); const L = p.loop, k = L.on === 1 ? 2 : 1, r = L.results[k]; if (!r) return true;"
+                             " const far = r.line.coords.reduce((m, q) => (Math.hypot(q[0] - L.start[0], q[1] - L.start[1]) > Math.hypot(m[0] - L.start[0], m[1] - L.start[1]) ? q : m));"
+                             " const m = polku.map, pt = m.project(far); m.fire('click', { point: pt, lngLat: m.unproject(pt), originalEvent: new MouseEvent('click') });"
+                             " await new Promise((r) => setTimeout(r, 1200)); return true; })()")
+
 # Phase 23a: where you are, with a GPS and a compass of the page's own (headless Chrome has
 # neither): a fix every second, the phone facing `deg` (the compass keeps talking), or `more`
 # for the fix (a speed and a course: moving); then the scene's own steps. Older code shows
@@ -264,6 +279,12 @@ def LOCATE(deg=None, more=None, then='', ll=KAUPPI):
 
 
 SCENES = {
+    # #88, #89: the fit button at full, a GPX import over the planner, a loop clicked on the map
+    'phone-fit-full': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=FIT_BUTTON),
+    'phone-gpx-import': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', js=GPX_IMPORT),
+    'desk-gpx-import': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=SIDE, js=GPX_IMPORT),
+    'phone-loop-click': dict(PHONE, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_CLICK),
+    'desk-loop-click': dict(DESK, timeline=False, hash='#12/61.4980/23.7610', storage=LOCAL, js=LOOP_CLICK),
     # 23a: the dot's cone (the compass; on the desktop, the GPS's course while moving), facing
     # ahead, Follow after a pan, the planner open with a route, and the same in the dark
     'phone-locate': dict(PHONE, timeline=False, activity='hike', js=LOCATE(deg=35)),

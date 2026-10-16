@@ -11,6 +11,13 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 - **Easier on the battery.** While the page is hidden, Polku stops listening to the GPS and the compass, and starts again when you're back.
 - **Where you are stays on your phone.** Polku keeps your position only in the open page: it isn't saved and isn't sent anywhere. While your location is on, the map's view isn't remembered for your next visit. Share links no longer carry the map's view, and search ("nearer places first") and the ships layer send the map's middle only to about a kilometre.
 
+### Fixed: on a phone, the map frames your route above the planner ([#110](https://github.com/TommiContursi/Polku/pull/110))
+- **With the planner at full height,** Show the whole route, Use this loop, a new round trip and a tap on a climb or a Heads-up did nothing on the map. Now the planner comes down to half and the map frames the route above it.
+- **A GPX or KML import** lands above the planner when it's open (beside it on desktop), and Analyse & edit frames the track above the planner it opens.
+- **A share link** frames the whole routed line once its legs are in, not only its points, unless you've moved the map or changed the route by then.
+- **A round trip from your first tap** frames the loops' area above the planner as it rises, not above the smaller planner it was a moment before.
+- **Tap a loop on the map to pick it.** The other loops and the start stay where they are, its card is marked, and the map frames it. Before, the tap threw all the loops away and moved the start there. Picking a loop by its card frames it too, and a tap away from the loops still moves the start.
+
 ## 2026-10-15
 
 ### Fixed: the uphill colours stayed blank after the terrain came back ([#101](https://github.com/TommiContursi/Polku/pull/101))

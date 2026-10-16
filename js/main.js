@@ -979,7 +979,9 @@ async function importFile(file) {
     const features = t.lines.map((c) => ({ type: 'Feature', properties: { name: t.name }, geometry: { type: 'LineString', coordinates: c } }));
     setData('tracks', { type: 'FeatureCollection', features });
     const b = bbox(coords);
-    map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 70, duration: 800 });
+    // above the planner when it's open (its ⋯ menu imports too)
+    if (planner.active) planner.frame(b, { duration: 800 });
+    else map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 70, duration: 800 });
     showTrackCard(t.name || file.name, coords);
   } catch (e) {
     toast(e.message || 'Could not import that file', { tone: 'warn' });
@@ -1039,8 +1041,7 @@ function openOfflineArea(area) {
   if (r.activity && r.activity !== state.activity) setActivity(r.activity);
   planner.setActive(true);
   planner.restoreSnapshot(r);
-  const b = area.bbox;
-  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: planner.viewPadding(), duration: 0 });
+  planner.frame(area.bbox, { duration: 0, maxZoom: map.getMaxZoom() });
 }
 
 // A free service is limiting or failing: say so once per episode (which one,
@@ -1096,8 +1097,10 @@ map.on('load', () => {
   if (shared && shared.points.length) {
     planner.restore(shared);
     planner.setActive(true);
+    // its points now, its routed line once the legs are in
     const b = bbox(shared.points);
-    if (b[0] !== b[2]) map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: planner.viewPadding(), duration: 0 });
+    if (b[0] !== b[2]) planner.frame(b, { duration: 0, maxZoom: map.getMaxZoom() });
+    planner.frameWhenRouted();
     history.replaceState(null, '', location.pathname + location.hash);
   } else if (planner.loadSaved()) {
     /* restored last session's route (planner stays closed until opened) */
