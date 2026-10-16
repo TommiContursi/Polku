@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
-### Fixed: a route that goes round a way marked private says so (#104)
+### Fixed: a route that goes round a way marked private says so ([#117](https://github.com/TommiContursi/Polku/pull/117))
 - **Ways marked private or closed for your sport have purple dots beside them** on the map, from zoom 14: `access=private` or `no` without a yes for your sport, and on foot `foot=no`. Routes keep off them, so now you can see why a route goes round. The map key has them, and hover and the way's card say "marked private or no access" (the map's tiles can't tell the two apart).
 - **Heads-up says when a leg goes round one,** and how much a short cut through it would save: "Goes round a way marked private or closed · a short cut through it would save about 370 m". A tap on the row draws the short cut on the map. Polku works this out from the map it already has, with no extra calls.
 - **A point you put on such a way, that the router moved off it, says so too:** "Start moved 53 m off a way marked private or closed", or in the short cut's row when it's part of it. Polku remembers the spot you picked, through Undo, a reload and Save offline.
