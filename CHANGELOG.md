@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
-### Which way you face, and Follow me (Phase 23a, [#PRNUM](https://github.com/TommiContursi/Polku/pull/PRNUM))
+### Which way you face, and Follow me (Phase 23a, [#111](https://github.com/TommiContursi/Polku/pull/111))
 - **The location dot shows which way you face.** A cone points where the top of your phone points, from its compass. While you move faster than a slow walk (about 1 m/s), it follows the way the GPS says you're going instead, which holds up with the phone in a pocket. The cone is narrow when it comes from the GPS and wider from the compass. On an iPhone, Polku asks for the compass when you tap Locate.
 - **Follow me.** A tap on Locate shows where you are and keeps the map on you as you move, north up. On a phone the next tap turns the map to face the way you face, and the one after that turns your location off. Zooming, pinching or turning the map keeps following. A pan, or the map moving somewhere else (a search, showing the route), stops it, and Locate turns into **Follow**: one tap brings you back. With the planner open, you stay in the part of the map it leaves free.
 - **The dot turns grey** when no new position has come for a minute, and Locate says so.

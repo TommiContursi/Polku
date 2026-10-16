@@ -100,7 +100,7 @@ labelled `enhancement`), which holds its status. The review of 15 October 2026 o
 - ~~**Round trip from the first click**~~ *(2026-10-15)*: done in 22a (#60). The empty planner offers it, and the first click's card offers a loop from there.
 - ~~**One profile, not two**~~ *(2026-10-15)*: done in 22a (#60). The profile chart itself moved under the summary, with all it had.
 - ~~**The time earlier, the speeds with the style**~~ *(2026-10-15; done in 22a, #60)*: Time & speed opened with the speed inputs, far down. The time goes first in Go, and the speed inputs move beside the route style ("How you go"). In ROADMAP 22a.
-- **Where you are, and the way on** *(2026-10-15)*: the location dot showing which way you face, following you on the map, how far along the route you are, and recording the track, with the phone's own GPS and compass. Now ROADMAP phase 23 (23a–23d); 23a done in #PRNUM.
+- **Where you are, and the way on** *(2026-10-15)*: the location dot showing which way you face, following you on the map, how far along the route you are, and recording the track, with the phone's own GPS and compass. Now ROADMAP phase 23 (23a–23d); 23a done in #111.
 - The route's colour sits in the header and in the profile *(done in #37)*.
 - **A quick point on the line** (Alt-click, say) if two clicks for a point (#48: a click opens the part's menu, "Add a point here" is its first button) feel slow. Dragging already makes one. *(2026-10-14)*
 - **Departure more than 48 hours ahead** *(13c, 2026-10-14)*: a weekend trip planned on Monday. The route's 10-day forecast would cover it; the timeline (and its weather map) stops at 48 h, so this needs a date picker that leaves the map's timeline alone.
