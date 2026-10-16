@@ -490,11 +490,11 @@ export function buildStyle(s, ctx) {
   // round-trip candidates (planner): the one you're looking at wider and on top
   add({ id: 'loops-casing', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 6, 4], 16, ['case', ['get', 'on'], 12, 8]], 'line-opacity': 0.9 } });
   add({ id: 'loops-line', type: 'line', source: 'loops', layout: { 'line-join': 'round', 'line-cap': 'round', 'line-sort-key': ['case', ['get', 'on'], 1, 0] }, paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, ['case', ['get', 'on'], 3.5, 2], 16, ['case', ['get', 'on'], 7, 4]], 'line-opacity': ['case', ['get', 'on'], 1, 0.7] } });
-  // distance marks along the route: a dot on the line, "5 km" (and the time you'd be there) beside it
+  // distance marks: distance and arrival on the first line, elapsed time below
   add({ id: 'route-marks-dot', type: 'circle', source: 'routeMarks', minzoom: 9, paint: { 'circle-radius': zi(9, 2.5, 16, 4), 'circle-color': '#ffffff', 'circle-stroke-color': '#111827', 'circle-stroke-width': 1.5 } });
   add({
     id: 'route-marks', type: 'symbol', source: 'routeMarks', minzoom: 9,
-    layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 11, 'text-anchor': 'left', 'text-offset': [0.7, 0], 'text-padding': 4, 'text-optional': true },
+    layout: { 'text-field': ['get', 'label'], 'text-font': FONT_B, 'text-size': 11, 'text-anchor': 'left', 'text-offset': [0.7, 0], 'text-padding': 4, 'text-optional': true, 'text-max-width': 18, 'text-justify': 'left' },
     paint: { 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
   });
   add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });

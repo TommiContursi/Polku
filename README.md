@@ -28,7 +28,7 @@ On land, BRouter calculates routes using sport-specific profiles. Polku keeps un
 - Route styles change the router's preferences for terrain, surface, climbing and roads, with presets for flowing trails, technical riding, paved roads, nature paths or routes near the shore. Set a style for the whole route or one leg.
 - Routes keep off ways marked private in OpenStreetMap, and Heads-up says when a route goes round one. Where you may go there, the route style's **Short cuts ok** lets a route through such a way when it saves a real distance; ways marked no access stay closed.
 - For a round trip, choose a start point, a distance or duration, and a direction, including into the wind first. Polku generates three loops to compare by distance, time, climbing, trail share, repeated stretches and warnings. Its ranking penalises distance from the target, repeated sections, warnings and carries. Generate more loops or edit one. Paddling and swimming loops work too; on rivers they go out and back.
-- The elevation profile shows climbs and descents, coloured by gradient, trail difficulty, surface, trail width or visibility, or weather. Check lists each available colour breakdown with its distances, independently of the selected profile colour. Time estimates use preset or personal speeds and allow for wind and snow.
+- The elevation profile shows climbs and descents, coloured by gradient, trail difficulty, surface, trail width or visibility, or weather. Check lists each available colour breakdown with its distances, independently of the selected profile colour; select a title or bar to use its colours. Time estimates use preset or personal speeds and allow for wind and snow.
 - Stops and overnight stays update the schedule and route weather. Set a break or a time to continue the next morning. For overnight stops, Polku finds nearby lean-tos, huts and campsites. It also warns if a trip leaves your bike or boat somewhere you do not return to.
 
 <p align="center">
@@ -37,7 +37,7 @@ On land, BRouter calculates routes using sport-specific profiles. Polku keeps un
 
 ## Weather and conditions
 
-Route weather shows headwind, crosswind, tailwind, temperature and rain at the estimated time you reach each part of the route. A 48-hour map timeline shows animated wind, rain and temperature, with FMI rain radar for current rainfall in Finland. Distance marks can show estimated passing times, and the planner includes sunrise and sunset.
+Route weather shows headwind, crosswind, tailwind, temperature and rain at the estimated time you reach each part of the route. A 48-hour map timeline shows animated wind, rain and temperature, with FMI rain radar for current rainfall in Finland. Distance marks show estimated arrival and elapsed times by default, with separate switches in Check. The planner includes sunrise and sunset.
 
 Polku first estimates the route's timing, then samples forecasts for the expected arrival times along it. It recalculates travel times with the wind and samples the forecasts again for the revised schedule. Stops, overnight stays and changeovers are included in that schedule.
 

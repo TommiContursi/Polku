@@ -138,7 +138,7 @@ export class Planner {
     this.pstop = new WeakMap(); // point → a stop there: { min } a break, { on } a night (go on at that minute of the day)
     this.pcarry = new WeakMap(); // point → true: the gear of the sport you change out of there goes along
     this.pspot = new WeakMap(); // point → the spot you put it at, when the router moved it off a way marked private or closed (#104)
-    this.marks = { km: true, time: false, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
+    this.marks = { km: true, time: true, duration: true, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.openLegs = new Set(); // waypoint rows whose leg settings are open (by point index)
     this.roads = initNames(map); // road and path names from the loaded tiles
@@ -2015,6 +2015,7 @@ export class Planner {
     const sel = this.els.wind.querySelector('.start-select');
     if (sel) sel.value = String(k);
     if (!fromMap && this.app.onStartChange) this.app.onStartChange(k);
+    this.drawMarks(); // the clock times move immediately while the new forecast loads
     clearTimeout(this.windTimer);
     // playback moves an hour a second; let it settle a little before re-fetching
     this.windTimer = setTimeout(() => {
@@ -3205,8 +3206,9 @@ export class Planner {
       h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: on, disabled, onchange: (e) => fn(e.target.checked) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     box.replaceChildren(
       sw('Distance marks', !!this.marks.km, (v) => this.setMarks({ km: v }), false, 'Every 1, 5, 10 or 25 km along the route, by its length'),
-      sw('Times at the marks', !!this.marks.time, (v) => this.setMarks({ time: v }), !this.marks.km, 'When you’d be at each mark, from your departure'));
-    this.setSection('onmap', { summary: [this.marks.km ? 'distance marks' : '', this.marks.km && this.marks.time ? 'times' : ''].filter(Boolean).join(' · ') || 'the line only', empty: !this.analysis });
+      sw('Arrival times at marks', !!this.marks.time, (v) => this.setMarks({ time: v }), !this.marks.km, 'The clock time you’d reach each distance mark'),
+      sw('Elapsed time at marks', !!this.marks.duration, (v) => this.setMarks({ duration: v }), !this.marks.km, 'Hours, minutes and seconds from departure, including stops and changeovers'));
+    this.setSection('onmap', { summary: [this.marks.km ? 'distance marks' : '', this.marks.km && this.marks.time ? 'arrival times' : '', this.marks.km && this.marks.duration ? 'elapsed time' : ''].filter(Boolean).join(' · ') || 'the line only', empty: !this.analysis });
   }
 
   // Go › Take it along: the route as a file, a link, or the map saved for offline
@@ -3705,6 +3707,17 @@ export class Planner {
     requestAnimationFrame(() => this.flash(this.sec[id].el));
   }
 
+  // The summary's estimate leads to the start's departure setting.
+  revealDeparture() {
+    this.reveal('points');
+    requestAnimationFrame(() => {
+      const control = this.els.points.querySelector('.wpl-depart');
+      if (!control) return;
+      this.flash(control);
+      control.querySelector('select').focus({ preventScroll: true });
+    });
+  }
+
   flash(el) {
     if (!el) return;
     el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -3733,13 +3746,13 @@ export class Planner {
   }
 
   // Distance marks along the route: every 1, 5, 10 or 25 km by its length, with the
-  // time you'd be there if you like (from the departure, with the wind once it's in).
+  // arrival and elapsed times (including stops, with the wind once it's in).
   drawMarks() {
     const a = this.analysis;
     const empty = { type: 'FeatureCollection', features: [] };
     if (!a || !this.marks.km || a.total < 1500) { this.app.setData('routeMarks', empty); return; }
     const step = a.total <= 12000 ? 1000 : a.total <= 50000 ? 5000 : a.total <= 160000 ? 10000 : 25000;
-    const tAt = a.tAtWind || a.tAt, start = a.wind ? a.wind.startSec : this.startSec();
+    const tAt = a.tAtWind || a.tAt, start = this.startSec();
     const features = [];
     let i = 1;
     for (let d = step; d < a.total - step * 0.3; d += step) {
@@ -3748,8 +3761,11 @@ export class Planner {
       const p = a.pts[i - 1], q = a.pts[i];
       const ll = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
       const sec = tAt ? tAt[i - 1] + (tAt[i] - tAt[i - 1]) * t : 0;
-      const at = this.clockOf(start + sec);
-      features.push({ type: 'Feature', properties: { label: `${d / 1000} km${this.marks.time && tAt ? ` · ${at}` : ''}` }, geometry: { type: 'Point', coordinates: ll } });
+      const timed = tAt && Number.isFinite(sec);
+      const elapsed = Math.max(0, Math.round(sec)), hours = Math.floor(elapsed / 3600), minutes = Math.floor((elapsed % 3600) / 60), seconds = elapsed % 60;
+      const duration = hours ? `${hours} h ${minutes} min ${seconds} s` : minutes ? `${minutes} min ${seconds} s` : `${seconds} s`;
+      const label = `${d / 1000} km${this.marks.time && timed ? ` · ${this.clockOf(start + sec)}` : ''}${this.marks.duration && timed ? `\n${duration} elapsed` : ''}`;
+      features.push({ type: 'Feature', properties: { label }, geometry: { type: 'Point', coordinates: ll } });
     }
     this.app.setData('routeMarks', { type: 'FeatureCollection', features });
   }
@@ -3803,7 +3819,7 @@ export class Planner {
     key('distance', fmtDist(a.total));
     // the time is from your departure: tapping it opens the clock (one control for both)
     const dep = this.startOffsetH ? new Date(this.startSec() * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now';
-    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.reveal('depart') },
+    const time = h('button', { type: 'button', class: 'sum-item sum-time', title: `Estimated ${waitSec ? `time with ${fmtDuration(waitSec)} of ${nights ? 'nights, ' : ''}stops and changeovers (moving ${fmtDuration((a.timeWind || a.time) - waitSec)})` : 'moving time'}${a.timeWind ? ', with the wind' : ''}${act === 'paddle' ? ` (${CRAFT[this.craft].label})` : ''}${a.terrain ? (a.terrain.all ? `, ${a.ways.some(([k]) => k === 'water') ? 'on land ' : ''}by distance only: no terrain` : `, estimated for the ${fmtDist(a.terrain.missing)} without terrain`) : ''} · set the departure`, onclick: () => this.revealDeparture() },
       // over days: the time on the move, and how many days it's spread over
       h('b', {}, nights ? shortDuration((a.timeWind || a.time) - waitSec) : fmtDuration(a.timeWind || a.time)), h('small', {}, nights ? `${nights + 1} days` : `from ${dep}`));
     sum.append(time);
@@ -3892,10 +3908,13 @@ export class Planner {
       count++;
       if (!kind) {
         const id = `colour-${mode}`, open = store.get('sections', {})[id] !== false;
-        const active = h('small', { class: 'bd-active' }, 'Colour by');
+        const active = h('small', { class: 'bd-active' }, 'Use colours');
         const pick = h('button', { type: 'button', class: 'bd-title', title: `Colour the profile by ${label.toLowerCase()}`,
           onclick: () => this.showMode(mode) }, label, active);
-        const body = h('div', { class: 'bd-body', id, hidden: !open });
+        const bar = h('button', { type: 'button', class: 'bd-bar', 'aria-label': `Colour by ${label.toLowerCase()}`,
+          title: `Colour by ${label.toLowerCase()}`, onclick: () => this.showMode(mode) });
+        const legend = h('div', { class: 'bd-legend' });
+        const body = h('div', { class: 'bd-body', id, hidden: !open }, bar, legend);
         const fold = h('button', { type: 'button', class: 'tool bd-fold', 'aria-label': `${open ? 'Fold' : 'Expand'} ${label.toLowerCase()} breakdown`,
           'aria-expanded': String(open), 'aria-controls': id, html: icon('chevronDown', 16), onclick: () => {
             body.hidden = !body.hidden;
@@ -3905,7 +3924,7 @@ export class Planner {
           } });
         const el = h('section', { class: 'bd-kind', 'data-colour': mode, 'aria-label': `${label} on the route` },
           h('div', { class: 'bd-head' }, pick, fold), body);
-        kind = this.breakdownKinds[mode] = { el, pick, active, body };
+        kind = this.breakdownKinds[mode] = { el, pick, active, body, bar, legend };
       }
       kind.el.hidden = false;
       // Insert in the same order as Colour by, including kinds whose data arrived late.
@@ -3913,9 +3932,11 @@ export class Planner {
       if (next !== kind.el) box.insertBefore(kind.el, next || null);
       const selected = this.colorMode === mode;
       kind.pick.setAttribute('aria-pressed', String(selected));
-      kind.active.hidden = !selected;
-      const bar = h('div', { class: 'bd-bar', 'aria-hidden': 'true' });
-      const legend = h('div', { class: 'bd-legend' });
+      kind.active.textContent = selected ? 'Selected' : 'Use colours';
+      const { bar, legend } = kind;
+      bar.setAttribute('aria-pressed', String(selected));
+      bar.replaceChildren();
+      legend.replaceChildren();
       for (const [label, d, color] of rows) {
         if (!(d > 0)) continue;
         const pct = (d / a.total) * 100;
@@ -3923,7 +3944,6 @@ export class Planner {
         const text = String(label);
         legend.append(h('span', { class: 'bd-item' }, h('i', { style: `background:${color}` }), `${text[0].toUpperCase()}${text.slice(1)} `, h('b', {}, fmtDist(d))));
       }
-      kind.body.replaceChildren(bar, legend);
     }
     this.setSection('colours', { title: 'On the route', count, empty: !count });
   }

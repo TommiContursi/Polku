@@ -4,6 +4,11 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Clearer route colours and times at distance marks
+- **Use colours** on a breakdown's title makes the action visible. Tap the title or its colour bar to select it; the current one says **Selected**.
+- **Distance marks show arrival and elapsed time by default,** including hours, minutes and seconds to reach the mark. Check → On the map has separate switches for arrival and elapsed time, and keeps saved choices.
+- **Tap the summary's time estimate to set departure:** it opens Route → Waypoints at the start point's departure control. Arrival labels move immediately while the new forecast loads.
+
 ### Every route colour breakdown in Check
 - **Check → On the route shows each available breakdown together:** gradient, difficulty, surface, way type, trail details and weather, where they apply and have data. Each has its own bar, legend and distances.
 - **Tap a breakdown's title to make it Colour by.** The current choice is marked. Fold individual bars with their arrow; Polku remembers which ones you folded.
