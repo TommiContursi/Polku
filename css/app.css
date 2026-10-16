@@ -589,6 +589,10 @@ button { font: inherit; color: inherit; }
 .how-h small { font-weight: 500; color: var(--muted); }
 .speed-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); border-radius: 0; }
 .speed-at { margin: 8px 0 0; }
+.go-depart { display: grid; grid-column: 1 / -1; padding: 3px; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 0 14px; }
+.go-depart-label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.go-depart select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface-solid); color: var(--text); font: inherit; font-size: 16px; }
 .time-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 8px; }
 .time-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .time-head span { font-size: 12.5px; color: var(--muted); }

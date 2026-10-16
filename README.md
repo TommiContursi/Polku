@@ -37,7 +37,7 @@ On land, BRouter calculates routes using sport-specific profiles. Polku keeps un
 
 ## Weather and conditions
 
-Route weather shows headwind, crosswind, tailwind, temperature and rain at the estimated time you reach each part of the route. A 48-hour map timeline shows animated wind, rain and temperature, with FMI rain radar for current rainfall in Finland. Distance marks show estimated arrival and elapsed times by default, with separate switches in Check. The planner includes sunrise and sunset.
+Route weather shows headwind, crosswind, tailwind, temperature and rain at the estimated time you reach each part of the route. A 48-hour map timeline shows animated wind, rain and temperature, with FMI rain radar for current rainfall in Finland. Distance marks show estimated arrival and elapsed times by default, with separate switches in Check. Go has a prominent departure picker beside the time estimate; selecting the summary estimate opens it. The planner includes sunrise and sunset.
 
 Polku first estimates the route's timing, then samples forecasts for the expected arrival times along it. It recalculates travel times with the wind and samples the forecasts again for the revised schedule. Stops, overnight stays and changeovers are included in that schedule.
 

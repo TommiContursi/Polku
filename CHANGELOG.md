@@ -4,6 +4,10 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### A clear departure picker in Go
+- **Go → Time starts with a full-size Depart picker,** above the time estimate and arrival schedule.
+- **Tap the summary estimate to open Go at that picker.** It stays in step with the start waypoint and weather timeline, and keeps focus when the forecast updates.
+
 ### Clearer route colours and times at distance marks
 - **Use colours** on a breakdown's title makes the action visible. Tap the title or its colour bar to select it; the current one says **Selected**.
 - **Distance marks show arrival and elapsed time by default,** including hours, minutes and seconds to reach the mark. Check → On the map has separate switches for arrival and elapsed time, and keeps saved choices.

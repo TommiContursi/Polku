@@ -1750,17 +1750,28 @@ export class Planner {
     return `Sunrise ${fmt(s.rise)} · sunset ${fmt(s.set)} · dark from ${fmt(s.dusk)}`;
   }
 
-  // Departure in whole hours from now (the timeline's steps), as a select for the start's menu and row
+  // One departure choice, shared by Go, the start's row and its menu.
   departSelect(done = () => {}) {
-    const now = Date.now() / 1000, today = new Date().toDateString();
-    const sel = h('select', { 'aria-label': 'Departure', onchange: (e) => { done(); this.setStartOffset(+e.target.value); } });
-    for (let k = 0; k <= 48; k++) {
-      const d = new Date((k ? (Math.floor(now / 3600) + k) * 3600 : now) * 1000);
-      const day = d.toDateString() === today ? '' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
-      sel.append(h('option', { value: String(k) }, k ? `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Now'));
+    const sel = h('select', { class: 'departure-picker', 'aria-label': 'Departure', onchange: (e) => { done(); this.setStartOffset(+e.target.value); } });
+    sel.addEventListener('focus', () => this.refreshDepartSelect(sel));
+    sel.addEventListener('pointerdown', () => this.refreshDepartSelect(sel));
+    this.refreshDepartSelect(sel);
+    return sel;
+  }
+
+  // Keep a focused picker in place; rebuild its relative-hour choices only when the hour changes.
+  refreshDepartSelect(sel) {
+    const now = Date.now() / 1000, hour = Math.floor(now / 3600), today = new Date().toDateString();
+    if (sel.dataset.hour !== String(hour)) {
+      sel.replaceChildren();
+      for (let k = 0; k <= 48; k++) {
+        const d = new Date((k ? (hour + k) * 3600 : now) * 1000);
+        const day = d.toDateString() === today ? '' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
+        sel.append(h('option', { value: String(k) }, k ? `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Now'));
+      }
+      sel.dataset.hour = String(hour);
     }
     sel.value = String(this.startOffsetH);
-    return sel;
   }
 
   // Heads-up from the water router (water.js events): shipping lanes and
@@ -2011,11 +2022,12 @@ export class Planner {
     k = Math.max(0, Math.min(48, Math.round(k)));
     if (k === this.startOffsetH) return;
     this.startOffsetH = k;
-    for (const sel of this.panel.querySelectorAll('.wpl-depart select')) sel.value = String(k);
+    for (const sel of this.panel.querySelectorAll('.departure-picker')) this.refreshDepartSelect(sel);
     const sel = this.els.wind.querySelector('.start-select');
     if (sel) sel.value = String(k);
     if (!fromMap && this.app.onStartChange) this.app.onStartChange(k);
     this.drawMarks(); // the clock times move immediately while the new forecast loads
+    if (this.analysis) { this.renderSpeed(); this.renderTabTimes(); }
     clearTimeout(this.windTimer);
     // playback moves an hour a second; let it settle a little before re-fetching
     this.windTimer = setTimeout(() => {
@@ -3113,7 +3125,9 @@ export class Planner {
         this.section('colours', 'On the route', this.els.breakdown),
         this.section('onmap', 'On the map', this.els.onMap = h('div', { class: 'onmap' }))),
       go: pane('go',
-        this.section('speed', 'Time', this.els.speedRoute = h('div', { class: 'speed-route' })),
+        this.section('speed', 'Time',
+          this.els.goDepart = h('label', { class: 'go-depart' }, h('span', { class: 'go-depart-label' }, h('span', { html: icon('clock', 18), 'aria-hidden': 'true' }), 'Depart'), this.els.goDepartSelect = this.departSelect()),
+          this.els.speedRoute = h('div', { class: 'speed-route' })),
         this.section('depart', 'Departure & weather', this.els.dock, this.els.wind),
         this.section('take', 'Take it along', this.els.take = h('div', { class: 'take-along' }))),
     };
@@ -3528,6 +3542,7 @@ export class Planner {
     const total = a ? a.timeWind || a.time : 0;
     this.setSection('speed', { summary: a ? `${fmtDuration(total)} · arrive ${this.clockOf(this.startSec() + total)}` : '', empty: !a });
     if (!a) return;
+    this.refreshDepartSelect(this.els.goDepartSelect);
     const box = this.els.speedRoute;
     box.innerHTML = '';
     const tAt = a.tAtWind || a.tAt;
@@ -3707,14 +3722,12 @@ export class Planner {
     requestAnimationFrame(() => this.flash(this.sec[id].el));
   }
 
-  // The summary's estimate leads to the start's departure setting.
+  // The summary's estimate opens Go at its prominent departure picker.
   revealDeparture() {
-    this.reveal('points');
+    this.reveal('speed');
     requestAnimationFrame(() => {
-      const control = this.els.points.querySelector('.wpl-depart');
-      if (!control) return;
-      this.flash(control);
-      control.querySelector('select').focus({ preventScroll: true });
+      this.flash(this.els.goDepart);
+      this.els.goDepartSelect.focus({ preventScroll: true });
     });
   }
 

@@ -16,7 +16,7 @@ The planner has three tabs:
 
 In **Check → On the route**, each available colour kind has a bar, legend and distances. Tap **Use colours** on its title or tap the bar to select it in **Colour by**; the current choice says **Selected**. Use the arrow beside each title to fold its bar. Weather bars appear once the forecast arrives; kinds without data or that do not apply to the sport are left out.
 
-In **Check → On the map**, distance marks, arrival times and elapsed times default on. Arrival is the clock time you reach a mark; elapsed time is the hours, minutes and seconds since departure, including stops and changeovers. Switch them off separately if needed; saved choices are kept. Tap the summary's time estimate to open the start waypoint's **Depart** setting in Route.
+In **Check → On the map**, distance marks, arrival times and elapsed times default on. Arrival is the clock time you reach a mark; elapsed time is the hours, minutes and seconds since departure, including stops and changeovers. Switch them off separately if needed; saved choices are kept. Tap the summary's time estimate to open **Go → Time** and focus its large **Depart** picker. It uses the same departure setting as the start waypoint and weather timeline.
 
 On a phone, drag the planner's handle to change how much of it is visible. On a desktop, the button at the end of the tabs moves the planner between the side and bottom of the map.
 
