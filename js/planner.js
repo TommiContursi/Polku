@@ -3914,10 +3914,21 @@ export class Planner {
     if (!a) { box.replaceChildren(); this.breakdownKinds = {}; this.breakdownGroups = null; return; }
     this.breakdownKinds ||= {};
     this.breakdownGroups ||= COLOR_GROUPS.map(([title, modes]) => {
-      const list = h('div', { class: 'bd-group-list' });
-      const el = h('section', { class: 'bd-group', 'aria-label': title }, h('h4', { class: 'bd-group-title' }, title), list);
+      const id = `colour-group-${title.toLowerCase()}`;
+      const list = h('div', { class: 'bd-group-list', id });
+      const fold = h('button', { type: 'button', class: 'bd-group-toggle', 'aria-controls': id }, title, h('span', { html: icon('chevronDown', 16), 'aria-hidden': 'true' }));
+      const setOpen = (open) => {
+        list.hidden = !open;
+        fold.setAttribute('aria-expanded', String(open));
+        fold.setAttribute('aria-label', `${open ? 'Fold' : 'Expand'} ${title.toLowerCase()} group`);
+      };
+      fold.addEventListener('click', () => {
+        setOpen(list.hidden);
+        store.set('sections', { ...store.get('sections', {}), [id]: !list.hidden });
+      });
+      const el = h('section', { class: 'bd-group', 'aria-label': title }, fold, list);
       box.append(el);
-      return { el, list, modes };
+      return { el, list, modes, id, setOpen, initialized: false };
     });
     let count = 0;
     for (const group of this.breakdownGroups) {
@@ -3929,23 +3940,14 @@ export class Planner {
         if (!rows.length) { if (kind) kind.el.hidden = true; continue; }
         count++;
         if (!kind) {
-          const id = `colour-${mode}`, open = store.get('sections', {})[id] !== false;
           const active = h('small', { class: 'bd-active' }, 'Use colours');
-          const bar = h('span', { class: 'bd-bar', id: `${id}-bar`, hidden: !open, 'aria-hidden': 'true' });
-          const pick = h('button', { type: 'button', class: 'bd-title', title: `Colour the profile by ${label.toLowerCase()}`,
-            onclick: () => this.showMode(mode) }, h('span', { class: 'bd-heading' }, h('span', {}, label), active), bar);
+          const bar = h('span', { class: 'bd-bar', 'aria-hidden': 'true' });
+          const pick = h('button', { type: 'button', class: 'bd-title', title: `Colour the route and profile by ${label.toLowerCase()}`,
+            onclick: () => this.pickColor(mode) }, h('span', { class: 'bd-heading' }, h('span', {}, label), active), bar);
           const legend = h('div', { class: 'bd-legend' });
-          const body = h('div', { class: 'bd-body', id, hidden: !open }, legend);
-          const fold = h('button', { type: 'button', class: 'tool bd-fold', 'aria-label': `${open ? 'Fold' : 'Expand'} ${label.toLowerCase()} breakdown`,
-            'aria-expanded': String(open), 'aria-controls': `${id} ${id}-bar`, html: icon('chevronDown', 16), onclick: () => {
-              body.hidden = !body.hidden;
-              bar.hidden = body.hidden;
-              fold.setAttribute('aria-expanded', String(!body.hidden));
-              fold.setAttribute('aria-label', `${body.hidden ? 'Expand' : 'Fold'} ${label.toLowerCase()} breakdown`);
-              store.set('sections', { ...store.get('sections', {}), [id]: !body.hidden });
-            } });
+          const body = h('div', { class: 'bd-body' }, legend);
           const el = h('section', { class: 'bd-kind', 'data-colour': mode, 'aria-label': `${label} on the route` },
-            h('div', { class: 'bd-head' }, pick, fold), body);
+            pick, body);
           kind = this.breakdownKinds[mode] = { el, pick, active, body, bar, legend };
         }
         kind.el.hidden = false;
@@ -3968,6 +3970,13 @@ export class Planner {
         }
       }
       group.el.hidden = !shown;
+      if (shown && !group.initialized) {
+        const saved = store.get('sections', {});
+        // A previous group choice wins; migrate a fully folded set of old individual bars.
+        const open = saved[group.id] ?? [...group.list.children].some((el) => !el.hidden && saved[`colour-${el.dataset.colour}`] !== false);
+        group.setOpen(open);
+        group.initialized = true;
+      }
     }
     this.setSection('colours', { title: 'On the route', count, empty: !count });
   }

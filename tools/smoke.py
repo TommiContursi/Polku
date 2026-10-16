@@ -3099,22 +3099,30 @@ COLOURS = """(async () => {
   a.ways = ways;
   const way = kinds().find((x) => x.dataset.colour === 'way');
   const pick = way.querySelector('.bd-title');
+  p.setColorOnMap(false);
   pick.focus(); pick.click();
   if (p.colorMode !== 'way' || p.chart.mode !== 'way' || p.els.modeSel.value !== 'way' || pick.getAttribute('aria-pressed') !== 'true') errs.push('title did not select Colour by');
+  if (!p.colorOnMap || !p.els.mapToggle.checked || !polku.map.getSource('routeColor').serialize().data.features.length) errs.push('title did not colour the map route');
   if (document.activeElement !== pick) errs.push('selecting a colour lost focus');
   const other = kinds().find((x) => x.dataset.colour !== 'way');
   if (other) {
     if (!/Use colours/.test(other.querySelector('.bd-title').textContent)) errs.push('no visible colour-selection action');
     other.querySelector('.bd-title').click();
-    const bar = way.querySelector('.bd-bar');
-    if (bar.closest('button') !== pick) errs.push('title and bar are not one colour-selection control');
-    pick.focus(); bar.click();
-    if (p.colorMode !== 'way' || p.chart.mode !== 'way' || pick.getAttribute('aria-pressed') !== 'true') errs.push('bar did not select Colour by');
-    if (document.activeElement !== pick) errs.push('selecting a bar lost focus');
   }
+  const bar = way.querySelector('.bd-bar');
+  if (bar.closest('button') !== pick) errs.push('title and bar are not one colour-selection control');
+  p.showMode('way'); p.setColorOnMap(false); // selecting the same kind must re-enable map colours too
+  pick.focus(); bar.click();
+  if (p.colorMode !== 'way' || p.chart.mode !== 'way' || pick.getAttribute('aria-pressed') !== 'true') errs.push('bar did not select Colour by');
+  if (!p.colorOnMap || p.els.colorSel.value !== 'way' || !polku.map.getSource('routeColor').serialize().data.features.length) errs.push('bar did not colour the map route');
+  if (document.activeElement !== pick) errs.push('selecting a bar lost focus');
+  if (Math.abs(pick.getBoundingClientRect().width - way.getBoundingClientRect().width) > 1) errs.push('colour control does not fill its row');
+  if (p.els.breakdown.querySelector('.bd-kind .bd-fold')) errs.push('individual fold controls remain');
 
-  const fold = way.querySelector('.bd-fold'); fold.click();
-  if (!way.querySelector('.bd-body').hidden || !way.querySelector('.bd-bar').hidden || fold.getAttribute('aria-expanded') !== 'false') errs.push('fold did not hide its bar and legend');
+  const ground = way.closest('.bd-group'), fold = ground.querySelector('.bd-group-toggle'), list = ground.querySelector('.bd-group-list');
+  if (!fold) return [...errs, 'no group fold control'];
+  fold.focus(); fold.click();
+  if (!list.hidden || fold.getAttribute('aria-expanded') !== 'false') errs.push('fold did not hide its whole group');
   // A forecast arrives while a different kind is selected; all three bars appear.
   const fill = (v) => new Float32Array(a.along.length).fill(v);
   a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) };
@@ -3122,7 +3130,7 @@ COLOURS = """(async () => {
   need(['way', 'wind', 'temp', 'rain'], 'late weather'); distances('late weather');
   const weather = groups().find((g) => g.getAttribute('aria-label') === 'Weather');
   if (!weather || weather.querySelectorAll('.bd-kind:not([hidden])').length !== 3) errs.push('late weather did not appear together in its group');
-  if (!way.querySelector('.bd-body').hidden || p.colorMode !== 'way') errs.push('weather changed fold or Colour by');
+  if (!list.hidden || p.colorMode !== 'way' || document.activeElement !== fold) errs.push('weather changed group fold, focus or Colour by');
   if (!water) {
     // Details arrive with Way type selected, not Width or Visibility.
     a.td.width.fill(-1); a.td.vis.fill(-1); p.renderBreakdown();
@@ -3136,13 +3144,13 @@ COLOURS = """(async () => {
   if (groups().some((g) => g.getAttribute('aria-label') === 'Weather')) errs.push('empty weather group remains after forecast failure');
   need(['way'], 'failed weather');
   p.renderBreakdown();
-  if (!way.querySelector('.bd-body').hidden) errs.push('rendering reset a fold');
+  if (!list.hidden) errs.push('rendering reset a group fold');
   // No sideways scrolling in the drawer, and distinct controls with touch-sized targets.
   for (const el of kinds()) {
     if (el.scrollWidth > el.clientWidth + 1) errs.push(`${el.dataset.colour} overflows the panel`);
     for (const b of el.querySelectorAll('button')) if (!b.closest('[hidden]') && b.getBoundingClientRect().height < 40) errs.push(`small breakdown target: ${el.dataset.colour} ${b.className}`);
   }
-  window.colourTestFold = 'colour-way';
+  window.colourTestFold = 'colour-group-ground';
   return errs;
 })()"""
 
@@ -3165,25 +3173,27 @@ def colours(chrome):
                     fails.append(f'{name}: groups overflow or do not use columns in the wide panel')
             if phone and sport == 'mtb':
                 # Native keyboard actions: the combined title/bar is one stop, the fold is separate.
-                pg.js("document.querySelector('[data-colour=grade] .bd-title').focus(); true")
+                pg.js("polku.planner.setColorOnMap(false); document.querySelector('[data-colour=grade] .bd-title').focus(); true")
                 # Enter activates a button on keypress; raw keydown alone omits that event.
                 for event in ['rawKeyDown', 'char', 'keyUp']:
                     fields = {'type': event, 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}
                     if event == 'char':
                         fields['text'] = '\r'
                     chrome.send('Input.dispatchKeyEvent', fields, pg.s)
-                if pg.js('polku.planner.colorMode') != 'grade':
+                if not pg.js("polku.planner.colorMode === 'grade' && polku.planner.colorOnMap && polku.map.getSource('routeColor').serialize().data.features.length > 0"):
                     fails.append(f'{name}: Enter did not select the focused breakdown')
-                pg.js("document.querySelector('[data-colour=grade] .bd-fold').focus(); true")
+                pg.js("document.querySelector('.bd-group[aria-label=Terrain] .bd-group-toggle').focus(); true")
                 for event in ['rawKeyDown', 'keyUp']:
                     chrome.send('Input.dispatchKeyEvent', {'type': event, 'key': ' ', 'code': 'Space', 'windowsVirtualKeyCode': 32}, pg.s)
-                if not pg.js("document.querySelector('[data-colour=grade] .bd-body').hidden && document.querySelector('[data-colour=grade] .bd-bar').hidden"):
-                    fails.append(f'{name}: Space did not fold the focused breakdown')
+                if not pg.js("document.querySelector('.bd-group[aria-label=Terrain] .bd-group-list').hidden"):
+                    fails.append(f'{name}: Space did not fold the focused group')
             if pg.js("!!window.colourTestFold"):
                 pg.reload()
                 pg.js("new Promise((ok) => { const go = () => { if (polku.planner.analysis) { polku.planner.reveal('colours'); ok(true); } else setTimeout(go, 100); }; go(); })")
-                if pg.js("document.querySelector('[data-colour=way] .bd-fold')?.getAttribute('aria-expanded')") != 'false':
-                    fails.append(f'{name}: fold not remembered after reload')
+                if pg.js("document.querySelector('.bd-group[aria-label=Ground] .bd-group-toggle')?.getAttribute('aria-expanded')") != 'false':
+                    fails.append(f'{name}: group fold not remembered after reload')
+                if not pg.js("polku.planner.colorOnMap && document.querySelector('.bd-group[aria-label=Ground] .bd-group-list').hidden"):
+                    fails.append(f'{name}: route colours or group fold lost after reload')
             fails += [f'{name}: console: {e[:160]}' for e in pg.errors()]
             pg.close()
             print(f'checked route breakdowns: {name}', flush=True)
