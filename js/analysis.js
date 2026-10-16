@@ -242,9 +242,44 @@ function findWarnings(along, grade, sAttr, pts, activity) {
   pushRun((i) => footAt(i) && grade[i] >= 25, (s) => (sp(s) === 'trailrun' ? 'Very steep — walk it' : 'Very steep section'), 40, false);
   pushRun((i) => sAttr[i].mode === 'line', 'Straight line — not following paths', 150, false);
   pushRun((i) => t(i).portage === 'yes', (s, e) => `Carry / portage ${Math.round(along[e] - along[s])} m`);
-  pushRun((i) => ['private', 'no'].includes(t(i).access), 'Private or no access');
+  // ways marked private or closed for the stretch's sport (bikes' "no" has its own row above)
+  const marked = (i) => {
+    if (sAttr[i].mode === 'water' || sAttr[i].mode === 'line') return null;
+    const m = accessOf(t(i), sp(i));
+    return m && !(m.tag === 'bicycle=no') ? m : null;
+  };
+  let s = -1;
+  for (let i = 0; i <= along.length; i++) {
+    const m = i < along.length ? marked(i) : null, cur = s >= 0 ? marked(s) : null;
+    if (cur && (!m || m.tag !== cur.tag)) { out.push(accessRow(cur, along[s], along[i - 1] - along[s], pts[s])); s = -1; }
+    if (m && s < 0) s = i;
+  }
   pushRun((i) => t(i).route === 'ferry', 'Ferry crossing');
   return out.sort((a, b) => a.at - b.at);
+}
+
+// What OpenStreetMap's tags say about going this way in a sport: null (nothing against it),
+// or { no, tag } with the tag that says so. The sport's own tag wins over access=*, as in the
+// routers: access=no with foot=yes is a footway open to walkers. Only what the map says, never
+// what the law is: Finnish mappers keep access=private for factory and military sites, house
+// yards and roads closed by a sign, but a private road or an apartment-block yard (open to
+// walking and cycling) is sometimes tagged private by mistake.
+const OPEN_ACCESS = new Set(['yes', 'designated', 'permissive']);
+export function accessOf(tags, sport) {
+  if (!tags) return null;
+  const mode = groupOf(sport) === 'bike' ? 'bicycle' : 'foot';
+  const own = tags[mode];
+  if (own === 'no' || own === 'private') return { no: own === 'no', tag: `${mode}=${own}` };
+  if (OPEN_ACCESS.has(own)) return null;
+  if (tags.access === 'no' || tags.access === 'private') return { no: tags.access === 'no', tag: `access=${tags.access}` };
+  return null;
+}
+
+// A Heads-up row for a stretch marked private or closed (hidden as one kind, the key it always had)
+export function accessRow(m, at, len, lngLat, note, said) {
+  const text = said || (!m.no ? 'Marked private in OpenStreetMap' : m.tag === 'foot=no' ? 'Marked no walking in OpenStreetMap' : 'Marked no access in OpenStreetMap');
+  const why = !m.no ? 'usually closed: factory and military sites, house yards, roads closed by a sign' : 'closed unless a sign says otherwise';
+  return { at, len, text, note: note || `${m.tag} · ${why}`, lngLat, osm: true, hide: 'Private or no access', fix: 'Tagged wrong? Leave a note on OpenStreetMap' };
 }
 
 // ---------------------------------------------------------------- trail details along the route

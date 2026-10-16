@@ -4,6 +4,13 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
+### Fixed: Heads-up says when the route takes a way marked private or closed (#105)
+- **On foot, a way marked `foot=private` or `foot=no` gets a Heads-up row.** Before, a Run or Hike route could take 120 m of a delivery road marked foot=private without a word, because the routing service counts it as open when bikes may use it.
+- **The rows say what OpenStreetMap says, not what the law is:** "Marked private in OpenStreetMap", with the tag and what private usually means (factory and military sites, house yards, roads closed by a sign). In Finland private roads and apartment-block yards are open on foot and by bike, so a way there may be tagged wrong: the row's ⋯ has **Tagged wrong? Leave a note on OpenStreetMap**.
+- **The sport's own tag wins:** a footway marked `access=no` but `foot=yes` is open to walkers, and no longer gets a row on foot. On a bike it's `bicycle=yes` that opens it.
+- **When Valhalla stands in for BRouter,** it may walk through ways marked private where BRouter goes round, and its answer doesn't say which. Its row in Heads-up now says so, and the stretches along a way the map marks private or no access get a row of their own, where the map has loaded. Use BRouter routes round them.
+- **If you'd hidden "Private or no access",** the new rows stay hidden.
+
 ### Which way you face, and Follow me (Phase 23a, [#111](https://github.com/TommiContursi/Polku/pull/111))
 - **The location dot shows which way you face.** A cone points where the top of your phone points, from its compass. While you move faster than a slow walk (about 1 m/s), it follows the way the GPS says you're going instead, which holds up with the phone in a pocket. The cone is narrow when it comes from the GPS and wider from the compass. On an iPhone, Polku asks for the compass when you tap Locate.
 - **Follow me.** A tap on Locate shows where you are and keeps the map on you as you move, north up. On a phone the next tap turns the map to face the way you face, and the one after that turns your location off. Zooming, pinching or turning the map keeps following. A pan, or the map moving somewhere else (a search, showing the route), stops it, and Locate turns into **Follow**: one tap brings you back. With the planner open, you stay in the part of the map it leaves free.

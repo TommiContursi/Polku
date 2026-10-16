@@ -15,6 +15,7 @@
   python3 tools/smoke.py terrain    # terrain tiles that don't load, load in part, then come back (mocked tiles, straight legs)
   python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
   python3 tools/smoke.py avoid      # places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)
+  python3 tools/smoke.py access     # ways marked private or closed in Heads-up, from BRouter's tags and, when Valhalla stands in, the map's (mocked)
   python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
   python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
@@ -1026,6 +1027,109 @@ def avoid_link(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} places to avoid in share links" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Ways marked private or closed (#105), from a mocked BRouter and a mocked Valhalla: a Run
+# leg over a delivery road marked foot=private gets a Heads-up row, a footway marked
+# access=no with foot=yes doesn't (the sport's own tag wins), and a row hidden under the old
+# "Private or no access" key stays hidden. When Valhalla stands in (its answer has no access
+# tags), a stretch along a way the map's tiles mark access=no gets a row, and the Valhalla
+# row says it may take such ways. No routing call goes out.
+ACCESS_ROUTER = """(() => {
+  const real = window.fetch.bind(window), calls = (window.routerCalls = []);
+  window.accessMode = 'brouter';
+  const enc6 = (pts) => { let out = '', la = 0, lo = 0; const one = (v) => { v = v < 0 ? ~(v << 1) : v << 1; while (v >= 0x20) { out += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } out += String.fromCharCode(v + 63); };
+    for (const [lon, lat] of pts) { const a = Math.round(lat * 1e6), b = Math.round(lon * 1e6); one(a - la); one(b - lo); la = a; lo = b; } return out; };
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:[/][/](brouter[.]de|valhalla1[.]openstreetmap[.]de)[/]/.test(url)) return real(input, init);
+    calls.push(url);
+    if (/valhalla/.test(url)) {
+      if (/trace_attributes/.test(url)) {
+        const n = JSON.parse(init.body).shape.length;
+        return new Response(JSON.stringify({ edges: [{ use: 'footway', surface: 'paved', begin_shape_index: 0, end_shape_index: n - 1 }] }));
+      }
+      const q = JSON.parse(new URL(url).searchParams.get('json')).locations.map((l) => [l.lon, l.lat]);
+      const legs = q.slice(1).map((b, i) => { const a = q[i], c = []; for (let k = 0; k <= 10; k++) c.push([a[0] + ((b[0] - a[0]) * k) / 10, a[1] + ((b[1] - a[1]) * k) / 10]); return { shape: enc6(c) }; });
+      return new Response(JSON.stringify({ trip: { legs } }));
+    }
+    if (window.accessMode !== 'brouter') return new Response('not json'); // BRouter can't: Valhalla stands in
+    // A → B in thirds: a delivery road marked foot=private, a footway access=no + foot=yes, a footway
+    const ll = new URL(url).searchParams.get('lonlats').split('|').map((q) => q.split(',').map(Number));
+    const [a, b] = ll, at = (t) => [+(a[0] + (b[0] - a[0]) * t).toFixed(6), +(a[1] + (b[1] - a[1]) * t).toFixed(6)];
+    const c = [a, at(1 / 3), at(2 / 3), b];
+    const head = ['Longitude', 'Latitude', 'Elevation', 'Distance', 'CostPerKm', 'ElevCost', 'TurnCost', 'NodeCost', 'InitialCost', 'WayTags', 'NodeTags'];
+    const row = (p, tags) => [String(Math.round(p[0] * 1e6)), String(Math.round(p[1] * 1e6)), '0', '0', '0', '0', '0', '0', '0', tags, ''];
+    const messages = [head, row(c[1], 'highway=service access=delivery foot=private'), row(c[2], 'highway=footway access=no foot=yes'), row(c[3], 'highway=footway')];
+    return new Response(JSON.stringify({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { messages }, geometry: { type: 'LineString', coordinates: c } }] }));
+  };
+})()"""
+ACCESS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;
+  p.checkWet = async () => {}; // dry ground whatever the weather, so no leg is routed twice
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  const routed = async (by) => { for (let k = 0; k < 100 && !(p.legs.length === 1 && p.legs[0].status === 'ok' && p.analysis && (p.legs[0].result.provider || 'brouter') === by); k++) await wait(200); return p.legs.length === 1 && p.legs[0].status === 'ok'; };
+  const rows = () => [...document.querySelectorAll('.warnings .li-row')].map((r) => r.textContent);
+  p.setActive(true);
+  p.setMode('auto');
+  const A = [24.930, 60.170], B = [24.940, 60.170];
+  p.addPoint(A);
+  p.addPoint(B);
+  if (!(await routed('brouter'))) return [`the BRouter leg: ${p.legs.map((l) => l.status).join(', ')}`];
+  p.reveal('warnings');
+  await wait(300);
+  const priv = rows().filter((t) => /Marked private in OpenStreetMap/.test(t));
+  if (priv.length !== 1 || !/foot=private/.test(priv[0] || '')) errs.push(`foot=private on a Run leg: ${rows().join(' / ') || 'no rows'}`);
+  if (rows().some((t) => /access=no|Private or no access/.test(t))) errs.push(`a footway open to walkers (access=no + foot=yes) got a row: ${rows().join(' / ')}`);
+  const w = (p.analysis.warnings || []).find((x) => /^Marked private/.test(x.text));
+  if (!w || Math.abs(w.len - 185) > 25) errs.push(`the private stretch: ${w ? Math.round(w.len) : 'none'} m, not about 185 m`);
+  // its ⋯ offers to correct the tag
+  const more = [...document.querySelectorAll('.warnings .li-row')].find((r) => /Marked private/.test(r.textContent))?.querySelector('.li-more');
+  if (!more) errs.push('no ⋯ on the private row');
+  else {
+    more.click();
+    await wait(200);
+    if (!/Tagged wrong/.test(document.body.textContent)) errs.push('the ⋯ menu has no "Tagged wrong?"');
+    more.click();
+  }
+  // hidden before this fix, under the row's old text: still hidden
+  localStorage.setItem('polku:hideWarn', JSON.stringify({ 'Private or no access': 'Private or no access' }));
+  p.renderWarnings();
+  if (rows().some((t) => /Marked private/.test(t))) errs.push('a row hidden as "Private or no access" shows again');
+  localStorage.removeItem('polku:hideWarn');
+  // Valhalla stands in: the map's tiles mark the middle of the leg access=no
+  const realQuery = m.querySourceFeatures.bind(m);
+  m.querySourceFeatures = (src, o) => (src === 'ofm' && o && /access/.test(JSON.stringify(o.filter || ''))
+    ? [{ type: 'Feature', properties: { class: 'path', subclass: 'footway', access: 'no' }, geometry: { type: 'LineString', coordinates: [[24.9333, 60.1720], [24.9366, 60.1720]] } }]
+    : realQuery(src, o));
+  window.accessMode = 'valhalla';
+  p.clear();
+  p.addPoint([24.930, 60.172]); // not the same leg: the router keeps the one above
+  p.addPoint([24.940, 60.172]);
+  if (!(await routed('valhalla'))) errs.push(`the Valhalla leg: ${p.legs.map((l) => `${l.status} ${l.result && l.result.provider}`).join(', ')}`);
+  p.reveal('warnings');
+  await wait(300);
+  const vh = rows().filter((t) => /Marked private or no access/.test(t));
+  if (vh.length !== 1) errs.push(`Valhalla over a way the tiles mark access=no: ${rows().join(' / ') || 'no rows'}`);
+  if (!rows().some((t) => /routed by Valhalla/.test(t) && /marked private/.test(t))) errs.push('the Valhalla row doesn\\'t say it may take ways marked private');
+  m.querySourceFeatures = realQuery;
+  p.clear();
+  return errs;
+})()"""
+
+
+def access(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': ACCESS_ROUTER}, pg.s)
+        pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#15/60.170/24.935')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        fails = pg.js(ACCESS, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} ways marked private or closed" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -2755,6 +2859,8 @@ def main():
             ok = stops(chrome) and ok
         if not only or 'avoid' in only:
             ok = avoid_link(chrome) and ok
+        if not only or 'access' in only:
+            ok = access(chrome) and ok
         if not only or 'loops' in only:
             ok = loops(chrome) and ok
         if not only or 'fit' in only:
