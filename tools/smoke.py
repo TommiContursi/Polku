@@ -23,6 +23,7 @@
   python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
   python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
   python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
+  python3 tools/smoke.py colours    # every available route breakdown, choosing colours, folds and late data
   python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
   python3 tools/smoke.py pacing     # calls made together go out paced and counted (mocked services, a fake clock)
@@ -327,6 +328,8 @@ ROUTE_TRAILS = """(async () => {
   p.reveal('warnings');
   await wait(300);
   if (!document.querySelector('[data-sec=warnings] .li-ico')) errs.push('trail heads-up rows have no icon');
+  const widthBar = p.els.breakdown.querySelector('[data-colour=width]');
+  if (!widthBar || widthBar.hidden || !/Under 0\\.6 m/.test(widthBar.textContent)) errs.push('late width data did not update Check with Gradient selected');
   p.showMode('width');
   await wait(300);
   const legend = [...document.querySelectorAll('.bd-legend .bd-item')].map((x) => x.textContent).join(' / ');
@@ -3047,6 +3050,104 @@ def check(chrome, w, h, phone, bottom=False):
     return not fails
 
 
+# #118: Check keeps all available breakdowns, with complete distance accounting.
+COLOURS = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const water = polku.state.activity === 'paddle';
+  p.setActive(true);
+  p.loadWind = async () => {}; // the forecast will arrive under the test's control
+  await (await import(location.origin + '/js/trails.js')).holdFetches();
+  const fx = await (await fetch(location.origin + '/tools/fixtures/route-kauppi-mtb.json')).json();
+  if (water) {
+    p.setMode('line');
+    p.addPoint([23.760, 61.525]); p.addPoint([23.780, 61.531]);
+  } else {
+    fx.activity = polku.state.activity;
+    fx.legs.forEach((l) => { l.mode = 'fixed'; }); // recorded geometry, never call the router
+    p.restoreSnapshot(fx);
+  }
+  for (let k = 0; k < 100 && !p.analysis; k++) await wait(100);
+  if (!p.analysis) return ['no analysed route'];
+  p.reveal('colours');
+  if (p.layout() === 'sheet') p.setSheetState('full', { remember: false });
+  const a = p.analysis;
+  const kinds = () => [...p.els.breakdown.querySelectorAll('.bd-kind')].filter((x) => !x.hidden);
+  const keys = () => kinds().map((x) => x.dataset.colour);
+  const need = (modes, when) => { for (const mode of modes) if (!keys().includes(mode)) errs.push(`${when}: missing ${mode}`); };
+  need(water ? ['way'] : ['grade', 'surface', 'way'], 'before weather');
+  if (keys().some((k) => ['wind', 'temp', 'rain'].includes(k))) errs.push('weather shown before the forecast');
+  if (!kinds().length) return errs; // also makes this fail cleanly on the old single breakdown
+  if (water && keys().some((k) => ['grade', 'uphill', 'down', 'both', 'surface', 'width', 'vis'].includes(k))) errs.push('land breakdown on paddle');
+  // Each rendered bar accounts for the complete route, including short categories.
+  const distances = (when) => {
+    for (const el of kinds()) {
+      const pct = [...el.querySelectorAll('.bd-bar span')].reduce((sum, x) => sum + parseFloat(x.style.width), 0);
+      if (Math.abs(pct - 100) > 0.01) errs.push(`${when}: ${el.dataset.colour} adds to ${pct}%`);
+      const rows = p.breakdownRows(el.dataset.colour), d = rows.reduce((sum, x) => sum + x[1], 0);
+      if (Math.abs(d - a.total) > 0.1) errs.push(`${when}: ${el.dataset.colour} distances add to ${d}, route ${a.total}`);
+      if (el.querySelectorAll('.bd-item').length !== rows.filter((x) => x[1] > 0).length) errs.push(`${when}: a category missing from ${el.dataset.colour}'s legend`);
+    }
+  };
+  const ways = a.ways;
+  a.ways = [['path', a.total - 1], ['steps', 1]];
+  p.renderBreakdown(); distances('short category');
+  if (!/Steps 1 m/.test(p.els.breakdown.textContent)) errs.push('a 1 m category was omitted');
+  a.ways = ways;
+  const way = kinds().find((x) => x.dataset.colour === 'way');
+  const pick = way.querySelector('.bd-title');
+  pick.focus(); pick.click();
+  if (p.colorMode !== 'way' || p.chart.mode !== 'way' || p.els.modeSel.value !== 'way' || pick.getAttribute('aria-pressed') !== 'true') errs.push('title did not select Colour by');
+  if (document.activeElement !== pick) errs.push('selecting a colour lost focus');
+  const fold = way.querySelector('.bd-fold'); fold.click();
+  if (!way.querySelector('.bd-body').hidden || fold.getAttribute('aria-expanded') !== 'false') errs.push('fold did not hide its bar');
+  // A forecast arrives while a different kind is selected; all three bars appear.
+  const fill = (v) => new Float32Array(a.along.length).fill(v);
+  a.wind = { head: fill(3), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(4), temp: fill(8), precip: fill(0) };
+  p.renderBreakdown();
+  need(['way', 'wind', 'temp', 'rain'], 'late weather'); distances('late weather');
+  if (!way.querySelector('.bd-body').hidden || p.colorMode !== 'way') errs.push('weather changed fold or Colour by');
+  if (!water) {
+    // Details arrive with Way type selected, not Width or Visibility.
+    a.td.width.fill(-1); a.td.vis.fill(-1); p.renderBreakdown();
+    if (keys().some((k) => ['width', 'vis'].includes(k))) errs.push('unmapped trail detail shown as data');
+    a.td.width.fill(0); a.td.vis.fill(1); p.renderBreakdown();
+    need(['width', 'vis'], 'late trail details'); distances('late trail details');
+  }
+  // A failed/new forecast leaves the other bars available and removes stale weather.
+  a.wind = null; a.windError = true; p.renderBreakdown();
+  if (keys().some((k) => ['wind', 'temp', 'rain'].includes(k))) errs.push('weather shown without data');
+  need(['way'], 'failed weather');
+  p.renderBreakdown();
+  if (!way.querySelector('.bd-body').hidden) errs.push('rendering reset a fold');
+  // No sideways scrolling in the drawer, and distinct controls with touch-sized targets.
+  for (const el of kinds()) {
+    if (el.scrollWidth > el.clientWidth + 1) errs.push(`${el.dataset.colour} overflows the panel`);
+    for (const b of el.querySelectorAll('button')) if (b.getBoundingClientRect().height < 40) errs.push('small breakdown target');
+  }
+  window.colourTestFold = 'colour-way';
+  return errs;
+})()"""
+
+
+def colours(chrome):
+    fails = []
+    for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
+        for sport in ['mtb', 'gravel', 'hike', 'paddle']:
+            pg = chrome.page(w, h_, phone)
+            pg.open_app({'activity': sport, 'timeline': True})
+            fails += [f'{w} {sport}: {e}' for e in pg.js(COLOURS)]
+            if pg.js("!!window.colourTestFold"):
+                pg.reload()
+                pg.js("new Promise((ok) => { const go = () => { if (polku.planner.analysis) { polku.planner.reveal('colours'); ok(true); } else setTimeout(go, 100); }; go(); })")
+                if pg.js("document.querySelector('[data-colour=way] .bd-fold')?.getAttribute('aria-expanded')") != 'false':
+                    fails.append(f'{w} {sport}: fold not remembered after reload')
+            fails += [f'{w} {sport}: console: {e[:160]}' for e in pg.errors()]
+            pg.close()
+            print(f'checked route breakdowns: {w} {sport}', flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} all route colour breakdowns" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def main():
     only = sys.argv[1:]
     chrome = Chrome()
@@ -3098,6 +3199,8 @@ def main():
             ok = winter_route(chrome) and ok
         if not only or 'sweep' in only:
             ok = sweep(chrome) and ok
+        if not only or 'colours' in only:
+            ok = colours(chrome) and ok
         if not only or 'drawer' in only:
             ok = drawer(chrome) and ok
         if not only or 'heading' in only:

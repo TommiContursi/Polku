@@ -14,6 +14,8 @@ The planner has three tabs:
 - **Check:** warnings, climbs, ground conditions and route colours.
 - **Go:** departure, travel time, weather, GPX export, sharing and offline save.
 
+In **Check → On the route**, each available colour kind has a bar, legend and distances. Tap its title to select it in **Colour by**; the current choice is marked. Use the arrow beside each title to fold its bar. Weather bars appear once the forecast arrives; kinds without data or that do not apply to the sport are left out.
+
 On a phone, drag the planner's handle to change how much of it is visible. On a desktop, the button at the end of the tabs moves the planner between the side and bottom of the map.
 
 ## Read the map

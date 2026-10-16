@@ -732,6 +732,16 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   font-size: 12px; line-height: 1.45; white-space: nowrap; text-transform: none;
 }
 .breakdown { margin-top: 8px; }
+.bd-kind + .bd-kind { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 8px; }
+.bd-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bd-title { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; min-height: 40px;
+  border: 0; border-radius: 8px; padding: 4px 6px; text-align: left; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text); background: transparent; cursor: pointer; }
+.bd-title:hover { background: var(--surface-2); }
+.bd-active { color: var(--accent); font-size: 10px; font-weight: 600; }
+.bd-fold { min-width: 40px; min-height: 40px; }
+.bd-fold[aria-expanded="false"] .ic { transform: rotate(-90deg); }
+.bd-body { padding: 0 6px 4px; }
 .bd-bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--surface-2); }
 .bd-bar span { display: block; height: 100%; }
 .bd-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: var(--muted); }
