@@ -4,7 +4,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-16
 
-### Fixed: on a phone, the map frames your route above the planner (PR_LINK)
+### Fixed: on a phone, the map frames your route above the planner ([#110](https://github.com/TommiContursi/Polku/pull/110))
 - **With the planner at full height,** Show the whole route, Use this loop, a new round trip and a tap on a climb or a Heads-up did nothing on the map. Now the planner comes down to half and the map frames the route above it.
 - **A GPX or KML import** lands above the planner when it's open (beside it on desktop), and Analyse & edit frames the track above the planner it opens.
 - **A share link** frames the whole routed line once its legs are in, not only its points, unless you've moved the map or changed the route by then.
