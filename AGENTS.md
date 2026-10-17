@@ -49,6 +49,10 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   `small`, `medium` or `big`. Search first, and add to the one that exists.
 - **Two coding sessions at a time,** unless the user asks for more: more ran
   into the usage limits ([retro](docs/retros/2026-10-15-16.md)).
+- **Commit and push work in progress often,** after each part and before
+  anything long, so that a session stopped by a usage limit leaves its work on
+  its branch for the next one. Phase 24's first claim stopped on 2026-10-17
+  with nothing pushed, and all of it was lost (#177).
 - Docs and tooling PRs stay on their one subject.
 
 ## In the code
