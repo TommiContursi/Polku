@@ -1,8 +1,8 @@
 // Finnish rain radar from FMI's open data *download* service: one GeoTIFF of the
 // national rain-rate composite per update, read here and drawn in Polku's
 // own rain colours. FMI asks apps to fetch radar this way and draw it
-// themselves; its WMS map tiles are for evaluation only. Requested in Web Mercator, so the image lines up
-// with the map with no reprojection.
+// themselves; its WMS map tiles are for evaluation only. Requested in Web
+// Mercator, so the image lines up with the map with no client reprojection.
 
 import { request } from './net.js';
 
@@ -22,8 +22,8 @@ const numericStyle = (layer, levels) => '<StyledLayerDescriptor version="1.0.0" 
     .map(([q, c]) => `<ColorMapEntry color="#${c}" quantity="${q}"/>`).join('') +
   '</ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
 // National CAPPI reflectivity, decoded to dBZ and turned into mm/h with
-// Marshall–Palmer. It overstates light rain near freezing (in Jyväskylä on 2026-10-14 it said
-// 2–9 mm/h while FMI's rain rate said 0.01–0.05 and drizzle fell), so it's only the fallback.
+// Marshall–Palmer. That is an approximation, especially in mixed precipitation,
+// so the rain-rate measurement remains the first choice.
 const DBZ = 'Radar:radar_finland_cappi_dbzh';
 export const FI_BOUNDS = [19, 59.3, 32.5, 70.3];
 
@@ -49,9 +49,9 @@ const fetchLayer = async (layer, box, width, height) => {
   return readTiff(await res.arrayBuffer(), width, height);
 };
 
-// The fixed path around RGB's edges encodes each decade in a different channel.
+// The fixed path around RGB's edges encodes each interval in a different channel.
 // Invert the palette colours, never their indexes; the server can reorder them.
-// Quantization is at most 1/255 of each decade's span, before rounding to .01.
+// Quantization is at most 1/255 of each interval's span.
 function measurements({ px, palette, photo }, levels) {
   if (!(px instanceof Uint16Array) || photo !== 3 || !palette || palette.length !== 3 * 65536) throw new Error('rain rate: no extended encoded palette');
   const n = palette.length / 3, rate = new Float32Array(n).fill(NaN), valid = new Uint8Array(n);
