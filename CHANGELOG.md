@@ -4,6 +4,22 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ## 2026-10-17
 
+### A quick layer drawer ([#123](https://github.com/TommiContursi/Polku/issues/123))
+- **Layers (and L) opens a quick drawer** instead of the long panel: the base maps as pictures, and five tiles for your sport. A tap changes the map at once, and the drawer stays open. MTB's tiles are trail colours, trail details, official routes, 3D terrain and rain radar; paddling's are nautical marks, depths, ships, landing sites and wind; each sport has its own.
+- **A tile turns the same switch as the full panel,** so what you choose is still kept per sport. Trail colours come back as you last had them, and Depths turns Traficom's three depth layers together ("not for navigation").
+- **A tile with › has more settings,** one step in: the kind of trail colours, their strength and numbers, opacity, the depth layers one by one, the timeline. **‹** comes back.
+- **The tiles say what's missing:** "Zoom in to see" while a layer doesn't show at this zoom, "No data now" while its source isn't answering.
+- **Your own tiles:** **Edit** swaps any of the five for another layer, from every switch in the full panel, under its groups. **Reset** puts back the sport's own five.
+- **More** opens the full panel as before, and says how many other layers are on, so nothing on is hidden.
+- **On a phone it's a sheet** over the map and the planner: swipe it down or tap the map to close it (that tap adds no point to your route), swipe up for every layer. On short phones it's tighter, so more of the map stays in view. On a desktop it opens beside the Layers button and stays while you use the map.
+- **With a keyboard:** L opens it on the map you have, the arrow keys choose another, and Esc steps back, then closes.
+- **Sharper map pictures,** and Aerial has its own (Esri's view of the same spot).
+
+### The planner follows a swipe ([#96](https://github.com/TommiContursi/Polku/issues/96))
+- **Swipe the planner on a phone from anywhere at its top:** the handle, the summary and its buttons, the profile's top row, the tabs, or the list once it's scrolled to the top. A tap on a button still presses it.
+- **It follows your finger and settles where a flick would come to rest,** at the nearest size; a quick flick moves it at least one size. Past its smallest and largest size it gives a little, and you can catch it while it's still moving. The quick layer drawer moves the same way.
+- **The map's buttons move once,** when the sheet comes to rest, not all the way with it. With reduced motion on, the sheet still follows your finger, and changes size without sliding.
+
 ### Read what’s new inside Polku
 - **Settings → About Polku → What’s new** opens the changelog over the map. Scroll the dated changes and follow their links, then close it to return to your route.
 - **Release notes load when you open the window.** Their latest date is shown, and a saved copy may appear when the connection is slow or unavailable. If nothing can load, Retry and a link to the full changelog stay available.

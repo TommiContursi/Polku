@@ -31,6 +31,7 @@
   python3 tools/smoke.py previews   # bar/legend hover highlights, keyboard previews and cleanup
   python3 tools/smoke.py colours    # every available route breakdown, choosing colours, folds and late data
   python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
+  python3 tools/smoke.py quick      # the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
   python3 tools/smoke.py pacing     # calls made together go out paced and counted (mocked services, a fake clock)
   python3 tools/smoke.py heading    # where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)
@@ -275,7 +276,7 @@ LOOP = """(async () => {
 LAYERS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const { ACTIVITIES, RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
-  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
   await wait(300);
   const body = document.querySelector('#layers-body');
   const labels = () => [...body.querySelectorAll('.tg .tg-text')].map((t) => t.firstChild.textContent.trim()).filter((l) => !/opacity/i.test(l)).sort();
@@ -321,7 +322,7 @@ LAYERS_AFTER = """(async () => {
   const errs = [], { RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
   const op = polku.map.getLayer('ov-depthAreas') && polku.map.getPaintProperty('ov-depthAreas', 'raster-opacity');
   if (op !== 0.3) errs.push(`depth areas at ${op} after a reload, not 0.3`);
-  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
   await new Promise((r) => setTimeout(r, 300));
   const r = document.querySelector('#layers-body input[aria-label="' + RASTER_OVERLAYS.depthAreas.label + ' opacity"]');
   if (!r || r.value !== '30') errs.push(`slider shows ${r ? r.value : 'nothing'} after a reload`);
@@ -367,7 +368,7 @@ TRAILS = """(async () => {
   }
   // uphill colours come back after switching them off and on (they're cached, and once stayed blank)
   m.jumpTo({ center: [25.7652, 62.2289], zoom: 15.5 });
-  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
   await wait(400);
   const seg = (t) => [...document.querySelectorAll('#layers-body .seg button')].find((b) => b.textContent === t);
   const uphill = async (ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (m.querySourceFeatures('uphill').length) return true; await wait(250); } return false; };
@@ -2557,7 +2558,7 @@ WINTER = """(async () => {
   W.seedWinterTile(fx.x, fx.y, fx.data);
   polku.map.jumpTo({ center: [25.715, 62.258], zoom: 14 });
   await wait(600);
-  document.querySelector('[data-panel=layers-panel]').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); } // Layers, then More: the full panel
   await wait(400);
   const segs = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Winter/.test(g.querySelector('.lg-title').textContent));
   if (!segs) return [...errs, 'no Winter group in Layers'];
@@ -2599,7 +2600,7 @@ WINTER = """(async () => {
       document.querySelector('.maplibregl-popup-close-button')?.click();
       await wait(300);
     }
-    document.querySelector('[data-panel=layers-panel]').click();
+    if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); } // Layers, then More: the full panel
     await wait(400);
     const t2 = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Trails/.test(g.querySelector('.lg-title').textContent));
     [...t2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Difficulty').click();
@@ -3400,6 +3401,428 @@ def heading(chrome):
     return ok
 
 
+# The quick layer drawer (#123), and the one swipe for every sheet (js/sheet.js, #96). Weather fields
+# don't fetch here (the overlay's set, open and hour are stubbed): only the switches are tested.
+QUICK_HELP = """
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], S = polku.state;
+  const { QUICK_TILES, QUICK_TILE, RASTER_OVERLAYS, SAFETY_OVERLAYS } = await import(location.origin + '/js/config.js');
+  const qd = document.querySelector('#quick-layers'), lp = document.querySelector('#layers-panel');
+  const isOpen = () => qd.classList.contains('open');
+  const open = async () => { if (!isOpen()) { document.querySelector('#btn-layers').click(); await wait(250); } };
+  const tile = (id) => qd.querySelector(`.qt-tog[data-tile="${id}"]`);
+  const pressed = (id) => !!tile(id) && tile(id).getAttribute('aria-pressed') === 'true';
+  const tiles = () => [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile);
+  // the map at rest, as a person sees it change before the next tap (quicker base changes: #75)
+  const idle = () => Promise.race([wait(10000), new Promise((r) => polku.map.once('idle', r))]);
+  const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
+  const OWN = ['trailDetails', 'labelsDown', 'labelsUp', 'terrain3d', 'hillshade', 'contours'];
+  // what the test reads itself, not through the app's own tileOn()
+  const stateOn = (id) => (id === 'trailColors' ? S.trailColors !== 'off' : id === 'depths' ? DEPTHS.some((d) => S.overlays[d])
+    : id.startsWith('wx:') ? !!S.weather[id.slice(3)] : OWN.includes(id) ? !!S[id] : !!S.overlays[id]);
+  const LABEL = { trailDetails: 'Trail details', labelsDown: 'Difficulty numbers', labelsUp: 'Uphill numbers', terrain3d: '3D terrain', hillshade: 'Hillshade',
+    contours: 'Contour lines', nautical: 'Nautical marks & fairways', lipasRoutes: 'Official routes (LIPAS)', lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
+    pois: 'OSM outdoor places', 'wx:wind': 'Wind', 'wx:temp': 'Temperature', 'wx:rain': 'Rain', 'wx:snow': 'Snow depth', winterWays: 'Winter ways',
+    lipasWinter: 'Ski tracks, skating & snowmobile routes', seaIce: 'Sea ice' };
+  const label = (id) => LABEL[id] || (RASTER_OVERLAYS[id] || SAFETY_OVERLAYS[id] || {}).label;
+  const sw = (l) => { const t = [...document.querySelectorAll('#layers-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === l); return t && t.querySelector('input'); };
+  const colours = () => [...document.querySelectorAll('#layers-body .seg button')].find((b) => b.getAttribute('aria-pressed') === 'true' && ['Off', 'Difficulty', 'Uphill', 'Both', 'Winter'].includes(b.textContent));
+  const panelOn = (id) => (id === 'trailColors' ? (colours() || {}).textContent !== 'Off' : id === 'depths' ? ['Depth areas', 'Depth contours', 'Depth soundings'].some((l) => sw(l) && sw(l).checked) : !!(sw(label(id)) || {}).checked);
+  // off in the full panel, as a person would turn it off there
+  const panelOff = async (id) => {
+    if (id === 'trailColors') [...document.querySelectorAll('#layers-body .seg button')].find((b) => b.textContent === 'Off').click();
+    else for (const l of id === 'depths' ? ['Depth areas', 'Depth contours', 'Depth soundings'] : [label(id)]) if (sw(l) && sw(l).checked) sw(l).click();
+    await wait(80);
+  };
+  for (const k of ['set', 'setOpen', 'setHour']) polku.weather[k] = () => {};
+"""
+
+# Opening and closing, the base maps, every tile in every sport, Trail colours, Depths and More's count
+QUICK_TILES_JS = """(async () => {""" + QUICK_HELP + """
+  const btn = document.querySelector('#btn-layers');
+  btn.click(); await wait(250);
+  if (!isOpen() || !lp.hidden) errs.push('Layers did not open the drawer, or opened the full panel');
+  if (btn.getAttribute('aria-expanded') !== 'true') errs.push('Layers is not aria-expanded while the drawer is open');
+  btn.click(); await wait(250);
+  if (isOpen()) errs.push('Layers again did not close the drawer');
+  const key = (k, el = document.body) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  key('l'); await wait(50);
+  if (!isOpen()) errs.push('L did not open the drawer');
+  if (!document.activeElement.matches('.qd-base[aria-checked="true"]')) errs.push(`L: focus on ${document.activeElement.className || document.activeElement.tagName}, not the chosen map`);
+  key('ArrowRight', document.activeElement); await wait(100); await idle();
+  if (S.base !== 'maasto' || !document.activeElement.matches('.qd-base[data-base="maasto"]')) errs.push(`the arrow key chose ${S.base}, focus on ${document.activeElement.dataset.base}`);
+  key('Escape', document.activeElement); await wait(250);
+  if (isOpen()) errs.push('Esc did not close the drawer');
+  if (document.activeElement !== btn) errs.push('Esc: focus not back on Layers');
+  // the base maps: the map and the Layers button change, the drawer stays
+  await open();
+  qd.querySelector('.qd-base[data-base="night"]').click(); await wait(150); await idle();
+  if (S.base !== 'night' || !/night/.test(btn.querySelector('img').src) || !isOpen()) errs.push(`Night: base ${S.base}, button ${btn.querySelector('img').src.split('/').pop()}, open ${isOpen()}`);
+  qd.querySelector('.qd-base[data-base="trail"]').click(); await wait(150); await idle();
+  const bases = () => [...qd.querySelectorAll('.qd-base')].map((b) => b.dataset.base).join();
+  if (bases() !== 'trail,maasto,aerial,ortofi,plain,night') errs.push(`the maps: ${bases()}`);
+  polku.set({ mmlKey: 'test', base: 'mml' }); await wait(150); await idle();
+  if (bases() !== 'trail,aerial,ortofi,plain,night,mml' || !qd.querySelector('.qd-base[data-base="mml"][aria-checked="true"]')) errs.push(`with an MML key and MML WMTS on, the maps: ${bases()}`);
+  polku.set({ mmlKey: '', base: 'trail' }); await wait(150); await idle();
+  // every tile, in every sport: the same state as its switch in the full panel, both ways
+  for (const k of Object.keys(QUICK_TILES)) {
+    polku.set({ activity: k }); await wait(150); await open();
+    if (tiles().join() !== QUICK_TILES[k].join()) errs.push(`${k}: the tiles are ${tiles()}, not ${QUICK_TILES[k]}`);
+    for (const id of tiles()) {
+      const was = stateOn(id);
+      for (let n = 0; n < 2; n++) {
+        const before = stateOn(id);
+        tile(id).click(); await wait(60);
+        if (stateOn(id) === before) errs.push(`${k}/${id}: the tile didn't turn it ${before ? 'off' : 'on'}`);
+        if (pressed(id) !== stateOn(id)) errs.push(`${k}/${id}: pressed ${pressed(id)} while it's ${stateOn(id) ? 'on' : 'off'}`);
+        if (panelOn(id) !== stateOn(id)) errs.push(`${k}/${id}: the full panel shows it ${panelOn(id) ? 'on' : 'off'}, the tile ${stateOn(id) ? 'on' : 'off'}`);
+      }
+      if (!stateOn(id)) { tile(id).click(); await wait(60); }
+      await panelOff(id);
+      if (stateOn(id) || pressed(id)) errs.push(`${k}/${id}: turned off in the full panel, the tile is ${pressed(id) ? 'still pressed' : 'unpressed but it is on'}`);
+      if (was !== stateOn(id)) { tile(id).click(); await wait(60); }
+    }
+    if (QUICK_TILES[k].some((id) => QUICK_TILE[id].opts) && !qd.querySelector('.qt-opt')) errs.push(`${k}: no › on a tile with settings`);
+  }
+  // Trail colours come back as you had them; trail run's start uphill
+  polku.set({ activity: 'mtb' }); await wait(150); await open();
+  qd.querySelector('.qt-opt[data-opts="trailColors"]').click(); await wait(80);
+  [...qd.querySelectorAll('.seg button')].find((b) => b.textContent === 'Both').click(); await wait(80);
+  qd.querySelector('.qd-back').click(); await wait(80);
+  tile('trailColors').click(); await wait(60);
+  tile('trailColors').click(); await wait(60);
+  if (S.trailColors !== 'both') errs.push(`Trail colours came back as ${S.trailColors}, not both`);
+  polku.set({ activity: 'trailrun' }); await wait(150);
+  if (S.trailColors !== 'off') errs.push(`trail run starts with ${S.trailColors} colours`);
+  tile('trailColors').click(); await wait(60);
+  if (S.trailColors !== 'up') errs.push(`trail run's Trail colours tile turned on ${S.trailColors}, not up`);
+  tile('trailColors').click(); await wait(60);
+  // Depths: its three together, and back the ones you had
+  polku.set({ activity: 'paddle' }); await wait(150);
+  sw('Depth soundings').click(); await wait(80);
+  if (!pressed('depths')) errs.push('Depths unpressed with two of its three on');
+  tile('depths').click(); await wait(60);
+  if (DEPTHS.some((d) => S.overlays[d])) errs.push('Depths off left one on');
+  tile('depths').click(); await wait(60);
+  if (!S.overlays.depthAreas || !S.overlays.depthContours || S.overlays.soundings) errs.push(`Depths on brought back ${DEPTHS.filter((d) => S.overlays[d])}, not areas and contours`);
+  if (!/not for navigation/i.test(tile('depths').textContent)) errs.push('the Depths tile does not say “not for navigation”');
+  sw('Depth soundings').click(); await wait(80);
+  // More counts what else is on
+  polku.set({ activity: 'mtb' }); await wait(150);
+  const more = () => qd.querySelector('.qt-more').textContent;
+  if (!/3 more on/.test(more())) errs.push(`MTB's More: ${more()}, not 3 more on`);
+  sw(label('wmtMtb')).click(); await wait(80);
+  if (!/4 more on/.test(more()) || !/4 more on/.test(qd.querySelector('.qt-more').getAttribute('aria-label'))) errs.push(`More after Waymarked MTB: ${more()}`);
+  sw(label('wmtMtb')).click(); await wait(80);
+  // this sport's tile, changed here, is kept for the reload (Official routes off in MTB)
+  tile('lipasRoutes').click(); await wait(60);
+  return errs;
+})()"""
+
+# after a reload: what the tiles changed is kept per sport, and switching sport changes the tiles
+QUICK_AFTER = """(async () => {""" + QUICK_HELP + """
+  await open();
+  if (pressed('lipasRoutes') || S.overlays.lipasRoutes) errs.push('MTB: Official routes back on after a reload');
+  polku.set({ activity: 'hike' }); await wait(150);
+  if (tiles()[0] !== 'wmtHiking' || !pressed('lipasRoutes')) errs.push(`hike: tiles ${tiles()}, Official routes ${pressed('lipasRoutes') ? 'on' : 'off'}`);
+  polku.set({ activity: 'mtb' }); await wait(150);
+  tile('lipasRoutes').click(); await wait(60);
+  return errs;
+})()"""
+
+# A tile's settings, Edit and More; the status on a tile
+QUICK_STEPS = """(async () => {""" + QUICK_HELP + """
+  await open();
+  const h = () => qd.getBoundingClientRect().height;
+  const h0 = h();
+  qd.querySelector('.qt-opt[data-opts="trailColors"]').click(); await wait(300);
+  if (qd.querySelector('h2').textContent !== 'Trail colours' || !qd.querySelector('.qd-back')) errs.push(`›: the step shows ${qd.querySelector('h2').textContent}`);
+  if (Math.abs(h() - h0) > 1) errs.push(`a tile's settings changed the drawer's height ${Math.round(h0)} → ${Math.round(h())} px`);
+  if (!qd.querySelector('.seg') || !qd.querySelector('.lg-key')) errs.push('Trail colours: not the full panel’s switches');
+  for (const r of qd.querySelectorAll('input[type=range]')) if (r.getBoundingClientRect().height < 44) errs.push(`a slider ${Math.round(r.getBoundingClientRect().height)} px tall`);
+  qd.querySelector('.qd-back').click(); await wait(300);
+  if (!tile('trailColors') || document.activeElement !== qd.querySelector('.qt-opt[data-opts="trailColors"]')) errs.push('‹: not back at the tiles, with focus on the ›');
+  // Edit: take one off, add one, kept; Reset; old and unknown tiles
+  qd.querySelector('.qd-edit-btn').click(); await wait(300);
+  if (!qd.querySelector('.qd-done') || qd.querySelectorAll('.qt-rm').length !== 5) errs.push('Edit: no Done, or not five tiles');
+  if (qd.querySelectorAll('.qd-chip:not(:disabled)').length) errs.push('Edit: chips to add with five on');
+  // the full panel's groups, in its order, each with what isn't on the drawer yet
+  const groups = [...qd.querySelectorAll('.qd-grp')].map((g) => g.textContent).join();
+  const mine = [...qd.querySelectorAll('.qt-rm')].map((b) => b.dataset.rm);
+  const want = [...new Set(Object.entries(QUICK_TILE).filter(([id]) => !mine.includes(id) && id !== 'mmlMaastoOverlay').map(([, t]) => t.group))].join();
+  if (groups !== want) errs.push(`Edit's groups: ${groups}, not ${want}`);
+  if (qd.querySelector('.qd-chip[data-add="depthAreas"], .qd-chip[data-add="mmlMaastoOverlay"]')) errs.push('Edit offers one depth layer, or MML without a key');
+  qd.querySelector('.qt-rm[data-rm="wx:rain"]').click(); await wait(80);
+  if (qd.querySelectorAll('.qt-rm').length !== 4 || !qd.querySelector('.qd-slot')) errs.push('Edit: taking a tile off left no room');
+  qd.querySelector('.qd-chip[data-add="wmtMtb"]').click(); await wait(80);
+  qd.querySelector('.qd-done').click(); await wait(300);
+  if (tiles().join() !== 'trailColors,trailDetails,lipasRoutes,terrain3d,wmtMtb') errs.push(`after Edit: ${tiles()}`);
+  if (JSON.parse(localStorage.getItem('polku:settings')).quickTiles.mtb.join() !== tiles().join()) errs.push('your tiles were not saved');
+  // More: the full panel as it is, and back
+  qd.querySelector('.qt-more').click(); await wait(300);
+  if (isOpen() || lp.hidden || !lp.querySelector('.lg-group summary')) errs.push('More did not open the full panel');
+  if (document.querySelector('#btn-layers').getAttribute('aria-expanded') !== 'true') errs.push('Layers is not expanded with the full panel open');
+  lp.querySelector('.panel-back').click(); await wait(300);
+  if (!isOpen() || !lp.hidden) errs.push('‹ in the full panel did not come back to the drawer');
+  // the status on a tile: below its zoom, and its source failing
+  polku.map.jumpTo({ zoom: 12 }); polku.map.fire('zoomend'); await wait(100);
+  const small = (id) => tile(id).querySelector('small').textContent;
+  if (small('trailDetails') !== 'Zoom in to see') errs.push(`Trail details at zoom 12: “${small('trailDetails')}”`);
+  const net = await import(location.origin + '/js/net.js');
+  const real = window.fetch;
+  window.fetch = (u, o) => (/lipas/.test(String(u)) ? Promise.reject(new TypeError('Failed to fetch')) : real(u, o));
+  await net.request('lipas', 'https://lipas.fi/geoserver/lipas/ows?polku-test=1').catch(() => {});
+  await net.request('lipas', 'https://lipas.fi/geoserver/lipas/ows?polku-test=2').catch(() => {});
+  window.fetch = real;
+  await wait(400);
+  if (!net.sourceStatus('lipas')) errs.push('(the test) LIPAS did not back off');
+  else if (small('lipasRoutes') !== 'No data now') errs.push(`Official routes with LIPAS failing: “${small('lipasRoutes')}”`);
+  polku.map.jumpTo({ zoom: 13.6 });
+  return errs;
+})()"""
+
+# two points on straight legs, the planner at peek, and its route analysed (the summary has its size)
+PLAN_TWO = """(async () => {
+  const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.81, 61.512]); p.addPoint([23.82, 61.515]);
+  for (let k = 0; k < 100 && !p.analysis; k++) await new Promise((r) => setTimeout(r, 100));
+  p.setSheetState('peek');
+  return true;
+})()"""
+# the swipe, with real touches: the drawer, the full panel and the planner's sheet
+SHEET_STATE = "(() => ({ open: document.querySelector('#quick-layers').classList.contains('open'), all: !document.querySelector('#layers-panel').hidden, top: document.querySelector('#quick-layers').getBoundingClientRect().top, st: polku.planner.panel.dataset.state, h: polku.planner.panel.getBoundingClientRect().height, n: polku.planner.points.length, tf: document.querySelector('#quick-layers').style.transform }))()"
+
+
+def quick(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"'})
+    fails += pg.js(QUICK_TILES_JS, timeout=180000)
+    pg.reload()
+    fails += [f'reload: {e}' for e in pg.js(QUICK_AFTER)]
+    fails += [f'1440: {e}' for e in pg.js(QUICK_STEPS)]
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    # old settings: no quickTiles; a tile this version doesn't know is skipped
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'quickTiles': {'mtb': ['nope', 'wmtMtb', 'wmtMtb']}}, {'polku:winter': '"off"'})
+    got = pg.js("document.querySelector('#btn-layers').click(), [...document.querySelectorAll('#quick-layers .qt-tog')].map((b) => b.dataset.tile).join()")
+    if got != 'wmtMtb':
+        fails.append(f'saved tiles with an unknown one: {got}')
+    pg.js("polku.set({ activity: 'paddle' }); true")
+    if pg.js("[...document.querySelectorAll('#quick-layers .qt-tog')].map((b) => b.dataset.tile).join()") != 'nautical,depths,sfShips,lipasPoints,wx:wind':
+        fails.append('a sport you haven’t edited lost its own tiles')
+    pg.close()
+    fails += quick_desktop(chrome)
+    for w, h_ in [(390, 844), (360, 740), (375, 667)]:
+        fails += quick_phone(chrome, w, h_)
+    fails += quick_swipe(chrome)
+    print(f"{'ok  ' if not fails else 'FAIL'} the quick layer drawer and the one swipe" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# the card beside the button, within the map, clear of the side panel; above a bottom planner
+def quick_desktop(chrome):
+    fails = []
+    for w, h_, dock in [(1440, 900, 'left'), (1280, 600, 'left'), (1440, 900, 'bottom')]:
+        pg = chrome.page(w, h_, False)
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': json.dumps(dock), 'polku:winter': '"off"'})
+        pg.js("(() => { const p = polku.planner; p.setActive(true); p.setSheetState(p.layout() === 'side' ? 'open' : 'half'); return true; })()")
+        time.sleep(0.5)
+        r = pg.js("""(async () => {
+          document.querySelector('#btn-layers').click();
+          await new Promise((r) => setTimeout(r, 400));
+          const box = (s) => document.querySelector(s).getBoundingClientRect().toJSON();
+          return { q: box('#quick-layers'), b: box('#btn-layers'), p: box('#planner'), tail: document.querySelector('#quick-layers').classList.contains('tail'), H: innerHeight };
+        })()""")
+        q, b, p = r['q'], r['b'], r['p']
+        name = f'{w}x{h_} {dock}'
+        if q['right'] > b['left'] or q['top'] < 60 or q['bottom'] > r['H'] - 4:
+            fails.append(f'{name}: the card at {q["left"]:.0f}–{q["right"]:.0f} × {q["top"]:.0f}–{q["bottom"]:.0f}, not beside the button within the map')
+        if dock == 'left' and q['left'] < p['right']:
+            fails.append(f'{name}: the card runs under the side panel')
+        if dock == 'left' and abs(q['bottom'] - b['bottom']) > 1:
+            fails.append(f'{name}: the card’s bottom at {q["bottom"]:.0f}, the button’s at {b["bottom"]:.0f}')
+        if dock == 'bottom' and q['bottom'] > p['top']:
+            fails.append(f'{name}: the card runs into the bottom planner')
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    return fails
+
+
+# a phone: the sheet below the top bar, 44 px targets, the planner's peek as it was, the map tap that closes it
+def quick_phone(chrome, w, h_):
+    fails, name = [], f'{w}x{h_}'
+    pg = chrome.page(w, h_, True)
+    pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+    pg.js(PLAN_TWO)
+    pg.js(SETTLED)
+    before = pg.js(SHEET_STATE)
+    r = pg.js("""(async () => {
+      document.querySelector('#btn-layers').click();
+      await new Promise((r) => setTimeout(r, 400));
+      const q = document.querySelector('#quick-layers'), out = { top: q.getBoundingClientRect().top, share: q.getBoundingClientRect().height / innerHeight, small: [], over: [] };
+      for (const el of q.querySelectorAll('button')) {
+        const b = el.getBoundingClientRect();
+        if (b.width && (b.width < 44 || b.height < 44)) out.small.push(`${el.className || el.textContent} ${Math.round(b.width)}×${Math.round(b.height)}`);
+      }
+      for (const el of q.querySelectorAll('.qt-l, .qd-base span')) if (el.scrollWidth > el.clientWidth + 1) out.over.push(el.textContent);
+      return out;
+    })()""")
+    if r['top'] < 64:
+        fails.append(f'{name}: the sheet’s top at {r["top"]:.0f} px, under the top bar')
+    limit = {844: 0.57, 740: 0.6, 667: 0.64}[h_]
+    if r['share'] > limit:
+        fails.append(f'{name}: the sheet takes {r["share"]:.0%} of the screen (the plan: {limit:.0%} at most)')
+    fails += [f'{name}: a target under 44 px: {s}' for s in r['small']]
+    fails += [f'{name}: a label overflows: {s}' for s in r['over']]
+    pg.tap(w / 2, 150)  # the map above the sheet
+    time.sleep(0.5)
+    after = pg.js(SHEET_STATE)
+    if after['open']:
+        fails.append(f'{name}: a tap on the map did not close the drawer')
+    if after['n'] != before['n']:
+        fails.append(f'{name}: the tap that closed it added a point')
+    pg.js(SETTLED)
+    after = pg.js(SHEET_STATE)
+    if after['st'] != 'peek' or abs(after['h'] - before['h']) > 1:
+        fails.append(f'{name}: the planner is {after["st"]} {after["h"]:.0f} px after closing, not peek {before["h"]:.0f} px')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    return fails
+
+
+def quick_swipe(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+    st = lambda: pg.js(SHEET_STATE)
+    opened = lambda: pg.js("(async () => { if (!document.querySelector('#quick-layers').classList.contains('open')) document.querySelector('#btn-layers').click(); await new Promise((r) => setTimeout(r, 400)); return document.querySelector('#quick-layers').getBoundingClientRect().top; })()")
+    top = opened()
+    pg.swipe(195, top + 30, top + 330, ms=700, hold=0.2)  # a slow drag on the header, past 40 %
+    time.sleep(0.4)
+    if st()['open']:
+        fails.append('a slow drag down on the header past 40 % did not close the drawer')
+    top = opened()
+    pg.swipe(195, top + 30, top + 90, ms=600, hold=0.2)  # short and slow: back as it was
+    time.sleep(0.4)
+    s = st()
+    if not s['open'] or abs(s['top'] - top) > 1 or s['tf']:
+        fails.append(f'a short slow drag: open {s["open"]}, top {s["top"]:.0f} (was {top:.0f}), transform “{s["tf"]}”')
+    pg.swipe(195, top + 30, top + 100, ms=50, steps=5)  # a flick
+    time.sleep(0.4)
+    if st()['open']:
+        fails.append('a flick down did not close the drawer')
+    # from the ✕: a drag that starts on a button moves the sheet all the way, and doesn't press it
+    top = opened()
+    x = pg.js("(() => { const b = document.querySelector('#quick-layers .qd-x').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+    pg.swipe(x[0], x[1], x[1] + 320, ms=700, hold=0.2)
+    time.sleep(0.4)
+    if st()['open']:
+        fails.append('a drag down that started on ✕ did not close the drawer (stopped after a few pixels?)')
+    top = opened()
+    pg.swipe(195, top + 30, top - 220, ms=500, hold=0.1)  # up: all layers
+    time.sleep(0.5)
+    s = st()
+    if not s['all'] or s['open']:
+        fails.append(f'a drag up did not open all layers (drawer open {s["open"]}, full panel {s["all"]})')
+    lp_top = pg.js("document.querySelector('#layers-panel').getBoundingClientRect().top")
+    pg.swipe(195, lp_top + 20, lp_top + 360, ms=600, hold=0.2)  # down on the full panel: back to the drawer
+    time.sleep(0.5)
+    s = st()
+    if s['all'] or not s['open']:
+        fails.append(f'a drag down on all layers did not come back to the drawer (full panel {s["all"]}, drawer {s["open"]})')
+    # a tap on a tile still toggles it
+    x = pg.js("(() => { const b = document.querySelector('#quick-layers .qt-tog[data-tile=\"lipasRoutes\"]').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+    on0 = pg.js("polku.state.overlays.lipasRoutes")
+    pg.tap(x[0], x[1])
+    time.sleep(0.4)
+    if pg.js("polku.state.overlays.lipasRoutes") == on0:
+        fails.append('a tap on a tile did not toggle it')
+    pg.tap(x[0], x[1])
+    time.sleep(0.3)
+    # a drag that starts on a tile moves the sheet, and doesn't toggle it
+    on0 = pg.js("polku.state.overlays.lipasRoutes")
+    pg.swipe(x[0], x[1], x[1] + 300, ms=600, hold=0.2)
+    time.sleep(0.4)
+    if st()['open'] or pg.js("polku.state.overlays.lipasRoutes") != on0:
+        fails.append('a drag down from a tile: the drawer stayed open, or the tile toggled')
+    # the planner's sheet: the same swipe (#96)
+    pg.js(PLAN_TWO)
+    pg.js(SETTLED)
+    head = pg.js("(() => { const b = document.querySelector('#planner .sheet-sum').getBoundingClientRect(); return [b.left + 30, b.top + b.height / 2]; })()")
+    pg.swipe(head[0], head[1], head[1] - 300, ms=700, hold=0.2)  # slowly up from peek: the nearest size
+    pg.js(SETTLED)
+    s1 = st()
+    if s1['st'] not in ('profile', 'half'):
+        fails.append(f'planner: a slow drag up 300 px from peek came to {s1["st"]}, not profile or half')
+    if pg.js("document.querySelector('#planner').classList.contains('dragging') || !!document.querySelector('#planner').style.transform"):
+        fails.append('planner: still dragging after it came to rest')
+    sheet_h = pg.js("parseFloat(document.documentElement.style.getPropertyValue('--sheet-h'))")
+    if abs(sheet_h - s1['h']) > 1:
+        fails.append(f'planner: --sheet-h {sheet_h} px for a {s1["h"]:.0f} px sheet after a swipe')
+    pg.js("polku.planner.setSheetState('peek'); true")
+    pg.js(SETTLED)
+    pg.swipe(head[0], head[1], head[1] - 80, ms=60, steps=5)  # a flick up from peek: at least one size
+    pg.js(SETTLED)
+    if st()['st'] == 'peek':
+        fails.append('planner: a flick up from peek left it at peek')
+    pg.js("polku.planner.setSheetState('half'); true")
+    pg.js(SETTLED)
+    head = pg.js("(() => { const b = document.querySelector('#planner .sheet-sum').getBoundingClientRect(); return [b.left + 30, b.top + b.height / 2]; })()")
+    pg.swipe(head[0], head[1], head[1] + 30, ms=25, steps=3)  # a short flick down from half: one size, though it moved 30 px
+    pg.js(SETTLED)
+    if st()['st'] not in ('profile', 'peek'):
+        fails.append(f'planner: a short flick down from half came to {st()["st"]}')
+    pg.js("polku.planner.setSheetState('full'); true")
+    pg.js(SETTLED)
+    # from a routing mode button, down: the sheet moves and the mode stays
+    mode0 = pg.js("polku.planner.mode")
+    b = pg.js("(() => { const b = document.querySelector('#planner .modes button:not([aria-pressed=\"true\"])').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+    pg.swipe(b[0], b[1], b[1] + 260, ms=600, hold=0.2)
+    pg.js(SETTLED)
+    if st()['st'] == 'full' or pg.js("polku.planner.mode") != mode0:
+        fails.append(f'planner: a drag down from a mode button left it {st()["st"]}, mode {pg.js("polku.planner.mode")} (was {mode0})')
+    # the body, scrolled to its top: a drag down moves the sheet
+    pg.js("polku.planner.setSheetState('full'); true")
+    pg.js(SETTLED)
+    pg.js("polku.planner.els.body.scrollTop = 0; true")
+    # on a waypoint's name, most of its row: a text field that isn't being edited moves the sheet like the rest
+    body = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-name').getBoundingClientRect(); return [b.left + 20, b.top + b.height / 2]; })()")
+    pg.swipe(body[0], body[1], body[1] + 300, ms=700, hold=0.2)
+    pg.js(SETTLED)
+    if st()['st'] == 'full':
+        fails.append('planner: a drag down on the body at its top (from a waypoint’s name) did not move the sheet')
+    # and a tap on the name still lets you type in it
+    pg.js("polku.planner.setSheetState('full'); true")
+    pg.js(SETTLED)
+    name = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-name').getBoundingClientRect(); return [b.left + 20, b.top + b.height / 2]; })()")
+    pg.tap(name[0], name[1])
+    time.sleep(0.3)
+    if not pg.js("document.activeElement.classList.contains('wpl-name')"):
+        fails.append('planner: a tap on a waypoint’s name did not put the cursor in it')
+    pg.js("document.activeElement.blur(); true")
+    # a waypoint's grip keeps its own drag: the sheet stays
+    pg.js("polku.planner.setSheetState('full'); true")
+    pg.js(SETTLED)
+    pg.js("polku.planner.els.body.scrollTop = 0; true")
+    grip = pg.js("(() => { const b = document.querySelector('#planner .wpl-grip').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+    pg.swipe(grip[0], grip[1], grip[1] + 40, ms=400, hold=0.1)
+    pg.js(SETTLED)
+    if st()['st'] != 'full':
+        fails.append(f'planner: a drag on a waypoint’s grip moved the sheet to {st()["st"]}')
+    # a tap on the handle still folds it
+    pg.js("polku.planner.setSheetState('half'); true")
+    pg.js(SETTLED)
+    hd = pg.js("(() => { const b = document.querySelector('#planner .sheet-handle').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+    pg.tap(hd[0], hd[1])
+    time.sleep(0.3)
+    pg.js(SETTLED)
+    if st()['st'] != 'peek':
+        fails.append(f'planner: a tap on the handle left it {st()["st"]}, not peek')
+    fails += [f'swipe console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    return fails
+
+
 def overlaps(boxes):
     bad = []
     for i, a in enumerate(boxes):
@@ -4048,6 +4471,8 @@ def main():
             ok = previews(chrome) and ok
         if not only or 'drawer' in only:
             ok = drawer(chrome) and ok
+        if not only or 'quick' in only:
+            ok = quick(chrome) and ok
         if not only or 'heading' in only:
             ok = heading(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:

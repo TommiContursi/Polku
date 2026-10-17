@@ -372,3 +372,67 @@ export const ACTIVITY_OVERLAYS = {
   paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, soundings: true, fairways: true, sfShips: true, restricted: true, nautical: true, seaIce: true },
   swim: { lipasRoutes: false, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, nautical: true, seaIce: true },
 };
+
+// ---------------------------------------------------------------------------
+// The quick layer drawer (#123): five tiles for each sport, then More (the full Layers panel).
+// A tile turns the same switch as in the full panel, so what you choose stays per sport as there.
+// Its id says what it turns: an overlay above (per sport), a trail setting (per sport), a weather
+// field ('wx:rain'), or the map's own (hillshade, contours, terrain3d); and two that turn more than
+// one: trailColors (off, or back to the colours you had) and depths (Traficom's three depth layers).
+// MTB keeps 3D terrain until it has its own button on the map (#226); then Waymarked MTB.
+export const QUICK_TILES = {
+  mtb: ['trailColors', 'trailDetails', 'lipasRoutes', 'terrain3d', 'wx:rain'],
+  gravel: ['sfTraffic', 'sfRoadworks', 'drPaved', 'wmtCycling', 'wx:rain'],
+  road: ['sfTraffic', 'sfRoadworks', 'sfRoadcond', 'wmtCycling', 'wx:wind'],
+  hike: ['wmtHiking', 'lipasRoutes', 'lipasPoints', 'trailDetails', 'wx:rain'],
+  trailrun: ['trailColors', 'trailDetails', 'lipasRoutes', 'lipasPoints', 'wx:rain'],
+  run: ['lipasRoutes', 'sfRoadworks', 'pois', 'wx:temp', 'wx:rain'],
+  paddle: ['nautical', 'depths', 'sfShips', 'lipasPoints', 'wx:wind'],
+  swim: ['depths', 'fairways', 'sfShips', 'lipasPoints', 'wx:wind'],
+};
+export const QUICK_MAX = 5;
+
+// Every tile, in the full panel's groups and order: Edit offers them all. Not offered, as each has its
+// own place: the base maps (the drawer's Map row), the timeline (the Weather button), the settings
+// behind a › (the trail colours' kind, opacities, exaggeration) and Depths' three switches one by one.
+// label: the tile's (soft hyphens, U+00AD, where a long word may break); note: its small print;
+// opts: it has a › with more settings; zoom: where its layer starts to show.
+export const QUICK_TILE = {
+  terrain3d: { group: 'Base map', label: '3D terrain', icon: 'cube', opts: true },
+  hillshade: { group: 'Terrain', label: 'Hill­shade', icon: 'mountain' },
+  contours: { group: 'Terrain', label: 'Contour lines', icon: 'contours' },
+  maastoOverlay: { group: 'Terrain', label: 'Maasto­kartta on top', icon: 'pin', zoom: 8 },
+  mmlMaastoOverlay: { group: 'Terrain', label: 'MML terrain map on top', icon: 'pin', mml: true },
+  trailColors: { group: 'Trails & difficulty', label: 'Trail colours', icon: 'trailcolors', opts: true },
+  trailDetails: { group: 'Trails & difficulty', label: 'Trail details', icon: 'details' },
+  labelsDown: { group: 'Trails & difficulty', label: 'Difficulty numbers', icon: 'num', zoom: 15 },
+  labelsUp: { group: 'Trails & difficulty', label: 'Uphill numbers', icon: 'num', zoom: 15 },
+  winterWays: { group: 'Winter', label: 'Winter ways', icon: 'flake', winter: true },
+  lipasWinter: { group: 'Winter', label: 'Ski tracks & snow­mobile routes', icon: 'flake', winter: true },
+  seaIce: { group: 'Winter', label: 'Sea ice', icon: 'flake', winter: true },
+  'wx:snow': { group: 'Winter', label: 'Snow depth', icon: 'snow' },
+  lipasRoutes: { group: 'Marked routes', label: 'Official routes', icon: 'flag', note: 'LIPAS', zoom: 8 },
+  wmtHiking: { group: 'Marked routes', label: 'Waymarked hiking', icon: 'sign' },
+  wmtMtb: { group: 'Marked routes', label: 'Waymarked MTB', icon: 'sign' },
+  wmtCycling: { group: 'Marked routes', label: 'Waymarked cycling', icon: 'sign' },
+  lipasPoints: { group: 'Places', label: 'Huts & lean-tos', icon: 'hut', zoom: 10 },
+  pois: { group: 'Places', label: 'Outdoor places', icon: 'pin' },
+  nautical: { group: 'Water & nautical', label: 'Nautical marks', icon: 'buoy', zoom: 10.5 },
+  depths: { group: 'Water & nautical', label: 'Depths', icon: 'depth', opts: true, note: 'Not for navigation', zoom: 10 },
+  fairways: { group: 'Water & nautical', label: 'Shipping lanes', icon: 'ship', zoom: 9 },
+  sfTraffic: { group: 'Traffic & safety', label: 'Busy roads', icon: 'car', zoom: 10 },
+  sfIncidents: { group: 'Traffic & safety', label: 'Accidents & incidents', icon: 'warn' },
+  sfRoadworks: { group: 'Traffic & safety', label: 'Road works', icon: 'cone' },
+  sfRoadcond: { group: 'Traffic & safety', label: 'Road conditions', icon: 'car' },
+  sfShips: { group: 'Traffic & safety', label: 'Ships', icon: 'ship', note: 'Live AIS', zoom: 8 },
+  sfCameras: { group: 'Traffic & safety', label: 'Road cameras', icon: 'camera' },
+  restricted: { group: 'Traffic & safety', label: 'Military areas', icon: 'zone' },
+  drPaved: { group: 'Roads (Digiroad)', label: 'Paved roads', icon: 'road', zoom: 8 },
+  drPrivate: { group: 'Roads (Digiroad)', label: 'Private roads', icon: 'road', zoom: 8 },
+  drSpeed: { group: 'Roads (Digiroad)', label: 'Speed limits', icon: 'road', zoom: 8 },
+  'wx:wind': { group: 'Weather on the map', label: 'Wind', icon: 'wind' },
+  'wx:temp': { group: 'Weather on the map', label: 'Tempera­ture', icon: 'temp', opts: true },
+  'wx:rain': { group: 'Weather on the map', label: 'Rain radar', icon: 'rain', opts: true },
+};
+// Places are LIPAS's points for the sport, so the tile says what they are there
+export const QUICK_PLACES = { paddle: 'Landing sites & lean-tos', swim: 'Beaches & swimming places', road: 'Campfire sites', gravel: 'Lean-tos & campfire sites' };

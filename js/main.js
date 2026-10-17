@@ -3,6 +3,7 @@
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
   DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
+  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY,
 } from './config.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
 import { pointForecasts, sampleAt } from './weather.js';
@@ -28,7 +29,8 @@ import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
 import { Heading } from './heading.js';
 import { Locate } from './locate.js';
-import { onStatus, SOURCES, clock } from './net.js';
+import { onStatus, SOURCES, clock, sourceStatus } from './net.js';
+import { swipeSheet, SWIPE } from './sheet.js';
 import { renderUsage } from './usage.js';
 import { renderSpeedEditor } from './speeds.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
@@ -57,10 +59,13 @@ const DEFAULTS = {
   overlaysByActivity: {},
   trailsByActivity: {}, // trail colours and numbers you chose, per sport (the sport only sets the defaults)
   overlayOpacity: {}, // raster overlay → opacity you set (0.1–1)
+  quickTiles: {}, // the quick drawer's tiles you chose, per sport (#123); a sport you haven't edited has its own
+  depthsBack: {}, // per sport: the depth layers the Depths tile brings back when it's turned on again
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
 state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
+for (const k of ['quickTiles', 'depthsBack']) if (!state[k] || typeof state[k] !== 'object') state[k] = {};
 const shared = parseShared(new URLSearchParams(location.search));
 if (shared && ACTIVITIES[shared.activity]) state.activity = shared.activity;
 
@@ -68,7 +73,8 @@ const overlaysFor = (act) => ({ ...ACTIVITY_OVERLAYS[act], ...(state.overlaysByA
 // Trail colours and numbers: on in every sport if you want them; MTB starts with difficulty, the rest plain.
 // Trail details (width, visibility, obstacles) start on where they matter most.
 const TRAIL_DEFAULTS = (act) => ({ trailColors: act === 'mtb' ? 'down' : 'off', labelsDown: false, labelsUp: false, trailDetails: ['mtb', 'hike', 'trailrun'].includes(act) });
-const trailsFor = (act) => ({ ...TRAIL_DEFAULTS(act), ...(state.trailsByActivity[act] || {}) });
+// (colorsBack: the colours the Trail colours tile brings back; it stays in trailsByActivity, not in state)
+const trailsFor = (act) => { const { colorsBack, ...mine } = state.trailsByActivity[act] || {}; return { ...TRAIL_DEFAULTS(act), ...mine }; };
 // settings from before trail colours were per sport: they were MTB's
 if (!store.get('settings', {}).trailsByActivity) {
   const old = store.get('settings', {});
@@ -213,6 +219,8 @@ const details = new TrailDetails(map, {
     if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); // only the trail filters change
   },
   onBusy: () => {
+    detailsBusyAt = Date.now();
+    refreshQuickSoon();
     if (Date.now() - busyToldAt < 10 * 60e3) return;
     busyToldAt = Date.now();
     toast('Trail details: the OpenStreetMap server is busy — trying again in a couple of minutes');
@@ -253,7 +261,7 @@ function setWinter(on) {
   state.winterOn = on;
   if (changed) { applyStyle(); configureLayers(); }
   renderActivityBar();
-  if (!$('#layers-panel').hidden) renderLayersPanel();
+  if (layersOpen()) renderLayersPanel();
 }
 // "Winter: 12 cm of snow (FMI, 14 km away)" and the like
 function winterNote() {
@@ -316,7 +324,8 @@ const locate = new Locate(map, {
   onFix: (ll) => { lastFix = { ll, t: Date.now() }; },
 });
 // the planner opening, closing or changing size moves the free map: the dot goes with it
-new ResizeObserver(() => locate.kick()).observe($('#planner'));
+new ResizeObserver(() => { if (!$('#planner').classList.contains('dragging')) locate.kick(); }).observe($('#planner'));
+$('#planner').addEventListener('sheetrest', () => locate.kick());
 
 // MTB difficulty in hover and click details: in MTB, and in any sport with trail colours on
 const showsDifficulty = () => state.activity === 'mtb' || state.trailColors !== 'off';
@@ -439,12 +448,15 @@ function syncPlanButton(on) {
 // What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel.
 function syncPlannerPadding() {
   const sheet = $('#planner');
+  if (sheet.classList.contains('dragging')) return; // a swipe moves it: the room changes once, when it comes to rest
   const open = planner.active && !sheet.hidden;
   const side = open && planner.layout() === 'side';
   document.documentElement.style.setProperty('--sheet-h', `${open && !side ? sheet.offsetHeight : 0}px`);
   document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
+  if (quickOpen()) placeQuick();
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
+$('#planner').addEventListener('sheetrest', syncPlannerPadding);
 
 const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map(([k]) => +k);
 
@@ -533,7 +545,10 @@ const BASE_NOTE = {
   night: 'Dark map for dusk and night use.',
   mml: 'Official MML WMTS terrain map with your own API key.',
 };
-const thumb = (k) => `img/base/${{ aerial: 'ortofi', mml: 'maasto' }[k] || k}.jpg`;
+// Aerial's picture is Esri's own tile of the same spot (its imagery isn't stored here); offline, Aerial FI's
+const AERIAL_THUMB = ESRI_IMAGERY.replace('{z}', '15').replace('{y}', '9234').replace('{x}', '18552');
+const thumb = (k) => (k === 'aerial' ? AERIAL_THUMB : `img/base/${{ mml: 'maasto' }[k] || k}.jpg`);
+document.addEventListener('error', (e) => { if (e.target.src === AERIAL_THUMB) e.target.src = thumb('ortofi'); }, true);
 // The Layers button shows the current base map: what the map looks like and
 // what is drawn on it are one place.
 function syncLayersButton() {
@@ -583,14 +598,16 @@ function set3d(on) {
 function setTrail(key, value) {
   state[key] = value;
   state.trailsByActivity[state.activity] = { ...(state.trailsByActivity[state.activity] || {}), [key]: value };
+  if (key === 'trailColors' && value !== 'off') state.trailsByActivity[state.activity].colorsBack = value;
   applyStyle();
   configureLayers();
   saveSettings();
 }
 
-function setOverlay(id, on) {
-  state.overlays[id] = on;
-  state.overlaysByActivity[state.activity] = { ...(state.overlaysByActivity[state.activity] || {}), [id]: on };
+function setOverlay(id, on) { setOverlays({ [id]: on }); }
+function setOverlays(patch) {
+  Object.assign(state.overlays, patch);
+  state.overlaysByActivity[state.activity] = { ...(state.overlaysByActivity[state.activity] || {}), ...patch };
   applyStyle();
   configureLayers();
 }
@@ -751,64 +768,17 @@ function layerGroup(id, title, count, ...kids) {
   return d;
 }
 
-function renderLayersPanel() {
-  syncLayersButton();
-  const p = $('#layers-body');
-  const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
-  requestAnimationFrame(() => { p.scrollTop = keepScroll; });
-  p.innerHTML = '';
+// The full panel's switches, built by the same functions for the panel and for a tile's settings in the
+// quick drawer (#123), so the two are always the same switches. A change renders both again.
+const rerender = (fn) => (v) => { fn(v); renderLayersPanel(); };
+const terrain3dControls = () => [
+  toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
+  state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
+    h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), 'aria-label': '3D exaggeration', oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null,
+];
+function trailControls() {
   const act = ACTIVITIES[state.activity];
-  const rerender = (fn) => (v) => { fn(v); renderLayersPanel(); };
-
-  // whose map this is: the sport sets the starting layers
-  p.append(h('div', { class: 'lp-sport' },
-    h('span', { html: icon(ACT_ICONS[state.activity], 18) }),
-    h('span', {}, h('span', {}, 'Map for ', h('b', {}, act.label)), h('small', {}, 'Your sport sets the trail colours and which layers start on.')),
-    h('button', { type: 'button', class: 'link', onclick: () => { openPanel(null); openActs(); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
-
-  // what is on right now, at a glance
-  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
-  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['snow', 'Snow depth']].filter(([k]) => state.weather[k]);
-  const trailOn = state.trailColors !== 'off';
-  const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
-  // On now and Base map fold away like the other groups (open unless you close them)
-  const onCount = on.length + wx.length + (trailOn ? 1 : 0) + (state.trailDetails ? 1 : 0);
-  p.append(layerGroup('onnow', 'On now', onCount, true,
-    on.length || wx.length || trailOn || state.trailDetails ? h('div', { class: 'on-chips' },
-      trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill', winter: 'Winter colours' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
-      state.trailDetails ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail details', onclick: () => { setTrail('trailDetails', false); renderLayersPanel(); }, html: `<span>Trail details</span>${icon('close', 12)}` }) : null,
-      ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
-      ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
-      : h('p', { class: 'note' }, 'No extra layers — just the base map and trails.'),
-    custom ? h('button', { type: 'button', class: 'link', onclick: () => {
-      state.overlaysByActivity[state.activity] = {};
-      state.trailsByActivity[state.activity] = {};
-      state.overlays = overlaysFor(state.activity);
-      Object.assign(state, trailsFor(state.activity));
-      applyStyle(); configureLayers(); renderLayersPanel(); saveSettings();
-      toast(`Layers back to the ${act.label} defaults`);
-    } }, `Reset to ${act.label} defaults`) : null));
-
-  // base maps as thumbnails
-  p.append(layerGroup('base', 'Base map', 0, true,
-    h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
-      type: 'button', class: 'base-opt', 'aria-pressed': String(state.base === k), title: BASE_NOTE[k],
-      onclick: () => { state.base = k; applyStyle(); renderLayersPanel(); },
-    }, h('img', { src: thumb(k), alt: '', width: '64', height: '64', loading: 'lazy' }), h('span', {}, label)))),
-    h('p', { class: 'note' }, BASE_NOTE[state.base] || ''),
-    toggle('3D terrain', state.terrain3d, (v) => set3d(v), 'Tilt with right-drag or two fingers; the pad on the map tilts and turns'),
-    state.terrain3d ? h('label', { class: 'range' }, 'Exaggeration',
-      h('input', { type: 'range', min: '1', max: '3', step: '0.1', value: String(state.exaggeration), oninput: (e) => { state.exaggeration = +e.target.value; map.setTerrain({ source: 'terrain', exaggeration: state.exaggeration }); saveSettings(); } })) : null));
-
-  // terrain shading right after the base maps and 3D, open unless you close it
-  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
-    toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
-    toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
-    withOpacity('maastoOverlay', toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
-    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null));
-
-  // trails & difficulty (and the map key for the base map's lines): in every sport
-  const trailKids = [
+  return [
     seg([['off', 'Off'], ['down', 'Difficulty'], ['up', 'Uphill'], ['both', 'Both'], ['winter', 'Winter']], state.trailColors, (v) => {
       setTrail('trailColors', v); renderLayersPanel();
       if (v === 'winter' && map.getZoom() < WINTER_MIN_ZOOM) toast(`Zoom in to level ${WINTER_MIN_ZOOM}+ to see the winter colours`);
@@ -833,8 +803,91 @@ function renderLayersPanel() {
       setTrail('labelsUp', v);
       if (v && map.getZoom() < 14.5) toast('Zoom in to level 15 to see the numbers');
     }), '↑S0–↑S5 on climbs of 6 %+ (zoom 15+)'),
+    mapKey(...(state.trailColors === 'winter' ? KEYS.winter() : KEYS.trails())),
   ];
-  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailKids, mapKey(...(state.trailColors === 'winter' ? KEYS.winter() : KEYS.trails()))));
+}
+// one overlay's switch, with its opacity under it while it's on
+const overlayToggle = (id) => {
+  const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
+  return withOpacity(id, toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+    setOverlay(id, v);
+    if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
+    if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
+  }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || ''));
+};
+// weather on the map: the same switches as on the Weather button's timeline
+const timelineToggle = () => toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)');
+const wxToggle = (k) => ({
+  wind: () => toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
+  temp: () => withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
+  rain: () => withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
+  snow: () => withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
+})[k]();
+const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
+// What the On now chips list and More counts: the layers drawn over the base map
+const onNowIds = () => [
+  ...(state.trailColors !== 'off' ? ['trailColors'] : []),
+  ...(state.trailDetails ? ['trailDetails'] : []),
+  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]),
+  ...['wind', 'temp', 'rain', 'snow'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
+];
+
+function renderLayersPanel() {
+  syncLayersButton();
+  renderQuickLayers();
+  const p = $('#layers-body');
+  const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
+  requestAnimationFrame(() => { p.scrollTop = keepScroll; });
+  p.innerHTML = '';
+  const act = ACTIVITIES[state.activity];
+
+  // whose map this is: the sport sets the starting layers
+  p.append(h('div', { class: 'lp-sport' },
+    h('span', { html: icon(ACT_ICONS[state.activity], 18) }),
+    h('span', {}, h('span', {}, 'Map for ', h('b', {}, act.label)), h('small', {}, 'Your sport sets the trail colours and which layers start on.')),
+    h('button', { type: 'button', class: 'link', onclick: () => { openPanel(null); openActs(); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
+
+  // what is on right now, at a glance
+  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
+  const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['snow', 'Snow depth']].filter(([k]) => state.weather[k]);
+  const trailOn = state.trailColors !== 'off';
+  const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
+  // On now and Base map fold away like the other groups (open unless you close them)
+  const onCount = onNowIds().length;
+  p.append(layerGroup('onnow', 'On now', onCount, true,
+    on.length || wx.length || trailOn || state.trailDetails ? h('div', { class: 'on-chips' },
+      trailOn ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail colours', onclick: () => { setTrail('trailColors', 'off'); renderLayersPanel(); }, html: `<span>${{ down: 'Difficulty colours', up: 'Uphill colours', both: 'Difficulty & uphill', winter: 'Winter colours' }[state.trailColors]}</span>${icon('close', 12)}` }) : null,
+      state.trailDetails ? h('button', { type: 'button', class: 'on-chip', title: 'Turn off the trail details', onclick: () => { setTrail('trailDetails', false); renderLayersPanel(); }, html: `<span>Trail details</span>${icon('close', 12)}` }) : null,
+      ...on.map((id) => h('button', { type: 'button', class: 'on-chip', title: `Turn off ${overlayLabel(id)}`, onclick: () => { setOverlay(id, false); renderLayersPanel(); }, html: `<span>${overlayLabel(id)}</span>${icon('close', 12)}` })),
+      ...wx.map(([k, l]) => h('button', { type: 'button', class: 'on-chip wx', title: `Turn off ${l.toLowerCase()} on the map`, onclick: () => setWeather({ [k]: false }), html: `<span>${l}</span>${icon('close', 12)}` })))
+      : h('p', { class: 'note' }, 'No extra layers — just the base map and trails.'),
+    custom ? h('button', { type: 'button', class: 'link', onclick: () => {
+      state.overlaysByActivity[state.activity] = {};
+      state.trailsByActivity[state.activity] = {};
+      state.overlays = overlaysFor(state.activity);
+      Object.assign(state, trailsFor(state.activity));
+      applyStyle(); configureLayers(); renderLayersPanel(); saveSettings();
+      toast(`Layers back to the ${act.label} defaults`);
+    } }, `Reset to ${act.label} defaults`) : null));
+
+  // base maps as thumbnails
+  p.append(layerGroup('base', 'Base map', 0, true,
+    h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
+      type: 'button', class: 'base-opt', 'aria-pressed': String(state.base === k), title: BASE_NOTE[k],
+      onclick: () => { state.base = k; applyStyle(); renderLayersPanel(); },
+    }, h('img', { src: thumb(k), alt: '', width: '64', height: '64', loading: 'lazy' }), h('span', {}, label)))),
+    h('p', { class: 'note' }, BASE_NOTE[state.base] || ''),
+    ...terrain3dControls()));
+
+  // terrain shading right after the base maps and 3D, open unless you close it
+  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
+    toggle('Hillshade', state.hillshade, (v) => { state.hillshade = v; applyStyle(); }, 'Lidar-based, multidirectional'),
+    toggle('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
+    withOpacity('maastoOverlay', toggle(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
+    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null));
+
+  // trails & difficulty (and the map key for the base map's lines): in every sport
+  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailControls()));
 
   // winter: on by itself where there's snow (or yours to set), and what it shows
   const wset = winterSetting(), wOn = state.winterOn;
@@ -858,14 +911,7 @@ function renderLayersPanel() {
     mapKey(...KEYS.winter())));
 
   for (const g of LAYER_GROUPS) {
-    const kids = g.ids.map((id) => {
-      const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
-      return withOpacity(id, toggle(overlayLabel(id), !!state.overlays[id], rerender((v) => {
-        setOverlay(id, v);
-        if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
-        if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
-      }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || ''));
-    });
+    const kids = g.ids.map(overlayToggle);
     if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up under Heads-up, each with an Avoid button.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
     p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));
@@ -873,15 +919,319 @@ function renderLayersPanel() {
 
   // weather on the map — the same switches as on the Weather button's timeline
   p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
-    toggle('Timeline', state.timeline, rerender((v) => setTimeline(v)), '48 h clock for weather, road conditions and your route · also the Weather button (T)'),
-    toggle('Wind', state.weather.wind, (v) => setWeather({ wind: v }), 'Animated wind and speed'),
-    withOpacity('wx:temp', toggle('Temperature', state.weather.temp, (v) => setWeather({ temp: v }), 'Colour field with °C labels')),
-    withOpacity('wx:rain', toggle('Rain', state.weather.rain, (v) => setWeather({ rain: v }), 'Radar now (FMI / RainViewer), forecast later')),
-    withOpacity('wx:snow', toggle('Snow depth', state.weather.snow, (v) => setWeather({ snow: v }), 'Snow on the ground: the forecast as a wash, FMI’s measured depths on top')),
+    timelineToggle(), wxToggle('wind'), wxToggle('temp'), wxToggle('rain'), wxToggle('snow'),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
 
 
 }
+
+// ------------------------------------------------------------------ quick layer drawer (#123)
+// Layers (and L) open it: the base maps, five tiles for your sport, and More, the full panel above.
+// On a phone it's a sheet from the bottom with the one swipe (js/sheet.js), modal, and a tap on the
+// map closes it; on a desktop a card beside the Layers button that stays while you use the map.
+// Its steps: a tile's settings (its ›) and Edit (your own tiles); More opens the full panel.
+const phoneMQ = matchMedia('(max-width: 720px)');
+let quickView = 'quick'; // while it's open: 'quick', 'opts:<tile>' or 'edit'
+const quickOpen = () => $('#quick-layers').classList.contains('open');
+const layersOpen = () => quickOpen() || !$('#layers-panel').hidden;
+const plain = (t) => t.replace(/­/g, ''); // a label without its soft hyphens, for screen readers
+const COLOR_KIND = { down: 'Difficulty', up: 'Uphill', both: 'Difficulty & uphill', winter: 'Winter' };
+const TRAIL_KEYS = ['trailDetails', 'labelsDown', 'labelsUp'];
+
+// The tiles for a sport: yours once you've edited them, else the sport's, whose weather tile is
+// winter's while it's winter (Winter ways on land, Sea ice on water). Ids this version doesn't know are skipped.
+function quickTiles(act = state.activity) {
+  const mine = Array.isArray(state.quickTiles[act]) ? state.quickTiles[act] : null;
+  if (mine) return mine.filter((id, i) => QUICK_TILE[id] && mine.indexOf(id) === i && (id !== 'mmlMaastoOverlay' || state.mmlKey)).slice(0, QUICK_MAX);
+  const t = [...QUICK_TILES[act]];
+  const cold = isWater(act) ? 'seaIce' : 'winterWays', i = t.findLastIndex((id) => id.startsWith('wx:'));
+  if (state.winterOn && i >= 0 && !t.includes(cold)) t[i] = cold;
+  return t;
+}
+const tileLabel = (id) => (id === 'lipasPoints' && QUICK_PLACES[state.activity]) || QUICK_TILE[id].label;
+// a tile is on while its switch in the full panel is (Depths: while any of its three is)
+function tileOn(id) {
+  if (id === 'trailColors') return state.trailColors !== 'off';
+  if (id === 'depths') return DEPTHS.some((d) => state.overlays[d]);
+  if (id.startsWith('wx:')) return !!state.weather[id.slice(3)];
+  if (TRAIL_KEYS.includes(id) || ['terrain3d', 'hillshade', 'contours'].includes(id)) return !!state[id];
+  return !!state.overlays[id];
+}
+// turns the same switch as the full panel; Trail colours comes back as you had it, Depths with the ones you had
+function setTile(id, on) {
+  const act = state.activity;
+  if (id === 'trailColors') setTrail('trailColors', on ? (state.trailsByActivity[act]?.colorsBack || (act === 'trailrun' ? 'up' : 'down')) : 'off');
+  else if (id === 'depths') {
+    const had = DEPTHS.filter((d) => state.overlays[d]), mine = DEPTHS.filter((d) => ACTIVITY_OVERLAYS[act][d]);
+    if (!on && had.length) state.depthsBack = { ...state.depthsBack, [act]: had };
+    const back = on ? (state.depthsBack[act] || (mine.length ? mine : DEPTHS)) : [];
+    setOverlays(Object.fromEntries(DEPTHS.map((d) => [d, back.includes(d)])));
+  } else if (id === 'terrain3d') set3d(on);
+  else if (id === 'hillshade' || id === 'contours') { state[id] = on; applyStyle(); }
+  else if (TRAIL_KEYS.includes(id)) setTrail(id, on);
+  else if (id.startsWith('wx:')) setWeather({ [id.slice(3)]: on });
+  else setOverlay(id, on);
+  renderLayersPanel();
+}
+
+// What a tile says under its name: its status first (missing data never looks complete), then its note
+const TILE_SOURCES = {
+  lipasRoutes: ['lipas'], lipasPoints: ['lipas'], lipasWinter: ['lipas'], nautical: ['vayla'], sfTraffic: ['digiroad'],
+  sfIncidents: ['digitraffic'], sfRoadworks: ['digitraffic'], sfRoadcond: ['digitraffic'], sfShips: ['digitraffic'], sfCameras: ['digitraffic'],
+  'wx:wind': ['openmeteo'], 'wx:temp': ['openmeteo'], 'wx:snow': ['openmeteo'], 'wx:rain': ['fmi', 'rainviewer'], seaIce: ['copernicus'],
+};
+const tileTrouble = {}; // a map source → { bad, ok }: when its tiles last failed, and last came in
+let detailsBusyAt = 0; // Overpass, which takes turns between mirrors, says so to the trail details
+const rasterDown = (src) => { const t = tileTrouble[src]; return !!t && t.bad > (t.ok || 0) && Date.now() - t.bad < 120e3; };
+function tileZoom(id) {
+  if (id === 'trailDetails') return DETAILS_ZOOM;
+  if (id === 'winterWays') return WINTER_MIN_ZOOM;
+  if (id === 'trailColors') return state.trailColors === 'winter' ? WINTER_MIN_ZOOM : state.trailColors === 'up' || state.trailColors === 'both' ? 13 : 0;
+  if (id === 'depths') return Math.min(...DEPTHS.filter((d) => state.overlays[d]).map((d) => RASTER_OVERLAYS[d].minzoom || 0));
+  return (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].minzoom) || QUICK_TILE[id].zoom || 0;
+}
+function tileFailing(id) {
+  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d]) : RASTER_OVERLAYS[id] ? [id] : [];
+  if (raster.length && raster.every((d) => rasterDown(`ov-${d}`))) return true;
+  if (id === 'trailDetails') return Date.now() - detailsBusyAt < 120e3;
+  const src = TILE_SOURCES[id];
+  return !!src && src.every((s) => sourceStatus(s));
+}
+function tileStatus(id) {
+  if (!tileOn(id)) return '';
+  if (QUICK_TILE[id].winter && !state.winterOn) return 'Shows in winter';
+  if (map.getZoom() < tileZoom(id)) return 'Zoom in to see';
+  return tileFailing(id) ? 'No data now' : '';
+}
+function tileSmall(id) {
+  const status = tileStatus(id), note = id === 'trailColors' ? COLOR_KIND[state.trailColors] : QUICK_TILE[id].note;
+  if (id === 'depths') return { text: status ? `${status} · not for navigation` : note, warn: status === 'No data now' };
+  return { text: status || note || '', warn: status === 'No data now' };
+}
+// in place, on the tiles that show: a zoom, a source failing or coming back
+function refreshQuickStatus() {
+  if (!quickOpen() || quickView !== 'quick') return;
+  for (const t of $$('#quick-layers .qt[data-id]')) {
+    const id = t.dataset.id, s = tileSmall(id), small = t.querySelector('.qt-l small'), tog = t.querySelector('.qt-tog');
+    small.textContent = s.text;
+    small.hidden = !s.text;
+    small.classList.toggle('warn', s.warn);
+    tog.setAttribute('aria-label', `${plain(tileLabel(id))}${s.text ? `, ${s.text}` : ''}`);
+  }
+}
+let quickStatusTimer = 0;
+const refreshQuickSoon = () => { clearTimeout(quickStatusTimer); quickStatusTimer = setTimeout(refreshQuickStatus, 250); };
+map.on('zoomend', refreshQuickStatus);
+map.on('error', (e) => {
+  if (!e.sourceId || !/^ov-/.test(e.sourceId) || (e.error && e.error.name === 'AbortError')) return;
+  (tileTrouble[e.sourceId] ||= {}).bad = Date.now();
+  refreshQuickSoon();
+});
+map.on('data', (e) => {
+  if (e.dataType !== 'source' || !e.tile || !tileTrouble[e.sourceId]) return;
+  tileTrouble[e.sourceId].ok = Date.now();
+  refreshQuickSoon();
+});
+onStatus(() => refreshQuickSoon());
+
+// The six maps: with an MML key, MML WMTS takes Maastokartta's place while it's the map you have on
+const QUICK_BASE_LABEL = { maasto: 'Maasto­kartta' };
+const quickBases = () => BASES.filter(([k]) => (state.base === 'mml' ? k !== 'maasto' : k !== 'mml'));
+function setBase(k) {
+  state.base = k;
+  applyStyle();
+  renderLayersPanel();
+}
+
+// A tile's settings, one step in: the same switches as its group in the full panel
+const QUICK_OPTS = {
+  terrain3d: terrain3dControls,
+  trailColors: trailControls,
+  depths: () => [...DEPTHS.map(overlayToggle), h('p', { class: 'note' }, 'Traficom’s nautical chart data: shown, never used for routing. Not for navigation.')],
+  'wx:rain': () => [wxToggle('rain'), timelineToggle()],
+  'wx:temp': () => [wxToggle('temp'), timelineToggle()],
+};
+
+function renderQuickLayers(dir = null) {
+  const qd = $('#quick-layers');
+  if (!quickOpen()) return;
+  // a change renders it again: focus and the body's scroll stay where they were
+  const focusables = () => [...qd.querySelectorAll('button:not(:disabled), input, select, summary')];
+  const had = !dir && qd.contains(document.activeElement) ? focusables().indexOf(document.activeElement) : -1;
+  const old = qd.querySelector('.qd-body'), keep = !dir && old ? old.scrollTop : 0;
+  const act = ACTIVITIES[state.activity], v = quickView;
+  const head = (title, { back = false, close = true } = {}) => [
+    h('div', { class: 'qd-grab', 'aria-hidden': 'true' }),
+    h('div', { class: 'qd-head' },
+      back ? h('button', { type: 'button', class: 'qd-back', 'aria-label': 'Back to quick layers', onclick: () => quickStep('quick'), html: icon('chevronLeft', 22) }) : null,
+      h('h2', {}, title),
+      close ? h('button', { type: 'button', class: 'qd-x', 'aria-label': 'Close', onclick: () => openPanel(null), html: icon('close', 18) }) : null),
+  ];
+  let parts;
+  if (v === 'edit') {
+    // your own tiles: a tap on one takes it off, a chip adds one, five at most
+    const tiles = quickTiles(), full = tiles.length >= QUICK_MAX;
+    const set = (list) => { state.quickTiles = { ...state.quickTiles, [state.activity]: list }; saveSettings(); renderQuickLayers(); };
+    const groups = [];
+    for (const [id, t] of Object.entries(QUICK_TILE)) {
+      if (tiles.includes(id) || (id === 'mmlMaastoOverlay' && !state.mmlKey)) continue;
+      if (!groups.length || groups[groups.length - 1][0] !== t.group) groups.push([t.group, []]);
+      groups[groups.length - 1][1].push(id);
+    }
+    parts = [...head(`Your tiles for ${act.label}`, { close: false }),
+      h('div', { class: 'qd-body qd-edit' },
+        h('h3', { class: 'qd-lab' }, `On the drawer · ${tiles.length} of ${QUICK_MAX}`),
+        h('div', { class: 'qd-tiles' },
+          ...tiles.map((id) => h('div', { class: 'qt' }, h('button', {
+            type: 'button', class: 'qt-rm', 'data-rm': id, 'aria-label': `Take off ${plain(tileLabel(id))}`, onclick: () => set(tiles.filter((x) => x !== id)),
+          }, h('span', { class: 'qt-ic', html: icon(QUICK_TILE[id].icon, 20) }), h('span', { class: 'qt-l' }, tileLabel(id)), h('span', { class: 'rm', html: icon('minus', 16) })))),
+          ...Array.from({ length: QUICK_MAX - tiles.length }, () => h('div', { class: 'qd-slot' }, 'Room for one more: add it below'))),
+        h('h3', { class: 'qd-lab' }, full ? 'Add a tile · take one off first' : 'Add a tile'),
+        ...groups.flatMap(([g, ids]) => [h('h4', { class: 'qd-grp' }, g), h('div', { class: 'qd-add' },
+          ...ids.map((id) => h('button', { type: 'button', class: 'qd-chip', 'data-add': id, disabled: full, onclick: () => set([...tiles, id]), html: `${icon('plus', 16)}<span>${tileLabel(id)}</span>` })))])),
+      h('div', { class: 'qd-foot' },
+        h('button', { type: 'button', class: 'qd-link', onclick: () => {
+          const { [state.activity]: _, ...rest } = state.quickTiles;
+          state.quickTiles = rest;
+          saveSettings();
+          renderQuickLayers();
+        } }, `Reset to ${act.label}’s tiles`),
+        h('button', { type: 'button', class: 'qd-done', onclick: () => quickStep('quick') }, 'Done'))];
+  } else if (v.startsWith('opts:')) {
+    const id = v.slice(5);
+    parts = [...head(tileLabel(id), { back: true }), h('div', { class: 'qd-body qd-opts' }, ...QUICK_OPTS[id]())];
+  } else {
+    const tiles = quickTiles();
+    const covered = new Set(tiles.flatMap((id) => (id === 'depths' ? DEPTHS : [id])));
+    const more = onNowIds().filter((id) => !covered.has(id)).length;
+    const bases = quickBases(), chosen = bases.some(([k]) => k === state.base) ? state.base : bases[0][0];
+    parts = [...head('Map layers'),
+      h('div', { class: 'qd-body' },
+        h('h3', { class: 'qd-lab', id: 'qd-maps' }, 'Map'),
+        h('div', { class: 'qd-bases', role: 'radiogroup', 'aria-labelledby': 'qd-maps', onkeydown: (e) => {
+          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+          if (!step) return;
+          e.preventDefault();
+          const k = bases[(bases.findIndex(([b]) => b === e.target.dataset.base) + step + bases.length) % bases.length][0];
+          setBase(k);
+          $(`#quick-layers [data-base="${k}"]`)?.focus();
+        } }, ...bases.map(([k, label]) => h('button', {
+          type: 'button', class: 'qd-base', role: 'radio', 'aria-checked': String(state.base === k), tabindex: k === chosen ? '0' : '-1', 'data-base': k, title: plain(BASE_NOTE[k] || ''),
+          onclick: () => setBase(k),
+        }, h('img', { src: thumb(k), alt: '', width: '120', height: '80' }), h('span', {}, QUICK_BASE_LABEL[k] || label)))),
+        h('div', { class: 'qd-lab' }, h('h3', {}, 'On the map · ', h('b', {}, act.label)),
+          h('button', { type: 'button', class: 'qd-edit-btn', 'aria-label': `Edit the tiles for ${act.label}`, onclick: () => quickStep('edit') }, 'Edit')),
+        h('div', { class: 'qd-tiles' },
+          ...tiles.map((id) => {
+            const on = tileOn(id), s = tileSmall(id), label = tileLabel(id);
+            return h('div', { class: `qt${on ? ' on' : ''}`, 'data-id': id },
+              h('button', { type: 'button', class: 'qt-tog', 'aria-pressed': String(on), 'data-tile': id, 'aria-label': `${plain(label)}${s.text ? `, ${s.text}` : ''}`, onclick: () => setTile(id, !tileOn(id)) },
+                h('span', { class: 'qt-ic', html: icon(QUICK_TILE[id].icon, 20) }),
+                h('span', { class: 'qt-l' }, label, h('small', { class: s.warn ? 'warn' : null, hidden: !s.text }, s.text))),
+              QUICK_TILE[id].opts ? h('button', { type: 'button', class: 'qt-opt', 'data-opts': id, 'aria-label': `${plain(label)}: settings`, onclick: () => quickStep(`opts:${id}`), html: icon('chevronRight', 18) }) : null);
+          }),
+          h('button', { type: 'button', class: 'qt qt-more', 'aria-label': `More: all layers${more ? `, ${more} more on` : ''}`, onclick: () => openPanel('layers-panel', { step: true }) },
+            h('span', { class: 'qt-ic', html: icon('layers', 20) }), h('span', { class: 'qt-l' }, 'More', h('small', {}, more ? `${more} more on` : 'All layers')),
+            h('span', { class: 'chev', html: icon('chevronRight', 18) }))))];
+  }
+  qd.replaceChildren(...parts);
+  const body = qd.querySelector('.qd-body');
+  if (dir) body.classList.add(dir === 'in' ? 'from-right' : 'from-left');
+  else body.scrollTop = keep;
+  if (had >= 0) (focusables()[had] || focusables()[0])?.focus({ preventScroll: true });
+}
+
+// One step in (a tile's settings, Edit) or back to the tiles. A tile's settings keep the drawer's
+// height, so nothing jumps (their body scrolls); Edit grows past it, up to the room there is.
+// Focus goes in, and back to what opened it.
+function quickStep(view) {
+  const qd = $('#quick-layers'), from = quickView, h0 = `${Math.round(qd.offsetHeight)}px`;
+  if (view === from) return;
+  quickView = view;
+  qd.style.height = view.startsWith('opts:') ? h0 : '';
+  qd.style.minHeight = view === 'edit' ? h0 : '';
+  renderQuickLayers(view === 'quick' ? 'out' : 'in');
+  const opener = from.startsWith('opts:') ? qd.querySelector(`[data-opts="${from.slice(5)}"]`) : qd.querySelector('.qd-edit-btn');
+  (view === 'quick' ? opener : qd.querySelector('.qd-back, .qd-body button, .qd-body input'))?.focus({ preventScroll: true });
+}
+
+// On a desktop the card sits beside the Layers button, its bottom level with the button's; in a window
+// under 560 px high it reaches down to the bottom, like the full panel. Above a bottom planner while
+// that leaves it 320 px, else over it.
+function placeQuick() {
+  const qd = $('#quick-layers');
+  if (phoneMQ.matches) { qd.style.removeProperty('--qd-bottom'); qd.classList.remove('tail'); return; }
+  const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
+  const level = Math.round(innerHeight - $('#btn-layers').getBoundingClientRect().bottom);
+  let bottom = innerHeight < 560 ? 12 : level;
+  if (sheet && innerHeight - sheet - 12 - 64 >= 320) bottom = Math.max(bottom, sheet + 12);
+  qd.style.setProperty('--qd-bottom', `${bottom}px`);
+  qd.classList.toggle('tail', bottom === level && innerHeight >= 560);
+}
+addEventListener('resize', () => { if (quickOpen()) placeQuick(); });
+
+function showQuick(open, { instant = false, back = false } = {}) {
+  const qd = $('#quick-layers');
+  if (open === quickOpen() && !back) return;
+  qdSwipe.stop();
+  if (instant) qd.classList.add('instant'); // L, Enter or a step: at once, nothing animates for the keyboard
+  if (open) { quickView = 'quick'; qd.style.height = ''; qd.style.minHeight = ''; placeQuick(); }
+  qd.classList.toggle('open', open);
+  qd.setAttribute('aria-modal', String(phoneMQ.matches));
+  if (open) renderQuickLayers(back ? 'out' : null);
+  if (instant) { void qd.offsetWidth; qd.classList.remove('instant'); }
+}
+
+// The swipe on a phone: down past 40 % (or a flick) closes the drawer, or steps back from a tile's
+// settings and Edit (it's Done there); up (or a flick) is More. The full panel's swipe down is ‹.
+const qdSwipe = swipeSheet($('#quick-layers'), {
+  enabled: () => phoneMQ.matches && quickOpen(),
+  start: () => {
+    const qd = $('#quick-layers'), H = qd.offsetHeight, step = quickView !== 'quick';
+    qd.classList.add('dragging');
+    return {
+      H, now: H, min: 0, max: H, from: step ? 'here' : 'quick',
+      sizes: step ? [{ name: 'back', at: 0, rest: H }, { name: 'here', at: H }] : [{ name: 'closed', at: 0 }, { name: 'quick', at: H }, { name: 'all', at: H + 140, rest: H }],
+    };
+  },
+  pick: (aim, r) => (aim < r.H * (1 - SWIPE.closeAt) ? (r.from === 'quick' ? 'closed' : 'back') : aim > r.H + 70 && r.from === 'quick' ? 'all' : r.from),
+  aim: (name) => {
+    if (name === 'back') quickStep('quick');
+    if (name === 'all') openPanel('layers-panel', { step: true });
+  },
+  end: (name) => { $('#quick-layers').classList.remove('dragging'); if (name === 'closed') openPanel(null, { instant: true }); },
+  cancel: () => $('#quick-layers').classList.remove('dragging'),
+});
+const lpSwipe = swipeSheet($('#layers-panel'), {
+  enabled: () => phoneMQ.matches && !$('#layers-panel').hidden,
+  start: () => {
+    const lp = $('#layers-panel'), H = lp.offsetHeight;
+    lp.classList.add('dragging');
+    return { H, now: H, min: 0, max: H, from: 'all', sizes: [{ name: 'back', at: 0, rest: H }, { name: 'all', at: H }] };
+  },
+  pick: (aim, r) => (aim < r.H * (1 - SWIPE.closeAt) ? 'back' : 'all'),
+  aim: (name) => { if (name === 'back') openPanel('quick-layers', { back: true }); },
+  end: () => $('#layers-panel').classList.remove('dragging'),
+  cancel: () => $('#layers-panel').classList.remove('dragging'),
+});
+
+// Esc steps back (a tile's settings, Edit, the full panel), then closes, with focus back on Layers
+function layersEscape() {
+  if (quickOpen() && quickView !== 'quick') { quickStep('quick'); return true; }
+  if (!$('#layers-panel').hidden) { openPanel('quick-layers', { back: true }); return true; }
+  if (quickOpen()) { openPanel(null); return true; }
+  return false;
+}
+for (const el of $$('#quick-layers, #layers-panel')) el.addEventListener('keydown', (e) => { if (e.key === 'Escape' && layersEscape()) { e.preventDefault(); e.stopPropagation(); } });
+// a tap on the map closes the phone sheet, and does nothing else (no waypoint while planning)
+$('#quick-scrim').addEventListener('click', () => openPanel(null));
+phoneMQ.addEventListener('change', () => {
+  $('#quick-scrim').hidden = !(layersOpen() && phoneMQ.matches);
+  $('#quick-layers').setAttribute('aria-modal', String(phoneMQ.matches));
+  if (quickOpen()) placeQuick();
+});
+// the pictures for the maps, while the app is idle: the service worker keeps them for offline use
+map.once('idle', () => (window.requestIdleCallback || setTimeout)(() => { for (const [k] of BASES) new Image().src = thumb(k); }));
 
 // ------------------------------------------------------------------ settings panel
 // How Polku behaves (not what the map shows): sport, planner, display, offline, data.
@@ -970,17 +1320,35 @@ function renderSettingsPanel() {
 }
 
 // ------------------------------------------------------------------ panels & buttons
-function openPanel(id) {
+// id: 'quick-layers' (Layers and L: the drawer, or closing whatever of it is open), 'layers-panel'
+// (the full panel: More, a step from the drawer), 'settings-panel', or null to close them all.
+// instant: no animation (the keyboard); step: More's step in; back: from the full panel to the drawer.
+function openPanel(id, { instant = false, step = false, back = false } = {}) {
   if (id === 'settings-panel') { speedSport = state.activity; renderSettingsPanel(); } // fresh: speeds may have changed in the planner
+  const wasLayers = layersOpen(), focusIn = $$('#quick-layers, #layers-panel').some((el) => el.contains(document.activeElement));
+  if (id === 'quick-layers' && wasLayers && !back) id = null;
+  lpSwipe.stop();
   for (const el of $$('.panel')) {
-    const on = el.id === id && el.hidden;
+    const on = el.id === id && (el.hidden || step);
     el.hidden = !on;
+    if (on && step) { el.classList.add('step-in'); el.addEventListener('animationend', () => el.classList.remove('step-in'), { once: true }); }
     const btn = $(`[data-panel="${el.id}"]`);
     if (btn) btn.setAttribute('aria-pressed', String(on));
   }
+  // a step to and from the full panel changes the drawer at once: the step's own slide is the motion
+  showQuick(id === 'quick-layers', { instant: instant || step || back, back });
+  const lay = layersOpen();
+  $('#btn-layers').setAttribute('aria-expanded', String(lay));
+  $('#quick-scrim').hidden = !(lay && phoneMQ.matches);
+  if (id === 'quick-layers' && !back) $('#quick-layers .qd-base[tabindex="0"]')?.focus({ preventScroll: true });
+  else if (back) $('#quick-layers .qt-more')?.focus({ preventScroll: true });
+  else if (step && id === 'layers-panel') $('#layers-panel .panel-back')?.focus({ preventScroll: true });
+  else if (!lay && focusIn) $('#btn-layers').focus({ preventScroll: true });
 }
-for (const btn of $$('[data-panel]')) btn.addEventListener('click', () => openPanel(btn.dataset.panel));
+// a button pressed from the keyboard (detail 0) opens its panel at once
+for (const btn of $$('[data-panel]')) btn.addEventListener('click', (e) => openPanel(btn.dataset.panel, { instant: e.detail === 0 }));
 for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () => openPanel(null));
+$('#layers-panel .panel-back').addEventListener('click', () => openPanel('quick-layers', { back: true }));
 
 for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
 // While planning, the timeline is docked in the planner: the button and T open it there.
@@ -1045,9 +1413,12 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '/') { e.preventDefault(); $('#search-input').focus(); }
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'f' && !mod && planner.points.length) { if (!planner.active) planner.setActive(true); planner.fitRoute(); }
-  else if (e.key === 'l' && !mod) openPanel('layers-panel');
+  else if (e.key === 'l' && !mod) openPanel('quick-layers', { instant: true });
   else if (e.key === 't' && !mod) toggleTimeline();
-  else if (e.key === 'Escape') { openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs(); }
+  else if (e.key === 'Escape') {
+    if (layersEscape()) return;
+    openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
+  }
 });
 
 // The free vector tiles only carry the full trail network from zoom 14.

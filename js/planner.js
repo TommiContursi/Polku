@@ -23,6 +23,7 @@ import { keepInView } from './inspect.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
+import { swipeSheet, SWIPE, dvh } from './sheet.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
@@ -3552,6 +3553,7 @@ export class Planner {
   }
 
   setSheetState(st, { remember = true } = {}) {
+    if (!this.restingSheet) this.sheetSwipe?.stop(); // changed some other way while a swipe moved it
     if (['peek', 'profile', 'min'].includes(st)) this.clearCategoryPreview();
     const lay = this.layout();
     this.renderDockBtn();
@@ -3579,6 +3581,20 @@ export class Planner {
     if (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
   }
 
+  // A swipe has come to rest at a size (or was stopped, name null): the size changes while transitions
+  // are still off, so nothing moves twice; then main.js moves the map's buttons (sheetrest).
+  restSheet(name) {
+    const p = this.panel;
+    this.restingSheet = true;
+    if (name === 'closed') this.setActive(false);
+    else if (name) this.setSheetState(name);
+    p.style.height = '';
+    void p.offsetHeight;
+    p.classList.remove('dragging');
+    this.restingSheet = false;
+    p.dispatchEvent(new Event('sheetrest'));
+  }
+
   bindSheet() {
     this.sideMQ = matchMedia('(min-width: 900px)');
     this.sideMQ.addEventListener('change', () => this.setSheetState(store.get('sheetState', {})[this.layout()]));
@@ -3602,48 +3618,35 @@ export class Planner {
     new ResizeObserver(() => { if (this.els.head.clientWidth !== this.fitW) this.fitHeaderSoon(); }).observe(this.els.head);
     new ResizeObserver(sizes).observe(this.els.profZone);
     addEventListener('resize', sizes);
-    const heights = () => {
-      const r = this.panel.getBoundingClientRect();
-      const peek = this.els.head.offsetTop + this.els.head.offsetHeight + 6;
-      return { peek, profile: profileH(), half: innerHeight * 0.5, full: r.bottom - 72, now: r.height };
+    // One swipe for every sheet (js/sheet.js, #96): from the handle, the header (its buttons too), the
+    // profile's top row and the tabs, and from the body where it can't scroll that way itself. While it
+    // moves, the sheet is as tall as its full size and follows the finger with transform; its size, and
+    // --sheet-h that the map's buttons follow, change once, when it comes to rest (restSheet()).
+    const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0;
+    this.sheetSwipe = swipeSheet(this.panel, {
+      enabled: () => this.active && this.layout() === 'sheet',
+      // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows
+      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
+        && (type !== 'mouse' || !!t.closest('.sheet-handle, .sheet-head, .pl-tabs')),
+      start: () => {
+        sizes();
+        const D = dvh(), full = D - 76, peek = px('--peek-h'), now = this.panel.getBoundingClientRect().height;
+        this.panel.classList.add('dragging');
+        this.panel.style.height = `${full}px`;
+        const S = [{ name: 'peek', at: peek }, { name: 'profile', at: px('--profile-h') }, { name: 'half', at: D * 0.5 }, { name: 'full', at: full }];
+        if (SWIPE.peekCloses) S.unshift({ name: 'closed', at: 0 });
+        return { H: full, now, from: this.panel.dataset.state, sizes: S, min: SWIPE.peekCloses ? 0 : peek, max: full };
+      },
+      end: (name) => this.restSheet(name),
+      cancel: () => this.restSheet(null),
+    });
+    // a tap on the handle, or on the header outside its buttons, folds the sheet or opens it again
+    const tap = (e) => {
+      if (this.layout() !== 'sheet' || (e.currentTarget === this.els.head && e.target.closest('button, input, select, a, label'))) return;
+      this.setSheetState(this.panel.dataset.state === 'peek' ? (this.lastOpen || 'profile') : 'peek');
     };
-    let drag = null;
-    const down = (e) => {
-      if (this.layout() !== 'sheet' || e.button > 0) return;
-      // drag by the handle, or by the summary rows outside their buttons
-      if (!e.target.closest('.sheet-handle') && e.target.closest('button, input, select, a, label')) return;
-      drag = { y: e.clientY, h: heights(), moved: false, el: e.currentTarget };
-      try { drag.el.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
-    };
-    const move = (e) => {
-      if (!drag) return;
-      const dy = e.clientY - drag.y;
-      if (!drag.moved && Math.abs(dy) < 6) return;
-      if (!drag.moved) { drag.moved = true; this.panel.classList.add('dragging'); }
-      const H = drag.h;
-      this.panel.style.height = `${Math.max(H.peek, Math.min(H.full, H.now - dy))}px`;
-    };
-    const up = () => {
-      if (!drag) return;
-      const { moved, h: H } = drag;
-      drag = null;
-      const st = this.panel.dataset.state;
-      let next = st;
-      if (!moved) next = st === 'peek' ? (this.lastOpen || 'profile') : 'peek'; // a tap toggles
-      else {
-        const now = this.panel.getBoundingClientRect().height;
-        next = Object.entries({ peek: H.peek, profile: H.profile, half: H.half, full: H.full }).sort((a, b) => Math.abs(a[1] - now) - Math.abs(b[1] - now))[0][0];
-      }
-      this.panel.classList.remove('dragging');
-      this.panel.style.height = '';
-      this.setSheetState(next);
-    };
-    for (const el of [this.els.handle, this.els.head]) {
-      el.addEventListener('pointerdown', down);
-      el.addEventListener('pointermove', move);
-      el.addEventListener('pointerup', up);
-      el.addEventListener('pointercancel', up);
-    }
+    this.els.handle.addEventListener('click', tap);
+    this.els.head.addEventListener('click', tap);
     this.els.handle.addEventListener('keydown', (e) => {
       const order = SHEET_STATES;
       const i = order.indexOf(this.panel.dataset.state);

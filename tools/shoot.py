@@ -47,7 +47,7 @@ WINTER_ON = {'polku:winter': '"on"'}
 SEED_WINTER = ("try { const W = await import(location.origin + '/js/winter.js'); const fx = await (await fetch(location.origin + '/tools/fixtures/winter-laajavuori.json')).json();"
                " W.seedWinterTile(fx.x, fx.y, fx.data); } catch (e) { /* before phase 15a */ }")
 WAIT = "(async () => { " + SEED_WINTER + " await new Promise((r) => setTimeout(r, 4000)); return true; })()"
-WINTER_LAYERS = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); " + SEED_WINTER + " await wait(3000); document.querySelector('[data-panel=layers-panel]').click(); await wait(500);"
+WINTER_LAYERS = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); " + SEED_WINTER + " await wait(3000); document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); await wait(500);"
                  " const g = [...document.querySelectorAll('#layers-body .lg-group')].find((x) => /^Winter/.test(x.querySelector('.lg-title').textContent));"
                  " if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); } await wait(600); return true; })()")
 SNOW_ON = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const c = document.querySelector('.tl-layers [data-k=snow]'); if (c) c.click();"
@@ -80,7 +80,7 @@ LEG_STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) { p.op
 def LAYERS_AT(group, colours=None):
     press = (f"const b = [...document.querySelectorAll('#layers-body .seg button')].find((x) => x.textContent === {json.dumps(colours)}); b && b.click(); await wait(800);"
              if colours else '')
-    return ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('[data-panel=layers-panel]').click(); await wait(400); " + press +
+    return ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); await wait(400); " + press +
             f" const s = [...document.querySelectorAll('#layers-body summary')].find((x) => new RegExp({json.dumps(group)}).test(x.textContent)); s && s.scrollIntoView({{ block: 'start' }}); return true; }})()")
 
 
@@ -94,7 +94,7 @@ def TRAILS_AT(lon, lat, zoom, extra=''):
             f" polku.map.jumpTo({{ center: [{lon}, {lat}], zoom: {zoom} }}); await wait(1800); try {{ {extra} }} catch (e) {{ /* main */ }} return true; }})()")
 
 
-TRAIL_KEY = ("document.querySelector('[data-panel=layers-panel]').click(); await wait(400);"
+TRAIL_KEY = ("document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); await wait(400);"
              " const g = [...document.querySelectorAll('#layers-body summary')].find((x) => /^Trails/.test(x.textContent)); g.parentElement.open = true;"
              " const k = g.parentElement.querySelector('.lg-key'); if (k) k.open = true;"
              " const h4 = [...g.parentElement.querySelectorAll('h4')].find((x) => /Trail details/.test(x.textContent));"
@@ -202,6 +202,14 @@ SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); 
 
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
+# the quick layer drawer (#123): Layers, then a step in it (a tile's ›, Edit, More), or the worst case
+QUICK = lambda then='': ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('#btn-layers').click(); await wait(400); "
+                         + then + " await wait(400); return true; })()")
+QUICK_OPTS = lambda tile: QUICK(f"document.querySelector('#quick-layers .qt-opt[data-opts=\"{tile}\"]').click();")
+QUICK_EDIT = QUICK("document.querySelector('#quick-layers .qd-edit-btn').click(); await wait(300); document.querySelector('#quick-layers .qt-rm[data-rm=\"wx:rain\"]').click();")
+QUICK_ALL = QUICK("document.querySelector('#quick-layers .qt-more').click();")
+# Finnish-length labels on every tile, and a dozen more layers on (the strings carry soft hyphens, as phase 18's will)
+QUICK_WORST = QUICK("for (const [id, l] of [['trailColors', 'Polkujen vaikeus\\u00advärit'], ['trailDetails', 'Polkujen yksityis\\u00adkohdat'], ['lipasRoutes', 'Viralliset reitit'], ['terrain3d', 'Kolmi\\u00adulotteinen maasto'], ['wx:rain', 'Sade\\u00adtutka']]) { const t = document.querySelector(`#quick-layers .qt-tog[data-tile=\"${id}\"] .qt-l`); if (t) t.firstChild.textContent = l; }")
 # the bug sweep: Heads-up with the map's Trail details off (the log comes all the same) and a
 # row's ⋯ (hide its kind, correct OpenStreetMap), then the kind hidden; the route menu in a
 # short window; phones: the credits opened over the timeline, the summary at 360 px
@@ -395,9 +403,30 @@ SCENES = {
     'desk-run': dict(DESK, timeline=False, activity='run', hash='#15.2/61.4975/23.7605'),
     'desk-mtb-town': dict(DESK, timeline=False, activity='mtb', hash='#15.2/61.4975/23.7605'),
     'phone-acts': dict(PHONE, timeline=False, js="document.querySelector('.act-current') && document.querySelector('.act-current').click(); true"),
-    'desk-layers': dict(DESK, timeline=False, js="document.querySelector('[data-panel=layers-panel]').click(); true"),
-    'phone-layers': dict(PHONE, timeline=False, js="document.querySelector('[data-panel=layers-panel]').click(); true"),
+    'desk-layers': dict(DESK, timeline=False, js="document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); true"),
+    'phone-layers': dict(PHONE, timeline=False, js="document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); true"),
     'phone-settings': dict(PHONE, timeline=False, js="document.querySelector('#btn-settings') && document.querySelector('#btn-settings').click(); true"),
+    'desk-quick': dict(DESK, timeline=False, js=QUICK()),
+    'phone-quick': dict(PHONE, timeline=False, js=QUICK()),
+    'phone-quick-360': dict(PHONE, w=360, h=740, timeline=False, js=QUICK()),
+    'phone-quick-375': dict(PHONE, w=375, h=667, timeline=False, js=QUICK()),
+    'phone-quick-worst': dict(PHONE, w=360, h=740, timeline=False, js=QUICK_WORST),
+    'desk-quick-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=QUICK()),
+    'phone-quick-planner': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=QUICK()),
+    'desk-quick-bottom': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}, js=QUICK()),
+    'phone-quick-opts': dict(PHONE, timeline=False, js=QUICK_OPTS('trailColors')),
+    'desk-quick-opts': dict(DESK, timeline=False, js=QUICK_OPTS('trailColors')),
+    'phone-quick-depths': dict(PHONE, timeline=False, activity='paddle', hash='#13/61.53/23.73', js=QUICK_OPTS('depths')),
+    'phone-quick-edit': dict(PHONE, timeline=False, js=QUICK_EDIT),
+    'desk-quick-edit': dict(DESK, timeline=False, js=QUICK_EDIT),
+    'phone-quick-all': dict(PHONE, timeline=False, js=QUICK_ALL),
+    'phone-quick-gravel': dict(PHONE, timeline=False, activity='gravel', js=QUICK()),
+    'phone-quick-paddle': dict(PHONE, timeline=False, activity='paddle', hash='#13/61.53/23.73', js=QUICK()),
+    'phone-quick-hike-dark': dict(PHONE, timeline=False, activity='hike', dark=True, base='night', js=QUICK()),
+    'desk-quick-dark': dict(DESK, timeline=False, dark=True, base='night', js=QUICK()),
+    'desk-quick-gravel': dict(DESK, timeline=False, activity='gravel', js=QUICK()),
+    'desk-quick-hike': dict(DESK, timeline=False, activity='hike', js=QUICK()),
+    'desk-quick-paddle': dict(DESK, timeline=False, activity='paddle', hash='#13/61.53/23.73', js=QUICK()),
     'desk-min': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='min'),
     'desk-bottom': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
     'desk-bottom-peek': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"'}),
