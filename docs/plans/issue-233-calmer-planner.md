@@ -1,8 +1,8 @@
-# #233: a calmer route planner
+# Phase 25: a calmer route planner (#233)
 
-The design. What's still to do, and its status, is on GitHub: [#233](https://github.com/TommiContursi/Polku/issues/233). The order of phases is in [ROADMAP](../ROADMAP.md).
+The design. What's still to do, and its status, is on GitHub: [Phase 25: a calmer planner](https://github.com/TommiContursi/Polku/milestone/16), phase issue #233. The order of phases is in [ROADMAP](../ROADMAP.md).
 
-- **Status (2026-10-17): decided, ready to build in four parts.** From phase 24's review ([the report](../reviews/2026-10-17-design/README.md), #177): the user chose variant B, a second iteration worked out seven questions, and the user settled the last choices and asked for a few targeted changes. Nothing is built yet.
+- **Status (2026-10-18): approved; phase 25, built in four parts (25a–25d),** after the shared fixes below and before 22b. From phase 24's review ([the report](../reviews/2026-10-17-design/README.md), #177): the user chose variant B, a second iteration worked out seven questions, and the user settled the last choices on 2026-10-17 and approved the design on 2026-10-18. Nothing is built yet.
 - **The mock-up:** [mockups/phase-24-planner.html](mockups/phase-24-planner.html), clickable on phone and desktop frames, with switches for the worst case, Finnish and Swedish, and the theme. `?frame=<id>` shows one frame at full size; `&w=360&h=740`, `&z=2` (200 % zoom), `&lang=fi`, `&worst=1`. Pictures of the second iteration: `pr-screenshots`, `claude/phase-24-design/iter2/`.
 
 ## Decided
@@ -17,6 +17,9 @@ The design. What's still to do, and its status, is on GitHub: [#233](https://git
 6. **Check by how serious and how sure:** Read before you go, Worth a look, Not checked, each item with its source; nothing new is checked.
 7. **Waypoints:** only the selected one has its controls, small to look at and 44 px to touch; no Remove on the others. **Today's waypoint and leg editor is kept,** organised in the selected row.
 8. **Everything Polku does today stays** unless this plan says it changes (below).
+9. **Selection and expansion of waypoints are two states** (2026-10-18): a tap expands, a tap on the header collapses and keeps the selection, a new point is selected but collapsed, a marker's tap selects its row; dragging (mouse, long press, markers) touches neither.
+10. **The desktop panel's place and width keep working:** side or bottom, resized from its edge; the toolbar follows, and is placed so that 22b's right dock and dragging need no new design.
+11. **The 3D button (#226)** comes before the phase, as planned.
 
 ## The rule for building it: change, move, keep
 
@@ -70,6 +73,7 @@ The design. What's still to do, and its status, is on GitHub: [#233](https://git
 - **When room runs out** (a narrower window, longer words): Reverse and Back to start fold into More first (they're there anyway), then the style's caption goes. At 1440 × 900 everything shows.
 - **Clear route** stays in More, apart, with Undo.
 - **In the route's view** the toolbar keeps Show the whole route, More and Edit (Edit last, where Done was).
+- **The panel's place and width, as today:** the side panel's width is still dragged from its edge (`bindResize()`), and the panel still moves between the side and the bottom (`setDock()`, the button at the end of the tabs' row, Settings). The toolbar follows both: beside the side panel it hangs off the panel's right edge at the top, its left edge moving with the panel's width; with the panel at the bottom it sits on the panel's top edge at the left, above the panel. In both it stays below the top bar, clear of the map's buttons and of the timeline, and folds (as above) instead of overlapping them; it's placed by one function from the panel's rectangle (`ResizeObserver` on the panel and the window), so 22b's right dock and dragging only feed it another rectangle (a right-docked panel gets it on its left edge).
 - **The panel's header** shows the route: the warning row when there's something to read before you go, the numbers, Minimise; the route's name and ✕ in the view.
 
 **Keys (desktop):** P, S, W pick the mode; Ctrl+Z, Ctrl+Shift+Z undo and redo; F shows the whole route; E is Done or Edit; R opens and closes the planner, as today. Nothing animates for a key.
@@ -127,16 +131,26 @@ Each item says where it comes from: **Live** (Fintraffic, with the time), **From
 
 ## 7. Waypoints and legs
 
-**The rows:** every row is one button that selects it (its marker, its name in up to two lines, "Via 23 · 5.7 km · 07:58", small icons for a stop, a change of sport or a leg of its own). No Remove. A tap on a marker selects its row; a selected row lights its leg on the map and the profile (22a's lit leg).
+**The rows:** every row is one button (its marker, its name in up to two lines, "Via 23 · 5.7 km · 07:58", small icons for a stop, a change of sport or a leg of its own). No Remove.
+
+**Selection and expansion are two states** (approved 2026-10-18):
+- **Selected** is the point you're on: highlighted in the list and ringed on the map, its leg lit on the map and the profile (22a's lit leg). One point at most.
+- **Expanded** is a row whose controls are open. One row at most, and it's always the selected one; a selected row can be collapsed.
+- **A tap on a row** selects it and expands it; a tap on the expanded row's header collapses it and leaves it selected; a tap on another row moves both to that one.
+- **Adding a point** selects it, collapsed: drawing doesn't open controls. A tap on a marker on the map selects its row (collapsed, scrolled into view) and opens the point's menu on the map, as today.
+- **Dragging** a row (the grip with a mouse, a long press on a phone) or a marker on the map moves the point and nothing else: it doesn't change which row is selected or expanded, and a drag never counts as the tap that expands. A long press that turns into a drag cancels its tap; a tap never starts a drag.
+- **Neither is saved:** both live in memory, outside the route, share links and undo.
 
 **The selected row** holds today's controls, organised by what they belong to:
 - **The point:** its name (rename in place); on the start, the departure; a stop (Break with its minutes, Night with the morning's hour, or none: `stopChip()`, `stopEditor()`); where the gear goes along (`gearToggle()`); at a change of sport, the minutes to change; on the finish, Back to start.
 - **The leg after it** ("Next leg · MTB · Follow paths · the route's (Balanced)", or "Flowy trails · its own"): its sport, how it's drawn and its style, each the route's unless set here, Fine-tune, and Other ways. This is today's leg editor (`legSettingsRow()`, `legSportPicker()`, `legStylePicker()`), moved, with its behaviour unchanged: a leg with its own style or sport keeps it when the route's style or sport changes, and "the route's" follows the route. "All leg settings" in Route's tools still opens every leg's at once.
 - **Its place:** Earlier, Later, Move to… (long routes), and Remove, last and apart, with Undo in a note. Start here and Finish here stay in the point's menu on the map.
 
+**Dragging stays as today:** a row by its grip with a mouse (`dragRow()`), a long press on a phone (new: about 450 ms without moving 10 px, so a scroll cancels it), and markers on the map. Each drop is one undo step.
+
 **The look:** the actions are 32 px to look at and 44 px to touch (the target grown around them), grouped, with Remove apart; the name field 40 px. Compact, not small: the targets are the same size as everywhere else.
 
-**Long routes (more than about 12 points):** Find a point by name or number; All or Key points (the start, the finish, stops, changes of sport, named points, legs of their own); a bar on top of the list that keeps the selected point in sight, with ‹ › to step and Show; Move to a number instead of dragging across screens; dragging stays (a long press on phones, the grip on hover on desktops). On desktops: ↑ ↓ select, Alt+↑ ↓ move, Delete removes (with Undo), Enter renames.
+**Long routes (more than about 12 points):** Find a point by name or number; All or Key points (the start, the finish, stops, changes of sport, named points, legs of their own); a bar on top of the list that keeps the selected point in sight, with ‹ › to step and Show; Move to a number instead of dragging across screens; dragging stays. On desktops: ↑ ↓ select, Alt+↑ ↓ move, Delete removes (with Undo), Enter renames.
 
 ## 8. Worst cases, accessibility and phones
 
@@ -173,23 +187,36 @@ The map in view at peek on a 390 phone: 82.7 % today, about 91 % when there's no
 
 ## 10. Building it
 
-**Four parts, each a PR of its own, in order** (each needs the one before). First, from Fixes 2: #240, #251, #239, #242 and #241 (they touch the same header), and #226 (the map's column, which Show the whole route joins). Before 22b (#179), which moves the same panel.
+**Before the phase** (checked on `main` at `3dcff19`, 2026-10-18; each its own PR, one session each):
+- **#239** dark-mode contrast (2.73:1 on the sport pill): shared tokens the new toolbox and Make 3 loops use too;
+- **#240** Settings opens at −113 px with the sheet at half: panels over the sheet stay in the redesign;
+- **#245** a mouse click on the sport pill closes the menu its hover opened: the pill becomes the only sport control;
+- **#226** the 3D button in the map's column, as planned (with compass and locate, under zoom on desktops), turning 3D through the same `set3d()` as Layers' switch and keeping every 3D control in step; with it, the quick drawer's 3D tile goes (MTB's fifth tile becomes Waymarked MTB, `QUICK_TILES` and `QUICK_TILE` in `js/config.js`). Show the whole route joins the same column in 25a.
+
+**Folded into the phase, closed by its PR with a regression check, not fixed separately** (the code goes, but the cause may not):
+- **#241** (undo, redo and Show the whole route look ready at the start): the header's buttons go in 25a, and the toolbox's undo and redo must take their state from the history from the first render; checked at the start, after a reload and after Clear.
+- **#242** (long numbers at 360 px, overlaps at 200 %): 25a rebuilds the summary; checked with a 123 km, 7 h 45 min route at 360 px and at 200 %.
+- **#251** (a touch tap on the style chip folds the sheet): the chip goes in 25a, but the header's fold-on-tap handler stays, and Done turning into Edit re-renders the header in the same way. 25a makes the handler ignore a target that's no longer inside the header (or decide on `pointerdown`); checked with a touch tap on every header control at half (Done, Edit, the time, the warning row): the sheet stays.
+
+**Not in the way:** #243 (the timeline's cut label) and #244 (Other ways' labels) stay in Fixes 2, independent of the phase.
+
+**Four parts, each a PR of its own, in order** (each needs the one before), before 22b (#179), which moves the same panel:
 
 | Part | What | Closes |
 |---|---|---|
-| **a. The toolbox and the header** | The header's one row; the toolbox (phone float and dock, desktop toolbar with tooltips and keys, the mode's menu with the styles); More with its groups and Clear's Undo note; Show the whole route in the map's column and the toolbar; the moves above for the colour, the sport, the style and Round trip | #90 (part) |
-| **b. Round trips in the peek** | The first point's peek; the round trip's form and Make 3 loops; the loop cards; picking on the map; the map waits while loops are made | #232, #89 (part), #109 |
-| **c. Done and the route's view** | The three states; map taps in the view; ✕ and its note; reopening as left, after a reload too | #238 |
-| **d. Check and the waypoints** | The three groups, sources and what was looked at; the peek's row and the badge; the rows, the selected row with today's point and leg controls, Key points, Find, the bar, Move to, the list's keys | #233; #84 (lighting Heads-up on the route fits here) |
+| **25a. The toolbox and the header** | The header's one row; the toolbox (phone float and dock, desktop toolbar with tooltips and keys, the mode's menu with the styles, placed beside or above the panel at any width and either dock); More with its groups and Clear's Undo note; Show the whole route in the map's column and the toolbar; the moves above for the colour, the sport, the style and Round trip | #241, #242, #251; touches #90 |
+| **25b. Round trips in the peek** | The first point's peek; the round trip's form and Make 3 loops; the loop cards; picking on the map; the map waits while loops are made | #232, #89 (part), #109 |
+| **25c. Done and the route's view** | The three states; map taps in the view; ✕ and its note; reopening as left, after a reload too | #238 |
+| **25d. Check and the waypoints** | The three groups, sources and what was looked at; the peek's row and the badge; the rows, selection and expansion apart, the expanded row with today's point and leg controls, dragging (mouse and long press), Key points, Find, the bar, Move to, the list's keys | #233; #84 (lighting Heads-up on the route fits here) |
 
 **Every part's tests and regression checks:**
 - **New checks in `tools/smoke.py`** for what the part adds (below), each failing before and passing after; the groups it touches pass: `drawer`, `editing`, `loops`, `quick`, and the others it touches; then the whole suite.
 - **The regression list in each PR,** run as a person would (taps, drags, undo, reload) at 390 × 844 and 1440 × 900, in MTB, gravel, hike and paddle, with a route drawn and the timeline open: drawing (add, drag a point, drag the line, a leg's mode and style), undo and redo, the profile and its colouring, Climbs, On the route's breakdowns and their colours on the map, On the map's marks, Go's time, departure and the weather along the route, Heads-up and Avoid, round trips (km and time, water loops), Other ways, stops and nights, changeovers, LIPAS, GPX/KML import and GPX export, share links (old ones too), offline save and preview, 3D and hover.
 - **Screenshots before and after** (`tools/shoot.py`) on `pr-screenshots`; CHANGELOG, USING, README and DEVELOPING as each part changes them.
-- **Part a:** the toolbox's buttons and their names, the mode's menu changes only the next leg, a style routes the route again and a leg with its own style keeps it, the toolbar's keys and tooltips, More's items each do what they say, Clear then Undo, Show the whole route frames the route from the column and the toolbar; no header control under 44 px on phones.
+- **Part a:** the side panel resized narrow and wide, and the panel at the bottom: the toolbar beside or above it, clear of the map's buttons, the top bar and the timeline, folding instead of overlapping; a touch tap on each header control at half leaves the sheet at half (#251); undo and redo disabled at the start, after a reload and after Clear (#241); long numbers at 360 px and 200 % (#242); the toolbox's buttons and their names, the mode's menu changes only the next leg, a style routes the route again and a leg with its own style keeps it, the toolbar's keys and tooltips, More's items each do what they say, Clear then Undo, Show the whole route frames the route from the column and the toolbar; no header control under 44 px on phones.
 - **Part b:** four points take four taps; a length opens the form without routing calls; Make 3 loops makes three; a map tap meanwhile adds nothing; Use loop A, then Undo.
 - **Part c:** after Done a map tap adds no point and opens the map's popup; Edit brings the toolbox back with undo intact; ✕ keeps the route on the map; Plan and a reload reopen it as it was.
-- **Part d:** every Heads-up item of today appears once, in its group, with its source; a failing source shows Not checked and "?"; a selected row's stop, leg sport, mode and style change what they did before; an unselected row has no Remove; Find, Key points, ‹ ›, Move to and Remove with Undo on a 52-point route.
+- **Part d:** every Heads-up item of today appears once, in its group, with its source; a failing source shows Not checked and "?"; an expanded row's stop, leg sport, mode and style change what they did before; an unselected row has no Remove; a tap expands, a tap on the header collapses and keeps the selection, a tap on another row moves both; adding a point selects it collapsed; a marker's tap selects its row; dragging a row (mouse, and a long press with touch) or a marker moves the point without selecting or expanding anything, and a scroll never starts a drag; Find, Key points, ‹ ›, Move to and Remove with Undo on a 52-point route.
 
 **By module**, the changes listed in the table above: `js/planner.js` (most of it), the warnings' `tier` and `src` where each is made (`js/analysis.js`, `js/safety.js` and the planner's own warning functions), `js/main.js` (the keys, Plan, the map's column, reopening), `js/ui.js` (icons), `css/app.css`, `index.html` (the toolbox's container, the column's button). `js/sheet.js` is unchanged: the planner measures its peek with the warning row and a docked toolbox, and the toolbox's buttons stay taps.
 
