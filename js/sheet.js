@@ -170,7 +170,13 @@ export function swipeSheet(el, o) {
       el.style.transform = '';
       o.end(to.name, r);
     };
-    if (reduced.matches) { place(target); done(); return; }
+    if (reduced.matches) { // no travel: the new size fades in
+      const moved = Math.abs(ride.v - target) > 1;
+      place(target);
+      done();
+      if (moved && el.animate) el.animate([{ opacity: 0.6 }, { opacity: 1 }], { duration: 150, easing: 'ease-out' });
+      return;
+    }
     // a spring with the finger's speed to start with: semi-implicit Euler, four steps a frame
     const k = (2 * Math.PI / SWIPE.response) ** 2, c = (4 * Math.PI * SWIPE.damping) / SWIPE.response;
     let vel = v0 * 1000, last = performance.now();
