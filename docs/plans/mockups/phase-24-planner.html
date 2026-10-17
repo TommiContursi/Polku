@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Polku planner</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="A clickable mock-up of Polku's calmer route planner (#233), second iteration: the drawing toolbox, round trips in the peek, one Trip menu, Done and the route's view, Check by how serious and how sure, and long waypoint lists. Phone and desktop, light and dark, worst cases. Not wired to the app.">
+<meta name="description" content="A clickable mock-up of Polku's calmer route planner (#233), as decided on 2026-10-17: the drawing toolbox with More, the desktop toolbar, round trips in the peek, Done and the route's view, Check by how serious and how sure, and long waypoint lists. Phone and desktop, light and dark, worst cases. Not wired to the app.">
 <!--
   The calmer planner (#233), second iteration, 2026-10-17. The design, its reasons and the plan to
   build it are in docs/plans/issue-233-calmer-planner.md; the review it builds on is
@@ -16,7 +16,7 @@
   Every frame can be tapped: each keeps its own state (Reset under it starts it again).
   The switches at the bottom apply to every frame: data (normal or the worst case), language
   (English; rough Finnish and Swedish, only to test the room words take), theme, and the
-  decisions still open (the Trip menu's name, the phone's modes, the round trip's first row).
+  decisions (all made on 2026-10-17).
 
   ?frame=<id>            one frame alone at full size (screenshots, evidence/mockup_probe2.py)
   &w=&h=                 its screen size; &z=2 renders it as at 200 % zoom
@@ -165,7 +165,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .btn:disabled { opacity: .55; cursor: default; }
 .btn .ic { color: inherit; }
 .trigger .lbl { max-width: 8.5em; overflow: hidden; text-overflow: ellipsis; }
-/* phones: the Trip button is its icon with its word under it, as the map's Weather and Layers are, so the peek stays one row */
+/* a stacked icon-and-word button (kept for later use) */
 .btn.stack { flex-direction: column; gap: 1px; min-width: 50px; padding: 0 6px; font-size: 11.5px; font-weight: 700; line-height: 1.1; }
 .btn.stack .lbl { max-width: 5.5em; }
 .chips { display: flex; gap: 8px; min-height: 44px; align-items: center; flex-wrap: wrap; }
@@ -207,13 +207,16 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .seg.small button { height: 36px; position: relative; }
 .seg.small button::after { content: ""; position: absolute; inset: -4px 0; }
 /* desktop: the toolbar hangs off the panel's edge, one surface with it */
-.deskbar { position: absolute; z-index: 6; top: 64px; left: 415px; height: 56px; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 8px; border-radius: 0 16px 16px 0; background: var(--surface); backdrop-filter: blur(14px); box-shadow: 8px 6px 20px rgba(16, 24, 20, 0.12); border-left: 1px solid var(--line); }
-.deskbar .seg button { height: 40px; padding: 0 12px; color: var(--text); font-weight: 600; }
+.deskbar { position: absolute; z-index: 6; top: 64px; left: 415px; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 8px; border-radius: 0 16px 16px 0; background: var(--surface); backdrop-filter: blur(14px); box-shadow: 8px 6px 20px rgba(16, 24, 20, 0.12); border-left: 1px solid var(--line); }
+.deskbar .seg button { height: 40px; padding: 0 10px; color: var(--text); font-weight: 600; }
 .deskbar .seg button .ic { color: var(--muted); }
 .deskbar .seg button[aria-checked="true"] .ic { color: var(--accent); }
-.deskbar .sep { width: 1px; height: 28px; background: var(--line); margin: 0 4px; }
+.deskbar .sep { width: 1px; height: 28px; background: var(--line); margin: 0 3px; }
 .deskbar .lab { font-size: 12.5px; color: var(--muted); font-weight: 600; padding-left: 2px; }
-.deskbar .stylebtn { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); font-weight: 650; font-size: 13.5px; }
+.deskbar .stylebtn { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); font-weight: 650; font-size: 13.5px; text-align: left; }
+.deskbar .stylebtn .two { display: grid; line-height: 1.1; }
+.deskbar .stylebtn small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.deskbar .btn { height: 40px; padding: 0 12px; }
 .deskbar .tbtn { width: 40px; height: 40px; }
 .deskbar .say { font-size: 12.5px; color: var(--muted); max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
 .kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; border: 1px solid var(--line); font: 600 11px/1 ui-monospace, Menlo, monospace; color: var(--muted); background: var(--surface-2); }
@@ -317,13 +320,27 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .desk .wpsel { margin: 0 -16px; padding: 4px 16px 10px; }
 .wpsel .wpr { border-top: 0; }
 .wpsel .mk { box-shadow: 0 0 0 3px var(--accent); }
-.namefield { width: 100%; height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); font-size: 16px; font-weight: 650; color: var(--text); margin-bottom: 2px; }
-.legline { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 6px 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); text-align: left; font-size: 13.5px; }
+.namefield { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); font-size: 16px; font-weight: 650; color: var(--text); margin-bottom: 2px; }
+.legline { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 4px 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); text-align: left; font-size: 13.5px; }
 .legline { padding-block: 6px; }
 .legline span { flex: 1; min-width: 0; }
 .legset { display: flex; flex-direction: column; gap: 8px; margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-solid); border: 1px solid var(--line); }
-.wpacts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.wpacts .danger { color: var(--danger); margin-left: auto; }
+/* the selected point's actions: small to look at (32 px), 44 px to touch (::after), grouped */
+.wpacts { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; margin-top: 6px; }
+.wpacts .act { position: relative; height: 32px; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; border: 0; border-radius: 9px; background: var(--surface-solid); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); font-size: 13.5px; font-weight: 600; }
+.wpacts .act::after { content: ""; position: absolute; inset: -6px -3px; }
+.wpacts .act.ico { width: 38px; padding: 0; justify-content: center; } /* 38 + 2 × 3 = a 44 px target */
+.wpacts .act[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.wpacts .act:disabled { opacity: .4; }
+.wpacts .pair { display: inline-flex; gap: 2px; padding: 0 3px; }
+.wpacts .danger { color: var(--danger); margin-left: auto; box-shadow: none; background: none; }
+.wpacts .danger .ic { color: var(--danger); }
+.stopline { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-size: 13.5px; }
+.stopline > .ic { color: var(--muted); }
+.len.sm { height: 36px; padding: 0 8px; } .len.sm input { width: 2.4em; font-size: 16px; }
+.legset .lrow { display: flex; align-items: center; gap: 10px; min-height: 40px; font-size: 13.5px; }
+.legset .lrow > span:first-child { width: 3.6em; color: var(--muted); flex: none; }
+.legline .own { font-size: 11.5px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; }
 .moveto { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; font-size: 13.5px; }
 .tools2 { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0 4px; }
 .tools2 .chip.danger { color: var(--danger); }
@@ -446,18 +463,20 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
 <main class="cv">
   <header class="cv-head">
-    <h1>A calmer route planner, second iteration (#233)</h1>
+    <h1>A calmer route planner (#233)</h1>
     <p>2026-10-17. Builds on phase 24's review and the choices made from its first mock-up (B: the tools float, a one-row peek, only the selected waypoint's buttons). The reasons, the plan to build it and what Done means are in <code>docs/plans/issue-233-calmer-planner.md</code>. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden.</p>
-    <p><b>Every frame can be tapped</b> and keeps its own state; <b>Reset</b> starts it again. Tap the map to add points, try the toolbox, the round trip, Done and Edit, the Trip menu, Check and the waypoint list. The switches at the bottom apply to every frame: the worst case (long Finnish names, 52 points, long numbers, many warnings), language (rough Finnish and Swedish, only to test the room words take), theme, and the decisions still open.</p>
+    <p><b>Every frame can be tapped</b> and keeps its own state; <b>Reset</b> starts it again. Tap the map to add points, try the toolbox, the round trip, Done and Edit, More, Check and the waypoint list. The switches at the bottom apply to every frame: the worst case (long Finnish names, 52 points, long numbers, many warnings), language (rough Finnish and Swedish, only to test the room words take) and theme.</p>
+    <p><b>Final, 2026-10-17:</b> the layout and the interactions here are decided. <b>What's drawn simply on purpose</b> (the profile, Climbs, On the route, On the map, Go's time and the weather along the route, and parts of the leg editor) stays exactly as Polku has it today: the mock-up shows where things go, not everything in them. The plan lists what changes, what moves and what stays as it is.</p>
   </header>
 
   <section class="cv-q" aria-labelledby="rules-h">
-    <h2 id="rules-h">What this iteration decides</h2>
+    <h2 id="rules-h">What's decided</h2>
     <ol>
-      <li><b>Drawing and routing told apart.</b> The toolbox holds how the <i>next leg</i> is drawn (Follow paths, Straight line, Over water), undo and redo. The route style (Balanced, Flowy trails…) is a setting of the <i>whole route</i>: it shows under Follow paths, because it's what Follow paths prefers, and has its own labelled group of chips. Phones: one drop-down. Desktops: a labelled toolbar on the panel's edge, with keys.</li>
+      <li><b>Drawing and routing told apart.</b> The toolbox holds how the <i>next leg</i> is drawn (Follow paths, Straight line, Over water), undo, redo and More. The route style (Balanced, Flowy trails…) is a setting of the <i>whole route</i>: it shows under Follow paths, because it's what Follow paths prefers, and has its own labelled group of chips. Phones: one drop-down. Desktops: a labelled toolbar on the panel's edge, with tooltips and keys, and the route's actions at its end: Reverse, Back to start, Show the whole route, More, Done.</li>
       <li><b>Round trips in the peek</b> after the first point: presets one tap away, any distance or time, then a green <b>Make 3 loops</b>. Nothing on the map; a tap on the map still adds the next point.</li>
-      <li><b>One Trip menu</b> beside Done for the whole route: take it along, change the whole route, and Clear apart. Its name is still open.</li>
-      <li><b>Done means done editing.</b> The route stays open to read, check and take along (the route's view); Edit goes back. ✕ puts it away; nothing is lost either way.</li>
+      <li><b>More (⋯)</b> for the whole route, at the end of the toolbox and the toolbar: take it along, change the whole route, and Clear apart. The route's summary shows the route.</li>
+      <li><b>Done means done editing.</b> The route stays open to read, check and take along (the route's view); Edit goes back, in the same place. ✕ puts it away; nothing is lost either way. Phones: Done at the summary's right, at the thumb; desktops: at the toolbar's end.</li>
+      <li><b>Show the whole route</b> is always there while a route is on the map: in the map's column under Locate on phones, in the toolbar on desktops (and F).</li>
       <li><b>Check by how serious and how sure:</b> Read before you go, Worth a look, Not checked, and where each comes from.</li>
       <li><b>Waypoints:</b> only the selected one has buttons, no Remove on the others; finding, stepping, moving and undoing in lists of 50 and more.</li>
     </ol>
@@ -465,7 +484,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-row" id="s0">
     <h2>0 · Try it</h2>
-    <p>The whole way through, on a phone and a desktop: tap the map for a first point, try a round trip or tap again for a route, change the drawing mode, press Done, open Trip, swipe… (here: press the handle) for the sheet's sizes, and look at Check.</p>
+    <p>The whole way through, on a phone and a desktop: tap the map for a first point, try a round trip or tap again for a route, change the drawing mode, press Done, open More, swipe… (here: press the handle) for the sheet's sizes, and look at Check.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="play-phone" data-st='{"stage":"start"}'><figcaption><b>Phone, 390 × 844</b>From an empty map. The handle steps the sheet through its sizes (in Polku it's the one swipe of #96).</figcaption></figure>
       <figure class="fr desk" id="play-desk" data-st='{"stage":"start"}'><figcaption><b>Desktop, 1440 × 900</b>The same, with the toolbar on the panel's edge. Keys: P, S and W pick the drawing mode, Ctrl+Z and Ctrl+Shift+Z undo and redo, E is Done or Edit, F shows the whole route. Hover the toolbar for its tooltips.</figcaption></figure>
@@ -474,10 +493,10 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-row" id="s1">
     <h2>1 · The toolbox: how the next leg is drawn</h2>
-    <p><b>Two different ideas, two places.</b> The drawing mode is a tool: it decides how the <i>next</i> leg you draw is made, and leaves the drawn legs alone (a leg's own mode is changed by tapping it on the map, as today). The route style is a setting: it decides which ways Follow paths prefers, for the <i>whole</i> route, and changing it routes the route again. So the mode is the button, and the style is its second line, shown only for the modes it applies to; in the menu the modes are a list with what each does, and the styles a set of chips under "Route style · the whole route".</p>
+    <p><b>Decided: one drop-down on phones; the labelled toolbar with tooltips on desktops.</b> <b>Two different ideas, two places.</b> The drawing mode is a tool: it decides how the <i>next</i> leg you draw is made, and leaves the drawn legs alone (a leg's own mode is changed by tapping it on the map, as today). The route style is a setting: it decides which ways Follow paths prefers, for the <i>whole</i> route, and changing it routes the route again. So the mode is the button, and the style is its second line, shown only for the modes it applies to; in the menu the modes are a list with what each does, and the styles a set of chips under "Route style · the whole route".</p>
     <ul>
-      <li><b>Phones:</b> one button with the mode's icon and name (never an icon alone), undo and redo: 253 px (268 in Finnish, 234 in Swedish), so it floats clear of the map's buttons on every phone from 360 px. Narrower, at 200 % zoom, or with the sheet raised high, it docks into the sheet as its first row instead.</li>
-      <li><b>Desktops:</b> the toolbar hangs off the panel's edge, one surface with it, so it reads as part of planning, not another floating panel. The three modes with their names, the style as its own labelled control, undo and redo, and a line saying what a click does now. Tooltips give the key and one sentence; keyboard focus shows them too.</li>
+      <li><b>Phones:</b> one button with the mode's icon and name (never an icon alone), undo, redo and More (⋯), floating at the bottom left above the sheet. Where it can't clear the map's buttons (narrow phones, long words, 200 % zoom) or with the sheet raised high, it docks into the sheet as its first row instead. In the route's view only More stays.</li>
+      <li><b>Desktops:</b> the toolbar hangs off the panel's edge, one surface with it, so it reads as part of planning, not another floating panel. The three modes with their names, the style as its own labelled control, undo and redo; then the route's actions: Reverse, Back to start and Show the whole route as icons with tooltips; then More and Done. Tooltips give the key and one sentence; keyboard focus shows them too. With less room, Reverse and Back to start fold into More (they're there anyway), then the style's label goes. In the route's view the toolbar keeps Show the whole route, More and Edit.</li>
       <li><b>States:</b> the mode in use is filled and ticked, not only coloured; undo and redo show from the first change and are disabled (not hidden) when there's nothing to undo or redo; at the start there's nothing to show but the mode.</li>
     </ul>
     <div class="cv-frames">
@@ -486,8 +505,8 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="tb-phone-menu" data-st='{"stage":"route","pop":"modes"}'><figcaption><b>The mode's menu</b>"Draw the next leg": each mode with what it does. Under it, apart, the route style for the whole route, as chips. A mode is two taps (one today); a style is two, as today.</figcaption></figure>
       <figure class="fr phone" id="tb-phone-style" data-st='{"stage":"route","style":"flowy","toast":"style"}'><figcaption><b>A style picked</b>Flowy trails: the whole route is routed again, with Undo in a note; the mode's second line says the style.</figcaption></figure>
       <figure class="fr phone" id="tb-phone-200" data-st='{"stage":"route","z":2}'><figcaption><b>At 200 % zoom</b>(a 390 phone is 195 px wide): the toolbox docks into the sheet, the numbers wrap, nothing is cut. The map's own buttons don't fit at this zoom: that's #73's to solve.</figcaption></figure>
-      <figure class="fr desk" id="tb-desk" data-st='{"stage":"route","tip":"line"}'><figcaption><b>Desktop: the toolbar on the panel's edge</b>Shown with Straight line's tooltip. When the panel docks right or at the bottom (22b), the toolbar hangs off its inner edge the same way.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-buttons" data-st='{"stage":"route","modes":"buttons"}'><figcaption><b>Alternative: three buttons</b>(the first B): one tap for any mode, but with the style on the first it doesn't fit beside the map's buttons even at 390 px (it docks into the sheet here), and the style and the mode share one button.</figcaption></figure>
+      <figure class="fr desk" id="tb-desk" data-st='{"stage":"route","tip":"line"}'><figcaption><b>Desktop: the toolbar on the panel's edge</b>Shown with Straight line's tooltip. Drawing on the left; Reverse, Back to start, Show the whole route; More and Done at the end. Clear stays in More. When the panel docks right or at the bottom (22b), the toolbar hangs off its inner edge the same way.</figcaption></figure>
+      <figure class="fr desk" id="tb-desk-tip" data-st='{"stage":"route","tip":"fit"}'><figcaption><b>Show the whole route's tooltip</b>F does the same. On phones it's in the map's column, under Locate, whenever a route is on the map.</figcaption></figure>
     </div>
   </section>
 
@@ -500,50 +519,41 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="rt-time" data-st='{"stage":"first","rt":{"open":true,"unit":"time","val":90}}'><figcaption><b>By time</b>The same, in hours and minutes (15-minute steps).</figcaption></figure>
       <figure class="fr phone" id="rt-making" data-st='{"stage":"first","rt":{"open":true,"val":20,"making":2}}'><figcaption><b>Making them</b>Progress in the button; the map waits.</figcaption></figure>
       <figure class="fr phone" id="rt-results" data-st='{"stage":"loops","rt":{"open":true,"val":10,"results":true,"pick":0}}'><figcaption><b>Three loops</b>Cards side by side, the next one peeking in; a tap on a card or a line picks it (#89), Use loop A takes it.</figcaption></figure>
-      <figure class="fr phone" id="rt-button" data-st='{"stage":"first","rtui":"button"}'><figcaption><b>Alternative: one button</b>"Round trip from here" alone: calmer, but the lengths are a tap further away (3 taps for a 20 km loop instead of 2).</figcaption></figure>
       <figure class="fr desk" id="rt-desk" data-st='{"stage":"first","rt":{"open":true,"val":20}}'><figcaption><b>Desktop</b>The same in the panel, under the next point's line.</figcaption></figure>
     </div>
   </section>
 
   <section class="cv-row" id="s3">
-    <h2>3 · One menu for the whole route</h2>
-    <p>Beside Done, in the same place on every tab and in the route's view. Grouped by what it's for: <b>take it along</b> (a share link, a GPX file, the map saved for no signal), <b>the whole route</b> (a round trip from the start, reverse, back to start, a file to plan on), and <b>Clear route</b> apart, in red, after a gap, with Undo. Its head says the route is kept on this device, because that's the question people ask first ("is it saved?"). What's also somewhere else, on purpose: Take it along in Go, Reverse and Back to start in Route's tools, Import at the start. Moving the panel stays with the panel (22b).</p>
-    <table class="cv-t">
-      <thead><tr><th>The menu's name (open)</th><th>For</th><th>Against</th></tr></thead>
-      <tbody>
-        <tr><td><b>Trip</b> (recommended)</td><td>Short in every language (Retki, Tur); names the whole thing being planned (the route, its time, its stops, the map taken along), and has room for what comes later: saved trips (#157), On the way (23b), your track (23c).</td><td>A new word beside the Route tab; people need to learn that Trip is the whole and Route the line.</td></tr>
-        <tr><td><b>Share &amp; save</b></td><td>Answers the two commonest questions on sight.</td><td>Clear, Reverse and Import aren't sharing or saving; "save" suggests the route isn't kept.</td></tr>
-        <tr><td><b>More (⋯)</b></td><td>Familiar, honest, shortest.</td><td>Says nothing about what's in it, which is what got the first ⋯ reviewed again.</td></tr>
-      </tbody>
-    </table>
+    <h2>3 · More (⋯), for the whole route</h2>
+    <p><b>Decided: More (⋯),</b> familiar, compact, and not tied to one kind of action. It's the last button of the toolbox on phones (beside the drawing tools, not in the route's summary) and of the toolbar on desktops; in the route's view it stays there, the drawing tools gone. Grouped by what it's for: <b>take it along</b> (a share link, a GPX file, the map saved for no signal), <b>the whole route</b> (a round trip from the start, reverse, back to start, a file to plan on), and <b>Clear route</b> apart, in red, after a gap, with Undo. Its head says the route is kept on this device. What's also somewhere else, on purpose: Take it along in Go, Reverse and Back to start in Route's tools (and the desktop toolbar), Import at the start. Moving the panel stays with the panel (22b).</p>
     <div class="cv-frames">
-      <figure class="fr phone" id="trip-phone" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Phone</b>Opens upward from its button, at the thumb.</figcaption></figure>
+      <figure class="fr phone" id="trip-phone" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Phone</b>⋯ at the toolbox's end; the menu opens upward from it, clear of the map's buttons.</figcaption></figure>
       <figure class="fr phone" id="trip-clear" data-st='{"stage":"start","toast":"cleared","hist":1}'><figcaption><b>After Clear route</b>The start again, with Undo in a note and in the toolbox. Nothing asks first: Undo is the safety.</figcaption></figure>
-      <figure class="fr desk" id="trip-desk" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Desktop</b>The same menu under its button.</figcaption></figure>
+      <figure class="fr desk" id="trip-desk" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Desktop</b>⋯ at the toolbar's end, beside Done; the menu opens under it.</figcaption></figure>
     </div>
   </section>
 
   <section class="cv-row" id="s4">
     <h2>4 · Done, the route's view, and coming back</h2>
-    <p>Finishing isn't one thing. <b>Done</b> ends editing: the toolbox goes, a tap on the map shows what's there instead of adding a point, and the route stays open to read, check and take along. That's <b>the route's view</b>: the route's name, its numbers, Trip, and <b>Edit</b> to go back. <b>✕</b> puts the route away (it stays on the map; Plan brings it back as it was). Nothing is lost by any of them: the route is kept on this device all along, and undo outlives Done.</p>
+    <p>Finishing isn't one thing. <b>Done</b> ends editing: the toolbox goes, a tap on the map shows what's there instead of adding a point, and the route stays open to read, check and take along. That's <b>the route's view</b>: the route's name, its numbers, and <b>Edit</b> to go back, where Done was (the summary's right on phones, the toolbar's end on desktops); More stays. <b>✕</b> puts the route away (it stays on the map; Plan brings it back as it was). Nothing is lost by any of them: the route is kept on this device all along, and undo outlives Done.</p>
     <table class="cv-t">
       <thead><tr><th>Someone wants to…</th><th>Today</th><th>In this design</th></tr></thead>
       <tbody>
         <tr><td>stop drawing and look at the map</td><td>Done (the planner closes)</td><td>Done: the route's view; map taps inspect the map</td></tr>
-        <tr><td>save the route</td><td>nothing to do (the last route is kept), but nothing says so</td><td>the same, and Trip and the view say "kept on this device"; Save offline is for no signal</td></tr>
+        <tr><td>save the route</td><td>nothing to do (the last route is kept), but nothing says so</td><td>the same, and More and the view say "kept on this device"; Save offline is for no signal</td></tr>
         <tr><td>get ready to go</td><td>Go: departure, weather, Take it along</td><td>the same Go, from the view as from editing; later (23b) Start in Go and in the view</td></tr>
-        <tr><td>change their mind</td><td>Plan, then edit</td><td>Edit (one tap, same place as Done)</td></tr>
+        <tr><td>change their mind</td><td>Plan, then edit</td><td>Edit (one tap, where Done was)</td></tr>
         <tr><td>close by accident</td><td>Plan reopens it; after a reload the planner is closed (#238)</td><td>a note "Planner closed · Open"; Plan reopens as it was left; after a reload too (#238)</td></tr>
-        <tr><td>come back to an earlier route</td><td>the last one is back; others only through an offline area, a link or a GPX</td><td>the same now; later, Your routes (#157) at the start and in Trip</td></tr>
+        <tr><td>come back to an earlier route</td><td>the last one is back; others only through an offline area, a link or a GPX</td><td>the same now; later, Your routes (#157) at the start and in More</td></tr>
       </tbody>
     </table>
     <div class="cv-frames">
-      <figure class="fr phone" id="fin-edit" data-st='{"stage":"route"}'><figcaption><b>Editing</b>Done at the right of the peek.</figcaption></figure>
-      <figure class="fr phone view" id="fin-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>After Done: the route's view</b>Its name, "kept on this device", ✕; the numbers, Trip and Edit. No toolbox. Tap the map: it shows what's there.</figcaption></figure>
+      <figure class="fr phone" id="fin-edit" data-st='{"stage":"route"}'><figcaption><b>Editing</b>Done at the summary's right, at the thumb: the toolbox has no room for it beside More, and Done belongs with the route it finishes.</figcaption></figure>
+      <figure class="fr phone view" id="fin-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>After Done: the route's view</b>Its name, "kept on this device", ✕; the numbers and Edit. The drawing tools go; More stays. Tap the map: it shows what's there.</figcaption></figure>
       <figure class="fr phone view" id="fin-view-go" data-st='{"stage":"route","mode":"view","sheet":"half","tab":"go"}'><figcaption><b>The view, getting ready</b>Go as today; Start comes here in 23b.</figcaption></figure>
       <figure class="fr phone closed" id="fin-closed" data-st='{"stage":"route","mode":"closed","toast":"closed"}'><figcaption><b>Put away</b>The route stays on the map; a note offers it back; Plan opens it as it was.</figcaption></figure>
       <figure class="fr phone" id="fin-later" data-st='{"stage":"start","later":true}'><figcaption><b>Later (#157): Your routes</b>The start offers routes kept on this device, offline areas' routes among them. Not part of #233: shown so the model has room for it.</figcaption></figure>
-      <figure class="fr desk view" id="fin-desk-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>Desktop: the route's view</b>The panel without the toolbar; Edit where Done was.</figcaption></figure>
+      <figure class="fr desk view" id="fin-desk-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>Desktop: the route's view</b>The toolbar keeps Show the whole route, More and Edit (where Done was, at its end).</figcaption></figure>
     </div>
   </section>
 
@@ -560,9 +570,9 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-row" id="s6">
     <h2>6 · Waypoints, and long routes</h2>
-    <p>Only the selected point has buttons: its name, the leg after it, a stop, move earlier or later or to a number, and Remove, last and apart. The other rows are one button each: tap to select. There's no Remove on them, so a tap meant for a row never deletes. For long routes: a search, Key points (start, finish, stops, changes of sport, named points, legs of their own) or All, a bar that keeps the selected point in sight with previous and next, and Undo for every change. The map and the list select together: a tap on a marker selects its row.</p>
+    <p>Only the selected point has buttons: its name, its stop, the leg after it (today's leg editor: its sport, how it's drawn and its style, each the route's unless set here), move earlier or later or to a number, and Remove, last and apart. The buttons are small to look at and 44 px to touch. The other rows are one button each: tap to select. There's no Remove on them, so a tap meant for a row never deletes. For long routes: a search, Key points (start, finish, stops, changes of sport, named points, legs of their own) or All, a bar that keeps the selected point in sight with previous and next, and Undo for every change. The map and the list select together: a tap on a marker selects its row.</p>
     <div class="cv-frames">
-      <figure class="fr phone" id="wp-phone" data-st='{"stage":"route","sheet":"half","tab":"route","sel":1}'><figcaption><b>Three points</b>Via 1 selected. Tap another row.</figcaption></figure>
+      <figure class="fr phone" id="wp-phone" data-st='{"stage":"route","sheet":"full","tab":"route","sel":1,"legOpen":true,"legStyle":{"1":"flowy"}}'><figcaption><b>Three points, Via 1 selected</b>Its next leg open: the leg's sport, how it's drawn and its style, each the route's unless set here. This leg has Flowy trails of its own, so it keeps it when the route's style changes. Stop, Earlier and Later, Remove: small to look at, 44 px to touch.</figcaption></figure>
       <figure class="fr phone" id="wp-long" data-st='{"stage":"route","sheet":"full","tab":"route","long":true,"sel":23}'><figcaption><b>52 points</b>The bar on top keeps 23 in sight while the list scrolls; ‹ › step through the points, and the map follows.</figcaption></figure>
       <figure class="fr phone" id="wp-move" data-st='{"stage":"route","sheet":"full","tab":"route","long":true,"sel":23,"moveTo":true}'><figcaption><b>Move to a number</b>Instead of dragging across five screens.</figcaption></figure>
       <figure class="fr phone" id="wp-key" data-st='{"stage":"route","sheet":"full","tab":"route","long":true,"sel":23,"filter":"key"}'><figcaption><b>Key points</b>The points that carry something; the shaping points fold away.</figcaption></figure>
@@ -596,14 +606,11 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 </main>
 
 <nav class="picker" aria-label="Mock-up switches" data-open="false">
-  <button type="button" class="pk-toggle" aria-expanded="false" aria-controls="pk-groups">Switches: worst case, words, theme, open decisions</button>
+  <button type="button" class="pk-toggle" aria-expanded="false" aria-controls="pk-groups">Switches: worst case, words, theme</button>
   <div class="pk-groups" id="pk-groups">
   <div role="group" aria-label="Data"><span>Data</span><button type="button" data-o="worst" data-v="0">Normal</button><button type="button" data-o="worst" data-v="1">Worst case</button></div>
   <div role="group" aria-label="Language"><span>Words</span><button type="button" data-o="lang" data-v="en">EN</button><button type="button" data-o="lang" data-v="fi">FI</button><button type="button" data-o="lang" data-v="sv">SV</button></div>
   <div role="group" aria-label="Theme"><span>Theme</span><button type="button" data-o="theme" data-v="light">Light</button><button type="button" data-o="theme" data-v="dark">Dark</button></div>
-  <div role="group" aria-label="The menu's name"><span>Menu</span><button type="button" data-o="trip" data-v="trip">Trip</button><button type="button" data-o="trip" data-v="share">Share &amp; save</button><button type="button" data-o="trip" data-v="more">More</button></div>
-  <div role="group" aria-label="Phone modes"><span>Modes</span><button type="button" data-o="modes" data-v="menu">Drop-down</button><button type="button" data-o="modes" data-v="buttons">3 buttons</button></div>
-  <div role="group" aria-label="Round trip row"><span>Loops</span><button type="button" data-o="rt" data-v="presets">Lengths</button><button type="button" data-o="rt" data-v="button">One button</button></div>
   </div>
 </nav>
 
@@ -797,13 +804,16 @@ function topbar(desk, sport) {
     <button type="button" class="tb" aria-label="Settings">${ic('gear', 20)}</button>
   </div>`;
 }
-function cols(st, desk, bottom, z) {
+// fold: where the column doesn't fit between the top bar and a raised sheet (short phones), it leaves out first the
+// compass while north is up (it's back as soon as the map is turned), then 3D (still in Layers); at 200 % both (#73)
+function cols(st, desk, bottom, z, fold = 0) {
   const closed = st.mode === 'closed';
   if (!desk && st.sheet === 'full' && !closed) return '<div class="cols" hidden></div>'; // a full sheet: the map's buttons wait under it, as today
-  const small = z === 2; // at 200 % there's no room: #73
+  const small = z === 2 || fold >= 2;
   return `<div class="cols" style="bottom:${bottom}px">
-    ${small ? '' : `<button type="button" class="cb" aria-label="Compass: north is up">${ic('needle', 20)}</button>`}
+    ${small || fold >= 1 ? '' : `<button type="button" class="cb" aria-label="Compass: north is up">${ic('needle', 20)}</button>`}
     <button type="button" class="cb" aria-label="Show my location">${ic('locate', 20)}</button>
+    ${st.stage === 'route' && (!desk || closed) ? `<button type="button" class="cb fitb" data-act="fit" aria-label="Show the whole route" data-tip="fit">${ic('fit', 22)}</button>` : ''}
     ${desk ? `<div class="czoom"><button type="button" class="cb" aria-label="Zoom in">${ic('plus', 18)}</button><button type="button" class="cb" aria-label="Zoom out">${ic('minus', 18)}</button></div>` : ''}
     ${small ? '' : '<button type="button" class="cb" aria-label="3D terrain" aria-pressed="false">3D</button>'}
     <button type="button" class="fab" aria-label="Time and weather">${ic('weather', 22)}<span>Weather</span></button>
@@ -822,12 +832,9 @@ function warnRow(st, v, desk) {
   if (!W.t1.length || (st.tab === 'check' && (desk || st.sheet !== 'peek'))) return ''; // not while Check itself is in sight
   return `<button type="button" class="warnrow" data-act="tocheck" aria-label="${W.t1.length} ${t('t1s')}: ${esc(W.t1[0].b)}. Open Check">${ic('warnf', 22)}<span><b>${W.t1.length} ${t('t1s')}</b><small>${esc(W.t1[0].b)}${W.t1.length > 1 ? ` · +${W.t1.length - 1}` : ''}</small></span>${ic('right', 18)}</button>`;
 }
-function tripBtn(st, v, desk) {
-  const k = v.trip, label = t(k === 'trip' ? 'trip' : k === 'share' ? 'share' : 'more');
-  const icn = k === 'trip' ? 'trip' : k === 'share' ? 'share' : 'more';
-  const name = `${label}: share link, GPX, save offline, round trip, reverse, import, clear`;
-  if (!desk) return `<button type="button" class="btn quiet trigger stack" data-act="trip" aria-haspopup="menu" aria-expanded="${st.pop === 'trip'}" aria-label="${name}">${ic(icn, 20)}<span class="lbl">${label}</span></button>`;
-  return `<button type="button" class="btn quiet trigger" data-act="trip" aria-haspopup="menu" aria-expanded="${st.pop === 'trip'}" aria-label="${name}" style="padding:0 11px">${ic(icn, 18)}<span class="lbl">${label}</span></button>`;
+// More (⋯), decided 2026-10-17: the last button of the toolbox (phones) and of the toolbar (desktop)
+function moreBtn(st, size = 44) {
+  return `<button type="button" class="tbtn" data-act="trip" aria-haspopup="menu" aria-expanded="${st.pop === 'trip'}" aria-label="${t('more')}: share link, GPX, save offline, round trip, reverse, back to start, import, clear" data-tip="more" style="width:${size}px;height:${size}px">${ic('more', 22)}</button>`;
 }
 const styleName = (st) => (SPORTS[st.sport].styles.find((x) => x[0] === st.style) || SPORTS[st.sport].styles[0])[1];
 const hasHist = (st) => st.hist > 0 || st.fut > 0 || st.stage !== 'start';
@@ -839,12 +846,9 @@ function modeButton(st) {
   const showStyle = st.draw !== 'line';
   return `<button type="button" class="modebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('nextLeg')}: ${t(st.draw)}${showStyle ? `, ${t('styleRow')} ${styleName(st)}` : ''}">${ic(st.draw, 20)}<span class="two"><b>${t(st.draw)}</b>${showStyle ? `<small>${esc(styleName(st))}</small>` : ''}</span>${ic('down', 14)}</button>`;
 }
-function phoneToolbox(st, v) {
-  if (v.modes === 'buttons') {
-    const seg = ['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}" aria-label="${t(m)}${m === 'auto' ? `, ${styleName(st)}` : ''}">${ic(m, 19)}${m === 'auto' && st.draw === 'auto' ? `<span>${esc(styleName(st))}</span>${ic('down', 12)}` : ''}</button>`).join('');
-    return `<div class="seg" role="radiogroup" aria-label="${t('nextLeg')}">${seg}</div>${undoRedo(st)}`;
-  }
-  return `${modeButton(st)}${undoRedo(st)}`;
+// editing: the next leg's mode, undo, redo, More; in the route's view only More stays (nothing is drawn there)
+function phoneToolbox(st) {
+  return st.mode === 'edit' ? `${modeButton(st)}${undoRedo(st)}${moreBtn(st)}` : moreBtn(st);
 }
 function modesMenu(st) {
   const S = SPORTS[st.sport];
@@ -862,7 +866,7 @@ function modesMenu(st) {
 function routeTitle(st, v) { const T = v.worst ? WORST_TITLE : SPORTS[st.sport].title; return `${T[0]} → ${T[1]}`; }
 function tripMenu(st, v) {
   const mi = (icn, b, s, act, cls = '', dis = false) => `<button type="button" class="mi ${cls}" role="menuitem" data-act="${act}"${dis ? ' disabled' : ''}>${ic(icn, 22)}<span><b>${b}</b>${s ? `<small>${s}</small>` : ''}</span></button>`;
-  const name = t(v.trip === 'trip' ? 'trip' : v.trip === 'share' ? 'share' : 'more');
+  const name = t('more');
   return `<div class="popmenu" role="menu" aria-label="${name}" data-anchor="trip">
     <div class="mhead"><b>${esc(routeTitle(st, v))}</b><small>${ic('check', 14)}${t('kept')}</small></div>
     <div class="mh">${t('takeAlong')}</div>
@@ -918,16 +922,27 @@ function wpList(st, v) {
   const row = (i) => {
     const p = L[i], sub = `${label(i)} · ${p.km} km · ${p.tm}`;
     if (i !== st.sel || !editing) return `<li><button type="button" class="wpr" data-act="sel" data-v="${i}" aria-expanded="false" aria-label="${esc(p.name)}, ${sub}">${ic('grip', 16, 'gr')}${mk(i)}<span class="nm"><b>${esc(p.name)}</b><small>${sub}</small></span>${tags(p)}</button></li>`;
-    const leg = i < L.length - 1 ? `<button type="button" class="legline" data-act="leg" aria-expanded="${st.legOpen}">${ic(st.sport === 'paddle' ? 'water' : 'auto', 18)}<span><b>${t('nextLegRow')}:</b> ${SPORTS[st.sport].label} · ${t(st.sport === 'paddle' ? 'water' : 'auto')} · ${esc(styleName(st))}</span>${ic(st.legOpen ? 'up' : 'down', 16)}</button>` : '';
-    const legset = st.legOpen ? `<div class="legset"><div class="seg small" role="radiogroup" aria-label="How the leg after ${esc(p.name)} is drawn">${['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${m === (st.sport === 'paddle' ? 'water' : 'auto')}">${ic(m, 16)}${t(m)}</button>`).join('')}</div><div class="chips"><span class="sel">${ic(SPORTS[st.sport].icon, 16)}${SPORTS[st.sport].label} ${ic('down', 12)}</span><span class="sel">${esc(styleName(st))} ${ic('down', 12)}</span><button type="button" class="btn small quiet">Other ways</button></div></div>` : '';
+    // the leg after this point: its sport, how it's drawn and its style, each the route's unless set here (today's leg editor,
+    // legSettingsRow(), moved into the selected row as it is); a leg with its own style keeps it when the route's style changes
+    const own = st.legStyle && st.legStyle[i], legMode = st.sport === 'paddle' ? 'water' : 'auto';
+    const ownName = own ? (SPORTS[st.sport].styles.find((x) => x[0] === own) || ['', 'Flatter'])[1] : null;
+    const styleSay = own ? `${esc(ownName)} <span class="own">its own</span>` : `the route’s (${esc(styleName(st))})`;
+    const leg = i < L.length - 1 ? `<button type="button" class="legline" data-act="leg" aria-expanded="${st.legOpen}">${ic(legMode, 18)}<span><b>${t('nextLegRow')}</b> · ${SPORTS[st.sport].label} · ${t(legMode)} · ${styleSay}</span>${ic(st.legOpen ? 'up' : 'down', 16)}</button>` : '';
+    const legset = st.legOpen ? `<div class="legset">
+        <label class="lrow"><span>Sport</span><span class="sel">${ic(SPORTS[st.sport].icon, 16)}${SPORTS[st.sport].label} (the route’s) ${ic('down', 12)}<select aria-label="Sport of the leg after ${esc(p.name)}"><option>${SPORTS[st.sport].label} (the route’s)</option><option>Hike</option><option>Paddle</option></select></span></label>
+        <div class="lrow"><span>Drawn</span><div class="seg small" role="radiogroup" aria-label="How the leg after ${esc(p.name)} is drawn">${['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${m === legMode}" aria-label="${t(m)}">${ic(m, 16)}</button>`).join('')}</div></div>
+        <label class="lrow"><span>Style</span><span class="sel">${own ? esc(ownName) : `The route’s (${esc(styleName(st))})`} ${ic('down', 12)}<select aria-label="Style of the leg after ${esc(p.name)}" data-in="legstyle"><option value="">The route’s (${esc(styleName(st))})</option>${SPORTS[st.sport].styles.map(([k, n]) => `<option value="${k}"${own === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}<option value="~tune">Fine-tune…</option></select></span></label>
+        <div class="lrow"><span></span><button type="button" class="btn small quiet" data-act="noop">${ic('route', 16)}Other ways</button></div></div>` : '';
+    // a stop: a break of so many minutes, or the night with the morning's hour (stopChip() and stopEditor() as today)
+    const stopLine = p.stop ? `<div class="stopline">${ic('pause', 16)}<span class="sel">Break ${ic('down', 12)}<select aria-label="Stop at ${esc(p.name)}"><option>Break</option><option>Night</option><option>No stop</option></select></span><span class="len sm"><input type="text" inputmode="numeric" enterkeyhint="done" value="15" aria-label="Minutes of the break"><span>min</span></span></div>` : '';
     const move = st.moveTo ? `<div class="moveto"><span>${t('pos')}</span><span class="stepper"><button type="button" class="tbtn ring" data-act="mvdec" aria-label="One earlier">${ic('minus', 18)}</button><span class="len"><input type="text" inputmode="numeric" enterkeyhint="done" value="${st.mvTo ?? i}" aria-label="${t('pos')}" data-in="mv"><span>${t('ofN')} ${L.length - 1}</span></span><button type="button" class="tbtn ring" data-act="mvinc" aria-label="One later">${ic('plus', 18)}</button></span><button type="button" class="btn small primary" data-act="mvgo">${t('move')}</button></div>` : '';
     return `<li class="wpsel" aria-current="true"><div class="wpr">${ic('grip', 16, 'gr')}${mk(i)}<span class="nm"><input class="namefield" enterkeyhint="done" maxlength="60" value="${esc(p.name)}" aria-label="${t('name')} of ${label(i)} (selected)" data-in="name"><small>${sub}</small></span>${tags(p)}</div>
       ${i === 0 ? `<div class="chips" style="margin-top:6px"><span class="btn small quiet">${ic('clock', 16)}${t('depart')} ${t('now')} ${ic('down', 12)}</span></div>` : ''}
-      ${leg}${legset}
-      <div class="wpacts">${i > 0 && i < L.length - 1 ? `<button type="button" class="btn small quiet" data-act="stop" aria-pressed="${!!p.stop}">${ic('pause', 16)}${t('stop')}</button>` : ''}
-        <button type="button" class="tbtn ring" data-act="up" aria-label="Move ${esc(p.name)} ${t('earlier').toLowerCase()}"${i === 0 ? ' disabled' : ''}>${ic('up', 18)}</button><button type="button" class="tbtn ring" data-act="down" aria-label="Move ${esc(p.name)} ${t('later').toLowerCase()}"${i === L.length - 1 ? ' disabled' : ''}>${ic('down', 18)}</button>
-        ${L.length > 6 ? `<button type="button" class="btn small quiet" data-act="moveto" aria-expanded="${st.moveTo}">${ic('moveto', 16)}${t('moveTo')}</button>` : ''}
-        <button type="button" class="btn small quiet danger" data-act="remove">${ic('trash', 16)}${t('remove')}</button></div>${move}</li>`;
+      ${stopLine}${leg}${legset}
+      <div class="wpacts">${i > 0 && i < L.length - 1 ? `<button type="button" class="act" data-act="stop" aria-pressed="${!!p.stop}">${ic('pause', 16)}${t('stop')}</button>` : ''}
+        <span class="pair"><button type="button" class="act ico" data-act="up" aria-label="Move ${esc(p.name)} ${t('earlier').toLowerCase()}"${i === 0 ? ' disabled' : ''}>${ic('up', 18)}</button><button type="button" class="act ico" data-act="down" aria-label="Move ${esc(p.name)} ${t('later').toLowerCase()}"${i === L.length - 1 ? ' disabled' : ''}>${ic('down', 18)}</button></span>
+        ${L.length > 6 ? `<button type="button" class="act" data-act="moveto" aria-expanded="${st.moveTo}">${ic('moveto', 16)}${t('moveTo')}</button>` : ''}
+        <button type="button" class="act danger" data-act="remove">${ic('trash', 16)}${t('remove')}</button></div>${move}</li>`;
   };
   const head = st.long ? `<div class="wptools"><label class="find">${ic('search', 18)}<input type="search" enterkeyhint="search" autocapitalize="none" autocorrect="off" placeholder="${t('find')}" value="${esc(st.q)}" aria-label="${t('find')}" data-in="q"></label>
       <div class="seg small" role="radiogroup" aria-label="Which points"><button type="button" role="radio" aria-checked="${st.filter === 'all'}" data-act="filter" data-v="all">${t('all')} ${L.length}</button><button type="button" role="radio" aria-checked="${st.filter === 'key'}" data-act="filter" data-v="key">${t('key')} ${L.filter(isKey).length}</button></div></div>` : '';
@@ -947,7 +962,7 @@ function plannerHtml(st, v, desk, docked) {
   if (st.stage === 'start') {
     const later = st.later ? `<div class="later" style="opacity:1;margin-top:4px"><b>${t('later157')}: ${t('yourRoutes')}</b><ol class="wpl" style="margin-top:4px">${[['Kauppi → Hervanta', 'MTB · 12.6 km · 2026-10-16'], ['Näsijärvi islands', 'Paddle · 11.1 km · offline · 2026-10-12'], ['Pyynikki loop', 'Hike · 8.2 km · 2026-10-03']].map(([a, b]) => `<li><button type="button" class="wpr">${ic('route', 18)}<span class="nm"><b>${a}</b><small>${b}</small></span>${ic('right', 16)}</button></li>`).join('')}</ol></div>` : '';
     return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
-      <div class="row"><div class="hint">${t(desk ? 'clickStart' : 'tapStart')}<small>${t('tapStartSub')}</small></div><button type="button" class="btn" data-act="done">${t('done')}</button></div>
+      <div class="row"><div class="hint">${t(desk ? 'clickStart' : 'tapStart')}<small>${t('tapStartSub')}</small></div>${desk ? '' : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</div>
       <div class="chips"><button type="button" class="chip" data-act="rtopen">${ic('roundtrip', 18)}${t('roundTrip')}</button><button type="button" class="chip" data-act="noop">${ic('upload', 18)}${t('importFile')}</button>${st.later ? `<button type="button" class="chip">${ic('list', 18)}${t('yourRoutes')} 3</button>` : ''}</div>${later}</div>`;
   }
   if (st.stage === 'first') {
@@ -976,29 +991,34 @@ function plannerHtml(st, v, desk, docked) {
         <button type="button" class="btn primary big" data-act="make"${making ? ' disabled aria-disabled="true"' : ''}>${making ? `<span style="display:grid;gap:6px;width:70%;justify-items:center">${t('making')} ${R.making} ${t('of3')}<span class="progress" style="--p:${R.making * 33}%"><i></i></span></span>` : `${ic('roundtrip', 20)}${t('make3')}`}</button>
         <span class="sr" role="status">${making ? `${t('making')} ${R.making} ${t('of3')}` : ''}</span></div></div>`;
     }
-    const rtrow = v.rtui === 'button'
-      ? `<div class="chips"><button type="button" class="chip" data-act="rtopen">${ic('roundtrip', 18)}${t('rtHere')}${ic('right', 14)}</button></div>`
-      : `<div class="cap" style="margin-top:2px">${ic('roundtrip', 14).replace('class="ic ', 'style="display:inline;vertical-align:-2px" class="ic ')} ${t('rtHere')}</div><div class="chips" role="group" aria-label="${t('rtHere')}">${presets.slice(0, 3).map((q) => `<button type="button" class="chip" data-act="preset" data-v="${q}" aria-label="${t('rtHere')}: ${fmtV(q)}">${fmtV(q)}</button>`).join('')}<button type="button" class="chip" data-act="rtopen">${t('other')}…</button></div>`;
+    const rtrow = `<div class="cap" style="margin-top:2px">${ic('roundtrip', 14).replace('class="ic ', 'style="display:inline;vertical-align:-2px" class="ic ')} ${t('rtHere')}</div><div class="chips" role="group" aria-label="${t('rtHere')}">${presets.slice(0, 3).map((q) => `<button type="button" class="chip" data-act="preset" data-v="${q}" aria-label="${t('rtHere')}: ${fmtV(q)}">${fmtV(q)}</button>`).join('')}<button type="button" class="chip" data-act="rtopen">${t('other')}…</button></div>`;
     return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
-      <div class="row"><div class="hint">${t(desk ? 'clickNext' : 'tapNext')}</div><button type="button" class="btn" data-act="done">${t('done')}</button></div>${rtrow}</div>`;
+      <div class="row"><div class="hint">${t(desk ? 'clickNext' : 'tapNext')}</div>${desk ? '' : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</div>${rtrow}</div>`;
   }
   // a route
   const viewing = st.mode === 'view';
+  // the summary is the route's own information; on a phone Done (Edit in the view) sits at its right, at the thumb
+  const fin = desk ? '' : `<span class="acts-r">${viewing ? `<button type="button" class="btn" data-act="edit">${t('edit')}</button>` : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</span>`;
   const head = viewing
     ? `<div class="titlerow"><span class="ttl"><b>${esc(routeTitle(st, v))}</b><small>${ic('check', 13)}${t('kept')}</small></span><button type="button" class="tbtn" data-act="close" aria-label="Put the route away">${ic('close', 20)}</button></div>${warnRow(st, v, desk)}
-       <div class="row wrap">${stats(st, v)}<span class="acts-r">${tripBtn(st, v, desk)}<button type="button" class="btn" data-act="edit">${desk ? ic('pencil', 18) : ''}${t('edit')}</button></span></div>`
-    : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}<span class="acts-r">${tripBtn(st, v, desk)}<button type="button" class="btn" data-act="done">${t('done')}</button></span></div>`;
+       <div class="row wrap">${stats(st, v)}${fin}</div>`
+    : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>`;
   const big = desk || st.sheet !== 'peek';
   const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
   const body = st.tab === 'check' ? checkBody(st, v) : st.tab === 'go' ? goBody(st) : wpList(st, v);
   return `<div class="pl${desk && !viewing ? ' joined' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
 }
-function deskToolbar(st, v) {
+function deskToolbar(st, v, compact = 0) {
+  const route = st.stage === 'route', sep = '<span class="sep" aria-hidden="true"></span>';
+  const tb = (act, icn, label, tip, dis = false) => `<button type="button" class="tbtn" data-act="${act}" aria-label="${label}" data-tip="${tip}"${dis ? ' disabled' : ''}>${ic(icn, 20)}</button>`;
+  const fit = route ? tb('fit', 'fit', 'Show the whole route', 'fit') : '';
+  if (st.mode === 'view') return `<div class="deskbar" role="toolbar" aria-label="Your route">${fit}${moreBtn(st, 40)}${sep}<button type="button" class="btn" data-act="edit" data-tip="edit">${ic('pencil', 18)}${t('edit')}</button></div>`;
   const seg = ['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}" data-tip="${m}" aria-keyshortcuts="${{ auto: 'P', line: 'S', water: 'W' }[m]}">${ic(m, 19)}${t(m)}</button>`).join('');
-  const say = st.stage === 'start' ? t('clickStart') : `${t(st.draw)}: ${st.draw === 'line' ? 'click the map, the leg goes straight' : 'click the map to add a point'} · right-click for more`;
+  // where room runs out (a narrower window, longer words), Reverse and Back to start fold into More first, then the style's label
+  const whole = route && compact < 1 ? `${sep}${tb('reverse', 'reverse', t('reverse'), 'reverse')}${tb('backstart', 'loop', t('backStart'), 'backstart')}` : '';
   return `<div class="deskbar" role="toolbar" aria-label="Drawing tools"><div class="seg" role="radiogroup" aria-label="${t('nextLeg')}">${seg}</div>
-    <span class="sep" aria-hidden="true"></span><span class="lab">${t('styleRow')}</span><button type="button" class="stylebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" data-tip="style">${esc(styleName(st))}${ic('down', 12)}</button>
-    ${hasHist(st) ? `<span class="sep" aria-hidden="true"></span>${undoRedo(st, 40)}` : ''}<span class="say" aria-live="polite">${esc(say)}</span></div>`;
+    ${sep}<button type="button" class="stylebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('styleRow')}: ${esc(styleName(st))}" data-tip="style"><span class="two">${compact < 2 ? `<small>${t('styleRow')}</small>` : ''}<span>${esc(styleName(st))}</span></span>${ic('down', 12)}</button>
+    ${hasHist(st) ? `${sep}${undoRedo(st, 40)}` : ''}${whole}${fit ? `${route && compact < 1 ? '' : sep}${fit}` : ''}${sep}${moreBtn(st, 40)}<button type="button" class="btn" data-act="done" data-tip="done">${t('done')}</button></div>`;
 }
 const TIPS = {
   auto: ['auto', 'Follow paths', 'P', 'The next leg follows paths and roads, chosen by the route style.'],
@@ -1007,6 +1027,12 @@ const TIPS = {
   style: ['route', 'Route style', '', 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.'],
   undo: ['undo', 'Undo', 'Ctrl Z', 'Takes back the last change.'],
   redo: ['redo', 'Redo', 'Ctrl Shift Z', 'Does it again.'],
+  reverse: ['reverse', 'Reverse', '', 'The finish becomes the start; each leg keeps its mode and style.'],
+  backstart: ['loop', 'Back to start', '', 'A leg from the finish back to where you started.'],
+  fit: ['fit', 'Show the whole route', 'F', 'Frames the whole route on the map, clear of the planner.'],
+  more: ['more', 'More', '', 'Share link, GPX, save offline; round trip, reverse, back to start, import; clear the route.'],
+  done: ['check', 'Done', 'E', 'Stop editing: the route stays open to read, check and take along.'],
+  edit: ['pencil', 'Edit', 'E', 'Back to drawing: the toolbox comes back, and a click on the map adds a point.'],
 };
 const tipHtml = (k, x, y) => { const [i, b, kbd, d] = TIPS[k]; return `<div class="tip" role="tooltip" style="left:${x}px;top:${y}px"><b>${b}${kbd ? kbd.split(' ').map((q) => `<span class="kbd">${q}</span>`).join('') : ''}</b>${d}</div>`; };
 
@@ -1040,11 +1066,16 @@ function render(f) {
   const sheetTop = desk || !pl ? 0 : H - pl.offsetTop;
   const colsBottom = desk ? 12 : (pl ? sheetTop + 12 : 20);
   scr.insertAdjacentHTML('beforeend', cols(st, desk, colsBottom, z) + `<div class="scale" style="bottom:${desk ? 12 : (pl ? sheetTop + 12 : 20)}px"><i>500 m</i></div>`);
+  const foldCols = (bottom) => { for (let fold = 1; fold <= 2 && !desk; fold++) { const c0 = scr.querySelector('.cols:not([hidden])'); if (!c0 || c0.offsetTop >= 64) break; c0.outerHTML = cols(st, desk, bottom, z, fold); } };
+  foldCols(colsBottom);
   // the toolbox: phones float it above the sheet (docked into the sheet where the map is too narrow); desktops hang it off the panel
-  if (editing && pl && !(st.stage === 'first' && (st.rt.open || st.rt.results))) {
-    if (desk) scr.insertAdjacentHTML('beforeend', deskToolbar(st, v));
-    else {
-      scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="Drawing tools" style="bottom:${sheetTop + 8}px">${phoneToolbox(st, v)}</div>`);
+  if (pl && (editing || st.stage === 'route') && !(st.stage === 'first' && (st.rt.open || st.rt.results))) {
+    if (desk) {
+      // the toolbar may not reach the map's buttons: fold its least used parts first
+      const right = scr.querySelector('.cols').offsetLeft - 12;
+      for (let c = 0; c < 3; c++) { scr.querySelector('.deskbar')?.remove(); scr.insertAdjacentHTML('beforeend', deskToolbar(st, v, c)); const b = scr.querySelector('.deskbar'); if (b.offsetLeft + b.offsetWidth <= right) break; }
+    } else {
+      scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="${editing ? 'Drawing tools' : 'Your route'}" style="bottom:${sheetTop + 8}px">${phoneToolbox(st)}</div>`);
       const fl = scr.querySelector('.float'), cl = scr.querySelector('.cols:not([hidden])') || { offsetLeft: W };
       // too narrow beside the map's buttons, or no room above a raised sheet: it docks into the sheet
       if (fl.offsetLeft + fl.offsetWidth + 8 > cl.offsetLeft || fl.offsetTop < 64) { docked = true; fl.remove(); } else scr.querySelector('.scale').style.bottom = `${H - fl.offsetTop + 8}px`;
@@ -1053,7 +1084,7 @@ function render(f) {
   if (docked) {
     pl.outerHTML = plannerHtml(st, v, desk, true);
     const pl2 = scr.querySelector('.pl'), top2 = H - pl2.offsetTop;
-    const c2 = scr.querySelector('.cols'); if (c2) c2.style.bottom = `${top2 + 12}px`;
+    const c2 = scr.querySelector('.cols'); if (c2) { c2.outerHTML = cols(st, desk, top2 + 12, z); foldCols(top2 + 12); }
     scr.querySelector('.scale').style.bottom = `${top2 + 12}px`;
   }
   // menus, anchored to what opened them
@@ -1068,11 +1099,12 @@ function render(f) {
         // above its button, below the top bar, clear of the map's buttons; it scrolls inside if it's taller than
         // the room, and with no room above its button (enlarged text, a raised sheet) it opens as a sheet of its own
         const room = r.y - 8 - 64, colsL = (scr.querySelector('.cols:not([hidden])') || { offsetLeft: W }).offsetLeft;
-        const mw = Math.min(316, W - 16, st.pop === 'modes' ? colsL - 16 : W - 16);
+        const mw = Math.min(316, W - 16, colsL - 16);
         if (room < 240 || W < 340) { m.style.left = '8px'; m.style.right = '8px'; m.style.width = 'auto'; m.style.top = '64px'; m.style.bottom = '8px'; m.style.maxHeight = 'none'; m.style.zIndex = 15; }
         else {
           m.style.bottom = `${H - r.y + 8}px`; m.style.maxHeight = `${room}px`; m.style.width = `${mw}px`;
-          if (st.pop === 'trip') { m.style.left = `${Math.max(8, W - 8 - mw)}px`; m.style.setProperty('--origin', 'bottom right'); } else m.style.left = `${Math.max(8, Math.min(r.x, W - 8 - mw))}px`;
+          m.style.left = `${Math.max(8, Math.min(r.x + r.w - mw, W - 8 - mw))}px`; m.style.setProperty('--origin', 'bottom right');
+          if (st.pop === 'modes') { m.style.left = `${Math.max(8, Math.min(r.x, W - 8 - mw))}px`; m.style.setProperty('--origin', 'bottom left'); }
         }
       }
     }
@@ -1080,13 +1112,13 @@ function render(f) {
   if (st.tip && desk) { const tr = scr.querySelector(`[data-tip="${st.tip}"]`); if (tr) { const r = box(tr, scr); scr.insertAdjacentHTML('beforeend', tipHtml(st.tip, r.x, r.y + r.h + 10)); } }
   if (st.info) scr.insertAdjacentHTML('beforeend', `<div class="mapinfo" style="left:${Math.min(st.info[0], W - 250)}px;top:${Math.max(70, st.info[1] - 90)}px" role="status"><b>Path · gravel, 2.5 m wide</b>Kauppi’s trails · open all year<br><small style="color:var(--muted)">${t('mapTap')}</small></div>`);
   if (st.toast) {
-    const T = { cleared: [t('cleared'), t('undoBtn'), 'undo'], closed: [t('closed'), t('open'), 'reopen'], style: [`${t('styleRow')}: ${styleName(st)} · the route is routed again`, t('undoBtn'), 'undo'], removed: [`Removed ${st.toastName || ''}`, t('undoBtn'), 'undo'], loop: ['Loop A is your route', t('undoBtn'), 'undo'], moved: ['Moved', t('undoBtn'), 'undo'] }[st.toast];
+    const T = { cleared: [t('cleared'), t('undoBtn'), 'undo'], closed: [t('closed'), t('open'), 'reopen'], style: [`${t('styleRow')}: ${styleName(st)} · routed again; legs with their own style keep it`, t('undoBtn'), 'undo'], removed: [`Removed ${st.toastName || ''}`, t('undoBtn'), 'undo'], loop: ['Loop A is your route', t('undoBtn'), 'undo'], moved: ['Moved', t('undoBtn'), 'undo'], fit: ['The whole route is in view', '', ''], reversed: ['Reversed: the finish is the start now', t('undoBtn'), 'undo'], backed: ['A leg back to the start', t('undoBtn'), 'undo'] }[st.toast];
     if (T) {
       const pl3 = scr.querySelector('.pl'), fl3 = scr.querySelector('.float'), c3 = scr.querySelector('.cols:not([hidden])');
       const bottom = desk ? 24 : (fl3 ? H - fl3.offsetTop + 10 : pl3 ? H - pl3.offsetTop + 10 : 20);
       // on a phone a note stays left of the map's buttons, so it never covers Layers or Plan
       const place = desk ? '' : `left:8px;right:${c3 ? W - c3.offsetLeft + 8 : 8}px;transform:none;width:auto;`;
-      scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${bottom}px;${place}"><span>${esc(T[0])}</span><button type="button" data-act="${T[2]}">${T[1]}</button></div>`);
+      scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${bottom}px;${place}"><span>${esc(T[0])}</span>${T[1] ? `<button type="button" data-act="${T[2]}">${T[1]}</button>` : ''}</div>`);
     }
   }
   scr.insertAdjacentHTML('beforeend', `<span class="sr" aria-live="polite">${st.mode === 'view' ? 'Done editing. ' + t('mapTap') : ''}</span>`);
@@ -1102,7 +1134,7 @@ function box(el, scr) {
 
 // ------------------------------------------------ what a tap does
 // what undo brings back: the route and its style, as in Polku (the mode for the next leg isn't part of the route)
-const SNAP = (st) => JSON.stringify({ stage: st.stage, wps: st.wps, sel: st.sel, style: st.style, loop: st.loop, rt: { ...st.rt, making: 0 } });
+const SNAP = (st) => JSON.stringify({ stage: st.stage, wps: st.wps, sel: st.sel, style: st.style, legStyle: st.legStyle || {}, loop: st.loop, rt: { ...st.rt, making: 0 } });
 function change(f, fn) { f.past.push(SNAP(f.st)); f.future = []; fn(); f.st.hist = f.past.length; f.st.fut = 0; }
 function act(f, a, val, ev) {
   const st = f.st, R = st.rt;
@@ -1161,6 +1193,9 @@ function act(f, a, val, ev) {
     case 'mvgo': { const to = st.mvTo ?? st.sel; change(f, () => { const L = [...st.wps], [p] = L.splice(st.sel, 1); L.splice(to, 0, p); st.wps = L; st.sel = to; st.moveTo = false; }); st._reveal = true; toast('moved'); break; }
     case 'remove': { const nm = st.wps[st.sel].name; if (st.wps.length <= 2) break; change(f, () => { st.wps = st.wps.filter((_, i) => i !== st.sel); st.sel = Math.min(st.sel, st.wps.length - 1); }); st.toastName = nm; toast('removed', 7000); break; }
     case 'filter': st.filter = val; break;
+    case 'fit': toast('fit', 2500); break;
+    case 'reverse': change(f, () => { st.wps = [...st.wps].reverse().map((p, i, L) => ({ ...p, kind: i === 0 ? 'start' : i === L.length - 1 ? 'end' : 'via' })); }); toast('reversed'); break;
+    case 'backstart': change(f, () => { const L = st.wps; st.wps = [...L.slice(0, -1), { ...L[L.length - 1], kind: 'via' }, { ...L[0], kind: 'end', km: +(L[L.length - 1].km * 2).toFixed(2) }]; }); toast('backed'); break;
     default: close();
   }
   st._wpsKey = `${st.long}|${view(st).worst}|${st.sport}`;
@@ -1203,6 +1238,7 @@ for (const el of document.querySelectorAll('.fr')) {
     const k = e.target.dataset.in;
     if (k === 'q') { f.st.q = e.target.value; const pos = e.target.selectionStart; render(f); const i = scr.querySelector('[data-in="q"]'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } }
     if (k === 'len') { const n = parseFloat(e.target.value.replace(',', '.')); if (n > 0) f.st.rt.val = n; }
+    if (k === 'legstyle') { const val = e.target.value; if (val === '~tune') return; f.past.push(SNAP(f.st)); f.st.hist = f.past.length; f.st.legStyle = { ...(f.st.legStyle || {}), [f.st.sel]: val || undefined }; render(f); return; }
     if (k === 'mv') { const n = parseInt(e.target.value, 10); if (n >= 0) f.st.mvTo = Math.min(n, f.st.wps.length - 1); }
   });
   scr.addEventListener('scroll', (e) => { if (e.target.matches && e.target.matches('[data-body]')) f.st._scroll = e.target.scrollTop; }, true);
@@ -1237,7 +1273,7 @@ function renderAll() {
   for (const f of FR.values()) render(f);
 }
 const PK = document.querySelector('.picker'), PKT = PK.querySelector('.pk-toggle');
-const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: worst case, words, theme, open decisions'; };
+const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: worst case, words, theme'; };
 pkOpen(innerWidth >= 1100);
 PKT.addEventListener('click', () => pkOpen(PK.dataset.open !== 'true'));
 document.querySelector('.picker').addEventListener('click', (e) => {

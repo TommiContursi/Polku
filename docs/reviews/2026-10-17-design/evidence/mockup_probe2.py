@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from cdp import Chrome, BASE  # noqa: E402
 
 MOCK = 'docs/plans/mockups/phase-24-planner.html'
-PHONE = ['tb-phone', 'tb-phone-calm', 'tb-phone-menu', 'tb-phone-style', 'tb-phone-buttons', 'rt-first', 'rt-form', 'rt-time', 'rt-making', 'rt-results', 'rt-button',
+PHONE = ['tb-phone', 'tb-phone-calm', 'tb-phone-menu', 'tb-phone-style', 'rt-first', 'rt-form', 'rt-time', 'rt-making', 'rt-results',
          'trip-phone', 'trip-clear', 'fin-edit', 'fin-view', 'fin-view-go', 'fin-closed', 'fin-later', 'chk-phone', 'chk-paddle', 'chk-peek',
          'wp-phone', 'wp-long', 'wp-move', 'wp-key', 'play-phone']
 DESK = ['tb-desk', 'rt-desk', 'trip-desk', 'fin-desk-view', 'chk-desk', 'wp-desk', 'play-desk']
