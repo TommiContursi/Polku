@@ -13,12 +13,15 @@ const FMI = 'https://openwms.fmi.fi/geoserver/Radar/wms';
 // Palette indexes themselves are arbitrary. The spare white background means
 // missing coverage; zero rain has its own colour. Extended retains drizzle.
 const RATE = 'Radar:radar_finland_cappi_rate';
-const RATE_STYLE = '<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer>' +
-  `<Name>${RATE}</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ColorMap extended="true">` +
-  [[-1, '000001'], [0, '000001'], [0.01, '0000ff'], [0.1, '00ffff'], [1, '00ff00'], [10, 'ffff00'], [100, 'ff0000'], [1000, 'ff00ff']]
+const RATE_LEVELS = [0, 0.01, 0.1, 1, 10, 100, 1000];
+const DBZ_LEVELS = [-32, -20, -10, 0, 10, 30, 95];
+const CODES = ['000001', '0000ff', '00ffff', '00ff00', 'ffff00', 'ff0000', 'ff00ff'];
+const numericStyle = (layer, levels) => '<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer>' +
+  `<Name>${layer}</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ColorMap extended="true">` +
+  [[levels[0] - 1, CODES[0]], ...levels.map((q, i) => [q, CODES[i]])]
     .map(([q, c]) => `<ColorMapEntry color="#${c}" quantity="${q}"/>`).join('') +
   '</ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
-// National CAPPI reflectivity, raw 8-bit: dBZ = 0.5 × v − 32, turned into mm/h with
+// National CAPPI reflectivity, decoded to dBZ and turned into mm/h with
 // Marshall–Palmer. It overstates light rain near freezing (in Jyväskylä on 2026-10-14 it said
 // 2–9 mm/h while FMI's rain rate said 0.01–0.05 and drizzle fell), so it's only the fallback.
 const DBZ = 'Radar:radar_finland_cappi_dbzh';
@@ -36,13 +39,11 @@ const fetchLayer = async (layer, box, width, height) => {
     `&bbox=${mx(box[0]).toFixed(0)},${my(box[1]).toFixed(0)},${mx(box[2]).toFixed(0)},${my(box[3]).toFixed(0)}` +
     `&width=${width}&height=${height}&format=image/geotiff`;
   const query = new URL(url);
-  if (layer === RATE) {
-    query.searchParams.set('styles', '');
-    query.searchParams.set('SLD_BODY', RATE_STYLE);
-    query.searchParams.set('interpolations', 'nearest neighbor');
-    query.searchParams.set('bgcolor', '0xffffff');
-    query.searchParams.set('transparent', 'false');
-  }
+  query.searchParams.set('styles', '');
+  query.searchParams.set('SLD_BODY', numericStyle(layer, layer === RATE ? RATE_LEVELS : DBZ_LEVELS));
+  query.searchParams.set('interpolations', 'nearest neighbor');
+  query.searchParams.set('bgcolor', '0xffffff');
+  query.searchParams.set('transparent', 'false');
   const res = await request('fmi', query);
   if (!res.ok) throw new Error(`FMI radar ${res.status}`);
   return readTiff(await res.arrayBuffer(), width, height);
@@ -51,24 +52,23 @@ const fetchLayer = async (layer, box, width, height) => {
 // The fixed path around RGB's edges encodes each decade in a different channel.
 // Invert the palette colours, never their indexes; the server can reorder them.
 // Quantization is at most 1/255 of each decade's span, before rounding to .01.
-function rainRates({ px, palette, photo }) {
+function measurements({ px, palette, photo }, levels) {
   if (!(px instanceof Uint16Array) || photo !== 3 || !palette || palette.length !== 3 * 65536) throw new Error('rain rate: no extended encoded palette');
   const n = palette.length / 3, rate = new Float32Array(n).fill(NaN), valid = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
     const r = palette[i] / 257, g = palette[n + i] / 257, b = palette[2 * n + i] / 257;
     if (![r, g, b].every(Number.isInteger)) continue;
-    let mmh;
+    let segment, t;
     if (r === 255 && g === 255 && b === 255) { valid[i] = 1; continue; } // missing, not dry
-    if (r === 0 && g === 0 && b >= 1) mmh = (b - 1) / 254 * 0.01;
-    else if (r === 0 && b === 255) mmh = 0.01 + g / 255 * 0.09;
-    else if (r === 0 && g === 255) mmh = 0.1 + (255 - b) / 255 * 0.9;
-    else if (g === 255 && b === 0) mmh = 1 + r / 255 * 9;
-    else if (r === 255 && b === 0) mmh = 10 + (255 - g) / 255 * 90;
-    else if (r === 255 && g === 0) mmh = 100 + b / 255 * 900;
+    if (r === 0 && g === 0 && b >= 1) { segment = 0; t = (b - 1) / 254; }
+    else if (r === 0 && b === 255) { segment = 1; t = g / 255; }
+    else if (r === 0 && g === 255) { segment = 2; t = (255 - b) / 255; }
+    else if (g === 255 && b === 0) { segment = 3; t = r / 255; }
+    else if (r === 255 && b === 0) { segment = 4; t = (255 - g) / 255; }
+    else if (r === 255 && g === 0) { segment = 5; t = b / 255; }
     else continue;
     valid[i] = 1;
-    const rounded = Math.round(mmh * 100) / 100;
-    rate[i] = rounded >= 0.03 ? rounded : 0;
+    rate[i] = levels[segment] + t * (levels[segment + 1] - levels[segment]);
   }
   // Reject an ignored style or an unexpected encoding instead of painting
   // arbitrary byte values as rainfall. Unused palette slots may be padding.
@@ -85,19 +85,21 @@ export async function fmiRadar(box, width, height, colour) {
   let px, rate, speckle;
   try {
     const image = await fetchLayer(RATE, box, width, height);
-    rate = rainRates(image);
+    rate = measurements(image, RATE_LEVELS);
+    for (let i = 0; i < rate.length; i++) if (Number.isFinite(rate[i])) {
+      const rounded = Math.round(rate[i] * 100) / 100;
+      rate[i] = rounded >= 0.03 ? rounded : 0;
+    }
     px = image.px;
     speckle = 3; // FMI has already cleaned this product: only lone dots go
   } catch {
     const image = await fetchLayer(DBZ, box, width, height);
     px = image.px;
-    if (!(px instanceof Uint8Array) || image.photo !== 1) throw new Error('reflectivity: not raw 8-bit');
-    rate = new Float32Array(256);
-    for (let v = 2; v < 255; v++) {
-      const mmh = (10 ** ((0.5 * v - 32) / 10) / 200) ** 0.625; // Marshall–Palmer, Z = 200 R^1.6; 0–1 no echo
-      if (mmh >= 0.3) rate[v] = mmh; // below this: barely damp, and mostly birds, insects and clutter
+    rate = measurements(image, DBZ_LEVELS);
+    for (let v = 0; v < rate.length; v++) if (Number.isFinite(rate[v])) {
+      const mmh = (10 ** (rate[v] / 10) / 200) ** 0.625; // Marshall–Palmer, Z = 200 R^1.6
+      rate[v] = mmh >= 0.3 ? mmh : 0; // retain the fallback's stricter clutter threshold
     }
-    rate[255] = NaN;
     speckle = 5; // raw reflectivity: ships, turbines and waves echo as dots and lines
   }
   const lut = new Uint8ClampedArray(rate.length * 4);

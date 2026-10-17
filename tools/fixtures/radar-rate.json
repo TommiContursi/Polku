@@ -13,6 +13,15 @@
   ],
   "width": 100,
   "height": 100,
+  "reflectivityReference": {
+    "layer": "Radar:radar_finland_cappi_dbzh",
+    "pixel": [50, 50],
+    "nativeDbz": 5,
+    "encodedRgb": [127, 255, 0],
+    "decodedDbz": 4.980392156862745,
+    "defaultRasterByte": 149,
+    "note": "The default replacement raster is also stretched: applying the old byte*0.5-32 rule would report 42.5 dBZ. Use the fixed physical encoding for the fallback too."
+  },
   "notes": "Sparse palette/pixel samples from recorded fixed-encoding GeoTIFF downloads. Native values were independently checked with GetFeatureInfo at pixel centres. Last two samples are fixed encoding anchors, not observed weather. Rebuild a small TIFF in the smoke test; no live radar calls.",
   "samples": [
     {

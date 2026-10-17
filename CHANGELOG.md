@@ -6,6 +6,7 @@ What's new in Polku, newest first. Every change ships to [polku.si](https://polk
 
 ### Rain radar ready for FMI's new feed
 - **Rain “now” in Finland uses FMI's replacement radar data,** keeping light drizzle in proportion when the old feed is retired. Missing radar coverage stays distinct from dry weather. The backup radar remains available if the rain-rate layer cannot load.
+- **Both radar feeds use a fixed scale,** so changing the map view doesn't change what the rain measurements mean.
 
 ### Read what’s new inside Polku
 - **Settings → About Polku → What’s new** opens the changelog over the map. Scroll the dated changes and follow their links, then close it to return to your route.

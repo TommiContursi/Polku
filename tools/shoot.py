@@ -661,6 +661,25 @@ for sport in ['mtb', 'gravel', 'hike', 'paddle']:
     for size, viewport in [('desk', DESK), ('phone', PHONE)]:
         SCENES[f'{size}-changelog-{sport}'] = dict(viewport, activity=sport, timeline=True, js=CHANGELOG_WINDOW)
 
+# #133: the same straight route and live rain radar in every sport. No router
+# requests; forecast and radar completeness are checked before the capture.
+RAIN_RADAR_VIEW = """(async () => {
+  const p=polku.planner, wx=polku.weather, wait=ms=>new Promise(r=>setTimeout(r,ms));
+  p.checkWet=async()=>{};p.loadTrail=async()=>{};
+  (await import('./js/trails.js')).holdFetches();
+  p.setActive(true);p.clear();p.setMode('line');p.addPoint([25.72,62.23]);p.addPoint([25.76,62.25]);await p.analysing;
+  p.reveal('depart');if(p.layout()==='sheet')p.setSheetState('half',{remember:false});
+  Object.assign(polku.state.weather,{rain:true});wx.set(polku.state.weather);wx.setHour(0,{silent:true});wx.setOpen(true);
+  polku.map.jumpTo({center:[25.74,62.24],zoom:11});
+  const until=Date.now()+25000;
+  while((!wx.fi || wx.fiLoading || wx.loading) && Date.now()<until)await wait(100);
+  if(!wx.fi || wx.fiFailed)throw new Error('No FMI radar image for the screenshot');
+  return true;
+})()"""
+for sport in ['mtb', 'gravel', 'hike', 'paddle']:
+    for size, viewport in [('desk', DESK), ('phone', PHONE)]:
+        SCENES[f'{size}-radar-{sport}'] = dict(viewport, activity=sport, timeline=True, hash='#11/62.235/25.74', js=RAIN_RADAR_VIEW)
+
 
 def main():
     if '--list' in sys.argv:
