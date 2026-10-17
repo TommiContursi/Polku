@@ -59,12 +59,11 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   or the context is past about 250k tokens with real work left, write a
   Hand-over and start a new session (or Codex thread). After a usage-limit
   wait, start fresh from the Hand-over; don't resume a big session.
-- **One implementing session per Claude account at a time,** and the accounts
-  and Codex one after another, not all at once: more at once ran into the
-  usage limits ([retro](docs/retros/2026-10-15-16.md)). Codex works alongside
-  only as a reviewer, or on an issue it has claimed itself. No "status"
-  session, and no subagents to verify or run the suite: independent checks go
-  to Codex.
+- **One coding session at a time,** unless the user starts more. Claude's
+  two accounts and then Codex take turns: when one reaches its usage limit,
+  the next takes over from the last Hand-over. More at once ran into the
+  limits ([retro](docs/retros/2026-10-15-16.md)). No "status" session, and no
+  subagents to verify or run the suite.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
   issue, headed "Hand-over", in 6–8 short lines, no prose: branch and commit;
@@ -110,9 +109,11 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
-  `docs/plans/mockups/`, reviewed with the design skills that phase 24's plan
-  lists, in the worst case too (360 px, 200 % zoom, long Finnish words). The
-  user chooses before it's built; #123's plan shows how.
+  `docs/plans/mockups/`, looked at with apple-design, emil-design-eng,
+  mobile-native and break-ui, in the worst case too (360 px, 200 % zoom, long
+  Finnish words). The mock-up and a short plan are enough: no probe scripts,
+  measurements or evidence files unless the user asks. The user chooses
+  before it's built; #123's plan shows how.
 
 ## Testing
 
@@ -132,10 +133,10 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   and passes after it.
 - **App changes pass `python3 tools/smoke.py`.** While working, run only the
   groups you touch: `python3 tools/smoke.py water loops`.
-- Look at the change at **1440 × 900** and **390 × 844**, in MTB, gravel, hike
-  and paddle (and any sport it touches), with a route drawn and the timeline
-  open. Where your tool has a browser the user can watch (Claude Code's browser
-  pane), test there.
+- **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
+  the sports it touches (MTB and paddle when unsure), with a route drawn and
+  the timeline open. Where your tool has a browser the user can watch (Claude
+  Code's browser pane), test there.
 - The smoke tests bypass the service worker. An offline change needs a check
   with the worker running and the network off.
 - Headless Chrome runs with reduced motion, so `fitBounds` and `flyTo` fire
@@ -162,9 +163,9 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   issue, and the milestone's issues it fixes too), and the issues it found.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
-- **Screenshots:** `tools/shoot.py OUTDIR before|after [scenes]` on `main` and
-  on the branch, as JPEG on the `pr-screenshots` branch under `<branch>/`
-  (no images in `main`), linked as
+- **Screenshots** of a change people see: `tools/shoot.py OUTDIR before|after
+  [scenes]` on `main` and on the branch, as JPEG on the `pr-screenshots`
+  branch under `<branch>/` (no images in `main`), linked as
   `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
 - **In the same PR:**
   - CHANGELOG, in plain words for people using Polku (not for docs or tooling);
@@ -177,11 +178,12 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
     taken out of ROADMAP's order. A Fix PR changes neither: the CHANGELOG and
     the closed issue record it;
   - DEVELOPING, where how something works has changed.
-- **Codex reviews** phase PRs, and fixes that touch routing, saved data or
-  share links, before they're marked ready. A fresh Codex thread gets only the
-  PR and issue links, tries to break the change, and posts its findings as a
-  PR comment. The author answers each finding with evidence.
-- **Drafts until verified** (and reviewed, where a review is due).
+- **Offer a review** when a phase PR, or a fix that touches routing, saved
+  data or share links, is ready: a fresh session (Claude or Codex, whichever
+  has usage left) gets only the PR and issue links, tries to break the
+  change, and comments on the PR; the author answers each finding with
+  evidence. It runs when the user starts it, and never holds a PR in draft.
+- **Drafts until verified.**
 - **Never push to `main` or merge** unless the user says so. The user merges:
   say which PRs are ready (the ones not in draft, in their "after #N" order),
   and which wait and why.
