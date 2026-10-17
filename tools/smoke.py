@@ -3785,12 +3785,21 @@ def quick_swipe(chrome):
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
     pg.js("polku.planner.els.body.scrollTop = 0; true")
-    # on a waypoint's small print: not its name (a text field) or its grip (its own drag, to reorder)
-    body = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-main small').getBoundingClientRect(); return [b.left + 10, b.top + b.height / 2]; })()")
+    # on a waypoint's name, most of its row: a text field that isn't being edited moves the sheet like the rest
+    body = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-name').getBoundingClientRect(); return [b.left + 20, b.top + b.height / 2]; })()")
     pg.swipe(body[0], body[1], body[1] + 300, ms=700, hold=0.2)
     pg.js(SETTLED)
     if st()['st'] == 'full':
-        fails.append('planner: a drag down on the body at its top did not move the sheet')
+        fails.append('planner: a drag down on the body at its top (from a waypoint’s name) did not move the sheet')
+    # and a tap on the name still lets you type in it
+    pg.js("polku.planner.setSheetState('full'); true")
+    pg.js(SETTLED)
+    name = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-name').getBoundingClientRect(); return [b.left + 20, b.top + b.height / 2]; })()")
+    pg.tap(name[0], name[1])
+    time.sleep(0.3)
+    if not pg.js("document.activeElement.classList.contains('wpl-name')"):
+        fails.append('planner: a tap on a waypoint’s name did not put the cursor in it')
+    pg.js("document.activeElement.blur(); true")
     # a waypoint's grip keeps its own drag: the sheet stays
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)

@@ -43,8 +43,10 @@ export function dvh() {
   return probe.offsetHeight || innerHeight;
 }
 
-// What owns its own gestures, so a drag there is never the sheet's.
-const OWN = 'input:not([type=checkbox]):not([type=radio]):not([type=button]), textarea, [contenteditable=""], [contenteditable=true]';
+// What owns its own drag, so it's never the sheet's: a slider; a text field you're typing in, or any with a
+// mouse (it selects text). A touch on a field that isn't being edited moves the sheet like the rest.
+const own = (t, type) => !!t.closest('input[type=range], [contenteditable=""], [contenteditable=true]')
+  || (t.matches('input, textarea') && !/^(checkbox|radio|button|submit)$/.test(t.type) && (type === 'mouse' || t === document.activeElement));
 
 /**
  * Makes `el` follow a swipe. All sizes are visible heights in px, from the sheet's bottom.
@@ -97,7 +99,7 @@ export function swipeSheet(el, o) {
       try { el.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
       return;
     }
-    if (!o.enabled() || e.target.closest(OWN) || (o.grab && !o.grab(e.target, e.pointerType))) return;
+    if (!o.enabled() || own(e.target, e.pointerType) || (o.grab && !o.grab(e.target, e.pointerType))) return;
     const body = scroller(e.target);
     if (body && e.pointerType === 'mouse') return; // a mouse scrolls the body with its wheel
     g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, claim: false, body, hist: [[e.timeStamp, e.clientY]] };
