@@ -1101,7 +1101,8 @@ function box(el, scr) {
 }
 
 // ------------------------------------------------ what a tap does
-const SNAP = (st) => JSON.stringify({ stage: st.stage, wps: st.wps, sel: st.sel, draw: st.draw, style: st.style, loop: st.loop, rt: { ...st.rt, making: 0 } });
+// what undo brings back: the route and its style, as in Polku (the mode for the next leg isn't part of the route)
+const SNAP = (st) => JSON.stringify({ stage: st.stage, wps: st.wps, sel: st.sel, style: st.style, loop: st.loop, rt: { ...st.rt, making: 0 } });
 function change(f, fn) { f.past.push(SNAP(f.st)); f.future = []; fn(); f.st.hist = f.past.length; f.st.fut = 0; }
 function act(f, a, val, ev) {
   const st = f.st, R = st.rt;
