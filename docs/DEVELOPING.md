@@ -40,6 +40,14 @@ Headless Chrome draws the map in software, and one frame can take a second when 
 
 The `otherways` quick-point check schedules its edit in the same turn as the first leg's alternative-route timer, then waits for the final leg's offer. It also blocks the main thread for 2.2 seconds so both timers are overdue, checking that a slow frame preserves their order. Keep the request-count, requested-leg and offered-leg assertions; the separate pause case checks that waiting really does fetch an earlier alternative.
 
+### Writing a smoke check
+
+- A group is a function in `tools/smoke.py` that takes `chrome`, opens a page (`chrome.page(w, h, phone)`, then `pg.open_app(...)`), runs a script with `pg.js(...)` that returns a list of failures, adds `pg.errors()` as console failures, prints `ok` or `FAIL` with them, and returns whether it passed. Add it to `main()` under a short name, so `python3 tools/smoke.py <name>` runs it alone.
+- Answer from `tools/fixtures/` (fetched from `location.origin`), and hold or seed the fetches the check doesn't test, as the existing groups do. Never route against brouter.de.
+- Do what a user does: click, drag and type on the real controls, not the module's functions.
+- Wait for the state you check (the next animation frame, `SETTLED`), never a fixed time.
+- A fix's check must fail without the fix: run it on a worktree of `main` first.
+
 ## How the trickier parts work
 
 - **In-app release notes** (`js/changelog.js`): Settings opens the shared native dialog and requests the deployed `CHANGELOG.md` through `request('polku', …)` only on opening or Retry. The service worker may supply its saved copy, so the view shows the notes’ latest date and an explicit saved-copy label when offline. Headings, paragraphs, bullets, bold text, code and HTTP(S) links are built as DOM nodes; HTML and unsafe URL schemes never execute. Relative links point to the repository. Closing aborts a pending request and restores focus; dialog key events stay out of the map shortcuts.
