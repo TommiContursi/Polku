@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polku planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A clickable mock-up of a calmer route planner for Polku (phase 24): one place for each thing, bigger targets, the tools at the thumb. Phone and desktop, light and dark. Not wired to the app.">
+<!--
+  Phase 24's mock-up of the route planner (docs/plans/24-design-review.md, the report in
+  docs/reviews/2026-10-17-design/). Not wired to the app: nothing here is loaded by Polku. The map
+  behind each frame is a screenshot of Polku with its controls hidden (evidence/mockup_bg.py),
+  on the pr-screenshots branch; "Today" shows a screenshot of the real planner at 20f0310.
+  The planner is drawn here in Polku's own tokens (css/app.css) and icons (js/ui.js).
+
+  Variants (the picker at the top, or ?v=):
+    today   the planner as it is (screenshots)
+    a       one place for each thing: the same three rows, without what's shown twice
+    b       the tools at the thumb: the routing mode, undo and redo float above a two-row sheet
+  Rows (?rows=): all (every waypoint row with its five buttons, 40 px) or one (the row you're on)
+
+  ?frame=<id>   one frame alone at full size (for screenshots and evidence/mockup_probe.py)
+-->
+<style>
+:root, .fr {
+  --accent: #1f6f4a; --accent-2: #2f8f62; --accent-soft: #e3f1e9; --route: #e11d48;
+  --surface: rgba(255, 255, 255, 0.95); --surface-solid: #ffffff; --surface-2: #f3f4f1;
+  --text: #1c2420; --muted: #5f6b65; --line: rgba(28, 36, 32, 0.12);
+  --shadow: 0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12);
+  --warn: #ea580c; --on-accent: #ffffff; --grab: rgba(95, 107, 101, 0.4);
+  color-scheme: light;
+}
+.fr.dark {
+  /* phase 24: the dark accent behind white text is a darker green (white on #3fb07a is 2.7:1; on #237a52 it's 5.4:1) */
+  --accent: #3fb07a; --accent-2: #56c48f; --accent-soft: rgba(63, 176, 122, 0.16);
+  --surface: rgba(24, 28, 26, 0.95); --surface-solid: #181c1a; --surface-2: #232825;
+  --text: #e8ece9; --muted: #9aa69f; --line: rgba(232, 236, 233, 0.12);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --grab: rgba(154, 166, 159, 0.4); --on-accent-bg: #237a52;
+  color-scheme: dark;
+}
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #ffffff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #ffffff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding-block: 28px 96px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font: 14px/1.45 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased;
+}
+.cv a { color: var(--page-link); }
+button { font: inherit; color: inherit; }
+.ic { flex: none; display: block; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ------------------------------------------------ the canvas */
+.cv { max-width: 1520px; margin: 0 auto; }
+.cv-head h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.01em; text-wrap: balance; }
+.cv-head p { margin: 0 0 6px; max-width: 920px; opacity: .85; }
+.cv-q { margin: 18px 0 8px; padding: 14px 18px; border-radius: 14px; background: var(--page-card); max-width: 980px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.cv-q h2 { margin: 0 0 6px; font-size: 15px; }
+.cv-q ul { margin: 0; padding-left: 20px; }
+.cv-q li { margin: 4px 0; }
+.cv-row { margin-top: 40px; }
+.cv-row > h2 { margin: 0 0 4px; font-size: 18px; }
+.cv-row > p { margin: 0 0 16px; max-width: 920px; opacity: .85; }
+.cv-frames { display: flex; flex-wrap: wrap; gap: 28px 32px; align-items: flex-start; }
+.fr { margin: 0; display: flex; flex-direction: column; gap: 10px; background: none; }
+.fr figcaption { max-width: var(--cap, 260px); font-size: 13px; color: var(--page-cap); }
+.fr figcaption b { display: block; font-size: 13.5px; color: inherit; }
+.fr figcaption .v { display: none; }
+body[data-v="today"] .fr figcaption .v-today, body[data-v="a"] .fr figcaption .v-a, body[data-v="b"] .fr figcaption .v-b { display: block; }
+.screen {
+  position: relative; overflow: hidden; width: 390px; height: 844px; zoom: .62;
+  border-radius: 28px; box-shadow: 0 0 0 1px rgba(16,24,20,.18), 0 18px 48px rgba(16,24,20,.22);
+  background: #e8eee6 center / cover no-repeat; color: var(--text);
+  font: 14px/1.35 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.fr.desk .screen { width: 1440px; height: 900px; zoom: .5; border-radius: 12px; }
+.fr.phone { --cap: 242px; }
+.fr.desk { --cap: 720px; }
+.shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 760px) { .fr.desk .screen { zoom: .24; } .fr.desk { --cap: 346px; } .cv-frames { gap: 24px 16px; } }
+body.single { padding: 0; background: #000; }
+body.single .cv > :not(.cv-row), body.single .cv-row > :not(.cv-frames), body.single .fr:not(.only), body.single .cv-row:not(:has(.only)), body.single figcaption, body.single .picker { display: none !important; }
+body.single .cv-row { margin: 0; }
+body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
+
+/* the picker (chrome, not part of the design) */
+.picker { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 50; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: calc(100vw - 24px); font: 600 12px/1 system-ui, sans-serif; }
+.picker > div { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--switch-bg); box-shadow: 0 2px 10px rgba(0,0,0,.15); }
+.picker button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; }
+.picker button[aria-pressed="true"] { background: var(--switch-on); }
+.picker button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
+
+/* ------------------------------------------------ Polku's chrome over the map (as today) */
+.top { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; gap: 8px; z-index: 4; }
+.tb { height: 40px; min-width: 40px; border: 0; border-radius: 999px; display: grid; place-items: center; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); padding: 0; }
+.tb.brand { width: 46px; background: var(--surface-solid); }
+.tb.brand i { width: 28px; height: 28px; border-radius: 8px; background: #1f6f4a; display: grid; place-items: center; color: #fff; }
+.tb.search { flex: 1; min-width: 0; display: flex; justify-content: flex-start; gap: 8px; padding: 0 14px; color: var(--muted); font-size: 15px; white-space: nowrap; overflow: hidden; }
+.tb.sport { display: flex; gap: 6px; padding: 0 10px 0 12px; background: var(--accent); color: var(--on-accent); }
+.dark .tb.sport { background: var(--on-accent-bg); }
+.desk .top { right: auto; width: 740px; }
+.desk .tb.brand { width: auto; padding: 0 12px 0 6px; display: flex; gap: 8px; font-weight: 700; font-size: 15px; }
+.desk .tb.search { flex: 1; }
+.cols { position: absolute; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 4; }
+.cb { width: 44px; height: 44px; border: 0; border-radius: 12px; display: grid; place-items: center; padding: 0; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font: 700 13px/1 system-ui, sans-serif; }
+.desk .cb { width: 40px; height: 40px; }
+.czoom { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.czoom .cb { border-radius: 0; box-shadow: none; }
+.czoom .cb + .cb { border-top: 1px solid var(--line); }
+.fab { width: 54px; height: 52px; border: 0; border-radius: 14px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font-size: 11px; font-weight: 600; }
+.desk .fab { width: 60px; height: 56px; border-radius: 16px; }
+.fab.on { background: var(--accent); color: var(--on-accent); }
+.dark .fab.on { background: var(--on-accent-bg); }
+.fab.layers { position: relative; overflow: hidden; justify-content: flex-end; color: #fff; border: 2px solid #fff; background: #9fb59a; }
+.fab.layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+.scale { position: absolute; left: 12px; z-index: 3; display: flex; align-items: center; gap: 8px; font: 600 11px/1 system-ui, sans-serif; }
+.scale i { display: block; width: 74px; height: 16px; border: 2px solid #333; border-top: 0; background: rgba(255,255,255,.8); padding: 2px 4px; font-style: normal; }
+.scale button { width: 24px; height: 24px; border: 0; border-radius: 50%; background: #fff; color: #111; font: 700 13px/1 Georgia, serif; padding: 0; }
+
+/* ------------------------------------------------ the planner (variants a and b) */
+.pl { position: absolute; z-index: 5; display: flex; flex-direction: column; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); color: var(--text); }
+.phone .pl { left: 8px; right: 8px; bottom: 8px; border-radius: 18px; padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.desk .pl { left: 12px; top: 64px; bottom: 12px; width: 392px; border-radius: 18px; padding: 10px 14px 0; overflow: hidden; }
+.grab { flex: none; width: 64px; height: 20px; margin: 0 auto; display: grid; place-items: center; border: 0; background: none; padding: 0; cursor: grab; }
+.grab::before { content: ""; width: 36px; height: 4px; border-radius: 2px; background: var(--grab); }
+.row { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+.stats { flex: 1; min-width: 0; display: flex; gap: 14px; align-items: baseline; }
+.stats > * { display: grid; min-width: 0; }
+.stats b { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; }
+.stats small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stats .tlink { border: 0; background: none; padding: 0; text-align: left; min-height: 44px; display: grid; align-content: center; cursor: pointer; }
+.stats .tlink small { text-decoration: underline; text-underline-offset: 2px; }
+.done { flex: none; height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); font-weight: 700; color: var(--text); }
+.chips { display: flex; gap: 8px; min-height: 44px; align-items: center; }
+.chip { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); font-size: 13px; font-weight: 600; white-space: nowrap; position: relative; }
+.chip::after { content: ""; position: absolute; inset: -2px 0; } /* a 44 px target around a 40 px chip */
+.chip .ic { color: var(--muted); }
+.tools { display: flex; align-items: center; gap: 6px; min-height: 48px; }
+.seg { display: flex; gap: 2px; padding: 2px; border-radius: 12px; background: var(--surface-2); }
+.seg button { height: 44px; min-width: 44px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 10px; background: none; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.tbtn { width: 44px; height: 44px; border: 0; border-radius: 12px; display: grid; place-items: center; background: none; color: var(--text); padding: 0; }
+.tbtn:disabled { color: var(--muted); opacity: .45; }
+.spacer { flex: 1; }
+/* b: the tools float above the sheet, at the thumb, clear of the map's buttons on the right */
+.float { position: absolute; left: 8px; z-index: 5; display: flex; align-items: center; gap: 4px; padding: 2px; border-radius: 16px; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); }
+.float .seg { background: none; }
+/* the profile, its one colour choice, the tabs, the list */
+.prof { margin: 4px 0 6px; }
+.prof-top { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12.5px; color: var(--muted); }
+.sel { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font-weight: 600; font-size: 13px; position: relative; }
+.sel::after { content: ""; position: absolute; inset: -4px 0; }
+.sw { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-left: auto; }
+.sw i { width: 36px; height: 22px; border-radius: 999px; background: var(--line); position: relative; }
+.sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.chart { display: block; width: 100%; height: 92px; }
+.phone .chart { height: 60px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 -2px; }
+.tabs button { flex: 1; height: 44px; border: 0; background: none; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.tabs .badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--warn); color: #fff; font-size: 11px; display: grid; place-items: center; }
+.body { flex: 1; min-height: 0; overflow: hidden; }
+.sec-h { width: 100%; border: 0; background: none; padding: 0; display: flex; align-items: center; min-height: 44px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.wp { display: flex; align-items: center; gap: 8px; min-height: 56px; border-top: 1px solid var(--line); }
+.wp .gr { color: var(--muted); opacity: .7; width: 16px; }
+.wp .mk { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--text); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; }
+.wp .mk.start { background: #16a34a; border-color: #fff; box-shadow: 0 0 0 1px #16a34a; }
+.wp .mk.end { background: #111; border-color: #fff; box-shadow: 0 0 0 1px #111; }
+.wp .nm { flex: 1; min-width: 0; display: grid; }
+.wp .nm b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wp .nm small { font-size: 12px; color: var(--muted); }
+.dep { border: 0; background: none; padding: 0 2px; min-height: 32px; color: var(--accent); font-weight: 600; font-size: 12px; position: relative; }
+.dep::after { content: ""; position: absolute; inset: -6px 0; }
+.wp .acts { display: flex; flex: none; }
+.wp .acts .tbtn { width: 40px; height: 40px; color: var(--muted); }
+.wp.on { background: var(--accent-soft); margin: 0 -12px; padding: 0 12px; }
+.wp.on .acts .tbtn { width: 44px; height: 44px; color: var(--text); }
+/* the row you're on: its five buttons on a line of their own, so its name and time stay whole */
+body[data-rows="one"] .wp.on { flex-wrap: wrap; padding-top: 6px; padding-bottom: 2px; }
+body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
+.desk .wp.on { margin: 0 -14px; padding: 0 14px; }
+.tools2 { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0; }
+.howgo { border-top: 1px solid var(--line); padding: 6px 0; }
+.howgo p { margin: 4px 0 8px; font-size: 13px; color: var(--muted); }
+.howgo .tgl { display: flex; align-items: center; justify-content: space-between; min-height: 44px; font-size: 14px; border-top: 1px solid var(--line); }
+/* press and hover: on press; hover only with a mouse; no grey flash */
+.pl button, .float button, .cols button, .top button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1); cursor: pointer; }
+.pl button:active, .float button:active, .cols button:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .tbtn:not(:disabled):hover, .chip:hover, .done:hover { background: var(--surface-2); } }
+@media (prefers-reduced-motion: reduce) { .pl button, .float button, .cols button { transition: none; } }
+@media (prefers-reduced-transparency: reduce) { .pl, .float { background: var(--surface-solid); backdrop-filter: none; } }
+/* the start: what you can do before the first point */
+.hint { flex: 1; font-size: 15px; font-weight: 600; }
+.hint small { display: block; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+</style>
+</head>
+<body data-v="b" data-rows="one">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/></symbol>
+  <symbol id="i-straight" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5 17.5 6.5" stroke-dasharray="2.5 2"/></symbol>
+  <symbol id="i-water" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><path d="M8 15.5c2-1 2.5-4 4.5-4.5s2.5 2 3.5 1"/></symbol>
+  <symbol id="i-roundtrip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" stroke-dasharray="3 2.2"/><circle cx="12" cy="4.5" r="2.2" fill="currentColor" stroke="none"/><path d="m15.5 9.5 2-1.6.4 2.5"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor"/></symbol>
+  <symbol id="i-legs" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4.5M12 17.5v.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></symbol>
+  <symbol id="i-reverse" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"/></symbol>
+  <symbol id="i-paddle" viewBox="0 0 24 24"><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M5 13.5h14l-2 2.5H7Z"/><path d="m6 5 12 9M4.5 3.8 7 5.7M17 13.3l2.5 1.9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-needle" viewBox="0 0 24 24"><path d="m12 3 3.2 9H8.8Z" fill="#e11d48" stroke="#e11d48"/><path d="m12 21-3.2-9h6.4Z"/></symbol>
+  <symbol id="i-weather" viewBox="0 0 24 24"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+  <symbol id="i-path" viewBox="0 0 24 24"><path d="M6 24c4-1 5-6 9-7s6 2 11-9" transform="scale(.75)" stroke-dasharray="4 3"/></symbol>
+</svg>
+
+<main class="cv">
+  <header class="cv-head">
+    <h1>A calmer route planner, with nothing taken away</h1>
+    <p>Phase 24's mock-up, 2026-10-17. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden, and <b>Today</b> shows the real planner at <code>20f0310</code>. The report is <code>docs/reviews/2026-10-17-design/</code>; the measurements under each frame come from <code>evidence/mockup_probe.py</code>.</p>
+    <p><b>Try it:</b> switch between Today, A and B at the bottom; in B the routing mode, undo and redo float above the sheet. The waypoint rows have two ways too.</p>
+  </header>
+
+  <section class="cv-q" aria-labelledby="rules-h">
+    <h2 id="rules-h">The rules every variant keeps (phase 24's plan)</h2>
+    <ul>
+      <li><b>Nothing Polku does is removed,</b> and nothing used today takes more taps, more scrolling or a new hidden view.</li>
+      <li><b>One tap and in thumb reach while drawing:</b> adding and moving points, undo, redo, the routing mode, Done.</li>
+      <li><b>Each thing shown once, where it's used;</b> a control shows when it can do something; the map comes first.</li>
+    </ul>
+  </section>
+
+  <section class="cv-row">
+    <h2>1 · The start, before the first point</h2>
+    <p>Today the peek shows thirteen controls before there's a route: the route's colour, undo, redo and Show the whole route can't do anything yet. The start choices (draw, a round trip, an import) are what this moment needs.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-start" data-bg="phone-empty" data-shot="phone-start" data-scene='{"state":"start"}'>
+        <figcaption><b>Phone: the start</b><span class="v v-today">Thirteen controls in the peek; four of them can't do anything yet.</span><span class="v v-a v-b">Tap the map, or start from a round trip or a file. The routing mode is there for the first leg; undo, redo and the colour come with the first point.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>2 · Drawing: the peek</h2>
+    <p>While drawing, the map comes first and the tools are at the thumb. The route's colour goes with the profile it colours; the sport is the top bar's pill (it shows the route's sport while planning, and re-routes as the planner's picker does); Show the whole route joins the map's buttons, shown while part of the route is out of view (it does nothing otherwise); the distance marks say the distance, and the times stay one switch away (Check › On the map).</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-peek" data-bg="phone-mtb-calm" data-shot="phone-mtb-peek" data-scene='{"state":"peek"}'>
+        <figcaption><b>Phone: peek, MTB</b><span class="v v-today">Three rows, 12–13 controls at 28–37 px; two lines of times at every distance mark.</span><span class="v v-a">The same three rows, without the colour, the sport and the frame button: ten controls, every one 44 px.</span><span class="v v-b">Two rows in the sheet; the routing mode, undo and redo float above it, at the thumb, clear of the map's buttons.</span></figcaption>
+      </figure>
+      <figure class="fr phone" id="phone-paddle" data-bg="phone-paddle-calm" data-shot="phone-paddle-peek" data-scene='{"state":"peek","sport":"paddle"}'>
+        <figcaption><b>Phone: peek, paddle</b><span class="v v-today">Ten distance marks, each with an arrival time and the elapsed time to the second.</span><span class="v v-a v-b">The marks say the distance; arrival and elapsed times are a switch away, unchanged.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>3 · Checking: the sheet at half</h2>
+    <p>One colour choice, with the profile it colours and "On map" beside it. Round trip once (in the header), the route style picked once (the header's chip; How you go keeps its settings). The waypoint rows: every row's five buttons at 40 px, or only the row you're on with all five at 44 px.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-half" data-bg="phone-mtb-calm" data-shot="phone-mtb-half" data-scene='{"state":"half"}'>
+        <figcaption><b>Phone: half, light</b><span class="v v-today">Five 28 px buttons on every waypoint row; the route's colour in the header and again on the profile (at full).</span><span class="v v-a v-b">The rows as the switch below says.</span></figcaption>
+      </figure>
+      <figure class="fr phone dark" id="phone-half-dark" data-bg="phone-mtb-calm" data-shot="phone-mtb-half-dark" data-scene='{"state":"half"}'>
+        <figcaption><b>Phone: half, dark</b><span class="v v-today">White on the dark green is 2.7:1 (the sport pill, Weather).</span><span class="v v-a v-b">The dark accent behind white text is a darker green: 5.4:1.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>4 · Desktop: the side panel</h2>
+    <p>One Done (the panel's), one colour choice, one sport control (the top bar's pill), Round trip and the route style once each. Show the whole route joins the map's buttons, under zoom and 3D (#226), while part of the route is out of view. The tools stay in the panel: on a desktop they're already under the pointer.</p>
+    <div class="cv-frames">
+      <figure class="fr desk" id="desk-panel" data-bg="desk-mtb-calm" data-shot="desk-mtb" data-scene='{"state":"side"}'>
+        <figcaption><b>Desktop, 1440 × 900</b><span class="v v-today">Three ways to close the planner (the search bar's Plan, the panel's Done, the Done by the map), the colour twice, the sport twice, Round trip and the style twice.</span><span class="v v-a v-b">The panel's Done closes it; Plan in the search bar and by the map hide while planning, as Plan already does on phones.</span></figcaption>
+      </figure>
+      <figure class="fr desk dark" id="desk-panel-dark" data-bg="desk-mtb-calm" data-shot="desk-mtb-dark" data-scene='{"state":"side"}'>
+        <figcaption><b>Desktop, dark</b><span class="v v-today">As today, in dark.</span><span class="v v-a v-b">The same, in dark.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+</main>
+
+<nav class="picker" aria-label="Mock-up">
+  <div role="group" aria-label="Variant"><button type="button" data-v="today">Today</button><button type="button" data-v="a">A: one place each</button><button type="button" data-v="b">B: tools at the thumb</button></div>
+  <div role="group" aria-label="Waypoint rows"><button type="button" data-rows="all">Rows: all five</button><button type="button" data-rows="one">Rows: the one you're on</button></div>
+</nav>
+
+<script>
+// Builds the frames from their data-* attributes. Nothing here talks to Polku.
+const Q = new URLSearchParams(location.search);
+const BG = Q.get('bg') || 'https://raw.githubusercontent.com/TommiContursi/Polku/131a9b1810b7576e8aa0d56162e20dfe55db39b2/claude/phase-24-design/mockup-bg/';
+const SHOT = Q.get('shots') || 'https://raw.githubusercontent.com/TommiContursi/Polku/cad47a36fcd2dba57113be65263d2ad3e3a870a5/claude/phase-24-design/before/';
+const PIC = (f) => (window.MOCK_IMAGES && window.MOCK_IMAGES[f]) || BG + f;
+const SHOTPIC = (f) => (window.MOCK_IMAGES && window.MOCK_IMAGES[`before-${f}`]) || SHOT + f;
+const ic = (id, size = 20) => `<svg class="ic" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+let V = ['today', 'a', 'b'].includes(Q.get('v')) ? Q.get('v') : 'b';
+let ROWS = ['all', 'one'].includes(Q.get('rows')) ? Q.get('rows') : 'one';
+let SEL = 1; // the row you're on (rows: one): the point you last added, tapped or moved
+
+function topbar(desk, sport) {
+  return `<div class="top">
+    <button type="button" class="tb brand" aria-label="Polku home"><i>${ic('path', 18)}</i>${desk ? 'Polku' : ''}</button>
+    <button type="button" class="tb search" aria-label="Search places">${ic('search', 18)}<span>Search places or paste coordinates</span></button>
+    <button type="button" class="tb sport" aria-label="Sport: ${sport === 'paddle' ? 'Paddle' : 'MTB'}">${ic(sport === 'paddle' ? 'paddle' : 'bike', 18)}${desk ? `<span style="font-weight:700">${sport === 'paddle' ? 'Paddle' : 'MTB'}</span>` : ''}${ic('down', 14)}</button>
+    <button type="button" class="tb" aria-label="Settings">${ic('gear', 20)}</button>
+  </div>`;
+}
+// the map's buttons: compass, locate, (zoom, desktop), 3D (#226), Show the whole route (with a route), Weather, Layers
+function cols(desk, bottom, route) {
+  return `<div class="cols" style="bottom:${bottom}px">
+    <button type="button" class="cb" aria-label="Compass: north is up">${ic('needle', 20)}</button>
+    <button type="button" class="cb" aria-label="Show my location">${ic('locate', 20)}</button>
+    ${desk ? `<div class="czoom"><button type="button" class="cb" aria-label="Zoom in">${ic('plus', 18)}</button><button type="button" class="cb" aria-label="Zoom out">${ic('minus', 18)}</button></div>` : ''}
+    <button type="button" class="cb" aria-label="3D terrain" aria-pressed="false">3D</button>
+    ${route === 'out' ? `<button type="button" class="cb" aria-label="Show the whole route (F)">${ic('fit', 20)}</button>` : ''}
+    <button type="button" class="fab on" aria-label="Time & weather" aria-pressed="true">${ic('weather', 22)}<span>Weather</span></button>
+    <button type="button" class="fab layers" aria-label="Layers"><span>Layers</span></button>
+  </div>`;
+}
+const scale = (bottom) => `<div class="scale" style="bottom:${bottom}px"><i>500 m</i><button type="button" aria-label="Map credits">i</button></div>`;
+const MODES = (labels) => `<div class="seg" role="group" aria-label="Routing">
+  <button type="button" aria-pressed="true" aria-label="Follow paths">${ic('auto', 19)}${labels ? '<span>Follow paths</span>' : ''}</button>
+  <button type="button" aria-pressed="false" aria-label="Straight line">${ic('straight', 19)}</button>
+  <button type="button" aria-pressed="false" aria-label="Over water">${ic('water', 19)}</button></div>`;
+const UNDO = (can = true) => `<button type="button" class="tbtn" aria-label="Undo"${can ? '' : ' disabled'}>${ic('undo', 20)}</button><button type="button" class="tbtn" aria-label="Redo" disabled>${ic('redo', 20)}</button>`;
+const MORE = `<button type="button" class="tbtn" aria-label="More: import, export, share, save offline, clear">${ic('more', 20)}</button>`;
+const STATS = (s) => `<div class="stats"><span><b>${s.d}</b><small>distance</small></span><button type="button" class="tlink" aria-label="${s.t} from now: the departure, in Go"><b>${s.t}</b><small>from now</small></button><span><b>${s.c}</b><small>${s.cl}</small></span></div>`;
+const SETUP = (more) => `<div class="chips"><button type="button" class="chip">${ic('roundtrip', 18)}Round trip</button><button type="button" class="chip" aria-label="Route style: Balanced">${ic('sliders', 18)}Balanced${ic('down', 14)}</button>${more ? `<span class="spacer"></span>${MORE}` : ''}</div>`;
+const DATA = { mtb: { d: '3.05 km', t: '16 min', c: '↑44 ↓65 m', cl: 'ascent · descent' }, paddle: { d: '11.1 km', t: '2 h 14 min', c: '123 m', cl: 'carry' } };
+
+function profile(desk) {
+  // a simple elevation profile in the route's gradient colours (the real one is js/chart.js)
+  const pts = [100, 104, 112, 118, 116, 124, 132, 128, 136, 141, 138, 130, 118, 104, 101, 103, 102, 104, 108, 106, 103];
+  const W = 340, H = 80, step = W / (pts.length - 1), y = (v) => H - (v - 96) / 50 * H;
+  const bars = pts.slice(1).map((v, i) => { const g = v - pts[i]; const c = g > 6 ? '#ef4444' : g > 2 ? '#f59e0b' : g < -6 ? '#2563eb' : g < -2 ? '#60a5fa' : '#22c55e';
+    return `<path d="M${i * step} ${H} L${i * step} ${y(pts[i])} L${(i + 1) * step} ${y(v)} L${(i + 1) * step} ${H}Z" fill="${c}" opacity=".85"/>`; }).join('');
+  return `<div class="prof"><div class="prof-top">Colour by <button type="button" class="sel" aria-label="Colour the route and profile by: Gradient">Gradient ${ic('down', 14)}</button>
+    <label class="sw"><span>On map</span><i role="switch" aria-checked="false" tabindex="0" aria-label="Colour the route on the map"></i></label>${desk ? `<button type="button" class="tbtn" aria-label="A smaller profile">${ic('up', 16)}</button>` : ''}</div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Elevation profile, 100 to 141 m">${bars}</svg></div>`;
+}
+function tabs(desk) {
+  return `<div class="tabs" role="tablist"><button type="button" role="tab" aria-selected="true">${ic('route', 18)}Route</button><button type="button" role="tab" aria-selected="false">${ic('warn', 18)}Check <span class="badge">5</span></button><button type="button" role="tab" aria-selected="false">${ic('clock', 18)}Go 07:46</button>${desk ? `<button type="button" class="tbtn" aria-label="Move the planner to the bottom" style="flex:none">${ic('legs', 16)}</button>` : ''}</div>`;
+}
+const WPS = [['start', 'Start', '0 m'], ['1', 'Via 1', '1.78 km · 07:39'], ['end', 'Finish', '3.05 km · 07:46']];
+function rows() {
+  return WPS.map(([k, name, sub], i) => {
+    const on = ROWS === 'all' || i === SEL;
+    const acts = on
+      ? `${i < 2 ? `<button type="button" class="tbtn" aria-label="Settings of the leg after ${name}">${ic('legs', 18)}</button>` : ''}${i === 1 ? `<button type="button" class="tbtn" aria-label="Stop at ${name}">${ic('pause', 16)}</button>` : ''}${i > 0 ? `<button type="button" class="tbtn" aria-label="Move ${name} earlier">${ic('up', 18)}</button>` : ''}${i < 2 ? `<button type="button" class="tbtn" aria-label="Move ${name} later">${ic('down', 18)}</button>` : ''}<button type="button" class="tbtn" aria-label="Remove ${name}">${ic('trash', 18)}</button>`
+      : `<button type="button" class="tbtn" aria-label="Remove ${name}">${ic('trash', 18)}</button>`;
+    return `<div class="wp${ROWS === 'one' && i === SEL ? ' on' : ''}"${ROWS === 'one' ? ` role="button" tabindex="0" aria-label="${name}: show its buttons"` : ''}><span class="gr">${ic('grip', 16)}</span><span class="mk ${k === 'start' ? 'start' : k === 'end' ? 'end' : ''}">${k === '1' ? '1' : ''}</span><span class="nm"><b>${name}</b><small>${sub}${k === 'start' ? ' · <button type="button" class="dep" aria-label="Departure: now">Depart now ▾</button>' : ''}</small></span><span class="acts">${acts}</span></div>`;
+  }).join('');
+}
+function routeTools() {
+  return `<div class="tools2"><button type="button" class="chip">${ic('reverse', 18)}Reverse</button><button type="button" class="chip">${ic('loop', 18)}Back to start</button><button type="button" class="chip">${ic('upload', 18)}Import</button><button type="button" class="chip">${ic('legs', 18)}All leg settings</button></div>
+    <div class="howgo"><button type="button" class="sec-h" aria-expanded="true">How you go · Balanced<span class="spacer"></span>${ic('down', 16)}</button><p>Balanced: the router's own mix of trails and easy ways. Pick another style from the chip at the top.</p>
+    <div class="tgl"><span>Wet ground</span><span style="color:var(--muted)">Auto</span></div><div class="tgl"><span>Terrain</span><span style="color:var(--muted)">Any</span></div></div>`;
+}
+
+function planner(o, desk) {
+  const s = DATA[o.sport || 'mtb'];
+  const b = V === 'b' && !desk;
+  if (o.state === 'start') {
+    const html = `<button type="button" class="grab" aria-label="Planner size: drag, or press to change"></button>
+      <div class="row"><div class="hint">Tap the map to start<small>or start from a round trip or a file</small></div><button type="button" class="done">Done</button></div>
+      <div class="chips"><button type="button" class="chip">${ic('roundtrip', 18)}Round trip</button><button type="button" class="chip">${ic('upload', 18)}Import GPX or KML</button></div>
+      <div class="tools">${MODES(true)}<span class="spacer"></span>${MORE}</div>`;
+    return `<div class="pl" role="region" aria-label="Route planner">${html}</div>`;
+  }
+  const minimise = desk ? `<button type="button" class="tbtn" aria-label="Minimise">${ic('up', 18)}</button>` : '';
+  const head = b
+    ? `<div class="row">${STATS(s)}<button type="button" class="done">Done</button></div>${SETUP(true)}`
+    : `<div class="row">${STATS(s)}${minimise}<button type="button" class="done">Done</button></div>${SETUP(true)}<div class="tools">${MODES(true)}<span class="spacer"></span>${UNDO()}</div>`;
+  const grab = desk ? '' : '<button type="button" class="grab" aria-label="Planner size: drag, or press to change"></button>';
+  if (o.state === 'peek') return `<div class="pl" role="region" aria-label="Route planner">${grab}${head}</div>`;
+  const style = desk ? '' : `style="height:${o.state === 'half' ? 422 : 768}px"`;
+  return `<div class="pl" role="region" aria-label="Route planner" ${style}>${grab}${head}${profile(desk)}${tabs(desk)}<div class="body"><button type="button" class="sec-h" aria-expanded="true">Waypoints 3<span class="spacer"></span>${ic('down', 16)}</button>${rows()}${routeTools()}</div></div>`;
+}
+
+function build(fr) {
+  const o = JSON.parse(fr.dataset.scene), desk = fr.classList.contains('desk');
+  const scr = fr.querySelector('.screen');
+  if (V === 'today') {
+    scr.style.backgroundImage = '';
+    scr.innerHTML = `<img class="shot" alt="Polku's planner today" src="${SHOTPIC(`${fr.dataset.shot}.jpg`)}">`;
+    return;
+  }
+  scr.style.backgroundImage = `url(${PIC(`${fr.dataset.bg}.jpg`)})`;
+  const route = o.state !== 'start';
+  let html = topbar(desk, o.sport) + planner(o, desk);
+  // where the sheet's top is, for the map's buttons and B's floating tools
+  scr.innerHTML = html;
+  const pl = scr.querySelector('.pl');
+  const sheetTop = desk ? 0 : scr.offsetHeight - pl.offsetTop;
+  const b = V === 'b' && !desk && route;
+  if (b) scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="Drawing tools" style="bottom:${sheetTop + 8}px">${MODES(false)}${UNDO()}</div>`);
+  scr.insertAdjacentHTML('beforeend', cols(desk, desk ? 12 : sheetTop + 12, route && o.out ? 'out' : '') + scale(desk ? 12 : sheetTop + (b ? 64 : 12)));
+}
+function render() {
+  document.body.dataset.v = V;
+  document.body.dataset.rows = ROWS;
+  for (const b of document.querySelectorAll('.picker [data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === V));
+  for (const b of document.querySelectorAll('.picker [data-rows]')) b.setAttribute('aria-pressed', String(b.dataset.rows === ROWS));
+  for (const fr of document.querySelectorAll('.fr')) build(fr);
+}
+
+const only = Q.get('frame');
+for (const fr of document.querySelectorAll('.fr')) {
+  const scr = document.createElement('div');
+  scr.className = 'screen';
+  fr.prepend(scr);
+  if (only && fr.id === only) {
+    if (Q.get('w')) scr.style.width = `${+Q.get('w')}px`;
+    if (Q.get('h')) scr.style.height = `${+Q.get('h')}px`;
+  }
+}
+if (only && document.getElementById(only)) { document.body.classList.add('single'); document.getElementById(only).classList.add('only'); }
+document.querySelector('.picker').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.v) V = b.dataset.v;
+  if (b.dataset.rows) ROWS = b.dataset.rows;
+  render();
+});
+// a tap on a waypoint row picks it (rows: the one you're on)
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('.wp[role=button]');
+  if (!row || e.target.closest('.acts')) return;
+  SEL = [...row.parentElement.querySelectorAll('.wp')].indexOf(row);
+  render();
+});
+render();
+</script>
+</body>
+</html>
