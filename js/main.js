@@ -546,7 +546,7 @@ const BASE_NOTE = {
   mml: 'Official MML WMTS terrain map with your own API key.',
 };
 // Aerial's picture is Esri's own tile of the same spot (its imagery isn't stored here); offline, Aerial FI's
-const AERIAL_THUMB = ESRI_IMAGERY.replace('{z}', '15').replace('{y}', '9236').replace('{x}', '18552');
+const AERIAL_THUMB = ESRI_IMAGERY.replace('{z}', '15').replace('{y}', '9234').replace('{x}', '18552');
 const thumb = (k) => (k === 'aerial' ? AERIAL_THUMB : `img/base/${{ mml: 'maasto' }[k] || k}.jpg`);
 document.addEventListener('error', (e) => { if (e.target.src === AERIAL_THUMB) e.target.src = thumb('ortofi'); }, true);
 // The Layers button shows the current base map: what the map looks like and
@@ -1141,13 +1141,15 @@ function renderQuickLayers(dir = null) {
   if (had >= 0) (focusables()[had] || focusables()[0])?.focus({ preventScroll: true });
 }
 
-// One step in (a tile's settings, Edit) or back to the tiles. A step in keeps the drawer's height,
-// so nothing jumps (Edit grows past it, and scrolls); focus goes in, and back to what opened it.
+// One step in (a tile's settings, Edit) or back to the tiles. A tile's settings keep the drawer's
+// height, so nothing jumps (their body scrolls); Edit grows past it, up to the room there is.
+// Focus goes in, and back to what opened it.
 function quickStep(view) {
-  const qd = $('#quick-layers'), from = quickView;
+  const qd = $('#quick-layers'), from = quickView, h0 = `${Math.round(qd.offsetHeight)}px`;
   if (view === from) return;
   quickView = view;
-  qd.style.minHeight = view === 'quick' ? '' : `${Math.round(qd.offsetHeight)}px`;
+  qd.style.height = view.startsWith('opts:') ? h0 : '';
+  qd.style.minHeight = view === 'edit' ? h0 : '';
   renderQuickLayers(view === 'quick' ? 'out' : 'in');
   const opener = from.startsWith('opts:') ? qd.querySelector(`[data-opts="${from.slice(5)}"]`) : qd.querySelector('.qd-edit-btn');
   (view === 'quick' ? opener : qd.querySelector('.qd-back, .qd-body button, .qd-body input'))?.focus({ preventScroll: true });
@@ -1171,7 +1173,7 @@ function showQuick(open, { instant = false, back = false } = {}) {
   if (open === quickOpen() && !back) return;
   qdSwipe.stop();
   if (instant) qd.classList.add('instant'); // L, Enter or a step: at once, nothing animates for the keyboard
-  if (open) { quickView = 'quick'; qd.style.minHeight = ''; placeQuick(); }
+  if (open) { quickView = 'quick'; qd.style.height = ''; qd.style.minHeight = ''; placeQuick(); }
   qd.classList.toggle('open', open);
   qd.setAttribute('aria-modal', String(phoneMQ.matches));
   if (open) renderQuickLayers(back ? 'out' : null);

@@ -170,6 +170,27 @@ class Page:
         self.c.events = keep
         return out
 
+    def touch(self, kind, x=0, y=0):
+        """One finger through the browser's own input, so touch-action, scrolling and taps are real:
+        kind 'start', 'move' or 'end'."""
+        # its own time, so a swipe's speed is the one sent even when the page is slow to handle it
+        self.c.send('Input.dispatchTouchEvent', {'type': f'touch{kind.capitalize()}', 'touchPoints': [] if kind == 'end' else [{'x': x, 'y': y}], 'timestamp': time.time()}, self.s)
+
+    def swipe(self, x, y0, y1, ms=300, steps=12, hold=0.0):
+        """A finger from (x, y0) to (x, y1) in about ms; hold: seconds it rests before it lets go (no flick)."""
+        self.touch('start', x, y0)
+        for i in range(1, steps + 1):
+            time.sleep(ms / 1000 / steps)
+            self.touch('move', x, y0 + (y1 - y0) * i / steps)
+        if hold:
+            time.sleep(hold)
+        self.touch('end')
+
+    def tap(self, x, y):
+        self.touch('start', x, y)
+        time.sleep(0.05)
+        self.touch('end')
+
     def screenshot(self, path):
         data = self.c.send('Page.captureScreenshot', {'format': 'png'}, self.s)['data']
         with open(path, 'wb') as f:

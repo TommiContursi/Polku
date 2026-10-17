@@ -164,7 +164,7 @@ button { font: inherit; color: inherit; }
 .fab.fab-layers { position: relative; overflow: hidden; padding: 0; justify-content: flex-end; color: #fff; border: 2px solid #fff; }
 .fab-layers .fab-thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .fab-layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
-.fab-layers[aria-pressed="true"] { background: var(--surface); box-shadow: var(--shadow), 0 0 0 3px var(--accent); }
+.fab-layers[aria-expanded="true"] { background: var(--surface); box-shadow: var(--shadow), 0 0 0 3px var(--accent); }
 .top-btn {
   flex: none; width: 40px; height: 40px; border: 0; border-radius: 999px; cursor: pointer; display: grid; place-items: center;
   background: var(--surface); color: var(--text); box-shadow: var(--shadow); backdrop-filter: blur(10px);
@@ -425,6 +425,131 @@ button { font: inherit; color: inherit; }
 .tool.danger:hover { color: var(--bad); }
 .tool-sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .link { border: 0; background: none; padding: 4px 0; color: var(--accent); cursor: pointer; font-weight: 600; font-size: 12px; text-align: left; }
+
+/* ---------------------------------------------------------------- quick layer drawer (#123) */
+/* Layers opens it: the maps, five tiles for your sport, More. A desktop card beside the Layers
+   button, its bottom level with the button's (--qd-bottom, js/main.js placeQuick()), growing
+   from it; on phones a sheet from the bottom (below). Steps slide 28 px and fade. */
+.qd {
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  position: absolute; z-index: 6; right: 84px; bottom: var(--qd-bottom, 76px); width: 384px;
+  max-height: calc(100% - 64px - var(--qd-bottom, 76px));
+  display: flex; flex-direction: column; padding: 2px 14px 14px;
+  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px); color: var(--text);
+  container: qd / inline-size; transform-origin: 100% calc(100% - 28px);
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out), visibility 0s;
+}
+.qd:not(.open) { opacity: 0; transform: scale(0.96); visibility: hidden; pointer-events: none; transition: transform 120ms var(--ease-out), opacity 120ms var(--ease-out), visibility 0s 120ms; }
+.qd.instant, .qd.dragging { transition: none; }
+.qd.tail::after { content: ""; position: absolute; right: -6px; bottom: 22px; width: 12px; height: 12px; background: var(--surface-solid); transform: rotate(45deg); box-shadow: 3px -3px 4px rgba(0, 0, 0, .05); }
+.qd-grab { display: none; flex: none; width: 36px; height: 4px; margin: 6px auto 0; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
+.qd-head { flex: none; display: flex; align-items: center; gap: 2px; min-height: 48px; }
+.qd-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; overflow-wrap: anywhere; hyphens: manual; }
+.qd-x, .qd-back { flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; display: grid; place-items: center; background: none; color: var(--muted); }
+.qd-x { margin-right: -12px; }
+.qd-back { margin-left: -12px; color: var(--accent); }
+/* never taller than the room it has: the body scrolls, the header with ✕ stays */
+.qd-body { min-height: 0; flex: 1 1 auto; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; margin: 0 -4px; padding: 0 4px 2px; }
+.qd-body.from-right { animation: qd-from-right 220ms var(--ease-out); }
+.qd-body.from-left { animation: qd-from-left 220ms var(--ease-out); }
+#layers-panel.step-in { animation: qd-from-right 220ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes qd-from-right { from { opacity: 0; transform: translateX(28px); } }
+@keyframes qd-from-left { from { opacity: 0; transform: translateX(-28px); } }
+.qd-lab { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; margin: 4px 0 6px; min-height: 22px; overflow-wrap: anywhere; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.qd-lab h3 { margin: 0; font: inherit; }
+.qd-lab b { color: var(--accent); }
+.qd-lab + .qd-bases, .qd-lab + .qd-tiles { margin-bottom: 12px; }
+.qd-edit-btn { min-width: 44px; height: 44px; margin: -11px 0 -11px auto; padding: 0 2px 0 10px; border: 0; background: none; color: var(--accent); font-size: 12.5px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.qd-bases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+.qd-base { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
+.qd-base img { display: block; width: 100%; height: 44px; object-fit: cover; border-radius: 12px; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--line); background: var(--surface-2); }
+.qd-base > span { min-width: 0; overflow-wrap: anywhere; hyphens: manual; }
+.qd-base[aria-checked="true"] { color: var(--text); }
+.qd-base[aria-checked="true"] img { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+/* "on" is said by a check and a thicker border, not by colour alone */
+.qd-base[aria-checked="true"]::after, .qt.on .qt-ic::after {
+  content: ""; position: absolute; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+.qd-base[aria-checked="true"]::after { top: 6px; right: 6px; }
+/* a tile: one button turns its layer on and off; a tile with more settings has a › side, its own 44 px button.
+   A 20 px icon, an 8 px gap and 8 px padding leave its label 72 px beside a › at 360 px (phase 24) */
+.qd-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.qt { position: relative; display: flex; min-height: 52px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); overflow: hidden; transition: transform 120ms var(--ease-out); }
+.qt-tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: 600; line-height: 1.2; color: var(--text); }
+.qt-ic { position: relative; flex: none; color: var(--muted); }
+.qt.on .qt-ic::after { top: -8px; left: -8px; width: 16px; height: 16px; background-size: 11px; box-shadow: 0 0 0 2px var(--accent-soft); }
+/* a word that doesn't fit breaks only at the soft hyphens in its label (Sade­tutka, Tempera­ture), never where
+   the browser would pick ("Sadetut-ka"); breaking anywhere is the last resort, so nothing overflows */
+.qt-l { min-width: 0; overflow-wrap: anywhere; hyphens: manual; }
+.qt-l small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.qt-l small.warn { color: #9a3412; font-weight: 600; }
+.qt-opt { flex: none; width: 44px; border: 0; border-left: 1px solid var(--line); background: none; display: grid; place-items: center; color: var(--muted); }
+.qt.on { border: 2px solid var(--accent); background: var(--accent-soft); }
+.qt.on .qt-tog { padding: 7px; color: var(--accent); }
+.qt.on .qt-ic, .qt.on .qt-l small:not(.warn), .qt.on .qt-opt { color: var(--accent); }
+.qt.on .qt-opt { border-left-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.qt-more { width: 100%; align-items: center; gap: 10px; padding: 8px 4px 8px 10px; background: var(--surface-solid); text-align: left; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.qt-more .qt-l { flex: 1; }
+.qt-more .chev { color: var(--muted); margin-right: 8px; }
+.qd :is(button, [role="radio"]):focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* a press answers when the finger lands; hover only with a mouse; no grey flash or text selection on a tap */
+.qd button, .qd .tg, #layers-panel .panel-back, .fab-layers {
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;
+}
+.qd .qt-tog, .qd .qt-opt, .qd .qt-more, .qd .qd-base, .qd .qd-chip { transition: transform 120ms var(--ease-out), background-color 120ms ease; }
+.qt:has(.qt-tog:active), .qt:has(.qt-rm:active), .qt-more:active, .qd-base:active, .qd-chip:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .qt:not(.on) .qt-tog:hover, .qt-more:hover { background: var(--surface-solid); }
+  .qt-opt:hover, .qd-x:hover, .qd-back:hover { background: var(--line); }
+  .qd-base:not([aria-checked="true"]):hover img { border-color: var(--line); }
+}
+/* a tile's settings: the full panel's own switches; sliders take the whole 44 px row, not 16 px */
+.qd-opts .tg { min-height: 48px; border-top: 1px solid var(--line); }
+.qd-opts .seg.full { margin: 2px 0 4px; }
+.qd-opts .seg.full button { height: 44px; min-width: 0; flex: 1 1 0; }
+.qd .range input, .qd .op-row input { height: 44px; margin: 0; }
+.qd .range:not(.op-row) { flex-direction: row; align-items: center; gap: 10px; min-height: 44px; padding: 0; }
+.qd .range:not(.op-row) input { flex: 1; min-width: 0; }
+.qd .lg-key > summary { display: flex; align-items: center; min-height: 44px; padding: 0; }
+/* Edit: your own tiles; Reset and Done at the bottom, in thumb reach */
+.qt-rm { display: flex; width: 100%; align-items: center; gap: 10px; padding: 8px 8px 8px 10px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.qt-rm .qt-l { flex: 1; }
+.qt-rm .rm { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--text); color: var(--surface-solid); }
+.qd-slot { min-height: 52px; border: 1.5px dashed var(--line); border-radius: 14px; display: grid; place-items: center; padding: 6px; color: var(--muted); font-size: 12px; font-weight: 600; text-align: center; }
+.qd-grp { margin: 10px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.qd-add { display: flex; flex-wrap: wrap; gap: 8px; }
+.qd-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 44px; padding: 0 12px 0 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); color: var(--text); font-size: 12.5px; font-weight: 600; text-align: left; }
+.qd-chip span { min-width: 0; overflow-wrap: anywhere; hyphens: manual; }
+.qd-chip .ic { color: var(--accent); }
+.qd-chip:disabled { opacity: .45; cursor: default; }
+.qd-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px -14px 0; padding: 10px 14px 0; border-top: 1px solid var(--line); }
+.qd-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 12.5px; text-align: left; }
+.qd-done { flex: none; min-width: 96px; height: 48px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; }
+/* narrow (a phone at 200 % zoom): maps in two columns, tiles in one, a segmented choice in two rows */
+@container qd (max-width: 300px) {
+  .qd-bases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qd-tiles { grid-template-columns: minmax(0, 1fr); }
+  .qd-opts .seg.full button { flex: 1 0 30%; }
+}
+/* the full panel's way back to the drawer */
+#layers-panel .panel-head { justify-content: flex-start; gap: 4px; padding-left: 8px; }
+#layers-panel .panel-head h2 { flex: 1; min-width: 0; }
+#layers-panel .panel-back { width: 44px; height: 44px; color: var(--accent); }
+#layers-panel .panel-close { width: 44px; height: 44px; }
+#layers-panel > .qd-grab { display: none; }
+.qd-scrim { position: fixed; inset: 0; z-index: 11; background: transparent; -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .qd, .qd:not(.open) { transform: none; transition: opacity 150ms ease, visibility 0s; }
+  .qd:not(.open) { transition: opacity 150ms ease, visibility 0s 150ms; }
+  .qd-body.from-right, .qd-body.from-left, #layers-panel.step-in { animation: qd-fade 150ms ease; }
+  .qt, .qd .qt-tog, .qd .qd-base, .qd .qd-chip { transition: none; }
+  .qt:has(.qt-tog:active), .qt:has(.qt-rm:active), .qt-more:active, .qd-base:active, .qd-chip:active { transform: none; }
+}
+@keyframes qd-fade { from { opacity: 0; } }
+@media (prefers-reduced-transparency: reduce) { .qd { background: var(--surface-solid); backdrop-filter: none; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qt-l small.warn { color: #fdba74; } }
+:root[data-theme="dark"] .qt-l small.warn { color: #fdba74; }
 
 /* ---------------------------------------------------------------- planner */
 /* data-layout="sheet": a bottom panel (peek / half / full, drag the handle) —
@@ -1130,6 +1255,45 @@ body.dropping .drop-hint { display: flex; }
 
   .stat-value { font-size: 17px; }
   #profile-canvas { height: 120px; }
+}
+
+/* the quick layer drawer on phones: a sheet from the bottom over the planner's peek, clear of the home
+   indicator, never taller than the room below the top bar; it slides up in 260 ms and down in 180 ms
+   and follows the swipe (js/sheet.js). More grows it into the full panel, a sheet from the top bar down. */
+@media (max-width: 720px) {
+  .qd {
+    z-index: 12; left: 0; right: 0; bottom: 0; width: auto; max-height: calc(100% - 64px);
+    padding: 4px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2);
+    transform-origin: 50% 100%; transition: transform 260ms var(--ease-drawer), visibility 0s;
+  }
+  .qd:not(.open) { opacity: 1; transform: translateY(100%); transition: transform 180ms var(--ease-drawer), visibility 0s 180ms; }
+  .qd::before { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 240px; background: var(--surface-solid); } /* pulled up: no gap under it */
+  .qd-grab, #layers-panel > .qd-grab { display: block; }
+  .qd-foot { margin: 8px -16px 0; padding: 10px 16px 0; }
+  #layers-panel {
+    z-index: 12; left: 0; right: 0; top: 64px; bottom: 0; max-height: none; width: auto;
+    padding-bottom: env(safe-area-inset-bottom, 0px); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2);
+  }
+  #layers-panel::before { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 240px; background: var(--surface-solid); }
+  #layers-panel.dragging, .qd.dragging { user-select: none; }
+  #layers-panel .panel-head { padding-top: 2px; }
+}
+/* short phones (phase 24): under 760 px high the maps, tiles and headings come closer, so the map you're
+   changing stays in view (58 % of a 360 × 740 screen, 62 % of a 375 × 667 one) */
+@media (max-width: 720px) and (max-height: 760px) {
+  .qd { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .qd-grab { margin-top: 5px; }
+  .qd-head { min-height: 44px; }
+  .qd-lab { margin: 0 0 4px; min-height: 18px; }
+  .qd-lab + .qd-bases, .qd-lab + .qd-tiles { margin-bottom: 8px; }
+  .qd-bases { gap: 8px; }
+  .qd-base { gap: 2px; }
+  .qd-base img { height: 34px; }
+  .qt { min-height: 48px; }
+}
+@media (max-width: 720px) and (prefers-reduced-motion: reduce) {
+  .qd { transition: opacity 150ms ease, visibility 0s; }
+  .qd:not(.open) { opacity: 0; transform: none; transition: opacity 150ms ease, visibility 0s 150ms; }
 }
 
 /* offline areas */

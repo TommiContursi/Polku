@@ -158,7 +158,7 @@ export function swipeSheet(el, o) {
     }
     const to = S[i];
     if (o.aim) o.aim(to.name, ride);
-    settle(to, v);
+    if (ride) settle(to, v); // (unless the change it made stopped the swipe: then it has gone already)
   }
 
   function settle(to, v0) {
