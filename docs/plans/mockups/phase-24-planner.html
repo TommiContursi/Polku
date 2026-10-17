@@ -243,6 +243,8 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .popmenu hr.gap { margin: 10px 0 6px; }
 .popmenu .note { padding: 2px 10px 6px; font-size: 12.5px; color: var(--muted); }
 .popmenu .mi.compact { min-height: 44px; }
+.stylechips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 8px 6px; }
+.stylechips .chip { white-space: normal; height: auto; min-height: 40px; padding-block: 4px; }
 @media (hover: hover) and (pointer: fine) { .popmenu .mi:not(:disabled):hover, .tbtn:not(:disabled):hover, .chip:hover, .btn:not(:disabled):hover, .wpr:hover { background-color: var(--surface-2); } .btn.primary:not(:disabled):hover { background: var(--accent-bg); filter: brightness(1.08); } }
 
 /* round trip */
@@ -452,7 +454,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <section class="cv-q" aria-labelledby="rules-h">
     <h2 id="rules-h">What this iteration decides</h2>
     <ol>
-      <li><b>Drawing and routing told apart.</b> The toolbox holds how the <i>next leg</i> is drawn (Follow paths, Straight line, Over water), undo and redo. The route style (Balanced, Flowy trails…) is a setting of the <i>whole route</i>: it shows under Follow paths, because it's what Follow paths prefers, and lives in its own labelled group. Phones: one drop-down. Desktops: a labelled toolbar on the panel's edge, with keys.</li>
+      <li><b>Drawing and routing told apart.</b> The toolbox holds how the <i>next leg</i> is drawn (Follow paths, Straight line, Over water), undo and redo. The route style (Balanced, Flowy trails…) is a setting of the <i>whole route</i>: it shows under Follow paths, because it's what Follow paths prefers, and has its own labelled group of chips. Phones: one drop-down. Desktops: a labelled toolbar on the panel's edge, with keys.</li>
       <li><b>Round trips in the peek</b> after the first point: presets one tap away, any distance or time, then a green <b>Make 3 loops</b>. Nothing on the map; a tap on the map still adds the next point.</li>
       <li><b>One Trip menu</b> beside Done for the whole route: take it along, change the whole route, and Clear apart. Its name is still open.</li>
       <li><b>Done means done editing.</b> The route stays open to read, check and take along (the route's view); Edit goes back. ✕ puts it away; nothing is lost either way.</li>
@@ -472,20 +474,20 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-row" id="s1">
     <h2>1 · The toolbox: how the next leg is drawn</h2>
-    <p><b>Two different ideas, two places.</b> The drawing mode is a tool: it decides how the <i>next</i> leg you draw is made, and leaves the drawn legs alone (a leg's own mode is changed by tapping it on the map, as today). The route style is a setting: it decides which ways Follow paths prefers, for the <i>whole</i> route, and changing it routes the route again. So the mode is the button, and the style is its second line, shown only for the modes it applies to, and its own group in the menu with the words "the whole route".</p>
+    <p><b>Two different ideas, two places.</b> The drawing mode is a tool: it decides how the <i>next</i> leg you draw is made, and leaves the drawn legs alone (a leg's own mode is changed by tapping it on the map, as today). The route style is a setting: it decides which ways Follow paths prefers, for the <i>whole</i> route, and changing it routes the route again. So the mode is the button, and the style is its second line, shown only for the modes it applies to; in the menu the modes are a list with what each does, and the styles a set of chips under "Route style · the whole route".</p>
     <ul>
-      <li><b>Phones:</b> one button with the mode's icon and name (never an icon alone), undo and redo. 242 px at 390, so it clears the map's buttons on every phone down to 320 px; below that, or at 200 % zoom, it docks into the sheet as its first row instead of floating.</li>
+      <li><b>Phones:</b> one button with the mode's icon and name (never an icon alone), undo and redo: 253 px (268 in Finnish, 234 in Swedish), so it floats clear of the map's buttons on every phone from 360 px. Narrower, at 200 % zoom, or with the sheet raised high, it docks into the sheet as its first row instead.</li>
       <li><b>Desktops:</b> the toolbar hangs off the panel's edge, one surface with it, so it reads as part of planning, not another floating panel. The three modes with their names, the style as its own labelled control, undo and redo, and a line saying what a click does now. Tooltips give the key and one sentence; keyboard focus shows them too.</li>
       <li><b>States:</b> the mode in use is filled and ticked, not only coloured; undo and redo show from the first change and are disabled (not hidden) when there's nothing to undo or redo; at the start there's nothing to show but the mode.</li>
     </ul>
     <div class="cv-frames">
       <figure class="fr phone" id="tb-phone" data-st='{"stage":"route"}'><figcaption><b>Phone: drawing</b>The mode with its style, undo, redo. Tap the mode.</figcaption></figure>
       <figure class="fr phone" id="tb-phone-calm" data-st='{"stage":"route","calm":true}'><figcaption><b>Nothing to read before you go</b>The peek is one row: about 91 % of the map in view, as in the first B. The row above the numbers comes only with something to read.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-menu" data-st='{"stage":"route","pop":"modes"}'><figcaption><b>The mode's menu</b>"Draw the next leg" with what each mode does, then the route style for the whole route, one level down.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-style" data-st='{"stage":"route","pop":"modes","styleOpen":true}'><figcaption><b>The styles, opened</b>Picking one routes the whole route again, with Undo.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-menu" data-st='{"stage":"route","pop":"modes"}'><figcaption><b>The mode's menu</b>"Draw the next leg": each mode with what it does. Under it, apart, the route style for the whole route, as chips. A mode is two taps (one today); a style is two, as today.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-style" data-st='{"stage":"route","style":"flowy","toast":"style"}'><figcaption><b>A style picked</b>Flowy trails: the whole route is routed again, with Undo in a note; the mode's second line says the style.</figcaption></figure>
       <figure class="fr phone" id="tb-phone-200" data-st='{"stage":"route","z":2}'><figcaption><b>At 200 % zoom</b>(a 390 phone is 195 px wide): the toolbox docks into the sheet, the numbers wrap, nothing is cut. The map's own buttons don't fit at this zoom: that's #73's to solve.</figcaption></figure>
       <figure class="fr desk" id="tb-desk" data-st='{"stage":"route","tip":"line"}'><figcaption><b>Desktop: the toolbar on the panel's edge</b>Shown with Straight line's tooltip. When the panel docks right or at the bottom (22b), the toolbar hangs off its inner edge the same way.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-buttons" data-st='{"stage":"route","modes":"buttons"}'><figcaption><b>Alternative: three buttons</b>(the first B): one tap for any mode, but 312 px with the style on the first: it meets the map's buttons at 360 px, and the style and the mode share one button.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-buttons" data-st='{"stage":"route","modes":"buttons"}'><figcaption><b>Alternative: three buttons</b>(the first B): one tap for any mode, but with the style on the first it doesn't fit beside the map's buttons even at 390 px (it docks into the sheet here), and the style and the mode share one button.</figcaption></figure>
     </div>
   </section>
 
@@ -847,9 +849,9 @@ function phoneToolbox(st, v) {
 function modesMenu(st) {
   const S = SPORTS[st.sport];
   const item = (m) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}">${ic(m, 22)}<span><b>${t(m)}</b><small>${t(m + 'D')}</small></span>${st.draw === m ? ic('check', 18, 'tick') : ''}</button>`;
-  const styles = st.styleOpen
-    ? S.styles.map(([k, n]) => `<button type="button" class="mi compact" role="menuitemradio" aria-checked="${st.style === k}" data-act="style" data-v="${k}"><span><b>${esc(n)}</b></span>${st.style === k ? ic('check', 18, 'tick') : ''}</button>`).join('') + `<button type="button" class="mi compact" role="menuitem" data-act="finetune">${ic('route', 20)}<span><b>${t('fineTune')}</b></span>${ic('right', 16)}</button>`
-    : `<button type="button" class="mi" role="menuitem" aria-expanded="false" data-act="styleopen">${ic('route', 22)}<span><b>${esc(styleName(st))}</b><small>${t('styleRow')}</small></span>${ic('right', 18)}</button>`;
+  // the styles as chips, not a second list: one tap away, and plainly a different kind of choice from the modes
+  const styles = `<div class="stylechips">${S.styles.map(([k, n]) => `<button type="button" class="chip" role="menuitemradio" aria-checked="${st.style === k}" aria-pressed="${st.style === k}" data-act="style" data-v="${k}">${st.style === k ? ic('check', 16) : ''}${esc(n)}</button>`).join('')}</div>
+    <button type="button" class="mi compact" role="menuitem" data-act="finetune">${ic('route', 20)}<span><b>${t('fineTune')}</b></span>${ic('right', 16)}</button>`;
   return `<div class="popmenu" role="menu" aria-label="${t('nextLeg')}" data-anchor="modes">
     <div class="mh" id="mh-${st._id}-a">${t('nextLeg')}</div>
     <div role="group" aria-labelledby="mh-${st._id}-a">${['auto', 'line', 'water'].map(item).join('')}</div>
