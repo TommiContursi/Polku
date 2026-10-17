@@ -16,7 +16,9 @@ Polku looked at as a whole, on a phone and a desktop, centred on the route plann
 4. **The sheet is hard to move, and raising it hides the route** (#96): it moves only from a small handle, and doesn't frame the route when it comes to rest.
 5. **The same thing in two or three places, and controls before they can act** (#233, #241): the sport, the colour, Round trip, the route style twice; three ways to close the planner on a desktop; undo and redo looking ready with nothing to undo.
 
-**Chosen by the user (2026-10-17), from the planner's mock-up:** B, with a lower peek and a floating toolbox on the desktop too; only the row you're on shows its buttons; the "Loop from here" chip by the start, leading to a loop of any length; and the ⋯ menu designed again, now with three versions to choose from (§3, problem 5). The mock-up shows the chosen design by default; A stays for comparison.
+**Chosen by the user (2026-10-17), from the planner's mock-up:** B, with a lower peek and a floating toolbox on the desktop too; only the row you're on shows its buttons; the ⋯ menu designed again (§3, problem 5).
+
+**The second iteration (2026-10-17, later), [§9](#9-the-second-iteration-of-the-calmer-planner-233):** a focused redesign of the calmer planner on B's ground, with [its design, reasons, build plan and acceptance criteria](../../plans/issue-233-calmer-planner.md) and [the mock-up](../../plans/mockups/phase-24-planner.html) redone as a clickable prototype. It changes two of the choices above: the round trip moves into the peek with any length (no chip by the start), and the ⋯ menu becomes one menu for the whole route under a name other than Route.
 
 **What works and must stay:** see [below](#what-works-and-must-be-protected).
 
@@ -24,8 +26,8 @@ Polku looked at as a whole, on a phone and a desktop, centred on the route plann
 
 **What comes next:**
 - **#123's build** (the quick layer drawer, with `js/sheet.js` fixing #96), its four open questions answered: [its plan](../../plans/issue-123-layer-drawer.md#phase-24s-answers-2026-10-17).
-- **A calmer planner (#233), proposed as a phase of its own:** B chosen on 2026-10-17 in [the mock-up](../../plans/mockups/phase-24-planner.html); the ⋯ menu's three versions are still to choose from.
-- **Seven bugs** in "Fixes 2": #239, #240, #241, #242, #243, #244, #245. **Six improvements and ideas:** #232, #234, #235, #236, #237, #238.
+- **A calmer planner (#233), proposed as a phase of its own in four parts:** [its plan](../../plans/issue-233-calmer-planner.md) and [the mock-up](../../plans/mockups/phase-24-planner.html), for the user's review; the menu's name and two smaller choices are still the user's.
+- **Eight bugs** in "Fixes 2": #239, #240, #241, #242, #243, #244, #245, and #251 (found by the second iteration). **Six improvements and ideas:** #232, #234, #235, #236, #237, #238.
 - **Into their phases:** typeface and text sizes (20), the Layers panel's headings (21), one Done on a desktop (22b), soft hyphens in translations (18).
 
 ## 1. The quick layer drawer (#123) and the one swipe (#96)
@@ -99,7 +101,7 @@ The map in view and the controls are counted after each step; switches are chang
 - **Root cause:** layout (an offer placed over the content it's about), and interaction (the card's area swallows the next tap).
 - **What should change:** the loops stay one tap away and the map stays free. **What must stay:** loops of 10, 20 and 30 km from the start in one tap; "Tap the next place" as the guidance.
 - **Two alternatives** ([the mock-up, section 1b](../../plans/mockups/phase-24-planner.html)): the loops in the peek, no card ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-first-peek-a-one.jpg?raw=true)); or a small "Loop from here" chip by the start, 140 × 44 px ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-first-chip-a-one.jpg?raw=true)). The first gives up nothing pointing at the start; the second gives up one tap (a loop takes two) and still covers a sixth of the card's map. On the same journey both take four taps for four points, as against nine.
-- **Chosen: the chip by the start**, because it leads to a loop of any length rather than three fixed ones. "Loop from here" opens a round trip in the peek ([section 1c of the mock-up](../../plans/mockups/phase-24-planner.html)): 10, 20, 30 or 50 km make the three loops at once, and any other length is − / + in 5 km steps or typed (a 16 px field, so the phone doesn't zoom), then Make 3 loops; km or time as today. A preset loop takes two taps from the chip's moment (today the card's 10, 20 or 30 km take one); any other length is now on the same row instead of in Route's Round trip section.
+- **Chosen first: the chip by the start**, because it leads to a loop of any length rather than three fixed ones. **Then, in the second iteration (§9): alternative 1, the loops in the peek,** with any length and a green Make 3 loops: a length opens the round trip, it doesn't start the loops, so a tap meant for the map can't spend routing calls. The chip's paragraph below is kept as the record. "Loop from here" opens a round trip in the peek ([section 1c of the mock-up](../../plans/mockups/phase-24-planner.html)): 10, 20, 30 or 50 km make the three loops at once, and any other length is − / + in 5 km steps or typed (a 16 px field, so the phone doesn't zoom), then Make 3 loops; km or time as today. A preset loop takes two taps from the chip's moment (today the card's 10, 20 or 30 km take one); any other length is now on the same row instead of in Route's Round trip section.
 - **Evidence:** journey step "Add four points on the map"; the card's code at `js/planner.js:3520-3530`; skills: apple-design (grouping and mapping), break-ui (the 30-point run).
 - **Needs:** people (do they read the card, do they try to tap through it?).
 - **Issue:** #232.
@@ -154,7 +156,7 @@ The map in view and the controls are counted after each step; switches are chang
   2. **One "Route" menu beside Done:** today's menu without moving the panel, named and placed with the route's numbers (plus Round trip from the start). All two taps. Gives up: a menu stays; on a phone the named button pushes the numbers onto two lines (the peek 116 px instead of 78).
   3. **Split by what they're for:** Take it along beside Done (as 1), and the toolbox's ⋯ beside Undo holds what changes the route: Import, Round trip from the start, Clear route. All two taps. Gives up: two places instead of one.
 
-  Moving the panel stays with the panel in every version (its button in the tabs' row and Settings; 22b drags it). **The user chooses.**
+  Moving the panel stays with the panel in every version (its button in the tabs' row and Settings; 22b drags it). **The user chose version 2, one menu, but not called Route** (there's a Route tab); the second iteration (§9) groups it and offers three names.
 - **Issues:** #233 (the calmer planner), #241 (the start's bug), 22b's plan (one Done on a desktop, the floating toolbox).
 
 ## 4. The numbers before and after
@@ -218,6 +220,7 @@ Each with the skill or tool that found it, and where it went.
 | The timeline's reading is cut to "map c" on phones | break-ui (screenshots at 390) | #243 (bug) |
 | Two Other ways' labels print over each other (`text-allow-overlap`) | screenshots, then the code | #244 (bug) |
 | With a mouse, a click on the sport pill closes the menu its hover opened | the journey script | #245 (bug) |
+| On a phone, a touch tap on the header's style chip folds the sheet (on `main` at `82e276d`) | the journey script, run again (§9) | #251 (bug) |
 | At the start, undo, redo and Show the whole route look ready | `measure.py`, then `window.polku` | #241 (bug) |
 | Distance marks carry two lines of times, the elapsed to the second | apple-design (simplicity) | #234 |
 | Targets under 44 px and text under 11 px outside the planner (timeline chips 26 px, its slider 16 px, a card's ✕ 26 px, button labels 10 px) | emil-design-eng, Impeccable's detector | #235 |
@@ -257,6 +260,34 @@ Each with the skill or tool that found it, and where it went.
 | The sport at the top of the screen is found while planning (problem 5) | People |
 | Zoom and enlarged text (#73), the notch and the home indicator (#134), tap flash and sticky hover (#208) | Real phones (the test list, item 5) |
 | The drawer's height and tiles on small phones | Real phones |
+
+## 9. The second iteration of the calmer planner (#233)
+
+Asked for on 2026-10-17 after the choices above: a second, focused design iteration on B's ground, design only. The outcome is [docs/plans/issue-233-calmer-planner.md](../../plans/issue-233-calmer-planner.md) (decisions, reasons, the build in four parts, acceptance criteria) and [the mock-up](../../plans/mockups/phase-24-planner.html), now a clickable prototype on phone and desktop frames with switches for the worst case, Finnish and Swedish, the theme and the decisions still open.
+
+**What it decides**, in short:
+1. **The toolbox holds how the next leg is drawn** (Follow paths, Straight line, Over water), undo and redo; the route style is a setting of the whole route, shown as the mode's second line and as its own group in the mode's menu. Phones: one drop-down; desktops: a labelled toolbar hanging off the panel's edge, with P, S, W and tooltips.
+2. **Round trips in the peek** after the first point: the sport's lengths and Other; a length opens the round trip with a green Make 3 loops; any distance or time. Closes #232's card.
+3. **One menu for the whole route** beside Done: take it along, the whole route, Clear apart with Undo; its head says the route is kept on this device. Its name is open: Trip (recommended), Share & save, More.
+4. **Done ends editing:** the route stays open in the route's view (read, check, take along, later Start); Edit goes back; ✕ puts it away.
+5. **Check by how serious and how sure:** Read before you go, Worth a look, Not checked, each item with its source (live, from the map, an estimate, calculated), what Polku looked at, and a row in the peek only when there's something to read before you go.
+6. **Waypoints:** only the selected one has buttons, no Remove on the others; Find, Key points, a bar that keeps the selected point in sight, Move to a number.
+
+**Measured** (`evidence/mockup_probe2.py`, the same rules as `measure.py`, 146 runs of every frame in English and in the worst case in Finnish and Swedish, at 390, 360 and 200 %; output in `evidence/mockup-iter2.json`):
+
+| The moment (phone, 390 × 844) | Today | The first B | The second iteration |
+|---|---|---|---|
+| Peek, drawing, nothing to read before you go | 82.7 % · 22 (12) · 18 under 44 px | 91.1 % · 18 (8) · 6 | 90.9 % · 15 (6) · 1 (the handle, a 36 px target) |
+| Peek, one thing to read before you go | the same | the same | 85.2 % (the warning row) |
+| Right after the first point | the card over the map | 91.1 % (the chip) | 83.8 % (the lengths in the peek) |
+| Half, Check | 52.1 % | 52.1 % | 52.1 % |
+| Desktop, side panel: the map on top | 71.1 % (A) | 69.8 % | 65.7 % (the labelled toolbar) |
+
+The map in view is the share of the screen not under the planner's sheet or panel; the counts are controls on screen (in the planner) and planner controls under 44 px. **What the worst cases gave** (break-ui): names wrap to two lines, numbers never cut, menus stay between the top bar and their button and scroll inside, the toolbox docks into the sheet when it can't clear the map's buttons, and with enlarged text the profile folds and the sheet scrolls as one; at 200 % the map's own buttons meet the top bar (#73's).
+
+**The journey run again on `main` at `82e276d`** (`evidence/journey-main-82e276d.*`): the first nine steps and the mistakes match the baseline (four points took six taps: the card still swallowed one). From the route style on, the script lost the sheet: a touch tap on the header's style chip folds it to peek, a bug from the header's fold-on-tap, filed as **#251**; those steps aren't comparable, and the `87a9b07` baseline stands for them.
+
+**Not done in it:** Codex's independent review (AGENTS.md keeps independent checks for Codex; its brief is in #246), people and real phones (the plan's §8 lists what only they can settle, and adds two tasks to the test script below).
 
 ## A test script for people
 
@@ -304,7 +335,9 @@ All in [`evidence/`](evidence/):
 - `measure.py`, `measure-before.json`: the starting point at every size and sheet state;
 - `journey.py`, `journey-main.json`, `journey-main.log`: the baseline journey and its shorter runs;
 - `mockup_probe.py`, `mockup-after.json`: the planner's mock-up measured the same way;
-- `mockup_bg.py`: the map pictures behind the mock-ups;
+- `mockup_probe2.py`, `mockup-iter2.json`: the second iteration's mock-up, every frame, normal and worst case, with overlaps, controls off the screen and cut text;
+- `mockup_bg.py`, `mockup_bg2.py`: the map pictures behind the mock-ups (the second adds round-trip loops and a 52-point route);
+- `journey-main-82e276d.json`, `.log`: the journey run again on `main` at `82e276d` (§9);
 - `drawer_probe.py`, `drawer-before.json`, `drawer-after.json`, `word_widths.py`, `swipe_probe.py`, `swipe-probe.txt`: the quick layer drawer's questions;
 - `break_probe.py`, `break-before.json`: break-ui's worst case in the planner;
 - `impeccable-files.json`, `impeccable-url-390.json`, `impeccable-url-1440.json`: Impeccable's detector;
