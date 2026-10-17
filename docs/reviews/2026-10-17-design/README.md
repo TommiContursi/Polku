@@ -18,7 +18,7 @@ Polku looked at as a whole, on a phone and a desktop, centred on the route plann
 
 **Chosen by the user (2026-10-17), from the planner's mock-up:** B, with a lower peek and a floating toolbox on the desktop too; only the row you're on shows its buttons; the ⋯ menu designed again (§3, problem 5).
 
-**The second iteration (2026-10-17, later), [§9](#9-the-second-iteration-of-the-calmer-planner-233):** a focused redesign of the calmer planner on B's ground, with [its design, reasons, build plan and acceptance criteria](../../plans/issue-233-calmer-planner.md) and [the mock-up](../../plans/mockups/phase-24-planner.html) redone as a clickable prototype. It changes two of the choices above: the round trip moves into the peek with any length (no chip by the start), and the ⋯ menu becomes one menu for the whole route under a name other than Route.
+**The second iteration (2026-10-17, later), [§9](#9-the-second-iteration-of-the-calmer-planner-233):** a focused redesign of the calmer planner on B's ground, with [its plan](../../plans/issue-233-calmer-planner.md) and [the mock-up](../../plans/mockups/phase-24-planner.html) redone as a clickable prototype. It changes two of the choices above: the round trip moves into the peek with any length (no chip by the start), and the ⋯ menu becomes one menu for the whole route. **Decided the same day:** More (⋯) at the end of the toolbox and the desktop toolbar, and the design ready to build in four parts.
 
 **What works and must stay:** see [below](#what-works-and-must-be-protected).
 
@@ -26,7 +26,7 @@ Polku looked at as a whole, on a phone and a desktop, centred on the route plann
 
 **What comes next:**
 - **#123's build** (the quick layer drawer, with `js/sheet.js` fixing #96), its four open questions answered: [its plan](../../plans/issue-123-layer-drawer.md#phase-24s-answers-2026-10-17).
-- **A calmer planner (#233), proposed as a phase of its own in four parts:** [its plan](../../plans/issue-233-calmer-planner.md) and [the mock-up](../../plans/mockups/phase-24-planner.html), for the user's review; the menu's name and two smaller choices are still the user's.
+- **A calmer planner (#233), decided and ready to build in four parts:** [its plan](../../plans/issue-233-calmer-planner.md) (what changes, what moves, what stays as it is) and [the mock-up](../../plans/mockups/phase-24-planner.html).
 - **Eight bugs** in "Fixes 2": #239, #240, #241, #242, #243, #244, #245, and #251 (found by the second iteration). **Six improvements and ideas:** #232, #234, #235, #236, #237, #238.
 - **Into their phases:** typeface and text sizes (20), the Layers panel's headings (21), one Done on a desktop (22b), soft hyphens in translations (18).
 
@@ -268,7 +268,7 @@ Asked for on 2026-10-17 after the choices above: a second, focused design iterat
 **What it decides**, in short:
 1. **The toolbox holds how the next leg is drawn** (Follow paths, Straight line, Over water), undo and redo; the route style is a setting of the whole route, shown as the mode's second line and as its own group in the mode's menu. Phones: one drop-down; desktops: a labelled toolbar hanging off the panel's edge, with P, S, W and tooltips.
 2. **Round trips in the peek** after the first point: the sport's lengths and Other; a length opens the round trip with a green Make 3 loops; any distance or time. Closes #232's card.
-3. **One menu for the whole route** beside Done: take it along, the whole route, Clear apart with Undo; its head says the route is kept on this device. Its name is open: Trip (recommended), Share & save, More.
+3. **One menu for the whole route:** take it along, the whole route, Clear apart with Undo; its head says the route is kept on this device. Decided afterwards: **More (⋯)**, at the end of the toolbox and the desktop toolbar.
 4. **Done ends editing:** the route stays open in the route's view (read, check, take along, later Start); Edit goes back; ✕ puts it away.
 5. **Check by how serious and how sure:** Read before you go, Worth a look, Not checked, each item with its source (live, from the map, an estimate, calculated), what Polku looked at, and a row in the peek only when there's something to read before you go.
 6. **Waypoints:** only the selected one has buttons, no Remove on the others; Find, Key points, a bar that keeps the selected point in sight, Move to a number.
@@ -287,7 +287,9 @@ The map in view is the share of the screen not under the planner's sheet or pane
 
 **The journey run again on `main` at `82e276d`** (`evidence/journey-main-82e276d.*`): the first nine steps and the mistakes match the baseline (four points took six taps: the card still swallowed one). From the route style on, the script lost the sheet: a touch tap on the header's style chip folds it to peek, a bug from the header's fold-on-tap, filed as **#251**; those steps aren't comparable, and the `87a9b07` baseline stands for them.
 
-**Not done in it:** Codex's independent review (AGENTS.md keeps independent checks for Codex; its brief is in #246), people and real phones (the plan's §8 lists what only they can settle, and adds two tasks to the test script below).
+**Decided afterwards (2026-10-17):** one drop-down for the modes on phones; the desktop toolbar keeps its tooltips and gives its right end to Reverse, Back to start, Show the whole route, More and Done (no sentence); More (⋯) in place of Trip; Done at the summary's right on phones; Show the whole route under Locate on phones whenever a route is on the map; the selected waypoint's controls compact (44 px targets) and today's leg editor kept in it; and the rule that Polku on `main` is the source of truth for what the planner does, with the plan listing what changes, what moves and what stays as it is.
+
+**Not done in it:** people and real phones (the plan's §8 lists what only they can settle, with two tasks for the test script below).
 
 ## A test script for people
 
