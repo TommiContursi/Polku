@@ -42,6 +42,8 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 
 ## How the trickier parts work
 
+- **In-app release notes** (`js/changelog.js`): Settings opens the shared native dialog and requests the deployed `CHANGELOG.md` through `request('polku', …)` only on opening or Retry. The service worker may supply its saved copy, so the view shows the notes’ latest date and an explicit saved-copy label when offline. Headings, paragraphs, bullets, bold text, code and HTTP(S) links are built as DOM nodes; HTML and unsafe URL schemes never execute. Relative links point to the repository. Closing aborts a pending request and restores focus; dialog key events stay out of the map shortcuts.
+
 - **Style** (`js/style.js`): one function builds the whole MapLibre style from app state and is applied with `setStyle(..., {diff: true})`. Sport, base map and overlays are all just state.
 - **Uphill grades** (`js/uphill.js`): trails in the loaded vector tiles are resampled every 8 m and sampled against the terrarium DEM (`js/dem.js`, bilinear, z14 ≈ 2.3 m/px). They are smoothed over 24 m, cut into ~25 m pieces and graded by the `mtb:scale:uphill` limits (10/15/20/25/30 %). Each piece points uphill, so the arrows point up the climb. Explicit OSM tags win. Graded trails are kept and not graded again, except those a terrain tile failed for: they're graded again on the next map move, so they get their colours once the terrain is back.
 - **Terrain that doesn't load** (`js/dem.js`, `js/analysis.js`): a missing tile falls back to zoom −2 and −4. A tile that failed (network, HTTP error, bad file) is asked for again after 15 s; one that answers 404 isn't. The route's analysis marks where heights are missing (`eleGap`, `terrain`), draws a straight line across a gap, and times the route as flat where nothing is known. The planner analyses the route again after 20 s, then less often, and at once on `online` or Retry, and takes the new analysis once more terrain is in.
@@ -112,6 +114,7 @@ index.html          shell + CDN scripts (maplibre-gl 5.24.0, maplibre-contour 0.
 sw.js               service worker: the app and saved tiles offline
 css/app.css         UI (light and dark)
 js/main.js          state, panels, wiring
+js/changelog.js     on-demand release notes in the shared native dialog
 js/config.js        sources, sports, palettes, overlay catalogue
 js/style.js         MapLibre style builder (palettes, roads and trails, overlays, labels)
 js/planner.js       route planner: waypoints, legs, undo, the panel and sheet, Heads-up

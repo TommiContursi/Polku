@@ -647,6 +647,21 @@ def shoot(chrome, out_dir, label, name):
     print(path + (f'   ({len(errs)} console errors: {errs[0][:120]})' if errs else ''), flush=True)
 
 
+# #221: the same on-demand window in each sport, with a straight route and
+# timeline visible behind it. Main captures Settings before the entry exists.
+CHANGELOG_WINDOW = """(async () => {
+  const p = polku.planner, wait = ms => new Promise(r => setTimeout(r, ms));
+  p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.80,61.51]); p.addPoint([23.82,61.52]); await p.analysing; p.fitRoute();
+  document.querySelector('#btn-settings').click();
+  const b = document.querySelector('#btn-changelog');
+  if (b) { b.click(); const start=Date.now(); while(document.querySelector('.changelog-notes[aria-busy]') && Date.now()-start<15000) await wait(50); }
+  return true;
+})()"""
+for sport in ['mtb', 'gravel', 'hike', 'paddle']:
+    for size, viewport in [('desk', DESK), ('phone', PHONE)]:
+        SCENES[f'{size}-changelog-{sport}'] = dict(viewport, activity=sport, timeline=True, js=CHANGELOG_WINDOW)
+
+
 def main():
     if '--list' in sys.argv:
         print('\n'.join(SCENES))

@@ -3,6 +3,7 @@
 
   python3 tools/smoke.py            # all viewports
   python3 tools/smoke.py 390x844    # just one size
+  python3 tools/smoke.py changelog  # release notes, retry, safe rendering, keyboard, route preservation and real worker offline
   python3 tools/smoke.py layers     # just the Layers panel in every sport
   python3 tools/smoke.py trails     # just the trail details (from a recorded tile), and the uphill colours when the terrain comes late (mocked)
   python3 tools/smoke.py header     # just the planner header fitting its sheet
@@ -3864,11 +3865,129 @@ def marks(chrome):
     return not fails
 
 
+# #221: real deployed notes, failed/retried and late responses, keyboard and
+# phone scrolling. Routes are straight lines; no routing service is contacted.
+def changelog(chrome):
+    fails = []
+    for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
+        pg = chrome.page(w, h_, phone)
+        pg.open_app({'activity': 'mtb', 'timeline': True})
+        errs = pg.js("""(async () => {
+          const p = polku.planner, wait = ms => new Promise(r => setTimeout(r, ms)), errs = [];
+          p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.80,61.51]); p.addPoint([23.82,61.52]); await p.analysing;
+          const count = () => document.querySelectorAll('.modal-changelog[open]').length;
+          document.querySelector('#btn-settings').click();
+          window.notesOpener = document.querySelector('#btn-changelog');
+          if (!window.notesOpener) return ['no What’s new entry in Settings'];
+          window.notesSnapshot = () => JSON.stringify({points:p.points, legs:p.legs.map(l => l.result?.coords), undo:p.past.length, active:p.active, timeline:polku.state.timeline, camera:[polku.map.getCenter().toArray(),polku.map.getZoom(),polku.map.getPitch(),polku.map.getBearing()]});
+          window.notesBefore = notesSnapshot();
+          const net = await import('./js/net.js'); const before = net.usage().find(s => s.id === 'polku').session;
+          notesOpener.focus(); notesOpener.click();
+          const start = Date.now(); while (document.querySelector('.changelog-notes[aria-busy]') && Date.now()-start<15000) await wait(50);
+          const notes = document.querySelector('.changelog-notes'), status = document.querySelector('.modal-changelog [role=status]');
+          if (!count() || !notes?.querySelector('h3') || !notes.querySelector('h4') || !notes.querySelector('li strong')) errs.push('real changelog did not render dates/headings/lists/bold');
+          if (!/Release notes through \d{4}-\d{2}-\d{2}/.test(status?.textContent || '')) errs.push('no source date');
+          if ((net.usage().find(s => s.id === 'polku').session) !== before+1) errs.push('changelog did not use request()');
+          const b = document.querySelector('.modal-changelog .modal-body'); b.scrollTop = 2000;
+          if (b.scrollTop < 100 || b.scrollWidth > b.clientWidth+1) errs.push('notes do not scroll or overflow sideways');
+          for (const key of ['r','f','t','l','z','/']) document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,ctrlKey:key==='z'}));
+          if (notesSnapshot() !== notesBefore || document.querySelector('#settings-panel').hidden) errs.push('reading notes changed route, camera, timeline or Settings');
+          return errs;
+        })()""")
+        fails += [f'{w}: {e}' for e in errs]
+        if pg.js('!!document.querySelector(".modal-changelog[open]")'):
+            for _ in range(12):
+                chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
+                if not pg.js('document.querySelector(".modal-changelog").contains(document.activeElement)'):
+                    fails.append(f'{w}: Tab escaped the native dialog')
+                    break
+            chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
+            pg.js('new Promise(r => setTimeout(r,100))')
+            if not pg.js('!document.querySelector(".modal-changelog").open && document.activeElement === notesOpener && !document.querySelector("#settings-panel").hidden && notesSnapshot() === notesBefore'):
+                fails.append(f'{w}: Escape did not close and restore focus/route/Settings')
+            errs = pg.js("""(async () => {
+              const errs=[], wait=ms=>new Promise(r=>setTimeout(r,ms));
+              const real=window.fetch; let calls=0, release;
+              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
+              window.fetch=(url,opts)=>String(url).endsWith('/CHANGELOG.md') ? (++calls===1 ? Promise.resolve(new Response('unavailable',{status:503})) : calls===2 ? Promise.resolve(new Response(fixture)) : new Promise(r=>{release=r;})) : real(url,opts);
+              notesOpener.click(); await wait(100);
+              const d=document.querySelector('.modal-changelog'), b=d.querySelector('.modal-body'), status=d.querySelector('[role=status]');
+              const retry=[...b.querySelectorAll('button')].find(x=>x.textContent==='Retry');
+              if (!/could not be loaded/.test(status.textContent) || retry.hidden || !b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry/full source');
+              retry.click(); await wait(100);
+              const n=b.querySelector('.changelog-notes');
+              if (!n.querySelector('code') || n.querySelector('img,script') || n.querySelector('a[href^="javascript:"]') || !n.textContent.includes('<img')) errs.push('unsafe Markdown rendered as executable content or no inline code');
+              if (n.querySelector('a')?.href !== 'https://github.com/TommiContursi/Polku/blob/main/docs/USING.md') errs.push('relative document link has wrong source');
+              d.querySelector('[aria-label=Close]').click(); await wait(100);
+              if (document.activeElement!==notesOpener) errs.push('close button did not restore focus');
+              notesOpener.click(); await wait(100);
+              if (!/Loading/.test(d.querySelector('[role=status]').textContent)) errs.push('no loading state');
+              d.querySelector('[aria-label=Close]').click(); await wait(100);
+              const M=await import('./js/modal.js'); M.openModal({title:'Different window'},body=>body.append('Still here'));
+              release(new Response(fixture)); await wait(100);
+              if (document.querySelector('#modal-title').textContent!=='Different window' || document.querySelector('.modal-body').textContent!=='Still here') errs.push('late response replaced another window');
+              M.closeModal(); window.fetch=real;
+              if (notesSnapshot()!==notesBefore) errs.push('failed/retried/closed notes changed the route');
+              return errs;
+            })()""")
+            fails += [f'{w}: {e}' for e in errs]
+        fails += [f'{w}: console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    # CDP page-only offline leaves a service worker's fetch online. Apply the
+    # real network outage to both targets, with the worker controlling the page.
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'hike'})
+    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    pg.js("""(async()=>{await Promise.race([(async()=>{await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready;})(), new Promise((_,reject)=>setTimeout(()=>reject(new Error('service worker not ready after 15 s')),15000))]);
+      const c=await caches.open('polku-shell-v1'); await c.delete(new URL('./CHANGELOG.md',location.href).href);
+      })()""")
+    pg.reload()  # a page originally loaded with bypass gains its controller on navigation
+    if not pg.js('!!navigator.serviceWorker.controller'):
+        fails.append('offline check: page is not controlled by the real worker')
+    worker_url = BASE + 'sw.js'
+    worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == worker_url), None)
+    if not worker:
+        raise RuntimeError('offline check: no service-worker CDP target at ' + worker_url)
+    worker_session = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
+    chrome.send('Network.enable', {}, worker_session)
+
+    def offline(on):
+        for session in [pg.s, worker_session]:
+            chrome.send('Network.emulateNetworkConditions', {'offline': on, 'latency': 0, 'downloadThroughput': 0 if on else -1, 'uploadThroughput': 0 if on else -1}, session)
+
+    loaded = "new Promise(r=>{const start=Date.now(); const go=()=>!document.querySelector('.changelog-notes[aria-busy]') || Date.now()-start>15000 ? r():setTimeout(go,50);go();})"
+    try:
+        pg.js("document.querySelector('#btn-settings').click(); true")
+        offline(True)
+        pg.js("document.querySelector('#btn-changelog').click(); " + loaded)
+        status = pg.js("document.querySelector('.modal-changelog [role=status]').textContent")
+        if 'offline and no saved' not in status:
+            fails.append('worker offline without cache: no explicit unavailable state: ' + status)
+        offline(False)
+        pg.js("document.querySelector('.modal-changelog .btn').click(); " + loaded)
+        if not pg.js("!!document.querySelector('.changelog-notes h3')"):
+            fails.append('worker online: Retry did not load real notes')
+        pg.js("document.querySelector('.modal-changelog [aria-label=Close]').click(); new Promise(r=>setTimeout(r,100))")
+        offline(True)
+        pg.js("document.querySelector('#btn-changelog').click(); " + loaded)
+        if not pg.js("/Offline: showing saved release notes through \d{4}-\d{2}-\d{2}/.test(document.querySelector('.modal-changelog [role=status]').textContent)"):
+            fails.append('worker offline with cache: no dated saved-copy notice')
+        fails += [f'worker offline: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        offline(False)
+        chrome.send('Target.detachFromTarget', {'sessionId': worker_session})
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} in-app changelog" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def main():
     only = sys.argv[1:]
     chrome = Chrome()
     ok = True
     try:
+        if not only or 'changelog' in only:
+            ok = changelog(chrome) and ok
         if not only or 'pacing' in only:
             ok = pacing(chrome) and ok
         if not only or 'layers' in only:

@@ -56,3 +56,9 @@ Pinching, or Ctrl+scrolling, over a panel zooms the map. In 3D, a two-finger tra
 Use **Save offline** in Go or the planner's **⋯** menu. Then use **Preview offline** to check the saved coverage. On an iPhone, add Polku to the home screen to help keep the saved data available.
 
 The saved map, terrain, route and profile work without a connection; routing, search, weather and traffic do not. Read the [limitations](../README.md#limitations), especially before planning on water.
+
+## What’s new
+
+Open **Settings → About Polku → What’s new** to read dated release notes over the map. The route stays as it was. Scroll the notes, use their links to read more, and close with **Close** or **Escape** to return to Settings.
+
+The notes load only when you open the window. Their latest date is shown; a saved copy may appear if you are offline or the connection is slow. If none can load, reconnect and select **Retry**, or use **Full changelog on GitHub**.

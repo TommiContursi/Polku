@@ -2,6 +2,12 @@
 
 What's new in Polku, newest first. Every change ships to [polku.si](https://polku.si) when its pull request is merged. What's planned is on GitHub, in the [issues](https://github.com/TommiContursi/Polku/issues) and [milestones](https://github.com/TommiContursi/Polku/milestones); the order of the phases is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## 2026-10-17
+
+### Read what’s new inside Polku
+- **Settings → About Polku → What’s new** opens the changelog over the map. Scroll the dated changes and follow their links, then close it to return to your route.
+- **Release notes load when you open the window.** Their latest date is shown, and a saved copy may appear when the connection is slow or unavailable. If nothing can load, Retry and a link to the full changelog stay available.
+
 ## 2026-10-16
 
 ### Fixed: dragging a route's midpoint adds just one point
