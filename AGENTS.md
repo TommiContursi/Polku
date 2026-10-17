@@ -10,13 +10,16 @@ as much as on a desktop. A static site: `index.html`, plain ES modules and
 MapLibre, with no build step and no backend. [polku.si](https://polku.si) is
 GitHub Pages from `main`, so **merging a PR publishes it.**
 
-Before bigger work, read [README.md](README.md),
-[docs/DEVELOPING.md](docs/DEVELOPING.md) (the modules, the commands, how the
-trickier parts work), [docs/ROADMAP.md](docs/ROADMAP.md) (the order), your
-phase's plan in [docs/plans/](docs/plans/), the issues in its milestone, and
-the latest [CHANGELOG.md](CHANGELOG.md) entries. For anything people see,
-[PRODUCT.md](PRODUCT.md) too: who Polku is for, its principles and its
-accessibility baseline.
+Read what the task needs (this file is already loaded):
+
+- **A fix:** its issue, the module's part of
+  [docs/DEVELOPING.md](docs/DEVELOPING.md), and its smoke group.
+- **A phase, or anything people see:** also its plan in
+  [docs/plans/](docs/plans/), the issues in its milestone, and
+  [PRODUCT.md](PRODUCT.md): who Polku is for, its principles and its
+  accessibility baseline.
+- [README.md](README.md), [docs/ROADMAP.md](docs/ROADMAP.md) and
+  [CHANGELOG.md](CHANGELOG.md) only when the task changes them.
 
 No framework, dependency, backend or build step without a real need and the
 user's OK.
@@ -37,7 +40,8 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   account), so the other doesn't start on it too. A phase is claimed on its
   phase issue. When the user says a claim's session has stopped, take over
   from its branch (or from `main` if nothing was pushed) and say so on the
-  issue.
+  issue. Read its last Hand-over first, then `git log origin/main..<branch>`
+  and the diff, and on the same Mac its worktree for uncommitted files.
 - **Phases** in ROADMAP's order, one phase per PR, unless the user changes it.
   Each has a phase issue and a milestone with the issues that go with it.
 - **Confirmed bugs with a small fix** get a Fix PR of their own, between
@@ -51,13 +55,32 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   bug, `idea` for an idea, `watch` for a risk (with a date or a trigger for
   looking again). Say when and where it came from, and give it a size:
   `small`, `medium` or `big`. Search first, and add to the one that exists.
-- **Two coding sessions at a time,** unless the user asks for more: more ran
-  into the usage limits ([retro](docs/retros/2026-10-15-16.md)).
-- **Commit and push work in progress often,** after each part and before
-  anything long, so that a session stopped by a usage limit leaves its work on
-  its branch for the next one. Phase 24's first claim stopped on 2026-10-17
-  with nothing pushed, and all of it was lost (#177).
+- **One session, one issue** (or one part of a phase). When the PR is ready,
+  or the context is past about 250k tokens with real work left, write a
+  Hand-over and start a new session (or Codex thread). After a usage-limit
+  wait, start fresh from the Hand-over; don't resume a big session.
+- **One implementing session per Claude account at a time,** and the accounts
+  and Codex one after another, not all at once: more at once ran into the
+  usage limits ([retro](docs/retros/2026-10-15-16.md)). Codex works alongside
+  only as a reviewer, or on an issue it has claimed itself. No "status"
+  session, and no subagents to verify or run the suite: independent checks go
+  to Codex.
+- **A Hand-over at every checkpoint.** When a part passes its smoke groups,
+  commit, push (a draft PR at the first push), and comment on the claimed
+  issue, headed "Hand-over", in 6–8 short lines, no prose: branch and commit;
+  PR; done; verified, with the exact commands; not verified; decisions, with
+  links; next step; what to watch out for. Never end a turn with uncommitted
+  work. Phase 24's first claim stopped on 2026-10-17 with nothing pushed, and
+  all of it was lost (#177).
 - Docs and tooling PRs stay on their one subject.
+
+**Effort** to suit the task, never `max` as a habit:
+
+| Effort | For |
+| --- | --- |
+| xhigh | design, phase plans, routing and data-integrity logic, hard bugs |
+| high | fixes with a clear repro, building a plan already agreed |
+| medium | docs, rebases, filing issues |
 
 ## In the code
 
@@ -123,8 +146,8 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
 
 ## Pull requests
 
-- Branch from `main`, or from the PR below yours if it isn't merged yet (say so
-  in the PR). First check the branch and any uncommitted changes. Never work on
+- Branch from `main`, or from the PR below yours if it isn't merged yet ("after
+  #N" in the PR's first line). First check the branch and any uncommitted changes. Never work on
   another agent's branch.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
@@ -154,8 +177,14 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
     taken out of ROADMAP's order. A Fix PR changes neither: the CHANGELOG and
     the closed issue record it;
   - DEVELOPING, where how something works has changed.
+- **Codex reviews** phase PRs, and fixes that touch routing, saved data or
+  share links, before they're marked ready. A fresh Codex thread gets only the
+  PR and issue links, tries to break the change, and posts its findings as a
+  PR comment. The author answers each finding with evidence.
+- **Drafts until verified** (and reviewed, where a review is due).
 - **Never push to `main` or merge** unless the user says so. The user merges:
-  say which PRs are ready, in what order, and which wait and why.
+  say which PRs are ready (the ones not in draft, in their "after #N" order),
+  and which wait and why.
 - **When a milestone's last issue closes,** a short retro in `docs/retros/`:
   what cost time and what to keep, with the PRs and issues as evidence, and
   what changes in AGENTS.md because of it. Then the milestone is closed.
