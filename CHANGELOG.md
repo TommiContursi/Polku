@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Rain radar ready for FMI's new feed ([#133](https://github.com/TommiContursi/Polku/issues/133))
 
-Rain “now” in Finland uses FMI's replacement radar data, keeping light drizzle in proportion when the old feed is retired. Missing radar coverage stays distinct from dry weather. The backup radar remains available if the rain-rate layer cannot load.
+Rain “now” in Finland uses FMI's replacement radar data, keeping light drizzle in proportion when the old feed is retired. Missing radar coverage stays distinct from dry weather. The backup radar remains available if the rain-rate layer cannot load. Both feeds use a fixed scale, so changing the map view does not change what the rain measurements mean.
 
 ## 2026-10-18
 

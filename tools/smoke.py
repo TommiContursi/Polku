@@ -4519,7 +4519,7 @@ RADAR = r"""(async () => {
   const real = window.fetch, calls = [], box = [-1, -1, 1, 1];
   let mode = 'normal', le = true, remap = false;
   const index = s => remap ? (s.index + 12345) % 65536 : s.index;
-  const tiff = (raw = false, bad = false) => {
+  const tiff = (raw = false, bad = false, dbz = false) => {
     const bits = raw ? 8 : 16, n = raw ? 0 : 65536, bpp = bits / 8;
     const count = raw ? 9 : 10, arrays = 8 + 2 + count * 12 + 4, pal = arrays + 16, pixels = pal + n * 6;
     const buf = new ArrayBuffer(pixels + w * h * bpp), d = new DataView(buf);
@@ -4530,7 +4530,10 @@ RADAR = r"""(async () => {
     if (!raw) tags.push([320,3,n*3,pal]);
     tags.forEach(([tag,type,num,value],i) => { const p=10+i*12; u16(p,tag);u16(p+2,type);u32(p+4,num); if(type===3 && num===1)u16(p+8,value);else u32(p+8,value); });
     u32(arrays,pixels);u32(arrays+4,pixels+w*4*bpp);u32(arrays+8,w*4*bpp);u32(arrays+12,w*4*bpp);
-    if (!raw) fx.samples.forEach(s => s.rgb.forEach((c,k) => u16(pal+(index(s)+k*n)*2,c*257)));
+    if (!raw) fx.samples.forEach(s => {
+      const rgb=dbz ? s.expectedMmh===null?[255,255,255]:s.name==='dry'?[0,0,1]:s.name==='trace'?fx.reflectivityReference.encodedRgb:[255,128,0] : s.rgb;
+      rgb.forEach((c,k) => u16(pal+(index(s)+k*n)*2,c*257));
+    });
     if (bad) [1,2,3].forEach((v,k) => u16(pal+(index(fx.samples[2])+k*n)*2,v*257));
     for(let y=0;y<h;y++)for(let x=0;x<w;x++) {
       const s=fx.samples[Math.floor(x/8)], v=raw ? s.expectedMmh===null?255:s.name==='dry'?0:100 : index(s);
@@ -4549,12 +4552,13 @@ RADAR = r"""(async () => {
       const sld=q.get('SLD_BODY') || '';
       if(!sld.includes('extended="true"') || !sld.includes('quantity="1000"') || q.get('bgcolor')!=='0xffffff') errs.push('replacement has no fixed encoding/background');
       if(mode==='limited')return Promise.resolve(new Response('limited',{status:429,headers:{'Retry-After':'60'}}));
-      if(mode==='404' || mode==='both404')return Promise.resolve(new Response('missing',{status:404}));
+      if(mode==='404' || mode==='both404' || mode==='fallbackraw')return Promise.resolve(new Response('missing',{status:404}));
       const bytes=tiff(mode==='raw',mode==='bad');
       return Promise.resolve(new Response(mode==='truncated' ? bytes.slice(0,-2) : bytes));
     }
     if(layer!=='Radar:radar_finland_cappi_dbzh') errs.push(`unexpected radar source ${layer}`);
-    return Promise.resolve(mode==='both404' ? new Response('missing',{status:404}) : new Response(tiff(true)));
+    if(!(q.get('SLD_BODY')||'').includes('quantity="95"'))errs.push('reflectivity has no fixed physical encoding');
+    return Promise.resolve(mode==='both404' ? new Response('missing',{status:404}) : new Response(tiff(mode==='fallbackraw',false,true)));
   };
   try {
     const before=net.usage().find(s=>s.id==='fmi').session;
@@ -4583,11 +4587,14 @@ RADAR = r"""(async () => {
       mode=failure; const from=calls.length, image=await fmiRadar(box,w,h,colour);
       if(calls.slice(from).join(',')!=='Radar:radar_finland_cappi_rate,Radar:radar_finland_cappi_dbzh') errs.push(`${failure}: no reflectivity fallback`);
       const rain=image.rateAt(...center(2));
-      if(!(rain>.3 && rain<2) || image.rateAt(...center(0))!==0 || image.rateAt(...center(4))!==null) errs.push(`${failure}: fallback units/dry/no-data are wrong`);
+      if(!(rain>.3 && rain<2) || image.rateAt(...center(0))!==0 || image.rateAt(...center(1))!==0 || image.rateAt(...center(4))!==null) errs.push(`${failure}: fallback units/dry/no-data are wrong`);
     }
     mode='both404';let rejected=false;
     try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
     if(!rejected) errs.push('both radar layers failed but returned a complete image');
+    mode='fallbackraw';rejected=false;
+    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    if(!rejected) errs.push('unstyled fallback bytes were interpreted as dBZ');
     mode='limited';const from=calls.length;rejected=false;
     try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
     if(!rejected || calls.length!==from+1 || net.sourceStatus('fmi')?.reason!=='limit') errs.push('FMI request limit was bypassed for the fallback');
