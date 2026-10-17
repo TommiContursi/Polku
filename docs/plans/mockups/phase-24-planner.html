@@ -132,7 +132,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
 /* ------------------------------------------------ the planner: sheet (phone) and panel (desktop) */
 .pl { position: absolute; z-index: 5; display: flex; flex-direction: column; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); color: var(--text); }
-.phone .pl { left: 8px; right: 8px; bottom: 8px; border-radius: 18px; padding: 0 12px 10px; max-height: calc(100% - 72px); }
+.phone .pl { left: 8px; right: 8px; bottom: 8px; border-radius: 18px; padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px)); max-height: calc(100% - 72px); }
 .desk .pl { left: 12px; top: 64px; bottom: 12px; width: 404px; border-radius: 18px; padding: 8px 16px 0; overflow: hidden; }
 .desk .pl.joined { border-top-right-radius: 0; }
 .pl > * { flex: none; } /* nothing in the sheet is squeezed: only the body scrolls */
@@ -223,7 +223,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .tip .kbd { color: inherit; background: transparent; border-color: currentColor; opacity: .8; }
 
 /* menus */
-.popmenu { position: absolute; z-index: 9; width: 316px; max-width: calc(100% - 16px); padding: 6px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line); display: flex; flex-direction: column; max-height: calc(100% - 80px); overflow: auto; transform-origin: var(--origin, bottom left); animation: pop 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.popmenu { position: absolute; z-index: 9; width: 316px; max-width: calc(100% - 16px); padding: 6px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line); display: flex; flex-direction: column; max-height: calc(100% - 80px); overflow: auto; overscroll-behavior: contain; transform-origin: var(--origin, bottom left); animation: pop 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes pop { from { opacity: 0; transform: scale(.97); } }
 .popmenu .mh { padding: 8px 10px 4px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .popmenu .mhead { padding: 8px 10px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
@@ -382,7 +382,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .mapinfo b { display: block; font-size: 14px; }
 
 /* press and hover: on press; hover only with a mouse; no grey flash */
-.screen button, .screen [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 120ms ease; cursor: pointer; }
+.screen button, .screen [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 120ms ease; cursor: pointer; }
 .screen button:active:not(:disabled) { transform: scale(0.97); }
 .screen :focus-visible { outline: 2.5px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .screen button { transition: none; } .popmenu { animation: none; } }
@@ -812,7 +812,7 @@ function cols(st, desk, bottom, z) {
   </div>`;
 }
 const stats = (st, v) => {
-  const S = SPORTS[st.sport], s = v.worst ? WORST : S.stats;
+  const S = SPORTS[st.sport], s = v.worst ? WORST : st.loop ? { d: '10.4 km', t: '42 min', up: '↑96 m', down: '↓96 m' } : S.stats; // a loop taken: loop A's numbers
   const climb = st.sport === 'paddle' && !v.worst ? `<span><b>${s.up}</b><small>carry</small></span>` : `<span><b>${s.up}</b><small><span class="sr">descent </span>${s.down}</small></span>`;
   return `<div class="stats"><span><b>${s.d}</b><small>${t('dist')}</small></span><button type="button" class="tlink" data-act="depart" aria-label="${s.t} ${t('fromNow')}: change the departure, in Go"><b>${s.t}</b><small>${t('fromNow')}</small></button>${climb}</div>`;
 };
@@ -920,8 +920,8 @@ function wpList(st, v) {
     if (i !== st.sel || !editing) return `<li><button type="button" class="wpr" data-act="sel" data-v="${i}" aria-expanded="false" aria-label="${esc(p.name)}, ${sub}">${ic('grip', 16, 'gr')}${mk(i)}<span class="nm"><b>${esc(p.name)}</b><small>${sub}</small></span>${tags(p)}</button></li>`;
     const leg = i < L.length - 1 ? `<button type="button" class="legline" data-act="leg" aria-expanded="${st.legOpen}">${ic(st.sport === 'paddle' ? 'water' : 'auto', 18)}<span><b>${t('nextLegRow')}:</b> ${SPORTS[st.sport].label} · ${t(st.sport === 'paddle' ? 'water' : 'auto')} · ${esc(styleName(st))}</span>${ic(st.legOpen ? 'up' : 'down', 16)}</button>` : '';
     const legset = st.legOpen ? `<div class="legset"><div class="seg small" role="radiogroup" aria-label="How the leg after ${esc(p.name)} is drawn">${['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${m === (st.sport === 'paddle' ? 'water' : 'auto')}">${ic(m, 16)}${t(m)}</button>`).join('')}</div><div class="chips"><span class="sel">${ic(SPORTS[st.sport].icon, 16)}${SPORTS[st.sport].label} ${ic('down', 12)}</span><span class="sel">${esc(styleName(st))} ${ic('down', 12)}</span><button type="button" class="btn small quiet">Other ways</button></div></div>` : '';
-    const move = st.moveTo ? `<div class="moveto"><span>${t('pos')}</span><span class="stepper"><button type="button" class="tbtn ring" data-act="mvdec" aria-label="One earlier">${ic('minus', 18)}</button><span class="len"><input type="text" inputmode="numeric" value="${st.mvTo ?? i}" aria-label="${t('pos')}" data-in="mv"><span>${t('ofN')} ${L.length - 1}</span></span><button type="button" class="tbtn ring" data-act="mvinc" aria-label="One later">${ic('plus', 18)}</button></span><button type="button" class="btn small primary" data-act="mvgo">${t('move')}</button></div>` : '';
-    return `<li class="wpsel" aria-current="true"><div class="wpr">${ic('grip', 16, 'gr')}${mk(i)}<span class="nm"><input class="namefield" value="${esc(p.name)}" aria-label="${t('name')} of ${label(i)} (selected)" data-in="name"><small>${sub}</small></span>${tags(p)}</div>
+    const move = st.moveTo ? `<div class="moveto"><span>${t('pos')}</span><span class="stepper"><button type="button" class="tbtn ring" data-act="mvdec" aria-label="One earlier">${ic('minus', 18)}</button><span class="len"><input type="text" inputmode="numeric" enterkeyhint="done" value="${st.mvTo ?? i}" aria-label="${t('pos')}" data-in="mv"><span>${t('ofN')} ${L.length - 1}</span></span><button type="button" class="tbtn ring" data-act="mvinc" aria-label="One later">${ic('plus', 18)}</button></span><button type="button" class="btn small primary" data-act="mvgo">${t('move')}</button></div>` : '';
+    return `<li class="wpsel" aria-current="true"><div class="wpr">${ic('grip', 16, 'gr')}${mk(i)}<span class="nm"><input class="namefield" enterkeyhint="done" maxlength="60" value="${esc(p.name)}" aria-label="${t('name')} of ${label(i)} (selected)" data-in="name"><small>${sub}</small></span>${tags(p)}</div>
       ${i === 0 ? `<div class="chips" style="margin-top:6px"><span class="btn small quiet">${ic('clock', 16)}${t('depart')} ${t('now')} ${ic('down', 12)}</span></div>` : ''}
       ${leg}${legset}
       <div class="wpacts">${i > 0 && i < L.length - 1 ? `<button type="button" class="btn small quiet" data-act="stop" aria-pressed="${!!p.stop}">${ic('pause', 16)}${t('stop')}</button>` : ''}
@@ -929,7 +929,7 @@ function wpList(st, v) {
         ${L.length > 6 ? `<button type="button" class="btn small quiet" data-act="moveto" aria-expanded="${st.moveTo}">${ic('moveto', 16)}${t('moveTo')}</button>` : ''}
         <button type="button" class="btn small quiet danger" data-act="remove">${ic('trash', 16)}${t('remove')}</button></div>${move}</li>`;
   };
-  const head = st.long ? `<div class="wptools"><label class="find">${ic('search', 18)}<input type="search" placeholder="${t('find')}" value="${esc(st.q)}" aria-label="${t('find')}" data-in="q"></label>
+  const head = st.long ? `<div class="wptools"><label class="find">${ic('search', 18)}<input type="search" enterkeyhint="search" autocapitalize="none" autocorrect="off" placeholder="${t('find')}" value="${esc(st.q)}" aria-label="${t('find')}" data-in="q"></label>
       <div class="seg small" role="radiogroup" aria-label="Which points"><button type="button" role="radio" aria-checked="${st.filter === 'all'}" data-act="filter" data-v="all">${t('all')} ${L.length}</button><button type="button" role="radio" aria-checked="${st.filter === 'key'}" data-act="filter" data-v="key">${t('key')} ${L.filter(isKey).length}</button></div></div>` : '';
   const p = L[st.sel];
   const bar = st.long && p ? `<div class="selbar" role="group" aria-label="Selected point">${mk(st.sel)}<span class="nm"><b>${esc(p.name)}</b><small>${label(st.sel)} · ${p.km} km</small></span>
@@ -955,7 +955,10 @@ function plannerHtml(st, v, desk, docked) {
     const fmtV = (q) => (unit === 'km' ? `${q} km` : q >= 60 ? `${Math.floor(q / 60)} h${q % 60 ? ` ${q % 60}` : ''}` : `${q} min`);
     const presets = unit === 'km' ? S.km : S.min;
     if (R.results) {
-      const L = [['A', '#2563eb', '10.4 km', '42 min · ↑96 m · trails 71 %', 'no stretch twice · 2 heads-up', true], ['B', '#ea580c', '9.7 km', '39 min · ↑71 m · trails 58 %', '6 % ridden twice · no heads-up', false], ['C', '#9333ea', '11.2 km', '47 min · ↑120 m · trails 64 %', 'no stretch twice · 1 heads-up', false]];
+      // illustrative numbers that follow the length asked for (the pictures behind are three real 10 km loops)
+      const km = unit === 'km' ? R.val : R.val / 60 * 14, hm = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')}` : `${Math.round(m)} min`);
+      const L = [['A', '#2563eb', 1.04, 4.1, 9.6, 71, 'no stretch twice · 2 heads-up', true], ['B', '#ea580c', 0.97, 4.0, 7.3, 58, '6 % ridden twice · no heads-up', false], ['C', '#9333ea', 1.12, 4.2, 12, 64, 'no stretch twice · 1 heads-up', false]]
+        .map(([k, c, f, mpk, up, tr, l2, best]) => [k, c, `${(km * f).toFixed(1)} km`, `${hm(km * f * mpk)} · ↑${Math.round(km * f * up)} m · trails ${tr} %`, l2, best]);
       return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
         <div class="row"><div class="hint">${t('loopsFrom')}<small>${fmtV(R.val)} · ${t('any').toLowerCase()}</small></div><button type="button" class="btn small quiet" data-act="rtchange">${t('change')}</button><button type="button" class="tbtn" data-act="rtclose" aria-label="Close the round trip">${ic('close', 20)}</button></div>
         <div class="loopcards" role="list" aria-label="Loops">${L.map(([k, c, d, l1, l2, best], i) => `<div class="lc${i === R.pick ? ' on' : ''}" role="listitem"><button type="button" data-act="pick" data-v="${i}" style="all:unset;display:grid;gap:4px;cursor:pointer" aria-label="Loop ${k}: ${d}, ${l1}, ${l2}${i === R.pick ? ', picked' : ''}"><span class="h"><span class="dot" style="background:${c}">${k}</span><b>${d}</b>${best ? `<span class="best">${t('closest')}</span>` : ''}</span><span class="l">${l1}</span><span class="l m">${l2}</span></button>${i === R.pick ? `<button type="button" class="btn primary" data-act="useloop">${t('useLoop')} ${k}</button>` : ''}</div>`).join('')}
@@ -968,7 +971,7 @@ function plannerHtml(st, v, desk, docked) {
         <div class="row wrap"><div class="seg small" role="radiogroup" aria-label="${t('distance')} or ${t('time')}"><button type="button" role="radio" aria-checked="${unit === 'km'}" data-act="unit" data-v="km">${t('distance')}</button><button type="button" role="radio" aria-checked="${unit === 'time'}" data-act="unit" data-v="time">${t('time')}</button></div>
           <span class="sel" style="margin-left:auto">${ic('roundtrip', 16)}${t('any')} ${ic('down', 12)}<select aria-label="${t('dir')}"><option>${t('any')}</option><option>N</option><option>NE</option><option>E</option><option>SE</option><option>S</option><option>SW</option><option>W</option><option>NW</option><option>${t('intoWind')}</option></select></span></div>
         <div class="chips" role="group" aria-label="Lengths">${presets.map((q) => `<button type="button" class="chip" aria-pressed="${q === R.val}" data-act="preset" data-v="${q}">${q === R.val ? ic('check', 16) : ''}${fmtV(q)}</button>`).join('')}</div>
-        <div class="stepper"><button type="button" class="tbtn ring" data-act="dec" aria-label="${unit === 'km' ? `${S.step} km shorter` : '15 minutes shorter'}">${ic('minus', 20)}</button><label class="len"><input type="text" inputmode="decimal" value="${R.val}" aria-label="${unit === 'km' ? 'Length in kilometres' : 'Length in minutes'}" data-in="len"><span>${unit === 'km' ? 'km' : 'min'}</span></label><button type="button" class="tbtn ring" data-act="inc" aria-label="${unit === 'km' ? `${S.step} km longer` : '15 minutes longer'}">${ic('plus', 20)}</button></div>
+        <div class="stepper"><button type="button" class="tbtn ring" data-act="dec" aria-label="${unit === 'km' ? `${S.step} km shorter` : '15 minutes shorter'}">${ic('minus', 20)}</button><label class="len"><input type="text" inputmode="decimal" enterkeyhint="done" value="${R.val}" aria-label="${unit === 'km' ? 'Length in kilometres' : 'Length in minutes'}" data-in="len"><span>${unit === 'km' ? 'km' : 'min'}</span></label><button type="button" class="tbtn ring" data-act="inc" aria-label="${unit === 'km' ? `${S.step} km longer` : '15 minutes longer'}">${ic('plus', 20)}</button></div>
         <div class="cap" style="font-weight:500">${t('moveStart')}<br>${t('calls')}</div>
         <button type="button" class="btn primary big" data-act="make"${making ? ' disabled aria-disabled="true"' : ''}>${making ? `<span style="display:grid;gap:6px;width:70%;justify-items:center">${t('making')} ${R.making} ${t('of3')}<span class="progress" style="--p:${R.making * 33}%"><i></i></span></span>` : `${ic('roundtrip', 20)}${t('make3')}`}</button>
         <span class="sr" role="status">${making ? `${t('making')} ${R.making} ${t('of3')}` : ''}</span></div></div>`;

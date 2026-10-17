@@ -174,7 +174,7 @@ From break-ui's pass on the mock-up and `mockup_probe2.py` (146 runs: every fram
 
 **Discoverability and mistakes (reasoned, not measured):** every icon now has its word; the round trip is offered in words at the moment it fits; an accidental tap can no longer start loops, delete a point, or add one while reading Check; Clear and Remove have Undo in a note.
 
-**The design skills:** apple-design (grouping and mapping, wayfinding, agency with undo over confirmations, spatial consistency of menus), emil-design-eng (press states, tooltips, no animation for keys, origin-aware menus), break-ui (§7), mobile-native (16 px or more in fields, no tap flash, hover only with a mouse, safe areas). Impeccable's design hook found nothing deterministic in the mock-up.
+**The design skills:** apple-design (grouping and mapping, wayfinding, agency with undo over confirmations, spatial consistency of menus), emil-design-eng (press states, tooltips, no animation for keys, origin-aware menus), break-ui (§7), mobile-native (§9's "On a phone": fields above the keyboard, a long press that a scroll cancels, safe areas, overscroll; it put the sheet's safe-area padding back in the mock-up). Impeccable's design hook found nothing deterministic in the mock-up.
 
 **Independent criticism:** AGENTS.md keeps independent checks for Codex, not subagents. A Codex brief is in #246 (try to break the design from the mock-up and this plan; post findings on the PR). Not run yet.
 
@@ -185,7 +185,7 @@ From break-ui's pass on the mock-up and `mockup_probe2.py` (146 runs: every fram
 - whether two taps for a mode bother someone who switches often (people, experienced planners);
 - the toolbox at the bottom left for right thumbs, and left-handed use (real phones);
 - how often a real route has something to read before you go (a few recorded routes, then people);
-- a long press to reorder against scrolling (real phones);
+- a long press to reorder against scrolling, and the keyboard over the sheet's fields (real phones);
 - the groups' boundaries for paddling and winter (people who paddle and ride in winter);
 - 200 % zoom and iOS text sizes (real phones, with #73).
 
@@ -197,10 +197,10 @@ From break-ui's pass on the mock-up and `mockup_probe2.py` (146 runs: every fram
 
 | Part | What | Closes or touches |
 |---|---|---|
-| **a. The toolbox and the peek** | The toolbox (phone float and dock, the desktop toolbar on the panel's edge, the mode menu with the styles, keys); the peek row (numbers, Trip, Done); the colour, sport, style and Round trip chips out of the header; Show the whole route in the map's column; the Trip menu (with Clear's Undo note) | #233, #241, #90 (part), #242 |
+| **a. The toolbox and the peek** | The toolbox (phone float and dock, the desktop toolbar on the panel's edge, the mode menu with the styles, keys); the peek row (numbers, Trip, Done); the colour, sport, style and Round trip chips out of the header; Show the whole route in the map's column; the Trip menu (with Clear's Undo note) | #233 (part), #90 (part) |
 | **b. Round trips in the peek** | The first point's peek and its lengths; the round trip in the sheet with Make 3 loops; the loop cards side by side; picking on the map; the map waits while loops are made | #232, #89 (part), #109 |
 | **c. Done and the route's view** | The three states; map taps inspect in the view; ✕ and the note; reopening as left, after a reload too | #238 |
-| **d. Check and the waypoints** | The three groups, sources, what was looked at; the peek's row and the badge; the selected row, Key points, Find, the bar, Move to, the list's keys | #84 (lighting Heads-up on the route fits here) |
+| **d. Check and the waypoints** | The three groups, sources, what was looked at; the peek's row and the badge; the selected row, Key points, Find, the bar, Move to, the list's keys | Fixes #233; #84 (lighting Heads-up on the route fits here) |
 
 **First, from Fixes 2:** #240 (panels above the screen), #251 (the style chip folds the sheet), #239 (dark contrast), #242 (long numbers at 360 px and 200 %) and #241 (undo at the start) touch the same header; fixing them first keeps each part's diff to the point. **#226** (the 3D button) changes the map's column the toolbox and Show the whole route must clear: build it before part a.
 
@@ -241,6 +241,16 @@ From break-ui's pass on the mock-up and `mockup_probe2.py` (146 runs: every fram
 - The waypoint rows are buttons with `aria-expanded`; the selected one is `aria-current`; the bar is a labelled group; Move to's field is labelled with its range.
 - Every target on a phone 44 px or more, 8 px apart; fields 16 px or more; text from 12 px, the numbers 18 px bold; colour never alone (icons, words, borders, dashes); 4.5:1 for text, 3:1 for icons and borders in both themes.
 - Enlarged text and 200 % zoom: the rules in §7; nothing clipped, the sheet scrolls.
+
+### On a phone (mobile-native)
+
+- **Fields in the sheet stay above the keyboard:** the loop's length, a point's name, Find and Move to. On focus the sheet scrolls the field into view inside the visual viewport (`visualViewport`, and `interactive-widget=resizes-content` for Android Chrome); the toolbox and notes hide while the keyboard is up. Every field is 16 px or more (no zoom on iOS), with its keyboard: `inputmode="decimal"` for the length, `numeric` for Move to, `enterkeyhint` done or search, no autocorrect in Find.
+- **A long press to reorder** starts after about 450 ms without moving more than 10 px (a scroll cancels it), with no callout or text selection (`-webkit-touch-callout: none`, `user-select: none` on rows) and a short vibration on Android; the row lifts, and the list scrolls when it's dragged near an edge.
+- **The loop cards** are native horizontal scroll with snapping; `js/sheet.js` already leaves a sideways first move to them.
+- **Menus and the sheet's body** contain their own scrolling (`overscroll-behavior: contain`); the page itself never scrolls.
+- **The sheet's bottom** keeps `env(safe-area-inset-bottom)` (the home indicator); the top bar's notch is #134.
+- **Press and hover:** `:active` on every control, `touch-action: manipulation`, no tap flash; hover only under `(hover: hover) and (pointer: fine)` (#208).
+- **To try on real phones, not in emulation:** the keyboard over the sheet's fields, the long press against scrolling, the loop cards' sideways scroll inside the sheet, and the toolbox's reach.
 
 ### Regression risks
 
