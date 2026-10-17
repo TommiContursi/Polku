@@ -4,6 +4,7 @@
   python3 tools/smoke.py            # all viewports
   python3 tools/smoke.py 390x844    # just one size
   python3 tools/smoke.py changelog  # release notes, retry, safe rendering, keyboard, route preservation and real worker offline
+  python3 tools/smoke.py radar      # fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)
   python3 tools/smoke.py layers     # just the Layers panel in every sport
   python3 tools/smoke.py trails     # just the trail details (from a recorded tile), and the uphill colours when the terrain comes late (mocked)
   python3 tools/smoke.py header     # just the planner header fitting its sheet
@@ -3981,11 +3982,113 @@ def changelog(chrome):
     return not fails
 
 
+# #133: recorded FMI palette samples, rebuilt as tiny multi-strip TIFFs. There
+# are no live radar requests. Reordered indexes must keep the same measurements.
+RADAR = r"""(async () => {
+  const errs = [], fx = window.radarFixture, w = fx.samples.length * 8, h = 8;
+  const { fmiRadar } = await import('./js/radar.js'), net = await import('./js/net.js');
+  const real = window.fetch, calls = [], box = [-1, -1, 1, 1];
+  let mode = 'normal', le = true, remap = false;
+  const index = s => remap ? (s.index + 12345) % 65536 : s.index;
+  const tiff = (raw = false, bad = false) => {
+    const bits = raw ? 8 : 16, n = raw ? 0 : 65536, bpp = bits / 8;
+    const count = raw ? 9 : 10, arrays = 8 + 2 + count * 12 + 4, pal = arrays + 16, pixels = pal + n * 6;
+    const buf = new ArrayBuffer(pixels + w * h * bpp), d = new DataView(buf);
+    const u16 = (p, v) => d.setUint16(p, v, le), u32 = (p, v) => d.setUint32(p, v, le);
+    u16(0, 0x4949); if (!le) u16(0, 0x4d4d); u16(2, 42); u32(4, 8); u16(8, count);
+    const tags = [[256,4,1,w],[257,4,1,h],[258,3,1,bits],[259,3,1,1],[262,3,1,raw?1:3],
+      [273,4,2,arrays],[277,3,1,1],[278,4,1,4],[279,4,2,arrays+8]];
+    if (!raw) tags.push([320,3,n*3,pal]);
+    tags.forEach(([tag,type,num,value],i) => { const p=10+i*12; u16(p,tag);u16(p+2,type);u32(p+4,num); if(type===3 && num===1)u16(p+8,value);else u32(p+8,value); });
+    u32(arrays,pixels);u32(arrays+4,pixels+w*4*bpp);u32(arrays+8,w*4*bpp);u32(arrays+12,w*4*bpp);
+    if (!raw) fx.samples.forEach(s => s.rgb.forEach((c,k) => u16(pal+(index(s)+k*n)*2,c*257)));
+    if (bad) [1,2,3].forEach((v,k) => u16(pal+(index(fx.samples[2])+k*n)*2,v*257));
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++) {
+      const s=fx.samples[Math.floor(x/8)], v=raw ? s.expectedMmh===null?255:s.name==='dry'?0:100 : index(s);
+      if(raw)d.setUint8(pixels+y*w+x,v);else u16(pixels+(y*w+x)*2,v);
+    }
+    return buf;
+  };
+  const center = i => [-1 + (i*8+4.5)*2/w, -0.125];
+  const colour = v => [Math.min(255,Math.round(v*20)),40,80];
+  window.fetch = (input, init) => {
+    const url = String(input?.url || input);
+    if (!url.startsWith('https://openwms.fmi.fi/')) return real(input, init);
+    const q = new URL(url).searchParams, layer = q.get('layers'); calls.push(layer);
+    if(q.get('format')!=='image/geotiff') errs.push('radar requested styled view tiles instead of a download');
+    if(layer==='Radar:radar_finland_cappi_rate') {
+      const sld=q.get('SLD_BODY') || '';
+      if(!sld.includes('extended="true"') || !sld.includes('quantity="1000"') || q.get('bgcolor')!=='0xffffff') errs.push('replacement has no fixed encoding/background');
+      if(mode==='limited')return Promise.resolve(new Response('limited',{status:429,headers:{'Retry-After':'60'}}));
+      if(mode==='404' || mode==='both404')return Promise.resolve(new Response('missing',{status:404}));
+      const bytes=tiff(mode==='raw',mode==='bad');
+      return Promise.resolve(new Response(mode==='truncated' ? bytes.slice(0,-2) : bytes));
+    }
+    if(layer!=='Radar:radar_finland_cappi_dbzh') errs.push(`unexpected radar source ${layer}`);
+    return Promise.resolve(mode==='both404' ? new Response('missing',{status:404}) : new Response(tiff(true)));
+  };
+  try {
+    const before=net.usage().find(s=>s.id==='fmi').session;
+    for(const variant of ['little endian','big endian, reordered palette']) {
+      le=variant==='little endian'; remap=!le;
+      const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      if(calls.length!==from+1 || calls[from]!=='Radar:radar_finland_cappi_rate') errs.push(`${variant}: did not use the replacement alone`);
+      for(let i=0;i<fx.samples.length;i++) {
+        const s=fx.samples[i], got=image.rateAt(...center(i));
+        if(s.expectedMmh===null ? got!==null : got===null || Math.abs(got-s.expectedMmh)>.001) errs.push(`${variant} ${s.name}: ${got} mm/h (expected ${s.expectedMmh})`);
+      }
+      if(image.rateAt(2,0)!==null) errs.push(`${variant}: outside the image is dry`);
+      const img=new Image();img.src=image.url;await img.decode();
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
+      const px=ctx.getImageData(0,0,w,h).data;
+      for(let i=0;i<fx.samples.length;i++) {
+        const s=fx.samples[i], at=(4*w+i*8+4)*4, alpha=px[at+3];
+        if(s.expectedMmh>0 ? alpha<100 : alpha!==0) errs.push(`${variant} ${s.name}: wrong rendered rain alpha ${alpha}`);
+      }
+      // The extreme's index is below the heavy anchor: colour saturation must
+      // not copy the preceding palette slot, which may be unused or no-data.
+      const a=(4*w+5*8+4)*4,b=(4*w+6*8+4)*4;
+      if(px[a]!==px[b] || px[a+3]!==px[b+3]) errs.push(`${variant}: extreme rain colour depends on palette order`);
+    }
+    for(const failure of ['404','raw','bad','truncated']) {
+      mode=failure; const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      if(calls.slice(from).join(',')!=='Radar:radar_finland_cappi_rate,Radar:radar_finland_cappi_dbzh') errs.push(`${failure}: no reflectivity fallback`);
+      const rain=image.rateAt(...center(2));
+      if(!(rain>.3 && rain<2) || image.rateAt(...center(0))!==0 || image.rateAt(...center(4))!==null) errs.push(`${failure}: fallback units/dry/no-data are wrong`);
+    }
+    mode='both404';let rejected=false;
+    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    if(!rejected) errs.push('both radar layers failed but returned a complete image');
+    mode='limited';const from=calls.length;rejected=false;
+    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    if(!rejected || calls.length!==from+1 || net.sourceStatus('fmi')?.reason!=='limit') errs.push('FMI request limit was bypassed for the fallback');
+    if(net.usage().find(s=>s.id==='fmi').session!==before+calls.length) errs.push('radar requests did not all go through request()');
+  } finally { window.fetch=real; }
+  return errs;
+})()"""
+
+
+def radar(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        fixture = json.load(open(os.path.join(os.path.dirname(__file__), 'fixtures', 'radar-rate.json')))
+        pg.js('window.radarFixture=' + json.dumps(fixture))
+        fails = pg.js(RADAR, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} FMI rain-rate replacement" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def main():
     only = sys.argv[1:]
     chrome = Chrome()
     ok = True
     try:
+        if not only or 'radar' in only:
+            ok = radar(chrome) and ok
         if not only or 'changelog' in only:
             ok = changelog(chrome) and ok
         if not only or 'pacing' in only:
