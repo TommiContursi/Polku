@@ -1,17 +1,23 @@
 // Finnish rain radar from FMI's open data *download* service: one GeoTIFF of the
-// national reflectivity composite per update, read here and drawn in Polku's
+// national rain-rate composite per update, read here and drawn in Polku's
 // own rain colours. FMI asks apps to fetch radar this way and draw it
-// themselves; its WMS map tiles are for evaluation only (and the old layers go
-// away in November 2026). Requested in Web Mercator, so the image lines up
+// themselves; its WMS map tiles are for evaluation only. Requested in Web Mercator, so the image lines up
 // with the map with no reprojection.
 
 import { request } from './net.js';
 
 const FMI = 'https://openwms.fmi.fi/geoserver/Radar/wms';
-// FMI's own rain rate (quality controlled, corrected for the melting layer): 16-bit, mm/h × 100.
-// One of the old layers FMI phases out in November 2026; when it stops answering, the
-// reflectivity below takes over on its own (ROADMAP: find its replacement before then).
-const RATE = 'Radar:suomi_rr_eureffin';
+// The replacement for suomi_rr_eureffin. Its default "raster" style stretches
+// float measurements to bytes per view: those bytes are NOT mm/h. Request our
+// fixed colour encoding as a GeoTIFF download, then invert its explicit palette.
+// Palette indexes themselves are arbitrary. The spare white background means
+// missing coverage; zero rain has its own colour. Extended retains drizzle.
+const RATE = 'Radar:radar_finland_cappi_rate';
+const RATE_STYLE = '<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer>' +
+  `<Name>${RATE}</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ColorMap extended="true">` +
+  [[-1, '000001'], [0, '000001'], [0.01, '0000ff'], [0.1, '00ffff'], [1, '00ff00'], [10, 'ffff00'], [100, 'ff0000'], [1000, 'ff00ff']]
+    .map(([q, c]) => `<ColorMapEntry color="#${c}" quantity="${q}"/>`).join('') +
+  '</ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
 // National CAPPI reflectivity, raw 8-bit: dBZ = 0.5 × v − 32, turned into mm/h with
 // Marshall–Palmer. It overstates light rain near freezing (in Jyväskylä on 2026-10-14 it said
 // 2–9 mm/h while FMI's rain rate said 0.01–0.05 and drizzle fell), so it's only the fallback.
@@ -29,10 +35,46 @@ const fetchLayer = async (layer, box, width, height) => {
   const url = `${FMI}?service=WMS&version=1.1.1&request=GetMap&layers=${layer}&styles=raster&srs=EPSG:3857` +
     `&bbox=${mx(box[0]).toFixed(0)},${my(box[1]).toFixed(0)},${mx(box[2]).toFixed(0)},${my(box[3]).toFixed(0)}` +
     `&width=${width}&height=${height}&format=image/geotiff`;
-  const res = await request('fmi', url);
+  const query = new URL(url);
+  if (layer === RATE) {
+    query.searchParams.set('styles', '');
+    query.searchParams.set('SLD_BODY', RATE_STYLE);
+    query.searchParams.set('interpolations', 'nearest neighbor');
+    query.searchParams.set('bgcolor', '0xffffff');
+    query.searchParams.set('transparent', 'false');
+  }
+  const res = await request('fmi', query);
   if (!res.ok) throw new Error(`FMI radar ${res.status}`);
   return readTiff(await res.arrayBuffer(), width, height);
 };
+
+// The fixed path around RGB's edges encodes each decade in a different channel.
+// Invert the palette colours, never their indexes; the server can reorder them.
+// Quantization is at most 1/255 of each decade's span, before rounding to .01.
+function rainRates({ px, palette, photo }) {
+  if (!(px instanceof Uint16Array) || photo !== 3 || !palette || palette.length !== 3 * 65536) throw new Error('rain rate: no extended encoded palette');
+  const n = palette.length / 3, rate = new Float32Array(n).fill(NaN), valid = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const r = palette[i] / 257, g = palette[n + i] / 257, b = palette[2 * n + i] / 257;
+    if (![r, g, b].every(Number.isInteger)) continue;
+    let mmh;
+    if (r === 255 && g === 255 && b === 255) { valid[i] = 1; continue; } // missing, not dry
+    if (r === 0 && g === 0 && b >= 1) mmh = (b - 1) / 254 * 0.01;
+    else if (r === 0 && b === 255) mmh = 0.01 + g / 255 * 0.09;
+    else if (r === 0 && g === 255) mmh = 0.1 + (255 - b) / 255 * 0.9;
+    else if (g === 255 && b === 0) mmh = 1 + r / 255 * 9;
+    else if (r === 255 && b === 0) mmh = 10 + (255 - g) / 255 * 90;
+    else if (r === 255 && g === 0) mmh = 100 + b / 255 * 900;
+    else continue;
+    valid[i] = 1;
+    const rounded = Math.round(mmh * 100) / 100;
+    rate[i] = rounded >= 0.03 ? rounded : 0;
+  }
+  // Reject an ignored style or an unexpected encoding instead of painting
+  // arbitrary byte values as rainfall. Unused palette slots may be padding.
+  for (const v of px) if (!valid[v]) throw new Error('rain rate: unexpected palette colour');
+  return rate;
+}
 
 // How strongly to paint a rate: the same as the forecast layer (wxmap.js), so "now" and the
 // hours after read alike: drizzle a clear light blue, a shower solid (0.03 → 151, 1 → 195, 2+ → 235)
@@ -40,31 +82,29 @@ const alphaFor = (mmh) => Math.round(Math.min(235, 150 + mmh * 45));
 
 export async function fmiRadar(box, width, height, colour) {
   // value → mm/h for each source, and which value means "outside coverage"
-  let px, rate, outside, speckle;
+  let px, rate, speckle;
   try {
-    px = await fetchLayer(RATE, box, width, height);
-    if (!(px instanceof Uint16Array)) throw new Error('rain rate: not 16-bit');
-    rate = new Float32Array(65536);
-    // from 0.03 mm/h: drizzle is mostly 0.01–0.1 here, and "a little rain" should show
-    for (let v = 3; v < 65535; v++) rate[v] = v / 100;
-    outside = 65535;
+    const image = await fetchLayer(RATE, box, width, height);
+    rate = rainRates(image);
+    px = image.px;
     speckle = 3; // FMI has already cleaned this product: only lone dots go
   } catch {
-    px = await fetchLayer(DBZ, box, width, height);
+    const image = await fetchLayer(DBZ, box, width, height);
+    px = image.px;
+    if (!(px instanceof Uint8Array) || image.photo !== 1) throw new Error('reflectivity: not raw 8-bit');
     rate = new Float32Array(256);
     for (let v = 2; v < 255; v++) {
       const mmh = (10 ** ((0.5 * v - 32) / 10) / 200) ** 0.625; // Marshall–Palmer, Z = 200 R^1.6; 0–1 no echo
       if (mmh >= 0.3) rate[v] = mmh; // below this: barely damp, and mostly birds, insects and clutter
     }
-    outside = 255;
+    rate[255] = NaN;
     speckle = 5; // raw reflectivity: ships, turbines and waves echo as dots and lines
   }
   const lut = new Uint8ClampedArray(rate.length * 4);
   for (let v = 0; v < rate.length; v++) {
     const mmh = rate[v];
     if (!mmh) continue;
-    if (mmh > 100) { lut.copyWithin(v * 4, (v - 1) * 4, v * 4); continue; } // the same colour beyond 100 mm/h
-    const [r, g, b] = colour(mmh);
+    const [r, g, b] = colour(Math.min(mmh, 100)); // palette indexes need not be in rate order
     lut.set([r, g, b, alphaFor(mmh)], v * 4);
   }
   const keep = despeckle(px, rate, width, height, speckle);
@@ -89,7 +129,7 @@ export async function fmiRadar(box, width, height, colour) {
     const x = Math.floor(((mx(lon) - x0) / (x1 - x0)) * width), y = Math.floor(((y0 - my(lat)) / (y0 - y1)) * height);
     if (x < 0 || y < 0 || x >= width || y >= height) return null;
     const i = y * width + x;
-    return px[i] === outside ? null : keep[i] ? rate[px[i]] : 0;
+    return Number.isNaN(rate[px[i]]) ? null : keep[i] ? rate[px[i]] : 0;
   };
   return { url: cv.toDataURL('image/png'), coordinates: [[box[0], box[3]], [box[2], box[3]], [box[2], box[1]], [box[0], box[1]]], rain, rateAt };
 }
@@ -124,12 +164,14 @@ function despeckle(px, rate, w, h, min = 5) {
 // Just enough TIFF for GeoServer's output: one 8- or 16-bit band, uncompressed strips.
 function readTiff(buf, width, height) {
   const dv = new DataView(buf);
+  if (dv.byteLength < 8 || ![0x4949, 0x4d4d].includes(dv.getUint16(0))) throw new Error('Not a TIFF');
   const le = dv.getUint16(0) === 0x4949;
   const u16 = (o) => dv.getUint16(o, le);
   const u32 = (o) => dv.getUint32(o, le);
+  if (u16(2) !== 42) throw new Error('Not a classic TIFF');
   const ifd = u32(4);
   const tags = {};
-  const NEED = new Set([256, 257, 258, 259, 273, 279]); // size, bits, compression, strips
+  const NEED = new Set([256, 257, 258, 259, 262, 273, 277, 279, 320, 339]); // size, layout, strips, palette
   for (let k = 0, n = u16(ifd); k < n; k++) {
     const e = ifd + 2 + k * 12;
     const tag = u16(e), type = u16(e + 2), count = u32(e + 4);
@@ -139,16 +181,21 @@ function readTiff(buf, width, height) {
     tags[tag] = Array.from({ length: count }, (_, i) => (type === 3 ? u16(at + i * 2) : u32(at + i * 4)));
   }
   const bits = tags[258][0];
-  if (tags[256][0] !== width || tags[257][0] !== height || (bits !== 8 && bits !== 16) || (tags[259] || [1])[0] !== 1) throw new Error('Unexpected radar file');
+  if (tags[256][0] !== width || tags[257][0] !== height || (bits !== 8 && bits !== 16) ||
+      (tags[259] || [1])[0] !== 1 || (tags[277] || [1])[0] !== 1 || (tags[339] || [1])[0] !== 1) throw new Error('Unexpected radar file');
   const n = width * height;
+  if (!tags[273] || !tags[279] || tags[273].length !== tags[279].length ||
+      tags[279].reduce((a, b) => a + b, 0) !== n * bits / 8 ||
+      tags[273].some((off, i) => off + tags[279][i] > dv.byteLength || tags[279][i] % (bits / 8))) throw new Error('Incomplete radar strips');
+  const meta = { photo: tags[262]?.[0], palette: tags[320] };
   if (bits === 8) {
     const px = new Uint8Array(n);
     let o = 0;
     tags[273].forEach((off, i) => { const len = tags[279][i]; px.set(new Uint8Array(buf, off, Math.min(len, n - o)), o); o += len; });
-    return px;
+    return { px, ...meta };
   }
   const px = new Uint16Array(n);
   let k = 0;
   tags[273].forEach((off, i) => { for (let b = 0; b + 1 < tags[279][i] && k < n; b += 2) px[k++] = dv.getUint16(off + b, le); });
-  return px;
+  return { px, ...meta };
 }
