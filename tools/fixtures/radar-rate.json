@@ -19,6 +19,7 @@
     "nativeDbz": 5,
     "encodedRgb": [127, 255, 0],
     "decodedDbz": 4.980392156862745,
+    "noDataValue": 255,
     "defaultRasterByte": 149,
     "note": "The default replacement raster is also stretched: applying the old byte*0.5-32 rule would report 42.5 dBZ. Use the fixed physical encoding for the fallback too."
   },

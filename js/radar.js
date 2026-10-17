@@ -18,13 +18,15 @@ const DBZ_LEVELS = [-32, -20, -10, 0, 10, 30, 95];
 const CODES = ['000001', '0000ff', '00ffff', '00ff00', 'ffff00', 'ff0000', 'ff00ff'];
 const numericStyle = (layer, levels) => '<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer>' +
   `<Name>${layer}</Name><UserStyle><FeatureTypeStyle><Rule><RasterSymbolizer><ColorMap extended="true">` +
-  [[levels[0] - 1, CODES[0]], ...levels.map((q, i) => [q, CODES[i]])]
+  [[levels[0] - 1, CODES[0]], ...levels.map((q, i) => [q, CODES[i]]), ...(layer === RATE ? [] : [[255, 'ffffff']])]
     .map(([q, c]) => `<ColorMapEntry color="#${c}" quantity="${q}"/>`).join('') +
   '</ColorMap></RasterSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
 // National CAPPI reflectivity, decoded to dBZ and turned into mm/h with
 // Marshall–Palmer. That is an approximation, especially in mixed precipitation,
 // so the rain-rate measurement remains the first choice.
 const DBZ = 'Radar:radar_finland_cappi_dbzh';
+// GetFeatureInfo exposes dBZ for valid cells but leaves the raw no-data 255
+// unscaled. Encode it as white explicitly, otherwise it saturates as heavy rain.
 export const FI_BOUNDS = [19, 59.3, 32.5, 70.3];
 
 const mx = (lon) => (lon * 20037508.34) / 180;

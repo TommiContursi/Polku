@@ -3990,7 +3990,7 @@ RADAR = r"""(async () => {
   const real = window.fetch, calls = [], box = [-1, -1, 1, 1];
   let mode = 'normal', le = true, remap = false;
   const index = s => remap ? (s.index + 12345) % 65536 : s.index;
-  const tiff = (raw = false, bad = false, dbz = false) => {
+  const tiff = (raw = false, bad = false, dbz = false, missingWhite = true) => {
     const bits = raw ? 8 : 16, n = raw ? 0 : 65536, bpp = bits / 8;
     const count = raw ? 9 : 10, arrays = 8 + 2 + count * 12 + 4, pal = arrays + 16, pixels = pal + n * 6;
     const buf = new ArrayBuffer(pixels + w * h * bpp), d = new DataView(buf);
@@ -4002,7 +4002,7 @@ RADAR = r"""(async () => {
     tags.forEach(([tag,type,num,value],i) => { const p=10+i*12; u16(p,tag);u16(p+2,type);u32(p+4,num); if(type===3 && num===1)u16(p+8,value);else u32(p+8,value); });
     u32(arrays,pixels);u32(arrays+4,pixels+w*4*bpp);u32(arrays+8,w*4*bpp);u32(arrays+12,w*4*bpp);
     if (!raw) fx.samples.forEach(s => {
-      const rgb=dbz ? s.expectedMmh===null?[255,255,255]:s.name==='dry'?[0,0,1]:s.name==='trace'?fx.reflectivityReference.encodedRgb:[255,128,0] : s.rgb;
+      const rgb=dbz ? s.expectedMmh===null?(missingWhite?[255,255,255]:[255,0,255]):s.name==='dry'?[0,0,1]:s.name==='trace'?fx.reflectivityReference.encodedRgb:[255,128,0] : s.rgb;
       rgb.forEach((c,k) => u16(pal+(index(s)+k*n)*2,c*257));
     });
     if (bad) [1,2,3].forEach((v,k) => u16(pal+(index(fx.samples[2])+k*n)*2,v*257));
@@ -4029,7 +4029,11 @@ RADAR = r"""(async () => {
     }
     if(layer!=='Radar:radar_finland_cappi_dbzh') errs.push(`unexpected radar source ${layer}`);
     if(!(q.get('SLD_BODY')||'').includes('quantity="95"'))errs.push('reflectivity has no fixed physical encoding');
-    return Promise.resolve(mode==='both404' ? new Response('missing',{status:404}) : new Response(tiff(mode==='fallbackraw',false,true)));
+    // The live service leaves its no-data sentinel unscaled. Without a white
+    // entry at that value, the SLD clamps it to the highest reflectivity colour.
+    const entries=new DOMParser().parseFromString(q.get('SLD_BODY')||'','text/xml').getElementsByTagName('ColorMapEntry');
+    const missingWhite=[...entries].some(e=>+e.getAttribute('quantity')===fx.reflectivityReference.noDataValue && e.getAttribute('color')==='#ffffff');
+    return Promise.resolve(mode==='both404' ? new Response('missing',{status:404}) : new Response(tiff(mode==='fallbackraw',false,true,missingWhite)));
   };
   try {
     const before=net.usage().find(s=>s.id==='fmi').session;
