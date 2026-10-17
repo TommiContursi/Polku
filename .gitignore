@@ -1,3 +1,13 @@
 .DS_Store
-.claude/
 __pycache__/
+
+# Claude Code's local files, except the design skills: they're links into
+# .agents/skills, where they're kept for every agent.
+.claude/*
+!.claude/skills/
+
+# Impeccable is installed per user; its hooks and settings here are local.
+.impeccable/config.local.json
+.impeccable/live/
+.codex/hooks.json
+.github/hooks/impeccable.json

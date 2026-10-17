@@ -154,8 +154,16 @@ profiles/           Polku's own BRouter profiles (road cycling; short cuts throu
 tools/              dev only: smoke.py, shoot.py, readme_shots.py, probes, cdp.py (headless Chrome), brouter-local.sh, fixtures
 img/base/           base map thumbnails (tools/thumbs.py)
 docs/               ROADMAP (the order), plans/ (phase designs), retros/, reviews/, this file, screenshots
+.agents/skills/     dev only: design skills for coding agents (below); .claude/skills/ links to them
 ```
 
 ## Working on it
 
 The rules are in [AGENTS.md](../AGENTS.md). In short: pick from the board's Now column and claim the issue; one phase or one fix per pull request, with "Fixes #n" and the issue's milestone; `tools/smoke.py` passes; CHANGELOG updated in the same PR (and a phase's plan); every request through `js/net.js`; share links keep working; and only the user merges.
+
+### Design skills
+
+- **Emil Kowalski's skills** ([emilkowal.ski/skill](https://emilkowal.ski/skill), MIT: `.agents/skills/LICENSE`) are kept in `.agents/skills/`, so every checkout and worktree has them, for Claude Code and Codex alike. Claude Code finds them through the links in `.claude/skills/`. `skills-lock.json` records each one's source and hash.
+- **Eleven of the fifteen,** the ones [phase 24's plan](plans/24-design-review.md#the-skills) uses. animate-expo and write-swift (React Native, Swift), ask-sonner (a React library) and pick-ui-library (choosing dependencies) don't fit Polku.
+- **Updating them is a tooling PR:** the new versions from [emilkowalski/skill](https://github.com/emilkowalski/skill), `skills-lock.json` to match, and the diff read through.
+- **Impeccable** ([impeccable.style](https://impeccable.style)) is installed per user, not here. Its hooks and local settings are in `.gitignore`; what it writes about Polku (`PRODUCT.md`, a `DESIGN.md`) is committed.
