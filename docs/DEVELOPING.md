@@ -38,6 +38,8 @@ The README links JPEGs on the `pr-screenshots` branch. Capture its current scene
 
 Headless Chrome draws the map in software, and one frame can take a second when the computer is busy. So a check waits for the state it tests, not a fixed time: the next animation frame for something the app does in one, `SETTLED` in `tools/smoke.py` for the planner's size.
 
+The `otherways` quick-point check schedules its edit in the same turn as the first leg's alternative-route timer, then waits for the final leg's offer. It also blocks the main thread for 2.2 seconds so both timers are overdue, checking that a slow frame preserves their order. Keep the request-count, requested-leg and offered-leg assertions; the separate pause case checks that waiting really does fetch an earlier alternative.
+
 ## How the trickier parts work
 
 - **Style** (`js/style.js`): one function builds the whole MapLibre style from app state and is applied with `setStyle(..., {diff: true})`. Sport, base map and overlays are all just state.

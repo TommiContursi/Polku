@@ -1533,8 +1533,55 @@ OTHERWAYS = """(async () => {
   p.clear();
   return errs;
 })()"""
-# Points added quickly get no other way until you stop; a short leg gets none; with no room under
-# the pacing (four calls in the last 10 s) none; the leg's menu has Other ways, two of them
+# #214: start both timers in the same turn. Polling for the routed leg and then
+# waiting 800 ms could add the third point after the app's 1500 ms offer timer
+# on a busy renderer. Even if both timers are overdue, the edit must run first.
+# Run with and without a blocked main thread; OTHERWAYS above checks a real pause.
+OTHERWAYS_QUICK = """(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms)), errs = [], p = polku.planner;
+  const others = () => window.routerCalls.filter(u => /lonlats=/.test(u) && new URL(u).searchParams.get('alternativeidx') !== '0');
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  p.setActive(true);
+  p.setMode('auto');
+  window.alt2Far = true;
+  const offerSoon = p.offerAltsSoon;
+  let thirdTimer, armed = false, added = false, beforeThird = null;
+  p.offerAltsSoon = function (li) {
+    if (li !== 0 || armed) return offerSoon.call(this, li);
+    armed = true;
+    thirdTimer = setTimeout(() => {
+      beforeThird = others().length;
+      p.addPoint([24.970, 60.170]);
+      added = true;
+    }, 800);
+    const result = offerSoon.call(this, li);
+    // Model a slow software-rendered frame, longer than both timers. This is
+    // deliberately synchronous: it must delay the edit and the app equally.
+    const until = performance.now() + __STALL_MS__;
+    while (performance.now() < until) {}
+    return result;
+  };
+  try {
+    p.addPoint([24.930, 60.170]);
+    p.addPoint([24.950, 60.170]);
+    const deadline = performance.now() + 15000;
+    while (!(added && p.alts?.li === 1 && p.alts.ways.length) && performance.now() < deadline) await wait(50);
+    if (!armed || !added) errs.push('quick points: the routed first leg did not schedule the third point');
+    if (beforeThird !== 0) errs.push(`quick points: ${beforeThird} alternatives requested before the third point (none)`);
+    const calls = others();
+    if (calls.length !== 1 || !p.alts || p.alts.li !== 1 || p.alts.ways.length !== 1) errs.push(`points added quickly: ${calls.length} calls for other ways, offered for leg ${p.alts ? p.alts.li : 'none'} (one, for the last leg)`);
+    if (calls.length === 1 && new URL(calls[0]).searchParams.get('lonlats') !== '24.950000,60.170000|24.970000,60.170000') errs.push('quick points: the alternative request was for the previous leg');
+  } finally {
+    p.offerAltsSoon = offerSoon;
+    clearTimeout(thirdTimer);
+    p.clear();
+  }
+  return errs;
+})()"""
+
+# A short leg gets none; with no room under the pacing (four calls in the last
+# 10 s) none; the leg's menu has Other ways, two of them.
 OTHERWAYS_BUSY = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
   const n = await import(location.origin + '/js/net.js');
@@ -1545,16 +1592,6 @@ OTHERWAYS_BUSY = """(async () => {
   p.setActive(true);
   p.setMode('auto');
   window.alt2Far = true;
-  // three points, the third 0.8 s after the second leg is in (routed: the pause doesn't wait for
-  // the terrain): only the last leg gets other ways
-  p.addPoint([24.930, 60.170]);
-  p.addPoint([24.950, 60.170]);
-  for (let k = 0; k < 100 && !(p.legs.length && p.legs.every((l) => l.status === 'ok')); k++) await wait(50);
-  await wait(800);
-  p.addPoint([24.970, 60.170]);
-  await routed();
-  await wait(3000);
-  if (others() !== 1 || !p.alts || p.alts.li !== 1) errs.push(`points added quickly: ${others()} calls for other ways, offered for leg ${p.alts ? p.alts.li : 'none'} (one, for the last leg)`);
   // a short leg (about 110 m): none on its own, then or later
   p.clear();
   let o = others();
@@ -1635,14 +1672,19 @@ OTHERWAYS_CALM = """(async () => {
 
 def otherways(chrome):
     fails = []
-    for script, timeout in [(OTHERWAYS, 90000), (OTHERWAYS_BUSY, 120000), (OTHERWAYS_CALM, 90000)]:
+    cases = [('pause and picking', OTHERWAYS, 90000),
+             ('quick points', OTHERWAYS_QUICK.replace('__STALL_MS__', '0'), 45000),
+             ('quick points, blocked main thread', OTHERWAYS_QUICK.replace('__STALL_MS__', '2200'), 45000),
+             ('short legs and pacing', OTHERWAYS_BUSY, 120000),
+             ('taking your time', OTHERWAYS_CALM, 90000)]
+    for label, script, timeout in cases:
         pg = chrome.page(1440, 900, False)
         try:
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': OTHERWAYS_ROUTER}, pg.s)
             pg.open_app({'activity': 'run'}, {'polku:plannerDock': '"left"'}, '#14/60.171/24.94')
             pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-            fails += pg.js(script, timeout=timeout)
-            fails += [f'console: {e[:160]}' for e in pg.errors()]
+            fails += [f'{label}: {e}' for e in pg.js(script, timeout=timeout)]
+            fails += [f'{label}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} other ways for a new leg" + ''.join(f'\n     - {f}' for f in fails), flush=True)
