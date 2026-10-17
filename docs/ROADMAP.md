@@ -23,19 +23,22 @@
 
 | # | Phase | Size | Why here | Issue | Plan |
 |---|---|---|---|---|---|
-| 1 | **24, design review** | research, then issues | Research only, no code. Its findings feed 21, 22b and 20, so it goes before them. | #177 | [24](plans/24-design-review.md) |
-| 2 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). | #178 | [21](plans/21-say-what-it-means.md) |
-| 3 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. | #179 | [22](plans/22-drawer.md) |
-| 4 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. | #180 | [23](plans/23-out-on-the-trail.md) |
-| 5 | **20, map style** | big | Builds on 21; the route's glow goes with the map's look. | #181 | [20](plans/20-map-style.md) |
-| 6 | **17, weather layers** | medium | | #182 | [17](plans/17-weather.md) |
-| 7 | **23c, your track** | medium | After 23b: it records what 23b follows. | #183 | [23](plans/23-out-on-the-trail.md) |
-| 8 | **18, languages** | big | Once the words have settled through 21 and 22. | #184 | [18](plans/18-languages.md) |
-| 9 | **15c, skiing** | big | When there's snow to test on (December–January), whatever its place here. | #185 | [15](plans/15c-skiing.md) |
-| 10 | **22c, cards to pull out** | medium | Only if 22a and 22b haven't made it unnecessary. | #186 | [22](plans/22-drawer.md) |
-| 11 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. | #187 | [23](plans/23-out-on-the-trail.md) |
-| 12 | **16, Strava & Garmin** | research | Outside accounts and terms. | #188 | [16](plans/16-strava-garmin.md) |
-| 13 | **19, help and a tutorial** | big | Last, when the rest holds still. | #189 | [19](plans/19-help.md) |
+| 1 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). | #178 | [21](plans/21-say-what-it-means.md) |
+| 2 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. | #179 | [22](plans/22-drawer.md) |
+| 3 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. | #180 | [23](plans/23-out-on-the-trail.md) |
+| 4 | **20, map style** | big | Builds on 21; the route's glow goes with the map's look. | #181 | [20](plans/20-map-style.md) |
+| 5 | **17, weather layers** | medium | | #182 | [17](plans/17-weather.md) |
+| 6 | **23c, your track** | medium | After 23b: it records what 23b follows. | #183 | [23](plans/23-out-on-the-trail.md) |
+| 7 | **18, languages** | big | Once the words have settled through 21 and 22. | #184 | [18](plans/18-languages.md) |
+| 8 | **15c, skiing** | big | When there's snow to test on (December–January), whatever its place here. | #185 | [15](plans/15c-skiing.md) |
+| 9 | **22c, cards to pull out** | medium | Only if 22a and 22b haven't made it unnecessary. | #186 | [22](plans/22-drawer.md) |
+| 10 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. | #187 | [23](plans/23-out-on-the-trail.md) |
+| 11 | **16, Strava & Garmin** | research | Outside accounts and terms. | #188 | [16](plans/16-strava-garmin.md) |
+| 12 | **19, help and a tutorial** | big | Last, when the rest holds still. | #189 | [19](plans/19-help.md) |
+
+**Waiting for the user's OK (proposed by phase 24, 2026-10-17):** a calmer route planner as a phase of its own (#233): one place for each thing, 44 px targets on phones, and a choice of two variants in [the mock-up](plans/mockups/phase-24-planner.html). The review suggests it after #123's build and before 22b, since 22b moves the same panel; the place in the order is the user's call.
+
+**Phase 24's milestone stays open** for #123's build (with #96) and the real-phone checks of #73 and #134; its row is out of the order since the review itself is done (#177).
 
 **Dated, outside the order:** #133, a rain-rate source before FMI retires the layer Polku's rain "now" reads, by 2026-11-30.
 

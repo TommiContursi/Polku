@@ -210,9 +210,16 @@ def main_journey(j):
     j.open('hike')
     j.step('Open Polku with nothing on it, find Plan and open it', lambda: j.tap('#btn-plan') or 'no Plan button', f'{P}.active === true')
     def sport():
-        ok = j.tap('.act-current', switch=True) and (time.sleep(0.4) or j.tap('.act-menu .act[data-k=mtb]'))
+        j.tap('.act-current', switch=True)
+        time.sleep(0.4)
+        again = ''
+        if j.js("document.querySelector('.act-menu').hidden"):  # with a mouse the hover opens it and the click closes it (#245): a person clicks again
+            j.tap('.act-current')
+            time.sleep(0.4)
+            again = 'the first click closed the menu its hover had opened; '
+        ok = j.tap('.act-menu .act[data-k=mtb]')
         j.p.idle()  # a new sport restyles the map; a person looks before tapping on
-        return 'chosen' if ok else 'no sport menu'
+        return again + ('chosen' if ok else 'no sport menu')
     j.step('Choose a sport (MTB)', sport, "polku.state.activity === 'mtb'")
 
     def add_points():
@@ -388,7 +395,7 @@ def loop_journey(j):
     def make():
         opened = j.tap('#planner .quick-loop') or j.tap('button', 'Round trip')
         time.sleep(1.2)  # the sheet rises to the round trip's options
-        j.tap_ll(KAUPPI[0])
+        j.tap_ll(KAUPPI[2])  # above the sheet, which the round trip raises to half
         time.sleep(0.8)
         chip = j.tap('.loop-starts button.chip', '10 km')
         go = j.tap('.loop-go button.primary')
@@ -438,7 +445,7 @@ def long_journey(j):
     j.step('Open Plan', lambda: j.tap('#btn-plan'), f'{P}.active')
     j.step('Choose Straight line', lambda: j.tap('#planner button', 'Straight line'), f"{P}.mode === 'line'")
     # zoom out so 30 points fit on screen, as a person would before a long route
-    j.js("polku.map.jumpTo({ center: [23.86, 61.49], zoom: 11 }); true")
+    j.js("polku.map.fitBounds([[23.70, 61.47], [23.955, 61.514]], { padding: { top: 90, bottom: 220, left: 30, right: 80 }, duration: 0 }); true")
     time.sleep(1.5)
 
     def thirty():
