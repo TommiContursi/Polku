@@ -77,7 +77,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 - **Weather** (`js/weather.js`, `js/wxmap.js`):
   - **The grid:** forecasts are fetched per point of a fixed, nested lattice and kept an hour, so small moves reuse them. Open-Meteo counts every location as a call.
   - **Along the route:** the route is timed without wind, the forecast is sampled at each point for the hour you'd be there, and the time is estimated again with the head- and tailwind.
-  - **Radar "now"** is FMI's rain-rate GeoTIFF, decoded in the browser.
+  - **Radar "now"** is FMI's replacement `radar_finland_cappi_rate` GeoTIFF, decoded in the browser. Its default `raster` style stretches bytes per view, so `radar.js` requests a fixed extended SLD colour encoding instead. Read the TIFF's palette colours back to mm/h; palette indexes are arbitrary. White is missing coverage, while dry weather has its own colour. Polku then applies its own rain colours and speckle filter. The reflectivity layer remains a fallback, and FMI request limits still stop both paths. The [source checks](reviews/2026-10-17-radar.md) record the units, quantization and no-data evidence; `python3 tools/smoke.py radar` uses recorded samples and mocked failures.
 - **Share links** (`shareUrl()` and `parseShared()` in `js/planner.js`): the route in the query string. A part that's empty or the default is left out, and links from before a part was added still open.
   - `r`: the points (an encoded polyline, 5 decimals); `m`: each leg's mode (`a` routed, `l` straight, `w` water); `a`: the sport.
   - `p`, `ps`: the route's style, and legs with their own. `s`: each leg's sport; `cw`: changeover minutes you set.

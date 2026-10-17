@@ -1,0 +1,119 @@
+{
+  "source": "Finnish Meteorological Institute, CC BY 4.0",
+  "documentation": "https://www.ilmatieteenlaitos.fi/avoin-data-saatutkat",
+  "endpoint": "https://openwms.fmi.fi/geoserver/Radar/wms",
+  "layer": "Radar:radar_finland_cappi_rate",
+  "time": "2026-10-17T08:00:00Z",
+  "projection": "EPSG:3067",
+  "bbox": [
+    400000,
+    6800000,
+    500000,
+    6900000
+  ],
+  "width": 100,
+  "height": 100,
+  "reflectivityReference": {
+    "layer": "Radar:radar_finland_cappi_dbzh",
+    "pixel": [50, 50],
+    "nativeDbz": 5,
+    "encodedRgb": [127, 255, 0],
+    "decodedDbz": 4.980392156862745,
+    "noDataValue": 255,
+    "defaultRasterByte": 149,
+    "note": "The default replacement raster is also stretched: applying the old byte*0.5-32 rule would report 42.5 dBZ. Use the fixed physical encoding for the fallback too."
+  },
+  "notes": "Sparse palette/pixel samples from recorded fixed-encoding GeoTIFF downloads. Native values were independently checked with GetFeatureInfo at pixel centres. Last two samples are fixed encoding anchors, not observed weather. Rebuild a small TIFF in the smoke test; no live radar calls.",
+  "samples": [
+    {
+      "name": "dry",
+      "index": 9362,
+      "rgb": [
+        0,
+        0,
+        1
+      ],
+      "nativeMmh": 0,
+      "expectedMmh": 0,
+      "pixel": [
+        11,
+        37
+      ]
+    },
+    {
+      "name": "trace",
+      "index": 16850,
+      "rgb": [
+        0,
+        0,
+        204
+      ],
+      "nativeMmh": 0.008,
+      "expectedMmh": 0,
+      "pixel": [
+        53,
+        26
+      ]
+    },
+    {
+      "name": "drizzle",
+      "index": 25068,
+      "rgb": [
+        0,
+        173,
+        255
+      ],
+      "nativeMmh": 0.071,
+      "expectedMmh": 0.07,
+      "pixel": [
+        50,
+        50
+      ]
+    },
+    {
+      "name": "rain",
+      "index": 40189,
+      "rgb": [
+        75,
+        255,
+        0
+      ],
+      "nativeMmh": 3.636,
+      "expectedMmh": 3.65,
+      "pixel": [
+        6,
+        67
+      ]
+    },
+    {
+      "name": "missing",
+      "index": 65535,
+      "rgb": [
+        255,
+        255,
+        255
+      ],
+      "expectedMmh": null
+    },
+    {
+      "name": "heavy anchor",
+      "index": 7,
+      "rgb": [
+        255,
+        0,
+        0
+      ],
+      "expectedMmh": 100
+    },
+    {
+      "name": "extreme anchor",
+      "index": 2,
+      "rgb": [
+        255,
+        0,
+        255
+      ],
+      "expectedMmh": 1000
+    }
+  ]
+}
