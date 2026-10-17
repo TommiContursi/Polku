@@ -36,7 +36,7 @@
 | 11 | **16, Strava & Garmin** | research | Outside accounts and terms. | #188 | [16](plans/16-strava-garmin.md) |
 | 12 | **19, help and a tutorial** | big | Last, when the rest holds still. | #189 | [19](plans/19-help.md) |
 
-**Waiting for the user's OK (proposed by phase 24, 2026-10-17):** a calmer route planner as a phase of its own (#233): one place for each thing, 44 px targets on phones, and a choice of two variants in [the mock-up](plans/mockups/phase-24-planner.html). The review suggests it after #123's build and before 22b, since 22b moves the same panel; the place in the order is the user's call.
+**Waiting for the user's OK (proposed by phase 24, 2026-10-17):** a calmer route planner as a phase of its own (#233): one place for each thing, 44 px targets on phones, the drawing tools as a floating toolbox (B, chosen on 2026-10-17 in [the mock-up](plans/mockups/phase-24-planner.html)), with the ⋯ menu's three versions still to choose from. The review suggests it after #123's build and before 22b, since 22b moves the same panel; the place in the order is the user's call.
 
 **Phase 24's milestone stays open** for #123's build (with #96) and the real-phone checks of #73 and #134; its row is out of the order since the review itself is done (#177).
 

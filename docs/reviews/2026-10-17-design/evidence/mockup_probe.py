@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 24: the planner's mock-up measured as measure.py measures the app.
+"""Phase 24: the planner's mock-up measured as measure.py measures the app (B as chosen on 2026-10-17).
 
   POLKU_URL=http://localhost:8772/ python3 docs/reviews/2026-10-17-design/evidence/mockup_probe.py > mockup.json
 
@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 from cdp import Chrome, BASE  # noqa: E402
 
 MOCK = 'docs/plans/mockups/phase-24-planner.html'
-FRAMES = [('phone-start', 390, 844, True), ('phone-peek', 390, 844, True), ('phone-paddle', 390, 844, True), ('phone-half', 390, 844, True), ('desk-panel', 1440, 900, False)]
+FRAMES = [('phone-start', 390, 844, True), ('phone-first-chip', 390, 844, True), ('phone-loop', 390, 844, True), ('phone-peek', 390, 844, True), ('phone-paddle', 390, 844, True), ('phone-half', 390, 844, True), ('desk-panel', 1440, 900, False)]
 PROBE = r"""(() => {
   const scr = document.querySelector('.fr.only .screen'), S = scr.getBoundingClientRect(), W = S.width, H = S.height;
   const pl = scr.querySelector('.pl'), fl = scr.querySelector('.float');

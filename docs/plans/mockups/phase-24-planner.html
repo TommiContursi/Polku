@@ -64,6 +64,9 @@ button { font: inherit; color: inherit; }
 .cv-row { margin-top: 40px; }
 .cv-row > h2 { margin: 0 0 4px; font-size: 18px; }
 .cv-row > p { margin: 0 0 16px; max-width: 920px; opacity: .85; }
+.cv-t { border-collapse: collapse; margin: 0 0 18px; max-width: 1100px; font-size: 13px; background: var(--page-card); border-radius: 12px; overflow: hidden; display: block; overflow-x: auto; }
+.cv-t th, .cv-t td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid rgba(127,127,127,.2); min-width: 150px; }
+.cv-t th { font-size: 12.5px; }
 .cv-frames { display: flex; flex-wrap: wrap; gap: 28px 32px; align-items: flex-start; }
 .fr { margin: 0; display: flex; flex-direction: column; gap: 10px; background: none; }
 .fr figcaption { max-width: var(--cap, 260px); font-size: 13px; color: var(--page-cap); }
@@ -192,6 +195,32 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
 @media (hover: hover) and (pointer: fine) { .tbtn:not(:disabled):hover, .chip:hover, .done:hover { background: var(--surface-2); } }
 @media (prefers-reduced-motion: reduce) { .pl button, .float button, .cols button { transition: none; } }
 @media (prefers-reduced-transparency: reduce) { .pl, .float { background: var(--surface-solid); backdrop-filter: none; } }
+/* B (chosen): the routing mode shows its route style; a menu button beside Done; the loop row; a menu */
+.pl-b .stats { gap: 4px 10px; flex-wrap: wrap; }   /* a long route's numbers wrap rather than run together (#242) */
+.pl-b .stats b { font-size: 17px; }
+.tbtn.share { flex: none; border: 1px solid var(--line); background: var(--surface-solid); }
+.desk .pl-b .stats { gap: 4px 6px; }
+.desk .pl-b .done { padding: 0 12px; }
+.desk .pl-b .row .tbtn:not(.share) { width: 36px; } /* Minimise: a mouse target */
+.seg button.modestyle { gap: 4px; padding: 0 8px 0 10px; color: var(--text); max-width: 132px; }
+.modestyle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.desk .float { gap: 6px; }
+.routebtn { flex: none; }
+.popmenu { position: absolute; z-index: 9; min-width: 236px; padding: 6px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line); display: flex; flex-direction: column; }
+.popmenu button { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: none; color: var(--text); font-size: 14px; text-align: left; }
+.popmenu button .ic { color: var(--muted); }
+.popmenu button.danger, .popmenu button.danger .ic { color: #c0262d; }
+.dark .popmenu button.danger, .dark .popmenu button.danger .ic { color: #f87171; }
+.popmenu hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.seg.small button { height: 36px; min-width: 52px; position: relative; }
+.seg.small button::after { content: ""; position: absolute; inset: -4px 0; }
+.stepper { gap: 6px; }
+.tbtn.round { border: 1px solid var(--line); border-radius: 50%; }
+.len { display: inline-flex; align-items: baseline; gap: 4px; height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); align-items: center; }
+.len input { width: 3.2em; border: 0; background: none; color: var(--text); font: 700 16px/1 inherit; text-align: right; font-variant-numeric: tabular-nums; outline: 0; } /* 16 px: no zoom on iOS */
+.len span { color: var(--muted); font-size: 14px; }
+.done.primary { display: inline-flex; align-items: center; gap: 6px; background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.dark .done.primary { background: var(--on-accent-bg); border-color: var(--on-accent-bg); }
 /* the start: what you can do before the first point */
 .hint { flex: 1; font-size: 15px; font-weight: 600; }
 .hint small { display: block; font-size: 12.5px; font-weight: 500; color: var(--muted); }
@@ -230,6 +259,10 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
   <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-offline" viewBox="0 0 24 24"><path d="M7 18.5a4.5 4.5 0 1 1 1-8.9 6 6 0 0 1 11.3 1.9 3.8 3.8 0 0 1-1.3 7"/><path d="M12 11v9M8.8 16.8 12 20l3.2-3.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-path" viewBox="0 0 24 24"><path d="M6 24c4-1 5-6 9-7s6 2 11-9" transform="scale(.75)" stroke-dasharray="4 3"/></symbol>
 </svg>
 
@@ -237,7 +270,8 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
   <header class="cv-head">
     <h1>A calmer route planner, with nothing taken away</h1>
     <p>Phase 24's mock-up, 2026-10-17. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden, and <b>Today</b> shows the real planner at <code>20f0310</code>. The report is <code>docs/reviews/2026-10-17-design/</code>; the measurements under each frame come from <code>evidence/mockup_probe.py</code>.</p>
-    <p><b>Try it:</b> switch between Today, A and B at the bottom; in B the routing mode, undo and redo float above the sheet. The waypoint rows have two ways too.</p>
+    <p><b>Chosen (2026-10-17):</b> B, with a lower peek and a floating toolbox on the desktop too; only the row you're on shows its buttons; the "Loop from here" chip by the start, leading to a loop of any length; and the ⋯ menu designed again (section 5, three versions to choose from). A stays for comparison.</p>
+    <p><b>Try it:</b> switch between Today, B and A at the bottom, and between the menu's versions. The routing mode in B's toolbox shows its route style; a tap on it opens the styles.</p>
   </header>
 
   <section class="cv-q" aria-labelledby="rules-h">
@@ -254,7 +288,7 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
     <p>Today the peek shows thirteen controls before there's a route: the route's colour, undo, redo and Show the whole route can't do anything yet. The start choices (draw, a round trip, an import) are what this moment needs.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="phone-start" data-bg="phone-empty" data-shot="phone-start" data-scene='{"state":"start"}'>
-        <figcaption><b>Phone: the start</b><span class="v v-today">Thirteen controls in the peek; four of them can't do anything yet.</span><span class="v v-a v-b">Tap the map, or start from a round trip or a file. The routing mode is there for the first leg; undo, redo and the colour come with the first point.</span></figcaption>
+        <figcaption><b>Phone: the start</b><span class="v v-today">Thirteen controls in the peek; four of them can't do anything yet.</span><span class="v v-a">Tap the map, or start from a round trip or a file. The routing mode is there for the first leg; undo, redo and the colour come with the first point.</span><span class="v v-b">Tap the map, or start from a round trip or a file. The toolbox holds the routing mode and its style for the first leg; undo and redo join it with the first point.</span></figcaption>
       </figure>
     </div>
   </section>
@@ -270,7 +304,17 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
         <figcaption><b>Alternative 1: the loops in the peek</b>No card on the map. The peek says what to do next and offers the three loops from here, one tap each, at the thumb. Gives up: nothing points at the start itself.</figcaption>
       </figure>
       <figure class="fr phone" id="phone-first-chip" data-bg="phone-start1" data-scene='{"state":"first","alt":"chip"}'>
-        <figcaption><b>Alternative 2: a small chip by the start</b>"Loop from here" beside the start marker (140 × 44 px, a sixth of the card); a tap shows 10, 20 and 30 km in the peek. Gives up: one more tap for a loop (two, not one), and it still covers a little map.</figcaption>
+        <figcaption><b>Alternative 2: a small chip by the start (chosen)</b>"Loop from here" beside the start marker (140 × 44 px, a sixth of the card); a tap shows 10, 20 and 30 km in the peek. Gives up: one more tap for a loop (two, not one), and it still covers a little map.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
+    <h2>1c · A loop of any length from the start (chosen)</h2>
+    <p>"Loop from here" opens a round trip in the peek: a preset makes the three loops at once (two taps from the chip's moment), and any other length is − / + in 5 km steps, or typed (16 px, so the phone doesn't zoom), then Make 3 loops. km or time, as the round trip has today. With a route drawn, the start's own menu (a tap on the start) has "Round trip from here", as today, and Route's tools keep Round trip.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-loop" data-bg="phone-start1" data-shot="phone-start-card" data-scene='{"state":"loop"}'>
+        <figcaption><b>After "Loop from here"</b><span class="v v-today">Today: the card's 10, 20 or 30 km, then the round trip's own section for any other length.</span><span class="v v-a v-b">Presets in one tap; any length with − / + or typed. Today's loop box (start, distance or time, direction) stays in Route's Round trip section for the rest.</span></figcaption>
       </figure>
     </div>
   </section>
@@ -280,7 +324,7 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
     <p>While drawing, the map comes first and the tools are at the thumb. The route's colour goes with the profile it colours; the sport is the top bar's pill (it shows the route's sport while planning, and re-routes as the planner's picker does); Show the whole route joins the map's buttons, shown while part of the route is out of view (it does nothing otherwise); the distance marks say the distance, and the times stay one switch away (Check › On the map).</p>
     <div class="cv-frames">
       <figure class="fr phone" id="phone-peek" data-bg="phone-mtb-calm" data-shot="phone-mtb-peek" data-scene='{"state":"peek"}'>
-        <figcaption><b>Phone: peek, MTB</b><span class="v v-today">Three rows, 12–13 controls at 28–37 px; two lines of times at every distance mark.</span><span class="v v-a">The same three rows, without the colour, the sport and the frame button: ten controls, every one 44 px.</span><span class="v v-b">Two rows in the sheet; the routing mode, undo and redo float above it, at the thumb, clear of the map's buttons.</span></figcaption>
+        <figcaption><b>Phone: peek, MTB</b><span class="v v-today">Three rows, 12–13 controls at 28–37 px; two lines of times at every distance mark.</span><span class="v v-a">The same three rows, without the colour, the sport and the frame button: ten controls, every one 44 px.</span><span class="v v-b">One row in the sheet: the numbers, Take it along (or Route, by the menu's version) and Done. The routing mode with its style, undo and redo float above it as a toolbox, at the thumb, clear of the map's buttons.</span></figcaption>
       </figure>
       <figure class="fr phone" id="phone-paddle" data-bg="phone-paddle-calm" data-shot="phone-paddle-peek" data-scene='{"state":"peek","sport":"paddle"}'>
         <figcaption><b>Phone: peek, paddle</b><span class="v v-today">Ten distance marks, each with an arrival time and the elapsed time to the second.</span><span class="v v-a v-b">The marks say the distance; arrival and elapsed times are a switch away, unchanged.</span></figcaption>
@@ -290,7 +334,7 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
 
   <section class="cv-row">
     <h2>3 · Checking: the sheet at half</h2>
-    <p>One colour choice, with the profile it colours and "On map" beside it. Round trip once (in the header), the route style picked once (the header's chip; How you go keeps its settings). The waypoint rows: every row's five buttons at 40 px, or only the row you're on with all five at 44 px.</p>
+    <p>One colour choice, with the profile it colours and "On map" beside it. In B, Round trip is in Route's tools (and the start's menu), the route style is chosen from the routing mode in the toolbox, and How you go keeps its settings. The waypoint rows: only the row you're on shows its five buttons at 44 px (chosen); the switch at the bottom shows every row's five at 40 px for comparison.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="phone-half" data-bg="phone-mtb-calm" data-shot="phone-mtb-half" data-scene='{"state":"half"}'>
         <figcaption><b>Phone: half, light</b><span class="v v-today">Five 28 px buttons on every waypoint row; the route's colour in the header and again on the profile (at full).</span><span class="v v-a v-b">The rows as the switch below says.</span></figcaption>
@@ -303,21 +347,48 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
 
   <section class="cv-row">
     <h2>4 · Desktop: the side panel</h2>
-    <p>One Done (the panel's), one colour choice, one sport control (the top bar's pill), Round trip and the route style once each. Show the whole route joins the map's buttons, under zoom and 3D (#226), while part of the route is out of view. The tools stay in the panel: on a desktop they're already under the pointer.</p>
+    <p>One Done (the panel's), one colour choice, one sport control (the top bar's pill), Round trip and the route style once each. Show the whole route joins the map's buttons, under zoom and 3D (#226), while part of the route is out of view. In B (chosen) the drawing tools float on the desktop too: a toolbox at the map's top left, beside the panel and below the top bar, clear of the map's buttons and 3D on the right and of the timeline at the bottom. If the panel docks elsewhere (22b), the toolbox keeps to the panel's inner edge.</p>
     <div class="cv-frames">
       <figure class="fr desk" id="desk-panel" data-bg="desk-mtb-calm" data-shot="desk-mtb" data-scene='{"state":"side"}'>
-        <figcaption><b>Desktop, 1440 × 900</b><span class="v v-today">Three ways to close the planner (the search bar's Plan, the panel's Done, the Done by the map), the colour twice, the sport twice, Round trip and the style twice.</span><span class="v v-a v-b">The panel's Done closes it; Plan in the search bar and by the map hide while planning, as Plan already does on phones.</span></figcaption>
+        <figcaption><b>Desktop, 1440 × 900</b><span class="v v-today">Three ways to close the planner (the search bar's Plan, the panel's Done, the Done by the map), the colour twice, the sport twice, Round trip and the style twice.</span><span class="v v-a">The panel's Done closes it; Plan in the search bar and by the map hide while planning, as Plan already does on phones.</span><span class="v v-b">The panel's header is one row; the toolbox floats beside the panel. The panel's Done closes the planner; Plan in the search bar and by the map hide while planning.</span></figcaption>
       </figure>
       <figure class="fr desk dark" id="desk-panel-dark" data-bg="desk-mtb-calm" data-shot="desk-mtb-dark" data-scene='{"state":"side"}'>
         <figcaption><b>Desktop, dark</b><span class="v v-today">As today, in dark.</span><span class="v v-a v-b">The same, in dark.</span></figcaption>
       </figure>
     </div>
   </section>
+  <section class="cv-row">
+    <h2>5 · The ⋯ menu, designed again (three versions to choose from)</h2>
+    <p>Today ⋯ holds six things, and all but one are somewhere else too: <b>Move to the bottom / left</b> (desktop; also the button at the end of the tabs' row, and Settings), <b>Import GPX / KML</b> (also Route's tools, and dropping a file on the map), <b>Export GPX</b>, <b>Copy share link</b> and <b>Save offline</b> (also Go › Take it along, kept in ⋯ since 22a so they're there from any tab), and <b>Clear route</b> (only here; Undo brings it back). In B it sat at the end of the chips with nothing to say what it held. Each version gives each item a place where it's used; none removes one, and the moving of the panel stays with the panel (22b drags it).</p>
+    <table class="cv-t">
+      <thead><tr><th>Item</th><th>1 · Take it along beside Done</th><th>2 · One "Route" menu beside Done</th><th>3 · Split by what they're for</th></tr></thead>
+      <tbody>
+        <tr><td>Copy share link, Export GPX, Save offline</td><td>the Take it along button beside Done · 2 taps</td><td>the Route menu · 2 taps</td><td>the Take it along button beside Done · 2 taps</td></tr>
+        <tr><td>Import GPX / KML</td><td>the start's Import chip; Route's tools; drop a file · mid-route a swipe up first</td><td>the Route menu · 2 taps</td><td>the toolbox's ⋯ · 2 taps</td></tr>
+        <tr><td>Round trip from the start</td><td>the chip by the start; the start's menu; Route's tools</td><td>also in the Route menu · 2 taps</td><td>also in the toolbox's ⋯ · 2 taps</td></tr>
+        <tr><td>Clear route</td><td>Route's tools · a swipe up first</td><td>the Route menu · 2 taps</td><td>the toolbox's ⋯, beside Undo · 2 taps</td></tr>
+        <tr><td>Move the panel (desktop)</td><td colspan="3">the button at the end of the tabs' row, and Settings, as today; dragging the panel in 22b</td></tr>
+        <tr><td>Gives up</td><td>Import and Clear mid-route need a swipe up first (more steps than today)</td><td>a menu stays, but named, and where the route's other actions are</td><td>two places instead of one</td></tr>
+      </tbody>
+    </table>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-menu-share" data-bg="phone-mtb-calm" data-menu="share" data-scene='{"state":"peek","open":true}'>
+        <figcaption><b>1 · Take it along beside Done</b>The share icon opens what you take along; Import and Clear live in Route's tools and at the start.</figcaption>
+      </figure>
+      <figure class="fr phone" id="phone-menu-route" data-bg="phone-mtb-calm" data-menu="route" data-scene='{"state":"peek","open":true}'>
+        <figcaption><b>2 · One "Route" menu beside Done</b>The same menu as today minus moving the panel, named for what it holds and placed with the route's numbers.</figcaption>
+      </figure>
+      <figure class="fr phone" id="phone-menu-split" data-bg="phone-mtb-calm" data-menu="split" data-scene='{"state":"peek","open":"edit"}'>
+        <figcaption><b>3 · Split by what they're for</b>Take it along beside Done (as in 1); the toolbox's ⋯ holds what changes the route: Import, a round trip from the start, Clear route, beside Undo.</figcaption>
+      </figure>
+    </div>
+  </section>
 </main>
 
 <nav class="picker" aria-label="Mock-up">
-  <div role="group" aria-label="Variant"><button type="button" data-v="today">Today</button><button type="button" data-v="a">A: one place each</button><button type="button" data-v="b">B: tools at the thumb</button></div>
-  <div role="group" aria-label="Waypoint rows"><button type="button" data-rows="all">Rows: all five</button><button type="button" data-rows="one">Rows: the one you're on</button></div>
+  <div role="group" aria-label="Variant"><button type="button" data-v="today">Today</button><button type="button" data-v="b">B (chosen)</button><button type="button" data-v="a">A</button></div>
+  <div role="group" aria-label="Waypoint rows"><button type="button" data-rows="one">Rows: the one you're on</button><button type="button" data-rows="all">all five</button></div>
+  <div role="group" aria-label="The menu"><button type="button" data-menu="share">Menu: 1</button><button type="button" data-menu="route">2</button><button type="button" data-menu="split">3</button></div>
 </nav>
 
 <script>
@@ -331,6 +402,7 @@ const ic = (id, size = 20) => `<svg class="ic" width="${size}" height="${size}" 
 let V = ['today', 'a', 'b'].includes(Q.get('v')) ? Q.get('v') : 'b';
 let ROWS = ['all', 'one'].includes(Q.get('rows')) ? Q.get('rows') : 'one';
 let SEL = 1; // the row you're on (rows: one): the point you last added, tapped or moved
+let MENUV = ['share', 'route', 'split'].includes(Q.get('menu')) ? Q.get('menu') : 'share'; // what the ⋯ menu became (section 5)
 
 function topbar(desk, sport) {
   return `<div class="top">
@@ -359,9 +431,13 @@ const MODES = (labels) => `<div class="seg" role="group" aria-label="Routing">
   <button type="button" aria-pressed="false" aria-label="Over water">${ic('water', 19)}</button></div>`;
 const UNDO = (can = true) => `<button type="button" class="tbtn" aria-label="Undo"${can ? '' : ' disabled'}>${ic('undo', 20)}</button><button type="button" class="tbtn" aria-label="Redo" disabled>${ic('redo', 20)}</button>`;
 const MORE = `<button type="button" class="tbtn" aria-label="More: import, export, share, save offline, clear">${ic('more', 20)}</button>`;
-const STATS = (s) => `<div class="stats"><span><b>${s.d}</b><small>distance</small></span><button type="button" class="tlink" aria-label="${s.t} from now: the departure, in Go"><b>${s.t}</b><small>from now</small></button><span><b>${s.c}</b><small>${s.cl}</small></span></div>`;
+const STATS = (s) => {
+  // in B the row is one line beside the menu and Done: the climb large, the descent in its small line
+  const climb = V === 'b' && s.up ? `<span><b>${s.up}</b><small aria-label="${s.down} descent">${s.down}</small></span>` : `<span><b>${s.c}</b><small>${s.cl}</small></span>`;
+  return `<div class="stats"><span><b>${s.d}</b><small>distance</small></span><button type="button" class="tlink" aria-label="${s.t} from now: the departure, in Go"><b>${s.t}</b><small>from now</small></button>${climb}</div>`;
+};
 const SETUP = (more) => `<div class="chips"><button type="button" class="chip">${ic('roundtrip', 18)}Round trip</button><button type="button" class="chip" aria-label="Route style: Balanced">${ic('sliders', 18)}Balanced${ic('down', 14)}</button>${more ? `<span class="spacer"></span>${MORE}` : ''}</div>`;
-const DATA = { mtb: { d: '3.05 km', t: '16 min', c: '↑44 ↓65 m', cl: 'ascent · descent' }, paddle: { d: '11.1 km', t: '2 h 14 min', c: '123 m', cl: 'carry' } };
+const DATA = { mtb: { d: '3.05 km', t: '16 min', c: '↑44 ↓65 m', cl: 'ascent · descent', up: '↑44 m', down: '↓65 m' }, paddle: { d: '11.1 km', t: '2 h 14 min', c: '123 m', cl: 'carry' } };
 
 function profile(desk) {
   // a simple elevation profile in the route's gradient colours (the real one is js/chart.js)
@@ -386,64 +462,110 @@ function rows() {
     return `<div class="wp${ROWS === 'one' && i === SEL ? ' on' : ''}"${ROWS === 'one' ? ` role="button" tabindex="0" aria-label="${name}: show its buttons"` : ''}><span class="gr">${ic('grip', 16)}</span><span class="mk ${k === 'start' ? 'start' : k === 'end' ? 'end' : ''}">${k === '1' ? '1' : ''}</span><span class="nm"><b>${name}</b><small>${sub}${k === 'start' ? ' · <button type="button" class="dep" aria-label="Departure: now">Depart now ▾</button>' : ''}</small></span><span class="acts">${acts}</span></div>`;
   }).join('');
 }
-function routeTools() {
-  return `<div class="tools2"><button type="button" class="chip">${ic('reverse', 18)}Reverse</button><button type="button" class="chip">${ic('loop', 18)}Back to start</button><button type="button" class="chip">${ic('upload', 18)}Import</button><button type="button" class="chip">${ic('legs', 18)}All leg settings</button></div>
-    <div class="howgo"><button type="button" class="sec-h" aria-expanded="true">How you go · Balanced<span class="spacer"></span>${ic('down', 16)}</button><p>Balanced: the router's own mix of trails and easy ways. Pick another style from the chip at the top.</p>
+function routeTools(b) {
+  const extra = b ? `<button type="button" class="chip">${ic('roundtrip', 18)}Round trip</button>${MENUV === 'share' ? `<button type="button" class="chip">${ic('trash', 18)}Clear route</button>` : ''}` : '';
+  return `<div class="tools2">${extra}<button type="button" class="chip">${ic('reverse', 18)}Reverse</button><button type="button" class="chip">${ic('loop', 18)}Back to start</button><button type="button" class="chip">${ic('upload', 18)}Import</button><button type="button" class="chip">${ic('legs', 18)}All leg settings</button></div>
+    <div class="howgo"><button type="button" class="sec-h" aria-expanded="true">How you go · Balanced<span class="spacer"></span>${ic('down', 16)}</button><p>Balanced: the router's own mix of trails and easy ways. Pick another style from ${b ? 'the routing mode in the toolbox' : 'the chip at the top'}.</p>
     <div class="tgl"><span>Wet ground</span><span style="color:var(--muted)">Auto</span></div><div class="tgl"><span>Terrain</span><span style="color:var(--muted)">Any</span></div></div>`;
 }
 
 function planner(o, desk) {
   const s = DATA[o.sport || 'mtb'];
-  const b = V === 'b' && !desk;
+  const b = V === 'b';
+  const grab = desk ? '' : '<button type="button" class="grab" aria-label="Planner size: drag, or press to change"></button>';
+  const minimise = desk ? `<button type="button" class="tbtn" aria-label="Minimise">${ic('up', 18)}</button>` : '';
   if (o.state === 'start') {
-    const html = `<button type="button" class="grab" aria-label="Planner size: drag, or press to change"></button>
-      <div class="row"><div class="hint">Tap the map to start<small>or start from a round trip or a file</small></div><button type="button" class="done">Done</button></div>
+    const html = `${grab}<div class="row"><div class="hint">Tap the map to start<small>or start from a round trip or a file</small></div>${minimise}<button type="button" class="done">Done</button></div>
       <div class="chips"><button type="button" class="chip">${ic('roundtrip', 18)}Round trip</button><button type="button" class="chip">${ic('upload', 18)}Import GPX or KML</button></div>
-      <div class="tools">${MODES(true)}<span class="spacer"></span>${MORE}</div>`;
+      ${b ? '' : `<div class="tools">${MODES(true)}<span class="spacer"></span>${MORE}</div>`}`;
     return `<div class="pl" role="region" aria-label="Route planner">${html}</div>`;
   }
-  const minimise = desk ? `<button type="button" class="tbtn" aria-label="Minimise">${ic('up', 18)}</button>` : '';
   if (o.state === 'first') {
     const loops = `<div class="chips"><span style="font-size:13px;color:var(--muted);white-space:nowrap">Loop:</span>${[10, 20, 30].map((k) => `<button type="button" class="chip" aria-label="Three round trips of about ${k} km from here">${ic('roundtrip', 18)}${k} km</button>`).join('')}</div>`;
-    const tools = b ? `<div class="chips"><span class="spacer"></span>${MORE}</div>` : `<div class="tools">${MODES(true)}<span class="spacer"></span>${UNDO()}${MORE}</div>`;
-    return `<div class="pl" role="region" aria-label="Route planner"><button type="button" class="grab" aria-label="Planner size: drag, or press to change"></button>
-      <div class="row"><div class="hint">Tap the next place on the way<small>${o.alt === 'chip' ? 'or a loop from the start' : 'or a loop from here'}</small></div><button type="button" class="chip" aria-label="Route style: Balanced">${ic('sliders', 18)}Balanced${ic('down', 14)}</button><button type="button" class="done">Done</button></div>
+    const tools = b ? '' : `<div class="tools">${MODES(true)}<span class="spacer"></span>${UNDO()}${MORE}</div>`;
+    const styleChip = b ? '' : `<button type="button" class="chip" aria-label="Route style: Balanced">${ic('sliders', 18)}Balanced${ic('down', 14)}</button>`;
+    return `<div class="pl" role="region" aria-label="Route planner">${grab}
+      <div class="row"><div class="hint">Tap the next place on the way<small>${o.alt === 'chip' ? 'or a loop from the start' : 'or a loop from here'}</small></div>${styleChip}<button type="button" class="done">Done</button></div>
       ${o.alt === 'peek' ? loops : ''}${tools}</div>`;
   }
+  if (o.state === 'loop') {
+    // after "Loop from here": a length in one tap (a preset makes the loops at once) or any length (− / + or typed)
+    return `<div class="pl" role="region" aria-label="Route planner">${grab}
+      <div class="row"><div class="hint">A round trip from the start<small>Three loops to choose from</small></div><div class="seg small" role="group" aria-label="Length in"><button type="button" aria-pressed="true">km</button><button type="button" aria-pressed="false">time</button></div><button type="button" class="tbtn" aria-label="No round trip">${ic('close', 18)}</button></div>
+      <div class="chips">${[10, 20, 30, 50].map((k) => `<button type="button" class="chip" aria-label="Make three loops of about ${k} km">${k} km</button>`).join('')}</div>
+      <div class="row stepper"><button type="button" class="tbtn round" aria-label="5 km shorter">${ic('minus', 18)}</button><label class="len"><input type="text" inputmode="decimal" value="25" aria-label="Length in kilometres"><span>km</span></label><button type="button" class="tbtn round" aria-label="5 km longer">${ic('plus', 18)}</button><span class="spacer"></span><button type="button" class="done primary">${ic('roundtrip', 18)}Make 3 loops</button></div></div>`;
+  }
   const head = b
-    ? `<div class="row">${STATS(s)}<button type="button" class="done">Done</button></div>${SETUP(true)}`
+    ? `<div class="row">${STATS(s)}${TAKE(o)}${minimise}<button type="button" class="done">Done</button></div>`
     : `<div class="row">${STATS(s)}${minimise}<button type="button" class="done">Done</button></div>${SETUP(true)}<div class="tools">${MODES(true)}<span class="spacer"></span>${UNDO()}</div>`;
-  const grab = desk ? '' : '<button type="button" class="grab" aria-label="Planner size: drag, or press to change"></button>';
-  if (o.state === 'peek') return `<div class="pl" role="region" aria-label="Route planner">${grab}${head}</div>`;
+  if (o.state === 'peek') return `<div class="pl${b ? ' pl-b' : ''}" role="region" aria-label="Route planner">${grab}${head}</div>`;
   const style = desk ? '' : `style="height:${o.state === 'half' ? 422 : 768}px"`;
-  return `<div class="pl" role="region" aria-label="Route planner" ${style}>${grab}${head}${profile(desk)}${tabs(desk)}<div class="body"><button type="button" class="sec-h" aria-expanded="true">Waypoints 3<span class="spacer"></span>${ic('down', 16)}</button>${rows()}${routeTools()}</div></div>`;
+  return `<div class="pl${b ? ' pl-b' : ''}" role="region" aria-label="Route planner" ${style}>${grab}${head}${profile(desk)}${tabs(desk)}<div class="body"><button type="button" class="sec-h" aria-expanded="true">Waypoints 3<span class="spacer"></span>${ic('down', 16)}</button>${rows()}${routeTools(b)}</div></div>`;
 }
+
+// B (chosen 2026-10-17): the drawing tools float as a toolbox; the routing mode shows its route style and opens the styles
+const MODESB = () => `<div class="seg" role="group" aria-label="Routing">
+  <button type="button" aria-pressed="true" class="modestyle" aria-haspopup="menu" aria-label="Follow paths, route style Balanced: the styles">${ic('auto', 19)}<span>Balanced</span>${ic('down', 12)}</button>
+  <button type="button" aria-pressed="false" aria-label="Straight line">${ic('straight', 19)}</button>
+  <button type="button" aria-pressed="false" aria-label="Over water">${ic('water', 19)}</button></div>`;
+const EDITMORE = `<button type="button" class="tbtn" aria-haspopup="menu" aria-label="More: import, a round trip from the start, clear the route">${ic('more', 20)}</button>`;
+function toolbox(o) {
+  const start = o.state === 'start';
+  return `${MODESB()}${start ? '' : UNDO(true)}${MENUV === 'split' && !start ? EDITMORE : ''}`;
+}
+// beside Done: what the ⋯ menu held, by version
+function TAKE(o) {
+  if (MENUV === 'route') return `<button type="button" class="chip routebtn" aria-haspopup="menu" aria-expanded="${!!o.open}" aria-label="Route: share link, GPX, save offline, import, round trip, clear">${ic('route', 18)}Route${ic('down', 12)}</button>`;
+  return `<button type="button" class="tbtn share" aria-haspopup="menu" aria-expanded="${!!o.open}" aria-label="Take it along: copy share link, export GPX, save offline">${ic('share', 20)}</button>`;
+}
+const MENUS = {
+  share: [['share', 'Copy share link'], ['download', 'Export GPX'], ['offline', 'Save offline…']],
+  route: [['share', 'Copy share link'], ['download', 'Export GPX'], ['offline', 'Save offline…'], 'hr', ['upload', 'Import GPX / KML…'], ['roundtrip', 'Round trip from the start'], 'hr', ['trash', 'Clear route']],
+  split: [['share', 'Copy share link'], ['download', 'Export GPX'], ['offline', 'Save offline…']],
+  splitEdit: [['upload', 'Import GPX / KML…'], ['roundtrip', 'Round trip from the start'], 'hr', ['trash', 'Clear route']],
+};
+const menuHtml = (items, style) => `<div class="popmenu" role="menu" style="${style}">${items.map((x) => (x === 'hr' ? '<hr>' : `<button type="button" role="menuitem"${x[0] === 'trash' ? ' class="danger"' : ''}>${ic(x[0], 18)}${x[1]}</button>`)).join('')}</div>`;
 
 function build(fr) {
   const o = JSON.parse(fr.dataset.scene), desk = fr.classList.contains('desk');
+  if (fr.dataset.menu) { o.menu = fr.dataset.menu; }
   const scr = fr.querySelector('.screen');
-  if (V === 'today' || fr.dataset.fixed === 'today') {
+  if ((V === 'today' && !fr.dataset.menu) || fr.dataset.fixed === 'today') {
     scr.style.backgroundImage = '';
     scr.innerHTML = `<img class="shot" alt="Polku's planner today" src="${SHOTPIC(`${fr.dataset.shot}.jpg`)}">`;
     return;
   }
+  const keepV = V, keepM = MENUV;
+  if (fr.dataset.menu) { V = 'b'; MENUV = fr.dataset.menu; } // the menu frames always show B with their version
   scr.style.backgroundImage = `url(${PIC(`${fr.dataset.bg}.jpg`)})`;
   const route = o.state !== 'start';
-  let html = topbar(desk, o.sport) + planner(o, desk);
-  // where the sheet's top is, for the map's buttons and B's floating tools
-  scr.innerHTML = html;
+  scr.innerHTML = topbar(desk, o.sport) + planner(o, desk);
   const pl = scr.querySelector('.pl');
   const sheetTop = desk ? 0 : scr.offsetHeight - pl.offsetTop;
-  const b = V === 'b' && !desk && route;
-  if (b) scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="Drawing tools" style="bottom:${sheetTop + 8}px">${MODES(false)}${UNDO()}</div>`);
+  const b = V === 'b';
+  // B's toolbox: on a phone above the sheet at the thumb, left of the map's buttons; on a desktop at the map's
+  // top left, beside the panel, clear of the map's buttons (and #226's 3D) on the right
+  if (b) scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="Drawing tools" style="${desk ? 'top:76px;left:416px' : `bottom:${sheetTop + 8}px`}">${toolbox(o)}</div>`);
   scr.insertAdjacentHTML('beforeend', cols(desk, desk ? 12 : sheetTop + 12, route && o.out ? 'out' : '') + scale(desk ? 12 : sheetTop + (b ? 64 : 12)));
   if (o.alt === 'chip') scr.insertAdjacentHTML('beforeend', `<button type="button" class="chip startchip" style="position:absolute;left:76px;top:428px;z-index:4;box-shadow:var(--shadow)">${ic('roundtrip', 18)}Loop from here</button>`);
+  if (o.open) {
+    const at = (el) => { const r = el.getBoundingClientRect(), S = scr.getBoundingClientRect(), z = S.width / scr.offsetWidth; return { x: (r.left - S.left) / z, y: (r.top - S.top) / z, w: r.width / z, h: r.height / z }; };
+    const trig = o.open === 'edit' ? scr.querySelector('.float [aria-haspopup=menu]:not(.modestyle)') : scr.querySelector('.pl [aria-haspopup=menu]');
+    if (trig) {
+      const t = at(trig), items = o.open === 'edit' ? MENUS.splitEdit : MENUS[MENUV];
+      const style = o.open === 'edit' ? `left:${Math.max(8, t.x + t.w - 236)}px;bottom:${scr.offsetHeight - t.y + 6}px` : `right:${Math.max(8, scr.offsetWidth - t.x - t.w)}px;bottom:${scr.offsetHeight - t.y + 6}px`;
+      scr.insertAdjacentHTML('beforeend', menuHtml(items, style));
+      trig.setAttribute('aria-expanded', 'true');
+    }
+  }
+  V = keepV; MENUV = keepM;
 }
 function render() {
   document.body.dataset.v = V;
   document.body.dataset.rows = ROWS;
   for (const b of document.querySelectorAll('.picker [data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === V));
   for (const b of document.querySelectorAll('.picker [data-rows]')) b.setAttribute('aria-pressed', String(b.dataset.rows === ROWS));
+  for (const b of document.querySelectorAll('.picker [data-menu]')) b.setAttribute('aria-pressed', String(b.dataset.menu === MENUV));
   for (const fr of document.querySelectorAll('.fr')) build(fr);
 }
 
@@ -463,6 +585,7 @@ document.querySelector('.picker').addEventListener('click', (e) => {
   if (!b) return;
   if (b.dataset.v) V = b.dataset.v;
   if (b.dataset.rows) ROWS = b.dataset.rows;
+  if (b.dataset.menu) MENUV = b.dataset.menu;
   render();
 });
 // a tap on a waypoint row picks it (rows: the one you're on)

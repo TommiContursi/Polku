@@ -16,13 +16,15 @@ Polku looked at as a whole, on a phone and a desktop, centred on the route plann
 4. **The sheet is hard to move, and raising it hides the route** (#96): it moves only from a small handle, and doesn't frame the route when it comes to rest.
 5. **The same thing in two or three places, and controls before they can act** (#233, #241): the sport, the colour, Round trip, the route style twice; three ways to close the planner on a desktop; undo and redo looking ready with nothing to undo.
 
+**Chosen by the user (2026-10-17), from the planner's mock-up:** B, with a lower peek and a floating toolbox on the desktop too; only the row you're on shows its buttons; the "Loop from here" chip by the start, leading to a loop of any length; and the ⋯ menu designed again, now with three versions to choose from (§3, problem 5). The mock-up shows the chosen design by default; A stays for comparison.
+
 **What works and must stay:** see [below](#what-works-and-must-be-protected).
 
 **What needs people or real phones:** marked in each problem, and listed [below](#what-needs-people-or-real-phones). There's a [test script for people](#a-test-script-for-people) and a [test list for real phones](../../plans/issue-123-layer-drawer.md#on-real-phones).
 
 **What comes next:**
 - **#123's build** (the quick layer drawer, with `js/sheet.js` fixing #96), its four open questions answered: [its plan](../../plans/issue-123-layer-drawer.md#phase-24s-answers-2026-10-17).
-- **A calmer planner (#233), proposed as a phase of its own,** with two variants to choose from in [the mock-up](../../plans/mockups/phase-24-planner.html).
+- **A calmer planner (#233), proposed as a phase of its own:** B chosen on 2026-10-17 in [the mock-up](../../plans/mockups/phase-24-planner.html); the ⋯ menu's three versions are still to choose from.
 - **Seven bugs** in "Fixes 2": #239, #240, #241, #242, #243, #244, #245. **Six improvements and ideas:** #232, #234, #235, #236, #237, #238.
 - **Into their phases:** typeface and text sizes (20), the Layers panel's headings (21), one Done on a desktop (22b), soft hyphens in translations (18).
 
@@ -96,7 +98,8 @@ The map in view and the controls are counted after each step; switches are chang
 - **Why the design causes it:** the loops from the start are offered at the place they start from, which is also where the next point goes. The card asks for a tap on the map while covering it.
 - **Root cause:** layout (an offer placed over the content it's about), and interaction (the card's area swallows the next tap).
 - **What should change:** the loops stay one tap away and the map stays free. **What must stay:** loops of 10, 20 and 30 km from the start in one tap; "Tap the next place" as the guidance.
-- **Two alternatives** ([the mock-up, section 1b](../../plans/mockups/phase-24-planner.html)): the loops in the peek, no card ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-first-peek-a-one.jpg?raw=true)); or a small "Loop from here" chip by the start, 140 × 44 px ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-first-chip-a-one.jpg?raw=true)). The first gives up nothing pointing at the start; the second gives up one tap (a loop takes two) and still covers a sixth of the card's map. **Recommended: the peek.** On the same journey both take four taps for four points, as against nine.
+- **Two alternatives** ([the mock-up, section 1b](../../plans/mockups/phase-24-planner.html)): the loops in the peek, no card ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-first-peek-a-one.jpg?raw=true)); or a small "Loop from here" chip by the start, 140 × 44 px ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-first-chip-a-one.jpg?raw=true)). The first gives up nothing pointing at the start; the second gives up one tap (a loop takes two) and still covers a sixth of the card's map. On the same journey both take four taps for four points, as against nine.
+- **Chosen: the chip by the start**, because it leads to a loop of any length rather than three fixed ones. "Loop from here" opens a round trip in the peek ([section 1c of the mock-up](../../plans/mockups/phase-24-planner.html)): 10, 20, 30 or 50 km make the three loops at once, and any other length is − / + in 5 km steps or typed (a 16 px field, so the phone doesn't zoom), then Make 3 loops; km or time as today. A preset loop takes two taps from the chip's moment (today the card's 10, 20 or 30 km take one); any other length is now on the same row instead of in Route's Round trip section.
 - **Evidence:** journey step "Add four points on the map"; the card's code at `js/planner.js:3520-3530`; skills: apple-design (grouping and mapping), break-ui (the 30-point run).
 - **Needs:** people (do they read the card, do they try to tap through it?).
 - **Issue:** #232.
@@ -112,6 +115,7 @@ The map in view and the controls are counted after each step; switches are chang
   - **A, one place each:** the same three rows, without what's shown twice; every control 44 px. Gives up: the peek is 18 px taller (80.7 % of the map in view instead of 82.7 %).
   - **B, the tools at the thumb:** the routing mode, undo and redo float above a two-row sheet, at the bottom left, clear of the map's buttons. 86.1 % of the map in view. Gives up: a floating toolbar over the map, and the tools further from the numbers.
   - **Waypoint rows, two ways:** every row's five buttons at 40 px, or the row you're on with all five at 44 px and the others with Remove only. The second gives up one tap to reach another row's buttons.
+- **Chosen: B, with a lower peek, and the toolbox on the desktop too; only the row you're on.** The peek is now one row: the numbers, a menu button (problem 5) and Done; the climb shows "↑44 m" large with the descent beside it in small type, so the row fits at 390 px. The route style moved into the toolbox: the routing mode in use shows its style ("Balanced ▾") and a tap opens the styles, two taps as today. Round trip is the chip by the start, the start's own menu and Route's tools. On a desktop the toolbox floats at the map's top left, beside the panel and below the top bar, clear of the map's buttons, #226's 3D and the timeline; if the panel docks elsewhere (22b) it keeps to the panel's inner edge. Measured: 91.1 % of a phone's map in view at peek ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-peek-b-one.jpg?raw=true)); a paddle route's longer time still wraps the row (86.8 %).
 - **Evidence:** `measure-before.json` (small targets per scene), [peek today](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/before/phone-mtb-peek.jpg?raw=true), [A](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-peek-a-one.jpg?raw=true), [B](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/after/phone-peek-b-one.jpg?raw=true); skills: emil-design-eng (targets, press), apple-design (simplicity, hierarchy), Impeccable's audit.
 - **Needs:** people and real phones (A or B; whether 44 px feels calmer or just bigger; the waypoint rows).
 - **Issue:** #233 (proposed as a phase).
@@ -145,34 +149,45 @@ The map in view and the controls are counted after each step; switches are chang
 - **What should change:** one place for each, where it's used: the colour with what it colours (or once in the header, see the trade-off in §4), the sport as the top bar's pill (which, while planning, shows the route's sport and re-routes as the planner's picker does), Round trip in the header, the style chosen once, one Done on a desktop. Controls disabled until they can act. **What must stay:** every one of these features, at the same number of taps or fewer.
 - **Evidence:** `measure-before.json` (the desktop panel: 58 controls on screen), the plan's list of duplicates (2026-10-16), confirmed at `20f0310`; skills: apple-design (familiarity, consistency), Impeccable's audit.
 - **Needs:** people (whether the sport at the top of the screen is found while planning).
-- **Issues:** #233 (the calmer planner), #241 (the start's bug), 22b's plan (one Done on a desktop).
+- **The ⋯ menu, designed again** (asked for on 2026-10-17: its place felt odd, and the whole menu was to be thought again). Today it holds six things, and all but Clear route are elsewhere too: moving the panel (also the tabs' row and Settings), Import (also Route's tools and dropping a file), Export GPX, Copy share link and Save offline (also Go › Take it along, kept in ⋯ since 22a so they're there from any tab). Three versions in [the mock-up's section 5](../../plans/mockups/phase-24-planner.html), each with a place for every item where it's used:
+  1. **Take it along beside Done:** a share button opens Copy share link, Export GPX, Save offline; Import and Clear route live in Route's tools and at the start. Gives up: Import and Clear mid-route need a swipe up first.
+  2. **One "Route" menu beside Done:** today's menu without moving the panel, named and placed with the route's numbers (plus Round trip from the start). All two taps. Gives up: a menu stays; on a phone the named button pushes the numbers onto two lines (the peek 116 px instead of 78).
+  3. **Split by what they're for:** Take it along beside Done (as 1), and the toolbox's ⋯ beside Undo holds what changes the route: Import, Round trip from the start, Clear route. All two taps. Gives up: two places instead of one.
+
+  Moving the panel stays with the panel in every version (its button in the tabs' row and Settings; 22b drags it). **The user chooses.**
+- **Issues:** #233 (the calmer planner), #241 (the start's bug), 22b's plan (one Done on a desktop, the floating toolbox).
 
 ## 4. The numbers before and after
 
 `evidence/measure.py` on the app (before) and `evidence/mockup_probe.py` on the mock-up (after), with the same rules: the map in view is the share of the screen not under the planner; controls are those that can be pressed and are on top somewhere (hit-tested), with how many are in the planner in brackets; "under 44 px" is counted on phones. Hit-testing skips covered controls, so these numbers are a little lower than the plan's own counts of 2026-10-16.
 
-| The moment | Today: map in view · controls (planner) · under 44 px | A | B |
+| The moment | Today: map in view · controls (planner) · under 44 px | A | B, chosen |
 |---|---|---|---|
-| Phone, the start (no point) | 83 % · 23 (13) · 19 | 80.7 % · 18 (8) · 6 | 80.7 % · 18 (8) · 6 |
-| Phone, peek (MTB) | 82.7 % · 22 (12) · 18 | 80.7 % · 20 (10) · 6 | 86.1 % · 20 (10) · 6 |
-| Phone, peek (paddle) | 82.7 % · 23 (13) · 19 | 80.7 % · 20 (10) · 6 | 86.1 % · 20 (10) · 6 |
-| Phone, half (rows: the one you're on) | 52.1 % · 37 (27) · 33 | 52.1 % · 29 (19) · 8 | 52.1 % · 29 (19) · 8 |
-| Phone, half (rows: all five) | 52.1 % · 37 (27) · 33 | 52.1 % · 30 (20) · 10 | 52.1 % · 35 (25) · 15 |
-| Desktop, side panel | 75.1 % · 58 (45) | 75.1 % · 45 (34) | the same as A |
+| Phone, the start (no point) | 83 % · 23 (13) · 19 | 80.7 % · 18 (8) · 6 | 86.1 % · 17 (7) · 6 |
+| Phone, right after the first point | the card over the map (§3, problem 1) | — | 91.1 % · 17 (6) · 6 |
+| Phone, peek (MTB) | 82.7 % · 22 (12) · 18 | 80.7 % · 20 (10) · 6 | 91.1 % · 18 (8) · 6 |
+| Phone, peek (paddle) | 82.7 % · 23 (13) · 19 | 80.7 % · 20 (10) · 6 | 86.8 % · 18 (8) · 6 |
+| Phone, half (rows: the one you're on) | 52.1 % · 37 (27) · 33 | 52.1 % · 29 (19) · 8 | 52.1 % · 33 (23) · 8 |
+| Desktop, side panel | 75.1 % · 58 (45) | 75.1 % · 45 (34) | 75.1 % · 45 (34) |
+
+The first B (before the choice) had a two-row peek: 86.1 % at peek. At half, B shows more of the waypoint list (its header is one row), so more of the list's buttons are on screen. The desktop's map in view is the same (the panel is the same width); the floating toolbox covers a little of the map beside it (69.8 % of the map on top, against 71.1 % in A).
 
 The six controls still under 44 px on a phone in A and B are outside the planner: the top bar's four (40 px) and the credits' (i), which #235 covers, and the sheet's handle (its real target is the whole header, with the swipe).
 
 **Taps for the common tasks** (phone, from a drawn route at peek; the plan's table). A and B are counted from their design (the mock-up isn't wired), today's from the plan and the journey:
 
-| To | Today | A | B |
+| To | Today | A | B, chosen |
 |---|---|---|---|
-| Undo, redo | 1 | 1 | 1 (floating) |
-| Change the routing mode | 1 | 1 | 1 (floating) |
+| Undo, redo | 1 | 1 | 1 (the toolbox) |
+| Change the routing mode | 1 | 1 | 1 (the toolbox) |
 | Change the sport | 2 (the planner's picker) | 2 (the top bar's pill) | 2 |
-| Change the route style | 2 | 2 | 2 |
-| Make a round trip from here | 2 or more | 2 or more | 2 or more |
+| Change the route style | 2 | 2 | 2 (the routing mode in the toolbox, then a style) |
+| A round trip at the start, 10/20/30 km | 1 (the card's chip) | 1 (the peek) | 2 (the chip by the start, then a length) |
+| A round trip of any other length | 3 or more (Round trip, the length, Make 3 loops) | 3 or more | 3 or more (the chip, − / + or typed, Make 3 loops) |
+| A round trip from a drawn route's start | 2 or more | 2 or more | 2 or more (the start's menu, or Route's tools) |
 | Add the first points | 1 each, plus the card (9 for 4 in the journey) | 1 each (#232) | 1 each |
-| Clear the route; export, share, save offline | 2 | 2 | 2 |
+| Export, share, save offline | 2 | 2 | 2 (every menu version) |
+| Clear the route, import | 2 | 2 | 2 (menu versions 2 and 3); a swipe up first in version 1 |
 | Departure and weather | 1–3 | 1–3 | 1–3 |
 | Climbs and Heads-up | 2 | 2 | 2 |
 | Show the whole route | 1 | 1 (the map's buttons, while part is out of view) | 1 |
