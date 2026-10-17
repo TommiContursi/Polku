@@ -59,3 +59,9 @@ From docs/BACKLOG.md (line [92](https://github.com/TommiContursi/Polku/blob/9bb3
 - **Show the keep-clear zones and the wind exposure on the map** while planning, so the route's bends explain themselves.
 
 The per-sport place kinds ("Hidden settings", BACKLOG line 69) are in #121, which this phase takes.
+
+### From phase 24's review (2026-10-17)
+
+Found with Impeccable's detector and the journey script; the report is [docs/reviews/2026-10-17-design/](../reviews/2026-10-17-design/README.md).
+- **The Layers panel's headings skip a level:** "Map layers" (h2) is followed by "MTB difficulty (halo)" (h4) in a map key, so a screen reader's list of headings jumps. When the panel is regrouped, its groups and keys get a heading order that reads as a list.
+- **On a phone the base maps come after the On now chips** and the sport card, below the fold. The quick layer drawer (#123) puts them first in its quick view; the full panel behind More keeps today's order until this phase regroups it.

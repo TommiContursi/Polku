@@ -1,0 +1,771 @@
+[
+ {
+  "data": "demo",
+  "frame": "phone-mtb",
+  "size": "390×844",
+  "sheet": 56.5,
+  "sheetPx": 476,
+  "above": 368,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 74
+ },
+ {
+  "data": "demo",
+  "frame": "phone-mtb",
+  "size": "360×740",
+  "sheet": 65.9,
+  "sheetPx": 488,
+  "above": 252,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "demo",
+  "frame": "phone-mtb",
+  "size": "375×667",
+  "sheet": 73.1,
+  "sheetPx": 488,
+  "above": 179,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 70
+ },
+ {
+  "data": "demo",
+  "frame": "phone-mtb",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 65
+ },
+ {
+  "data": "demo",
+  "frame": "phone-paddle",
+  "size": "390×844",
+  "sheet": 57.6,
+  "sheetPx": 486,
+  "above": 358,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 77
+ },
+ {
+  "data": "demo",
+  "frame": "phone-paddle",
+  "size": "360×740",
+  "sheet": 65.7,
+  "sheetPx": 486,
+  "above": 254,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "demo",
+  "frame": "phone-paddle",
+  "size": "375×667",
+  "sheet": 72.8,
+  "sheetPx": 486,
+  "above": 181,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 70
+ },
+ {
+  "data": "demo",
+  "frame": "phone-paddle",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 65
+ },
+ {
+  "data": "demo",
+  "frame": "phone-hike-dark",
+  "size": "390×844",
+  "sheet": 56.5,
+  "sheetPx": 476,
+  "above": 368,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 61
+ },
+ {
+  "data": "demo",
+  "frame": "phone-hike-dark",
+  "size": "360×740",
+  "sheet": 64.4,
+  "sheetPx": 476,
+  "above": 264,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 61
+ },
+ {
+  "data": "demo",
+  "frame": "phone-hike-dark",
+  "size": "375×667",
+  "sheet": 71.4,
+  "sheetPx": 476,
+  "above": 191,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 61
+ },
+ {
+  "data": "demo",
+  "frame": "phone-hike-dark",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 61
+ },
+ {
+  "data": "demo",
+  "frame": "phone-planner",
+  "size": "390×844",
+  "sheet": 56.5,
+  "sheetPx": 476,
+  "above": 368,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 74
+ },
+ {
+  "data": "demo",
+  "frame": "phone-planner",
+  "size": "360×740",
+  "sheet": 65.9,
+  "sheetPx": 488,
+  "above": 252,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "demo",
+  "frame": "phone-planner",
+  "size": "375×667",
+  "sheet": 73.1,
+  "sheetPx": 488,
+  "above": 179,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 70
+ },
+ {
+  "data": "demo",
+  "frame": "phone-planner",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 65
+ },
+ {
+  "data": "demo",
+  "frame": "phone-opts",
+  "size": "390×844",
+  "sheet": 56.5,
+  "sheetPx": 477,
+  "above": 367,
+  "scrolls": false,
+  "broken": [],
+  "small": [
+   "INPUT 237×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "demo",
+  "frame": "phone-opts",
+  "size": "360×740",
+  "sheet": 64.5,
+  "sheetPx": 477,
+  "above": 263,
+  "scrolls": false,
+  "broken": [],
+  "small": [
+   "INPUT 207×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "demo",
+  "frame": "phone-opts",
+  "size": "375×667",
+  "sheet": 71.5,
+  "sheetPx": 477,
+  "above": 190,
+  "scrolls": false,
+  "broken": [],
+  "small": [
+   "INPUT 222×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "demo",
+  "frame": "phone-opts",
+  "size": "195×422",
+  "sheet": 113,
+  "sheetPx": 477,
+  "above": -55,
+  "scrolls": false,
+  "broken": [],
+  "small": [
+   "BUTTON 30×44",
+   "INPUT 129×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "demo",
+  "frame": "phone-edit",
+  "size": "390×844",
+  "sheet": 70.1,
+  "sheetPx": 592,
+  "above": 252,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "demo",
+  "frame": "phone-edit",
+  "size": "360×740",
+  "sheet": 80.1,
+  "sheetPx": 593,
+  "above": 147,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "demo",
+  "frame": "phone-edit",
+  "size": "375×667",
+  "sheet": 88.8,
+  "sheetPx": 592,
+  "above": 75,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "demo",
+  "frame": "phone-edit",
+  "size": "195×422",
+  "sheet": 113,
+  "sheetPx": 477,
+  "above": -55,
+  "scrolls": true,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-mtb",
+  "size": "390×844",
+  "sheet": 61.1,
+  "sheetPx": 515,
+  "above": 329,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "Kolmiulotteinen",
+    "width": 77
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 77
+ },
+ {
+  "data": "worst",
+  "frame": "phone-mtb",
+  "size": "360×740",
+  "sheet": 73.8,
+  "sheetPx": 546,
+  "above": 194,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "vaikeusvärit",
+    "width": 62
+   },
+   {
+    "word": "Kolmiulotteinen",
+    "width": 62
+   },
+   {
+    "word": "Sadetutka",
+    "width": 62
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "worst",
+  "frame": "phone-mtb",
+  "size": "375×667",
+  "sheet": 79.5,
+  "sheetPx": 530,
+  "above": 137,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "vaikeusvärit",
+    "width": 70
+   },
+   {
+    "word": "Kolmiulotteinen",
+    "width": 70
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 70
+ },
+ {
+  "data": "worst",
+  "frame": "phone-mtb",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   },
+   {
+    "word": "vaikeusvärit",
+    "width": 65
+   },
+   {
+    "word": "Kolmiulotteinen",
+    "width": 65
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 65
+ },
+ {
+  "data": "worst",
+  "frame": "phone-paddle",
+  "size": "390×844",
+  "sheet": 59.8,
+  "sheetPx": 504,
+  "above": 340,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "Syvyystiedot",
+    "width": 77
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 77
+ },
+ {
+  "data": "worst",
+  "frame": "phone-paddle",
+  "size": "360×740",
+  "sheet": 72,
+  "sheetPx": 533,
+  "above": 207,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "Syvyystiedot",
+    "width": 62
+   },
+   {
+    "word": "Rantautumispaikat",
+    "width": 106
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "worst",
+  "frame": "phone-paddle",
+  "size": "375×667",
+  "sheet": 77.6,
+  "sheetPx": 518,
+  "above": 149,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "Syvyystiedot",
+    "width": 70
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 70
+ },
+ {
+  "data": "worst",
+  "frame": "phone-paddle",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   },
+   {
+    "word": "Syvyystiedot",
+    "width": 65
+   },
+   {
+    "word": "Rantautumispaikat",
+    "width": 109
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 65
+ },
+ {
+  "data": "worst",
+  "frame": "phone-hike-dark",
+  "size": "390×844",
+  "sheet": 56.5,
+  "sheetPx": 476,
+  "above": 368,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "worst",
+  "frame": "phone-hike-dark",
+  "size": "360×740",
+  "sheet": 66.5,
+  "sheetPx": 492,
+  "above": 248,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "Sadetutka",
+    "width": 62
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "worst",
+  "frame": "phone-hike-dark",
+  "size": "375×667",
+  "sheet": 71.4,
+  "sheetPx": 476,
+  "above": 191,
+  "scrolls": false,
+  "broken": [],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "worst",
+  "frame": "phone-hike-dark",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "worst",
+  "frame": "phone-planner",
+  "size": "390×844",
+  "sheet": 61.1,
+  "sheetPx": 515,
+  "above": 329,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "Kolmiulotteinen",
+    "width": 77
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 77
+ },
+ {
+  "data": "worst",
+  "frame": "phone-planner",
+  "size": "360×740",
+  "sheet": 73.8,
+  "sheetPx": 546,
+  "above": 194,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "vaikeusvärit",
+    "width": 62
+   },
+   {
+    "word": "Kolmiulotteinen",
+    "width": 62
+   },
+   {
+    "word": "Sadetutka",
+    "width": 62
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 62
+ },
+ {
+  "data": "worst",
+  "frame": "phone-planner",
+  "size": "375×667",
+  "sheet": 79.5,
+  "sheetPx": 530,
+  "above": 137,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "vaikeusvärit",
+    "width": 70
+   },
+   {
+    "word": "Kolmiulotteinen",
+    "width": 70
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 70
+ },
+ {
+  "data": "worst",
+  "frame": "phone-planner",
+  "size": "195×422",
+  "sheet": 84.8,
+  "sheetPx": 358,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "Maastokartta",
+    "width": 78
+   },
+   {
+    "word": "vaikeusvärit",
+    "width": 65
+   },
+   {
+    "word": "Kolmiulotteinen",
+    "width": 65
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": 65
+ },
+ {
+  "data": "worst",
+  "frame": "phone-opts",
+  "size": "390×844",
+  "sheet": 61.3,
+  "sheetPx": 517,
+  "above": 327,
+  "scrolls": false,
+  "broken": [],
+  "small": [
+   "INPUT 237×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-opts",
+  "size": "360×740",
+  "sheet": 69.9,
+  "sheetPx": 517,
+  "above": 223,
+  "scrolls": false,
+  "broken": [],
+  "small": [
+   "INPUT 207×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-opts",
+  "size": "375×667",
+  "sheet": 77.5,
+  "sheetPx": 517,
+  "above": 150,
+  "scrolls": false,
+  "broken": [],
+  "small": [
+   "INPUT 222×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-opts",
+  "size": "195×422",
+  "sheet": 122.5,
+  "sheetPx": 517,
+  "above": -95,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "vaikeusvärit",
+    "width": 95
+   }
+  ],
+  "small": [
+   "BUTTON 30×44",
+   "INPUT 129×16"
+  ],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-edit",
+  "size": "390×844",
+  "sheet": 72.2,
+  "sheetPx": 610,
+  "above": 235,
+  "scrolls": false,
+  "broken": [
+   {
+    "word": "yksityiskohdat",
+    "width": 85
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-edit",
+  "size": "360×740",
+  "sheet": 91.4,
+  "sheetPx": 676,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "vaikeusvärit",
+    "width": 70
+   },
+   {
+    "word": "yksityiskohdat",
+    "width": 70
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-edit",
+  "size": "375×667",
+  "sheet": 90.4,
+  "sheetPx": 603,
+  "above": 64,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "yksityiskohdat",
+    "width": 78
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": null
+ },
+ {
+  "data": "worst",
+  "frame": "phone-edit",
+  "size": "195×422",
+  "sheet": 119.4,
+  "sheetPx": 504,
+  "above": -82,
+  "scrolls": true,
+  "broken": [
+   {
+    "word": "vaikeusvärit",
+    "width": 73
+   },
+   {
+    "word": "yksityiskohdat",
+    "width": 73
+   }
+  ],
+  "small": [],
+  "labelBesideChevron": null
+ }
+]

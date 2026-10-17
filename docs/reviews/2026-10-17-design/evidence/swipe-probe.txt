@@ -1,0 +1,12 @@
+{"sheet": "planner", "gesture": "slow drag up 300 px from peek, on the header", "from": "peek", "to": "half"}
+{"sheet": "planner", "gesture": "slow drag up 120 px from half", "from": "half", "to": "full"}
+{"sheet": "planner", "gesture": "quick flick down 60 px from full", "from": "full", "to": "half"}
+{"sheet": "planner", "gesture": "slow drag down 40 px from half (springs back)", "from": "half", "to": "half"}
+{"sheet": "planner", "gesture": "quick flick down 80 px from half", "from": "half", "to": "peek"}
+{"sheet": "planner", "gesture": "drag that starts on Done, up 200 px", "from": "peek", "to": "half"}
+{"sheet": "planner", "gesture": "tap on Check at peek", "from": "peek", "to": "half", "check_selected": "true"}
+{"sheet": "drawer", "gesture": "slow drag down 60 px on the header (springs back)", "from": "quick", "to": "quick"}
+{"sheet": "drawer", "gesture": "slow drag up 120 px (all layers)", "from": "quick", "to": "all"}
+{"sheet": "drawer", "gesture": "quick drag down 160 px from all layers", "from": "all", "to": "quick"}
+{"sheet": "drawer", "gesture": "quick drag down 160 px from quick", "from": "quick", "to": "closed"}
+{"sheet": "drawer", "gesture": "tap on the first tile", "pressed_before": "true", "pressed_after": "false"}
