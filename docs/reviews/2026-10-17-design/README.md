@@ -43,13 +43,48 @@ First, as the plan asks. The drawer's design was agreed in #217; it waited on fo
 
 [`evidence/journey.py`](evidence/journey.py), built on `tools/cdp.py` like the smoke tests: one continuous run through the planner as a person makes it, with real taps and drags (touch on the phone, a mouse on the desktop) on the controls found by their labels, and the state checked through `window.polku` after each step. Routing on the local BRouter and the recorded LIPAS answers only. After each step it records taps or clicks, drags, scrolls, switches of panel and tab, the map in view and the controls on screen. The full output is [`evidence/journey-main.json`](evidence/journey-main.json), its log [`journey-main.log`](evidence/journey-main.log).
 
-JOURNEY_TABLE
+| Step | Phone: taps (+ drags, scrolls) · switches · map in view · controls | Desktop: clicks · switches · map in view · controls | Checked |
+|---|---|---|---|
+| Open Polku, find Plan | 1 · 0 · 83 % · 23 | 1 · 0 · 75.1 % · 44 | yes |
+| Choose a sport | 2 · 1 · 83 % · 21 | 3 · 1 · 75.1 % · 42 | yes |
+| Add four points | 8 · 0 · 82.7 % · 23 | 6 · 0 · 75.1 % · 66 | yes |
+| Drag a point | 0 + 1 drag · 0 · 82.7 % · 23 | 0 + 1 drag · 0 · 75.1 % · 66 | yes |
+| Drag the line | 0 + 1 drag · 0 · 82.7 % · 23 | 0 + 1 drag · 0 · 75.1 % · 67 | yes |
+| A leg's routing mode | 3 + 1 drag, 1 scroll · 1 · 52.1 % · 41 | 3 · 1 · 75.1 % · 70 | yes |
+| A leg's style | 3 · 0 · 52.1 % · 42 | 3 · 0 · 75.1 % · 69 | yes |
+| Undo and redo | 2 · 0 · 52.1 % · 42 | 2 · 0 · 75.1 % · 69 | yes |
+| Read the profile, climbs, surfaces | 1 + 1 scroll · 1 · 52.1 % · 31 | 1 · 1 · 75.1 % · 50 | yes |
+| Route style and speeds | 3 · 1 · 52.1 % · 28 | 3 · 1 · 75.1 % · 42 | see note |
+| Heads-up and Avoid | 3 + 1 scroll · 1 · 52.1 % · 32 | 3 · 1 · 75.1 % · 51 | yes |
+| Layers and back | 3 + 2 scrolls · 1 · 52.1 % · 35 | 3 + 1 scroll · 1 · 75.1 % · 51 | see note |
+| Departure and weather | 3 + 1 scroll · 1 · 52.1 % · 35 | 3 · 1 · 75.1 % · 41 | yes |
+| Route, Check, Go ×6 | 6 · 6 · 52.1 % · 30 | 6 · 6 · 75.1 % · 41 | yes |
+| Share, GPX, offline | 1 + 1 scroll · 1 · 52.1 % · 34 | 1 + 1 scroll · 1 · 75.1 % · 42 | yes |
+| Mistake: the wrong panel | 4 + 2 scrolls · 2 · 52.1 % · 34 | 4 · 2 · 75.1 % · 42 | see note |
+| Mistake: the sheet folded | 0 + 2 drags · 0 · 52.1 % · 34 | 0 · 0 · 75.1 % · 42 | yes |
+| Mistake: undo a removal | 3 + 1 scroll · 1 · 52.1 % · 45 | 3 · 1 · 75.1 % · 69 | yes |
+| Mistake: a reload | 0 · 0 · 100 % · 10 | 0 · 0 · 100 % · 19 | yes |
+| **The whole journey** | **46 taps, 5 drags, 10 scrolls, 17 switches** | **45 clicks, 2 drags, 2 scrolls, 17 switches** | |
+
+| Shorter journey | Phone | Desktop |
+|---|---|---|
+| A round trip of about 10 km | 6 taps, 2 scrolls · 3 loops; taken | 6 taps, 0 scrolls · 3 loops; taken |
+| An official LIPAS route: search, Ride this route | 3 taps, 0 scrolls · result tapped; riding | 3 taps, 0 scrolls · result tapped; riding |
+| A long route: 30 straight-line points | 55 taps, 11 scrolls · 17 at the first tap; no point at first (maplibregl-popup; closed it), a point at the next tap; no point at first (maplibregl-popup; closed it), none at the next | 44 taps, 3 scrolls · 19 at the first tap; no point at first (nothing open), none at the next either; 19 rows; 3 screens of scrolling to reach the finish |
+
+The map in view and the controls are counted after each step; switches are changes of panel or tab. On the phone the sheet goes to half when the leg settings are needed (a drag on its handle), which is why the map in view drops to 52 % from then on.
+
+**The "see note" rows:**
+- **Route style and speeds (phone):** the script's tap chose Roads to the trail instead of Flowy trails; the style and the time changed, so the step itself worked. A script error, not a finding.
+- **Layers and back (phone):** with the sheet at half, Layers' ✕ was at y = −85 px, above the screen, so the panel couldn't be closed the obvious way (problem 3, #240).
+- **The wrong panel (phone):** the same for Settings' and Layers' ✕ (both at y = −85 px). On a desktop all three checks passed.
 
 **What the journey showed, beyond the numbers:**
 - **The first point's card eats taps** (problem 1). On a phone the second tap landed on the card's title (`st-title`) and added nothing; the card is about 355 × 185 px beside the start ([today](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/before/phone-start-card.jpg?raw=true)).
-- **Settings opened above the screen** with the sheet at half (problem 3): its ✕ was at y = −101 px, so the run couldn't close it the obvious way.
+- **Settings and Layers opened above the screen** with the sheet at half (problem 3): the centre of each ✕ was at y = −85 px, so the run couldn't close them the obvious way.
 - **On a desktop a click on the sport pill closed its menu** (#245): the hover opens it, the click toggles it shut.
 - **Layers, Heads-up and Avoid, the departure, the weather along the route, Take it along** were all reachable and did what they say; the route and the sheet came back as they were after Layers; a removed point came back with Undo; after a reload the route was back, but the planner was closed (#238).
+- **A long route:** 30 points took 55 taps on a phone and 44 clicks on a desktop. After the first point's card, most misses were taps near the line already drawn: by design a tap on the line opens that part's menu ("a point added by mistake is easy", `js/planner.js:2294-2298`), so drawing a route that doubles back costs extra taps (#158 is a related idea). On a phone the finish's row was 11 screens of scrolling down the list at half; the calmer planner (#233) should look at long lists.
 - **Where the script's first versions failed, it was the script** (a point off screen, a tap under the map's buttons, a start under the raised sheet): fixed, and not counted as findings. A few steps can't be judged by a script at all (how a swipe feels, whether a word is understood): those are for people.
 
 ## 3. The five main problems, in depth
@@ -84,7 +119,7 @@ JOURNEY_TABLE
 ### Problem 3: Settings and Layers open above the top of the screen
 
 - **What the person wants:** while planning, open Settings or Layers, change something, close it.
-- **What happens:** with the planner's sheet at half on a 390 × 844 phone, Settings opens with its top at −113 px: its heading and ✕ are above the screen ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/findings/settings-over-half-sheet.jpg?raw=true)). With the sheet at peek it fits. Layers uses the same rule.
+- **What happens:** with the planner's sheet at half on a 390 × 844 phone, Settings opens with its top at −113 px: its heading and ✕ are above the screen ([picture](https://github.com/TommiContursi/Polku/blob/pr-screenshots/claude/phase-24-design/findings/settings-over-half-sheet.jpg?raw=true)). With the sheet at peek it fits. Layers uses the same rule, and the journey found its ✕ above the screen too (y = −85 px).
 - **Why:** on phones a panel sits above the sheet with `max-height: 62vh` (`css/app.css:1121`); 62 % of the screen plus the sheet's height is more than the screen.
 - **Root cause:** code.
 - **What should change:** the panel's height stays within the room above the sheet and below the top bar, its body scrolls, its ✕ stays on screen. **What must stay:** Settings and Layers reachable while planning, the sheet as it was after.
@@ -183,7 +218,7 @@ Each with the skill or tool that found it, and where it went.
 | Three ways to close the planner on a desktop | the plan's list, `measure.py` | phase 22b's plan |
 | Finnish and Swedish words in narrow places | break-ui, `word_widths.py` | phase 18's plan |
 
-**Impeccable's detector, false positives:** two "accent border on a rounded card" and one "side tab" were the CSS triangles in the start marker (`css/app.css:827`, `:844`); "decorative stripes" was the map key's swatch for closed ways; the static "low contrast" pairs mixed dark text with light backgrounds from different themes.
+**Impeccable's detector, false positives:** two "accent border on a rounded card" and one "side tab" were the CSS triangles in the start marker (`css/app.css:827`, `:844`); "decorative stripes" was the map key's swatch for closed ways; the static "low contrast" pairs mixed dark text with light backgrounds from different themes. The same kind of false pair is flagged by Impeccable's design hook on the drawer's mock-up (its dark frames scope their own tokens); it's left standing rather than ignored for the whole file, since a file-wide ignore would hide a real one later.
 
 ## 7. Impeccable's audit
 
