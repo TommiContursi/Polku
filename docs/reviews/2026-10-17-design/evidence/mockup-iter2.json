@@ -1,0 +1,3203 @@
+[
+ {
+  "frame": "tb-phone",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 81.4,
+  "map_clear_sheet": 85.2,
+  "map_seen": 71.1,
+  "sheet": 130,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 76.2,
+  "map_clear_sheet": 80.2,
+  "map_seen": 65.8,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 76.7,
+  "map_clear_sheet": 80.2,
+  "map_seen": 66.3,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 72.5,
+  "map_clear_sheet": 77.5,
+  "map_seen": 60,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 24,
+  "map_clear_sheet": 24,
+  "map_seen": 13.8,
+  "sheet": 699,
+  "docked": true,
+  "controls": 12,
+  "in_planner": 7,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-calm",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 87.1,
+  "map_clear_sheet": 90.9,
+  "map_seen": 76.9,
+  "sheet": 80,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-calm",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 76.2,
+  "map_clear_sheet": 80.2,
+  "map_seen": 65.8,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-calm",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 76.7,
+  "map_clear_sheet": 80.2,
+  "map_seen": 66.3,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-calm",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 72.5,
+  "map_clear_sheet": 77.5,
+  "map_seen": 60,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-calm",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 43,
+  "map_clear_sheet": 43,
+  "map_seen": 25.9,
+  "sheet": 524,
+  "docked": true,
+  "controls": 13,
+  "in_planner": 6,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Show my location"
+  ],
+  "overlaps": [
+   "Sport: MTB × Show my location",
+   "Sport: MTB × Time and weather",
+   "Settings × Show my location",
+   "Settings × Time and weather"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-menu",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 81.4,
+  "map_clear_sheet": 85.2,
+  "map_seen": 38.2,
+  "sheet": 130,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-menu",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 76.2,
+  "map_clear_sheet": 80.2,
+  "map_seen": 31.4,
+  "sheet": 174,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-menu",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 76.7,
+  "map_clear_sheet": 80.2,
+  "map_seen": 34.9,
+  "sheet": 174,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-menu",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 72.5,
+  "map_clear_sheet": 77.5,
+  "map_seen": 21.7,
+  "sheet": 174,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-menu",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 24,
+  "map_clear_sheet": 24,
+  "map_seen": 13.7,
+  "sheet": 699,
+  "docked": true,
+  "controls": 8,
+  "in_planner": 3,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-style",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 81.4,
+  "map_clear_sheet": 85.2,
+  "map_seen": 17.8,
+  "sheet": 130,
+  "docked": false,
+  "controls": 25,
+  "in_planner": 16,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-style",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 76.2,
+  "map_clear_sheet": 80.2,
+  "map_seen": 15.5,
+  "sheet": 174,
+  "docked": false,
+  "controls": 24,
+  "in_planner": 15,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-style",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 76.7,
+  "map_clear_sheet": 80.2,
+  "map_seen": 16,
+  "sheet": 174,
+  "docked": false,
+  "controls": 25,
+  "in_planner": 16,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Rita nästa etapp: Följ stigar, Ruttstil Balanced × Finjustera i Hur du tar dig fram",
+   "Ångra × Finjustera i Hur du tar dig fram"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-style",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 72.5,
+  "map_clear_sheet": 77.5,
+  "map_seen": 15,
+  "sheet": 174,
+  "docked": false,
+  "controls": 22,
+  "in_planner": 13,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Piirrä seuraava osuus: Seuraa polkuja, Reittityy × Technical",
+   "Kumoa × Technical"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-style",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 24,
+  "map_clear_sheet": 24,
+  "map_seen": 13.7,
+  "sheet": 699,
+  "docked": true,
+  "controls": 8,
+  "in_planner": 3,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-buttons",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 79.3,
+  "map_clear_sheet": 79.3,
+  "map_seen": 69.3,
+  "sheet": 182,
+  "docked": true,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Follow paths, Balanced 124×40",
+   "Straight line 44×40",
+   "Over water 44×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-buttons",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 63.8,
+  "sheet": 226,
+  "docked": true,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Seuraa polkuja, Balanced 124×40",
+   "Suora viiva 44×40",
+   "Vesitse 44×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-buttons",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 63.8,
+  "sheet": 226,
+  "docked": true,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Följ stigar, Balanced 124×40",
+   "Rak linje 44×40",
+   "Över vatten 44×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-buttons",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 70.8,
+  "map_clear_sheet": 70.8,
+  "map_seen": 58.3,
+  "sheet": 226,
+  "docked": true,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Seuraa polkuja, Balanced 124×40",
+   "Suora viiva 44×40",
+   "Vesitse 44×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-phone-buttons",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 24,
+  "map_clear_sheet": 24,
+  "map_seen": 13.8,
+  "sheet": 699,
+  "docked": true,
+  "controls": 14,
+  "in_planner": 9,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Follow paths, Balanced",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "rt-first",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 79.9,
+  "map_clear_sheet": 83.8,
+  "map_seen": 69.6,
+  "sheet": 143,
+  "docked": false,
+  "controls": 17,
+  "in_planner": 8,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-first",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 79.7,
+  "map_clear_sheet": 83.8,
+  "map_seen": 69.4,
+  "sheet": 143,
+  "docked": false,
+  "controls": 17,
+  "in_planner": 8,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-first",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 80.2,
+  "map_clear_sheet": 83.8,
+  "map_seen": 70,
+  "sheet": 143,
+  "docked": false,
+  "controls": 17,
+  "in_planner": 8,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-first",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 76.5,
+  "map_clear_sheet": 81.6,
+  "map_seen": 64.2,
+  "sheet": 143,
+  "docked": false,
+  "controls": 17,
+  "in_planner": 8,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-first",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 13.8,
+  "sheet": 700,
+  "docked": true,
+  "controls": 13,
+  "in_planner": 8,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-form",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-form",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-form",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-form",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 50.3,
+  "map_clear_sheet": 50.3,
+  "map_seen": 37.9,
+  "sheet": 385,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-form",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 13.8,
+  "sheet": 700,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 9,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-time",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in minutes 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-time",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in minutes 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-time",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in minutes 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-time",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 56,
+  "map_clear_sheet": 56,
+  "map_seen": 43.7,
+  "sheet": 341,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in minutes 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-time",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 13.8,
+  "sheet": 700,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 10,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-making",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-making",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-making",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 63.2,
+  "map_clear_sheet": 63.2,
+  "map_seen": 52.8,
+  "sheet": 324,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-making",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 50.3,
+  "map_clear_sheet": 50.3,
+  "map_seen": 37.9,
+  "sheet": 385,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34",
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-making",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 13.8,
+  "sheet": 700,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 9,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-results",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 74,
+  "map_clear_sheet": 74,
+  "map_seen": 63.8,
+  "sheet": 228,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-results",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 74,
+  "map_clear_sheet": 74,
+  "map_seen": 63.8,
+  "sheet": 228,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-results",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 74,
+  "map_clear_sheet": 74,
+  "map_seen": 63.8,
+  "sheet": 228,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-results",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 69.3,
+  "map_clear_sheet": 69.3,
+  "map_seen": 57.2,
+  "sheet": 237,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-results",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 13.8,
+  "sheet": 700,
+  "docked": false,
+  "controls": 9,
+  "in_planner": 4,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-button",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 82.1,
+  "map_clear_sheet": 85.9,
+  "map_seen": 72,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-button",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 81.8,
+  "map_clear_sheet": 85.9,
+  "map_seen": 71.9,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-button",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 82.4,
+  "map_clear_sheet": 85.9,
+  "map_seen": 72.3,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-button",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 79,
+  "map_clear_sheet": 84,
+  "map_seen": 67,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-button",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 43.4,
+  "map_clear_sheet": 43.4,
+  "map_seen": 25.9,
+  "sheet": 521,
+  "docked": true,
+  "controls": 12,
+  "in_planner": 5,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Show my location"
+  ],
+  "overlaps": [
+   "Sport: MTB × Show my location",
+   "Sport: MTB × Time and weather",
+   "Settings × Show my location",
+   "Settings × Time and weather"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-phone",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 81.4,
+  "map_clear_sheet": 85.2,
+  "map_seen": 33.1,
+  "sheet": 130,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 12,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [
+   "Draw the next leg: Follow paths, Route style Bal × Import GPX or KML…Show a file’s track, then plan"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-phone",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 76.2,
+  "map_clear_sheet": 80.2,
+  "map_seen": 24.6,
+  "sheet": 174,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 11,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [
+   "Piirrä seuraava osuus: Seuraa polkuja, Reittityy × Takaisin lähtöön",
+   "Piirrä seuraava osuus: Seuraa polkuja, Reittityy × Tuo GPX tai KML…Näytä tiedoston jälki ja suunnit"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-phone",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 76.7,
+  "map_clear_sheet": 80.2,
+  "map_seen": 26.1,
+  "sheet": 174,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 11,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [
+   "Rita nästa etapp: Följ stigar, Ruttstil Balanced × Tillbaka till start"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-phone",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 72.5,
+  "map_clear_sheet": 77.5,
+  "map_seen": 11.6,
+  "sheet": 174,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 10,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-phone",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 24,
+  "map_clear_sheet": 24,
+  "map_seen": 13.7,
+  "sheet": 699,
+  "docked": true,
+  "controls": 9,
+  "in_planner": 4,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "trip-clear",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 82.1,
+  "map_clear_sheet": 85.9,
+  "map_seen": 67.8,
+  "sheet": 124,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-clear",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 81.8,
+  "map_clear_sheet": 85.9,
+  "map_seen": 67.7,
+  "sheet": 124,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-clear",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 82.4,
+  "map_clear_sheet": 85.9,
+  "map_seen": 68.1,
+  "sheet": 124,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-clear",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 79,
+  "map_clear_sheet": 84,
+  "map_seen": 62.4,
+  "sheet": 124,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-clear",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 26.1,
+  "map_clear_sheet": 26.1,
+  "map_seen": 14.3,
+  "sheet": 679,
+  "docked": true,
+  "controls": 10,
+  "in_planner": 6,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Sport: MTB × Undo",
+   "Settings × Layers"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-edit",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 81.4,
+  "map_clear_sheet": 85.2,
+  "map_seen": 71.1,
+  "sheet": 130,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-edit",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 76.2,
+  "map_clear_sheet": 80.2,
+  "map_seen": 65.8,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-edit",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 76.7,
+  "map_clear_sheet": 80.2,
+  "map_seen": 66.3,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-edit",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 72.5,
+  "map_clear_sheet": 77.5,
+  "map_seen": 60,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-edit",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 24,
+  "map_clear_sheet": 24,
+  "map_seen": 13.8,
+  "sheet": 699,
+  "docked": true,
+  "controls": 12,
+  "in_planner": 7,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "fin-view",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 80.2,
+  "map_clear_sheet": 80.2,
+  "map_seen": 70.2,
+  "sheet": 174,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 73.8,
+  "map_clear_sheet": 73.8,
+  "map_seen": 63.8,
+  "sheet": 231,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 73.8,
+  "map_clear_sheet": 73.8,
+  "map_seen": 63.8,
+  "sheet": 231,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 70.2,
+  "map_clear_sheet": 70.2,
+  "map_seen": 58.2,
+  "sheet": 231,
+  "docked": false,
+  "controls": 15,
+  "in_planner": 6,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 29.7,
+  "map_clear_sheet": 29.7,
+  "map_seen": 16.9,
+  "sheet": 647,
+  "docked": false,
+  "controls": 12,
+  "in_planner": 6,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Time and weather"
+  ],
+  "overlaps": [
+   "Sport: MTB × Time and weather",
+   "Sport: MTB × Layers",
+   "Settings × Time and weather",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "fin-view-go",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 52.1,
+  "map_clear_sheet": 52.1,
+  "map_seen": 41.9,
+  "sheet": 422,
+  "docked": false,
+  "controls": 19,
+  "in_planner": 10,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view-go",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 52.1,
+  "map_clear_sheet": 52.1,
+  "map_seen": 41.9,
+  "sheet": 422,
+  "docked": false,
+  "controls": 19,
+  "in_planner": 10,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view-go",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 52.1,
+  "map_clear_sheet": 52.1,
+  "map_seen": 41.9,
+  "sheet": 422,
+  "docked": false,
+  "controls": 19,
+  "in_planner": 10,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view-go",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 52.2,
+  "map_clear_sheet": 52.2,
+  "map_seen": 38.6,
+  "sheet": 370,
+  "docked": false,
+  "controls": 19,
+  "in_planner": 10,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-view-go",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 54.1,
+  "map_clear_sheet": 54.1,
+  "map_seen": 34.5,
+  "sheet": 422,
+  "docked": false,
+  "controls": 11,
+  "in_planner": 4,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [
+   "Sport: MTB × Show my location",
+   "Settings × Show my location"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "fin-closed",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 100,
+  "map_clear_sheet": 100,
+  "map_seen": 84.5,
+  "sheet": 0,
+  "docked": false,
+  "controls": 11,
+  "in_planner": 0,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-closed",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 100,
+  "map_clear_sheet": 100,
+  "map_seen": 84.5,
+  "sheet": 0,
+  "docked": false,
+  "controls": 11,
+  "in_planner": 0,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-closed",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 100,
+  "map_clear_sheet": 100,
+  "map_seen": 84.5,
+  "sheet": 0,
+  "docked": false,
+  "controls": 11,
+  "in_planner": 0,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-closed",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 100,
+  "map_clear_sheet": 100,
+  "map_seen": 81.9,
+  "sheet": 0,
+  "docked": false,
+  "controls": 11,
+  "in_planner": 0,
+  "small_in_planner": [],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-closed",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 100,
+  "map_clear_sheet": 100,
+  "map_seen": 58.7,
+  "sheet": 0,
+  "docked": false,
+  "controls": 9,
+  "in_planner": 0,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-later",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 56.2,
+  "map_clear_sheet": 58.7,
+  "map_seen": 46,
+  "sheet": 364,
+  "docked": false,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-later",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 56,
+  "map_clear_sheet": 58.7,
+  "map_seen": 45.8,
+  "sheet": 364,
+  "docked": false,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-later",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 56.5,
+  "map_clear_sheet": 58.7,
+  "map_seen": 46.2,
+  "sheet": 364,
+  "docked": false,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-later",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 49.8,
+  "map_clear_sheet": 53.1,
+  "map_seen": 37.5,
+  "sheet": 364,
+  "docked": false,
+  "controls": 18,
+  "in_planner": 9,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-later",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 13.8,
+  "sheet": 700,
+  "docked": true,
+  "controls": 11,
+  "in_planner": 6,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: MTB × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-phone",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 48.2,
+  "map_clear_sheet": 52.1,
+  "map_seen": 37.6,
+  "sheet": 422,
+  "docked": false,
+  "controls": 22,
+  "in_planner": 13,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-phone",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 48,
+  "map_clear_sheet": 52.1,
+  "map_seen": 37.5,
+  "sheet": 422,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-phone",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 48.5,
+  "map_clear_sheet": 52.1,
+  "map_seen": 38,
+  "sheet": 422,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-phone",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 47.2,
+  "map_clear_sheet": 52.2,
+  "map_seen": 34.8,
+  "sheet": 370,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-phone",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 54.1,
+  "map_clear_sheet": 54.1,
+  "map_seen": 34.5,
+  "sheet": 422,
+  "docked": true,
+  "controls": 11,
+  "in_planner": 4,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [
+   "Sport: MTB × Show my location",
+   "Settings × Show my location"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-paddle",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 48.4,
+  "map_clear_sheet": 52.1,
+  "map_seen": 37.9,
+  "sheet": 422,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-paddle",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 48.7,
+  "map_clear_sheet": 52.1,
+  "map_seen": 38.3,
+  "sheet": 422,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-paddle",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 48.3,
+  "map_clear_sheet": 52.1,
+  "map_seen": 37.7,
+  "sheet": 422,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-paddle",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 48.1,
+  "map_clear_sheet": 52.2,
+  "map_seen": 35.7,
+  "sheet": 370,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-paddle",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 54.1,
+  "map_clear_sheet": 54.1,
+  "map_seen": 34.5,
+  "sheet": 422,
+  "docked": true,
+  "controls": 11,
+  "in_planner": 4,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [
+   "Sport: Paddle × Show my location",
+   "Settings × Show my location"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-peek",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 76.6,
+  "map_clear_sheet": 80.2,
+  "map_seen": 66.2,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-peek",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 76.9,
+  "map_clear_sheet": 80.2,
+  "map_seen": 66.6,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-peek",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 76.5,
+  "map_clear_sheet": 80.2,
+  "map_seen": 66.1,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-peek",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 73.4,
+  "map_clear_sheet": 77.5,
+  "map_seen": 61,
+  "sheet": 174,
+  "docked": false,
+  "controls": 16,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-peek",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 13.8,
+  "sheet": 700,
+  "docked": true,
+  "controls": 12,
+  "in_planner": 7,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Layers"
+  ],
+  "overlaps": [
+   "Sport: Paddle × Layers",
+   "Settings × Layers"
+  ],
+  "cut": [
+   "Crosses the Näsijärvi fairway · +1"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "wp-phone",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 48.2,
+  "map_clear_sheet": 52.1,
+  "map_seen": 37.6,
+  "sheet": 422,
+  "docked": false,
+  "controls": 22,
+  "in_planner": 13,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-phone",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 48,
+  "map_clear_sheet": 52.1,
+  "map_seen": 37.5,
+  "sheet": 422,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-phone",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 48.5,
+  "map_clear_sheet": 52.1,
+  "map_seen": 38,
+  "sheet": 422,
+  "docked": false,
+  "controls": 21,
+  "in_planner": 12,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-phone",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 47.2,
+  "map_clear_sheet": 52.2,
+  "map_seen": 34.8,
+  "sheet": 370,
+  "docked": false,
+  "controls": 20,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Planner size: half. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-phone",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 54.1,
+  "map_clear_sheet": 54.1,
+  "map_seen": 34.5,
+  "sheet": 422,
+  "docked": true,
+  "controls": 11,
+  "in_planner": 4,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [
+   "Sport: MTB × Show my location",
+   "Settings × Show my location"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "wp-long",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 28,
+  "in_planner": 24,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-long",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 28,
+  "in_planner": 24,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Ruskonkellarinkatu, Välipiste 22 · 53.2 km · 10:",
+   "Next point × Ruskonkellarinkatu, Välipiste 22 · 53.2 km · 10:",
+   "Näytä × Ruskonkellarinkatu, Välipiste 22 · 53.2 km · 10:"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-long",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 28,
+  "in_planner": 24,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Ruskonkellarinkatu, Via 22 · 53.2 km · 10:51",
+   "Next point × Ruskonkellarinkatu, Via 22 · 53.2 km · 10:51",
+   "Visa × Ruskonkellarinkatu, Via 22 · 53.2 km · 10:51"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-long",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 13.7,
+  "map_clear_sheet": 13.7,
+  "map_seen": 7.4,
+  "sheet": 668,
+  "docked": true,
+  "controls": 26,
+  "in_planner": 22,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Nimi of Välipiste 23 (selected)",
+   "Next point × Nimi of Välipiste 23 (selected)",
+   "Näytä × Nimi of Välipiste 23 (selected)"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-long",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 14.6,
+  "sheet": 700,
+  "docked": true,
+  "controls": 13,
+  "in_planner": 9,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [
+   "Previous point × Next leg: MTB · Follow paths · Balanced",
+   "Next point × Next leg: MTB · Follow paths · Balanced",
+   "Show × Next leg: MTB · Follow paths · Balanced"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "wp-move",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 30,
+  "in_planner": 26,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24",
+   "Position 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-move",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 30,
+  "in_planner": 26,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24",
+   "Kohta 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-move",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 30,
+  "in_planner": 26,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24",
+   "Plats 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-move",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 13.7,
+  "map_clear_sheet": 13.7,
+  "map_seen": 7.4,
+  "sheet": 668,
+  "docked": true,
+  "controls": 28,
+  "in_planner": 24,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24",
+   "Kohta 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-move",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 14.6,
+  "sheet": 700,
+  "docked": true,
+  "controls": 12,
+  "in_planner": 8,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "wp-key",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 28,
+  "in_planner": 24,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-key",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 28,
+  "in_planner": 24,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Strandvägens naturstig, parkering, Välipiste 21 ",
+   "Next point × Strandvägens naturstig, parkering, Välipiste 21 ",
+   "Näytä × Strandvägens naturstig, parkering, Välipiste 21 "
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-key",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 12.3,
+  "map_clear_sheet": 12.3,
+  "map_seen": 6.7,
+  "sheet": 772,
+  "docked": true,
+  "controls": 28,
+  "in_planner": 24,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Strandvägens naturstig, parkering, Via 21 · 50.8",
+   "Next point × Strandvägens naturstig, parkering, Via 21 · 50.8",
+   "Visa × Strandvägens naturstig, parkering, Via 21 · 50.8"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-key",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 13.7,
+  "map_clear_sheet": 13.7,
+  "map_seen": 7.4,
+  "sheet": 668,
+  "docked": true,
+  "controls": 26,
+  "in_planner": 22,
+  "small_in_planner": [
+   "Planner size: full. Press to change 72×34",
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Nimi of Välipiste 23 (selected)",
+   "Next point × Nimi of Välipiste 23 (selected)",
+   "Näytä × Nimi of Välipiste 23 (selected)"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "wp-key",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 23.9,
+  "map_clear_sheet": 23.9,
+  "map_seen": 14.6,
+  "sheet": 700,
+  "docked": true,
+  "controls": 13,
+  "in_planner": 9,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings"
+  ],
+  "overlaps": [
+   "Previous point × Next leg: MTB · Follow paths · Balanced",
+   "Next point × Next leg: MTB · Follow paths · Balanced",
+   "Show × Next leg: MTB · Follow paths · Balanced"
+  ],
+  "cut": [
+   "Road works: Teiskontie"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "play-phone",
+  "variant": "en",
+  "size": "390x844",
+  "map_clear": 83.5,
+  "map_clear_sheet": 85.9,
+  "map_seen": 73.4,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "play-phone",
+  "variant": "fi-worst",
+  "size": "390x844",
+  "map_clear": 83.2,
+  "map_clear_sheet": 85.9,
+  "map_seen": 73.2,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "play-phone",
+  "variant": "sv-worst",
+  "size": "390x844",
+  "map_clear": 83.8,
+  "map_clear_sheet": 85.9,
+  "map_seen": 73.6,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "play-phone",
+  "variant": "360-fi-worst",
+  "size": "390x844",
+  "map_clear": 80.7,
+  "map_clear_sheet": 84,
+  "map_seen": 68.6,
+  "sheet": 124,
+  "docked": false,
+  "controls": 14,
+  "in_planner": 5,
+  "small_in_planner": [
+   "Planner size: peek. Press to change 72×34"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "play-phone",
+  "variant": "200",
+  "size": "390x844",
+  "map_clear": 36.3,
+  "map_clear_sheet": 36.3,
+  "map_seen": 21.1,
+  "sheet": 585,
+  "docked": true,
+  "controls": 11,
+  "in_planner": 5,
+  "small_in_planner": [],
+  "off_screen": [
+   "Settings",
+   "Time and weather"
+  ],
+  "overlaps": [
+   "Sport: MTB × Time and weather",
+   "Settings × Time and weather"
+  ],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "tb-desk",
+  "variant": "en",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.7,
+  "sheet": 824,
+  "docked": false,
+  "controls": 38,
+  "in_planner": 27,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Follow paths 132×40",
+   "Straight line 128×40",
+   "Over water 121×40",
+   "Balanced 101×40",
+   "Undo 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [
+   "Follow paths: click the map to add a point · right-click for"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "tb-desk",
+  "variant": "fi-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.8,
+  "sheet": 824,
+  "docked": false,
+  "controls": 37,
+  "in_planner": 26,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Seuraa polkuja 146×40",
+   "Suora viiva 120×40",
+   "Vesitse 97×40",
+   "Balanced 101×40",
+   "Kumoa 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [
+   "Seuraa polkuja: click the map to add a point · right-click f"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "tb-desk",
+  "variant": "sv-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 66,
+  "sheet": 824,
+  "docked": false,
+  "controls": 36,
+  "in_planner": 25,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Följ stigar 113×40",
+   "Rak linje 104×40",
+   "Över vatten 125×40",
+   "Balanced 101×40",
+   "Ångra 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [
+   "Följ stigar: click the map to add a point · right-click for "
+  ],
+  "errors": []
+ },
+ {
+  "frame": "rt-desk",
+  "variant": "en",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 70.1,
+  "sheet": 824,
+  "docked": false,
+  "controls": 22,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-desk",
+  "variant": "fi-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 70.1,
+  "sheet": 824,
+  "docked": false,
+  "controls": 22,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "rt-desk",
+  "variant": "sv-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 70.1,
+  "sheet": 824,
+  "docked": false,
+  "controls": 22,
+  "in_planner": 11,
+  "small_in_planner": [
+   "Length in kilometres 61×23"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "trip-desk",
+  "variant": "en",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.7,
+  "sheet": 824,
+  "docked": false,
+  "controls": 41,
+  "in_planner": 30,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Follow paths 132×40",
+   "Straight line 128×40",
+   "Over water 121×40",
+   "Balanced 101×40",
+   "Undo 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Go 07:46 × Share linkCopy it, or send it to someone",
+   "Go 07:46 × Export GPXFor a GPS watch or another app",
+   "Kaupin urheilupuisto, Start · 0 km · 07:30 × Save offline…The map and terrain, for no signal",
+   "Name of Via 1 (selected) × Round trip from the start",
+   "Next leg: MTB · Follow paths · Balanced × Reverse",
+   "Next leg: MTB · Follow paths · Balanced × Back to start",
+   "Remove × Back to start",
+   "Remove × Import GPX or KML…Show a file’s track, then plan",
+   "Kauppi forest, Finish · 3.05 km · 07:46 × Import GPX or KML…Show a file’s track, then plan",
+   "Kauppi forest, Finish · 3.05 km · 07:46 × Clear routeUndo brings it back",
+   "Round trip × Clear routeUndo brings it back",
+   "Reverse × Clear routeUndo brings it back"
+  ],
+  "cut": [
+   "Follow paths: click the map to add a point · right-click for"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "trip-desk",
+  "variant": "fi-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.8,
+  "sheet": 824,
+  "docked": false,
+  "controls": 37,
+  "in_planner": 26,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Seuraa polkuja 146×40",
+   "Suora viiva 120×40",
+   "Vesitse 97×40",
+   "Balanced 101×40",
+   "Kumoa 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Lähde 07:46 × Jaa linkkiKopioi tai lähetä jollekulle",
+   "Kaupin urheilupuisto, Lähtö · 0 km · 07:30 × Vie GPXGPS-kelloon tai toiseen sovellukseen",
+   "Kaupin urheilupuisto, Lähtö · 0 km · 07:30 × Tallenna offline-käyttöön…Kartta ja maasto ilman",
+   "Nimi of Välipiste 1 (selected) × Tallenna offline-käyttöön…Kartta ja maasto ilman",
+   "Seuraava osuus: MTB · Seuraa polkuja · Balanced × Kierros lähtöpisteestä",
+   "Seuraava osuus: MTB · Seuraa polkuja · Balanced × Käännä suunta",
+   "Poista × Käännä suunta",
+   "Poista × Takaisin lähtöön",
+   "Kauppi forest, Maali · 3.05 km · 07:46 × Takaisin lähtöön",
+   "Kauppi forest, Maali · 3.05 km · 07:46 × Tuo GPX tai KML…Näytä tiedoston jälki ja suunnit",
+   "Tuo GPX tai KML × Tyhjennä reittiKumoa tuo sen takaisin"
+  ],
+  "cut": [
+   "Seuraa polkuja: click the map to add a point · right-click f"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "trip-desk",
+  "variant": "sv-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 66,
+  "sheet": 824,
+  "docked": false,
+  "controls": 32,
+  "in_planner": 21,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Följ stigar 113×40",
+   "Rak linje 104×40",
+   "Över vatten 125×40",
+   "Balanced 101×40",
+   "Ångra 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Åk 07:46 × Dela länkKopiera den eller skicka till någon",
+   "Ta bort × Vänd riktning",
+   "Ta bort × Tillbaka till start"
+  ],
+  "cut": [
+   "Följ stigar: click the map to add a point · right-click for "
+  ],
+  "errors": []
+ },
+ {
+  "frame": "fin-desk-view",
+  "variant": "en",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 70.1,
+  "sheet": 824,
+  "docked": false,
+  "controls": 24,
+  "in_planner": 13,
+  "small_in_planner": [
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-desk-view",
+  "variant": "fi-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 70.1,
+  "sheet": 824,
+  "docked": false,
+  "controls": 24,
+  "in_planner": 13,
+  "small_in_planner": [
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "fin-desk-view",
+  "variant": "sv-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 70.1,
+  "sheet": 824,
+  "docked": false,
+  "controls": 24,
+  "in_planner": 13,
+  "small_in_planner": [
+   "Colour the route on the map 38×24"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "chk-desk",
+  "variant": "en",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.7,
+  "sheet": 824,
+  "docked": false,
+  "controls": 32,
+  "in_planner": 21,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Follow paths 132×40",
+   "Straight line 128×40",
+   "Over water 121×40",
+   "Balanced 101×40",
+   "Undo 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [
+   "Follow paths: click the map to add a point · right-click for"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "chk-desk",
+  "variant": "fi-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.8,
+  "sheet": 824,
+  "docked": false,
+  "controls": 29,
+  "in_planner": 18,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Seuraa polkuja 146×40",
+   "Suora viiva 120×40",
+   "Vesitse 97×40",
+   "Balanced 101×40",
+   "Kumoa 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [
+   "Seuraa polkuja: click the map to add a point · right-click f"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "chk-desk",
+  "variant": "sv-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 66,
+  "sheet": 824,
+  "docked": false,
+  "controls": 29,
+  "in_planner": 18,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Följ stigar 113×40",
+   "Rak linje 104×40",
+   "Över vatten 125×40",
+   "Balanced 101×40",
+   "Ångra 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [
+   "Följ stigar: click the map to add a point · right-click for "
+  ],
+  "errors": []
+ },
+ {
+  "frame": "wp-desk",
+  "variant": "en",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.7,
+  "sheet": 824,
+  "docked": false,
+  "controls": 39,
+  "in_planner": 28,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Follow paths 132×40",
+   "Straight line 128×40",
+   "Over water 121×40",
+   "Balanced 101×40",
+   "Undo 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [
+   "Follow paths: click the map to add a point · right-click for"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "wp-desk",
+  "variant": "fi-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 65.8,
+  "sheet": 824,
+  "docked": false,
+  "controls": 39,
+  "in_planner": 28,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Seuraa polkuja 146×40",
+   "Suora viiva 120×40",
+   "Vesitse 97×40",
+   "Balanced 101×40",
+   "Kumoa 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Strandvägens naturstig, parkering, Välipiste 21 ",
+   "Next point × Strandvägens naturstig, parkering, Välipiste 21 ",
+   "Näytä × Strandvägens naturstig, parkering, Välipiste 21 "
+  ],
+  "cut": [
+   "Seuraa polkuja: click the map to add a point · right-click f"
+  ],
+  "errors": []
+ },
+ {
+  "frame": "wp-desk",
+  "variant": "sv-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 66,
+  "sheet": 824,
+  "docked": false,
+  "controls": 39,
+  "in_planner": 28,
+  "small_in_planner": [
+   "Colour the route on the map 38×24",
+   "Följ stigar 113×40",
+   "Rak linje 104×40",
+   "Över vatten 125×40",
+   "Balanced 101×40",
+   "Ångra 40×40"
+  ],
+  "off_screen": [],
+  "overlaps": [
+   "Previous point × Strandvägens naturstig, parkering, Via 21 · 50.8",
+   "Next point × Strandvägens naturstig, parkering, Via 21 · 50.8",
+   "Visa × Strandvägens naturstig, parkering, Via 21 · 50.8"
+  ],
+  "cut": [
+   "Följ stigar: click the map to add a point · right-click for "
+  ],
+  "errors": []
+ },
+ {
+  "frame": "play-desk",
+  "variant": "en",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 66.9,
+  "sheet": 824,
+  "docked": false,
+  "controls": 18,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Follow paths 132×40",
+   "Straight line 128×40",
+   "Over water 121×40",
+   "Balanced 101×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "play-desk",
+  "variant": "fi-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 66.8,
+  "sheet": 824,
+  "docked": false,
+  "controls": 18,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Seuraa polkuja 146×40",
+   "Suora viiva 120×40",
+   "Vesitse 97×40",
+   "Balanced 101×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ },
+ {
+  "frame": "play-desk",
+  "variant": "sv-worst",
+  "size": "1440x900",
+  "map_clear": 74.3,
+  "map_clear_sheet": 74.3,
+  "map_seen": 67,
+  "sheet": 824,
+  "docked": false,
+  "controls": 18,
+  "in_planner": 7,
+  "small_in_planner": [
+   "Följ stigar 113×40",
+   "Rak linje 104×40",
+   "Över vatten 125×40",
+   "Balanced 101×40"
+  ],
+  "off_screen": [],
+  "overlaps": [],
+  "cut": [],
+  "errors": []
+ }
+]
