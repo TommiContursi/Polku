@@ -276,7 +276,7 @@ LOOP = """(async () => {
 LAYERS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const { ACTIVITIES, RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
-  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
   await wait(300);
   const body = document.querySelector('#layers-body');
   const labels = () => [...body.querySelectorAll('.tg .tg-text')].map((t) => t.firstChild.textContent.trim()).filter((l) => !/opacity/i.test(l)).sort();
@@ -322,7 +322,7 @@ LAYERS_AFTER = """(async () => {
   const errs = [], { RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
   const op = polku.map.getLayer('ov-depthAreas') && polku.map.getPaintProperty('ov-depthAreas', 'raster-opacity');
   if (op !== 0.3) errs.push(`depth areas at ${op} after a reload, not 0.3`);
-  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
   await new Promise((r) => setTimeout(r, 300));
   const r = document.querySelector('#layers-body input[aria-label="' + RASTER_OVERLAYS.depthAreas.label + ' opacity"]');
   if (!r || r.value !== '30') errs.push(`slider shows ${r ? r.value : 'nothing'} after a reload`);
@@ -368,7 +368,7 @@ TRAILS = """(async () => {
   }
   // uphill colours come back after switching them off and on (they're cached, and once stayed blank)
   m.jumpTo({ center: [25.7652, 62.2289], zoom: 15.5 });
-  if (document.querySelector('#layers-panel').hidden) document.querySelector('#btn-layers').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
   await wait(400);
   const seg = (t) => [...document.querySelectorAll('#layers-body .seg button')].find((b) => b.textContent === t);
   const uphill = async (ms) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (m.querySourceFeatures('uphill').length) return true; await wait(250); } return false; };
@@ -2558,7 +2558,7 @@ WINTER = """(async () => {
   W.seedWinterTile(fx.x, fx.y, fx.data);
   polku.map.jumpTo({ center: [25.715, 62.258], zoom: 14 });
   await wait(600);
-  document.querySelector('[data-panel=layers-panel]').click();
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); } // Layers, then More: the full panel
   await wait(400);
   const segs = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Winter/.test(g.querySelector('.lg-title').textContent));
   if (!segs) return [...errs, 'no Winter group in Layers'];
@@ -2600,7 +2600,7 @@ WINTER = """(async () => {
       document.querySelector('.maplibregl-popup-close-button')?.click();
       await wait(300);
     }
-    document.querySelector('[data-panel=layers-panel]').click();
+    if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); } // Layers, then More: the full panel
     await wait(400);
     const t2 = [...document.querySelectorAll('#layers-body .lg-group')].find((g) => /^Trails/.test(g.querySelector('.lg-title').textContent));
     [...t2.querySelectorAll('.seg button')].find((b) => b.textContent === 'Difficulty').click();
@@ -3785,11 +3785,21 @@ def quick_swipe(chrome):
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
     pg.js("polku.planner.els.body.scrollTop = 0; true")
-    body = pg.js("(() => { const b = polku.planner.els.body.getBoundingClientRect(); return [b.left + 40, b.top + 60]; })()")
+    # on a waypoint's small print: not its name (a text field) or its grip (its own drag, to reorder)
+    body = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-main small').getBoundingClientRect(); return [b.left + 10, b.top + b.height / 2]; })()")
     pg.swipe(body[0], body[1], body[1] + 300, ms=700, hold=0.2)
     pg.js(SETTLED)
     if st()['st'] == 'full':
         fails.append('planner: a drag down on the body at its top did not move the sheet')
+    # a waypoint's grip keeps its own drag: the sheet stays
+    pg.js("polku.planner.setSheetState('full'); true")
+    pg.js(SETTLED)
+    pg.js("polku.planner.els.body.scrollTop = 0; true")
+    grip = pg.js("(() => { const b = document.querySelector('#planner .wpl-grip').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+    pg.swipe(grip[0], grip[1], grip[1] + 40, ms=400, hold=0.1)
+    pg.js(SETTLED)
+    if st()['st'] != 'full':
+        fails.append(f'planner: a drag on a waypoint’s grip moved the sheet to {st()["st"]}')
     # a tap on the handle still folds it
     pg.js("polku.planner.setSheetState('half'); true")
     pg.js(SETTLED)

@@ -22,11 +22,13 @@ In **Check → On the map**, distance marks, arrival times and elapsed times def
 
 The route glows on the map, and white chevrons drift along it the way it goes; they rest when you leave the map alone, and **Settings → Display → Moving arrows on the route** turns them off.
 
-On a phone, drag the planner's handle to change how much of it is visible. On a desktop, the button at the end of the tabs moves the planner between the side and bottom of the map.
+On a phone, swipe the planner up or down to change how much of it is visible: from its handle, its top rows (over the buttons too), its tabs, or its list when the list is scrolled to the top. Let go where you like and it settles at the nearest size; a quick flick moves it at least one size. A tap on the handle folds it down or opens it again. On a desktop, the button at the end of the tabs moves the planner between the side and bottom of the map.
 
 ## Read the map
 
-Open **Layers** for map layers and their keys. Trail difficulty uses mountain biking grades **S0–S6**; uphill difficulty uses **↑S0–↑S5**, with arrows pointing uphill. Select a trail for its details. On a desktop, resting the pointer on a feature gives a quick preview.
+**Layers** opens a quick drawer: the base maps as pictures, and five tiles for your sport (MTB's are trail colours, trail details, official routes, 3D terrain and rain radar). A tap on a map or a tile changes the map at once. A tile with **›** has more settings (the kind of trail colours, the opacity), one step in; **‹** comes back. A tile says **Zoom in to see** while its layer doesn't show at this zoom, and **No data now** while its source isn't answering. **Edit** changes the five tiles for that sport to any layer in the full panel; **Reset** puts back the sport's own. **More** opens every layer and the map keys, and says how many other layers are on. On a phone the drawer is a sheet: swipe it down or tap the map to close it (that tap adds no point to a route), swipe it up for every layer. On a desktop it stays open beside the button while you use the map.
+
+Trail difficulty uses mountain biking grades **S0–S6**; uphill difficulty uses **↑S0–↑S5**, with arrows pointing uphill. Select a trail for its details. On a desktop, resting the pointer on a feature gives a quick preview.
 
 Search finds places, official LIPAS routes and stops, trails and coordinates. **Ride this route** puts an official route into the planner using its recorded line; **Add to route** joins it to your existing plan.
 
@@ -39,13 +41,13 @@ Shortcuts work when you are not typing in an input field.
 | Key | Action |
 |---|---|
 | <kbd>T</kbd> | Toggle the weather timeline |
-| <kbd>L</kbd> | Open layers and map keys |
+| <kbd>L</kbd> | Open or close the quick layer drawer (the maps, your sport's tiles, More for every layer); the arrow keys choose a map |
 | <kbd>R</kbd> | Open or close the route planner |
 | <kbd>F</kbd> | Show the whole route |
 | <kbd>/</kbd> | Focus search |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd> | Undo |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> | Redo |
-| <kbd>Esc</kbd> | Close open panels and menus |
+| <kbd>Esc</kbd> | Close open panels and menus; in Layers, one step back first |
 
 ## Map gestures
 

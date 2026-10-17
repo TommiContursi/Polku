@@ -1118,7 +1118,7 @@ function renderQuickLayers(dir = null) {
         } }, ...bases.map(([k, label]) => h('button', {
           type: 'button', class: 'qd-base', role: 'radio', 'aria-checked': String(state.base === k), tabindex: k === chosen ? '0' : '-1', 'data-base': k, title: plain(BASE_NOTE[k] || ''),
           onclick: () => setBase(k),
-        }, h('img', { src: thumb(k), alt: '', width: '120', height: '80', decoding: 'async' }), h('span', {}, QUICK_BASE_LABEL[k] || label)))),
+        }, h('img', { src: thumb(k), alt: '', width: '120', height: '80' }), h('span', {}, QUICK_BASE_LABEL[k] || label)))),
         h('div', { class: 'qd-lab' }, h('h3', {}, 'On the map · ', h('b', {}, act.label)),
           h('button', { type: 'button', class: 'qd-edit-btn', 'aria-label': `Edit the tiles for ${act.label}`, onclick: () => quickStep('edit') }, 'Edit')),
         h('div', { class: 'qd-tiles' },
@@ -1155,14 +1155,16 @@ function quickStep(view) {
   (view === 'quick' ? opener : qd.querySelector('.qd-back, .qd-body button, .qd-body input'))?.focus({ preventScroll: true });
 }
 
-// On a desktop the card sits beside the Layers button, its bottom level with the button's, above a
-// bottom planner; in a window under 560 px high it reaches down to the bottom, like the full panel.
+// On a desktop the card sits beside the Layers button, its bottom level with the button's; in a window
+// under 560 px high it reaches down to the bottom, like the full panel. Above a bottom planner while
+// that leaves it 320 px, else over it.
 function placeQuick() {
   const qd = $('#quick-layers');
   if (phoneMQ.matches) { qd.style.removeProperty('--qd-bottom'); qd.classList.remove('tail'); return; }
   const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
   const level = Math.round(innerHeight - $('#btn-layers').getBoundingClientRect().bottom);
-  const bottom = innerHeight < 560 ? sheet + 12 : Math.max(level, sheet + 12);
+  let bottom = innerHeight < 560 ? 12 : level;
+  if (sheet && innerHeight - sheet - 12 - 64 >= 320) bottom = Math.max(bottom, sheet + 12);
   qd.style.setProperty('--qd-bottom', `${bottom}px`);
   qd.classList.toggle('tail', bottom === level && innerHeight >= 560);
 }

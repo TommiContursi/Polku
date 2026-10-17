@@ -432,7 +432,7 @@ button { font: inherit; color: inherit; }
    from it; on phones a sheet from the bottom (below). Steps slide 28 px and fade. */
 .qd {
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  position: absolute; z-index: 6; right: 84px; bottom: var(--qd-bottom, 76px); width: 384px;
+  position: absolute; z-index: 7; right: 84px; bottom: var(--qd-bottom, 76px); width: 384px;
   max-height: calc(100% - 64px - var(--qd-bottom, 76px));
   display: flex; flex-direction: column; padding: 2px 14px 14px;
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px); color: var(--text);
