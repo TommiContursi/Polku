@@ -1,0 +1,479 @@
+[
+ {
+  "data": "demo",
+  "size": "360×740",
+  "state": "peek",
+  "overflow": [],
+  "wide": [],
+  "cut": [],
+  "head": 126,
+  "sheet": 370,
+  "summary": "Hardest climb↑S025 m at 4 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 3,
+  "bodyScroll": 1644,
+  "shot": "break-demo-360x740-peek.png"
+ },
+ {
+  "data": "demo",
+  "size": "360×740",
+  "state": "half",
+  "overflow": [],
+  "wide": [],
+  "cut": [],
+  "head": 126,
+  "sheet": 370,
+  "summary": "Hardest climb↑S025 m at 4 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 3,
+  "bodyScroll": 1644,
+  "shot": "break-demo-360x740-half.png"
+ },
+ {
+  "data": "demo",
+  "size": "360×740",
+  "state": "full",
+  "overflow": [],
+  "wide": [],
+  "cut": [],
+  "head": 126,
+  "sheet": 664,
+  "summary": "Hardest climb↑S025 m at 4 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 3,
+  "bodyScroll": 1644,
+  "shot": "break-demo-360x740-full.png",
+  "errors": []
+ },
+ {
+  "data": "demo",
+  "size": "195×422",
+  "state": "peek",
+  "overflow": [
+   "B: 3.02 km",
+   "B: 15 min"
+  ],
+  "wide": [
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..334",
+   "SPAN 238..253"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 211,
+  "summary": "Hardest climb↑S025 m at 4 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 3,
+  "bodyScroll": 2554,
+  "shot": "break-demo-195x422-peek.png"
+ },
+ {
+  "data": "demo",
+  "size": "195×422",
+  "state": "half",
+  "overflow": [
+   "B: 3.02 km",
+   "B: 15 min"
+  ],
+  "wide": [
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..334",
+   "SPAN 238..253"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 211,
+  "summary": "Hardest climb↑S025 m at 4 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 3,
+  "bodyScroll": 2554,
+  "shot": "break-demo-195x422-half.png"
+ },
+ {
+  "data": "demo",
+  "size": "195×422",
+  "state": "full",
+  "overflow": [
+   "B: 3.02 km",
+   "B: 15 min"
+  ],
+  "wide": [
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..334",
+   "SPAN 238..253"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 346,
+  "summary": "Hardest climb↑S025 m at 4 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 3,
+  "bodyScroll": 2554,
+  "shot": "break-demo-195x422-full.png",
+  "errors": []
+ },
+ {
+  "data": "worst30",
+  "size": "360×740",
+  "state": "peek",
+  "overflow": [
+   "B: 85.2 km",
+   "B: 6 h 06 min"
+  ],
+  "wide": [],
+  "cut": [
+   "SMALL: Via 4 · 7.64 km · 08:26",
+   "SMALL: Via 8 · 15.3 km · 08:58",
+   "SMALL: Via 12 · 37.8 km · 10:35",
+   "SMALL: Via 16 · 45.5 km · 11:09",
+   "SMALL: Via 20 · 68.0 km · 12:45",
+   "SMALL: Via 24 · 75.6 km · 13:16"
+  ],
+  "head": 126,
+  "sheet": 370,
+  "summary": "Hardest climb↑S124 m at 3 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 30,
+  "bodyScroll": 3659,
+  "shot": "break-worst30-360x740-peek.png"
+ },
+ {
+  "data": "worst30",
+  "size": "360×740",
+  "state": "half",
+  "overflow": [
+   "B: 85.2 km",
+   "B: 6 h 06 min"
+  ],
+  "wide": [],
+  "cut": [
+   "SMALL: Via 4 · 7.64 km · 08:26",
+   "SMALL: Via 8 · 15.3 km · 08:58",
+   "SMALL: Via 12 · 37.8 km · 10:35",
+   "SMALL: Via 16 · 45.5 km · 11:09",
+   "SMALL: Via 20 · 68.0 km · 12:45",
+   "SMALL: Via 24 · 75.6 km · 13:16"
+  ],
+  "head": 126,
+  "sheet": 370,
+  "summary": "Hardest climb↑S124 m at 3 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 30,
+  "bodyScroll": 3659,
+  "shot": "break-worst30-360x740-half.png"
+ },
+ {
+  "data": "worst30",
+  "size": "360×740",
+  "state": "full",
+  "overflow": [
+   "B: 85.2 km",
+   "B: 6 h 06 min"
+  ],
+  "wide": [],
+  "cut": [
+   "SMALL: Via 4 · 7.64 km · 08:26",
+   "SMALL: Via 8 · 15.3 km · 08:58",
+   "SMALL: Via 12 · 37.8 km · 10:35",
+   "SMALL: Via 16 · 45.5 km · 11:09",
+   "SMALL: Via 20 · 68.0 km · 12:45",
+   "SMALL: Via 24 · 75.6 km · 13:16"
+  ],
+  "head": 126,
+  "sheet": 664,
+  "summary": "Hardest climb↑S124 m at 3 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 30,
+  "bodyScroll": 3659,
+  "shot": "break-worst30-360x740-full.png",
+  "errors": []
+ },
+ {
+  "data": "worst30",
+  "size": "195×422",
+  "state": "peek",
+  "overflow": [
+   "B: 85.2 km",
+   "B: 6 h 06 min"
+  ],
+  "wide": [
+   "sum-down 139..198",
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..334"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 211,
+  "summary": "Hardest climb↑S124 m at 3 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 30,
+  "bodyScroll": 4569,
+  "shot": "break-worst30-195x422-peek.png"
+ },
+ {
+  "data": "worst30",
+  "size": "195×422",
+  "state": "half",
+  "overflow": [
+   "B: 85.2 km",
+   "B: 6 h 06 min"
+  ],
+  "wide": [
+   "sum-down 139..198",
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..334"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 211,
+  "summary": "Hardest climb↑S124 m at 3 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 30,
+  "bodyScroll": 4569,
+  "shot": "break-worst30-195x422-half.png"
+ },
+ {
+  "data": "worst30",
+  "size": "195×422",
+  "state": "full",
+  "overflow": [
+   "B: 85.2 km",
+   "B: 6 h 06 min"
+  ],
+  "wide": [
+   "sum-down 139..198",
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..334"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 346,
+  "summary": "Hardest climb↑S124 m at 3 %SpeedNormal20 / 16 / 11 km/h · 600 m/h upStyleBalance",
+  "rows": 30,
+  "bodyScroll": 4569,
+  "shot": "break-worst30-195x422-full.png",
+  "errors": []
+ },
+ {
+  "data": "long",
+  "size": "360×740",
+  "state": "peek",
+  "overflow": [
+   "B: 161.3 km",
+   "B: 32 h 23 min"
+  ],
+  "wide": [],
+  "cut": [],
+  "head": 126,
+  "sheet": 370,
+  "summary": "High point178 mSpeedNormal5 km/h on the flatStyleBalancedwet ground",
+  "rows": 3,
+  "bodyScroll": 1573,
+  "shot": "break-long-360x740-peek.png"
+ },
+ {
+  "data": "long",
+  "size": "360×740",
+  "state": "half",
+  "overflow": [
+   "B: 161.3 km",
+   "B: 32 h 23 min"
+  ],
+  "wide": [],
+  "cut": [],
+  "head": 126,
+  "sheet": 370,
+  "summary": "High point178 mSpeedNormal5 km/h on the flatStyleBalancedwet ground",
+  "rows": 3,
+  "bodyScroll": 1573,
+  "shot": "break-long-360x740-half.png"
+ },
+ {
+  "data": "long",
+  "size": "360×740",
+  "state": "full",
+  "overflow": [
+   "B: 161.3 km",
+   "B: 32 h 23 min"
+  ],
+  "wide": [],
+  "cut": [],
+  "head": 126,
+  "sheet": 664,
+  "summary": "High point178 mSpeedNormal5 km/h on the flatStyleBalancedwet ground",
+  "rows": 3,
+  "bodyScroll": 1573,
+  "shot": "break-long-360x740-full.png",
+  "errors": []
+ },
+ {
+  "data": "long",
+  "size": "195×422",
+  "state": "peek",
+  "overflow": [
+   "B: 161.3 km",
+   "B: 32 h 23 min"
+  ],
+  "wide": [
+   "sum-down 142..200",
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..360"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 211,
+  "summary": "High point178 mSpeedNormal5 km/h on the flatStyleBalancedwet ground",
+  "rows": 3,
+  "bodyScroll": 2340,
+  "shot": "break-long-195x422-peek.png"
+ },
+ {
+  "data": "long",
+  "size": "195×422",
+  "state": "half",
+  "overflow": [
+   "B: 161.3 km",
+   "B: 32 h 23 min"
+  ],
+  "wide": [
+   "sum-down 142..200",
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..360"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 211,
+  "summary": "High point178 mSpeedNormal5 km/h on the flatStyleBalancedwet ground",
+  "rows": 3,
+  "bodyScroll": 2340,
+  "shot": "break-long-195x422-half.png"
+ },
+ {
+  "data": "long",
+  "size": "195×422",
+  "state": "full",
+  "overflow": [
+   "B: 161.3 km",
+   "B: 32 h 23 min"
+  ],
+  "wide": [
+   "sum-down 142..200",
+   "quick-pair 20..303",
+   "btn quick 200..303",
+   "[object SVGAnimatedString] 212..228",
+   "[object SVGAnimatedString] 215..225",
+   "[object SVGAnimatedString] 221..223",
+   "[object SVGAnimatedString] 217..219",
+   "SPAN 234..291",
+   "B 234..291",
+   "pl-tab 113..226",
+   "pl-tab-n 192..210",
+   "pl-tab 228..360"
+  ],
+  "cut": [
+   "SMALL: distance",
+   "SMALL: from now",
+   "SMALL: ascent · descent"
+  ],
+  "head": 166,
+  "sheet": 346,
+  "summary": "High point178 mSpeedNormal5 km/h on the flatStyleBalancedwet ground",
+  "rows": 3,
+  "bodyScroll": 2340,
+  "shot": "break-long-195x422-full.png",
+  "errors": []
+ }
+]

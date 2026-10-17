@@ -1,0 +1,1292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polku planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A clickable mock-up of Polku's calmer route planner (#233), as decided on 2026-10-17: the drawing toolbox with More, the desktop toolbar, round trips in the peek, Done and the route's view, Check by how serious and how sure, and long waypoint lists. Phone and desktop, light and dark, worst cases. Not wired to the app.">
+<!--
+  The calmer planner (#233), second iteration, 2026-10-17. The design, its reasons and the plan to
+  build it are in docs/plans/issue-233-calmer-planner.md; the review it builds on is
+  docs/reviews/2026-10-17-design/. Not wired to the app: nothing here is loaded by Polku. The map
+  behind each frame is a screenshot of Polku with its controls hidden (evidence/mockup_bg.py and
+  mockup_bg2.py), on the pr-screenshots branch; "Today" shows the real planner.
+
+  Every frame can be tapped: each keeps its own state (Reset under it starts it again).
+  The switches at the bottom apply to every frame: data (normal or the worst case), language
+  (English; rough Finnish and Swedish, only to test the room words take), theme, and the
+  decisions (all made on 2026-10-17).
+
+  ?frame=<id>            one frame alone at full size (screenshots, evidence/mockup_probe2.py)
+  &w=&h=                 its screen size; &z=2 renders it as at 200 % zoom
+  &lang=fi|sv &worst=1 &theme=dark &trip=trip|share|more &modes=menu|buttons &rt=presets|button
+-->
+<style>
+:root, .fr {
+  --accent: #1f6f4a; --accent-2: #2f8f62; --accent-soft: #e3f1e9; --on-accent: #ffffff; --accent-bg: #1f6f4a;
+  --surface: rgba(255, 255, 255, 0.96); --surface-solid: #ffffff; --surface-2: #f3f4f1;
+  --text: #1c2420; --muted: #56625c; --line: rgba(28, 36, 32, 0.14);
+  --shadow: 0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12);
+  --warn: #b94a07; --warn-soft: #fdeee3; --warn-line: rgba(185, 74, 7, 0.35);
+  --look: #8a5a00; --look-soft: #fbf4e2; --unk: #47607a; --unk-soft: #eaf0f6;
+  --danger: #b4232a; --grab: rgba(86, 98, 92, 0.45); --focus: #1f6f4a;
+  color-scheme: light;
+}
+.fr.dark {
+  /* the dark accent behind white text is a darker green (white on #3fb07a is 2.7:1; on #237a52 it's 5.3:1, #239) */
+  --accent: #56c48f; --accent-2: #6fd3a2; --accent-soft: rgba(86, 196, 143, 0.16); --accent-bg: #237a52;
+  --surface: rgba(24, 28, 26, 0.96); --surface-solid: #181c1a; --surface-2: #242a27;
+  --text: #ecf0ed; --muted: #a4b0a9; --line: rgba(236, 240, 237, 0.16);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --warn: #ff9a5c; --warn-soft: rgba(255, 154, 92, 0.14); --warn-line: rgba(255, 154, 92, 0.4);
+  --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12); --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13);
+  --danger: #ff8a8a; --grab: rgba(164, 176, 169, 0.45); --focus: #6fd3a2;
+  color-scheme: dark;
+}
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #ffffff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #ffffff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding-block: 28px 140px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased;
+}
+.cv a { color: var(--page-link); }
+button, input, select { font: inherit; color: inherit; }
+.ic { flex: none; display: block; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ------------------------------------------------ the canvas */
+.cv { max-width: 1520px; margin: 0 auto; }
+.cv-head h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.01em; text-wrap: balance; }
+.cv-head p { margin: 0 0 8px; max-width: 940px; opacity: .88; }
+.cv-q { margin: 18px 0 8px; padding: 14px 18px; border-radius: 14px; background: var(--page-card); max-width: 1000px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.cv-q h2 { margin: 0 0 6px; font-size: 15px; }
+.cv-q ul, .cv-q ol { margin: 0; padding-left: 20px; }
+.cv-q li { margin: 4px 0; }
+.cv-row { margin-top: 44px; }
+.cv-row > h2 { margin: 0 0 4px; font-size: 19px; }
+.cv-row > p, .cv-row > ul { margin: 0 0 14px; max-width: 940px; opacity: .88; }
+.cv-row > ul { padding-left: 20px; }
+.cv-t { border-collapse: collapse; margin: 0 0 18px; max-width: 1100px; font-size: 13px; background: var(--page-card); border-radius: 12px; overflow: hidden; display: block; overflow-x: auto; }
+.cv-t th, .cv-t td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid rgba(127,127,127,.2); min-width: 130px; }
+.cv-frames { display: flex; flex-wrap: wrap; gap: 28px 30px; align-items: flex-start; }
+.fr { margin: 0; display: flex; flex-direction: column; gap: 8px; background: none; color: var(--text); }
+.fr figcaption { max-width: var(--cap, 260px); font-size: 13px; color: var(--page-cap); }
+.fr figcaption b { display: block; font-size: 13.5px; color: inherit; }
+.fr .reset { align-self: flex-start; border: 0; background: none; padding: 2px 0; color: var(--page-link); font-size: 12.5px; text-decoration: underline; cursor: pointer; }
+.screen {
+  position: relative; overflow: hidden; width: 390px; height: 844px; zoom: calc(.62 * var(--k, 1));
+  border-radius: 28px; box-shadow: 0 0 0 1px rgba(16,24,20,.18), 0 18px 48px rgba(16,24,20,.22);
+  background: #e8eee6 center / cover no-repeat; color: var(--text);
+  font: 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  cursor: crosshair;
+}
+.fr.view .screen, .fr.closed .screen { cursor: default; }
+.fr.desk .screen { width: 1440px; height: 900px; zoom: calc(.5 * var(--k, 1)); border-radius: 12px; }
+.fr.phone { --cap: 242px; }
+.fr.desk { --cap: 720px; }
+.shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 800px) { .fr.desk .screen { zoom: calc(.24 * var(--k, 1)); } .fr.desk { --cap: 346px; } .cv-frames { gap: 24px 16px; } }
+body.single { padding: 0; background: #000; }
+body.single .cv > :not(.cv-row), body.single .cv-row > :not(.cv-frames), body.single .fr:not(.only), body.single .cv-row:not(:has(.only)), body.single figcaption, body.single .reset, body.single .picker { display: none !important; }
+body.single .cv-row { margin: 0; }
+body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: none; }
+
+/* the picker (chrome, not part of the design) */
+.picker { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: calc(100vw - 24px); font: 600 12px/1 system-ui, sans-serif; }
+.pk-groups { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 760px; }
+.picker[data-open="false"] .pk-groups { display: none; }
+.pk-groups > div { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--switch-bg); box-shadow: 0 2px 10px rgba(0,0,0,.15); align-items: center; }
+.pk-groups > div > span { padding: 0 6px 0 10px; color: var(--switch-fg); opacity: .75; }
+.picker .pk-toggle { background: var(--switch-bg); box-shadow: 0 2px 10px rgba(0,0,0,.15); min-height: 44px; padding: 0 16px; }
+.picker button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; }
+.picker button[aria-pressed="true"] { background: var(--switch-on); }
+.picker button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
+
+/* ------------------------------------------------ Polku's chrome over the map */
+.top { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; gap: 8px; z-index: 4; }
+.tb { height: 44px; min-width: 44px; border: 0; border-radius: 999px; display: grid; place-items: center; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); padding: 0; }
+.tb.brand { width: 48px; }
+.tb.brand i { width: 30px; height: 30px; border-radius: 9px; background: #1f6f4a; display: grid; place-items: center; color: #fff; }
+.tb.search { flex: 1; min-width: 0; display: flex; justify-content: flex-start; gap: 8px; padding: 0 14px; color: var(--muted); font-size: 15px; white-space: nowrap; overflow: hidden; }
+.tb.sport { display: flex; gap: 6px; padding: 0 10px 0 12px; background: var(--accent-bg); color: var(--on-accent); }
+.desk .top { right: auto; width: 740px; }
+.desk .tb { height: 40px; min-width: 40px; }
+.desk .tb.brand { width: auto; padding: 0 12px 0 6px; display: flex; gap: 8px; font-weight: 700; font-size: 15px; }
+.cols { position: absolute; right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 4; }
+.cb { width: 44px; height: 44px; border: 0; border-radius: 12px; display: grid; place-items: center; padding: 0; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font: 700 13px/1 system-ui, sans-serif; }
+.desk .cb { width: 40px; height: 40px; }
+.czoom { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.czoom .cb { border-radius: 0; box-shadow: none; }
+.czoom .cb + .cb { border-top: 1px solid var(--line); }
+.fab { width: 56px; height: 54px; border: 0; border-radius: 14px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font-size: 11.5px; font-weight: 650; }
+.desk .fab { width: 60px; height: 56px; border-radius: 16px; }
+.fab.plan { background: var(--accent-bg); color: var(--on-accent); }
+.fab.layers { position: relative; overflow: hidden; justify-content: flex-end; color: #fff; border: 2px solid #fff; background: #9fb59a; }
+.fab.layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
+.scale { position: absolute; left: 12px; z-index: 3; display: flex; align-items: center; gap: 8px; font: 600 11px/1 system-ui, sans-serif; color: #222; }
+.scale i { display: block; width: 74px; height: 16px; border: 2px solid #333; border-top: 0; background: rgba(255,255,255,.8); padding: 2px 4px; font-style: normal; }
+
+/* ------------------------------------------------ the planner: sheet (phone) and panel (desktop) */
+.pl { position: absolute; z-index: 5; display: flex; flex-direction: column; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); color: var(--text); }
+.phone .pl { left: 8px; right: 8px; bottom: 8px; border-radius: 18px; padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px)); max-height: calc(100% - 72px); }
+.desk .pl { left: 12px; top: 64px; bottom: 12px; width: 404px; border-radius: 18px; padding: 8px 16px 0; overflow: hidden; }
+.desk .pl.joined { border-top-right-radius: 0; }
+.pl > * { flex: none; } /* nothing in the sheet is squeezed: only the body scrolls */
+.pl > .body { flex: 1 1 auto; }
+/* enlarged text (200 % zoom, large text sizes): the profile folds to its row, and the whole sheet scrolls as one, so nothing overlaps */
+.bigtext .pl { overflow-y: auto; overscroll-behavior: contain; }
+.bigtext .pl > .body { flex: none; overflow: visible; }
+.bigtext .chart { display: none; }
+.bigtext .chip { white-space: normal; height: auto; min-height: 40px; padding-block: 6px; text-align: left; }
+.bigtext .btn { white-space: normal; height: auto; min-height: 44px; padding-block: 6px; }
+.grab { flex: none; width: 72px; height: 22px; margin: 0 auto; display: grid; place-items: center; border: 0; background: none; padding: 0; cursor: grab; }
+.grab { position: relative; }
+.grab::before { content: ""; width: 36px; height: 5px; border-radius: 3px; background: var(--grab); }
+.grab::after { content: ""; position: absolute; inset: -6px -24px -8px; } /* a 120 × 36 target; the swipe takes the whole header anyway */
+.row { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+.row.wrap { flex-wrap: wrap; row-gap: 4px; }
+.stats { flex: 1 1 auto; min-width: 0; display: flex; gap: 2px 12px; align-items: baseline; flex-wrap: wrap; }
+.stats > * { display: grid; min-width: 0; }
+.stats b { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; letter-spacing: -.01em; white-space: nowrap; line-height: 1.15; }
+.stats small { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.stats .tlink { border: 0; background: none; padding: 0; text-align: left; min-height: 44px; display: grid; align-content: center; cursor: pointer; }
+.stats .tlink small { text-decoration: underline; text-underline-offset: 2px; }
+.acts-r { display: flex; gap: 8px; margin-left: auto; flex: none; }
+.btn { flex: none; height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); font-weight: 700; font-size: 14.5px; color: var(--text); white-space: nowrap; }
+.btn.quiet { font-weight: 600; }
+.btn.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: var(--on-accent); }
+.btn.big { width: 100%; height: 50px; font-size: 16px; border-radius: 14px; }
+.btn.small { height: 36px; padding: 0 12px; font-size: 13.5px; position: relative; }
+.btn.small::after { content: ""; position: absolute; inset: -4px 0; }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn .ic { color: inherit; }
+.trigger .lbl { max-width: 8.5em; overflow: hidden; text-overflow: ellipsis; }
+/* a stacked icon-and-word button (kept for later use) */
+.btn.stack { flex-direction: column; gap: 1px; min-width: 50px; padding: 0 6px; font-size: 11.5px; font-weight: 700; line-height: 1.1; }
+.btn.stack .lbl { max-width: 5.5em; }
+.chips { display: flex; gap: 8px; min-height: 44px; align-items: center; flex-wrap: wrap; }
+.chip { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); font-size: 14px; font-weight: 650; white-space: nowrap; position: relative; color: var(--text); }
+.chip::after { content: ""; position: absolute; inset: -2px 0; }
+.chip .ic { color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); padding: 0 12px; }
+.chip[aria-pressed="true"] .ic { color: var(--accent); }
+.cap { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.hint { flex: 1; min-width: 0; font-size: 15.5px; font-weight: 700; line-height: 1.25; }
+.hint small { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+.titlerow { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.titlerow .ttl { flex: 1; min-width: 0; display: grid; }
+.titlerow .ttl b { font-size: 15px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.titlerow .ttl small { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.tbtn { width: 44px; height: 44px; flex: none; border: 0; border-radius: 12px; display: grid; place-items: center; background: none; color: var(--text); padding: 0; }
+.tbtn:disabled { color: var(--muted); opacity: .4; cursor: default; }
+.tbtn.ring { border: 1px solid var(--line); background: var(--surface-solid); }
+.spacer { flex: 1; }
+/* the warning row: only when there's something to read before you go */
+.warnrow { display: flex; align-items: center; gap: 10px; min-height: 46px; width: 100%; margin: 2px 0 2px; padding: 4px 10px; border: 1px solid var(--warn-line); border-radius: 12px; background: var(--warn-soft); text-align: left; }
+.warnrow .ic { color: var(--warn); }
+.warnrow span { flex: 1; min-width: 0; display: grid; }
+.warnrow b { font-size: 14px; }
+.warnrow small { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the drawing toolbox: floating on phones (docked into the sheet when the map is too narrow), attached to the panel on desktops */
+.float { position: absolute; left: 8px; z-index: 6; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 16px; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); }
+.dockbox { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; min-height: 50px; border-bottom: 1px solid var(--line); margin: 0 -2px 2px; padding-bottom: 4px; }
+.modebtn { height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); text-align: left; min-width: 0; }
+.dockbox .modebtn { flex: 1 1 150px; } /* its name stays whole: undo and redo go to a line of their own first */
+.modebtn .two { display: grid; line-height: 1.15; min-width: 0; }
+.modebtn .two b { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modebtn .two small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modebtn[aria-expanded="true"] { background: var(--accent-soft); }
+.seg { display: flex; gap: 2px; padding: 2px; border-radius: 12px; background: var(--surface-2); }
+.seg button { height: 40px; min-width: 44px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 10px; background: none; display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 650; color: var(--muted); }
+.seg button[aria-pressed="true"], .seg button[aria-checked="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.16), inset 0 0 0 1px var(--line); }
+.seg.small button { height: 36px; position: relative; }
+.seg.small button::after { content: ""; position: absolute; inset: -4px 0; }
+/* desktop: the toolbar hangs off the panel's edge, one surface with it */
+.deskbar { position: absolute; z-index: 6; top: 64px; left: 415px; height: 56px; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 8px; border-radius: 0 16px 16px 0; background: var(--surface); backdrop-filter: blur(14px); box-shadow: 8px 6px 20px rgba(16, 24, 20, 0.12); border-left: 1px solid var(--line); }
+.deskbar .seg button { height: 40px; padding: 0 10px; color: var(--text); font-weight: 600; }
+.deskbar .seg button .ic { color: var(--muted); }
+.deskbar .seg button[aria-checked="true"] .ic { color: var(--accent); }
+.deskbar .sep { width: 1px; height: 28px; background: var(--line); margin: 0 3px; }
+.deskbar .lab { font-size: 12.5px; color: var(--muted); font-weight: 600; padding-left: 2px; }
+.deskbar .stylebtn { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); font-weight: 650; font-size: 13.5px; text-align: left; }
+.deskbar .stylebtn .two { display: grid; line-height: 1.1; }
+.deskbar .stylebtn small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.deskbar .btn { height: 40px; padding: 0 12px; }
+.deskbar .tbtn { width: 40px; height: 40px; }
+.deskbar .say { font-size: 12.5px; color: var(--muted); max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 4px; }
+.kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; border: 1px solid var(--line); font: 600 11px/1 ui-monospace, Menlo, monospace; color: var(--muted); background: var(--surface-2); }
+.tip { position: absolute; z-index: 20; max-width: 280px; padding: 8px 10px; border-radius: 10px; background: #1c2420; color: #fff; font-size: 12.5px; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.25); pointer-events: none; }
+.dark .tip { background: #e8ece9; color: #111; }
+.tip b { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 13px; }
+.tip .kbd { color: inherit; background: transparent; border-color: currentColor; opacity: .8; }
+
+/* menus */
+.popmenu { position: absolute; z-index: 9; width: 316px; max-width: calc(100% - 16px); padding: 6px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line); display: flex; flex-direction: column; max-height: calc(100% - 80px); overflow: auto; overscroll-behavior: contain; transform-origin: var(--origin, bottom left); animation: pop 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes pop { from { opacity: 0; transform: scale(.97); } }
+.popmenu .mh { padding: 8px 10px 4px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.popmenu .mhead { padding: 8px 10px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.popmenu .mhead b { display: block; font-size: 15px; overflow-wrap: anywhere; }
+.popmenu .mhead small { display: flex; align-items: center; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.popmenu .mi { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 10px; border: 0; border-radius: 10px; background: none; color: var(--text); font-size: 14.5px; text-align: left; width: 100%; }
+.popmenu .mi > span { flex: 1; min-width: 0; display: grid; }
+.popmenu .mi b { font-weight: 650; }
+.popmenu .mi small { font-size: 12.5px; color: var(--muted); }
+.popmenu .mi .ic { color: var(--muted); }
+.popmenu .mi[aria-checked="true"] { background: var(--accent-soft); }
+.popmenu .mi[aria-checked="true"] .ic { color: var(--accent); }
+.popmenu .mi .tick { color: var(--accent); }
+.popmenu .mi.danger, .popmenu .mi.danger .ic { color: var(--danger); }
+.popmenu .mi:disabled { opacity: .5; }
+.popmenu hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+.popmenu hr.gap { margin: 10px 0 6px; }
+.popmenu .note { padding: 2px 10px 6px; font-size: 12.5px; color: var(--muted); }
+.popmenu .mi.compact { min-height: 44px; }
+.stylechips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 8px 6px; }
+.stylechips .chip { white-space: normal; height: auto; min-height: 40px; padding-block: 4px; }
+@media (hover: hover) and (pointer: fine) { .popmenu .mi:not(:disabled):hover, .tbtn:not(:disabled):hover, .chip:hover, .btn:not(:disabled):hover, .wpr:hover { background-color: var(--surface-2); } .btn.primary:not(:disabled):hover { background: var(--accent-bg); filter: brightness(1.08); } }
+
+/* round trip */
+.rt { display: flex; flex-direction: column; gap: 6px; padding-bottom: 2px; }
+.rt .row { min-height: 44px; }
+.stepper { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.len { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); }
+.len input { width: 3.4em; border: 0; background: none; color: var(--text); font: 750 18px/1 system-ui, sans-serif; text-align: right; font-variant-numeric: tabular-nums; outline: 0; } /* 16 px or more: no zoom on iOS */
+.len span { color: var(--muted); font-size: 14px; }
+.sel { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font-weight: 600; font-size: 13.5px; position: relative; }
+.sel::after { content: ""; position: absolute; inset: -2px 0; }
+.sel select { position: absolute; inset: 0; opacity: 0; width: 100%; }
+.loopcards { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 6px; margin: 0 -12px; padding-left: 12px; scroll-padding-left: 12px; }
+.lc { flex: none; width: min(250px, 82%); scroll-snap-align: start; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-solid); text-align: left; }
+.lc.on { border: 2px solid var(--accent); padding: 9px 11px; }
+.lc .h { display: flex; align-items: center; gap: 8px; }
+.lc .dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 13px; }
+.lc .h b { font-size: 17px; }
+.lc .best { margin-left: auto; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.lc .l { font-size: 13px; }
+.lc .l.m { color: var(--muted); font-size: 12.5px; }
+.lc .btn { margin-top: 4px; }
+.lc.more { justify-content: center; align-items: center; text-align: center; width: 150px; color: var(--muted); }
+.progress { position: relative; height: 4px; border-radius: 2px; background: rgba(255,255,255,.35); overflow: hidden; width: 100%; }
+.progress i { position: absolute; inset: 0; width: var(--p, 33%); background: #fff; }
+
+/* the profile, the tabs */
+.prof { margin: 2px 0 4px; }
+.prof-top { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12.5px; color: var(--muted); }
+.sw { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-left: auto; color: var(--text); }
+.sw i { width: 38px; height: 24px; border-radius: 999px; background: var(--line); position: relative; }
+.sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.chart { display: block; width: 100%; height: 92px; }
+.phone .chart { height: 58px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 -2px; }
+.tabs button { flex: 1; min-width: 0; height: 46px; border: 0; background: none; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 650; font-size: 14.5px; color: var(--muted); border-bottom: 3px solid transparent; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.badge { flex: none; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 750; }
+.badge.b1 { background: var(--warn); color: #fff; }
+.dark .badge.b1 { color: #1a1a1a; }
+.badge.b2 { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+.badge.b3 { background: none; color: var(--unk); box-shadow: inset 0 0 0 1.5px var(--unk); border-radius: 50%; padding: 0; min-width: 22px; justify-content: center; }
+.body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; margin: 0 -12px; padding: 0 12px 12px; }
+.desk .body { margin: 0 -16px; padding: 0 16px 16px; }
+.sec-h { width: 100%; border: 0; background: none; padding: 0; display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 12px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.banner { display: flex; align-items: center; gap: 10px; margin: 8px 0; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
+.banner span { flex: 1; }
+
+/* waypoints */
+.wptools { display: flex; gap: 8px; align-items: center; margin: 4px 0 6px; flex-wrap: wrap; }
+.find { flex: 1 1 150px; display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--muted); min-width: 0; }
+.find input { flex: 1; min-width: 0; border: 0; background: none; outline: 0; font-size: 16px; color: var(--text); }
+.selbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; min-height: 48px; margin: 0 -12px; padding: 2px 8px 2px 12px; background: var(--surface-solid); border-bottom: 1px solid var(--line); box-shadow: 0 6px 10px -8px rgba(0,0,0,.3); }
+.desk .selbar { margin: 0 -16px; padding: 2px 10px 2px 16px; }
+.selbar .nm { flex: 1; min-width: 0; display: grid; }
+.selbar .nm b { font-size: 14px; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.selbar .nm small { font-size: 12px; color: var(--muted); }
+.wpl { list-style: none; margin: 0; padding: 0; }
+.wpr { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 4px 4px 4px 2px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; color: var(--text); }
+.wpr .gr { color: var(--muted); opacity: 0; width: 16px; flex: none; }
+.desk .wpr:hover .gr, .desk .wpr:focus-visible .gr { opacity: .8; }
+.mk { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--text); display: grid; place-items: center; font-size: 11.5px; font-weight: 800; flex: none; background: var(--surface-solid); font-variant-numeric: tabular-nums; }
+.mk.start { background: #16a34a; border-color: #fff; box-shadow: 0 0 0 1px #16a34a; }
+.mk.end { background: #111; border-color: #fff; box-shadow: 0 0 0 1px #111; border-radius: 6px; }
+.wpr .nm { flex: 1; min-width: 0; display: grid; }
+.wpr .nm b { font-size: 14.5px; font-weight: 600; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.wpr .nm small { font-size: 12.5px; color: var(--muted); }
+.wpr .tags { display: flex; gap: 4px; color: var(--muted); flex: none; }
+.wpsel { margin: 0 -12px; padding: 4px 12px 10px; background: var(--accent-soft); border-top: 2px solid var(--accent); }
+.desk .wpsel { margin: 0 -16px; padding: 4px 16px 10px; }
+.wpsel .wpr { border-top: 0; }
+.wpsel .mk { box-shadow: 0 0 0 3px var(--accent); }
+.namefield { width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); font-size: 16px; font-weight: 650; color: var(--text); margin-bottom: 2px; }
+.legline { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 4px 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); text-align: left; font-size: 13.5px; }
+.legline { padding-block: 6px; }
+.legline span { flex: 1; min-width: 0; }
+.legset { display: flex; flex-direction: column; gap: 8px; margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface-solid); border: 1px solid var(--line); }
+/* the selected point's actions: small to look at (32 px), 44 px to touch (::after), grouped */
+.wpacts { display: flex; align-items: center; gap: 4px 6px; flex-wrap: wrap; margin-top: 6px; }
+.wpacts .act { position: relative; height: 32px; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; border: 0; border-radius: 9px; background: var(--surface-solid); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); font-size: 13.5px; font-weight: 600; }
+.wpacts .act::after { content: ""; position: absolute; inset: -6px -3px; }
+.wpacts .act.ico { width: 38px; padding: 0; justify-content: center; } /* 38 + 2 × 3 = a 44 px target */
+.wpacts .act[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.wpacts .act:disabled { opacity: .4; }
+.wpacts .pair { display: inline-flex; gap: 2px; padding: 0 3px; }
+.wpacts .danger { color: var(--danger); margin-left: auto; box-shadow: none; background: none; }
+.wpacts .danger .ic { color: var(--danger); }
+.stopline { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-size: 13.5px; }
+.stopline > .ic { color: var(--muted); }
+.len.sm { height: 36px; padding: 0 8px; } .len.sm input { width: 2.4em; font-size: 16px; }
+.legset .lrow { display: flex; align-items: center; gap: 10px; min-height: 40px; font-size: 13.5px; }
+.legset .lrow > span:first-child { width: 3.6em; color: var(--muted); flex: none; }
+.legline .own { font-size: 11.5px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; }
+.moveto { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; font-size: 13.5px; }
+.tools2 { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0 4px; }
+.tools2 .chip.danger { color: var(--danger); }
+.tools2 .chip.danger .ic { color: var(--danger); }
+.howgo { border-top: 1px solid var(--line); margin-top: 8px; }
+.listmore { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; min-height: 44px; color: var(--accent); font-weight: 650; }
+
+/* Check: by how serious, and how sure */
+.chk-sum { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
+.chk-sum span { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 650; background: var(--surface-2); }
+.chk-sum .s1 { background: var(--warn-soft); color: var(--text); box-shadow: inset 0 0 0 1px var(--warn-line); }
+.chk-sum .s1 .ic { color: var(--warn); }
+.chk-sum .s3 .ic { color: var(--unk); }
+.tier { margin-top: 10px; }
+.tier h3 { display: flex; align-items: center; gap: 8px; margin: 0; min-height: 40px; font-size: 15px; }
+.tier h3 .badge { margin-left: 2px; }
+.tsub { margin: -4px 0 6px 28px; font-size: 12.5px; color: var(--muted); }
+.t1 h3 .ic { color: var(--warn); }
+.t2 h3 .ic { color: var(--look); }
+.t3 h3 .ic { color: var(--unk); }
+.wi { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.t1 .wi { padding: 10px; margin-bottom: 8px; border: 1px solid var(--warn-line); border-radius: 12px; background: var(--warn-soft); }
+.t3 .wi { padding: 10px; margin-bottom: 8px; border: 1.5px dashed var(--unk); border-radius: 12px; background: var(--unk-soft); }
+.wi > .ic { margin-top: 2px; }
+.t1 .wi > .ic { color: var(--warn); }
+.t2 .wi > .ic { color: var(--look); }
+.t3 .wi > .ic { color: var(--unk); }
+.wi .tx { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.wi .tx b { font-size: 14.5px; }
+.wibtn { all: unset; display: grid; gap: 2px; cursor: pointer; min-height: 44px; align-content: center; border-radius: 8px; }
+.wibtn:focus-visible { outline: 2.5px solid var(--focus); outline-offset: 2px; }
+.wi .tx .wh { font-size: 13px; color: var(--muted); }
+.wi .tx .nt { font-size: 13px; }
+.src { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; color: var(--muted); margin-top: 2px; }
+.src .ic { color: var(--muted); }
+.wi .wa { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.coverage { margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }
+.coverage p { margin: 0 0 8px; }
+.coverage ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.coverage li { display: flex; align-items: center; gap: 8px; }
+.coverage li small { color: var(--muted); margin-left: auto; text-align: right; }
+.ok { color: var(--accent); }
+.bad { color: var(--warn); }
+
+/* Go, later things, toasts */
+.gosec { padding: 6px 0; border-top: 1px solid var(--line); }
+.gosec h4 { margin: 8px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.later { opacity: .75; border: 1.5px dashed var(--line); border-radius: 12px; padding: 8px 10px; margin: 8px 0; font-size: 13px; }
+.toast { position: absolute; z-index: 12; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100% - 24px); width: max-content; min-height: 48px; padding: 4px 6px 4px 14px; border-radius: 14px; background: #1c2420; color: #fff; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+.dark .toast { background: #eef2ef; color: #111; }
+.toast > span { flex: 1; min-width: 0; }
+.toast button { flex: none; height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(255,255,255,.14); color: inherit; font-weight: 750; }
+.dark .toast button { background: rgba(0,0,0,.08); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mapinfo { position: absolute; z-index: 7; width: 240px; padding: 10px 12px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); font-size: 13px; }
+.mapinfo b { display: block; font-size: 14px; }
+
+/* press and hover: on press; hover only with a mouse; no grey flash */
+.screen button, .screen [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 120ms ease; cursor: pointer; }
+.screen button:active:not(:disabled) { transform: scale(0.97); }
+.screen :focus-visible { outline: 2.5px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .screen button { transition: none; } .popmenu { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .pl, .float, .deskbar { background: var(--surface-solid); backdrop-filter: none; } }
+@media (prefers-contrast: more) { .pl, .float, .deskbar, .popmenu { background: var(--surface-solid); box-shadow: 0 0 0 2px var(--text); } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/></symbol>
+  <symbol id="i-line" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5 17.5 6.5"/></symbol>
+  <symbol id="i-water" viewBox="0 0 24 24"><path d="M2.5 17c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><path d="M2.5 21c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><circle cx="5" cy="9" r="1.8"/><circle cx="19" cy="5" r="1.8"/><path d="M6.6 8.2c3-1.5 6.8-2.2 10.6-2.6" stroke-dasharray="2.2 2"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><path d="M8 15.5c2-1 2.5-4 4.5-4.5s2.5 2 3.5 1"/></symbol>
+  <symbol id="i-roundtrip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" stroke-dasharray="3 2.2"/><circle cx="12" cy="4.5" r="2.2" fill="currentColor" stroke="none"/><path d="m15.5 9.5 2-1.6.4 2.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5 9.5 18 20 6.5"/></symbol>
+  <symbol id="i-checkt" viewBox="0 0 24 24"><path d="M12 3 3 6v6c0 4.5 3.8 7.8 9 9 5.2-1.2 9-4.5 9-9V6l-9-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4.5M12 17.5v.5"/></symbol>
+  <symbol id="i-warnf" viewBox="0 0 24 24"><path d="M12 2.5 1.5 20.5h21L12 2.5Z" fill="currentColor" stroke="none"/><path d="M12 9.5v5M12 17.4v.4" stroke="#fff" stroke-width="2.2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-unk" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3 2.4"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.4"/></symbol>
+  <symbol id="i-live" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M7.5 7.5a6.5 6.5 0 0 0 0 9M16.5 7.5a6.5 6.5 0 0 1 0 9"/></symbol>
+  <symbol id="i-mapsrc" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z"/><path d="M9 4v14M15 6v14"/></symbol>
+  <symbol id="i-est" viewBox="0 0 24 24"><path d="M4 9c2.7-2 5.3 2 8 0s5.3-2 8 0M4 15c2.7-2 5.3 2 8 0s5.3-2 8 0"/></symbol>
+  <symbol id="i-reverse" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"/></symbol>
+  <symbol id="i-paddle" viewBox="0 0 24 24"><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M5 13.5h14l-2 2.5H7Z"/><path d="m6 5 12 9M4.5 3.8 7 5.7M17 13.3l2.5 1.9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-needle" viewBox="0 0 24 24"><path d="m12 3 3.2 9H8.8Z" fill="#e11d48" stroke="#e11d48"/><path d="m12 21-3.2-9h6.4Z"/></symbol>
+  <symbol id="i-weather" viewBox="0 0 24 24"><path d="M5.44 13.77A6 6 0 1 1 14.62 7.35"/><path d="M8.8 5.4v3.4H6.4"/><path d="M10.6 21a3.6 3.6 0 0 1-.13-7.2 4.6 4.6 0 0 1 9.13.8 3.2 3.2 0 0 1 0 6.4Z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></symbol>
+  <symbol id="i-gpx" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Z"/><path d="M14 3v5h5"/><path d="M12 11v6M9.5 14.5 12 17l2.5-2.5"/></symbol>
+  <symbol id="i-offline" viewBox="0 0 24 24"><path d="M7 18.5a4.5 4.5 0 1 1 1-8.9 6 6 0 0 1 11.3 1.9 3.8 3.8 0 0 1-1.3 7"/><path d="M12 11v9M8.8 16.8 12 20l3.2-3.2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="i-trip" viewBox="0 0 24 24"><path d="m3 6.5 6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5V6.5Z"/><path d="M7 14.5c1.5-1 2-3 4-3.5s3 1.5 5.5-1" stroke-dasharray="2.2 1.8"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5"/><path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15L19 12 7 4.5Z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-path" viewBox="0 0 24 24"><path d="M6 24c4-1 5-6 9-7s6 2 11-9" transform="scale(.75)" stroke-dasharray="4 3"/></symbol>
+  <symbol id="i-moveto" viewBox="0 0 24 24"><path d="M4 7h10M4 12h7M4 17h10"/><path d="m16 10 4 3-4 3"/></symbol>
+</svg>
+
+<main class="cv">
+  <header class="cv-head">
+    <h1>A calmer route planner (#233)</h1>
+    <p>2026-10-17. Builds on phase 24's review and the choices made from its first mock-up (B: the tools float, a one-row peek, only the selected waypoint's buttons). The reasons, the plan to build it and what Done means are in <code>docs/plans/issue-233-calmer-planner.md</code>. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden.</p>
+    <p><b>Every frame can be tapped</b> and keeps its own state; <b>Reset</b> starts it again. Tap the map to add points, try the toolbox, the round trip, Done and Edit, More, Check and the waypoint list. The switches at the bottom apply to every frame: the worst case (long Finnish names, 52 points, long numbers, many warnings), language (rough Finnish and Swedish, only to test the room words take) and theme.</p>
+    <p><b>Final, 2026-10-17:</b> the layout and the interactions here are decided. <b>What's drawn simply on purpose</b> (the profile, Climbs, On the route, On the map, Go's time and the weather along the route, and parts of the leg editor) stays exactly as Polku has it today: the mock-up shows where things go, not everything in them. The plan lists what changes, what moves and what stays as it is.</p>
+  </header>
+
+  <section class="cv-q" aria-labelledby="rules-h">
+    <h2 id="rules-h">What's decided</h2>
+    <ol>
+      <li><b>Drawing and routing told apart.</b> The toolbox holds how the <i>next leg</i> is drawn (Follow paths, Straight line, Over water), undo, redo and More. The route style (Balanced, Flowy trails…) is a setting of the <i>whole route</i>: it shows under Follow paths, because it's what Follow paths prefers, and has its own labelled group of chips. Phones: one drop-down. Desktops: a labelled toolbar on the panel's edge, with tooltips and keys, and the route's actions at its end: Reverse, Back to start, Show the whole route, More, Done.</li>
+      <li><b>Round trips in the peek</b> after the first point: presets one tap away, any distance or time, then a green <b>Make 3 loops</b>. Nothing on the map; a tap on the map still adds the next point.</li>
+      <li><b>More (⋯)</b> for the whole route, at the end of the toolbox and the toolbar: take it along, change the whole route, and Clear apart. The route's summary shows the route.</li>
+      <li><b>Done means done editing.</b> The route stays open to read, check and take along (the route's view); Edit goes back, in the same place. ✕ puts it away; nothing is lost either way. Phones: Done at the summary's right, at the thumb; desktops: at the toolbar's end.</li>
+      <li><b>Show the whole route</b> is always there while a route is on the map: in the map's column under Locate on phones, in the toolbar on desktops (and F).</li>
+      <li><b>Check by how serious and how sure:</b> Read before you go, Worth a look, Not checked, and where each comes from.</li>
+      <li><b>Waypoints:</b> only the selected one has buttons, no Remove on the others; finding, stepping, moving and undoing in lists of 50 and more.</li>
+    </ol>
+  </section>
+
+  <section class="cv-row" id="s0">
+    <h2>0 · Try it</h2>
+    <p>The whole way through, on a phone and a desktop: tap the map for a first point, try a round trip or tap again for a route, change the drawing mode, press Done, open More, swipe… (here: press the handle) for the sheet's sizes, and look at Check.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="play-phone" data-st='{"stage":"start"}'><figcaption><b>Phone, 390 × 844</b>From an empty map. The handle steps the sheet through its sizes (in Polku it's the one swipe of #96).</figcaption></figure>
+      <figure class="fr desk" id="play-desk" data-st='{"stage":"start"}'><figcaption><b>Desktop, 1440 × 900</b>The same, with the toolbar on the panel's edge. Keys: P, S and W pick the drawing mode, Ctrl+Z and Ctrl+Shift+Z undo and redo, E is Done or Edit, F shows the whole route. Hover the toolbar for its tooltips.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s1">
+    <h2>1 · The toolbox: how the next leg is drawn</h2>
+    <p><b>Decided: one drop-down on phones; the labelled toolbar with tooltips on desktops.</b> <b>Two different ideas, two places.</b> The drawing mode is a tool: it decides how the <i>next</i> leg you draw is made, and leaves the drawn legs alone (a leg's own mode is changed by tapping it on the map, as today). The route style is a setting: it decides which ways Follow paths prefers, for the <i>whole</i> route, and changing it routes the route again. So the mode is the button, and the style is its second line, shown only for the modes it applies to; in the menu the modes are a list with what each does, and the styles a set of chips under "Route style · the whole route".</p>
+    <ul>
+      <li><b>Phones:</b> one button with the mode's icon and name (never an icon alone), undo, redo and More (⋯), floating at the bottom left above the sheet. Where it can't clear the map's buttons (narrow phones, long words, 200 % zoom) or with the sheet raised high, it docks into the sheet as its first row instead. In the route's view only More stays.</li>
+      <li><b>Desktops:</b> the toolbar hangs off the panel's edge, one surface with it, so it reads as part of planning, not another floating panel. The three modes with their names, the style as its own labelled control, undo and redo; then the route's actions: Reverse, Back to start and Show the whole route as icons with tooltips; then More and Done. Tooltips give the key and one sentence; keyboard focus shows them too. With less room, Reverse and Back to start fold into More (they're there anyway), then the style's label goes. In the route's view the toolbar keeps Show the whole route, More and Edit.</li>
+      <li><b>States:</b> the mode in use is filled and ticked, not only coloured; undo and redo show from the first change and are disabled (not hidden) when there's nothing to undo or redo; at the start there's nothing to show but the mode.</li>
+    </ul>
+    <div class="cv-frames">
+      <figure class="fr phone" id="tb-phone" data-st='{"stage":"route"}'><figcaption><b>Phone: drawing</b>The mode with its style, undo, redo. Tap the mode.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-calm" data-st='{"stage":"route","calm":true}'><figcaption><b>Nothing to read before you go</b>The peek is one row: about 91 % of the map in view, as in the first B. The row above the numbers comes only with something to read.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-menu" data-st='{"stage":"route","pop":"modes"}'><figcaption><b>The mode's menu</b>"Draw the next leg": each mode with what it does. Under it, apart, the route style for the whole route, as chips. A mode is two taps (one today); a style is two, as today.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-style" data-st='{"stage":"route","style":"flowy","toast":"style"}'><figcaption><b>A style picked</b>Flowy trails: the whole route is routed again, with Undo in a note; the mode's second line says the style.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-200" data-st='{"stage":"route","z":2}'><figcaption><b>At 200 % zoom</b>(a 390 phone is 195 px wide): the toolbox docks into the sheet, the numbers wrap, nothing is cut. The map's own buttons don't fit at this zoom: that's #73's to solve.</figcaption></figure>
+      <figure class="fr desk" id="tb-desk" data-st='{"stage":"route","tip":"line"}'><figcaption><b>Desktop: the toolbar on the panel's edge</b>Shown with Straight line's tooltip. Drawing on the left; Reverse, Back to start, Show the whole route; More and Done at the end. Clear stays in More. When the panel docks right or at the bottom (22b), the toolbar hangs off its inner edge the same way.</figcaption></figure>
+      <figure class="fr desk" id="tb-desk-tip" data-st='{"stage":"route","tip":"fit"}'><figcaption><b>Show the whole route's tooltip</b>F does the same. On phones it's in the map's column, under Locate, whenever a route is on the map.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s2">
+    <h2>2 · Round trips, in the peek</h2>
+    <p>After the first point the peek says what to do next (tap the map for the next point) and, under it, offers a round trip from here: the sport's lengths, and Other. A tap on a length doesn't make loops yet: it opens the round trip with that length chosen and a green <b>Make 3 loops</b>, so a thumb that misses the map never starts three routing calls. Any distance or time is − / + or typed; the direction and the start are there too, as today. A tap on the map still adds the next point while the round trip is closed, and moves the start while it's open (and does nothing while the loops are being made, #109).</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="rt-first" data-st='{"stage":"first"}'><figcaption><b>Right after the first point</b>The next point is the first thing; the loops are a row under it. Nothing covers the map.</figcaption></figure>
+      <figure class="fr phone" id="rt-form" data-st='{"stage":"first","rt":{"open":true,"val":20}}'><figcaption><b>A length tapped (20 km)</b>Presets, − / + (5 km steps for bikes, 1 km on foot or water), the direction, and Make 3 loops at the thumb.</figcaption></figure>
+      <figure class="fr phone" id="rt-time" data-st='{"stage":"first","rt":{"open":true,"unit":"time","val":90}}'><figcaption><b>By time</b>The same, in hours and minutes (15-minute steps).</figcaption></figure>
+      <figure class="fr phone" id="rt-making" data-st='{"stage":"first","rt":{"open":true,"val":20,"making":2}}'><figcaption><b>Making them</b>Progress in the button; the map waits.</figcaption></figure>
+      <figure class="fr phone" id="rt-results" data-st='{"stage":"loops","rt":{"open":true,"val":10,"results":true,"pick":0}}'><figcaption><b>Three loops</b>Cards side by side, the next one peeking in; a tap on a card or a line picks it (#89), Use loop A takes it.</figcaption></figure>
+      <figure class="fr desk" id="rt-desk" data-st='{"stage":"first","rt":{"open":true,"val":20}}'><figcaption><b>Desktop</b>The same in the panel, under the next point's line.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s3">
+    <h2>3 · More (⋯), for the whole route</h2>
+    <p><b>Decided: More (⋯),</b> familiar, compact, and not tied to one kind of action. It's the last button of the toolbox on phones (beside the drawing tools, not in the route's summary) and of the toolbar on desktops; in the route's view it stays there, the drawing tools gone. Grouped by what it's for: <b>take it along</b> (a share link, a GPX file, the map saved for no signal), <b>the whole route</b> (a round trip from the start, reverse, back to start, a file to plan on), and <b>Clear route</b> apart, in red, after a gap, with Undo. Its head says the route is kept on this device. What's also somewhere else, on purpose: Take it along in Go, Reverse and Back to start in Route's tools (and the desktop toolbar), Import at the start. Moving the panel stays with the panel (22b).</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="trip-phone" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Phone</b>⋯ at the toolbox's end; the menu opens upward from it, clear of the map's buttons.</figcaption></figure>
+      <figure class="fr phone" id="trip-clear" data-st='{"stage":"start","toast":"cleared","hist":1}'><figcaption><b>After Clear route</b>The start again, with Undo in a note and in the toolbox. Nothing asks first: Undo is the safety.</figcaption></figure>
+      <figure class="fr desk" id="trip-desk" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Desktop</b>⋯ at the toolbar's end, beside Done; the menu opens under it.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s4">
+    <h2>4 · Done, the route's view, and coming back</h2>
+    <p>Finishing isn't one thing. <b>Done</b> ends editing: the toolbox goes, a tap on the map shows what's there instead of adding a point, and the route stays open to read, check and take along. That's <b>the route's view</b>: the route's name, its numbers, and <b>Edit</b> to go back, where Done was (the summary's right on phones, the toolbar's end on desktops); More stays. <b>✕</b> puts the route away (it stays on the map; Plan brings it back as it was). Nothing is lost by any of them: the route is kept on this device all along, and undo outlives Done.</p>
+    <table class="cv-t">
+      <thead><tr><th>Someone wants to…</th><th>Today</th><th>In this design</th></tr></thead>
+      <tbody>
+        <tr><td>stop drawing and look at the map</td><td>Done (the planner closes)</td><td>Done: the route's view; map taps inspect the map</td></tr>
+        <tr><td>save the route</td><td>nothing to do (the last route is kept), but nothing says so</td><td>the same, and More and the view say "kept on this device"; Save offline is for no signal</td></tr>
+        <tr><td>get ready to go</td><td>Go: departure, weather, Take it along</td><td>the same Go, from the view as from editing; later (23b) Start in Go and in the view</td></tr>
+        <tr><td>change their mind</td><td>Plan, then edit</td><td>Edit (one tap, where Done was)</td></tr>
+        <tr><td>close by accident</td><td>Plan reopens it; after a reload the planner is closed (#238)</td><td>a note "Planner closed · Open"; Plan reopens as it was left; after a reload too (#238)</td></tr>
+        <tr><td>come back to an earlier route</td><td>the last one is back; others only through an offline area, a link or a GPX</td><td>the same now; later, Your routes (#157) at the start and in More</td></tr>
+      </tbody>
+    </table>
+    <div class="cv-frames">
+      <figure class="fr phone" id="fin-edit" data-st='{"stage":"route"}'><figcaption><b>Editing</b>Done at the summary's right, at the thumb: the toolbox has no room for it beside More, and Done belongs with the route it finishes.</figcaption></figure>
+      <figure class="fr phone view" id="fin-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>After Done: the route's view</b>Its name, "kept on this device", ✕; the numbers and Edit. The drawing tools go; More stays. Tap the map: it shows what's there.</figcaption></figure>
+      <figure class="fr phone view" id="fin-view-go" data-st='{"stage":"route","mode":"view","sheet":"half","tab":"go"}'><figcaption><b>The view, getting ready</b>Go as today; Start comes here in 23b.</figcaption></figure>
+      <figure class="fr phone closed" id="fin-closed" data-st='{"stage":"route","mode":"closed","toast":"closed"}'><figcaption><b>Put away</b>The route stays on the map; a note offers it back; Plan opens it as it was.</figcaption></figure>
+      <figure class="fr phone" id="fin-later" data-st='{"stage":"start","later":true}'><figcaption><b>Later (#157): Your routes</b>The start offers routes kept on this device, offline areas' routes among them. Not part of #233: shown so the model has room for it.</figcaption></figure>
+      <figure class="fr desk view" id="fin-desk-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>Desktop: the route's view</b>The toolbar keeps Show the whole route, More and Edit (where Done was, at its end).</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s5">
+    <h2>5 · Check: how serious, and how sure</h2>
+    <p>A count alone doesn't say whether to worry. Check sorts what's already found into three groups, each with its own icon, word and shape (never colour alone): <b>Read before you go</b> (what can hurt, stop you or turn you back: shipping lanes, rough water, ice, the dark, road works, no access), <b>Worth a look</b> (sections to know about: steep, technical, carries, steps, ways marked private, trail details), and <b>Not checked</b> (a source that didn't answer, an estimate standing in). Each item says where it comes from: <i>live</i>, <i>from the map</i> (may be wrong), an <i>estimate</i>, or <i>calculated</i>. The end of Check says what was looked at, and that nothing listed doesn't mean open, safe or allowed. The tab's badge and a row in the peek follow the most serious group. Nothing new is checked: these are today's Heads-up items, sorted.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="chk-phone" data-st='{"stage":"route","sheet":"half","tab":"check"}'><figcaption><b>Check, MTB</b>One to read before you go (road works, live), four worth a look; a way marked private says what that means in Finland.</figcaption></figure>
+      <figure class="fr phone" id="chk-paddle" data-st='{"stage":"route","sport":"paddle","sheet":"half","tab":"check"}'><figcaption><b>Check, paddle</b>A shipping lane and rough water first; rocks from OpenStreetMap didn't answer, so the route says it wasn't checked for them.</figcaption></figure>
+      <figure class="fr phone" id="chk-peek" data-st='{"stage":"route","sport":"paddle"}'><figcaption><b>The peek, paddle</b>A row says there's something to read before you go, in words, and opens Check. It's there only then.</figcaption></figure>
+      <figure class="fr desk" id="chk-desk" data-st='{"stage":"route","tab":"check"}'><figcaption><b>Desktop</b>The same groups in the panel.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s6">
+    <h2>6 · Waypoints, and long routes</h2>
+    <p>Only the selected point has buttons: its name, its stop, the leg after it (today's leg editor: its sport, how it's drawn and its style, each the route's unless set here), move earlier or later or to a number, and Remove, last and apart. The buttons are small to look at and 44 px to touch. The other rows are one button each: tap to select. There's no Remove on them, so a tap meant for a row never deletes. For long routes: a search, Key points (start, finish, stops, changes of sport, named points, legs of their own) or All, a bar that keeps the selected point in sight with previous and next, and Undo for every change. The map and the list select together: a tap on a marker selects its row.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="wp-phone" data-st='{"stage":"route","sheet":"full","tab":"route","sel":1,"legOpen":true,"legStyle":{"1":"flowy"}}'><figcaption><b>Three points, Via 1 selected</b>Its next leg open: the leg's sport, how it's drawn and its style, each the route's unless set here. This leg has Flowy trails of its own, so it keeps it when the route's style changes. Stop, Earlier and Later, Remove: small to look at, 44 px to touch.</figcaption></figure>
+      <figure class="fr phone" id="wp-long" data-st='{"stage":"route","sheet":"full","tab":"route","long":true,"sel":23}'><figcaption><b>52 points</b>The bar on top keeps 23 in sight while the list scrolls; ‹ › step through the points, and the map follows.</figcaption></figure>
+      <figure class="fr phone" id="wp-move" data-st='{"stage":"route","sheet":"full","tab":"route","long":true,"sel":23,"moveTo":true}'><figcaption><b>Move to a number</b>Instead of dragging across five screens.</figcaption></figure>
+      <figure class="fr phone" id="wp-key" data-st='{"stage":"route","sheet":"full","tab":"route","long":true,"sel":23,"filter":"key"}'><figcaption><b>Key points</b>The points that carry something; the shaping points fold away.</figcaption></figure>
+      <figure class="fr desk" id="wp-desk" data-st='{"stage":"route","tab":"route","long":true,"sel":23}'><figcaption><b>Desktop, 52 points</b>Grips show on hover; ↑ ↓ select, Alt+↑ ↓ move, Delete removes the selected point (with Undo), Enter renames.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s7">
+    <h2>7 · The worst cases</h2>
+    <p>The same frames with the worst case on: long Finnish and Swedish words, a 123 km route of 52 points with seven hours of time, many warnings, a narrow phone, 200 % zoom, dark. Use the switches at the bottom on any frame too.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="st-360" data-st='{"stage":"route","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish, worst case</b>The numbers wrap onto their own line; the toolbox still clears the map's buttons.</figcaption></figure>
+      <figure class="fr phone" id="st-360-menu" data-st='{"stage":"route","w":360,"h":740,"lang":"fi","worst":true,"pop":"modes"}'><figcaption><b>The mode's menu in Finnish at 360</b>Long words wrap; nothing is cut off.</figcaption></figure>
+      <figure class="fr phone" id="st-200-half" data-st='{"stage":"route","z":2,"sheet":"half","tab":"check","worst":true}'><figcaption><b>200 % zoom, Check</b>Everything stacks; the sheet scrolls.</figcaption></figure>
+      <figure class="fr phone dark" id="st-dark" data-st='{"stage":"route","sheet":"half","tab":"check","worst":true,"theme":"dark"}'><figcaption><b>Dark, worst case</b>The groups keep their shapes and icons.</figcaption></figure>
+      <figure class="fr phone" id="st-sv-rt" data-st='{"stage":"first","rt":{"open":true,"val":20},"lang":"sv","w":360,"h":740}'><figcaption><b>Swedish, the round trip at 360</b></figcaption></figure>
+      <figure class="fr desk" id="st-desk-fi" data-st='{"stage":"route","lang":"fi","worst":true,"tab":"check"}'><figcaption><b>Desktop, Finnish, worst case</b>With less room, Reverse and Back to start fold into More first, then the style's caption goes; the modes keep their names.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s8">
+    <h2>8 · Today, for comparison</h2>
+    <p>The real planner (screenshots at 20f0310; the peek is the same on main at 82e276d, since #249 changed only how the sheet moves).</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="today-peek" data-fixed="phone-mtb-peek"><figcaption><b>Today: peek</b>Three rows, 12–13 controls at 28–37 px.</figcaption></figure>
+      <figure class="fr phone" id="today-card" data-fixed="phone-start-card"><figcaption><b>Today: the first point's card</b>It covers where the next point goes (#232).</figcaption></figure>
+      <figure class="fr phone" id="today-half" data-fixed="phone-mtb-half"><figcaption><b>Today: half</b>Five 28 px buttons on every waypoint row, Remove among them.</figcaption></figure>
+      <figure class="fr desk" id="today-desk" data-fixed="desk-mtb"><figcaption><b>Today: desktop</b>Three ways to close the planner; the colour, the sport, Round trip and the style twice.</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<nav class="picker" aria-label="Mock-up switches" data-open="false">
+  <button type="button" class="pk-toggle" aria-expanded="false" aria-controls="pk-groups">Switches: worst case, words, theme</button>
+  <div class="pk-groups" id="pk-groups">
+  <div role="group" aria-label="Data"><span>Data</span><button type="button" data-o="worst" data-v="0">Normal</button><button type="button" data-o="worst" data-v="1">Worst case</button></div>
+  <div role="group" aria-label="Language"><span>Words</span><button type="button" data-o="lang" data-v="en">EN</button><button type="button" data-o="lang" data-v="fi">FI</button><button type="button" data-o="lang" data-v="sv">SV</button></div>
+  <div role="group" aria-label="Theme"><span>Theme</span><button type="button" data-o="theme" data-v="light">Light</button><button type="button" data-o="theme" data-v="dark">Dark</button></div>
+  </div>
+</nav>
+
+<script>
+// Builds and runs the frames. Nothing here talks to Polku.
+const Q = new URLSearchParams(location.search);
+const BG = Q.get('bg') || 'https://raw.githubusercontent.com/TommiContursi/Polku/c33edbe302eaaaf277315836b3f51f52af5ba941/claude/phase-24-design/mockup-bg/';
+const BG2 = Q.get('bg2') || 'https://raw.githubusercontent.com/TommiContursi/Polku/5b6ba503ef78f988ac24000cca77d9c47e95a822/claude/phase-24-design/mockup-bg/';
+const SHOT = Q.get('shots') || 'https://raw.githubusercontent.com/TommiContursi/Polku/c33edbe302eaaaf277315836b3f51f52af5ba941/claude/phase-24-design/before/';
+const NEW_BG = new Set(['phone-loops.jpg', 'phone-loop1.jpg', 'phone-long.jpg', 'desk-start1.jpg', 'desk-loops.jpg', 'desk-long.jpg']);
+const PIC = (f) => (window.MOCK_IMAGES && window.MOCK_IMAGES[f]) || (NEW_BG.has(f) ? BG2 : BG) + f;
+const SHOTPIC = (f) => (window.MOCK_IMAGES && window.MOCK_IMAGES[`before-${f}`]) || SHOT + f;
+const ic = (id, size = 20, cls = '') => `<svg class="ic ${cls}" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// the switches at the bottom (every frame), and what a frame may set for itself
+const OPT = {
+  worst: Q.get('worst') === '1', lang: ['en', 'fi', 'sv'].includes(Q.get('lang')) ? Q.get('lang') : 'en',
+  theme: Q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+  trip: ['trip', 'share', 'more'].includes(Q.get('trip')) ? Q.get('trip') : 'trip',
+  modes: Q.get('modes') === 'buttons' ? 'buttons' : 'menu', rt: Q.get('rt') === 'button' ? 'button' : 'presets',
+};
+let touched = false; // a switch pressed: it wins over each frame's own settings
+
+// ------------------------------------------------ words (Finnish and Swedish are rough: they test the room words take; phase 18 translates)
+const STR = {
+  en: {
+    tapStart: 'Tap the map to start', tapStartSub: 'or start from a round trip or a file', clickStart: 'Click the map to start',
+    tapNext: 'Tap the map for your next point', clickNext: 'Click the map for your next point', rtHere: 'Round trip from here', other: 'Other',
+    rtTitle: 'Round trip from your start', distance: 'Distance', time: 'Time', dir: 'Direction', any: 'Any direction', intoWind: 'Into the wind first',
+    make3: 'Make 3 loops', making: 'Making loops…', of3: 'of 3', calls: 'Three routing calls, up to six', moveStart: 'From your first point · tap the map to move it',
+    loopsFrom: '3 loops from your start', useLoop: 'Use loop', moreLoops: 'More loops', moreLoopsD: 'three more, other ways', change: 'Change', closest: 'Closest match',
+    importFile: 'Import GPX or KML', roundTrip: 'Round trip', done: 'Done', edit: 'Edit', trip: 'Trip', share: 'Share & save', more: 'More',
+    auto: 'Follow paths', line: 'Straight line', water: 'Over water',
+    autoD: 'Along paths and roads, in the route style', lineD: 'Straight: off the trail, or across a gap', waterD: 'Polku’s water router: round land and marked hazards',
+    nextLeg: 'Draw the next leg', nextNote: 'Only the legs you draw next. To change a drawn leg, tap it on the map.',
+    styleH: 'Route style · the whole route', styleRow: 'Route style', fineTune: 'Fine-tune in How you go', undo: 'Undo', redo: 'Redo',
+    dist: 'distance', fromNow: 'from now', kept: 'Kept on this device', takeAlong: 'Take it along',
+    shareLink: 'Share link', shareLinkD: 'Copy it, or send it to someone', gpx: 'Export GPX', gpxD: 'For a GPS watch or another app',
+    offline: 'Save offline…', offlineD: 'The map and terrain, for no signal', whole: 'The whole route',
+    rtStart: 'Round trip from the start', reverse: 'Reverse', backStart: 'Back to start', importD: 'Show a file’s track, then plan on it',
+    clear: 'Clear route', clearD: 'Undo brings it back', route: 'Route', check: 'Check', go: 'Go',
+    t1: 'Read before you go', t2: 'Worth a look', t3: 'Not checked', t1s: 'to read before you go', t2s: 'worth a look', t3s: 'not checked',
+    points: 'Points', find: 'Find a point', all: 'All', key: 'Key points', remove: 'Remove', stop: 'Stop', moveTo: 'Move to…', earlier: 'Earlier', later: 'Later',
+    nextLegRow: 'Next leg', depart: 'Depart', now: 'now', viewing: 'You’re not editing: the list and the map stay as they are.', closed: 'Planner closed · your route stays', open: 'Open',
+    cleared: 'Route cleared', undoBtn: 'Undo', start: 'Start', finish: 'Finish', via: 'Via', checked: 'What Polku looked at',
+    nothingMeans: 'Nothing listed doesn’t mean a way is open, safe or allowed. Polku checks only what its sources know; signs on the ground win.',
+    retry: 'Retry', avoid: 'Avoid', showMap: 'Show', pos: 'Position', ofN: 'of', move: 'Move', select: 'Select', mapTap: 'A tap on the map shows what’s there while you’re not editing.',
+    yourRoutes: 'Your routes', later157: 'Later (#157)', name: 'Name',
+  },
+  fi: {
+    tapStart: 'Aloita napauttamalla karttaa', tapStartSub: 'tai aloita kierroksesta tai tiedostosta', clickStart: 'Aloita napsauttamalla karttaa',
+    tapNext: 'Napauta karttaa: seuraava piste', clickNext: 'Napsauta karttaa: seuraava piste', rtHere: 'Kierros tästä', other: 'Muu',
+    rtTitle: 'Kierros lähtöpisteestä', distance: 'Matka', time: 'Aika', dir: 'Suunta', any: 'Mikä tahansa suunta', intoWind: 'Ensin vastatuuleen',
+    make3: 'Tee 3 kierrosta', making: 'Tehdään kierroksia…', of3: '/ 3', calls: 'Kolme reitityskyselyä, enintään kuusi', moveStart: 'Ensimmäisestä pisteestä · siirrä napauttamalla karttaa',
+    loopsFrom: '3 kierrosta lähtöpisteestä', useLoop: 'Käytä kierrosta', moreLoops: 'Lisää kierroksia', moreLoopsD: 'kolme lisää, muihin suuntiin', change: 'Muuta', closest: 'Lähimpänä',
+    importFile: 'Tuo GPX tai KML', roundTrip: 'Kierros', done: 'Valmis', edit: 'Muokkaa', trip: 'Retki', share: 'Jaa ja tallenna', more: 'Lisää',
+    auto: 'Seuraa polkuja', line: 'Suora viiva', water: 'Vesitse',
+    autoD: 'Polkuja ja teitä pitkin, reittityylin mukaan', lineD: 'Suoraan: maastossa tai aukon yli', waterD: 'Polun vesireititys: maiden ja merkittyjen vaarojen ohi',
+    nextLeg: 'Piirrä seuraava osuus', nextNote: 'Vain seuraavaksi piirrettävät osuudet. Piirrettyä osuutta muutetaan napauttamalla sitä kartalla.',
+    styleH: 'Reittityyli · koko reitti', styleRow: 'Reittityyli', fineTune: 'Hienosäädä kohdassa Miten kuljet', undo: 'Kumoa', redo: 'Tee uudelleen',
+    dist: 'matka', fromNow: 'jos lähdet nyt', kept: 'Tallessa tällä laitteella', takeAlong: 'Ota mukaan',
+    shareLink: 'Jaa linkki', shareLinkD: 'Kopioi tai lähetä jollekulle', gpx: 'Vie GPX', gpxD: 'GPS-kelloon tai toiseen sovellukseen',
+    offline: 'Tallenna offline-käyttöön…', offlineD: 'Kartta ja maasto ilman verkkoyhteyttä', whole: 'Koko reitti',
+    rtStart: 'Kierros lähtöpisteestä', reverse: 'Käännä suunta', backStart: 'Takaisin lähtöön', importD: 'Näytä tiedoston jälki ja suunnittele sen pohjalta',
+    clear: 'Tyhjennä reitti', clearD: 'Kumoa tuo sen takaisin', route: 'Reitti', check: 'Tarkista', go: 'Lähde',
+    t1: 'Lue ennen lähtöä', t2: 'Katso nämä', t3: 'Ei tarkistettu', t1s: 'luettavaa ennen lähtöä', t2s: 'katsottavaa', t3s: 'tarkistamatta',
+    points: 'Pisteet', find: 'Etsi piste', all: 'Kaikki', key: 'Tärkeät pisteet', remove: 'Poista', stop: 'Tauko', moveTo: 'Siirrä kohtaan…', earlier: 'Aiemmaksi', later: 'Myöhemmäksi',
+    nextLegRow: 'Seuraava osuus', depart: 'Lähtö', now: 'nyt', viewing: 'Et muokkaa: lista ja kartta pysyvät ennallaan.', closed: 'Suunnittelija suljettu · reitti säilyy', open: 'Avaa',
+    cleared: 'Reitti tyhjennetty', undoBtn: 'Kumoa', start: 'Lähtö', finish: 'Maali', via: 'Välipiste', checked: 'Mitä Polku tarkisti',
+    nothingMeans: 'Se, ettei mitään ole listattu, ei tarkoita, että reitti on avoin, turvallinen tai sallittu. Polku tietää vain sen, minkä sen lähteet tietävät; maastossa olevat merkit ratkaisevat.',
+    retry: 'Yritä uudelleen', avoid: 'Kierrä', showMap: 'Näytä', pos: 'Kohta', ofN: '/', move: 'Siirrä', select: 'Valitse', mapTap: 'Kun et muokkaa, karttaa napauttamalla näet, mitä siinä on.',
+    yourRoutes: 'Reittisi', later157: 'Myöhemmin (#157)', name: 'Nimi',
+  },
+  sv: {
+    tapStart: 'Tryck på kartan för att börja', tapStartSub: 'eller börja med en rundtur eller en fil', clickStart: 'Klicka på kartan för att börja',
+    tapNext: 'Tryck på kartan för nästa punkt', clickNext: 'Klicka på kartan för nästa punkt', rtHere: 'Rundtur härifrån', other: 'Annan',
+    rtTitle: 'Rundtur från din start', distance: 'Sträcka', time: 'Tid', dir: 'Riktning', any: 'Valfri riktning', intoWind: 'Mot vinden först',
+    make3: 'Gör 3 rundor', making: 'Gör rundor…', of3: 'av 3', calls: 'Tre ruttfrågor, högst sex', moveStart: 'Från din första punkt · tryck på kartan för att flytta den',
+    loopsFrom: '3 rundor från din start', useLoop: 'Använd runda', moreLoops: 'Fler rundor', moreLoopsD: 'tre till, åt andra håll', change: 'Ändra', closest: 'Närmast',
+    importFile: 'Importera GPX eller KML', roundTrip: 'Rundtur', done: 'Klar', edit: 'Redigera', trip: 'Tur', share: 'Dela och spara', more: 'Mer',
+    auto: 'Följ stigar', line: 'Rak linje', water: 'Över vatten',
+    autoD: 'Längs stigar och vägar, i ruttstilen', lineD: 'Rakt: i terrängen eller över ett glapp', waterD: 'Polkus vattenrutter: runt land och märkta faror',
+    nextLeg: 'Rita nästa etapp', nextNote: 'Bara etapperna du ritar härnäst. Tryck på en ritad etapp på kartan för att ändra den.',
+    styleH: 'Ruttstil · hela rutten', styleRow: 'Ruttstil', fineTune: 'Finjustera i Hur du tar dig fram', undo: 'Ångra', redo: 'Gör om',
+    dist: 'sträcka', fromNow: 'om du åker nu', kept: 'Sparad på den här enheten', takeAlong: 'Ta med',
+    shareLink: 'Dela länk', shareLinkD: 'Kopiera den eller skicka till någon', gpx: 'Exportera GPX', gpxD: 'Till en GPS-klocka eller en annan app',
+    offline: 'Spara offline…', offlineD: 'Kartan och terrängen, utan täckning', whole: 'Hela rutten',
+    rtStart: 'Rundtur från starten', reverse: 'Vänd riktning', backStart: 'Tillbaka till start', importD: 'Visa en fils spår och planera på det',
+    clear: 'Rensa rutten', clearD: 'Ångra tar tillbaka den', route: 'Rutt', check: 'Kolla', go: 'Åk',
+    t1: 'Läs innan du åker', t2: 'Värt en titt', t3: 'Inte kollat', t1s: 'att läsa innan du åker', t2s: 'värda en titt', t3s: 'inte kollade',
+    points: 'Punkter', find: 'Hitta en punkt', all: 'Alla', key: 'Viktiga punkter', remove: 'Ta bort', stop: 'Paus', moveTo: 'Flytta till…', earlier: 'Tidigare', later: 'Senare',
+    nextLegRow: 'Nästa etapp', depart: 'Avresa', now: 'nu', viewing: 'Du redigerar inte: listan och kartan förblir som de är.', closed: 'Planeraren stängd · rutten finns kvar', open: 'Öppna',
+    cleared: 'Rutten rensad', undoBtn: 'Ångra', start: 'Start', finish: 'Mål', via: 'Via', checked: 'Vad Polku tittade på',
+    nothingMeans: 'Att inget står här betyder inte att en väg är öppen, säker eller tillåten. Polku vet bara vad källorna vet; skyltarna på plats gäller.',
+    retry: 'Försök igen', avoid: 'Undvik', showMap: 'Visa', pos: 'Plats', ofN: 'av', move: 'Flytta', select: 'Välj', mapTap: 'När du inte redigerar visar ett tryck på kartan vad som finns där.',
+    yourRoutes: 'Dina rutter', later157: 'Senare (#157)', name: 'Namn',
+  },
+};
+let LANG = 'en';
+const t = (k) => (STR[LANG] && STR[LANG][k]) || STR.en[k] || k;
+
+// ------------------------------------------------ data
+const SPORTS = {
+  mtb: { label: 'MTB', icon: 'bike', km: [10, 20, 30, 50], min: [60, 90, 120, 180], step: 5, styles: [['balanced', 'Balanced'], ['flowy', 'Flowy trails'], ['technical', 'Technical'], ['roads', 'Roads to the trail'], ['quiet', 'Quiet']],
+    stats: { d: '3.05 km', t: '16 min', up: '↑44 m', down: '↓65 m' }, title: ['Kaupin urheilupuisto', 'Kauppi forest'] },
+  paddle: { label: 'Paddle', icon: 'paddle', km: [5, 10, 15, 25], min: [60, 120, 180, 240], step: 1, styles: [['balanced', 'Balanced'], ['shore', 'Near the shore'], ['nocarry', 'No carries']],
+    stats: { d: '11.1 km', t: '2 h 14 min', up: '123 m', down: 'carry', upLabel: 'carry' }, title: ['Santalahti', 'Siilinkari'] },
+};
+const WORST = { d: '123.4 km', t: '7 h 45 min', up: '↑1 234 m', down: '↓1 198 m' };
+const WORST_TITLE = ['Pyhäjärvenrannan luontopolun pysäköintialue', 'Hervannan ulkoilumajan pohjoispuolinen levähdyspaikka'];
+const SRC = {
+  live: (x) => `${ic('live', 14)}${esc(x)}`, map: () => `${ic('mapsrc', 14)}From the map (OpenStreetMap) · may be out of date`,
+  est: (x) => `${ic('est', 14)}An estimate · ${esc(x)}`, calc: (x) => `${ic('check', 14)}Calculated · ${esc(x)}`,
+};
+const WARN = {
+  mtb: {
+    t1: [{ ic: 'warnf', b: 'Road works: Teiskontie', w: 'at km 2.6 · 120 m', n: 'One lane closed; cross at the lights.', s: SRC.live('Fintraffic, live at 18:40'), a: ['Avoid'] }],
+    t2: [
+      { ic: 'eye', b: 'Steep climb, up to 18 %', w: 'at km 0.8 · 140 m', s: SRC.est('from the terrain model'), a: ['Avoid'] },
+      { ic: 'eye', b: 'Technical trail S3', w: 'at km 1.9 · 60 m', s: SRC.map(), a: ['Avoid'] },
+      { ic: 'eye', b: 'Marked private in OpenStreetMap', w: 'at km 2.2 · 90 m', n: 'Often a yard or a road closed by a sign. In the forest, everyman’s right usually lets you walk and cycle: look for signs.', s: SRC.map(), a: ['Avoid'] },
+      { ic: 'eye', b: 'Fallen tree across the trail', w: 'at km 1.4', s: SRC.map(), a: ['Avoid'] },
+    ],
+    t3: [],
+    cov: [['ok', 'Trail details along the route', 'OpenStreetMap'], ['ok', 'Heights and climbs', 'terrain model'], ['ok', 'Road works and incidents', 'Fintraffic, 18:40'], ['ok', 'Daylight', 'sunset 18:31'], ['na', 'Water hazards', 'no water on this route']],
+  },
+  paddle: {
+    t1: [
+      { ic: 'warnf', b: 'Crosses the Näsijärvi fairway', w: 'at km 4.2', n: 'Cross quickly and straight, after looking both ways: ships can’t stop or turn.', s: `${ic('mapsrc', 14)}Väylävirasto’s fairways`, a: [] },
+      { ic: 'warnf', b: 'Rough for a kayak: waves up to about 0.6 m', w: 'at km 6.8 · 1.4 km', n: '7 m/s from the south-west over open water.', s: SRC.est('from FMI’s forecast for 13:00'), a: [] },
+    ],
+    t2: [
+      { ic: 'eye', b: 'Carry 120 m', w: 'at km 8.9', s: `${ic('route', 14)}Your route: drawn over land`, a: [] },
+      { ic: 'eye', b: 'Through a harbour basin', w: 'at km 0.3 · 400 m', n: 'Boats coming and going.', s: SRC.map(), a: [] },
+    ],
+    t3: [{ ic: 'unk', b: 'Rocks and shoals from OpenStreetMap didn’t answer', w: 'the whole route', n: 'Routed without them: the line may pass close to a rock the map knows. Polku tries again on its own.', s: `${ic('unk', 14)}Not checked`, a: ['Retry'] }],
+    cov: [['bad', 'Rocks and shoals', 'didn’t answer'], ['ok', 'Fairways and marks', 'Väylävirasto'], ['ok', 'Wind and waves', 'FMI, 13:00'], ['ok', 'Daylight', 'sunset 18:31'], ['na', 'Depths', 'shown on the map, never used for routes']],
+  },
+};
+const WARN_WORST = {
+  t1: [...WARN.mtb.t1, ...WARN.paddle.t1,
+    { ic: 'warnf', b: 'In the dark for 14 km: dark from 18:31', w: 'from km 96', n: 'Take a light.', s: SRC.calc('from the departure and the sun'), a: [] },
+    { ic: 'warnf', b: 'Marked no access in OpenStreetMap (access=no)', w: 'at km 51.2 · 300 m', n: 'Closed unless a sign says otherwise.', s: SRC.map(), a: ['Avoid'] },
+    { ic: 'warnf', b: 'Two legs aren’t routed yet: drawn as straight lines', w: 'km 61–64', n: 'The routing service asked for a pause; they follow on their own.', s: `${ic('unk', 14)}Waiting for the router`, a: ['Retry'] }],
+  t2: [...WARN.mtb.t2, ...WARN.paddle.t2, { ic: 'eye', b: 'Steps: carry the bike', w: 'at km 33.0 · 40 m', s: SRC.map(), a: ['Avoid'] }, { ic: 'eye', b: 'Unpaved for 900 m: rough on road tyres', w: 'at km 74.5', s: SRC.map(), a: ['Avoid'] }],
+  t3: [...WARN.paddle.t3, { ic: 'unk', b: 'Terrain missing for 2.1 km', w: 'km 88–90', n: 'The climbing and the time there are estimates. Trying again at 18:52.', s: `${ic('unk', 14)}Not checked`, a: ['Retry'] }, { ic: 'unk', b: 'Trail details didn’t load for 6 km', w: 'km 12–18', n: 'Overpass didn’t answer: fallen trees, fords and gates there aren’t known.', s: `${ic('unk', 14)}Not checked`, a: ['Retry'] }],
+  cov: [...WARN.paddle.cov.slice(0, 1), ['bad', 'Heights and climbs', 'missing for 2.1 km'], ['bad', 'Trail details', 'missing for 6 km'], ['ok', 'Road works and incidents', 'Fintraffic, 18:40'], ['ok', 'Daylight', 'sunset 18:31']],
+};
+const NAMES = ['Kaupintie', 'Kauppi trail centre', 'Ilmailunkatu path', 'Niihaman maja', 'Lapinjärvi shore', 'Rusko junction', 'Ruskonkellarinkatu', 'Sorila bridge', 'Teiskontie crossing', 'Kalevanharju', 'Kaukajärvi beach', 'Hervanta south', 'Hallila', 'Vatiala', 'Lakeside path', 'Iidesjärvi bird tower', 'Kissanmaa', 'Messukylä church'];
+const NAMES_WORST = ['Pyhäjärvenrannan luontopolun pysäköintialue', 'Kaupinojan kuntoradan risteys', 'Hervannan ulkoilumajan levähdyspaikka', 'Strandvägens naturstig, parkering', 'Niihamanjärven pohjoisranta', 'Ruskonkellarinkadun alikulkutunneli'];
+function waypoints(long, worst, sport) {
+  const S = SPORTS[sport];
+  if (!long) return [
+    { name: S.title[0], km: 0, tm: '07:30', kind: 'start' },
+    { name: sport === 'paddle' ? 'Lielahti' : 'Ilmailunkatu path', km: sport === 'paddle' ? 5.6 : 1.78, tm: sport === 'paddle' ? '08:38' : '07:39', kind: 'via', stop: sport === 'paddle' },
+    { name: S.title[1], km: sport === 'paddle' ? 11.1 : 3.05, tm: sport === 'paddle' ? '09:44' : '07:46', kind: 'end' },
+  ];
+  const n = 52, total = worst ? 123.4 : 12.6, list = [];
+  for (let i = 0; i < n; i++) {
+    const pool = worst && i % 3 === 0 ? NAMES_WORST : NAMES;
+    const named = i === 0 || i === n - 1 || i % 7 === 0 || (worst && i % 3 === 0);
+    list.push({ name: named ? pool[i % pool.length] : (worst ? 'Ruskonkellarinkatu' : NAMES[(i * 5) % NAMES.length]), auto: !named, km: +(total * i / (n - 1)).toFixed(1),
+      tm: (() => { const m = 7 * 60 + 30 + Math.round((worst ? 465 : 62) * i / (n - 1)); return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; })(),
+      kind: i === 0 ? 'start' : i === n - 1 ? 'end' : 'via', stop: i === 20 || i === 38, change: worst && i === 30, own: i === 12 });
+  }
+  return list;
+}
+
+// ------------------------------------------------ state: each frame has its own
+const FR = new Map(); // id → { el, base, st, past, future }
+function fresh(base) {
+  const o = JSON.parse(JSON.stringify(base));
+  const st = { stage: 'start', mode: 'edit', sheet: 'peek', tab: 'route', draw: 'auto', style: 'balanced', pop: null, styleOpen: false, sport: 'mtb', sel: 1, filter: 'all', q: '', moveTo: false, legOpen: false,
+    toast: null, hist: 0, fut: 0, tip: null, long: false, later: false, ...o };
+  st.rt = { open: false, unit: 'km', val: null, dir: 'any', making: 0, results: false, pick: 0, ...(o.rt || {}) };
+  if (st.sport === 'paddle' && !o.draw) st.draw = 'water'; // a paddle route is drawn over water
+  if (st.stage === 'loops') { st.stage = 'first'; st.rt.results = true; }
+  return st;
+}
+const opt = (st, k) => (touched || st[k] == null ? OPT[k] : st[k]);
+const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt });
+
+// ------------------------------------------------ building blocks
+function topbar(desk, sport) {
+  const S = SPORTS[sport];
+  return `<div class="top">
+    <button type="button" class="tb brand" aria-label="Polku home"><i>${ic('path', 18)}</i>${desk ? 'Polku' : ''}</button>
+    <button type="button" class="tb search" aria-label="Search places">${ic('search', 18)}<span>Search places or paste coordinates</span></button>
+    <button type="button" class="tb sport" aria-label="Sport: ${S.label}">${ic(S.icon, 18)}${desk ? `<span style="font-weight:700">${S.label}</span>` : ''}${ic('down', 14)}</button>
+    <button type="button" class="tb" aria-label="Settings">${ic('gear', 20)}</button>
+  </div>`;
+}
+// fold: where the column doesn't fit between the top bar and a raised sheet (short phones), it leaves out first the
+// compass while north is up (it's back as soon as the map is turned), then 3D (still in Layers); at 200 % both (#73)
+function cols(st, desk, bottom, z, fold = 0) {
+  const closed = st.mode === 'closed';
+  if (!desk && st.sheet === 'full' && !closed) return '<div class="cols" hidden></div>'; // a full sheet: the map's buttons wait under it, as today
+  const small = z === 2 || fold >= 2;
+  return `<div class="cols" style="bottom:${bottom}px">
+    ${small || fold >= 1 ? '' : `<button type="button" class="cb" aria-label="Compass: north is up">${ic('needle', 20)}</button>`}
+    <button type="button" class="cb" aria-label="Show my location">${ic('locate', 20)}</button>
+    ${st.stage === 'route' && (!desk || closed) ? `<button type="button" class="cb fitb" data-act="fit" aria-label="Show the whole route" data-tip="fit">${ic('fit', 22)}</button>` : ''}
+    ${desk ? `<div class="czoom"><button type="button" class="cb" aria-label="Zoom in">${ic('plus', 18)}</button><button type="button" class="cb" aria-label="Zoom out">${ic('minus', 18)}</button></div>` : ''}
+    ${small ? '' : '<button type="button" class="cb" aria-label="3D terrain" aria-pressed="false">3D</button>'}
+    <button type="button" class="fab" aria-label="Time and weather">${ic('weather', 22)}<span>Weather</span></button>
+    <button type="button" class="fab layers" aria-label="Layers"><span>Layers</span></button>
+    ${closed ? `<button type="button" class="fab plan" data-act="reopen" aria-label="Plan: open your route">${ic('route', 22)}<span>Plan</span></button>` : ''}
+  </div>`;
+}
+const stats = (st, v) => {
+  const S = SPORTS[st.sport], s = v.worst ? WORST : st.loop ? { d: '10.4 km', t: '42 min', up: '↑96 m', down: '↓96 m' } : S.stats; // a loop taken: loop A's numbers
+  const climb = st.sport === 'paddle' && !v.worst ? `<span><b>${s.up}</b><small>carry</small></span>` : `<span><b>${s.up}</b><small><span class="sr">descent </span>${s.down}</small></span>`;
+  return `<div class="stats"><span><b>${s.d}</b><small>${t('dist')}</small></span><button type="button" class="tlink" data-act="depart" aria-label="${s.t} ${t('fromNow')}: change the departure, in Go"><b>${s.t}</b><small>${t('fromNow')}</small></button>${climb}</div>`;
+};
+const warnsOf = (st, v) => (v.worst ? WARN_WORST : st.calm ? { ...WARN[st.sport], t1: [] } : WARN[st.sport]);
+function warnRow(st, v, desk) {
+  const W = warnsOf(st, v);
+  if (!W.t1.length || (st.tab === 'check' && (desk || st.sheet !== 'peek'))) return ''; // not while Check itself is in sight
+  return `<button type="button" class="warnrow" data-act="tocheck" aria-label="${W.t1.length} ${t('t1s')}: ${esc(W.t1[0].b)}. Open Check">${ic('warnf', 22)}<span><b>${W.t1.length} ${t('t1s')}</b><small>${esc(W.t1[0].b)}${W.t1.length > 1 ? ` · +${W.t1.length - 1}` : ''}</small></span>${ic('right', 18)}</button>`;
+}
+// More (⋯), decided 2026-10-17: the last button of the toolbox (phones) and of the toolbar (desktop)
+function moreBtn(st, size = 44) {
+  return `<button type="button" class="tbtn" data-act="trip" aria-haspopup="menu" aria-expanded="${st.pop === 'trip'}" aria-label="${t('more')}: share link, GPX, save offline, round trip, reverse, back to start, import, clear" data-tip="more" style="width:${size}px;height:${size}px">${ic('more', 22)}</button>`;
+}
+const styleName = (st) => (SPORTS[st.sport].styles.find((x) => x[0] === st.style) || SPORTS[st.sport].styles[0])[1];
+const hasHist = (st) => st.hist > 0 || st.fut > 0 || st.stage !== 'start';
+function undoRedo(st, size = 44) {
+  if (!hasHist(st)) return '';
+  return `<button type="button" class="tbtn" data-act="undo" aria-label="${t('undo')}"${st.hist ? '' : ' disabled'} style="width:${size}px;height:${size}px" data-tip="undo">${ic('undo', 20)}</button><button type="button" class="tbtn" data-act="redo" aria-label="${t('redo')}"${st.fut ? '' : ' disabled'} style="width:${size}px;height:${size}px" data-tip="redo">${ic('redo', 20)}</button>`;
+}
+function modeButton(st) {
+  const showStyle = st.draw !== 'line';
+  return `<button type="button" class="modebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('nextLeg')}: ${t(st.draw)}${showStyle ? `, ${t('styleRow')} ${styleName(st)}` : ''}">${ic(st.draw, 20)}<span class="two"><b>${t(st.draw)}</b>${showStyle ? `<small>${esc(styleName(st))}</small>` : ''}</span>${ic('down', 14)}</button>`;
+}
+// editing: the next leg's mode, undo, redo, More; in the route's view only More stays (nothing is drawn there)
+function phoneToolbox(st) {
+  return st.mode === 'edit' ? `${modeButton(st)}${undoRedo(st)}${moreBtn(st)}` : moreBtn(st);
+}
+function modesMenu(st) {
+  const S = SPORTS[st.sport];
+  const item = (m) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}">${ic(m, 22)}<span><b>${t(m)}</b><small>${t(m + 'D')}</small></span>${st.draw === m ? ic('check', 18, 'tick') : ''}</button>`;
+  // the styles as chips, not a second list: one tap away, and plainly a different kind of choice from the modes
+  const styles = `<div class="stylechips">${S.styles.map(([k, n]) => `<button type="button" class="chip" role="menuitemradio" aria-checked="${st.style === k}" aria-pressed="${st.style === k}" data-act="style" data-v="${k}">${st.style === k ? ic('check', 16) : ''}${esc(n)}</button>`).join('')}</div>
+    <button type="button" class="mi compact" role="menuitem" data-act="finetune">${ic('route', 20)}<span><b>${t('fineTune')}</b></span>${ic('right', 16)}</button>`;
+  return `<div class="popmenu" role="menu" aria-label="${t('nextLeg')}" data-anchor="modes">
+    <div class="mh" id="mh-${st._id}-a">${t('nextLeg')}</div>
+    <div role="group" aria-labelledby="mh-${st._id}-a">${['auto', 'line', 'water'].map(item).join('')}</div>
+    <div class="note">${t('nextNote')}</div><hr>
+    <div class="mh" id="mh-${st._id}-b">${t('styleH')}</div>
+    <div role="group" aria-labelledby="mh-${st._id}-b">${styles}</div></div>`;
+}
+function routeTitle(st, v) { const T = v.worst ? WORST_TITLE : SPORTS[st.sport].title; return `${T[0]} → ${T[1]}`; }
+function tripMenu(st, v) {
+  const mi = (icn, b, s, act, cls = '', dis = false) => `<button type="button" class="mi ${cls}" role="menuitem" data-act="${act}"${dis ? ' disabled' : ''}>${ic(icn, 22)}<span><b>${b}</b>${s ? `<small>${s}</small>` : ''}</span></button>`;
+  const name = t('more');
+  return `<div class="popmenu" role="menu" aria-label="${name}" data-anchor="trip">
+    <div class="mhead"><b>${esc(routeTitle(st, v))}</b><small>${ic('check', 14)}${t('kept')}</small></div>
+    <div class="mh">${t('takeAlong')}</div>
+    ${mi('link', t('shareLink'), t('shareLinkD'), 'noop')}${mi('gpx', t('gpx'), t('gpxD'), 'noop')}${mi('offline', t('offline'), t('offlineD'), 'noop')}
+    <hr><div class="mh">${t('whole')}</div>
+    ${mi('roundtrip', t('rtStart'), '', 'rtstart')}${mi('reverse', t('reverse'), '', 'noop')}${mi('loop', t('backStart'), '', 'noop')}${mi('upload', t('importFile') + '…', t('importD'), 'noop')}
+    <hr class="gap">${mi('trash', t('clear'), t('clearD'), 'clear', 'danger')}</div>`;
+}
+function profile(desk) {
+  const pts = [100, 104, 112, 118, 116, 124, 132, 128, 136, 141, 138, 130, 118, 104, 101, 103, 102, 104, 108, 106, 103];
+  const W = 340, H = 80, step = W / (pts.length - 1), y = (q) => H - (q - 96) / 50 * H;
+  const bars = pts.slice(1).map((q, i) => { const g = q - pts[i]; const c = g > 6 ? '#ef4444' : g > 2 ? '#f59e0b' : g < -6 ? '#2563eb' : g < -2 ? '#60a5fa' : '#22c55e';
+    return `<path d="M${i * step} ${H} L${i * step} ${y(pts[i])} L${(i + 1) * step} ${y(q)} L${(i + 1) * step} ${H}Z" fill="${c}" opacity=".85"/>`; }).join('');
+  return `<div class="prof"><div class="prof-top">Colour by <span class="sel" style="height:36px">Gradient ${ic('down', 14)}</span>
+    <label class="sw"><span>On map</span><i role="switch" aria-checked="false" tabindex="0" aria-label="Colour the route on the map"></i></label></div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Elevation profile, 100 to 141 m">${bars}</svg></div>`;
+}
+function tabs(st, v) {
+  const W = warnsOf(st, v);
+  const badge = W.t1.length ? `<span class="badge b1">${ic('warnf', 13)}${W.t1.length}</span>` : W.t2.length ? `<span class="badge b2">${W.t2.length}</span>` : '';
+  const unk = W.t3.length ? '<span class="badge b3">?</span>' : '';
+  const lab = [W.t1.length ? `${W.t1.length} ${t('t1s')}` : '', W.t2.length ? `${W.t2.length} ${t('t2s')}` : '', W.t3.length ? `${W.t3.length} ${t('t3s')}` : ''].filter(Boolean).join(', ');
+  const tb = (id, icn, label, extra = '', aria = '') => `<button type="button" role="tab" aria-selected="${st.tab === id}" data-act="tab" data-v="${id}"${aria ? ` aria-label="${aria}"` : ''}>${ic(icn, 18)}${label}${extra}</button>`;
+  return `<div class="tabs" role="tablist" aria-label="Planner">${tb('route', 'route', t('route'))}${tb('check', 'warn', t('check'), badge + unk, `${t('check')}${lab ? `: ${lab}` : ''}`)}${tb('go', 'clock', `${t('go')} 07:46`)}</div>`;
+}
+function checkBody(st, v) {
+  const W = warnsOf(st, v);
+  // the item itself shows its place on the map (as Heads-up's rows do today); its actions beside
+  const item = (w) => `<div class="wi">${ic(w.ic, 20)}<div class="tx"><button type="button" class="wibtn" data-act="noop" aria-label="${esc(w.b)}, ${esc(w.w)}: show on the map"><b>${esc(w.b)}</b><span class="wh">${esc(w.w)} · ${t('showMap').toLowerCase()} ›</span></button>${w.n ? `<span class="nt">${esc(w.n)}</span>` : ''}<span class="src">${w.s}</span>
+    ${w.a.length ? `<div class="wa">${w.a.map((a) => `<button type="button" class="btn small quiet" data-act="noop">${a === 'Avoid' ? t('avoid') : t('retry')}</button>`).join('')}<button type="button" class="tbtn" aria-label="More for ${esc(w.b)}: hide this kind, correct the map">${ic('more', 18)}</button></div>` : ''}</div></div>`;
+  const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span></h3><p class="tsub">${sub}</p>${list.map(item).join('')}</section>` : '');
+  const sum = '';
+  const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
+  return `${sum}${tier('t1', 'warnf', t('t1'), W.t1, 'What can stop you, turn you back or hurt')}${tier('t3', 'unk', t('t3'), W.t3, 'A source didn’t answer: the route may miss something')}${tier('t2', 'eye', t('t2'), W.t2, 'Sections to know about')}${cov}
+    <div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div><div class="sec-h">On the map</div>`;
+}
+function goBody(st) {
+  return `<div class="gosec"><h4>Time</h4><div class="row"><span class="btn quiet">${ic('clock', 18)}${t('depart')} ${t('now')} ${ic('down', 12)}</span><span style="color:var(--muted)">arrive 07:46</span></div></div>
+    <div class="gosec"><h4>Departure &amp; weather</h4><div style="font-size:13.5px">Dry, 7–9 °C, wind 4 m/s from the west; sunset 18:31.</div></div>
+    <div class="gosec"><h4>${t('takeAlong')}</h4><div class="chips"><button type="button" class="chip">${ic('link', 18)}${t('shareLink')}</button><button type="button" class="chip">${ic('gpx', 18)}${t('gpx')}</button><button type="button" class="chip">${ic('offline', 18)}${t('offline')}</button></div></div>
+    <div class="later">${ic('play', 16)} <b>Later (23b):</b> Start, here and in the route’s view: On the way, with what’s left and what’s next.</div>`;
+}
+function wpList(st, v) {
+  const L = st.wps;
+  const isKey = (p) => p.kind !== 'via' || p.stop || p.change || p.own || !p.auto;
+  let idx = L.map((_, i) => i);
+  if (st.long && st.filter === 'key') idx = idx.filter((i) => isKey(L[i]) || i === st.sel);
+  if (st.q) { const q = st.q.toLowerCase(); idx = idx.filter((i) => String(i).includes(q) || L[i].name.toLowerCase().includes(q)); }
+  const editing = st.mode === 'edit';
+  const label = (i) => (i === 0 ? t('start') : i === L.length - 1 ? t('finish') : `${t('via')} ${i}`);
+  const mk = (i) => `<span class="mk ${L[i].kind === 'start' ? 'start' : L[i].kind === 'end' ? 'end' : ''}" aria-hidden="true">${L[i].kind === 'via' ? i : ''}</span>`;
+  const tags = (p) => `<span class="tags">${p.stop ? ic('pause', 16) : ''}${p.change ? ic('paddle', 16) : ''}${p.own ? ic('route', 16) : ''}</span>`;
+  const row = (i) => {
+    const p = L[i], sub = `${label(i)} · ${p.km} km · ${p.tm}`;
+    if (i !== st.sel || !editing) return `<li><button type="button" class="wpr" data-act="sel" data-v="${i}" aria-expanded="false" aria-label="${esc(p.name)}, ${sub}">${ic('grip', 16, 'gr')}${mk(i)}<span class="nm"><b>${esc(p.name)}</b><small>${sub}</small></span>${tags(p)}</button></li>`;
+    // the leg after this point: its sport, how it's drawn and its style, each the route's unless set here (today's leg editor,
+    // legSettingsRow(), moved into the selected row as it is); a leg with its own style keeps it when the route's style changes
+    const own = st.legStyle && st.legStyle[i], legMode = st.sport === 'paddle' ? 'water' : 'auto';
+    const ownName = own ? (SPORTS[st.sport].styles.find((x) => x[0] === own) || ['', 'Flatter'])[1] : null;
+    const styleSay = own ? `${esc(ownName)} <span class="own">its own</span>` : `the route’s (${esc(styleName(st))})`;
+    const leg = i < L.length - 1 ? `<button type="button" class="legline" data-act="leg" aria-expanded="${st.legOpen}">${ic(legMode, 18)}<span><b>${t('nextLegRow')}</b> · ${SPORTS[st.sport].label} · ${t(legMode)} · ${styleSay}</span>${ic(st.legOpen ? 'up' : 'down', 16)}</button>` : '';
+    const legset = st.legOpen ? `<div class="legset">
+        <label class="lrow"><span>Sport</span><span class="sel">${ic(SPORTS[st.sport].icon, 16)}${SPORTS[st.sport].label} (the route’s) ${ic('down', 12)}<select aria-label="Sport of the leg after ${esc(p.name)}"><option>${SPORTS[st.sport].label} (the route’s)</option><option>Hike</option><option>Paddle</option></select></span></label>
+        <div class="lrow"><span>Drawn</span><div class="seg small" role="radiogroup" aria-label="How the leg after ${esc(p.name)} is drawn">${['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${m === legMode}" aria-label="${t(m)}">${ic(m, 16)}</button>`).join('')}</div></div>
+        <label class="lrow"><span>Style</span><span class="sel">${own ? esc(ownName) : `The route’s (${esc(styleName(st))})`} ${ic('down', 12)}<select aria-label="Style of the leg after ${esc(p.name)}" data-in="legstyle"><option value="">The route’s (${esc(styleName(st))})</option>${SPORTS[st.sport].styles.map(([k, n]) => `<option value="${k}"${own === k ? ' selected' : ''}>${esc(n)}</option>`).join('')}<option value="~tune">Fine-tune…</option></select></span></label>
+        <div class="lrow"><span></span><button type="button" class="btn small quiet" data-act="noop">${ic('route', 16)}Other ways</button></div></div>` : '';
+    // a stop: a break of so many minutes, or the night with the morning's hour (stopChip() and stopEditor() as today)
+    const stopLine = p.stop ? `<div class="stopline">${ic('pause', 16)}<span class="sel">Break ${ic('down', 12)}<select aria-label="Stop at ${esc(p.name)}"><option>Break</option><option>Night</option><option>No stop</option></select></span><span class="len sm"><input type="text" inputmode="numeric" enterkeyhint="done" value="15" aria-label="Minutes of the break"><span>min</span></span></div>` : '';
+    const move = st.moveTo ? `<div class="moveto"><span>${t('pos')}</span><span class="stepper"><button type="button" class="tbtn ring" data-act="mvdec" aria-label="One earlier">${ic('minus', 18)}</button><span class="len"><input type="text" inputmode="numeric" enterkeyhint="done" value="${st.mvTo ?? i}" aria-label="${t('pos')}" data-in="mv"><span>${t('ofN')} ${L.length - 1}</span></span><button type="button" class="tbtn ring" data-act="mvinc" aria-label="One later">${ic('plus', 18)}</button></span><button type="button" class="btn small primary" data-act="mvgo">${t('move')}</button></div>` : '';
+    return `<li class="wpsel" aria-current="true"><div class="wpr">${ic('grip', 16, 'gr')}${mk(i)}<span class="nm"><input class="namefield" enterkeyhint="done" maxlength="60" value="${esc(p.name)}" aria-label="${t('name')} of ${label(i)} (selected)" data-in="name"><small>${sub}</small></span>${tags(p)}</div>
+      ${i === 0 ? `<div class="chips" style="margin-top:6px"><span class="btn small quiet">${ic('clock', 16)}${t('depart')} ${t('now')} ${ic('down', 12)}</span></div>` : ''}
+      ${stopLine}${leg}${legset}
+      <div class="wpacts">${i > 0 && i < L.length - 1 ? `<button type="button" class="act" data-act="stop" aria-pressed="${!!p.stop}">${ic('pause', 16)}${t('stop')}</button>` : ''}
+        <span class="pair"><button type="button" class="act ico" data-act="up" aria-label="Move ${esc(p.name)} ${t('earlier').toLowerCase()}"${i === 0 ? ' disabled' : ''}>${ic('up', 18)}</button><button type="button" class="act ico" data-act="down" aria-label="Move ${esc(p.name)} ${t('later').toLowerCase()}"${i === L.length - 1 ? ' disabled' : ''}>${ic('down', 18)}</button></span>
+        ${L.length > 6 ? `<button type="button" class="act" data-act="moveto" aria-expanded="${st.moveTo}">${ic('moveto', 16)}${t('moveTo')}</button>` : ''}
+        <button type="button" class="act danger" data-act="remove">${ic('trash', 16)}${t('remove')}</button></div>${move}</li>`;
+  };
+  const head = st.long ? `<div class="wptools"><label class="find">${ic('search', 18)}<input type="search" enterkeyhint="search" autocapitalize="none" autocorrect="off" placeholder="${t('find')}" value="${esc(st.q)}" aria-label="${t('find')}" data-in="q"></label>
+      <div class="seg small" role="radiogroup" aria-label="Which points"><button type="button" role="radio" aria-checked="${st.filter === 'all'}" data-act="filter" data-v="all">${t('all')} ${L.length}</button><button type="button" role="radio" aria-checked="${st.filter === 'key'}" data-act="filter" data-v="key">${t('key')} ${L.filter(isKey).length}</button></div></div>` : '';
+  const p = L[st.sel];
+  const bar = st.long && p ? `<div class="selbar" role="group" aria-label="Selected point">${mk(st.sel)}<span class="nm"><b>${esc(p.name)}</b><small>${label(st.sel)} · ${p.km} km</small></span>
+      <button type="button" class="tbtn ring" data-act="prev" aria-label="Previous point"${st.sel === 0 ? ' disabled' : ''}>${ic('left', 18)}</button><button type="button" class="tbtn ring" data-act="next" aria-label="Next point"${st.sel === L.length - 1 ? ' disabled' : ''}>${ic('right', 18)}</button><button type="button" class="btn small quiet" data-act="showsel">${t('showMap')}</button></div>` : '';
+  const viewing = editing ? '' : `<div class="banner">${ic('info', 18)}<span>${t('viewing')}</span><button type="button" class="btn small" data-act="edit">${ic('pencil', 16)}${t('edit')}</button></div>`;
+  const tools = editing ? `<div class="tools2"><button type="button" class="chip">${ic('roundtrip', 18)}${t('roundTrip')}</button><button type="button" class="chip">${ic('reverse', 18)}${t('reverse')}</button><button type="button" class="chip">${ic('loop', 18)}${t('backStart')}</button><button type="button" class="chip">${ic('upload', 18)}${t('importFile')}</button><button type="button" class="chip">${ic('route', 18)}All leg settings</button></div>
+      <div class="howgo"><button type="button" class="sec-h" aria-expanded="false">How you go · ${esc(styleName(st))} · Normal speed<span class="spacer"></span>${ic('down', 16)}</button></div>` : '';
+  return `${viewing}${head}<div class="sec-h">${t('points')} ${L.length}${L.length > 1 ? ` · ${esc(L[0].name)} → ${esc(L[L.length - 1].name)}` : ''}</div>${bar}<ol class="wpl" aria-label="${t('points')}, in order">${idx.map(row).join('')}</ol>${tools}`;
+}
+
+// the sheet (phone) and the panel (desktop)
+function plannerHtml(st, v, desk, docked) {
+  const grab = desk ? '' : `<button type="button" class="grab" data-act="grab" aria-label="Planner size: ${st.sheet}. Press to change"></button>`;
+  const dock = docked ? `<div class="dockbox" role="toolbar" aria-label="Drawing tools">${phoneToolbox(st, v)}</div>` : '';
+  if (st.stage === 'start') {
+    const later = st.later ? `<div class="later" style="opacity:1;margin-top:4px"><b>${t('later157')}: ${t('yourRoutes')}</b><ol class="wpl" style="margin-top:4px">${[['Kauppi → Hervanta', 'MTB · 12.6 km · 2026-10-16'], ['Näsijärvi islands', 'Paddle · 11.1 km · offline · 2026-10-12'], ['Pyynikki loop', 'Hike · 8.2 km · 2026-10-03']].map(([a, b]) => `<li><button type="button" class="wpr">${ic('route', 18)}<span class="nm"><b>${a}</b><small>${b}</small></span>${ic('right', 16)}</button></li>`).join('')}</ol></div>` : '';
+    return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
+      <div class="row"><div class="hint">${t(desk ? 'clickStart' : 'tapStart')}<small>${t('tapStartSub')}</small></div>${desk ? '' : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</div>
+      <div class="chips"><button type="button" class="chip" data-act="rtopen">${ic('roundtrip', 18)}${t('roundTrip')}</button><button type="button" class="chip" data-act="noop">${ic('upload', 18)}${t('importFile')}</button>${st.later ? `<button type="button" class="chip">${ic('list', 18)}${t('yourRoutes')} 3</button>` : ''}</div>${later}</div>`;
+  }
+  if (st.stage === 'first') {
+    const S = SPORTS[st.sport], R = st.rt, unit = R.unit;
+    const fmtV = (q) => (unit === 'km' ? `${q} km` : q >= 60 ? `${Math.floor(q / 60)} h${q % 60 ? ` ${q % 60}` : ''}` : `${q} min`);
+    const presets = unit === 'km' ? S.km : S.min;
+    if (R.results) {
+      // illustrative numbers that follow the length asked for (the pictures behind are three real 10 km loops)
+      const km = unit === 'km' ? R.val : R.val / 60 * 14, hm = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')}` : `${Math.round(m)} min`);
+      const L = [['A', '#2563eb', 1.04, 4.1, 9.6, 71, 'no stretch twice · 2 heads-up', true], ['B', '#ea580c', 0.97, 4.0, 7.3, 58, '6 % ridden twice · no heads-up', false], ['C', '#9333ea', 1.12, 4.2, 12, 64, 'no stretch twice · 1 heads-up', false]]
+        .map(([k, c, f, mpk, up, tr, l2, best]) => [k, c, `${(km * f).toFixed(1)} km`, `${hm(km * f * mpk)} · ↑${Math.round(km * f * up)} m · trails ${tr} %`, l2, best]);
+      return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
+        <div class="row"><div class="hint">${t('loopsFrom')}<small>${fmtV(R.val)} · ${t('any').toLowerCase()}</small></div><button type="button" class="btn small quiet" data-act="rtchange">${t('change')}</button><button type="button" class="tbtn" data-act="rtclose" aria-label="Close the round trip">${ic('close', 20)}</button></div>
+        <div class="loopcards" role="list" aria-label="Loops">${L.map(([k, c, d, l1, l2, best], i) => `<div class="lc${i === R.pick ? ' on' : ''}" role="listitem"><button type="button" data-act="pick" data-v="${i}" style="all:unset;display:grid;gap:4px;cursor:pointer" aria-label="Loop ${k}: ${d}, ${l1}, ${l2}${i === R.pick ? ', picked' : ''}"><span class="h"><span class="dot" style="background:${c}">${k}</span><b>${d}</b>${best ? `<span class="best">${t('closest')}</span>` : ''}</span><span class="l">${l1}</span><span class="l m">${l2}</span></button>${i === R.pick ? `<button type="button" class="btn primary" data-act="useloop">${t('useLoop')} ${k}</button>` : ''}</div>`).join('')}
+          <button type="button" class="lc more" data-act="noop">${ic('roundtrip', 20)}<b>${t('moreLoops')}</b><small>${t('moreLoopsD')}</small></button></div></div>`;
+    }
+    if (R.open) {
+      const making = R.making > 0;
+      return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}<div class="rt">
+        <div class="row"><div class="hint">${t('rtTitle')}</div><button type="button" class="tbtn" data-act="rtclose" aria-label="Close the round trip">${ic('close', 20)}</button></div>
+        <div class="row wrap"><div class="seg small" role="radiogroup" aria-label="${t('distance')} or ${t('time')}"><button type="button" role="radio" aria-checked="${unit === 'km'}" data-act="unit" data-v="km">${t('distance')}</button><button type="button" role="radio" aria-checked="${unit === 'time'}" data-act="unit" data-v="time">${t('time')}</button></div>
+          <span class="sel" style="margin-left:auto">${ic('roundtrip', 16)}${t('any')} ${ic('down', 12)}<select aria-label="${t('dir')}"><option>${t('any')}</option><option>N</option><option>NE</option><option>E</option><option>SE</option><option>S</option><option>SW</option><option>W</option><option>NW</option><option>${t('intoWind')}</option></select></span></div>
+        <div class="chips" role="group" aria-label="Lengths">${presets.map((q) => `<button type="button" class="chip" aria-pressed="${q === R.val}" data-act="preset" data-v="${q}">${q === R.val ? ic('check', 16) : ''}${fmtV(q)}</button>`).join('')}</div>
+        <div class="stepper"><button type="button" class="tbtn ring" data-act="dec" aria-label="${unit === 'km' ? `${S.step} km shorter` : '15 minutes shorter'}">${ic('minus', 20)}</button><label class="len"><input type="text" inputmode="decimal" enterkeyhint="done" value="${R.val}" aria-label="${unit === 'km' ? 'Length in kilometres' : 'Length in minutes'}" data-in="len"><span>${unit === 'km' ? 'km' : 'min'}</span></label><button type="button" class="tbtn ring" data-act="inc" aria-label="${unit === 'km' ? `${S.step} km longer` : '15 minutes longer'}">${ic('plus', 20)}</button></div>
+        <div class="cap" style="font-weight:500">${t('moveStart')}<br>${t('calls')}</div>
+        <button type="button" class="btn primary big" data-act="make"${making ? ' disabled aria-disabled="true"' : ''}>${making ? `<span style="display:grid;gap:6px;width:70%;justify-items:center">${t('making')} ${R.making} ${t('of3')}<span class="progress" style="--p:${R.making * 33}%"><i></i></span></span>` : `${ic('roundtrip', 20)}${t('make3')}`}</button>
+        <span class="sr" role="status">${making ? `${t('making')} ${R.making} ${t('of3')}` : ''}</span></div></div>`;
+    }
+    const rtrow = `<div class="cap" style="margin-top:2px">${ic('roundtrip', 14).replace('class="ic ', 'style="display:inline;vertical-align:-2px" class="ic ')} ${t('rtHere')}</div><div class="chips" role="group" aria-label="${t('rtHere')}">${presets.slice(0, 3).map((q) => `<button type="button" class="chip" data-act="preset" data-v="${q}" aria-label="${t('rtHere')}: ${fmtV(q)}">${fmtV(q)}</button>`).join('')}<button type="button" class="chip" data-act="rtopen">${t('other')}…</button></div>`;
+    return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
+      <div class="row"><div class="hint">${t(desk ? 'clickNext' : 'tapNext')}</div>${desk ? '' : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</div>${rtrow}</div>`;
+  }
+  // a route
+  const viewing = st.mode === 'view';
+  // the summary is the route's own information; on a phone Done (Edit in the view) sits at its right, at the thumb
+  const fin = desk ? '' : `<span class="acts-r">${viewing ? `<button type="button" class="btn" data-act="edit">${t('edit')}</button>` : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</span>`;
+  const head = viewing
+    ? `<div class="titlerow"><span class="ttl"><b>${esc(routeTitle(st, v))}</b><small>${ic('check', 13)}${t('kept')}</small></span><button type="button" class="tbtn" data-act="close" aria-label="Put the route away">${ic('close', 20)}</button></div>${warnRow(st, v, desk)}
+       <div class="row wrap">${stats(st, v)}${fin}</div>`
+    : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>`;
+  const big = desk || st.sheet !== 'peek';
+  const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
+  const body = st.tab === 'check' ? checkBody(st, v) : st.tab === 'go' ? goBody(st) : wpList(st, v);
+  return `<div class="pl${desk && !viewing ? ' joined' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
+}
+function deskToolbar(st, v, compact = 0) {
+  const route = st.stage === 'route', sep = '<span class="sep" aria-hidden="true"></span>';
+  const tb = (act, icn, label, tip, dis = false) => `<button type="button" class="tbtn" data-act="${act}" aria-label="${label}" data-tip="${tip}"${dis ? ' disabled' : ''}>${ic(icn, 20)}</button>`;
+  const fit = route ? tb('fit', 'fit', 'Show the whole route', 'fit') : '';
+  if (st.mode === 'view') return `<div class="deskbar" role="toolbar" aria-label="Your route">${fit}${moreBtn(st, 40)}${sep}<button type="button" class="btn" data-act="edit" data-tip="edit">${ic('pencil', 18)}${t('edit')}</button></div>`;
+  const seg = ['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}" data-tip="${m}" aria-keyshortcuts="${{ auto: 'P', line: 'S', water: 'W' }[m]}">${ic(m, 19)}${t(m)}</button>`).join('');
+  // where room runs out (a narrower window, longer words), Reverse and Back to start fold into More first, then the style's label
+  const whole = route && compact < 1 ? `${sep}${tb('reverse', 'reverse', t('reverse'), 'reverse')}${tb('backstart', 'loop', t('backStart'), 'backstart')}` : '';
+  return `<div class="deskbar" role="toolbar" aria-label="Drawing tools"><div class="seg" role="radiogroup" aria-label="${t('nextLeg')}">${seg}</div>
+    ${sep}<button type="button" class="stylebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('styleRow')}: ${esc(styleName(st))}" data-tip="style"><span class="two">${compact < 2 ? `<small>${t('styleRow')}</small>` : ''}<span>${esc(styleName(st))}</span></span>${ic('down', 12)}</button>
+    ${hasHist(st) ? `${sep}${undoRedo(st, 40)}` : ''}${whole}${fit ? `${route && compact < 1 ? '' : sep}${fit}` : ''}${sep}${moreBtn(st, 40)}<button type="button" class="btn" data-act="done" data-tip="done">${t('done')}</button></div>`;
+}
+const TIPS = {
+  auto: ['auto', 'Follow paths', 'P', 'The next leg follows paths and roads, chosen by the route style.'],
+  line: ['line', 'Straight line', 'S', 'The next leg is drawn straight: off the trail, or across a gap the router can’t take.'],
+  water: ['water', 'Over water', 'W', 'The next leg is routed on the water by Polku: round land and marked hazards.'],
+  style: ['route', 'Route style', '', 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.'],
+  undo: ['undo', 'Undo', 'Ctrl Z', 'Takes back the last change.'],
+  redo: ['redo', 'Redo', 'Ctrl Shift Z', 'Does it again.'],
+  reverse: ['reverse', 'Reverse', '', 'The finish becomes the start; each leg keeps its mode and style.'],
+  backstart: ['loop', 'Back to start', '', 'A leg from the finish back to where you started.'],
+  fit: ['fit', 'Show the whole route', 'F', 'Frames the whole route on the map, clear of the planner.'],
+  more: ['more', 'More', '', 'Share link, GPX, save offline; round trip, reverse, back to start, import; clear the route.'],
+  done: ['check', 'Done', 'E', 'Stop editing: the route stays open to read, check and take along.'],
+  edit: ['pencil', 'Edit', 'E', 'Back to drawing: the toolbox comes back, and a click on the map adds a point.'],
+};
+const tipHtml = (k, x, y) => { const [i, b, kbd, d] = TIPS[k]; return `<div class="tip" role="tooltip" style="left:${x}px;top:${y}px"><b>${b}${kbd ? kbd.split(' ').map((q) => `<span class="kbd">${q}</span>`).join('') : ''}</b>${d}</div>`; };
+
+// ------------------------------------------------ render one frame
+function render(f) {
+  const { el, st } = f;
+  const v = view(st);
+  LANG = v.lang;
+  const desk = el.classList.contains('desk');
+  el.classList.toggle('dark', v.theme === 'dark');
+  el.classList.toggle('view', st.mode !== 'edit');
+  const scr = el.querySelector('.screen');
+  if (el.dataset.fixed) { scr.innerHTML = `<img class="shot" alt="Polku's planner today" src="${SHOTPIC(`${el.dataset.fixed}.jpg`)}">`; return; }
+  const z = st.z || 1, W = (st.w || (desk ? 1440 : 390)) / z, H = (st.h || (desk ? 900 : 844)) / z;
+  scr.style.width = `${W}px`; scr.style.height = `${H}px`; scr.style.setProperty('--k', String(z));
+  scr.classList.toggle('bigtext', z >= 2);
+  st._h = H; st._id = el.id;
+  if (!st.wps || st._wpsKey !== `${st.long}|${v.worst}|${st.sport}`) { st.wps = waypoints(st.long, v.worst, st.sport); st._wpsKey = `${st.long}|${v.worst}|${st.sport}`; if (st.sel >= st.wps.length) st.sel = 1; }
+  // the map behind
+  const bg = st.stage === 'start' ? (desk ? 'desk-mtb-calm.jpg' : 'phone-empty.jpg')
+    : st.stage === 'first' ? (st.rt.results ? (desk ? 'desk-loops.jpg' : 'phone-loops.jpg') : (desk ? 'desk-start1.jpg' : 'phone-start1.jpg'))
+      : st.long ? (desk ? 'desk-long.jpg' : 'phone-long.jpg') : st.loop ? (desk ? 'desk-mtb-calm.jpg' : 'phone-loop1.jpg') : st.sport === 'paddle' ? (desk ? 'desk-mtb-calm.jpg' : 'phone-paddle-calm.jpg') : (desk ? 'desk-mtb-calm.jpg' : 'phone-mtb-calm.jpg');
+  scr.style.backgroundImage = st.stage === 'start' && desk ? 'none' : `url(${PIC(bg)})`;
+  if (st.stage === 'start' && desk) scr.style.backgroundColor = '#e9eee6';
+  const editing = st.mode === 'edit';
+  let html = topbar(desk, st.sport);
+  if (st.mode !== 'closed') html += plannerHtml(st, v, desk, false);
+  scr.innerHTML = html;
+  let docked = false;
+  const pl = scr.querySelector('.pl');
+  const sheetTop = desk || !pl ? 0 : H - pl.offsetTop;
+  const colsBottom = desk ? 12 : (pl ? sheetTop + 12 : 20);
+  scr.insertAdjacentHTML('beforeend', cols(st, desk, colsBottom, z) + `<div class="scale" style="bottom:${desk ? 12 : (pl ? sheetTop + 12 : 20)}px"><i>500 m</i></div>`);
+  const foldCols = (bottom) => { for (let fold = 1; fold <= 2 && !desk; fold++) { const c0 = scr.querySelector('.cols:not([hidden])'); if (!c0 || c0.offsetTop >= 64) break; c0.outerHTML = cols(st, desk, bottom, z, fold); } };
+  foldCols(colsBottom);
+  // the toolbox: phones float it above the sheet (docked into the sheet where the map is too narrow); desktops hang it off the panel
+  if (pl && (editing || st.stage === 'route') && !(st.stage === 'first' && (st.rt.open || st.rt.results))) {
+    if (desk) {
+      // the toolbar may not reach the map's buttons: fold its least used parts first
+      const right = scr.querySelector('.cols').offsetLeft - 12;
+      for (let c = 0; c < 3; c++) { scr.querySelector('.deskbar')?.remove(); scr.insertAdjacentHTML('beforeend', deskToolbar(st, v, c)); const b = scr.querySelector('.deskbar'); if (b.offsetLeft + b.offsetWidth <= right) break; }
+    } else {
+      scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="${editing ? 'Drawing tools' : 'Your route'}" style="bottom:${sheetTop + 8}px">${phoneToolbox(st)}</div>`);
+      const fl = scr.querySelector('.float'), cl = scr.querySelector('.cols:not([hidden])') || { offsetLeft: W };
+      // too narrow beside the map's buttons, or no room above a raised sheet: it docks into the sheet
+      if (fl.offsetLeft + fl.offsetWidth + 8 > cl.offsetLeft || fl.offsetTop < 64) { docked = true; fl.remove(); } else scr.querySelector('.scale').style.bottom = `${H - fl.offsetTop + 8}px`;
+    }
+  }
+  if (docked) {
+    pl.outerHTML = plannerHtml(st, v, desk, true);
+    const pl2 = scr.querySelector('.pl'), top2 = H - pl2.offsetTop;
+    const c2 = scr.querySelector('.cols'); if (c2) { c2.outerHTML = cols(st, desk, top2 + 12, z); foldCols(top2 + 12); }
+    scr.querySelector('.scale').style.bottom = `${top2 + 12}px`;
+  }
+  // menus, anchored to what opened them
+  if (st.pop) {
+    const trig = scr.querySelector(st.pop === 'modes' ? '[data-act="modes"]' : '[data-act="trip"]');
+    if (trig) {
+      const r = box(trig, scr);
+      scr.insertAdjacentHTML('beforeend', st.pop === 'modes' ? modesMenu(st) : tripMenu(st, v));
+      const m = scr.querySelector('.popmenu');
+      if (desk) { m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${st.pop === 'trip' ? Math.max(8, r.x + r.w - 316) : r.x}px`; m.style.setProperty('--origin', st.pop === 'trip' ? 'top right' : 'top left'); }
+      else {
+        // above its button, below the top bar, clear of the map's buttons; it scrolls inside if it's taller than
+        // the room, and with no room above its button (enlarged text, a raised sheet) it opens as a sheet of its own
+        const room = r.y - 8 - 64, colsL = (scr.querySelector('.cols:not([hidden])') || { offsetLeft: W }).offsetLeft;
+        const mw = Math.min(316, W - 16, colsL - 16);
+        if (room < 240 || W < 340) { m.style.left = '8px'; m.style.right = '8px'; m.style.width = 'auto'; m.style.top = '64px'; m.style.bottom = '8px'; m.style.maxHeight = 'none'; m.style.zIndex = 15; }
+        else {
+          m.style.bottom = `${H - r.y + 8}px`; m.style.maxHeight = `${room}px`; m.style.width = `${mw}px`;
+          m.style.left = `${Math.max(8, Math.min(r.x + r.w - mw, W - 8 - mw))}px`; m.style.setProperty('--origin', 'bottom right');
+          if (st.pop === 'modes') { m.style.left = `${Math.max(8, Math.min(r.x, W - 8 - mw))}px`; m.style.setProperty('--origin', 'bottom left'); }
+        }
+      }
+    }
+  }
+  if (st.tip && desk) { const tr = scr.querySelector(`[data-tip="${st.tip}"]`); if (tr) { const r = box(tr, scr); scr.insertAdjacentHTML('beforeend', tipHtml(st.tip, r.x, r.y + r.h + 10)); } }
+  if (st.info) scr.insertAdjacentHTML('beforeend', `<div class="mapinfo" style="left:${Math.min(st.info[0], W - 250)}px;top:${Math.max(70, st.info[1] - 90)}px" role="status"><b>Path · gravel, 2.5 m wide</b>Kauppi’s trails · open all year<br><small style="color:var(--muted)">${t('mapTap')}</small></div>`);
+  if (st.toast) {
+    const T = { cleared: [t('cleared'), t('undoBtn'), 'undo'], closed: [t('closed'), t('open'), 'reopen'], style: [`${t('styleRow')}: ${styleName(st)} · routed again; legs with their own style keep it`, t('undoBtn'), 'undo'], removed: [`Removed ${st.toastName || ''}`, t('undoBtn'), 'undo'], loop: ['Loop A is your route', t('undoBtn'), 'undo'], moved: ['Moved', t('undoBtn'), 'undo'], fit: ['The whole route is in view', '', ''], reversed: ['Reversed: the finish is the start now', t('undoBtn'), 'undo'], backed: ['A leg back to the start', t('undoBtn'), 'undo'] }[st.toast];
+    if (T) {
+      const pl3 = scr.querySelector('.pl'), fl3 = scr.querySelector('.float'), c3 = scr.querySelector('.cols:not([hidden])');
+      const bottom = desk ? 24 : (fl3 ? H - fl3.offsetTop + 10 : pl3 ? H - pl3.offsetTop + 10 : 20);
+      // on a phone a note stays left of the map's buttons, so it never covers Layers or Plan
+      const place = desk ? '' : `left:8px;right:${c3 ? W - c3.offsetLeft + 8 : 8}px;transform:none;width:auto;`;
+      scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${bottom}px;${place}"><span>${esc(T[0])}</span>${T[1] ? `<button type="button" data-act="${T[2]}">${T[1]}</button>` : ''}</div>`);
+    }
+  }
+  scr.insertAdjacentHTML('beforeend', `<span class="sr" aria-live="polite">${st.mode === 'view' ? 'Done editing. ' + t('mapTap') : ''}</span>`);
+  // keep a long list's selected row in view
+  const bodyEl = scr.querySelector('[data-body]');
+  if (bodyEl && st._scroll != null) bodyEl.scrollTop = st._scroll;
+  if (bodyEl && st.long && st._reveal) { const r = bodyEl.querySelector('.wpsel'); if (r) r.scrollIntoView({ block: 'center' }); st._reveal = false; }
+}
+function box(el, scr) {
+  const r = el.getBoundingClientRect(), S = scr.getBoundingClientRect(), k = S.width / scr.offsetWidth;
+  return { x: (r.left - S.left) / k, y: (r.top - S.top) / k, w: r.width / k, h: r.height / k };
+}
+
+// ------------------------------------------------ what a tap does
+// what undo brings back: the route and its style, as in Polku (the mode for the next leg isn't part of the route)
+const SNAP = (st) => JSON.stringify({ stage: st.stage, wps: st.wps, sel: st.sel, style: st.style, legStyle: st.legStyle || {}, loop: st.loop, rt: { ...st.rt, making: 0 } });
+function change(f, fn) { f.past.push(SNAP(f.st)); f.future = []; fn(); f.st.hist = f.past.length; f.st.fut = 0; }
+function act(f, a, val, ev) {
+  const st = f.st, R = st.rt;
+  const close = () => { st.pop = null; st.styleOpen = false; };
+  const toast = (k, ms = 5000) => { st.toast = k; clearTimeout(f.tt); f.tt = setTimeout(() => { st.toast = null; render(f); }, ms); };
+  st.info = null;
+  switch (a) {
+    case 'map':
+      if (st.pop) { close(); break; }
+      if (st.mode === 'view') { st.info = val; break; }
+      if (st.mode !== 'edit') break;
+      if (st.stage === 'first' && R.making) break; // the map waits while the loops are made (#109)
+      if (st.stage === 'first' && R.open && !R.results) break; // moves the round trip's start (shown, not moved here)
+      if (st.stage === 'start') change(f, () => { st.stage = 'first'; R.open = false; });
+      else if (st.stage === 'first') change(f, () => { st.stage = 'route'; R.open = false; R.results = false; });
+      else change(f, () => { st.wps = [...st.wps.slice(0, -1), { ...st.wps[st.wps.length - 1], kind: 'via' }, { name: 'New point', km: +(st.wps[st.wps.length - 1].km + 0.6).toFixed(2), tm: '07:52', kind: 'end' }]; st.sel = st.wps.length - 1; });
+      break;
+    case 'modes': st.pop = st.pop === 'modes' ? null : 'modes'; st.styleOpen = false; break;
+    case 'trip': st.pop = st.pop === 'trip' ? null : 'trip'; break;
+    case 'draw': st.draw = val; close(); break;
+    case 'styleopen': st.styleOpen = true; break;
+    case 'style': change(f, () => { st.style = val; }); close(); toast('style'); break;
+    case 'finetune': close(); st.sheet = 'full'; st.tab = 'route'; break;
+    case 'undo': if (f.past.length) { f.future.push(SNAP(st)); Object.assign(st, JSON.parse(f.past.pop())); st.hist = f.past.length; st.fut = f.future.length; st.toast = null; if (st.stage === 'start') st.mode = 'edit'; } break;
+    case 'redo': if (f.future.length) { f.past.push(SNAP(st)); Object.assign(st, JSON.parse(f.future.pop())); st.hist = f.past.length; st.fut = f.future.length; } break;
+    case 'done': close(); if (st.stage === 'route') st.mode = 'view'; else { st.mode = 'closed'; toast('closed'); } break;
+    case 'edit': close(); st.mode = 'edit'; break;
+    case 'close': close(); st.mode = 'closed'; toast('closed'); break;
+    case 'reopen': st.mode = st.stage === 'route' ? 'view' : 'edit'; st.toast = null; break;
+    case 'grab': st.sheet = { peek: 'half', half: 'full', full: 'peek' }[st.sheet]; close(); break;
+    case 'tab': st.tab = val; if (st.sheet === 'peek') st.sheet = 'half'; break;
+    case 'tocheck': st.tab = 'check'; st.sheet = 'half'; break;
+    case 'depart': st.tab = 'go'; if (st.sheet === 'peek') st.sheet = 'half'; break;
+    case 'clear': close(); change(f, () => { st.stage = 'start'; st.mode = 'edit'; st.sheet = 'peek'; }); toast('cleared', 7000); break;
+    case 'rtstart': close(); change(f, () => { st.stage = 'first'; R.open = true; R.val = R.val || SPORTS[st.sport].km[1]; }); break;
+    case 'rtopen': if (st.stage === 'start') { st.stage = 'first'; } R.open = true; R.results = false; R.val = R.val || (R.unit === 'km' ? SPORTS[st.sport].km[1] : SPORTS[st.sport].min[1]); break;
+    case 'rtclose': R.open = false; R.results = false; R.making = 0; break;
+    case 'rtchange': R.results = false; R.open = true; break;
+    case 'preset': R.open = true; R.val = +val; break;
+    case 'unit': R.unit = val; R.val = val === 'km' ? SPORTS[st.sport].km[1] : SPORTS[st.sport].min[1]; break;
+    case 'dec': R.val = Math.max(1, R.val - (R.unit === 'km' ? SPORTS[st.sport].step : 15)); break;
+    case 'inc': R.val = Math.min(R.unit === 'km' ? 300 : 600, R.val + (R.unit === 'km' ? SPORTS[st.sport].step : 15)); break;
+    case 'make': R.making = 1; { const step = () => { if (R.making >= 3) { R.making = 0; R.results = true; R.pick = 0; } else { R.making++; setTimeout(step, 600); } render(f); }; setTimeout(step, 600); } break;
+    case 'pick': R.pick = +val; break;
+    case 'useloop': change(f, () => { st.stage = 'route'; st.loop = true; R.open = false; R.results = false; }); toast('loop'); break;
+    case 'sel': st.sel = +val; st.legOpen = false; st.moveTo = false; st.mvTo = null; if (st.mode === 'view') break; break;
+    case 'prev': st.sel = Math.max(0, st.sel - 1); st._reveal = true; break;
+    case 'next': st.sel = Math.min(st.wps.length - 1, st.sel + 1); st._reveal = true; break;
+    case 'showsel': st._reveal = true; break;
+    case 'leg': st.legOpen = !st.legOpen; break;
+    case 'stop': change(f, () => { st.wps = st.wps.map((p, i) => (i === st.sel ? { ...p, stop: !p.stop } : p)); }); break;
+    case 'up': case 'down': { const j = st.sel + (a === 'up' ? -1 : 1); if (j < 0 || j >= st.wps.length) break; change(f, () => { const L = [...st.wps]; [L[st.sel], L[j]] = [L[j], L[st.sel]]; st.wps = L; st.sel = j; }); break; }
+    case 'moveto': st.moveTo = !st.moveTo; st.mvTo = st.sel; break;
+    case 'mvdec': st.mvTo = Math.max(0, (st.mvTo ?? st.sel) - 1); break;
+    case 'mvinc': st.mvTo = Math.min(st.wps.length - 1, (st.mvTo ?? st.sel) + 1); break;
+    case 'mvgo': { const to = st.mvTo ?? st.sel; change(f, () => { const L = [...st.wps], [p] = L.splice(st.sel, 1); L.splice(to, 0, p); st.wps = L; st.sel = to; st.moveTo = false; }); st._reveal = true; toast('moved'); break; }
+    case 'remove': { const nm = st.wps[st.sel].name; if (st.wps.length <= 2) break; change(f, () => { st.wps = st.wps.filter((_, i) => i !== st.sel); st.sel = Math.min(st.sel, st.wps.length - 1); }); st.toastName = nm; toast('removed', 7000); break; }
+    case 'filter': st.filter = val; break;
+    case 'fit': toast('fit', 2500); break;
+    case 'reverse': change(f, () => { st.wps = [...st.wps].reverse().map((p, i, L) => ({ ...p, kind: i === 0 ? 'start' : i === L.length - 1 ? 'end' : 'via' })); }); toast('reversed'); break;
+    case 'backstart': change(f, () => { const L = st.wps; st.wps = [...L.slice(0, -1), { ...L[L.length - 1], kind: 'via' }, { ...L[0], kind: 'end', km: +(L[L.length - 1].km * 2).toFixed(2) }]; }); toast('backed'); break;
+    default: close();
+  }
+  st._wpsKey = `${st.long}|${view(st).worst}|${st.sport}`;
+  render(f);
+}
+
+// ------------------------------------------------ wiring
+const only = Q.get('frame');
+for (const el of document.querySelectorAll('.fr')) {
+  const scr = document.createElement('div');
+  scr.className = 'screen';
+  el.prepend(scr);
+  const base = JSON.parse(el.dataset.st || '{}');
+  if (only && el.id === only) {
+    if (Q.get('w')) base.w = +Q.get('w');
+    if (Q.get('h')) base.h = +Q.get('h');
+    if (Q.get('z')) base.z = +Q.get('z');
+  }
+  const f = { el, base, st: fresh(base), past: [], future: [], single: !!(only && el.id === only) };
+  if (f.st.long) f.st._reveal = true; // a long list opens at the selected point
+  const seed = (ff) => { if (ff.st.hist) ff.past.push(SNAP({ ...ff.st, stage: 'route' })); else if (ff.st.stage === 'route' || ff.st.stage === 'first') { ff.past.push(SNAP({ ...ff.st, stage: ff.st.stage === 'route' ? 'first' : 'start' })); ff.st.hist = 1; } }; // something to undo: the clear, or the route's last point
+  seed(f);
+  FR.set(el.id, f);
+  if (!el.dataset.fixed) {
+    const rb = document.createElement('button');
+    rb.type = 'button'; rb.className = 'reset'; rb.textContent = 'Reset this frame';
+    rb.addEventListener('click', () => { f.st = fresh(f.base); f.past = []; f.future = []; seed(f); render(f); });
+    el.append(rb);
+  }
+  scr.addEventListener('click', (e) => {
+    // with a menu open, a tap outside it (and its own button) only closes it
+    if (f.st.pop && !e.target.closest('.popmenu, [data-act="modes"], [data-act="trip"]')) { f.st.pop = null; f.st.styleOpen = false; render(f); return; }
+    const b = e.target.closest('[data-act]');
+    if (b && scr.contains(b)) { if (b.disabled) return; act(f, b.dataset.act, b.dataset.v, e); return; }
+    if (e.target.closest('input, select, label, .popmenu, .pl, .float, .deskbar, .cols, .top, .toast, .mapinfo')) return;
+    const r = scr.getBoundingClientRect(), k = r.width / scr.offsetWidth;
+    act(f, 'map', [(e.clientX - r.left) / k, (e.clientY - r.top) / k], e);
+  });
+  scr.addEventListener('input', (e) => {
+    const k = e.target.dataset.in;
+    if (k === 'q') { f.st.q = e.target.value; const pos = e.target.selectionStart; render(f); const i = scr.querySelector('[data-in="q"]'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } }
+    if (k === 'len') { const n = parseFloat(e.target.value.replace(',', '.')); if (n > 0) f.st.rt.val = n; }
+    if (k === 'legstyle') { const val = e.target.value; if (val === '~tune') return; f.past.push(SNAP(f.st)); f.st.hist = f.past.length; f.st.legStyle = { ...(f.st.legStyle || {}), [f.st.sel]: val || undefined }; render(f); return; }
+    if (k === 'mv') { const n = parseInt(e.target.value, 10); if (n >= 0) f.st.mvTo = Math.min(n, f.st.wps.length - 1); }
+  });
+  scr.addEventListener('scroll', (e) => { if (e.target.matches && e.target.matches('[data-body]')) f.st._scroll = e.target.scrollTop; }, true);
+  // desktop: tooltips after a short wait, then at once for the next one (emil-design-eng); keyboard focus shows them too
+  if (el.classList.contains('desk')) {
+    let tm = 0, warm = 0;
+    const show = (tg) => { const k = tg && tg.dataset.tip; if (!k || f.st.tip === k) return; clearTimeout(tm); tm = setTimeout(() => { f.st.tip = k; warm = Date.now(); render(f); }, Date.now() - warm < 800 ? 0 : 450); };
+    const hide = () => { clearTimeout(tm); if (f.st.tip && !f.base.tip) { warm = Date.now(); f.st.tip = null; render(f); } };
+    scr.addEventListener('pointerover', (e) => { const tg = e.target.closest('[data-tip]'); if (tg) show(tg); else if (f.st.tip && !e.target.closest('.tip')) hide(); });
+    scr.addEventListener('focusin', (e) => show(e.target.closest('[data-tip]')));
+    scr.addEventListener('pointerleave', hide);
+  }
+  scr.tabIndex = -1;
+  scr.addEventListener('keydown', (e) => {
+    const st = f.st, inField = e.target.matches('input, select, textarea');
+    if (e.key === 'Escape' && st.pop) { st.pop = null; render(f); scr.querySelector('[data-act="modes"], [data-act="trip"]')?.focus(); return; }
+    if (inField) return;
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); act(f, e.shiftKey ? 'redo' : 'undo'); return; }
+    if (!mod && st.mode === 'edit' && { p: 1, s: 1, w: 1 }[e.key]) { act(f, 'draw', { p: 'auto', s: 'line', w: 'water' }[e.key]); return; }
+    if (!mod && e.key === 'e' && st.stage === 'route') { act(f, st.mode === 'edit' ? 'done' : 'edit'); return; }
+    if (e.target.closest('.wpr') && st.mode === 'edit') {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (e.altKey) act(f, e.key === 'ArrowUp' ? 'up' : 'down'); else act(f, e.key === 'ArrowUp' ? 'prev' : 'next'); scr.querySelector('.wpsel .namefield')?.focus(); }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); act(f, 'remove'); }
+    }
+  });
+}
+if (only && document.getElementById(only)) { document.body.classList.add('single'); document.getElementById(only).classList.add('only'); }
+function renderAll() {
+  document.documentElement.dataset.theme = OPT.theme;
+  for (const b of document.querySelectorAll('.picker [data-o]')) b.setAttribute('aria-pressed', String(String(OPT[b.dataset.o] === true ? '1' : OPT[b.dataset.o] === false ? '0' : OPT[b.dataset.o]) === b.dataset.v));
+  for (const f of FR.values()) render(f);
+}
+const PK = document.querySelector('.picker'), PKT = PK.querySelector('.pk-toggle');
+const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: worst case, words, theme'; };
+pkOpen(innerWidth >= 1100);
+PKT.addEventListener('click', () => pkOpen(PK.dataset.open !== 'true'));
+document.querySelector('.picker').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-o]');
+  if (!b) return;
+  const k = b.dataset.o;
+  OPT[k] = k === 'worst' ? b.dataset.v === '1' : b.dataset.v;
+  if (k === 'worst' || k === 'lang' || k === 'theme') touched = true;
+  if (k === 'modes' || k === 'rt') for (const f of FR.values()) { delete f.st.modes; delete f.st.rtui; }
+  renderAll();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') for (const f of FR.values()) if (f.st.pop) { f.st.pop = null; render(f); } });
+renderAll();
+</script>
+</body>
+</html>

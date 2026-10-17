@@ -78,6 +78,8 @@ button { font: inherit; color: inherit; }
   background: #e8eee6 center top / cover no-repeat; color: var(--text);
   font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
+/* the frame is a size container, so the drawer's short-screen rules follow the frame (the app uses @media) */
+.screen { container: screen / size; }
 .fr.dark .screen { background-color: #1d2320; }
 .fr.desk .screen { width: 1440px; height: 900px; zoom: .5; border-radius: 12px; }
 .fr.phone { --cap: 242px; }
@@ -116,6 +118,10 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .phone .cbtn { width: 44px; height: 44px; }
 .phone .fab, .phone .plan { width: 54px; height: 52px; }
 .needle .n { fill: #e11d48; stroke: #e11d48; }
+/* #226, as phase 24 proposes it: 3D with the buttons for how you look at the map (compass, locate, zoom), not
+   between Weather and Layers (what it shows); on a touch phone it takes zoom's place under locate */
+.c3d { font: 700 13px/1 system-ui, sans-serif; letter-spacing: .02em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.c3d[aria-pressed="true"] { background: var(--accent); color: #fff; }
 
 /* ------------------------------------------------ the quick drawer (new) */
 .qd {
@@ -167,7 +173,7 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .qd-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .qd-base { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: none; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
 .qd-base img { display: block; width: 100%; height: 44px; object-fit: cover; border-radius: 12px; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--line); background: var(--surface-2); }
-.qd-base > span { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+.qd-base > span { min-width: 0; overflow-wrap: anywhere; hyphens: manual; }
 .qd-base[aria-checked="true"] { color: var(--text); }
 .qd-base[aria-checked="true"] img { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .qd-base[aria-checked="true"]::after, .qt.on .qt-ic::after {
@@ -179,14 +185,19 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 /* a tile: one button turns its layer on and off; a tile with more settings has a › side
    (Android's and Windows' quick settings), its own 44 px button */
 .qt { position: relative; display: flex; min-height: 52px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); overflow: hidden; }
-.qt-tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: 600; line-height: 1.2; color: var(--text); }
+/* phase 24 (2026-10-17): a 20 px icon, an 8 px gap and 8 px padding give the label 72 px beside a › at 360 px
+   (62 before) and 84 px at 390 (74), so "Sadetutka", "Lämpötila", "Regnradar" or "3D-terräng" fit whole */
+.qt-tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: 600; line-height: 1.2; color: var(--text); }
 .qt-ic { position: relative; flex: none; color: var(--muted); }
 .qt.on .qt-ic::after { top: -8px; left: -8px; width: 16px; height: 16px; background-size: 11px; box-shadow: 0 0 0 2px var(--accent-soft); }
-.qt-l { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+/* a word that still doesn't fit breaks only where its language allows a good break: the strings carry soft hyphens
+   at compound boundaries (Syvyys­tiedot, Sade­tutka), and the browser never picks its own ("Sadetut-ka");
+   breaking anywhere stays the last resort, so nothing overflows */
+.qt-l { min-width: 0; overflow-wrap: anywhere; hyphens: manual; }
 .qt-l small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
 .qt-opt { flex: none; width: 44px; border: 0; border-left: 1px solid var(--line); background: none; display: grid; place-items: center; color: var(--muted); }
 .qt.on { border: 2px solid var(--accent); background: var(--accent-soft); }
-.qt.on .qt-tog { padding: 7px 9px; color: var(--accent); }
+.qt.on .qt-tog { padding: 7px; color: var(--accent); }
 .qt.on .qt-ic, .qt.on .qt-l small, .qt.on .qt-opt { color: var(--accent); }
 .qt.on .qt-opt { border-left-color: var(--accent-line); }
 .qt-more { width: 100%; align-items: center; gap: 10px; padding: 8px 4px 8px 10px; background: var(--surface-solid); text-align: left; font-size: 12.5px; font-weight: 600; color: var(--text); }
@@ -205,10 +216,26 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
   .qt-opt:hover { background: var(--line); }
   .qd-base:not([aria-checked="true"]):hover img { border-color: var(--line); }
 }
-/* narrow (200 % zoom on a phone): maps in two columns, tiles in one */
+/* narrow (200 % zoom on a phone): maps in two columns, tiles in one, a segmented choice in two rows */
 @container qd (max-width: 300px) {
   .qd-bases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .qd-tiles { grid-template-columns: minmax(0, 1fr); }
+  .qd .seg2 { flex-wrap: wrap; }
+  .qd .seg2 button { flex: 1 0 30%; }
+}
+/* short phones (phase 24, 2026-10-17): at 360 × 740 the drawer took 66 % of the screen (74 % in Finnish), at
+   375 × 667 73 % (80 %), leaving 70–190 px of map between the top bar and the sheet. Under 760 px high the
+   thumbnails and headings tighten, so the map you're changing stays in view. In the app: @media (max-height: 760px). */
+@container screen (max-height: 760px) {
+  .qd.sheet { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .qd.sheet .qd-grab { margin-top: 5px; }
+  .qd.sheet .qd-head { min-height: 44px; }
+  .qd.sheet .qd-lab { margin: 0 0 4px; min-height: 18px; }
+  .qd.sheet .qd-lab + .qd-bases, .qd.sheet .qd-lab + .qd-tiles { margin-bottom: 8px; }
+  .qd.sheet .qd-bases { gap: 8px; }
+  .qd.sheet .qd-base { gap: 2px; }
+  .qd.sheet .qd-base img { height: 34px; }
+  .qd.sheet .qt { min-height: 48px; }
 }
 
 /* a tile's settings, inside the drawer */
@@ -224,7 +251,7 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .tg.on i { background: var(--accent); }
 .tg.on i::after { transform: translateX(15px); }
 .rng { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 13px; }
-.rng input { flex: 1; accent-color: var(--accent); }
+.rng input { flex: 1; height: 44px; margin: 0; accent-color: var(--accent); } /* the whole row's height takes the thumb, not 16 px */
 .rng b { width: 44px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .qd-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 600; font-size: 12.5px; text-align: left; }
 
@@ -237,6 +264,7 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .qd-add { display: flex; flex-wrap: wrap; gap: 8px; }
 .qd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px 0 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); font-size: 12.5px; font-weight: 600; }
 .qd-chip .ic { color: var(--accent); }
+.qd-grp { margin: 10px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .qd-chip:disabled { opacity: .45; cursor: default; }
 .qd-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px -16px 0; padding: 10px 16px 0; border-top: 1px solid var(--line); }
 .qd-done { min-width: 96px; height: 48px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; }
@@ -258,6 +286,50 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .grp::after { content: ""; width: 8px; height: 8px; margin: 0 4px 0 auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
 .grp.open::after { transform: rotate(45deg); }
 .fp-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(transparent, var(--surface-solid)); pointer-events: none; }
+
+/* ------------------------------------------------ the planner's sheet with the same swipe (#96; phase 24) */
+.ps { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; display: flex; flex-direction: column; background: var(--surface-solid); border-radius: 18px 18px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2); will-change: transform; }
+.ps.closed { visibility: hidden; }
+.ps-top { flex: none; padding: 0 12px; touch-action: none; cursor: grab; }
+.ps-top .qd-grab { margin: 6px auto 4px; }
+.ps-row { display: flex; align-items: center; gap: 8px; min-height: 48px; }
+.ps-stats { flex: 1; min-width: 0; display: flex; gap: 12px; font-size: 13px; color: var(--muted); }
+.ps-stats b { display: block; font-size: 17px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ps-done { height: 40px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--route); color: #fff; font-weight: 700; }
+.ps-tools { display: flex; gap: 6px; padding-bottom: 8px; }
+.ps-tools button, .ps-tabs button { height: 44px; min-width: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); font-size: 12.5px; font-weight: 600; color: var(--text); }
+.ps-tools .seg { display: flex; flex: 1; gap: 2px; padding: 2px; border-radius: 12px; background: var(--surface-2); }
+.ps-tools .seg button { flex: 1; border: 0; height: 40px; border-radius: 10px; }
+.ps-tools .seg button[aria-pressed="true"] { background: var(--surface-solid); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.ps-tabs { display: flex; gap: 6px; padding: 0 12px 8px; flex: none; touch-action: none; }
+.ps-tabs button { flex: 1; }
+.ps-tabs button[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.ps-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px 24px; touch-action: pan-y; }
+.ps-prof { height: 120px; margin: 4px 0 10px; border-radius: 12px; background: linear-gradient(170deg, transparent 55%, rgba(225, 29, 72, .14) 56%), var(--surface-2); }
+.ps-item { display: flex; align-items: center; gap: 10px; min-height: 52px; border-top: 1px solid var(--line); font-size: 14px; }
+.ps-item i { width: 12px; height: 12px; border-radius: 50%; background: var(--route); flex: none; }
+.ps-reopen { position: absolute; right: 12px; bottom: 12px; z-index: 7; }
+.ps-size { position: absolute; left: 12px; top: 76px; z-index: 9; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font: 600 12px/1.4 system-ui, sans-serif; pointer-events: none; }
+
+/* ------------------------------------------------ test chrome (not part of the design): full size, swipe numbers */
+.fs-btn { align-self: flex-start; min-height: 44px; padding: 0 14px; border: 1px solid var(--page-cap); border-radius: 999px; background: none; color: var(--page-fg); font: 600 13px/1 system-ui, sans-serif; cursor: pointer; }
+body.single.fs .fr.only .screen { width: 100vw !important; height: 100vh !important; height: 100dvh !important; }
+body.single .fs-btn, body.fs .data-switch, .ps-reopen[hidden] { display: none; }
+.fs-bar { position: fixed; z-index: 60; top: max(8px, env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: none; gap: 6px; }
+body.fs .fs-bar { display: flex; }
+.fs-bar button, .data-switch button { min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: rgba(0,0,0,.72); color: #fff; font: 600 12.5px/1 system-ui, sans-serif; cursor: pointer; }
+.data-switch button { background: none; color: var(--switch-fg); padding: 12px 14px; }
+.tune { position: fixed; z-index: 70; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(420px, calc(100vw - 16px)); max-height: 70vh; overflow-y: auto; padding: 12px 14px; border-radius: 16px; background: #fff; color: #1c2420; box-shadow: 0 10px 40px rgba(0,0,0,.35); font: 13px/1.4 system-ui, sans-serif; }
+.tune[hidden] { display: none; }
+.tune h2 { margin: 0 0 4px; font-size: 15px; }
+.tune p { margin: 0 0 8px; color: #4b5651; }
+.tune label { display: grid; grid-template-columns: 1fr 64px; align-items: center; gap: 2px 8px; margin: 6px 0; }
+.tune label span { grid-column: 1 / -1; }
+.tune input[type=range] { height: 36px; margin: 0; accent-color: #1f6f4a; }
+.tune output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.tune .row { display: flex; gap: 8px; margin-top: 8px; }
+.tune .row button { flex: 1; min-height: 44px; border: 1px solid #c9d1cc; border-radius: 12px; background: #f3f4f1; font: 600 13px/1 system-ui, sans-serif; color: #1c2420; }
+.tune textarea { width: 100%; height: 64px; margin-top: 8px; font: 12px/1.4 ui-monospace, monospace; }
 </style>
 </head>
 <body>
@@ -300,7 +372,8 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
   <header class="cv-head">
     <h1>A quick layer drawer, before the full Layers panel</h1>
     <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/123">#123</a>, 2026-10-16, reviewed with design skills for coding agents and changed after the first round of answers. Not wired to the app: the map behind each frame is a screenshot of Polku; the drawer, buttons and panels are drawn in Polku's own colours and icons. The plan is <code>docs/plans/issue-123-layer-drawer.md</code>.</p>
-    <p><b>Try it:</b> tap maps and tiles; › on a tile opens its settings; Edit changes the tiles; More opens all layers. On a phone frame, drag the sheet down to close it or up for all layers; Layers opens it again.</p>
+    <p><b>Updated in phase 24's review (2026-10-17):</b> tighter on short phones, more room for a tile's label and Finnish words that break only at their compounds, Edit offering every layer switch, a 3D button on the map (#226) in place of MTB's 3D tile, and frame 7 with the planner's sheet to try the same swipe.</p>
+    <p><b>Try it:</b> tap maps and tiles; › on a tile opens its settings; Edit changes the tiles; More opens all layers. On a phone frame, drag the sheet down to close it or up for all layers; Layers opens it again. On a phone, <b>Try it full size</b> under a frame, and <b>Swipe numbers</b> to tune the swipe.</p>
   </header>
 
   <section class="cv-q" aria-labelledby="q-h">
@@ -320,8 +393,8 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
       <figure class="fr phone" id="phone-mtb" data-bg="phone-mtb" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"mtb"}'>
         <figcaption><b>Phone: a sheet from the bottom</b>About half the screen; the map changes above it. Tiles in thumb reach; every target 44 px or more. Swipe it down to close.</figcaption>
       </figure>
-      <figure class="fr desk" id="desk-mtb" data-bg="desk-mtb" data-ctrls='{"base":"trail"}' data-qd='{"kind":"pop","sport":"mtb","focus":"d3"}'>
-        <figcaption><b>Desktop: a card beside the button</b>Its bottom level with Layers, where today's panel opens. <kbd>L</kbd> opens it at once (no animation for the keyboard), Tab and the arrow keys move through it (the ring shows the keyboard on 3D terrain), <kbd>Esc</kbd> closes it and goes back to the button.</figcaption>
+      <figure class="fr desk" id="desk-mtb" data-bg="desk-mtb" data-ctrls='{"base":"trail"}' data-qd='{"kind":"pop","sport":"mtb","focus":"rain"}'>
+        <figcaption><b>Desktop: a card beside the button</b>Its bottom level with Layers, where today's panel opens. <kbd>L</kbd> opens it at once (no animation for the keyboard), Tab and the arrow keys move through it (the ring shows the keyboard on Rain radar), <kbd>Esc</kbd> closes it and goes back to the button.</figcaption>
       </figure>
     </div>
   </section>
@@ -407,7 +480,26 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
       </figure>
     </div>
   </section>
+
+  <section class="cv-row">
+    <h2>7 · The same swipe on the planner's sheet (#96)</h2>
+    <p>Added in phase 24's review (2026-10-17), to try the one swipe on a real phone with four sizes: peek, profile, half and full. Drag from the handle, the header (also over its buttons), the tabs, or the list when it's scrolled to the top. The map's buttons move once, when the sheet comes to rest. Not the planner's real contents: only enough to feel the swipe.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-sheet" data-bg="phone-mtb" data-ctrls='{"base":"trail","phone":true,"planning":true,"bottom":164,"layersOpen":false}' data-ps="peek">
+        <figcaption><b>Peek, profile, half, full</b>A flick moves one size; a slow drag goes to the nearest size where it would come to rest. Whether a swipe down from peek closes the planner is a switch in the swipe numbers, to try both.</figcaption>
+      </figure>
+    </div>
+  </section>
 </main>
+<div class="fs-bar" role="toolbar" aria-label="Test controls"><button type="button" data-fs="exit">‹ All frames</button><button type="button" data-tune-open>Swipe numbers</button></div>
+<section class="tune" id="tune" hidden aria-labelledby="tune-h">
+  <h2 id="tune-h">Swipe numbers</h2>
+  <p>For trying on a real phone. They apply to both sheets at once and are kept on this phone. Copy them into the test notes.</p>
+  <div id="tune-rows"></div>
+  <label style="grid-template-columns:1fr auto"><span style="grid-column:1">A swipe down from peek closes the planner</span><input type="checkbox" id="tune-close" style="width:24px;height:24px"></label>
+  <div class="row"><button type="button" data-tune="reset">Starting values</button><button type="button" data-tune="copy">Copy</button><button type="button" data-tune="close">Close</button></div>
+  <textarea id="tune-out" readonly aria-label="The numbers, to copy"></textarea>
+</section>
 
 <script>
 // Builds the drawers from the frames' data-* attributes and makes them clickable. Nothing here talks to Polku.
@@ -436,15 +528,35 @@ const TILES = {
   wind: ['wind', 'Wind'],
   temp: ['temp', 'Temperature'],
   winter: ['flake', 'Winter ways'],
+  // the rest of the full panel's layer switches, for Edit (phase 24)
+  hillshade: ['cube', 'Hillshade'], contours: ['depth', 'Contour lines'], maastoov: ['pin', 'Maastokartta on top'],
+  numbersup: ['num', 'Uphill numbers'], skitracks: ['flake', 'Ski tracks & snowmobile routes'], seaice: ['flake', 'Sea ice'], snow: ['flake', 'Snow depth'],
+  wmtcycling: ['sign', 'Waymarked cycling'], fairways: ['buoy', 'Fairways'], incidents: ['car', 'Accidents & incidents'], roadworks: ['car', 'Road works'],
+  roadcond: ['car', 'Road conditions'], cameras: ['car', 'Road weather cameras'], paved: ['car', 'Paved roads'], private: ['car', 'Private roads'], speed: ['car', 'Speed limits'],
 };
 // the tiles whose › opens more settings (their group in the full panel)
 const HAS_OPTS = new Set(['trailcolors', 'depths', 'rain', 'temp', 'd3']);
 const SPORTS = {
-  mtb: { label: 'MTB', tiles: ['trailcolors', 'details', 'lipasroutes', 'd3', 'rain'], on: ['trailcolors', 'details', 'lipasroutes'], more: 3 },
+  // MTB's fifth tile was 3D terrain; with the 3D button on the map (#226) it's Waymarked MTB, so 3D shows once
+  mtb: { label: 'MTB', tiles: ['trailcolors', 'details', 'lipasroutes', 'wmtmtb', 'rain'], on: ['trailcolors', 'details', 'lipasroutes'], more: 3 },
   hike: { label: 'Hike', tiles: ['wmthiking', 'lipasroutes', 'huts', 'details', 'rain'], on: ['wmthiking', 'lipasroutes', 'huts', 'details'], more: 2 },
   paddle: { label: 'Paddle', tiles: ['nautical', 'depths', 'ships', 'landing', 'wind'], on: ['nautical', 'depths', 'ships', 'landing'], more: 4 },
 };
-const ADDABLE = ['d3', 'wmtmtb', 'huts', 'places', 'numbers', 'restricted', 'wind', 'traffic', 'winter'];
+// Edit offers every layer switch of the full panel, in its groups and order (phase 24's answer, 2026-10-17). Not offered:
+// the base maps (the Map row above), the timeline (the Weather button), the settings behind a ›
+// (trail colour kind, opacity, exaggeration), Depths' three switches one by one (one Depths tile),
+// and 3D terrain once it has its own button on the map (#226).
+const ADDABLE = [
+  ['Terrain', ['hillshade', 'contours', 'maastoov']],
+  ['Trails & difficulty', ['trailcolors', 'details', 'numbers', 'numbersup']],
+  ['Winter', ['winter', 'skitracks', 'seaice', 'snow']],
+  ['Marked routes', ['lipasroutes', 'wmthiking', 'wmtmtb', 'wmtcycling']],
+  ['Places', ['huts', 'places']],
+  ['Water & nautical', ['nautical', 'depths', 'fairways']],
+  ['Traffic & safety', ['traffic', 'incidents', 'roadworks', 'roadcond', 'ships', 'cameras', 'restricted']],
+  ['Roads (Digiroad)', ['paved', 'private', 'speed']],
+  ['Weather on the map', ['wind', 'temp', 'rain']],
+];
 
 // Worst case (?data=worst, a dev-only switch): the realistic worst data. Finnish, as phase 18 will bring
 // it (long compound words); an MML key with MML WMTS on (the longest map name); a dozen more layers on.
@@ -455,20 +567,21 @@ const T = WORST
       sports: { mtb: 'Maastopyöräily', paddle: 'Melonta', hike: 'Vaellus' } }
   : { lang: 'en', title: 'Map layers', maps: 'Map', onMap: 'On the map', more: 'More', moreOn: (n) => `${n} more on`, all: 'All layers', edit: 'Edit', sports: {} };
 if (WORST) {
-  BASES.splice(0, BASES.length, ['trail', 'Polkukartta'], ['maasto', 'Maastokartta'], ['mml', 'Maastokartta (MML, oma avain)'], ['aerial', 'Ilmakuva'],
-    ['ortofi', 'Ilmakuva (Suomi)'], ['plain', 'Pelkistetty'], ['night', 'Yökartta']);
+  // soft hyphens (\u00AD) at compound boundaries: where a word must break, it breaks there (phase 24)
+  BASES.splice(0, BASES.length, ['trail', 'Polku\u00ADkartta'], ['maasto', 'Maasto\u00ADkartta'], ['mml', 'Maasto\u00ADkartta (MML, oma avain)'], ['aerial', 'Ilma\u00ADkuva'],
+    ['ortofi', 'Ilma\u00ADkuva (Suomi)'], ['plain', 'Pelkistetty'], ['night', 'Yö\u00ADkartta']);
   Object.assign(TILES, {
-    trailcolors: ['trailcolors', 'Polkujen vaikeusvärit', 'Vaikeus'],
-    details: ['details', 'Polkujen yksityiskohdat'],
-    lipasroutes: ['flag', 'Viralliset reitit', 'LIPAS-liikuntapaikat'],
-    wmthiking: ['sign', 'Merkityt retkeilyreitit'],
-    huts: ['hut', 'Laavut, kodat ja tulipaikat'],
-    landing: ['hut', 'Rantautumispaikat ja laavut'],
-    nautical: ['buoy', 'Merimerkit ja turvalaitteet'],
-    depths: ['depth', 'Syvyystiedot', 'Ei navigointiin'],
+    trailcolors: ['trailcolors', 'Polkujen vaikeus\u00ADvärit', 'Vaikeus'],
+    details: ['details', 'Polkujen yksityis\u00ADkohdat'],
+    lipasroutes: ['flag', 'Viralliset reitit', 'LIPAS-liikunta\u00ADpaikat'],
+    wmthiking: ['sign', 'Merkityt retkeily\u00ADreitit'],
+    huts: ['hut', 'Laavut, kodat ja tuli\u00ADpaikat'],
+    landing: ['hut', 'Rantautumis\u00ADpaikat ja laavut'],
+    nautical: ['buoy', 'Meri\u00ADmerkit ja turva\u00ADlaitteet'],
+    depths: ['depth', 'Syvyys\u00ADtiedot', 'Ei navigointiin'],
     ships: ['ship', 'Alukset', 'AIS, reaaliaikainen'],
-    d3: ['cube', 'Kolmiulotteinen maasto'],
-    rain: ['rain', 'Sadetutka'],
+    d3: ['cube', 'Kolmi\u00ADulotteinen maasto'],
+    rain: ['rain', 'Sade\u00ADtutka'],
     wind: ['wind', 'Tuuli'],
   });
 }
@@ -488,10 +601,10 @@ function quick(o) {
     `<button type="button" class="qd-base" role="radio" aria-checked="${o.base === k}" data-base="${k}"><img src="${thumb(k)}" alt=""><span>${esc(label)}</span></button>`).join('');
   const tiles = o.tiles.map((id) => {
     const [icon, label, small] = TILES[id], on = o.on.includes(id);
-    return `<div class="qt${on ? ' on' : ''}"><button type="button" class="qt-tog${o.focus === id ? ' focus' : ''}" aria-pressed="${on}" data-tile="${id}"><span class="qt-ic">${ic(icon)}</span><span class="qt-l">${esc(label)}${small ? `<small>${esc(small)}</small>` : ''}</span></button>${HAS_OPTS.has(id) ? `<button type="button" class="qt-opt" data-opts="${id}" aria-label="${esc(label)}: settings">${ic('chevR', 18)}</button>` : ''}</div>`;
+    return `<div class="qt${on ? ' on' : ''}"><button type="button" class="qt-tog${o.focus === id ? ' focus' : ''}" aria-pressed="${on}" data-tile="${id}"><span class="qt-ic">${ic(icon, 20)}</span><span class="qt-l">${esc(label)}${small ? `<small>${esc(small)}</small>` : ''}</span></button>${HAS_OPTS.has(id) ? `<button type="button" class="qt-opt" data-opts="${id}" aria-label="${esc(label)}: settings">${ic('chevR', 18)}</button>` : ''}</div>`;
   }).join('');
   const n = WORST ? 12 : SPORTS[o.sport].more;
-  const more = `<button type="button" class="qt qt-more" data-act="more" aria-label="${T.more}: ${T.all}${n ? `, ${T.moreOn(n)}` : ''}">${ic('layers', 22, 'qt-ic')}<span class="qt-l">${T.more}<small>${n ? T.moreOn(n) : T.all}</small></span>${ic('chevR', 18, 'chev')}</button>`;
+  const more = `<button type="button" class="qt qt-more" data-act="more" aria-label="${T.more}: ${T.all}${n ? `, ${T.moreOn(n)}` : ''}">${ic('layers', 20, 'qt-ic')}<span class="qt-l">${T.more}<small>${n ? T.moreOn(n) : T.all}</small></span>${ic('chevR', 18, 'chev')}</button>`;
   return `${head(o, T.title)}
     <div class="qd-body">
       <h3 class="qd-lab" id="${o.id}-maps">${T.maps}</h3>
@@ -519,13 +632,16 @@ function opts(o, id) {
 function edit(o) {
   const tiles = o.tiles.map((id) => { const [icon, label] = TILES[id]; return `<div class="qt"><button type="button" class="qt-rm" data-rm="${id}" aria-label="Take off ${esc(label)}"><span class="qt-ic">${ic(icon)}</span><span class="qt-l">${esc(label)}</span><span class="rm">${ic('minus', 16)}</span></button></div>`; }).join('');
   const slots = Array.from({ length: 5 - o.tiles.length }, () => '<div class="qd-slot">Room for one more: add it below</div>').join('');
-  const chips = ADDABLE.filter((id) => !o.tiles.includes(id)).map((id) => `<button type="button" class="qd-chip" data-add="${id}"${o.tiles.length >= 5 ? ' disabled' : ''}>${ic('plus', 16)}${esc(TILES[id][1])}</button>`).join('');
+  const chips = ADDABLE.map(([group, ids]) => {
+    const left = ids.filter((id) => !o.tiles.includes(id));
+    return left.length ? `<h4 class="qd-grp">${esc(group)}</h4><div class="qd-add">${left.map((id) => `<button type="button" class="qd-chip" data-add="${id}"${o.tiles.length >= 5 ? ' disabled' : ''}>${ic('plus', 16)}${esc(TILES[id][1])}</button>`).join('')}</div>` : '';
+  }).join('');
   return `${head(o, `Your tiles for ${SPORTS[o.sport].label}`)}
     <div class="qd-body qd-edit">
       <h3 class="qd-lab">On the drawer · ${o.tiles.length} of 5</h3>
       <div class="qd-tiles">${tiles}${slots}</div>
-      <h3 class="qd-lab">Add a tile</h3>
-      <div class="qd-add">${chips}</div>
+      <h3 class="qd-lab">Add a tile${o.tiles.length >= 5 ? ' · take one off first' : ''}</h3>
+      ${chips}
     </div>
     <div class="qd-foot"><button type="button" class="qd-link" data-act="reset">Reset to ${SPORTS[o.sport].label}'s tiles</button><button type="button" class="qd-done" data-act="done">Done</button></div>`;
 }
@@ -545,7 +661,7 @@ function render(qd, dir) {
   const v = o.view || 'quick';
   // a step in (a tile's settings, Edit) keeps the sheet's height, so nothing jumps; all layers grows it
   const h = qd.offsetHeight;
-  qd.style.minHeight = dir === 'in' && v !== 'all' && h ? `${h}px` : dir === 'in' || v === 'quick' || v === 'all' ? '' : qd.style.minHeight;
+  qd.style.minHeight = dir === 'in' && v !== 'all' && h ? `min(${h}px, 100% - 64px)` : dir === 'in' || v === 'quick' || v === 'all' ? '' : qd.style.minHeight;
   qd.classList.toggle('tall', v === 'all');
   qd.setAttribute('aria-label', v === 'edit' ? `Your tiles for ${SPORTS[o.sport].label}` : v === 'all' ? T.all : T.title);
   qd.innerHTML = v === 'quick' ? quick(o) : v === 'edit' ? edit(o) : v === 'all' ? all(o) : opts(o, v.slice(5));
@@ -558,15 +674,22 @@ function ctrls(o) {
     <button type="button" class="cbtn" aria-label="Compass">${ic('needle', 20, 'needle')}</button>
     <button type="button" class="cbtn" aria-label="Show my location">${ic('locate', 20)}</button>
     ${phone ? '' : `<div class="czoom"><button type="button" class="cbtn" aria-label="Zoom in">${ic('plus', 18)}</button><button type="button" class="cbtn" aria-label="Zoom out">${ic('minus', 18)}</button></div>`}
+    <button type="button" class="cbtn c3d" aria-pressed="false" title="3D terrain">3D</button>
     <button type="button" class="fab" aria-label="Time & weather">${ic('weather', 22)}<span>Weather</span></button>
-    <button type="button" class="fab fab-layers" aria-expanded="true"><img src="${thumb(o.base)}" alt=""><span>Layers</span></button>
+    <button type="button" class="fab fab-layers" aria-expanded="${o.layersOpen !== false}"><img src="${thumb(o.base)}" alt=""><span>Layers</span></button>
     ${o.planning ? (phone ? '' : `<button type="button" class="plan done">${ic('check', 22)}<span>Done</span></button>`) : `<button type="button" class="plan">${ic('route', 22)}<span>Plan</span></button>`}
   </div>`;
 }
 
+// ?frame=<id>&w=&h=: that frame alone, sized before its drawer is built (so a step in measures the right height)
+const only = Q.get('frame');
 for (const fr of document.querySelectorAll('.fr')) {
   const screen = document.createElement('div');
   screen.className = 'screen';
+  if (only && fr.id === only) {
+    if (Q.get('w')) screen.style.width = `${+Q.get('w')}px`;
+    if (Q.get('h')) screen.style.height = `${+Q.get('h')}px`;
+  }
   screen.style.backgroundImage = `url(${PIC(`${fr.dataset.bg}.jpg`)})`;
   for (const el of [...fr.children]) if (el.tagName !== 'FIGCAPTION') screen.append(el); // hand-written contents
   if (fr.dataset.ctrls) screen.insertAdjacentHTML('beforeend', ctrls(JSON.parse(fr.dataset.ctrls)));
@@ -594,6 +717,8 @@ for (const fr of document.querySelectorAll('.fr')) {
 document.addEventListener('click', (e) => {
   const scr = e.target.closest('.screen');
   if (!scr || scr._swiped) { if (scr) scr._swiped = false; return; }
+  const c3d = e.target.closest('.c3d');
+  if (c3d) { c3d.setAttribute('aria-pressed', String(c3d.getAttribute('aria-pressed') !== 'true')); return; }
   const qd = scr.querySelector('.qd'), layers = scr.querySelector('.fab-layers');
   if (!qd) return;
   const o = qd._o;
@@ -633,18 +758,38 @@ document.addEventListener('click', (e) => {
 // ---- one swipe for every sheet (a prototype of the plan's gesture; the real one also hands the body's
 // scroll over to the sheet on iOS). It follows the finger 1:1 after 10 px, aims for where a flick would
 // come to rest, resists past the ends, and settles with a spring that can be grabbed again mid-way.
+// the swipe's numbers: starting values from the plan, tuned on real phones with the Swipe numbers panel (phase 24)
+const SW0 = { start: 10, flick: 1.1, decel: 0.998, closeAt: 0.4, damping: 0.85, response: 0.3, rubber: 0.55, peekCloses: false };
+const SW = { ...SW0 };
+try { Object.assign(SW, JSON.parse(localStorage.getItem('polku-mock:swipe') || '{}')); } catch { /* private mode: the starting values */ }
+const rubber = (over, dim) => (over * dim * SW.rubber) / (dim + SW.rubber * Math.abs(over));
+const project = (v) => (v / 1000) * SW.decel / (1 - SW.decel); // Apple's: where a flick of v px/s comes to rest
+// a spring (damping ratio and response from SW), starting from the finger's speed; it can be grabbed again mid-way
+function spring(get, set, to, v0, done) {
+  const k = (2 * Math.PI / SW.response) ** 2, c = 4 * Math.PI * SW.damping / SW.response;
+  let v = v0, last = performance.now(), raf = 0;
+  const step = (now) => {
+    const dt = Math.min(0.032, (now - last) / 1000); last = now;
+    let y = get();
+    for (let i = 0; i < 4; i++) { const h = dt / 4; v += (-k * (y - to) - c * v) * h; y += v * h; }
+    set(y);
+    if (Math.abs(y - to) < 0.5 && Math.abs(v) < 8) { set(to); done && done(); return; }
+    raf = requestAnimationFrame(step);
+  };
+  raf = requestAnimationFrame(step);
+  return () => cancelAnimationFrame(raf);
+}
+const velocity = (hist, z) => { const [t0, y0] = hist[0], [t1, y1] = hist[hist.length - 1]; return t1 > t0 ? ((y1 - y0) / z) / ((t1 - t0) / 1000) : 0; }; // px/s, + down
+
 function swipe(qd) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let g = null, raf = 0, y = 0; // y: the sheet's offset in its own pixels (+ down)
   const zoomOf = () => { const s = qd.closest('.screen'); return s.getBoundingClientRect().width / s.offsetWidth || 1; };
   const set = (v) => { y = v; qd.style.transform = v ? `translateY(${v}px)` : ''; };
-  const rubber = (over, dim) => (over * dim * 0.55) / (dim + 0.55 * Math.abs(over));
-  const project = (v) => (v / 1000) * 0.998 / (1 - 0.998); // Apple's: where a flick of v px/s comes to rest
-  // a critically damped-ish spring (damping 0.85, response 0.3 s), starting from the finger's speed
   const settle = (to, v0, done) => {
     cancelAnimationFrame(raf);
     if (reduce) { set(to); done && done(); return; }
-    const k = (2 * Math.PI / 0.3) ** 2, c = 4 * Math.PI * 0.85 / 0.3;
+    const k = (2 * Math.PI / SW.response) ** 2, c = 4 * Math.PI * SW.damping / SW.response;
     let v = v0, last = performance.now();
     const step = (now) => {
       const dt = Math.min(0.032, (now - last) / 1000); last = now;
@@ -668,7 +813,7 @@ function swipe(qd) {
     const dy = (e.clientY - g.y0) / g.z, dx = (e.clientX - g.x0) / g.z;
     g.hist.push([e.timeStamp, e.clientY]); if (g.hist.length > 6) g.hist.shift();
     if (!g.on) {
-      if (Math.abs(dy) < 10 || Math.abs(dy) < Math.abs(dx)) return;
+      if (Math.abs(dy) < SW.start || Math.abs(dy) < Math.abs(dx)) return;
       // from the body only when it can't scroll that way itself
       if (g.inBody && ((dy > 0 && g.body.scrollTop > 0) || (dy < 0 && g.body.scrollHeight > g.body.clientHeight + 1))) { g = null; return; }
       g.on = true; g.y0 = e.clientY; g.base = g.off; qd.classList.add('dragging');
@@ -679,18 +824,20 @@ function swipe(qd) {
   });
   const up = (e) => {
     if (!g || e.pointerId !== g.id) return;
+    // a touch is captured at first by the element it landed on; when the sheet takes the capture, that element's
+    // lostpointercapture bubbles up here, and must not end the drag
+    if (e.type === 'lostpointercapture' && e.target !== qd) return;
     const was = g; g = null;
     if (!was.on) return;
     const scr = qd.closest('.screen');
     scr._swiped = true; // the swipe isn't also a click (which follows at once, if at all)
     setTimeout(() => { scr._swiped = false; }, 60);
-    const [t0, y0] = was.hist[0], [t1, y1] = was.hist[was.hist.length - 1];
-    const v = t1 > t0 ? ((y1 - y0) / was.z) / ((t1 - t0) / 1000) : 0; // px/s, + down
+    const v = velocity(was.hist, was.z);
     const h = qd.offsetHeight, rest = y + project(v), o = qd._o;
-    if (rest > h * 0.4 || v > 1100) { // down far enough, or a flick: one size down
+    if (rest > h * SW.closeAt || v > SW.flick * 1000) { // down far enough, or a flick: one size down
       if (o.view === 'all' || o.view === 'edit' || o.view.startsWith('opts:')) { settle(0, 0); o.view = 'quick'; render(qd, 'out'); return; }
       settle(h, v, () => { qd.classList.add('closed'); set(0); const l = qd.closest('.screen').querySelector('.fab-layers'); if (l) l.setAttribute('aria-expanded', 'false'); });
-    } else if (o.view === 'quick' && (rest < -70 || v < -1100)) { // up: all layers, the next size
+    } else if (o.view === 'quick' && (rest < -70 || v < -SW.flick * 1000)) { // up: all layers, the next size
       settle(0, 0); o.view = 'all'; render(qd, 'in');
     } else settle(0, v);
   };
@@ -699,19 +846,137 @@ function swipe(qd) {
   qd.addEventListener('lostpointercapture', up);
 }
 
-const only = Q.get('frame');
+// ---- the planner's sheet, four sizes, the same swipe (#96). The sheet is as tall as its full size and moves
+// with transform; the map's buttons (Polku's --sheet-h) follow once, when it comes to rest.
+function plannerSheet(fr) {
+  const scr = fr.querySelector('.screen'), ctrls = scr.querySelector('.ctrls');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  scr.insertAdjacentHTML('beforeend', `<div class="ps" role="region" aria-label="Route planner">
+    <div class="ps-top"><div class="qd-grab" aria-hidden="true"></div>
+      <div class="ps-row"><div class="ps-stats"><span><b>3.2 km</b>distance</span><span><b>↑ 64 m</b>climb</span><span><b>16 min</b>from now</span></div><button type="button" class="ps-done">Done</button></div>
+      <div class="ps-tools"><div class="seg"><button type="button" aria-pressed="true">Paths</button><button type="button">Straight</button><button type="button">Water</button></div><button type="button" aria-label="Undo">↶</button><button type="button" aria-label="Redo">↷</button><button type="button" aria-label="More">⋯</button></div></div>
+    <div class="ps-tabs" role="tablist"><button type="button" role="tab" aria-selected="true">Route</button><button type="button" role="tab">Check</button><button type="button" role="tab">Go</button></div>
+    <div class="ps-body"><div class="ps-prof" aria-hidden="true"></div>${['Start · Kauppi', 'Via 1', 'Finish · Kaupin kenttä', 'How you go: Balanced', 'Round trip', 'Reverse', 'Import', 'All leg settings', 'Heads-up: 2', 'Weather along the route', 'Time & speed', 'Take it along'].map((t) => `<div class="ps-item"><i></i>${t}</div>`).join('')}</div>
+  </div><button type="button" class="plan ps-reopen" hidden>Plan</button><div class="ps-size" aria-live="polite"></div>`);
+  const ps = scr.querySelector('.ps'), body = ps.querySelector('.ps-body'), reopen = scr.querySelector('.ps-reopen'), label = scr.querySelector('.ps-size');
+  const ORDER = ['peek', 'profile', 'half', 'full'];
+  const sizes = () => { const H = scr.offsetHeight; return { peek: 152, profile: 300, half: Math.round(H * 0.5), full: H - 76 }; };
+  let state = fr.dataset.ps || 'peek', y = 0, g = null, stop = null;
+  const full = () => sizes().full;
+  const set = (v) => { y = v; ps.style.transform = `translateY(${v}px)`; };
+  const rest = (st) => { state = st; label.textContent = st; if (ctrls) ctrls.style.bottom = `${(st === 'closed' ? 0 : sizes()[st]) + 12}px`; ps.classList.toggle('closed', st === 'closed'); reopen.hidden = st !== 'closed'; };
+  const go = (st, v0 = 0) => {
+    stop && stop();
+    const to = st === 'closed' ? full() + 24 : full() - sizes()[st];
+    if (reduce) { set(to); rest(st); return; }
+    stop = spring(() => y, set, to, v0, () => rest(st));
+  };
+  ps.style.height = `${full()}px`;
+  set(full() - sizes()[state]); rest(state);
+  ps.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button > 0) return;
+    stop && stop();
+    const inBody = body.contains(e.target);
+    g = { id: e.pointerId, y0: e.clientY, x0: e.clientX, base: y, z: scr.getBoundingClientRect().width / scr.offsetWidth || 1, on: false, inBody, hist: [[e.timeStamp, e.clientY]], from: state };
+  });
+  ps.addEventListener('pointermove', (e) => {
+    if (!g || e.pointerId !== g.id) return;
+    const dy = (e.clientY - g.y0) / g.z, dx = (e.clientX - g.x0) / g.z;
+    g.hist.push([e.timeStamp, e.clientY]); if (g.hist.length > 6) g.hist.shift();
+    if (!g.on) {
+      if (Math.abs(dy) < SW.start || Math.abs(dy) < Math.abs(dx)) return;
+      // the list moves the sheet only when it can't scroll that way itself: down at its top, or up when it has nothing to scroll
+      if (g.inBody && ((dy > 0 && body.scrollTop > 0) || (dy < 0 && body.scrollHeight > body.clientHeight + 1))) { g = null; return; }
+      g.on = true; g.y0 = e.clientY;
+      try { ps.setPointerCapture(e.pointerId); } catch { /* synthetic */ }
+    }
+    const S = sizes(), want = g.base + (e.clientY - g.y0) / g.z, top = 0, bottom = full() - S.peek;
+    set(want < top ? top + rubber(want - top, full()) : want > bottom && !SW.peekCloses ? bottom + rubber(want - bottom, full()) : want);
+  });
+  const up = (e) => {
+    if (!g || e.pointerId !== g.id) return;
+    if (e.type === 'lostpointercapture' && e.target !== ps) return; // an inner element's capture handed over, as above
+    const was = g; g = null;
+    if (!was.on) return;
+    scr._swiped = true; setTimeout(() => { scr._swiped = false; }, 60);
+    const v = velocity(was.hist, was.z), S = sizes();
+    const aim = full() - (y + project(v)); // the height where it would come to rest
+    let pick = ORDER.reduce((a, b) => (Math.abs(S[b] - aim) < Math.abs(S[a] - aim) ? b : a));
+    const i0 = ORDER.indexOf(was.from);
+    if (Math.abs(v) > SW.flick * 1000) { // a quick flick: at least one size in its direction
+      const i = ORDER.indexOf(pick), dir = v > 0 ? -1 : 1;
+      if ((dir > 0 && i <= i0) || (dir < 0 && i >= i0)) pick = ORDER[Math.max(0, Math.min(3, i0 + dir))];
+      if (dir < 0 && was.from === 'peek' && SW.peekCloses) pick = 'closed';
+    } else if (SW.peekCloses && aim < S.peek * 0.5) pick = 'closed';
+    go(pick, v);
+  };
+  ps.addEventListener('pointerup', up);
+  ps.addEventListener('pointercancel', up);
+  ps.addEventListener('lostpointercapture', up);
+  // the handle cycles the sizes for a tap or the keyboard (as the planner's does today)
+  ps.querySelector('.qd-grab').setAttribute('role', 'button');
+  ps.querySelector('.ps-done').addEventListener('click', () => { if (!scr._swiped) go('closed'); });
+  reopen.addEventListener('click', () => go('peek'));
+  // a tab press at peek raises the sheet to half, as the planner does
+  for (const t of ps.querySelectorAll('.ps-tabs button')) t.addEventListener('click', () => { if (scr._swiped) return; for (const b of ps.querySelectorAll('.ps-tabs button')) b.setAttribute('aria-selected', String(b === t)); if (state === 'peek' || state === 'profile') go('half'); });
+  new ResizeObserver(() => { ps.style.height = `${full()}px`; if (!g) set(state === 'closed' ? full() + 24 : full() - sizes()[state]); }).observe(scr);
+}
+for (const fr of document.querySelectorAll('.fr[data-ps]')) plannerSheet(fr);
+
+// ---- test chrome: try a phone frame at the phone's own size, and tune the swipe's numbers there
+const TUNE = [
+  ['start', 'A drag starts after (px)', 4, 20, 1],
+  ['flick', 'A flick is faster than (px/ms)', 0.4, 2.5, 0.05],
+  ['decel', 'Deceleration (where a flick comes to rest)', 0.99, 0.999, 0.0005],
+  ['closeAt', 'The drawer closes past (share of its height)', 0.2, 0.7, 0.05],
+  ['damping', 'Spring damping (1 = no bounce)', 0.6, 1, 0.01],
+  ['response', 'Spring response (s)', 0.15, 0.6, 0.01],
+  ['rubber', 'Rubber band past the ends', 0.2, 1, 0.05],
+];
+const tune = document.getElementById('tune'), tuneOut = document.getElementById('tune-out');
+const saveSW = () => { try { localStorage.setItem('polku-mock:swipe', JSON.stringify(SW)); } catch { /* not kept */ } tuneOut.value = JSON.stringify(SW); };
+document.getElementById('tune-rows').innerHTML = TUNE.map(([k, label, min, max, step]) =>
+  `<label><span>${label}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${SW[k]}"><output>${SW[k]}</output></label>`).join('');
+const tuneClose = document.getElementById('tune-close');
+tuneClose.checked = !!SW.peekCloses;
+tune.addEventListener('input', (e) => {
+  const k = e.target.dataset.k;
+  if (k) { SW[k] = +e.target.value; e.target.nextElementSibling.textContent = SW[k]; }
+  if (e.target === tuneClose) SW.peekCloses = tuneClose.checked;
+  saveSW();
+});
+tune.addEventListener('click', (e) => {
+  const a = e.target.dataset.tune;
+  if (a === 'close') tune.hidden = true;
+  if (a === 'reset') { Object.assign(SW, SW0); for (const r of tune.querySelectorAll('[data-k]')) { r.value = SW[r.dataset.k]; r.nextElementSibling.textContent = SW[r.dataset.k]; } tuneClose.checked = SW.peekCloses; saveSW(); }
+  if (a === 'copy') { tuneOut.select(); try { navigator.clipboard.writeText(tuneOut.value); } catch { document.execCommand('copy'); } }
+});
+saveSW();
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-tune-open]')) { tune.hidden = !tune.hidden; return; }
+  const fs = e.target.closest('[data-fs]');
+  if (!fs) return;
+  for (const f of document.querySelectorAll('.fr.only')) f.classList.remove('only');
+  if (fs.dataset.fs === 'exit') { document.body.classList.remove('single', 'fs'); scrollTo(0, fs._y || 0); return; }
+  document.querySelector('[data-fs=exit]')._y = scrollY;
+  document.getElementById(fs.dataset.fs).classList.add('only');
+  document.body.classList.add('single', 'fs');
+  scrollTo(0, 0);
+});
+if (!Q.get('frame')) for (const fr of document.querySelectorAll('.fr.phone')) {
+  if (!fr.querySelector('.qd, .ps')) continue;
+  fr.insertAdjacentHTML('beforeend', `<button type="button" class="fs-btn" data-fs="${fr.id}">Try it full size</button>`);
+}
+
 if (only && document.getElementById(only)) {
   document.body.classList.add('single');
   const fr = document.getElementById(only);
   fr.classList.add('only');
-  const scr = fr.querySelector('.screen');
-  if (Q.get('w')) scr.style.width = `${+Q.get('w')}px`;
-  if (Q.get('h')) scr.style.height = `${+Q.get('h')}px`;
   if (+Q.get('h') && +Q.get('h') <= 560) fr.classList.add('short'); // the app's (max-height: 560px) for this frame
 }
 if (!only) {
   const link = (worst, label) => `<a href="#${worst ? 'worst' : 'demo'}" aria-current="${worst === WORST}">${label}</a>`;
-  document.body.insertAdjacentHTML('beforeend', `<nav class="data-switch" aria-label="Data">${link(false, 'Demo data')}${link(true, 'Worst case')}</nav>`);
+  document.body.insertAdjacentHTML('beforeend', `<nav class="data-switch" aria-label="Data">${link(false, 'Demo data')}${link(true, 'Worst case')}<button type="button" data-tune-open>Swipe</button></nav>`);
 }
 </script>
 </body>

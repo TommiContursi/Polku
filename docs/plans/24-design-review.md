@@ -1,6 +1,6 @@
 # Phase 24: design review
 
-The design. What's still to do, and its status, is on GitHub: [Phase 24: design review](https://github.com/TommiContursi/Polku/milestone/1), phase issue #177. The order of phases is in [ROADMAP](../ROADMAP.md).
+The design, and what the review did (at the end). What's still to do, and its status, is on GitHub: [Phase 24: design review](https://github.com/TommiContursi/Polku/milestone/1), phase issue #177. The order of phases is in [ROADMAP](../ROADMAP.md).
 
 Planned 2026-10-15 in ROADMAP ([the last full ROADMAP](https://github.com/TommiContursi/Polku/blob/9bb3051e04aab1a11376f88445abba78f2946515/docs/ROADMAP.md)): research first, no code. Updated 2026-10-16: the review centres on how easy the route planner is to use, on a phone and a desktop, with design skills for coding agents that are now installed.
 
@@ -37,7 +37,7 @@ Installed on 2026-10-16 in the main checkout's `.claude/skills/`: Emil Kowalski'
 
 **Not used:** animate-expo (React Native), write-swift, ask-sonner (a React toast library), and pick-ui-library (Polku takes no new dependencies).
 
-**Impeccable** ([impeccable.style](https://impeccable.style)) is still not installed. Its detector of 59 checks could add one more pass, but its hooks run on every session, so whether to install it is the user's call.
+**Impeccable** ([impeccable.style](https://impeccable.style)) was installed for the user on 2026-10-17 and loads in any session: `/impeccable audit`, `/impeccable critique` and its detector (`impeccable detect`). The review used its audit and detector as one more pass; its critique needs two separate agents and is left for the user to run.
 
 ## The route planner first
 
@@ -177,3 +177,17 @@ Related: #208 (taps and hover on phones).
 - A new framework, dependency or build step.
 - A generic look in place of Polku's own: the map first, plain words.
 - Regrouping the full Layers panel (phase 21).
+
+## What the review did (2026-10-17)
+
+By Claude Code on `claude/phase-24-design`. The report is [docs/reviews/2026-10-17-design/](../reviews/2026-10-17-design/README.md), with its evidence and pictures.
+
+- **The quick layer drawer (#123) first:** its four questions answered in [its plan](issue-123-layer-drawer.md#phase-24s-answers-2026-10-17) (short phones, Finnish words, Edit's switches, the swipe built in the mock-up with its numbers left to real phones), the 3D button (#226) placed, a test list for real phones, and the mock-up's private page updated. Its build, with `js/sheet.js` for #96, is the next PR in this milestone.
+- **A journey script as the baseline** ([`journey.py`](../reviews/2026-10-17-design/evidence/journey.py)): one connected run through the planner with real taps and drags, the state checked after each step, at both sizes, plus a round trip, Ride this route and a 30-point route. An addendum to this plan on 2026-10-17 asked for it, with the five main problems, a test script for people and at most three blind agent runs.
+- **The five main problems,** with their root causes and alternatives, in the report: the first point's card (#232), small and crowded controls on phones (#233), panels opening above the screen (#240), the sheet (#96), and what's shown twice (#233, #241).
+- **Mock-ups:** [the planner](mockups/phase-24-planner.html) with two variants (A, one place each; B, the tools at the thumb), two ways for the waypoint rows and two for the moment after the first point; measured with the same rules as the app.
+- **The user's choice (2026-10-17):** B, with a lower peek (one row) and a floating toolbox on the desktop too; only the row you're on shows its buttons; the chip by the start, leading to a loop of any length; and the ⋯ menu designed again, in three versions still to choose from. The mock-up shows them; the report has their numbers.
+- **Issues:** seven bugs in Fixes 2 (#239–#245), six improvements and ideas (#232–#238), the calmer planner (#233) proposed as a phase of its own; comments on #73, #96, #134, #208; findings added to phases 18, 20, 21 and 22b.
+- **For people and phones:** a test script for three to five people in the report, and the drawer's test list for iOS and Android.
+- **The calmer planner's second iteration (2026-10-17, later):** asked for after the choices above, design only: [#233's plan](issue-233-calmer-planner.md) (decisions, reasons, the build in four parts, acceptance criteria), the mock-up redone as a clickable prototype and measured again (`evidence/mockup_probe2.py`), and the report's §9. It moves the round trip into the peek, makes the ⋯ menu one menu for the whole route, and found #251.
+

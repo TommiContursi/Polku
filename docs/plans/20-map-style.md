@@ -36,3 +36,9 @@ From docs/BACKLOG.md (line [70](https://github.com/TommiContursi/Polku/blob/9bb3
 **Done ahead of the phase in #198 (2026-10-16):** a soft glow, brighter on the leg under the pointer, and chevrons moving along the route the way it goes (`js/routeflow.js`). What's left for this phase: how strong the glow is against the new map style.
 
 Other countries' maps are an idea of their own now: #176.
+
+### From phase 24's review (2026-10-17)
+
+Found with Impeccable's detector and emil-design-eng; the report is [docs/reviews/2026-10-17-design/](../reviews/2026-10-17-design/README.md).
+- **Polku's typeface, decided once.** `css/app.css` asks for "Inter" first but doesn't ship it, so a computer with Inter installed shows Inter (98 % of the text, the detector says), and phones show San Francisco or Roboto. Either ship one face (one variable `woff2`, kept offline by the service worker) or choose the system font on purpose, so Polku looks the same everywhere.
+- **Text sizes for outdoors:** labels on the map's buttons are 10 px on phones and 46 rules set 9–11 px (#235). The map's own labels belong to this phase's cartography.

@@ -19,11 +19,11 @@
 - **Risks to watch** (`watch`) say when to look again: a date (in the title, and the board's Due field) or a trigger. A dated one moves to Now in time.
 - **The board follows this:** Now holds what's being worked on and what to pick next; Next what comes after it; Later the phases further down; Someday the rest.
 
-## The order (re-planned 2026-10-15)
+## The order (re-planned 2026-10-15; phase 25 first since 2026-10-18)
 
 | # | Phase | Size | Why here | Issue | Plan |
 |---|---|---|---|---|---|
-| 1 | **24, design review** | research, then issues | Research only, no code. Its findings feed 21, 22b and 20, so it goes before them. | #177 | [24](plans/24-design-review.md) |
+| 1 | **25, a calmer planner** (25a–25d) | big | Approved 2026-10-18. After the shared fixes it needs first (#239, #240, #245) and the 3D button (#226); before 22b, which moves the same panel. | #233 | [25](plans/issue-233-calmer-planner.md) |
 | 2 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). | #178 | [21](plans/21-say-what-it-means.md) |
 | 3 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. | #179 | [22](plans/22-drawer.md) |
 | 4 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. | #180 | [23](plans/23-out-on-the-trail.md) |
@@ -36,6 +36,10 @@
 | 11 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. | #187 | [23](plans/23-out-on-the-trail.md) |
 | 12 | **16, Strava & Garmin** | research | Outside accounts and terms. | #188 | [16](plans/16-strava-garmin.md) |
 | 13 | **19, help and a tutorial** | big | Last, when the rest holds still. | #189 | [19](plans/19-help.md) |
+
+**Phase 25, a calmer planner (#233):** [its plan](plans/issue-233-calmer-planner.md) and [the mock-up](plans/mockups/phase-24-planner.html), designed in phase 24 and approved on 2026-10-18. Four parts, each a PR: 25a the toolbox and the header; 25b round trips in the peek; 25c Done and the route's view; 25d Check and the waypoints. Before it, in their own PRs: #239, #240 and #245 from Fixes 2, and the 3D button (#226). #241, #242 and #251 close with 25a, each with its regression check.
+
+**Phase 24's milestone stays open** for the real-phone checks of #73 and #134; its row is out of the order since the review itself is done (#177), and #123's build is in (#249).
 
 **Dated, outside the order:** #133, a rain-rate source before FMI retires the layer Polku's rain "now" reads, by 2026-11-30.
 

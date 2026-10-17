@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Polku</title>
+<!--
+  Phase 24's blind agent runs (docs/reviews/2026-10-17-design/README.md): opened once before a run,
+  from the same local server as Polku. It forgets what this browser kept for Polku (a first visit),
+  points routing at the local BRouter (tools/brouter-local.sh, localhost:17777) so a run never
+  routes on brouter.de, and opens Polku.
+-->
+<script>
+try {
+  for (const k of Object.keys(localStorage)) if (k.startsWith('polku')) localStorage.removeItem(k);
+  localStorage.setItem('polku:brouterUrl', JSON.stringify('http://localhost:17777/brouter'));
+} catch (e) { /* private mode: Polku's own Settings → Routing server does the same */ }
+location.replace(new URL('../../../../', location.href));
+</script>
