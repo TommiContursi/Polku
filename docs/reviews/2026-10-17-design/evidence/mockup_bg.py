@@ -23,7 +23,7 @@ os.makedirs(OUT, exist_ok=True)
 FIX = open(os.path.join(ROOT, 'tools', 'fixtures', 'route-kauppi-mtb.json')).read()
 NASI = [[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]]
 LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
-HIDE = ("(() => { const s = document.createElement('style'); s.textContent = '.topbar, #map-ctrls, #planner, #zoom-hint, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right, #wx-bar, .toast, #view3d, .offline-banner { visibility: hidden !important; }';"
+HIDE = ("(() => { const s = document.createElement('style'); s.textContent = '.topbar, #map-ctrls, #planner, #zoom-hint, .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right, #wx-bar, .toast, #view3d, .offline-banner, .maplibregl-popup { visibility: hidden !important; }';"
         " document.head.append(s); return true; })()")
 WAIT = ("new Promise((ok) => { const p = polku.planner, t0 = Date.now(); const go = () => (p.legs.length && p.legs.every((l) => l.status === 'ok' || l.status === 'error') && p.analysis"
         " && (p.analysis.wind || p.analysis.windError)) || Date.now() - t0 > 45000 ? ok() : setTimeout(go, 300); go(); })")
@@ -39,13 +39,17 @@ SHOTS = [
     ('phone-mtb', 390, 844, True, 'mtb', 'kauppi', fit(190)),
     ('phone-paddle', 390, 844, True, 'paddle', 'water', fit(190)),
     ('phone-empty', 390, 844, True, 'mtb', None, None),
+    # the moment after the first point (journey.py's first point), at the opening view
+    ('phone-start1', 390, 844, True, 'mtb', 'one', None),
     ('desk-mtb', 1440, 900, False, 'mtb', 'kauppi', fit(80, left=460, top=110, right=120)),
 ]
 c = Chrome()
 try:
     for name, w, h, phone, sport, route, fitjs in SHOTS:
+        if os.environ.get('ONLY') and name not in os.environ['ONLY'].split(','):
+            continue
         for calm in (False, True):
-            if route is None and calm:
+            if (route is None or route == 'one') and calm:
                 continue
             p = c.page(w, h, phone)
             marks = {'polku:routeMarks': json.dumps({'km': True, 'time': not calm, 'duration': not calm})}
@@ -53,9 +57,11 @@ try:
             p.js('polku.planner.setActive(true); true')
             if route == 'kauppi':
                 p.js(f'polku.planner.restoreSnapshot({FIX}); true')
+            elif route == 'one':
+                p.js("polku.planner.addPoint([23.80917, 61.512737]); true")
             elif route == 'water':
                 p.js(f"(() => {{ const p = polku.planner; p.clear(); p.setMode('water'); for (const q of {json.dumps(NASI)}) p.addPoint(q); return true; }})()")
-            if route:
+            if route and route != 'one':
                 p.js(WAIT)
                 p.js("polku.planner.layout() === 'sheet' && polku.planner.setSheetState('peek', { remember: false }); true")
                 time.sleep(1.5)  # the planner frames the route for its own sheet first; fit after it

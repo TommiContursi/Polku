@@ -129,6 +129,20 @@ class Journey:
             return 'opened'
         return st and 'open' or 'missing'
 
+    def add_point(self, ll):
+        """Tap the map to add a point; if nothing is added, close what's in the way (a card) and tap again, counted."""
+        P = 'polku.planner'
+        n0 = self.js(f'{P}.points.length')
+        self.tap_ll(ll)
+        time.sleep(0.6)
+        if self.js(f'{P}.points.length') > n0:
+            return 'point'
+        what = self.js("(() => { const o = [...document.querySelectorAll('.maplibregl-popup, .act-menu:not([hidden]), .menu-pop, .panel:not([hidden])')].filter((e) => __j.vis(e)).map((e) => e.className.split(' ')[0]); return o.join(',') || 'nothing open'; })()")
+        closed = 'maplibregl-popup' in what and self.tap('.maplibregl-popup .maplibregl-popup-close-button, .maplibregl-popup button', '×')
+        self.tap_ll(ll)
+        time.sleep(0.6)
+        return f'no point at first ({what}{"; closed it" if closed else ""}), ' + ('a point at the next tap' if self.js(f'{P}.points.length') > n0 else 'none at the next either')
+
     def tap_ll(self, ll):
         x, y = self.js(f"(() => {{ const q = polku.map.project({json.dumps(ll)}), r = polku.map.getCanvas().getBoundingClientRect(); return [r.left + q.x, r.top + q.y]; }})()")
         self.tap_xy(x, y)
@@ -196,28 +210,16 @@ def main_journey(j):
     j.open('hike')
     j.step('Open Polku with nothing on it, find Plan and open it', lambda: j.tap('#btn-plan') or 'no Plan button', f'{P}.active === true')
     def sport():
-        ok = j.tap('.act-current', switch=True) and j.tap('.act-menu .act', 'MTB')
+        ok = j.tap('.act-current', switch=True) and (time.sleep(0.4) or j.tap('.act-menu .act[data-k=mtb]'))
         j.p.idle()  # a new sport restyles the map; a person looks before tapping on
         return 'chosen' if ok else 'no sport menu'
     j.step('Choose a sport (MTB)', sport, "polku.state.activity === 'mtb'")
 
     def add_points():
-        got = []
-        for ll in KAUPPI:
-            n0 = j.js(f'{P}.points.length')
-            j.tap_ll(ll)
-            time.sleep(0.6)
-            n1 = j.js(f'{P}.points.length')
-            if n1 == n0:  # a person closes what's in the way and taps again: the extra taps are counted
-                what = j.js("(() => { const o = [...document.querySelectorAll('.maplibregl-popup, .act-menu:not([hidden]), .menu-pop, .panel:not([hidden])')].filter((e) => __j.vis(e)).map((e) => e.className.split(' ')[0]); return o.join(',') || 'nothing open'; })()")
-                closed = 'maplibregl-popup' in what and j.tap('.maplibregl-popup .maplibregl-popup-close-button, .maplibregl-popup button', '×')
-                j.tap_ll(ll)
-                time.sleep(0.6)
-                got.append(f'no point at first ({what}{"; closed it" if closed else ""}), ' + ('a point at the next tap' if j.js(f'{P}.points.length') > n0 else 'none at the next either'))
-                continue
-            got.append('point' if n1 > n0 else 'no point: ' + (j.js("(() => { const o = [...document.querySelectorAll('.maplibregl-popup, .act-menu:not([hidden]), .menu-pop, .panel:not([hidden])')].filter((e) => __j.vis(e)).map((e) => e.className.split(' ')[0]); return o.join(',') || 'nothing open'; })()")))
+        got = [j.add_point(ll) for ll in KAUPPI]
         j.route_done()
         return '; '.join(got)
+
     j.step('Add four points on the map', add_points, f"{P}.points.length === 4 && {P}.legs.every((l) => l.status === 'ok')")
 
     def drag_point():
@@ -384,10 +386,14 @@ def loop_journey(j):
     j.step('Open Plan', lambda: j.tap('#btn-plan'), f'{P}.active')
 
     def make():
-        j.tap('button', 'Round trip')
+        opened = j.tap('#planner .quick-loop') or j.tap('button', 'Round trip')
+        time.sleep(1.2)  # the sheet rises to the round trip's options
         j.tap_ll(KAUPPI[0])
-        j.tap('.loop-starts button.chip', '10')
-        j.tap('.loop-go button.primary')
+        time.sleep(0.8)
+        chip = j.tap('.loop-starts button.chip', '10 km')
+        go = j.tap('.loop-go button.primary')
+        if not (opened and chip and go):
+            return f'round trip {"opened" if opened else "not found"}; 10 km {"tapped" if chip else "not found"}; make loops {"tapped" if go else "not found"}'
         t0 = time.time()
         while time.time() - t0 < 60 and not j.js(f'{P}.loop.results.length'):
             time.sleep(0.5)
@@ -436,11 +442,12 @@ def long_journey(j):
     time.sleep(1.5)
 
     def thirty():
-        for i in range(30):
-            j.tap_ll([23.70 + (i % 10) * 0.035, 61.47 + (i // 10) * 0.02 + (i % 2) * 0.004])
+        got = [j.add_point([23.70 + (i % 10) * 0.035, 61.47 + (i // 10) * 0.02 + (i % 2) * 0.004]) for i in range(30)]
+        missed = [g for g in got if g != 'point']
         t0 = time.time()
         while time.time() - t0 < 60 and not j.js(f'!!{P}.analysis'):
             time.sleep(0.5)
+        return f'{30 - len(missed)} at the first tap; ' + '; '.join(sorted(set(missed)))
     j.step('Add 30 points', thirty, f'{P}.points.length === 30')
 
     def finish_row():

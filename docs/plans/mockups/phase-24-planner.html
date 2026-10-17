@@ -31,7 +31,7 @@
   color-scheme: light;
 }
 .fr.dark {
-  /* phase 24: the dark accent behind white text is a darker green (white on #3fb07a is 2.7:1; on #237a52 it's 5.4:1) */
+  /* phase 24: the dark accent behind white text is a darker green (white on #3fb07a is 2.7:1; on #237a52 it’s 5.3:1) */
   --accent: #3fb07a; --accent-2: #56c48f; --accent-soft: rgba(63, 176, 122, 0.16);
   --surface: rgba(24, 28, 26, 0.95); --surface-solid: #181c1a; --surface-2: #232825;
   --text: #e8ece9; --muted: #9aa69f; --line: rgba(232, 236, 233, 0.12);
@@ -260,6 +260,22 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
   </section>
 
   <section class="cv-row">
+    <h2>1b · Right after the first point</h2>
+    <p>Today a card opens beside the start ("Tap the next place on the way, or make a loop from here"), about 355 × 185 px of map, right where the next point usually goes. In the journey script the next tap landed on the card's title and added nothing; four points took nine taps on a phone (<code>evidence/journey-main.json</code>). Two ways to keep its loops one tap away without covering the map:</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="phone-first-today" data-fixed="today" data-shot="phone-start-card" data-scene='{"state":"first"}'>
+        <figcaption><b>Today</b>The card covers the map beside the start; a tap on it does nothing for the route, and closing it is a 26 px ×.</figcaption>
+      </figure>
+      <figure class="fr phone" id="phone-first-peek" data-bg="phone-start1" data-scene='{"state":"first","alt":"peek"}'>
+        <figcaption><b>Alternative 1: the loops in the peek</b>No card on the map. The peek says what to do next and offers the three loops from here, one tap each, at the thumb. Gives up: nothing points at the start itself.</figcaption>
+      </figure>
+      <figure class="fr phone" id="phone-first-chip" data-bg="phone-start1" data-scene='{"state":"first","alt":"chip"}'>
+        <figcaption><b>Alternative 2: a small chip by the start</b>"Loop from here" beside the start marker (140 × 44 px, a sixth of the card); a tap shows 10, 20 and 30 km in the peek. Gives up: one more tap for a loop (two, not one), and it still covers a little map.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="cv-row">
     <h2>2 · Drawing: the peek</h2>
     <p>While drawing, the map comes first and the tools are at the thumb. The route's colour goes with the profile it colours; the sport is the top bar's pill (it shows the route's sport while planning, and re-routes as the planner's picker does); Show the whole route joins the map's buttons, shown while part of the route is out of view (it does nothing otherwise); the distance marks say the distance, and the times stay one switch away (Check › On the map).</p>
     <div class="cv-frames">
@@ -280,7 +296,7 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
         <figcaption><b>Phone: half, light</b><span class="v v-today">Five 28 px buttons on every waypoint row; the route's colour in the header and again on the profile (at full).</span><span class="v v-a v-b">The rows as the switch below says.</span></figcaption>
       </figure>
       <figure class="fr phone dark" id="phone-half-dark" data-bg="phone-mtb-calm" data-shot="phone-mtb-half-dark" data-scene='{"state":"half"}'>
-        <figcaption><b>Phone: half, dark</b><span class="v v-today">White on the dark green is 2.7:1 (the sport pill, Weather).</span><span class="v v-a v-b">The dark accent behind white text is a darker green: 5.4:1.</span></figcaption>
+        <figcaption><b>Phone: half, dark</b><span class="v v-today">White on the dark green is 2.7:1 (the sport pill, Weather).</span><span class="v v-a v-b">The dark accent behind white text is a darker green: 5.3:1.</span></figcaption>
       </figure>
     </div>
   </section>
@@ -307,8 +323,8 @@ body[data-rows="one"] .wp.on .acts { width: 100%; justify-content: flex-end; }
 <script>
 // Builds the frames from their data-* attributes. Nothing here talks to Polku.
 const Q = new URLSearchParams(location.search);
-const BG = Q.get('bg') || 'https://raw.githubusercontent.com/TommiContursi/Polku/131a9b1810b7576e8aa0d56162e20dfe55db39b2/claude/phase-24-design/mockup-bg/';
-const SHOT = Q.get('shots') || 'https://raw.githubusercontent.com/TommiContursi/Polku/cad47a36fcd2dba57113be65263d2ad3e3a870a5/claude/phase-24-design/before/';
+const BG = Q.get('bg') || 'https://raw.githubusercontent.com/TommiContursi/Polku/c33edbe302eaaaf277315836b3f51f52af5ba941/claude/phase-24-design/mockup-bg/';
+const SHOT = Q.get('shots') || 'https://raw.githubusercontent.com/TommiContursi/Polku/c33edbe302eaaaf277315836b3f51f52af5ba941/claude/phase-24-design/before/';
 const PIC = (f) => (window.MOCK_IMAGES && window.MOCK_IMAGES[f]) || BG + f;
 const SHOTPIC = (f) => (window.MOCK_IMAGES && window.MOCK_IMAGES[`before-${f}`]) || SHOT + f;
 const ic = (id, size = 20) => `<svg class="ic" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
@@ -387,6 +403,13 @@ function planner(o, desk) {
     return `<div class="pl" role="region" aria-label="Route planner">${html}</div>`;
   }
   const minimise = desk ? `<button type="button" class="tbtn" aria-label="Minimise">${ic('up', 18)}</button>` : '';
+  if (o.state === 'first') {
+    const loops = `<div class="chips"><span style="font-size:13px;color:var(--muted);white-space:nowrap">Loop:</span>${[10, 20, 30].map((k) => `<button type="button" class="chip" aria-label="Three round trips of about ${k} km from here">${ic('roundtrip', 18)}${k} km</button>`).join('')}</div>`;
+    const tools = b ? `<div class="chips"><span class="spacer"></span>${MORE}</div>` : `<div class="tools">${MODES(true)}<span class="spacer"></span>${UNDO()}${MORE}</div>`;
+    return `<div class="pl" role="region" aria-label="Route planner"><button type="button" class="grab" aria-label="Planner size: drag, or press to change"></button>
+      <div class="row"><div class="hint">Tap the next place on the way<small>${o.alt === 'chip' ? 'or a loop from the start' : 'or a loop from here'}</small></div><button type="button" class="chip" aria-label="Route style: Balanced">${ic('sliders', 18)}Balanced${ic('down', 14)}</button><button type="button" class="done">Done</button></div>
+      ${o.alt === 'peek' ? loops : ''}${tools}</div>`;
+  }
   const head = b
     ? `<div class="row">${STATS(s)}<button type="button" class="done">Done</button></div>${SETUP(true)}`
     : `<div class="row">${STATS(s)}${minimise}<button type="button" class="done">Done</button></div>${SETUP(true)}<div class="tools">${MODES(true)}<span class="spacer"></span>${UNDO()}</div>`;
@@ -399,7 +422,7 @@ function planner(o, desk) {
 function build(fr) {
   const o = JSON.parse(fr.dataset.scene), desk = fr.classList.contains('desk');
   const scr = fr.querySelector('.screen');
-  if (V === 'today') {
+  if (V === 'today' || fr.dataset.fixed === 'today') {
     scr.style.backgroundImage = '';
     scr.innerHTML = `<img class="shot" alt="Polku's planner today" src="${SHOTPIC(`${fr.dataset.shot}.jpg`)}">`;
     return;
@@ -414,6 +437,7 @@ function build(fr) {
   const b = V === 'b' && !desk && route;
   if (b) scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="Drawing tools" style="bottom:${sheetTop + 8}px">${MODES(false)}${UNDO()}</div>`);
   scr.insertAdjacentHTML('beforeend', cols(desk, desk ? 12 : sheetTop + 12, route && o.out ? 'out' : '') + scale(desk ? 12 : sheetTop + (b ? 64 : 12)));
+  if (o.alt === 'chip') scr.insertAdjacentHTML('beforeend', `<button type="button" class="chip startchip" style="position:absolute;left:76px;top:428px;z-index:4;box-shadow:var(--shadow)">${ic('roundtrip', 18)}Loop from here</button>`);
 }
 function render() {
   document.body.dataset.v = V;

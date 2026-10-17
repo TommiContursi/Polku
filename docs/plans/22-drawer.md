@@ -119,3 +119,9 @@ New in 22a:
 - This replaces "Move to the left", and the map's controls make room on whichever side it's on.
 
 **22c: cards to pull out (maybe).** A section's pop-out turns the profile or the time into a small card on the map. It snaps to the map's corners, stays while the panel is folded, and goes back with a click. Desktop only. Built only if 22a and 22b leave a need for it.
+
+### From phase 24's review (2026-10-17), for 22b
+
+The report is [docs/reviews/2026-10-17-design/](../reviews/2026-10-17-design/README.md); the desktop frame of [the planner's mock-up](mockups/phase-24-planner.html) shows it.
+- **One way to close the planner on a desktop.** Today there are three: Plan in the search bar, the panel's Done, and Done by the map. The panel's Done stays; Plan in the search bar and by the map hide while planning, as Plan already does on phones. If the panel moves (left, right, bottom), its Done moves with it.
+- **Show the whole route** joins the map's buttons (under zoom and 3D, #226) while part of the route is out of view, wherever the panel docks. The calmer planner (#233) does the same on phones.

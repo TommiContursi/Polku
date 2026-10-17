@@ -1,0 +1,38 @@
+phone main
+  Open Polku with nothing on it, find Plan and open it: {'taps': 1, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True True
+  Choose a sport (MTB): {'taps': 2, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 1} ok=True chosen
+  Add four points on the map: {'taps': 8, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False point; no point at first (maplibregl-popup; closed it), a point at the next tap; no point at first (maplibregl-popup; closed it), none at the next either; point
+  Drag a point: {'taps': 0, 'drags': 1, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False moved
+  Drag the line (a new via point): {'taps': 0, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False error: TypeError: Cannot read properties of undefined (reading 'result')
+    at <anonymous>:1:42
+    at <anonymous>:1:198
+  Change a leg's routing mode: {'taps': 3, 'drags': 1, 'scrolls': 1, 'keys': 0, 'switches': 1} ok=True sheet peek → half; straight line chosen
+  Change a leg's style: {'taps': 3, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True style chosen
+  Undo and redo: {'taps': 2, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False history 6; undo tapped, redo tapped
+  Read the summary, profile, climbs and surfaces: {'taps': 1, 'drags': 0, 'scrolls': 1, 'keys': 0, 'switches': 1} ok=True  profile on screen: True; climbs found; surfaces: False
+  Change the route style and the speeds: {'taps': 3, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 1} ok=True distance 1174 → 1303 m, time 345 → 382 s; style {"p":"flowy","v":{},"wet":"auto"}
+  Open Heads-up, find a warning on the map, use Avoid: {'taps': 3, 'drags': 0, 'scrolls': 1, 'keys': 0, 'switches': 1} ok=False 1 heads-up; avoid tapped; places to avoid 0 → 1
+  Open Layers, change something, come back to planning: {'taps': 3, 'drags': 0, 'scrolls': 2, 'keys': 0, 'switches': 1} ok=None trail details switched
+  Change the departure and read the weather along the route: {'taps': 3, 'drags': 0, 'scrolls': 1, 'keys': 0, 'switches': 1} ok=True Time section open, Departure & weather open; departure changed; weather along the route: {'s': 1, 'on': True}
+  Move between Route, Check and Go six times: {'taps': 6, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 6} ok=True 
+  Find the share link, Export GPX and Save offline: {'taps': 1, 'drags': 0, 'scrolls': 1, 'keys': 0, 'switches': 1} ok=None {'section': 'open', 'Copy share link': True, 'Export GPX': True, 'Save offline': True}
+  Mistake: Settings opened instead of Layers, then Layers: {'taps': 4, 'drags': 0, 'scrolls': 2, 'keys': 0, 'switches': 2} ok=true false true 
+  Mistake: the sheet folded by accident, then back: {'taps': 0, 'drags': 2, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True folded to peek; sheet peek → half
+  Mistake: a point removed, then undone: {'taps': 2, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 1} ok=False points 3 → 3 → 3
+  Mistake: a reload mid-route: {'taps': 0, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False {'active': False, 'points': 3, 'sheet': 'half', 'tab': 'route'}
+phone loop
+  Open Plan: {'taps': 1, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True True
+  Make a round trip of about 10 km from a start on the map: {'taps': 2, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False round trip opened; 10 km not found; make loops not found
+  Take one of the loops: {'taps': 0, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False no loop card to take
+phone lipas
+  Search for an official route by name and open it: {'taps': 2, 'drags': 0, 'scrolls': 0, 'keys': 6, 'switches': 0} ok=True result tapped
+  Ride this route: {'taps': 1, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True riding
+phone long
+  Open Plan: {'taps': 1, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True True
+  Choose Straight line: {'taps': 1, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True True
+  Add 30 points: {'taps': 60, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=False 1 at the first tap; no point at first (maplibregl-popup; closed it), none at the next either; no point at first (nothing open), none at the next either
+  Reach the finish's row in the list: {'taps': 1, 'drags': 0, 'scrolls': 1, 'keys': 0, 'switches': 1} ok=None 1 rows; 1 screens of scrolling to reach the finish
+desk main
+  Open Polku with nothing on it, find Plan and open it: {'taps': 1, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True True
+  Choose a sport (MTB): {'taps': 1, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 1} ok=False no sport menu
+  Add four points on the map: {'taps': 6, 'drags': 0, 'scrolls': 0, 'keys': 0, 'switches': 0} ok=True point; no point at first (maplibregl-popup; closed it), a point at the next tap; point; point
