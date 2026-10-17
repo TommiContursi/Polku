@@ -14,7 +14,9 @@ Before bigger work, read [README.md](README.md),
 [docs/DEVELOPING.md](docs/DEVELOPING.md) (the modules, the commands, how the
 trickier parts work), [docs/ROADMAP.md](docs/ROADMAP.md) (the order), your
 phase's plan in [docs/plans/](docs/plans/), the issues in its milestone, and
-the latest [CHANGELOG.md](CHANGELOG.md) entries.
+the latest [CHANGELOG.md](CHANGELOG.md) entries. For anything people see,
+[PRODUCT.md](PRODUCT.md) too: who Polku is for, its principles and its
+accessibility baseline.
 
 No framework, dependency, backend or build step without a real need and the
 user's OK.
@@ -33,7 +35,9 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
 - **Claim it first:** a comment on the issue with your branch, saying which
   agent you are (Claude Code or Codex: both post as the user's GitHub
   account), so the other doesn't start on it too. A phase is claimed on its
-  phase issue.
+  phase issue. When the user says a claim's session has stopped, take over
+  from its branch (or from `main` if nothing was pushed) and say so on the
+  issue.
 - **Phases** in ROADMAP's order, one phase per PR, unless the user changes it.
   Each has a phase issue and a milestone with the issues that go with it.
 - **Confirmed bugs with a small fix** get a Fix PR of their own, between
@@ -79,8 +83,13 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   export, share links, 3D and hover.
 - Follow the module that already does the job (DEVELOPING has the list). Keep
   fixes to the point; tidy only what makes the change simpler.
-- Think of the phone outdoors: touch, small screens, battery, a bad network.
-  Keyboard and screen readers too.
+- Think of the phone outdoors: touch, one thumb, small screens, bright sun,
+  battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
+  readers, enlarged text, reduced motion, and nothing said by colour alone.
+- **A new panel, sheet or way of working starts as a clickable mock-up** in
+  `docs/plans/mockups/`, reviewed with the design skills that phase 24's plan
+  lists, in the worst case too (360 px, 200 % zoom, long Finnish words). The
+  user chooses before it's built; #123's plan shows how.
 
 ## Testing
 
@@ -117,9 +126,11 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
 - Branch from `main`, or from the PR below yours if it isn't merged yet (say so
   in the PR). First check the branch and any uncommitted changes. Never work on
   another agent's branch.
-- **The repo squash-merges.** When the PR below yours is merged, rebase yours
-  onto `main` without its commits (`git rebase --onto origin/main <old base>`),
-  or it conflicts with the squashed copy of them.
+- **The repo squash-merges:** the PR's title and description become its one
+  commit on `main`, so keep the description true as the PR changes. When the
+  PR below yours is merged, rebase yours onto `main` without its commits
+  (`git rebase --onto origin/main <old base>`), or it conflicts with the
+  squashed copy of them.
 - **Title** like the history, saying what changes for people using Polku:
   "Phase 22a: the drawer in three tabs", "Fix: the map's credits stay folded on
   phones", "Docs: …". Not `feat:` or `docs:`.
@@ -143,7 +154,8 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
     taken out of ROADMAP's order. A Fix PR changes neither: the CHANGELOG and
     the closed issue record it;
   - DEVELOPING, where how something works has changed.
-- **Never push to `main` or merge** unless the user says so.
+- **Never push to `main` or merge** unless the user says so. The user merges:
+  say which PRs are ready, in what order, and which wait and why.
 - **When a milestone's last issue closes,** a short retro in `docs/retros/`:
   what cost time and what to keep, with the PRs and issues as evidence, and
   what changes in AGENTS.md because of it. Then the milestone is closed.
