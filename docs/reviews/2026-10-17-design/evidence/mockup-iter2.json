@@ -207,11 +207,11 @@
   "size": "390x844",
   "map_clear": 81.4,
   "map_clear_sheet": 85.2,
-  "map_seen": 38.2,
+  "map_seen": 25.3,
   "sheet": 130,
   "docked": false,
-  "controls": 20,
-  "in_planner": 11,
+  "controls": 25,
+  "in_planner": 16,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
@@ -226,11 +226,11 @@
   "size": "390x844",
   "map_clear": 76.2,
   "map_clear_sheet": 80.2,
-  "map_seen": 31.4,
+  "map_seen": 17,
   "sheet": 174,
   "docked": false,
-  "controls": 20,
-  "in_planner": 11,
+  "controls": 25,
+  "in_planner": 16,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
@@ -245,11 +245,11 @@
   "size": "390x844",
   "map_clear": 76.7,
   "map_clear_sheet": 80.2,
-  "map_seen": 34.9,
+  "map_seen": 20.6,
   "sheet": 174,
   "docked": false,
-  "controls": 20,
-  "in_planner": 11,
+  "controls": 25,
+  "in_planner": 16,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
@@ -264,16 +264,18 @@
   "size": "390x844",
   "map_clear": 72.5,
   "map_clear_sheet": 77.5,
-  "map_seen": 21.7,
+  "map_seen": 15,
   "sheet": 174,
   "docked": false,
-  "controls": 20,
-  "in_planner": 11,
+  "controls": 24,
+  "in_planner": 15,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
   "off_screen": [],
-  "overlaps": [],
+  "overlaps": [
+   "Piirrä seuraava osuus: Seuraa polkuja, Reittityy × Quiet"
+  ],
   "cut": [],
   "errors": []
  },
@@ -308,11 +310,11 @@
   "size": "390x844",
   "map_clear": 81.4,
   "map_clear_sheet": 85.2,
-  "map_seen": 17.8,
+  "map_seen": 67.1,
   "sheet": 130,
   "docked": false,
-  "controls": 25,
-  "in_planner": 16,
+  "controls": 17,
+  "in_planner": 7,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
@@ -327,11 +329,11 @@
   "size": "390x844",
   "map_clear": 76.2,
   "map_clear_sheet": 80.2,
-  "map_seen": 15.5,
+  "map_seen": 61.7,
   "sheet": 174,
   "docked": false,
-  "controls": 24,
-  "in_planner": 15,
+  "controls": 17,
+  "in_planner": 7,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
@@ -346,19 +348,16 @@
   "size": "390x844",
   "map_clear": 76.7,
   "map_clear_sheet": 80.2,
-  "map_seen": 16,
+  "map_seen": 62.3,
   "sheet": 174,
   "docked": false,
-  "controls": 25,
-  "in_planner": 16,
+  "controls": 17,
+  "in_planner": 7,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
   "off_screen": [],
-  "overlaps": [
-   "Rita nästa etapp: Följ stigar, Ruttstil Balanced × Finjustera i Hur du tar dig fram",
-   "Ångra × Finjustera i Hur du tar dig fram"
-  ],
+  "overlaps": [],
   "cut": [],
   "errors": []
  },
@@ -368,19 +367,16 @@
   "size": "390x844",
   "map_clear": 72.5,
   "map_clear_sheet": 77.5,
-  "map_seen": 15,
+  "map_seen": 55.6,
   "sheet": 174,
   "docked": false,
-  "controls": 22,
-  "in_planner": 13,
+  "controls": 17,
+  "in_planner": 7,
   "small_in_planner": [
    "Planner size: peek. Press to change 72×34"
   ],
   "off_screen": [],
-  "overlaps": [
-   "Piirrä seuraava osuus: Seuraa polkuja, Reittityy × Technical",
-   "Kumoa × Technical"
-  ],
+  "overlaps": [],
   "cut": [],
   "errors": []
  },
@@ -390,11 +386,11 @@
   "size": "390x844",
   "map_clear": 24,
   "map_clear_sheet": 24,
-  "map_seen": 13.7,
+  "map_seen": 12,
   "sheet": 699,
   "docked": true,
-  "controls": 8,
-  "in_planner": 3,
+  "controls": 10,
+  "in_planner": 7,
   "small_in_planner": [],
   "off_screen": [
    "Settings",
