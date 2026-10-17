@@ -2,7 +2,7 @@
 
 The design. What's still to do, and its status, is on GitHub: [#123](https://github.com/TommiContursi/Polku/issues/123), in the milestone [Phase 24: design review](https://github.com/TommiContursi/Polku/milestone/1). The order of phases is in [ROADMAP](../ROADMAP.md).
 
-Planned 2026-10-16: a mock-up and this plan first, reviewed with design skills for coding agents, then the user's answers to its four questions (below). Nothing built yet.
+Planned 2026-10-16: a mock-up and this plan first, reviewed with design skills for coding agents, then the user's answers to its four questions (below). Phase 24's review answered the four questions it was left on 2026-10-17 ([below](#phase-24s-answers-2026-10-17)), all but the swipe's final numbers, which need real phones. Nothing built yet.
 
 ## Why
 
@@ -10,7 +10,7 @@ Changing the map quickly (another base map, or one layer such as terrain or trai
 
 ## The mock-up
 
-- **In the repo:** [mockups/issue-123-layer-drawer.html](mockups/issue-123-layer-drawer.html). Not wired to the app; open it from `python3 serve.py` at `/docs/plans/mockups/issue-123-layer-drawer.html`. It's clickable: maps, tiles, a tile's ›, Edit, More, ✕ and Layers work, and the phone sheets follow a swipe. `?frame=<id>` shows one frame at full size, `&w=360&h=740` at another size, `?data=worst` with the worst case (Finnish, an MML key, a dozen more on). The map pictures are on the `pr-screenshots` branch.
+- **In the repo:** [mockups/issue-123-layer-drawer.html](mockups/issue-123-layer-drawer.html). Not wired to the app; open it from `python3 serve.py` at `/docs/plans/mockups/issue-123-layer-drawer.html`. It's clickable: maps, tiles, a tile's ›, Edit, More, ✕, Layers and 3D work, and the phone sheets follow a swipe. Since phase 24: a frame with the planner's sheet and the same swipe (four sizes), **Try it full size** on each phone frame, and **Swipe numbers** to tune the swipe on a phone. `?frame=<id>` shows one frame at full size, `&w=360&h=740` at another size, `?data=worst` with the worst case (Finnish, an MML key, a dozen more on). The map pictures are on the `pr-screenshots` branch.
 - **The same mock-up as a private page,** like 22a's canvas, with its pictures inside, so it opens on a phone: https://claude.ai/artifact/BkPy7oGi6r77kLJmt5qMzh
 
 ## Decided (2026-10-16)
@@ -27,7 +27,7 @@ Changing the map quickly (another base map, or one layer such as terrain or trai
 - **On the map:** five tiles for your sport, two to a row, and More, which says how many other layers are on ("3 more on"), so nothing on is hidden.
   - A tile turns the same switch (or switches) as in the full panel.
   - A tile with more settings (trail colours, depths, rain, temperature, 3D) has a › side, its own 44 px button: it opens those settings in the drawer, one step in, with ‹ back. They're the same switches as the tile's group in the full panel. The step in keeps the sheet's height.
-- **Phone (under 720 px wide):** a sheet from the bottom, over the planner's peek, which comes back as it was. About half a 390 × 844 screen (56 %), 66 % of a 360 × 740 one; never taller than the room below the top bar (its body scrolls, the header with ✕ stays).
+- **Phone (under 720 px wide):** a sheet from the bottom, over the planner's peek, which comes back as it was. About half a 390 × 844 screen (56 %). Under 760 px high it's tighter (34 px thumbnails, 48 px tiles, shorter headings): 58 % of a 360 × 740 screen and 62 % of a 375 × 667 one (66 % and 69 % in Finnish). Never taller than the room below the top bar (its body scrolls, the header with ✕ stays).
 - **Desktop:** a card beside the Layers button, its bottom level with the button's, where today's panel opens. In a window under 560 px high it reaches down to the bottom, like today's panel.
 - **Closing:** ✕, Esc, Layers again; on a phone also a swipe down, or a tap on the map. That tap does nothing else (no waypoint while planning). On a desktop the card stays while you use the map, like today's panel.
 - **Status on the tile, not in a toast** (a toast would sit behind the sheet): "Zoom in to see" while its layer doesn't show at this zoom; "No data now" when its source fails. Missing data never looks complete.
@@ -38,7 +38,7 @@ Changing the map quickly (another base map, or one layer such as terrain or trai
 
 | Sport | The five tiles | More on by default |
 |---|---|---|
-| MTB | **Trail colours** ›, **Trail details**, **Official routes**, 3D terrain ›, Rain radar › | 3 |
+| MTB | **Trail colours** ›, **Trail details**, **Official routes**, Waymarked MTB, Rain radar › | 3 |
 | Gravel | **Busy roads**, **Road works**, Paved roads, Waymarked cycling, Rain radar › | 4 |
 | Road | **Busy roads**, **Road works**, **Road conditions**, **Waymarked cycling**, Wind | 2 |
 | Hike | **Waymarked hiking**, **Official routes**, **Huts & lean-tos**, **Trail details**, Rain radar › | 2 |
@@ -53,7 +53,9 @@ Changing the map quickly (another base map, or one layer such as terrain or trai
 
 ## Your own tiles
 
-- **Edit** sits beside the tiles' heading. In it, a tap on a tile takes it off and a chip adds one: any switch in the full panel. Five per sport.
+- **Edit** sits beside the tiles' heading. In it, a tap on a tile takes it off and a chip adds one. Five per sport; with five on, the chips wait until one is taken off.
+- **What Edit offers** (phase 24): every layer switch in the full panel, under the panel's own group headings and in its order, so finding one is like finding it there: 30 today (Terrain 3, Trails & difficulty 4, Winter 4, Marked routes 4, Places 2, Water & nautical 3, Traffic & safety 7, Roads 3, Weather on the map 3), one more with an MML key. Left out, because each has its own place: the base maps (the Map row above), the timeline (the Weather button), the settings behind a › (the trail colours' kind, opacity, exaggeration), Depths' three switches one by one (one Depths tile), and 3D terrain (its button on the map, #226).
+- **Edit is taller than the drawer:** its list scrolls under the header, with Reset and Done fixed at the bottom.
 - **Reset to MTB's tiles** and **Done** sit at the bottom, in thumb reach; a swipe down is Done too.
 - **Two resets, kept apart:** "Reset to MTB's tiles" (which tiles) is in Edit; "Reset to MTB defaults" (which layers are on) stays in the full panel, as today.
 - Changing the order of the tiles: later, if wanted (drag in Edit).
@@ -70,7 +72,9 @@ Today the planner's sheet follows the finger by changing its height, only from i
 - **Sizes:** the drawer has closed, quick and all layers (a swipe up is More); the planner keeps peek, profile, half and full. Whether a swipe below the peek closes the planner is #96's to decide.
 - **A second finger is ignored;** the pointer is captured, so the drag goes on outside the sheet.
 - **Reduced motion:** the sheet still follows the finger, but sizes change without travel (a short fade).
-- **Starting values,** to tune on a real phone (iOS and Android): the browser's device emulation can't show how a swipe feels.
+- **A touch starts captured by the element it lands on** (a button in the header). When the sheet takes the pointer, that element's `lostpointercapture` bubbles up to the sheet: listen for the sheet's own only, or every drag that starts on a button ends after a few pixels (found in the mock-up, 2026-10-17).
+- **A quick flick moves at least one size:** it goes where it would come to rest, and never less than one size in its direction (from half, a hard flick down can reach peek).
+- **Starting values,** to tune on a real phone (iOS and Android): the browser's device emulation can't show how a swipe feels. A drag starts after 10 px; a flick is 1.1 px/ms or faster; deceleration 0.998; the drawer closes past 40 % of its height; spring damping 0.85 and response 0.3 s; rubber band 0.55. The mock-up's Swipe numbers panel changes them live, and the test list is [below](#on-real-phones).
 
 ## Motion
 
@@ -97,7 +101,11 @@ Today the planner's sheet follows the finger by changing its height, only from i
   - A tile is a toggle with its label and small print ("Trail colours, Difficulty, pressed"); its › is "Trail colours: settings".
   - More says "More: all layers, 3 more on".
 - **"On" is said by a check and a thicker border,** not by colour alone. Text is at least 4.5:1: an "on" tile's label is 5.25:1 in light and 4.9:1 in dark.
-- **Long labels (phase 18 brings Finnish and Swedish):** the drawer has its `lang`, so words hyphenate, and a word breaks rather than overflows. At 200 % zoom the maps go to two columns and the tiles to one (a container query).
+- **Long labels (phase 18 brings Finnish and Swedish):**
+  - A tile's label has 72 px beside a › at 360 px wide and 84 px at 390 (a 20 px icon, an 8 px gap, 8 px padding). That fits every word measured on a › tile whole, in English, Finnish and Swedish, except "Temperature" (78 px), "vaikeusvärit" (73) and "Syvyystiedot" (79) at 360 px.
+  - A word that doesn't fit breaks where its language allows a good break: the strings carry soft hyphens (U+00AD) at compound boundaries ("Syvyys­tiedot", "Sade­tutka", "Tempera­ture"), and the drawer uses `hyphens: manual`, so the browser never picks its own break ("Sadetut-ka"). `overflow-wrap: anywhere` stays as the last resort, so nothing overflows. Phase 18 adds the soft hyphens to the strings it translates.
+  - The drawer has its `lang`. At 200 % zoom the maps go to two columns, the tiles to one, and a segmented choice to two rows (a container query).
+- **Sliders** (opacity, exaggeration, strength) are 44 px tall, the whole row's height, not the browser's 16 px.
 
 ## How it remembers
 
@@ -148,7 +156,8 @@ Today the planner's sheet follows the finger by changing its height, only from i
   - a drag up opens all layers;
   - a tap on a tile still toggles it;
   - the planner's sheet changes size by the same gestures (#96).
-- **Phone (390 × 844 and 360 × 740):**
+- **The swipe, from a button:** a drag that starts on a header button moves the sheet to the end, not just a few pixels (the bubbling `lostpointercapture`, above).
+- **Phone (390 × 844, 360 × 740 and 375 × 667):**
   - the sheet fits below the top bar, and every target is 44 px or more;
   - with the planner at peek, the peek is back as it was after closing;
   - the tap on the map that closes it adds no point.
@@ -160,13 +169,61 @@ Today the planner's sheet follows the finger by changing its height, only from i
 #123 is in phase 24's milestone, so that the review can decide the drawer's design before it's built:
 
 - **The mock-up is where the review starts its "Settings and the layers" flow.** It's in the repo, so the review can change it and screenshot any frame at any size. The skills used here (emil-design-eng, apple-design, mobile-native, break-ui) are Emil Kowalski's, which the review lists.
-- **Left to tune with the review:**
+- **Left to tune with the review** (answered on 2026-10-17, [below](#phase-24s-answers-2026-10-17)):
   - the sheet's height on small phones (66–74 % at 360 × 740, with Finnish);
   - short Finnish words that still break at 360 px beside a › ("Sadetut-ka");
   - the swipe's numbers, on real phones;
   - which switches Edit offers.
 - **Close neighbours in the review:** #96 (the same swipe), #208 (tap and hover on phones), #73 (zoom and enlarged text), #134 (the notch).
 - **The build** is its own PR after the review, "Fixes #123".
+
+## Phase 24's answers (2026-10-17)
+
+Measured in the mock-up with [drawer_probe.py](../reviews/2026-10-17-design/evidence/drawer_probe.py) and [word_widths.py](../reviews/2026-10-17-design/evidence/word_widths.py), before and after ([drawer-before.json](../reviews/2026-10-17-design/evidence/drawer-before.json), [drawer-after.json](../reviews/2026-10-17-design/evidence/drawer-after.json)); the swipe driven with touch events in [swipe_probe.py](../reviews/2026-10-17-design/evidence/swipe_probe.py). Skills: apple-design (the sheet and its gestures, grouping), mobile-native (short phones, the safe area), break-ui (Finnish, Swedish, 200 % zoom), emil-design-eng (targets and press).
+
+**1. The sheet's height on small phones.** The quick drawer took 66 % of a 360 × 740 screen (74 % in Finnish) and 73 % of a 375 × 667 one (80 %), leaving 70–190 px of map between the top bar and the sheet: too little to see the map you're changing. Under 760 px high the thumbnails go to 34 px, the tiles to 48 px and the headings closer together.
+
+| Screen | Before | After | Map above the sheet, after |
+|---|---|---|---|
+| 390 × 844 | 56 % (Finnish 61 %) | the same | 304 px (265) |
+| 360 × 740 | 66 % (74 %) | 58 % (66 %) | 249 px (187) |
+| 375 × 667 | 73 % (80 %) | 62 % (69 %) | 191 px (145) |
+
+(The map above the sheet is below the 64 px top bar.) No other cap: a quick drawer that scrolls hides More's "3 more on", and a slightly taller sheet costs less than that. At 200 % zoom it scrolls as before.
+
+**2. Short Finnish words beside a ›.** At 360 px a label had 62 px beside a ›, and "Sadetutka" (62 px) broke as "Sadetut-ka"; English "Temperature" (78 px, Run's tile) broke too. Now: 72 px of room (84 at 390), soft hyphens at compound boundaries in the strings, and `hyphens: manual` (in [Touch, keyboard and screen readers](#touch-keyboard-and-screen-readers)). In the worst case every break falls at a compound boundary ("vaikeus-/värit", "Kolmi-/ulotteinen") and none mid-syllable; "Sadetutka" fits whole.
+
+**3. Which switches Edit offers.** Every layer switch in the full panel, grouped as the panel groups them, except what has its own place (in [Your own tiles](#your-own-tiles)). A short curated list would leave someone who wants Fairways or Road cameras on a tile with no way to get it; grouping keeps 30 chips readable.
+
+**4. The swipe's numbers.** The gesture is built and checked in the mock-up: a slow drag comes to rest at the nearest size, a flick moves at least one size, a slow short drag springs back, a drag that starts on Done moves the sheet, and a tap on a tab or a tile still works ([swipe-probe.txt](../reviews/2026-10-17-design/evidence/swipe-probe.txt)). It found one trap for `js/sheet.js` (the bubbling `lostpointercapture`, in [One swipe](#one-swipe-for-every-sheet-with-96)). The numbers themselves wait for real phones: the list below.
+
+**And the 3D button (#226).** #226 asks for a 3D button in the map's column, between Weather and Layers, beside the drawer's 3D tile.
+- **Where:** with compass, locate and zoom, the buttons for how you look at the map, not between Weather and Layers (what the map shows), as the column's own order in `index.html` says. On a desktop it goes under zoom; on a touch phone, which has no zoom buttons, under locate. A view control near the other view controls is easier to find (apple-design's grouping and mapping), and the 3D view and the compass's tilt belong together. If the user prefers it between Weather and Layers, the room below is the same.
+- **Room on a phone:** the button and its gap need 52 px. The room above the column is 53 px or more in every state measured ([measure-before.json](../reviews/2026-10-17-design/evidence/measure-before.json)): at 375 × 667, 112 px with the timeline open and 53 px with the planner at half (the tightest); at 390 × 844, 142 px at half.
+- **Shown once:** with the button, the drawer has no 3D tile. MTB's fifth tile becomes Waymarked MTB, and Edit leaves 3D out. Exaggeration stays in the full panel (Base map), as today, and in no tile; #227 puts a 3D switch in the tilt box, also without a slider.
+- **Order of building:** #226 is small and can come first. If #123 is built first, keep the 3D tile until the button lands, then swap it.
+
+### On real phones
+
+The swipe's numbers, how taps feel and the safe areas can't be judged in the browser's emulation. On an iPhone (Safari, and added to the home screen) and an Android phone (Chrome), open the private page https://claude.ai/artifact/BkPy7oGi6r77kLJmt5qMzh, tap **Try it full size** under a phone frame, and **Swipe numbers** at the top to see or change the numbers.
+
+1. **The drawer** (frame 1):
+   - Drag the header down a little, slowly, and let go: it springs back. Drag past halfway: it closes. Does it follow the finger exactly, from the first move?
+   - A short, quick flick down: it closes. Note any flick that didn't close it, or a slow drag that closed it when you didn't mean to.
+   - Drag up: All layers; flick down: back. In All layers, scroll down, then drag down: it scrolls back first, and moves the sheet only at the top.
+   - Start a drag on a tile: it moves the sheet. A plain tap on a tile still turns it on or off.
+2. **The planner's sheet** (frame 7):
+   - From peek, drag up slowly and let go at different heights: it rests at the nearest of profile, half and full.
+   - Flick up from peek, and down from full. Should a hard flick go one size only, or as far as it would travel?
+   - Start a drag on Done or on Paths / Straight / Water: it moves the sheet, and a tap still presses the button.
+   - Grab the sheet while it's still moving: it stops under the finger.
+   - Turn on "A swipe down from peek closes the planner" in Swipe numbers and try both ways (Plan opens it again). Which is better? This is #96's open question.
+3. **If something feels off,** change one number at a time: "A drag starts after" if taps turn into drags or drags start late; "A flick is faster than" if flicks don't count or slow drags count as flicks; "Spring response" for how fast it settles; "Spring damping" for bounce (1 is none). Then Copy, and paste the numbers with the phone and browser into #96.
+4. **Taps and the edges,** on the same page: a tap on a tile shows no grey or blue flash, and the tile shrinks a little while pressed; in full size the sheet's bottom is clear of the home indicator or the gesture bar.
+5. **In Polku itself** ([polku.si](https://polku.si)), for #134, #208 and #73:
+   - Added to the iPhone's home screen: does the search bar sit under the notch or the Dynamic Island? (#134)
+   - Tap Locate, Plan and a switch in Layers: a flash? Does a button stay grey or dark after the finger lifts? (#208)
+   - Pinch on the planner's sheet or the Layers panel: does the page zoom? With larger text in the phone's settings, does Polku's text grow? (#73)
 
 ## The design review of the mock-up (2026-10-16)
 

@@ -118,6 +118,10 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .phone .cbtn { width: 44px; height: 44px; }
 .phone .fab, .phone .plan { width: 54px; height: 52px; }
 .needle .n { fill: #e11d48; stroke: #e11d48; }
+/* #226, as phase 24 proposes it: 3D with the buttons for how you look at the map (compass, locate, zoom), not
+   between Weather and Layers (what it shows); on a touch phone it takes zoom's place under locate */
+.c3d { font: 700 13px/1 system-ui, sans-serif; letter-spacing: .02em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.c3d[aria-pressed="true"] { background: var(--accent); color: #fff; }
 
 /* ------------------------------------------------ the quick drawer (new) */
 .qd {
@@ -260,6 +264,7 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .qd-add { display: flex; flex-wrap: wrap; gap: 8px; }
 .qd-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px 0 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); font-size: 12.5px; font-weight: 600; }
 .qd-chip .ic { color: var(--accent); }
+.qd-grp { margin: 10px 0 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .qd-chip:disabled { opacity: .45; cursor: default; }
 .qd-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px -16px 0; padding: 10px 16px 0; border-top: 1px solid var(--line); }
 .qd-done { min-width: 96px; height: 48px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; }
@@ -367,7 +372,8 @@ body.fs .fs-bar { display: flex; }
   <header class="cv-head">
     <h1>A quick layer drawer, before the full Layers panel</h1>
     <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/123">#123</a>, 2026-10-16, reviewed with design skills for coding agents and changed after the first round of answers. Not wired to the app: the map behind each frame is a screenshot of Polku; the drawer, buttons and panels are drawn in Polku's own colours and icons. The plan is <code>docs/plans/issue-123-layer-drawer.md</code>.</p>
-    <p><b>Try it:</b> tap maps and tiles; › on a tile opens its settings; Edit changes the tiles; More opens all layers. On a phone frame, drag the sheet down to close it or up for all layers; Layers opens it again.</p>
+    <p><b>Updated in phase 24's review (2026-10-17):</b> tighter on short phones, more room for a tile's label and Finnish words that break only at their compounds, Edit offering every layer switch, a 3D button on the map (#226) in place of MTB's 3D tile, and frame 7 with the planner's sheet to try the same swipe.</p>
+    <p><b>Try it:</b> tap maps and tiles; › on a tile opens its settings; Edit changes the tiles; More opens all layers. On a phone frame, drag the sheet down to close it or up for all layers; Layers opens it again. On a phone, <b>Try it full size</b> under a frame, and <b>Swipe numbers</b> to tune the swipe.</p>
   </header>
 
   <section class="cv-q" aria-labelledby="q-h">
@@ -387,8 +393,8 @@ body.fs .fs-bar { display: flex; }
       <figure class="fr phone" id="phone-mtb" data-bg="phone-mtb" data-ctrls='{"base":"trail","phone":true}' data-qd='{"kind":"sheet","sport":"mtb"}'>
         <figcaption><b>Phone: a sheet from the bottom</b>About half the screen; the map changes above it. Tiles in thumb reach; every target 44 px or more. Swipe it down to close.</figcaption>
       </figure>
-      <figure class="fr desk" id="desk-mtb" data-bg="desk-mtb" data-ctrls='{"base":"trail"}' data-qd='{"kind":"pop","sport":"mtb","focus":"d3"}'>
-        <figcaption><b>Desktop: a card beside the button</b>Its bottom level with Layers, where today's panel opens. <kbd>L</kbd> opens it at once (no animation for the keyboard), Tab and the arrow keys move through it (the ring shows the keyboard on 3D terrain), <kbd>Esc</kbd> closes it and goes back to the button.</figcaption>
+      <figure class="fr desk" id="desk-mtb" data-bg="desk-mtb" data-ctrls='{"base":"trail"}' data-qd='{"kind":"pop","sport":"mtb","focus":"rain"}'>
+        <figcaption><b>Desktop: a card beside the button</b>Its bottom level with Layers, where today's panel opens. <kbd>L</kbd> opens it at once (no animation for the keyboard), Tab and the arrow keys move through it (the ring shows the keyboard on Rain radar), <kbd>Esc</kbd> closes it and goes back to the button.</figcaption>
       </figure>
     </div>
   </section>
@@ -522,15 +528,35 @@ const TILES = {
   wind: ['wind', 'Wind'],
   temp: ['temp', 'Temperature'],
   winter: ['flake', 'Winter ways'],
+  // the rest of the full panel's layer switches, for Edit (phase 24)
+  hillshade: ['cube', 'Hillshade'], contours: ['depth', 'Contour lines'], maastoov: ['pin', 'Maastokartta on top'],
+  numbersup: ['num', 'Uphill numbers'], skitracks: ['flake', 'Ski tracks & snowmobile routes'], seaice: ['flake', 'Sea ice'], snow: ['flake', 'Snow depth'],
+  wmtcycling: ['sign', 'Waymarked cycling'], fairways: ['buoy', 'Fairways'], incidents: ['car', 'Accidents & incidents'], roadworks: ['car', 'Road works'],
+  roadcond: ['car', 'Road conditions'], cameras: ['car', 'Road weather cameras'], paved: ['car', 'Paved roads'], private: ['car', 'Private roads'], speed: ['car', 'Speed limits'],
 };
 // the tiles whose › opens more settings (their group in the full panel)
 const HAS_OPTS = new Set(['trailcolors', 'depths', 'rain', 'temp', 'd3']);
 const SPORTS = {
-  mtb: { label: 'MTB', tiles: ['trailcolors', 'details', 'lipasroutes', 'd3', 'rain'], on: ['trailcolors', 'details', 'lipasroutes'], more: 3 },
+  // MTB's fifth tile was 3D terrain; with the 3D button on the map (#226) it's Waymarked MTB, so 3D shows once
+  mtb: { label: 'MTB', tiles: ['trailcolors', 'details', 'lipasroutes', 'wmtmtb', 'rain'], on: ['trailcolors', 'details', 'lipasroutes'], more: 3 },
   hike: { label: 'Hike', tiles: ['wmthiking', 'lipasroutes', 'huts', 'details', 'rain'], on: ['wmthiking', 'lipasroutes', 'huts', 'details'], more: 2 },
   paddle: { label: 'Paddle', tiles: ['nautical', 'depths', 'ships', 'landing', 'wind'], on: ['nautical', 'depths', 'ships', 'landing'], more: 4 },
 };
-const ADDABLE = ['d3', 'wmtmtb', 'huts', 'places', 'numbers', 'restricted', 'wind', 'traffic', 'winter'];
+// Edit offers every layer switch of the full panel, in its groups and order (phase 24's answer, 2026-10-17). Not offered:
+// the base maps (the Map row above), the timeline (the Weather button), the settings behind a ›
+// (trail colour kind, opacity, exaggeration), Depths' three switches one by one (one Depths tile),
+// and 3D terrain once it has its own button on the map (#226).
+const ADDABLE = [
+  ['Terrain', ['hillshade', 'contours', 'maastoov']],
+  ['Trails & difficulty', ['trailcolors', 'details', 'numbers', 'numbersup']],
+  ['Winter', ['winter', 'skitracks', 'seaice', 'snow']],
+  ['Marked routes', ['lipasroutes', 'wmthiking', 'wmtmtb', 'wmtcycling']],
+  ['Places', ['huts', 'places']],
+  ['Water & nautical', ['nautical', 'depths', 'fairways']],
+  ['Traffic & safety', ['traffic', 'incidents', 'roadworks', 'roadcond', 'ships', 'cameras', 'restricted']],
+  ['Roads (Digiroad)', ['paved', 'private', 'speed']],
+  ['Weather on the map', ['wind', 'temp', 'rain']],
+];
 
 // Worst case (?data=worst, a dev-only switch): the realistic worst data. Finnish, as phase 18 will bring
 // it (long compound words); an MML key with MML WMTS on (the longest map name); a dozen more layers on.
@@ -606,13 +632,16 @@ function opts(o, id) {
 function edit(o) {
   const tiles = o.tiles.map((id) => { const [icon, label] = TILES[id]; return `<div class="qt"><button type="button" class="qt-rm" data-rm="${id}" aria-label="Take off ${esc(label)}"><span class="qt-ic">${ic(icon)}</span><span class="qt-l">${esc(label)}</span><span class="rm">${ic('minus', 16)}</span></button></div>`; }).join('');
   const slots = Array.from({ length: 5 - o.tiles.length }, () => '<div class="qd-slot">Room for one more: add it below</div>').join('');
-  const chips = ADDABLE.filter((id) => !o.tiles.includes(id)).map((id) => `<button type="button" class="qd-chip" data-add="${id}"${o.tiles.length >= 5 ? ' disabled' : ''}>${ic('plus', 16)}${esc(TILES[id][1])}</button>`).join('');
+  const chips = ADDABLE.map(([group, ids]) => {
+    const left = ids.filter((id) => !o.tiles.includes(id));
+    return left.length ? `<h4 class="qd-grp">${esc(group)}</h4><div class="qd-add">${left.map((id) => `<button type="button" class="qd-chip" data-add="${id}"${o.tiles.length >= 5 ? ' disabled' : ''}>${ic('plus', 16)}${esc(TILES[id][1])}</button>`).join('')}</div>` : '';
+  }).join('');
   return `${head(o, `Your tiles for ${SPORTS[o.sport].label}`)}
     <div class="qd-body qd-edit">
       <h3 class="qd-lab">On the drawer · ${o.tiles.length} of 5</h3>
       <div class="qd-tiles">${tiles}${slots}</div>
-      <h3 class="qd-lab">Add a tile</h3>
-      <div class="qd-add">${chips}</div>
+      <h3 class="qd-lab">Add a tile${o.tiles.length >= 5 ? ' · take one off first' : ''}</h3>
+      ${chips}
     </div>
     <div class="qd-foot"><button type="button" class="qd-link" data-act="reset">Reset to ${SPORTS[o.sport].label}'s tiles</button><button type="button" class="qd-done" data-act="done">Done</button></div>`;
 }
@@ -645,6 +674,7 @@ function ctrls(o) {
     <button type="button" class="cbtn" aria-label="Compass">${ic('needle', 20, 'needle')}</button>
     <button type="button" class="cbtn" aria-label="Show my location">${ic('locate', 20)}</button>
     ${phone ? '' : `<div class="czoom"><button type="button" class="cbtn" aria-label="Zoom in">${ic('plus', 18)}</button><button type="button" class="cbtn" aria-label="Zoom out">${ic('minus', 18)}</button></div>`}
+    <button type="button" class="cbtn c3d" aria-pressed="false" title="3D terrain">3D</button>
     <button type="button" class="fab" aria-label="Time & weather">${ic('weather', 22)}<span>Weather</span></button>
     <button type="button" class="fab fab-layers" aria-expanded="${o.layersOpen !== false}"><img src="${thumb(o.base)}" alt=""><span>Layers</span></button>
     ${o.planning ? (phone ? '' : `<button type="button" class="plan done">${ic('check', 22)}<span>Done</span></button>`) : `<button type="button" class="plan">${ic('route', 22)}<span>Plan</span></button>`}
@@ -687,6 +717,8 @@ for (const fr of document.querySelectorAll('.fr')) {
 document.addEventListener('click', (e) => {
   const scr = e.target.closest('.screen');
   if (!scr || scr._swiped) { if (scr) scr._swiped = false; return; }
+  const c3d = e.target.closest('.c3d');
+  if (c3d) { c3d.setAttribute('aria-pressed', String(c3d.getAttribute('aria-pressed') !== 'true')); return; }
   const qd = scr.querySelector('.qd'), layers = scr.querySelector('.fab-layers');
   if (!qd) return;
   const o = qd._o;

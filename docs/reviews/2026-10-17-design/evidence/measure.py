@@ -96,7 +96,7 @@ PROBE = r"""(() => {
     const wx = document.querySelector('#wx-bar:not([hidden])');
     column = { visible: getComputedStyle(col).visibility !== 'hidden', buttons: kids.length, top: Math.round(cr.top), bottom: Math.round(cr.bottom), height: Math.round(cr.height),
       roomAbove: Math.round(cr.top - tb), overTopbar: cr.top < tb,
-      overPlanner: !!(pr && cr.bottom > pr.top + 1 && cr.right > pr.left), overTimeline: !!(wx && cr.bottom > wx.getBoundingClientRect().top + 1 && cr.left < wx.getBoundingClientRect().right) };
+      overPlanner: !!(pr && cr.left < pr.right && cr.right > pr.left && cr.top < pr.bottom - 1 && cr.bottom > pr.top + 1), overTimeline: !!(wx && (() => { const w = wx.getBoundingClientRect(); return cr.left < w.right && cr.right > w.left && cr.top < w.bottom - 1 && cr.bottom > w.top + 1; })()) };
   }
   const sheet = planner && !planner.hidden ? { state: planner.dataset.state, layout: planner.dataset.layout, height: Math.round(pr.height), top: Math.round(pr.top) } : null;
   // phones: :hover rules not inside (hover: hover), and the tap highlight
