@@ -1205,3 +1205,15 @@ body.dropping .drop-hint { display: flex; }
 .you-acc { border-radius: 50%; background: var(--you-soft); border: 1px solid var(--you-soft); }
 .you-cone { width: 120px; height: 120px; color: var(--you); }
 .you-cone svg { display: block; }
+
+/* Release notes share the native modal's focus trap and scrolling body. */
+.modal-changelog { width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); }
+.modal-changelog .modal-body { overscroll-behavior: contain; }
+.changelog-notes { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.changelog-notes h3 { margin: 24px 0 12px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 18px; }
+.changelog-notes h4 { margin: 18px 0 6px; font-size: 15px; line-height: 1.4; }
+.changelog-notes p { margin: 8px 0; }
+.changelog-notes ul { padding-left: 22px; margin: 8px 0 16px; }
+.changelog-notes li { margin: 7px 0; }
+.changelog-source { font-size: 13px; }
+.changelog-notes a, .changelog-source a { color: var(--accent); text-underline-offset: 2px; }

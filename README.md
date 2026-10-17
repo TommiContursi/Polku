@@ -108,7 +108,7 @@ See the [user guide](docs/USING.md) for controls and keyboard shortcuts.
 
 ## Changelog
 
-See the [changelog](CHANGELOG.md) for recent changes.
+Open **Settings → About Polku → What’s new** for recent changes inside the app, or read the [changelog](CHANGELOG.md). Release notes load on demand; their latest date is shown, and a saved copy may appear with a slow or missing connection.
 
 ## Background
 

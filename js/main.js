@@ -34,6 +34,7 @@ import { renderSpeedEditor } from './speeds.js';
 import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
 import { RouteFlow } from './routeflow.js';
+import { openChangelog } from './changelog.js';
 
 // ------------------------------------------------------------------ state
 const DEFAULTS = {
@@ -895,6 +896,10 @@ function renderSettingsPanel() {
       type: 'button', 'aria-pressed': String(state.activity === k), onclick: () => setActivity(k), html: `${icon(ACT_ICONS[k], 16)}<span>${a.label}</span>`,
     }))),
     h('p', { class: 'note' }, `Also the pill beside the search. ${ACTIVITIES[state.activity].label} gives you ${SPORT_NOTE[state.activity]}; the planner routes and times the route for it.`)));
+
+  p.append(section('About Polku',
+    h('button', { type: 'button', class: 'btn', id: 'btn-changelog', onclick: (e) => openChangelog(e.currentTarget) }, 'What’s new'),
+    h('p', { class: 'note' }, 'Read recent changes without leaving your route.')));
 
   // speeds: the same editor as the planner's Time & speed, for any sport
   speedSport = ACTIVITIES[speedSport] ? speedSport : state.activity;
