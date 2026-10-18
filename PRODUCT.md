@@ -60,7 +60,8 @@ What Polku does that its neighbours don't do together:
   - Following you, On the way and recorded tracks work on your device. Nothing streams your position, sends it in the background or keeps a history of it anywhere else, unless you export, share or (one day) sync it.
   - A position goes out only for something you ask for that needs it, such as a route or a round trip from where you are: only as precise as that answer needs, once per request, and only to the service that answers. The control or its note says so in words, without a confirmation for every request.
   - Requests that only need a rough idea of where you are (nearby search, ships, the weather) get the map's middle, rounded to a kilometre or more, never your position; share links leave out the map's view.
-  - Where it's practical, Polku works things out on your device instead, as it does water routes; nothing goes to Polku itself without your choice.
+  - Where it's practical, Polku works things out on your device instead, as it does water routes.
+  - **Services of Polku's own** (the server that serves the app, a router or an API, if it ever has them) follow the same rules: they get only what a request needs, keep logs no longer than running them needs, build no history of you, and the README says what they keep.
 - **Services are used within their terms,** and never overloaded.
 - **Missing, late or partial data never looks complete.** When weather, terrain, trail details or hazards fail, the route says so.
 - **Water routes are for planning, not navigation.** Traficom's depths are shown, never routed on.
