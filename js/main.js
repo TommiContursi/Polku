@@ -456,6 +456,8 @@ function syncPlannerPadding() {
   placePanels();
   if (quickOpen()) placeQuick();
 }
+new ResizeObserver(syncPlannerPadding).observe($('#planner'));
+$('#planner').addEventListener('sheetrest', syncPlannerPadding);
 
 // On a phone Settings sits above the planner's sheet while that leaves it 320 px under the top bar, as the
 // quick layers do above a bottom planner on a desktop; with less (a full sheet, a short or turned phone) it
@@ -464,8 +466,6 @@ function placePanels() {
   const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
   document.body.classList.toggle('panels-over', phoneMQ.matches && sheet > 0 && innerHeight - sheet - 12 - 64 < 320);
 }
-new ResizeObserver(syncPlannerPadding).observe($('#planner'));
-$('#planner').addEventListener('sheetrest', syncPlannerPadding);
 
 const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map(([k]) => +k);
 
