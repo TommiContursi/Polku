@@ -2276,9 +2276,14 @@ export class Planner {
 
   // ---------------------------------------------------------------- map interaction
   onMapClick(e) {
+    const tl = this.tapOnLeg; // this click only
+    this.tapOnLeg = null;
     if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
     // a menu or card was open: this click (a tap beside it) closes it, and adds nothing
     if (this.popupAtPress) { this.popupAtPress = false; return; }
+    // a quick tap on the line that a busy page took for a hold: that part's menu, though the map
+    // may not have redrawn the route without the hold's split yet (#293)
+    if (tl && Date.now() - tl.at < 1000 && this.legs[tl.li]) { this.openLegMenu(tl.li, e.lngLat); this.autoPeek(); return; }
     const touch = this.isTouch();
     const r = touch ? 12 : 6;
     if (this.loop.open && !this.loop.busy) {
@@ -2703,6 +2708,17 @@ export class Planner {
     this.update();
   }
 
+  // An edit begun by mistake: the route as it was before it, with no step in Undo.
+  dropEdit() {
+    const ed = this.edit;
+    if (!ed) return;
+    this.edit = null;
+    for (const t of Object.values(ed.timers)) clearTimeout(t);
+    for (const q of Object.values(ed.reqs)) if (!q.done) q.ctrl.abort();
+    document.body.classList.remove('route-editing');
+    this.restoreSnap(ed.snap);
+  }
+
   // Press on the route and drag: a new via point under the pointer. With a
   // mouse the drag starts as soon as it moves; on a touch screen hold the line
   // for a moment first, so a swipe across it still pans the map.
@@ -2715,9 +2731,9 @@ export class Planner {
     if (!f || f.properties.loading) return;
     const touch = e.type === 'touchstart';
     if (touch ? e.points.length !== 1 : e.originalEvent.button !== 0) return;
-    const map = this.map, li = f.properties.leg, p0 = e.point;
+    const map = this.map, li = f.properties.leg, p0 = e.point, t0 = e.originalEvent.timeStamp, HOLD = 300;
     const ll0 = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
-    let dot = null, hold = 0;
+    let dot = null, hold = 0, moved = false;
     const start = () => {
       if (this.edit) return;
       if (touch) { map.dragPan.disable(); if (navigator.vibrate) navigator.vibrate(10); }
@@ -2735,19 +2751,25 @@ export class Planner {
         start();
       }
       const ll = [+ev.lngLat.lng.toFixed(6), +ev.lngLat.lat.toFixed(6)];
+      moved = true;
       dot.setLngLat(ll);
       this.editTo(ll);
     };
-    const stop = () => {
+    const stop = (ev) => {
       clearTimeout(hold);
       map.off(touch ? 'touchmove' : 'mousemove', move);
       if (touch) { map.off('touchend', stop); map.off('touchcancel', stop); } else window.removeEventListener('mouseup', stop);
       if (!dot) return;
       if (touch) map.dragPan.enable();
       dot.remove();
-      this.endEdit();
+      // the finger was up before the hold's time, though a busy page saw it late: a tap after
+      // all, so the route as it was, nothing in Undo, and its click opens this part's menu (#293)
+      if (touch && !moved && ev && ev.type === 'touchend' && ev.originalEvent.timeStamp - t0 < HOLD) {
+        this.dropEdit();
+        this.tapOnLeg = { li, at: Date.now() };
+      } else this.endEdit();
     };
-    if (touch) hold = setTimeout(start, 300);
+    if (touch) hold = setTimeout(start, HOLD);
     else e.preventDefault(); // no panning: this press may become a drag
     map.on(touch ? 'touchmove' : 'mousemove', move);
     if (touch) { map.on('touchend', stop); map.on('touchcancel', stop); } else window.addEventListener('mouseup', stop);
@@ -2828,8 +2850,8 @@ export class Planner {
 
   // Long-press (touch) or right-click elsewhere on the map: what you can do at that spot.
   bindSpotMenu() {
-    const map = this.map;
-    let hold = 0, p0 = null, lastTouch = 0;
+    const map = this.map, HOLD = 550;
+    let hold = 0, p0 = null, lastTouch = 0, t0 = 0, held = null;
     const cancel = () => { clearTimeout(hold); hold = 0; };
     const onUi = (e) => { const t = e.originalEvent && e.originalEvent.target; return !!(t && t.closest && t.closest('.maplibregl-marker, .maplibregl-popup')); };
     map.on('touchstart', (e) => {
@@ -2838,17 +2860,29 @@ export class Planner {
       if (e.points.length !== 1 || this.edit || onUi(e)) return;
       if (this.map.getLayer('route-casing') && this.map.queryRenderedFeatures(e.point, { layers: ['route-casing'] }).length && this.active) return; // the line's own hold
       p0 = e.point;
+      t0 = e.originalEvent.timeStamp;
+      held = null;
       const ll = e.lngLat;
       hold = setTimeout(() => {
         hold = 0;
         if (navigator.vibrate) navigator.vibrate(10);
         this.noClickUntil = Date.now() + 700;
         this.openSpotMenu(ll);
-      }, 550);
+        held = this.menu;
+      }, HOLD);
     });
     map.on('touchmove', (e) => { if (hold && (e.points.length > 1 || Math.hypot(e.point.x - p0.x, e.point.y - p0.y) > 10)) cancel(); });
-    map.on('touchend', cancel);
-    map.on('touchcancel', cancel);
+    map.on('touchend', (e) => {
+      cancel();
+      // the finger was up before the hold's time, though a busy page saw it late (its timer ran
+      // first): a tap after all, so no menu, and its click goes through (#293)
+      if (held && e.originalEvent.timeStamp - t0 < HOLD) {
+        if (this.menu === held) this.menu.remove();
+        this.noClickUntil = 0;
+      }
+      held = null;
+    });
+    map.on('touchcancel', () => { cancel(); held = null; });
     // right-drag (and Ctrl+drag) rotates the map: no menu after a drag (Windows sends it on release)
     let down = null;
     map.on('mousedown', (e) => { down = e.originalEvent.button === 2 || e.originalEvent.ctrlKey ? e.point : null; });

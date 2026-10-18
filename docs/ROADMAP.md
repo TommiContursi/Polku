@@ -53,7 +53,7 @@
 - Phones use the same places. Panels become bottom sheets there, and touch phones drop the +/−.
 - New settings go in Settings. New map layers go in a Layers group.
 
-**Where you are stays on your device** (phase 23's rule): it's never sent anywhere, not even to Polku, and a recorded track is yours to save or delete.
+**Where you are is yours** ([PRODUCT.md](../PRODUCT.md), revised 2026-10-18): private by default, local first, not local only. Following you, On the way and recorded tracks work on the device, and nothing streams your position or sends it in the background. A position goes out only for something you ask for, as precisely as it needs, and the control says so. A recorded track is yours to save, export or delete.
 
 ## Before 2026-10-16
 

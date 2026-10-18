@@ -11,6 +11,10 @@ A **3D** button now sits with the map's buttons, under zoom on a desktop and und
 - It's the same setting as **3D terrain** in **Layers → More**, so each always shows what the other did, after a reload too. How much the terrain is raised is still set there.
 - The layer drawer no longer has a 3D terrain tile. MTB's fifth tile is now **Waymarked MTB**. If you chose your own tiles with 3D terrain among them, the drawer shows the others and leaves room to add one in **Edit**.
 
+### Fixed: a quick tap on the map stays a tap on a busy phone ([#293](https://github.com/TommiContursi/Polku/issues/293))
+
+When a phone was busy drawing the map, a quick tap could count as holding your finger down. The tap then opened the **This spot** menu, or started moving the route, and did nothing it should have. Polku now goes by how long your finger was really down: a quick tap adds a point, picks a loop or opens that part of the route's menu, and the route stays as it was. Holding your finger on the map still opens **This spot**, and holding the line still lets you drag it. A phone that vibrates on a hold may still buzz briefly on such a tap.
+
 ### Fixed: a click on the sport button keeps its menu open ([#245](https://github.com/TommiContursi/Polku/issues/245))
 
 With a mouse, the sport button beside the search opens its menu as you move over it, and a click on the button used to close that menu again straight away. The click now keeps the menu open, so you can pick a sport. A second click, Esc or a click elsewhere still closes it. Touch and the keyboard work as before.
@@ -108,7 +112,7 @@ The location marker now shows which way you're facing: from the compass while yo
 - The marker turns grey if no new position has arrived for a minute.
 - To save battery, location updates pause while the page is hidden.
 
-Your precise location is used only in the open page. It isn't saved with your route, included in share links or sent anywhere, and Polku doesn't remember the map view for your next visit while location is on. Share links no longer include the map view, and nearby search and ship information use an approximate map centre, accurate to about a kilometre, rather than your position.
+The precise location that **Locate** follows is used only in the open page. It isn't saved with your route, included in share links or sent anywhere, and Polku doesn't remember the map view for your next visit while location is on. Share links no longer include the map view, and nearby search and ship information use an approximate map centre, accurate to about a kilometre, rather than your position. A round trip from **My location** is the exception you ask for: its loops start from your position, which is routed like any other start.
 
 ### Routes fit above the planner on phones ([#110](https://github.com/TommiContursi/Polku/pull/110))
 

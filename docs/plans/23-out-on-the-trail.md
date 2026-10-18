@@ -9,9 +9,9 @@ Moved here verbatim from docs/ROADMAP.md on 2026-10-16 ([the last full ROADMAP](
 *(The approach below was confirmed on 2026-10-15.)* Location in Polku today is a dot. On the trail it could do more: show which way you face, follow you, show how far along the route you are, and record where you went. All of it uses what the phone already has (its GPS and compass, through the browser) and no server.
 
 **The rules:**
-- **Your position stays on your device.** It's never sent anywhere, not even to Polku, and a recorded track is yours to save or delete.
-- **It works offline** in areas saved with Save offline.
-- **The browser's limits:**
+- **Your position stays on your device by default** (PRODUCT.md's location principle, revised 2026-10-18: private by default, local first, not local only). Following you, On the way and your track work on the device; nothing streams your position or sends it in the background, and a recorded track is yours to save, export or delete. A position goes out only for something you ask for, once: Route from here sends it to the routing service as the route's start, and says so.
+- **It works offline** in areas saved with Save offline. Routing again (Route from here) needs a network until routing on the device exists (#279).
+- **The browser's limits** (a native app might not have them, #195):
   - location needs HTTPS and your OK;
   - the compass needs a tap to allow it on iPhones;
   - a web page isn't tracked with the screen off, so On the way keeps the screen awake (Wake Lock) and says so;
@@ -36,7 +36,7 @@ Moved here verbatim from docs/ROADMAP.md on 2026-10-16 ([the last full ROADMAP](
 - **On the map and the profile:** the done part is grey, and your place is marked in the profile.
 - **The numbers:** what's left (distance, time at your pace today, from how you've gone so far against the plan) and when you'll arrive.
 - **The next heads-up ahead,** with how far ("In 600 m: log across the trail"), and the weather ahead ("light rain from 12:10").
-- **Off the route:** about 40 m off for 20 s says by how much and where the route is, with "Route from here" (one routing call) to rejoin it.
+- **Off the route:** about 40 m off for 20 s says by how much and where the route is, with "Route from here" (one routing call, which sends your position as the route's start and says so) to rejoin it.
 - **Pause and Stop;** the screen stays awake while it's on.
 
 **23c: your track.**
