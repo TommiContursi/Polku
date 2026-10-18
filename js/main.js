@@ -504,12 +504,14 @@ function renderActivityBar() {
     })));
   const btn = h('button', {
     type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', title: `Activity: ${cur.label}`,
-    onclick: () => (menu.hidden ? openActs() : closeActs()),
+    // a click just after the hover opened the menu keeps it open (#245); a click on a menu it opened closes it
+    onclick: () => { if (menu.hidden) openActs(); else if (actHovered) actHovered = false; else closeActs(); },
     html: `${icon(ACT_ICONS[state.activity], 20)}<span>${cur.label}</span>${state.winterOn ? `<span class="act-winter" title="${escapeAttr(winterNote())}">${icon('snow', 14)}</span>` : ''}${icon('chevronDown', 16)}`,
   });
   box.append(btn, menu);
 }
 let actTimer = 0;
+let actHovered = false; // the hover opened the menu, and no click on the pill since
 function openActs() {
   const box = $('#activity-bar');
   clearTimeout(actTimer);
@@ -520,6 +522,7 @@ function openActs() {
 function closeActs() {
   const box = $('#activity-bar');
   const m = box.querySelector('.act-menu');
+  actHovered = false;
   if (!m || m.hidden) return;
   m.hidden = true;
   box.querySelector('.act-current').setAttribute('aria-expanded', 'false');
@@ -527,7 +530,11 @@ function closeActs() {
 }
 {
   const box = $('#activity-bar');
-  box.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches) openActs(); });
+  box.addEventListener('pointerenter', (e) => {
+    if (e.pointerType !== 'mouse' || !hoverPointer.matches) return;
+    if (box.querySelector('.act-menu').hidden) actHovered = true;
+    openActs();
+  });
   box.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches) { clearTimeout(actTimer); actTimer = setTimeout(closeActs, 250); } });
   box.addEventListener('keydown', (e) => {
     const opts = [...box.querySelectorAll('.act-menu .act')];
