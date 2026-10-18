@@ -95,6 +95,7 @@ class Chrome:
         self.buf = b''
         self.seq = 0
         self.events = []
+        self.answers = {}  # replies to calls sent with post() not yet asked for
 
     def _recv(self, timeout=90):
         end = time.time() + timeout
@@ -114,18 +115,28 @@ class Chrome:
         return json.loads(msg)
 
     def send(self, method, params=None, session=None, timeout=90):
+        return self.answer(self.post(method, params, session), method, timeout)
+
+    def post(self, method, params=None, session=None):
+        """Sends a call without waiting: answer(id) waits for its reply."""
         self.seq += 1
         m = {'id': self.seq, 'method': method, 'params': params or {}}
         if session:
             m['sessionId'] = session
         os.write(self.w, json.dumps(m).encode() + b'\0')
-        while True:
+        return self.seq
+
+    def answer(self, id_, method='', timeout=90):
+        while id_ not in self.answers:
             r = self._recv(timeout)
-            if r.get('id') == self.seq:
-                if 'error' in r:
-                    raise RuntimeError(f'{method}: {r["error"]}')
-                return r.get('result', {})
-            self.events.append(r)
+            if 'id' in r:
+                self.answers[r['id']] = r
+            else:
+                self.events.append(r)
+        r = self.answers.pop(id_)
+        if 'error' in r:
+            raise RuntimeError(f'{method}: {r["error"]}')
+        return r.get('result', {})
 
     def wait_event(self, name, session, timeout=30):
         end = time.time() + timeout
@@ -247,6 +258,20 @@ class Page:
         self.touch('start', x, y)
         time.sleep(0.05)
         self.touch('end')
+
+    def quick_tap(self, x, y, ms=50, after=None):
+        """A finger up after ms by the touch's own times, however long the page takes with its
+        touchstart: the touchend doesn't wait for Chrome's answer to it. after: a promise (JS) the
+        touchend waits for, as when a long frame holds it up until the page has done that."""
+        t0 = time.time()
+        touch = lambda kind, at: {'type': kind, 'touchPoints': [] if kind == 'touchEnd' else [{'x': x, 'y': y}], 'timestamp': at}
+        a = self.c.post('Input.dispatchTouchEvent', touch('touchStart', t0), self.s)
+        time.sleep(ms / 1000)
+        if after:
+            self.js(after)
+        b = self.c.post('Input.dispatchTouchEvent', touch('touchEnd', t0 + ms / 1000), self.s)
+        self.c.answer(a, 'Input.dispatchTouchEvent')
+        self.c.answer(b, 'Input.dispatchTouchEvent')
 
     def screenshot(self, path):
         data = self.c.send('Page.captureScreenshot', {'format': 'png'}, self.s)['data']

@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-18
 
+### Fixed: a quick tap on the map stays a tap on a busy phone ([#293](https://github.com/TommiContursi/Polku/issues/293))
+
+When a phone was busy drawing the map, a quick tap could count as holding your finger down. The tap then opened the **This spot** menu, or started moving the route, and did nothing it should have. Polku now goes by how long your finger was really down: a quick tap adds a point, picks a loop or opens that part of the route's menu, and the route stays as it was. Holding your finger on the map still opens **This spot**, and holding the line still lets you drag it. A phone that vibrates on a hold may still buzz briefly on such a tap.
+
 ### Fixed: a click on the sport button keeps its menu open ([#245](https://github.com/TommiContursi/Polku/issues/245))
 
 With a mouse, the sport button beside the search opens its menu as you move over it, and a click on the button used to close that menu again straight away. The click now keeps the menu open, so you can pick a sport. A second click, Esc or a click elsewhere still closes it. Touch and the keyboard work as before.

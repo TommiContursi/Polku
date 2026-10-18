@@ -2749,6 +2749,102 @@ def route_menu(chrome):
     return not fails
 
 
+# A quick tap on a busy page is still a tap (#293). The finger is up after 50 ms by the touch's own
+# times, but the touchend reaches the page only once Polku's hold timer has run, as when a long
+# frame on a slow phone holds it up. Polku's hold timers (the spot menu's 550 ms, the line's 300 ms)
+# then run before it sees the touchend. On the empty map the tap puts the start down and opens no
+# menu; on the line it opens that part's menu, with the route as it was and nothing in Undo.
+# A finger really held 0.8 s still gets the spot menu.
+QUICK_TAPS = """(() => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, m = polku.map;
+  const title = () => { const t = document.querySelector('.maplibregl-popup .pt-title'); return t ? t.textContent : ''; };
+  const at = (ll) => { const q = m.project(ll), el = document.elementFromPoint(q.x, q.y); return el === m.getCanvas() ? { x: q.x, y: q.y } : { under: el ? el.id || el.className || el.tagName : 'nothing' }; };
+  // nothing open over the map, the sheet low, the map where it started
+  const tidy = async () => {
+    if (p.menu) p.menu.remove();
+    p.closeStartTip();
+    p.setSheetState('peek');
+    await wait(600);
+    m.jumpTo({ center: [23.76, 61.5025], zoom: 13 });
+    await new Promise((ok) => { const t = setTimeout(ok, 5000); m.once('idle', () => { clearTimeout(t); ok(); }); });
+  };
+  // until the hold's timer has run: the spot menu open, or an edit of the line begun
+  const until = (ok) => new Promise((done) => { const t0 = Date.now(), f = () => (ok() || Date.now() - t0 > 3000 ? done(true) : setTimeout(f, 20)); f(); });
+  const A = [23.752, 61.5005], B = [23.768, 61.5045], EMPTY = [23.752, 61.5050];
+  window.qt = {
+    heldMenu: () => until(() => title() === 'This spot'),
+    heldLine: () => until(() => !!p.edit),
+    async empty() {
+      p.setActive(true); p.clear(); p.setMode('line');
+      await tidy();
+      return at(EMPTY);
+    },
+    async emptyTapped() {
+      await wait(1500);
+      if (p.points.length !== 1) return [`a quick tap on the empty map of a busy page added ${p.points.length} points, not the start${title() ? `, and “${title()}” is open` : ''}`];
+      return title() ? [`a quick tap on the empty map of a busy page opened “${title()}”`] : [];
+    },
+    async line() {
+      p.clear(); p.addPoint(A); p.addPoint(B);
+      await wait(600);
+      await tidy();
+      qt.past = p.past.length;
+      return at([A[0] + (B[0] - A[0]) / 3, A[1] + (B[1] - A[1]) / 3]); // the midpoint has its handle
+    },
+    async lineTapped() {
+      await wait(1500);
+      const errs = [];
+      if (p.points.length !== 2) errs.push(`a quick tap on the line of a busy page left ${p.points.length} points, not 2`);
+      if (p.past.length !== qt.past) errs.push(`a quick tap on the line of a busy page put ${p.past.length - qt.past} steps in Undo`);
+      if (!title().includes('→')) errs.push(`a quick tap on the line of a busy page opened ${title() ? `“${title()}”` : 'no menu'}, not that part's`);
+      if (document.body.classList.contains('route-editing')) errs.push('still editing after a quick tap on the line');
+      if (p.menu) p.menu.remove();
+      return errs;
+    },
+    // as the finger lifts (headless Chrome then clicks where it was, on the menu)
+    async held() {
+      p.clear();
+      await tidy();
+      const f = () => { window.removeEventListener('touchend', f); qt.lift = { menu: title(), heldOff: Date.now() < p.noClickUntil }; };
+      window.addEventListener('touchend', f);
+      qt.lift = null;
+      return at(EMPTY);
+    },
+    async heldDone() {
+      await wait(1000);
+      const errs = [], l = qt.lift || {};
+      if (l.menu !== 'This spot' || !l.heldOff) errs.push(`a finger held 0.8 s on the map, as it lifts: ${l.menu ? `“${l.menu}”` : 'no menu'}, clicks ${l.heldOff ? '' : 'not '}held off`);
+      if (p.points.length) errs.push(`a finger held 0.8 s on the map added ${p.points.length} points`);
+      if (p.menu) p.menu.remove();
+      return errs;
+    },
+  };
+  return true;
+})()"""
+
+
+def quick_taps(chrome):
+    pg = chrome.page(390, 844, True)
+    fails = []
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.5025/23.76')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js(QUICK_TAPS)
+        # a quick tap on the empty map, one on the line, and a finger really held 0.8 s
+        for setup, ms, hold, done in [('qt.empty()', 50, 'qt.heldMenu()', 'qt.emptyTapped()'), ('qt.line()', 50, 'qt.heldLine()', 'qt.lineTapped()'), ('qt.held()', 800, 'qt.heldMenu()', 'qt.heldDone()')]:
+            s = pg.js(setup)
+            if 'under' in s:
+                fails.append(f"{setup}: the spot is under {s['under']}")
+                continue
+            pg.quick_tap(s['x'], s['y'], ms=ms, after=hold)
+            fails += pg.js(done)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} quick taps on a busy page" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # What the route shows: a point beside its path snaps onto the routed line (no routing
 # again); a multisport route gets the sport strip and the Sport colours; distance marks
 # along the line; the sun at the start, and sunrise / sunset maths; a tap beside an
@@ -4740,7 +4836,7 @@ GROUPS = [
     ('water', [water, water_late], 'the paddling router\'s costs (recorded fairways, a fixed wind), and OSM\'s rocks coming late (mocked)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
-    ('routemenu', [route_menu], 'clicks and taps on the route (straight legs), and LIPAS over trails'),
+    ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
     ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
     ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun (no routing)'),
     ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
