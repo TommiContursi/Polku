@@ -17,7 +17,8 @@ Read what the task needs (this file is already loaded):
 - **A fix:** its issue, the module's part of
   [docs/DEVELOPING.md](docs/DEVELOPING.md), and its smoke group.
 - **A phase, or anything people see:** also its plan in
-  [docs/plans/](docs/plans/), the issues in its milestone, and
+  [docs/plans/](docs/plans/), milestone issue summaries (expand only the
+  selected work and its blockers), and
   [PRODUCT.md](PRODUCT.md): who Polku is for, its principles and its
   accessibility baseline.
 - [README.md](README.md), [docs/ROADMAP.md](docs/ROADMAP.md) and
@@ -30,42 +31,45 @@ is real.
 
 ## What to work on
 
-**GitHub holds what to do; the repo holds how things work.** Every bug,
-improvement, idea and risk to watch is a GitHub issue, and the issue holds its
-status. ROADMAP holds the order of the phases, `docs/plans/` their designs,
-DEVELOPING how Polku works. Nothing to do is listed in the docs.
+**GitHub holds what to do; the repo holds how things work.** The
+[Project](https://github.com/users/TommiContursi/projects/1) holds phase order,
+Priority (Now/Next/Later/Someday) and progress Status separately. Existing
+milestones group deliveries; phase issues hold acceptance and decisions;
+`docs/plans/` holds designs. ROADMAP links to these, without a second order.
 
-- **Check focus before picking work:** `python3 tools/project.py focus`,
-  then the selected issue and its last Hand-over. The report is evidence,
-  not permission to change priorities. See [the workflow](docs/PROJECT_WORKFLOW.md).
-- **Pick from the board's Priority = Now column,** top first
-  ([the project](https://github.com/users/TommiContursi/projects/1)), then the
-  open milestone it belongs to. Nothing from Later or Someday without the
-  user's OK.
-- **Claim it first:** `python3 tools/project.py claim N --agent Codex --branch <branch>`
-  (or `--agent 'Claude Code'`). It posts the branch/agent and verifies
-  Status = In progress; both agents post as the user's GitHub account.
-  If the tooling or project credential is unavailable, post the claim
-  manually and report that the board update is unverified. A phase is claimed on its
-  phase issue. When the user says a claim's session has stopped, take over
-  from its branch (or from `main` if nothing was pushed) and say so on the
-  issue. Read its last Hand-over first, then `git log origin/main..<branch>`
-  and the diff, and on the same Mac its worktree for uncommitted files.
-- **Phases** in ROADMAP's order, one phase per PR, unless the user changes it.
-  Each has a phase issue and a milestone with the issues that go with it.
-- **Confirmed bugs with a small fix** get a Fix PR of their own in the open
-  "Fixes" milestone when selected. Only an agreed delivery blocker or an
-  urgent user-impacting regression interrupts the current delivery.
-  Small describes effort, not urgency. Don't mix them into a
-  phase. A bug that needs a design first goes into a phase's milestone, with
-  the user's OK.
-- **An improvement the user wants done** is an `enhancement` issue. A small one
-  is done in a PR of its own when the user picks it; a bigger one goes into its
-  phase's milestone.
-- **What you notice but don't do now** gets an issue at once: `bug` for a
-  bug, `idea` for an idea, `watch` for a risk (with a date or a trigger for
-  looking again). Say when and where it came from, and give it a size:
-  `small`, `medium` or `big`. Search first, and add to the one that exists.
+- **Start from the selected issue, or the Project's current delivery.** Read
+  its current Hand-over and the decisions it links first. Check only its
+  issue/PR state and remote head against the recorded commit: an old "next"
+  may already have shipped. Expand into older comments, diffs or prerequisite
+  issues only to resolve a specific gap; don't reload entire conversations,
+  milestone histories or the backlog. Report the current outcome, what has
+  shipped, remaining blockers and the next action in a few lines before coding. Resolve conflicting
+  priorities with the user; do not silently choose a different delivery.
+- **Claim it first:** comment with branch and a distinct worker/session name
+  (e.g. Claude A, Claude B or Codex plus date/session identifier). A phase is
+  claimed on its phase issue. Check the existing claim before starting;
+  silence or age does not release it. Take over only after release or the
+  user says that session has stopped. Inspect only the branch changes needed
+  for the next action; local files and conversation history are not shared.
+  If required GitHub reads, claim writes or pushes are unavailable, report
+  the missing permission; do not present an unpublished handoff as complete.
+- **One primary delivery and its genuine blockers in Now.** Follow the
+  user's order in GitHub, using the existing phase issue and milestone.
+  A phase can ship in its agreed parts; a partial PR references the phase
+  and closes only the issues it fully delivers. Keep the phase open until
+  its acceptance criteria are met.
+- **Protect the current delivery.** A new finding interrupts only if it
+  blocks that delivery or is an urgent user-impacting regression. Small
+  describes effort, not urgency. Queue independent fixes in the existing
+  Fixes milestone and ideas in Someday; do not start investigating them
+  merely because a test exposed them. Required verification still applies:
+  report unresolved failures, never weaken a check to get a pass.
+- **Reassess a growing detour.** When a supposed small blocker needs a
+  broader investigation, explain what user outcome it blocks and the next
+  useful evidence. Discuss a scope change before continuing the detour.
+  At delivery checkpoints, update its issue with what shipped, actual
+  blockers and the next approved action. Larger scope/order decisions stay
+  with the user; no extra AI status session or fixed merge-count review.
 - **One session, one issue** (or one part of a phase). Start a new session
   (or Codex thread) from the Hand-over at a checkpoint: the PR is ready, a
   part is done, or the next issue begins. In a session past about 300k
@@ -77,31 +81,19 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   the next takes over from the last Hand-over. More at once ran into the
   limits ([retro](docs/retros/2026-10-15-16.md)). No "status" session, and no
   subagents to verify or run the suite.
-- **A Hand-over at every checkpoint.** When a part passes its smoke groups,
-  commit, push (a draft PR at the first push), and comment on the claimed
-  issue, headed "Hand-over", in 6–8 short lines, no prose: branch and commit;
-  PR; done; verified, with the exact commands; not verified; decisions, with
-  links; next step; what to watch out for. Write one before a turn that waits
-  for the user's answer or review too, so the answer can start a fresh
-  session. Never end a turn with uncommitted work. Phase 24's first claim
-  stopped on 2026-10-17 with nothing pushed, and all of it was lost (#177).
+- **A Hand-over at every checkpoint.** Commit and push (a draft PR at the
+  first push), then leave 6–8 short lines on the claimed issue: worker and
+  claim active/released; branch/commit and PR; done; verified commands/run
+  links with tested commit, environment and coverage; not verified;
+  decisions with links; unresolved questions/blockers; next action.
+  Link the current Hand-over from the issue body so another worker needn't
+  read the whole discussion. Reuse valid evidence; a tool/account switch
+  alone doesn't invalidate it. Changes to code, tests or environment need
+  an explicit coverage check and the required verification, not an assumed
+  pass. Write a Hand-over before waiting for the user's answer or review.
+  Never end a turn with uncommitted work; unpushed work is not recoverable
+  by a worker with separate local state.
 - Docs and tooling PRs stay on their one subject.
-- **Triage discoveries before following them:** search and link related
-  work; distinguish a delivery blocker, independent work, and an unconfirmed
-  or low-impact finding. New findings start in Triage with no automatic
-  promotion to Now. Group work by the user outcome; make separate issues
-  for independently verifiable outcomes, and add evidence to an existing
-  issue when it is the same problem. Never close duplicates from titles alone.
-- **Keep direction visible:** after each delivery, check what shipped,
-  remaining blockers and the next step. Review focus after three merges or
-  seven days since the last recorded review, or when a supposedly small
-  blocker consumes a focused session. Recommend one next delivery and what
-  can wait; record the reasoning on its issue and the actual review time in
-  `.github/project.json`. The user retains phase-order decisions.
-- **Status is separate from Priority.** Use `python3 tools/project.py status N Blocked
-  --reason '…'` for a real blocker and Ready when released. Linked draft PRs
-  and changes requested mean In progress; ready PRs mean In review; only
-  closed issues mean Done. A partial phase PR must not close the parent.
 
 **Effort:** xhigh for code, design, plans, and anything touching routing,
 saved data or share links; medium for docs, rebases and filing issues; never
@@ -212,9 +204,9 @@ the whole conversation again, so change models only between sessions
     incomplete or inaccurate, preserving the existing factual style and useful
     qualifications. Update docs/USING.md when controls or workflows change.
     Keep release-by-release details in CHANGELOG.md;
-  - for a phase: what was built, in its plan in `docs/plans/`, and its row
-    taken out of ROADMAP's order. A Fix PR changes neither: the CHANGELOG and
-    the closed issue record it;
+  - for a phase: what was built in its plan in `docs/plans/`, and the
+    phase issue updated with delivered parts and remaining acceptance.
+    A Fix PR records delivery in the CHANGELOG and its issue;
   - DEVELOPING, where how something works has changed.
 - **Offer a review** when a phase PR, or a fix that touches routing, saved
   data or share links, is ready: a fresh session (Claude or Codex, whichever
@@ -231,10 +223,17 @@ the whole conversation again, so change models only between sessions
 
 ## Bugs and findings
 
-- **Every bug gets a GitHub issue,** small ones too, and so does every
-  improvement, idea and risk to watch, each with its kind (`bug`,
-  `enhancement`, `idea`, `watch`) and its size. Search first, and add to the
-  one that exists.
+- **Search before filing.** Add evidence to the existing issue for the same
+  problem. Group related findings under the existing delivery or shared
+  investigation; split only when independently actionable. Use the existing
+  kind and size labels. Capturing a finding does not approve work on it.
+- **Check relevance before picking an old issue.** Confirm the behavior still
+  exists on current `main`; inspect linked merged PRs or a focused repro.
+  At a delivery checkpoint, triage the small related group touched by the
+  change, not every open issue. Close already-fixed or obsolete findings
+  with evidence (fix/removal commit and relevant check), or link the
+  canonical issue for a duplicate. A missing repro alone proves nothing;
+  leave uncertainty explicit. No age-based or bulk automatic closures.
 - The issue says what goes wrong and for whom, how to make it happen, what
   should happen, the commit, and whether it's a **confirmed bug**, **a risk to
   look into**, or **a problem with the test machine**. There's a template:
@@ -272,4 +271,3 @@ so write it for people using Polku, like the entries already there.
   notes.
 - Shipped entries stay as they are: a later change gets its own entry, and an
   older one is changed only when it would now mislead.
-

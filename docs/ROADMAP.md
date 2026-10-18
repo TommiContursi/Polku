@@ -1,48 +1,37 @@
 # Polku roadmap
 
-**GitHub holds what to do; the repo holds how things work.** Every bug, improvement, idea and risk to watch is a GitHub issue, which holds its status. This file says how the order is decided, the order of the phases, and what holds for all of them. How to work on Polku is in [AGENTS.md](../AGENTS.md).
+**[The GitHub Project](https://github.com/users/TommiContursi/projects/1) is
+the live roadmap.** The user changes phase order and priorities there without
+a commit. [AGENTS.md](../AGENTS.md) explains how workers select, verify and
+hand over work.
 
-- **The board:** [Polku](https://github.com/users/TommiContursi/projects/1): Priority is Now, Next, Later or Someday; Status records Triage, Ready, In progress, In review, Blocked or Done. Work is picked from Now, top first. [Automation and focus checks](PROJECT_WORKFLOW.md).
-- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** one for each planned phase, with its phase issue and the issues that belong to it, and one for each round of fixes.
-- **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`.
-- **Designs:** [docs/plans/](plans/), one file for each planned phase. Finished phases are in [plans/done.md](plans/done.md).
-- **Retros:** [docs/retros/](retros/), one for each finished milestone.
-- **What shipped:** the [CHANGELOG](../CHANGELOG.md), and closed milestones and issues.
+- **Project:** Roadmap shows the existing phase issues in editable order;
+  Current delivery shows the selected outcome and blockers; Triage groups
+  findings awaiting a decision. Priority is Now/Next/Later/Someday; progress
+  Status is Triage/Ready/In progress/Blocked/Done. Linked PRs show their own
+  draft/review state. Closing an issue records its reason, not necessarily
+  a shipped feature.
+- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** retain
+  the existing phase and Fixes groups. Phase issues hold acceptance,
+  dependencies, decisions and a link to the current Hand-over.
+- **Designs:** [plans/](plans/) holds implementation designs;
+  [plans/done.md](plans/done.md) preserves finished phases.
+- **Delivered work:** merged PRs and closed issues, user-facing
+  [CHANGELOG](../CHANGELOG.md), and [retros/](retros/).
+- **Watch items:** retain their dates/triggers in their issues and the
+  Project's Due field. A deadline needs a priority decision, not an
+  automatic claim.
 
-## How the order is decided
+Native Project workflows maintain routine add/close/reopen transitions.
+Workers record claims and blockers explicitly. No synchronizer, periodic
+AI review or second status document is needed. Smoke-test automation remains
+in [#268](https://github.com/TommiContursi/Polku/issues/268).
 
-- **The user decides the order of the phases.** A change comes as a docs PR that edits the table below, with the user's OK.
-- **One phase at a time,** one PR each, in this order. A phase's PR takes its row out of the table and writes what was built into its plan.
-- **Confirmed bugs with a small fix** go into the open round of fixes (milestone "Fixes N") and get a Fix PR when selected. Only an agreed delivery blocker or urgent user-impacting regression interrupts the current delivery. Small describes effort, not urgency. A bug that needs a design first goes into a phase's milestone, with the user's OK.
-- **Improvements the user wants** (`enhancement`): a small one is done in a PR of its own when the user picks it; a bigger one goes into its phase's milestone.
-- **Ideas** (`idea`) wait in Someday until the user picks one. Then it becomes an `enhancement`, with a size and a place on the board.
-- **Risks to watch** (`watch`) say when to look again: a date (in the title, and the board's Due field) or a trigger. A dated one moves to Now in time.
-- **The board follows this:** Now holds one main delivery and its necessary blockers, normally at most three cards; Next what comes after it; Later the phases further down; Someday the rest. New findings enter Triage without automatically entering Now. Related work is grouped under its delivery outcome.
-- **Check direction at checkpoints:** after each delivery, check what shipped, its remaining blockers and the next step. Review focus after three merges or seven days since the last recorded review, or when a supposedly small blocker consumes a focused session. `python3 tools/project.py focus` gathers the evidence without AI calls. Recommend one next delivery and what can wait; the user retains phase-order decisions. Record the review on its issue and update `focus_reviewed_at` in `.github/project.json` only after the real review.
-
-## The order (re-planned 2026-10-15; phase 25 first since 2026-10-18)
-
-| # | Phase | Size | Why here | Issue | Plan |
-|---|---|---|---|---|---|
-| 1 | **25, a calmer planner** (25a–25d) | big | Approved 2026-10-18. After the shared fixes it needs first (#239, #240, #245) and the 3D button (#226); before 22b, which moves the same panel. | #233 | [25](plans/issue-233-calmer-planner.md) |
-| 2 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). | #178 | [21](plans/21-say-what-it-means.md) |
-| 3 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. | #179 | [22](plans/22-drawer.md) |
-| 4 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. | #180 | [23](plans/23-out-on-the-trail.md) |
-| 5 | **20, map style** | big | Builds on 21; the route's glow goes with the map's look. | #181 | [20](plans/20-map-style.md) |
-| 6 | **17, weather layers** | medium | | #182 | [17](plans/17-weather.md) |
-| 7 | **23c, your track** | medium | After 23b: it records what 23b follows. | #183 | [23](plans/23-out-on-the-trail.md) |
-| 8 | **18, languages** | big | Once the words have settled through 21 and 22. | #184 | [18](plans/18-languages.md) |
-| 9 | **15c, skiing** | big | When there's snow to test on (December–January), whatever its place here. | #185 | [15](plans/15c-skiing.md) |
-| 10 | **22c, cards to pull out** | medium | Only if 22a and 22b haven't made it unnecessary. | #186 | [22](plans/22-drawer.md) |
-| 11 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. | #187 | [23](plans/23-out-on-the-trail.md) |
-| 12 | **16, Strava & Garmin** | research | Outside accounts and terms. | #188 | [16](plans/16-strava-garmin.md) |
-| 13 | **19, help and a tutorial** | big | Last, when the rest holds still. | #189 | [19](plans/19-help.md) |
-
-**Phase 25, a calmer planner (#233):** [its plan](plans/issue-233-calmer-planner.md) and [the mock-up](plans/mockups/phase-24-planner.html), designed in phase 24 and approved on 2026-10-18. Four parts, each a PR: 25a the toolbox and the header; 25b round trips in the peek; 25c Done and the route's view; 25d Check and the waypoints. Before it, in their own PRs: #239, #240 and #245 from Fixes 2, and the 3D button (#226). #241, #242 and #251 close with 25a, each with its regression check.
-
-**Phase 24's milestone stays open** for the real-phone checks of #73 and #134; its row is out of the order since the review itself is done (#177), and #123's build is in (#249).
-
-**Dated, outside the order:** #133, a rain-rate source before FMI retires the layer Polku's rain "now" reads, by 2026-11-30.
+Before merging this transition, preserve all existing Project values and
+migrate the approved phase order, dependencies and dated exceptions from
+[the 2026-10-18 roadmap snapshot](https://github.com/TommiContursi/Polku/blob/6b1e2932cab389cfc9e9367918d126a38f5d2047/docs/ROADMAP.md).
+Verify the live views and workflows before relying on them. That snapshot is
+migration evidence, not a second live backlog.
 
 ## What holds for every phase
 
@@ -59,4 +48,3 @@
 ## Before 2026-10-16
 
 This file held the plans, the designs and a status table of every phase, 1,744 lines. [The last full ROADMAP](https://github.com/TommiContursi/Polku/blob/9bb3051e04aab1a11376f88445abba78f2946515/docs/ROADMAP.md) is where older issues' line numbers point. Its designs are in [docs/plans/](plans/), unchanged, and the ideas, limits and risks of docs/BACKLOG.md are issues.
-

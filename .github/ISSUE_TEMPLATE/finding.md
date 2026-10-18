@@ -17,6 +17,8 @@ effort estimate, not urgency. A new finding does not automatically enter Now.
 Affected commit, steps or fixture/command, expected versus actual result, relevant
 code/log links. For browser tests: browser/device, cache and service-worker state,
 timing/concurrency and whether services are mocked. State what is not yet known.
+For an older finding, name the current revision checked and any linked fix or
+feature removal; do not assume the original behavior still exists.
 
 ## Completion and regression checks
 
@@ -35,4 +37,3 @@ separate issues when their completion can be verified independently.
 
 Labels: the kind (`bug` for a confirmed defect, `watch` for a risk to look
 into) and the size (`small`, `medium`, `big`).
-
