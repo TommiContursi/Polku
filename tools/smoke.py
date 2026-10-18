@@ -4551,6 +4551,135 @@ def panels(chrome):
     return not fails
 
 
+# The sport pill's menu (#245): a mouse that hovers then clicks, a second click, Escape, a click outside; touch; the keyboard
+ACTS = """(() => { const b = document.querySelector('#activity-bar .act-current'), r = b.getBoundingClientRect();
+  return { open: !document.querySelector('#activity-bar .act-menu').hidden, expanded: b.getAttribute('aria-expanded'),
+    pill: [r.left + r.width / 2, r.top + r.height / 2], focus: document.activeElement === b, sport: polku.state.activity,
+    hover: matchMedia('(hover: hover) and (pointer: fine)').matches }; })()"""
+
+
+def sport_menu(chrome):
+    fails = []
+
+    def state(pg, name, want):
+        a = pg.js(ACTS)
+        if a['open'] != want or a['expanded'] != str(want).lower():
+            fails.append(f"{name}: the menu {'open' if a['open'] else 'closed'} (aria-expanded {a['expanded']}), not {'open' if want else 'closed'}")
+        return a
+
+    def page(w, h_, phone, sport):
+        pg = chrome.page(w, h_, phone)
+        # Traficom's depths, slow to answer at times, keep the map from loading; the menu needs none of them
+        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"'})
+        return pg
+
+    def key(pg, k, code, vk, char=None):
+        for event in ['rawKeyDown'] + (['char'] if char is not None else []) + ['keyUp']:
+            fields = {'type': event, 'key': k, 'code': code, 'windowsVirtualKeyCode': vk}
+            if char is not None and event == 'char':
+                fields['text'] = char
+            chrome.send('Input.dispatchKeyEvent', fields, pg.s)
+        time.sleep(0.2)
+
+    for sport in ('mtb', 'paddle'):
+        pg = page(1440, 900, False, sport)
+        pg.js(PLAN_TWO)
+        a = pg.js(ACTS)
+        if not a['hover']:
+            fails.append(f'1440x900 {sport}: no hover pointer in this Chrome, so the mouse checks prove nothing')
+        x, y = a['pill']
+        map_ = (900, 600)
+
+        def mouse(kind, at):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at[0], 'y': at[1], 'button': 'left' if kind != 'mouseMoved' else 'none',
+                                                  'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+
+        def move(at, steps=6):
+            for i in range(1, steps + 1):  # the way a mouse gets there, over the map first
+                mouse('mouseMoved', (map_[0] + (at[0] - map_[0]) * i / steps, map_[1] + (at[1] - map_[1]) * i / steps))
+                time.sleep(0.02)
+
+        def click(at):
+            mouse('mousePressed', at)
+            time.sleep(0.08)
+            mouse('mouseReleased', at)
+            time.sleep(0.3)
+
+        name = f'1440x900 {sport}'
+        mouse('mouseMoved', map_)
+        time.sleep(0.4)
+        move((x, y))
+        time.sleep(0.3)
+        state(pg, f'{name}, the mouse over the pill', True)
+        click((x, y))
+        state(pg, f'{name}, a click after the hover', True)
+        click((x, y))
+        state(pg, f'{name}, a second click', False)
+        click((x, y))
+        state(pg, f'{name}, a third click', True)
+        key(pg, 'Escape', 'Escape', 27)
+        a = state(pg, f'{name}, Escape', False)
+        if not a['focus']:
+            fails.append(f'{name}: Escape did not put the focus back on the pill')
+        click((x, y))
+        state(pg, f'{name}, a click after Escape', True)
+        # a click outside, on the map
+        mouse('mouseMoved', map_)
+        click(map_)
+        state(pg, f'{name}, a click on the map', False)
+        # hover, click, then a sport from the menu
+        move((x, y))
+        time.sleep(0.3)
+        click((x, y))
+        other = 'hike' if sport == 'mtb' else 'swim'
+        o = pg.js(f"(() => {{ const r = document.querySelector('#activity-bar .act[data-k={other}]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+        mouse('mouseMoved', o)
+        time.sleep(0.1)
+        click(o)
+        a = state(pg, f'{name}, {other} picked', False)
+        if a['sport'] != other:
+            fails.append(f"{name}: a click on {other} left the sport at {a['sport']}")
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+
+    # the keyboard, no mouse over the pill: Enter and Space open and close, arrows move, Escape closes and gives the focus back
+    pg = page(1440, 900, False, 'mtb')
+    pg.js("document.querySelector('#activity-bar .act-current').focus(), true")
+    key(pg, 'Enter', 'Enter', 13, '\r')
+    state(pg, '1440x900 keyboard, Enter', True)
+    key(pg, 'Enter', 'Enter', 13, '\r')
+    state(pg, '1440x900 keyboard, Enter again', False)
+    key(pg, ' ', 'Space', 32)
+    state(pg, '1440x900 keyboard, Space', True)
+    key(pg, 'ArrowDown', 'ArrowDown', 40)
+    if not pg.js("document.activeElement === document.querySelector('#activity-bar .act')"):
+        fails.append('1440x900 keyboard: ArrowDown did not move to the first sport')
+    key(pg, 'Escape', 'Escape', 27)
+    if not state(pg, '1440x900 keyboard, Escape', False)['focus']:
+        fails.append('1440x900 keyboard: Escape did not put the focus back on the pill')
+    fails += [f'1440x900 keyboard console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # touch, no hover: a tap opens, a second tap closes, a tap outside closes, a tap on a sport picks it
+    pg = page(390, 844, True, 'paddle')
+    pg.js(PLAN_TWO)
+    x, y = pg.js(ACTS)['pill']
+    for what, at, want in (('a tap', (x, y), True), ('a second tap', (x, y), False), ('a third tap', (x, y), True), ('a tap on the map', (200, 300), False), ('a tap after it', (x, y), True)):
+        pg.tap(*at)
+        time.sleep(0.3)
+        state(pg, f'390x844 paddle, {what}', want)
+    o = pg.js("(() => { const r = document.querySelector('#activity-bar .act[data-k=mtb]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+    pg.tap(*o)
+    time.sleep(0.3)
+    if state(pg, '390x844 paddle, MTB tapped', False)['sport'] != 'mtb':
+        fails.append('390x844: a tap on MTB did not pick it')
+    fails += [f'390x844 console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the sport pill's menu: mouse, keyboard and touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The runner itself (#262, #263, #254), in a Chrome of its own beside the one the run holds
 def runner(chrome):
     import contextlib
@@ -4636,6 +4765,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
+    ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))

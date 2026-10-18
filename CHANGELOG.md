@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-18
 
+### Fixed: a click on the sport button keeps its menu open ([#245](https://github.com/TommiContursi/Polku/issues/245))
+
+With a mouse, the sport button beside the search opens its menu as you move over it, and a click on the button used to close that menu again straight away. The click now keeps the menu open, so you can pick a sport. A second click, Esc or a click elsewhere still closes it. Touch and the keyboard work as before.
+
 ### Fixed: Settings stays on screen while you plan on a phone ([#240](https://github.com/TommiContursi/Polku/issues/240))
 
 On a phone with the planner pulled up, **Settings** used to open partly above the top of the screen, so its heading and close button couldn't be reached. Settings now opens between the top bar and the planner, and its contents scroll. When the planner is pulled up too far to leave enough room, for example at full height or on a small or turned phone, Settings covers the planner instead. The planner is just as you left it when you close Settings.
