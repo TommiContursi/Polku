@@ -2,7 +2,7 @@
 
 **GitHub holds what to do; the repo holds how things work.** Every bug, improvement, idea and risk to watch is a GitHub issue, which holds its status. This file says how the order is decided, the order of the phases, and what holds for all of them. How to work on Polku is in [AGENTS.md](../AGENTS.md).
 
-- **The board:** [Polku](https://github.com/users/TommiContursi/projects/1): Now, Next, Later, Someday. Work is picked from Now, top first.
+- **The board:** [Polku](https://github.com/users/TommiContursi/projects/1): Priority is Now, Next, Later or Someday; Status records Triage, Ready, In progress, In review, Blocked or Done. Work is picked from Now, top first. [Automation and focus checks](PROJECT_WORKFLOW.md).
 - **[Milestones](https://github.com/TommiContursi/Polku/milestones):** one for each planned phase, with its phase issue and the issues that belong to it, and one for each round of fixes.
 - **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`.
 - **Designs:** [docs/plans/](plans/), one file for each planned phase. Finished phases are in [plans/done.md](plans/done.md).
@@ -13,11 +13,12 @@
 
 - **The user decides the order of the phases.** A change comes as a docs PR that edits the table below, with the user's OK.
 - **One phase at a time,** one PR each, in this order. A phase's PR takes its row out of the table and writes what was built into its plan.
-- **Confirmed bugs with a small fix** go into the open round of fixes (milestone "Fixes N") and are fixed between phases, in Fix PRs of their own. A bug that needs a design first goes into a phase's milestone, with the user's OK.
+- **Confirmed bugs with a small fix** go into the open round of fixes (milestone "Fixes N") and get a Fix PR when selected. Only an agreed delivery blocker or urgent user-impacting regression interrupts the current delivery. Small describes effort, not urgency. A bug that needs a design first goes into a phase's milestone, with the user's OK.
 - **Improvements the user wants** (`enhancement`): a small one is done in a PR of its own when the user picks it; a bigger one goes into its phase's milestone.
 - **Ideas** (`idea`) wait in Someday until the user picks one. Then it becomes an `enhancement`, with a size and a place on the board.
 - **Risks to watch** (`watch`) say when to look again: a date (in the title, and the board's Due field) or a trigger. A dated one moves to Now in time.
-- **The board follows this:** Now holds what's being worked on and what to pick next; Next what comes after it; Later the phases further down; Someday the rest.
+- **The board follows this:** Now holds one main delivery and its necessary blockers, normally at most three cards; Next what comes after it; Later the phases further down; Someday the rest. New findings enter Triage without automatically entering Now. Related work is grouped under its delivery outcome.
+- **Check direction at checkpoints:** after each delivery, check what shipped, its remaining blockers and the next step. Review focus after three merges or seven days since the last recorded review, or when a supposedly small blocker consumes a focused session. `python3 tools/project.py focus` gathers the evidence without AI calls. Recommend one next delivery and what can wait; the user retains phase-order decisions. Record the review on its issue and update `focus_reviewed_at` in `.github/project.json` only after the real review.
 
 ## The order (re-planned 2026-10-15; phase 25 first since 2026-10-18)
 
@@ -58,3 +59,4 @@
 ## Before 2026-10-16
 
 This file held the plans, the designs and a status table of every phase, 1,744 lines. [The last full ROADMAP](https://github.com/TommiContursi/Polku/blob/9bb3051e04aab1a11376f88445abba78f2946515/docs/ROADMAP.md) is where older issues' line numbers point. Its designs are in [docs/plans/](plans/), unchanged, and the ideas, limits and risks of docs/BACKLOG.md are issues.
+

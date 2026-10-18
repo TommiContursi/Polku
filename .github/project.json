@@ -1,0 +1,11 @@
+{
+  "owner": "TommiContursi",
+  "repository": "Polku",
+  "project_number": 1,
+  "status_field": "Status",
+  "priority_field": "Priority",
+  "stale_days": 7,
+  "max_now": 3,
+  "review_after_merges": 3,
+  "focus_reviewed_at": null
+}

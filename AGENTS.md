@@ -35,21 +35,28 @@ improvement, idea and risk to watch is a GitHub issue, and the issue holds its
 status. ROADMAP holds the order of the phases, `docs/plans/` their designs,
 DEVELOPING how Polku works. Nothing to do is listed in the docs.
 
-- **Pick from the board's Now column,** top first
+- **Check focus before picking work:** `python3 tools/project.py focus`,
+  then the selected issue and its last Hand-over. The report is evidence,
+  not permission to change priorities. See [the workflow](docs/PROJECT_WORKFLOW.md).
+- **Pick from the board's Priority = Now column,** top first
   ([the project](https://github.com/users/TommiContursi/projects/1)), then the
   open milestone it belongs to. Nothing from Later or Someday without the
   user's OK.
-- **Claim it first:** a comment on the issue with your branch, saying which
-  agent you are (Claude Code or Codex: both post as the user's GitHub
-  account), so the other doesn't start on it too. A phase is claimed on its
+- **Claim it first:** `python3 tools/project.py claim N --agent Codex --branch <branch>`
+  (or `--agent 'Claude Code'`). It posts the branch/agent and verifies
+  Status = In progress; both agents post as the user's GitHub account.
+  If the tooling or project credential is unavailable, post the claim
+  manually and report that the board update is unverified. A phase is claimed on its
   phase issue. When the user says a claim's session has stopped, take over
   from its branch (or from `main` if nothing was pushed) and say so on the
   issue. Read its last Hand-over first, then `git log origin/main..<branch>`
   and the diff, and on the same Mac its worktree for uncommitted files.
 - **Phases** in ROADMAP's order, one phase per PR, unless the user changes it.
   Each has a phase issue and a milestone with the issues that go with it.
-- **Confirmed bugs with a small fix** get a Fix PR of their own, between
-  phases, at any time, in the open "Fixes" milestone. Don't mix them into a
+- **Confirmed bugs with a small fix** get a Fix PR of their own in the open
+  "Fixes" milestone when selected. Only an agreed delivery blocker or an
+  urgent user-impacting regression interrupts the current delivery.
+  Small describes effort, not urgency. Don't mix them into a
   phase. A bug that needs a design first goes into a phase's milestone, with
   the user's OK.
 - **An improvement the user wants done** is an `enhancement` issue. A small one
@@ -79,6 +86,22 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   session. Never end a turn with uncommitted work. Phase 24's first claim
   stopped on 2026-10-17 with nothing pushed, and all of it was lost (#177).
 - Docs and tooling PRs stay on their one subject.
+- **Triage discoveries before following them:** search and link related
+  work; distinguish a delivery blocker, independent work, and an unconfirmed
+  or low-impact finding. New findings start in Triage with no automatic
+  promotion to Now. Group work by the user outcome; make separate issues
+  for independently verifiable outcomes, and add evidence to an existing
+  issue when it is the same problem. Never close duplicates from titles alone.
+- **Keep direction visible:** after each delivery, check what shipped,
+  remaining blockers and the next step. Review focus after three merges or
+  seven days since the last recorded review, or when a supposedly small
+  blocker consumes a focused session. Recommend one next delivery and what
+  can wait; record the reasoning on its issue and the actual review time in
+  `.github/project.json`. The user retains phase-order decisions.
+- **Status is separate from Priority.** Use `python3 tools/project.py status N Blocked
+  --reason '…'` for a real blocker and Ready when released. Linked draft PRs
+  and changes requested mean In progress; ready PRs mean In review; only
+  closed issues mean Done. A partial phase PR must not close the parent.
 
 **Effort:** xhigh for code, design, plans, and anything touching routing,
 saved data or share links; medium for docs, rebases and filing issues; never
@@ -249,3 +272,4 @@ so write it for people using Polku, like the entries already there.
   notes.
 - Shipped entries stay as they are: a later change gets its own entry, and an
   older one is changed only when it would now mislead.
+

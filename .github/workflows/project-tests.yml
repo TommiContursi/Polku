@@ -1,0 +1,24 @@
+name: Project tooling checks
+
+on:
+  pull_request:
+    paths:
+      - 'tools/project.py'
+      - 'tools/test_project.py'
+      - '.github/project.json'
+      - '.github/workflows/project*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -W error -m py_compile tools/project.py tools/test_project.py
+      - run: python3 -m unittest discover -s tools -p test_project.py -v
