@@ -379,9 +379,9 @@ export const ACTIVITY_OVERLAYS = {
 // Its id says what it turns: an overlay above (per sport), a trail setting (per sport), a weather
 // field ('wx:rain'), or the map's own (hillshade, contours, terrain3d); and two that turn more than
 // one: trailColors (off, or back to the colours you had) and depths (Traficom's three depth layers).
-// MTB keeps 3D terrain until it has its own button on the map (#226); then Waymarked MTB.
+// 3D terrain has no tile: it has its own button on the map (#226), and its settings are in the full panel.
 export const QUICK_TILES = {
-  mtb: ['trailColors', 'trailDetails', 'lipasRoutes', 'terrain3d', 'wx:rain'],
+  mtb: ['trailColors', 'trailDetails', 'lipasRoutes', 'wmtMtb', 'wx:rain'],
   gravel: ['sfTraffic', 'sfRoadworks', 'drPaved', 'wmtCycling', 'wx:rain'],
   road: ['sfTraffic', 'sfRoadworks', 'sfRoadcond', 'wmtCycling', 'wx:wind'],
   hike: ['wmtHiking', 'lipasRoutes', 'lipasPoints', 'trailDetails', 'wx:rain'],
@@ -393,12 +393,12 @@ export const QUICK_TILES = {
 export const QUICK_MAX = 5;
 
 // Every tile, in the full panel's groups and order: Edit offers them all. Not offered, as each has its
-// own place: the base maps (the drawer's Map row), the timeline (the Weather button), the settings
-// behind a › (the trail colours' kind, opacities, exaggeration) and Depths' three switches one by one.
+// own place: the base maps (the drawer's Map row), the timeline (the Weather button), 3D terrain (its
+// button on the map), the settings behind a › (the trail colours' kind, opacities) and Depths' three
+// switches one by one.
 // label: the tile's (soft hyphens, U+00AD, where a long word may break); note: its small print;
 // opts: it has a › with more settings; zoom: where its layer starts to show.
 export const QUICK_TILE = {
-  terrain3d: { group: 'Base map', label: '3D terrain', icon: 'cube', opts: true },
   hillshade: { group: 'Terrain', label: 'Hill­shade', icon: 'mountain' },
   contours: { group: 'Terrain', label: 'Contour lines', icon: 'contours' },
   maastoOverlay: { group: 'Terrain', label: 'Maasto­kartta on top', icon: 'pin', zoom: 8 },

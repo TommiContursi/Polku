@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-18
 
+### 3D terrain from a button on the map ([#226](https://github.com/TommiContursi/Polku/issues/226))
+
+A **3D** button now sits with the map's buttons, under zoom on a desktop and under locate on a phone. A tap raises the terrain and tilts the map; another tap lays it flat again. The button is filled and underlined while 3D is on, and screen readers announce it as pressed.
+
+- It's the same setting as **3D terrain** in **Layers → More**, so each always shows what the other did, after a reload too. How much the terrain is raised is still set there.
+- The layer drawer no longer has a 3D terrain tile. MTB's fifth tile is now **Waymarked MTB**. If you chose your own tiles with 3D terrain among them, the drawer shows the others and leaves room to add one in **Edit**.
+
 ### Fixed: a quick tap on the map stays a tap on a busy phone ([#293](https://github.com/TommiContursi/Polku/issues/293))
 
 When a phone was busy drawing the map, a quick tap could count as holding your finger down. The tap then opened the **This spot** menu, or started moving the route, and did nothing it should have. Polku now goes by how long your finger was really down: a quick tap adds a point, picks a loop or opens that part of the route's menu, and the route stays as it was. Holding your finger on the map still opens **This spot**, and holding the line still lets you drag it. A phone that vibrates on a hold may still buzz briefly on such a tap.

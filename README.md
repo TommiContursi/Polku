@@ -10,7 +10,7 @@ Works in your browser, on your phone or computer. No installation or account nee
 
 ## Maps and trails
 
-The map has hillshade, 5 m contours and 3D terrain. Base maps include the trail map, the National Land Survey's terrain map and aerial photos. **Layers** opens a quick drawer with the base maps and five layers for your sport as tiles, which you can swap for any others; **More** has every layer and the map keys.
+The map has hillshade, 5 m contours and 3D terrain, which its **3D** button turns on and off. Base maps include the trail map, the National Land Survey's terrain map and aerial photos. **Layers** opens a quick drawer with the base maps and five layers for your sport as tiles, which you can swap for any others; **More** has every layer and the map keys.
 
 - Trail colours show mountain biking difficulty (S0–S6) and estimated uphill difficulty (↑S0–↑S5), separately or together, with arrows pointing uphill. Polku samples the elevation model along trails, smooths the heights and grades short sections by climbing gradient, with adjustments for loose surfaces and mapped technical difficulty. Explicit OpenStreetMap uphill grades take precedence.
 - Trail width and visibility, wet or overgrown stretches, fallen trees, gates, fences and fords come from OpenStreetMap. Select a feature for details and a link to help correct the map.

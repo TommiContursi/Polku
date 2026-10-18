@@ -3577,9 +3577,9 @@ QUICK_TILES_JS = """(async () => {""" + QUICK_HELP + """
   polku.set({ activity: 'mtb' }); await wait(150);
   const more = () => qd.querySelector('.qt-more').textContent;
   if (!/3 more on/.test(more())) errs.push(`MTB's More: ${more()}, not 3 more on`);
-  sw(label('wmtMtb')).click(); await wait(80);
-  if (!/4 more on/.test(more()) || !/4 more on/.test(qd.querySelector('.qt-more').getAttribute('aria-label'))) errs.push(`More after Waymarked MTB: ${more()}`);
-  sw(label('wmtMtb')).click(); await wait(80);
+  sw(label('wmtCycling')).click(); await wait(80);
+  if (!/4 more on/.test(more()) || !/4 more on/.test(qd.querySelector('.qt-more').getAttribute('aria-label'))) errs.push(`More after Waymarked cycling: ${more()}`);
+  sw(label('wmtCycling')).click(); await wait(80);
   // this sport's tile, changed here, is kept for the reload (Official routes off in MTB)
   tile('lipasRoutes').click(); await wait(60);
   return errs;
@@ -3620,9 +3620,9 @@ QUICK_STEPS = """(async () => {""" + QUICK_HELP + """
   if (qd.querySelector('.qd-chip[data-add="depthAreas"], .qd-chip[data-add="mmlMaastoOverlay"]')) errs.push('Edit offers one depth layer, or MML without a key');
   qd.querySelector('.qt-rm[data-rm="wx:rain"]').click(); await wait(80);
   if (qd.querySelectorAll('.qt-rm').length !== 4 || !qd.querySelector('.qd-slot')) errs.push('Edit: taking a tile off left no room');
-  qd.querySelector('.qd-chip[data-add="wmtMtb"]').click(); await wait(80);
+  qd.querySelector('.qd-chip[data-add="hillshade"]').click(); await wait(80);
   qd.querySelector('.qd-done').click(); await wait(300);
-  if (tiles().join() !== 'trailColors,trailDetails,lipasRoutes,terrain3d,wmtMtb') errs.push(`after Edit: ${tiles()}`);
+  if (tiles().join() !== 'trailColors,trailDetails,lipasRoutes,wmtMtb,hillshade') errs.push(`after Edit: ${tiles()}`);
   if (JSON.parse(localStorage.getItem('polku:settings')).quickTiles.mtb.join() !== tiles().join()) errs.push('your tiles were not saved');
   // More: the full panel as it is, and back
   qd.querySelector('.qt-more').click(); await wait(300);
@@ -4776,6 +4776,259 @@ def sport_menu(chrome):
     return not fails
 
 
+# The 3D button in the map's column (#226): what it shows, where it is, and the 3D switch in Layers beside it
+B3D = """(() => {
+  const b = document.querySelector('#btn-3d'), S = polku.state;
+  if (!b) return { missing: true, focus: document.activeElement && document.activeElement.id };
+  const r = b.getBoundingClientRect(), box = (s) => { const e = document.querySelector(s); if (!e || getComputedStyle(e).display === 'none') return null; const q = e.getBoundingClientRect(); return { t: q.top, b: q.bottom }; };
+  const tg = [...document.querySelectorAll('#layers-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === '3D terrain');
+  const after = getComputedStyle(b, '::after'), top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  const under = !top ? 'nothing' : top.closest('#btn-3d') ? 'btn-3d' : (top.closest('[id]') || top).id || String(top.className || top.tagName);
+  return { under, pressed: b.getAttribute('aria-pressed'), on: !!S.terrain3d, terrain: !!polku.map.getTerrain(), layers: !!(tg && tg.querySelector('input').checked),
+    mark: after.content !== 'none' && after.content !== 'normal' && parseFloat(after.width) > 0, bg: getComputedStyle(b).backgroundColor, color: getComputedStyle(b).color,
+    at: [r.left + r.width / 2, r.top + r.height / 2], w: r.width, h: r.height, top: r.top, bottom: r.bottom, name: b.getAttribute('aria-label'),
+    prev: b.previousElementSibling && (b.previousElementSibling.id || b.previousElementSibling.className), next: b.nextElementSibling && b.nextElementSibling.id,
+    locate: box('#btn-locate'), zoom: box('.ctrl-zoom'), weather: box('#btn-time'), focus: document.activeElement && document.activeElement.id };
+})()"""
+# Layers, then More: the full panel, and its 3D switch (open in the Base map group), in view
+B3D_SWITCH = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  if (document.querySelector('#layers-panel').hidden) {
+    if (!document.querySelector('#quick-layers').classList.contains('open')) { document.querySelector('#btn-layers').click(); await wait(300); }
+    document.querySelector('#quick-layers .qt-more').click(); await wait(300);
+  }
+  const tg = [...document.querySelectorAll('#layers-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === '3D terrain');
+  if (!tg) return null;
+  tg.scrollIntoView({ block: 'center' }); await wait(100);
+  const r = tg.querySelector('.tg-ui').getBoundingClientRect();
+  return [r.left + r.width / 2, r.top + r.height / 2];
+})()"""
+B3D_TILES = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = {};
+  const qd = document.querySelector('#quick-layers');
+  if (!qd.classList.contains('open')) { document.querySelector('#btn-layers').click(); await wait(300); }
+  for (const k of ['mtb', 'gravel', 'road', 'hike', 'trailrun', 'run', 'paddle', 'swim']) {
+    polku.set({ activity: k }); await wait(150);
+    out[k] = [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile).join();
+  }
+  polku.set({ activity: 'mtb' }); await wait(150);
+  qd.querySelector('.qd-edit-btn').click(); await wait(300);
+  out.edit = [...qd.querySelectorAll('.qd-chip')].map((c) => c.dataset.add).join();
+  qd.querySelector('.qd-done').click(); await wait(300);
+  return out;
+})()"""
+B3D_WANT = {
+    'mtb': 'trailColors,trailDetails,lipasRoutes,wmtMtb,wx:rain',
+    'gravel': 'sfTraffic,sfRoadworks,drPaved,wmtCycling,wx:rain',
+    'road': 'sfTraffic,sfRoadworks,sfRoadcond,wmtCycling,wx:wind',
+    'hike': 'wmtHiking,lipasRoutes,lipasPoints,trailDetails,wx:rain',
+    'trailrun': 'trailColors,trailDetails,lipasRoutes,lipasPoints,wx:rain',
+    'run': 'lipasRoutes,sfRoadworks,pois,wx:temp,wx:rain',
+    'paddle': 'nautical,depths,sfShips,lipasPoints,wx:wind',
+    'swim': 'depths,fairways,sfShips,lipasPoints,wx:wind',
+}
+
+
+def button3d(chrome):
+    fails = []
+
+    def page(w, h_, phone, sport, settings=None):
+        pg = chrome.page(w, h_, phone)
+        # Traficom's depths, slow to answer at times, keep the map from loading; the button needs none of them
+        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.open_app({'activity': sport, 'timeline': True, **(settings or {})}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        # open_app() returns once the map has loaded, which can be a frame before MapLibre's load event runs Polku's
+        # load step: that opens the timeline, and on a phone the column then moves up above it (#292)
+        if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden ? ok(true)"
+                     " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 100); go(); })"):
+            fails.append(f'{w}x{h_} {sport}: the timeline did not open in 45 s (Polku’s load step)')
+        late = pg.js(SETTLED)
+        if late:
+            fails.append(f'{w}x{h_} {sport}: {late}')
+        return pg
+
+    # where the button is now, as a finger or the pointer goes to it; whatever else is there fails
+    def aim(pg, name):
+        b = pg.js(B3D)
+        if b['under'] != 'btn-3d':
+            fails.append(f"{name}: {b['under']} is over the 3D button")
+        return b['at']
+
+    def mouse_click(pg, at):
+        for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+            pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at[0], 'y': at[1], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                  'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+            time.sleep(0.06)
+        time.sleep(0.5)
+
+    def key(pg, k, code, vk, char=None):
+        for event in ['rawKeyDown'] + (['char'] if char is not None else []) + ['keyUp']:
+            fields = {'type': event, 'key': k, 'code': code, 'windowsVirtualKeyCode': vk}
+            if char is not None and event == 'char':
+                fields['text'] = char
+            chrome.send('Input.dispatchKeyEvent', fields, pg.s)
+        time.sleep(0.3)
+
+    def expect(pg, name, on):
+        b = pg.js(B3D)
+        if b.get('missing'):
+            fails.append(f'{name}: no 3D button in the map’s column')
+            return b
+        if b['on'] != on or b['terrain'] != on:
+            fails.append(f"{name}: 3D terrain {'on' if b['on'] else 'off'} (the map's terrain {'on' if b['terrain'] else 'off'}), not {'on' if on else 'off'}")
+        if b['pressed'] != str(on).lower():
+            fails.append(f"{name}: the button is aria-pressed {b['pressed']} while 3D is {'on' if on else 'off'}")
+        if b['layers'] != on:
+            fails.append(f"{name}: Layers' 3D switch is {'on' if b['layers'] else 'off'} while 3D is {'on' if on else 'off'}")
+        if b['mark'] != on:
+            fails.append(f"{name}: the button {'has' if b['mark'] else 'has no'} mark besides its colour while 3D is {'on' if on else 'off'}")
+        return b
+
+    # a mouse at 1440 x 900, in MTB and paddle, with a route drawn and the timeline open
+    for sport in ('mtb', 'paddle'):
+        name = f'1440x900 {sport}'
+        pg = page(1440, 900, False, sport)
+        pg.js(PLAN_TWO)
+        b = expect(pg, f'{name}, at the start', False)
+        if b.get('missing'):
+            pg.close()
+            continue
+        if b['name'] != '3D terrain':
+            fails.append(f"{name}: the button is named “{b['name']}”")
+        if b['prev'] != 'ctrl-zoom' or b['next'] != 'btn-time' or not (b['zoom'] and b['zoom']['b'] <= b['top'] and b['bottom'] <= b['weather']['t']):
+            fails.append(f"{name}: the button is not under zoom and above Weather (after {b['prev']}, before {b['next']})")
+        if b['w'] < 40 or b['h'] < 40:
+            fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px")
+        mouse_click(pg, aim(pg, f'{name}, a click'))
+        pg.idle()  # the terrain in, as a person looks at it (turned off while it loads: MapLibre’s own error, #288)
+        b = expect(pg, f'{name}, a click', True)
+        if b['color'] != 'rgb(255, 255, 255)' or b['bg'] == pg.js("getComputedStyle(document.querySelector('#btn-locate')).backgroundColor"):
+            fails.append(f"{name}: pressed, the button is {b['color']} on {b['bg']}, not white on the accent")
+        mouse_click(pg, aim(pg, f'{name}, a second click'))
+        expect(pg, f'{name}, a second click', False)
+        # Layers' switch turns the same 3D, and the button follows it; both kept after a reload
+        at = pg.js(B3D_SWITCH)
+        if not at:
+            fails.append(f'{name}: no 3D switch in the full Layers panel')
+        else:
+            mouse_click(pg, at)
+            pg.idle()
+            expect(pg, f"{name}, Layers' switch on", True)
+            pg.reload()
+            expect(pg, f"{name}, after a reload with Layers' switch on", True)
+            pg.idle()
+            mouse_click(pg, aim(pg, f'{name}, a click after the reload'))
+            expect(pg, f'{name}, the button off after the reload', False)
+            at = pg.js(B3D_SWITCH)
+            mouse_click(pg, at)
+            pg.idle()
+            mouse_click(pg, at)
+            expect(pg, f"{name}, Layers' switch on and off", False)
+            mouse_click(pg, aim(pg, f'{name}, a click before the reload'))
+            pg.reload()
+            expect(pg, f'{name}, after a reload with the button on', True)
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+
+    # the keyboard: Tab from zoom out reaches it and goes on to Weather; Enter and Space turn it
+    pg = page(1440, 900, False, 'mtb')
+    pg.js("document.querySelector('#btn-zoom-out').focus(), true")
+    key(pg, 'Tab', 'Tab', 9)
+    if pg.js(B3D)['focus'] != 'btn-3d':
+        fails.append(f"1440x900 keyboard: Tab from zoom out went to {pg.js(B3D)['focus']}, not 3D")
+    elif not pg.js("document.querySelector('#btn-3d').matches(':focus-visible') && getComputedStyle(document.querySelector('#btn-3d')).outlineStyle !== 'none'"):
+        fails.append('1440x900 keyboard: no focus ring on the 3D button')
+    key(pg, 'Enter', 'Enter', 13, '\r')
+    pg.idle()
+    expect(pg, '1440x900 keyboard, Enter', True)
+    key(pg, ' ', 'Space', 32)
+    expect(pg, '1440x900 keyboard, Space', False)
+    key(pg, 'Tab', 'Tab', 9)
+    if pg.js(B3D)['focus'] != 'btn-time':
+        fails.append(f"1440x900 keyboard: Tab from 3D went to {pg.js(B3D)['focus']}, not Weather")
+    fails += [f'1440x900 keyboard console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # touch phones, no zoom buttons: under locate, 44 px, a tap turns it; the column clear of the top bar
+    for w, h_, sport in ((390, 844, 'paddle'), (390, 844, 'mtb'), (360, 740, 'mtb'), (375, 667, 'paddle')):
+        name = f'{w}x{h_} {sport}'
+        pg = page(w, h_, True, sport)
+        b = expect(pg, f'{name}, at the start', False)
+        if b.get('missing'):
+            pg.close()
+            continue
+        if b['zoom'] or not (b['locate'] and b['locate']['b'] <= b['top'] and b['bottom'] <= b['weather']['t']):
+            fails.append(f'{name}: the button is not right under locate, above Weather (zoom buttons {"shown" if b["zoom"] else "hidden"})')
+        if b['w'] < 44 or b['h'] < 44:
+            fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px, under 44")
+        pg.tap(*aim(pg, f'{name}, a tap'))
+        pg.idle()
+        expect(pg, f'{name}, a tap', True)
+        pg.tap(*aim(pg, f'{name}, a second tap'))
+        time.sleep(0.6)
+        expect(pg, f'{name}, a second tap', False)
+        fails += [f'{name} closed: {o}' for o in overlaps(pg.js(BOXES))]
+        pg.js(PLAN_TWO)
+        for st in ('peek', 'profile', 'half'):
+            pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
+            late = pg.js(SETTLED)
+            if late:
+                fails.append(f'{name} planning/{st}: {late}')
+            fails += [f'{name} planning/{st}: {o}' for o in overlaps(pg.js(BOXES))]
+            if st == 'half':
+                pg.tap(*aim(pg, f'{name}, a tap with the sheet at half'))
+                time.sleep(0.6)
+                expect(pg, f'{name}, a tap with the sheet at half', True)
+                if pg.js("polku.planner.panel.dataset.state") != 'half':
+                    fails.append(f'{name}: a tap on 3D moved the sheet from half')
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+
+    # 200 % zoom on a 390 x 844 phone: no room for 3D in the column, which stays clear of the top bar; 3D still in Layers.
+    # (With the timeline open or the planner, the column reaches the top bar on main too: #73, and 25a's rule for short phones.)
+    pg = page(195, 422, True, 'paddle', {'timeline': False})
+    if pg.js("(() => { const b = document.querySelector('#btn-3d'); return b ? getComputedStyle(b).display : 'none'; })()") != 'none':
+        fails.append('195x422 (200 %): the 3D button shows, with no room for it in the column')
+    top = ('.topbar', '#activity-bar', '#btn-settings', '#zoom-hint')
+    fails += [f'195x422 (200 %) closed: {o}' for o in overlaps(pg.js(BOXES)) if '.map-ctrls' in o and any(t in o for t in top)]
+    if not pg.js(B3D_SWITCH):
+        fails.append("195x422 (200 %): no 3D switch in Layers")
+    pg.close()
+
+    # the quick drawer: no 3D tile in any sport, MTB's in its place is Waymarked MTB; Edit doesn't offer 3D
+    pg = page(1440, 900, False, 'mtb')
+    got = pg.js(B3D_TILES)
+    for k, want in B3D_WANT.items():
+        if got[k] != want:
+            fails.append(f'the quick drawer in {k}: {got[k]}, not {want}')
+    if 'terrain3d' in got['edit'].split(','):
+        fails.append('Edit offers a 3D terrain tile')
+    pg.close()
+    # your own tiles saved with the old 3D tile: the drawer opens with the others, room for one more in Edit
+    pg = page(1440, 900, False, 'mtb', {'quickTiles': {'mtb': ['trailColors', 'trailDetails', 'lipasRoutes', 'terrain3d', 'wx:rain']}})
+    got = pg.js("""(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms)), qd = document.querySelector('#quick-layers');
+      document.querySelector('#btn-layers').click(); await wait(300);
+      const tiles = [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile).join();
+      qd.querySelector('.qd-edit-btn').click(); await wait(300);
+      const edit = { on: qd.querySelectorAll('.qt-rm').length, slots: qd.querySelectorAll('.qd-slot').length, chips: qd.querySelectorAll('.qd-chip:not(:disabled)').length };
+      qd.querySelector('.qd-chip[data-add="wmtMtb"]').click(); await wait(100);
+      qd.querySelector('.qd-done').click(); await wait(300);
+      return { tiles, edit, after: [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile).join() };
+    })()""")
+    if got['tiles'] != 'trailColors,trailDetails,lipasRoutes,wx:rain':
+        fails.append(f"saved tiles with the old 3D tile: the drawer shows {got['tiles']}")
+    if got['edit']['on'] != 4 or got['edit']['slots'] != 1 or not got['edit']['chips']:
+        fails.append(f"saved tiles with the old 3D tile: Edit shows {got['edit']}")
+    if got['after'] != 'trailColors,trailDetails,lipasRoutes,wx:rain,wmtMtb':
+        fails.append(f"saved tiles with the old 3D tile, Waymarked MTB added: {got['after']}")
+    fails += [f'old tiles console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the 3D button: mouse, keyboard, touch, reload, the column on phones, the quick drawer's tiles" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The runner itself (#262, #263, #254), in a Chrome of its own beside the one the run holds
 def runner(chrome):
     import contextlib
@@ -4862,6 +5115,7 @@ GROUPS = [
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
+    ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))

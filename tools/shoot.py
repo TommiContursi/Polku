@@ -648,6 +648,20 @@ FIT = ("(() => { const p = polku.planner, a = p.analysis; if (!a) return;"
        " const pad = p.viewPadding ? p.viewPadding() : { top: 130, bottom: innerHeight - document.querySelector('#planner').getBoundingClientRect().top + 20, left: 60, right: 100 };"
        " polku.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: pad, duration: 0 }); })()")
 
+# #226: 3D terrain on, from the map's 3D button (before it, from Layers' switch), with a route and the timeline
+ON3D = ("(async () => { const b = document.querySelector('#btn-3d'); if (b) b.click(); else {"
+        " const t = [...document.querySelectorAll('#layers-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === '3D terrain');"
+        " t.querySelector('input').click(); } await new Promise((r) => setTimeout(r, 1500)); return true; })()")
+WATER_PTS = [[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]]
+SCENES.update({
+    'desk-3d': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=ON3D),
+    'desk-3d-paddle': dict(DESK, timeline=True, activity='paddle', water=WATER_PTS, js=ON3D),
+    'phone-3d': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=ON3D),
+    'phone-3d-paddle': dict(PHONE, timeline=True, activity='paddle', water=WATER_PTS, state='half', js=ON3D),
+    'phone-3d-360': dict(PHONE, w=360, h=740, timeline=True, route='route-kauppi-mtb.json', state='half'),
+    'phone-3d-375': dict(PHONE, w=375, h=667, timeline=True, activity='paddle', water=WATER_PTS, state='half'),
+})
+
 
 def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]
