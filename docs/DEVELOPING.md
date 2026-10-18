@@ -49,6 +49,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 - Answer from `tools/fixtures/` (fetched from `location.origin`), and hold or seed the fetches the check doesn't test, as the existing groups do. Never route against brouter.de.
 - Do what a user does: click, drag and type on the real controls, not the module's functions.
 - Wait for the state you check (the next animation frame, `SETTLED`), never a fixed time.
+- `open_app()` returns once the map has loaded, which can be a frame before MapLibre's `load` event runs Polku's own load step. On phones that step opens a saved timeline, and the map's buttons then move up above it (#292). Before measuring them, wait for the timeline and `SETTLED`, and take a button's place again right before each tap or click, as `button3d` does.
 - A fix's check must fail without the fix: run it on a worktree of `main` first.
 
 ## How the trickier parts work

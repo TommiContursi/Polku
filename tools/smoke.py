@@ -4683,11 +4683,12 @@ def sport_menu(chrome):
 # The 3D button in the map's column (#226): what it shows, where it is, and the 3D switch in Layers beside it
 B3D = """(() => {
   const b = document.querySelector('#btn-3d'), S = polku.state;
-  if (!b) return { missing: true };
+  if (!b) return { missing: true, focus: document.activeElement && document.activeElement.id };
   const r = b.getBoundingClientRect(), box = (s) => { const e = document.querySelector(s); if (!e || getComputedStyle(e).display === 'none') return null; const q = e.getBoundingClientRect(); return { t: q.top, b: q.bottom }; };
   const tg = [...document.querySelectorAll('#layers-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === '3D terrain');
-  const after = getComputedStyle(b, '::after');
-  return { pressed: b.getAttribute('aria-pressed'), on: !!S.terrain3d, terrain: !!polku.map.getTerrain(), layers: !!(tg && tg.querySelector('input').checked),
+  const after = getComputedStyle(b, '::after'), top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  const under = !top ? 'nothing' : top.closest('#btn-3d') ? 'btn-3d' : (top.closest('[id]') || top).id || String(top.className || top.tagName);
+  return { under, pressed: b.getAttribute('aria-pressed'), on: !!S.terrain3d, terrain: !!polku.map.getTerrain(), layers: !!(tg && tg.querySelector('input').checked),
     mark: after.content !== 'none' && after.content !== 'normal' && parseFloat(after.width) > 0, bg: getComputedStyle(b).backgroundColor, color: getComputedStyle(b).color,
     at: [r.left + r.width / 2, r.top + r.height / 2], w: r.width, h: r.height, top: r.top, bottom: r.bottom, name: b.getAttribute('aria-label'),
     prev: b.previousElementSibling && (b.previousElementSibling.id || b.previousElementSibling.className), next: b.nextElementSibling && b.nextElementSibling.id,
@@ -4741,7 +4742,22 @@ def button3d(chrome):
         pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True, **(settings or {})}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        # open_app() returns once the map has loaded, which can be a frame before MapLibre's load event runs Polku's
+        # load step: that opens the timeline, and on a phone the column then moves up above it (#292)
+        if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden ? ok(true)"
+                     " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 100); go(); })"):
+            fails.append(f'{w}x{h_} {sport}: the timeline did not open in 45 s (Polku's load step)')
+        late = pg.js(SETTLED)
+        if late:
+            fails.append(f'{w}x{h_} {sport}: {late}')
         return pg
+
+    # where the button is now, as a finger or the pointer goes to it; whatever else is there fails
+    def aim(pg, name):
+        b = pg.js(B3D)
+        if b['under'] != 'btn-3d':
+            fails.append(f"{name}: {b['under']} is over the 3D button")
+        return b['at']
 
     def mouse_click(pg, at):
         for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
@@ -4788,12 +4804,12 @@ def button3d(chrome):
             fails.append(f"{name}: the button is not under zoom and above Weather (after {b['prev']}, before {b['next']})")
         if b['w'] < 40 or b['h'] < 40:
             fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px")
-        mouse_click(pg, b['at'])
+        mouse_click(pg, aim(pg, f'{name}, a click'))
         pg.idle()  # the terrain in, as a person looks at it (turned off while it loads: MapLibre’s own error, #288)
         b = expect(pg, f'{name}, a click', True)
         if b['color'] != 'rgb(255, 255, 255)' or b['bg'] == pg.js("getComputedStyle(document.querySelector('#btn-locate')).backgroundColor"):
             fails.append(f"{name}: pressed, the button is {b['color']} on {b['bg']}, not white on the accent")
-        mouse_click(pg, b['at'])
+        mouse_click(pg, aim(pg, f'{name}, a second click'))
         expect(pg, f'{name}, a second click', False)
         # Layers' switch turns the same 3D, and the button follows it; both kept after a reload
         at = pg.js(B3D_SWITCH)
@@ -4806,14 +4822,14 @@ def button3d(chrome):
             pg.reload()
             expect(pg, f"{name}, after a reload with Layers' switch on", True)
             pg.idle()
-            mouse_click(pg, pg.js(B3D)['at'])
+            mouse_click(pg, aim(pg, f'{name}, a click after the reload'))
             expect(pg, f'{name}, the button off after the reload', False)
             at = pg.js(B3D_SWITCH)
             mouse_click(pg, at)
             pg.idle()
             mouse_click(pg, at)
             expect(pg, f"{name}, Layers' switch on and off", False)
-            mouse_click(pg, pg.js(B3D)['at'])
+            mouse_click(pg, aim(pg, f'{name}, a click before the reload'))
             pg.reload()
             expect(pg, f'{name}, after a reload with the button on', True)
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
@@ -4850,10 +4866,10 @@ def button3d(chrome):
             fails.append(f'{name}: the button is not right under locate, above Weather (zoom buttons {"shown" if b["zoom"] else "hidden"})')
         if b['w'] < 44 or b['h'] < 44:
             fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px, under 44")
-        pg.tap(*b['at'])
+        pg.tap(*aim(pg, f'{name}, a tap'))
         pg.idle()
         expect(pg, f'{name}, a tap', True)
-        pg.tap(*b['at'])
+        pg.tap(*aim(pg, f'{name}, a second tap'))
         time.sleep(0.6)
         expect(pg, f'{name}, a second tap', False)
         fails += [f'{name} closed: {o}' for o in overlaps(pg.js(BOXES))]
@@ -4864,9 +4880,8 @@ def button3d(chrome):
             if late:
                 fails.append(f'{name} planning/{st}: {late}')
             fails += [f'{name} planning/{st}: {o}' for o in overlaps(pg.js(BOXES))]
-            b = pg.js(B3D)
             if st == 'half':
-                pg.tap(*b['at'])
+                pg.tap(*aim(pg, f'{name}, a tap with the sheet at half'))
                 time.sleep(0.6)
                 expect(pg, f'{name}, a tap with the sheet at half', True)
                 if pg.js("polku.planner.panel.dataset.state") != 'half':
@@ -4877,7 +4892,7 @@ def button3d(chrome):
     # 200 % zoom on a 390 x 844 phone: no room for 3D in the column, which stays clear of the top bar; 3D still in Layers.
     # (With the timeline open or the planner, the column reaches the top bar on main too: #73, and 25a's rule for short phones.)
     pg = page(195, 422, True, 'paddle', {'timeline': False})
-    if pg.js("getComputedStyle(document.querySelector('#btn-3d')).display") != 'none':
+    if pg.js("(() => { const b = document.querySelector('#btn-3d'); return b ? getComputedStyle(b).display : 'none'; })()") != 'none':
         fails.append('195x422 (200 %): the 3D button shows, with no room for it in the column')
     top = ('.topbar', '#activity-bar', '#btn-settings', '#zoom-hint')
     fails += [f'195x422 (200 %) closed: {o}' for o in overlaps(pg.js(BOXES)) if '.map-ctrls' in o and any(t in o for t in top)]
