@@ -93,10 +93,15 @@ jobs:
           try:
               p = c.page(1440, 900)
               p.goto(BASE + 'index.html')
+              mq = "hover: matchMedia('(hover: hover)').matches, fine: matchMedia('(pointer: fine)').matches, coarse: matchMedia('(pointer: coarse)').matches"
               print(json.dumps(p.js("({ua: navigator.userAgent,"
                                     " lang: navigator.language, langs: navigator.languages, tz: Intl.DateTimeFormat().resolvedOptions().timeZone,"
                                     " locale: Intl.DateTimeFormat().resolvedOptions().locale, number: (1234.5).toLocaleString(),"
-                                    " date: new Date(0).toLocaleString()})"), indent=1))
+                                    " date: new Date(0).toLocaleString(), " + mq + "})"), indent=1))
+              phone = c.page(390, 844, True)
+              phone.goto(BASE + 'index.html')
+              print('a phone page:', json.dumps(phone.js("({" + mq + "})")))
+              phone.close()
               try:  # Linux only: says whether each process is sandboxed
                   p.goto('chrome://sandbox')
                   print(p.js("new Promise((ok) => setTimeout(() => ok(document.body.innerText), 1000))"))
