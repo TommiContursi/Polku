@@ -119,9 +119,10 @@ sessions ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changi
   A position leaves the device only for something the person asked for, as
   precisely as it needs, once, to the service that answers, and the control
   says so. Never a stream, never in the background, never a track unless they
-  export or share it. Rough requests (search, ships, weather) get the map's
-  middle, rounded to a kilometre or more. Services of Polku's own, if it has
-  any, keep the same rules and keep no history of anyone.
+  export or share it. Rough requests get a rounded point, never a precise one:
+  search and ships the map's middle to about a kilometre, the weather the
+  nearest point of its forecast grid (about 3 km). Services of Polku's own,
+  if it has any, keep the same rules and keep no history of anyone.
 - **Missing, late or partial data never looks complete.** When weather,
   terrain, trail details or hazards fail, the route says so. Check what
   happens when a source fails, answers late, answers out of order, or comes
