@@ -591,6 +591,7 @@ WATER = """(async () => {
   const mc = inLane(cross.coords), mi = inLane(ignore.coords);
   if (!cross.water.events.some((e) => e.kind === 'ship')) errs.push('no shipping-lane crossing found');
   if (mc > mi + 5) errs.push(`${Math.round(mc)} m inside the shipping lane, against ${Math.round(mi)} m ignoring fairways`);
+  window.waterLegMs = ms; // printed with the result: how close the runner comes to the limit (#268)
   if (ms > 6000) errs.push(`a leg took ${Math.round(ms)} ms`);
   // a rock where the direct line went: kept clear of
   const c = ignore.coords, L = G.lineLength(c);
@@ -629,9 +630,10 @@ def water(chrome):
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.152/24.97')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(WATER, timeout=85000)
+    ms = pg.js('window.waterLegMs || 0')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} water routing" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} water routing (the timed leg {ms / 1000:.1f} s, 6 s at most)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -2092,9 +2094,10 @@ FIT_SHARE = """(async () => {
 
 def fit_phone(chrome):
     ok = True
-    # a finger's own touches, as in the other checks: on GitHub's runner a synthesized tap gesture
-    # reaches the page as touches but never as a click (#268)
-    tap = lambda pg, s: pg.tap(s['x'], s['y'])
+    # a finger's own touches, up after 50 ms whatever the page is doing: on GitHub's runner a
+    # synthesized tap gesture never becomes a click, and Page.tap's touchend, sent only once Chrome
+    # has answered the touchstart, comes a second late on a busy page and makes the tap a hold (#268)
+    tap = lambda pg, s: pg.quick_tap(s['x'], s['y'])
     for w, h in [(390, 844), (360, 740)]:
         fails = []
         pg = chrome.page(w, h, True)
