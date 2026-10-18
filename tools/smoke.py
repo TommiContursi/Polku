@@ -591,7 +591,7 @@ WATER = """(async () => {
   const mc = inLane(cross.coords), mi = inLane(ignore.coords);
   if (!cross.water.events.some((e) => e.kind === 'ship')) errs.push('no shipping-lane crossing found');
   if (mc > mi + 5) errs.push(`${Math.round(mc)} m inside the shipping lane, against ${Math.round(mi)} m ignoring fairways`);
-  window.waterLegMs = ms; // printed with the result: how close the runner comes to the limit (#268)
+  window.waterLeg = { ms, grid: (cross.water.times || {})['render+data'] }; // printed with the result: how close the runner comes to the limit (#268)
   if (ms > 6000) errs.push(`a leg took ${Math.round(ms)} ms`);
   // a rock where the direct line went: kept clear of
   const c = ignore.coords, L = G.lineLength(c);
@@ -630,10 +630,11 @@ def water(chrome):
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/60.152/24.97')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(WATER, timeout=85000)
-    ms = pg.js('window.waterLegMs || 0')
+    leg = pg.js('window.waterLeg || {}')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} water routing (the timed leg {ms / 1000:.1f} s, 6 s at most)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    took = f"the timed leg {leg.get('ms', 0) / 1000:.1f} s, 6 s at most, {(leg.get('grid') or 0) / 1000:.1f} s of it drawing the water and getting the data"
+    print(f"{'ok  ' if not fails else 'FAIL'} water routing ({took})" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
