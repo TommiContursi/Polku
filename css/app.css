@@ -1247,7 +1247,11 @@ body.dropping .drop-hint { display: flex; }
   body.planning .wx-bar:not(.docked) { display: none; }
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
-  .panel { left: 12px; right: 12px; top: auto; bottom: calc(12px + var(--sheet-h)); width: auto; max-height: 62vh; }
+  /* above the planner's sheet, under the top bar; with too little room there it covers the sheet in its
+     place, and the top bar's menus still open over it (placePanels() in js/main.js, #240) */
+  .panel { left: 12px; right: 12px; top: auto; bottom: calc(12px + var(--sheet-h)); width: auto; max-height: min(62vh, calc(100% - 76px - var(--sheet-h))); }
+  body.panels-over .panel { left: 8px; right: 8px; bottom: 8px; max-height: calc(100% - 72px); z-index: 7; }
+  body.panels-over .topbar { z-index: 8; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
   .sum-item b { font-size: 18px; }

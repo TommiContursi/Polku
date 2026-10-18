@@ -453,10 +453,19 @@ function syncPlannerPadding() {
   const side = open && planner.layout() === 'side';
   document.documentElement.style.setProperty('--sheet-h', `${open && !side ? sheet.offsetHeight : 0}px`);
   document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
+  placePanels();
   if (quickOpen()) placeQuick();
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 $('#planner').addEventListener('sheetrest', syncPlannerPadding);
+
+// On a phone Settings sits above the planner's sheet while that leaves it 320 px under the top bar, as the
+// quick layers do above a bottom planner on a desktop; with less (a full sheet, a short or turned phone) it
+// covers the sheet instead (#240). The sheet keeps its size either way.
+function placePanels() {
+  const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
+  document.body.classList.toggle('panels-over', phoneMQ.matches && sheet > 0 && innerHeight - sheet - 12 - 64 < 320);
+}
 
 const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map(([k]) => +k);
 
@@ -1168,7 +1177,7 @@ function placeQuick() {
   qd.style.setProperty('--qd-bottom', `${bottom}px`);
   qd.classList.toggle('tail', bottom === level && innerHeight >= 560);
 }
-addEventListener('resize', () => { if (quickOpen()) placeQuick(); });
+addEventListener('resize', () => { placePanels(); if (quickOpen()) placeQuick(); });
 
 function showQuick(open, { instant = false, back = false } = {}) {
   const qd = $('#quick-layers');

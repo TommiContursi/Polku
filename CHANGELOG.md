@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-18
 
+### Fixed: Settings stays on screen while you plan on a phone ([#240](https://github.com/TommiContursi/Polku/issues/240))
+
+On a phone with the planner pulled up, **Settings** used to open partly above the top of the screen, so its heading and close button couldn't be reached. Settings now opens between the top bar and the planner, and its contents scroll. When the planner is pulled up too far to leave enough room, for example at full height or on a small or turned phone, Settings covers the planner instead. The planner is just as you left it when you close Settings.
+
 ### Fixed: green buttons are easier to read in dark mode ([#239](https://github.com/TommiContursi/Polku/issues/239))
 
 In dark mode, buttons with white text on green now use a deeper green, so their labels and icons stand out more clearly. This includes the sport button beside the search, **Locate**, **Settings**, the **Weather** button while it's on, **Make 3 loops** and other main buttons, switches that are turned on, the layer drawer's **Done** button and ticks, and the compass in heading-up mode. Green text, icons and borders on dark backgrounds are unchanged, and so is light mode.
