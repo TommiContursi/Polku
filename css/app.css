@@ -145,8 +145,8 @@ button { font: inherit; color: inherit; }
 .zoom-hint:hover { color: var(--text); }
 
 /* ---------------------------------------------------------------- map controls */
-/* One column, bottom right, at every screen size: Layers and Weather (what the
-   map shows), then compass, locate and zoom (how you look at it). It rides
+/* One column, bottom right, at every screen size: compass, locate, zoom and 3D
+   (how you look at the map), then Weather and Layers (what it shows). It rides
    above a bottom planner and an open phone timeline; Plan sits below it. */
 .map-ctrls {
   position: absolute; right: 12px; bottom: calc(var(--wx-h, 0px) + 12px); z-index: 5;
@@ -161,6 +161,12 @@ button { font: inherit; color: inherit; }
 .ctrl-zoom { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
 .ctrl-zoom .ctrl-btn { border-radius: 0; box-shadow: none; }
 .ctrl-zoom .ctrl-btn + .ctrl-btn { border-top: 1px solid var(--line); }
+/* 3D terrain (#226): pressed, it's filled and underlined, so its state isn't told by colour alone */
+.ctrl-3d { position: relative; font: 700 13px/1 system-ui, sans-serif; letter-spacing: .02em; }
+.ctrl-3d[aria-pressed="true"] { background: var(--accent-bg); color: #fff; }
+.ctrl-3d[aria-pressed="true"]::after {
+  content: ""; position: absolute; left: 50%; bottom: 7px; width: 16px; height: 2px; margin-left: -8px; border-radius: 1px; background: currentColor;
+}
 .ctrl-compass .maplibregl-ctrl { margin: 0; }
 .ctrl-compass .maplibregl-ctrl-group button { width: 40px; height: 40px; }
 .fab.fab-layers { position: relative; overflow: hidden; padding: 0; justify-content: flex-end; color: #fff; border: 2px solid #fff; }

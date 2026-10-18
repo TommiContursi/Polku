@@ -137,7 +137,14 @@ initGestures(map, { trackpadTilt: () => state.terrain3d && state.trackpadTilt, t
 const view3d = initView3d(map, $('#view3d'));
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
-const syncView3d = () => view3d.show(state.terrain3d || map.getPitch() > 5);
+// The 3D button in the map's column (#226) is pressed while 3D terrain is on.
+const btn3d = $('#btn-3d');
+btn3d.addEventListener('click', () => set3d(!state.terrain3d));
+const syncView3d = () => {
+  view3d.show(state.terrain3d || map.getPitch() > 5);
+  btn3d.setAttribute('aria-pressed', String(!!state.terrain3d));
+};
+syncView3d();
 map.on('pitchend', syncView3d);
 // bottom left, beside the scale bar: the bottom-right corner belongs to the map controls
 map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
@@ -970,7 +977,7 @@ function tileOn(id) {
   if (id === 'trailColors') return state.trailColors !== 'off';
   if (id === 'depths') return DEPTHS.some((d) => state.overlays[d]);
   if (id.startsWith('wx:')) return !!state.weather[id.slice(3)];
-  if (TRAIL_KEYS.includes(id) || ['terrain3d', 'hillshade', 'contours'].includes(id)) return !!state[id];
+  if (TRAIL_KEYS.includes(id) || ['hillshade', 'contours'].includes(id)) return !!state[id];
   return !!state.overlays[id];
 }
 // turns the same switch as the full panel; Trail colours comes back as you had it, Depths with the ones you had
@@ -982,8 +989,7 @@ function setTile(id, on) {
     if (!on && had.length) state.depthsBack = { ...state.depthsBack, [act]: had };
     const back = on ? (state.depthsBack[act] || (mine.length ? mine : DEPTHS)) : [];
     setOverlays(Object.fromEntries(DEPTHS.map((d) => [d, back.includes(d)])));
-  } else if (id === 'terrain3d') set3d(on);
-  else if (id === 'hillshade' || id === 'contours') { state[id] = on; applyStyle(); }
+  } else if (id === 'hillshade' || id === 'contours') { state[id] = on; applyStyle(); }
   else if (TRAIL_KEYS.includes(id)) setTrail(id, on);
   else if (id.startsWith('wx:')) setWeather({ [id.slice(3)]: on });
   else setOverlay(id, on);
@@ -1061,7 +1067,6 @@ function setBase(k) {
 
 // A tile's settings, one step in: the same switches as its group in the full panel
 const QUICK_OPTS = {
-  terrain3d: terrain3dControls,
   trailColors: trailControls,
   depths: () => [...DEPTHS.map(overlayToggle), h('p', { class: 'note' }, 'Traficom’s nautical chart data: shown, never used for routing. Not for navigation.')],
   'wx:rain': () => [wxToggle('rain'), timelineToggle()],

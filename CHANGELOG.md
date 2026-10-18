@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-18
 
+### 3D terrain from a button on the map ([#226](https://github.com/TommiContursi/Polku/issues/226))
+
+A **3D** button now sits with the map's buttons, under zoom on a desktop and under locate on a phone. A tap raises the terrain and tilts the map; another tap lays it flat again. The button is filled and underlined while 3D is on, and screen readers announce it as pressed.
+
+- It's the same setting as **3D terrain** in **Layers → More**, so each always shows what the other did, after a reload too. How much the terrain is raised is still set there.
+- The layer drawer no longer has a 3D terrain tile. MTB's fifth tile is now **Waymarked MTB**. If you chose your own tiles with 3D terrain among them, the drawer shows the others and leaves room to add one in **Edit**.
+
 ### Fixed: a click on the sport button keeps its menu open ([#245](https://github.com/TommiContursi/Polku/issues/245))
 
 With a mouse, the sport button beside the search opens its menu as you move over it, and a click on the button used to close that menu again straight away. The click now keeps the menu open, so you can pick a sport. A second click, Esc or a click elsewhere still closes it. Touch and the keyboard work as before.
