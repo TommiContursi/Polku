@@ -39,6 +39,9 @@ WAYPOINTS = "(() => { const p = polku.planner; p.setName && p.setName(1, 'Coffee
 SCROLL_END = "(() => { const b = document.querySelector('.sheet-body'); b.scrollTop = b.scrollHeight; return true; })()"
 LOOP_JS = ("(async () => { const p = polku.planner; p.setActive(true); if (!p.openLoop) return true; p.openLoop([23.7610, 61.4980]); p.loop.km = 25; p.renderLoop();"
            " await p.generateLoops(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); p.reveal('loop'); return true; })()")
+# the round trip's choices open, Make 3 loops in view (no loops made)
+LOOP_OPEN = ("(async () => { const p = polku.planner; p.openLoop(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false });"
+             " await new Promise((r) => setTimeout(r, 600)); const b = document.querySelector('.loop-go .btn.primary'); if (b) b.scrollIntoView({ block: 'center' }); return true; })()")
 LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
 # Phase 15a: winter on the map at Laajavuori (Jyväskylä; winter set On, the OSM winter ways and
 # LIPAS's ski tracks live), its group in Layers, and the snow layer over Lapland (FMI's stations).
@@ -424,6 +427,11 @@ SCENES = {
     'phone-quick-paddle': dict(PHONE, timeline=False, activity='paddle', hash='#13/61.53/23.73', js=QUICK()),
     'phone-quick-hike-dark': dict(PHONE, timeline=False, activity='hike', dark=True, base='night', js=QUICK()),
     'desk-quick-dark': dict(DESK, timeline=False, dark=True, base='night', js=QUICK()),
+    # #239: white on the green in the dark: the sport pill, Make 3 loops, pressed Weather
+    'phone-loop-dark': dict(PHONE, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', state='half', js=LOOP_OPEN),
+    'desk-loop-dark': dict(DESK, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', js=LOOP_OPEN),
+    'phone-weather-dark': dict(PHONE, timeline=False, dark=True, base='night', activity='paddle', hash='#13/61.53/23.73', js="document.querySelector('#btn-time').click(); true"),
+    'desk-weather-dark': dict(DESK, timeline=False, dark=True, base='night', activity='gravel', js="document.querySelector('#btn-time').click(); true"),
     'desk-quick-gravel': dict(DESK, timeline=False, activity='gravel', js=QUICK()),
     'desk-quick-hike': dict(DESK, timeline=False, activity='hike', js=QUICK()),
     'desk-quick-paddle': dict(DESK, timeline=False, activity='paddle', hash='#13/61.53/23.73', js=QUICK()),

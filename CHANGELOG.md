@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-18
+
+### Fixed: green buttons are easier to read in dark mode ([#239](https://github.com/TommiContursi/Polku/issues/239))
+
+In dark mode, buttons with white text on green now use a deeper green, so their labels and icons stand out more clearly. This includes the sport button beside the search, **Locate**, **Settings**, the **Weather** button while it's on, **Make 3 loops** and other main buttons, switches that are turned on, the layer drawer's **Done** button and ticks, and the compass in heading-up mode. Green text, icons and borders on dark backgrounds are unchanged, and so is light mode.
+
 ## 2026-10-17
 
 ### Find the right map layers faster ([#123](https://github.com/TommiContursi/Polku/issues/123))

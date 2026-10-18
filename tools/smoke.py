@@ -35,6 +35,7 @@
   python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
   python3 tools/smoke.py pacing     # calls made together go out paced and counted (mocked services, a fake clock)
   python3 tools/smoke.py heading    # where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)
+  python3 tools/smoke.py contrast   # white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -4404,6 +4405,87 @@ def changelog(chrome):
     return not fails
 
 
+# White on the accent (#239): the contrast of each control that puts white on the
+# green, measured from its computed colours, and no rule that puts white text on
+# --accent itself (the light accent of dark mode is for text, icons and borders).
+CONTRAST = """((scheme) => {
+  const rgb = (s) => (s.match(/[\\d.]+/g) || []).slice(0, 4).map(Number);
+  const lum = (c) => c.slice(0, 3).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+    .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const box = document.body.appendChild(Object.assign(document.createElement('div'), { style: 'position:fixed;left:-9999px;top:0' }));
+  box.innerHTML = `<button class="fab-locate" aria-pressed="true"></button><button class="btn" aria-pressed="true">Night</button>
+    <button class="qd-done">Done</button><span class="wp-sport"></span><button class="compass-btn heading"></button>
+    <label class="tg"><input type="checkbox" checked><span class="tg-ui"></span></label><button class="qd-base" aria-checked="true"></button>`;
+  const q = (s) => document.querySelector(s), cs = (e, p) => getComputedStyle(e, p || null);
+  // [what, the element with the background, its pseudo-element, the colour on it, the least contrast]
+  const items = [
+    ['the sport pill', q('#activity-bar .act-current'), null, (e) => cs(e).color, 4.5],
+    ['pressed Settings', q('#btn-settings'), null, (e) => cs(e).color, 3],
+    ['pressed Weather', q('#btn-time'), null, (e) => cs(e.querySelector('.fab-time-label')).color, 4.5],
+    ['Make 3 loops', q('.loop-go .btn.primary'), null, (e) => cs(e).color, 4.5],
+    ['Locate on', box.querySelector('.fab-locate'), null, (e) => cs(e).color, 3],
+    ['a pressed button', box.querySelector('.btn'), null, (e) => cs(e).color, 4.5],
+    ['the drawer’s Done', box.querySelector('.qd-done'), null, (e) => cs(e).color, 4.5],
+    ['a leg’s sport on the map', box.querySelector('.wp-sport'), null, (e) => cs(e).color, 3],
+    ['the compass facing ahead', box.querySelector('.compass-btn'), null, (e) => cs(e).color, 3],
+    ['a switch that is on', box.querySelector('.tg-ui'), null, (e) => cs(e, '::after').backgroundColor, 3],
+    ['the drawer’s tick', box.querySelector('.qd-base'), '::after', () => 'rgb(255, 255, 255)', 3],
+  ];
+  const out = [];
+  for (const [what, e, pseudo, fg, min] of items) {
+    if (!e) { out.push(`${what}: not found`); continue; }
+    const bg = rgb(cs(e, pseudo).backgroundColor), f = rgb(fg(e));
+    if (bg.length === 4 && bg[3] < 1) { out.push(`${what}: a see-through background (${cs(e, pseudo).backgroundColor})`); continue; }
+    const r = ratio(f, bg);
+    if (r < min) out.push(`${what}: ${r.toFixed(2)}:1, under ${min}:1 (rgb(${f.slice(0, 3)}) on rgb(${bg.slice(0, 3)}))`);
+    // light mode keeps its accent: white on #1f6f4a
+    if (scheme === 'light' && bg.slice(0, 3).join() !== '31,111,74') out.push(`${what}: light background rgb(${bg.slice(0, 3)}), not the light accent rgb(31,111,74)`);
+  }
+  box.remove();
+  // every rule, :hover too: white text on --accent itself
+  const white = /^(#fff|#ffffff|white|rgb\\(255, 255, 255\\))$/i, walk = (rules) => {
+    for (const r of rules) {
+      if (r.cssRules) walk(r.cssRules);
+      if (!r.style) continue;
+      const bg = r.style.getPropertyValue('background-color') || r.style.getPropertyValue('background');
+      if (/var\\(--accent\\)/.test(bg) && white.test(r.style.getPropertyValue('color').trim())) out.push(`white text on --accent: ${r.selectorText}`);
+    }
+  };
+  for (const s of document.styleSheets) { try { walk(s.cssRules); } catch (e) { /* another origin's sheet */ } }
+  return out;
+})"""
+
+
+def contrast(chrome):
+    fails = []
+    for scheme in ('dark', 'light'):
+        pg = chrome.page(1440, 900, False)
+        try:
+            pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': scheme}, {'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+            pg.open_app({'activity': 'mtb'})
+
+            def click(sel):
+                x, y = pg.js(f"(() => {{ const r = document.querySelector({json.dumps(sel)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+                for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.4)
+
+            # Weather and Settings pressed as a person presses them (Settings' panel covers Weather); the round trip's Make 3 loops
+            click('#btn-time')
+            click('#btn-settings')
+            pg.js("(() => { polku.planner.openLoop(); return true; })()")
+            time.sleep(0.4)
+            pressed = pg.js("['#btn-settings', '#btn-time'].filter((s) => document.querySelector(s).getAttribute('aria-pressed') !== 'true')")
+            fails += [f'{scheme}: {s} not pressed by a click' for s in pressed]
+            fails += [f'{scheme}: {f}' for f in pg.js(CONTRAST + f"({json.dumps(scheme)})")]
+            fails += [f'{scheme} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} white on the accent, dark and light" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def main():
     only = sys.argv[1:]
     chrome = Chrome()
@@ -4475,6 +4557,8 @@ def main():
             ok = quick(chrome) and ok
         if not only or 'heading' in only:
             ok = heading(chrome) and ok
+        if not only or 'contrast' in only:
+            ok = contrast(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue
