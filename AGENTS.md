@@ -6,9 +6,11 @@ imports this file, so keep every project rule here, and keep it short.
 ## What Polku is
 
 An outdoor map and route planner for Finland, used on phones out on the trail
-as much as on a desktop. A static site: `index.html`, plain ES modules and
-MapLibre, with no build step and no backend. [polku.si](https://polku.si) is
-GitHub Pages from `main`, so **merging a PR publishes it.**
+as much as on a desktop. Today a static site: `index.html`, plain ES modules
+and MapLibre, with no build step and no backend. That's how it's built, not
+what it must stay: PRODUCT.md keeps the commitments to people apart from it.
+[polku.si](https://polku.si) is GitHub Pages from `main`, so **merging a PR
+publishes it.**
 
 Read what the task needs (this file is already loaded):
 
@@ -21,8 +23,10 @@ Read what the task needs (this file is already loaded):
 - [README.md](README.md), [docs/ROADMAP.md](docs/ROADMAP.md) and
   [CHANGELOG.md](CHANGELOG.md) only when the task changes them.
 
-No framework, dependency, backend or build step without a real need and the
-user's OK.
+No framework, dependency, build step, backend, account or native code without
+a real need and the user's OK: an issue first, with what people gain and what
+it costs to build, run and maintain. None of them is ruled out when the gain
+is real.
 
 ## What to work on
 
@@ -88,14 +92,23 @@ the whole conversation again, so change models only between sessions
 - **Every network call goes through `request()` in `js/net.js`**, so pacing,
   back-off and Settings → Data sources keep working. Map tiles and the service
   worker have their own paths.
-- **Only free public services,** used within their terms. If one doesn't hold
-  up, add a fallback or switch. **Never burst brouter.de:** it blocks the whole
+- **Free public services,** used within their terms (a service of Polku's own,
+  or a paid one, only as above). If one doesn't hold up, add a fallback or
+  switch. **Never burst brouter.de:** it blocks the whole
   connection, the user's too (40 s for about 20 calls in 8 s, then half an hour
   after repeated bursts). Test routing against `tools/brouter-local.sh` or the
   recorded files in `tools/fixtures/`.
 - **Traficom's depth data is shown, never routed on.** Its licence excludes
   route planning, so the water router and its warnings use Väylävirasto, OSM
   and SYKE only. Water routes are for planning, not navigation.
+- **Location: private by default, local first, not local only** (PRODUCT.md).
+  A position leaves the device only for something the person asked for, as
+  precisely as it needs, once, to the service that answers, and the control
+  says so. Never a stream, never in the background, never a track unless they
+  export or share it. Rough requests get a rounded point, never a precise one:
+  search and ships the map's middle to about a kilometre, the weather the
+  nearest point of its forecast grid (about 3 km). Services of Polku's own,
+  if it has any, keep the same rules and keep no history of anyone.
 - **Missing, late or partial data never looks complete.** When weather,
   terrain, trail details or hazards fail, the route says so. Check what
   happens when a source fails, answers late, answers out of order, or comes

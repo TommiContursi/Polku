@@ -70,7 +70,7 @@ Water routes are calculated in the browser. Polku turns the map's water polygons
 
 Routes can be imported from GPX or KML, exported as GPX, or shared with a link. For an imported track, use GPX to preserve its exact line: share links may route it again.
 
-Polku runs in your browser, with no account, cookies, analytics or backend of its own. Settings, routes (including your last route), cached data and offline areas stay in browser storage. Requests go directly to the data services below, which receive your IP address and the map area or route coordinates needed to answer them.
+Polku runs in your browser, with no account, cookies, analytics or backend of its own. Settings, routes (including your last route), cached data and offline areas stay in browser storage. Requests go directly to the data services below, which receive your IP address and the map area or route coordinates needed to answer them. Your position is used on your device and sent only when you ask for something from where you are: a round trip from **My location** starts there, so that start is routed like any other point, and kept with the route if you take one of the loops. Nearby search and ship information use an approximate map centre instead.
 
 ## Data & credits
 

@@ -99,7 +99,7 @@ The agreed order (15b, then the bug sweep, then 21…) is done up to the sweep. 
   - "not winter here: 3 cm" said on the sport pill;
   - hovers on the weather fields.
 - **20** takes the glowing route line as an option, with the rest of how the route is drawn.
-- **23a–23d** share one rule: where you are stays on your device. It's never sent anywhere, not even to Polku.
+- **23a–23d** share one rule: where you are stays on your device. It's never sent anywhere, not even to Polku. *(Revised on 2026-10-18: private by default, local first, not local only; the rule is in PRODUCT.md.)*
 
 ## Why this order (phases 0–10)
 
