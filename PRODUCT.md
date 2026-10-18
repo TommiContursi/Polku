@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-What Polku is for and who it serves, for design work by people and coding agents. Written 2026-10-17 from the repo and the maker's answers. How Polku works is in [docs/DEVELOPING.md](docs/DEVELOPING.md), what it does in [README.md](README.md) and [docs/USING.md](docs/USING.md), the rules for working on it in [AGENTS.md](AGENTS.md).
+What Polku is for and who it serves, for design work by people and coding agents. Written 2026-10-17 from the repo and the maker's answers; on 2026-10-18 the commitments to people were set apart from how Polku is built today, and the location principle became private by default, local first, not local only. How Polku works is in [docs/DEVELOPING.md](docs/DEVELOPING.md), what it does in [README.md](README.md) and [docs/USING.md](docs/USING.md), the rules for working on it in [AGENTS.md](AGENTS.md).
 
 ## Platform
 
@@ -40,13 +40,13 @@ What Polku does that its neighbours don't do together:
 - **Water routes worked out in the browser:** wave estimates from open water upwind for each craft, shipping lanes crossed straight, mapped hazards kept clear, carries flagged.
 - **Finland's open data in one map:** the National Land Survey's terrain maps, LIPAS routes and places, Väylävirasto fairways, Fintraffic road conditions and ships, FMI weather, radar and sea ice.
 - **Uphill difficulty for every trail,** worked out from the terrain.
-- **Free, with no account and no backend of its own:** routes, settings and offline areas stay in the browser.
+- **Free, with no account needed, and your data kept with you:** routes, settings and offline areas stay on your device, and nothing is sent that a request doesn't need.
 
 ## Operating Context
 
 - **Desktop and phone needn't look the same.** A desktop can offer a denser, more advanced planning screen. A phone puts quick actions and what matters now first, for use outdoors. Both reach every feature, with controls and information arranged around what the person is doing at that moment.
 - **Outdoors:** a bad network, battery, sunlight, gloves, movement. Save offline and Preview offline cover the map, terrain and route along it.
-- **In the browser** at [polku.si](https://polku.si); on an iPhone, added to the home screen to keep offline data.
+- **In the browser** at [polku.si](https://polku.si) today; on an iPhone, added to the home screen to keep offline data. Native apps aren't decided (#195).
 - **Routes travel** as share links, GPX and KML imports, and GPX exports.
 - **How it's built:** GitHub issues hold what to do, [docs/ROADMAP.md](docs/ROADMAP.md) the order of the phases, [docs/plans/](docs/plans/) their designs, [docs/plans/mockups/](docs/plans/mockups/) clickable mock-ups. Merging to `main` publishes the site.
 
@@ -54,22 +54,35 @@ What Polku does that its neighbours don't do together:
 
 **What it does:** the full list is in [README.md](README.md); the controls in [docs/USING.md](docs/USING.md); what changed, and when, in [CHANGELOG.md](CHANGELOG.md).
 
-**Constraints that every design keeps** (the full rules are in [AGENTS.md](AGENTS.md)):
-- A static site: `index.html`, plain ES modules, MapLibre GL JS from a CDN. No build step, no backend, and no framework or new dependency without a real need and the maker's OK.
-- Only free public services, within their terms, so some answers come slowly or not at all.
+**Commitments that every design keeps** (the full rules are in [AGENTS.md](AGENTS.md)):
+- **Free, with no account needed.** If accounts ever come (to sync between devices, say), they're optional, and nothing that works without one starts needing one.
+- **Where you are, and where you've been, is yours:** private by default, local first, not local only.
+  - Following you, On the way and recorded tracks work on your device. Nothing streams your position, sends it in the background or keeps a history of it anywhere else, unless you export, share or (one day) sync it.
+  - A position goes out only for something you ask for that needs it, such as a route or a round trip from where you are: only as precise as that answer needs, once per request, and only to the service that answers. The control or its note says so in words, without a confirmation for every request.
+  - Requests that only need a rough idea of where you are (nearby search, ships, the weather) get the map's middle, rounded to a kilometre or more, never your position; share links leave out the map's view.
+  - Where it's practical, Polku works things out on your device instead, as it does water routes; nothing goes to Polku itself without your choice.
+- **Services are used within their terms,** and never overloaded.
 - **Missing, late or partial data never looks complete.** When weather, terrain, trail details or hazards fail, the route says so.
 - **Water routes are for planning, not navigation.** Traficom's depths are shown, never routed on.
 - **Nothing Polku does is removed to make it simpler,** and nothing used today takes more taps, more scrolling or a new hidden view (phase 24's rules, [docs/plans/24-design-review.md](docs/plans/24-design-review.md)).
-- **Where you are stays on your device:** never sent anywhere, not even to Polku.
 - Saved routes, settings and share links keep working, old ones too.
 - **Languages:** English now; Finnish and Swedish planned (phase 18), so words must translate and leave room for longer ones.
+
+**How it's built today.** These are decisions that serve the commitments above, a starting point rather than permanent requirements. Each is looked at again when a better way gives people enough to justify its cost:
+- A static web app: `index.html`, plain ES modules, MapLibre GL JS from a CDN, served by GitHub Pages. No build step, no backend, no accounts.
+- Free public services (BRouter with Valhalla standing in, Open-Meteo, Overpass, LIPAS, FMI, Digitraffic and others), so some answers come slowly or not at all. Water routes are worked out in the browser.
+- One website for every device; offline areas in the browser's storage.
+- **To change one** (a service of Polku's own, such as a weekly data build (#154), a token exchange (#188) or sync; native apps (#195); routing on the device (#279); a build step, a framework or a dependency): an issue that says what people gain and what it costs to build, run and maintain, and the maker's OK. Whatever changes keeps the commitments.
 
 **Polku's words:** Plan; the planner's tabs Route, Check and Go; Heads-up and Avoid; Other ways; Round trip; Route style and How you go; Save offline and Preview offline; Follow me; On the way (planned); Layers and Settings; S0–S6 and ↑S0–↑S5 for difficulty.
 
 **Not decided yet:**
 - which countries come after Finland, and when (#176);
 - Strava and Garmin (phase 16, research first);
-- a licence for Polku's own code (the repository has none yet).
+- native apps for iPhone and Android, and what they'd do that a web page can't, such as tracking with the screen off (#195);
+- routing on the device, in the browser or in a native app (#279);
+- a service of Polku's own, if one ever earns its cost;
+- a licence for Polku's own code (the repository has none yet; the choice also decides which code Polku can build on, GPL-licensed routing engines for one, #279).
 
 ## Brand Commitments
 
@@ -95,7 +108,7 @@ What Polku does that its neighbours don't do together:
 2. **The moment decides, not the device.** Planning at home, a quick check, on the way, afterwards: each gets the controls and information it needs. Phone and desktop may differ in how, never in what's possible.
 3. **Trust on a real trip.** Estimates say they're estimates, missing data says it's missing, and the limits are said plainly where they apply.
 4. **One app, not a toolbox.** Finding, planning, going, recording and looking back lead into each other.
-5. **Free, private and light.** No account, nothing sent that isn't needed, easy on the battery and a bad network.
+5. **Free, private and light.** No account needed, nothing sent that isn't needed, local first, easy on the battery and a bad network.
 
 ## Accessibility & Inclusion
 

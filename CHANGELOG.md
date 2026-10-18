@@ -97,7 +97,7 @@ The location marker now shows which way you're facing: from the compass while yo
 - The marker turns grey if no new position has arrived for a minute.
 - To save battery, location updates pause while the page is hidden.
 
-Your precise location is used only in the open page. It isn't saved with your route, included in share links or sent anywhere, and Polku doesn't remember the map view for your next visit while location is on. Share links no longer include the map view, and nearby search and ship information use an approximate map centre, accurate to about a kilometre, rather than your position.
+The precise location that **Locate** follows is used only in the open page. It isn't saved with your route, included in share links or sent anywhere, and Polku doesn't remember the map view for your next visit while location is on. Share links no longer include the map view, and nearby search and ship information use an approximate map centre, accurate to about a kilometre, rather than your position. A round trip from **My location** is the exception you ask for: its loops start from your position, which is routed like any other start.
 
 ### Routes fit above the planner on phones ([#110](https://github.com/TommiContursi/Polku/pull/110))
 
