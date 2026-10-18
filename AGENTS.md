@@ -229,28 +229,36 @@ new**, so it's written for them, not as a log of pull requests.
   newest first. Related changes share an entry; tests, tooling and docs get
   none.
 - **An entry** is a heading that says what people can now do, with its PR
-  links; a sentence or two on what that means for them; then, where there are
-  details to scan, a few bullets that each start with a bold phrase. The
-  in-app reader shows headings, paragraphs, flat bullets, bold, `code` and
-  links, and nothing else.
+  links, then a short paragraph on what changed and why it matters. Details
+  can follow as bullets. Safety notes and limits get a paragraph of their
+  own. The in-app reader shows headings, paragraphs, flat bullets, bold,
+  `code` and links, and nothing else.
+- **Every sentence names what it's about.** A bullet is a full sentence that
+  makes sense on its own, so it says "the planner", "the arrows" or "an
+  alternative", never "it", "they" or "one" pointing back at the heading.
+  Bold only the app's own names for its controls (**Locate**, **Settings →
+  Display**) and safety notes, never the start of a bullet just to make it
+  stand out.
+- **Fluent, natural English,** as a careful app would write its release
+  notes, in British spelling.
 - **How it works now, not how it was built.** Leave out internal names, tags,
   thresholds and testing; they belong in the PR. Keep what Polku can't tell
   (ice, depths, access rights, missing data) and what changed in behaviour.
-- **Natural, complete sentences,** British spelling, and the app's own names
-  for its controls, in bold.
 - **Shipped entries stay as they are.** A later change to a feature gets an
   entry of its own under its date, saying what's different. On the same date,
   update that day's entry instead of adding another. Change an older entry
   only when it would now mislead someone, such as a wrong safety note.
 
+Not: "- **Let go and it settles** at the nearest size, where a flick would
+carry it."
+But: "- When you let go, the planner settles at the nearest size."
+
+Not: "- **They stay still** with reduced motion or 3D terrain."
+But: "- The arrows stay still when reduced motion is turned on or 3D terrain
+is in use."
+
 Not: "**Dragging the middle handle now adds one via point,** which follows the
 pointer. The line underneath no longer starts a second edit from the same
 press, so it cannot leave an extra point and bend behind."
-But: "Dragging the handle in the middle of a leg now adds exactly one point.
-Before, it could leave an extra point and a bend behind."
-
-Not: "They're drawn as see-through ghosts with a soft glow (orange, then
-teal)… The first comes about 1.5 seconds after you've stopped, for a new leg
-of 300 m or more."
-But: "When you add a point and pause, Polku may suggest up to two other ways
-to reach it. Tap one to take it."
+But: "Dragging the handle in the middle of a route segment now adds exactly
+one new point, instead of sometimes creating a second, unwanted bend."
