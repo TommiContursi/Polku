@@ -2,15 +2,19 @@
 
 Standard library only. Used by tools/shoot.py and tools/smoke.py.
 The Chrome profile lives in ~/.cache/polku-tools (override: POLKU_CHROME_PROFILE),
-so map tiles and forecasts stay cached between runs.
+so map tiles and forecasts stay cached between runs. When another run already holds it,
+this one gets a temporary profile of its own (#254).
 """
 import base64
 import fcntl
 import json
 import os
 import select
+import shutil
+import socket
 import sys
 import subprocess
+import tempfile
 import time
 
 CHROME = os.environ.get('POLKU_CHROME', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
@@ -32,10 +36,44 @@ def check_server():
         sys.exit(f'No dev server at {BASE} ({e}). Start it first: python3 serve.py')
 
 
+def _held_by_chrome(profile):
+    """Whether a running Chrome holds the profile: its SingletonLock points to host-pid."""
+    try:
+        host, _, pid = os.readlink(os.path.join(profile, 'SingletonLock')).rpartition('-')
+    except OSError:
+        return False
+    if host != socket.gethostname():
+        return True  # Chrome refuses it too
+    try:
+        os.kill(int(pid), 0)
+    except (ValueError, ProcessLookupError):
+        return False  # a stale lock, which Chrome takes over
+    except PermissionError:
+        pass
+    return True
+
+
+def _profile():
+    """The shared profile and a lock held while we use it, or a temporary profile when it's taken.
+    A second Chrome on a profile in use hands itself to the first, and its pipe never answers."""
+    os.makedirs(PROFILE, exist_ok=True)
+    lock = open(os.path.join(PROFILE, 'polku-tools.lock'), 'w')
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if not _held_by_chrome(PROFILE):
+            return PROFILE, lock, None
+    except BlockingIOError:
+        pass
+    lock.close()
+    tmp = tempfile.mkdtemp(prefix='polku-chrome-')
+    print(f'Chrome profile {PROFILE} is in use by another run: this one uses {tmp}, without the cached tiles.', flush=True)
+    return tmp, None, tmp
+
+
 class Chrome:
     def __init__(self):
         check_server()
-        os.makedirs(PROFILE, exist_ok=True)
+        self.profile, self.lock, self.tmp = _profile()
         a, b = os.pipe()  # we write to b, Chrome reads fd 3
         c, d = os.pipe()  # Chrome writes fd 4, we read c
         hi = lambda fd: fcntl.fcntl(fd, fcntl.F_DUPFD, 20)
@@ -46,7 +84,7 @@ class Chrome:
             os.dup2(d, 4)
 
         self.proc = subprocess.Popen(
-            [CHROME, '--headless=new', '--remote-debugging-pipe', f'--user-data-dir={PROFILE}',
+            [CHROME, '--headless=new', '--remote-debugging-pipe', f'--user-data-dir={self.profile}',
              '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--mute-audio',
              '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--window-size=1440,900', 'about:blank'],
             preexec_fn=pre, close_fds=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -59,9 +97,15 @@ class Chrome:
         self.events = []
 
     def _recv(self, timeout=90):
+        end = time.time() + timeout
         while b'\0' not in self.buf:
-            if not select.select([self.r], [], [], timeout)[0]:
-                raise RuntimeError(f'no message from Chrome in {timeout} s')
+            # a second at a time, so a Chrome that quit is noticed (its helpers may hold the pipe open)
+            if not select.select([self.r], [], [], max(0, min(1, end - time.time())))[0]:
+                if self.proc.poll() is not None:
+                    raise RuntimeError(f'Chrome quit (exit code {self.proc.returncode})')
+                if time.time() >= end:
+                    raise RuntimeError(f'no message from Chrome in {timeout} s')
+                continue
             chunk = self.r.read(1 << 16)
             if not chunk:
                 raise RuntimeError('Chrome closed the pipe')
@@ -69,14 +113,14 @@ class Chrome:
         msg, self.buf = self.buf.split(b'\0', 1)
         return json.loads(msg)
 
-    def send(self, method, params=None, session=None):
+    def send(self, method, params=None, session=None, timeout=90):
         self.seq += 1
         m = {'id': self.seq, 'method': method, 'params': params or {}}
         if session:
             m['sessionId'] = session
         os.write(self.w, json.dumps(m).encode() + b'\0')
         while True:
-            r = self._recv()
+            r = self._recv(timeout)
             if r.get('id') == self.seq:
                 if 'error' in r:
                     raise RuntimeError(f'{method}: {r["error"]}')
@@ -92,18 +136,31 @@ class Chrome:
             self.events.append(self._recv(max(0.1, end - time.time())))
         raise RuntimeError(f'timeout waiting for {name}')
 
+    def alive(self):
+        """Whether the browser still answers."""
+        try:
+            return self.proc.poll() is None and bool(self.send('Browser.getVersion', timeout=10))
+        except Exception:
+            return False
+
     def page(self, width, height, phone=False):
         return Page(self, width, height, phone)
 
     def close(self):
         try:
-            self.send('Browser.close')
+            if self.proc.poll() is None:
+                self.send('Browser.close', timeout=10)
         except Exception:
             pass
         try:
             self.proc.wait(timeout=10)
         except Exception:
             self.proc.kill()
+            self.proc.wait()
+        if self.lock:
+            self.lock.close()
+        if self.tmp:
+            shutil.rmtree(self.tmp, ignore_errors=True)
 
 
 class Page:

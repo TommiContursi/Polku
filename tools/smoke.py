@@ -1,46 +1,15 @@
 #!/usr/bin/env python3
 """Smoke test for Polku's layout: no overlapping controls, no console errors, planner states work.
 
-  python3 tools/smoke.py            # all viewports
-  python3 tools/smoke.py 390x844    # just one size
-  python3 tools/smoke.py changelog  # release notes, retry, safe rendering, keyboard, route preservation and real worker offline
-  python3 tools/smoke.py layers     # just the Layers panel in every sport
-  python3 tools/smoke.py trails     # just the trail details (from a recorded tile), and the uphill colours when the terrain comes late (mocked)
-  python3 tools/smoke.py header     # just the planner header fitting its sheet
-  python3 tools/smoke.py lipas      # just LIPAS search and riding a LIPAS route (recorded answers)
-  python3 tools/smoke.py water      # just the paddling router's costs (recorded fairways, a fixed wind), and OSM's rocks coming late (mocked)
-  python3 tools/smoke.py multi      # just multisport: a sport per leg, changeovers, share links (straight legs)
-  python3 tools/smoke.py editing    # midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports
-  python3 tools/smoke.py routemenu  # just clicks and taps on the route (straight legs), and LIPAS over trails
-  python3 tools/smoke.py backtostart  # Back to start buttons, closing leg and undo (straight legs)
-  python3 tools/smoke.py routebits  # snapping, the sport strip, distance marks, the sun (no routing)
-  python3 tools/smoke.py terrain    # terrain tiles that don't load, load in part, then come back (mocked tiles, straight legs)
-  python3 tools/smoke.py stops      # stops and nights: breaks, nights, days, the gear check, share links (straight legs)
-  python3 tools/smoke.py avoid      # places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)
-  python3 tools/smoke.py access     # ways marked private or closed in Heads-up, from BRouter's tags and, when Valhalla stands in, the map's (mocked)
-  python3 tools/smoke.py detour     # a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)
-  python3 tools/smoke.py shortcut   # Short cuts ok: Polku's profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)
-  python3 tools/smoke.py flow       # the route's glow and moving chevrons: they move, survive a style change, stop with reduced motion, the switch off or left alone
-  python3 tools/smoke.py otherways  # other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo (mocked BRouter)
-  python3 tools/smoke.py loops      # round trips on the water, More loops (recorded fairways, a fixed wind)
-  python3 tools/smoke.py fit        # phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)
-  python3 tools/smoke.py sports     # changing the sport with a route drawn: the route keeps its sports, Route it as, Undo
-  python3 tools/smoke.py winterroute  # winter on the route: snow in the time, winter Heads-up (a made-up forecast)
-  python3 tools/smoke.py winter     # winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks
-  python3 tools/smoke.py marks      # distance, arrival/elapsed times, default and saved settings, the departure link
-  python3 tools/smoke.py previews   # bar/legend hover highlights, keyboard previews and cleanup
-  python3 tools/smoke.py colours    # every available route breakdown, choosing colours, folds and late data
-  python3 tools/smoke.py drawer     # the drawer in three tabs (22a): every part in its place, the start, the lit leg
-  python3 tools/smoke.py quick      # the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)
-  python3 tools/smoke.py sweep      # the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route's sport
-  python3 tools/smoke.py pacing     # calls made together go out paced and counted (mocked services, a fake clock)
-  python3 tools/smoke.py heading    # where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)
-  python3 tools/smoke.py contrast   # white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)
-  python3 tools/smoke.py panels     # phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)
+  python3 tools/smoke.py              # every group, then the layout at every size
+  python3 tools/smoke.py water loops  # just these groups
+  python3 tools/smoke.py 390x844      # just the layout at one size
+  python3 tools/smoke.py --list       # every group and size, with what it checks (from GROUPS)
 
-Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
-route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
-Exits 1 if anything fails.
+A name it doesn't know stops it before Chrome starts, with exit code 2. A group that
+raises fails and the rest still run. Needs the dev server (python3 serve.py) and Google
+Chrome. Draws a straight-line route (no routing requests). The forecast comes from
+Open-Meteo, cached for an hour. Exits 1 if anything fails.
 """
 import json
 import os
@@ -4582,85 +4551,132 @@ def panels(chrome):
     return not fails
 
 
-def main():
-    only = sys.argv[1:]
-    chrome = Chrome()
+# The runner itself (#262, #263, #254), in a Chrome of its own beside the one the run holds
+def runner(chrome):
+    import contextlib
+    import io
+    import subprocess
+    fails = []
+    me = os.path.abspath(__file__)
+    r = subprocess.run([sys.executable, me, 'nosuchgroup'], capture_output=True, text=True, timeout=30)
+    if r.returncode != 2 or 'changelog' not in r.stderr or '390x844' not in r.stderr:
+        fails.append(f'an unknown group exits {r.returncode} with {r.stderr[:120]!r}, not 2 with the groups and sizes')
+    r = subprocess.run([sys.executable, me, '--list'], capture_output=True, text=True, timeout=30)
+    listed = [line.split()[0] for line in r.stdout.splitlines() if line.strip()]
+    if r.returncode != 0 or listed[:-1] != [n for n, _, _ in GROUPS]:
+        fails.append(f'--list exits {r.returncode} and lists {listed}')
+
+    ran = []
+
+    def boom(c):
+        raise RuntimeError('Error: made to fail\n    at a second line')
+
+    def stop(c):
+        c.proc.kill()
+        c.proc.wait()
+        c.send('Browser.getVersion')
+
+    def after(c):
+        ran.append(c.alive())
+        return True
+
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        inner = Chrome()  # the profile is the run's, so this one gets a profile of its own
+        try:
+            ok, inner = run(inner, [('boom', boom, ()), ('after', after, ()), ('stop', stop, ()), ('after', after, ())])
+        finally:
+            inner.close()
+    text = out.getvalue()
+    if ok or ran != [True, True]:
+        fails.append(f'after a group that raised, ok is {ok} and the next groups ran in a live Chrome {ran}')
+    for want in ('in use by another run', 'FAIL boom raised RuntimeError: Error: made to fail\n', 'FAIL stop raised', 'Chrome stopped answering'):
+        if want not in text:
+            fails.append(f'no {want!r} in {text!r}')
+    if 'second line' in text:
+        fails.append("a raised error's second line was printed")
+    print(f"{'ok  ' if not fails else 'FAIL'} the runner: unknown names, a group that raises, a profile in use" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Every group: its name, its checks in the order they run, and its line for --list.
+# No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
+GROUPS = [
+    ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
+    ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
+    ('layers', [layers], 'the Layers panel in every sport'),
+    ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), and the uphill colours when the terrain comes late (mocked)'),
+    ('header', [header_fit], 'the planner header fitting its sheet'),
+    ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
+    ('water', [water, water_late], 'the paddling router\'s costs (recorded fairways, a fixed wind), and OSM\'s rocks coming late (mocked)'),
+    ('multi', [multi], 'multisport: a sport per leg, changeovers, share links (straight legs)'),
+    ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
+    ('routemenu', [route_menu], 'clicks and taps on the route (straight legs), and LIPAS over trails'),
+    ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
+    ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun (no routing)'),
+    ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
+    ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
+    ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
+    ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
+    ('detour', [detour], 'a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)'),
+    ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),
+    ('otherways', [otherways], 'other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo (mocked BRouter)'),
+    ('flow', [flow], 'the route\'s glow and moving chevrons: they move, survive a style change, stop with reduced motion, the switch off or left alone'),
+    ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
+    ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)'),
+    ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
+    ('sports', [sport_switch], 'changing the sport with a route drawn: the route keeps its sports, Route it as, Undo'),
+    ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
+    ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),
+    ('marks', [marks], 'distance, arrival/elapsed times, default and saved settings, the departure link'),
+    ('colours', [colours], 'every available route breakdown, choosing colours, folds and late data'),
+    ('previews', [previews], 'bar/legend hover highlights, keyboard previews and cleanup'),
+    ('drawer', [drawer], 'the drawer in three tabs (22a): every part in its place, the start, the lit leg'),
+    ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
+    ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
+    ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
+    ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
+]
+SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))
+
+
+def run(chrome, steps):
+    """Runs (name, function, args) steps. A step that raises fails, and the rest still run,
+    in a fresh Chrome when the browser stopped answering (#263). Returns (ok, chrome)."""
     ok = True
+    for name, fn, args in steps:
+        try:
+            ok = fn(chrome, *args) and ok
+        except Exception as e:
+            ok = False
+            first = (str(e).strip().splitlines() or [''])[0]
+            print(f'FAIL {name} raised {type(e).__name__}: {first}', flush=True)
+            if not chrome.alive():
+                print('     - Chrome stopped answering: the next checks run in a fresh one', flush=True)
+                chrome.close()
+                chrome = Chrome()
+    return ok, chrome
+
+
+def main():
+    args = sys.argv[1:]
+    if args == ['--list']:
+        w = max(len(n) for n, _, _ in GROUPS)
+        print('\n'.join(f'{n:<{w}}  {d}' for n, _, d in GROUPS))
+        print(f"{'sizes':<{w}}  the layout at one size: {', '.join(SIZES)} (all of them with no arguments)")
+        return
+    known = [n for n, _, _ in GROUPS] + SIZES
+    unknown = [a for a in args if a not in known]
+    if unknown:
+        print(f"No smoke group or size called {', '.join(unknown)}.\nGroups: {' '.join(n for n, _, _ in GROUPS)}\n"
+              f"Sizes: {' '.join(SIZES)}\nEach group's line: python3 tools/smoke.py --list", file=sys.stderr)
+        sys.exit(2)
+    steps = [(n if len(fns) == 1 else f'{n} ({fn.__name__})', fn, ()) for n, fns, _ in GROUPS if not args or n in args for fn in fns]
+    steps += [(f'{w}x{h}', check, (w, h, phone, bottom)) for w, h, phone, bottom in VIEWPORTS if not args or f'{w}x{h}' in args]
+    chrome = Chrome()
     try:
-        if not only or 'changelog' in only:
-            ok = changelog(chrome) and ok
-        if not only or 'pacing' in only:
-            ok = pacing(chrome) and ok
-        if not only or 'layers' in only:
-            ok = layers(chrome) and ok
-        if not only or 'trails' in only:
-            ok = trails(chrome) and ok
-            ok = uphill_late(chrome) and ok
-        if not only or 'header' in only:
-            ok = header_fit(chrome) and ok
-        if not only or 'lipas' in only:
-            ok = lipas(chrome) and ok
-        if not only or 'water' in only:
-            ok = water(chrome) and ok
-            ok = water_late(chrome) and ok
-        if not only or 'multi' in only:
-            ok = multi(chrome) and ok
-        if not only or 'editing' in only:
-            ok = editing(chrome) and ok
-        if not only or 'routemenu' in only:
-            ok = route_menu(chrome) and ok
-        if not only or 'backtostart' in only:
-            ok = back_to_start(chrome) and ok
-        if not only or 'routebits' in only:
-            ok = route_bits(chrome) and ok
-        if not only or 'terrain' in only:
-            ok = terrain(chrome) and ok
-        if not only or 'stops' in only:
-            ok = stops(chrome) and ok
-        if not only or 'avoid' in only:
-            ok = avoid_link(chrome) and ok
-        if not only or 'access' in only:
-            ok = access(chrome) and ok
-        if not only or 'detour' in only:
-            ok = detour(chrome) and ok
-        if not only or 'shortcut' in only:
-            ok = shortcut(chrome) and ok
-        if not only or 'otherways' in only:
-            ok = otherways(chrome) and ok
-        if not only or 'flow' in only:
-            ok = flow(chrome) and ok
-        if not only or 'loops' in only:
-            ok = loops(chrome) and ok
-        if not only or 'fit' in only:
-            ok = fit_phone(chrome) and ok
-        if not only or 'winter' in only:
-            ok = winter(chrome) and ok
-        if not only or 'sports' in only:
-            ok = sport_switch(chrome) and ok
-        if not only or 'winterroute' in only:
-            ok = winter_route(chrome) and ok
-        if not only or 'sweep' in only:
-            ok = sweep(chrome) and ok
-        if not only or 'marks' in only:
-            ok = marks(chrome) and ok
-        if not only or 'colours' in only:
-            ok = colours(chrome) and ok
-        if not only or 'previews' in only:
-            ok = previews(chrome) and ok
-        if not only or 'drawer' in only:
-            ok = drawer(chrome) and ok
-        if not only or 'quick' in only:
-            ok = quick(chrome) and ok
-        if not only or 'heading' in only:
-            ok = heading(chrome) and ok
-        if not only or 'contrast' in only:
-            ok = contrast(chrome) and ok
-        if not only or 'panels' in only:
-            ok = panels(chrome) and ok
-        for w, h, phone, bottom in VIEWPORTS:
-            if only and f'{w}x{h}' not in only:
-                continue
-            ok = check(chrome, w, h, phone, bottom) and ok
+        ok, chrome = run(chrome, steps)
     finally:
         chrome.close()
     sys.exit(0 if ok else 1)
