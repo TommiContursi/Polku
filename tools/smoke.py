@@ -36,6 +36,7 @@
   python3 tools/smoke.py pacing     # calls made together go out paced and counted (mocked services, a fake clock)
   python3 tools/smoke.py heading    # where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)
   python3 tools/smoke.py contrast   # white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)
+  python3 tools/smoke.py panels     # phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)
 
 Needs the dev server (python3 serve.py) and Google Chrome. Draws a straight-line
 route (no routing requests). The forecast comes from Open-Meteo, cached for an hour.
@@ -4486,6 +4487,101 @@ def contrast(chrome):
     return not fails
 
 
+# A panel over the planner on a phone (#240): where it is, and whether anything lies over its heading and ✕
+PANEL_BOX = """((id) => {
+  const p = document.querySelector(id), r = p.getBoundingClientRect(), body = p.querySelector('.panel-body'), b = body.getBoundingClientRect();
+  const x = p.querySelector('.panel-close'), xr = x.getBoundingClientRect(), hr = p.querySelector('.panel-head h2').getBoundingClientRect();
+  const at = (q) => document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+  return { open: !p.hidden, top: r.top, bottom: r.bottom, bar: document.querySelector('.topbar').getBoundingClientRect().bottom,
+    x: [xr.left + xr.width / 2, xr.top + xr.height / 2], xin: xr.top >= 0 && xr.bottom <= innerHeight && xr.left >= 0 && xr.right <= innerWidth,
+    xfree: x.contains(at(xr)), hfree: p.contains(at(hr)), more: body.scrollHeight - body.clientHeight,
+    body: [b.left + b.width / 2, Math.max(b.top, 0), Math.min(b.bottom, innerHeight)] };
+})"""
+
+
+# Settings and all layers over the planner on a phone (#240), opened by touch with the sheet at every size:
+# the panel's top below the top bar, its heading and ✕ on screen with nothing over them, its body scrolling
+# under a finger, the ✕ closing it, and the sheet as it was. A short phone and a turned one too.
+def panels(chrome):
+    fails = []
+    for w, h_, sport in [(390, 844, 'mtb'), (390, 844, 'paddle'), (375, 667, 'mtb'), (360, 740, 'hike'), (667, 375, 'gravel')]:
+        pg = chrome.page(w, h_, True)
+        pg.open_app({'activity': sport}, {'polku:winter': '"off"'})
+        pg.js(PLAN_TWO)
+        centre = lambda s: pg.js(f"(() => {{ const r = document.querySelector({json.dumps(s)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+        for st in ('peek', 'profile', 'half', 'full'):
+            pg.js(f"polku.planner.setSheetState({json.dumps(st)}); true")
+            pg.js(SETTLED)
+            before = pg.js(SHEET_STATE)
+            for pid, label in (('#settings-panel', 'Settings'), ('#layers-panel', 'all layers')):
+                name = f'{w}x{h_} {sport}, the sheet at {st}: {label}'
+                if pid == '#settings-panel':
+                    pg.tap(*centre('#btn-settings'))
+                else:
+                    # Layers (a full sheet hides the map's buttons: L there), then More
+                    if st == 'full':
+                        pg.js("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l' })), true")
+                    else:
+                        pg.tap(*centre('#btn-layers'))
+                    time.sleep(0.4)
+                    pg.js("document.querySelector('#quick-layers .qt-more').scrollIntoView({ block: 'nearest' }), true")  # below the fold on a turned phone
+                    pg.tap(*centre('#quick-layers .qt-more'))
+                time.sleep(0.4)
+                r = pg.js(PANEL_BOX + f"({json.dumps(pid)})")
+                if not r['open']:
+                    fails.append(f'{name} did not open')
+                    pg.js("document.querySelector('#quick-scrim').click(), true")
+                    continue
+                if r['top'] < r['bar'] - 0.5:
+                    fails.append(f"{name}: its top at {r['top']:.0f} px, above the top bar’s bottom ({r['bar']:.0f} px)")
+                if r['bottom'] > h_ + 0.5:
+                    fails.append(f"{name}: its bottom at {r['bottom']:.0f} px, below the screen")
+                if not r['xin']:
+                    fails.append(f"{name}: its ✕ off the screen, at {r['x'][1]:.0f} px")
+                elif not r['xfree']:
+                    fails.append(f'{name}: something lies over its ✕')
+                if not r['hfree']:
+                    fails.append(f'{name}: its heading is off the screen or under something')
+                x, top, bottom = r['body']
+                if r['more'] > 1 and bottom - top > 100:
+                    pg.swipe(x, bottom - 30, top + 30, ms=400, hold=0.1)
+                    time.sleep(0.3)
+                    if pg.js(f"document.querySelector('{pid} .panel-body').scrollTop") < 20:
+                        fails.append(f'{name}: a finger up its body did not scroll it')
+                elif r['more'] > 1:
+                    fails.append(f'{name}: only {max(bottom - top, 0):.0f} px of its body on the screen')
+                if r['xin'] and r['xfree']:
+                    pg.tap(*r['x'])
+                    time.sleep(0.4)
+                    if pg.js(f"!document.querySelector('{pid}').hidden"):
+                        fails.append(f'{name}: a tap on its ✕ did not close it')
+                pg.js(f"document.querySelector('{pid}').hidden || document.querySelector('{pid} .panel-close').click(), true")
+                time.sleep(0.2)
+                pg.js(SETTLED)
+                after = pg.js(SHEET_STATE)
+                if after['open'] or after['all']:
+                    fails.append(f'{name}: the layers still open after its ✕')
+                if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
+                    fails.append(f"{name}: the planner {after['st']} {after['h']:.0f} px after it closed, not {before['st']} {before['h']:.0f} px")
+        if (w, h_, sport) == (390, 844, 'mtb'):
+            # Settings open above the sheet at half, then the sheet swiped up to full under it: Settings covers it
+            pg.js("polku.planner.setSheetState('half'); true")
+            pg.js(SETTLED)
+            pg.tap(*centre('#btn-settings'))
+            time.sleep(0.4)
+            hd = centre('#planner .sheet-handle')
+            pg.swipe(hd[0], hd[1], 100, ms=500, hold=0.2)
+            pg.js(SETTLED)
+            r = pg.js(PANEL_BOX + "('#settings-panel')")
+            st = pg.js(SHEET_STATE)['st']
+            if st != 'full' or not r['open'] or r['top'] < r['bar'] - 0.5 or not (r['xin'] and r['xfree']):
+                fails.append(f"390x844: Settings open and the sheet swiped up: the sheet {st}, Settings {'open' if r['open'] else 'closed'}, its top at {r['top']:.0f} px, its ✕ {'free' if r['xin'] and r['xfree'] else 'covered or off the screen'}")
+        fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Settings and all layers over the planner on phones" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def main():
     only = sys.argv[1:]
     chrome = Chrome()
@@ -4559,6 +4655,8 @@ def main():
             ok = heading(chrome) and ok
         if not only or 'contrast' in only:
             ok = contrast(chrome) and ok
+        if not only or 'panels' in only:
+            ok = panels(chrome) and ok
         for w, h, phone, bottom in VIEWPORTS:
             if only and f'{w}x{h}' not in only:
                 continue
