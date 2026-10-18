@@ -55,15 +55,12 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   bug, `idea` for an idea, `watch` for a risk (with a date or a trigger for
   looking again). Say when and where it came from, and give it a size:
   `small`, `medium` or `big`. Search first, and add to the one that exists.
-- **One session, one issue** (or one part of a phase). When the PR is ready,
-  or the context is past about 250k tokens with real work left, write a
-  Hand-over and start a new session (or Codex thread). Start one too after a
-  break of more than an hour (a usage limit, a night, waiting for the user),
-  unless the session is under about 150k or a step from done: an hour
-  without a request ends the prompt cache, and the next message pays to send
-  the whole conversation again (24 % of session cost on 2026-10-17 and 18,
-  #260). Design work too: the plan, the mock-up and the decisions comment
-  carry it over.
+- **One session, one issue** (or one part of a phase). Start a new session
+  (or Codex thread) from the Hand-over at a checkpoint: the PR is ready, a
+  part is done, or the next issue begins. In a session past about 300k
+  tokens, or after a break of more than an hour, make that the next
+  checkpoint, unless the session holds what a Hand-over can't carry: a
+  design iteration with the user's feedback, or an investigation half done.
 - **One coding session at a time,** unless the user starts more. Claude's
   two accounts and then Codex take turns: when one reaches its usage limit,
   the next takes over from the last Hand-over. More at once ran into the
@@ -73,29 +70,18 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   commit, push (a draft PR at the first push), and comment on the claimed
   issue, headed "Hand-over", in 6–8 short lines, no prose: branch and commit;
   PR; done; verified, with the exact commands; not verified; decisions, with
-  links; next step and the effort it needs; what to watch out for. Write one
-  before a turn that waits for the user's answer or review too, so the answer
-  can start a fresh session. Never end a turn with uncommitted work. Phase
-  24's first claim stopped on 2026-10-17 with nothing pushed, and all of it
-  was lost (#177).
+  links; next step; what to watch out for. Write one before a turn that waits
+  for the user's answer or review too, so the answer can start a fresh
+  session. Never end a turn with uncommitted work. Phase 24's first claim
+  stopped on 2026-10-17 with nothing pushed, and all of it was lost (#177).
 - Docs and tooling PRs stay on their one subject.
 
-**Effort** to suit the task, never `max` as a habit. Set it when the session
-starts, from the Hand-over's next step:
-
-| Effort | For |
-| --- | --- |
-| xhigh | design, phase plans, routing and data-integrity logic, hard bugs |
-| high | fixes with a clear repro, building a plan already agreed |
-| medium | docs, rebases, filing issues |
-
-When the work turns out to touch routing, the route's analysis, saved data or
-share links, when one look doesn't explain a failing check, when a second try
-at a fix fails, or when a design or structure decision comes up, say so in a
-line, so the effort can go up to xhigh. In Claude Code, on the models Polku
-uses, the effort can change mid-session and the prompt cache stays; a change
-of model sends the whole conversation again, so change models only between
-sessions ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
+**Effort:** xhigh for code, design, plans, and anything touching routing,
+saved data or share links; medium for docs, rebases and filing issues; never
+`max` as a habit. Set it when the session starts, since the default is lower.
+Changing effort mid-session keeps the prompt cache; changing the model sends
+the whole conversation again, so change models only between sessions
+([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
 
 ## In the code
 
