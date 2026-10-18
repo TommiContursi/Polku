@@ -115,7 +115,8 @@ class Chrome:
         return json.loads(msg)
 
     def send(self, method, params=None, session=None, timeout=90):
-        return self.answer(self.post(method, params, session), method, timeout)
+        what = (params or {}).get('expression', '')[:100].replace('\n', ' ')
+        return self.answer(self.post(method, params, session), method, timeout, what)
 
     def post(self, method, params=None, session=None):
         """Sends a call without waiting: answer(id) waits for its reply."""
@@ -126,9 +127,12 @@ class Chrome:
         os.write(self.w, json.dumps(m).encode() + b'\0')
         return self.seq
 
-    def answer(self, id_, method='', timeout=90):
+    def answer(self, id_, method='', timeout=90, what=''):
         while id_ not in self.answers:
-            r = self._recv(timeout)
+            try:
+                r = self._recv(timeout)
+            except RuntimeError as e:  # which call it was waiting for, so a hang can be found
+                raise RuntimeError(f'{e}, waiting for {method}' + (f': {what}' if what else '')) from None
             if 'id' in r:
                 self.answers[r['id']] = r
             else:
@@ -238,21 +242,24 @@ class Page:
         self.c.events = keep
         return out
 
-    def touch(self, kind, x=0, y=0):
+    def touch(self, kind, x=0, y=0, at=None):
         """One finger through the browser's own input, so touch-action, scrolling and taps are real:
-        kind 'start', 'move' or 'end'."""
-        # its own time, so a swipe's speed is the one sent even when the page is slow to handle it
-        self.c.send('Input.dispatchTouchEvent', {'type': f'touch{kind.capitalize()}', 'touchPoints': [] if kind == 'end' else [{'x': x, 'y': y}], 'timestamp': time.time()}, self.s)
+        kind 'start', 'move' or 'end'; at: its time (time.time()'s clock), now by default."""
+        self.c.send('Input.dispatchTouchEvent', {'type': f'touch{kind.capitalize()}', 'touchPoints': [] if kind == 'end' else [{'x': x, 'y': y}], 'timestamp': at or time.time()}, self.s)
 
     def swipe(self, x, y0, y1, ms=300, steps=12, hold=0.0):
         """A finger from (x, y0) to (x, y1) in about ms; hold: seconds it rests before it lets go (no flick)."""
-        self.touch('start', x, y0)
+        # each event carries the time it was meant for, so the swipe's speed is the one meant even when
+        # the page is slow to handle each event (Chrome answers a touch only once the page has had it)
+        t0 = time.time()
+        self.touch('start', x, y0, t0)
         for i in range(1, steps + 1):
-            time.sleep(ms / 1000 / steps)
-            self.touch('move', x, y0 + (y1 - y0) * i / steps)
-        if hold:
-            time.sleep(hold)
-        self.touch('end')
+            at = t0 + ms / 1000 * i / steps
+            time.sleep(max(0, at - time.time()))
+            self.touch('move', x, y0 + (y1 - y0) * i / steps, at)
+        at = max(at + hold, time.time()) if hold else at
+        time.sleep(max(0, at - time.time()))
+        self.touch('end', at=at)
 
     def tap(self, x, y):
         self.touch('start', x, y)

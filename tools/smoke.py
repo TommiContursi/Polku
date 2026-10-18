@@ -1606,7 +1606,10 @@ OTHERWAYS_CALM = """(async () => {
   p.wet = { on: false, mm: 0, at: Date.now() };
   const calls = (k) => window.routerCalls.filter((u) => /lonlats=/.test(u) && new URL(u).searchParams.get('alternativeidx') === String(k)).length;
   const legIn = async () => { for (let k = 0; k < 100 && !(p.legs.length && p.legs.every((l) => l.status === 'ok')); k++) await wait(50); };
-  const both = async () => { const t = performance.now(); for (let k = 0; k < 160 && !(p.alts && p.alts.ways.length >= 2); k++) await wait(50); return performance.now() - t; };
+  // how long until both ways show, and how much of that the page was too busy to run its timers
+  // (a frame can take a second on GitHub's runner, #268)
+  let late = 0;
+  const both = async () => { const t = performance.now(); late = 0; for (let k = 0; k < 160 && !(p.alts && p.alts.ways.length >= 2); k++) { const a = performance.now(); await wait(50); late += Math.max(0, performance.now() - a - 60); } return performance.now() - t; };
   window.alt2Far = true;
   p.setActive(true);
   p.setMode('auto');
@@ -1636,7 +1639,7 @@ OTHERWAYS_CALM = """(async () => {
   p.addPoint([24.960, 60.175]);
   await legIn();
   took = await both();
-  if (calls(1) !== c1 + 1 || calls(2) !== c2 + 1 || took > 1500) errs.push(`your own server: alternative 1 ×${calls(1) - c1}, 2 ×${calls(2) - c2}, both shown ${Math.round(took)} ms after the leg (within 1.5 s)`);
+  if (calls(1) !== c1 + 1 || calls(2) !== c2 + 1 || took - late > 1500) errs.push(`your own server: alternative 1 ×${calls(1) - c1}, 2 ×${calls(2) - c2}, both shown ${Math.round(took)} ms after the leg, ${Math.round(late)} ms of it too busy for timers (within 1.5 s)`);
   localStorage.removeItem('polku:brouterUrl');
   p.clear();
   return errs;
@@ -1683,7 +1686,8 @@ FLOW = """(async () => {
   await new Promise((ok) => { const t = setTimeout(ok, 5000); m.once('idle', () => { clearTimeout(t); ok(); }); });
   if (!m.getLayer('route-glow') || !m.getLayer('route-glow-hover')) errs.push('no glow layers');
   const arrows = () => m.getLayoutProperty('route-arrows', 'visibility');
-  const moves = async () => { const f0 = f.frames; await wait(1500); return f.frames > f0 + 3; };
+  // four frames more: in 1.5 s here, but a runner that draws in software can take a second a frame
+  const moves = async () => { const f0 = f.frames, t0 = Date.now(); while (Date.now() - t0 < 8000) { await wait(250); if (f.frames > f0 + 3) return true; } return false; };
   if (!m.getLayer('route-flow') || !f.moving || !(await moves())) errs.push(`chevrons: layer ${!!m.getLayer('route-flow')}, moving ${f.moving}, frames ${f.frames}`);
   if (arrows() !== 'none') errs.push(`the static arrows show while the chevrons move: ${arrows()}`);
   const gl = m.painter && m.painter.context && m.painter.context.gl;
@@ -1960,6 +1964,9 @@ FIT_LIB = """(() => {
     p.setSheetState('half');
     return T.errs.splice(0);
   };
+  // before a tap from Python, a frame that comes quickly: on GitHub's runner the page can be busy
+  // drawing for a second, and a tap it handles that late loses its click (#268)
+  T.calm = async () => { for (let i = 0; i < 40; i++) { const t = performance.now(); await new Promise((ok) => requestAnimationFrame(ok)); if (performance.now() - t < 100) return; } };
   // the first click: the empty planner at peek, a tap on the map (from Python) puts the start down
   T.firstTap = async () => {
     p.setActive(true); p.clear(); p.closeLoop();
@@ -1969,6 +1976,7 @@ FIT_LIB = """(() => {
     if (p.panel.dataset.state !== 'peek') err(`the empty planner opened at ${p.panel.dataset.state}`);
     map.jumpTo({ center: [23.80, 61.50], zoom: 12 });
     await new Promise((ok) => map.once('idle', ok));
+    await T.calm();
     window.holdRoutes();
     T.start = [23.80, 61.50];
     const q = map.project(T.start);
@@ -1976,8 +1984,10 @@ FIT_LIB = """(() => {
   };
   // its card: a loop of the first length; the sheet rises to half as the loops' area is framed
   T.loopFromStart = async () => {
-    const chip = document.querySelector('.start-tip .st-acts .chip');
-    if (!chip) { err('no round-trip choices on the first tap'); return T.errs.splice(0); }
+    // the tap's click can come a while after Chrome answered the tap, when the page draws slowly
+    let chip;
+    for (const t0 = Date.now(); !(chip = document.querySelector('.start-tip .st-acts .chip')) && Date.now() - t0 < 5000;) await wait(100);
+    if (!chip) { err(`no round-trip choices on the first tap (${p.points.length} points)`); return T.errs.splice(0); }
     chip.click();
     await wait(100);
     const R = await import(location.origin + '/js/roundtrip.js'), L = p.loop;
@@ -1989,20 +1999,33 @@ FIT_LIB = """(() => {
     return T.errs.splice(0);
   };
   // a loop that isn't picked, tapped on the map (the tap from Python)
-  T.loopSpot = () => {
+  T.loopSpot = async () => {
+    await T.calm();
     const L = p.loop;
     if (L.results.length < 3) return null;
     const k = L.on === 1 ? 2 : 1, s = spotOn(k);
     T.k = k; T.n = L.results.length; T.start = L.start.slice();
     if (!s || s.d < 24) { err(`no spot on loop ${L.results[k].letter} clear of the others (${s ? Math.round(s.d) : 'none'} px)`); return null; }
+    T.watchTaps(s);
     return s;
   };
+  // what a tap from Python met, for a FAIL line: where the spot was, the camera then and now, the clicks
+  const cam = () => { const c = map.getCenter(), q = map.getPadding(); return `${c.lng.toFixed(5)},${c.lat.toFixed(5)} z${map.getZoom().toFixed(2)} padding ${q.top}/${q.bottom}`; };
+  T.watchTaps = (s) => {
+    T.seen = { spot: `${Math.round(s.x)},${Math.round(s.y)}`, cam: cam(), clicks: [] };
+    if (T.onClick) map.off('click', T.onClick);
+    T.onClick = (e) => T.seen.clicks.push(`${Math.round(e.point.x)},${Math.round(e.point.y)} on loops ${map.queryRenderedFeatures(e.point, { layers: ['loops-line', 'loops-casing'] }).map((f) => f.properties.i).join('/') || 'none'}${Date.now() < p.noClickUntil ? ', clicks held off' : ''}${document.querySelector('.pt-menu') ? ', the spot menu open' : ''}`);
+    map.on('click', T.onClick);
+  };
+  const taps = () => `(the spot ${T.seen.spot} with the map at ${T.seen.cam}, now at ${cam()}; clicks: ${T.seen.clicks.join(', ') || 'none'})`;
   T.loopTapped = async () => {
     const L = p.loop, k = T.k;
+    // the tap's click can come seconds later on GitHub's runner (#268)
+    for (const t0 = Date.now(); L.on !== k && L.results.length === T.n && Date.now() - t0 < 5000;) await wait(100);
     await wait(300);
     if (L.results.length !== T.n) err(`tapping loop ${'ABC'[k]} on the map left ${L.results.length} of ${T.n} loops`);
     else {
-      if (L.on !== k) err(`tapping loop ${L.results[k].letter} on the map picked ${L.results[L.on] ? L.results[L.on].letter : L.on}`);
+      if (L.on !== k) err(`tapping loop ${L.results[k].letter} on the map picked ${L.results[L.on] ? L.results[L.on].letter : L.on} ${taps()}`);
       const cards = document.querySelectorAll('.loop-card:not(.loop-more)');
       if (!cards[k] || !cards[k].classList.contains('on')) err('the tapped loop’s card isn’t marked');
       await framed(`loop ${L.results[k].letter} tapped on the map`, loopCoords(k));
@@ -2022,12 +2045,13 @@ FIT_LIB = """(() => {
     return T.errs.splice(0);
   };
   // away from the loops: the start moves there and the loops go, as before
-  T.offSpot = () => { T.n = p.loop.results.length; const s = spotOff(); if (!s) err('no spot clear of the loops'); else T.off = map.unproject([s.x, s.y]); return s; };
+  T.offSpot = async () => { await T.calm(); T.n = p.loop.results.length; const s = spotOff(); if (!s) err('no spot clear of the loops'); else { T.off = map.unproject([s.x, s.y]); T.watchTaps(s); } return s; };
   T.offTapped = async () => {
     const L = p.loop;
+    for (const t0 = Date.now(); L.results.length && Date.now() - t0 < 5000;) await wait(100); // as in loopTapped
     await wait(300);
     if (T.off && (!L.start || Math.abs(L.start[0] - T.off.lng) > 1e-3 || Math.abs(L.start[1] - T.off.lat) > 1e-3)) err(`a tap away from the loops left the start at ${L.start}`);
-    if (L.results.length) err(`a tap away from the loops kept ${L.results.length} loops`);
+    if (L.results.length) err(`a tap away from the loops kept ${L.results.length} loops ${taps()}`);
     // new loops from there, and Use this loop with the sheet at full
     await p.generateLoops();
     if (!L.results.length) { err(`no loops the second time (${L.note})`); return T.errs.splice(0); }
@@ -2068,7 +2092,9 @@ FIT_SHARE = """(async () => {
 
 def fit_phone(chrome):
     ok = True
-    tap = lambda pg, s: pg.c.send('Input.synthesizeTapGesture', {'x': s['x'], 'y': s['y'], 'gestureSourceType': 'touch'}, pg.s)
+    # a finger's own touches, as in the other checks: on GitHub's runner a synthesized tap gesture
+    # reaches the page as touches but never as a click (#268)
+    tap = lambda pg, s: pg.tap(s['x'], s['y'])
     for w, h in [(390, 844), (360, 740)]:
         fails = []
         pg = chrome.page(w, h, True)
@@ -3341,6 +3367,9 @@ HEADING = """(async () => {
   if (off() > 2) errs.push(`the map did not follow a new fix: the dot is ${px(off())} from its place`);
   at(B, { speed: 0, heading: null });
   await settle();
+  // a phone's compass goes on reporting; this one last did before the waits above, which take
+  // seconds when the page draws slowly, and Polku drops a compass silent for 3 s
+  if (touch) await face(200);
   if (touch && (!H.current() || H.current().source !== 'compass')) errs.push('standing still again, the cone did not go back to the compass');
   if (!touch && !cone.hidden) errs.push('standing still on a desktop, the cone stays');
 
@@ -3384,12 +3413,19 @@ HEADING = """(async () => {
   await settle();
 
   // the planner open: the dot sits in the map it leaves free
+  // what moved the map, should following stop here (seen on GitHub's runner only, #268)
+  const moves = [], sf = L.setFollow;
+  const onEnd = (e) => moves.push(`moveend${e.polkuFollow ? ' (following)' : ''}${e.originalEvent ? ` ${e.originalEvent.type}` : ''} at ${map.getCenter().lng.toFixed(4)},${map.getCenter().lat.toFixed(4)} padding ${JSON.stringify(map.getPadding())}`);
+  map.on('moveend', onEnd);
+  L.setFollow = function (on, ...rest) { if (!on) moves.push(`setFollow(false) from ${(new Error().stack || '').split('\\n').slice(2, 5).map((l) => l.trim()).join(' < ')}`); return sf.call(this, on, ...rest); };
   polku.planner.setActive(true);
   await settle();
   at(A);
   await settle();
+  map.off('moveend', onEnd);
+  L.setFollow = sf;
   const pr = document.querySelector('#planner').getBoundingClientRect(), pa = map.project(L.shown);
-  if (L.state() !== 'follow' || off() > 2) errs.push(`with the planner open: ${L.state()}, the dot ${px(off())} from its place`);
+  if (L.state() !== 'follow' || off() > 2) errs.push(`with the planner open: ${L.state()}, the dot ${px(off())} from its place; ${moves.join('; ') || 'no moves'}`);
   else if (touch ? pa.y > pr.top - 20 : pa.x < pr.right + 20) errs.push('with the planner open, the dot is behind it');
   polku.planner.setActive(false);
   await settle();
@@ -3399,7 +3435,7 @@ HEADING = """(async () => {
     btn.click();
     await face(200);
     await settle();
-    if (L.state() !== 'ahead') errs.push(`the second tap: ${L.state()}, not facing ahead`);
+    if (L.state() !== 'ahead') errs.push(`the second tap: ${L.state()}, not facing ahead (the compass ${C.mode}, its last reading ${H.compass ? Date.now() - H.compass.t : 'none'} ms ago, the last toast: ${document.querySelector('#toast').textContent || 'none'})`);
     if (near(map.getBearing(), 200) > 3) errs.push(`facing ahead, the map's bearing is ${map.getBearing().toFixed(0)}°, not 200°`);
     if (off() > 2) errs.push(`facing ahead, the dot is ${px(off())} from its place`);
     await face(150);
@@ -5123,9 +5159,11 @@ SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))
 
 def run(chrome, steps):
     """Runs (name, function, args) steps. A step that raises fails, and the rest still run,
-    in a fresh Chrome when the browser stopped answering (#263). Returns (ok, chrome)."""
+    in a fresh Chrome when the browser stopped answering (#263). Returns (ok, chrome).
+    With POLKU_TIMES set, each step's time follows it ("time <name> <s> s", for CI's summary)."""
     ok = True
     for name, fn, args in steps:
+        t = time.time()
         try:
             ok = fn(chrome, *args) and ok
         except Exception as e:
@@ -5136,6 +5174,8 @@ def run(chrome, steps):
                 print('     - Chrome stopped answering: the next checks run in a fresh one', flush=True)
                 chrome.close()
                 chrome = Chrome()
+        if os.environ.get('POLKU_TIMES'):
+            print(f'time {name} {time.time() - t:.0f} s', flush=True)
     return ok, chrome
 
 
