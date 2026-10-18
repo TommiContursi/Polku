@@ -1,333 +1,246 @@
 # Changelog
 
-What's new in Polku, newest first. Every change ships to [polku.si](https://polku.si) when its pull request is merged. What's planned is on GitHub, in the [issues](https://github.com/TommiContursi/Polku/issues) and [milestones](https://github.com/TommiContursi/Polku/milestones); the order of the phases is in [docs/ROADMAP.md](docs/ROADMAP.md).
+What's new in [Polku](https://polku.si), newest first. Each change reaches polku.si as soon as it's merged. What's planned is in the [issues](https://github.com/TommiContursi/Polku/issues) and the [roadmap](docs/ROADMAP.md).
 
 ## 2026-10-17
 
 ### A quick layer drawer ([#123](https://github.com/TommiContursi/Polku/issues/123))
-- **Layers (and L) opens a quick drawer** instead of the long panel: the base maps as pictures, and five tiles for your sport. A tap changes the map at once, and the drawer stays open. MTB's tiles are trail colours, trail details, official routes, 3D terrain and rain radar; paddling's are nautical marks, depths, ships, landing sites and wind; each sport has its own.
-- **A tile turns the same switch as the full panel,** so what you choose is still kept per sport. Trail colours come back as you last had them, and Depths turns Traficom's three depth layers together ("not for navigation").
-- **A tile with › has more settings,** one step in: the kind of trail colours, their strength and numbers, opacity, the depth layers one by one, the timeline. **‹** comes back.
-- **The tiles say what's missing:** "Zoom in to see" while a layer doesn't show at this zoom, "No data now" while its source isn't answering.
-- **Your own tiles:** **Edit** swaps any of the five for another layer, from every switch in the full panel, under its groups. **Reset** puts back the sport's own five.
-- **More** opens the full panel as before, and says how many other layers are on, so nothing on is hidden.
-- **On a phone it's a sheet** over the map and the planner: swipe it down or tap the map to close it (that tap adds no point to your route), swipe up for every layer. On short phones it's tighter, so more of the map stays in view. On a desktop it opens beside the Layers button and stays while you use the map.
-- **With a keyboard:** L opens it on the map you have, the arrow keys choose another, and Esc steps back, then closes.
-- **Sharper map pictures,** and Aerial has its own (Esri's view of the same spot).
 
-### The planner follows a swipe ([#96](https://github.com/TommiContursi/Polku/issues/96))
-- **Swipe the planner on a phone from anywhere at its top:** the handle, the summary and its buttons, the profile's top row, the tabs, or the list once it's scrolled to the top. A tap on a button still presses it.
-- **It follows your finger and settles where a flick would come to rest,** at the nearest size; a quick flick moves it at least one size. Past its smallest and largest size it gives a little, and you can catch it while it's still moving. The quick layer drawer moves the same way.
-- **The map's buttons move once,** when the sheet comes to rest, not all the way with it. With reduced motion on, the sheet still follows your finger, and changes size without sliding.
+**Layers**, or the **L** key, now opens a small drawer instead of the long layers panel. It shows the base maps as pictures and five layers chosen for your sport, so you can change the map while still seeing it.
 
-### Read what’s new inside Polku
-- **Settings → About Polku → What’s new** opens the changelog over the map. Scroll the dated changes and follow their links, then close it to return to your route.
-- **Release notes load when you open the window.** Their latest date is shown, and a saved copy may appear when the connection is slow or unavailable. If nothing can load, Retry and a link to the full changelog stay available.
+- **One tap turns a layer on or off,** and the drawer stays open. MTB gets trail colours, trail details, official routes, 3D terrain and rain radar; paddling gets nautical marks, depths (not for navigation), ships, landing sites and wind. Each sport has its own five.
+- **Settings are one step away:** a tile marked › opens its options, such as the kind of trail colours, their opacity or the individual depth layers.
+- **Layers you can't see say why:** "Zoom in to see" when a layer doesn't show at this zoom, and "No data now" when its source isn't answering.
+- **Make it yours:** **Edit** swaps any of the five for another layer, and **Reset** brings back your sport's own. Your layers are still kept separately for each sport.
+- **More** opens the full layers panel and tells you how many other layers are on.
+- **On a phone** the drawer is a sheet: swipe it down or tap the map to close it (that tap doesn't add a point), or swipe it up for every layer. **On a desktop** it opens beside the Layers button and stays open while you use the map.
+- **With a keyboard,** the arrow keys choose a base map, and Esc steps back, then closes.
+
+### The planner follows your swipe ([#96](https://github.com/TommiContursi/Polku/issues/96))
+
+On a phone, you can drag the planner from anywhere along its top: the handle, the summary, the profile's top row, the tabs, or the list once it's scrolled to the top. It follows your finger, and the buttons there still work with a tap.
+
+- **Let go and it settles** at the nearest size, where a flick would carry it. A quick flick always moves it at least one size, and you can catch it while it's still moving.
+- **The map's buttons move once,** when the sheet comes to rest, instead of sliding along with it.
+- **With reduced motion on,** the sheet still follows your finger but changes size without sliding.
+- **The quick layer drawer** moves the same way.
+
+### What's new, inside Polku ([#221](https://github.com/TommiContursi/Polku/issues/221))
+
+**Settings → About Polku → What's new** opens these notes over the map, so you can read them without leaving your route.
+
+- **The notes load when you open them,** with their latest date at the top. When you're offline or the connection is slow, Polku may show the copy it saved last time, and says so.
+- **If nothing loads,** Retry and a link to the full changelog on GitHub are there.
 
 ## 2026-10-16
 
-### Fixed: dragging a route's midpoint adds just one point
-- **Dragging the middle handle now adds one via point,** which follows the pointer. The line underneath no longer starts a second edit from the same press, so it cannot leave an extra point and bend behind. One Undo puts the route back. This applies to mouse and touch.
+### Other ways to go ([#125](https://github.com/TommiContursi/Polku/pull/125), [#212](https://github.com/TommiContursi/Polku/pull/212))
 
-### See where a route category occurs
-- **Hover a coloured bar segment or its legend row** to highlight all matching stretches on the map, including disconnected ones. Moving away restores the normal route without changing your chosen colours.
-- **Keyboard previews:** focus a breakdown button, use Left/Right (or Home/End) to explore its categories, and Escape to clear. Enter still selects the colours for the route and profile.
+When you add a point and pause, Polku may suggest up to two other ways to reach it. They're drawn in blue under your route, with labels that compare them: "This way · 61 % trails" on yours, and "Other way · +40 m · 22 % trails" on another. The percentage is how much of that part is on paths and tracks.
 
-### Other ways: sooner, side by side, and easy to compare ([#212](https://github.com/TommiContursi/Polku/pull/212))
-- **Other ways come sooner:** a moment after the new part of the route is in, without waiting for the climbing to be worked out. When you're taking your time between points, both come together instead of a few seconds apart. With your own routing server (Settings), both come after half a second.
-- **They look like the route:** as wide, with its white edge and glow, in blue, under your route. Blue isn't a trail colour, so they stand out on the trail map. The one under your mouse lights up. The way you had stays grey after you take another.
-- **Your route gets a label too,** in the same form, so you can compare: "This way · 61 % trails" beside "Other way · +40 m · 22 % trails". The percentage is how much of that part is on paths and tracks. The labels always show; distance marks step aside for them while you choose.
+- **Tap one to take it.** The way you had stays in grey until you add the next point, so you can switch back with one tap.
+- **They come for legs of 300 m or more,** and only when the free routing service has room to spare, since each other way is one more request. With your own routing server (Settings), they always come.
+- **Want them anyway?** Tap any part of the route and choose **Other ways**.
+- **Your choice is kept** through Undo, a reload, Save offline and share links. Changing that part's sport, style or points starts again from the first way.
+- **Short cuts count too:** where Heads-up has a short cut through a way marked private, it's offered as one of the other ways.
 
-### The route glows, and chevrons move along it the way it goes ([#210](https://github.com/TommiContursi/Polku/pull/210))
-- **A soft glow round the route** makes it stand out on a busy map, and the part under your mouse glows brighter.
-- **White chevrons drift slowly along the route, the way it goes,** so you can see its direction at a glance. They take the place of the still arrows while they move.
-- **Easy on the battery:** they move only while the route is on screen and the page is in view, and they rest when you leave the map alone for a while (the still arrows come back); a touch of the map starts them again. With your system's reduced motion on, or with 3D terrain, they don't move. **Settings → Display → Moving arrows on the route** turns them off.
+### A route that's easier to follow ([#210](https://github.com/TommiContursi/Polku/pull/210))
 
-### Other ways for a new leg ([#125](https://github.com/TommiContursi/Polku/pull/125))
-- **When you add a point and stop for a moment, Polku may show another way to get there,** and a second one a few seconds later if you're still looking. They're drawn as see-through ghosts with a soft glow (orange, then teal), each labelled with what it is and how it compares: "Other way · +600 m · all on trails". Tap one to take it; otherwise the route stays as it was. A way that leaves the route for less than 100 m in all isn't shown.
-- **The way you had stays as a grey ghost** after you take another ("Way before"), so you can go back with one tap. It goes when you add the next point.
-- **Not while you're adding points, and not on short legs.** The first comes about 1.5 seconds after you've stopped, for a new leg of 300 m or more. The routing service is free and paced (about 5 routes in 10 seconds, 12 a minute), and each other way is one more route, so they come only when that leaves room for your next points; the second only when there's plenty. With your own routing server (Settings) the pacing never stops them.
-- **Want them anyway?** Tap any part of the route and pick **Other ways** in its menu: up to two, whenever you like.
-- **The short cut through a way marked private** is one of them where Heads-up has one for that part (purple), and taking it works like its Short cut button.
-- **The way you took stays,** through Undo, a reload, Save offline and share links (the link says which; older links take the first way). Changing that part's sport, style or points goes back to the first way of the new route.
-- **It waits for the routing service** rather than letting the stand-in router take it, since the stand-in can't give the same other way.
+The route has a soft glow that makes it stand out on a busy map, and white chevrons drift along it in the direction you're going.
 
-### Route colour breakdowns, grouped and easier to scan
-- **Terrain, Ground and Weather have their own groups,** side by side when the panel is wide and stacked on phones. Groups without data stay out of the way.
-- **Each breakdown groups its title and bar into one colour button,** and colours the route on the map as well as the profile. Bars use the full row, and category distances line up below. Fold Terrain, Ground or Weather from the group header.
+- **Easy on the battery:** the chevrons move only while the route is on screen and the page is in view. When you leave the map alone for a while they rest, and a touch starts them again.
+- **They stay still** with reduced motion or 3D terrain, and **Settings → Display → Moving arrows on the route** turns them off.
 
-### A clear departure picker in Go
-- **Go → Time starts with a full-size Depart picker,** above the time estimate and arrival schedule.
-- **Tap the summary estimate to open Go at that picker.** It stays in step with the start waypoint and weather timeline, and keeps focus when the forecast updates.
+### Every route colour in one place
 
-### Clearer route colours and times at distance marks
-- **Use colours** on a breakdown's title makes the action visible. Tap the title or its colour bar to select it; the current one says **Selected**.
-- **Distance marks show arrival and elapsed time by default,** including hours, minutes and seconds to reach the mark. Check → On the map has separate switches for arrival and elapsed time, and keeps saved choices.
-- **Tap the summary's time estimate to set departure:** it opens Route → Waypoints at the start point's departure control. Arrival labels move immediately while the new forecast loads.
+**Check → On the route** now shows every breakdown your route has data for (gradient, difficulty, surface, way type, trail details and weather), grouped under Terrain, Ground and Weather. Each has its own coloured bar, legend and distances, and even short stretches count.
 
-### Every route colour breakdown in Check
-- **Check → On the route shows each available breakdown together:** gradient, difficulty, surface, way type, trail details and weather, where they apply and have data. Each has its own bar, legend and distances.
-- **Tap a breakdown's title to make it Colour by.** The current choice is marked. Fold individual bars with their arrow; Polku remembers which ones you folded.
-- **Short stretches stay in the totals and legends,** including categories under 0.3 % of the route.
+- **Tap a breakdown** to colour both the route on the map and the profile with it. The one in use says **Selected**.
+- **Point at a colour** in a bar or its legend to light up every stretch of it on the map. With a keyboard, focus a breakdown, step through its colours with the arrow keys, and press Esc to clear.
+- **Fold a group** from its header. Polku remembers which ones you folded.
 
-### Short cuts through ways marked private, when you may go there ([#124](https://github.com/TommiContursi/Polku/pull/124))
-- **Route style has a new setting, Ways marked private: Keep off or Short cuts ok,** in every land sport. Keep off is how routes always were. With Short cuts ok, a route may go through a way marked private in OpenStreetMap where it saves a real distance (about 40 % of the private stretch's length); ways marked no access stay closed.
-- **Only where you may go.** Private usually means closed (factory and military sites, house yards, roads closed by a sign), but in Finland private roads and apartment-block yards are open on foot and by bike. So it's never on by itself: no preset sets it, round trips keep off, and on a leg that takes one Heads-up says "you allowed short cuts on this leg".
-- **From Heads-up, one tap:** "Goes round a way marked private or closed" has a **Short cut** button. It sets Short cuts ok for that leg only and puts back the points the router had moved off the way, so the leg can go through. Undo puts it all back.
-- **It travels with the route:** in share links (an older link keeps off), saved routes and Undo. For a whole route, set it in Route style; for one leg, in the leg's own style.
-- **How:** Polku asks the routing service with its own copy of the sport's profile, uploaded once per visit. If the service won't take it, the leg keeps off and a note says so.
+### Departure and arrival times
 
-### Fixed: a route that goes round a way marked private says so ([#117](https://github.com/TommiContursi/Polku/pull/117))
-- **Ways marked private or closed for your sport have purple dots beside them** on the map, from zoom 14: `access=private` or `no` without a yes for your sport, and on foot `foot=no`. Routes keep off them, so now you can see why a route goes round. The map key has them, and hover and the way's card say "marked private or no access" (the map's tiles can't tell the two apart).
-- **Heads-up says when a leg goes round one,** and how much a short cut through it would save: "Goes round a way marked private or closed · a short cut through it would save about 370 m". A tap on the row draws the short cut on the map. Polku works this out from the map it already has, with no extra calls.
-- **A point you put on such a way, that the router moved off it, says so too:** "Start moved 53 m off a way marked private or closed", or in the short cut's row when it's part of it. Polku remembers the spot you picked, through Undo, a reload and Save offline.
-- **It says what the map says, not what the law is.** Private usually means closed (factory and military sites, house yards, roads closed by a sign), but in Finland private roads and apartment-block yards are open on foot and by bike, so the rows and the card offer **Tagged wrong? Leave a note on OpenStreetMap**.
+- **Go → Time starts with a full-size Depart picker,** above the time estimate and the arrival schedule. Tapping the time estimate in the summary takes you there.
+- **Distance marks show the arrival time and the time elapsed,** with a switch for each under **Check → On the map**. They move as soon as you change the departure.
 
-### Fixed: Heads-up says when the route takes a way marked private or closed ([#116](https://github.com/TommiContursi/Polku/pull/116))
-- **On foot, a way marked `foot=private` or `foot=no` gets a Heads-up row.** Before, a Run or Hike route could take 120 m of a delivery road marked foot=private without a word, because the routing service counts it as open when bikes may use it.
-- **The rows say what OpenStreetMap says, not what the law is:** "Marked private in OpenStreetMap", with the tag and what private usually means (factory and military sites, house yards, roads closed by a sign). In Finland private roads and apartment-block yards are open on foot and by bike, so a way there may be tagged wrong: the row's ⋯ has **Tagged wrong? Leave a note on OpenStreetMap**.
-- **The sport's own tag wins:** a footway marked `access=no` but `foot=yes` is open to walkers, and no longer gets a row on foot. On a bike it's `bicycle=yes` that opens it.
-- **When Valhalla stands in for BRouter,** it may walk through ways marked private where BRouter goes round, and its answer doesn't say which. Its row in Heads-up now says so, and the stretches along a way the map marks private or no access get a row of their own, where the map has loaded. Use BRouter routes round them.
-- **If you'd hidden "Private or no access",** the new rows stay hidden.
+### Ways marked private or closed ([#116](https://github.com/TommiContursi/Polku/pull/116), [#117](https://github.com/TommiContursi/Polku/pull/117), [#124](https://github.com/TommiContursi/Polku/pull/124))
 
-### Which way you face, and Follow me (Phase 23a, [#111](https://github.com/TommiContursi/Polku/pull/111))
-- **The location dot shows which way you face.** A cone points where the top of your phone points, from its compass. While you move faster than a slow walk (about 1 m/s), it follows the way the GPS says you're going instead, which holds up with the phone in a pocket. The cone is narrow when it comes from the GPS and wider from the compass. On an iPhone, Polku asks for the compass when you tap Locate.
-- **Follow me.** A tap on Locate shows where you are and keeps the map on you as you move, north up. On a phone the next tap turns the map to face the way you face, and the one after that turns your location off. Zooming, pinching or turning the map keeps following. A pan, or the map moving somewhere else (a search, showing the route), stops it, and Locate turns into **Follow**: one tap brings you back. With the planner open, you stay in the part of the map it leaves free.
-- **The dot turns grey** when no new position has come for a minute, and Locate says so.
-- **Easier on the battery.** While the page is hidden, Polku stops listening to the GPS and the compass, and starts again when you're back.
-- **Where you are stays on your phone.** Polku keeps your position only in the open page: it isn't saved and isn't sent anywhere. While your location is on, the map's view isn't remembered for your next visit. Share links no longer carry the map's view, and search ("nearer places first") and the ships layer send the map's middle only to about a kilometre.
+Polku now shows where OpenStreetMap marks a way private or closed for your sport, tells you when your route takes or avoids one, and can take short cuts through them when you choose.
 
-### Fixed: on a phone, the map frames your route above the planner ([#110](https://github.com/TommiContursi/Polku/pull/110))
-- **With the planner at full height,** Show the whole route, Use this loop, a new round trip and a tap on a climb or a Heads-up did nothing on the map. Now the planner comes down to half and the map frames the route above it.
-- **A GPX or KML import** lands above the planner when it's open (beside it on desktop), and Analyse & edit frames the track above the planner it opens.
-- **A share link** frames the whole routed line once its legs are in, not only its points, unless you've moved the map or changed the route by then.
-- **A round trip from your first tap** frames the loops' area above the planner as it rises, not above the smaller planner it was a moment before.
-- **Tap a loop on the map to pick it.** The other loops and the start stay where they are, its card is marked, and the map frames it. Before, the tap threw all the loops away and moved the start there. Picking a loop by its card frames it too, and a tap away from the loops still moves the start.
+- **On the map,** such ways have purple dots beside them from zoom 14, so you can see why a route goes round.
+- **Heads-up tells you** when a route goes through such a way, or goes round one and how much a short cut would save, and when the router moved one of your points off one. Tap the row to see the short cut on the map.
+- **Short cuts ok:** the new **Ways marked private** setting in Route style lets a route through such ways where that saves real distance. Ways marked no access stay closed. It's never on unless you choose it: no preset turns it on, and round trips always keep off.
+- **One tap from Heads-up:** **Short cut** allows it for that leg only, and Undo puts it back. The setting is kept in share links and saved routes.
+- **A tag isn't the law.** Private usually means closed, such as factory and military sites, house yards and roads closed by a sign, but in Finland private roads and apartment-block yards are open on foot and by bike. Check the signs where you are. If a tag looks wrong, the row's ⋯ menu has **Tagged wrong? Leave a note on OpenStreetMap**.
+- **When Valhalla stands in for BRouter,** it may go through ways marked private, and Heads-up says so.
+
+### Locate follows you and shows your heading ([#111](https://github.com/TommiContursi/Polku/pull/111))
+
+The location dot now has a cone showing which way you're facing: from the compass while you stand still, and from your GPS track once you're moving, which works with the phone in a pocket. On an iPhone, Polku asks for the compass when you tap Locate.
+
+- **Locate keeps the map on you** as you move, north up. On a phone, a second tap turns the map to face your way, and a third turns your location off.
+- **Panning stops following,** and Locate becomes **Follow** to bring you back. Zooming and turning the map don't stop it. With the planner open, you stay in the part of the map it leaves free.
+- **The dot turns grey** when no new position has come for a minute.
+- **Kinder to the battery:** the GPS and compass stop while the page is hidden.
+- **Your location stays on your phone.** It isn't saved or sent anywhere, and the map view isn't remembered while your location is on. Share links no longer include the map view, and search and the ships layer send only a rough map centre, to about a kilometre.
+
+### Routes fit above the planner on phones ([#110](https://github.com/TommiContursi/Polku/pull/110))
+
+With the planner open on a phone, the map now frames your route in the space above it. Before, **Show the whole route**, a new round trip or a tap on a climb did nothing while the planner was at full height.
+
+- **Imports and share links** frame the whole route above the planner, or beside it on a desktop.
+- **Tap a loop on the map to pick it.** Before, the tap threw away the other loops and moved the start.
+
+### Fixed: dragging a leg's middle handle
+
+Dragging the handle in the middle of a leg now adds exactly one point. Before, it could leave an extra point and a bend behind. One Undo puts the route back.
 
 ## 2026-10-15
 
-### Fixed: the uphill colours stayed blank after the terrain came back ([#101](https://github.com/TommiContursi/Polku/pull/101))
-- **When the terrain didn't load,** the trails on the map stayed without their Uphill colours even after it came back, until you reloaded the page. Now they're coloured on your next move of the map once the terrain is in, the climbs tagged in OpenStreetMap too.
-- **Trails coloured with the terrain stay as they are,** so panning around asks for nothing again.
+### Winter on the map and the route ([#52](https://github.com/TommiContursi/Polku/pull/52), [#53](https://github.com/TommiContursi/Polku/pull/53), [#56](https://github.com/TommiContursi/Polku/pull/56))
 
-### Fixed: a route over hills looked flat when the terrain didn't load ([#94](https://github.com/TommiContursi/Polku/pull/94))
-- **When the terrain doesn't load** (no network, or the terrain server failing), the route's time is worked out by the distance, as if flat, and Polku says so. The summary says "↑? ↓? m · no terrain" instead of "↑0 ↓0 m". The profile says the terrain didn't load, and the gradient on the route shows "No terrain" rather than "Flat". No more "NaN min" or "Infinity m", and Heads-up no longer goes blank.
-- **When only part of it loads,** the climbing and the time come from what did, with a straight line across the gap. In the profile the gap is grey and dashed, and the summary says "part estimated".
-- **Heads-up says what's missing** ("Terrain didn't load", "Terrain missing for 1.2 km") and when Polku tries again, with a Retry button.
-- **Polku tries again on its own,** after 20 seconds and then less often, and at once when your phone is back online. The route updates when the terrain comes in.
-- **A GPX export** has no height where the terrain is missing, rather than a guess.
+Polku now shows snow and winter trails on the map, and allows for them on your route. **Winter** switches on by itself where there's 5 cm of snow or more, or you can set it to **Auto**, **On** or **Off** in the layers panel. The sport pill shows ❄ while it's on.
 
-### Fixed: share links left out the places to avoid ([#92](https://github.com/TommiContursi/Polku/pull/92))
-- **A share link carries your places to avoid,** so whoever opens it sees the red circles and is routed around them too. Before, the link left them out, and their route could go right through a place you meant to avoid.
-- **Older links open as before.** A link whose places to avoid can't be read still opens, and says that the route may go through them.
+- **On the map:** snow depth (forecast and measured, also on the timeline), ploughed and unploughed paths, ways closed in winter, ski tracks, and LIPAS's ski tracks, skating routes on natural ice and snowmobile routes.
+- **A Winter trail colour** shows how soon trails open after snow, at any time of year, so you can look ahead. Trail cards say what a trail is like in winter, where that's mapped.
+- **Snow in the time:** where the forecast has snow on your route, the estimate allows for it, a little on ploughed ways and more on trails.
+- **Winter Heads-up:** snow on the way or falling while you're out, slippery rain or sleet around 0 °C, how cold it feels at your speed (frostbite from about −27 °C), winter closures, unploughed ways and stretches beside a ski track. **In the dark** now says how much of the route is lit.
+- **Ski tracks and other winter routes aren't for riding on.** Their cards say so, with a link to the operator's page for the grooming status.
+- **Sea ice charts** from FMI for paddlers and swimmers. **Polku can't see the ice itself or tell you whether it's safe**; Heads-up reminds paddlers that it's the ice season.
 
-### Fixed: Back to start ([#64](https://github.com/TommiContursi/Polku/pull/64))
-- **Back to start adds the return leg again**, from the waypoint list, the finish point's menu and the wide planner toolbar. Undo removes that leg and restores your route. The button stays off once you are back at the start.
+### The planner in three tabs ([#60](https://github.com/TommiContursi/Polku/pull/60), [#61](https://github.com/TommiContursi/Polku/pull/61))
 
-### Fixed: a paddling route stayed without OpenStreetMap's rocks after they came in ([#81](https://github.com/TommiContursi/Polku/pull/81))
-- **When OpenStreetMap's rocks and shoals come late,** your paddling route is routed again with them once they're in, and "Not checked on the water" goes. Before, the route stayed as it was, made without them, until you moved a point.
-- **A leg still being worked out when they came** is routed again with them too.
-- **Until they come,** Heads-up still says that they weren't checked.
+The planner is now split into **Route** for drawing (waypoints, legs, round trips, style and speeds), **Check** for what's on the way (Heads-up, climbs, the ground and what shows on the map), and **Go** for setting off (the time, departure and weather, GPX, share links and offline). Check shows how many Heads-up warnings there are, and Go when you'd arrive.
 
-### Fixed: routing calls asked for together went out all at once ([#79](https://github.com/TommiContursi/Polku/pull/79))
-- **Routing calls wait their turn.** Calls asked for at the same moment, such as a round trip's loops or several legs at once, all went to brouter.de together, even past Polku's own limit of 5 calls in 10 seconds, and brouter.de answers that by blocking your connection for a while. Now they go out one after another within the limit, in the order they were asked for. Valhalla gets at most one call a second, as its terms ask.
-- **A route that would wait more than a few seconds for its turn** is routed by Valhalla instead, as when brouter.de pauses. A drag's live preview pauses while calls are waiting.
-- **Settings → Data sources counts every call that goes out,** including the second try after a dropped connection. That second try now waits for its turn too.
+- **The profile stays in view** as you switch tabs, and you can make it smaller or taller. It marks your route's points, and climbs as ↑1, ↑2 and so on.
+- **Point at a waypoint or leg** in the list to light it up on the map and in the profile.
+- **Start how you like:** with no route yet, the planner offers Draw it, Round trip, a marked route or a file. After your first click, a small card offers a loop from that spot.
+- **On a desktop** the planner opens on the left, and a button at the end of the tabs moves it to the bottom and back.
+- **Export GPX, Copy share link and Save offline** are in Go and in the ⋯ menu.
 
-### After the three tabs ([#61](https://github.com/TommiContursi/Polku/pull/61))
-- **The planner opens on the left on desktop.** A button at the end of its tabs moves it to the bottom and back (it's also in ⋯ and Settings).
-- **Export GPX, Copy share link and Save offline are in ⋯ again,** as well as in Go.
-- **The profile shows your route's points** where they are along it: the start, the numbered via points, the finish. On a round route the finish is at the end, where it belongs. The climbs are marked "↑1", "↑2"… so they're not mistaken for points.
+### Missing terrain no longer looks flat ([#94](https://github.com/TommiContursi/Polku/pull/94), [#101](https://github.com/TommiContursi/Polku/pull/101))
 
-### The route planner in three tabs ([#60](https://github.com/TommiContursi/Polku/pull/60))
-- **Route, Check and Go:**
-  - **Route** is for drawing: the waypoints and legs, a round trip, and **How you go** (the route style and your speeds together);
-  - **Check** shows what's on the way: heads-up, climbs, the ground in kilometres, and what the route shows on the map;
-  - **Go** is for setting off: **the time first** (how long and when you'll be there), the departure and weather, and taking the route along (GPX, a share link, offline).
+When the terrain doesn't load, Polku now says so instead of showing a hilly route as flat. The summary shows "↑? ↓? m · no terrain", and the time is worked out from the distance alone.
 
-  Check shows how many heads-up there are, and Go when you'd arrive.
-- **The profile stays in sight** under the summary, with its colours and On map. A button makes it smaller or taller.
-- **The tools that hid in ⋯ are out in the open:** Round trip, Reverse and Back to start under the waypoints; distance marks and times in Check; export, share and save offline in Go.
-- **Nothing else moved:** the top of the planner (summary, routing modes, the route's colours, sport, Round trip, Style, undo) is as it was.
-- **Start with a round trip:** with no route yet, the planner offers Draw it, Round trip, a marked route, or a file. After your first click, a small card offers a loop from that spot in three lengths, and the next click goes on drawing as before.
-- **The leg you point at lights up:** a waypoint or a leg in the list glows on the map and is marked in the profile. An open leg stays lit.
+- **Terrain missing in places** shows as a grey dashed gap in the profile, and the summary says "part estimated".
+- **Heads-up says what's missing,** with a Retry button. Polku also tries again on its own, and at once when you're back online.
+- **GPX exports** leave out heights that aren't known, rather than guess them.
+- **Uphill trail colours** come back on the map as soon as the terrain does, without a reload.
 
-### Fixed: the map's credits took space on phones ([#58](https://github.com/TommiContursi/Polku/pull/58))
-- **The credits stay folded behind ⓘ on a phone** until you tap it. They used to open by themselves when the map's sources came in late.
-- **Narrowing a window** to phone width folds them too.
+### Routing that holds up better ([#79](https://github.com/TommiContursi/Polku/pull/79), [#81](https://github.com/TommiContursi/Polku/pull/81))
 
-### Bug sweep ([#57](https://github.com/TommiContursi/Polku/pull/57))
-- **Heads-up is the same in every sport.** Fallen trees and other obstacles mapped in OpenStreetMap used to come only with the map's Trail details layer on, so a gravel ride past one heard nothing. Now every route on land gets them.
-- **Hide what you don't need:** the ⋯ on a Heads-up row hides that kind ("Fallen trees and logs") from now on. Hidden kinds on the route are listed at the end, to bring back with a tap.
-- **Wrong in the map?** The same ⋯ on anything from OpenStreetMap opens **Fix the map**, or **Leave a note** for OpenStreetMap's mappers to check, right at the spot.
-- **The route menu (⋯) stays inside the window,** opening upwards or scrolling when the window is short. Before, its last items could fall off the bottom.
-- **A saved copy says so:** when the server doesn't answer, Polku runs from the copy saved on your device, and now a banner says it may be older, with Reload.
-- **The planner sticks to your route's sport** when you change the map's sport: its time, speeds, style and colours stay the route's.
-- **Short routes** say "at 40 m" in Heads-up instead of "at km 0.0".
-- **Rain amounts at "now"** are the radar's, matching what the map draws; the timeline says "FMI radar" in Finland straight away.
-- **On phones:** the summary keeps clear of Done on small screens, the map's credits open as a readable card, and the ⓘ is no longer hidden under the timeline.
-- **Map cards that grow after opening** (a LIPAS route's, with Ride) move back into view instead of sliding under the top bar.
+- **Routing requests wait their turn** instead of going out all at once, which could get your connection blocked by brouter.de for a while. If a route would wait more than a few seconds, Valhalla routes it instead.
+- **Settings → Data sources** counts every request, retries included.
+- **Paddling routes are routed again** when OpenStreetMap's rocks and shoals arrive late. Until then, Heads-up says the route wasn't checked for them.
 
-### Winter on the route ([#56](https://github.com/TommiContursi/Polku/pull/56))
-- **Snow in the time:** where the forecast has snow on your route, the time allows for it: little on ploughed ways and streets, more on trails, most where a trail is slow to open after snow. Time & speed shows how much the snow adds.
-- **Winter Heads-up:**
-  - the snow on the way;
-  - snow falling while you're out;
-  - **slippery** rain or sleet around 0 °C;
-  - **the cold as it feels at your speed** (frostbite from about −27 °C);
-  - ways closed in winter (with Avoid), stretches beside a ski track, unploughed ways, and trails slow to open after snow;
-  - for paddlers, **the ice season** (Polku can't see the ice).
-- **In the dark** now says how much of it is lit.
+### Your route keeps its sports ([#54](https://github.com/TommiContursi/Polku/pull/54), [#64](https://github.com/TommiContursi/Polku/pull/64))
 
-### Fixed: changing the sport changed your route ([#54](https://github.com/TommiContursi/Polku/pull/54))
-- **Picking another sport in the top menu routed a drawn route again in that sport,** leg by leg, without a word. Now the route keeps its sports, and a note offers **Route it as …** if that's what you want.
-- **The planner's own sport picker** shows the route's sport, changes its main sport only (a paddle leg in a ride stays a paddle), and **Undo** brings the route back.
-- **When the planner jumps to a section** (the Weather button while planning, Speed, Style…), that section lights up for a moment, so you see where to look.
+Changing the sport in the top menu no longer quietly routes your drawn route again. The route keeps its sports, and a note offers **Route it as …** if you do want that.
 
-### Winter as a trail colour ([#53](https://github.com/TommiContursi/Polku/pull/53))
-- **Trails & difficulty has a Winter choice** beside Difficulty, Uphill and Both. It colours the trails by how soon they open after snow, with ploughed paths, no access in winter and ski tracks, at any time of year, so you can look before the snow comes.
-- **A trail's card and its hover say what it's like in winter,** where that's mapped. A ski track out on a lake or a field has a card of its own, and LIPAS's ski tracks, skating and snowmobile routes say what they're for.
+- **The planner's sport picker** changes the route's main sport only, so a paddling leg in a ride stays a paddle, and Undo brings the route back.
+- **Back to start** works again from the waypoint list, the finish point's menu and the toolbar, and Undo removes the return leg.
+- **When the planner jumps to a section,** such as Weather, Speed or Style, that section lights up for a moment.
 
-### Winter on the map ([#52](https://github.com/TommiContursi/Polku/pull/52))
-- **Winter switches on by itself** where there's snow (5 cm or more at FMI's nearest station, or in the forecast), or set it yourself: **Auto / On / Off** in the new Winter group of the layers panel. The sport pill shows ❄ while it's winter.
-- **Snow depth as a layer:** a wash of the snow on the ground (the forecast), with what FMI's stations measured on top. On the timeline as **Snow**.
-- **Winter ways from OpenStreetMap,** drawn like Trailmap's winter map: how soon a trail opens after snow, ploughed and unploughed paths, no access in winter (red and white), ski tracks as a double line, ways there only in winter. The summer difficulty colours fade meanwhile.
-- **Ski tracks, skating routes on natural ice and snowmobile routes** from LIPAS. Their cards say they're not to ride, with the operator's page for the grooming status.
-- **Sea ice for paddlers and swimmers:** FMI's daily ice charts over the sea.
+### Heads-up, share links and smaller fixes ([#57](https://github.com/TommiContursi/Polku/pull/57), [#58](https://github.com/TommiContursi/Polku/pull/58), [#92](https://github.com/TommiContursi/Polku/pull/92))
+
+- **Heads-up is the same in every sport:** fallen trees and other obstacles mapped in OpenStreetMap now show on every land route, not only with the Trail details layer on.
+- **Hide what you don't need:** a Heads-up row's ⋯ hides that kind of warning from then on. Hidden kinds are listed at the end, to bring back with a tap.
+- **Wrong on the map?** The same ⋯ opens **Fix the map**, or **Leave a note** for OpenStreetMap's mappers.
+- **Share links carry your places to avoid,** so whoever opens one is routed round them too. Older links still open, and say so if their places to avoid can't be read.
+- **A saved copy says so:** when the server doesn't answer and Polku runs from the copy on your device, a banner says it may be out of date, with Reload.
+- **On phones,** the map's credits stay folded behind ⓘ until you tap it, and the summary and ⓘ no longer clash with other controls.
+- **Also fixed:** short routes say "at 40 m" instead of "at km 0.0", rain "now" matches the radar on the map, the route menu stays inside the window, and map cards that grow move back into view.
 
 ## 2026-10-14
 
-### Round trips for paddling and swimming, and More loops ([#50](https://github.com/TommiContursi/Polku/pull/50))
-- **Round trips on the water:** choose a start (a click on the shore will do), a length and a direction, and Polku makes three paddling or swimming loops. They come from Polku's own water router, so they cost no routing calls. They keep to your route style: near the shore, fairways, rocks, the wind for your craft.
-- **On a river,** where there's no room for a ring, the loop goes out and back.
-- **The cards** show the time, any carrying, and the shipping lanes, rough water or rocks on the way.
-- **More loops, in every sport:** if none of the three suit you, "More loops" makes three more in other directions and keeps the first ones (up to nine). It replaces "Other directions".
-- **Fixed:** a paddle route's legs, routed side by side, could shift each other's line a little.
+### Multisport trips and Swim ([#43](https://github.com/TommiContursi/Polku/pull/43))
 
-### Stops and nights ([#49](https://github.com/TommiContursi/Polku/pull/49))
-- **Stop at any point of the route:** a break ("45 min") or a night ("go on at 08:30"). Set it in the point's menu, on its row in the waypoint list, or with **Stop here** on the route.
-- **The time moves on with your stops:** arrival times, the weather on the route, the times on the distance marks and the sunset warnings all follow. Each waypoint now shows when you'd get there.
-- **Days:** a trip with nights shows each day under Departure & weather: when you leave and arrive, how far, how long, where you sleep, and that day's weather. The summary shows your moving time, with "2 days" under it.
-- **Places to sleep nearby:** a night's menu finds lean-tos, huts and campsites within 3 km (from LIPAS and OpenStreetMap). **Go here** moves the point there.
-- **A longer forecast** for trips that run past two days: up to 10 days, saying where it gets less certain.
-- **Your bike or boat:** when you change out of a bike or a boat, Heads-up tells you if the route doesn't come back for it. If you take it along (a packraft, a folding bike), switch that on in the point's menu.
-- **Heads-up warns about a short night** (under 5 hours).
-- **Share links, saved routes and GPX files** keep the stops.
-- **Fixed:** dragging a point where the sport changes forgot the changeover minutes you'd set there.
-- **Fixed:** leaving after sunset, Heads-up gave your departure time as the time of sunset ("After sunset (18:56)" when the sun set at 18:19).
+Each leg can now have its own sport: bike to the shore, paddle across, run on the island. Every leg is routed, timed and checked for its sport, and Polku adds time for each changeover (15 minutes between bike and paddle, for example), which you can change.
 
-### One click for the route ([#48](https://github.com/TommiContursi/Polku/pull/48))
-- **A click on the route opens a menu for that part,** as a tap does on a phone, instead of adding a point straight away. "Add a point here" is the menu's first button; its sport, how it's routed and its style are there too.
-- **The same for the ring in the middle of each leg.**
-- **Dragging the line still reshapes the route,** and a click on the map away from the route still adds a point.
-- Hovering the route says "Click for options · drag to reshape".
-
-### Fixed: a cleared route left its colours on the map ([#47](https://github.com/TommiContursi/Polku/pull/47))
-- With the route coloured on the map ("On map"), clearing it removed the line but left the colours and the wind arrows. Now they go with it.
-
-### Reading the route ([#46](https://github.com/TommiContursi/Polku/pull/46))
-- **Points snap onto the path:** with Follow paths, a point clicked beside a trail or road moves onto it, where the route goes. A point the route can't reach gets a thin dashed line to it.
-- **Menus have an ×,** and a tap beside an open menu only closes it, without adding a point.
-- **See each part's sport:**
-  - a **Sport** colour for the profile (and the route on the map);
-  - on a multisport route, a strip under the profile with each sport's colour and icon, whatever colours the profile shows.
-- **Distance marks** along the route on the map (1 km, 5 km… by length), and if you like, the time you'd be there. Both are in the planner's ⋯ menu.
-- **Departure** can be set from the start point's menu and the start's row in the waypoint list.
-- **Sunrise and sunset** at the start, under Departure & weather. Heads-up tells you when part of the trip is after sunset or in the dark, and reminds paddlers that a light is required on the water after dark.
-
-### Fixed: route points off the route ([#45](https://github.com/TommiContursi/Polku/pull/45))
-- **Points and leg handles drifted further off the route the more of them there were** (a style rule from the multisport change). They sit on their spots again.
-
-### Your route on the map ([#44](https://github.com/TommiContursi/Polku/pull/44))
-- **With the planner closed,** a click or tap on your route opens it, with a menu for that part of the route.
-- **A tap on the route** (phone), or a **right-click** (desktop), opens a menu for that part: add a point here, its sport, Follow / Straight / Water, its style, avoid this spot, and show it on the profile. A tap no longer adds a point by mistake. A mouse click on the line still adds a via point, and dragging still reshapes.
-- **LIPAS routes are easier to pick:** where one runs over a trail, a click opens the LIPAS route, with a link to the trail under it (and back). Taps reach a little further than a mouse pointer.
-
-### Multisport routes and Swim ([#43](https://github.com/TommiContursi/Polku/pull/43))
-- **Each leg of a route can have its own sport:** bike to the shore, paddle across, run on the island. Set it on the leg's row in the waypoint list or in the point's menu. When a new leg is mostly water while you draw a land sport, Polku offers to paddle it.
-- **Each leg is routed, timed and checked as its sport:** its router, its style, your speeds for it, its Heads-up.
-- **Changeovers:** where the sport changes, the time to change (15 min bike ↔ paddle, 10 paddle ↔ run, 1 swim ↔ run…) is added. You can set your own on the waypoint, and the weather on the route moves on with it.
-- **Time & speed** shows each sport's distance and time, and every sport's speeds.
-- **Swim is a new sport:** open-water routes near the shore that keep away from boats, a pace per 100 m, and beaches and swimming places from LIPAS.
+- **Swim is a new sport,** with open-water routes near the shore that keep away from boats, a pace per 100 m, and beaches and swimming places from LIPAS.
+- **When a new leg is mostly water** while you're drawing a land sport, Polku offers to paddle it.
+- **Time & speed** shows each sport's distance and time.
 - **Share links and saved routes** keep each leg's sport and your changeover times.
 
-### A new README and this changelog ([#42](https://github.com/TommiContursi/Polku/pull/42))
-- **The README** now shows what Polku does, with a screenshot for each feature. The developer notes moved to [docs/DEVELOPING.md](docs/DEVELOPING.md).
-- **The map's footer** links to Polku's source and its maker, alongside OpenStreetMap and the other credits.
+### Stops and nights ([#49](https://github.com/TommiContursi/Polku/pull/49))
 
-### First visit opens on Helsinki ([#41](https://github.com/TommiContursi/Polku/pull/41))
-- A first visit opens on Helsinki and asks for your location once.
-- Later visits open where you left off.
-- Links with a position or a route work as before.
+Add a break ("45 min") or a night ("go on at 08:30") at any point, from the point's menu, the waypoint list or **Stop here** on the route. Arrival times, the weather along the route and sunset warnings all move on with your stops.
 
-### Water routing: fairways, rocks and the wind ([#40](https://github.com/TommiContursi/Polku/pull/40))
-- **Shipping lanes are crossed straight and quickly,** not followed (Väylävirasto's fairways). Harbour basins are noted.
-- **Marked dangers are kept clear of:** isolated-danger and cardinal marks, and OpenStreetMap's rocks, reefs and shoals.
-- **Rough water is avoided for your craft:** waves build where the wind has a long way over open water, and the forecast at your departure decides how rough is too rough for a sea kayak, a canoe or a SUP.
-- **Heads-up names it all,** for example "Crosses the Särkän väylä — cross quickly and straight…".
-- **Places you avoid now work on water legs too.**
-- **Paddle route style** gets Fairways, Rocks & shoals and Wind switches, and a Direct preset.
-- **Depths aren't used for routing:** Traficom's licence excludes route planning. Its depth layers now say "not for navigation".
+- **Trips over several days** show each day: when you leave and arrive, how far, where you sleep and that day's weather. The forecast reaches up to 10 days and says where it gets less certain.
+- **Places to sleep nearby:** a night's menu finds lean-tos, huts and campsites within 3 km, and **Go here** moves the point there.
+- **Your bike or boat:** Heads-up tells you when you leave one behind and the route doesn't come back for it. If you take it along, such as a packraft or a folding bike, switch that on in the point's menu.
+- **Heads-up warns about short nights** of under 5 hours.
+- **Share links, saved routes and GPX files** keep your stops.
+- **Fixed:** dragging a point where the sport changes no longer forgets its changeover time, and leaving after sunset no longer shows the wrong sunset time.
 
-### LIPAS routes in the planner and in search ([#39](https://github.com/TommiContursi/Polku/pull/39))
-- **Ride this route** on an official LIPAS route makes it your plan using its own line, with no routing calls. Routes made of many parts are joined into one line where they can be.
-- **Add to route** joins a whole LIPAS route onto yours.
-- **Search is grouped:** places, LIPAS routes, LIPAS stops (lean-tos, huts, campfire sites), trails on the map, coordinates, and your recent searches.
-- **LIPAS lines are now drawn at full precision.**
+### Round trips on the water, and More loops ([#50](https://github.com/TommiContursi/Polku/pull/50))
 
-### Planner header and rain radar ([#34](https://github.com/TommiContursi/Polku/pull/34), [#35](https://github.com/TommiContursi/Polku/pull/35), [#36](https://github.com/TommiContursi/Polku/pull/36), [#37](https://github.com/TommiContursi/Polku/pull/37))
-- **The planner header** always fits, in four groups (Draw · Colour | Route | Edit), with the route's colour one tap away.
-- **Rain "now"** comes from FMI's measured rain rate instead of radar reflectivity, so drizzle no longer looks like a downpour and light rain still shows.
+Round trips now work for paddling and swimming. Choose a start, a length and a direction, and Polku suggests three loops that follow your route style on the water. On a river, where there's no room for a loop, it goes out and back. Each card shows the time, any carrying, and hazards such as shipping lanes, rough water and rocks.
 
-### Trail details ([#31](https://github.com/TommiContursi/Polku/pull/31), [#32](https://github.com/TommiContursi/Polku/pull/32), [#33](https://github.com/TommiContursi/Polku/pull/33))
-- **On the map:** how wide a trail is, how easy it is to follow, overgrown and wet stretches, fallen trees, gates, fences and fords, drawn the way a rider reads them.
-- **Along the route:** Heads-up lists them (with icons), and the profile can be coloured by trail width or visibility.
-- **Separate opacity sliders** for difficulty and uphill colours.
-- **The profile can show "Both" difficulty scales.**
-- **A quick sport button** in the planner.
-- **Fixed:** uphill colours stayed blank after being switched off and on.
+- **More loops,** in every sport, adds three more in other directions and keeps the first ones, up to nine.
+
+### Water routing: fairways, rocks and wind ([#40](https://github.com/TommiContursi/Polku/pull/40))
+
+Paddling routes now cross shipping lanes straight and quickly instead of following them, keep clear of marked dangers, rocks and shoals, and avoid water that's too rough for your craft in the forecast wind. Heads-up names what's on the way, such as "Crosses the Särkän väylä".
+
+- **Paddle route style** has switches for Fairways, Rocks & shoals and Wind, and a Direct preset.
+- **Places you avoid** work on water legs too.
+- **Depths aren't used for routing,** because Traficom's licence excludes route planning, and the depth layers say "not for navigation". Water routes are for planning: check the conditions and official charts before you set off.
+
+### Editing on the route ([#44](https://github.com/TommiContursi/Polku/pull/44)–[#48](https://github.com/TommiContursi/Polku/pull/48))
+
+- **Click or tap the route** to open a menu for that part: add a point, change its sport, how it's routed or its style, avoid a spot, or find it on the profile. Dragging the line still reshapes it, and clicking away from the route still adds a point.
+- **Points snap onto the path** with Follow paths. A point the route can't reach gets a thin dashed line to it.
+- **Menus have a close button,** and tapping beside an open menu only closes it.
+- **The profile can be coloured by sport,** and on a multisport route a strip under it shows each sport.
+- **Distance marks** along the route, with the time you'd reach them if you like.
+- **Sunrise and sunset** are under Departure & weather, and Heads-up says when part of the trip is after dark. Paddlers are reminded that a light is required on the water after dark.
+- **Fixed:** route points that drifted off the line, and route colours left on the map after the route was cleared.
+
+### Official routes, trail details and search ([#31](https://github.com/TommiContursi/Polku/pull/31)–[#37](https://github.com/TommiContursi/Polku/pull/37), [#39](https://github.com/TommiContursi/Polku/pull/39))
+
+- **Ride this route** turns an official LIPAS route into your plan, along its own line, and **Add to route** joins one onto yours.
+- **Search is grouped** into places, LIPAS routes, LIPAS stops (lean-tos, huts, campfire sites), trails on the map, coordinates and your recent searches.
+- **Trail details on the map:** how wide a trail is, how easy it is to follow, overgrown and wet stretches, fallen trees, gates, fences and fords. Heads-up lists them along your route, and the profile can be coloured by width or visibility.
+- **Rain "now"** comes from FMI's measured rain rate, so drizzle no longer looks like a downpour.
+- **The planner's header** always fits, with the route's colours one tap away. Difficulty and uphill colours have separate opacity sliders, and the profile can show both difficulty scales.
+
+### First visit opens on Helsinki ([#41](https://github.com/TommiContursi/Polku/pull/41), [#42](https://github.com/TommiContursi/Polku/pull/42))
+
+A first visit opens on Helsinki and asks for your location once; later visits open where you left off. The map's credits now link to Polku's source and its maker.
 
 ## 2026-10-13
 
-### Layers ([#29](https://github.com/TommiContursi/Polku/pull/29))
-- Every layer control in every sport, an opacity slider per overlay, soundings for paddlers, and "On now" first.
-
 ### Round trips ([#27](https://github.com/TommiContursi/Polku/pull/27))
-- Choose a start, a length (km or time) and a direction. Polku makes three loops in your route style and compares them; pick one and it becomes a normal route.
 
-### Route style ([#24](https://github.com/TommiContursi/Polku/pull/24), [#25](https://github.com/TommiContursi/Polku/pull/25), [#26](https://github.com/TommiContursi/Polku/pull/26))
-- **Presets in each sport's own words,** with fine-tuning, for the whole route or one leg.
-- **Wet ground** is taken into account automatically after rain.
-- **Road bikes** get a paved-roads profile.
-- **A tidier planner layout,** and each leg's settings in the waypoint list.
+Choose a start, a length in kilometres or time, and a direction, and Polku suggests three loops in your route style to compare. Pick one and it becomes a normal route you can edit.
 
-### Editing, waypoints and reliable routing ([#21](https://github.com/TommiContursi/Polku/pull/21), [#22](https://github.com/TommiContursi/Polku/pull/22), [#23](https://github.com/TommiContursi/Polku/pull/23))
-- **Edit on the map:** drag a point or the line itself and the route follows; point and spot menus.
-- **A waypoint list:** rename, reorder and remove points, with undo for everything, road names, and a button to show the whole route.
-- **Routing that holds up on free services:** pacing, one call for many legs, routes kept on refresh, and Valhalla standing in when BRouter pauses.
+### Sports, speeds and route styles ([#18](https://github.com/TommiContursi/Polku/pull/18)–[#20](https://github.com/TommiContursi/Polku/pull/20), [#24](https://github.com/TommiContursi/Polku/pull/24)–[#26](https://github.com/TommiContursi/Polku/pull/26))
 
-### Sports and speeds ([#18](https://github.com/TommiContursi/Polku/pull/18), [#19](https://github.com/TommiContursi/Polku/pull/19), [#20](https://github.com/TommiContursi/Polku/pull/20))
-- **Road cycling, trail running and running** join MTB, gravel, hiking and paddling.
-- **Your speeds** per sport: Easy / Normal / Fast or your own values, with an explanation of the time.
+- **Road cycling, running and trail running** join MTB, gravel, hiking and paddling.
+- **Your speeds** for each sport: Easy, Normal, Fast or your own, with an explanation of the time.
+- **Route style presets** in each sport's own terms, with fine-tuning, for the whole route or one leg. Road bikes keep to paved roads, and wet ground is taken into account after rain.
 
-### The layout ([#12](https://github.com/TommiContursi/Polku/pull/12), [#13](https://github.com/TommiContursi/Polku/pull/13), [#15](https://github.com/TommiContursi/Polku/pull/15), [#16](https://github.com/TommiContursi/Polku/pull/16), [#17](https://github.com/TommiContursi/Polku/pull/17))
-- **The planner** is a side panel on desktop, or a full-width bottom panel, and a peek / half / full sheet on phones.
-- **One clock** (the timeline) for the weather, your departure and the roads, with paddling conditions instead of a profile on water.
-- **The sport pill and a base map switcher,** with controls within thumb reach on phones.
-- **Layers, the map key and Settings,** with one place for each kind of control.
+### Editing and dependable routing ([#21](https://github.com/TommiContursi/Polku/pull/21)–[#23](https://github.com/TommiContursi/Polku/pull/23))
 
-### Weather, limits and details ([#4](https://github.com/TommiContursi/Polku/pull/4)–[#11](https://github.com/TommiContursi/Polku/pull/11))
-- **The timeline** drives the weather layers, the route and road works.
-- **Hover details** on desktop.
-- **A route readout** on hover, and **offline areas** along a route.
-- **Incline on hover,** and a compass with heading-up.
-- **Far fewer weather calls:** forecasts are cached per grid cell.
-- **Free services' limits are handled gracefully,** with a usage readout.
-- **Rain radar** from FMI's download service.
+- **Drag a point or the line** and the route follows.
+- **A waypoint list** to rename, reorder and remove points, with Undo for everything.
+- **Routing that holds up on free services:** requests are paced, routes are kept when you reload, and Valhalla stands in when BRouter pauses.
+
+### The layout, layers and weather ([#4](https://github.com/TommiContursi/Polku/pull/4)–[#13](https://github.com/TommiContursi/Polku/pull/13), [#15](https://github.com/TommiContursi/Polku/pull/15)–[#17](https://github.com/TommiContursi/Polku/pull/17), [#29](https://github.com/TommiContursi/Polku/pull/29))
+
+- **The planner** is a side or bottom panel on a desktop, and a sheet with three sizes on a phone.
+- **One timeline** drives the weather layers, your departure and road works.
+- **Layers, the map key and Settings** each have one place, with an opacity slider for every overlay and the layers that are on listed first.
+- **Hover details** on a desktop, offline areas along a route, and a compass with heading-up.
+- **Far fewer weather requests,** and the free services' limits handled gracefully, with a usage readout.
 
 ## 2026-10-12
 
 ### The first Polku ([#1](https://github.com/TommiContursi/Polku/pull/1)–[#3](https://github.com/TommiContursi/Polku/pull/3))
-- An open-data trail map of Finland for MTB, gravel, hiking and paddling: MTB difficulty and computed uphill grades, hillshade and contours, 3D terrain, an open-water router, wind along routes and a weather map.
-- **Traffic and safety layers:** busy roads, incidents, road works, road conditions, military areas. Places to avoid on routes.
+
+An open-data trail map of Finland for mountain biking, gravel, hiking and paddling: MTB trail difficulty, computed uphill grades, hillshade and contours, 3D terrain, an open-water router, wind along routes and a weather map.
+
+- **Traffic and safety layers:** busy roads, incidents, road works, road conditions and military areas, with places to avoid on routes.
 - **Road weather cameras,** ships with more detail, and a nautical chart layer.

@@ -168,7 +168,7 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
   branch under `<branch>/` (no images in `main`), linked as
   `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
 - **In the same PR:**
-  - CHANGELOG, in plain words for people using Polku (not for docs or tooling);
+  - CHANGELOG, as release notes (see "Release notes" below);
   - Review README.md when adding, changing or removing a user-facing
     capability. Update the relevant sections when the description becomes
     incomplete or inaccurate, preserving the existing factual style and useful
@@ -213,9 +213,44 @@ DEVELOPING how Polku works. Nothing to do is listed in the docs.
 
 ## Writing
 
-- Plain, short English, like the CHANGELOG. Say what happens on the screen
-  ("Back to start does nothing"), not what kind of defect it is ("a shadowed
-  method").
+- Plain, natural English in complete sentences. Say what happens on the
+  screen ("Back to start does nothing"), not what kind of defect it is ("a
+  shadowed method").
 - **Never quote the user's chat messages** in the repo, issues or PRs. Write what
   they asked for as a plan or an idea ("An idea from testing, 2026-10-15").
 - Dates as dates (2026-10-15), never "today" or "last week".
+
+## Release notes
+
+`CHANGELOG.md` is what people read in **Settings → About Polku → What's
+new**, so it's written for them, not as a log of pull requests.
+
+- **One entry for each change people notice,** under the date it shipped,
+  newest first. Related changes share an entry; tests, tooling and docs get
+  none.
+- **An entry** is a heading that says what people can now do, with its PR
+  links; a sentence or two on what that means for them; then, where there are
+  details to scan, a few bullets that each start with a bold phrase. The
+  in-app reader shows headings, paragraphs, flat bullets, bold, `code` and
+  links, and nothing else.
+- **How it works now, not how it was built.** Leave out internal names, tags,
+  thresholds and testing; they belong in the PR. Keep what Polku can't tell
+  (ice, depths, access rights, missing data) and what changed in behaviour.
+- **Natural, complete sentences,** British spelling, and the app's own names
+  for its controls, in bold.
+- **Shipped entries stay as they are.** A later change to a feature gets an
+  entry of its own under its date, saying what's different. On the same date,
+  update that day's entry instead of adding another. Change an older entry
+  only when it would now mislead someone, such as a wrong safety note.
+
+Not: "**Dragging the middle handle now adds one via point,** which follows the
+pointer. The line underneath no longer starts a second edit from the same
+press, so it cannot leave an extra point and bend behind."
+But: "Dragging the handle in the middle of a leg now adds exactly one point.
+Before, it could leave an extra point and a bend behind."
+
+Not: "They're drawn as see-through ghosts with a soft glow (orange, then
+teal)… The first comes about 1.5 seconds after you've stopped, for a new leg
+of 300 m or more."
+But: "When you add a point and pause, Polku may suggest up to two other ways
+to reach it. Tap one to take it."
