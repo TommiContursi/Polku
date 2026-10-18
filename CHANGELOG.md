@@ -2,6 +2,11 @@
 
 What's new in Polku, newest first. Every change ships to [polku.si](https://polku.si) when its pull request is merged. What's planned is on GitHub, in the [issues](https://github.com/TommiContursi/Polku/issues) and [milestones](https://github.com/TommiContursi/Polku/milestones); the order of the phases is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## 2026-10-18
+
+### Fixed: white on green is easy to read in dark mode ([#239](https://github.com/TommiContursi/Polku/issues/239))
+- **In dark mode, buttons with white on green use a deeper green,** so their words and icons stand out: the sport beside the search, pressed Weather, Locate and Settings, Make 3 loops and the other main buttons, switches that are on, the quick drawer's Done and ticks, and the compass while it faces ahead. Green words, icons and borders on dark backgrounds stay as they were, and so does light mode.
+
 ## 2026-10-17
 
 ### A quick layer drawer ([#123](https://github.com/TommiContursi/Polku/issues/123))
