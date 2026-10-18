@@ -10,9 +10,6 @@ on:
         description: 'Only these groups and sizes, in one job (empty: the full suite)'
         required: false
         default: ''
-  # Temporary, for the trial runs before the workflow is on main: removed before the PR is ready (#268).
-  push:
-    branches: [ci-smoke-workflow]
 
 permissions:
   contents: read
@@ -20,10 +17,6 @@ permissions:
 concurrency:
   group: smoke-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  # for the temporary push trigger: the groups and sizes to run (empty: the full suite)
-  PUSH_GROUPS: ''
 
 jobs:
   plan:
@@ -46,7 +39,7 @@ jobs:
       - name: Jobs
         id: plan
         env:
-          GROUPS: ${{ inputs.groups || env.PUSH_GROUPS }}
+          GROUPS: ${{ inputs.groups }}
         run: python3 .github/smoke_plan.py $GROUPS >> "$GITHUB_OUTPUT"
 
   smoke:
