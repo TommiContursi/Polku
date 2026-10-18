@@ -4746,7 +4746,7 @@ def button3d(chrome):
         # load step: that opens the timeline, and on a phone the column then moves up above it (#292)
         if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden ? ok(true)"
                      " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 100); go(); })"):
-            fails.append(f'{w}x{h_} {sport}: the timeline did not open in 45 s (Polku's load step)')
+            fails.append(f'{w}x{h_} {sport}: the timeline did not open in 45 s (Polku’s load step)')
         late = pg.js(SETTLED)
         if late:
             fails.append(f'{w}x{h_} {sport}: {late}')
