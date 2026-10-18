@@ -24,6 +24,7 @@ With the dev server running and Google Chrome installed:
 
 ```bash
 python3 tools/smoke.py                  # layout at 5 sizes, trail details, LIPAS, water routing: no overlaps, no console errors
+python3 tools/smoke.py --list           # every group and size, with what it checks
 python3 tools/shoot.py shots after      # screenshots for a pull request (--list for the scenes)
 python3 tools/readme_shots.py           # legacy README scenes, into docs/screenshots (WebP)
 tools/brouter-local.sh                  # optional: BRouter on this computer (Settings → Routing server)
@@ -42,7 +43,9 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 
 ### Writing a smoke check
 
-- A group is a function in `tools/smoke.py` that takes `chrome`, opens a page (`chrome.page(w, h, phone)`, then `pg.open_app(...)`), runs a script with `pg.js(...)` that returns a list of failures, adds `pg.errors()` as console failures, prints `ok` or `FAIL` with them, and returns whether it passed. Add it to `main()` under a short name, so `python3 tools/smoke.py <name>` runs it alone.
+- A group is a function in `tools/smoke.py` that takes `chrome`, opens a page (`chrome.page(w, h, phone)`, then `pg.open_app(...)`), runs a script with `pg.js(...)` that returns a list of failures, adds `pg.errors()` as console failures, prints `ok` or `FAIL` with them, and returns whether it passed. Add a row to `GROUPS`, just above `main()`: a short name, its functions and a one-line description. `main()` runs from that table and `--list` prints it, so `python3 tools/smoke.py <name>` runs the group alone; a name that isn't in it stops the run before Chrome starts, with exit code 2.
+- A group that raises (a script error in the page, Chrome not answering) prints `FAIL` with the error's first line, and the next group still runs, in a fresh Chrome if this one stopped answering. Still catch what you can and say what failed.
+- When another run already holds the Chrome profile (`POLKU_CHROME_PROFILE`, or `~/.cache/polku-tools/chrome-profile`), `tools/cdp.py` gives this run a temporary profile, says so in one line, and deletes it afterwards. That run starts without the cached tiles.
 - Answer from `tools/fixtures/` (fetched from `location.origin`), and hold or seed the fetches the check doesn't test, as the existing groups do. Never route against brouter.de.
 - Do what a user does: click, drag and type on the real controls, not the module's functions.
 - Wait for the state you check (the next animation frame, `SETTLED`), never a fixed time.
