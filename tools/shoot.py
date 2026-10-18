@@ -432,6 +432,11 @@ SCENES = {
     'desk-loop-dark': dict(DESK, timeline=True, dark=True, base='night', route='route-kauppi-mtb.json', js=LOOP_OPEN),
     'phone-weather-dark': dict(PHONE, timeline=False, dark=True, base='night', activity='paddle', hash='#13/61.53/23.73', js="document.querySelector('#btn-time').click(); true"),
     'desk-weather-dark': dict(DESK, timeline=False, dark=True, base='night', activity='gravel', js="document.querySelector('#btn-time').click(); true"),
+    # #240: Settings over a raised planner on a phone: above it at half, over it at full and on a short phone
+    'phone-settings-half': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js="document.querySelector('#btn-settings').click(); true"),
+    'phone-settings-full': dict(PHONE, timeline=True, activity='gravel', route='route-kauppi-mtb.json', state='full', js="document.querySelector('#btn-settings').click(); true"),
+    'phone-settings-375-dark': dict(PHONE, w=375, h=667, timeline=True, dark=True, base='night', activity='hike', route='route-kauppi-mtb.json', state='half', js="document.querySelector('#btn-settings').click(); true"),
+    'desk-settings-planner': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="document.querySelector('#btn-settings').click(); true"),
     'desk-quick-gravel': dict(DESK, timeline=False, activity='gravel', js=QUICK()),
     'desk-quick-hike': dict(DESK, timeline=False, activity='hike', js=QUICK()),
     'desk-quick-paddle': dict(DESK, timeline=False, activity='paddle', hash='#13/61.53/23.73', js=QUICK()),
