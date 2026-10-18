@@ -107,6 +107,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
   - **Status on a tile** (`tileStatus()`): the layer's zoom, `sourceStatus()` from `js/net.js` for its service, and for raster overlays the map's own tile errors (`ov-<id>`) against the last tile that came in.
   - **Phones:** a scrim (`#quick-scrim`) under the sheet takes the tap on the map, so the tap that closes the drawer reaches neither the planner nor the map. **Desktop:** `placeQuick()` keeps the card's bottom level with the Layers button, above a bottom planner.
 - **Hover** (`js/hover.js`): one `queryRenderedFeatures` call when the pointer rests, never while it moves. It uses the click popup's own layer priority, so the preview always matches the click.
+- **Colours** (`css/app.css`): tokens on `:root`, and the dark ones twice, under `prefers-color-scheme: dark` and `[data-theme="dark"]`. White text and icons go on `--accent-bg`, never on `--accent` (#239): in dark, `--accent` is a light green for text, icons and borders on dark surfaces (white on it is 2.7:1), and `--accent-bg` a deeper one (5.3:1); in light they're the same green. `tools/smoke.py contrast` measures them in both themes and fails on any rule that puts white text on `--accent`.
 
 ## Known limits
 
