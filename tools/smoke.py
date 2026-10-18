@@ -4874,6 +4874,17 @@ def button3d(chrome):
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
+    # 200 % zoom on a 390 x 844 phone: no room for 3D in the column, which stays clear of the top bar; 3D still in Layers.
+    # (With the timeline open or the planner, the column reaches the top bar on main too: #73, and 25a's rule for short phones.)
+    pg = page(195, 422, True, 'paddle', {'timeline': False})
+    if pg.js("getComputedStyle(document.querySelector('#btn-3d')).display") != 'none':
+        fails.append('195x422 (200 %): the 3D button shows, with no room for it in the column')
+    top = ('.topbar', '#activity-bar', '#btn-settings', '#zoom-hint')
+    fails += [f'195x422 (200 %) closed: {o}' for o in overlaps(pg.js(BOXES)) if '.map-ctrls' in o and any(t in o for t in top)]
+    if not pg.js(B3D_SWITCH):
+        fails.append("195x422 (200 %): no 3D switch in Layers")
+    pg.close()
+
     # the quick drawer: no 3D tile in any sport, MTB's in its place is Waymarked MTB; Edit doesn't offer 3D
     pg = page(1440, 900, False, 'mtb')
     got = pg.js(B3D_TILES)

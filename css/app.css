@@ -1231,6 +1231,9 @@ body.dropping .drop-hint { display: flex; }
   .ctrl-btn { width: 44px; height: 44px; }
   .ctrl-compass .maplibregl-ctrl-group button { width: 44px; height: 44px; }
   @media (pointer: coarse) { .ctrl-zoom { display: none; } } /* pinch zooms */
+  /* 200 % zoom (and a phone turned on its side): no room in the column for 3D, which stays in Layers (#226; the
+     plan's mock-up). Under a raised sheet on short phones, 25a leaves out the compass first, then 3D. */
+  @media (max-height: 500px) { .ctrl-3d { display: none; } }
   .top-btn { width: 40px; }
   /* Plan: a primary pill at the bottom; the planner sheet replaces it */
   .search-plan { display: none; }
