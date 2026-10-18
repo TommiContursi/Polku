@@ -1,0 +1,160 @@
+# The syntax checks and the full smoke suite on GitHub's Ubuntu runner, for information:
+# run by hand (Actions → Smoke suite → Run workflow). Not a required check (#268).
+# The suite runs in parallel jobs (.github/smoke-shards.json); the last job gathers what they found.
+name: Smoke suite
+
+on:
+  workflow_dispatch:
+    inputs:
+      groups:
+        description: 'Only these groups and sizes, in one job (empty: the full suite)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      jobs: ${{ steps.plan.outputs.jobs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Syntax
+        run: |
+          for f in js/*.js sw.js; do node --check "$f"; done
+          python3 -m py_compile tools/*.py serve.py .github/*.py
+
+      # every group and size in exactly one job, or the groups asked for in one
+      - name: Jobs
+        id: plan
+        env:
+          GROUPS: ${{ inputs.groups }}
+        run: python3 .github/smoke_plan.py $GROUPS >> "$GITHUB_OUTPUT"
+
+  smoke:
+    needs: plan
+    name: smoke ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      # as on the development Mac: Helsinki time, an en-GB browser (.github/chrome.sh), Inter installed
+      TZ: Europe/Helsinki
+      LANGUAGE: en_GB
+      POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+      POLKU_TIMES: '1'
+      GROUPS: ${{ matrix.groups }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Fonts as on the development Mac
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-inter
+          fc-match Inter
+
+      - name: Dev server
+        run: |
+          python3 serve.py 8765 > serve.log 2>&1 &
+          for i in $(seq 30); do curl -sf -o /dev/null http://localhost:8765/index.html && exit 0; sleep 1; done
+          echo "The dev server didn't answer"; exit 1
+
+      - name: Chrome
+        run: |
+          google-chrome --version
+          echo "unprivileged user namespaces restricted by AppArmor: $(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null || echo unknown)"
+          python3 - <<'EOF'
+          import json, sys
+          sys.path.insert(0, 'tools')
+          from cdp import BASE, Chrome
+          c = Chrome()
+          try:
+              p = c.page(1440, 900)
+              p.goto(BASE + 'index.html')
+              mq = "hover: matchMedia('(hover: hover)').matches, fine: matchMedia('(pointer: fine)').matches, coarse: matchMedia('(pointer: coarse)').matches"
+              print(json.dumps(p.js("({ua: navigator.userAgent,"
+                                    " lang: navigator.language, langs: navigator.languages, tz: Intl.DateTimeFormat().resolvedOptions().timeZone,"
+                                    " locale: Intl.DateTimeFormat().resolvedOptions().locale, number: (1234.5).toLocaleString(),"
+                                    " date: new Date(0).toLocaleString(), " + mq + "})"), indent=1))
+              phone = c.page(390, 844, True)
+              phone.goto(BASE + 'index.html')
+              print('a phone page:', json.dumps(phone.js("({" + mq + "})")))
+              phone.close()
+              try:  # Linux only: says whether each process is sandboxed
+                  p.goto('chrome://sandbox')
+                  print(p.js("new Promise((ok) => setTimeout(() => ok(document.body.innerText), 1000))"))
+              except Exception as e:
+                  print('chrome://sandbox:', e)
+          finally:
+              c.close()
+          EOF
+
+      - name: Smoke groups
+        env:
+          POLKU_NETLOG: ${{ runner.temp }}/netlog
+        run: |
+          set -o pipefail
+          mkdir -p "$POLKU_NETLOG"
+          echo "Groups and sizes: $GROUPS"
+          { google-chrome --version | sed 's/^Google //'; python3 tools/smoke.py $GROUPS; } 2>&1 | tee smoke.log
+
+      - name: Summary
+        if: always()
+        run: |
+          [ -f smoke.log ] || { echo "## Smoke suite: didn't run" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          python3 .github/smoke_summary.py smoke.log --netlog "$RUNNER_TEMP/netlog" --save-hosts hosts.tsv > summary.md
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: smoke-log-${{ matrix.shard }}
+          path: |
+            smoke.log
+            summary.md
+            hosts.tsv
+            serve.log
+          if-no-files-found: ignore
+
+  # every job's FAIL lines, times and requests in one summary
+  report:
+    needs: [plan, smoke]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: smoke-log-*
+          path: logs
+
+      - name: Summary
+        env:
+          JOBS: ${{ needs.plan.outputs.jobs }}
+        run: |
+          shopt -s nullglob
+          # one artifact is unpacked into logs/ itself, several into a folder each
+          logs=(logs/smoke.lo[g] logs/*/smoke.log)
+          [ ${#logs[@]} -gt 0 ] || { echo "## Smoke suite: no job left a log" | tee -a "$GITHUB_STEP_SUMMARY"; exit 1; }
+          python3 .github/smoke_summary.py "${logs[@]}" --hosts logs/hosts.ts[v] logs/*/hosts.tsv --jobs "$JOBS" > summary.md
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+          head -1 summary.md | grep -q passed
