@@ -1,37 +1,30 @@
 # Polku roadmap
 
-**[The GitHub Project](https://github.com/users/TommiContursi/projects/1) is
-the live roadmap.** The user changes phase order and priorities there without
-a commit. [AGENTS.md](../AGENTS.md) explains how workers select, verify and
-hand over work.
+**[The GitHub Project](https://github.com/users/TommiContursi/projects/1) holds
+the live roadmap and priorities.** Change the order there without a commit.
+[AGENTS.md](../AGENTS.md) holds the shared development rules.
 
-- **Project:** Roadmap shows the existing phase issues in editable order;
-  Current delivery shows the selected outcome and blockers; Triage groups
-  findings awaiting a decision. Priority is Now/Next/Later/Someday; progress
-  Status is Triage/Ready/In progress/Blocked/Done. Linked PRs show their own
-  draft/review state. Closing an issue records its reason, not necessarily
-  a shipped feature.
-- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** retain
-  the existing phase and Fixes groups. Phase issues hold acceptance,
-  dependencies, decisions and a link to the current Hand-over.
-- **Designs:** [plans/](plans/) holds implementation designs;
-  [plans/done.md](plans/done.md) preserves finished phases.
-- **Delivered work:** merged PRs and closed issues, user-facing
-  [CHANGELOG](../CHANGELOG.md), and [retros/](retros/).
-- **Watch items:** retain their dates/triggers in their issues and the
-  Project's Due field. A deadline needs a priority decision, not an
-  automatic claim.
+- **Now, Next, Later, Someday:** the user's delivery order, with existing
+  phase issues representing milestones. In progress marks claimed work;
+  Done follows issue closure. The native Milestone and linked-PR fields
+  show delivery membership and execution.
+- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** existing
+  phases and Fixes groups. Their phase issues hold scope, dependencies,
+  decisions and a link to the current Hand-over. Keep historical names;
+  give future milestones descriptive product-outcome names.
+- **Designs:** [plans/](plans/); finished phases: [plans/done.md](plans/done.md).
+  Plans describe approved behavior, not a second live backlog.
+- **Delivery evidence:** merged PRs, issue closure reasons,
+  [CHANGELOG](../CHANGELOG.md) and [retros/](retros/).
+- **Watch items:** dates/triggers remain in their issues and the Project's
+  Due field. Urgency is considered with the current delivery.
 
-Native Project workflows maintain routine add/close/reopen transitions.
-Workers record claims and blockers explicitly. No synchronizer, periodic
-AI review or second status document is needed. Smoke-test automation remains
-in [#268](https://github.com/TommiContursi/Polku/issues/268).
-
-Before merging this transition, preserve all existing Project values and
-migrate the approved phase order, dependencies and dated exceptions from
-[the 2026-10-18 roadmap snapshot](https://github.com/TommiContursi/Polku/blob/6b1e2932cab389cfc9e9367918d126a38f5d2047/docs/ROADMAP.md).
-Verify the live views and workflows before relying on them. That snapshot is
-migration evidence, not a second live backlog.
+Project workflows maintain routine add/close/merge/link/reopen transitions
+when enabled; workers record claims, blockers and decisions. Smoke testing
+continues independently under [#268](https://github.com/TommiContursi/Polku/issues/268).
+The previous approved order and dependencies are preserved in
+[the 2026-10-18 snapshot](https://github.com/TommiContursi/Polku/blob/6b1e2932cab389cfc9e9367918d126a38f5d2047/docs/ROADMAP.md)
+as historical evidence.
 
 ## What holds for every phase
 
