@@ -137,11 +137,11 @@ the whole conversation again, so change models only between sessions
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
-  `docs/plans/mockups/`, looked at with apple-design, emil-design-eng,
-  mobile-native and break-ui, in the worst case too (360 px, 200 % zoom, long
-  Finnish words). The mock-up and a short plan are enough: no probe scripts,
-  measurements or evidence files unless the user asks. The user chooses
-  before it's built; #123's plan shows how.
+  `docs/plans/mockups/`, checked in the worst case too (360 px, 200 % zoom,
+  long Finnish words). Use available design skills when helpful; small
+  visual edits don't need a mock-up. The mock-up and a short plan are enough:
+  no probe scripts, measurements or evidence files unless the user asks.
+  The user chooses before it's built; #123's plan shows how.
 
 ## Testing
 
@@ -157,8 +157,9 @@ the whole conversation again, so change models only between sessions
   may be using: a test then runs half on one branch and half on the other.
 - **Do what a user does:** click, drag, undo, reload. A button being there
   proves nothing.
-- **Every bug fix gets a check in `tools/smoke.py`** that fails before the fix
-  and passes after it.
+- **Every bug fix has a regression check in `tools/smoke.py`** that fails
+  before the fix and passes after it. Reuse an existing check when it
+  demonstrates the bug; add or extend one only when coverage is missing.
 - **App changes pass `python3 tools/smoke.py`.** While working, run only the
   groups you touch: `python3 tools/smoke.py water loops`.
 - **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
