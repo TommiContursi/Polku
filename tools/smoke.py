@@ -5228,10 +5228,87 @@ def runner(chrome):
     return not fails
 
 
+# #298: a cold map still waits for the end of a zoom-out sequence; the
+# forecast budget counts cached and pending short forecasts at every lattice level.
+WEATHER_REQUESTS = r"""(async () => {
+  const errs = [], {WeatherOverlay}=await import('./js/wxmap.js');
+  const W=await import('./js/weather.js'), {idb}=await import('./js/idb.js');
+  await idb('weather').prune(()=>false);
+  const realFetch=fetch, realSet=setTimeout, realClear=clearTimeout;
+  const requests=[], list=[0,1,2,3].map(i=>({L:6,i:8+i,j:40}));
+  let release;
+  const answer=url=>{
+    const q=new URL(url).searchParams,lats=q.get('latitude').split(',').map(Number),lons=q.get('longitude').split(',').map(Number);
+    const times=Array.from({length:52},(_,i)=>Math.floor(Date.now()/3600e3)*3600-3600+i*3600),fill=v=>times.map(()=>v);
+    return new Response(JSON.stringify(lats.map((lat,i)=>({latitude:lat,longitude:lons[i],hourly:{time:times,wind_speed_10m:fill(4),wind_direction_10m:fill(220),wind_gusts_10m:fill(6),temperature_2m:fill(8),precipitation:fill(.1),cloud_cover:fill(80),snow_depth:fill(0),snowfall:fill(0)}}))),{headers:{'Content-Type':'application/json'}});
+  };
+  window.fetch=(input,init)=>{
+    const url=String(input?.url||input);
+    if(!url.includes('api.open-meteo.com/'))return realFetch(input,init);
+    requests.push(url);
+    return new Promise(ok=>{release=()=>ok(answer(url));});
+  };
+  try {
+    if(W.uncached(list)!==4)errs.push('the four cold forecast cells were not counted');
+    const pending=W.forecastCells(list);
+    for(let n=0;!release && n<100;n++)await new Promise(r=>realSet(r,10));
+    if(!release)throw new Error('the mocked forecast was not requested');
+    if(W.uncached(list)!==0)errs.push(`${W.uncached(list)} cells on the way still consume the forecast budget`);
+    release();await pending;
+    if(W.uncached(list)!==0)errs.push(`${W.uncached(list)} fresh cells still consume the forecast budget`);
+    const nested=list.map(c=>({L:c.L-1,i:c.i*2,j:c.j*2}));
+    if(W.uncached(nested)!==0)errs.push('cached forecasts are not recognised at a finer lattice level');
+    await W.forecastCells(nested);
+    if(requests.length!==1)errs.push('the same cached locations were fetched again');
+
+    // Only the scheduling clock is fake. Drive the real move handlers with the
+    // zoom at each camera stop and a slow, still-pending first forecast (no grid).
+    let now=0,seq=0,zoom=11;const timers=new Map(),asked=[];
+    window.setTimeout=(fn,ms)=>{timers.set(++seq,{at:now+ms,fn});return seq;};
+    window.clearTimeout=id=>timers.delete(id);
+    const tick=ms=>{
+      const end=now+ms;
+      for(;;){const next=[...timers].sort((a,b)=>a[1].at-b[1].at)[0];if(!next || next[1].at>end)break;now=next[1].at;timers.delete(next[0]);next[1].fn();}
+      now=end;
+    };
+    const overlay=Object.assign(Object.create(WeatherOverlay.prototype),{
+      map:{getZoom:()=>zoom},on:{wind:false,temp:false,rain:false,snow:false},open:true,
+      viewZoom:zoom,grid:null,renderStrip(){},readout(){},loadFiRadar(){},
+      maybeFetch(){asked.push(zoom);},
+    });
+    for(const z of [10,9,8,7,6,5]){
+      overlay.onMoveStart();zoom=z;overlay.onMoveEnd();tick(800);
+    }
+    if(asked.length)errs.push(`a cold zoom-out asks for ${asked.length} intermediate views`);
+    tick(400);
+    if(asked.length!==1 || asked[0]!==5)errs.push(`the final overview was requested ${asked.length} times: ${asked}`);
+    // A pan or zoom-in keeps the shorter ordinary delay.
+    asked.length=0;overlay.onMoveStart();zoom=6;overlay.onMoveEnd();tick(600);
+    if(asked.length!==1 || asked[0]!==6)errs.push('zooming back in did not request detail after the ordinary delay');
+  } finally {
+    window.fetch=realFetch;window.setTimeout=realSet;window.clearTimeout=realClear;
+  }
+  return errs;
+})()"""
+
+
+def weather_requests(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'hike'}, {'polku:winter': '"off"'})
+        fails = pg.js(WEATHER_REQUESTS)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} weather requests: cold zoom-out, cached and pending cells" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
+    ('weather', [weather_requests], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
     ('layers', [layers], 'the Layers panel in every sport'),
