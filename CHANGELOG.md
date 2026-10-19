@@ -9,7 +9,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 Rain “now” in Finland uses FMI's replacement radar data, keeping light drizzle in proportion when the old feed is retired. Missing radar coverage stays distinct from dry weather. The backup radar remains available if the rain-rate layer cannot load. Both feeds use a fixed scale, so changing the map view does not change what the rain measurements mean.
 ### Fewer weather requests while zooming out ([#298](https://github.com/TommiContursi/Polku/issues/298))
 
-The weather forecast waits for you to finish zooming out even while its first view is still loading. Forecasts already saved or on the way count correctly towards the request budget, so they do not cause unnecessary coarser views or pauses. Forecast detail stays the same.
+The weather forecast waits for you to finish zooming out even while its first view is still loading. Forecasts already loaded or on the way count correctly towards the request budget, so they do not cause unnecessary coarser views or pauses. Forecast detail stays the same.
 
 ## 2026-10-18
 
