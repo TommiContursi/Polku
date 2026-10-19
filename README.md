@@ -91,7 +91,7 @@ Polku brings together open data and free public services. Each source keeps its 
 
 Requests are paced, cached and counted; see **Settings → Data sources**. Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
-These data and library licences are separate from Polku's application code. This repository does not currently include a licence for that code.
+Polku's original application code is proprietary: © 2026 Tommi Contursi, all rights reserved. Using the free service does not grant permission to reuse its code in another product. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); third-party code and data retain their own licences.
 
 ## Limitations
 
