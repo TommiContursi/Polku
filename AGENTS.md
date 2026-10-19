@@ -36,8 +36,9 @@ and priorities; milestones group deliveries; phase issues hold scope,
 decisions and handovers; `docs/plans/` holds designs.
 
 - **Start with the current milestone's outcome,** or the task the user
-  selected. Read its phase issue's current Hand-over, then the selected
-  issue/PR. Check their state and remote commit before following an old
+  selected. Resume handed-over work before picking a new task. Read the
+  phase issue's current Hand-over, then the selected issue/PR. Check their
+  state and remote commit before following an old
   next step. Fetch older decisions, code and plans only as needed. Before
   proposing a significant change, check the linked decisions and existing
   work in that area. Routine startup is not a backlog audit.
@@ -48,9 +49,11 @@ decisions and handovers; `docs/plans/` holds designs.
   Use the pushed branch and handover, not another worker's local state.
   Report missing GitHub permissions or unpublished work explicitly.
 - **Follow the user's Project order,** Now top first; Later and Someday need
-  the user's OK. Keep the existing milestones and phase issues, and build
-  each phase in its approved parts. Existing names stay; future milestone
-  names describe their product outcome rather than a sequence number.
+  the user's OK. Milestones group related work, not execution order. Check
+  an issue's native Milestone when recording or selecting work; set it in
+  the Project or issue when the approved scope makes placement clear.
+  Keep existing milestones, names and phase issues; build approved parts.
+  Future milestone names describe their product outcome.
 - **Place findings in the roadmap before spending significant effort.**
   Search existing issues and check whether the behavior still exists, a
   merged fix already covers it, or an approved upcoming change will replace
@@ -172,9 +175,10 @@ the whole conversation again, so change models only between sessions
 
 ## Pull requests
 
-- Branch from `main`, or from the PR below yours if it isn't merged yet ("after
-  #N" in the PR's first line). First check the branch and any uncommitted changes. Never work on
-  another agent's branch.
+- For new work, branch from `main`, or from the PR below yours if it isn't
+  merged yet ("after #N" in the PR's first line). Check the branch and any
+  uncommitted changes. Never change a branch another worker actively owns.
+  After an agreed takeover, continue the handed-over pushed branch.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
   PR below yours is merged, rebase yours onto `main` without its commits
@@ -184,8 +188,9 @@ the whole conversation again, so change models only between sessions
   "Phase 22a: the drawer in three tabs", "Fix: the map's credits stay folded on
   phones", "Docs: …". Not `feat:` or `docs:`.
 - **Body:** what changes for the user, how you tested it, what isn't done or
-  is still unknown. "Fixes #65" for each issue it fixes (a phase PR: its phase
-  issue, and the milestone's issues it fixes too), and the issues it found.
+  is still unknown, plus the issues it found. Use "Fixes #65" only for issues
+  fully delivered. Reference the phase issue in partial PRs; close it only
+  when the whole phase is delivered and its acceptance checks are met.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
 - **Screenshots** of a change people see: `tools/shoot.py OUTDIR before|after

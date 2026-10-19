@@ -8,10 +8,12 @@ the live roadmap and priorities.** Change the order there without a commit.
   phase issues representing milestones. In progress marks claimed work;
   Done follows issue closure. The native Milestone and linked-PR fields
   show delivery membership and execution.
-- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** existing
-  phases and Fixes groups. Their phase issues hold scope, dependencies,
-  decisions and a link to the current Hand-over. Keep historical names;
-  give future milestones descriptive product-outcome names.
+- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** group
+  related work into subprojects or deliverables and show completion. Set
+  an issue's native Milestone in the Project or on the issue; membership
+  does not set priority. Existing phase issues hold scope, dependencies,
+  decisions and the current Hand-over. Keep existing names; future names
+  describe product outcomes.
 - **Designs:** [plans/](plans/); finished phases: [plans/done.md](plans/done.md).
   Plans describe approved behavior, not a second live backlog.
 - **Delivery evidence:** merged PRs, issue closure reasons,
