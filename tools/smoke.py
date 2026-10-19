@@ -4621,6 +4621,7 @@ def radar(chrome):
     print(f"{'ok  ' if not fails else 'FAIL'} FMI rain-rate replacement" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
+
 # White on the accent (#239): the contrast of each control that puts white on the
 # green, measured from its computed colours, and no rule that puts white text on
 # --accent itself (the light accent of dark mode is for text, icons and borders).
