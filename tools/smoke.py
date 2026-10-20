@@ -2489,8 +2489,8 @@ def sweep(chrome):
 # again) and a toast offers to route it as the new one; that, and the planner's own picker, route
 # the main sport only (the paddle leg stays) and Undo brings the route back.
 SPORT_SWITCH = """(async () => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
-  const n = await import(location.origin + '/js/net.js');
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], $ = (s) => document.querySelector(s);
+  const n = await import(location.origin + '/js/net.js'), P = await import(location.origin + '/js/planner.js'), U = await import(location.origin + '/js/ui.js');
   const p = polku.planner;
   p.setActive(true);
   p.clear();
@@ -2502,41 +2502,63 @@ SPORT_SWITCH = """(async () => {
   const keys = () => p.legs.map((l) => l.key).join('|');
   if (sports() !== 'mtb,paddle,mtb') errs.push(`start: ${sports()}`);
   const k0 = keys();
-  polku.set({ activity: 'gravel' }); // the map’s sport pill
+  // the map's sport (Settings had it, a link, Only the legs you draw next): the route keeps its sports and isn't routed again
+  polku.set({ activity: 'gravel' });
   await wait(500);
   if (sports() !== 'mtb,paddle,mtb') errs.push(`after the map’s sport changed: ${sports()}`);
   if (keys() !== k0) errs.push('legs routed again after the map’s sport changed');
-  const act = [...document.querySelectorAll('.toast button')].find((b) => /Route it as Gravel/.test(b.textContent));
-  if (!act || !/your route stays MTB/.test(document.querySelector('.toast')?.textContent || '')) errs.push(`toast: ${document.querySelector('.toast')?.textContent}`);
-  else {
-    if (p.mainSport() !== 'mtb') errs.push(`the route’s sport is ${p.mainSport()} for an MTB route`);
-    act.click();
-    await wait(400);
-    if (sports() !== 'gravel,paddle,gravel') errs.push(`routed as Gravel: ${sports()}`);
-    p.undo();
-    await wait(400);
-    if (sports() !== 'mtb,paddle,mtb' || keys() !== k0) errs.push(`undo after Route it as: ${sports()}`);
-  }
-  // the planner’s picker for the map’s own sport routes the route in it (the map stays)
-  polku.set({ activity: 'hike' }); await wait(300); // the map: Hike, the route MTB
-  p.app.setSport('hike');
-  await wait(400);
-  if (sports() !== 'hike,paddle,hike') errs.push(`the planner’s picker for the map’s sport: ${sports()}`);
+  if (!/The map and the legs you draw next are Gravel now\. Your route stays MTB and Paddle\./.test($('#toast')?.textContent || '')) errs.push(`toast: ${$('#toast')?.textContent}`);
+  if (p.nextSport() !== 'gravel' || p.mainSport() !== 'mtb') errs.push(`the next leg ${p.nextSport()}, the route ${p.mainSport()}`);
+  // Undo after it: the legs that followed MTB stay MTB (they took the map's sport before)
   p.undo(); await wait(300);
-  polku.set({ activity: 'gravel' }); await wait(300);
-  // the planner’s own picker: the route goes with it, Undo back
-  p.app.setSport('hike');
-  await wait(500);
-  if (sports() !== 'hike,paddle,hike') errs.push(`the planner’s picker (Hike): ${sports()}`);
-  p.undo();
+  if (sports() !== 'mtb,mtb,mtb') errs.push(`Undo after the map’s sport changed: ${sports()}`);
+  p.redo(); await wait(300);
+  // the pill asks when the sport isn't the route's (option A of B): Keep changes nothing
+  const pick = async (k) => { $('#activity-bar .act-current').click(); await wait(200); $(`#activity-bar .act[data-k=${k}]`).click(); await wait(200); };
+  await pick('hike');
+  const q = $('#activity-bar .act-q')?.textContent, all = $('#activity-bar .act-all')?.textContent || '';
+  if (q !== 'Use Hike for…' || !/Polku plans the 2 MTB legs again as Hike, with new times and checks/.test(all) || !/The Paddle legs stay as they are/.test(all)) errs.push(`the question: ${q} / ${all}`);
+  $('#activity-bar .act-keep').click(); await wait(300);
+  if (polku.state.activity !== 'gravel' || sports() !== 'mtb,paddle,mtb' || !$('#activity-bar .act-menu').hidden) errs.push(`Keep: ${polku.state.activity}, ${sports()}`);
+  // The whole route: one step of Undo brings back the legs, the map's sport and the next leg's
+  await pick('hike');
+  $('#activity-bar .act-all').click(); await wait(500);
+  if (sports() !== 'hike,paddle,hike' || polku.state.activity !== 'hike' || p.nextSport() !== 'hike') errs.push(`The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
+  if (!/^Your route is Hike now: 2 legs planned again\./.test($('#toast')?.textContent || '')) errs.push(`its toast: ${$('#toast')?.textContent}`);
+  p.undo(); await wait(500);
+  if (sports() !== 'mtb,paddle,mtb' || polku.state.activity !== 'gravel' || p.nextSport() !== 'gravel' || keys() !== k0) errs.push(`Undo after The whole route: ${sports()}, the map ${polku.state.activity}, the next leg ${p.nextSport()}`);
+  // from land to the water: not offered, and it says why; only the legs drawn next
+  await pick('swim');
+  const no = $('#activity-bar .act-all');
+  if (no?.getAttribute('aria-disabled') !== 'true' || !/its MTB legs are on land and can’t be swum/.test(no.textContent)) errs.push(`Swim for the whole route: ${no && no.textContent}`);
+  no?.click(); await wait(200);
+  if (sports() !== 'mtb,paddle,mtb') errs.push(`a click on the whole route that isn't offered: ${sports()}`);
+  $('#activity-bar .act-next').click(); await wait(400);
+  if (sports() !== 'mtb,paddle,mtb' || p.nextLegSport() !== 'swim' || polku.state.activity !== 'swim') errs.push(`Only the legs you draw next: ${sports()}, the next leg ${p.nextLegSport()}`);
+  // #71: a shared route's style is the route's: the map's sport changes nothing, nor do a reload and its share link
+  U.store.set('styles', { mtb: { p: 'balanced', v: {}, wet: 'auto' } });
+  polku.set({ activity: 'mtb' }); await wait(300);
+  p.clear();
+  const G = await import(location.origin + '/js/geo.js');
+  p.restore(P.parseShared(new URLSearchParams('r=' + encodeURIComponent(G.encodePolyline([[23.700, 61.500], [23.712, 61.505], [23.724, 61.510]])) + '&m=ll&a=mtb&p=flowy')));
   await wait(400);
-  if (sports() !== 'mtb,paddle,mtb') errs.push(`undo after the planner’s picker: ${sports()}`);
+  const rk = () => p.legs.map((_, i) => p.routerFor(i).key).join('|'), r0 = rk();
+  if (p.styleOf('mtb').p !== 'flowy') errs.push(`the link's style: ${p.styleOf('mtb').p}`);
+  polku.set({ activity: 'paddle' }); await wait(400);
+  if (rk() !== r0 || p.legStyle(0).p !== 'flowy') errs.push(`#71: the map on Paddle changed the route's style: ${p.legStyle(0).p}`);
+  let got = null; const hz = p.app.hazards; p.app.hazards = async (a, o) => { got = o.activity; return []; };
+  await p.loadHazards(p.analysis || { pts: [] }); p.app.hazards = hz;
+  if (got !== 'mtb') errs.push(`#71: the checks along the route use ${got}, not the route's MTB`);
+  p.save(); p.legs = []; p.points = []; p.loadSaved(); await wait(400);
+  if (rk() !== r0) errs.push(`#71: the style after a reload: ${p.legStyle(0).p}`);
+  const url = p.shareUrl(); p.clear(); p.restore(P.parseShared(new URL(url).searchParams)); await wait(400);
+  if (rk() !== r0) errs.push(`#71: the style from its share link (${url.split('?')[1]}): ${p.legStyle(0).p}`);
   // the Weather button while planning opens or closes the timeline over the map; the planner keeps its tab (#225)
-  const tab0 = p.tab, bar = document.querySelector('#wx-bar'), open0 = !bar.hidden;
-  document.querySelector('#btn-time').click();
+  const tab0 = p.tab, bar = $('#wx-bar'), open0 = !bar.hidden;
+  $('#btn-time').click();
   await wait(200);
   if (p.tab !== tab0 || bar.closest('#planner') || bar.hidden !== open0) errs.push(`the Weather button while planning: the tab ${p.tab} (was ${tab0}), the timeline ${bar.hidden ? 'closed' : 'open'} (was ${open0 ? 'open' : 'closed'})${bar.closest('#planner') ? ', in the planner' : ''}`);
-  if (bar.hidden !== open0) document.querySelector('#btn-time').click();
+  if (bar.hidden !== open0) $('#btn-time').click();
   if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (straight legs need none)');
   p.clear();
   polku.set({ activity: 'mtb' });
@@ -4987,6 +5009,14 @@ def sport_menu(chrome):
         mouse('mouseMoved', o)
         time.sleep(0.1)
         click(o)
+        # with a route in another sport the menu asks what the sport is for (B of #233): only the legs drawn next
+        nx = pg.js("(() => { const b = document.querySelector('#activity-bar .act-next'); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        if not nx:
+            fails.append(f'{name}: {other} with a route drawn asked nothing')
+        else:
+            mouse('mouseMoved', nx)
+            time.sleep(0.1)
+            click(nx)
         a = state(pg, f'{name}, {other} picked', False)
         if a['sport'] != other:
             fails.append(f"{name}: a click on {other} left the sport at {a['sport']}")
@@ -5015,18 +5045,271 @@ def sport_menu(chrome):
     pg = page(390, 844, True, 'paddle')
     pg.js(PLAN_TWO)
     x, y = pg.js(ACTS)['pill']
-    for what, at, want in (('a tap', (x, y), True), ('a second tap', (x, y), False), ('a third tap', (x, y), True), ('a tap on the map', (200, 300), False), ('a tap after it', (x, y), True)):
-        pg.tap(*at)
+    # on a phone the menu is as wide as the screen: the map is below it
+    below = lambda: pg.js("(() => { const r = document.querySelector('#activity-bar .act-menu').getBoundingClientRect(); return [200, r.bottom + 40]; })()")
+    for what, at, want in (('a tap', (x, y), True), ('a second tap', (x, y), False), ('a third tap', (x, y), True), ('a tap on the map', None, False), ('a tap after it', (x, y), True)):
+        pg.tap(*(at or below()))
         time.sleep(0.3)
         state(pg, f'390x844 paddle, {what}', want)
     o = pg.js("(() => { const r = document.querySelector('#activity-bar .act[data-k=mtb]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
     pg.tap(*o)
     time.sleep(0.3)
+    # the route is Paddle: the menu asks, and MTB is for the legs drawn next (B of #233)
+    nx = pg.js("(() => { const b = document.querySelector('#activity-bar .act-next'); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+    if not nx:
+        fails.append('390x844: MTB with a Paddle route asked nothing')
+    else:
+        pg.tap(*nx)
+        time.sleep(0.3)
     if state(pg, '390x844 paddle, MTB tapped', False)['sport'] != 'mtb':
         fails.append('390x844: a tap on MTB did not pick it')
     fails += [f'390x844 console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the sport pill's menu: mouse, keyboard and touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# B of the calmer planner (#233): the next leg's sport and speed in the drawing menu (phones) and on the toolbar
+# (desktops), the drawing button naming it, Draw it and Go › Time, a point put on open water (not on a bridge or
+# by the shore; the ice in winter), and Settings' speeds by sport (#87). Straight legs: no routing calls.
+NL = """(() => {
+  const T = window.nlT = { errs: [] };
+  const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)], p = polku.planner, m = polku.map;
+  T.at = (sel) => { const el = typeof sel === 'string' ? $(sel) : sel; if (!el || !el.offsetParent) return null;
+    const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y);
+    return { x, y, clear: !!top && (el === top || el.contains(top)), over: top ? String(top.id || top.className) : 'nothing' }; };
+  T.item = (label) => T.at($$('.menu-pop .menu-item').find((x) => x.textContent.trim().startsWith(label)));
+  T.toastBtn = (label) => T.at($$('#toast .toast-act').find((x) => x.textContent.trim() === label));
+  T.water = (ll) => m.queryRenderedFeatures(m.project(ll), { layers: ['water'] }).length > 0;
+  T.spot = (ll) => { const q = m.project(ll); return { x: q.x, y: q.y, clear: true }; };
+  // a spot on the water a few pixels from the shore: from a point on a lake towards land, the last water before it
+  T.shore = (from, dx, dy) => { const q = m.project(from); let x = q.x, y = q.y; for (let k = 0; k < 400 && m.queryRenderedFeatures([x, y], { layers: ['water'] }).length; k++) { x += dx; y += dy; } return { x: x - dx * 6, y: y - dy * 6, clear: true }; };
+  T.view = (c, z) => new Promise((ok) => { m.jumpTo({ center: c, zoom: z }); m.once('idle', () => ok(true)); });
+  T.state = () => ({ n: p.points.length, sports: p.legs.map((_, i) => p.legSport(i)).join(','), modes: p.legs.map((l) => l.mode).join(','), next: p.nextSport(), real: p.nextLegSport(), map: polku.state.activity, mode: p.mode,
+    label: p.els.modeBtn.getAttribute('aria-label'), sport: p.els.sportBtn.textContent.trim(), past: p.past.length, menu: !!$('.menu-pop'), toast: $('#toast').hidden ? '' : $('#toast').innerText.replace(/\\s+/g, ' ').trim(),
+    time: p.analysis ? Math.round(p.analysis.time) : null, waits: p.analysis && p.analysis.waits ? p.analysis.waits.length : 0 });
+  T.settle = async (n) => { for (let k = 0; k < 60 && !(p.analysis && p.analysis.pts && p.legs.length === n - 1 && p.legs.every((l) => l.result)); k++) await new Promise((r) => setTimeout(r, 100)); await new Promise((r) => setTimeout(r, 300)); return T.state(); };
+  return true;
+})()"""
+
+
+def nextleg(chrome):
+    fails = []
+
+    def page(w, h_, phone, sport):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:speeds': '{}'}, '#15/61.4975/23.738')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        pg.js(NL)
+        return pg
+
+    def press(pg, at, name, touch):
+        if not at:
+            fails.append(f'{name}: not on screen')
+            return False
+        if not at.get('clear', True):
+            fails.append(f"{name}: something is over it ({at.get('over')})")
+        if touch:
+            pg.tap(at['x'], at['y'])
+        else:
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                      'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.05)
+        time.sleep(0.5)
+        return True
+
+    def escape(pg):
+        for event in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': event, 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
+        time.sleep(0.3)
+
+    def want(name, got, **kw):
+        bad = {k: got.get(k) for k, v in kw.items() if not (v(got.get(k)) if callable(v) else got.get(k) == v)}
+        if bad:
+            fails.append(f'{name}: {bad}')
+
+    # ---- a phone, by touch: Hike, then Gravel from the drawing menu
+    name = '390x844'
+    pg = page(390, 844, True, 'hike')
+    S = lambda: pg.js('nlT.state()')
+    pg.js('polku.planner.setActive(true), true')
+    time.sleep(0.5)
+    press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', True)
+    along = pg.js("document.querySelector('.pl-way .way-along')?.textContent || ''")
+    if along != 'You can change sport along the way.':
+        fails.append(f'{name}: Draw it says “{along}”, not that the sport can change along the way')
+    L = [[23.733, 61.4975], [23.738, 61.4985], [23.743, 61.4975]]
+    if any(pg.js(f'nlT.water({ll})') for ll in L):
+        fails.append(f'{name}: a point for the land legs is on the water')
+    press(pg, pg.js(f'nlT.spot({L[0]})'), f'{name}: the first point', True)
+    want(f'{name}, the first point', S(), n=1, label=lambda v: bool(v) and 'Hike' in v)
+    press(pg, pg.js("nlT.at('#pl-tools .modebtn')"), f'{name}: the drawing button', True)
+    order = pg.js("[...document.querySelectorAll('.menu-pop .menu-h')].map((e) => e.textContent).join(' / ')")
+    if order != 'Draw the next leg / Sport · the legs you draw next / Route style · the whole route':
+        fails.append(f'{name}: the drawing menu: {order}')
+    press(pg, pg.js("nlT.item('Straight line')"), f'{name}: Straight line', True)
+    press(pg, pg.js(f'nlT.spot({L[1]})'), f'{name}: the second point', True)
+    want(f'{name}, a hike leg', pg.js('nlT.settle(2)'), sports='hike', label=lambda v: bool(v) and 'Straight line, Hike' in v)
+    press(pg, pg.js("nlT.at('#pl-tools .modebtn')"), f'{name}: the drawing button', True)
+    press(pg, pg.js("nlT.at('.menu-pop .nl-sport')"), f'{name}: the next leg’s sport', True)
+    picks = pg.js("document.querySelectorAll('.menu-pop .nl-pick').length")
+    if picks != 8:
+        fails.append(f"{name}: {picks} sports for the next leg, not all eight")
+    press(pg, pg.js("nlT.item('Gravel')"), f'{name}: Gravel', True)
+    st = S()
+    want(f'{name}, Gravel picked for the next leg', st, menu=True, next='gravel', map='gravel', mode='line', sports='hike', past=lambda v: v == 2)
+    line = pg.js("document.querySelector('.menu-pop .nl-line')?.textContent || ''")
+    if '25 / 20 / 12' not in line:
+        fails.append(f"{name}: the speed line says “{line}”, not Gravel's speeds")
+    escape(pg)
+    want(f'{name}, the button', S(), label=lambda v: bool(v) and 'Straight line, Gravel' in v)
+    press(pg, pg.js(f'nlT.spot({L[2]})'), f'{name}: the third point', True)
+    want(f'{name}, a gravel leg after the hike', pg.js('nlT.settle(3)'), sports='hike,gravel', waits=1)
+    if not pg.js('!!polku.planner.changeAt(1)'):
+        fails.append(f'{name}: no changeover where the sport changes')
+    # the speed line opens the editor in place; a change re-times the route
+    t0 = S()['time']
+    press(pg, pg.js("nlT.at('#pl-tools .modebtn')"), f'{name}: the drawing button', True)
+    press(pg, pg.js("nlT.at('.menu-pop .nl-speed')"), f'{name}: the speed line', True)
+    fast = pg.js("nlT.at([...document.querySelectorAll('.menu-pop .nl-editor .speed-presets button')].find((b) => b.textContent === 'Fast'))")
+    if press(pg, fast, f'{name}: Fast in the editor', True):
+        time.sleep(1)
+        st = S()
+        if not (st['time'] and t0 and st['time'] < t0):
+            fails.append(f"{name}: Fast didn't re-time the route ({t0} s, then {st['time']} s)")
+        if not pg.js("(document.querySelector('.menu-pop .nl-line')?.textContent || '').startsWith('Your speed: Fast')"):
+            fails.append(f'{name}: the speed line doesn’t say Fast')
+        press(pg, pg.js("nlT.at([...document.querySelectorAll('.menu-pop .nl-editor .speed-presets button')].find((b) => b.textContent === 'Normal'))"), f'{name}: Normal again', True)
+    escape(pg)
+    # Paddle draws Over water (from Follow paths), and back to Hike: not over water
+    press(pg, pg.js("nlT.at('#pl-tools .modebtn')"), f'{name}: the drawing button', True)
+    press(pg, pg.js("nlT.item('Follow paths')"), f'{name}: Follow paths', True)
+    press(pg, pg.js("nlT.at('#pl-tools .modebtn')"), f'{name}: the drawing button', True)
+    press(pg, pg.js("nlT.at('.menu-pop .nl-sport')"), f'{name}: the next leg’s sport', True)
+    press(pg, pg.js("nlT.item('Paddle')"), f'{name}: Paddle', True)
+    want(f'{name}, Paddle next', S(), mode='water', next='paddle', label=lambda v: bool(v) and 'Over water, Paddle' in v, sports='hike,gravel')
+    press(pg, pg.js("nlT.at('.menu-pop .nl-sport')"), f'{name}: the next leg’s sport', True)
+    press(pg, pg.js("nlT.item('Hike')"), f'{name}: Hike', True)
+    want(f'{name}, Hike next again', S(), mode='auto', next='hike', map='hike')
+    press(pg, pg.js("nlT.item('Straight line')"), f'{name}: Straight line', True)
+    # nothing to undo for the next legs: Undo takes the gravel leg back, and the next leg stays Hike
+    press(pg, pg.js("nlT.at(polku.planner.els.undo)"), f'{name}: Undo', True)
+    want(f'{name}, after Undo', S(), n=2, sports='hike', next='hike', map='hike')
+
+    # ---- a point on open water with Hike next: the note, its answers, the spot kept; not on a bridge or by the shore
+    pg.js('nlT.view([23.735, 61.519], 14)')
+    lake = [23.735, 61.522]
+    if not pg.js(f'nlT.water({lake})'):
+        fails.append(f'{name}: the lake point isn’t on the water')
+    press(pg, pg.js(f'nlT.spot({lake})'), f'{name}: a point on the lake', True)
+    st = S()
+    want(f'{name}, a point on the lake', st, n=3, toast=lambda v: bool(v) and v.startswith('This point is on the water. How do you get there?') and 'Paddle (sea kayak)' in v and 'Swim' in v and 'Stay on land' in v and 'on the ice' not in v)
+    past = st['past']
+    press(pg, pg.js("nlT.toastBtn('Swim')"), f'{name}: Swim', True)
+    time.sleep(0.6)
+    st = S()
+    want(f'{name}, Swim', st, sports='hike,swim', next='swim', map='swim', past=past)
+    off = pg.js(f"(() => {{ const q = polku.planner.points[2]; return Math.hypot((q[0] - {lake[0]}) * 53500, (q[1] - {lake[1]}) * 111200); }})()")
+    if off > 1:
+        fails.append(f'{name}: the point moved {off:.0f} m from where it was tapped')
+    press(pg, pg.js("nlT.at(polku.planner.els.undo)"), f'{name}: Undo', True)
+    want(f'{name}, Undo after Swim', S(), n=2, sports='hike')
+    pg.js("polku.set({ activity: 'hike' }), true")
+    time.sleep(0.4)
+    # by the shore: no note
+    press(pg, pg.js(f'nlT.shore({lake}, 0, 1)'), f'{name}: a point by the shore', True)
+    if 'on the water' in S()['toast']:
+        fails.append(f'{name}: the note for a tap by the shore')
+    pg.js('polku.planner.undo(), true')
+    # on a bridge (Satakunnansilta over Tammerkoski): no note
+    pg.js('nlT.view([23.7622, 61.50089], 16)')
+    press(pg, pg.js('nlT.spot([23.7622, 61.50089])'), f'{name}: a point on a bridge', True)
+    if 'on the water' in S()['toast']:
+        fails.append(f'{name}: the note for a point on a bridge')
+    pg.js('polku.planner.undo(), true')
+    # in winter: the ice too, a straight line to the spot, with what Polku can't see; in a share link as well
+    pg.js("polku.planner.app.winter = () => ({ on: true, setting: 'on' }), true")
+    pg.js('nlT.view([23.735, 61.519], 14)')
+    press(pg, pg.js(f'nlT.spot({lake})'), f'{name}: a point on the lake in winter', True)
+    press(pg, pg.js("nlT.toastBtn('Walk on the ice')"), f'{name}: Walk on the ice', True)
+    time.sleep(0.6)
+    ice = pg.js("""(async () => { const p = polku.planner, P = await import(location.origin + '/js/planner.js'); for (let k = 0; k < 30 && !(p.analysis && p.legs.length === 2 && p.legs[1].result); k++) await new Promise((r) => setTimeout(r, 100));
+      const w = p.analysis ? p.iceWarnings(p.analysis).map((x) => x.text) : [], url = p.shareUrl(), back = P.parseShared(new URL(url).searchParams);
+      return { leg: p.legs[1].mode + (p.legs[1].ice ? ' ice' : ''), sport: p.legSport(1), mode: p.mode, w, ic: new URL(url).searchParams.get('ic'), back: back.ice }; })()""")
+    if ice['leg'] != 'line ice' or ice['sport'] != 'hike' or ice['mode'] != 'line' or ice['w'] != ['On the ice: Polku can’t see whether it holds'] or ice['ic'] != '1' or ice['back'] != [1]:
+        fails.append(f'{name}: on the ice: {ice}')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # ---- 360 x 740 with long sport names: the sport stays whole on the button, the question fits
+    name = '360x740'
+    pg = page(360, 740, True, 'mtb')
+    pg.js("""(async () => { const A = (await import(location.origin + '/js/config.js')).ACTIVITIES; A.mtb.label = 'Maastopyöräily'; A.trailrun.label = 'Polkujuoksu';
+      const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.733, 61.4975]); p.addPoint([23.738, 61.4985]); p.setMode('auto'); p.renderTools(); await new Promise((r) => setTimeout(r, 600)); return true; })()""")
+    b = pg.js("(() => { const s = document.querySelector('#pl-tools .modebtn .tb-sport'), r = s.getBoundingClientRect(); return { text: s.textContent, cut: s.scrollWidth > s.clientWidth + 1, right: r.right, w: innerWidth }; })()")
+    if b['text'] != 'Maastopyöräily' or b['cut'] or b['right'] > b['w']:
+        fails.append(f'{name}: the button’s sport: {b}')
+    press(pg, pg.js("nlT.at('#activity-bar .act-current')"), f'{name}: the pill', True)
+    press(pg, pg.js("nlT.at('#activity-bar .act[data-k=trailrun]')"), f'{name}: Polkujuoksu', True)
+    q = pg.js("(() => { const m = document.querySelector('#activity-bar .act-menu'), r = m.getBoundingClientRect(); return { q: document.querySelector('.act-q')?.textContent, left: r.left, right: r.right, bottom: r.bottom, h: innerHeight, w: innerWidth, wide: [...m.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).overflow !== 'visible') }; })()")
+    if q['q'] != 'Use Polkujuoksu for…' or q['left'] < 0 or q['right'] > q['w'] or q['bottom'] > q['h'] or q['wide']:
+        fails.append(f'{name}: the question: {q}')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # ---- 200 % (a 390 phone's 195 x 422): the drawing menu is a sheet of its own, and the sport is in it
+    name = '195x422 (200 %)'
+    pg = page(195, 422, True, 'mtb')
+    pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); p.addPoint([23.733, 61.4975]); p.addPoint([23.738, 61.4985]); await new Promise((r) => setTimeout(r, 600)); return true; })()")
+    press(pg, pg.js("nlT.at('#pl-tools .modebtn')"), f'{name}: the drawing button', True)
+    s = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? { sheet: m.classList.contains('menu-sheet'), scrolls: m.scrollHeight > m.clientHeight, sport: !!m.querySelector('.nl-sport') } : null; })()")
+    if not s or not s['sheet'] or not s['sport']:
+        fails.append(f'{name}: the drawing menu: {s}')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # ---- a desktop, by mouse: the sport button before the style, Go › Time's speeds, Settings' speeds by sport (#87)
+    name = '1440x900'
+    pg = page(1440, 900, False, 'mtb')
+    pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); for (const q of [[23.733, 61.4975], [23.738, 61.4985], [23.743, 61.4975]]) p.addPoint(q); return true; })()")
+    pg.js('nlT.settle(3)')
+    o = pg.js("(() => { const p = polku.planner, r = (e) => e.getBoundingClientRect(); return { seg: r(p.els.modeSeg).right, sport: r(p.els.sportBtn).left, style: r(p.els.styleBtn).left, shown: !!p.els.sportBtn.offsetParent }; })()")
+    if not (o['shown'] and o['seg'] <= o['sport'] < o['style']):
+        fails.append(f'{name}: the sport button isn’t between the modes and the route style: {o}')
+    press(pg, pg.js("nlT.at(polku.planner.els.sportBtn)"), f'{name}: the sport button', False)
+    press(pg, pg.js("nlT.at('.menu-pop .nl-sport')"), f'{name}: the next leg’s sport', False)
+    press(pg, pg.js("nlT.item('Hike')"), f'{name}: Hike', False)
+    want(f'{name}, Hike for the next leg', pg.js('nlT.state()'), next='hike', map='hike', sport='Hike', sports='mtb,mtb',
+         toast=lambda v: 'The map and the legs you draw next are Hike now. Your route stays MTB.' in (v or ''))
+    escape(pg)
+    # Go › Time: what the time is based on, and Change opens the editor in place
+    pg.js("(() => { const p = polku.planner; p.setTab('go'); p.reveal('speed'); return true; })()")
+    time.sleep(0.6)
+    at = pg.js("(document.querySelector('.speed-at') || { textContent: '' }).textContent")
+    if not at.startswith('Timed at your speed: Normal · 20 / 16 / 11 km/h · 600 m/h up'):
+        fails.append(f'{name}: Go › Time says “{at[:80]}”')
+    press(pg, pg.js("nlT.at('.speed-at .btn')"), f'{name}: Change', False)
+    if not pg.js("!!document.querySelector('.speed-go .speed-presets')"):
+        fails.append(f'{name}: Change in Go › Time opened no editor')
+    # Settings: no sport of its own (#321); every sport's speeds, the route's marked; MTB's Fast re-times the MTB route while the map is Hike
+    press(pg, pg.js("nlT.at('#btn-settings')"), f'{name}: Settings', False)
+    st = pg.js("(() => { const b = document.querySelector('#settings-body'); return { seg: !!b.querySelector('.sport-seg, select[aria-label^=Sport]'), rows: [...b.querySelectorAll('.speed-sport-row')].map((r) => r.dataset.k + (r.querySelector('.cur') ? '*' : '')).join(',') }; })()")
+    if st['seg'] or st['rows'] != 'mtb*,gravel,road,hike,trailrun,run,paddle,swim':
+        fails.append(f'{name}: Settings: {st}')
+    t0 = pg.js('nlT.state()')['time']
+    press(pg, pg.js("nlT.at('#settings-body .speed-sport-row[data-k=mtb]')"), f'{name}: Settings, MTB', False)
+    press(pg, pg.js("nlT.at([...document.querySelectorAll('#settings-body .speed-presets button')].find((b) => b.textContent === 'Fast'))"), f'{name}: Settings, Fast', False)
+    time.sleep(1)
+    t1 = pg.js('nlT.state()')['time']
+    if not (t0 and t1 and t1 < t0):
+        fails.append(f"{name}: Settings' Fast for MTB didn't re-time the MTB route with the map on Hike ({t0} s, then {t1} s)")
+    if not pg.js("(document.querySelector('#settings-body .speed-sport-row[data-k=mtb] small')?.textContent || '').startsWith('Fast')"):
+        fails.append(f"{name}: Settings' MTB row doesn't say Fast")
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the next leg's sport and speed, the water note, Settings' speeds (B of #233)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -5689,8 +5972,9 @@ def toolbox(chrome):
         fails.append(f'{name}: More’s title is “{head}”, not the route’s name')
     pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); polku.planner.routeName = ''; true")
     d = dupes(pg, name)
-    if 'Clear route' not in d['bar'] or 'Show the whole route' not in d['bar']:
-        fails.append(f"{name}: room on the toolbar, but it lacks Clear route or Show the whole route: {', '.join(d['bar'])}")
+    # (the next leg's sport, B of #233, takes the room Save offline and Clear route had: they're in More, checked below)
+    if 'Show the whole route' not in d['bar'] or 'Export GPX' not in d['bar']:
+        fails.append(f"{name}: room on the toolbar, but it lacks Show the whole route or Export GPX: {', '.join(d['bar'])}")
     for label, check in (('Share link', "tbCalls.includes('share')"), ('Export GPX', "tbCalls.includes('exportGpx')"), ('Save offline', "tbCalls.includes('offline')"),
                          ('Reverse', "polku.planner.points[0][0] === 23.835"), ('Back to start', "polku.planner.isLoop()"),
                          ('Round trip', "polku.planner.loop.open")):
@@ -5863,10 +6147,12 @@ START_LIB = """(() => {
   T.sportMenu = () => {
     const m = $('.menu-pop');
     if (!m) return { menu: false };
-    const items = [...m.querySelectorAll('[role=menuitemradio]')].map((b) => txt(b)), pill = $$('#activity-bar .act-menu .act').map((b) => txt(b));
-    return { menu: true, items, pill, checked: txt(m.querySelector('[aria-checked=true]')), expanded: $('.pl-way .sport-chip').getAttribute('aria-expanded') };
+    // a sport's name, without its line (B of #233)
+    const name = (b) => { const n = b.querySelector(':scope > span > span, b > span'); return (n ? n.firstChild.textContent : b.textContent).trim(); };
+    const items = [...m.querySelectorAll('[role=menuitemradio]')].map(name), pill = $$('#activity-bar .act-menu .act').map(name);
+    return { menu: true, items, pill, checked: name(m.querySelector('[aria-checked=true]')), expanded: $('.pl-way .sport-chip').getAttribute('aria-expanded') };
   };
-  T.pickSport = (label) => { const b = $$('.menu-pop [role=menuitemradio]').find((x) => txt(x) === label); if (b) b.dataset.stPick = '1'; return !!b; };
+  T.pickSport = (label) => { const b = $$('.menu-pop [role=menuitemradio]').find((x) => (x.querySelector(':scope > span > span') || x).firstChild.textContent.trim() === label); if (b) b.dataset.stPick = '1'; return !!b; };
   T.sportIs = async (sport, label) => {
     await wait(300);
     const pill = $('#activity-bar .act-current').getAttribute('title'), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
@@ -6331,7 +6617,7 @@ GROUPS = [
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
-    ('sports', [sport_switch], 'changing the sport with a route drawn: the route keeps its sports, Route it as, Undo'),
+    ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
     ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),
     ('marks', [marks], 'distance, arrival/elapsed times, default and saved settings, the departure link'),
@@ -6346,6 +6632,7 @@ GROUPS = [
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
+    ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), Settings\' speeds by sport (#87)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]

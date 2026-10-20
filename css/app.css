@@ -770,6 +770,18 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .speed-at { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 10px 0 0; }
 .speed-at .note { flex: 1 1 200px; margin: 0; }
 .speed-go { margin-top: 10px; }
+/* Settings' speeds: every sport a row, its speeds in one line; a tap opens the editor under it */
+.speed-list { display: grid; gap: 2px; }
+.speed-sport-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.speed-sport-row > span { flex: 1; min-width: 0; display: grid; }
+.speed-sport-row b { font-size: 14px; }
+.speed-sport-row small { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.speed-sport-row > .ic { flex: none; color: var(--muted); }
+.speed-sport-row > .ic:first-child { color: var(--accent); }
+.speed-sport-row[aria-expanded="true"] { background: var(--surface-2); }
+@media (hover: hover) { .speed-sport-row:hover { background: var(--surface-2); } }
+.speed-sport-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.speed-list .speed-box { padding: 8px 8px 12px 36px; }
 .go-depart { display: grid; grid-column: 1 / -1; padding: 3px; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 0 14px; }
 .go-depart-label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
 .go-depart select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
@@ -1482,6 +1494,7 @@ body.dropping .drop-hint { display: flex; }
 /* the next leg's sport stays whole, its style shortens where there's no room (B of #233) */
 .modebtn .tb-sport { flex: none; }
 .modebtn .tb-style { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pl-tools:not(.docked):not(.desk) .modebtn .two { max-width: 9.5em; } /* floating: the style shortens before the toolbox docks */
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
@@ -1507,6 +1520,7 @@ body.dropping .drop-hint { display: flex; }
    then the names of the modes not in use, then all of them */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
 .pl-tools.fold2 .tb-modes button[aria-checked="false"] span, .pl-tools.fold3 .tb-modes button span { display: none; }
+.pl-tools.foldS .sportbtn > span { display: none; }
 @media (hover: hover) { .tbtn.danger:hover:not(:disabled) { color: var(--bad); } }
 
 /* the toolbar's tooltips (ui.js tooltip()) */

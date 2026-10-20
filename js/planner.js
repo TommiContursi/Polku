@@ -33,7 +33,7 @@ const MODES = ['auto', 'line', 'water'];
 const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
 // what the desktop toolbar shortens where room runs out (placeTools()): the style's caption, the names of
 // the modes not in use, then all the modes' names
-const FOLDS = ['fold1', 'fold2', 'fold3'];
+const FOLDS = ['fold1', 'fold2', 'foldS', 'fold3'];
 // how a sport goes along a line, for "MTB legs can't be paddled on the same line"
 const VERB = { mtb: 'ridden', gravel: 'ridden', road: 'ridden', hike: 'walked', trailrun: 'run', run: 'run', paddle: 'paddled', swim: 'swum' };
 const MODE_DESC = { auto: 'Along paths and roads, in the route style', line: 'Straight: off the trail, or across a gap', water: 'Polku’s water router: round land and marked hazards' };
@@ -43,7 +43,7 @@ const TIPS = {
   line: { name: 'Straight line', keys: 'S', text: 'The next leg is drawn straight: off the trail, or across a gap the router can’t take.' },
   water: { name: 'Over water', keys: 'W', text: 'The next leg is routed on the water by Polku: round land and marked hazards.' },
   style: { name: 'Route style', text: 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.' },
-  sport: { name: 'Next leg', text: 'The sport of the legs you draw next, and your speed in it. What’s drawn stays.' },
+  sport: { name: 'Sport', text: 'The sport for the legs you draw next, and your speed in it. Legs already drawn keep theirs.' },
   undo: { name: 'Undo', keys: 'Ctrl Z', text: 'Takes back the last change.' },
   redo: { name: 'Redo', keys: 'Ctrl Shift Z', text: 'Does it again.' },
   reverse: { name: 'Reverse', text: 'The finish becomes the start; each leg keeps its mode and style.' },
@@ -823,7 +823,7 @@ export class Planner {
     if (!route) { if (this.points.length > 1) this.update(); return false; }
     this.update(); // the same legs (their keys match): only drawn again
     if (this.routeSports().every((k) => k === sport)) return false; // the route's own sport: the map's note says the rest
-    toast(`${ACTIVITIES[sport].label} for the map and your next legs · your route stays ${this.sportsLabel()}`, { ms: 7000 });
+    toast(`The map and the legs you draw next are ${ACTIVITIES[sport].label} now. Your route stays ${this.sportsLabel()}.`, { ms: 7000 });
     return true;
   }
 
@@ -861,16 +861,16 @@ export class Planner {
     this.legs.forEach((l, i) => { if (legs[i] && l.mode === 'auto' && (!legs[i - 1] || this.legs[i - 1].mode !== 'auto' || this.nogosNear(this.points[i], this.points[i + 1]).length)) calls++; });
     const s = (m, one, many) => (m === 1 ? one : many);
     const all = cross
-      ? `Not for this route: ${L(R)} legs can’t be ${VERB[k]} on the same line. To change one leg, tap it on the map.`
-      : [`Its ${n === 1 ? '' : `${n} `}${L(R)} ${s(n, 'leg is', 'legs are')} routed again for ${S}: new times and checks · ${calls ? `${calls} routing ${s(calls, 'call', 'calls')}` : 'no routing calls'}.`,
-        calls > 10 ? `The calls are paced, so it takes about ${Math.ceil(calls / 12)} min; the legs come in one by one.` : '',
-        styled ? `${s(styled, 'A leg with its own style takes', 'Legs with their own style take')} the route’s ${S} style.` : '',
-        kept.length ? `${s(kept.length, 'Legs in', 'Legs in')} ${this.sportsLabel(kept)} stay as they are.` : '',
+      ? `Not for this route: its ${L(R)} legs are ${isWater(R) ? 'on the water' : 'on land'} and can’t be ${VERB[k]}. To change a single leg, tap it on the map.`
+      : [`Polku plans the ${n === 1 ? '' : `${n} `}${L(R)} ${s(n, 'leg', 'legs')} again as ${S}, with new times and checks${calls ? ` (${calls} routing ${s(calls, 'call', 'calls')})` : ''}.`,
+        calls > 10 ? `The calls are spaced out, so this takes about ${Math.ceil(calls / 12)} minutes, a leg at a time.` : '',
+        styled ? `${s(styled, 'A leg with a style of its own takes', 'Legs with a style of their own take')} the route’s ${S} style.` : '',
+        kept.length ? `The ${this.sportsLabel(kept)} legs stay as they are.` : '',
         fixed ? `${s(fixed, 'A line from a file or LIPAS keeps its shape', 'Lines from a file or LIPAS keep their shape')}.` : '',
-        `Undo brings back the ${L(R)} route.`].filter(Boolean).join(' ');
+        `Undo brings the ${L(R)} route back.`].filter(Boolean).join(' ');
     return {
-      title: `${S} for…`, all, cross,
-      next: `The legs you’ve drawn stay ${this.sportsLabel()}. The map shows ${S}, and the toolbox says so.`,
+      title: `Use ${S} for…`, all, cross,
+      next: `The legs you’ve drawn stay ${this.sportsLabel()}. The map switches to ${S}, and so do the legs you draw from now on.`,
       already: k === this.nextSport() && k === this.app.activity(),
       keep: `Keep ${L(this.app.activity())}`,
     };
@@ -901,7 +901,7 @@ export class Planner {
     this.matchMode();
     this.update();
     const n = change.filter(Boolean).length;
-    toast(`Your route is ${ACTIVITIES[k].label} now · ${n} ${n === 1 ? 'leg' : 'legs'} routed again${styled ? ', with the route’s style' : ''}`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+    toast(`Your route is ${ACTIVITIES[k].label} now: ${n} ${n === 1 ? 'leg' : 'legs'} planned again${styled ? ' in the route’s style' : ''}.`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // A sport picked for the next leg (the drawing menu, the water note): Only the legs you draw next.
@@ -1803,6 +1803,8 @@ export class Planner {
   // `sport`: whose legs the whole route's style is for (the route's own; the drawing menu's, the next leg's)
   setStyle(style, leg = null, sport = this.mainSport()) {
     const routed = this.legs.length > 0; // before there's a route it routes nothing: no note, no Undo (A)
+    // the route's style as it is, so Undo brings it back even when it was only yours until now
+    if (leg == null && !this.styles[sport]) this.styles = { ...this.styles, [sport]: this.styleOf(sport) };
     if (routed) {
       this.commit();
       this.styleBefore = { stats: this.styleStats(), a: this.analysis }; // compared once the new route is in
@@ -2497,15 +2499,16 @@ export class Planner {
     const near = this.map.queryRenderedFeatures([[pt.x - 12, pt.y - 12], [pt.x + 12, pt.y + 12]]);
     return !near.some((f) => { const p = f.properties || {}; return p.brunnel === 'bridge' || p.bridge === 'yes' || p.class === 'ferry' || p.route === 'ferry' || /bridge|ferry/.test(f.layer.id); });
   }
-  // "On the water? Paddle from here (sea kayak) · Swim from here · Keep Hike", and in winter "On the ice (Hike)"
+  // "This point is on the water. How do you get there?" Paddle, Swim, in winter on the ice, or Stay on land
   offerPaddle() {
-    const keep = ACTIVITIES[this.nextLegSport()].label, craft = (CRAFT[this.craft] || CRAFT.kayak).label;
+    const land = this.nextLegSport(), craft = (CRAFT[this.craft] || CRAFT.kayak).label;
     const winter = this.app.winter && this.app.winter().on;
-    toast('On the water?', { ms: 9000, action: [
-      { label: `Paddle from here (${craft === 'SUP' ? craft : craft.toLowerCase()})`, fn: () => this.waterFrom('paddle') },
-      { label: 'Swim from here', fn: () => this.waterFrom('swim') },
-      winter ? { label: `On the ice (${keep})`, fn: () => this.waterFrom('ice') } : null,
-      { label: `Keep ${keep}`, fn: () => { this.waterTap = null; } },
+    const onIce = { bike: 'Ride on the ice' }[groupOf(land)] || (land === 'run' || land === 'trailrun' ? 'Run on the ice' : 'Walk on the ice');
+    toast('This point is on the water. How do you get there?', { ms: 10000, action: [
+      { label: `Paddle (${craft === 'SUP' ? craft : craft.toLowerCase()})`, fn: () => this.waterFrom('paddle') },
+      { label: 'Swim', fn: () => this.waterFrom('swim') },
+      winter ? { label: onIce, fn: () => this.waterFrom('ice') } : null,
+      { label: 'Stay on land', fn: () => { this.waterTap = null; } },
     ].filter(Boolean) });
   }
 
@@ -2522,12 +2525,18 @@ export class Planner {
       if (own) this.legs[i - 1] = { mode: 'line', sport: leg.sport, ice: true };
       this.setMode('line'); // on the ice there are no paths to follow
       this.update();
-      toast('On the ice: straight lines from here. Polku can’t see whether the ice holds: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked.', { tone: 'warn', ms: 12000 });
+      toast('On the ice: straight lines from here on. Polku can’t see whether the ice holds. Check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never go on ice you haven’t checked.', { tone: 'warn', ms: 12000 });
       return;
     }
-    if (own) this.legs[i - 1] = { mode: this.mode === 'line' ? 'line' : 'water', sport: k };
-    this.pickNext(k); // the map and the next legs (the route is routed again: onActivityChange())
-    if (this.points.length < 2) this.update();
+    // the map and the legs you draw next are in k; the legs drawn keep theirs, and the one to this point is k
+    const was = this.legs.map((_, j) => this.legSport(j));
+    if (own) { this.legs[i - 1] = { mode: this.mode === 'line' ? 'line' : 'water', sport: k }; was[i - 1] = k; }
+    this.app.setSport(k, { from: 'route' });
+    this.legs.forEach((l, j) => { l.sport = was[j] === k ? undefined : was[j]; });
+    this.next = null;
+    this.matchMode();
+    this.update();
+    toast(`${ACTIVITIES[k].label} to this point, and on from here. Undo takes the point back.`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // a leg drawn straight onto the ice (the water note, in winter): Polku can't see the ice
@@ -4490,13 +4499,13 @@ export class Planner {
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
       const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 : box.getBoundingClientRect().right > limit);
-      // in turn: the route's actions from the last, the style's caption, the names of the modes not in use,
-      // Show the whole route (an action to keep in sight), then all the modes' names
+      // in turn: the route's actions from the last, the style's caption, the names of the modes not in use, the
+      // sport's name (its icon stays), Show the whole route (an action to keep in sight), then all the modes' names
       box.classList.remove(...FOLDS);
       setOpts(box, opts.length);
       const steps = [];
       for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
-      steps.push(() => box.classList.add('fold1'), () => box.classList.add('fold2'), () => setOpts(box, 0), () => box.classList.add('fold3'));
+      steps.push(() => box.classList.add('fold1'), () => box.classList.add('fold2'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold3'));
       for (const step of steps) {
         if (!over()) break;
         step();
@@ -4558,10 +4567,9 @@ export class Planner {
     return this.isLoop() ? `Round trip from ${this.nameOf(0)}` : `${this.nameOf(0)} → ${this.nameOf(n - 1)}`;
   }
 
-  // Phones: the mode's menu: Next leg (its sport and speed), "Draw the next leg" and the route style for the
+  // Phones: the mode's menu: "Draw the next leg", the next leg's sport and speed, and the route style for the
   // whole route. Desktops: the style button's menu (the modes are in the toolbar itself), and the sport
-  // button's (`next`), which is the phones' Next leg. The styles are the next leg's sport's: the ones its
-  // button names.
+  // button's (`next`), the phones' sport part. The styles are the next leg's sport's: the ones its button names.
   toggleModes(anchor, { next = false } = {}) {
     if (this.modesMenu) { this.modesMenu.close(); return; }
     this.closeMore();
@@ -4569,7 +4577,7 @@ export class Planner {
     this.nlOpen = false;
     this.nlSpeed = false;
     const items = () => {
-      if (next) return [{ group: 'Next leg', items: this.nextLegItems(refill) }];
+      if (next) return [{ group: 'Sport · the legs you draw next', items: this.nextLegItems(refill) }];
       const ns = this.nextLegSport(), rs = this.styleOf(ns), cat = STYLES[ns] || STYLES.mtb, custom = isCustom(ns, rs);
       const pick = (k, label) => {
         this.styleLeg = null;
@@ -4582,9 +4590,10 @@ export class Planner {
           custom ? { label: 'Custom', radio: true, checked: true, disabled: true, fn: () => {} } : null] },
         { icon: 'sliders', label: 'Fine-tune in How you go', fn: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } },
       ] };
+      // in the order the button reads: how it's drawn, its sport ("Hike · Balanced") and the style
       return [
-        desk ? null : { group: 'Next leg', items: this.nextLegItems(refill) },
         desk ? null : { group: 'Draw the next leg', items: MODES.map((m) => ({ icon: MODE_ICON[m], label: MODE_LABEL[m], desc: MODE_DESC[m], radio: true, checked: this.mode === m, fn: () => this.setMode(m) })) },
+        desk ? null : { group: 'Sport · the legs you draw next', items: this.nextLegItems(refill) },
         desk || !this.legs.length ? null : { note: 'Only the legs you draw next. To change a drawn leg, tap it on the map.' },
         desk ? null : 'hr',
         styles,
@@ -4594,7 +4603,8 @@ export class Planner {
     const refill = (focus) => {
       if (!this.modesMenu) return;
       this.modesMenu.refill(items());
-      if (focus) this.modesMenu.el.querySelector(focus)?.focus({ preventScroll: true });
+      const el = focus && this.modesMenu.el.querySelector(focus);
+      if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest' }); }
     };
     this.modesMenu = popMenu(anchor, items(), { label: next ? 'Next leg' : desk ? 'Route style' : 'Draw the next leg', align: 'left', maxRight: $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
       onClose: () => { this.modesMenu = null; anchor.setAttribute('aria-expanded', 'false'); } });
@@ -4605,17 +4615,17 @@ export class Planner {
   // is Only the legs you draw next: pickNext()), and its speed, whose editor (Your speed's) opens in place
   nextLegItems(refill) {
     const ns = this.nextLegSport();
-    const out = [{ icon: this.sportIcon(ns), label: escapeHtml(ACTIVITIES[ns].label), desc: 'The legs you draw next · what’s drawn stays', keep: true, expanded: !!this.nlOpen, cls: 'nl-sport',
+    const out = [{ icon: this.sportIcon(ns), label: escapeHtml(ACTIVITIES[ns].label), desc: 'Legs already drawn keep their sport', keep: true, expanded: !!this.nlOpen, cls: 'nl-sport',
       after: icon(this.nlOpen ? 'chevronUp' : 'chevronDown', 16), fn: () => { this.nlOpen = !this.nlOpen; this.nlSpeed = false; refill('.nl-sport'); } }];
     if (this.nlOpen) {
       out.push(...this.app.sportItems({ checked: ns, route: this.points.length > 1 ? this.routeSports() : [], fn: (k) => { this.nlOpen = false; this.pickNext(k); refill('.nl-sport'); } })
         .map((it) => ({ ...it, keep: true, cls: 'nl-pick' })));
     }
-    out.push({ icon: 'clock', label: `<span class="nl-line">${escapeHtml(this.speedLine(ns))}</span>`, keep: true, expanded: !!this.nlSpeed, cls: 'nl-speed',
-      after: `<span class="nl-speeds">Speeds</span>${icon(this.nlSpeed ? 'chevronUp' : 'chevronRight', 16)}`, fn: () => { this.nlSpeed = !this.nlSpeed; this.nlOpen = false; refill('.nl-speed'); } });
+    out.push({ icon: 'clock', label: `<span class="nl-line">Your speed: ${escapeHtml(this.speedLine(ns))}</span>`, keep: true, expanded: !!this.nlSpeed, cls: 'nl-speed',
+      after: `<span class="nl-speeds">Change</span>${icon(this.nlSpeed ? 'chevronUp' : 'chevronRight', 16)}`, fn: () => { this.nlSpeed = !this.nlSpeed; this.nlOpen = false; refill('.nl-speed'); } });
     if (this.nlSpeed) {
       const box = h('div', { class: 'nl-editor' });
-      const line = () => { const el = box.closest('.menu')?.querySelector('.nl-line'); if (el) el.textContent = this.speedLine(ns); };
+      const line = () => { const el = box.closest('.menu')?.querySelector('.nl-line'); if (el) el.textContent = `Your speed: ${this.speedLine(ns)}`; };
       renderSpeedEditor(box, ns, { craft: this.craft, onCraft: (c) => this.setCraft(c), onChange: () => { this.retime(); line(); } });
       out.push({ node: box });
     }
@@ -4722,7 +4732,7 @@ export class Planner {
     // what the time is based on, and Change: your speeds' editor, here in place (B of #233)
     const go = h('div', { class: 'speed-go', hidden: !this.goSpeed });
     if (this.goSpeed) this.speedEditors(go);
-    box.append(h('div', { class: 'speed-at' }, h('span', { class: 'note' }, `Based on your speeds · ${this.isMulti() ? [act, ...this.routeSports().filter((x) => x !== act)].map((sp) => `${ACTIVITIES[sp].label}: ${this.speedLine(sp)}`).join('; ') : this.speedLine(act)}`),
+    box.append(h('div', { class: 'speed-at' }, h('span', { class: 'note' }, `Timed at your speed: ${this.isMulti() ? [act, ...this.routeSports().filter((x) => x !== act)].map((sp) => `${ACTIVITIES[sp].label}: ${this.speedLine(sp)}`).join('; ') : this.speedLine(act)}`),
       h('button', { type: 'button', class: 'btn small', 'aria-expanded': String(!!this.goSpeed), onclick: () => { this.goSpeed = !this.goSpeed; this.renderSpeed(); this.els.speedRoute.querySelector('.speed-at .btn')?.focus(); } }, 'Change')), go);
   }
 

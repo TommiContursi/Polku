@@ -557,6 +557,7 @@ function sportItems({ checked, route = [], fn }) {
     k, icon: ACT_ICONS[k], label: `<span>${escapeAttr(a.label)}${route.includes(k) ? ' <span class="cur">your route</span>' : ''}</span>`, desc: escapeAttr(a.line), radio: true, checked: checked === k, fn: () => fn(k),
   }));
 }
+const SPORT_LEAD = 'The map shows what matters for the sport you pick, and the legs you draw are planned for it.';
 // The pill's menu: the sports, and with a route in another sport what a change is for (option A of B, #233)
 function sportList(menu) {
   const route = planner.points.length > 1 ? planner.routeSports() : [];
@@ -565,7 +566,7 @@ function sportList(menu) {
   menu.setAttribute('aria-describedby', 'act-lead');
   menu.removeAttribute('aria-labelledby');
   menu.replaceChildren(h('div', { class: 'act-head', 'aria-hidden': 'true' }, 'Sport'),
-    h('p', { class: 'act-lead', id: 'act-lead' }, route.length ? `Your route: ${planner.sportsLabel()} · ${planner.legs.length} ${planner.legs.length === 1 ? 'leg' : 'legs'}` : 'The map shows what matters for it, and new legs are planned for it.'),
+    h('p', { class: 'act-lead', id: 'act-lead' }, route.length ? `Your route: ${planner.sportsLabel()}, ${planner.legs.length} ${planner.legs.length === 1 ? 'leg' : 'legs'}` : SPORT_LEAD),
     ...sportItems({ checked: state.activity, route, fn: (k) => pickSport(k, menu) }).map((it) => h('button', {
       type: 'button', role: 'option', class: 'act two', 'aria-selected': String(it.checked), 'data-k': it.k,
       onclick: it.fn, html: `${icon(it.icon, 20)}<span><b>${it.label}</b><small>${it.desc}</small></span>${it.checked ? icon('check', 18) : ''}`,
@@ -599,7 +600,7 @@ function openSportMenu(anchor) {
   if (sportPop) { sportPop.close(); return; }
   closeActs();
   anchor.setAttribute('aria-expanded', 'true');
-  sportPop = popMenu(anchor, [{ group: 'Sport', items: [{ note: 'The map shows what matters for it, and new legs are planned for it.' }, ...sportItems({ checked: state.activity, fn: (k) => {
+  sportPop = popMenu(anchor, [{ group: 'Sport', items: [{ note: SPORT_LEAD }, ...sportItems({ checked: state.activity, fn: (k) => {
     setActivity(k); $('.pl-way .sport-chip')?.focus({ preventScroll: true });
   } })] }], { label: 'Sport', align: 'left', sheet: true, onClose: () => { sportPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
 }
@@ -685,7 +686,6 @@ function setActivity(k, { from = 'map' } = {}) {
   if (state.activity === k) return;
   const prev = state.activity;
   state.activity = k;
-  speedSport = k; // Settings' speeds follow the sport (#87)
   state.overlays = overlaysFor(k);
   Object.assign(state, trailsFor(k));
   document.body.dataset.activity = k;
@@ -1347,7 +1347,7 @@ map.once('idle', () => (window.requestIdleCallback || setTimeout)(() => { for (c
 
 // ------------------------------------------------------------------ settings panel
 // How Polku behaves (not what the map shows): sport, planner, display, offline, data.
-let speedSport = null; // which sport's speeds Settings shows (defaults to the current one)
+let speedOpen = null; // the sport whose speeds Settings shows opened (none at first)
 function renderSettingsPanel() {
   const p = $('#settings-body');
   const keepScroll = p.scrollTop;
@@ -1357,22 +1357,28 @@ function renderSettingsPanel() {
     h('button', { type: 'button', class: 'btn', id: 'btn-changelog', onclick: (e) => openChangelog(e.currentTarget) }, 'What’s new'),
     h('p', { class: 'note' }, 'Read recent changes without leaving your route.')));
 
-  // speeds: the same editor as the planner's, for any sport; the map's sport first. The sport itself is the pill's
-  // (and, for the next leg, the planner's drawing menu): Settings holds settings, not the map's choices (#321)
-  speedSport = ACTIVITIES[speedSport] ? speedSport : state.activity;
-  const routeUses = planner.points.length > 1 && planner.routeSports().includes(speedSport);
-  const speedBox = h('div', { class: 'speed-box' });
-  const pickSport = h('select', { class: 'start-select', 'aria-label': 'Sport for these speeds', onchange: (e) => { speedSport = e.target.value; renderSettingsPanel(); } },
-    ...Object.entries(ACTIVITIES).map(([k, a]) => h('option', { value: k, selected: k === speedSport }, a.label)));
-  p.append(section('Speeds',
-    h('label', { class: 'speed-sport' }, 'Speeds for ', pickSport),
-    speedBox,
-    h('p', { class: 'note' }, `${routeUses ? `Your route’s time follows these for its ${ACTIVITIES[speedSport].label} legs. ` : ''}They set the time estimate (and so the weather along the route). The planner has the same in Route › How you go and in its drawing menu, and Go › Time says where the time goes on your route. Kept on this device only.`)));
-  renderSpeedEditor(speedBox, speedSport, {
-    craft: planner.craft, onCraft: (k) => planner.setCraft(k),
-    // the route's time follows when the route has legs in that sport, whatever the map's sport is (#87)
-    onChange: () => { if (planner.routeSports().includes(speedSport)) planner.retime(); },
-  });
+  // Your speeds: every sport in a row of its own, its speeds in one line; a tap opens the planner's own editor in
+  // place, one sport at a time. A change re-times the route when it has legs in that sport, whatever the map's
+  // sport is (#87). The sport itself is the pill's (and the next leg's, the planner's drawing menu): Settings holds
+  // settings, not the map's choices (#321).
+  const inRoute = planner.points.length > 1 ? planner.routeSports() : [];
+  const speeds = h('div', { class: 'speed-list' });
+  for (const [k, a] of Object.entries(ACTIVITIES)) {
+    const open = speedOpen === k;
+    const row = h('button', { type: 'button', class: 'speed-sport-row', 'data-k': k, 'aria-expanded': String(open),
+      onclick: () => { speedOpen = open ? null : k; renderSettingsPanel(); $(`#settings-body .speed-sport-row[data-k="${k}"]`)?.focus(); },
+      html: `${icon(ACT_ICONS[k], 18)}<span><b>${a.label}${inRoute.includes(k) ? ' <span class="cur">your route</span>' : ''}</b><small>${escapeAttr(planner.speedLine(k))}</small></span>${icon(open ? 'chevronUp' : 'chevronDown', 16)}` });
+    speeds.append(row);
+    if (!open) continue;
+    const box = h('div', { class: 'speed-box' });
+    speeds.append(box);
+    renderSpeedEditor(box, k, {
+      craft: planner.craft, onCraft: (c) => planner.setCraft(c),
+      onChange: () => { row.querySelector('small').textContent = planner.speedLine(k); if (planner.routeSports().includes(k)) planner.retime(); },
+    });
+  }
+  p.append(section('Your speeds', speeds,
+    h('p', { class: 'note' }, 'Polku times your route with these speeds, so they also decide when you reach each place and the weather you meet there. A change applies at once to your route’s legs in that sport. The planner has the same speeds in its drawing menu and in Route › How you go. Kept on this device only.')));
 
   if (planner.sideMQ && planner.sideMQ.matches) {
     p.append(section('Route planner',
@@ -1433,7 +1439,7 @@ function renderSettingsPanel() {
 // (the full panel: More, a step from the drawer), 'settings-panel', or null to close them all.
 // instant: no animation (the keyboard); step: More's step in; back: from the full panel to the drawer.
 function openPanel(id, { instant = false, step = false, back = false } = {}) {
-  if (id === 'settings-panel') { speedSport = state.activity; renderSettingsPanel(); } // fresh: speeds may have changed in the planner
+  if (id === 'settings-panel') renderSettingsPanel(); // fresh: speeds may have changed in the planner
   const wasLayers = layersOpen(), focusIn = $$('#quick-layers, #layers-panel').some((el) => el.contains(document.activeElement));
   if (id === 'quick-layers' && wasLayers && !back) id = null;
   lpSwipe.stop();

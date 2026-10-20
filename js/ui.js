@@ -170,25 +170,31 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
   };
   for (const it of items) add(el, it);
   document.body.append(el);
-  const r = anchor.getBoundingClientRect(), gap = 8;
-  const right = Math.min(innerWidth - gap, maxRight ?? Infinity);
-  if (el.offsetWidth > right - gap) Object.assign(el.style, { width: `${right - gap}px`, minWidth: '0' });
-  const mh = el.scrollHeight, mw = el.offsetWidth;
-  const below = innerHeight - r.bottom - gap - 4, above = r.top - gap - 4;
-  if (sheet && (Math.max(below, above) < Math.min(mh, 240) || right - gap < 240)) {
-    Object.assign(el.style, { width: '', minWidth: '' });
-    el.classList.add('menu-sheet'); // no room beside its button (enlarged text, a raised sheet): a sheet of its own
-  } else {
-    if (mh <= below || (mh > above && below >= above)) {
-      el.style.top = `${r.bottom + 4}px`;
-      if (mh > below) el.style.maxHeight = `${below}px`;
+  // where it goes: beside its button, on screen, scrolling inside when taller than the room; again when it grows
+  const place = () => {
+    Object.assign(el.style, { width: '', minWidth: '', top: '', left: '', maxHeight: '' });
+    el.classList.remove('menu-sheet', 'menu-up');
+    const r = anchor.getBoundingClientRect(), gap = 8;
+    const right = Math.min(innerWidth - gap, maxRight ?? Infinity);
+    if (el.offsetWidth > right - gap) Object.assign(el.style, { width: `${right - gap}px`, minWidth: '0' });
+    const mh = el.scrollHeight, mw = el.offsetWidth;
+    const below = innerHeight - r.bottom - gap - 4, above = r.top - gap - 4;
+    if (sheet && (Math.max(below, above) < Math.min(mh, 240) || right - gap < 240)) {
+      Object.assign(el.style, { width: '', minWidth: '' });
+      el.classList.add('menu-sheet'); // no room beside its button (enlarged text, a raised sheet): a sheet of its own
     } else {
-      el.style.top = `${Math.max(gap, r.top - 4 - mh)}px`;
-      if (mh > above) el.style.maxHeight = `${above}px`;
-      el.classList.add('menu-up');
+      if (mh <= below || (mh > above && below >= above)) {
+        el.style.top = `${r.bottom + 4}px`;
+        if (mh > below) el.style.maxHeight = `${below}px`;
+      } else {
+        el.style.top = `${Math.max(gap, r.top - 4 - mh)}px`;
+        if (mh > above) el.style.maxHeight = `${above}px`;
+        el.classList.add('menu-up');
+      }
+      el.style.left = `${Math.max(gap, Math.min(right - mw, align === 'left' ? r.left : r.right - mw))}px`;
     }
-    el.style.left = `${Math.max(gap, Math.min(right - mw, align === 'left' ? r.left : r.right - mw))}px`;
-  }
+  };
+  place();
   (el.querySelector('.menu-item[aria-checked="true"]:not(:disabled)') || el.querySelector('.menu-item:not(:disabled)'))?.focus({ preventScroll: true });
   setTimeout(() => {
     if (!open) return;
@@ -197,7 +203,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     addEventListener('resize', onResize);
   });
   // the same menu with new contents, where it is (a choice inside it that changes what it lists)
-  const refill = (next) => { el.replaceChildren(); for (const it of next) add(el, it); };
+  const refill = (next) => { const top = el.scrollTop; el.replaceChildren(); for (const it of next) add(el, it); place(); el.scrollTop = top; };
   return { el, close, refill };
 }
 
