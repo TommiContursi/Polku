@@ -222,7 +222,7 @@ export class Planner {
     map.on('mousemove', (e) => this.onMapMove(e));
     map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     // was a menu or card open when this press began? (MapLibre closes it on the click; the click shouldn't add a point too)
-    const pressed = () => { this.popupAtPress = !!this.map.getContainer().querySelector('.maplibregl-popup:not(.start-tip)'); };
+    const pressed = () => { this.popupAtPress = !!this.map.getContainer().querySelector('.maplibregl-popup'); };
     map.on('mousedown', pressed);
     map.on('touchstart', pressed);
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
