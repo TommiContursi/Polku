@@ -150,6 +150,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     if (it === 'hr') { to.append(h('hr')); return; }
     if (it.head != null) { to.append(h('div', { class: 'menu-head' }, h('b', {}, it.head), it.sub ? h('small', { html: `${icon('check', 13)}${escapeHtml(it.sub)}` }) : null)); return; }
     if (it.note) { to.append(h('p', { class: 'menu-note' }, it.note)); return; }
+    if (it.node) { to.append(it.node); return; } // a part of its own (the drawing menu's Next leg)
     if (it.group) {
       const id = `menu-h-${++menuIds}`, g = h('div', { role: 'group', 'aria-labelledby': id });
       to.append(h('div', { class: 'menu-h', id }, it.group), g);
@@ -159,10 +160,12 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     if (it.chips) { const c = h('div', { class: 'menu-chips' }); for (const x of it.chips) add(c, x, true); to.append(c); return; }
     const role = it.radio ? 'menuitemradio' : it.checked != null ? 'menuitemcheckbox' : 'menuitem';
     const html = chip ? `${it.checked ? icon('check', 15) : ''}<span>${it.label}</span>`
-      : `${icon(it.icon, 17)}<span>${it.label}${it.desc ? `<small>${it.desc}</small>` : ''}</span>${it.radio && it.checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}`;
-    const b = h('button', { type: 'button', role, class: `menu-item${chip ? ' chip' : ''}${it.desc ? ' two-line' : ''} ${it.cls || ''}`, html, onclick: () => { close(); it.fn(); } });
+      : `${icon(it.icon, 17)}<span>${it.label}${it.desc ? `<small>${it.desc}</small>` : ''}</span>${it.radio && it.checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}${it.after || ''}`;
+    // `keep`: the menu stays open (a part that opens in place, a choice that changes what it lists)
+    const b = h('button', { type: 'button', role, class: `menu-item${chip ? ' chip' : ''}${it.desc ? ' two-line' : ''} ${it.cls || ''}`, html, onclick: () => { if (!it.keep) close(); it.fn(); } });
     if (it.disabled) b.disabled = true;
     if (it.checked != null) b.setAttribute('aria-checked', String(!!it.checked));
+    if (it.expanded != null) b.setAttribute('aria-expanded', String(!!it.expanded));
     to.append(b);
   };
   for (const it of items) add(el, it);
@@ -193,7 +196,9 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     document.addEventListener('keydown', key, true);
     addEventListener('resize', onResize);
   });
-  return { el, close };
+  // the same menu with new contents, where it is (a choice inside it that changes what it lists)
+  const refill = (next) => { el.replaceChildren(); for (const it of next) add(el, it); };
+  return { el, close, refill };
 }
 
 /**
@@ -246,13 +251,14 @@ let toastTimer = 0;
 export function toast(msg, { tone = 'info', ms = 3500, action = null } = {}) {
   const t = $('#toast');
   t.textContent = msg;
-  // one thing to do about it ("Paddle this leg"), right in the message
-  if (action) {
+  // one thing to do about it ("Paddle this leg"), right in the message; or two, a choice ("Paddle from here", "Keep Hike")
+  t.classList.toggle('choice', [].concat(action || []).length > 1);
+  for (const act of [].concat(action || [])) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'toast-act';
-    b.textContent = action.label;
-    b.addEventListener('click', () => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); action.fn(); });
+    b.textContent = act.label;
+    b.addEventListener('click', () => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); act.fn(); });
     t.append(' ', b);
   }
   t.dataset.tone = tone;

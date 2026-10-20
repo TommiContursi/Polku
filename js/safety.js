@@ -128,9 +128,8 @@ export class SafetyLayers {
     this.timer = setTimeout(() => this.update(), delay);
   }
 
-  inFinland() {
-    const c = this.map.getCenter();
-    return c.lng > 19 && c.lng < 32 && c.lat > 59.4 && c.lat < 70.3;
+  inFinland([lng, lat] = this.map.getCenter().toArray()) {
+    return lng > 19 && lng < 32 && lat > 59.4 && lat < 70.3;
   }
 
   update() {
@@ -447,10 +446,12 @@ export class SafetyLayers {
    * @returns {Promise<Array<{at,len,text,lngLat,kind,avoid}>>}
    */
   async hazardsAlong(a, { activity, startSec }) {
-    if (!a || !this.inFinland()) return [];
+    // the route's own place and each stretch's own sport, whatever the map shows (#71)
+    if (!a || !a.pts.some((p) => this.inFinland(p))) return [];
     const box = [Infinity, Infinity, -Infinity, -Infinity];
     for (const p of a.pts) { box[0] = Math.min(box[0], p[0]); box[1] = Math.min(box[1], p[1]); box[2] = Math.max(box[2], p[0]); box[3] = Math.max(box[3], p[1]); }
-    const onWheelsOrFeet = !isWater(activity);
+    const landAt = (i) => !isWater((a.attr[i] && a.attr[i].sport) || activity);
+    const onWheelsOrFeet = a.pts.some((_, i) => landAt(i));
     await Promise.all([
       this.loadIncidents(),
       this.loadRoadworks(box, { publish: false }),
@@ -478,7 +479,7 @@ export class SafetyLayers {
       const mid = Math.round((h.i0 + h.i1) / 2);
       return { ll: a.pts[mid], r: Math.max(40, Math.min(220, (a.along[h.i1] - a.along[h.i0]) / 2 + 30)) };
     };
-    const roadsOnly = (i, tags) => !tags.highway || !['path', 'footway', 'cycleway', 'bridleway', 'steps', 'track', 'pedestrian'].includes(tags.highway);
+    const roadsOnly = (i, tags) => landAt(i) && (!tags.highway || !['path', 'footway', 'cycleway', 'bridleway', 'steps', 'track', 'pedestrian'].includes(tags.highway));
 
     // road works active when you get there
     const works = this.allRoadworks().filter((f) => activeAt(f.properties, startSec + (tAt[a.pts.length - 1] || 0) / 2));

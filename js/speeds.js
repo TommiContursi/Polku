@@ -69,7 +69,7 @@ export function speedSummary(sport, craft) {
   const s = speedsFor(sport);
   const name = (PRESETS.find(([k]) => k === s.preset) || PRESETS[1])[1];
   let txt;
-  if (sport === 'paddle') txt = `${CRAFT[craft].label} ${show(s[craft], 'km/h')} km/h`;
+  if (sport === 'paddle') txt = `${CRAFT[craft].label} · ${show(s[craft], 'km/h')} km/h`;
   else if (sport === 'swim') txt = `${pace100(s.swim)} /100 m`;
   else if (sport === 'hike') txt = `${show(s.walk, 'km/h')} km/h on the flat`;
   else if (sport === 'run' || sport === 'trailrun') txt = `${pace(s.paved)} /km paved · ${pace(s.trail)} trail`;
