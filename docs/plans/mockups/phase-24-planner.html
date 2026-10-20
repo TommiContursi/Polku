@@ -373,6 +373,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .wibtn { all: unset; display: grid; gap: 2px; cursor: pointer; min-height: 44px; align-content: center; border-radius: 8px; }
 .wibtn:focus-visible { outline: 2.5px solid var(--focus); outline-offset: 2px; }
 .wi .tx .wh { font-size: 13px; color: var(--muted); }
+.wi.picked { outline: 2.5px solid var(--text); outline-offset: 3px; border-radius: 12px; }
 .wi .tx .nt { font-size: 13px; }
 .src { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; color: var(--muted); margin-top: 2px; }
 .src .ic { color: var(--muted); }
@@ -397,6 +398,107 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .mapinfo { position: absolute; z-index: 7; width: 240px; padding: 10px 12px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); font-size: 13px; }
 .mapinfo b { display: block; font-size: 14px; }
+
+/* ------------------------------------------------ 2026-10-20: the three journeys (Codex's review) */
+/* the ways to begin: the map first, then three chips in the peek (a row on desktops) */
+.ways { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 2px; }
+.ways .chip { white-space: normal; height: auto; min-height: 44px; padding-block: 4px; text-align: left; line-height: 1.2; }
+.ways .chip::after { inset: 0; }
+.wayrows { display: grid; gap: 6px; margin: 4px 0 8px; }
+.wayrow { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); text-align: left; color: var(--text); width: 100%; }
+.wayrow > span { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.wayrow b { font-size: 14.5px; }
+.wayrow small { font-size: 12.5px; color: var(--muted); }
+.wayrow > .ic { color: var(--accent); }
+.wayrow.main { border-color: var(--accent); }
+/* marked routes in view: cards like the loops' (one pattern for "pick one of these on the map") */
+.mrhead { display: flex; align-items: center; gap: 6px; min-height: 48px; }
+.mrhead .hint { font-size: 15px; }
+.lc .swatch { width: 28px; height: 6px; border-radius: 3px; flex: none; }
+.lc .nm2 { font-size: 14.5px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lc.find { justify-content: center; align-items: center; text-align: center; width: 140px; color: var(--text); gap: 6px; }
+.lc.find small { color: var(--muted); font-size: 12px; }
+.mrstate { display: flex; align-items: center; gap: 10px; margin: 2px 0 8px; padding: 8px 10px; border-radius: 12px; font-size: 13.5px; background: var(--surface-2); }
+.mrstate > span { flex: 1; min-width: 0; }
+.mrstate.fail { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
+.mrstate.fail > .ic { color: var(--unk); }
+.mrlist { display: grid; gap: 8px; margin: 4px 0 8px; }
+.mrlist .lc { width: auto; }
+/* the map's own drawing in a frame: the picked line's glow, a stretch's glow, a route followed, dashed "not checked" */
+.ovl { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: visible; }
+/* warnings on the route: a marker per located item, the group's shape and icon (never colour alone) */
+.wmk { position: absolute; z-index: 3; width: 30px; height: 30px; margin: -15px 0 0 -15px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--surface-solid); color: var(--warn); border: 2px solid var(--warn); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.wmk::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; } /* a 44 px target */
+.wmk.t2 { width: 24px; height: 24px; margin: -12px 0 0 -12px; color: var(--look); border-color: var(--look); }
+.wmk.t3 { color: var(--unk); border: 2px dashed var(--unk); }
+.wmk.on { width: 38px; height: 38px; margin: -19px 0 0 -19px; box-shadow: 0 0 0 4px var(--surface-solid), 0 0 0 7px var(--text), 0 4px 10px rgba(0,0,0,.35); z-index: 4; }
+.wmk.cl { width: auto; min-width: 34px; height: 30px; margin: -15px 0 0 -17px; padding: 0 7px 0 5px; border-radius: 15px; gap: 2px; display: inline-flex; align-items: center; font: 800 13px/1 system-ui, sans-serif; color: var(--text); }
+.wmk.cl .ic { color: var(--warn); }
+/* the peek's row: what to read before you go, and what wasn't checked */
+.warnrow .unkn { display: inline-flex; align-items: center; gap: 3px; flex: none; height: 26px; padding: 0 8px; border-radius: 13px; border: 1.5px dashed var(--unk); color: var(--unk); font-size: 12.5px; font-weight: 750; background: var(--surface-solid); }
+.warnrow.unk { border: 1.5px dashed var(--unk); background: var(--unk-soft); }
+.warnrow.unk > .ic { color: var(--unk); }
+/* one item, from the row or a marker: where it is, how sure, what to do; step along the route; back */
+.wcard { display: grid; gap: 4px; margin: 4px 0 2px; padding: 8px 6px 8px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-solid); }
+.wcard.t1 { border-color: var(--warn-line); background: var(--warn-soft); }
+.wcard.t3 { border: 1.5px dashed var(--unk); background: var(--unk-soft); }
+.wcard .wc-h { display: flex; align-items: flex-start; gap: 8px; }
+.wcard .wc-h > .ic { margin-top: 2px; }
+.wcard.t1 .wc-h > .ic { color: var(--warn); } .wcard.t2 .wc-h > .ic { color: var(--look); } .wcard.t3 .wc-h > .ic { color: var(--unk); }
+.wcard .wc-h > span { flex: 1; min-width: 0; display: grid; }
+.wcard .wc-g { font-size: 12px; font-weight: 750; letter-spacing: .03em; color: var(--muted); }
+.wcard .wc-h b { font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
+.wcard .wc-w { font-size: 13px; color: var(--muted); }
+.wcard .wc-n { font-size: 13px; }
+.wcard .wc-a { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.wcard .wc-a .cnt { font-size: 13px; font-weight: 700; min-width: 3.4em; text-align: center; font-variant-numeric: tabular-nums; }
+.wcard .wc-a .spacer { flex: 1; }
+.desk .wcard.float2 { position: absolute; z-index: 8; width: 340px; box-shadow: var(--shadow); }
+/* the sport menu: names and what each shows; with a route drawn, what changes is a choice */
+.popmenu.sportmenu { width: 340px; }
+.sportmenu .mi > span small { white-space: normal; }
+.sportmenu .lead { padding: 4px 10px 8px; font-size: 13px; color: var(--muted); }
+.sportmenu .lead b { color: var(--text); }
+.sportmenu .backrow { display: flex; align-items: center; gap: 6px; padding: 0 4px 2px; }
+.sportmenu .backrow .btn { height: 40px; padding: 0 10px 0 6px; border: 0; background: none; color: var(--accent); }
+.sportmenu .scopeq { padding: 2px 10px 6px; font-size: 17px; font-weight: 750; }
+.sportmenu .opt { display: flex; gap: 12px; align-items: flex-start; width: 100%; min-height: 64px; margin: 0 0 8px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface-solid); text-align: left; color: var(--text); }
+.sportmenu .opt > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.sportmenu .opt b { font-size: 15px; }
+.sportmenu .opt small { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.sportmenu .opt > .ic { margin-top: 2px; color: var(--accent); }
+.sportmenu .opt[aria-disabled="true"] { opacity: 1; border-style: dashed; cursor: default; }
+.sportmenu .opt[aria-disabled="true"] b { color: var(--muted); }
+.sportmenu .opt[aria-disabled="true"] > .ic { color: var(--muted); }
+.sportmenu .cur { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+/* the route's sport where the route is: a line under the view's name; the next leg's in the toolbox */
+.sportline { display: inline-flex; align-items: center; gap: 4px; }
+/* the timeline over the map while planning (#225), drawn simply: its place and size are what matter here */
+.tl { position: absolute; left: 12px; right: 12px; z-index: 5; display: grid; gap: 6px; padding: 8px 10px 8px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); font-size: 12.5px; }
+.tl .tlc { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tl .tlc .chip { height: 32px; font-size: 13px; padding: 0 10px; }
+.tl .tlc .chip::after { inset: -6px 0; }
+.tl .tlm { display: flex; gap: 10px; align-items: center; }
+.tl .tlm svg { flex: 1; min-width: 0; height: 52px; }
+.tl .tlr { flex: none; display: grid; gap: 1px; font-size: 12.5px; }
+.tl .tlr b { font-size: 17px; }
+.tl .tls { display: flex; align-items: center; gap: 8px; }
+.tl .tls i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); position: relative; }
+.tl .tls i::after { content: ""; position: absolute; left: var(--at, 30%); top: -7px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--text); }
+.tl .tls b { white-space: nowrap; }
+/* Settings, drawn simply: the sport with names (#237), the speeds that follow it (#87) */
+.setp { position: absolute; z-index: 9; left: 8px; right: 8px; top: 64px; bottom: 8px; overflow: auto; padding: 4px 14px 14px; border-radius: 18px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.desk .setp { left: auto; right: 84px; width: 380px; bottom: auto; max-height: calc(100% - 80px); }
+.setp h3 { margin: 10px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.sportgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.sportgrid button { min-height: 56px; display: grid; justify-items: center; align-content: center; gap: 3px; padding: 6px 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font-size: 12.5px; font-weight: 650; line-height: 1.15; text-align: center; overflow-wrap: anywhere; hyphens: auto; }
+.sportgrid button[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
+.sportgrid button[aria-pressed="true"] .ic { color: var(--accent); }
+.speedrows { display: grid; gap: 2px; font-size: 13.5px; }
+.speedrows div { display: flex; justify-content: space-between; min-height: 36px; align-items: center; border-bottom: 1px solid var(--line); }
+.setp .note2 { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+/* a map card for a warning while the planner is put away */
+.mapinfo .wa2 { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 
 /* press and hover: on press; hover only with a mouse; no grey flash */
 .screen button, .screen [role="button"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 120ms ease; cursor: pointer; }
@@ -459,6 +561,15 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-path" viewBox="0 0 24 24"><path d="M6 24c4-1 5-6 9-7s6 2 11-9" transform="scale(.75)" stroke-dasharray="4 3"/></symbol>
   <symbol id="i-moveto" viewBox="0 0 24 24"><path d="M4 7h10M4 12h7M4 17h10"/><path d="m16 10 4 3-4 3"/></symbol>
+  <!-- 2026-10-20: every sport, a marked route's sign, a position -->
+  <symbol id="i-gravel" viewBox="0 0 24 24"><circle cx="5.5" cy="15.5" r="3.5"/><circle cx="18.5" cy="15.5" r="3.5"/><path d="M5.5 15.5 9 8h6l3.5 7.5M9 8l3 7.5L15 8M13 4h3l1 4"/><path d="M3 22h.01M7.5 22h.01M12 22h.01M16.5 22h.01M21 22h.01" stroke-width="2.6"/></symbol>
+  <symbol id="i-roadbike" viewBox="0 0 24 24"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M14 5.5h3.5c1.2 0 1.6 1.4.8 2.2"/></symbol>
+  <symbol id="i-hike" viewBox="0 0 24 24"><circle cx="12.5" cy="4" r="1.9"/><path d="m11.5 8-2.3 5.2 3.3 2.6L13 21M9.2 13.2 7 21M11.5 8l3.2 3 2.6-.6M17.5 9 19 21"/></symbol>
+  <symbol id="i-run" viewBox="0 0 24 24"><circle cx="15" cy="4" r="1.9"/><path d="m13.5 8-3.6 4 3.4 2.6-1.8 6M9.9 12 6 11.4M13.5 8l3 3.4 3-.9M11.5 14.6 7 18.5"/></symbol>
+  <symbol id="i-trailrun" viewBox="0 0 24 24"><circle cx="14.5" cy="3.6" r="1.8"/><path d="m13 7.4-3.2 3.6 3 2.2-1.4 3.8M9.8 11 6.4 10.5M13 7.4l2.6 3 2.8-.8"/><path d="m2 21.5 4.5-4 3 2.6 3.2-2.2 3.8 3.4 5.5-3.3"/></symbol>
+  <symbol id="i-swim" viewBox="0 0 24 24"><circle cx="17" cy="6.5" r="1.9"/><path d="m4.5 13 5-4.2 3.3 2.7 2.7-1.7"/><path d="M2 17c2 1.3 4 1.3 6 0s4-1.3 6 0 4 1.3 6 0M2 21c2 1.3 4 1.3 6 0s4-1.3 6 0 4 1.3 6 0"/></symbol>
+  <symbol id="i-sign" viewBox="0 0 24 24"><path d="M12 22V2.5"/><path d="M5 4.5h11l3 2.6-3 2.6H5Z"/><path d="M19 12.5H8.5l-3 2.6 3 2.6H19Z"/></symbol>
+  <symbol id="i-me" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.5"/></symbol>
 </svg>
 
 <main class="cv">
@@ -480,6 +591,70 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <li><b>Check by how serious and how sure:</b> Read before you go, Worth a look, Not checked, and where each comes from.</li>
       <li><b>Waypoints:</b> only the selected one has buttons, no Remove on the others; finding, stepping, moving and undoing in lists of 50 and more.</li>
     </ol>
+  </section>
+
+  <section class="cv-q" aria-labelledby="rev-h">
+    <h2 id="rev-h">Revised 2026-10-20: three journeys, for the user to choose</h2>
+    <p>After 25a (#302), a review of the whole interface asked that everyday tasks explain themselves, without a tour. Sections A to C below follow three journeys through it, with the map, Layers, Settings and the timeline where they matter. They are <b>proposals</b>; nothing in them is built until the user chooses. Sections 0 to 8 are the design approved on 2026-10-18, kept as they were (25a built 1 and part of 3, with the route's actions on the toolbar by width and the timeline over the map while planning).</p>
+    <ol>
+      <li><b>A · Start or find a route:</b> the four ways Polku has today (draw it, a round trip, a marked route from LIPAS, a file) in the peek, not only after raising the sheet; marked routes in view as cards, like the loops'.</li>
+      <li><b>B · The sport, and what it changes:</b> the menu says what each sport shows; with a route drawn, it asks whether the whole route changes or only the legs drawn next. The toolbox keeps saying which sport the next leg is. <i>The behaviour is the user's choice:</i> the switch at the bottom shows the three options (A: ask, recommended; B: next legs only; C: the whole route).</li>
+      <li><b>C · A warning: notice it, find it, come back:</b> a row in the peek for what to read before you go and what wasn't checked; a marker on the route for each; a tap shows it on the route with ‹ › along it and ✕ back to where you were.</li>
+    </ol>
+  </section>
+
+  <section class="cv-row" id="sa">
+    <h2>A · Start or find a route</h2>
+    <p>Today the peek says only "Tap the map to add a start point"; the other three ways to begin (a round trip, a marked route, a file) are in the sheet, under the fold on a phone. "Ride a marked route" focuses the search box, and is offered for Hike, Paddle and Swim too (Swim has no marked routes in LIPAS). Here the map stays the first way (the hint), and the other three are chips in the peek, each one tap. <b>Marked routes</b> lists LIPAS's routes for the sport in the map's view as cards side by side, like the loops: a tap on a card or its coloured line picks it, <b>Follow this route</b> makes it your route on its own line (as Ride this route does today, in words for every sport). When the layer is off, LIPAS doesn't answer, or there's none in view, it says so; Find by name searches all of Finland as the search does today. A round trip from the start says that <b>Where I am</b> sends your position to the router (#281). Names and lengths here are illustrative.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="ja-start" data-st='{"stage":"start"}'><figcaption><b>The ways to begin</b>The map first; then Round trip, Marked routes and a file, in the peek. Tap Marked routes.</figcaption></figure>
+      <figure class="fr phone" id="ja-find" data-st='{"stage":"start","find":true}'><figcaption><b>Marked routes in view</b>Cards like the loops'; the picked one glows on the map. Follow this route, or swipe to the next card.</figcaption></figure>
+      <figure class="fr phone" id="ja-find2" data-st='{"stage":"start","find":true,"mrPick":2}'><figcaption><b>Another one picked</b>Its line glows; the map would frame it above the sheet.</figcaption></figure>
+      <figure class="fr phone" id="ja-followed" data-st='{"stage":"route","followed":0,"calm":true,"toast":"followed"}'><figcaption><b>Followed</b>Your route now, on its own line, with Undo. Editing goes on as with any route.</figcaption></figure>
+      <figure class="fr phone" id="ja-off" data-st='{"stage":"start","find":true,"mr":"off"}'><figcaption><b>The layer is off</b>The list still works; the note says why the map doesn't show them, and turns them on.</figcaption></figure>
+      <figure class="fr phone" id="ja-fail" data-st='{"stage":"start","find":true,"mr":"fail"}'><figcaption><b>LIPAS isn't answering</b>Said as missing, with Retry, never as "none here".</figcaption></figure>
+      <figure class="fr phone" id="ja-rt" data-st='{"stage":"first","rt":{"open":true,"val":20,"nostart":true}}'><figcaption><b>A round trip from the start</b>Tap the map for its start, or Where I am, which says what it sends (#281).</figcaption></figure>
+      <figure class="fr phone" id="ja-swim" data-st='{"stage":"start","sport":"swim"}'><figcaption><b>Swim</b>No marked routes in LIPAS for swimming: no chip for them.</figcaption></figure>
+      <figure class="fr phone" id="ja-360" data-st='{"stage":"start","find":true,"w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish</b>Long names wrap to two lines in the cards.</figcaption></figure>
+      <figure class="fr phone" id="ja-200" data-st='{"stage":"start","z":2}'><figcaption><b>200 % zoom</b>The chips wrap; nothing is cut.</figcaption></figure>
+      <figure class="fr desk" id="ja-desk" data-st='{"stage":"start"}'><figcaption><b>Desktop: the ways to begin</b>A row each, with one line on what it does.</figcaption></figure>
+      <figure class="fr desk" id="ja-desk-find" data-st='{"stage":"start","find":true,"mrPick":1}'><figcaption><b>Desktop: marked routes in view</b>The same cards as a list in the panel; the picked one glows on the map.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="sb">
+    <h2>B · The sport, and what it changes</h2>
+    <p>Today the pill changes the map's sport. With a route drawn, its legs keep their sport, a note offers "Route it as…" for nine seconds, and then nothing on screen says which sport the route or the next leg is in. Checked on <code>main</code> at 256ce13: after MTB → Paddle the toolbox says Over water while the next leg is drawn as MTB on paths, a leg's sport picker calls Paddle "the route's", and a shared route's own style is replaced (#71). Here the menu names every sport with a line on what the map shows for it. <b>With no route, picking is one tap.</b> With a route drawn and a sport other than the route's, the menu asks <b>what it's for</b>: the whole route (its legs in the route's sport are routed again, with the cost in routing calls and Undo; legs in another sport and fixed lines keep theirs), or only the legs you draw next (the drawn legs stay; the toolbox's second line says the next leg's sport, so it stays visible after the note). Between land and water, the whole route isn't offered: a ride can't be paddled on the same line. Settings has the same choice with names on phones (#237), and its speeds follow the sport picked above them (#87). <b>Use the "Sport change" switch at the bottom</b> to try the other two options on these frames.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="jb-empty" data-st='{"stage":"start","pop":"sport","sp":"list"}'><figcaption><b>No route: one tap</b>Each sport with its name and what the map shows for it.</figcaption></figure>
+      <figure class="fr phone" id="jb-list" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"list"}'><figcaption><b>A route drawn</b>The menu says the route's sport. Pick Hike.</figcaption></figure>
+      <figure class="fr phone" id="jb-ask" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>What it's for</b>The whole route, with what it costs and Undo; or only the legs you draw next. ‹ Sports goes back; a tap outside changes nothing.</figcaption></figure>
+      <figure class="fr phone" id="jb-mixed" data-st='{"stage":"route","calm":true,"mix":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>A mixed route</b>The paddle leg and the LIPAS stretch keep theirs, and the choice says so.</figcaption></figure>
+      <figure class="fr phone" id="jb-water" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"paddle"}'><figcaption><b>From land to water</b>The whole route isn't offered, and says why.</figcaption></figure>
+      <figure class="fr phone" id="jb-next" data-st='{"stage":"route","calm":true,"map":"hike","next":"hike","toast":"spnext"}'><figcaption><b>Only the next legs</b>The pill is Hike; the toolbox says the next leg is Hike; the drawn legs stay MTB. Tap the map to draw one.</figcaption></figure>
+      <figure class="fr phone" id="jb-all" data-st='{"stage":"route","calm":true,"sport":"hike","map":"hike","toast":"spall"}'><figcaption><b>The whole route</b>Routed again as Hike, with new times and checks; Undo brings the MTB route back.</figcaption></figure>
+      <figure class="fr phone" id="jb-settings" data-st='{"stage":"route","calm":true,"settings":true,"map":"hike","next":"hike"}'><figcaption><b>Settings</b>The sports with their names (#237); the speeds for the sport picked above them (#87), and when the route's time follows them.</figcaption></figure>
+      <figure class="fr phone" id="jb-fi" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"trailrun","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish</b>The question in long words.</figcaption></figure>
+      <figure class="fr desk" id="jb-desk" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>Desktop</b>The same menu under the pill; the toolbar's mode says the next leg's sport when it differs.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="sc">
+    <h2>C · A warning: notice it, find it on the route, come back</h2>
+    <p>Today, with the sheet at its peek, nothing says there's anything to read before you go: Check's count is on its tab, under the fold, and a row in Check frames the map without marking the place (#84, #85). Here the peek has a row while there's something to read before you go or something wasn't checked, in words. Each located item has a marker on the route, in its group's shape and icon (a filled triangle, a dashed "?", an eye for "worth a look", which shows while Check or an item is in view); close ones merge into one with a count. A tap on the row, a marker or an item in Check shows it on the route: the stretch glows, the marker is ringed, and the peek holds the item (what, where, how sure, Avoid or Retry) with ‹ › along the route. <b>✕ comes back</b> to where you were (the peek, or Check at half). A stretch that wasn't checked is dashed on the route; a source missing for the whole route says so in words, with no invented place. The approved row opened Check at half; this keeps the map in view.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="jc-peek" data-st='{"stage":"route"}'><figcaption><b>Noticed at a glance</b>The row in the peek; the road works' marker on the route. Tap either.</figcaption></figure>
+      <figure class="fr phone" id="jc-step" data-st='{"stage":"route","step":4}'><figcaption><b>Found on the route</b>Its stretch glows and its marker is ringed; ‹ › go along the route; ✕ back.</figcaption></figure>
+      <figure class="fr phone" id="jc-check" data-st='{"stage":"route","sheet":"half","tab":"check","step":4}'><figcaption><b>From Check</b>The item and its marker are one: selected together. A tap on an item steps the sheet down to show it; ✕ comes back here.</figcaption></figure>
+      <figure class="fr phone" id="jc-paddle" data-st='{"stage":"route","sport":"paddle","tl":true}'><figcaption><b>Paddle, with the timeline open</b>Two to read before you go, one source not checked; the toolbox and the map's buttons ride above the timeline.</figcaption></figure>
+      <figure class="fr phone" id="jc-paddle-step" data-st='{"stage":"route","sport":"paddle","tl":true,"step":2}'><figcaption><b>Rough water, at 13:00</b>An estimate from the forecast for the departure the timeline shows: moving it checks again.</figcaption></figure>
+      <figure class="fr phone" id="jc-rocks" data-st='{"stage":"route","sport":"paddle","step":4}'><figcaption><b>Not checked, the whole route</b>Said in words, with Retry; no marker, because it has no place.</figcaption></figure>
+      <figure class="fr phone" id="jc-worst" data-st='{"stage":"route","worst":true}'><figcaption><b>Many items</b>Close markers merge into one with a count; a tap shows the most serious first.</figcaption></figure>
+      <figure class="fr phone closed" id="jc-closed" data-st='{"stage":"route","mode":"closed","step":4}'><figcaption><b>The planner put away</b>What to read before you go stays marked on the route; its card opens the planner at it.</figcaption></figure>
+      <figure class="fr phone" id="jc-200" data-st='{"stage":"route","step":4,"z":2}'><figcaption><b>200 % zoom</b>The item's card wraps; its actions stay whole.</figcaption></figure>
+      <figure class="fr desk" id="jc-desk" data-st='{"stage":"route"}'><figcaption><b>Desktop</b>The row above the numbers; markers on the route, with their names on hover.</figcaption></figure>
+      <figure class="fr desk" id="jc-desk-sel" data-st='{"stage":"route","tab":"check","step":4}'><figcaption><b>Desktop: one selected</b>In Check and on the map together; ‹ › aren't needed with the list beside it.</figcaption></figure>
+    </div>
   </section>
 
   <section class="cv-row" id="s0">
@@ -611,6 +786,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <div role="group" aria-label="Data"><span>Data</span><button type="button" data-o="worst" data-v="0">Normal</button><button type="button" data-o="worst" data-v="1">Worst case</button></div>
   <div role="group" aria-label="Language"><span>Words</span><button type="button" data-o="lang" data-v="en">EN</button><button type="button" data-o="lang" data-v="fi">FI</button><button type="button" data-o="lang" data-v="sv">SV</button></div>
   <div role="group" aria-label="Theme"><span>Theme</span><button type="button" data-o="theme" data-v="light">Light</button><button type="button" data-o="theme" data-v="dark">Dark</button></div>
+  <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
   </div>
 </nav>
 
@@ -632,6 +808,8 @@ const OPT = {
   theme: Q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
   trip: ['trip', 'share', 'more'].includes(Q.get('trip')) ? Q.get('trip') : 'trip',
   modes: Q.get('modes') === 'buttons' ? 'buttons' : 'menu', rt: Q.get('rt') === 'button' ? 'button' : 'presets',
+  // what a sport change does to a drawn route (2026-10-20, for the user to choose): ask, next legs only, the whole route
+  sport: ['ask', 'next', 'all'].includes(Q.get('sport')) ? Q.get('sport') : 'ask',
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
 
@@ -660,6 +838,26 @@ const STR = {
     nothingMeans: 'Nothing listed doesn’t mean a way is open, safe or allowed. Polku checks only what its sources know; signs on the ground win.',
     retry: 'Retry', avoid: 'Avoid', showMap: 'Show', pos: 'Position', ofN: 'of', move: 'Move', select: 'Select', mapTap: 'A tap on the map shows what’s there while you’re not editing.',
     yourRoutes: 'Your routes', later157: 'Later (#157)', name: 'Name',
+    // 2026-10-20: the three journeys
+    startHint: 'Tap the map where you start', clickStartHint: 'Click the map where you start', startOr: 'or begin with one of these',
+    drawWay: 'Draw it', rtWay: 'Round trip', mrWay: 'Marked routes', fileWay: 'A GPX or KML file',
+    drawWayD: 'Then each place on the way: Polku follows the paths between them.', rtWayD: 'A loop of the length or time you pick: three to choose from.',
+    mrWayD: 'Routes from LIPAS in the map’s view: follow one as it is.', fileWayD: 'Plan on a track from a file, or drop it on the map.',
+    mrTitle: 'Marked routes in view', mrSub: 'From LIPAS · tap a card or a coloured line', follow: 'Follow this route', addRoute: 'Add to my route',
+    byName: 'Find by name', byNameD: 'in all of Finland', mrOff: 'Marked routes are off in Layers, so the map doesn’t show them.', showThem: 'Show them',
+    mrFail: 'LIPAS isn’t answering: the marked routes can’t be listed right now.', mrNone: 'No marked routes for {S} in view. Zoom out, or find one by name.',
+    followed: 'Following {N} · {K}', loopW: 'loop', inView: 'in view', ownLine: 'its own line',
+    rtStartQ: 'The start', rtStartTap: 'Tap the map for it, or', whereIAm: 'Where I am', whereNote: 'Your position goes to the router as the start, rounded to about a metre.',
+    sportH: 'Sport', sportLead: 'The map shows what matters for it, and new legs are planned for it.', yourRouteIs: 'Your route', legsN: 'legs',
+    scopeFor: '{S} for…', scopeAll: 'The whole route', scopeNext: 'Only the legs you draw next', backSports: 'Sports',
+    scopeAllD: 'Its {n} {R} legs are routed again for {S}: new times and checks · {n} routing calls. Undo brings back the {R} route.',
+    scopeKeep: '{K} keep their own.', scopeNo: 'Not for this route: {R} legs can’t be {V} on the same line. To change one leg, tap it on the map.',
+    scopeNextD: 'The legs you’ve drawn stay {R}. The map shows {S}, and the toolbox says so.', already: 'already',
+    nowAll: 'Your route is {S} now · {n} legs routed again', nowNext: '{S} for the map and your next legs · your route stays {R}',
+    nowNoWater: 'Your route stays {R}: it can’t be {V}. The next legs are {S}.', routeSport: 'The route’s sport', change2: 'Change…',
+    stayNote: 'Your route stays {R}: change it in Route › The route’s sport.', nextSport: 'Next leg',
+    stepOf: 'of', inCheck: 'All in Check', wholeRoute: 'the whole route', back2: 'Back', notChecked: 'not checked',
+    openPl: 'Open in the planner', speedsFor: 'Speeds for', settings: 'Settings', mixedKeep: 'The paddle leg and the LIPAS stretch',
   },
   fi: {
     tapStart: 'Aloita napauttamalla karttaa', tapStartSub: 'tai aloita kierroksesta tai tiedostosta', clickStart: 'Aloita napsauttamalla karttaa',
@@ -684,6 +882,25 @@ const STR = {
     nothingMeans: 'Se, ettei mitään ole listattu, ei tarkoita, että reitti on avoin, turvallinen tai sallittu. Polku tietää vain sen, minkä sen lähteet tietävät; maastossa olevat merkit ratkaisevat.',
     retry: 'Yritä uudelleen', avoid: 'Kierrä', showMap: 'Näytä', pos: 'Kohta', ofN: '/', move: 'Siirrä', select: 'Valitse', mapTap: 'Kun et muokkaa, karttaa napauttamalla näet, mitä siinä on.',
     yourRoutes: 'Reittisi', later157: 'Myöhemmin (#157)', name: 'Nimi',
+    startHint: 'Napauta karttaa lähtöpaikassa', clickStartHint: 'Napsauta karttaa lähtöpaikassa', startOr: 'tai aloita jostakin näistä',
+    drawWay: 'Piirrä', rtWay: 'Kierros', mrWay: 'Merkityt reitit', fileWay: 'GPX- tai KML-tiedosto',
+    drawWayD: 'Sitten jokainen paikka matkan varrella: Polku seuraa polkuja niiden välillä.', rtWayD: 'Lenkki valitsemasi pituuden tai ajan mukaan: kolme vaihtoehtoa.',
+    mrWayD: 'LIPAS-reitit kartan näkymässä: seuraa jotakin sellaisenaan.', fileWayD: 'Suunnittele tiedoston jäljen pohjalta tai pudota se kartalle.',
+    mrTitle: 'Merkityt reitit näkymässä', mrSub: 'LIPAS · napauta korttia tai värillistä viivaa', follow: 'Seuraa tätä reittiä', addRoute: 'Lisää reittiini',
+    byName: 'Etsi nimellä', byNameD: 'koko Suomesta', mrOff: 'Merkityt reitit ovat pois päältä Tasoissa, joten kartta ei näytä niitä.', showThem: 'Näytä ne',
+    mrFail: 'LIPAS ei vastaa: merkittyjä reittejä ei voi nyt listata.', mrNone: 'Näkymässä ei ole merkittyjä reittejä lajille {S}. Loitonna tai etsi nimellä.',
+    followed: 'Seuraat reittiä {N} · {K}', loopW: 'lenkki', inView: 'näkymässä', ownLine: 'oma linjansa',
+    rtStartQ: 'Lähtö', rtStartTap: 'Napauta karttaa, tai', whereIAm: 'Missä olen', whereNote: 'Sijaintisi lähtee reitittimelle lähtöpisteenä, noin metrin tarkkuudella.',
+    sportH: 'Laji', sportLead: 'Kartta näyttää lajille tärkeät asiat, ja uudet osuudet suunnitellaan sille.', yourRouteIs: 'Reittisi', legsN: 'osuutta',
+    scopeFor: '{S}: mihin?', scopeAll: 'Koko reitti', scopeNext: 'Vain seuraavaksi piirrettävät osuudet', backSports: 'Lajit',
+    scopeAllD: 'Sen {n} osuutta ({R}) reititetään uudelleen lajille {S}: uudet ajat ja tarkistukset · {n} reitityskyselyä. Kumoa tuo {R}-reitin takaisin.',
+    scopeKeep: '{K} pitävät omansa.', scopeNo: 'Ei tälle reitille: osuuksia ({R}) ei voi {V} samaa linjaa pitkin. Muuta yksittäistä osuutta napauttamalla sitä kartalla.',
+    scopeNextD: 'Piirretyt osuudet pysyvät lajissa {R}. Kartta näyttää lajin {S}, ja työkalurivi kertoo sen.', already: 'jo nyt',
+    nowAll: 'Reittisi on nyt {S} · {n} osuutta reititetty uudelleen', nowNext: '{S} kartalle ja seuraaville osuuksille · reittisi pysyy: {R}',
+    nowNoWater: 'Reittisi pysyy: {R}, sitä ei voi {V}. Seuraavat osuudet: {S}.', routeSport: 'Reitin laji', change2: 'Muuta…',
+    stayNote: 'Reittisi pysyy: {R}. Muuta sitä kohdassa Reitti › Reitin laji.', nextSport: 'Seuraava osuus',
+    stepOf: '/', inCheck: 'Kaikki Tarkista-välilehdellä', wholeRoute: 'koko reitti', back2: 'Takaisin', notChecked: 'tarkistamatta',
+    openPl: 'Avaa suunnittelijassa', speedsFor: 'Nopeudet lajille', settings: 'Asetukset', mixedKeep: 'Melontaosuus ja LIPAS-osuus',
   },
   sv: {
     tapStart: 'Tryck på kartan för att börja', tapStartSub: 'eller börja med en rundtur eller en fil', clickStart: 'Klicka på kartan för att börja',
@@ -708,10 +925,47 @@ const STR = {
     nothingMeans: 'Att inget står här betyder inte att en väg är öppen, säker eller tillåten. Polku vet bara vad källorna vet; skyltarna på plats gäller.',
     retry: 'Försök igen', avoid: 'Undvik', showMap: 'Visa', pos: 'Plats', ofN: 'av', move: 'Flytta', select: 'Välj', mapTap: 'När du inte redigerar visar ett tryck på kartan vad som finns där.',
     yourRoutes: 'Dina rutter', later157: 'Senare (#157)', name: 'Namn',
+    startHint: 'Tryck på kartan där du börjar', clickStartHint: 'Klicka på kartan där du börjar', startOr: 'eller börja med något av dessa',
+    drawWay: 'Rita', rtWay: 'Rundtur', mrWay: 'Märkta leder', fileWay: 'En GPX- eller KML-fil',
+    drawWayD: 'Sedan varje plats på vägen: Polku följer stigarna mellan dem.', rtWayD: 'En runda med längden eller tiden du väljer: tre att välja mellan.',
+    mrWayD: 'Leder från LIPAS i kartans vy: följ en som den är.', fileWayD: 'Planera på ett spår från en fil, eller släpp den på kartan.',
+    mrTitle: 'Märkta leder i vyn', mrSub: 'Från LIPAS · tryck på ett kort eller en färgad linje', follow: 'Följ den här leden', addRoute: 'Lägg till i min rutt',
+    byName: 'Sök på namn', byNameD: 'i hela Finland', mrOff: 'Märkta leder är av i Lager, så kartan visar dem inte.', showThem: 'Visa dem',
+    mrFail: 'LIPAS svarar inte: de märkta lederna kan inte listas just nu.', mrNone: 'Inga märkta leder för {S} i vyn. Zooma ut eller sök på namn.',
+    followed: 'Följer {N} · {K}', loopW: 'runda', inView: 'i vyn', ownLine: 'sin egen linje',
+    rtStartQ: 'Starten', rtStartTap: 'Tryck på kartan, eller', whereIAm: 'Där jag är', whereNote: 'Din position skickas till ruttplaneraren som start, avrundad till ungefär en meter.',
+    sportH: 'Sport', sportLead: 'Kartan visar det som är viktigt för den, och nya etapper planeras för den.', yourRouteIs: 'Din rutt', legsN: 'etapper',
+    scopeFor: '{S} för…', scopeAll: 'Hela rutten', scopeNext: 'Bara etapperna du ritar härnäst', backSports: 'Sporter',
+    scopeAllD: 'Dess {n} etapper ({R}) planeras om för {S}: nya tider och kontroller · {n} ruttfrågor. Ångra tar tillbaka {R}-rutten.',
+    scopeKeep: '{K} behåller sina egna.', scopeNo: 'Inte för den här rutten: etapper ({R}) kan inte {V} på samma linje. Tryck på en etapp på kartan för att ändra den.',
+    scopeNextD: 'Etapperna du har ritat förblir {R}. Kartan visar {S}, och verktygsraden säger det.', already: 'redan nu',
+    nowAll: 'Din rutt är {S} nu · {n} etapper planerade om', nowNext: '{S} för kartan och dina nästa etapper · rutten förblir {R}',
+    nowNoWater: 'Rutten förblir {R}: den kan inte {V}. Nästa etapper är {S}.', routeSport: 'Ruttens sport', change2: 'Ändra…',
+    stayNote: 'Din rutt förblir {R}: ändra den i Rutt › Ruttens sport.', nextSport: 'Nästa etapp',
+    stepOf: 'av', inCheck: 'Alla i Kolla', wholeRoute: 'hela rutten', back2: 'Tillbaka', notChecked: 'inte kollade',
+    openPl: 'Öppna i planeraren', speedsFor: 'Hastigheter för', settings: 'Inställningar', mixedKeep: 'Paddlingsetappen och LIPAS-sträckan',
   },
 };
 let LANG = 'en';
 const t = (k) => (STR[LANG] && STR[LANG][k]) || STR.en[k] || k;
+const tf = (k, vars) => t(k).replace(/\{(\w)\}/g, (_, x) => (vars[x] == null ? '' : vars[x]));
+// every sport, with its word, one line on what the map shows for it, and its verb (2026-10-20)
+const ALLSPORTS = ['mtb', 'gravel', 'road', 'hike', 'trailrun', 'run', 'paddle', 'swim'];
+const SPORT_ICON = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
+const isWaterS = (k) => k === 'paddle' || k === 'swim';
+const SPORT_WORDS = {
+  en: { label: { mtb: 'MTB', gravel: 'Gravel', road: 'Road cycling', hike: 'Hike', trailrun: 'Trail run', run: 'Run', paddle: 'Paddle', swim: 'Swim' },
+    note: { mtb: 'Trails by MTB difficulty · MTB routes', gravel: 'Unpaved roads highlighted · gravel routing', road: 'Paved, quieter roads · road works', hike: 'Paths, hiking trails and huts', trailrun: 'Paths and trails · running times', run: 'Footways and lit fitness trails', paddle: 'Water routing · depths, marks and ships', swim: 'Near the shore · beaches' },
+    verb: { mtb: 'ridden', gravel: 'ridden', road: 'ridden', hike: 'walked', trailrun: 'run', run: 'run', paddle: 'paddled', swim: 'swum' } },
+  fi: { label: { mtb: 'Maastopyöräily', gravel: 'Gravel', road: 'Maantiepyöräily', hike: 'Vaellus', trailrun: 'Polkujuoksu', run: 'Juoksu', paddle: 'Melonta', swim: 'Uinti' },
+    note: { mtb: 'Polut MTB-vaativuuden mukaan · MTB-reitit', gravel: 'Soratiet korostettuina · gravel-reititys', road: 'Päällystetyt, rauhallisemmat tiet · tietyöt', hike: 'Polut, retkeilyreitit ja tuvat', trailrun: 'Polut · juoksuajat', run: 'Jalkakäytävät ja valaistut kuntoradat', paddle: 'Vesireititys · syvyydet, merkit ja laivat', swim: 'Rannan lähellä · uimarannat' },
+    verb: { mtb: 'pyöräillä', gravel: 'pyöräillä', road: 'pyöräillä', hike: 'kävellä', trailrun: 'juosta', run: 'juosta', paddle: 'meloa', swim: 'uida' } },
+  sv: { label: { mtb: 'MTB', gravel: 'Grus', road: 'Landsvägscykling', hike: 'Vandring', trailrun: 'Terränglöpning', run: 'Löpning', paddle: 'Paddling', swim: 'Simning' },
+    note: { mtb: 'Stigar efter MTB-svårighet · MTB-leder', gravel: 'Grusvägar markerade · grusrutter', road: 'Asfalt, lugnare vägar · vägarbeten', hike: 'Stigar, vandringsleder och stugor', trailrun: 'Stigar · löptider', run: 'Gångvägar och upplysta motionsspår', paddle: 'Vattenrutter · djup, märken och fartyg', swim: 'Nära stranden · badstränder' },
+    verb: { mtb: 'cyklas', gravel: 'cyklas', road: 'cyklas', hike: 'gås', trailrun: 'springas', run: 'springas', paddle: 'paddlas', swim: 'simmas' } },
+};
+const SW = () => SPORT_WORDS[LANG] || SPORT_WORDS.en;
+const sL = (k) => SW().label[k];
 
 // ------------------------------------------------ data
 const SPORTS = {
@@ -760,6 +1014,59 @@ const WARN_WORST = {
   t3: [...WARN.paddle.t3, { ic: 'unk', b: 'Terrain missing for 2.1 km', w: 'km 88–90', n: 'The climbing and the time there are estimates. Trying again at 18:52.', s: `${ic('unk', 14)}Not checked`, a: ['Retry'] }, { ic: 'unk', b: 'Trail details didn’t load for 6 km', w: 'km 12–18', n: 'Overpass didn’t answer: fallen trees, fords and gates there aren’t known.', s: `${ic('unk', 14)}Not checked`, a: ['Retry'] }],
   cov: [...WARN.paddle.cov.slice(0, 1), ['bad', 'Heights and climbs', 'missing for 2.1 km'], ['bad', 'Trail details', 'missing for 6 km'], ['ok', 'Road works and incidents', 'Fintraffic, 18:40'], ['ok', 'Daylight', 'sunset 18:31']],
 };
+// 2026-10-20: the other sports, for the sport menu's outcomes (the same line, its own words, styles and time)
+const LAND = {
+  gravel: { styles: [['balanced', 'Balanced'], ['unpaved', 'More unpaved'], ['quiet', 'Quiet roads']], t: '13 min' },
+  road: { styles: [['balanced', 'Balanced'], ['quiet', 'Quiet roads'], ['fast', 'Fast']], t: '11 min' },
+  hike: { styles: [['balanced', 'Balanced'], ['easy', 'Easy paths'], ['nature', 'Nature trails']], t: '52 min', km: [5, 10, 15, 20], step: 1 },
+  trailrun: { styles: [['balanced', 'Balanced'], ['runnable', 'Runnable'], ['technical', 'Technical']], t: '24 min', km: [5, 10, 15, 20], step: 1 },
+  run: { styles: [['balanced', 'Balanced'], ['lit', 'Lit trails'], ['soft', 'Soft ground']], t: '19 min', km: [5, 10, 15, 20], step: 1 },
+};
+for (const [k, x] of Object.entries(LAND)) SPORTS[k] = { ...SPORTS.mtb, label: SPORT_WORDS.en.label[k], icon: SPORT_ICON[k], styles: x.styles, km: x.km || SPORTS.mtb.km, step: x.step || 5, stats: { ...SPORTS.mtb.stats, t: x.t } };
+SPORTS.swim = { ...SPORTS.paddle, label: 'Swim', icon: 'swim', km: [1, 2, 3, 5], styles: [['balanced', 'Near the shore']], stats: { d: '11.1 km', t: '5 h 33 min', up: '—', down: '', upLabel: 'carry' } };
+WARN.hike = { ...WARN.mtb, t2: WARN.mtb.t2.filter((w) => !/Technical/.test(w.b)) };
+const warnKey = (k) => (WARN[k] ? k : isWaterS(k) ? 'paddle' : 'mtb');
+// where an item is along the route, read from its own words ("at km 2.6 · 120 m", "km 88–90", "the whole route")
+function kmOf(w) {
+  const m = /km (\d+(?:\.\d+)?)(?:[–-](\d+(?:\.\d+)?))?/.exec(w.w);
+  if (!m) return null;
+  let len = m[2] ? +m[2] - +m[1] : 0;
+  const l = /· (\d+(?:\.\d+)?) (m|km)\b/.exec(w.w);
+  if (l) len = l[2] === 'km' ? +l[1] : +l[1] / 1000;
+  return [+m[1], len];
+}
+// the route drawn in each map picture: [x, y, km] in the picture's own pixels
+const GEO = {
+  'mtb-phone': { bw: 780, bh: 1688, km: 3.05, pts: [[80, 874, 0], [130, 800, 0.35], [218, 745, 0.72], [245, 733, 1], [300, 718, 1.2], [305, 690, 1.35], [310, 650, 1.5], [328, 612, 1.65], [377, 616, 2], [440, 655, 2.3], [458, 653, 2.4], [520, 640, 2.65], [600, 646, 3.05]] },
+  'mtb-desk': { bw: 1440, bh: 900, km: 3.05, pts: [[483, 675, 0], [520, 615, 0.25], [580, 520, 0.5], [640, 490, 0.7], [705, 470, 0.85], [743, 456, 1], [830, 425, 1.25], [855, 330, 1.45], [880, 255, 1.65], [955, 262, 2], [1060, 300, 2.3], [1090, 320, 2.4], [1200, 298, 2.7], [1320, 310, 3.05]] },
+  'paddle-phone': { bw: 780, bh: 1688, km: 11.1, pts: [[434, 1308, 0], [386, 1192, 1], [386, 1062, 2], [322, 950, 3], [228, 864, 4], [172, 815, 5], [143, 832, 5.15], [200, 780, 5.5], [262, 730, 6], [278, 603, 7], [284, 473, 8], [346, 368, 9], [440, 276, 10], [536, 180, 11.1]] },
+};
+// LIPAS routes in the map pictures (phone-empty.jpg and desk-start1.jpg); names and lengths are illustrative
+const MR_MTB = [
+  { name: 'Kaupin maastopyöräilyreitit', type: 'MTB routes · a network', c: '#7c3aed', km: 11.4,
+    phone: [[70, 840], [150, 780], [210, 790], [300, 770], [370, 725], [470, 735], [560, 730], [630, 668], [700, 648], [705, 610], [780, 570]],
+    desk: [[550, 460], [600, 450], [640, 425], [700, 390], [740, 385], [790, 400], [840, 370], [880, 345], [910, 315], [950, 328], [1000, 310], [1060, 270], [1100, 230], [1110, 180], [1110, 125]] },
+  { name: 'Kaupin MTB-lenkki', type: 'MTB route', c: '#7c3aed', km: 5.1, loop: true,
+    phone: [[70, 845], [115, 850], [160, 845], [185, 858], [235, 890], [300, 872], [360, 870], [430, 888], [500, 915], [520, 935], [560, 915], [630, 912], [670, 885], [720, 880], [780, 850]],
+    desk: [[565, 450], [600, 455], [640, 470], [700, 465], [740, 475], [780, 492], [840, 470], [900, 445], [960, 425], [990, 410], [1060, 415], [1100, 400], [1135, 380]] },
+  { name: 'Näsijärven rantareitti', type: 'Cycling route', c: '#2563eb', km: 14.8,
+    phone: [[130, 1425], [215, 1335], [250, 1280], [330, 1240], [410, 1200], [455, 1186], [515, 1186], [515, 1160], [560, 1165], [650, 1178], [720, 1190], [780, 1160]],
+    desk: [[180, 690], [310, 636], [420, 660], [500, 700], [590, 705], [595, 740], [640, 670], [700, 640], [780, 620], [885, 622], [1000, 575], [1040, 540], [1140, 520], [1160, 495], [1240, 475], [1360, 440], [1440, 375]] },
+];
+const MR_FOOT = [{ name: 'Kaupin luontopolku', type: 'Nature trail', c: '#15803d', km: 2.4, loop: false,
+  phone: [[75, 868], [115, 895], [160, 875], [200, 858], [250, 828], [300, 840], [350, 820], [420, 808], [480, 798], [550, 792], [620, 805], [650, 795], [690, 750], [710, 690], [700, 648]],
+  desk: [[565, 465], [620, 455], [650, 442], [700, 440], [750, 430], [800, 425], [850, 425], [870, 400], [880, 370], [875, 345], [860, 327]] }];
+const MARKED = { mtb: MR_MTB, gravel: [MR_MTB[2]], road: [MR_MTB[2]], hike: MR_FOOT, trailrun: MR_FOOT, run: MR_FOOT,
+  paddle: [{ name: 'Näsijärven melontareitti', type: 'Paddling route', c: '#0284c7', km: 34, phone: [[0, 560], [120, 530], [260, 500], [420, 470], [560, 440], [700, 420], [780, 410]], desk: [[0, 400], [200, 380], [450, 330], [620, 300], [860, 290], [1000, 260], [1080, 140]] }],
+  swim: [] }; // no LIPAS route kinds for swimming: the start doesn't offer them
+// a point of a map picture → the frame's own px, placed as `background-size: cover` places the picture
+function bgXY(st, g, [px, py]) { const k = Math.max(st._W / g.bw, st._H / g.bh); return [(st._W - g.bw * k) / 2 + px * k, (st._H - g.bh * k) / 2 + py * k]; }
+function alongPt(g, km) {
+  const P = g.pts; km = Math.max(0, Math.min(g.km, km));
+  for (let i = 1; i < P.length; i++) if (km <= P[i][2]) { const a = P[i - 1], b = P[i], f = (km - a[2]) / ((b[2] - a[2]) || 1); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; }
+  return P[P.length - 1];
+}
+function stretchPts(g, a, b) { const out = [alongPt(g, a)]; for (const p of g.pts) if (p[2] > a && p[2] < b) out.push([p[0], p[1]]); out.push(alongPt(g, b)); return out; }
 const NAMES = ['Kaupintie', 'Kauppi trail centre', 'Ilmailunkatu path', 'Niihaman maja', 'Lapinjärvi shore', 'Rusko junction', 'Ruskonkellarinkatu', 'Sorila bridge', 'Teiskontie crossing', 'Kalevanharju', 'Kaukajärvi beach', 'Hervanta south', 'Hallila', 'Vatiala', 'Lakeside path', 'Iidesjärvi bird tower', 'Kissanmaa', 'Messukylä church'];
 const NAMES_WORST = ['Pyhäjärvenrannan luontopolun pysäköintialue', 'Kaupinojan kuntoradan risteys', 'Hervannan ulkoilumajan levähdyspaikka', 'Strandvägens naturstig, parkering', 'Niihamanjärven pohjoisranta', 'Ruskonkellarinkadun alikulkutunneli'];
 function waypoints(long, worst, sport) {
@@ -785,24 +1092,55 @@ const FR = new Map(); // id → { el, base, st, past, future }
 function fresh(base) {
   const o = JSON.parse(JSON.stringify(base));
   const st = { stage: 'start', mode: 'edit', sheet: 'peek', tab: 'route', draw: 'auto', style: 'balanced', pop: null, styleOpen: false, sport: 'mtb', sel: 1, filter: 'all', q: '', moveTo: false, legOpen: false,
-    toast: null, hist: 0, fut: 0, tip: null, long: false, later: false, ...o };
-  st.rt = { open: false, unit: 'km', val: null, dir: 'any', making: 0, results: false, pick: 0, ...(o.rt || {}) };
+    toast: null, hist: 0, fut: 0, tip: null, long: false, later: false,
+    // 2026-10-20: the map's sport (the pill) apart from the route's (st.sport) and the next leg's (st.next, null: the route's);
+    // marked routes in view (find, mr: ok | off | fail | none, mrPick, followed); the sport menu (sp: list | scope, spPick);
+    // a mixed route (mix); the warning in view (step: its place along the route); the timeline (tl); Settings (settings)
+    map: null, next: null, find: false, mr: 'ok', mrPick: 0, followed: null, sp: null, spPick: null, mix: false, step: null, tl: false, settings: false, ...o };
+  st.map = st.map || st.sport;
+  st.rt = { open: false, unit: 'km', val: null, dir: 'any', making: 0, results: false, pick: 0, nostart: false, ...(o.rt || {}) };
   if (st.sport === 'paddle' && !o.draw) st.draw = 'water'; // a paddle route is drawn over water
   if (st.stage === 'loops') { st.stage = 'first'; st.rt.results = true; }
   return st;
 }
 const opt = (st, k) => (touched || st[k] == null ? OPT[k] : st[k]);
-const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt });
+const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport });
 
 // ------------------------------------------------ building blocks
-function topbar(desk, sport) {
-  const S = SPORTS[sport];
+// the pill is the map's sport (st.map); its menu says what a change does (2026-10-20)
+function topbar(desk, st) {
+  const k = st.map;
   return `<div class="top">
     <button type="button" class="tb brand" aria-label="Polku home"><i>${ic('path', 18)}</i>${desk ? 'Polku' : ''}</button>
     <button type="button" class="tb search" aria-label="Search places">${ic('search', 18)}<span>Search places or paste coordinates</span></button>
-    <button type="button" class="tb sport" aria-label="Sport: ${S.label}">${ic(S.icon, 18)}${desk ? `<span style="font-weight:700">${S.label}</span>` : ''}${ic('down', 14)}</button>
-    <button type="button" class="tb" aria-label="Settings">${ic('gear', 20)}</button>
+    <button type="button" class="tb sport" data-act="sport" aria-haspopup="menu" aria-expanded="${st.pop === 'sport'}" aria-label="${t('sportH')}: ${esc(sL(k))}">${ic(SPORT_ICON[k], 18)}${desk ? `<span style="font-weight:700">${esc(sL(k))}</span>` : ''}${ic('down', 14)}</button>
+    <button type="button" class="tb" data-act="settings" aria-label="${t('settings')}" aria-expanded="${!!st.settings}">${ic('gear', 20)}</button>
   </div>`;
+}
+// the route's legs in each sport, for the menu's words: a plain route is 2 legs of its sport; a mixed one (st.mix) has a
+// paddle crossing and a LIPAS stretch that keep their own
+const legCount = (st) => (st.stage === 'route' ? (st.long ? 51 : 2 + (st.mix ? 2 : 0)) : 0);
+const mainLegs = (st) => (st.stage === 'route' ? (st.long ? 51 : 2) : 0);
+const nextOf = (st) => st.next || st.sport;
+// The sport menu: the sports with their names and one line each; with a route drawn and a sport other than the
+// route's, the choice of what it changes. `v.sport`: 'ask' (recommended), 'next' (the map and the next legs only),
+// 'all' (the whole route follows); the last two apply at once.
+function sportMenu(st, v) {
+  const route = st.stage === 'route', R = sL(st.sport);
+  if (st.sp === 'scope' && st.spPick) {
+    const S = sL(st.spPick), n = mainLegs(st), cross = isWaterS(st.spPick) !== isWaterS(st.sport), same = st.spPick === nextOf(st) && st.spPick === st.map;
+    const allD = cross ? tf('scopeNo', { R, V: SW().verb[st.spPick] }) : `${tf('scopeAllD', { n, R, S })}${st.mix ? ` ${tf('scopeKeep', { K: t('mixedKeep') })}` : ''}`;
+    return `<div class="popmenu sportmenu" role="dialog" aria-label="${esc(tf('scopeFor', { S }))}" data-anchor="sport">
+      <div class="backrow"><button type="button" class="btn" data-act="spback">${ic('left', 18)}${t('backSports')}</button></div>
+      <div class="scopeq" id="sq-${st._id}">${ic(SPORT_ICON[st.spPick], 20).replace('class="ic ', 'style="display:inline;vertical-align:-3px;margin-right:6px" class="ic ')}${esc(tf('scopeFor', { S }))}</div>
+      <div role="group" aria-labelledby="sq-${st._id}">
+      <button type="button" class="opt" data-act="spall"${cross ? ' aria-disabled="true"' : ''}>${ic('route', 22)}<span><b>${t('scopeAll')}</b><small>${esc(allD)}</small></span></button>
+      <button type="button" class="opt" data-act="spnext">${ic(st.draw === 'line' ? 'line' : isWaterS(st.spPick) ? 'water' : 'auto', 22)}<span><b>${t('scopeNext')}${same ? ` <span class="cur">${t('already')}</span>` : ''}</b><small>${esc(tf('scopeNextD', { R, S }))}</small></span></button></div></div>`;
+  }
+  const lead = route ? (v.sport === 'next' ? tf('stayNote', { R }) : `<b>${t('yourRouteIs')}:</b> ${esc(routeSports(st))}${st.mix ? ', LIPAS' : ''} · ${legCount(st)} ${t('legsN')}`) : t('sportLead');
+  const item = (k) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.map === k}" data-act="sportpick" data-v="${k}">${ic(SPORT_ICON[k], 22)}<span><b>${esc(sL(k))}</b><small>${esc(SW().note[k])}</small></span>${st.map === k ? ic('check', 18, 'tick') : ''}</button>`;
+  return `<div class="popmenu sportmenu" role="menu" aria-label="${t('sportH')}" data-anchor="sport">
+    <div class="mh">${t('sportH')}</div><div class="lead">${route ? lead : esc(lead)}</div>${ALLSPORTS.map(item).join('')}</div>`;
 }
 // fold: where the column doesn't fit between the top bar and a raised sheet (short phones), it leaves out first the
 // compass while north is up (it's back as soon as the map is turned), then 3D (still in Layers); at 200 % both (#73)
@@ -822,15 +1160,83 @@ function cols(st, desk, bottom, z, fold = 0) {
   </div>`;
 }
 const stats = (st, v) => {
-  const S = SPORTS[st.sport], s = v.worst ? WORST : st.loop ? { d: '10.4 km', t: '42 min', up: '↑96 m', down: '↓96 m' } : S.stats; // a loop taken: loop A's numbers
+  const fr = st.followed != null && (MARKED[st.sport] || MR_MTB)[st.followed];
+  const S = SPORTS[st.sport], s = v.worst ? WORST : st.loop ? { d: '10.4 km', t: '42 min', up: '↑96 m', down: '↓96 m' } // a loop taken: loop A's numbers
+    : fr ? { d: `${fr.km} km`, t: ((m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`))(Math.round(fr.km * 6.5)), up: `↑${Math.round(fr.km * 21)} m`, down: `↓${Math.round(fr.km * 21)} m` } : S.stats; // a marked route followed
   const climb = st.sport === 'paddle' && !v.worst ? `<span><b>${s.up}</b><small>carry</small></span>` : `<span><b>${s.up}</b><small><span class="sr">descent </span>${s.down}</small></span>`;
   return `<div class="stats"><span><b>${s.d}</b><small>${t('dist')}</small></span><button type="button" class="tlink" data-act="depart" aria-label="${s.t} ${t('fromNow')}: change the departure, in Go"><b>${s.t}</b><small>${t('fromNow')}</small></button>${climb}</div>`;
 };
-const warnsOf = (st, v) => (v.worst ? WARN_WORST : st.calm ? { ...WARN[st.sport], t1: [] } : WARN[st.sport]);
+const warnsOf = (st, v) => { const W = WARN[warnKey(st.sport)]; return v.worst ? WARN_WORST : st.calm ? { ...W, t1: [] } : W; };
+// every item, in order along the route (route-wide ones last): what ‹ › step through, and what a marker selects
+function alongList(st, v) {
+  const W = warnsOf(st, v), out = [];
+  for (const g of ['t1', 't3', 't2']) W[g].forEach((w, i) => out.push({ g, i, w, at: kmOf(w) }));
+  return out.sort((a, b) => (a.at ? a.at[0] : 1e9) - (b.at ? b.at[0] : 1e9));
+}
+// The peek's row (2026-10-20): what to read before you go, and what wasn't checked, in words. A tap shows the first
+// one on the route (phones: in the peek, with ‹ › along the route and ✕ back; desktops: selected in Check).
 function warnRow(st, v, desk) {
-  const W = warnsOf(st, v);
-  if (!W.t1.length || (st.tab === 'check' && (desk || st.sheet !== 'peek'))) return ''; // not while Check itself is in sight
-  return `<button type="button" class="warnrow" data-act="tocheck" aria-label="${W.t1.length} ${t('t1s')}: ${esc(W.t1[0].b)}. Open Check">${ic('warnf', 22)}<span><b>${W.t1.length} ${t('t1s')}</b><small>${esc(W.t1[0].b)}${W.t1.length > 1 ? ` · +${W.t1.length - 1}` : ''}</small></span>${ic('right', 18)}</button>`;
+  const W = warnsOf(st, v), n1 = W.t1.length, n3 = W.t3.length;
+  if ((!n1 && !n3) || (st.tab === 'check' && (desk || st.sheet !== 'peek')) || (st.step != null && !desk && st.sheet === 'peek')) return ''; // not while Check or the item is in sight
+  const first = n1 ? W.t1[0] : W.t3[0], n = n1 || n3;
+  const unk = n1 && n3 ? `<span class="unkn" aria-hidden="true">${ic('unk', 14)}${n3}</span>` : '';
+  const aria = `${n1 ? `${n1} ${t('t1s')}` : ''}${n1 && n3 ? ', ' : ''}${n3 ? `${n3} ${t('t3s')}` : ''}: ${first.b}. Show it on the route`;
+  return `<button type="button" class="warnrow${n1 ? '' : ' unk'}" data-act="wstep" aria-label="${esc(aria)}">${ic(n1 ? 'warnf' : 'unk', 22)}<span><b>${n} ${t(n1 ? 't1s' : 't3s')}</b><small>${esc(first.b)}${n > 1 ? ` · +${n - 1}` : ''}</small></span>${unk}${ic('right', 18)}</button>`;
+}
+// One item in view: its group, what and where, how sure, its actions; ‹ › along the route; ✕ back to where you were
+function wcard(st, v) {
+  const L = alongList(st, v), it = L[st.step];
+  if (!it) return '';
+  const w = it.w, G = { t1: [t('t1'), 'warnf'], t2: [t('t2'), 'eye'], t3: [t('t3'), 'unk'] }[it.g];
+  const acts = w.a.map((a) => `<button type="button" class="btn small quiet" data-act="noop">${a === 'Avoid' ? t('avoid') : t('retry')}</button>`).join('');
+  return `<div class="wcard ${it.g}" role="group" aria-label="${esc(G[0])}: ${esc(w.b)}">
+    <div class="wc-h">${ic(G[1], 22)}<span><span class="wc-g">${G[0]}</span><b>${esc(w.b)}</b></span><button type="button" class="tbtn" data-act="wclose" aria-label="${t('back2')}: the map and the planner as they were">${ic('close', 20)}</button></div>
+    <div class="wc-w">${esc(w.w)}${it.at ? '' : ` · ${t('wholeRoute')}`}</div>${w.n ? `<div class="wc-n">${esc(w.n)}</div>` : ''}<span class="src">${w.s}</span>
+    <div class="wc-a"><button type="button" class="tbtn ring" data-act="wprev" aria-label="Previous along the route"${st.step === 0 ? ' disabled' : ''}>${ic('left', 18)}</button><span class="cnt" aria-live="polite">${st.step + 1} ${t('stepOf')} ${L.length}</span><button type="button" class="tbtn ring" data-act="wnext" aria-label="Next along the route"${st.step === L.length - 1 ? ' disabled' : ''}>${ic('right', 18)}</button><span class="spacer"></span>${acts}<button type="button" class="btn small quiet" data-act="tocheck">${t('inCheck')}</button></div></div>`;
+}
+// the markers, the picked stretch's glow and the "not checked" dashes on the map picture, or a marked route's glow
+function mapMarks(st, v, desk) {
+  const out = [], line = (pts, stroke, w, extra = '') => `<polyline points="${pts.map((p) => p.map((q) => q.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
+  const svg = (inner) => `<svg class="ovl" viewBox="0 0 ${st._W} ${st._H}" width="${st._W}" height="${st._H}" aria-hidden="true">${inner}</svg>`;
+  const MR = MARKED[st.map] || [];
+  if (st.stage === 'start' && st.find && MR[st.mrPick] && st.mr !== 'fail') {
+    const g = { bw: desk ? 1440 : 780, bh: desk ? 900 : 1688 }, P = MR[st.mrPick][desk ? 'desk' : 'phone'].map((p) => bgXY(st, g, p));
+    out.push(svg(line(P, '#fff', 13, 'opacity=".95"') + line(P, MR[st.mrPick].c, 7)));
+  }
+  if (st.stage === 'route' && st.followed != null) {
+    const r = (MARKED[st.sport] || MR_MTB)[st.followed] || MR_MTB[0], g = { bw: desk ? 1440 : 780, bh: desk ? 900 : 1688 }, P = r[desk ? 'desk' : 'phone'].map((p) => bgXY(st, g, p));
+    const a = P[0], b = P[P.length - 1];
+    out.push(svg(line(P, '#fff', 10) + line(P, '#e11d48', 6) + `<circle cx="${a[0]}" cy="${a[1]}" r="11" fill="#16a34a" stroke="#fff" stroke-width="2.5"/><rect x="${b[0] - 10}" y="${b[1] - 10}" width="20" height="20" rx="5" fill="#111" stroke="#fff" stroke-width="2.5"/>`));
+  }
+  const key = `${warnKey(st.sport) === 'paddle' ? 'paddle' : 'mtb'}-${desk ? 'desk' : 'phone'}`, G = GEO[key];
+  if (st.stage !== 'route' || st.long || st.loop || st.followed != null || !G) return out.join('');
+  const L = alongList(st, v), f = v.worst ? G.km / 123.4 : 1;
+  const checking = (st.tab === 'check' && (desk || st.sheet !== 'peek')) || st.step != null;
+  let ovl = '';
+  // stretches not checked: dashed, always (missing data never looks complete)
+  for (const it of L) if (it.g === 't3' && it.at && it.at[1] > 0) ovl += line(stretchPts(G, it.at[0] * f, (it.at[0] + it.at[1]) * f).map((p) => bgXY(st, G, p)), 'var(--unk)', 7, 'stroke-dasharray="2 9" opacity=".95"');
+  const sel = L[st.step];
+  if (sel && sel.at) {
+    const a = sel.at[0] * f, b = (sel.at[0] + Math.max(sel.at[1], 0.03)) * f, P = stretchPts(G, a, b).map((p) => bgXY(st, G, p)), c = { t1: 'var(--warn)', t2: 'var(--look)', t3: 'var(--unk)' }[sel.g];
+    ovl += line(P, '#fff', 16, 'opacity=".9"') + line(P, c, 9, 'opacity=".85"');
+  }
+  if (ovl) out.push(svg(ovl));
+  // markers: what to read before you go and what wasn't checked always; the rest while Check or an item is in view
+  const pts = [];
+  L.forEach((it, idx) => { if (!it.at || (it.g === 't2' && !checking)) return; const [x, y] = bgXY(st, G, alongPt(G, it.at[0] * f)); if (x < 0 || y < 56 || x > st._W || y > st._H) return; pts.push({ it, idx, x, y }); });
+  // close together: one marker with a count and the most serious group's icon (a tap shows the first)
+  const rank = { t1: 0, t3: 1, t2: 2 }, groups = [];
+  for (const p of pts) { const near = groups.find((g) => Math.hypot(g.x - p.x, g.y - p.y) < 26 && !(st.step === p.idx || g.list.some((q) => q.idx === st.step))); if (near) near.list.push(p); else groups.push({ x: p.x, y: p.y, list: [p] }); }
+  for (const g of groups) {
+    if (g.list.length === 1) {
+      const { it, idx, x, y } = g.list[0], icn = { t1: 'warnf', t2: 'eye', t3: 'unk' }[it.g];
+      out.push(`<button type="button" class="wmk ${it.g}${st.step === idx ? ' on' : ''}" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px" data-act="wpick" data-v="${idx}" aria-label="${esc(it.w.b)}, ${esc(it.w.w)}"${desk ? ` title="${esc(it.w.b)}"` : ''}>${ic(icn, it.g === 't2' ? 14 : 17)}</button>`);
+    } else {
+      const top = g.list.slice().sort((a, b) => rank[a.it.g] - rank[b.it.g])[0];
+      out.push(`<button type="button" class="wmk cl" style="left:${g.x.toFixed(1)}px;top:${g.y.toFixed(1)}px" data-act="wpick" data-v="${top.idx}" aria-label="${g.list.length} items here: ${esc(top.it.w.b)} and more">${ic({ t1: 'warnf', t2: 'eye', t3: 'unk' }[top.it.g], 16)}${g.list.length}</button>`);
+    }
+  }
+  return out.join('');
 }
 // More (⋯), decided 2026-10-17: the last button of the toolbox (phones) and of the toolbar (desktop)
 function moreBtn(st, size = 44) {
@@ -842,9 +1248,13 @@ function undoRedo(st, size = 44) {
   if (!hasHist(st)) return '';
   return `<button type="button" class="tbtn" data-act="undo" aria-label="${t('undo')}"${st.hist ? '' : ' disabled'} style="width:${size}px;height:${size}px" data-tip="undo">${ic('undo', 20)}</button><button type="button" class="tbtn" data-act="redo" aria-label="${t('redo')}"${st.fut ? '' : ' disabled'} style="width:${size}px;height:${size}px" data-tip="redo">${ic('redo', 20)}</button>`;
 }
+// the next leg: its mode, and under it its style; its sport too when the route has legs in another sport (2026-10-20),
+// so "only the legs you draw next" stays visible after its note has gone
 function modeButton(st) {
-  const showStyle = st.draw !== 'line';
-  return `<button type="button" class="modebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('nextLeg')}: ${t(st.draw)}${showStyle ? `, ${t('styleRow')} ${styleName(st)}` : ''}">${ic(st.draw, 20)}<span class="two"><b>${t(st.draw)}</b>${showStyle ? `<small>${esc(styleName(st))}</small>` : ''}</span>${ic('down', 14)}</button>`;
+  const showStyle = st.draw !== 'line', nx = nextOf(st), showSport = st.stage === 'route' && (nx !== st.sport || st.mix);
+  const style = (SPORTS[nx].styles.find((x) => x[0] === st.style) || SPORTS[nx].styles[0])[1];
+  const second = [showSport ? sL(nx) : '', showStyle ? style : ''].filter(Boolean).join(' · ');
+  return `<button type="button" class="modebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('nextLeg')}: ${t(st.draw)}${second ? `, ${esc(second)}` : ''}">${ic(st.draw, 20)}<span class="two"><b>${t(st.draw)}</b>${second ? `<small>${esc(second)}</small>` : ''}</span>${ic('down', 14)}</button>`;
 }
 // editing: the next leg's mode, undo, redo, More; in the route's view only More stays (nothing is drawn there)
 function phoneToolbox(st) {
@@ -863,7 +1273,9 @@ function modesMenu(st) {
     <div class="mh" id="mh-${st._id}-b">${t('styleH')}</div>
     <div role="group" aria-labelledby="mh-${st._id}-b">${styles}</div></div>`;
 }
-function routeTitle(st, v) { const T = v.worst ? WORST_TITLE : SPORTS[st.sport].title; return `${T[0]} → ${T[1]}`; }
+function routeTitle(st, v) { if (st.followed != null) return ((MARKED[st.sport] || MR_MTB)[st.followed] || MR_MTB[0]).name; const T = v.worst ? WORST_TITLE : SPORTS[st.sport].title; return `${T[0]} → ${T[1]}`; }
+// the route's sport, said where the route is (the view's line, the menu's lead): one sport, or each of a mixed route's
+const routeSports = (st) => [sL(st.sport), st.drawnNext && st.next ? sL(st.next) : '', st.mix ? sL('paddle') : ''].filter(Boolean).join(' + ');
 function tripMenu(st, v) {
   const mi = (icn, b, s, act, cls = '', dis = false) => `<button type="button" class="mi ${cls}" role="menuitem" data-act="${act}"${dis ? ' disabled' : ''}>${ic(icn, 22)}<span><b>${b}</b>${s ? `<small>${s}</small>` : ''}</span></button>`;
   const name = t('more');
@@ -893,11 +1305,12 @@ function tabs(st, v) {
   return `<div class="tabs" role="tablist" aria-label="Planner">${tb('route', 'route', t('route'))}${tb('check', 'warn', t('check'), badge + unk, `${t('check')}${lab ? `: ${lab}` : ''}`)}${tb('go', 'clock', `${t('go')} 07:46`)}</div>`;
 }
 function checkBody(st, v) {
-  const W = warnsOf(st, v);
-  // the item itself shows its place on the map (as Heads-up's rows do today); its actions beside
-  const item = (w) => `<div class="wi">${ic(w.ic, 20)}<div class="tx"><button type="button" class="wibtn" data-act="noop" aria-label="${esc(w.b)}, ${esc(w.w)}: show on the map"><b>${esc(w.b)}</b><span class="wh">${esc(w.w)} · ${t('showMap').toLowerCase()} ›</span></button>${w.n ? `<span class="nt">${esc(w.n)}</span>` : ''}<span class="src">${w.s}</span>
-    ${w.a.length ? `<div class="wa">${w.a.map((a) => `<button type="button" class="btn small quiet" data-act="noop">${a === 'Avoid' ? t('avoid') : t('retry')}</button>`).join('')}<button type="button" class="tbtn" aria-label="More for ${esc(w.b)}: hide this kind, correct the map">${ic('more', 18)}</button></div>` : ''}</div></div>`;
-  const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span></h3><p class="tsub">${sub}</p>${list.map(item).join('')}</section>` : '');
+  const W = warnsOf(st, v), L = alongList(st, v);
+  // the item itself shows its place on the map (as Heads-up's rows do today), and its marker there is the same item
+  // (2026-10-20: selected together; on a phone the sheet steps down to show it, and ✕ comes back here)
+  const item = (w, g, i) => { const idx = L.findIndex((x) => x.g === g && x.i === i); return `<div class="wi${st.step === idx ? ' picked' : ''}"${st.step === idx ? ' aria-current="true"' : ''}>${ic(w.ic, 20)}<div class="tx"><button type="button" class="wibtn" data-act="wpick" data-v="${idx}" aria-label="${esc(w.b)}, ${esc(w.w)}: show on the route"><b>${esc(w.b)}</b><span class="wh">${esc(w.w)} · ${(kmOf(w) ? t('showMap') : t('wholeRoute')).toLowerCase()} ›</span></button>${w.n ? `<span class="nt">${esc(w.n)}</span>` : ''}<span class="src">${w.s}</span>
+    ${w.a.length ? `<div class="wa">${w.a.map((a) => `<button type="button" class="btn small quiet" data-act="noop">${a === 'Avoid' ? t('avoid') : t('retry')}</button>`).join('')}<button type="button" class="tbtn" aria-label="More for ${esc(w.b)}: hide this kind, correct the map">${ic('more', 18)}</button></div>` : ''}</div></div>`; };
+  const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span></h3><p class="tsub">${sub}</p>${list.map((w, i) => item(w, cls, i)).join('')}</section>` : '');
   const sum = '';
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
   return `${sum}${tier('t1', 'warnf', t('t1'), W.t1, 'What can stop you, turn you back or hurt')}${tier('t3', 'unk', t('t3'), W.t3, 'A source didn’t answer: the route may miss something')}${tier('t2', 'eye', t('t2'), W.t2, 'Sections to know about')}${cov}
@@ -950,9 +1363,27 @@ function wpList(st, v) {
   const bar = st.long && p ? `<div class="selbar" role="group" aria-label="Selected point">${mk(st.sel)}<span class="nm"><b>${esc(p.name)}</b><small>${label(st.sel)} · ${p.km} km</small></span>
       <button type="button" class="tbtn ring" data-act="prev" aria-label="Previous point"${st.sel === 0 ? ' disabled' : ''}>${ic('left', 18)}</button><button type="button" class="tbtn ring" data-act="next" aria-label="Next point"${st.sel === L.length - 1 ? ' disabled' : ''}>${ic('right', 18)}</button><button type="button" class="btn small quiet" data-act="showsel">${t('showMap')}</button></div>` : '';
   const viewing = editing ? '' : `<div class="banner">${ic('info', 18)}<span>${t('viewing')}</span><button type="button" class="btn small" data-act="edit">${ic('pencil', 16)}${t('edit')}</button></div>`;
-  const tools = editing ? `<div class="tools2"><button type="button" class="chip">${ic('roundtrip', 18)}${t('roundTrip')}</button><button type="button" class="chip">${ic('reverse', 18)}${t('reverse')}</button><button type="button" class="chip">${ic('loop', 18)}${t('backStart')}</button><button type="button" class="chip">${ic('upload', 18)}${t('importFile')}</button><button type="button" class="chip">${ic('route', 18)}All leg settings</button></div>
+  const tools = editing ? `<div class="tools2">${v.sport === 'next' ? `<button type="button" class="chip">${ic(SPORT_ICON[st.sport], 18)}${t('routeSport')}: ${esc(sL(st.sport))}</button>` : ''}<button type="button" class="chip">${ic('roundtrip', 18)}${t('roundTrip')}</button><button type="button" class="chip">${ic('reverse', 18)}${t('reverse')}</button><button type="button" class="chip">${ic('loop', 18)}${t('backStart')}</button><button type="button" class="chip">${ic('upload', 18)}${t('importFile')}</button><button type="button" class="chip">${ic('route', 18)}All leg settings</button></div>
       <div class="howgo"><button type="button" class="sec-h" aria-expanded="false">How you go · ${esc(styleName(st))} · Normal speed<span class="spacer"></span>${ic('down', 16)}</button></div>` : '';
   return `${viewing}${head}<div class="sec-h">${t('points')} ${L.length}${L.length > 1 ? ` · ${esc(L[0].name)} → ${esc(L[L.length - 1].name)}` : ''}</div>${bar}<ol class="wpl" aria-label="${t('points')}, in order">${idx.map(row).join('')}</ol>${tools}`;
+}
+
+// Marked routes in view (2026-10-20): LIPAS's routes for the map's sport in the map's view (one small request, as the
+// layer's own), as cards like the loops': a tap on a card or its line picks it, Follow this route makes it the route
+// (its own line, as Ride this route does today). Desktops: the same cards as a list in the panel.
+function findHtml(st, v, desk, grab) {
+  const S = st.map, L = MARKED[S] || [];
+  const head = `<div class="mrhead"><button type="button" class="tbtn" data-act="mrback" aria-label="${t('back2')}: the ways to begin">${ic('left', 20)}</button><div class="hint">${t('mrTitle')}<small>${t('mrSub')}</small></div></div>`;
+  const note = st.mr === 'off' ? `<div class="mrstate">${ic('info', 18)}<span>${t('mrOff')}</span><button type="button" class="btn small" data-act="mron">${t('showThem')}</button></div>`
+    : st.mr === 'fail' ? `<div class="mrstate fail">${ic('unk', 20)}<span>${t('mrFail')}</span><button type="button" class="btn small" data-act="noop">${t('retry')}</button></div>`
+      : st.mr === 'none' || !L.length ? `<div class="mrstate">${ic('info', 18)}<span>${esc(tf('mrNone', { S: sL(S) }))}</span></div>` : '';
+  const num = (x) => (LANG === 'en' ? String(x) : String(x).replace('.', ','));
+  const card = (r, i) => `<div class="lc${i === st.mrPick ? ' on' : ''}" role="listitem"><button type="button" data-act="mrpick" data-v="${i}" style="all:unset;display:grid;gap:4px;cursor:pointer;border-radius:8px" aria-label="${esc(r.name)}: ${esc(r.type)}, ${num(r.km)} km${i === st.mrPick ? ', picked' : ''}"><span class="h"><span class="swatch" style="background:${r.c}"></span><span class="l m">${esc(r.type)}</span></span><span class="nm2">${esc(r.name)}</span><span class="l">${num(r.km)} km${r.loop ? ` · ${t('loopW')}` : ''} · ${t('inView')}</span></button>${i === st.mrPick ? `<button type="button" class="btn primary" data-act="follow">${ic('route', 18)}${t('follow')}</button>` : ''}</div>`;
+  const byName = `<button type="button" class="lc find" data-act="noop">${ic('search', 22)}<b>${t('byName')}</b><small>${t('byNameD')}</small></button>`;
+  const list = st.mr === 'fail' ? '' : st.mr === 'none' || !L.length ? `<div class="chips"><button type="button" class="chip" data-act="noop">${ic('search', 18)}${t('byName')}</button></div>`
+    : desk ? `<div class="mrlist" role="list" aria-label="${t('mrTitle')}">${L.map(card).join('')}</div><div class="chips"><button type="button" class="chip" data-act="noop">${ic('search', 18)}${t('byName')} · ${t('byNameD')}</button></div>`
+      : `<div class="loopcards" role="list" aria-label="${t('mrTitle')}">${L.map(card).join('')}${byName}</div>`;
+  return `<div class="pl" role="region" aria-label="Route planner: ${t('mrTitle')}">${grab}${head}${note}${list}</div>`;
 }
 
 // the sheet (phone) and the panel (desktop)
@@ -961,9 +1392,20 @@ function plannerHtml(st, v, desk, docked) {
   const dock = docked ? `<div class="dockbox" role="toolbar" aria-label="Drawing tools">${phoneToolbox(st, v)}</div>` : '';
   if (st.stage === 'start') {
     const later = st.later ? `<div class="later" style="opacity:1;margin-top:4px"><b>${t('later157')}: ${t('yourRoutes')}</b><ol class="wpl" style="margin-top:4px">${[['Kauppi → Hervanta', 'MTB · 12.6 km · 2026-10-16'], ['Näsijärvi islands', 'Paddle · 11.1 km · offline · 2026-10-12'], ['Pyynikki loop', 'Hike · 8.2 km · 2026-10-03']].map(([a, b]) => `<li><button type="button" class="wpr">${ic('route', 18)}<span class="nm"><b>${a}</b><small>${b}</small></span>${ic('right', 16)}</button></li>`).join('')}</ol></div>` : '';
+    if (st.find) return findHtml(st, v, desk, grab);
+    // 2026-10-20: the four ways to begin that Polku has today (renderStart()), in the peek: the map first (its hint),
+    // then a round trip, marked routes (where the sport has any in LIPAS) and a file. Desktops: a row each, with its line.
+    const mr = (MARKED[st.map] || []).length > 0;
+    if (desk) {
+      const row = (act, icn, b, s) => `<button type="button" class="wayrow" data-act="${act}">${ic(icn, 24)}<span><b>${b}</b><small>${s}</small></span>${ic('right', 16)}</button>`;
+      return `<div class="pl" role="region" aria-label="Route planner">
+        <div class="row"><div class="hint">${t('clickStartHint')}<small>${t('drawWayD')}</small></div></div>
+        <div class="cap" style="margin-top:6px">${t('startOr')}</div>
+        <div class="wayrows">${row('rtopen', 'roundtrip', t('rtWay'), t('rtWayD'))}${mr ? row('mrfind', 'sign', t('mrWay'), t('mrWayD')) : ''}${row('noop', 'upload', t('fileWay'), t('fileWayD'))}${st.later ? row('noop', 'list', `${t('yourRoutes')} 3`, t('later157')) : ''}</div>${later}</div>`;
+    }
     return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
-      <div class="row"><div class="hint">${t(desk ? 'clickStart' : 'tapStart')}<small>${t('tapStartSub')}</small></div>${desk ? '' : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</div>
-      <div class="chips"><button type="button" class="chip" data-act="rtopen">${ic('roundtrip', 18)}${t('roundTrip')}</button><button type="button" class="chip" data-act="noop">${ic('upload', 18)}${t('importFile')}</button>${st.later ? `<button type="button" class="chip">${ic('list', 18)}${t('yourRoutes')} 3</button>` : ''}</div>${later}</div>`;
+      <div class="row"><div class="hint">${t('startHint')}<small>${t('startOr')}:</small></div><button type="button" class="btn" data-act="done">${t('done')}</button></div>
+      <div class="ways" role="group" aria-label="${t('startOr')}"><button type="button" class="chip" data-act="rtopen">${ic('roundtrip', 18)}${t('rtWay')}</button>${mr ? `<button type="button" class="chip" data-act="mrfind">${ic('sign', 18)}${t('mrWay')}</button>` : ''}<button type="button" class="chip" data-act="noop">${ic('upload', 18)}${t('fileWay')}</button>${st.later ? `<button type="button" class="chip">${ic('list', 18)}${t('yourRoutes')} 3</button>` : ''}</div>${later}</div>`;
   }
   if (st.stage === 'first') {
     const S = SPORTS[st.sport], R = st.rt, unit = R.unit;
@@ -987,8 +1429,9 @@ function plannerHtml(st, v, desk, docked) {
           <span class="sel" style="margin-left:auto">${ic('roundtrip', 16)}${t('any')} ${ic('down', 12)}<select aria-label="${t('dir')}"><option>${t('any')}</option><option>N</option><option>NE</option><option>E</option><option>SE</option><option>S</option><option>SW</option><option>W</option><option>NW</option><option>${t('intoWind')}</option></select></span></div>
         <div class="chips" role="group" aria-label="Lengths">${presets.map((q) => `<button type="button" class="chip" aria-pressed="${q === R.val}" data-act="preset" data-v="${q}">${q === R.val ? ic('check', 16) : ''}${fmtV(q)}</button>`).join('')}</div>
         <div class="stepper"><button type="button" class="tbtn ring" data-act="dec" aria-label="${unit === 'km' ? `${S.step} km shorter` : '15 minutes shorter'}">${ic('minus', 20)}</button><label class="len"><input type="text" inputmode="decimal" enterkeyhint="done" value="${R.val}" aria-label="${unit === 'km' ? 'Length in kilometres' : 'Length in minutes'}" data-in="len"><span>${unit === 'km' ? 'km' : 'min'}</span></label><button type="button" class="tbtn ring" data-act="inc" aria-label="${unit === 'km' ? `${S.step} km longer` : '15 minutes longer'}">${ic('plus', 20)}</button></div>
-        <div class="cap" style="font-weight:500">${t('moveStart')}<br>${t('calls')}</div>
-        <button type="button" class="btn primary big" data-act="make"${making ? ' disabled aria-disabled="true"' : ''}>${making ? `<span style="display:grid;gap:6px;width:70%;justify-items:center">${t('making')} ${R.making} ${t('of3')}<span class="progress" style="--p:${R.making * 33}%"><i></i></span></span>` : `${ic('roundtrip', 20)}${t('make3')}`}</button>
+        ${R.nostart ? `<div class="row wrap" style="min-height:44px;gap:4px 8px"><span class="cap" style="font-weight:650;color:var(--text)">${t('rtStartQ')}: ${t('rtStartTap')}</span><button type="button" class="chip" data-act="whereami">${ic('me', 16)}${t('whereIAm')}</button></div>
+        <div class="cap" style="font-weight:500">${t('whereNote')}<br>${t('calls')}</div>` : `<div class="cap" style="font-weight:500">${t('moveStart')}<br>${t('calls')}</div>`}
+        <button type="button" class="btn primary big" data-act="make"${making || R.nostart ? ' disabled aria-disabled="true"' : ''}>${making ? `<span style="display:grid;gap:6px;width:70%;justify-items:center">${t('making')} ${R.making} ${t('of3')}<span class="progress" style="--p:${R.making * 33}%"><i></i></span></span>` : `${ic('roundtrip', 20)}${t('make3')}`}</button>
         <span class="sr" role="status">${making ? `${t('making')} ${R.making} ${t('of3')}` : ''}</span></div></div>`;
     }
     const rtrow = `<div class="cap" style="margin-top:2px">${ic('roundtrip', 14).replace('class="ic ', 'style="display:inline;vertical-align:-2px" class="ic ')} ${t('rtHere')}</div><div class="chips" role="group" aria-label="${t('rtHere')}">${presets.slice(0, 3).map((q) => `<button type="button" class="chip" data-act="preset" data-v="${q}" aria-label="${t('rtHere')}: ${fmtV(q)}">${fmtV(q)}</button>`).join('')}<button type="button" class="chip" data-act="rtopen">${t('other')}…</button></div>`;
@@ -999,11 +1442,13 @@ function plannerHtml(st, v, desk, docked) {
   const viewing = st.mode === 'view';
   // the summary is the route's own information; on a phone Done (Edit in the view) sits at its right, at the thumb
   const fin = desk ? '' : `<span class="acts-r">${viewing ? `<button type="button" class="btn" data-act="edit">${t('edit')}</button>` : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</span>`;
-  const head = viewing
-    ? `<div class="titlerow"><span class="ttl"><b>${esc(routeTitle(st, v))}</b><small>${ic('check', 13)}${t('kept')}</small></span><button type="button" class="tbtn" data-act="close" aria-label="Put the route away">${ic('close', 20)}</button></div>${warnRow(st, v, desk)}
+  // 2026-10-20: an item from the row or a marker takes the peek on a phone (the map stays in view); its ✕ comes back
+  const stepping = st.step != null && !desk && st.sheet === 'peek';
+  const head = stepping ? wcard(st, v) : viewing
+    ? `<div class="titlerow"><span class="ttl"><b>${esc(routeTitle(st, v))}</b><small>${esc(routeSports(st))} · ${ic('check', 13)}${t('kept')}</small></span><button type="button" class="tbtn" data-act="close" aria-label="Put the route away">${ic('close', 20)}</button></div>${warnRow(st, v, desk)}
        <div class="row wrap">${stats(st, v)}${fin}</div>`
     : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>`;
-  const big = desk || st.sheet !== 'peek';
+  const big = desk || (st.sheet !== 'peek' && !stepping);
   const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
   const body = st.tab === 'check' ? checkBody(st, v) : st.tab === 'go' ? goBody(st) : wpList(st, v);
   return `<div class="pl${desk && !viewing ? ' joined' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
@@ -1019,6 +1464,29 @@ function deskToolbar(st, v, compact = 0) {
   return `<div class="deskbar" role="toolbar" aria-label="Drawing tools"><div class="seg" role="radiogroup" aria-label="${t('nextLeg')}">${seg}</div>
     ${sep}<button type="button" class="stylebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('styleRow')}: ${esc(styleName(st))}" data-tip="style"><span class="two">${compact < 2 ? `<small>${t('styleRow')}</small>` : ''}<span>${esc(styleName(st))}</span></span>${ic('down', 12)}</button>
     ${hasHist(st) ? `${sep}${undoRedo(st, 40)}` : ''}${whole}${fit ? `${route && compact < 1 ? '' : sep}${fit}` : ''}${sep}${moreBtn(st, 40)}<button type="button" class="btn" data-act="done" data-tip="done">${t('done')}</button></div>`;
+}
+// The timeline over the map while planning (#225, as 25a built it), drawn simply: its chips, the 48 h strip, the
+// reading and the departure. On the water the warnings for wind and waves follow the departure it shows.
+function tlHtml(st, bottom, desk) {
+  const bars = Array.from({ length: 24 }, (_, i) => { const x = i * 10, hgt = 10 + Math.round(18 * Math.abs(Math.sin(i / 3.2))); return `<rect x="${x + 1}" y="${52 - hgt}" width="8" height="${hgt}" rx="1.5" fill="var(--line)"/>`; }).join('');
+  return `<div class="tl" role="region" aria-label="Weather timeline" style="bottom:${bottom}px${desk ? ';left:auto;right:84px;width:540px' : ''}">
+    <div class="tlc"><button type="button" class="chip" aria-pressed="true">Wind</button><button type="button" class="chip">Temperature</button><button type="button" class="chip">Rain</button><button type="button" class="chip">Snow</button><span class="spacer"></span><button type="button" class="tbtn" aria-label="Close the timeline">${ic('close', 18)}</button></div>
+    <div class="tlm"><svg viewBox="0 0 240 52" preserveAspectRatio="none" aria-hidden="true">${bars}<path d="M0 30 C40 22 70 34 110 26 S180 18 240 28" fill="none" stroke="#ea580c" stroke-width="2"/><line x1="100" x2="100" y1="0" y2="52" stroke="var(--text)" stroke-width="1.5"/></svg><div class="tlr"><b>9°</b><span>7 m/s SW</span><span>dry</span></div></div>
+    <div class="tls">${ic('play', 18)}<i style="--at:42%"></i><b>${t('depart')} 13:00</b></div></div>`;
+}
+// Settings, drawn simply (2026-10-20): the sport with its names on phones too (#237) and the same choice as the pill;
+// the speeds below follow the sport picked above them (#87), and the route's time follows when it uses that sport
+function settingsHtml(st, v, desk) {
+  const k = st.map;
+  const speeds = isWaterS(k) ? [['Flat water', '6.5 km/h'], ['Into a 5 m/s wind', '−18 %'], ['Carry', '3 km/h']]
+    : ['hike', 'trailrun', 'run'].includes(k) ? [['Flat', k === 'hike' ? '4.5 km/h' : '9.5 km/h'], ['Uphill', k === 'hike' ? '400 m/h' : '700 m/h'], ['Rough path', '−30 %']]
+      : [['Flat', k === 'road' ? '26 km/h' : '18 km/h'], ['Uphill', '650 m/h'], ['Rough trail', '−35 %']];
+  return `<div class="setp" role="dialog" aria-label="${t('settings')}">
+    <div class="mrhead"><div class="hint">${t('settings')}</div><button type="button" class="tbtn" data-act="settings" aria-label="Close ${t('settings')}">${ic('close', 20)}</button></div>
+    <h3>${t('sportH')}</h3><div class="sportgrid" role="group" aria-label="${t('sportH')}">${ALLSPORTS.map((s) => `<button type="button" aria-pressed="${s === k}" data-act="sportpick" data-v="${s}">${ic(SPORT_ICON[s], 22)}<span>${esc(sL(s))}</span></button>`).join('')}</div>
+    <p class="note2">${esc(SW().note[k])}. The pill beside the search is the same choice${st.stage === 'route' ? `; with your route drawn (${esc(routeSports(st))}), it asks what changes` : ''}.</p>
+    <h3>${t('speedsFor')} ${esc(sL(k))}</h3><div class="speedrows">${speeds.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('')}</div>
+    <p class="note2">${st.stage === 'route' && (k === st.sport || k === nextOf(st)) ? `Your route’s time follows these for its ${esc(sL(k))} legs.` : `Used for ${esc(sL(k))} legs.`}</p></div>`;
 }
 const TIPS = {
   auto: ['auto', 'Follow paths', 'P', 'The next leg follows paths and roads, chosen by the route style.'],
@@ -1049,33 +1517,40 @@ function render(f) {
   const z = st.z || 1, W = (st.w || (desk ? 1440 : 390)) / z, H = (st.h || (desk ? 900 : 844)) / z;
   scr.style.width = `${W}px`; scr.style.height = `${H}px`; scr.style.setProperty('--k', String(z));
   scr.classList.toggle('bigtext', z >= 2);
-  st._h = H; st._id = el.id;
+  st._h = H; st._W = W; st._H = H; st._id = el.id;
   if (!st.wps || st._wpsKey !== `${st.long}|${v.worst}|${st.sport}`) { st.wps = waypoints(st.long, v.worst, st.sport); st._wpsKey = `${st.long}|${v.worst}|${st.sport}`; if (st.sel >= st.wps.length) st.sel = 1; }
-  // the map behind
-  const bg = st.stage === 'start' ? (desk ? 'desk-mtb-calm.jpg' : 'phone-empty.jpg')
+  // the map behind (2026-10-20: the start and a followed marked route on a map with LIPAS's routes on it)
+  const mapPic = st.stage === 'start' || st.followed != null;
+  const bg = mapPic ? (desk ? 'desk-start1.jpg' : 'phone-empty.jpg')
     : st.stage === 'first' ? (st.rt.results ? (desk ? 'desk-loops.jpg' : 'phone-loops.jpg') : (desk ? 'desk-start1.jpg' : 'phone-start1.jpg'))
-      : st.long ? (desk ? 'desk-long.jpg' : 'phone-long.jpg') : st.loop ? (desk ? 'desk-mtb-calm.jpg' : 'phone-loop1.jpg') : st.sport === 'paddle' ? (desk ? 'desk-mtb-calm.jpg' : 'phone-paddle-calm.jpg') : (desk ? 'desk-mtb-calm.jpg' : 'phone-mtb-calm.jpg');
-  scr.style.backgroundImage = st.stage === 'start' && desk ? 'none' : `url(${PIC(bg)})`;
-  if (st.stage === 'start' && desk) scr.style.backgroundColor = '#e9eee6';
+      : st.long ? (desk ? 'desk-long.jpg' : 'phone-long.jpg') : st.loop ? (desk ? 'desk-mtb-calm.jpg' : 'phone-loop1.jpg') : isWaterS(st.sport) ? (desk ? 'desk-mtb-calm.jpg' : 'phone-paddle-calm.jpg') : (desk ? 'desk-mtb-calm.jpg' : 'phone-mtb-calm.jpg');
+  scr.style.backgroundImage = `url(${PIC(bg)})`;
   const editing = st.mode === 'edit';
-  let html = topbar(desk, st.sport);
+  let html = topbar(desk, st);
   if (st.mode !== 'closed') html += plannerHtml(st, v, desk, false);
   scr.innerHTML = html;
+  // desk-start1.jpg has a first point on it: hidden where there's none yet
+  if (mapPic && desk) { const [x, y] = bgXY(st, { bw: 1440, bh: 900 }, [581, 478]); scr.insertAdjacentHTML('afterbegin', `<div aria-hidden="true" style="position:absolute;z-index:1;left:${x - 16}px;top:${y - 16}px;width:32px;height:32px;border-radius:50%;background:#e6ecda;filter:blur(2.5px)"></div>`); }
+  scr.insertAdjacentHTML('afterbegin', mapMarks(st, v, desk));
   let docked = false;
   const pl = scr.querySelector('.pl');
   const sheetTop = desk || !pl ? 0 : H - pl.offsetTop;
-  const colsBottom = desk ? 12 : (pl ? sheetTop + 12 : 20);
-  scr.insertAdjacentHTML('beforeend', cols(st, desk, colsBottom, z) + `<div class="scale" style="bottom:${desk ? 12 : (pl ? sheetTop + 12 : 20)}px"><i>500 m</i></div>`);
+  // the timeline over the map while planning (#225): 16 px above the sheet on phones, the toolbox and the map's buttons above it
+  let lift = 0;
+  if (st.tl) { scr.insertAdjacentHTML('beforeend', tlHtml(st, desk ? 12 : sheetTop + 16, desk)); if (!desk) lift = 16 + scr.querySelector('.tl').offsetHeight; }
+  const colsBottom = desk ? 12 : (pl ? sheetTop + 12 + lift : 20 + lift);
+  scr.insertAdjacentHTML('beforeend', cols(st, desk, colsBottom, z) + `<div class="scale" style="bottom:${desk ? 12 : colsBottom}px"><i>500 m</i></div>`);
   const foldCols = (bottom) => { for (let fold = 1; fold <= 2 && !desk; fold++) { const c0 = scr.querySelector('.cols:not([hidden])'); if (!c0 || c0.offsetTop >= 64) break; c0.outerHTML = cols(st, desk, bottom, z, fold); } };
   foldCols(colsBottom);
-  // the toolbox: phones float it above the sheet (docked into the sheet where the map is too narrow); desktops hang it off the panel
-  if (pl && (editing || st.stage === 'route') && !(st.stage === 'first' && (st.rt.open || st.rt.results))) {
+  // the toolbox: phones float it above the sheet (docked into the sheet where the map is too narrow); desktops hang it off the panel.
+  // Not while marked routes are listed, nor while a warning is in view on a phone (nothing is drawn then).
+  if (pl && (editing || st.stage === 'route') && !(st.stage === 'first' && (st.rt.open || st.rt.results)) && !st.find && !(st.step != null && !desk && st.sheet === 'peek')) {
     if (desk) {
       // the toolbar may not reach the map's buttons: fold its least used parts first
       const right = scr.querySelector('.cols').offsetLeft - 12;
       for (let c = 0; c < 3; c++) { scr.querySelector('.deskbar')?.remove(); scr.insertAdjacentHTML('beforeend', deskToolbar(st, v, c)); const b = scr.querySelector('.deskbar'); if (b.offsetLeft + b.offsetWidth <= right) break; }
     } else {
-      scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="${editing ? 'Drawing tools' : 'Your route'}" style="bottom:${sheetTop + 8}px">${phoneToolbox(st)}</div>`);
+      scr.insertAdjacentHTML('beforeend', `<div class="float" role="toolbar" aria-label="${editing ? 'Drawing tools' : 'Your route'}" style="bottom:${sheetTop + 8 + lift}px">${phoneToolbox(st)}</div>`);
       const fl = scr.querySelector('.float'), cl = scr.querySelector('.cols:not([hidden])') || { offsetLeft: W };
       // too narrow beside the map's buttons, or no room above a raised sheet: it docks into the sheet
       if (fl.offsetLeft + fl.offsetWidth + 8 > cl.offsetLeft || fl.offsetTop < 64) { docked = true; fl.remove(); } else scr.querySelector('.scale').style.bottom = `${H - fl.offsetTop + 8}px`;
@@ -1083,18 +1558,22 @@ function render(f) {
   }
   if (docked) {
     pl.outerHTML = plannerHtml(st, v, desk, true);
-    const pl2 = scr.querySelector('.pl'), top2 = H - pl2.offsetTop;
-    const c2 = scr.querySelector('.cols'); if (c2) { c2.outerHTML = cols(st, desk, top2 + 12, z); foldCols(top2 + 12); }
-    scr.querySelector('.scale').style.bottom = `${top2 + 12}px`;
+    const pl2 = scr.querySelector('.pl'), top2 = H - pl2.offsetTop, tl2 = scr.querySelector('.tl');
+    if (tl2) { tl2.style.bottom = `${top2 + 16}px`; lift = 16 + tl2.offsetHeight; }
+    const c2 = scr.querySelector('.cols'); if (c2) { c2.outerHTML = cols(st, desk, top2 + 12 + lift, z); foldCols(top2 + 12 + lift); }
+    scr.querySelector('.scale').style.bottom = `${top2 + 12 + lift}px`;
   }
+  if (st.settings) scr.insertAdjacentHTML('beforeend', settingsHtml(st, v, desk));
   // menus, anchored to what opened them
   if (st.pop) {
-    const trig = scr.querySelector(st.pop === 'modes' ? '[data-act="modes"]' : '[data-act="trip"]');
+    const trig = scr.querySelector(st.pop === 'modes' ? '[data-act="modes"]' : st.pop === 'sport' ? '[data-act="sport"]' : '[data-act="trip"]');
     if (trig) {
       const r = box(trig, scr);
-      scr.insertAdjacentHTML('beforeend', st.pop === 'modes' ? modesMenu(st) : tripMenu(st, v));
+      scr.insertAdjacentHTML('beforeend', st.pop === 'modes' ? modesMenu(st) : st.pop === 'sport' ? sportMenu(st, v) : tripMenu(st, v));
       const m = scr.querySelector('.popmenu');
-      if (desk) { m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${st.pop === 'trip' ? Math.max(8, r.x + r.w - 316) : r.x}px`; m.style.setProperty('--origin', st.pop === 'trip' ? 'top right' : 'top left'); }
+      // the sport menu hangs under the pill, right-aligned, and scrolls inside when taller than the room
+      if (st.pop === 'sport') { const mw = Math.min(340, W - 16); m.style.width = `${mw}px`; m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${Math.max(8, Math.min(r.x + r.w - mw, W - 8 - mw))}px`; m.style.maxHeight = `${H - r.y - r.h - 16}px`; m.style.setProperty('--origin', 'top right'); m.style.zIndex = 15; }
+      else if (desk) { m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${st.pop === 'trip' ? Math.max(8, r.x + r.w - 316) : r.x}px`; m.style.setProperty('--origin', st.pop === 'trip' ? 'top right' : 'top left'); }
       else {
         // above its button, below the top bar, clear of the map's buttons; it scrolls inside if it's taller than
         // the room, and with no room above its button (enlarged text, a raised sheet) it opens as a sheet of its own
@@ -1111,8 +1590,20 @@ function render(f) {
   }
   if (st.tip && desk) { const tr = scr.querySelector(`[data-tip="${st.tip}"]`); if (tr) { const r = box(tr, scr); scr.insertAdjacentHTML('beforeend', tipHtml(st.tip, r.x, r.y + r.h + 10)); } }
   if (st.info) scr.insertAdjacentHTML('beforeend', `<div class="mapinfo" style="left:${Math.min(st.info[0], W - 250)}px;top:${Math.max(70, st.info[1] - 90)}px" role="status"><b>Path · gravel, 2.5 m wide</b>Kauppi’s trails · open all year<br><small style="color:var(--muted)">${t('mapTap')}</small></div>`);
+  // a warning's marker with the planner put away: the map's own card for it, and the way back to the planner
+  if (st.mode === 'closed' && st.step != null) {
+    const it = alongList(st, v)[st.step], mk = scr.querySelector('.wmk.on');
+    if (it && mk) scr.insertAdjacentHTML('beforeend', `<div class="mapinfo" style="left:${Math.max(8, Math.min(mk.offsetLeft - 120, W - 248))}px;top:${Math.max(70, mk.offsetTop - 150)}px" role="dialog" aria-label="${esc(it.w.b)}"><span class="src" style="margin:0 0 2px">${ic(it.g === 't1' ? 'warnf' : it.g === 't3' ? 'unk' : 'eye', 14)}${{ t1: t('t1'), t2: t('t2'), t3: t('t3') }[it.g]}</span><b>${esc(it.w.b)}</b>${esc(it.w.w)}<div class="wa2">${it.w.a.includes('Avoid') ? `<button type="button" class="btn small quiet" data-act="noop">${t('avoid')}</button>` : ''}<button type="button" class="btn small" data-act="wopen">${t('openPl')}</button></div></div>`);
+  }
   if (st.toast) {
-    const T = { cleared: [t('cleared'), t('undoBtn'), 'undo'], closed: [t('closed'), t('open'), 'reopen'], style: [`${t('styleRow')}: ${styleName(st)} · routed again; legs with their own style keep it`, t('undoBtn'), 'undo'], removed: [`Removed ${st.toastName || ''}`, t('undoBtn'), 'undo'], loop: ['Loop A is your route', t('undoBtn'), 'undo'], moved: ['Moved', t('undoBtn'), 'undo'], fit: ['The whole route is in view', '', ''], reversed: ['Reversed: the finish is the start now', t('undoBtn'), 'undo'], backed: ['A leg back to the start', t('undoBtn'), 'undo'] }[st.toast];
+    const T = { cleared: [t('cleared'), t('undoBtn'), 'undo'], closed: [t('closed'), t('open'), 'reopen'], style: [`${t('styleRow')}: ${styleName(st)} · routed again; legs with their own style keep it`, t('undoBtn'), 'undo'], removed: [`Removed ${st.toastName || ''}`, t('undoBtn'), 'undo'], loop: ['Loop A is your route', t('undoBtn'), 'undo'], moved: ['Moved', t('undoBtn'), 'undo'], fit: ['The whole route is in view', '', ''], reversed: ['Reversed: the finish is the start now', t('undoBtn'), 'undo'], backed: ['A leg back to the start', t('undoBtn'), 'undo'],
+      // 2026-10-20
+      followed: [tf('followed', { N: routeTitle(st, v), K: stats(st, v).match(/<b>([^<]+)<\/b>/)[1] }), t('undoBtn'), 'undo'],
+      sportmap: [`${sL(st.map)}: ${SW().note[st.map]}. Change any of it in Layers.`, '', ''],
+      spall: [tf('nowAll', { S: sL(st.sport), n: mainLegs(st) }), t('undoBtn'), 'undo'],
+      spnext: [tf('nowNext', { S: sL(st.map), R: sL(st.sport) }), '', ''],
+      spnowater: [tf('nowNoWater', { R: sL(st.sport), V: SW().verb[st.map], S: sL(st.map) }), '', ''],
+      mron: ['Marked routes are on in Layers', t('undoBtn'), 'mroff'] }[st.toast];
     if (T) {
       const pl3 = scr.querySelector('.pl'), fl3 = scr.querySelector('.float'), c3 = scr.querySelector('.cols:not([hidden])');
       const bottom = desk ? 24 : (fl3 ? H - fl3.offsetTop + 10 : pl3 ? H - pl3.offsetTop + 10 : 20);
@@ -1134,32 +1625,71 @@ function box(el, scr) {
 
 // ------------------------------------------------ what a tap does
 // what undo brings back: the route and its style, as in Polku (the mode for the next leg isn't part of the route)
-const SNAP = (st) => JSON.stringify({ stage: st.stage, wps: st.wps, sel: st.sel, style: st.style, legStyle: st.legStyle || {}, loop: st.loop, rt: { ...st.rt, making: 0 } });
-function change(f, fn) { f.past.push(SNAP(f.st)); f.future = []; fn(); f.st.hist = f.past.length; f.st.fut = 0; }
+// 2026-10-20: the route's sport is the route's (undo brings it back); a change of the whole route's sport also brings back
+// the map's sport and the next leg's, since that one step changed all three
+const SNAP = (st, sport = false) => JSON.stringify({ stage: st.stage, wps: st.wps, sel: st.sel, style: st.style, legStyle: st.legStyle || {}, loop: st.loop, rt: { ...st.rt, making: 0 }, sport: st.sport, followed: st.followed, calm: st.calm, ...(sport ? { map: st.map, next: st.next, draw: st.draw } : {}) });
+function change(f, fn, sport = false) { f.past.push(SNAP(f.st, sport)); f.future = []; fn(); f.st.hist = f.past.length; f.st.fut = 0; }
 function act(f, a, val, ev) {
   const st = f.st, R = st.rt;
-  const close = () => { st.pop = null; st.styleOpen = false; };
+  const close = () => { st.pop = null; st.styleOpen = false; st.sp = null; st.spPick = null; };
   const toast = (k, ms = 5000) => { st.toast = k; clearTimeout(f.tt); f.tt = setTimeout(() => { st.toast = null; render(f); }, ms); };
+  const desk = f.el.classList.contains('desk');
+  // the sport's two outcomes: the map and the legs drawn next, or the whole route (its legs in the route's sport)
+  const toNext = (k) => { st.map = k; st.next = k === st.sport ? null : k; st.draw = isWaterS(k) ? (st.draw === 'line' ? 'line' : 'water') : (st.draw === 'water' ? 'auto' : st.draw); };
+  const toAll = (k) => { st.sport = k; st.map = k; st.next = null; st.style = 'balanced'; st.legStyle = {}; st.drawnNext = false; if (isWaterS(k) !== (st.draw === 'water')) st.draw = isWaterS(k) ? 'water' : 'auto'; };
   st.info = null;
   switch (a) {
     case 'map':
       if (st.pop) { close(); break; }
+      if (st.settings) { st.settings = false; break; }
+      if (st.step != null) { st.step = null; if (st.stepFrom) { st.sheet = st.stepFrom.sheet; st.tab = st.stepFrom.tab; } break; } // a tap beside an open card closes it, and adds nothing
+      if (st.find) break;
+      if (st.stage === 'first' && R.open && R.nostart) { R.nostart = false; break; } // the round trip's start, tapped
       if (st.mode === 'view') { st.info = val; break; }
       if (st.mode !== 'edit') break;
       if (st.stage === 'first' && R.making) break; // the map waits while the loops are made (#109)
       if (st.stage === 'first' && R.open && !R.results) break; // moves the round trip's start (shown, not moved here)
       if (st.stage === 'start') change(f, () => { st.stage = 'first'; R.open = false; });
       else if (st.stage === 'first') change(f, () => { st.stage = 'route'; R.open = false; R.results = false; });
-      else change(f, () => { st.wps = [...st.wps.slice(0, -1), { ...st.wps[st.wps.length - 1], kind: 'via' }, { name: 'New point', km: +(st.wps[st.wps.length - 1].km + 0.6).toFixed(2), tm: '07:52', kind: 'end' }]; st.sel = st.wps.length - 1; });
+      else change(f, () => { st.wps = [...st.wps.slice(0, -1), { ...st.wps[st.wps.length - 1], kind: 'via' }, { name: 'New point', km: +(st.wps[st.wps.length - 1].km + 0.6).toFixed(2), tm: '07:52', kind: 'end' }]; st.sel = st.wps.length - 1; if (st.next) st.drawnNext = true; });
       break;
+    // ---- 2026-10-20: the sport, and what it changes
+    case 'sport': if (st.pop === 'sport') close(); else { close(); st.pop = 'sport'; st.sp = 'list'; } break;
+    case 'sportpick': {
+      const k = val, vs = view(st).sport;
+      if (st.stage !== 'route') { close(); st.map = k; st.sport = k; st.draw = isWaterS(k) ? 'water' : st.draw === 'water' ? 'auto' : st.draw; toast('sportmap'); break; } // no route: just the sport
+      if (k === st.sport && k === nextOf(st)) { close(); st.map = k; break; } // the route's own: nothing changes but the map
+      if (vs === 'next') { close(); toNext(k); toast('spnext'); break; }
+      if (vs === 'all') { close(); if (isWaterS(k) !== isWaterS(st.sport)) { toNext(k); toast('spnowater', 7000); } else { change(f, () => toAll(k), true); toast('spall', 7000); } break; }
+      st.pop = 'sport'; st.sp = 'scope'; st.spPick = k; break; // ask: the menu turns to the question
+    }
+    case 'spback': st.sp = 'list'; st.spPick = null; break;
+    case 'spall': { const k = st.spPick; if (!k || isWaterS(k) !== isWaterS(st.sport)) break; close(); change(f, () => toAll(k), true); toast('spall', 7000); break; }
+    case 'spnext': { const k = st.spPick; close(); toNext(k); toast('spnext'); break; }
+    case 'settings': close(); st.settings = !st.settings; break;
+    // ---- marked routes in view
+    case 'mrfind': close(); st.find = true; st.mrPick = 0; break;
+    case 'mrback': st.find = false; break;
+    case 'mrpick': st.mrPick = +val; break;
+    case 'mron': st.mr = 'ok'; toast('mron'); break;
+    case 'mroff': st.mr = 'off'; st.toast = null; break;
+    case 'follow': change(f, () => { st.stage = 'route'; st.followed = st.mrPick; st.sport = st.map; st.calm = true; st.mode = 'edit'; st.find = false; st.sheet = 'peek'; st.tab = 'route'; }); st.find = false; toast('followed', 7000); break;
+    case 'whereami': R.nostart = false; break;
+    // ---- a warning: from the row, a marker or Check; along the route; back
+    case 'wstep': { const L = alongList(st, view(st)); const i = Math.max(0, L.findIndex((x) => x.g === 't1') >= 0 ? L.findIndex((x) => x.g === 't1') : L.findIndex((x) => x.g === 't3')); st.stepFrom = { sheet: st.sheet, tab: st.tab }; st.step = i; if (desk) st.tab = 'check'; else st.sheet = 'peek'; close(); break; }
+    case 'wpick': if (st.step == null) st.stepFrom = { sheet: st.sheet, tab: st.tab }; st.step = +val; if (desk && st.mode !== 'closed') st.tab = 'check'; else if (st.mode !== 'closed') st.sheet = 'peek'; close(); break;
+    case 'wprev': st.step = Math.max(0, st.step - 1); break;
+    case 'wnext': st.step = Math.min(alongList(st, view(st)).length - 1, st.step + 1); break;
+    case 'wclose': st.step = null; if (st.stepFrom) { st.sheet = st.stepFrom.sheet; st.tab = st.stepFrom.tab; } break;
+    case 'wopen': st.mode = 'view'; st.toast = null; if (!desk) st.sheet = 'peek'; else st.tab = 'check'; break;
     case 'modes': st.pop = st.pop === 'modes' ? null : 'modes'; st.styleOpen = false; break;
     case 'trip': st.pop = st.pop === 'trip' ? null : 'trip'; break;
     case 'draw': st.draw = val; close(); break;
     case 'styleopen': st.styleOpen = true; break;
     case 'style': change(f, () => { st.style = val; }); close(); toast('style'); break;
     case 'finetune': close(); st.sheet = 'full'; st.tab = 'route'; break;
-    case 'undo': if (f.past.length) { f.future.push(SNAP(st)); Object.assign(st, JSON.parse(f.past.pop())); st.hist = f.past.length; st.fut = f.future.length; st.toast = null; if (st.stage === 'start') st.mode = 'edit'; } break;
-    case 'redo': if (f.future.length) { f.past.push(SNAP(st)); Object.assign(st, JSON.parse(f.future.pop())); st.hist = f.past.length; st.fut = f.future.length; } break;
+    case 'undo': if (f.past.length) { const o = JSON.parse(f.past.pop()); f.future.push(SNAP(st, 'map' in o)); Object.assign(st, o); st.step = null; st.hist = f.past.length; st.fut = f.future.length; st.toast = null; if (st.stage === 'start') st.mode = 'edit'; } break;
+    case 'redo': if (f.future.length) { const o = JSON.parse(f.future.pop()); f.past.push(SNAP(st, 'map' in o)); Object.assign(st, o); st.step = null; st.hist = f.past.length; st.fut = f.future.length; } break;
     case 'done': close(); if (st.stage === 'route') st.mode = 'view'; else { st.mode = 'closed'; toast('closed'); } break;
     case 'edit': close(); st.mode = 'edit'; break;
     case 'close': close(); st.mode = 'closed'; toast('closed'); break;
@@ -1216,7 +1746,7 @@ for (const el of document.querySelectorAll('.fr')) {
   }
   const f = { el, base, st: fresh(base), past: [], future: [], single: !!(only && el.id === only) };
   if (f.st.long) f.st._reveal = true; // a long list opens at the selected point
-  const seed = (ff) => { if (ff.st.hist) ff.past.push(SNAP({ ...ff.st, stage: 'route' })); else if (ff.st.stage === 'route' || ff.st.stage === 'first') { ff.past.push(SNAP({ ...ff.st, stage: ff.st.stage === 'route' ? 'first' : 'start' })); ff.st.hist = 1; } }; // something to undo: the clear, or the route's last point
+  const seed = (ff) => { if (ff.st.followed != null) { ff.past.push(SNAP({ ...ff.st, stage: 'start', followed: null, calm: false })); ff.st.hist = 1; } else if (ff.base.toast === 'spall') { ff.past.push(SNAP({ ...ff.st, sport: 'mtb', map: 'mtb', next: null }, true)); ff.st.hist = 1; } else if (ff.st.hist) ff.past.push(SNAP({ ...ff.st, stage: 'route' })); else if (ff.st.stage === 'route' || ff.st.stage === 'first') { ff.past.push(SNAP({ ...ff.st, stage: ff.st.stage === 'route' ? 'first' : 'start' })); ff.st.hist = 1; } }; // something to undo: the clear, or the route's last point
   seed(f);
   FR.set(el.id, f);
   if (!el.dataset.fixed) {
@@ -1227,10 +1757,10 @@ for (const el of document.querySelectorAll('.fr')) {
   }
   scr.addEventListener('click', (e) => {
     // with a menu open, a tap outside it (and its own button) only closes it
-    if (f.st.pop && !e.target.closest('.popmenu, [data-act="modes"], [data-act="trip"]')) { f.st.pop = null; f.st.styleOpen = false; render(f); return; }
+    if (f.st.pop && !e.target.closest('.popmenu, [data-act="modes"], [data-act="trip"], [data-act="sport"]')) { f.st.pop = null; f.st.styleOpen = false; f.st.sp = null; f.st.spPick = null; render(f); return; }
     const b = e.target.closest('[data-act]');
     if (b && scr.contains(b)) { if (b.disabled) return; act(f, b.dataset.act, b.dataset.v, e); return; }
-    if (e.target.closest('input, select, label, .popmenu, .pl, .float, .deskbar, .cols, .top, .toast, .mapinfo')) return;
+    if (e.target.closest('input, select, label, .popmenu, .pl, .float, .deskbar, .cols, .top, .toast, .mapinfo, .tl, .setp, .wmk')) return;
     const r = scr.getBoundingClientRect(), k = r.width / scr.offsetWidth;
     act(f, 'map', [(e.clientX - r.left) / k, (e.clientY - r.top) / k], e);
   });
@@ -1254,7 +1784,8 @@ for (const el of document.querySelectorAll('.fr')) {
   scr.tabIndex = -1;
   scr.addEventListener('keydown', (e) => {
     const st = f.st, inField = e.target.matches('input, select, textarea');
-    if (e.key === 'Escape' && st.pop) { st.pop = null; render(f); scr.querySelector('[data-act="modes"], [data-act="trip"]')?.focus(); return; }
+    if (e.key === 'Escape' && st.pop) { const was = st.pop; st.pop = null; st.sp = null; st.spPick = null; render(f); scr.querySelector(`[data-act="${was === 'trip' ? 'trip' : was}"]`)?.focus(); return; }
+    if (e.key === 'Escape' && st.step != null) { act(f, 'wclose'); return; }
     if (inField) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); act(f, e.shiftKey ? 'redo' : 'undo'); return; }
@@ -1273,7 +1804,7 @@ function renderAll() {
   for (const f of FR.values()) render(f);
 }
 const PK = document.querySelector('.picker'), PKT = PK.querySelector('.pk-toggle');
-const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: worst case, words, theme'; };
+const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: worst case, words, theme, sport change'; };
 pkOpen(innerWidth >= 1100);
 PKT.addEventListener('click', () => pkOpen(PK.dataset.open !== 'true'));
 document.querySelector('.picker').addEventListener('click', (e) => {
@@ -1283,9 +1814,10 @@ document.querySelector('.picker').addEventListener('click', (e) => {
   OPT[k] = k === 'worst' ? b.dataset.v === '1' : b.dataset.v;
   if (k === 'worst' || k === 'lang' || k === 'theme') touched = true;
   if (k === 'modes' || k === 'rt') for (const f of FR.values()) { delete f.st.modes; delete f.st.rtui; }
+  if (k === 'sport') for (const f of FR.values()) { delete f.st.sportopt; if (f.st.sp === 'scope' && b.dataset.v !== 'ask') { f.st.sp = 'list'; f.st.spPick = null; } }
   renderAll();
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') for (const f of FR.values()) if (f.st.pop) { f.st.pop = null; render(f); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') for (const f of FR.values()) if (f.st.pop) { f.st.pop = null; f.st.sp = null; f.st.spPick = null; render(f); } });
 renderAll();
 </script>
 </body>
