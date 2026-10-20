@@ -30,8 +30,10 @@ const P = {
   hike: '<circle cx="13" cy="4.5" r="2"/><path d="m9 21 2.5-7 3 3V21M11.5 14 12 9l-3 2v3M12 9l3 3 2.5-1"/><path d="M18 9v12"/>',
   paddle: '<path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M5 13.5h14l-2 2.5H7Z"/><path d="m6 5 12 9M4.5 3.8 7 5.7M17 13.3l2.5 1.9"/>',
   swim: '<circle cx="16" cy="6" r="2"/><path d="m4 13 5-3.5 3.5 2.5"/><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M2 21c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5" opacity=".55"/>',
-  water: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/>',
-  straight: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5 17.5 6.5" stroke-dasharray="2.5 2"/>',
+  // Over water: waves under a dashed line (a drop read as rain)
+  water: '<path d="M2.5 17c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><path d="M2.5 21c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><circle cx="5" cy="9" r="1.8"/><circle cx="19" cy="5" r="1.8"/><path d="M6.6 8.2c3-1.5 6.8-2.2 10.6-2.6" stroke-dasharray="2.2 2"/>',
+  straight: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5 17.5 6.5"/>',
+  link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
   auto: '<circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/>',
   wind: '<path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
@@ -111,10 +113,15 @@ export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '
 /**
  * A small menu at `anchor`: below it when it fits, else above, else on the roomier side with
  * its own scroll, so its last items never fall off the window. It closes on a pick, a click
- * outside, Escape or a resize. items: [{ icon, label, fn, disabled, cls, checked } | 'hr' | null]
- * Returns { el, close }.
+ * outside, Escape or a resize. Returns { el, close }.
+ * items: [{ icon, label, desc, fn, disabled, cls, checked, radio } | 'hr' | null
+ *   | { head, sub } (a title, e.g. the route's name) | { group, items } (a labelled group)
+ *   | { note } | { chips: [items] } (small choices on one wrapping line)]
+ * Options: align 'right' (to the anchor's right edge) or 'left'; maxRight keeps the menu left of
+ * a line (the map's buttons); sheet: with no room above or below, it opens as a sheet of its own.
  */
-export function popMenu(anchor, items, { label = '', onClose = null } = {}) {
+let menuIds = 0;
+export function popMenu(anchor, items, { label = '', onClose = null, align = 'right', maxRight = null, sheet = false } = {}) {
   const el = h('div', { class: 'menu menu-pop', role: 'menu', 'aria-label': label || null });
   let open = true;
   const close = (refocus = false) => {
@@ -138,27 +145,48 @@ export function popMenu(anchor, items, { label = '', onClose = null } = {}) {
     const k = list.indexOf(document.activeElement);
     list[(k + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length].focus();
   };
-  for (const it of items) {
-    if (!it) continue;
-    if (it === 'hr') { el.append(h('hr')); continue; }
-    const b = h('button', { type: 'button', role: it.checked != null ? 'menuitemcheckbox' : 'menuitem', class: `menu-item ${it.cls || ''}`, html: `${icon(it.icon, 17)}<span>${it.label}</span>`, onclick: () => { close(); it.fn(); } });
+  const add = (to, it, chip = false) => {
+    if (!it) return;
+    if (it === 'hr') { to.append(h('hr')); return; }
+    if (it.head != null) { to.append(h('div', { class: 'menu-head' }, h('b', {}, it.head), it.sub ? h('small', { html: `${icon('check', 13)}${escapeHtml(it.sub)}` }) : null)); return; }
+    if (it.note) { to.append(h('p', { class: 'menu-note' }, it.note)); return; }
+    if (it.group) {
+      const id = `menu-h-${++menuIds}`, g = h('div', { role: 'group', 'aria-labelledby': id });
+      to.append(h('div', { class: 'menu-h', id }, it.group), g);
+      for (const x of it.items) add(g, x);
+      return;
+    }
+    if (it.chips) { const c = h('div', { class: 'menu-chips' }); for (const x of it.chips) add(c, x, true); to.append(c); return; }
+    const role = it.radio ? 'menuitemradio' : it.checked != null ? 'menuitemcheckbox' : 'menuitem';
+    const html = chip ? `${it.checked ? icon('check', 15) : ''}<span>${it.label}</span>`
+      : `${icon(it.icon, 17)}<span>${it.label}${it.desc ? `<small>${it.desc}</small>` : ''}</span>${it.radio && it.checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}`;
+    const b = h('button', { type: 'button', role, class: `menu-item${chip ? ' chip' : ''}${it.desc ? ' two-line' : ''} ${it.cls || ''}`, html, onclick: () => { close(); it.fn(); } });
     if (it.disabled) b.disabled = true;
     if (it.checked != null) b.setAttribute('aria-checked', String(!!it.checked));
-    el.append(b);
-  }
+    to.append(b);
+  };
+  for (const it of items) add(el, it);
   document.body.append(el);
   const r = anchor.getBoundingClientRect(), gap = 8;
+  const right = Math.min(innerWidth - gap, maxRight ?? Infinity);
+  if (el.offsetWidth > right - gap) Object.assign(el.style, { width: `${right - gap}px`, minWidth: '0' });
   const mh = el.scrollHeight, mw = el.offsetWidth;
   const below = innerHeight - r.bottom - gap - 4, above = r.top - gap - 4;
-  if (mh <= below || (mh > above && below >= above)) {
-    el.style.top = `${r.bottom + 4}px`;
-    if (mh > below) el.style.maxHeight = `${below}px`;
+  if (sheet && (Math.max(below, above) < Math.min(mh, 240) || right - gap < 240)) {
+    Object.assign(el.style, { width: '', minWidth: '' });
+    el.classList.add('menu-sheet'); // no room beside its button (enlarged text, a raised sheet): a sheet of its own
   } else {
-    el.style.top = `${Math.max(gap, r.top - 4 - mh)}px`;
-    if (mh > above) el.style.maxHeight = `${above}px`;
+    if (mh <= below || (mh > above && below >= above)) {
+      el.style.top = `${r.bottom + 4}px`;
+      if (mh > below) el.style.maxHeight = `${below}px`;
+    } else {
+      el.style.top = `${Math.max(gap, r.top - 4 - mh)}px`;
+      if (mh > above) el.style.maxHeight = `${above}px`;
+      el.classList.add('menu-up');
+    }
+    el.style.left = `${Math.max(gap, Math.min(right - mw, align === 'left' ? r.left : r.right - mw))}px`;
   }
-  el.style.left = `${Math.max(gap, Math.min(innerWidth - gap - mw, r.right - mw))}px`;
-  el.querySelector('.menu-item:not(:disabled)')?.focus({ preventScroll: true });
+  (el.querySelector('.menu-item[aria-checked="true"]:not(:disabled)') || el.querySelector('.menu-item:not(:disabled)'))?.focus({ preventScroll: true });
   setTimeout(() => {
     if (!open) return;
     document.addEventListener('pointerdown', off, true);
@@ -166,6 +194,52 @@ export function popMenu(anchor, items, { label = '', onClose = null } = {}) {
     addEventListener('resize', onResize);
   });
   return { el, close };
+}
+
+/**
+ * A toolbar button's tooltip: its name, its keys and one sentence. The first one waits about
+ * 450 ms; while one was just shown, the next comes at once. Keyboard focus shows it too; it stays
+ * while the pointer is on it, and Escape hides it (WCAG 1.4.13). Mouse only: a tap shows none.
+ */
+let tipEl = null, tipShow = 0, tipHide = 0, tipLast = 0, tipFor = null;
+export function tooltip(el, { name, keys = '', text = '' }) {
+  if (!tipEl) {
+    tipEl = h('div', { class: 'tip', role: 'tooltip', id: 'tip', hidden: true });
+    tipEl.addEventListener('pointerenter', () => clearTimeout(tipHide));
+    tipEl.addEventListener('pointerleave', () => hideTip());
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !tipEl.hidden) hideTip(0); }, true);
+    document.body.append(tipEl);
+  }
+  const show = () => {
+    clearTimeout(tipHide);
+    tipFor = el;
+    tipEl.innerHTML = `<b>${escapeHtml(name)}${keys ? keys.split(' ').map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('') : ''}</b>${escapeHtml(text)}`;
+    tipEl.hidden = false;
+    el.setAttribute('aria-describedby', 'tip');
+    const r = el.getBoundingClientRect(), w = tipEl.offsetWidth;
+    tipEl.style.left = `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`;
+    tipEl.style.top = `${r.bottom + 8}px`;
+  };
+  const later = () => {
+    clearTimeout(tipShow);
+    if (el.getAttribute('aria-expanded') === 'true') return; // its menu is open: nothing over it
+    tipShow = setTimeout(show, Date.now() - tipLast < 900 ? 0 : 450);
+  };
+  el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !el.disabled) later(); });
+  el.addEventListener('pointerleave', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(); });
+  el.addEventListener('focus', () => { if (el.matches(':focus-visible')) show(); });
+  el.addEventListener('blur', () => { if (tipFor === el) hideTip(0); });
+  el.addEventListener('pointerdown', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(0); });
+}
+function hideTip(ms = 120) {
+  clearTimeout(tipHide);
+  tipHide = setTimeout(() => {
+    if (!tipEl || tipEl.hidden) return;
+    tipEl.hidden = true;
+    tipLast = Date.now();
+    tipFor?.removeAttribute('aria-describedby');
+    tipFor = null;
+  }, ms);
 }
 
 let toastTimer = 0;

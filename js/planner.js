@@ -18,7 +18,7 @@ import { winterAlong, windChill, WINTER_TEXT } from './winter.js';
 import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
-import { icon, h, $, toast, store, escapeHtml, popMenu } from './ui.js';
+import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView } from './inspect.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -29,6 +29,30 @@ const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
 const MODE_ICON = { auto: 'auto', line: 'straight', water: 'water' };
 const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
+const MODES = ['auto', 'line', 'water'];
+const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
+// what the desktop toolbar shortens where room runs out (placeTools()): the style's caption, the names of
+// the modes not in use, then all the modes' names
+const FOLDS = ['fold1', 'fold2', 'fold3'];
+const MODE_DESC = { auto: 'Along paths and roads, in the route style', line: 'Straight: off the trail, or across a gap', water: 'Polku’s water router: round land and marked hazards' };
+// the desktop toolbar's tooltips: the name, the keys, one sentence
+const TIPS = {
+  auto: { name: 'Follow paths', keys: 'P', text: 'The next leg follows paths and roads, chosen by the route style.' },
+  line: { name: 'Straight line', keys: 'S', text: 'The next leg is drawn straight: off the trail, or across a gap the router can’t take.' },
+  water: { name: 'Over water', keys: 'W', text: 'The next leg is routed on the water by Polku: round land and marked hazards.' },
+  style: { name: 'Route style', text: 'Which ways Follow paths prefers, for the whole route. Changing it routes the route again.' },
+  undo: { name: 'Undo', keys: 'Ctrl Z', text: 'Takes back the last change.' },
+  redo: { name: 'Redo', keys: 'Ctrl Shift Z', text: 'Does it again.' },
+  reverse: { name: 'Reverse', text: 'The finish becomes the start; each leg keeps its mode and style.' },
+  backToStart: { name: 'Back to start', text: 'A leg from the finish back to where you started.' },
+  fit: { name: 'Show the whole route', keys: 'F', text: 'Frames the whole route on the map, clear of the planner.' },
+  share: { name: 'Share link', text: 'Copies a link to this route.' },
+  gpx: { name: 'Export GPX', text: 'A file of the route for a GPS watch or another app.' },
+  offline: { name: 'Save offline', text: 'Saves the map and terrain along the route, for no signal.' },
+  clear: { name: 'Clear route', text: 'Takes the route off the map. Undo brings it back.' },
+  more: { name: 'More', text: 'The whole route’s actions that aren’t on the toolbar: a round trip, import and the rest.' },
+  done: { name: 'Done', keys: 'R', text: 'Closes the planner. The route stays on the map, and Plan brings it back.' },
+};
 // a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
 const STAND_IN_AFTER = 6000;
 // round trips: lengths to pick from per sport, the candidates' colours, and how many calls they may take
@@ -397,8 +421,8 @@ export class Planner {
     const el = this.markers[i] && this.markers[i].getElement();
     if (el) { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
   }
-  undo() { if (this.past.length) { this.future.push(this.snapshot()); this.restoreSnap(this.past.pop()); this.renderQuickSport(); } }
-  redo() { if (this.future.length) { this.past.push(this.snapshot()); this.restoreSnap(this.future.pop()); this.renderQuickSport(); } }
+  undo() { if (this.past.length) { this.future.push(this.snapshot()); this.restoreSnap(this.past.pop()); } }
+  redo() { if (this.future.length) { this.past.push(this.snapshot()); this.restoreSnap(this.future.pop()); } }
 
   addPoint(ll) {
     this.commit();
@@ -538,6 +562,7 @@ export class Planner {
     this.closeStartTip();
     this.litLeg(null);
     this.update();
+    toast('Route cleared', { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // ---------------------------------------------------------------- places to avoid
@@ -604,7 +629,7 @@ export class Planner {
 
   setMode(mode) {
     this.mode = mode;
-    for (const b of this.panel.querySelectorAll('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+    this.renderTools();
   }
 
   loadTrack(coords, name) {
@@ -723,54 +748,6 @@ export class Planner {
     toast(`${what}${!end && had ? ' — undo brings back your route' : ''}`, { ms: 5000 });
   }
 
-  // The header in the first arrangement that fits. Labels change with the sport and the
-  // style, so this measures rather than trusting breakpoints: one line → one slim line →
-  // two lines → the quick buttons on a line of their own → compact labels (the colour as
-  // its swatch, the sport's icon, the style without "Style:") → the modes as icons.
-  // CSS (.sheet-head.slim / .two-line / .stack / .tight / .tighter) does the rest.
-  fitHeader() {
-    const head = this.els.head;
-    if (!head || this.panel.hidden) return;
-    const over = (el) => el && el.offsetParent !== null && el.scrollWidth > el.clientWidth + 1;
-    head.classList.remove('two-line', 'slim', 'stack', 'tight', 'tightest', 'tighter');
-    head.classList.add('measuring');
-    // one line, then one line with only the active mode's label and the extra tools in ⋯, then two lines
-    if (over(head.firstChild)) {
-      head.classList.add('slim');
-      if (over(head.firstChild)) { head.classList.remove('slim'); head.classList.add('two-line'); }
-    }
-    if (over(this.els.toolsRow)) head.classList.add('stack');
-    // the quick line doesn't shrink (a line of its own), so it's measured against the row's width
-    // (on one line the row is `display: contents` and has no width of its own)
-    const qpOver = () => this.els.quickPair.offsetParent !== null && this.els.quickPair.scrollWidth > Math.min(this.els.quickPair.clientWidth, this.els.toolsRow.clientWidth || Infinity) + 1;
-    if (qpOver() || over(this.els.toolsRow)) head.classList.add('tight');
-    if (qpOver()) head.classList.add('tightest'); // the smallest phones: Round trip as its icon
-    // the tools fell to a line of their own under the modes: the modes go icon-only
-    const modes = this.els.toolsRow.querySelector('.modes'), tools = this.els.toolsRow.querySelector('.tools');
-    if (modes && tools && tools.offsetTop > modes.offsetTop + modes.offsetHeight / 2) head.classList.add('tighter');
-    head.classList.remove('measuring');
-    this.fitW = head.clientWidth;
-  }
-
-  fitHeaderSoon() {
-    cancelAnimationFrame(this.fitFrame);
-    this.fitFrame = requestAnimationFrame(() => this.fitHeader());
-  }
-
-  renderQuickSport() {
-    const sports = this.app.sports ? this.app.sports() : [];
-    // the route's sport (most of its length), which may not be the map's (the sport pill changed it)
-    const k = this.points.length > 1 && this.legs.length ? this.mainSport() : this.app.activity();
-    const cur = sports.find((x) => x.k === k);
-    if (!cur) { this.els.quickSport.hidden = true; return; }
-    this.els.sportSel.innerHTML = '';
-    for (const x of sports) this.els.sportSel.append(h('option', { value: x.k }, x.label));
-    this.els.sportSel.value = cur.k;
-    this.els.quickSport.innerHTML = `${icon(cur.icon, 16)}<span>${escapeHtml(cur.label)}</span>${icon('chevronDown', 12)}`;
-    this.els.quickSport.append(this.els.sportSel);
-    this.fitHeaderSoon();
-  }
-
   // The sport changed (`prev` the one before). A drawn route keeps its sports: the legs
   // that followed the old one have it as their own now, so nothing is routed again behind
   // your back. From the planner's own picker (`from: 'planner'`) the route goes with the
@@ -783,7 +760,6 @@ export class Planner {
     const route = this.points.length > 1 && prev && prev !== sport && ACTIVITIES[prev];
     if (route) for (let i = 0; i < this.legs.length; i++) if (!this.legs[i].sport) this.legs[i].sport = this.legSportAs(i, prev);
     for (const l of this.legs) if (l.sport === sport) l.sport = undefined; // already in the new sport: follows it
-    this.renderQuickSport(); // the route's sport, now that its legs keep theirs
     this.setMode(ACTIVITIES[sport].mode);
     this.panel.classList.toggle('is-paddle', isWater(this.mainSport()));
     this.renderToolbarState();
@@ -826,7 +802,6 @@ export class Planner {
       l.style = null;
     });
     this.update();
-    this.renderQuickSport();
     const L = (k) => ACTIVITIES[k].label;
     toast(`Your route is ${L(sport)} now${styled ? ' (legs with their own style follow the route’s)' : ''} · Undo brings back the ${L(prev)} route`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
@@ -836,7 +811,6 @@ export class Planner {
     this.active = on;
     this.panel.hidden = !on;
     if (!on) { this.closeMore(); this.closeStartTip(); this.litLeg(null); this.clearAlts(); delete document.body.dataset.sheet; delete document.body.dataset.pl; }
-    if (on) this.renderQuickSport();
     // an empty route opens small, so the map is there to tap; otherwise as you left it
     if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
     document.body.classList.toggle('planning', on);
@@ -845,6 +819,8 @@ export class Planner {
     this.renderGhosts();
     this.app.onActiveChange(on);
     if (on && !this.analysis) this.renderAnalysis(); // the empty planner's first words (and its round-trip button)
+    if (!on) { this.modesMenu?.close(); }
+    this.renderToolbarState(); // the toolbox, and Show the whole route in the map's column
     this.drawColored();
     if (on) requestAnimationFrame(() => this.chart.draw());
     // opened far from the route (you browsed elsewhere): bring it back into view
@@ -1445,8 +1421,6 @@ export class Planner {
     const box = this.els && this.els.loopBox;
     if (!box) return;
     const L = this.loop;
-    this.els.quickLoop.setAttribute('aria-pressed', String(L.open));
-    this.els.quickLoop.hidden = !roundTripSports.includes(this.app.activity());
     this.setSection('loop', { empty: !L.open, summary: L.results.length ? `${L.results.length} loops` : '' });
     this.renderStart();
     if (!L.open) { box.innerHTML = ''; return; }
@@ -1563,8 +1537,7 @@ export class Planner {
     const box = this.els && this.els.styleBox;
     if (!box) return;
     const route = this.mainSport(), rs = this.styleOf(route); // the route's sport: the map's may have moved on
-    this.els.quickStyle.innerHTML = `${icon('sliders', 16)}<span><span class="q-pre">Style: </span><b>${escapeHtml(styleName(route, rs))}</b></span>`;
-    this.fitHeaderSoon();
+    this.renderTools(); // the style's name in the toolbox
     if (this.styleLeg != null && !this.legs[this.styleLeg]) this.styleLeg = null;
     const leg = this.styleLeg;
     // a leg in another sport is styled in that sport's terms, from your style for it
@@ -3274,16 +3247,6 @@ export class Planner {
     const tool = (name, label, fn, cls = '') => h('button', { type: 'button', class: `tool ${cls}`, title: label, 'aria-label': label, onclick: fn, html: icon(name, 19) });
     this.els = {};
     this.sec = {};
-    const modes = h('div', { class: 'seg modes', role: 'group', 'aria-label': 'Routing for new legs' },
-      ...['auto', 'line', 'water'].map((m) => h('button', {
-        type: 'button', 'data-mode': m, 'aria-pressed': String(this.mode === m), title: MODE_LABEL[m], 'aria-label': MODE_LABEL[m],
-        onclick: () => this.setMode(m), html: `${icon(MODE_ICON[m], 17)}<span>${MODE_LABEL[m]}</span>`,
-      })));
-    this.els.fit = tool('fit', 'Show the whole route (F)', () => this.fitRoute());
-    this.els.undo = tool('undo', 'Undo (Ctrl+Z)', () => this.undo());
-    this.els.redo = tool('redo', 'Redo', () => this.redo());
-    this.els.more = tool('more', 'More: import, export, share, save offline, clear, the panel’s place', () => this.toggleMore());
-    this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.sum = h('div', { class: 'sheet-sum', 'aria-live': 'polite' });
     this.els.min = tool('chevronUp', 'Minimise', () => {
       const st = this.panel.dataset.state;
@@ -3292,29 +3255,12 @@ export class Planner {
     }, 'sheet-min');
     this.els.dockBtn = tool('panelBottom', 'Move to the bottom', () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), 'sheet-dock');
     this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
-    // the two big choices, always in sight: let Polku make loops, and how the route is chosen
-    this.els.quickLoop = h('button', { type: 'button', class: 'btn quick quick-loop', 'aria-pressed': 'false', 'aria-label': 'Round trip', title: 'Let Polku make loops of the length you choose', onclick: () => (this.loop.open ? this.closeLoop() : this.openLoop()), html: `${icon('roundtrip', 16)}<span>Round trip</span>` });
-    this.els.quickStyle = h('button', { type: 'button', class: 'btn quick', title: 'How the route is chosen for this sport', onclick: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } });
-    // the sport, right where the route is edited: a native list, so it opens at the button everywhere
-    this.els.sportSel = h('select', { 'aria-label': 'Sport', onchange: (e) => { if (this.app.setSport) this.app.setSport(e.target.value); } });
-    this.els.quickSport = h('label', { class: 'btn quick quick-sel quick-sport', title: 'Sport: routing, speeds and heads-up follow it' });
-    // the route's colours, beside the drawing modes: the same setting as the profile's
-    // "Colour by" and "On map" (both stay there, in step)
-    this.els.colorSel = h('select', { 'aria-label': 'Colour the route by', onchange: (e) => this.pickColor(e.target.value) });
-    this.els.quickColor = h('label', { class: 'btn quick quick-sel quick-color', title: 'Colour of the route on the map (the profile follows)' });
+    // The header shows the route: its numbers, and on phones Done at their right, at the thumb (25a).
+    // How the next leg is drawn, undo, redo and More are in the toolbox (buildTools()).
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' },
-      h('div', { class: 'sheet-row' }, this.els.sum, this.els.min,
-        h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R) — the route stays', onclick: () => this.setActive(false) }, 'Done')),
-      this.els.toolsRow = h('div', { class: 'sheet-row tools-row' }, modes, this.els.quickPair = h('span', { class: 'quick-pair' }, this.els.quickColor, this.els.quickSport, this.els.quickLoop, this.els.quickStyle), h('div', { class: 'tools' }, this.els.fit, this.els.undo, this.els.redo,
-        // a wide bottom bar has room for the common tools; elsewhere they live in ⋯
-        h('span', { class: 'tool-sep tool-wide' }),
-        tool('reverse', 'Reverse direction', () => this.reverse(), 'tool-wide'),
-        this.els.backToStart = tool('loop', 'Back to start', () => this.backToStart(), 'tool-wide'),
-        tool('download', 'Export GPX', () => this.exportGpx(), 'tool-wide'),
-        tool('share', 'Copy share link', () => this.share(), 'tool-wide'),
-        tool('offline', 'Save offline', () => this.app.saveOffline(), 'tool-wide'),
-        tool('trash', 'Clear route', () => this.clear(), 'tool-wide danger'),
-        this.els.more))));
+      h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.min,
+        h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R): the route stays', onclick: () => this.setActive(false) }, 'Done'))));
+    this.buildTools();
     this.els.stats = h('div', { class: 'stats' });
     this.els.modesBar = h('div', { class: 'chip-groups' });
     this.els.modeSel = h('select', { 'aria-label': 'Colour the profile by', onchange: (e) => this.showMode(e.target.value) });
@@ -3331,7 +3277,7 @@ export class Planner {
     this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
       ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for options · hold the map for more'
       : 'Click the map to add points · drag a point or the line to reshape · click a point or the line for options · right-click the map for more');
-    this.els.dock = h('div', { class: 'dock' }); // the timeline docks here while planning (main.js)
+    this.els.dock = h('div', { class: 'dock' }); // (the timeline stays over the map while planning: #225)
 
     // The profile, one, under the header: always in sight (but at the summary size), with the
     // legs and their points on it and what colours it right above it (22a)
@@ -3358,9 +3304,7 @@ export class Planner {
     ...TABS.map((t) => (this.els.tabBtn[t.id] = h('button', {
       type: 'button', role: 'tab', class: 'pl-tab', id: `pl-tab-${t.id}`, 'aria-controls': `pl-pane-${t.id}`, title: t.title,
       onclick: () => this.setTab(t.id, { user: true }),
-    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-t' })))),
-    // the panel's place, at the end of the tabs' row (wide screens; dragging it comes in 22b)
-    h('span', { class: 'pl-tabs-gap', 'aria-hidden': 'true' }), this.els.dockBtn);
+    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-t' })))));
     const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
     // the start, before there's a route: what you can do (Round trip is one of the first choices)
     this.els.start = h('div', { class: 'pl-start' });
@@ -3607,6 +3551,7 @@ export class Planner {
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { peek: 'Show more', profile: 'Drag up for the details, down for the map', half: 'Drag up for everything, down for the profile', full: 'Drag down for the map' }[st] || '';
     if (st !== 'peek' && st !== 'min') requestAnimationFrame(() => this.chart.draw());
+    this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
   }
 
   // While drawing or dragging on the map, the phone sheet gets out of the way.
@@ -3648,8 +3593,8 @@ export class Planner {
       this.panel.style.setProperty('--peek-h', `${Math.ceil(hd.offsetTop + hd.offsetHeight + 6)}px`);
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
     };
+    this.measureSheet = sizes;
     new ResizeObserver(sizes).observe(this.els.head);
-    new ResizeObserver(() => { if (this.els.head.clientWidth !== this.fitW) this.fitHeaderSoon(); }).observe(this.els.head);
     new ResizeObserver(sizes).observe(this.els.profZone);
     addEventListener('resize', sizes);
     // One swipe for every sheet (js/sheet.js, #96): from the handle, the header (its buttons too), the
@@ -3675,8 +3620,9 @@ export class Planner {
       cancel: () => this.restSheet(null),
     });
     // a tap on the handle, or on the header outside its buttons, folds the sheet or opens it again
+    // (not when the target has gone from it: a control that re-rendered itself, #251)
     const tap = (e) => {
-      if (this.layout() !== 'sheet' || (e.currentTarget === this.els.head && e.target.closest('button, input, select, a, label'))) return;
+      if (this.layout() !== 'sheet' || !e.currentTarget.contains(e.target) || (e.currentTarget === this.els.head && e.target.closest('button, input, select, a, label'))) return;
       this.setSheetState(this.panel.dataset.state === 'peek' ? (this.lastOpen || 'profile') : 'peek');
     };
     this.els.handle.addEventListener('click', tap);
@@ -3742,12 +3688,25 @@ export class Planner {
     const top = Math.max(80, $('.topbar').getBoundingClientRect().bottom + 16);
     let v;
     if (!this.active || this.panel.hidden) v = { top, bottom: m + 20, left: m, right: m + 50 };
-    else if (this.layout() === 'side') v = { top, bottom: m, left: this.panel.getBoundingClientRect().right + m, right: m + 70 };
-    else v = { top, bottom: innerHeight - this.sheetTop() + m / 2, left: m / 2, right: m + 30 };
+    // beside the side panel, under its toolbar
+    else if (this.layout() === 'side') v = { top: Math.max(top, this.tools.hidden ? 0 : this.tools.getBoundingClientRect().bottom + 16), bottom: m, left: this.panel.getBoundingClientRect().right + m, right: m + 70 };
+    else v = { top, bottom: innerHeight - this.sheetTop() + this.overSheet() + m / 2, left: m / 2, right: m + 30 };
     const room = 0.25; // of the map's height and width, at least, to fit into
     v.bottom = Math.max(0, Math.min(v.bottom, innerHeight * (1 - room) - v.top));
     v.right = Math.max(0, Math.min(v.right, innerWidth * (1 - room) - v.left));
     return v;
+  }
+
+  // How far what floats above the sheet reaches over the map: the toolbox floating on a phone (or the toolbar
+  // on a bottom panel's edge) and, on a phone, an open timeline under it (css/app.css's offsets). Worked out
+  // from the sheet's settled top, since they follow the sheet as it moves.
+  overSheet() {
+    this.placeTools();
+    const box = this.tools, wx = $('#wx-bar');
+    const tools = box && !box.hidden && !box.classList.contains('docked') ? box.offsetHeight : 0;
+    if (box && box.classList.contains('desk')) return tools;
+    const time = wx && !wx.hidden && ['peek', 'profile'].includes(this.panel.dataset.state) ? wx.offsetHeight : 0;
+    return tools ? (time ? time + 20 : 8) + tools : time ? time + 8 : 0;
   }
 
   // The sheet's top once it has settled. It changes height over 0.22 s (longer when frames
@@ -3767,20 +3726,266 @@ export class Planner {
     this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, ...opts });
   }
 
-  // ---------------------------------------------------------------- the ⋯ menu
+  // ---------------------------------------------------------------- the toolbox (25a)
+  // How the next leg is drawn, undo, redo and More, outside the panel (#pl-tools). Phones float it
+  // above the sheet beside the map's buttons, or dock it into the sheet as its first row where it
+  // doesn't fit; desktops hang it off the panel's edge as a labelled toolbar (placeTools()).
+  buildTools() {
+    const box = this.tools = $('#pl-tools');
+    box.innerHTML = '';
+    const tb = (name, label, fn, cls = '') => h('button', { type: 'button', class: `tbtn ${cls}`, 'aria-label': label, onclick: fn, html: icon(name, 20) });
+    const sep = (cls = '') => h('span', { class: `tb-sep tb-desk ${cls}`, 'aria-hidden': 'true' });
+    // phones: one drop-down for the modes, the route style under the mode's name
+    this.els.modeBtn = h('button', { type: 'button', class: 'modebtn tb-phone', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleModes(this.els.modeBtn) });
+    // desktops: the modes with their names and keys, then the route style
+    this.els.modeSeg = h('div', { class: 'seg tb-modes tb-desk', role: 'radiogroup', 'aria-label': 'Draw the next leg' },
+      ...MODES.map((m) => h('button', { type: 'button', role: 'radio', 'data-mode': m, 'aria-keyshortcuts': MODE_KEY[m], onclick: () => this.setMode(m), html: `${icon(MODE_ICON[m], 19)}<span>${MODE_LABEL[m]}</span>` })));
+    this.els.styleBtn = h('button', { type: 'button', class: 'stylebtn tb-desk', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: () => this.toggleModes(this.els.styleBtn) });
+    this.els.undo = tb('undo', 'Undo', () => this.undo(), 'tb-hist');
+    this.els.undo.setAttribute('aria-keyshortcuts', 'Control+Z');
+    this.els.redo = tb('redo', 'Redo', () => this.redo(), 'tb-hist');
+    this.els.redo.setAttribute('aria-keyshortcuts', 'Control+Shift+Z');
+    // The route's actions that show where there's room, by `data-opt` (the lowest stays longest); the rest are
+    // in More, never both (placeTools()). Show the whole route only on desktops: phones have it in the map's column.
+    const opt = (b, k, group) => { b.dataset.opt = k; b.dataset.group = group; return b; };
+    this.els.fit = opt(tb('fit', 'Show the whole route', () => this.fitRoute(), 'tb-desk'), 0, 'nav');
+    this.els.fit.setAttribute('aria-keyshortcuts', 'F');
+    this.els.reverse = opt(tb('reverse', 'Reverse', () => this.reverse()), 1, 'nav');
+    this.els.backToStart = opt(tb('loop', 'Back to start', () => this.backToStart()), 2, 'nav');
+    this.els.share = opt(tb('link', 'Share link', () => this.share()), 3, 'take');
+    this.els.gpx = opt(tb('download', 'Export GPX', () => this.exportGpx()), 4, 'take');
+    this.els.offline = opt(tb('offline', 'Save offline…', () => this.app.saveOffline()), 5, 'take');
+    this.els.clearTool = opt(tb('trash', 'Clear route', () => this.clear(), 'danger'), 6, 'clear');
+    this.els.more = tb('more', 'More: the whole route’s actions', () => this.toggleMore());
+    this.els.more.setAttribute('aria-haspopup', 'menu');
+    this.els.more.setAttribute('aria-expanded', 'false');
+    this.els.toolDone = h('button', { type: 'button', class: 'btn done tb-desk', 'aria-keyshortcuts': 'R', onclick: () => this.setActive(false) }, 'Done');
+    const gsep = (group) => { const el = sep(); el.dataset.group = group; return el; };
+    box.append(this.els.modeBtn, this.els.modeSeg, sep(), this.els.styleBtn, sep('tb-hist'), this.els.undo, this.els.redo,
+      gsep('nav'), this.els.fit, this.els.reverse, this.els.backToStart, gsep('take'), this.els.share, this.els.gpx, this.els.offline,
+      gsep('clear'), this.els.clearTool, sep(), this.els.more, this.els.toolDone);
+    for (const b of this.els.modeSeg.children) tooltip(b, TIPS[b.dataset.mode]);
+    for (const k of ['undo', 'redo', 'reverse', 'backToStart', 'fit', 'share', 'gpx', 'offline', 'more']) tooltip(this.els[k], TIPS[k]);
+    tooltip(this.els.clearTool, TIPS.clear);
+    tooltip(this.els.styleBtn, TIPS.style);
+    tooltip(this.els.toolDone, TIPS.done);
+    // a toolbar: one stop for Tab, the arrows move along it
+    box.addEventListener('keydown', (e) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+      const list = this.toolItems(), k = list.indexOf(document.activeElement);
+      if (k < 0) return;
+      e.preventDefault();
+      const next = list[e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : (k + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length];
+      this.rove(next);
+      next.focus();
+    });
+    box.addEventListener('focusin', (e) => { if (e.target.closest('button')) this.rove(e.target.closest('button')); });
+    new ResizeObserver(() => this.placeToolsSoon()).observe(this.panel);
+    addEventListener('resize', () => this.placeToolsSoon());
+    this.renderTools();
+  }
+
+  toolItems() { return [...this.tools.querySelectorAll('button')].filter((b) => !b.disabled && b.offsetParent !== null); }
+
+  rove(to) {
+    const list = this.toolItems();
+    if (!list.includes(to)) to = list[0];
+    for (const b of this.tools.querySelectorAll('button')) b.tabIndex = b === to ? 0 : -1;
+  }
+
+  // The toolbox's words and states: the mode in use (filled, and ticked in its menu), the style it
+  // routes with, and undo and redo, there from the first change and disabled when they can't (#241).
+  renderTools() {
+    if (!this.els || !this.els.modeBtn) return;
+    const m = this.mode, route = this.mainSport(), name = styleName(route, this.styleOf(route));
+    // the style is what Follow paths (or the water router, paddling) prefers; a straight line has none
+    const styled = m === 'auto' || (m === 'water' && isWater(route));
+    this.els.modeBtn.innerHTML = `${icon(MODE_ICON[m], 20)}<span class="two"><b>${MODE_LABEL[m]}</b>${styled ? `<small>${escapeHtml(name)}</small>` : ''}</span>${icon('chevronDown', 14)}`;
+    this.els.modeBtn.setAttribute('aria-label', `Draw the next leg: ${MODE_LABEL[m]}${styled ? `, route style ${name}` : ''}`);
+    for (const b of this.els.modeSeg.children) b.setAttribute('aria-checked', String(b.dataset.mode === m));
+    this.els.styleBtn.innerHTML = `<span class="two"><small>Route style</small><span>${escapeHtml(name)}</span></span>${icon('chevronDown', 12)}`;
+    this.els.styleBtn.setAttribute('aria-label', `Route style: ${name}`);
+    const n = this.points.length;
+    for (const el of this.tools.querySelectorAll('.tb-hist')) el.hidden = !(this.past.length || this.future.length || n);
+    this.els.undo.disabled = !this.past.length;
+    this.els.redo.disabled = !this.future.length;
+    this.els.reverse.disabled = n < 2;
+    this.els.backToStart.disabled = n < 2 || this.isLoop();
+    this.els.fit.disabled = n < 2;
+    for (const k of ['share', 'gpx', 'offline']) this.els[k].disabled = n < 2;
+    this.els.clearTool.disabled = !n;
+    // Show the whole route in the map's column: whenever a route is on the map, but on desktops
+    // the toolbar has it while planning
+    const col = document.getElementById('btn-fit');
+    if (col) col.hidden = n < 2 || (this.active && !!this.sideMQ?.matches);
+    if (!this.tools.contains(document.activeElement)) this.rove(this.tools.querySelector('button[tabindex="0"]'));
+    this.placeToolsSoon();
+  }
+
+  placeToolsSoon() {
+    cancelAnimationFrame(this.toolsFrame);
+    this.toolsFrame = requestAnimationFrame(() => this.placeTools());
+  }
+
+  // Where the toolbox goes, and which of the route's actions it shows (the rest are in More). Phones:
+  // floating at the bottom left, above the sheet, while it clears the map's buttons and the top bar;
+  // otherwise docked into the sheet as its first row (a narrow phone, long words, 200 % zoom, a raised
+  // sheet), with the actions that fit without another row. Desktops: on the panel's edge, with the actions
+  // that fit before the map's buttons, then shortened (FOLDS).
+  placeTools() {
+    const box = this.tools;
+    if (!box || !this.sideMQ) return;
+    const show = this.active && !this.panel.hidden;
+    box.hidden = !show;
+    const desk = this.sideMQ.matches;
+    box.classList.toggle('desk', desk);
+    if (!show || desk) this.dockTools(false);
+    // the room it takes, for what sits there too: above the sheet (--tools-h: the scale, notes, the 3D pad,
+    // a track's card) and under the top bar (--tools-bottom: the zoom note)
+    const root = document.documentElement.style;
+    const toolsH = (px, below = 0) => { root.setProperty('--tools-h', `${px}px`); root.setProperty('--tools-bottom', `${below}px`); };
+    if (!show) { toolsH(0); return; }
+    const colLeft = $('#map-ctrls').getBoundingClientRect().left;
+    const opts = [...box.querySelectorAll('[data-opt]')].filter((b) => desk || !b.classList.contains('tb-desk')).sort((a, b) => a.dataset.opt - b.dataset.opt);
+    // the first n of them on the toolbar (in `root`, the toolbox or a copy of it), each group's separator with them
+    const setOpts = (root, n) => {
+      opts.forEach((b, i) => { (root === box ? b : root.querySelector(`[data-opt="${b.dataset.opt}"]`)).hidden = i >= n; });
+      for (const g of root.querySelectorAll('.tb-sep[data-group]')) g.hidden = !root.querySelector(`button[data-group="${g.dataset.group}"]:not([hidden])`);
+    };
+    if (desk) {
+      const r = this.panel.getBoundingClientRect(), side = this.layout() === 'side';
+      box.classList.toggle('at-side', side);
+      box.classList.toggle('at-bottom', !side);
+      Object.assign(box.style, side ? { left: `${r.right}px`, top: `${r.top}px`, bottom: '' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top}px` });
+      // the map's buttons only count where they're level with the toolbar
+      const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
+      const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
+      const over = () => box.getBoundingClientRect().right > limit;
+      // in turn: the route's actions from the last, the style's caption, the names of the modes not in use,
+      // Show the whole route (an action to keep in sight), then all the modes' names
+      box.classList.remove(...FOLDS);
+      setOpts(box, opts.length);
+      const steps = [];
+      for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
+      steps.push(() => box.classList.add('fold1'), () => box.classList.add('fold2'), () => setOpts(box, 0), () => box.classList.add('fold3'));
+      for (const step of steps) {
+        if (!over()) break;
+        step();
+      }
+      const tb = box.getBoundingClientRect();
+      toolsH(side ? 0 : Math.round(innerHeight - r.bottom + tb.height), side ? Math.round(tb.bottom + 8) : 0);
+      return;
+    }
+    box.classList.remove('at-side', 'at-bottom', ...FOLDS);
+    Object.assign(box.style, { left: '', top: '', bottom: '' });
+    // measured as it would float: a copy, so the sheet's size doesn't change while measuring
+    const probe = box.cloneNode(true);
+    probe.classList.remove('docked');
+    probe.classList.add('probe');
+    document.body.append(probe);
+    let n = opts.length;
+    setOpts(probe, n);
+    while (n > 0 && 8 + probe.offsetWidth + 8 > colLeft) setOpts(probe, --n);
+    const w = probe.offsetWidth, th = probe.offsetHeight;
+    probe.remove();
+    if (!w) return; // not laid out (a hidden pane): leave it where it is
+    // the sheet's height without a docked toolbox in it: its peek and profile sizes include it
+    const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0;
+    const inSheet = box.classList.contains('docked') ? box.offsetHeight : 0;
+    const st = this.panel.dataset.state;
+    const sheetH = { peek: px('--peek-h') - inSheet, profile: px('--profile-h') - inSheet, half: innerHeight * 0.5, full: innerHeight - 76 }[st] ?? this.panel.offsetHeight;
+    const wxH = parseFloat(document.documentElement.style.getPropertyValue('--wx-h')) || 0; // an open timeline under it
+    const top = innerHeight - sheetH - wxH - 16 - th, topBar = $('.topbar').getBoundingClientRect().bottom;
+    const dock = st === 'full' || 8 + w + 8 > colLeft || top < topBar + 8;
+    this.dockTools(dock);
+    if (dock) {
+      // as many as fit without another row (the sheet's size follows once, below)
+      setOpts(box, 0);
+      const rows = box.offsetHeight;
+      let k = 0;
+      while (k < opts.length) { setOpts(box, k + 1); if (box.offsetHeight > rows + 1) break; k++; }
+      setOpts(box, k);
+      this.measureSheet?.();
+    } else setOpts(box, n);
+    toolsH(dock ? 0 : 16 + th); // from the sheet (and an open timeline) to the toolbox's top
+  }
+
+  dockTools(on) {
+    const box = this.tools;
+    if (box.classList.contains('docked') === on && (on ? box.parentElement === this.panel : box.parentElement !== this.panel)) return;
+    box.classList.toggle('docked', on);
+    if (on) this.panel.insertBefore(box, this.els.head);
+    else document.body.insertBefore(box, this.panel.nextSibling);
+    this.measureSheet?.(); // the peek includes a docked toolbox
+  }
+
+  // More's title: the route's own name (an imported track's, a picked loop's), else its first and
+  // last points' (named, or the road they're on)
+  routeTitle() {
+    const n = this.points.length;
+    if (!n) return '';
+    if (this.routeName) return this.routeName;
+    if (n === 1) return this.nameOf(0);
+    return this.isLoop() ? `Round trip from ${this.nameOf(0)}` : `${this.nameOf(0)} → ${this.nameOf(n - 1)}`;
+  }
+
+  // Phones: the mode's menu, "Draw the next leg" and the route style for the whole route.
+  // Desktops: the style button's menu (the modes are in the toolbar itself).
+  toggleModes(anchor) {
+    if (this.modesMenu) { this.modesMenu.close(); return; }
+    this.closeMore();
+    const desk = this.tools.classList.contains('desk');
+    const route = this.mainSport(), rs = this.styleOf(route), cat = STYLES[route] || STYLES.mtb, custom = isCustom(route, rs);
+    const pick = (k, label) => {
+      this.styleLeg = null;
+      this.setStyle({ p: k, v: {}, wet: rs.wet || 'auto' });
+      const own = this.legs.some((l) => l.style);
+      if (this.points.length > 1) toast(`Route style: ${label} · the route is routed again${own ? '; legs with their own style keep it' : ''}`, { ms: 6000, action: { label: 'Undo', fn: () => this.undo() } });
+    };
+    const styles = { group: 'Route style · the whole route', items: [
+      { chips: [...cat.presets.map(([k, label]) => ({ label: escapeHtml(label), radio: true, checked: !custom && rs.p === k, fn: () => pick(k, label) })),
+        custom ? { label: 'Custom', radio: true, checked: true, disabled: true, fn: () => {} } : null] },
+      { icon: 'sliders', label: 'Fine-tune in How you go', fn: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } },
+    ] };
+    this.modesMenu = popMenu(anchor, [
+      desk ? null : { group: 'Draw the next leg', items: MODES.map((m) => ({ icon: MODE_ICON[m], label: MODE_LABEL[m], desc: MODE_DESC[m], radio: true, checked: this.mode === m, fn: () => this.setMode(m) })) },
+      desk ? null : { note: 'Only the legs you draw next. To change a drawn leg, tap it on the map.' },
+      desk ? null : 'hr',
+      styles,
+    ], { label: desk ? 'Route style' : 'Draw the next leg', align: 'left', maxRight: $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
+      onClose: () => { this.modesMenu = null; anchor.setAttribute('aria-expanded', 'false'); } });
+    anchor.setAttribute('aria-expanded', 'true');
+  }
+
+  // ---------------------------------------------------------------- More (⋯)
+  // The whole route's actions: take it along, the whole route, and Clear apart (with Undo in a note).
+  // Moving the panel stays at the end of the tabs' row and in Settings.
   toggleMore() {
     if (this.moreMenu) { this.moreMenu.close(); return; }
-    const side = this.layout() === 'side';
+    this.modesMenu?.close();
+    const n = this.points.length, none = n < 2;
+    const desk = this.tools.classList.contains('desk');
+    // what's on the toolbar isn't repeated here
+    const off = (el) => (el && !el.hidden && el.offsetParent !== null ? null : true);
+    const group = (title, items) => (items.some(Boolean) ? { group: title, items } : null);
+    const take = group('Take it along', [
+      off(this.els.share) && { icon: 'link', label: 'Share link', desc: 'Copies a link to this route', fn: () => this.share(), disabled: none },
+      off(this.els.gpx) && { icon: 'download', label: 'Export GPX', desc: 'For a GPS watch or another app', fn: () => this.exportGpx(), disabled: none },
+      off(this.els.offline) && { icon: 'offline', label: 'Save offline…', desc: 'The map and terrain, for no signal', fn: () => this.app.saveOffline(), disabled: none },
+    ]);
+    const whole = group('The whole route', [
+      desk && off(this.els.fit) && { icon: 'fit', label: 'Show the whole route', fn: () => this.fitRoute(), disabled: none },
+      roundTripSports.includes(this.app.activity()) ? { icon: 'roundtrip', label: n ? 'Round trip from the start' : 'Round trip', fn: () => this.openLoop() } : null,
+      off(this.els.reverse) && { icon: 'reverse', label: 'Reverse', fn: () => this.reverse(), disabled: none },
+      off(this.els.backToStart) && { icon: 'loop', label: 'Back to start', fn: () => this.backToStart(), disabled: none || this.isLoop() },
+      { icon: 'upload', label: 'Import GPX or KML…', desc: 'Shows a file’s track, to plan on', fn: () => $('#file-input').click() },
+    ]);
+    const clear = off(this.els.clearTool) && { icon: 'trash', label: 'Clear route', desc: 'Undo brings it back', fn: () => this.clear(), cls: 'danger menu-apart', disabled: !n };
     this.moreMenu = popMenu(this.els.more, [
-      this.sideMQ.matches ? { icon: side ? 'panelBottom' : 'panelLeft', label: side ? 'Move to the bottom' : 'Move to the left', fn: () => this.setDock(side ? 'bottom' : 'left') } : null,
-      this.sideMQ.matches ? 'hr' : null,
-      { icon: 'upload', label: 'Import GPX / KML…', fn: () => $('#file-input').click() },
-      { icon: 'download', label: 'Export GPX', fn: () => this.exportGpx(), disabled: this.points.length < 2 },
-      { icon: 'share', label: 'Copy share link', fn: () => this.share(), disabled: this.points.length < 2 },
-      { icon: 'offline', label: 'Save offline…', fn: () => this.app.saveOffline(), disabled: this.points.length < 2 },
-      'hr',
-      { icon: 'trash', label: 'Clear route', fn: () => this.clear(), cls: 'danger', disabled: !this.points.length },
-    ], { label: 'Route actions', onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
+      n ? { head: this.routeTitle(), sub: 'Kept on this device' } : null,
+      take, take && whole ? 'hr' : null, whole, clear ? 'hr' : null, clear,
+    ], { label: 'More', maxRight: desk ? null : $('#map-ctrls').getBoundingClientRect().left - 8, sheet: !desk,
+      onClose: () => { this.moreMenu = null; this.els.more.setAttribute('aria-expanded', 'false'); } });
     this.els.more.setAttribute('aria-expanded', 'true');
   }
 
@@ -3885,32 +4090,15 @@ export class Planner {
     store.set('colorOnMap', on);
     if (this.els.mapToggle) this.els.mapToggle.checked = on;
     this.drawColored();
-    this.renderQuickColor();
   }
 
-  // From the header: a mode colours the line and the profile; "plain" leaves the line red.
+  // From Check's breakdowns and the profile: a mode colours the line and the profile; "plain" leaves the line red.
   pickColor(k) {
     if (k === 'plain') { this.setColorOnMap(false); return; }
     this.colorOnMap = true;
     store.set('colorOnMap', true);
     if (this.els.mapToggle) this.els.mapToggle.checked = true;
     this.showMode(k); // redraws the line and re-renders the chip
-  }
-
-  renderQuickColor() {
-    if (!this.els || !this.els.quickColor) return;
-    const sel = this.els.colorSel;
-    sel.innerHTML = '';
-    sel.append(h('option', { value: 'plain' }, 'Plain line'));
-    for (const [title, keys] of COLOR_GROUPS) {
-      const shown = keys.filter((k) => this.modeApplies(k));
-      if (shown.length) sel.append(h('optgroup', { label: title }, ...shown.map((k) => h('option', { value: k }, COLOR_MODES[k]))));
-    }
-    const k = this.colorOnMap ? this.colorMode : 'plain';
-    sel.value = k;
-    this.els.quickColor.innerHTML = `<span class="q-swatch" style="background:${swatchOf(k)}"></span><span class="q-label">${escapeHtml(k === 'plain' ? 'Plain line' : COLOR_MODES[k])}</span>${icon('chevronDown', 12)}`;
-    this.els.quickColor.append(sel);
-    this.fitHeaderSoon();
   }
 
   renderModeChips() {
@@ -3932,7 +4120,6 @@ export class Planner {
     }
     this.els.modeSel.value = this.colorMode;
     this.els.mapToggle.checked = this.colorOnMap;
-    this.renderQuickColor();
   }
 
   // Route line on the map coloured like the profile, plus wind arrows in wind mode.
@@ -4022,9 +4209,7 @@ export class Planner {
 
   renderToolbarState() {
     if (!this.els) return;
-    this.els.undo.disabled = !this.past.length;
-    this.els.redo.disabled = !this.future.length;
-    this.els.backToStart.disabled = this.points.length < 2 || this.isLoop();
+    this.renderTools();
     this.renderModeChips();
   }
 
