@@ -1480,6 +1480,7 @@ export class Planner {
     const close = L.fromWays ? null : h('button', { type: 'button', class: 'tool way-x', 'data-k': 'loop-x', 'aria-label': 'Close the round trip', title: 'Close the round trip', onclick: () => this.closeLoop(), html: icon('close', 20) });
     if (!roundTripSports.includes(sport)) return [top, h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip')), close), h('p', { class: 'note' }, `No round trips for ${ACTIVITIES[sport].label} yet.`)];
     if (L.results.length && !L.editing) return [top, ...this.loopResults(close)];
+    if (L.busy) return [top, ...this.loopMaking()];
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb, min = L.mode === 'min', val = min ? L.min : L.km;
     const step = min ? 15 : groupOf(sport) === 'bike' ? 5 : 1; // 5 km for bikes, 1 km on foot or water, 15 minutes by time
     const set = (v) => {
@@ -1528,6 +1529,19 @@ export class Planner {
       h('span', { class: 'sr-only', role: 'status' }, making)];
   }
 
+  // While the loops are made the map waits (#109) and the choices can't change: the form folds to what's being
+  // made and how far it's got, so the map above it has the room to show the loops' area (a 360 × 740 phone too)
+  loopMaking() {
+    const L = this.loop, DIR_NAME = { 0: 'north', 45: 'north-east', 90: 'east', 135: 'south-east', 180: 'south', 225: 'south-west', 270: 'west', 315: 'north-west', wind: 'into the wind first' };
+    const len = L.mode === 'min' ? (L.min >= 60 ? `${Math.floor(L.min / 60)} h${L.min % 60 ? ` ${L.min % 60} min` : ''}` : `${L.min} min`) : `${L.km} km`;
+    const making = `Making loops…${L.progress ? ` ${L.progress} of 3` : ''}`;
+    return [
+      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start'), h('small', {}, `${len} · ${L.dir == null ? 'any direction' : DIR_NAME[L.dir]} · from ${L.startLabel}`))),
+      h('button', { type: 'button', class: 'btn primary big rt-make', 'data-k': 'make', disabled: true,
+        html: `<span class="rt-making">${making}${L.progress ? `<span class="rt-progress" style="--p:${Math.round((L.progress / 3) * 100)}%"><i></i></span>` : ''}</span>` }),
+      h('span', { class: 'sr-only', role: 'status' }, making)];
+  }
+
   loopResults(close) {
     const L = this.loop, sport = this.app.activity();
     const DIR_NAME = { 0: 'north', 45: 'north-east', 90: 'east', 135: 'south-east', 180: 'south', 225: 'south-west', 270: 'west', 315: 'north-west', wind: 'into the wind first' };
@@ -1565,9 +1579,10 @@ export class Planner {
       }
       const line1 = `${fmtDuration(a.time)} · ${wet ? '' : `↑${Number.isFinite(a.up) ? Math.round(a.up) : '?'} m · `}${what}`, line2 = notes.filter(Boolean).join(' · ');
       const on = i === L.on;
-      list.append(h('div', { class: `loop-card${on ? ' on' : ''}`, role: 'listitem' },
+      // a tap anywhere on the card picks it (its Use loop button takes it)
+      list.append(h('div', { class: `loop-card${on ? ' on' : ''}`, role: 'listitem', onclick: (e) => { if (!e.target.closest('.loop-use')) this.showLoop(i, { frame: true }); } },
         h('button', { type: 'button', class: 'loop-pick', 'data-k': `loop-${i}`, 'aria-pressed': String(on), 'aria-label': `Loop ${r.letter}: ${fmtDist(a.total)}, ${line1}, ${line2}`,
-          onmouseenter: () => this.showLoop(i), onclick: () => this.showLoop(i, { frame: true }) },
+          onmouseenter: () => this.showLoop(i) },
         h('span', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === best ? h('span', { class: 'loop-best' }, 'Closest match') : null),
         h('span', { class: 'loop-card-line' }, line1),
         h('span', { class: 'loop-card-line muted' }, line2)),
@@ -3771,8 +3786,8 @@ export class Planner {
       const on = i === M.on, p = r.props;
       const km = `${r.km >= 10 ? Math.round(r.km) : r.km.toFixed(1)} km`;
       const what = [km, on && M.ride && M.ride.key === r.key ? M.ride.text : '', 'in view'].filter(Boolean).join(' · ');
-      list.append(h('div', { class: `loop-card mr-card${on ? ' on' : ''}`, role: 'listitem', 'data-key': r.key },
-        h('button', { type: 'button', class: 'loop-pick', 'data-k': `mr-${r.key}`, 'aria-pressed': String(on), 'aria-label': `${p.name}: ${p.typeName}, ${what}`, onclick: () => this.pickMarked(i, { frame: true }) },
+      list.append(h('div', { class: `loop-card mr-card${on ? ' on' : ''}`, role: 'listitem', 'data-key': r.key, onclick: (e) => { if (!e.target.closest('.loop-use')) this.pickMarked(i, { frame: true }); } },
+        h('button', { type: 'button', class: 'loop-pick', 'data-k': `mr-${r.key}`, 'aria-pressed': String(on), 'aria-label': `${p.name}: ${p.typeName}, ${what}` },
           h('span', { class: 'mr-type' }, h('span', { class: 'mr-swatch', style: `background:${r.color}`, 'aria-hidden': 'true' }), h('span', {}, p.typeName)),
           h('b', { class: 'mr-name' }, p.name),
           h('span', { class: 'loop-card-line' }, what)),

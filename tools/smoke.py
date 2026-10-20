@@ -229,17 +229,17 @@ STYLE = """(async () => {
 })()"""
 
 
-# Round trip: the panel opens with its choices (no routing here) and closes cleanly.
+# Round trip: its form opens in the peek with its choices (no routing here) and closes cleanly (25b).
 LOOP = """(async () => {
   const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   p.openLoop();
   await wait(300);
-  const box = document.querySelector('.loop-box');
-  if (!box || !box.querySelector('.loop-go .btn.primary')) errs.push('no round-trip panel');
-  if (box && box.querySelectorAll('.loop-starts .chip').length < 4) errs.push('no length choices');
+  const box = document.querySelector('.pl-way[data-view=loop]');
+  if (!box || !box.querySelector('.rt-make')) errs.push('no round-trip form');
+  if (box && box.querySelectorAll('.rt-chips .chip').length < 4) errs.push('no length choices');
   p.closeLoop();
   await wait(200);
-  if (!document.querySelector('[data-sec=loop]').hidden) errs.push('round-trip panel stayed open');
+  if (document.querySelector('.pl-way[data-view=loop]') || !document.querySelector('.pl-way').hidden) errs.push('the round trip stayed open');
   return errs;
 })()"""
 
@@ -488,7 +488,7 @@ def uphill_late(chrome):
 
 
 # LIPAS routes (12c): search finds a route and stops by name, grouped; picking the
-# route opens its card; "Ride this route" makes it the plan as fixed legs (no
+# route opens its card; "Follow this route" makes it the plan as fixed legs (no
 # routing call), a loop with two via points; its share link rebuilds it from
 # LIPAS, again with no routing call. LIPAS answers come from a recorded file.
 LIPAS_RIDE = """(async () => {
@@ -517,8 +517,9 @@ LIPAS_RIDE = """(async () => {
   if (!item) return [...errs, 'Multamäen MTB-lenkki is not in the results'];
   item.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
   let ride = null;
-  for (let k = 0; k < 40 && !ride; k++) { await wait(200); ride = [...document.querySelectorAll('.polku-popup button')].find((b) => /Ride this route/.test(b.textContent)); }
-  if (!ride) return [...errs, 'the card has no Ride this route'];
+  for (let k = 0; k < 40 && !ride; k++) { await wait(200); ride = [...document.querySelectorAll('.polku-popup button')].find((b) => /Follow this route/.test(b.textContent)); }
+  if (!ride) return [...errs, 'the card has no Follow this route (#306)'];
+  if (/\\bRide\\b/.test(document.querySelector('.polku-popup').textContent)) errs.push('the card says Ride (#306)');
   const note = () => document.querySelector('.polku-popup .insp-ride')?.textContent || '';
   for (let k = 0; k < 30 && !/loop|one way/.test(note()); k++) await wait(150);
   if (!/^18 km · a loop/.test(note())) errs.push(`the card says: ${note() || 'nothing'}`);
@@ -1990,20 +1991,28 @@ FIT_LIB = """(() => {
     await new Promise((ok) => map.once('idle', ok));
     await T.calm();
     window.holdRoutes();
-    T.start = [23.80, 61.50];
-    const q = map.project(T.start);
-    return { x: q.x, y: q.y };
+    // a spot of the map you can see (the ways to begin fill the peek, and a note may sit above them)
+    const f = free(), q = { x: innerWidth * 0.4, y: f.top + (f.bottom - f.top) * 0.3 };
+    if (!onMap(q.x, q.y)) err('something is over the first tap’s spot');
+    const ll = map.unproject([q.x, q.y]);
+    T.start = [ll.lng, ll.lat];
+    return q;
   };
-  // its card: a loop of the first length; the sheet rises to half as the loops' area is framed
+  // the first point's peek: a loop of the first length opens the form there (25b, #232), and Make 3 loops frames
+  // the loops' area above it
   T.loopFromStart = async () => {
     // the tap's click can come a while after Chrome answered the tap, when the page draws slowly
     let chip;
-    for (const t0 = Date.now(); !(chip = document.querySelector('.start-tip .st-acts .chip')) && Date.now() - t0 < 5000;) await wait(100);
+    for (const t0 = Date.now(); !(chip = document.querySelector('.pl-way .rt-here .chip')) && Date.now() - t0 < 5000;) await wait(100);
     if (!chip) { err(`no round-trip choices on the first tap (${p.points.length} points)`); return T.errs.splice(0); }
     chip.click();
     await wait(100);
+    const make = document.querySelector('.pl-way .rt-make');
+    if (!make) { err('no Make 3 loops in the peek'); return T.errs.splice(0); }
+    make.click();
+    await wait(100);
     const R = await import(location.origin + '/js/roundtrip.js'), L = p.loop;
-    await framed('the round trip’s area as the sheet rises', corners(R.reach(L.start, R.radiusFor('mtb', L.km * 1000))));
+    await framed('the round trip’s area above its form', corners(R.reach(L.start, R.radiusFor('mtb', L.km * 1000))));
     window.releaseRoutes();
     for (let k = 0; k < 450 && (L.busy || !L.results.length); k++) await wait(200);
     if (L.results.length < 3) { err(`${L.results.length} loops (${L.note})`); return T.errs.splice(0); }
@@ -2070,8 +2079,8 @@ FIT_LIB = """(() => {
     await state('full');
     away();
     const mv = moved();
-    const use = document.querySelector('.loop-card.on .btn');
-    if (!use) err('no Use this loop'); else use.click();
+    const use = document.querySelector('.loop-card.on .loop-use');
+    if (!use) err('no Use loop'); else use.click();
     await mv;
     await framed('Use this loop at full', line());
     return T.errs.splice(0);
@@ -2082,7 +2091,9 @@ FIT_LIB = """(() => {
     const r = () => p.panel.getBoundingClientRect(), same = (a, b) => ['top', 'bottom', 'left', 'right'].every((k) => Math.abs(a[k] - b[k]) < 0.5);
     // clear of the toolbar too (25a): under it beside the side panel, above it on a bottom panel's edge
     const tb = () => p.tools.getBoundingClientRect();
-    const was = (lay) => (lay === 'side' ? { top: Math.max(80, tb().bottom + 16), bottom: 40, left: r().right + 40, right: 110 } : { top: 80, bottom: innerHeight - Math.min(r().top, tb().top) + 20, left: 20, right: 70 });
+    // (no toolbar before there's a point or a step to undo: it grows with the route)
+    const tbTop = () => (p.tools.hidden ? Infinity : tb().top), tbBottom = () => (p.tools.hidden ? 0 : tb().bottom);
+    const was = (lay) => (lay === 'side' ? { top: Math.max(80, tbBottom() + 16), bottom: 40, left: r().right + 40, right: 110 } : { top: 80, bottom: innerHeight - Math.min(r().top, tbTop()) + 20, left: 20, right: 70 });
     for (const dock of ['left', 'bottom']) {
       p.setDock(dock);
       await state(dock === 'left' ? 'open' : 'half');
@@ -2243,35 +2254,36 @@ DRAWER = """(async () => {
   p.setActive(true);
   p.clear();
   p.generateLoops = async () => { p.loopsAsked = (p.loopsAsked || 0) + 1; }; // no routing calls here
-  // the start: four ways to begin, Round trip among them
+  // the start: four ways to begin, in the header (A with 25b), Round trip among them
   p.setTab('route');
   await wait(200);
-  const choices = [...document.querySelectorAll('.pl-start .pl-choice b')].map(txt);
-  if (choices.join('|') !== 'Draw it|Round trip|Ride a marked route|Import a GPX or KML') errs.push(`start choices: ${choices.join(' | ') || 'none'}`);
+  const desk = p.sideMQ.matches;
+  const choices = [...document.querySelectorAll('.pl-way .way-tile b')].map(txt);
+  if (choices.join('|') !== (desk ? 'Draw it|Round trip|Marked routes|A GPX or KML file' : 'Draw it|Round trip|Marked routes|A file')) errs.push(`start choices: ${choices.join(' | ') || 'none'}`);
   if (document.querySelector('.pl-empty').hidden) errs.push('Check says nothing before there is a route');
-  // the first click: the start goes down and a loop from there is offered; the next click adds a point
+  // the first click: the start goes down and its peek offers a loop from there (no card on the map, #232); the next click adds a point
   p.setMode('line');
   const c = m.getCenter(), q = m.project(c);
   m.fire('click', { point: q, lngLat: c, originalEvent: new MouseEvent('click') });
   await wait(300);
-  const tip = document.querySelector('.start-tip');
-  if (!tip || !/make a loop from here/.test(txt(tip))) errs.push('no loop offered at the first click');
-  if (/\bnull\b|undefined/.test(p.panel.textContent)) errs.push('“null” written in the drawer with one point');
+  const here = document.querySelector('.pl-way .rt-here');
+  if (!here || !/Round trip from here/.test(txt(here))) errs.push('no loop offered at the first click');
+  if (document.querySelector('.maplibregl-popup')) errs.push('a card on the map at the first click (#232)');
+  if (/\\bnull\\b|undefined/.test(p.panel.textContent)) errs.push('“null” written in the drawer with one point');
   const q2 = { x: q.x + 120, y: q.y - 60 }, ll2 = m.unproject([q2.x, q2.y]);
   m.fire('mousedown', { point: q2, lngLat: ll2, originalEvent: new MouseEvent('mousedown', { button: 0 }) });
   m.fire('click', { point: q2, lngLat: ll2, originalEvent: new MouseEvent('click') });
   await wait(300);
   if (p.points.length !== 2) errs.push(`the click after the start added ${p.points.length - 1} points`);
-  if (document.querySelector('.start-tip')) errs.push('the start’s offer stayed open after the next click');
-  if (!document.querySelector('.pl-start').hidden) errs.push('the start choices stay with a route');
-  // a loop from the start's offer: the round trip opens at that length
-  p.clear(); p.addPoint([c.lng, c.lat]); p.startTip([c.lng, c.lat]);
+  if (p.startView() !== null || !document.querySelector('.pl-way').hidden) errs.push('the start stays with a route');
+  // a loop from the first point's peek: the round trip opens at that length, and makes nothing yet (25b)
+  p.clear(); p.addPoint([c.lng, c.lat]);
   await wait(200);
-  const chip = document.querySelector('.start-tip .chip');
+  const chip = document.querySelector('.pl-way .rt-here .chip');
   const km = chip ? parseInt(txt(chip), 10) : 0;
   if (chip) chip.click();
   await wait(300);
-  if (!p.loop.open || p.loop.km !== km || !p.loopsAsked) errs.push(`the start’s ${km} km loop: open ${p.loop.open}, ${p.loop.km} km, asked ${p.loopsAsked || 0}`);
+  if (!p.loop.open || p.loop.km !== km || p.loopsAsked) errs.push(`the first point’s ${km} km loop: open ${p.loop.open}, ${p.loop.km} km, made ${p.loopsAsked || 0} times`);
   p.closeLoop();
   // a route of three straight legs
   p.clear();
@@ -2284,11 +2296,10 @@ DRAWER = """(async () => {
   for (const [k, what] of [['fit', 'show all'], ['undo', 'undo'], ['redo', 'redo'], ['more', 'More']]) if (!p.els[k] || !p.tools.contains(p.els[k])) errs.push(`the toolbox lacks ${what}`);
   if (p.tools.querySelectorAll('.tb-modes [role=radio]').length !== 3 || !p.tools.contains(p.els.modeBtn)) errs.push('the toolbox lacks the modes');
   // every section in its tab, and a jump to it opens that tab
-  const where = { points: 'route', style: 'route', loop: 'route', warnings: 'check', climbs: 'check', colours: 'check', onmap: 'check', speed: 'go', depart: 'go', take: 'go' };
+  const where = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', onmap: 'check', speed: 'go', depart: 'go', take: 'go' };
   for (const [id, tab] of Object.entries(where)) {
     const el = document.querySelector(`[data-sec=${id}]`);
     if (!el || el.closest('.pl-pane')?.dataset.tab !== tab) { errs.push(`${id} is not in ${tab}`); continue; }
-    if (id === 'loop') continue;
     p.setTab(tab === 'go' ? 'route' : 'go');
     p.reveal(id);
     await wait(80);
@@ -4662,7 +4673,7 @@ CONTRAST = """((scheme) => {
     ['the sport pill', q('#activity-bar .act-current'), null, (e) => cs(e).color, 4.5],
     ['pressed Settings', q('#btn-settings'), null, (e) => cs(e).color, 3],
     ['pressed Weather', q('#btn-time'), null, (e) => cs(e.querySelector('.fab-time-label')).color, 4.5],
-    ['Make 3 loops', q('.loop-go .btn.primary'), null, (e) => cs(e).color, 4.5],
+    ['Make 3 loops', q('.rt-make'), null, (e) => cs(e).color, 4.5],
     ['Locate on', box.querySelector('.fab-locate'), null, (e) => cs(e).color, 3],
     ['a pressed button', box.querySelector('.btn'), null, (e) => cs(e).color, 4.5],
     ['the drawer’s Done', box.querySelector('.qd-done'), null, (e) => cs(e).color, 4.5],
