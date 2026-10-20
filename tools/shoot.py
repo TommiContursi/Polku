@@ -38,10 +38,10 @@ STANDIN = ("(() => { const p = polku.planner; p.legs[0].result.provider = 'valha
 WAYPOINTS = "(() => { const p = polku.planner; p.setName && p.setName(1, 'Coffee at Kauppi'); p.reveal(p.sec.points ? 'points' : 'profile'); return true; })()"
 SCROLL_END = "(() => { const b = document.querySelector('.sheet-body'); b.scrollTop = b.scrollHeight; return true; })()"
 LOOP_JS = ("(async () => { const p = polku.planner; p.setActive(true); if (!p.openLoop) return true; p.openLoop([23.7610, 61.4980]); p.loop.km = 25; p.renderLoop();"
-           " await p.generateLoops(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); p.reveal('loop'); return true; })()")
+           " await p.generateLoops(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); if (p.sec.loop) p.reveal('loop'); return true; })()")
 # the round trip's choices open, Make 3 loops in view (no loops made)
 LOOP_OPEN = ("(async () => { const p = polku.planner; p.openLoop(); if (p.layout() === 'sheet') p.setSheetState('half', { remember: false });"
-             " await new Promise((r) => setTimeout(r, 600)); const b = document.querySelector('.loop-go .btn.primary'); if (b) b.scrollIntoView({ block: 'center' }); return true; })()")
+             " await new Promise((r) => setTimeout(r, 600)); const b = document.querySelector('.rt-make, .loop-go .btn.primary'); if (b) b.scrollIntoView({ block: 'center' }); return true; })()")
 LOCAL = {'polku:brouterUrl': '"http://localhost:17777/brouter"'}
 # Phase 15a: winter on the map at Laajavuori (Jyväskylä; winter set On, the OSM winter ways and
 # LIPAS's ski tracks live), its group in Layers, and the snow layer over Lapland (FMI's stations).
@@ -73,7 +73,7 @@ def WINTER_ROUTE(sec='warnings'):
 def LOOP_AT(sport, ll, km, more=False):
     return ("(async () => { const p = polku.planner; p.setActive(true); if (!p.openLoop) return true; p.openLoop(" + json.dumps(ll) + f"); p.loop.km = {km}; p.renderLoop();"
             " await p.generateLoops();" + (" await p.generateLoops({ more: true });" if more else "")
-            + " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); p.reveal('loop');"
+            + " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); if (p.sec.loop) p.reveal('loop');"
             " await new Promise((r) => setTimeout(r, 400)); const m = document.querySelector('.loop-more'); if (m && " + json.dumps(more) + ") m.scrollIntoView({ block: 'nearest' }); return true; })()")
 STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) return true; p.setStyle({ p: 'flowy', v: {}, wet: 'auto' });"
             " await new Promise((r) => setTimeout(r, 4500)); p.reveal('style'); return true; })()")
@@ -234,6 +234,15 @@ OPEN_CREDITS = "(async () => { document.querySelector('.maplibregl-ctrl-attrib-b
 SIDE = {'polku:plannerDock': '"left"'}
 START = ("(async () => { const p = polku.planner; p.setActive(true); p.clear(); if (p.setTab) p.setTab('route');"
          " if (p.layout() === 'sheet') p.setSheetState('half', { remember: false }); await new Promise((r) => setTimeout(r, 600)); return true; })()")
+# 25b with A: a way to begin picked (`k`: draw, loop, find), and a control in it pressed (`then`); older code
+# shows its start as it was
+def WAY(k, then=None):
+    return START.replace("return true; })()", f"const w = document.querySelector('.pl-way [data-way={k}]'); if (w) w.click(); await new Promise((r) => setTimeout(r, 900));"
+                         + (f" const b = document.querySelector({json.dumps(then)}); if (b) b.click(); await new Promise((r) => setTimeout(r, 900));" if then else '') + " return true; })()")
+# the first point's peek, a length tapped there (older code: its card on the map, then its round trip)
+FIRST_LENGTH = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); const c = polku.map.getCenter();"
+                " p.addPoint([+c.lng.toFixed(6), +c.lat.toFixed(6)]); await wait(500); const chip = document.querySelector('.pl-way .rt-here .chip');"
+                " if (chip) chip.click(); else if (p.openLoop) p.openLoop([c.lng, c.lat]); await wait(700); return true; })()")
 START_TIP = START.replace("return true; })()", "const m = polku.map, c = m.getCenter(); m.fire('click', { point: m.project(c), lngLat: c, originalEvent: new MouseEvent('click') });"
                           " await new Promise((r) => setTimeout(r, 700)); return true; })()")
 LEG_LIT = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); if (p.setTab) p.setTab('route'); p.reveal('points'); await wait(400);"
@@ -585,6 +594,17 @@ SCENES = {
     'desk-start': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START),
     'phone-start': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=START),
     'desk-start-tip': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=START_TIP, settle=0.6),
+    'phone-start-tip': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=START_TIP, settle=0.6),
+    'phone-start-360': dict(PHONE, w=360, h=740, timeline=False, hash='#14/61.4975/23.7605', js=START),
+    'phone-start-swim': dict(PHONE, timeline=False, activity='swim', hash='#14/61.4975/23.7605', js=START),
+    'phone-draw-it': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('draw')),
+    'phone-draw-style': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('draw', '.pl-way .way-srow')),
+    'desk-draw-it': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=WAY('draw')),
+    'phone-rt-ways': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('loop')),
+    'phone-rt-first': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=FIRST_LENGTH),
+    'desk-rt-first': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=FIRST_LENGTH),
+    'phone-marked': dict(PHONE, timeline=False, hash='#13.4/61.5085/23.8270', js=WAY('find'), settle=4),
+    'desk-marked': dict(DESK, timeline=False, hash='#13.4/61.5085/23.8270', storage=SIDE, js=WAY('find'), settle=4),
     'desk-leg-lit': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=LEG_LIT),
     'desk-tab-check': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('warnings')),
     'desk-tab-go': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage=SIDE, js=TAB('speed')),

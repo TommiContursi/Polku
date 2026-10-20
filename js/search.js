@@ -1,7 +1,7 @@
 // Search, grouped: places (Photon / OSM, biased to the view), LIPAS routes and
 // stops by name (js/lipas.js), named trails on the loaded map, and coordinates
 // like "61.497, 23.761". Each group shows as it arrives. Picking a route fits it
-// and opens its card, where "Ride this route" is one tap away. Recent picks are
+// and opens its card, where "Follow this route" is one tap away. Recent picks are
 // kept on this device.
 
 import { PHOTON, LIPAS_TYPES } from './config.js';
@@ -150,7 +150,7 @@ export function initSearch(map, input, list, app) {
         const sport = app.sportTypes ? app.sportTypes() : [];
         groups.routes = rank(routes, q, center, sport).map((r) => lipasItem(r, center));
         groups.stops = rank(stops, q, center, []).map((r) => lipasItem(r, center));
-        // an OSM path named like a LIPAS route is that route: the LIPAS one has its card and Ride
+        // an OSM path named like a LIPAS route is that route: the LIPAS one has its card and Follow
         const named = new Set(groups.routes.map((r) => r.label.toLowerCase()));
         if (groups.trails) groups.trails = groups.trails.filter((t) => !named.has(t.label.toLowerCase()));
         settle();

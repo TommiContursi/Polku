@@ -188,7 +188,7 @@ function describe(f, feats, ctx) {
     const t = LIPAS_TYPES[p.type] || {};
     // a ski track, skating or snowmobile route isn't one to ride: what it's for instead
     const winterBit = { 4402: 'keep off on foot and by bike', 4421: 'for snowmobiles', 1550: 'on natural ice: check its status' }[p.type];
-    return { title: p.name || p.typeName || 'Route', bits: [e(p.typeName || ''), p.length ? `${e(p.length)} km` : '', t.winter ? winterBit : ctx.planning ? '' : 'click to ride it'].filter(Boolean) };
+    return { title: p.name || p.typeName || 'Route', bits: [e(p.typeName || ''), p.length ? `${e(p.length)} km` : '', t.winter ? winterBit : ctx.planning ? '' : 'click to follow it'].filter(Boolean) };
   }
   if (/^winter-/.test(id)) return { title: p.name || (p.cls === 'ski' ? 'Ski track' : 'Winter way'), bits: [e(WINTER_TEXT[p.cls] || ''), p.grooming ? e(`groomed: ${String(p.grooming).replace(/\+|;/g, ' and ')}`) : '', p.lit ? 'lit' : ''].filter(Boolean) };
   if (/^poi-|^label-peak/.test(id)) {

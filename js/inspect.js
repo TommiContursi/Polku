@@ -113,24 +113,25 @@ export function initInspector(map, app) {
   }
 
   // A LIPAS route's card: ride it (its own line, no routing), add all of it to
-  // your route, or start a route here. What riding gives is said once LIPAS has
+  // your route, or start a route here (in words for every sport, #306). What following gives is said once LIPAS has
   // sent all its parts (one request, kept).
   function rideActions(p, click, pop, near) {
     const note = h('div', { class: 'insp-ride' }, 'Checking the route…');
-    const ride = h('button', { type: 'button', class: 'btn primary', onclick: () => { pop.remove(); app.rideLipas(p, { click, near }); }, html: `${icon('route', 15)} Ride this route` });
+    const ride = h('button', { type: 'button', class: 'btn primary', onclick: () => { pop.remove(); app.rideLipas(p, { click, near }); }, html: `${icon('route', 15)} Follow this route` });
     const add = h('button', { type: 'button', class: 'btn', title: 'Your route goes to this one and follows it', onclick: () => { pop.remove(); app.rideLipas(p, { click, near, add: true }); }, html: `${icon('plus', 15)} Add to route` });
     app.lipasRide(p, click).then((r) => {
       if (!r) { note.textContent = ''; return; }
       const km = r.km >= 10 ? Math.round(r.km) : r.km.toFixed(1);
       if (r.network) {
-        note.textContent = `A network of trails: riding takes the ${click ? 'stretch you clicked' : 'longest stretch'} (${km} km). Click another to ride that one.`;
-        ride.innerHTML = `${icon('route', 15)} Ride this stretch`;
+        const touch = matchMedia('(pointer: coarse)').matches;
+        note.textContent = `A network of trails: following it takes the ${click ? `stretch you ${touch ? 'tapped' : 'clicked'}` : 'longest stretch'} (${km} km). ${touch ? 'Tap' : 'Click'} another to follow that one.`;
+        ride.innerHTML = `${icon('route', 15)} Follow this stretch`;
       } else {
         const bits = [`${km} km`, r.loop ? 'a loop' : 'one way'];
         if (r.left >= 0.3) bits.push(`side trails (${r.left.toFixed(1)} km) left out`);
         note.textContent = `${bits.join(' · ')}. Follows LIPAS's line: no routing needed.`;
       }
-    }).catch(() => { note.textContent = 'LIPAS isn\'t answering: riding may not work right now.'; });
+    }).catch(() => { note.textContent = 'LIPAS isn\'t answering: following it may not work right now.'; });
     return h('div', {}, note, h('div', { class: 'insp-actions' }, ride, add,
       h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(click || pop.getLngLat().toArray()); }, html: `${icon('flag', 15)} Route from here` })));
   }
@@ -184,7 +185,7 @@ export function keepInView(map, popup, pad = {}) {
     if (dx || dy) map.panBy([dx, dy], { duration: 250 });
   };
   requestAnimationFrame(check);
-  // a card that grows once its details are in (a LIPAS route's, with Ride) grows upwards from
+  // a card that grows once its details are in (a LIPAS route's, with Follow) grows upwards from
   // the point it marks: look again then, so its top stays clear of the top bar
   const el = popup.getElement && popup.getElement();
   if (!el || el.polkuKeep || typeof ResizeObserver === 'undefined') return;

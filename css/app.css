@@ -658,18 +658,94 @@ body:not(.ready) .map-ctrls { display: none; }
 /* half a sheet: a short profile, so the tab has room (the profile size and full show it whole) */
 .sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile #profile-canvas { height: 64px; }
 .sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile .profile-top { display: none; }
-/* the start, before there's a route */
-.pl-start { display: grid; gap: 8px; padding: 12px 0 6px; flex-basis: 100%; }
-.pl-start[hidden] { display: none; }
-.pl-choice { display: flex; gap: 12px; align-items: flex-start; width: 100%; padding: 12px; border: 0; border-radius: 14px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.pl-choice:hover { background: var(--accent-soft); }
-.pl-choice.main { box-shadow: inset 0 0 0 2px var(--accent); }
-.pl-choice-ic { width: 38px; height: 38px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; flex: none; }
-.pl-choice-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pl-choice-main b { font-size: 14px; }
-.pl-choice-main small { font-size: 12px; color: var(--muted); }
-.pl-choice-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-@container (min-width: 700px) { .pl-start { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* The start (A with 25b, #233): before there's a route, and while a round trip is open, the header holds the
+   start instead of the route's numbers: the ways to begin, a step (Draw it, Round trip, Marked routes) or the
+   first point's peek. On a phone the peek is as tall as it, and the rest of the sheet waits for a route. */
+.sheet-row[hidden], .pl-way[hidden] { display: none; }
+.sheet.starting :is(.pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.pl-way { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; /* (a held sheet never squeezes its rows: it scrolls) */ gap: 10px; padding: 2px 2px 4px; min-width: 0;
+  overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
+/* as tall as there's room: the sheet stops below the top bar (a docked toolbox, 200 % zoom), and the view scrolls inside */
+.sheet.way-only { max-height: calc(100vh - 76px); max-height: calc(100dvh - 76px); }
+.sheet.way-only :is(.sheet-head, .sheet-head-in) { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sheet.way-only .pl-way { flex: 0 1 auto; min-height: 0; }
+/* beside the side panel the tabs under a round trip give way (they scroll), not the form: it scrolls only past the panel's room */
+.sheet[data-layout="side"].way-only :is(.sheet-head, .sheet-head-in) { flex: none; }
+.sheet[data-layout="side"] .pl-way { max-height: calc(100vh - 110px); max-height: calc(100dvh - 110px); }
+.sheet[data-layout="side"] .pl-way { padding-top: 0; }
+.way-head { display: flex; align-items: flex-start; gap: 8px; }
+.way-head > :first-child { flex: 1; min-width: 0; }
+.way-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.way-title h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.way-title small { flex-basis: 100%; color: var(--muted); font-size: 13px; }
+.way-hint { display: grid; gap: 2px; }
+.way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
+.way-hint small { color: var(--muted); font-size: 13.5px; }
+.sport-chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px 0 12px; background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 650; overflow-wrap: break-word; max-width: 100%; }
+.sport-chip .ic { color: var(--accent); flex: none; }
+.way-x { flex: none; width: 44px; height: 44px; margin: -4px -6px 0 0; }
+/* a step's top row: Back on the left, the sport on the right (it wraps rather than cutting a long name) */
+.way-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 -2px -8px; }
+.btn.quiet { border-color: transparent; background: transparent; }
+.btn.quiet:hover { background: var(--surface-2); }
+.way-back { height: 44px; padding: 0 10px 0 4px; color: var(--accent); font-size: 15px; font-weight: 650; }
+.way-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.way-tile { display: flex; gap: 10px; align-items: flex-start; min-width: 0; min-height: 64px; padding: 12px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface-solid); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.way-tile:hover { background: var(--accent-soft); }
+.way-ic { flex: none; display: inline-flex; color: var(--accent); }
+.way-t { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.way-t b { font-size: 15px; overflow-wrap: break-word; }
+.way-t small { color: var(--muted); font-size: 13px; line-height: 1.3; }
+.way-chev { flex: none; align-self: center; color: var(--muted); display: inline-flex; }
+.sheet[data-layout="side"] .way-tiles { grid-template-columns: 1fr; }
+@container (min-width: 640px) { .sheet[data-layout="sheet"] .way-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (max-width: 300px) { .way-tiles { grid-template-columns: 1fr; } } /* enlarged text: a row each, no word cut */
+/* the route style before the first leg or the loops: a row that opens it, or the chips and Fine-tune */
+.way-srow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface-solid); color: var(--text); font: inherit; font-size: 14.5px; text-align: left; cursor: pointer; }
+.way-srow > span { flex: 1; min-width: 0; overflow-wrap: break-word; }
+.way-srow .ic { flex: none; color: var(--accent); }
+.way-srow .ic:last-child { color: var(--muted); }
+.way-srow:hover { background: var(--surface-2); }
+.way-style { display: grid; gap: 8px; }
+.way-sh { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-align: left; }
+button.way-sh { min-height: 40px; cursor: pointer; }
+.way-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.way-chips .chip, .rt-chips .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
+.way-chips .chip[aria-pressed="true"], .rt-chips .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
+.way-how { padding: 10px 0 0; border-top: 1px solid var(--line); }
+/* How you go's own section, in place: its presets are the chips just above it, and its note is about a drawn route */
+.way-how .style-box > :is(.style-presets, .note:last-child) { display: none; }
+.way-how .speed-wrap { margin-top: 12px; }
+.way-nostyle { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13.5px; }
+.way-nostyle .ic { flex: none; }
+.way-cap { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+/* the round trip: its form, then the loops side by side */
+.rt-here { display: grid; gap: 6px; }
+.rt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rt-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.rt-row .seg button { height: 38px; padding: 0 12px; font-size: 14px; }
+.rt-dir { position: relative; display: inline-flex; align-items: center; min-width: 0; max-width: 100%; }
+.rt-dir select { appearance: none; height: 44px; max-width: 100%; text-overflow: ellipsis; padding: 0 30px 0 34px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface-solid); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.rt-dir-ic, .rt-dir-chev { position: absolute; display: inline-flex; pointer-events: none; color: var(--muted); }
+.rt-dir-ic { left: 10px; }
+.rt-dir-chev { right: 10px; }
+.rt-step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } /* (wraps rather than running off at 200 %) */
+.tool.ring { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); }
+.rt-len { display: inline-flex; align-items: baseline; justify-content: center; gap: 6px; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--muted); font-size: 15px; }
+.rt-len input { width: 3.2em; height: 42px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 22px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.rt-len input:focus { outline: none; }
+.rt-len:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rt-start { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; }
+.rt-start .chip { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px; color: var(--text); font-size: 14.5px; }
+.rt-cost { display: grid; gap: 2px; margin: -4px 0 0; color: var(--muted); font-size: 13px; }
+.btn.big { justify-content: center; width: 100%; height: 52px; border-radius: 14px; font-size: 17px; }
+.btn.big:disabled { opacity: .55; cursor: default; }
+.rt-making { display: grid; gap: 6px; justify-items: center; width: 70%; }
+.rt-progress { width: 100%; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .35); overflow: hidden; }
+.rt-progress i { display: block; width: var(--p, 0%); height: 100%; background: #fff; }
 /* How you go: the route style, then your speed */
 .how-h { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 8px; font-size: 12px; font-weight: 700; }
 .how-h small { font-weight: 500; color: var(--muted); }
@@ -687,11 +763,6 @@ body:not(.ready) .map-ctrls { display: none; }
 .onmap .tg { max-width: 360px; }
 .onmap .tg.off { opacity: .5; }
 .take-along { display: flex; flex-wrap: wrap; gap: 8px; }
-.start-menu { display: flex; flex-direction: column; gap: 2px; max-width: 250px; padding-right: 14px; }
-.start-menu .st-title { font-size: 14px; font-weight: 700; }
-.start-menu .st-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
-.start-menu .st-acts { display: flex; flex-wrap: wrap; gap: 6px; }
-.start-menu .chip { display: inline-flex; flex-direction: row; align-items: center; gap: 5px; }
 
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
@@ -1026,31 +1097,36 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .speed-row.sub span:has(svg) { white-space: nowrap; }
 
 /* round trips */
-.loop-box { display: flex; flex-direction: column; gap: 6px; }
-.loop-starts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: 122px; }
-.loop-start { font-size: 13px; font-weight: 600; }
-.loop-hint { margin: 0; }
-.loop-len-box { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-.loop-len { width: 72px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 700; }
-.loop-go { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-.loop-sum { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
-.loop-sum span { flex: 1 1 200px; }
-.loop-cost { margin: 0; }
-.loop-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; margin-top: 6px; }
-.loop-card { display: flex; flex-direction: column; gap: 3px; padding: 10px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
-.loop-card.on { border-color: var(--text); background: var(--surface-2); }
+/* the loops and Marked routes as cards: side by side on a phone (a sideways scroll that snaps, the next one
+   peeking in), a list beside the side panel; the picked one has its action (Use loop A, Follow this route) */
+.loop-cards { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; padding: 2px; touch-action: pan-x pan-y; }
+.loop-cards::-webkit-scrollbar { display: none; }
+.loop-card { flex: 0 0 min(80%, 300px); scroll-snap-align: start; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 12px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface-solid); }
+.loop-card.on { border: 2px solid var(--accent); padding: 11.5px; }
+.sheet[data-layout="side"] .loop-cards { display: grid; overflow: visible; scroll-snap-type: none; }
+.loop-pick { display: grid; gap: 4px; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 8px; }
+.loop-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.loop-card:not(.on) .loop-use { display: none; }
+.loop-use { justify-content: center; width: 100%; height: 44px; font-size: 15px; }
 .loop-card-head { display: flex; align-items: center; gap: 8px; }
-.loop-card-head b { font-size: 16px; white-space: nowrap; }
-.loop-dot { width: 22px; height: 22px; border-radius: 50%; color: #fff; font: 700 12px/22px system-ui, sans-serif; text-align: center; flex: none; }
-.loop-best { margin-left: auto; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); }
-.loop-card-line { font-size: 12px; }
-.loop-card-line.muted { color: var(--muted); font-size: 11px; }
-.loop-card .btn { align-self: flex-start; margin-top: 4px; }
-.loop-more { align-items: center; justify-content: center; gap: 2px; min-height: 96px; border-style: dashed; background: none; color: var(--text); font: inherit; text-align: center; }
+.loop-card-head b { font-size: 18px; white-space: nowrap; }
+.loop-dot { width: 26px; height: 26px; border-radius: 50%; color: #fff; font: 700 13px/26px system-ui, sans-serif; text-align: center; flex: none; }
+.loop-best { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--accent); }
+.loop-card-line { font-size: 13.5px; }
+.loop-card-line.muted { color: var(--muted); font-size: 13px; }
+.loop-more { align-items: center; justify-content: center; gap: 2px; min-height: 96px; border-style: dashed; background: none; color: var(--text); font: inherit; text-align: center; cursor: pointer; }
 .loop-more:hover:not(:disabled) { border-color: var(--text); }
 .loop-more:disabled { cursor: default; opacity: .7; }
-.loop-more small { color: var(--muted); font-size: 11px; }
-@container (max-width: 420px) { .loop-starts { margin-left: 0; } }
+.loop-more small { color: var(--muted); font-size: 12.5px; }
+.mr-type { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.mr-swatch { flex: none; width: 28px; height: 6px; border-radius: 3px; }
+.mr-name { font-size: 16px; overflow-wrap: break-word; }
+.mr-state { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+.mr-state.fail { background: none; border: 1.5px dashed var(--muted); }
+.mr-ic { flex: none; display: inline-flex; color: var(--muted); }
+.mr-text { flex: 1 1 180px; min-width: 0; }
+.mr-state .btn { height: 40px; }
+@media (pointer: coarse) { .way-chips .chip, .rt-chips .chip, .rt-row .seg button, .sport-chip, .mr-state .btn { min-height: 44px; } }
 .sum-empty + .btn { margin-left: 8px; }
 
 /* the marker of a point picked in the list */
@@ -1365,6 +1441,9 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools.desk .tb-desk { display: flex; }
 .pl-tools.desk .tb-phone { display: none; }
 .pl-tools [hidden] { display: none !important; }
+/* what has just appeared on it (it grows with the route): a short fade where it is, nothing moves */
+@media (prefers-reduced-motion: no-preference) { .pl-tools.tb-new, .pl-tools .tb-new { animation: tb-in 160ms ease-out; } }
+@keyframes tb-in { from { opacity: 0; } }
 .tbtn { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--text); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .tbtn:disabled { opacity: .35; cursor: default; }
 .tbtn:focus-visible, .modebtn:focus-visible, .stylebtn:focus-visible, .tb-modes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

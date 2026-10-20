@@ -6,7 +6,13 @@
 
 Open **Plan**, choose a sport and add points on the map. Drag a point or the route line to change the plan. On a phone, hold the line before dragging it.
 
-The planner's header shows your route: its distance, time and climb. How the next leg is drawn is in the toolbox, with undo, redo and **More** (⋯):
+With no route yet, the planner offers four ways to begin under **Start a route** and your sport: **Draw it**, **Round trip**, **Marked routes** and **A file**. The sport there is the same as the button beside the search. A tap or click on the map starts drawing at once. Each way has **‹ Ways to begin** at its top left, which brings the four back; on a phone the back gesture does the same.
+
+- **Draw it** says how Polku joins your points in the drawing mode you've chosen, and lets you pick the route style before the first leg; **Fine-tune** opens How you go's controls there. A style picked before there's a route routes nothing.
+- **Round trip:** choose a distance or a time (a length, or **−** and **+**), the direction and the route style, then **Make 3 loops**. From the ways to begin, tap the map for its start, or use **Where I am**, which sends your position to the router as the start, rounded to about a metre. After your first point, **Round trip from here** offers three lengths and **Other…**. While the loops are made the map waits. Tap a loop's card or its line on the map to pick it, and **Use loop A** to take it; **Undo** takes it back.
+- **Marked routes** lists LIPAS's routes for your sport in the map's view. Tap a card or a route's line to pick it, and **Follow this route** to make it your route on its own line. It says when the map doesn't show them (**Show them**), when LIPAS isn't answering (**Retry**) and when there are none in view. **Find by name** searches all of Finland.
+
+The planner's header shows your route: its distance, time and climb. How the next leg is drawn is in the toolbox, with undo, redo and **More** (⋯). The toolbox grows with the route: before the first point it has only undo and redo, and only when there's something to undo; from the first point, the drawing mode and **More**; once there's a leg, the route's actions too.
 
 - **On a phone** the toolbox floats above the planner, beside the map's buttons. Where there's no room for it there (a narrow phone, large text, the planner pulled up), it's the planner's first row. Tap the mode, under which the route style shows, to draw the next legs with **Follow paths**, **Straight line** or **Over water**, or to pick a route style for the whole route. **Done** is at the right of the route's numbers.
 - **On a desktop** it's a toolbar on the planner's edge: the three modes, the route style, undo and redo, **Show the whole route**, the route's actions that fit, **More** and **Done**. Point at a button, or reach it with the keyboard, for its name, its key and what it does. In a narrow window, more of them move into More.
@@ -41,7 +47,7 @@ On a phone, swipe the planner up or down to change how much of it is visible: fr
 
 Trail difficulty uses mountain biking grades **S0–S6**; uphill difficulty uses **↑S0–↑S5**, with arrows pointing uphill. Select a trail for its details. On a desktop, resting the pointer on a feature gives a quick preview.
 
-Search finds places, official LIPAS routes and stops, trails and coordinates. **Ride this route** puts an official route into the planner using its recorded line; **Add to route** joins it to your existing plan.
+Search finds places, official LIPAS routes and stops, trails and coordinates. **Follow this route** puts an official route into the planner using its recorded line; **Add to route** joins it to your existing plan.
 
 Route warnings appear under **Heads-up** in Check. **Avoid** asks the planner to route around that place. When a route goes round a way marked private, Heads-up says how much a short cut would save, and **Short cut** lets that leg through it (the leg's route style becomes **Ways marked private: Short cuts ok**). Use it only where you may go: private usually means a factory or military site, a house yard or a road closed by a sign, though in Finland private roads and apartment-block yards are open on foot and by bike. Weather along the route uses the estimated time you reach each section, so check your departure in Go and your speeds in Route.
 

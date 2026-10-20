@@ -122,6 +122,56 @@ export class LipasLayer {
       });
   }
 
+  /**
+   * The routes of these types in a view [w, s, e, n], for the planner's Marked routes (A, #233): the layer's own
+   * tiles, asked for whether the layer is on or not (the same requests through request(), kept the same way, so
+   * Show them costs nothing more). One entry a place (its parts joined by LIPAS id), nearest `centre` first.
+   * Resolves { routes, failed } (tiles LIPAS didn't answer for); a view too wide for it throws 'Wide'.
+   */
+  async routesIn([w, s, e, n], types, centre) {
+    const [x0, y0] = lonLatToTile(w, n, Z).map(Math.floor);
+    const [x1, y1] = lonLatToTile(e, s, Z).map(Math.floor);
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 9) throw Object.assign(new Error('Zoom in to list them'), { name: 'Wide' });
+    const keys = [];
+    for (const type of types) {
+      for (let x = x0; x <= x1; x++) {
+        for (let y = y0; y <= y1; y++) {
+          const key = `${type}/${x}/${y}`;
+          keys.push(key);
+          if (this.tiles.has(key)) continue;
+          const p = this.fetchTile(type, x, y).then((features) => { this.tiles.set(key, { features }); this.publish(); });
+          p.catch(() => this.tiles.delete(key));
+          this.tiles.set(key, p);
+        }
+      }
+    }
+    await Promise.allSettled(keys.map((k) => Promise.resolve(this.tiles.get(k))));
+    const failed = keys.filter((k) => !(this.tiles.get(k) || {}).features).length; // (a tile that failed is asked for again next time)
+    const inView = (c) => c[0] >= w && c[0] <= e && c[1] >= s && c[1] <= n;
+    const linesOf = (g) => (g.type === 'LineString' ? [g.coordinates] : g.type === 'MultiLineString' ? g.coordinates : []);
+    const by = new Map(), seen = new Set();
+    for (const k of keys) {
+      const v = this.tiles.get(k);
+      if (!v || !v.features) continue;
+      for (const f of v.features) {
+        if (seen.has(f.id)) continue;
+        seen.add(f.id);
+        const p = f.properties, key = `${p.type}/${p.lipasId}`;
+        const r = by.get(key) || { key, props: p, color: (LIPAS_TYPES[p.type] || {}).color || '#7c3aed', parts: [], near: Infinity, there: false };
+        for (const c of linesOf(f.geometry)) {
+          r.parts.push(c);
+          for (const q of c) if (inView(q)) { r.there = true; r.near = Math.min(r.near, dist(q, centre)); }
+        }
+        by.set(key, r);
+      }
+    }
+    const routes = [...by.values()].filter((r) => r.there).sort((a, b) => a.near - b.near).map((r) => {
+      const stated = parseFloat(String(r.props.length).replace(',', '.'));
+      return { ...r, km: Number.isFinite(stated) && stated > 0 ? stated : r.parts.reduce((m, c) => m + lineLength(c), 0) / 1000 };
+    });
+    return { routes, failed };
+  }
+
   publish() {
     const routes = [];
     const points = [];
