@@ -540,6 +540,22 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .shfold { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 0 10px 0 16px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--muted); font-size: 13px; font-weight: 600; text-align: left; }
 .shfold .ic:last-child { margin-left: auto; }
 .pinline { padding: 6px 10px 10px; background: var(--accent-soft); display: grid; gap: 6px; }
+/* V1 refined: a row for each stretch between the points you see; the scope of a stretch's settings in words */
+.strow-li { display: flex; align-items: stretch; border-top: 1px dashed var(--line); }
+.strow { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 2px 10px 2px 22px; border: 0; background: none; color: var(--muted); font-size: 12.5px; text-align: left; }
+.strow > span { flex: 1; min-width: 0; }
+.strow.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
+.strow-li .unfold { width: 44px; height: auto; min-height: 40px; color: var(--muted); }
+.wxc { margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-solid); color: var(--muted); font: 600 12.5px/1 system-ui, sans-serif; vertical-align: middle; position: relative; }
+.wxc::after { content: ""; position: absolute; inset: -8px -2px; }
+.scope { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; color: var(--text); padding: 6px 8px; border-radius: 10px; background: var(--accent-soft); }
+.scope .ic { color: var(--accent); }
+.scope2 { flex-basis: 100%; margin: -6px 0 0 calc(7.5em + 8px); font-size: 12px; color: var(--muted); }
+.pc-leg > span small:first-child { font-weight: 650; }
+.pcard, .wcard { grid-template-columns: minmax(0, 1fr); } /* nothing in a card widens it past the sheet */
+.scope { overflow-wrap: anywhere; }
+.bigtext .scope2 { margin-left: 0; }
+.bigtext .pc-r .lab2 { width: auto; flex-basis: 100%; }
 /* V1: one card for a point, the same as on the map; its leg one tap further */
 .pcard { display: grid; gap: 6px; margin: 4px 0 2px; padding: 8px 8px 8px 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-solid); }
 .pcard.float3 { position: absolute; z-index: 8; left: 432px; top: 140px; width: 360px; box-shadow: var(--shadow); }
@@ -739,10 +755,13 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <li><b>V3, on the map:</b> the list only reads; Edit points turns it into reordering, renaming and removing; stops, sports and legs are changed from the map.</li>
     </ul>
     <div class="cv-frames">
-      <figure class="fr phone" id="jd-multi" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>Multisport: MTB, then paddling</b>Two sections, each with its numbers, the weather at its end and its warnings; the change of sport and its minutes on the point. Tap a point, or a row of shaping points to unfold it.</figcaption></figure>
+      <figure class="fr phone" id="jd-multi" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>Multisport: MTB, then paddling</b>Two sections, each with its numbers, a short forecast for its end (tap it for the rest) and its warnings; the change of sport on its point; a row for each stretch between the points you see. Tap a point, a stretch, or the arrow that unfolds its shaping points.</figcaption></figure>
       <figure class="fr phone" id="jd-card" data-st='{"stage":"route","uc":"multi","calm":true,"wv":"v1","psel":7,"pcard":"point"}'><figcaption><b>V1: the change point's card</b>Its change and minutes, the leg after it (Paddle), Earlier, Later, Remove; Back to the list.</figcaption></figure>
-      <figure class="fr phone" id="jd-day" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","psel":2,"pcard":"point"}'><figcaption><b>V1: a day ride, a point picked</b>Ringed on the map; a stop is one tap.</figcaption></figure>
-      <figure class="fr phone" id="jd-leg" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","psel":2,"pcard":"leg"}'><figcaption><b>V1: the leg after it</b>Lit on the map; its sport, how it's drawn and its style, each named.</figcaption></figure>
+      <figure class="fr phone" id="jd-day" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","psel":1,"pcard":"point"}'><figcaption><b>V1: a day ride, a point picked</b>Ringed on the map. Its name and arrival first; Add a stop, Stay overnight and Change sport here by name; the stretch after it, both ends named.</figcaption></figure>
+      <figure class="fr phone" id="jd-leg" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","psel":1,"pcard":"stretch","str":[1,2],"strBack":1}'><figcaption><b>V1: the stretch after it</b>Lit on the map exactly between its two ends; what the changes apply to, then only the settings that fit its sport. Back returns to the point.</figcaption></figure>
+      <figure class="fr phone" id="jd-maptap" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","pcard":"stretch","str":[0,1],"strFromMap":true}'><figcaption><b>V1: a tap on the line</b>A tap on the route on the map opens that stretch's card at once: the same card as from the list.</figcaption></figure>
+      <figure class="fr phone" id="jd-stretch" data-st='{"stage":"route","uc":"multi","calm":true,"wv":"v1","pcard":"stretch","str":[7,10]}'><figcaption><b>V1: the paddle stretch</b>Lielahti → Siilinkari, its three legs (two shaping points folded); Paddle "this stretch only · the route is MTB"; only Over water and Straight line; the toolbox for the next leg steps aside.</figcaption></figure>
+      <figure class="fr phone" id="jd-reorder" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1","reorder":true}'><figcaption><b>V1: Reorder</b>Every point, with its grip and Earlier and Later; Done goes back to the sections.</figcaption></figure>
       <figure class="fr phone" id="jd-days" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>Three days with nights</b>A section a day, each night with the morning's start.</figcaption></figure>
       <figure class="fr phone" id="jd-long" data-st='{"stage":"route","uc":"long","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>52 points</b>Two breaks make three sections; the points that only shape the line fold away.</figcaption></figure>
       <figure class="fr phone" id="jd-lipas" data-st='{"stage":"route","uc":"lipas","followed":0,"sheet":"half","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>A marked route followed</b>One section on its own line; little to change.</figcaption></figure>
@@ -943,6 +962,9 @@ const STR = {
     arriveWx: 'At its end, {w} (an estimate)', fixedLine: 'Its own line: {N} (LIPAS)', editPts: 'Edit points', editNote: 'Drag to reorder, rename, or remove.', mapNote: 'To change a stop, a sport or how a leg is drawn, tap the point or the leg on the map.',
     nightL: 'Night: leave', nextTo: 'Next leg → {N}', routeStyle: 'the route’s style ({s})', stopHere: 'Stop here…', rename: 'Rename', fromStart: '{d} from the start', thereAt: 'there at {t}',
     sameCard: 'The same card opens when you tap this point on the map.', theRoutes: 'the route’s', howDrawn: 'How it’s drawn', otherWays: 'Other ways', onProfile: 'On the profile',
+    stretchT: '{A} → {B}', viaShaping: 'via {n} shaping points', showShaping: 'Show the {n} shaping points', foldShaping: 'Fold the shaping points', listNote: 'Tap a point or a stretch to change it.', reorder: 'Reorder', reorderNote: 'Drag a point, or move it earlier or later.',
+    noChange: 'No change', noNight: 'No night', breakL: 'Break', noStop: 'No stop', addStop: 'Add a stop', stayNight: 'Stay overnight', changeSport: 'Change sport here', stretchAfter: 'The stretch after it', pointH: 'Point', stretchH: 'Stretch',
+    appliesN: 'Changes apply to this stretch: its {n} legs', applies1: 'Changes apply to this stretch', ownOnly: 'this stretch only · the route is {R}', asRoute: 'as the rest of the route', styleAs: '{S}’s style, for this stretch', avoidSpot: 'Avoid a spot here', sameCardS: 'The same card opens when you tap this stretch on the map.',
     waysTitle: 'Start a route', tapAny: 'or tap the map to start drawing', tapAnyD: 'or click the map to start drawing', backWays: 'Ways to begin',
     drawWayS: 'Point by point on the map', rtWayS: 'A loop of a length you pick', mrWayS: 'From LIPAS, in view', fileWayS: 'GPX or KML', fileWayT: 'A file',
     drawWayL: 'Click where you start, then each place on the way: Polku follows the paths between them.',
@@ -994,6 +1016,9 @@ const STR = {
     arriveWx: 'Lopussa {w} (arvio)', fixedLine: 'Oma linjansa: {N} (LIPAS)', editPts: 'Muokkaa pisteitä', editNote: 'Vedä järjestykseen, nimeä tai poista.', mapNote: 'Muuta taukoa, lajia tai osuuden piirtotapaa napauttamalla pistettä tai osuutta kartalla.',
     nightL: 'Yö: lähtö', nextTo: 'Seuraava osuus → {N}', routeStyle: 'reitin tyyli ({s})', stopHere: 'Tauko tähän…', rename: 'Nimeä', fromStart: '{d} lähdöstä', thereAt: 'perillä {t}',
     sameCard: 'Sama kortti avautuu, kun napautat pistettä kartalla.', theRoutes: 'reitin oma', howDrawn: 'Piirtotapa', otherWays: 'Muut reitit', onProfile: 'Profiilissa',
+    stretchT: '{A} → {B}', viaShaping: '{n} muotoilupisteen kautta', showShaping: 'Näytä {n} muotoilupistettä', foldShaping: 'Piilota muotoilupisteet', listNote: 'Muuta pistettä tai osuutta napauttamalla sitä.', reorder: 'Järjestä', reorderNote: 'Vedä pistettä tai siirrä sitä aiemmaksi tai myöhemmäksi.',
+    noChange: 'Ei vaihtoa', noNight: 'Ei yötä', breakL: 'Tauko', noStop: 'Ei taukoa', addStop: 'Lisää tauko', stayNight: 'Yövy tässä', changeSport: 'Vaihda lajia tässä', stretchAfter: 'Seuraava osuus', pointH: 'Piste', stretchH: 'Osuus',
+    appliesN: 'Muutokset koskevat tätä osuutta: sen {n} osaa', applies1: 'Muutokset koskevat tätä osuutta', ownOnly: 'vain tämä osuus · reitti on {R}', asRoute: 'kuten muu reitti', styleAs: 'Lajin {S} tyyli tälle osuudelle', avoidSpot: 'Kierrä kohta tässä', sameCardS: 'Sama kortti avautuu, kun napautat osuutta kartalla.',
     waysTitle: 'Aloita reitti', tapAny: 'tai aloita piirtäminen napauttamalla karttaa', tapAnyD: 'tai aloita piirtäminen napsauttamalla karttaa', backWays: 'Aloitustavat',
     drawWayS: 'Piste pisteeltä kartalle', rtWayS: 'Lenkki valitsemallasi pituudella', mrWayS: 'LIPAS-reitit näkymässä', fileWayS: 'GPX tai KML', fileWayT: 'Tiedosto',
     drawWayL: 'Napsauta lähtöpaikkaa ja sitten jokaista paikkaa matkan varrella: Polku seuraa polkuja niiden välillä.',
@@ -1045,6 +1070,9 @@ const STR = {
     arriveWx: 'Vid slutet {w} (en uppskattning)', fixedLine: 'Sin egen linje: {N} (LIPAS)', editPts: 'Redigera punkter', editNote: 'Dra för att ordna om, byt namn eller ta bort.', mapNote: 'Tryck på punkten eller etappen på kartan för att ändra paus, sport eller hur etappen ritas.',
     nightL: 'Natt: avfärd', nextTo: 'Nästa etapp → {N}', routeStyle: 'ruttens stil ({s})', stopHere: 'Paus här…', rename: 'Byt namn', fromStart: '{d} från start', thereAt: 'där {t}',
     sameCard: 'Samma kort öppnas när du trycker på punkten på kartan.', theRoutes: 'ruttens', howDrawn: 'Hur den ritas', otherWays: 'Andra vägar', onProfile: 'På profilen',
+    stretchT: '{A} → {B}', viaShaping: 'via {n} formpunkter', showShaping: 'Visa de {n} formpunkterna', foldShaping: 'Dölj formpunkterna', listNote: 'Tryck på en punkt eller en sträcka för att ändra den.', reorder: 'Ordna om', reorderNote: 'Dra en punkt eller flytta den tidigare eller senare.',
+    noChange: 'Inget byte', noNight: 'Ingen natt', breakL: 'Paus', noStop: 'Ingen paus', addStop: 'Lägg till en paus', stayNight: 'Övernatta här', changeSport: 'Byt sport här', stretchAfter: 'Sträckan efter', pointH: 'Punkt', stretchH: 'Sträcka',
+    appliesN: 'Ändringarna gäller den här sträckan: dess {n} etapper', applies1: 'Ändringarna gäller den här sträckan', ownOnly: 'bara den här sträckan · rutten är {R}', asRoute: 'som resten av rutten', styleAs: '{S}s stil för den här sträckan', avoidSpot: 'Undvik en plats här', sameCardS: 'Samma kort öppnas när du trycker på sträckan på kartan.',
     waysTitle: 'Börja en rutt', tapAny: 'eller tryck på kartan för att börja rita', tapAnyD: 'eller klicka på kartan för att börja rita', backWays: 'Sätt att börja',
     drawWayS: 'Punkt för punkt på kartan', rtWayS: 'En runda med en längd du väljer', mrWayS: 'Från LIPAS, i vyn', fileWayS: 'GPX eller KML', fileWayT: 'En fil',
     drawWayL: 'Klicka där du börjar och sedan varje plats på vägen: Polku följer stigarna mellan dem.',
@@ -1337,6 +1365,10 @@ function mapMarks(st, v, desk) {
     out.push(svg(line(P, '#fff', 10) + line(P, '#e11d48', 6) + `<circle cx="${a[0]}" cy="${a[1]}" r="11" fill="#16a34a" stroke="#fff" stroke-width="2.5"/><rect x="${b[0] - 10}" y="${b[1] - 10}" width="20" height="20" rx="5" fill="#111" stroke="#fff" stroke-width="2.5"/>`));
   }
   const key = `${warnKey(st.sport) === 'paddle' ? 'paddle' : 'mtb'}-${desk ? 'desk' : 'phone'}`, G = GEO[key];
+  if (st.uc === 'day' && G && st.pcard === 'stretch' && st.str) { // the stretch lit exactly between its two ends
+    const Pp = ucPoints(st), k0 = Pp[st.str[0]].km, k1 = Pp[st.str[1]].km, L2 = stretchPts(G, k0, k1).map((q) => bgXY(st, G, q));
+    out.push(svg(line(L2, '#fff', 14, 'opacity=".9"') + line(L2, 'var(--accent)', 8)));
+  } else if (st.uc === 'day' && st.psel === 1 && G && v.wv === 'v1') { const [x, y] = bgXY(st, G, desk ? [880, 255] : [328, 612]); out.push(`<span class="wmk on" style="left:${x}px;top:${y}px;border-color:var(--accent);color:var(--accent)" aria-hidden="true">${ic('route', 16)}</span>`); }
   if (st.uc === 'day' && st.psel === 2 && G) { // the selected point ringed on the map, its leg lit while the leg's card is open
     const [x, y] = bgXY(st, G, desk ? [880, 255] : [328, 612]);
     if (st.pcard === 'leg' || st.pleg) out.push(svg(line(stretchPts(G, 1.65, 3.05).map((q) => bgXY(st, G, q)), '#fff', 14, 'opacity=".9"') + line(stretchPts(G, 1.65, 3.05).map((q) => bgXY(st, G, q)), 'var(--accent)', 8)));
@@ -1532,7 +1564,7 @@ const shp = (names, km0, km1, tm) => names.map((n, i) => UCP('via', n, +(km0 + (
 const UC = {
   day: { stats: { d: '3.05 km', t: '16 min', up: '↑44 m', down: '↓65 m' }, sections: [
     { sp: 'mtb', from: 'Kaupin urheilupuisto', to: 'Kauppi forest', d: '3.05 km', t: '16 min', up: '↑44 m', wx: '07:46 · 9°, wind 4 m/s SW, dry', w1: 1, w3: 0,
-      pts: [UCP('start', 'Kaupin urheilupuisto', 0, '07:30'), UCP('via', 'Kauppi trail centre', 0.9, '07:35', { shaping: true }), UCP('via', 'Ilmailunkatu path', 1.8, '07:39'), UCP('via', 'Niihaman maja', 2.4, '07:42', { shaping: true }), UCP('end', 'Kauppi forest', 3.05, '07:46')] }] },
+      pts: [UCP('start', 'Kaupin urheilupuisto', 0, '07:30'), UCP('via', 'Ilmailunkatu path', 1.65, '07:39'), UCP('end', 'Kauppi forest', 3.05, '07:46')] }] },
   multi: { stats: { d: '17.9 km', t: '2 h 21 min', up: '↑240 m', down: 'carry 120 m' }, sections: [
     { sp: 'mtb', from: 'Kaupin urheilupuisto', to: 'Lielahti', d: '12.4 km', t: '1 h 05 min', up: '↑240 m', wx: '08:35 · 9°, wind 4 m/s SW, dry', w1: 1, w3: 0,
       pts: [UCP('start', 'Kaupin urheilupuisto', 0, '07:30'), ...shp(['Kaupintie', 'Rusko junction', 'Sorila bridge'], 0, 5.7, ''), UCP('via', 'Ilmailunkatu path', 5.7, '07:58'), ...shp(['Kalevanharju', 'Lakeside path'], 5.7, 12.4, ''),
@@ -1585,6 +1617,7 @@ function ucTags(q) {
 // the shaping points folded. V1: a tap on a point opens its card (the same as on the map); V2: its controls open in the
 // list; V3: the list only reads, and Edit points turns it into reordering, renaming and removing.
 function sectionsHtml(st, v, desk) {
+  if (v.wv === 'v1') return sectionsV1(st, v, desk);
   const P = ucPoints(st), wv = v.wv, sel = st.psel;
   const editing3 = wv === 'v3' && st.pedit;
   const row = (q, i) => {
@@ -1623,6 +1656,8 @@ function pointBody(st, v, q, i, inline) {
 }
 // V1: the point's card, in the peek on a phone (a card by the point on desktops), the same as a tap on the point on the map
 function pointCard(st, v, desk) {
+  if (v.wv === 'v1' && st.pcard === 'stretch' && st.str) return stretchCard(st, v, desk);
+  if (v.wv === 'v1' && st.pcard === 'point') return pointCard1(st, v, desk);
   const P = ucPoints(st), i = st.psel, q = P[i];
   if (!q) return '';
   if (st.pcard === 'leg') return legCard(st, v, desk);
@@ -1644,6 +1679,86 @@ function legCard(st, v, desk) {
     <div class="pc-r stack"><span class="lab2">${t('howDrawn')}</span><div class="seg small seg-words" role="radiogroup" aria-label="${t('howDrawn')}">${seg}</div></div>
     <label class="pc-r"><span class="lab2">${t('styleRow')}</span><span class="sel">${esc(tf('routeStyle', { s: 'Balanced' }))} ${ic('down', 12)}</span></label>`}
     <div class="wpacts">${q.fixed ? '' : `<button type="button" class="act" data-act="noop">${ic('route', 16)}${t('otherWays')}</button>`}<button type="button" class="act" data-act="noop">${ic('mountain', 16)}${t('onProfile')}</button></div></div>`;
+}
+
+
+// ---- V1, refined (iteration 2, after trying the frames): stretches between the points you see, a card for a point or a
+// stretch from the list or the map, the scope of every setting in words, everyday actions by name, Reorder in the list
+const SPEED = { mtb: 11, gravel: 18, road: 24, hike: 3.6, trailrun: 8, run: 10, paddle: 5, swim: 2.4 };
+const hm2 = (m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`);
+const mainSportOf = (st) => UC[st.uc].sections.map((x) => [x.sp, parseFloat(x.d)]).sort((a, b) => b[1] - a[1])[0][0];
+// the points you see in the list, in order: key points, and shaping points where their row is unfolded (or while reordering)
+function visibleIdx(st) {
+  const P = ucPoints(st);
+  return P.map((q, i) => i).filter((i) => !P[i].shaping || st.reorder || (st.shOpen && st.shOpen[P[i].si]));
+}
+// a stretch: the legs from one point you see to the next; with shaping points folded it spans them, so it's never ambiguous
+function stretchOf(st, a, b) {
+  const P = ucPoints(st), A = P[a], B = P[b], sp = A.change ? A.change.to : B.sp, d = +(B.km - A.km).toFixed(2);
+  const min = Math.max(1, Math.round(d / SPEED[sp] * 60)), up = isWaterS(sp) ? '' : `↑${Math.round(d * 19)} m`;
+  return { A, B, sp, d, min, up, legs: b - a, fixed: B.fixed };
+}
+function sectionsV1(st, v, desk) {
+  const P = ucPoints(st), V = visibleIdx(st), sel = st.psel, S0 = st.str;
+  const row = (i) => {
+    const q = P[i], on = sel === i && st.pcard === 'point';
+    const sub = [q.k === 'start' ? tf('departAt', { t: q.tm }) : q.tm ? tf('thereAt', { t: q.tm }) : '', kmS(q.km), ucLabel(q)].filter(Boolean).join(' · ');
+    if (st.reorder) return `<li class="prow edit"><span class="gr2" aria-hidden="true">${ic('grip', 18)}</span>${ucMark(q)}<span class="nm"><b>${esc(q.name)}</b><small>${esc(sub)}</small></span><span class="pair"><button type="button" class="act ico" aria-label="${t('earlier')}: ${esc(q.name)}"${i === 0 ? ' disabled' : ''}>${ic('up', 18)}</button><button type="button" class="act ico" aria-label="${t('later')}: ${esc(q.name)}"${i === P.length - 1 ? ' disabled' : ''}>${ic('down', 18)}</button></span></li>`;
+    return `<li><button type="button" class="prow${on ? ' on' : ''}" data-act="psel" data-v="${i}"${on ? ' aria-current="true"' : ''} aria-label="${esc(q.name)}, ${esc(sub)}">${ucMark(q)}<span class="nm"><b>${esc(q.name)}</b>${ucTags(q)}<small>${esc(sub)}</small></span>${ic('right', 16)}</button></li>`;
+  };
+  const strRow = (a, b) => {
+    const x = stretchOf(st, a, b), on = S0 && S0[0] === a && S0[1] === b && st.pcard === 'stretch', shaping = b - a - 1;
+    const words = [kmS(x.d), hm2(x.min), x.up].filter(Boolean).join(' · ');
+    return `<li class="strow-li"><button type="button" class="strow${on ? ' on' : ''}" data-act="stsel" data-v="${a}-${b}" aria-label="${esc(tf('stretchT', { A: x.A.name, B: x.B.name }))}: ${esc(words)}">${ic(x.fixed ? 'sign' : isWaterS(x.sp) ? 'water' : 'auto', 16)}<span>${esc(words)}${shaping > 0 ? ` · ${esc(tf('viaShaping', { n: shaping }))}` : ''}</span>${ic('right', 14)}</button>${shaping > 0 && !st.reorder ? `<button type="button" class="tbtn unfold" data-act="shfold" data-v="${x.B.si}" aria-label="${esc(tf('showShaping', { n: shaping }))}">${ic('down', 16)}</button>` : ''}</li>`;
+  };
+  const secs = UC[st.uc].sections.map((sec, si) => {
+    const items = [];
+    V.forEach((i, k) => { if (P[i].si !== si) return; if (k > 0 && !st.reorder) items.push(strRow(V[k - 1], i)); items.push(row(i)); });
+    if (st.shOpen && st.shOpen[si] && !st.reorder) items.push(`<li><button type="button" class="shfold" data-act="shfold" data-v="${si}">${ic('up', 14)}${t('foldShaping')}</button></li>`);
+    const ttl = `${sec.day ? `${esc(tf('dayN', { n: sec.day }))} · ` : ''}${esc(sL(sec.sp))} · ${esc(sec.from)} → ${esc(sec.to)}`;
+    const badges = `${sec.w1 ? `<button type="button" class="badge b1 sb" data-act="wstep" aria-label="${sec.w1} ${t('t1s')} in this part">${ic('warnf', 13)}${sec.w1}</button>` : ''}${sec.w3 ? `<span class="badge b3" aria-label="${sec.w3} ${t('t3s')}">?</span>` : ''}`;
+    const tmp = (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
+    return `<section class="sec2" aria-label="${ttl}"><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b>${badges}</div>
+      <div class="sec2-n">${esc(sec.d)} · ${esc(sec.t)} · ${esc(sec.up)}<button type="button" class="wxc" data-act="wxmore" data-v="${si}" aria-expanded="${!!wxOpen}" aria-label="${esc(tf('arriveWx', { w: sec.wx }))}">${ic('weather', 15)}${esc([tmp, wind].filter(Boolean).join(' · '))}</button></div>
+      ${wxOpen ? `<div class="sec2-w">${ic('weather', 15)}${esc(tf('arriveWx', { w: sec.wx }))}</div>` : ''}${sec.fixed ? `<div class="sec2-w">${ic('sign', 15)}${esc(tf('fixedLine', { N: sec.fixed }))}</div>` : ''}
+      <ol class="wpl">${items.join('')}</ol></section>`;
+  }).join('');
+  const head = `<div class="wptools"><span class="cap" style="flex:1">${esc(st.reorder ? t('reorderNote') : t('listNote'))}</span><button type="button" class="btn small${st.reorder ? ' primary' : ''}" data-act="reorder">${st.reorder ? t('done') : t('reorder')}</button></div>`;
+  return `${head}${secs}`;
+}
+// a point's card: its name and arrival first; the everyday actions by name; the stretch after it; its place; Remove last
+function pointCard1(st, v, desk) {
+  const P = ucPoints(st), V = visibleIdx(st), i = st.psel, q = P[i];
+  if (!q) return '';
+  const nextI = V.find((j) => j > i), x = nextI != null ? stretchOf(st, i, nextI) : null;
+  const sub = [q.k === 'start' ? tf('departAt', { t: q.tm }) : tf('thereAt', { t: q.tm }), kmS(q.km), ucLabel(q)].filter(Boolean).join(' · ');
+  const setRow = q.change ? `<div class="pc-r">${ic(SPORT_ICON[q.change.to], 18)}<span>${esc(tf('changeToL', { S: sL(q.change.to) }))}</span><span class="len sm"><input type="text" inputmode="numeric" value="${q.change.min}" aria-label="Minutes to change"><span>min</span></span><button type="button" class="btn small quiet" data-act="noop">${t('noChange')}</button></div>`
+    : q.leave ? `<div class="pc-r">${ic('moon', 18)}<span>${t('nightL')}</span><span class="sel">${esc(q.leave)} ${ic('down', 12)}</span><button type="button" class="btn small quiet" data-act="noop">${t('noNight')}</button></div>`
+      : q.stop ? `<div class="pc-r">${ic('pause', 18)}<span>${t('breakL')}</span><span class="len sm"><input type="text" inputmode="numeric" value="${q.stop}" aria-label="Minutes of the break"><span>min</span></span><button type="button" class="btn small quiet" data-act="noop">${t('noStop')}</button></div>`
+        : q.k === 'start' ? `<div class="pc-r">${ic('clock', 18)}<span>${t('depart')}</span><span class="sel">${esc(q.depart || q.tm)} ${ic('down', 12)}</span></div>` : '';
+  const everyday = q.k === 'via' && !q.stop && !q.change && !q.leave ? `<div class="wpacts"><button type="button" class="act" data-act="noop">${ic('pause', 16)}${t('addStop')}</button><button type="button" class="act" data-act="noop">${ic('moon', 16)}${t('stayNight')}</button><button type="button" class="act" data-act="noop">${ic('reverse', 16)}${t('changeSport')}</button></div>` : '';
+  const next = x ? `<button type="button" class="pc-leg" data-act="stsel" data-v="${i}-${nextI}">${ic(x.fixed ? 'sign' : isWaterS(x.sp) ? 'water' : 'auto', 20)}<span><small>${t('stretchAfter')}</small><b>${esc(tf('stretchT', { A: x.A.name, B: x.B.name }))}</b><small>${esc([sL(x.sp), x.fixed ? t('ownLine') : t(isWaterS(x.sp) ? 'water' : 'auto'), kmS(x.d), hm2(x.min)].join(' · '))}</small></span>${ic('right', 16)}</button>` : '';
+  return `<div class="pcard${desk ? ' float3' : ''}" role="group" aria-label="${esc(q.name)}">
+    ${backBar('pclose', t('back2'), t('pointH'), `${t('back2')}: ${st.pFromMap ? 'the map' : 'the list as it was'}`)}
+    <div class="pc-h">${ucMark(q)}<span class="pc-tx"><b>${esc(q.name)}</b><small>${esc(sub)}</small></span></div>
+    ${setRow}${everyday}${next}
+    <div class="wpacts"><button type="button" class="act" data-act="noop">${ic('pencil', 16)}${t('rename')}</button><span class="pair"><button type="button" class="act ico" data-act="noop" aria-label="${t('earlier')}"${i === 0 ? ' disabled' : ''}>${ic('up', 18)}</button><button type="button" class="act ico" data-act="noop" aria-label="${t('later')}"${i === P.length - 1 ? ' disabled' : ''}>${ic('down', 18)}</button></span><button type="button" class="act danger" data-act="noop">${ic('trash', 16)}${t('remove')}</button></div>
+    <div class="pc-same">${t('sameCard')}</div></div>`;
+}
+// a stretch's card: both ends named, what the changes apply to, then only the settings that apply to its sport
+function stretchCard(st, v, desk) {
+  const [a, b] = st.str, x = stretchOf(st, a, b), main = mainSportOf(st), own = x.sp !== main;
+  const modes = x.fixed ? '' : (isWaterS(x.sp) ? ['water', 'line'] : ['auto', 'line']).map((m, k) => `<button type="button" role="radio" aria-checked="${k === 0}">${ic(m, 16)}${t(m)}</button>`).join('');
+  const style = (SPORTS[x.sp].styles[0] || ['', 'Balanced'])[1];
+  return `<div class="pcard${desk ? ' float3' : ''}" role="group" aria-label="${esc(tf('stretchT', { A: x.A.name, B: x.B.name }))}">
+    ${backBar('stclose', t('back2'), t('stretchH'), `${t('back2')}: ${st.strFromMap ? 'the map' : 'the list as it was'}`)}
+    <div class="pc-t"><b>${esc(tf('stretchT', { A: x.A.name, B: x.B.name }))}</b><small>${esc([kmS(x.d), hm2(x.min), x.up].filter(Boolean).join(' · '))}</small></div>
+    <div class="scope">${ic('route', 15)}${esc(x.legs > 1 ? tf('appliesN', { n: x.legs }) : t('applies1'))}</div>
+    <label class="pc-r"><span class="lab2">${t('sportH')}</span><span class="sel">${ic(SPORT_ICON[x.sp], 16)}${esc(sL(x.sp))} ${ic('down', 12)}</span><small class="scope2">${esc(own ? tf('ownOnly', { R: sL(main) }) : t('asRoute'))}</small></label>
+    ${x.fixed ? `<div class="pc-r">${ic('sign', 18)}<span>${esc(tf('fixedLine', { N: x.fixed }))}</span></div>` : `<div class="pc-r stack"><span class="lab2">${t('howDrawn')}</span><div class="seg small seg-words" role="radiogroup" aria-label="${t('howDrawn')}">${modes}</div></div>
+    <label class="pc-r"><span class="lab2">${t('styleRow')}</span><span class="sel">${esc(style)} ${ic('down', 12)}</span><small class="scope2">${esc(tf('styleAs', { S: sL(x.sp) }))}</small></label>`}
+    <div class="wpacts">${!x.fixed && x.legs === 1 && !isWaterS(x.sp) ? `<button type="button" class="act" data-act="noop">${ic('route', 16)}${t('otherWays')}</button>` : ''}<button type="button" class="act" data-act="noop">${ic('mountain', 16)}${t('onProfile')}</button><button type="button" class="act" data-act="noop">${ic('close', 16)}${t('avoidSpot')}</button></div>
+    <div class="pc-same">${t('sameCardS')}</div></div>`;
 }
 
 // the sheet (phone) and the panel (desktop)
@@ -1712,7 +1827,7 @@ function plannerHtml(st, v, desk, docked) {
   const fin = desk ? '' : `<span class="acts-r">${viewing ? `<button type="button" class="btn" data-act="edit">${t('edit')}</button>` : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</span>`;
   // 2026-10-20: an item from the row or a marker takes the peek on a phone (the map stays in view); its ✕ comes back
   const stepping = st.step != null && !desk && st.sheet === 'peek';
-  const pcarding = st.uc && st.psel != null && st.pcard && !desk && st.sheet === 'peek' && v.wv === 'v1';
+  const pcarding = st.uc && (st.psel != null || st.str) && st.pcard && !desk && st.sheet === 'peek' && v.wv === 'v1';
   const head = stepping ? wcard(st, v) : pcarding ? pointCard(st, v, false) : viewing
     ? `<div class="titlerow"><span class="ttl"><b>${esc(routeTitle(st, v))}</b><small>${esc(routeSports(st))} · ${ic('check', 13)}${t('kept')}</small></span><button type="button" class="tbtn" data-act="close" aria-label="Put the route away">${ic('close', 20)}</button></div>${warnRow(st, v, desk)}
        <div class="row wrap">${stats(st, v)}${fin}</div>`
@@ -1813,7 +1928,7 @@ function render(f) {
   foldCols(colsBottom);
   // the toolbox: phones float it above the sheet (docked into the sheet where the map is too narrow); desktops hang it off the panel.
   // Not while marked routes are listed, nor while a warning is in view on a phone (nothing is drawn then).
-  if (pl && (editing || st.stage === 'route') && !(st.stage === 'first' && (st.rt.open || st.rt.results)) && !st.find && !(st.step != null && !desk && st.sheet === 'peek')) {
+  if (pl && (editing || st.stage === 'route') && !(st.stage === 'first' && (st.rt.open || st.rt.results)) && !st.find && !(st.step != null && !desk && st.sheet === 'peek') && !(st.uc && st.pcard && !desk && st.sheet === 'peek' && v.wv === 'v1')) {
     if (desk) {
       // the toolbar may not reach the map's buttons: fold its least used parts first
       const right = scr.querySelector('.cols').offsetLeft - 12;
@@ -1832,7 +1947,7 @@ function render(f) {
     const c2 = scr.querySelector('.cols'); if (c2) { c2.outerHTML = cols(st, desk, top2 + 12 + lift, z); foldCols(top2 + 12 + lift); }
     scr.querySelector('.scale').style.bottom = `${top2 + 12 + lift}px`;
   }
-  if (desk && st.uc && st.psel != null && st.pcard && v.wv === 'v1') scr.insertAdjacentHTML('beforeend', pointCard(st, v, true));
+  if (desk && st.uc && (st.psel != null || st.str) && st.pcard && v.wv === 'v1') scr.insertAdjacentHTML('beforeend', pointCard(st, v, true));
   if (st.settings) scr.insertAdjacentHTML('beforeend', settingsHtml(st, v, desk));
   // menus, anchored to what opened them
   if (st.pop) {
@@ -1932,6 +2047,11 @@ function act(f, a, val, ev) {
       if (wv === 'v1') { st.pFrom = st.pFrom || st.sheet; st.pcard = 'point'; if (!desk) st.sheet = 'peek'; }
       break; }
     case 'pclose': st.pcard = null; st.psel = null; st.pleg = false; if (st.pFrom) { st.sheet = st.pFrom; st.pFrom = null; } break;
+    case 'stsel': { const [x, y] = String(val).split('-').map(Number); if (st.pcard !== 'point') st.pFrom = st.pFrom || st.sheet; st.strBack = st.pcard === 'point' ? st.psel : null; st.str = [x, y]; st.pcard = 'stretch'; if (!desk) st.sheet = 'peek'; break; }
+    // Back from a stretch: to the point it was opened from, else to the list (or the map) as it was
+    case 'stclose': if (st.strBack != null) { st.psel = st.strBack; st.pcard = 'point'; st.strBack = null; st.str = null; break; } st.str = null; st.pcard = null; st.psel = null; if (st.pFrom) { st.sheet = st.pFrom; st.pFrom = null; } break;
+    case 'wxmore': st.wxOpen = { ...(st.wxOpen || {}), [val]: !(st.wxOpen && st.wxOpen[val]) }; break;
+    case 'reorder': st.reorder = !st.reorder; st.psel = null; st.pcard = null; break;
     case 'plegopen': if (view(st).wv === 'v1') st.pcard = 'leg'; else st.pleg = !st.pleg; break;
     case 'plegback': if (view(st).wv === 'v1') st.pcard = 'point'; else st.pleg = false; break;
     case 'shfold': st.shOpen = { ...(st.shOpen || {}), [val]: !(st.shOpen && st.shOpen[val]) }; break;
