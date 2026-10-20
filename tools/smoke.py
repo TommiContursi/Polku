@@ -5093,6 +5093,8 @@ NL = """(() => {
     }
     return best ? { x: best.x, y: best.y, clear: onMap(best.x, best.y), over: 'not the map' } : null; };
   T.view = (c, z) => new Promise((ok) => { m.jumpTo({ center: c, zoom: z }); m.once('idle', () => ok(true)); });
+  // the start's sport chip, where it is in its card: the same in the ways to begin and in each step (2026-10-21)
+  T.chipAt = () => { const c = $('.pl-way .sport-chip')?.getBoundingClientRect(), w = $('.pl-way').getBoundingClientRect(); return c ? [Math.round(c.left - w.left), Math.round(c.top - w.top), Math.round(c.width)] : null; };
   T.state = () => ({ n: p.points.length, sports: p.legs.map((_, i) => p.legSport(i)).join(','), modes: p.legs.map((l) => l.mode).join(','), next: p.nextSport(), real: p.nextLegSport(), map: polku.state.activity, mode: p.mode,
     label: p.els.modeBtn.getAttribute('aria-label'), sport: p.els.sportBtn.textContent.trim(), past: p.past.length, menu: !!$('.menu-pop'), toast: $('#toast').hidden ? '' : $('#toast').innerText.replace(/\\s+/g, ' ').trim(),
     time: p.analysis ? Math.round(p.analysis.time) : null, waits: p.analysis && p.analysis.waits ? p.analysis.waits.length : 0 });
@@ -5259,6 +5261,12 @@ def nextleg(chrome):
     pg = page(390, 844, True, 'mtb')
     pg.js('polku.planner.setActive(true), true')
     time.sleep(0.5)
+    # the sport chip stays where it is between the ways to begin and a step
+    ways = pg.js('nlT.chipAt()')
+    press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', True)
+    if pg.js('nlT.chipAt()') != ways:
+        fails.append(f"{name}: the sport chip moves from the ways to begin ({ways}) to Draw it ({pg.js('nlT.chipAt()')})")
+    press(pg, pg.js("nlT.at('.pl-way .way-back')"), f'{name}: Ways to begin', True)
     press(pg, pg.js("nlT.at('.pl-way .sport-chip')"), f'{name}: the sport chip', True)
     press(pg, pg.js("nlT.item('Paddle')"), f'{name}: Paddle', True)
     c = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? { crafts: [...m.querySelectorAll('.menu-chips .chip')].map((b) => b.textContent.trim() + (b.getAttribute('aria-checked') === 'true' ? '*' : '')).join(','), focus: document.activeElement.textContent.trim() } : null; })()")
@@ -5302,6 +5310,12 @@ def nextleg(chrome):
     # ---- a desktop, by mouse: the sport button before the style, Go › Time's speeds, Settings' speeds by sport (#87)
     name = '1440x900'
     pg = page(1440, 900, False, 'mtb')
+    pg.js('polku.planner.setActive(true), true')
+    time.sleep(0.5)
+    ways = pg.js('nlT.chipAt()')
+    press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', False)
+    if pg.js('nlT.chipAt()') != ways:
+        fails.append(f"{name}: the sport chip moves from the ways to begin ({ways}) to Draw it ({pg.js('nlT.chipAt()')})")
     pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); for (const q of [[23.733, 61.4975], [23.738, 61.4985], [23.743, 61.4975]]) p.addPoint(q); return true; })()")
     pg.js('nlT.settle(3)')
     o = pg.js("(() => { const p = polku.planner, r = (e) => e.getBoundingClientRect(); return { seg: r(p.els.modeSeg).right, sport: r(p.els.sportBtn).left, style: r(p.els.styleBtn).left, shown: !!p.els.sportBtn.offsetParent }; })()")
@@ -6152,7 +6166,7 @@ START_LIB = """(() => {
     if (late) err(`opening: ${late}`);
     const desk = p.sideMQ.matches;
     if (view() !== 'ways') err(`the empty planner shows ${view()}, not the ways to begin`);
-    const head = txt($('.pl-way .way-title'));
+    const head = `${txt($('.pl-way .way-top'))} ${txt($('.pl-way .way-sub'))}`;
     if (!/^Start a route/.test(head) || !/the map to start drawing/.test(head)) err(`the ways' header: ${head}`);
     const tiles = $$('.pl-way .way-tile'), names = tiles.map((b) => txt(b.querySelector('b')));
     const want = desk ? 'Draw it|Round trip|Marked routes|A GPX or KML file' : 'Draw it|Round trip|Marked routes|A file';
@@ -6167,7 +6181,7 @@ START_LIB = """(() => {
     }
     if (/\\bRide\\b/.test(txt(way()))) err('the ways say Ride (#306)');
     // the way out on a phone says Close: nothing is done yet (2026-10-20)
-    const out = $('.pl-way .way-head .done');
+    const out = $('.pl-way .way-sub .done');
     if (!desk && (!out || txt(out) !== 'Close')) err(`the ways' way out says ${out ? txt(out) : 'nothing'}, not Close`);
     T.errs.push(...(await T.toolsAt(0, 'no route, no history')));
     // no Done before the first point on desktops (Back is the way out); the phone's ways card keeps its own
