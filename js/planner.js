@@ -212,7 +212,7 @@ export class Planner {
       this.frame(bbox(a.pts.slice(i0, i1 + 1)), { lower: false, duration: 600 });
     };
     map.on('click', (e) => this.onMapClick(e));
-    map.on('movestart', (e) => { if (e.originalEvent) this.refit = false; }); // you moved the map
+    map.on('movestart', (e) => { if (e.originalEvent) { this.refit = false; this.fitAt = null; } }); // you moved the map
     map.on('mousemove', (e) => this.onMapMove(e));
     map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     // was a menu or card open when this press began? (MapLibre closes it on the click; the click shouldn't add a point too)
@@ -3590,7 +3590,12 @@ export class Planner {
     };
     const sizes = () => {
       const hd = this.els.head;
-      this.panel.style.setProperty('--peek-h', `${Math.ceil(hd.offsetTop + hd.offsetHeight + 6)}px`);
+      const peek = `${Math.ceil(hd.offsetTop + hd.offsetHeight + 6)}px`;
+      this.panel.style.setProperty('--peek-h', peek);
+      // the route's numbers came in just after it was framed and wrap onto a second line (#242): the
+      // peek is taller now, so frame it once more, unless the map has been moved since
+      const f = this.fitAt;
+      if (f && f.peek !== peek && this.panel.dataset.state === 'peek' && Date.now() - f.t < 5000) { this.fitAt = null; requestAnimationFrame(() => this.fitRoute({ animate: false })); }
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
     };
     this.measureSheet = sizes;
@@ -4718,6 +4723,7 @@ export class Planner {
     const b = this.routeBounds();
     if (!b) { toast('No route yet — click the map to start one'); return; }
     this.frame(b, { duration: animate ? 700 : 0 });
+    this.fitAt = { t: Date.now(), peek: this.panel.style.getPropertyValue('--peek-h') };
   }
 
   // A share link frames its points at once, and its routed line once every leg is in,
