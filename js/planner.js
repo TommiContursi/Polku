@@ -4223,8 +4223,10 @@ export class Planner {
     // tap only puts the start down), so only undo and redo show, and only with something to undo or redo; at the
     // first point how the next leg is drawn and More (Clear route); with a leg the route's actions too, as far
     // as there's room (placeTools()). New buttons fade in where they are (fadeNewTools()).
-    this.tools.dataset.stage = String(Math.min(n, 2));
-    for (const el of [this.els.modeBtn, this.els.modeSeg, this.els.styleBtn, this.els.more, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n;
+    // While a round trip is open nothing is drawn: only undo and redo stay, until a loop is taken or the form closes (#311)
+    const loop = this.loop.open;
+    this.tools.dataset.stage = loop ? 'loop' : String(Math.min(n, 2));
+    for (const el of [this.els.modeBtn, this.els.modeSeg, this.els.styleBtn, this.els.more, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop;
     for (const el of this.tools.querySelectorAll('.tbtn.tb-hist')) el.hidden = !(hist || n);
     this.els.undo.disabled = !this.past.length;
     this.els.redo.disabled = !this.future.length;
@@ -4233,7 +4235,7 @@ export class Planner {
     this.els.fit.disabled = n < 2;
     for (const k of ['share', 'gpx', 'offline']) this.els[k].disabled = n < 2;
     this.els.clearTool.disabled = !n;
-    this.els.toolDone.hidden = !n; // no Done before the first point: Back is the way out of a start step (A)
+    this.els.toolDone.hidden = !n || loop; // no Done before the first point (Back is the way out of a start step, A), nor in a round trip
     // Show the whole route in the map's column: whenever a route is on the map, but on desktops
     // the toolbar has it while planning
     const col = document.getElementById('btn-fit');
@@ -4290,7 +4292,7 @@ export class Planner {
     if (!show) { toolsH(0); return; }
     const colLeft = $('#map-ctrls').getBoundingClientRect().left;
     // the route's actions once there's a leg (Back to start not on a loop); in turn, as far as there's room
-    const can = (b) => this.points.length > 1 && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk'));
+    const can = (b) => this.points.length > 1 && !this.loop.open && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk'));
     for (const b of box.querySelectorAll('[data-opt]')) if (!can(b)) b.hidden = true;
     const opts = [...box.querySelectorAll('[data-opt]')].filter(can).sort((a, b) => a.dataset.opt - b.dataset.opt);
     // the first n of them on the toolbar (in `root`, the toolbox or a copy of it), each group's separator with them

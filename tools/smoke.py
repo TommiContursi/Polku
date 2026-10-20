@@ -5699,6 +5699,8 @@ def toolbox(chrome):
         if not pg.js(check):
             fails.append(f'{name}: More’s {label} didn’t do it: ' + json.dumps(pg.js("({ n: polku.planner.points.length, loop: polku.planner.isLoop(), menu: !!document.querySelector('.menu-pop'), tip: !document.getElementById('tip').hidden })")))
     pg.js("polku.planner.closeLoop(); true")
+    # (the route's actions come back on the toolbar in the next frame, and Done moves along with them: #311)
+    pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
     # Done: the planner closes, and Show the whole route is in the map's column
     click(pg, '#pl-tools .done', f'{name}: Done')
     d = pg.js("({ active: polku.planner.active, tools: polku.planner.tools.hidden, fit: !document.getElementById('btn-fit').hidden })")
@@ -5783,6 +5785,14 @@ START_LIB = """(() => {
     await wait(100);
     return items;
   };
+  // a phone's sheet as tall as its view: the view scrolls only once the sheet has stopped below the top bar
+  T.whole = (what) => {
+    if (p.layout() !== 'sheet') return;
+    const w = way(), room = innerHeight - 76 - 2;
+    if (w.scrollHeight > w.clientHeight + 1 && p.panel.getBoundingClientRect().height < room) err(`${what}: the view is cut by ${w.scrollHeight - w.clientHeight} px though the sheet has room`);
+  };
+  // in a round trip nothing is drawn: only undo and redo, no mode, More or Done (#311)
+  T.loopTools = (what) => { const on = shown().join('|'); if (on !== 'Undo|Redo') err(`${what}: the toolbox has ${on || 'nothing'}, not only undo and redo (#311)`); };
   T.toolsAt = async (stage, what) => {
     await settled();
     const on = shown(), desk = p.sideMQ.matches, has = (re) => on.some((x) => re.test(x));
@@ -6111,6 +6121,8 @@ START_LIB = """(() => {
     if (view() !== 'loop' || L.km !== 10 || L.results.length || L.busy) err(`the 10 km chip: ${view()}, ${L.km} km, ${L.results.length} loops, busy ${L.busy}`);
     if ((await routed()) !== T.r0) err('a length opened the form with routing calls');
     if (!/From your first point/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
+    T.loopTools('the round trip’s form');
+    T.whole('the round trip’s form');
     window.holdRoutes();
     return T.at('.pl-way .rt-make');
   };
@@ -6131,6 +6143,7 @@ START_LIB = """(() => {
     const cards = $$('.pl-way .loop-card:not(.loop-more)');
     if (cards.length !== 3 || !cards[0].classList.contains('on') || !cards[0].querySelector('.loop-use').offsetParent || cards[1].querySelector('.loop-use').offsetParent) err('the loops’ cards: not three, or Use loop not on the picked one only');
     if (!p.sideMQ.matches && cards.length > 1 && Math.abs(cards[0].getBoundingClientRect().top - cards[1].getBoundingClientRect().top) > 1) err('phone: the loops aren’t side by side');
+    T.loopTools('the loops');
     await settled();
     if (p.loop.results.length < 3) return null;
     // a spot on a loop that isn't picked, clear of the others
@@ -6175,6 +6188,7 @@ START_LIB = """(() => {
     await wait(300);
     const at = await T.at('.pl-way .rt-make');
     if (!at || !at.clear) err(`${innerWidth} × ${innerHeight}: Make 3 loops is ${at ? `under ${at.over}` : 'not on screen'}`);
+    T.whole(`${innerWidth} × ${innerHeight}`);
     p.closeLoop();
     return T.errs.splice(0);
   };
