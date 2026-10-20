@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-20
 
+### The ways to begin say Close
+
+On a phone, the button beside **Start a route** now says **Close**: it puts the planner away, since nothing is done yet. After the first point it says **Done**, as before.
+
 ### A calmer planner: starting a route ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 With no route yet, the planner offers four ways to begin, each with a line on what it does: **Draw it**, **Round trip**, **Marked routes** and **A file**. They're two by two on a phone and a row each on a desktop, and a tap or click on the map still starts drawing at once.

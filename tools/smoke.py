@@ -5839,6 +5839,9 @@ START_LIB = """(() => {
       if (r.some((x) => x.bottom > bottom + 1)) err('a way to begin is cut off');
     }
     if (/\\bRide\\b/.test(txt(way()))) err('the ways say Ride (#306)');
+    // the way out on a phone says Close: nothing is done yet (2026-10-20)
+    const out = $('.pl-way .way-head .done');
+    if (!desk && (!out || txt(out) !== 'Close')) err(`the ways' way out says ${out ? txt(out) : 'nothing'}, not Close`);
     T.errs.push(...(await T.toolsAt(0, 'no route, no history')));
     // no Done before the first point on desktops (Back is the way out); the phone's ways card keeps its own
     if (desk && p.els.toolDone.offsetParent) err('the toolbar has Done before the first point');
