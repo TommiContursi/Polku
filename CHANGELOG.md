@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-20
+
+### Rain radar ready for FMI's new feed ([#133](https://github.com/TommiContursi/Polku/issues/133))
+
+Rain “now” in Finland uses FMI's replacement radar data, keeping light drizzle in proportion when the old feed is retired. Missing radar coverage stays distinct from dry weather. The backup radar remains available if the rain-rate layer cannot load. Both feeds use a fixed scale, so changing the map view does not change what the rain measurements mean.
+
 ## 2026-10-18
 
 ### 3D terrain from a button on the map ([#226](https://github.com/TommiContursi/Polku/issues/226))
