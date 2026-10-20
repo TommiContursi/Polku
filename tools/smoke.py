@@ -4607,6 +4607,74 @@ PANEL_BOX = """((id) => {
 # Settings and all layers over the planner on a phone (#240), opened by touch with the sheet at every size:
 # the panel's top below the top bar, its heading and ✕ on screen with nothing over them, its body scrolling
 # under a finger, the ✕ closing it, and the sheet as it was. A short phone and a turned one too.
+# Holds MapLibre's load event until __col.release(), and notes where Locate and 3D are after every frame
+# from the page's start: read once the frame is painted, so what a finger would have seen.
+COLUMN_HOLD = r"""(() => {
+  const S = window.__col = { samples: [], released: false, held: null };
+  let lib;
+  Object.defineProperty(window, 'maplibregl', { configurable: true, get: () => lib, set(v) {
+    lib = v;
+    const fire = v.Map.prototype.fire;
+    v.Map.prototype.fire = function (e, ...rest) {
+      if ((typeof e === 'string' ? e : e && e.type) === 'load' && !S.released) { S.held = () => fire.call(this, e, ...rest); return this; }
+      return fire.call(this, e, ...rest);
+    };
+  } });
+  S.release = () => { S.released = true; if (S.held) S.held(); return !!S.held; };
+  const top = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return r.width && r.height && getComputedStyle(el).visibility !== 'hidden' ? Math.round(r.top) : null;
+  };
+  const after = new MessageChannel();
+  after.port1.onmessage = () => {
+    const locate = top('btn-locate'), d3 = top('btn-3d');
+    if (locate != null || d3 != null) S.samples.push({ t: Math.round(performance.now()), locate, d3, app: !!window.polku, loaded: S.released });
+  };
+  const frame = () => { after.port2.postMessage(0); requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+})();"""
+
+
+def column_early(chrome):
+    """#292: on a phone with the timeline left on, the map's column is in its place from the first frame it shows,
+    not moved up once the map has loaded."""
+    fails = []
+    # the temperature layer adds the timeline's legend row
+    for sport, wx in (('mtb', {}), ('paddle', {}), ('paddle', {'temp': True})):
+        name = f"390x844 {sport}, the timeline on{', the temperature too' if wx else ''}"
+        pg = chrome.page(390, 844, True)
+        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COLUMN_HOLD}, pg.s)
+        pg.open_app({'activity': sport, 'timeline': True, **({'weather': {'wind': False, 'rain': False, **wx}} if wx else {})},
+                    {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'})
+        time.sleep(1)  # the map stays short of its load event a while longer
+        if not pg.js('__col.release()'):
+            fails.append(f'{name}: MapLibre’s load event was never held back (the check proves nothing)')
+        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 20000 ? ok() : setTimeout(go, 100); go(); })")
+        pg.js(SETTLED)
+        pg.js('new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => ok(true)))))')
+        s = pg.js('__col.samples')
+        held = [x for x in s if not x['loaded']]
+        if not held:
+            fails.append(f'{name}: no frame with the buttons before the map’s load event')
+        elif pg.js("document.querySelector('#wx-bar').hidden"):
+            fails.append(f'{name}: the timeline is not open after the map’s load event')
+        else:
+            first, last = held[0], s[-1]
+            for k, label in (('locate', 'Locate'), ('d3', '3D')):
+                moves = sorted({x[k] for x in s if x[k] is not None})
+                # up to 4 px: the timeline grows 3 px when its forecast comes in, at any time (#301)
+                if first[k] is None or last[k] is None or moves[-1] - moves[0] > 4:
+                    fails.append(f"{name}: {label}'s top went from y {first[k]} (at {first['t']} ms) to y {last[k]} after the map's load"
+                                 f" (tops seen: {', '.join(map(str, moves[:6]))})")
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's column on phones in its place before the map has loaded (#292)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def panels(chrome):
     fails = []
     for w, h_, sport in [(390, 844, 'mtb'), (390, 844, 'paddle'), (375, 667, 'mtb'), (360, 740, 'hike'), (667, 375, 'gravel')]:
@@ -5154,6 +5222,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
+    ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),

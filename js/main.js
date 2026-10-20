@@ -1383,12 +1383,13 @@ $('#btn-zoom-in').addEventListener('click', () => map.zoomIn());
 $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 
 // Phones: the floating timeline sits above the Plan pill; the map controls ride above it.
-new ResizeObserver(() => {
+function placeAboveTimeline() {
   const b = $('#wx-bar');
   const floating = !b.hidden && !b.classList.contains('docked') && matchMedia('(max-width: 720px)').matches;
   // the column normally sits 12 px up; above the timeline (at 44 px) it needs its height plus that offset
   document.documentElement.style.setProperty('--wx-h', `${floating ? b.offsetHeight + 40 : 0}px`);
-}).observe($('#wx-bar'));
+}
+new ResizeObserver(placeAboveTimeline).observe($('#wx-bar'));
 
 // ------------------------------------------------------------------ GPX / KML import (button + drag & drop)
 async function importFile(file) {
@@ -1507,16 +1508,21 @@ document.body.dataset.activity = state.activity;
 renderActivityBar();
 renderLayersPanel();
 renderSettingsPanel();
+// The weather layers and the timeline left on start now, not on the map's load: on phones the map's
+// buttons ride above the timeline, and they'd move up under a finger once the map had loaded (#292).
+// The forecast needs only the view. The buttons show once the timeline has its rows (a frame of its
+// own, before this one), in their place, without sliding there.
+if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
+if (state.timeline) setTimeline(true);
+requestAnimationFrame(() => { placeAboveTimeline(); document.body.classList.add('ready'); });
 map.on('load', () => {
   // Start with the attribution collapsed to its (i) button on small screens (and it stays so: above).
   if (window.innerWidth < 720) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
   configureLayers();
   syncZoomHint();
   syncView3d();
-  if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
   // a first visit: show where you are, if the browser may tell (Helsinki stays otherwise)
   if (firstVisit && navigator.geolocation) setTimeout(() => locate.start({ quiet: true }), 600);
-  if (state.timeline) setTimeline(true);
   if (shared && shared.points.length) {
     planner.restore(shared);
     planner.setActive(true);
