@@ -638,7 +638,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="jb-empty" data-st='{"stage":"start","pop":"sport","sp":"list"}'><figcaption><b>No route: one tap</b>Each sport with its name and what the map shows for it.</figcaption></figure>
       <figure class="fr phone" id="jb-list" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"list"}'><figcaption><b>A route drawn</b>The menu says the route's sport. Pick Hike.</figcaption></figure>
       <figure class="fr phone" id="jb-ask" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>What it's for</b>The whole route, with what it costs and Undo; or only the legs you draw next. ‹ Sports goes back; a tap outside changes nothing.</figcaption></figure>
-      <figure class="fr phone" id="jb-mixed" data-st='{"stage":"route","calm":true,"mix":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>A mixed route</b>The paddle leg and the LIPAS stretch keep theirs, and the choice says so.</figcaption></figure>
+      <figure class="fr phone" id="jb-mixed" data-st='{"stage":"route","calm":true,"mix":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>A mixed route</b>The paddle leg keeps its own sport and the LIPAS stretch its own line, and the choice says so.</figcaption></figure>
       <figure class="fr phone" id="jb-water" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"paddle"}'><figcaption><b>From land to water</b>The whole route isn't offered, and says why.</figcaption></figure>
       <figure class="fr phone" id="jb-next" data-st='{"stage":"route","calm":true,"map":"hike","next":"hike","toast":"spnext"}'><figcaption><b>Only the next legs</b>The pill is Hike; the toolbox says the next leg is Hike; the drawn legs stay MTB. Tap the map to draw one.</figcaption></figure>
       <figure class="fr phone" id="jb-all" data-st='{"stage":"route","calm":true,"sport":"hike","map":"hike","toast":"spall"}'><figcaption><b>The whole route</b>Routed again as Hike, with new times and checks; Undo brings the MTB route back.</figcaption></figure>
@@ -860,13 +860,13 @@ const STR = {
     sportH: 'Sport', sportLead: 'The map shows what matters for it, and new legs are planned for it.', yourRouteIs: 'Your route', legsN: 'legs',
     scopeFor: '{S} for…', scopeAll: 'The whole route', scopeNext: 'Only the legs you draw next', backSports: 'Sports',
     scopeAllD: 'Its {n} {R} legs are routed again for {S}: new times and checks · {n} routing calls. Undo brings back the {R} route.',
-    scopeKeep: '{K} keep their own.', scopeNo: 'Not for this route: {R} legs can’t be {V} on the same line. To change one leg, tap it on the map.',
+    scopeNo: 'Not for this route: {R} legs can’t be {V} on the same line. To change one leg, tap it on the map.',
     scopeNextD: 'The legs you’ve drawn stay {R}. The map shows {S}, and the toolbox says so.', already: 'already',
     nowAll: 'Your route is {S} now · {n} legs routed again', nowNext: '{S} for the map and your next legs · your route stays {R}',
     nowNoWater: 'Your route stays {R}: it can’t be {V}. The next legs are {S}.', routeSport: 'The route’s sport', change2: 'Change…',
     stayNote: 'Your route stays {R}: change it in Route › The route’s sport.', nextSport: 'Next leg',
     stepOf: 'of', inCheck: 'All in Check', wholeRoute: 'the whole route', back2: 'Back', notChecked: 'not checked',
-    openPl: 'Open in the planner', speedsFor: 'Speeds for', settings: 'Settings', mixedKeep: 'The paddle leg and the LIPAS stretch',
+    openPl: 'Open in the planner', speedsFor: 'Speeds for', settings: 'Settings', mixedNote: 'The paddle leg stays Paddle; the LIPAS stretch keeps its own line.',
     keepS: 'Keep {R}', paced: 'The calls are paced, so it takes about {m} min; the legs come in one by one.',
   },
   fi: {
@@ -904,13 +904,13 @@ const STR = {
     sportH: 'Laji', sportLead: 'Kartta näyttää lajille tärkeät asiat, ja uudet osuudet suunnitellaan sille.', yourRouteIs: 'Reittisi', legsN: 'osuutta',
     scopeFor: '{S}: mihin?', scopeAll: 'Koko reitti', scopeNext: 'Vain seuraavaksi piirrettävät osuudet', backSports: 'Lajit',
     scopeAllD: 'Sen {n} osuutta ({R}) reititetään uudelleen lajille {S}: uudet ajat ja tarkistukset · {n} reitityskyselyä. Kumoa tuo {R}-reitin takaisin.',
-    scopeKeep: '{K} pitävät omansa.', scopeNo: 'Ei tälle reitille: osuuksia ({R}) ei voi {V} samaa linjaa pitkin. Muuta yksittäistä osuutta napauttamalla sitä kartalla.',
+    scopeNo: 'Ei tälle reitille: osuuksia ({R}) ei voi {V} samaa linjaa pitkin. Muuta yksittäistä osuutta napauttamalla sitä kartalla.',
     scopeNextD: 'Piirretyt osuudet pysyvät lajissa {R}. Kartta näyttää lajin {S}, ja työkalurivi kertoo sen.', already: 'jo nyt',
     nowAll: 'Reittisi on nyt {S} · {n} osuutta reititetty uudelleen', nowNext: '{S} kartalle ja seuraaville osuuksille · reittisi pysyy: {R}',
     nowNoWater: 'Reittisi pysyy: {R}, sitä ei voi {V}. Seuraavat osuudet: {S}.', routeSport: 'Reitin laji', change2: 'Muuta…',
     stayNote: 'Reittisi pysyy: {R}. Muuta sitä kohdassa Reitti › Reitin laji.', nextSport: 'Seuraava osuus',
     stepOf: '/', inCheck: 'Kaikki listana', wholeRoute: 'koko reitti', back2: 'Takaisin', notChecked: 'tarkistamatta',
-    openPl: 'Avaa suunnittelijassa', speedsFor: 'Nopeudet lajille', settings: 'Asetukset', mixedKeep: 'Melontaosuus ja LIPAS-osuus',
+    openPl: 'Avaa suunnittelijassa', speedsFor: 'Nopeudet lajille', settings: 'Asetukset', mixedNote: 'Melontaosuus pysyy melontana; LIPAS-osuus pitää oman linjansa.',
     keepS: 'Pidä {R}', paced: 'Kyselyt tahditetaan, joten se kestää noin {m} min; osuudet valmistuvat yksi kerrallaan.',
   },
   sv: {
@@ -948,13 +948,13 @@ const STR = {
     sportH: 'Sport', sportLead: 'Kartan visar det som är viktigt för den, och nya etapper planeras för den.', yourRouteIs: 'Din rutt', legsN: 'etapper',
     scopeFor: '{S} för…', scopeAll: 'Hela rutten', scopeNext: 'Bara etapperna du ritar härnäst', backSports: 'Sporter',
     scopeAllD: 'Dess {n} etapper ({R}) planeras om för {S}: nya tider och kontroller · {n} ruttfrågor. Ångra tar tillbaka {R}-rutten.',
-    scopeKeep: '{K} behåller sina egna.', scopeNo: 'Inte för den här rutten: etapper ({R}) kan inte {V} på samma linje. Tryck på en etapp på kartan för att ändra den.',
+    scopeNo: 'Inte för den här rutten: etapper ({R}) kan inte {V} på samma linje. Tryck på en etapp på kartan för att ändra den.',
     scopeNextD: 'Etapperna du har ritat förblir {R}. Kartan visar {S}, och verktygsraden säger det.', already: 'redan nu',
     nowAll: 'Din rutt är {S} nu · {n} etapper planerade om', nowNext: '{S} för kartan och dina nästa etapper · rutten förblir {R}',
     nowNoWater: 'Rutten förblir {R}: den kan inte {V}. Nästa etapper är {S}.', routeSport: 'Ruttens sport', change2: 'Ändra…',
     stayNote: 'Din rutt förblir {R}: ändra den i Rutt › Ruttens sport.', nextSport: 'Nästa etapp',
     stepOf: 'av', inCheck: 'Alla i Kolla', wholeRoute: 'hela rutten', back2: 'Tillbaka', notChecked: 'inte kollade',
-    openPl: 'Öppna i planeraren', speedsFor: 'Hastigheter för', settings: 'Inställningar', mixedKeep: 'Paddlingsetappen och LIPAS-sträckan',
+    openPl: 'Öppna i planeraren', speedsFor: 'Hastigheter för', settings: 'Inställningar', mixedNote: 'Paddlingsetappen förblir paddling; LIPAS-sträckan behåller sin egen linje.',
     keepS: 'Behåll {R}', paced: 'Frågorna sprids ut, så det tar ungefär {m} min; etapperna kommer en i taget.',
   },
 };
@@ -1143,7 +1143,7 @@ function sportMenu(st, v) {
   const route = st.stage === 'route', R = sL(st.sport);
   if (st.sp === 'scope' && st.spPick) {
     const S = sL(st.spPick), n = mainLegs(st), cross = isWaterS(st.spPick) !== isWaterS(st.sport), same = st.spPick === nextOf(st) && st.spPick === st.map;
-    const allD = cross ? tf('scopeNo', { R, V: SW().verb[st.spPick] }) : `${tf('scopeAllD', { n, R, S })}${n > 10 ? ` ${tf('paced', { m: Math.ceil(n / 12) })}` : ''}${st.mix ? ` ${tf('scopeKeep', { K: t('mixedKeep') })}` : ''}`;
+    const allD = cross ? tf('scopeNo', { R, V: SW().verb[st.spPick] }) : `${tf('scopeAllD', { n, R, S })}${n > 10 ? ` ${tf('paced', { m: Math.ceil(n / 12) })}` : ''}${st.mix ? ` ${t('mixedNote')}` : ''}`;
     return `<div class="popmenu sportmenu" role="dialog" aria-label="${esc(tf('scopeFor', { S }))}" data-anchor="sport">
       <div class="backrow"><button type="button" class="btn" data-act="spback">${ic('left', 18)}${t('backSports')}</button></div>
       <div class="scopeq" id="sq-${st._id}">${ic(SPORT_ICON[st.spPick], 20).replace('class="ic ', 'style="display:inline;vertical-align:-3px;margin-right:6px" class="ic ')}${esc(tf('scopeFor', { S }))}</div>

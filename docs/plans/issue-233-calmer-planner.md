@@ -4,6 +4,7 @@ The design. What's still to do, and its status, is on GitHub: [Phase 25: a calme
 
 - **Status (2026-10-18): approved; phase 25, built in four parts (25a–25d),** after the shared fixes below and before 22b. From phase 24's review ([the report](../reviews/2026-10-17-design/README.md), #177): the user chose variant B, a second iteration worked out seven questions, and the user settled the last choices on 2026-10-17 and approved the design on 2026-10-18. Nothing is built yet.
 - **The mock-up:** [mockups/phase-24-planner.html](mockups/phase-24-planner.html), clickable on phone and desktop frames, with switches for the worst case, Finnish and Swedish, and the theme. `?frame=<id>` shows one frame at full size; `&w=360&h=740`, `&z=2` (200 % zoom), `&lang=fi`, `&worst=1`. Pictures of the second iteration: `pr-screenshots`, `claude/phase-24-design/iter2/`.
+- **Revised 2026-10-20, not decided:** three journeys through the planner, after a review of the whole interface asked that everyday tasks explain themselves. They're proposals for the user to choose: see [Revised journeys](#revised-journeys-2026-10-20-proposals) below, and sections A to C of the mock-up (`&sport=ask|next|all` switches the sport's behaviour).
 
 ## Decided
 
@@ -36,7 +37,7 @@ The design. What's still to do, and its status, is on GitHub: [Phase 25: a calme
 | | Heads-up grouped in three, with sources and what was looked at | `renderWarnings()`; a `tier` and `src` on each warning where it's made |
 | | The waypoint list's rows: one button each; the selected row holds the controls; Find, Key points, the bar, Move to | `renderWaypoints()` |
 | **Moves** (the same component, a new place) | The route's colour (`colorSel`): only on the profile, where Colour by and On map already are | `renderQuickColor()` → the profile's `modeSelect` |
-| | The sport (`sportSel`): the top bar's pill only, which already re-routes | `renderQuickSport()` → `js/main.js`'s sport pill |
+| | The sport (`sportSel`): the top bar's pill only. With a route drawn, the pill doesn't route it again: its legs keep their sport and a note offers "Route it as…" (corrected 2026-10-20; what it should do is [Revised journeys](#revised-journeys-2026-10-20-proposals), B) | `renderQuickSport()` → `js/main.js`'s sport pill |
 | | The route style's chip: the mode's menu (phones) and the toolbar (desktop); How you go keeps the full style section | `quickStyle` → `renderStyle()`'s section, unchanged |
 | | Round trip's chip: the first point's peek, the start, More, Route's tools | `quickLoop` → `openLoop()`, unchanged |
 | | Show the whole route: from the header to the map's column (phones) and the toolbar (desktop) | `els.fit` |
@@ -227,6 +228,80 @@ The map in view at peek on a 390 phone: 82.7 % today, about 91 % when there's no
 - **Layouts:** 390 × 844, 360 × 740, 375 × 667, 1440 × 900 and 1024 × 768; light and dark; Finnish-length words; 200 % zoom. No planner control on a phone under 44 × 44 px; none overlapping another or off the screen; no number cut; no name cut with "…"; the toolbox clear of the map's buttons or docked; the map's column clear of the top bar.
 - **The workflows** in part a–d's checks, and the review's test script with people.
 - **Nothing lost:** every control and section of today's planner is where the change/move/keep table puts it, doing what it did; the regression list passes in every part.
+
+## Revised journeys (2026-10-20, proposals)
+
+A review of the whole interface on 2026-10-20 (Codex's Hand-over on #233) asked that someone new to Polku can do the everyday tasks without a tour or anyone's help. Its findings were checked against `main` at `256ce13` the same day; their status and a proposed order of work are on #233. Three journeys follow, each a section of the mock-up (A, B, C). They are proposals: nothing is built until the user chooses. Everything else in this plan stands.
+
+### A. Start or find a route
+
+**Today:** on a phone the peek says only "Tap the map to add a start point". The other three ways to begin (`renderStart()`: Round trip, Ride a marked route, Import a GPX or KML) are in the sheet, under the fold. "Ride a marked route" focuses the search box. It's offered for Hike, Paddle and Swim too, and Swim has no route kinds in LIPAS. A LIPAS route's card says "Ride this route" for every sport.
+
+**Proposed:**
+- **The peek** keeps the map as the first way ("Tap the map where you start") and puts the other three under it as chips: Round trip, Marked routes, a GPX or KML file. A sport with no marked routes in LIPAS (Swim) has no chip for them. Desktops: a row each, with one line on what it does.
+- **Marked routes** lists LIPAS's routes for the sport in the map's view, as cards side by side like the loops' (#89): a tap on a card or its line picks it, and its line glows. **Follow this route** makes it the route on its own line, as `rideLipas()` does today. Find by name searches all of Finland, as the search does now.
+- **When it can't list them, it says why:** the layer is off in Layers (the list still works, and Show them turns the layer on); LIPAS isn't answering (Retry, never "none here"); none in view (zoom out, or find by name).
+- **No position leaves the device** for the list. It asks LIPAS for the map's view, as the layer already does, through `request()`. A round trip's Where I am says that it sends your position to the router, rounded to five decimals (#281).
+- **Words for every sport:** "Follow this route", not "Ride".
+
+Not solved here: finding places by kind (#121), clickable waymarked routes (#122), loops inside a LIPAS network (#150) and snapping a LIPAS line to the paths (#151).
+
+### B. The sport, and what it changes
+
+**Today** (on `256ce13`, an MTB route of straight legs, then Paddle on the pill):
+- the legs keep MTB, each made explicit, and a note offers "Route it as Paddle" for nine seconds; after that nothing on screen says which sport the route is in;
+- the route's style becomes Paddle's saved style, so a shared route's own MTB style is lost (#71);
+- the toolbox says Over water, but the next leg is drawn as MTB on paths (`addPoint()` continues the last leg's sport);
+- a leg's sport picker calls Paddle "the route's" (`legSportPicker()` uses the map's sport);
+- the checks along the route use the map's sport (`hazards(…, { activity: this.app.activity() })`, #71);
+- Settings' note says the planner routes and times the route for the sport, which it doesn't; its speeds can belong to another sport (#87).
+
+**Three sports, kept apart:** the **map's** (the pill and Settings: what the map shows, and the defaults for a new route); each **leg's** (what routes, times and checks it); and the **next leg's** (the planner's own, which today it borrows from the last leg or the map). With a route drawn, the toolbox's second line says the next leg's sport whenever the route has legs in another one. The sport menu names every sport, says in one line what the map shows for it, and marks the route's sport "your route".
+
+**What a change does to a drawn route. The user chooses; the recommendation is A.**
+
+| | **A. Ask when it matters** (recommended) | **B. The map and the next legs only** | **C. The whole route follows** |
+|---|---|---|---|
+| No route, or the route's own sport | One tap | One tap | One tap |
+| A route and another sport | The menu asks: **The whole route** or **Only the legs you draw next**, each saying what it does; **Keep MTB** and a tap outside change nothing | No question. The route's sport changes in Route › The route's sport | The route's legs are routed again at once; a note with Undo |
+| Legs with a sport set on purpose (a paddle crossing in a ride) | Kept, either way | Kept | Kept |
+| Legs that follow the route | Whole route: the new sport. Next legs: they keep the old one, made explicit as today | Keep the old one | The new sport |
+| A leg's own style | Styles are per sport, so the whole route drops them for the legs that change and says so; the route's style is the route's, per sport (#71) | Unchanged | As A's whole route |
+| Fixed lines (GPX, LIPAS) | Keep their line; their sport follows the route's unless set apart | Unchanged | As A |
+| Land and water | Whole route isn't offered, and says why; only the next legs | — | The route stays; the note says the next legs are in the new sport |
+| Time | The changed legs with the new sport's speeds (#87) | Unchanged | As A |
+| Checks along the route | By each leg's sport, in every option (#71) | | |
+| Routing calls | One per Follow paths leg that changes, paced through `request()`; the choice says how many, and on a long route that it takes minutes | None | As A, but without asking: one tap starts 50 paced calls on a 51-leg route |
+| Undo | Whole route: one step brings back the legs, styles and lines, and the map's and the next leg's sport. Next legs: nothing to undo; the route's sport again goes back | Nothing to undo | One step, as A |
+| Saved routes and share links | No change of format: legs carry their sports (`s=`), the map its own (`a=`), the route its style (`p=`); old links open as today | Same | Same |
+
+**Why A:** the person decides, at the moment it matters and in words, what happens to work they've done, and a second tap is asked only when there's a route in another sport. B is the cheapest to build and never surprises, but whoever wants the whole route in another sport has to find a second control. C is the easiest to explain, but it routes the whole route again without asking, spends routing calls on one tap, and can't do land and water.
+
+**In every option:** the route's style and the checks belong to the route's legs (#71); the toolbox shows the next leg's real mode and sport; "the route's" in a leg's picker means the route's sport; Settings' speeds follow the sport picked above them and re-time the route when it uses that sport (#87); Settings shows the sports' names on phones (#237). "Route it as" leaves the note for the menu. Building it gives the planner a next-leg sport of its own, which #71 already suggested; nothing stored changes.
+
+### C. A warning: notice it, find it on the route, come back
+
+**Today:** with the sheet at its peek nothing says there's anything to read before you go: Check's count is on its tab, under the fold. A row in Check frames the map and shades the profile, but nothing marks the place on the route (#84), and an obstacle isn't drawn when Trail details is off (#85).
+
+**Proposed** (this replaces "the peek's row opens Check" in §6; Check's groups and sources stay as decided):
+- **The peek's row** shows while there's something to read before you go or something wasn't checked, in words: "1 to read before you go · Road works: Teiskontie", with a dashed "? 2" when sources didn't answer.
+- **Markers on the route** for each located item, in its group's shape and icon: a filled triangle, a dashed "?", and an eye for "worth a look", which shows only while Check or an item is in view. Close ones merge into one with a count, and a tap shows the most serious. A stretch that wasn't checked is dashed on the route. With the planner put away, the triangles stay with the route, and a tap opens a card with Avoid and Open in the planner.
+- **One item in view:** a tap on the row, a marker or an item in Check lights its stretch (#84), rings its marker, shows an obstacle's icon whatever Layers says (#85), and on a phone puts the item in the peek: what, where, how sure, Avoid or Retry, and ‹ › along the route. **Back** returns to where it was opened from (the peek, or Check at half), and so do a tap on the map and Escape. On desktops the item is selected in Check and on the map together.
+- **No invented places:** a source missing for the whole route says so in words, with Retry, and has no marker. A message about missing data stays in Not checked, not only in a note that a later one can replace (#265).
+- **At 200 % zoom** the item's card keeps what finds it (what, where, ‹ ›, Back, Check); the rest is in Check.
+- **Built as:** markers as a map layer (a pan that starts on one still moves the map; a tap near it picks it, as the loops' lines are picked), the stretch through 22a's lit leg (`routeLit`), shared with #83's lit leg in its menu.
+
+### Everyday tasks explain themselves; the tour is apart
+
+The optional introduction (#114, phase 19's #189) teaches deeper features later and can be skipped. None of the above waits for it or leans on it. Each control says what it changes where it is: the start's four ways each with its words, the sport's question, the toolbox's next leg, Check's sources, the row and its Back. Tooltips (#304) help a mouse and a keyboard, never a finger, so nothing essential is said only in one. The test for both stays the review's: someone new, without help (§8).
+
+### Checked with the design skills (2026-10-20)
+
+- **break-ui** (360 × 740, 200 %, Finnish, a 123 km route of 52 points, 17 warnings): fixed in the mock-up a marked route's name cut with "…" (now wrapped), card text past the card's edge at 200 %, a Finnish button label past the card, and the item's card filling the screen at 200 %.
+- **emil-design-eng:** the sport menu replayed its entrance on its second step (now in place); a ✕ on a warning read as "dismiss the warning" (now Back, in words); the route's own sport wasn't marked in the menu (now "your route").
+- **apple-design:** the sport question had no visible way out for someone who doesn't know a tap outside cancels (now Keep MTB).
+- **mobile-native:** a sideways swipe on the cards could chain into the browser's back gesture (now contained). For building: the sheet's vertical swipe and the cards' horizontal scroll (#89's too), and markers as a map layer rather than buttons over the map.
+- **Not checked:** real phones, and people (§8).
 
 ## Built
 
