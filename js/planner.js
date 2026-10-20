@@ -3791,9 +3791,15 @@ export class Planner {
     b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
     return b;
   }
-  // a step's top row: Back on the left, the sport on the right
+  // a step's top row: Back on the left, the sport and ✕ on the right, where the ways to begin have them too
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
-    return h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', 'data-k': 'back', onclick: fn, html: `${icon('chevronLeft', 18)}<span>${escapeHtml(label)}</span>` }), this.sportChip());
+    return h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', 'data-k': 'back', onclick: fn, html: `${icon('chevronLeft', 18)}<span>${escapeHtml(label)}</span>` }), this.wayEnd());
+  }
+  // the sport, and ✕ to close the planner as the other panels have it (decided 2026-10-21: it replaces the ways'
+  // Close, and is in every step too, so the sport never moves)
+  wayEnd() {
+    return h('span', { class: 'way-end' }, this.sportChip(),
+      h('button', { type: 'button', class: 'tool way-x', 'data-k': 'close', 'aria-label': 'Close the planner', title: 'Close the planner (R)', onclick: () => this.setActive(false), html: icon('close', 20) }));
   }
   // phones' way out of the planner: Close on the ways to begin, where nothing is done yet (decided 2026-10-20), Done after the first point
   doneBtn(label = 'Done') { return h('button', { type: 'button', class: 'btn done', 'data-k': label.toLowerCase(), title: 'Close the planner (R)', onclick: () => this.setActive(false) }, label); }
@@ -3806,10 +3812,10 @@ export class Planner {
       h('span', { class: 'way-ic', 'aria-hidden': 'true', html: icon(ic, 22) }), h('span', { class: 'way-t' }, h('b', {}, title), h('small', {}, line)),
       desk ? h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 16) }) : null);
     return [
-      // the same top row as each step's: the title where a step has ‹ Ways to begin, the sport on the right where it
-      // always is; on a phone Close goes under it, so nothing moves the sport (decided 2026-10-21)
-      h('div', { class: 'way-bar way-top' }, h('h2', { class: 'way-name' }, 'Start a route'), this.sportChip()),
-      h('div', { class: 'way-sub' }, h('small', {}, `or ${tap} the map to start drawing`), this.doneBtn('Close')),
+      // the same top row as each step's: the title where a step has ‹ Ways to begin, the sport and ✕ on the right
+      // where they always are (decided 2026-10-21)
+      h('div', { class: 'way-bar way-top' }, h('h2', { class: 'way-name' }, 'Start a route'), this.wayEnd()),
+      h('div', { class: 'way-sub' }, h('small', {}, `or ${tap} the map to start drawing`)),
       h('div', { class: 'way-tiles', role: 'group', 'aria-label': 'Ways to begin' }, ...[
         way('draw', 'route', 'Draw it', desk ? `${tap === 'tap' ? 'Tap' : 'Click'} where you start, then each place on the way: Polku follows the paths between them.` : 'Point by point on the map', () => this.openWay('draw')),
         roundTripSports.includes(sp) ? way('loop', 'roundtrip', 'Round trip', desk ? 'A loop of the length or time you pick: three to choose from.' : 'A loop of a length you pick', () => this.openLoop(null, { fromWays: true })) : null,

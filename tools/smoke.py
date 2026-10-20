@@ -5248,7 +5248,7 @@ def nextleg(chrome):
     press(pg, pg.js("nlT.toastBtn('Walk on the ice')"), f'{name}: Walk on the ice', True)
     time.sleep(0.6)
     ice = pg.js("""(async () => { const p = polku.planner, P = await import(location.origin + '/js/planner.js'); for (let k = 0; k < 30 && !(p.analysis && p.legs.length && p.legs.at(-1).ice && p.legs.at(-1).result); k++) await new Promise((r) => setTimeout(r, 100));
-      const w = p.analysis ? p.iceWarnings(p.analysis).map((x) => x.text) : [], url = p.shareUrl(), back = P.parseShared(new URL(url).searchParams);
+      const w = p.analysis ? p.iceWarnings(p.analysis).map((x) => x.text) : [], url = p.shareUrl(), back = P.parseShared(new URL(url).searchParams) || {};
       const i = p.legs.length - 1, l = p.legs[i];
       return { i, leg: l ? l.mode + (l.ice ? ' ice' : '') : 'none', sport: l && p.legSport(i), mode: p.mode, w, ic: new URL(url).searchParams.get('ic'), back: back.ice }; })()""")
     if ice['leg'] != 'line ice' or ice['sport'] != 'hike' or ice['mode'] != 'line' or ice['w'] != ['On the ice: Polku can’t see whether it holds'] or ice['ic'] != str(ice['i']) or ice['back'] != [ice['i']]:
@@ -5280,7 +5280,8 @@ def nextleg(chrome):
     # …and in the pill's menu, the same choice
     escape(pg)
     pg.js("polku.set({ activity: 'mtb' }), true")
-    time.sleep(0.4)
+    # (the sport's note goes before the menu is opened again: on a phone it lies over the menu's lower rows)
+    pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => (document.querySelector('#toast').hidden || Date.now() - t0 > 8000 ? ok(true) : setTimeout(go, 100)); go(); })")
     press(pg, pg.js("nlT.at('#activity-bar .act-current')"), f'{name}: the pill', True)
     press(pg, pg.js("nlT.at('#activity-bar .act[data-k=paddle]')"), f'{name}: the pill’s Paddle', True)
     c = pg.js("(() => { const m = document.querySelector('#activity-bar .act-menu'); return { open: !m.hidden, crafts: [...m.querySelectorAll('.act-chip')].map((b) => b.textContent.trim() + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(','), focus: document.activeElement.textContent.trim() }; })()")
@@ -5329,6 +5330,10 @@ def nextleg(chrome):
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', False)
     if pg.js('nlT.chipAt()') != ways:
         fails.append(f"{name}: the sport chip moves from the ways to begin ({ways}) to Draw it ({pg.js('nlT.chipAt()')})")
+    # its ✕ closes the planner, as in the ways to begin
+    press(pg, pg.js("nlT.at('.pl-way .way-x[data-k=close]')"), f'{name}: Draw it’s ✕', False)
+    if pg.js('polku.planner.active'):
+        fails.append(f"{name}: Draw it's ✕ left the planner open")
     pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); for (const q of [[23.733, 61.4975], [23.738, 61.4985], [23.743, 61.4975]]) p.addPoint(q); return true; })()")
     pg.js('nlT.settle(3)')
     o = pg.js("(() => { const p = polku.planner, r = (e) => e.getBoundingClientRect(); return { seg: r(p.els.modeSeg).right, sport: r(p.els.sportBtn).left, style: r(p.els.styleBtn).left, shown: !!p.els.sportBtn.offsetParent }; })()")
@@ -6194,8 +6199,9 @@ START_LIB = """(() => {
     }
     if (/\\bRide\\b/.test(txt(way()))) err('the ways say Ride (#306)');
     // the way out on a phone says Close: nothing is done yet (2026-10-20)
-    const out = $('.pl-way .way-sub .done');
-    if (!desk && (!out || txt(out) !== 'Close')) err(`the ways' way out says ${out ? txt(out) : 'nothing'}, not Close`);
+    // the way out is ✕ at the top right, beside the sport, as the other panels have it (2026-10-21)
+    const out = $('.pl-way .way-top .way-x[data-k=close]');
+    if (!out || out.getAttribute('aria-label') !== 'Close the planner' || out.previousElementSibling !== $('.pl-way .way-top .sport-chip')) err(`the ways' way out: ${out ? out.getAttribute('aria-label') : 'none'}, not ✕ after the sport`);
     T.errs.push(...(await T.toolsAt(0, 'no route, no history')));
     // no Done before the first point on desktops (Back is the way out); the phone's ways card keeps its own
     if (desk && p.els.toolDone.offsetParent) err('the toolbar has Done before the first point');
