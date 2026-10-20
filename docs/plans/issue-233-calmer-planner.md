@@ -4,7 +4,7 @@ The design. What's still to do, and its status, is on GitHub: [Phase 25: a calme
 
 - **Status (2026-10-18): approved; phase 25, built in four parts (25a–25d),** after the shared fixes below and before 22b. From phase 24's review ([the report](../reviews/2026-10-17-design/README.md), #177): the user chose variant B, a second iteration worked out seven questions, and the user settled the last choices on 2026-10-17 and approved the design on 2026-10-18. Nothing is built yet.
 - **The mock-up:** [mockups/phase-24-planner.html](mockups/phase-24-planner.html), clickable on phone and desktop frames, with switches for the worst case, Finnish and Swedish, and the theme. `?frame=<id>` shows one frame at full size; `&w=360&h=740`, `&z=2` (200 % zoom), `&lang=fi`, `&worst=1`. Pictures of the second iteration: `pr-screenshots`, `claude/phase-24-design/iter2/`.
-- **Revised 2026-10-20, not decided:** three journeys through the planner, after a review of the whole interface asked that everyday tasks explain themselves. They're proposals for the user to choose: see [Revised journeys](#revised-journeys-2026-10-20-proposals) below, and sections A to C of the mock-up (`&sport=ask|next|all` switches the sport's behaviour).
+- **Revised 2026-10-20:** three journeys through the planner, after a review of the whole interface asked that everyday tasks explain themselves: see [Revised journeys](#revised-journeys-2026-10-20-proposals) below, and sections A to C of the mock-up. **Decided the same day: the sport works as option A** (B below). The rest of A to C, and the order of work, are still the user's to choose. The mock-up's `&sport=next|all` still shows the options not taken.
 
 ## Decided
 
@@ -258,9 +258,9 @@ Not solved here: finding places by kind (#121), clickable waymarked routes (#122
 
 **Three sports, kept apart:** the **map's** (the pill and Settings: what the map shows, and the defaults for a new route); each **leg's** (what routes, times and checks it); and the **next leg's** (the planner's own, which today it borrows from the last leg or the map). With a route drawn, the toolbox's second line says the next leg's sport whenever the route has legs in another one. The sport menu names every sport, says in one line what the map shows for it, and marks the route's sport "your route".
 
-**What a change does to a drawn route. The user chooses; the recommendation is A.**
+**What a change does to a drawn route. Decided (the user's choice, 2026-10-20): A.** B and C stay here as the options weighed.
 
-| | **A. Ask when it matters** (recommended) | **B. The map and the next legs only** | **C. The whole route follows** |
+| | **A. Ask when it matters** (decided) | **B. The map and the next legs only** | **C. The whole route follows** |
 |---|---|---|---|
 | No route, or the route's own sport | One tap | One tap | One tap |
 | A route and another sport | The menu asks: **The whole route** or **Only the legs you draw next**, each saying what it does; **Keep MTB** and a tap outside change nothing | No question. The route's sport changes in Route › The route's sport | The route's legs are routed again at once; a note with Undo |
@@ -275,7 +275,7 @@ Not solved here: finding places by kind (#121), clickable waymarked routes (#122
 | Undo | Whole route: one step brings back the legs, styles and lines, and the map's and the next leg's sport. Next legs: nothing to undo; the route's sport again goes back | Nothing to undo | One step, as A |
 | Saved routes and share links | No change of format: legs carry their sports (`s=`), the map its own (`a=`), the route its style (`p=`); old links open as today | Same | Same |
 
-**Why A:** the person decides, at the moment it matters and in words, what happens to work they've done, and a second tap is asked only when there's a route in another sport. B is the cheapest to build and never surprises, but whoever wants the whole route in another sport has to find a second control. C is the easiest to explain, but it routes the whole route again without asking, spends routing calls on one tap, and can't do land and water.
+**Why A** (the reasons it was recommended): the person decides, at the moment it matters and in words, what happens to work they've done, and a second tap is asked only when there's a route in another sport. B is the cheapest to build and never surprises, but whoever wants the whole route in another sport has to find a second control. C is the easiest to explain, but it routes the whole route again without asking, spends routing calls on one tap, and can't do land and water.
 
 **In every option:** the route's style and the checks belong to the route's legs (#71); the toolbox shows the next leg's real mode and sport; "the route's" in a leg's picker means the route's sport; Settings' speeds follow the sport picked above them and re-time the route when it uses that sport (#87); Settings shows the sports' names on phones (#237). "Route it as" leaves the note for the menu. Building it gives the planner a next-leg sport of its own, which #71 already suggested; nothing stored changes.
 

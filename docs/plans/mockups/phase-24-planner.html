@@ -21,7 +21,7 @@
   ?frame=<id>            one frame alone at full size (screenshots, evidence/mockup_probe2.py)
   &w=&h=                 its screen size; &z=2 renders it as at 200 % zoom
   &lang=fi|sv &worst=1 &theme=dark &trip=trip|share|more &modes=menu|buttons &rt=presets|button
-  &sport=ask|next|all     what a sport change does to a drawn route (2026-10-20: A, B or C, for the user to choose)
+  &sport=ask|next|all     what a sport change does to a drawn route (A, decided on 2026-10-20; B and C, the options not taken)
 -->
 <style>
 :root, .fr {
@@ -583,7 +583,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 <main class="cv">
   <header class="cv-head">
     <h1>A calmer route planner (#233)</h1>
-    <p><b>Revised 2026-10-20:</b> sections A to C, below the decisions, are proposals for the user to choose (start or find a route, the sport and what it changes, a warning found on the route); the plan's “Revised journeys” section says why and what each closes.</p>
+    <p><b>Revised 2026-10-20:</b> sections A to C, below the decisions, follow three journeys (start or find a route, the sport and what it changes, a warning found on the route). What a sport change does (section B) was decided the same day: option A, ask. The rest are proposals for the user to choose; the plan's “Revised journeys” section says why and what each closes.</p>
     <p>2026-10-17. Builds on phase 24's review and the choices made from its first mock-up (B: the tools float, a one-row peek, only the selected waypoint's buttons). The reasons, the plan to build it and what Done means are in <code>docs/plans/issue-233-calmer-planner.md</code>. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden.</p>
     <p><b>Every frame can be tapped</b> and keeps its own state; <b>Reset</b> starts it again. Tap the map to add points, try the toolbox, the round trip, Done and Edit, More, Check and the waypoint list. The switches at the bottom apply to every frame: the worst case (long Finnish names, 52 points, long numbers, many warnings), language (rough Finnish and Swedish, only to test the room words take) and theme.</p>
     <p><b>Final, 2026-10-17:</b> the layout and the interactions here are decided. <b>What's drawn simply on purpose</b> (the profile, Climbs, On the route, On the map, Go's time and the weather along the route, and parts of the leg editor) stays exactly as Polku has it today: the mock-up shows where things go, not everything in them. The plan lists what changes, what moves and what stays as it is.</p>
@@ -604,10 +604,10 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-q" aria-labelledby="rev-h">
     <h2 id="rev-h">Revised 2026-10-20: three journeys, for the user to choose</h2>
-    <p>After 25a (#302), a review of the whole interface asked that everyday tasks explain themselves, without a tour. Sections A to C below follow three journeys through it, with the map, Layers, Settings and the timeline where they matter. They are <b>proposals</b>; nothing in them is built until the user chooses. Sections 0 to 8 are the design approved on 2026-10-18, kept as they were (25a built 1 and part of 3, with the route's actions on the toolbar by width and the timeline over the map while planning).</p>
+    <p>After 25a (#302), a review of the whole interface asked that everyday tasks explain themselves, without a tour. Sections A to C below follow three journeys through it, with the map, Layers, Settings and the timeline where they matter. They are <b>proposals</b>, except the sport's behaviour in B, <b>decided on 2026-10-20: option A</b>; nothing is built until the user chooses the rest. Sections 0 to 8 are the design approved on 2026-10-18, kept as they were (25a built 1 and part of 3, with the route's actions on the toolbar by width and the timeline over the map while planning).</p>
     <ol>
       <li><b>A · Start or find a route:</b> the four ways Polku has today (draw it, a round trip, a marked route from LIPAS, a file) in the peek, not only after raising the sheet; marked routes in view as cards, like the loops'.</li>
-      <li><b>B · The sport, and what it changes:</b> the menu says what each sport shows; with a route drawn, it asks whether the whole route changes or only the legs drawn next. The toolbox keeps saying which sport the next leg is. <i>The behaviour is the user's choice:</i> the switch at the bottom shows the three options (A: ask, recommended; B: next legs only; C: the whole route).</li>
+      <li><b>B · The sport, and what it changes:</b> the menu says what each sport shows; with a route drawn, it asks whether the whole route changes or only the legs drawn next. The toolbox keeps saying which sport the next leg is. <b>Decided 2026-10-20: option A</b> (ask); the switch at the bottom still shows the options not taken (B: next legs only; C: the whole route).</li>
       <li><b>C · A warning: notice it, find it, come back:</b> a row in the peek for what to read before you go and what wasn't checked; a marker on the route for each; a tap shows it on the route with ‹ › along it and ✕ back to where you were.</li>
     </ol>
   </section>
@@ -633,7 +633,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-row" id="sb">
     <h2>B · The sport, and what it changes</h2>
-    <p>Today the pill changes the map's sport. With a route drawn, its legs keep their sport, a note offers "Route it as…" for nine seconds, and then nothing on screen says which sport the route or the next leg is in. Checked on <code>main</code> at 256ce13: after MTB → Paddle the toolbox says Over water while the next leg is drawn as MTB on paths, a leg's sport picker calls Paddle "the route's", and a shared route's own style is replaced (#71). Here the menu names every sport with a line on what the map shows for it. <b>With no route, picking is one tap.</b> With a route drawn and a sport other than the route's, the menu asks <b>what it's for</b>: the whole route (its legs in the route's sport are routed again, with the cost in routing calls and Undo; legs in another sport and fixed lines keep theirs), or only the legs you draw next (the drawn legs stay; the toolbox's second line says the next leg's sport, so it stays visible after the note). Between land and water, the whole route isn't offered: a ride can't be paddled on the same line. Settings has the same choice with names on phones (#237), and its speeds follow the sport picked above them (#87). <b>Use the "Sport change" switch at the bottom</b> to try the other two options on these frames.</p>
+    <p>Today the pill changes the map's sport. With a route drawn, its legs keep their sport, a note offers "Route it as…" for nine seconds, and then nothing on screen says which sport the route or the next leg is in. Checked on <code>main</code> at 256ce13: after MTB → Paddle the toolbox says Over water while the next leg is drawn as MTB on paths, a leg's sport picker calls Paddle "the route's", and a shared route's own style is replaced (#71). Here the menu names every sport with a line on what the map shows for it. <b>With no route, picking is one tap.</b> With a route drawn and a sport other than the route's, the menu asks <b>what it's for</b>: the whole route (its legs in the route's sport are routed again, with the cost in routing calls and Undo; legs in another sport and fixed lines keep theirs), or only the legs you draw next (the drawn legs stay; the toolbox's second line says the next leg's sport, so it stays visible after the note). Between land and water, the whole route isn't offered: a ride can't be paddled on the same line. Settings has the same choice with names on phones (#237), and its speeds follow the sport picked above them (#87). <b>Decided 2026-10-20: this is option A.</b> The "Sport change" switch at the bottom shows the two options not taken on these frames.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jb-empty" data-st='{"stage":"start","pop":"sport","sp":"list"}'><figcaption><b>No route: one tap</b>Each sport with its name and what the map shows for it.</figcaption></figure>
       <figure class="fr phone" id="jb-list" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"list"}'><figcaption><b>A route drawn</b>The menu says the route's sport. Pick Hike.</figcaption></figure>
@@ -795,7 +795,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <div role="group" aria-label="Data"><span>Data</span><button type="button" data-o="worst" data-v="0">Normal</button><button type="button" data-o="worst" data-v="1">Worst case</button></div>
   <div role="group" aria-label="Language"><span>Words</span><button type="button" data-o="lang" data-v="en">EN</button><button type="button" data-o="lang" data-v="fi">FI</button><button type="button" data-o="lang" data-v="sv">SV</button></div>
   <div role="group" aria-label="Theme"><span>Theme</span><button type="button" data-o="theme" data-v="light">Light</button><button type="button" data-o="theme" data-v="dark">Dark</button></div>
-  <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
+  <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask (decided)</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
   </div>
 </nav>
 
@@ -817,7 +817,7 @@ const OPT = {
   theme: Q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
   trip: ['trip', 'share', 'more'].includes(Q.get('trip')) ? Q.get('trip') : 'trip',
   modes: Q.get('modes') === 'buttons' ? 'buttons' : 'menu', rt: Q.get('rt') === 'button' ? 'button' : 'presets',
-  // what a sport change does to a drawn route (2026-10-20, for the user to choose): ask, next legs only, the whole route
+  // what a sport change does to a drawn route: ask (A, decided on 2026-10-20); next legs only (B) and the whole route (C), not taken
   sport: ['ask', 'next', 'all'].includes(Q.get('sport')) ? Q.get('sport') : 'ask',
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
@@ -1137,7 +1137,7 @@ const legCount = (st) => (st.stage === 'route' ? (st.long || st._worst ? 51 : 2)
 const mainLegs = (st) => (st.stage === 'route' ? (st.long || st._worst ? 51 : 2) : 0);
 const nextOf = (st) => st.next || st.sport;
 // The sport menu: the sports with their names and one line each; with a route drawn and a sport other than the
-// route's, the choice of what it changes. `v.sport`: 'ask' (recommended), 'next' (the map and the next legs only),
+// route's, the choice of what it changes. `v.sport`: 'ask' (A, decided), 'next' (the map and the next legs only),
 // 'all' (the whole route follows); the last two apply at once.
 function sportMenu(st, v) {
   const route = st.stage === 'route', R = sL(st.sport);
