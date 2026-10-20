@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### A round trip keeps only undo and redo in the toolbox ([#311](https://github.com/TommiContursi/Polku/issues/311))
 
-While a round trip is open, the toolbox has only undo and redo: a tap on the map then picks a loop or moves its start, and draws nothing. The drawing mode, **More** and, on a desktop, **Done** come back once you take a loop or close the round trip.
+While a round trip is open, the toolbox has only undo and redo: a tap on the map then picks a loop or moves its start, and draws nothing. The drawing mode, **More** and, on a desktop, **Done** come back once you take a loop or close the round trip. On a phone, the bottom of the round trip's form, with **Make 3 loops**, is no longer cut off by a few pixels.
 
 ### The ways to begin say Close
 

@@ -5785,6 +5785,12 @@ START_LIB = """(() => {
     await wait(100);
     return items;
   };
+  // a phone's sheet as tall as its view: the view scrolls only once the sheet has stopped below the top bar
+  T.whole = (what) => {
+    if (p.layout() !== 'sheet') return;
+    const w = way(), room = innerHeight - 76 - 2;
+    if (w.scrollHeight > w.clientHeight + 1 && p.panel.getBoundingClientRect().height < room) err(`${what}: the view is cut by ${w.scrollHeight - w.clientHeight} px though the sheet has room`);
+  };
   // in a round trip nothing is drawn: only undo and redo, no mode, More or Done (#311)
   T.loopTools = (what) => { const on = shown().join('|'); if (on !== 'Undo|Redo') err(`${what}: the toolbox has ${on || 'nothing'}, not only undo and redo (#311)`); };
   T.toolsAt = async (stage, what) => {
@@ -6116,6 +6122,7 @@ START_LIB = """(() => {
     if ((await routed()) !== T.r0) err('a length opened the form with routing calls');
     if (!/From your first point/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
     T.loopTools('the round trip’s form');
+    T.whole('the round trip’s form');
     window.holdRoutes();
     return T.at('.pl-way .rt-make');
   };
@@ -6181,6 +6188,7 @@ START_LIB = """(() => {
     await wait(300);
     const at = await T.at('.pl-way .rt-make');
     if (!at || !at.clear) err(`${innerWidth} × ${innerHeight}: Make 3 loops is ${at ? `under ${at.over}` : 'not on screen'}`);
+    T.whole(`${innerWidth} × ${innerHeight}`);
     p.closeLoop();
     return T.errs.splice(0);
   };

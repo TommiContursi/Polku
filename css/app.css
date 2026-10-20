@@ -669,6 +669,8 @@ body:not(.ready) .map-ctrls { display: none; }
 .sheet.way-only { max-height: calc(100vh - 76px); max-height: calc(100dvh - 76px); }
 .sheet.way-only :is(.sheet-head, .sheet-head-in) { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .sheet.way-only .pl-way { flex: 0 1 auto; min-height: 0; }
+/* (the body waits under a held sheet: its padding would take the bottom of the view, cutting Make 3 loops) */
+.sheet[data-layout="sheet"].way-only:not(.dragging) .sheet-body { display: none; }
 /* beside the side panel the tabs under a round trip give way (they scroll), not the form: it scrolls only past the panel's room */
 .sheet[data-layout="side"].way-only :is(.sheet-head, .sheet-head-in) { flex: none; }
 .sheet[data-layout="side"] .pl-way { max-height: calc(100vh - 110px); max-height: calc(100dvh - 110px); }
