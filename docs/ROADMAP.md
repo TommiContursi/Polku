@@ -1,32 +1,13 @@
 # Polku roadmap
 
-**[The GitHub Project](https://github.com/users/TommiContursi/projects/1) holds
-the live roadmap and priorities.** Change the order there without a commit.
-[AGENTS.md](../AGENTS.md) holds the shared development rules.
+**The order and priorities are in [the GitHub Project](https://github.com/users/TommiContursi/projects/1):** Now, Next, Later and Someday, changed there by the user without a commit. How to work on Polku is in [AGENTS.md](../AGENTS.md).
 
-- **Now, Next, Later, Someday:** the user's delivery order, with existing
-  phase issues representing milestones. In progress marks claimed work;
-  Done follows issue closure. The native Milestone and linked-PR fields
-  show delivery membership and execution.
-- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** group
-  related work into subprojects or deliverables and show completion. Set
-  an issue's native Milestone in the Project or on the issue; membership
-  does not set priority. Existing phase issues hold scope, dependencies,
-  decisions and the current Hand-over. Keep existing names; future names
-  describe product outcomes.
-- **Designs:** [plans/](plans/); finished phases: [plans/done.md](plans/done.md).
-  Plans describe approved behavior, not a second live backlog.
-- **Delivery evidence:** merged PRs, issue closure reasons,
-  [CHANGELOG](../CHANGELOG.md) and [retros/](retros/).
-- **Watch items:** dates/triggers remain in their issues and the Project's
-  Due field. Urgency is considered with the current delivery.
+- **[Milestones](https://github.com/TommiContursi/Polku/milestones)** group the issues that ship together: one for each phase, one for each round of fixes. A milestone says what belongs together, not when it's done.
+- **Phase issues** hold a phase's scope, decisions and latest Hand-over, and [docs/plans/](plans/) its design. Finished phases are in [plans/done.md](plans/done.md).
+- **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`. A `watch` issue says when to look again: a date (in its title and the Project's Due field) or a trigger.
+- **What shipped:** the [CHANGELOG](../CHANGELOG.md), closed issues and milestones, and the [retros](retros/).
 
-Project workflows maintain routine add/close/merge/link/reopen transitions
-when enabled; workers record claims, blockers and decisions. Smoke testing
-continues independently under [#268](https://github.com/TommiContursi/Polku/issues/268).
-The previous approved order and dependencies are preserved in
-[the 2026-10-18 snapshot](https://github.com/TommiContursi/Polku/blob/6b1e2932cab389cfc9e9367918d126a38f5d2047/docs/ROADMAP.md)
-as historical evidence.
+The order of the phases and the reasons for it, as last kept in this file, are in [its 2026-10-18 version](https://github.com/TommiContursi/Polku/blob/6b1e2932cab389cfc9e9367918d126a38f5d2047/docs/ROADMAP.md).
 
 ## What holds for every phase
 

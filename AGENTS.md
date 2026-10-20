@@ -31,43 +31,31 @@ is real.
 ## What to work on
 
 **GitHub holds what to do; the repo holds how things work.** The
-[Project](https://github.com/users/TommiContursi/projects/1) holds live order
-and priorities; milestones group deliveries; phase issues hold scope,
-decisions and handovers; `docs/plans/` holds designs.
+[Project](https://github.com/users/TommiContursi/projects/1) holds the order
+and priorities. A milestone groups the issues that ship together, not their
+order. A phase issue holds its scope, decisions and Hand-overs, and
+`docs/plans/` its design.
 
-- **Start with the current milestone's outcome,** or the task the user
-  selected. Resume handed-over work before picking a new task. Read the
-  phase issue's current Hand-over, then the selected issue/PR. Check their
-  state and remote commit before following an old
-  next step. Fetch older decisions, code and plans only as needed. Before
-  proposing a significant change, check the linked decisions and existing
-  work in that area. Routine startup is not a backlog audit.
-- **Claim before coding:** comment with branch and worker/session identity
-  (Claude A, Claude B or Codex), and set the issue In progress. A phase is
-  claimed on its phase issue. Check the current claim; take over after its
-  release or the user says that session has stopped, never from age alone.
-  Use the pushed branch and handover, not another worker's local state.
-  Report missing GitHub permissions or unpublished work explicitly.
-- **Follow the user's Project order,** Now top first; Later and Someday need
-  the user's OK. Milestones group related work, not execution order. Check
-  an issue's native Milestone when recording or selecting work; set it in
-  the Project or issue when the approved scope makes placement clear.
-  Keep existing milestones, names and phase issues; build approved parts.
-  Future milestone names describe their product outcome.
-- **Place findings in the roadmap before spending significant effort.**
-  Search existing issues and check whether the behavior still exists, a
-  merged fix already covers it, or an approved upcoming change will replace
-  it. Add evidence to the same problem; group related findings. Put work
-  within approved scope in its existing milestone; link findings covered
-  by a redesign to that phase. Queue independent fixes in the open Fixes
-  milestone and ideas in Someday. Only a delivery blocker or serious
-  user-facing problem interrupts current work, including safety,
-  reliability and accessibility regressions. Small means effort, not urgency.
-- **Keep decisions with the work.** A larger investigation or scope/order
-  change needs the user's decision. Close fixed, duplicate or obsolete
-  issues with evidence; uncertainty stays explicit. At a delivery
-  checkpoint, update its phase issue with what shipped, blockers and the
-  next approved action; triage only the related work touched by that delivery.
+- **Start from the latest Hand-over** on the phase issue, or from the task
+  the user picked, and check it against its PR and branch on GitHub before
+  following its next step. Otherwise pick from the Project's Now column, top
+  first; Later and Someday need the user's OK. Read older decisions, code
+  and plans only as the task needs them: starting is not a backlog audit.
+- **Claim it first:** a comment on the issue with your branch, saying which
+  agent you are (Claude A, Claude B or Codex: all post as the user's GitHub
+  account). A phase is claimed on its phase issue. Take over only when a
+  claim is released or the user says its session has stopped, never because
+  it's old: read its last Hand-over, continue from its pushed branch (or
+  `main` if nothing was pushed), and say so on the issue.
+- **What you notice but don't do now** gets an issue at once (see "Bugs and
+  findings"). First check that it still happens on `main` and isn't replaced
+  by an approved design; if it is, link it to that phase. Small fixes go into
+  the open Fixes milestone, each in a Fix PR of its own, never mixed into a
+  phase; ideas wait in Someday. Only a blocker or a serious problem for
+  people using Polku (safety, reliability, accessibility) interrupts the
+  work at hand.
+- **The user decides** a larger investigation and any change of scope or
+  order.
 - **One session, one issue** (or one part of a phase). Start a new session
   (or Codex thread) from the Hand-over at a checkpoint: the PR is ready, a
   part is done, or the next issue begins. In a session past about 300k
@@ -81,14 +69,14 @@ decisions and handovers; `docs/plans/` holds designs.
   subagents to verify or run the suite.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
-  issue, headed "Hand-over", in 6–8 short lines: worker and claim
-  active/released; branch/commit and PR; done; verified commands/run links,
-  tested revision and environment; not verified; linked decisions;
-  unresolved questions/blockers; next action. Link the current Hand-over
-  from the phase/issue body. Reuse evidence whose revision and coverage still
-  apply; an account/tool switch alone does not invalidate it. Write one
-  before waiting for the user's answer/review. Never end a turn with
-  uncommitted work; a worker with separate local state needs pushed work.
+  issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
+  whether the claim is released; branch, commit and PR; done; verified, with
+  the exact commands and the commit they ran on; not verified; decisions,
+  with links; next step; what to watch out for. A check stays good for the
+  commit it ran on, whoever ran it. Write one before a turn that waits for
+  the user's answer or review too, so the answer can start a fresh session.
+  Never end a turn with uncommitted work. Phase 24's first claim stopped on
+  2026-10-17 with nothing pushed, and all of it was lost (#177).
 - Docs and tooling PRs stay on their one subject.
 
 **Effort:** xhigh for code, design, plans, and anything touching routing,
@@ -129,19 +117,19 @@ the whole conversation again, so change models only between sessions
 - **Don't break:** weather along the route, Heads-up and Avoid, water routing
   and carries, round trips, offline save and preview, GPX/KML import and GPX
   export, share links, 3D and hover.
-- Follow the module that already does the job (DEVELOPING has the list).
-  Match the change and verification to the outcome. Use skills when useful;
-  add a refactor, helper, abstraction or dependency only for a demonstrated
-  need in the task. A small visual edit stays a focused visual edit.
+- Follow the module that already does the job (DEVELOPING has the list). Keep
+  changes to the point: tidy only what makes the change simpler, and add a
+  helper, abstraction or dependency only when the task needs one. Use skills
+  where they help.
 - Think of the phone outdoors: touch, one thumb, small screens, bright sun,
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
   `docs/plans/mockups/`, checked in the worst case too (360 px, 200 % zoom,
-  long Finnish words). Use available design skills when helpful; small
-  visual edits don't need a mock-up. The mock-up and a short plan are enough:
-  no probe scripts, measurements or evidence files unless the user asks.
-  The user chooses before it's built; #123's plan shows how.
+  long Finnish words), with the design skills that help. A small visual change
+  needs none. The mock-up and a short plan are enough: no probe scripts,
+  measurements or evidence files unless the user asks. The user chooses
+  before it's built; #123's plan shows how.
 
 ## Testing
 
@@ -157,9 +145,9 @@ the whole conversation again, so change models only between sessions
   may be using: a test then runs half on one branch and half on the other.
 - **Do what a user does:** click, drag, undo, reload. A button being there
   proves nothing.
-- **Every bug fix has a regression check in `tools/smoke.py`** that fails
-  before the fix and passes after it. Reuse an existing check when it
-  demonstrates the bug; add or extend one only when coverage is missing.
+- **Every bug fix has a check in `tools/smoke.py`** that fails before the fix
+  and passes after it: an existing one if it already shows the bug, otherwise
+  a new one.
 - **App changes pass `python3 tools/smoke.py`.** While working, run only the
   groups you touch: `python3 tools/smoke.py water loops`.
 - **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
@@ -176,10 +164,9 @@ the whole conversation again, so change models only between sessions
 
 ## Pull requests
 
-- For new work, branch from `main`, or from the PR below yours if it isn't
-  merged yet ("after #N" in the PR's first line). Check the branch and any
-  uncommitted changes. Never change a branch another worker actively owns.
-  After an agreed takeover, continue the handed-over pushed branch.
+- Branch from `main`, or from the PR below yours if it isn't merged yet ("after
+  #N" in the PR's first line). First check the branch and any uncommitted
+  changes. Never work on another agent's branch unless it was handed over.
 - **The repo squash-merges:** the PR's title and description become its one
   commit on `main`, so keep the description true as the PR changes. When the
   PR below yours is merged, rebase yours onto `main` without its commits
@@ -189,9 +176,9 @@ the whole conversation again, so change models only between sessions
   "Phase 22a: the drawer in three tabs", "Fix: the map's credits stay folded on
   phones", "Docs: …". Not `feat:` or `docs:`.
 - **Body:** what changes for the user, how you tested it, what isn't done or
-  is still unknown, plus the issues it found. Use "Fixes #65" only for issues
-  fully delivered. Reference the phase issue in partial PRs; close it only
-  when the whole phase is delivered and its acceptance checks are met.
+  is still unknown. "Fixes #65" for each issue it fixes in full, and the
+  issues it found. A phase's parts refer to the phase issue; the last part
+  fixes it.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
 - **Screenshots** of a change people see: `tools/shoot.py OUTDIR before|after
@@ -205,9 +192,7 @@ the whole conversation again, so change models only between sessions
     incomplete or inaccurate, preserving the existing factual style and useful
     qualifications. Update docs/USING.md when controls or workflows change.
     Keep release-by-release details in CHANGELOG.md;
-  - for a phase: what was built in its plan in `docs/plans/`, and delivered
-    parts/remaining acceptance on its phase issue. Partial PRs reference the
-    phase and close only the issues they fully deliver;
+  - for a phase's part: what was built, in its plan in `docs/plans/`;
   - DEVELOPING, where how something works has changed.
 - **Offer a review** when a phase PR, or a fix that touches routing, saved
   data or share links, is ready: a fresh session (Claude or Codex, whichever

@@ -191,7 +191,7 @@ docs/               ROADMAP (the order), plans/ (phase designs), retros/, review
 
 ## Working on it
 
-The rules are in [AGENTS.md](../AGENTS.md). In short: pick from the board's Now column and claim the issue; one phase or one fix per pull request, with "Fixes #n" and the issue's milestone; `tools/smoke.py` passes; CHANGELOG updated in the same PR (and a phase's plan); every request through `js/net.js`; share links keep working; and only the user merges.
+The rules are in [AGENTS.md](../AGENTS.md). In short: start from the latest Hand-over or the Project's Now column, and claim the issue; one part of a phase or one fix per pull request, with "Fixes #n" and the issue's milestone; `tools/smoke.py` passes; CHANGELOG updated in the same PR (and a phase's plan); every request through `js/net.js`; share links keep working; and only the user merges.
 
 ### Design skills
 
