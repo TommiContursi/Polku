@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Polku planner</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="A clickable mock-up of Polku's calmer route planner (#233), as decided on 2026-10-17: the drawing toolbox with More, the desktop toolbar, round trips in the peek, Done and the route's view, Check by how serious and how sure, and long waypoint lists. Phone and desktop, light and dark, worst cases. Not wired to the app.">
+<meta name="description" content="A clickable mock-up of Polku's calmer route planner (#233). Revised on 2026-10-20 with three journeys to choose from: start or find a route, the sport and what it changes, a warning found on the route. As decided on 2026-10-17: the drawing toolbox with More, the desktop toolbar, round trips in the peek, Done and the route's view, Check by how serious and how sure, and long waypoint lists. Phone and desktop, light and dark, worst cases. Not wired to the app.">
 <!--
   The calmer planner (#233), second iteration, 2026-10-17. The design, its reasons and the plan to
   build it are in docs/plans/issue-233-calmer-planner.md; the review it builds on is
@@ -21,6 +21,7 @@
   ?frame=<id>            one frame alone at full size (screenshots, evidence/mockup_probe2.py)
   &w=&h=                 its screen size; &z=2 renders it as at 200 % zoom
   &lang=fi|sv &worst=1 &theme=dark &trip=trip|share|more &modes=menu|buttons &rt=presets|button
+  &sport=ask|next|all     what a sport change does to a drawn route (2026-10-20: A, B or C, for the user to choose)
 -->
 <style>
 :root, .fr {
@@ -582,6 +583,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 <main class="cv">
   <header class="cv-head">
     <h1>A calmer route planner (#233)</h1>
+    <p><b>Revised 2026-10-20:</b> sections A to C, below the decisions, are proposals for the user to choose (start or find a route, the sport and what it changes, a warning found on the route); the plan's “Revised journeys” section says why and what each closes.</p>
     <p>2026-10-17. Builds on phase 24's review and the choices made from its first mock-up (B: the tools float, a one-row peek, only the selected waypoint's buttons). The reasons, the plan to build it and what Done means are in <code>docs/plans/issue-233-calmer-planner.md</code>. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden.</p>
     <p><b>Every frame can be tapped</b> and keeps its own state; <b>Reset</b> starts it again. Tap the map to add points, try the toolbox, the round trip, Done and Edit, More, Check and the waypoint list. The switches at the bottom apply to every frame: the worst case (long Finnish names, 52 points, long numbers, many warnings), language (rough Finnish and Swedish, only to test the room words take) and theme.</p>
     <p><b>Final, 2026-10-17:</b> the layout and the interactions here are decided. <b>What's drawn simply on purpose</b> (the profile, Climbs, On the route, On the map, Go's time and the weather along the route, and parts of the leg editor) stays exactly as Polku has it today: the mock-up shows where things go, not everything in them. The plan lists what changes, what moves and what stays as it is.</p>
@@ -1694,7 +1696,8 @@ function act(f, a, val, ev) {
     case 'whereami': R.nostart = false; break;
     // ---- a warning: from the row, a marker or Check; along the route; back
     case 'wstep': { const L = alongList(st, view(st)); const i = Math.max(0, L.findIndex((x) => x.g === 't1') >= 0 ? L.findIndex((x) => x.g === 't1') : L.findIndex((x) => x.g === 't3')); st.stepFrom = { sheet: st.sheet, tab: st.tab }; st.step = i; if (desk) st.tab = 'check'; else st.sheet = 'peek'; close(); break; }
-    case 'wpick': if (st.step == null) st.stepFrom = { sheet: st.sheet, tab: st.tab }; st.step = +val; if (desk && st.mode !== 'closed') st.tab = 'check'; else if (st.mode !== 'closed') st.sheet = 'peek'; close(); break;
+    // where Back comes back to: the peek, or Check at half
+    case 'wpick': if (st.step == null || st.sheet !== 'peek') st.stepFrom = { sheet: st.sheet, tab: st.tab }; st.step = +val; if (desk && st.mode !== 'closed') st.tab = 'check'; else if (st.mode !== 'closed') st.sheet = 'peek'; close(); break;
     case 'wprev': st.step = Math.max(0, st.step - 1); break;
     case 'wnext': st.step = Math.min(alongList(st, view(st)).length - 1, st.step + 1); break;
     case 'wclose': st.step = null; if (st.stepFrom) { st.sheet = st.stepFrom.sheet; st.tab = st.stepFrom.tab; } break;
