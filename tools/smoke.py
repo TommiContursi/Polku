@@ -5083,7 +5083,15 @@ NL = """(() => {
   T.water = (ll) => m.queryRenderedFeatures(m.project(ll), { layers: ['water'] }).length > 0;
   T.spot = (ll) => { const q = m.project(ll); return { x: q.x, y: q.y, clear: true }; };
   // a spot on the water a few pixels from the shore: from a point on a lake towards land, the last water before it
-  T.shore = (from, dx, dy) => { const q = m.project(from); let x = q.x, y = q.y; for (let k = 0; k < 400 && m.queryRenderedFeatures([x, y], { layers: ['water'] }).length; k++) { x += dx; y += dy; } return { x: x - dx * 6, y: y - dy * 6, clear: true }; };
+  T.shore = (from) => { // the nearest shore in view, scanning four ways; the map itself, not a button, at the spot
+    const q = m.project(from), wet = (x, y) => m.queryRenderedFeatures([x, y], { layers: ['water'] }).length > 0, onMap = (x, y) => document.elementFromPoint(x, y) === m.getCanvas();
+    let best = null;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      let x = q.x, y = q.y, k = 0;
+      for (; k < 400 && onMap(x, y) && wet(x, y); k++) { x += dx; y += dy; }
+      if (onMap(x, y) && !wet(x, y) && (!best || k < best.k)) best = { k, x: x - dx * 6, y: y - dy * 6 };
+    }
+    return best ? { x: best.x, y: best.y, clear: onMap(best.x, best.y), over: 'not the map' } : null; };
   T.view = (c, z) => new Promise((ok) => { m.jumpTo({ center: c, zoom: z }); m.once('idle', () => ok(true)); });
   T.state = () => ({ n: p.points.length, sports: p.legs.map((_, i) => p.legSport(i)).join(','), modes: p.legs.map((l) => l.mode).join(','), next: p.nextSport(), real: p.nextLegSport(), map: polku.state.activity, mode: p.mode,
     label: p.els.modeBtn.getAttribute('aria-label'), sport: p.els.sportBtn.textContent.trim(), past: p.past.length, menu: !!$('.menu-pop'), toast: $('#toast').hidden ? '' : $('#toast').innerText.replace(/\\s+/g, ' ').trim(),
@@ -5111,7 +5119,7 @@ def nextleg(chrome):
         if not at.get('clear', True):
             fails.append(f"{name}: something is over it ({at.get('over')})")
         if touch:
-            pg.tap(at['x'], at['y'])
+            pg.quick_tap(at['x'], at['y'])
         else:
             for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
                 pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
@@ -5140,7 +5148,7 @@ def nextleg(chrome):
     along = pg.js("document.querySelector('.pl-way .way-along')?.textContent || ''")
     if along != 'You can change sport along the way.':
         fails.append(f'{name}: Draw it says “{along}”, not that the sport can change along the way')
-    L = [[23.733, 61.4975], [23.738, 61.4985], [23.743, 61.4975]]
+    L = [[23.7355, 61.4972], [23.738, 61.4980], [23.7405, 61.4972]]
     if any(pg.js(f'nlT.water({ll})') for ll in L):
         fails.append(f'{name}: a point for the land legs is on the water')
     press(pg, pg.js(f'nlT.spot({L[0]})'), f'{name}: the first point', True)
@@ -5211,34 +5219,37 @@ def nextleg(chrome):
     time.sleep(0.6)
     st = S()
     want(f'{name}, Swim', st, sports='hike,swim', next='swim', map='swim', past=past)
-    off = pg.js(f"(() => {{ const q = polku.planner.points[2]; return Math.hypot((q[0] - {lake[0]}) * 53500, (q[1] - {lake[1]}) * 111200); }})()")
-    if off > 1:
-        fails.append(f'{name}: the point moved {off:.0f} m from where it was tapped')
+    off = pg.js(f"(() => {{ const q = polku.planner.points[2]; return q ? Math.hypot((q[0] - {lake[0]}) * 53500, (q[1] - {lake[1]}) * 111200) : -1; }})()")
+    if off < 0 or off > 1:
+        fails.append(f'{name}: the point on the lake ' + ('is gone' if off < 0 else f'moved {off:.0f} m from where it was tapped'))
     press(pg, pg.js("nlT.at(polku.planner.els.undo)"), f'{name}: Undo', True)
     want(f'{name}, Undo after Swim', S(), n=2, sports='hike')
     pg.js("polku.set({ activity: 'hike' }), true")
     time.sleep(0.4)
-    # by the shore: no note
-    press(pg, pg.js(f'nlT.shore({lake}, 0, 1)'), f'{name}: a point by the shore', True)
-    if 'on the water' in S()['toast']:
-        fails.append(f'{name}: the note for a tap by the shore')
-    pg.js('polku.planner.undo(), true')
-    # on a bridge (Satakunnansilta over Tammerkoski): no note
-    pg.js('nlT.view([23.7622, 61.50089], 16)')
-    press(pg, pg.js('nlT.spot([23.7622, 61.50089])'), f'{name}: a point on a bridge', True)
-    if 'on the water' in S()['toast']:
-        fails.append(f'{name}: the note for a point on a bridge')
-    pg.js('polku.planner.undo(), true')
+    # by the shore, and on a bridge (Satakunnansilta over Tammerkoski): a point, and no note
+    for what, spot, view in (('by the shore', f'nlT.shore({lake})', None), ('on a bridge', 'nlT.spot([23.7622, 61.50089])', 'nlT.view([23.7622, 61.50089], 16)')):
+        if view:
+            pg.js(view)
+        n0 = S()['n']
+        press(pg, pg.js(spot), f'{name}: a point {what}', True)
+        st = S()
+        if st['n'] != n0 + 1:
+            fails.append(f'{name}: a tap {what} added no point')
+        elif 'on the water' in st['toast']:
+            fails.append(f'{name}: the note for a point {what}')
+        if st['n'] > n0:
+            pg.js('polku.planner.undo(), true')
     # in winter: the ice too, a straight line to the spot, with what Polku can't see; in a share link as well
     pg.js("polku.planner.app.winter = () => ({ on: true, setting: 'on' }), true")
     pg.js('nlT.view([23.735, 61.519], 14)')
     press(pg, pg.js(f'nlT.spot({lake})'), f'{name}: a point on the lake in winter', True)
     press(pg, pg.js("nlT.toastBtn('Walk on the ice')"), f'{name}: Walk on the ice', True)
     time.sleep(0.6)
-    ice = pg.js("""(async () => { const p = polku.planner, P = await import(location.origin + '/js/planner.js'); for (let k = 0; k < 30 && !(p.analysis && p.legs.length === 2 && p.legs[1].result); k++) await new Promise((r) => setTimeout(r, 100));
+    ice = pg.js("""(async () => { const p = polku.planner, P = await import(location.origin + '/js/planner.js'); for (let k = 0; k < 30 && !(p.analysis && p.legs.length && p.legs.at(-1).ice && p.legs.at(-1).result); k++) await new Promise((r) => setTimeout(r, 100));
       const w = p.analysis ? p.iceWarnings(p.analysis).map((x) => x.text) : [], url = p.shareUrl(), back = P.parseShared(new URL(url).searchParams);
-      return { leg: p.legs[1].mode + (p.legs[1].ice ? ' ice' : ''), sport: p.legSport(1), mode: p.mode, w, ic: new URL(url).searchParams.get('ic'), back: back.ice }; })()""")
-    if ice['leg'] != 'line ice' or ice['sport'] != 'hike' or ice['mode'] != 'line' or ice['w'] != ['On the ice: Polku can’t see whether it holds'] or ice['ic'] != '1' or ice['back'] != [1]:
+      const i = p.legs.length - 1, l = p.legs[i];
+      return { i, leg: l ? l.mode + (l.ice ? ' ice' : '') : 'none', sport: l && p.legSport(i), mode: p.mode, w, ic: new URL(url).searchParams.get('ic'), back: back.ice }; })()""")
+    if ice['leg'] != 'line ice' or ice['sport'] != 'hike' or ice['mode'] != 'line' or ice['w'] != ['On the ice: Polku can’t see whether it holds'] or ice['ic'] != str(ice['i']) or ice['back'] != [ice['i']]:
         fails.append(f'{name}: on the ice: {ice}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
@@ -5307,6 +5318,10 @@ def nextleg(chrome):
         fails.append(f"{name}: Settings' Fast for MTB didn't re-time the MTB route with the map on Hike ({t0} s, then {t1} s)")
     if not pg.js("(document.querySelector('#settings-body .speed-sport-row[data-k=mtb] small')?.textContent || '').startsWith('Fast')"):
         fails.append(f"{name}: Settings' MTB row doesn't say Fast")
+    # How you go's speeds with no route are the sport's, not the cleared route's (#87)
+    sp = pg.js("(async () => { const p = polku.planner; p.clear(); polku.set({ activity: 'paddle' }); await new Promise((r) => setTimeout(r, 500)); return [...p.els.speedBox.querySelectorAll('button')].map((b) => b.textContent).join(','); })()")
+    if 'Sea kayak' not in sp:
+        fails.append(f"{name}: How you go's speeds after Clear, with Paddle: {sp}")
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the next leg's sport and speed, the water note, Settings' speeds (B of #233)" + ''.join(f'\n     - {f}' for f in fails), flush=True)

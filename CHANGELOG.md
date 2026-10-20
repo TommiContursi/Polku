@@ -4,6 +4,19 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-20
 
+### A calmer planner: the sport, and what it changes ([#233](https://github.com/TommiContursi/Polku/issues/233))
+
+The map's sport, each leg's sport and the sport of the legs you draw next are now kept apart, and changing one no longer quietly changes the others.
+
+- From your first point, the drawing button names the sport of the next leg and its route style under the drawing mode, for example "Hike · Balanced". Where there's no room, the style is shortened and the sport stays whole.
+- The drawing menu has the sport between the drawing modes and the route style. Pick a sport there for the legs you draw next: what you've drawn stays as it is, the map switches to that sport, and **Paddle** and **Swim** draw **Over water**. Under it is your speed in that sport, and **Change** opens your speeds right there; a change re-times your route. On a desktop the sport is a button on the toolbar, just before the route style.
+- With a route drawn, picking another sport from the button beside the search asks what it's for. **The whole route** plans your route's legs again in the new sport, says how many routing calls that takes, and **Undo** brings back the route, its styles and the map's sport. **Only the legs you draw next** leaves the route as it is, and **Keep** changes nothing. A route on land can't be turned into a water route this way, and the menu says why. Each sport in the menu has a line on what the map shows for it, and the sports in your route are marked **your route**.
+- Changing the map's sport no longer changes how your route is routed: the route keeps its own route style for each of its sports, after a reload and in a share link too ([#71](https://github.com/TommiContursi/Polku/issues/71)). Busy roads and road conditions are checked by each leg's own sport, and wherever the map is.
+- A point you put on open water while drawing on land asks how you get there: **Paddle**, **Swim** or **Stay on land**, and in winter also over the ice (**Walk on the ice**, or ride or run). Paddle and Swim take the leg to the point over the water, keep the point where you tapped it and carry on in that sport. Over the ice the leg is a straight line, and Check says that **Polku can't see whether the ice holds**. Taps on a bridge, a ferry line or by the shore don't ask.
+- **Draw it** says that you can change sport along the way, and **Go › Time** says which speeds the time is based on, with **Change**.
+- **Settings** no longer has a sport of its own: the sport is on the button beside the search. Settings lists your speeds for every sport, one line each, and a tap opens them. A change re-times your route when it has legs in that sport ([#87](https://github.com/TommiContursi/Polku/issues/87)).
+- On a desktop 1440 px wide, **Save offline** and **Clear route** are now in **More**, to make room for the sport.
+
 ### A round trip keeps only undo and redo in the toolbox ([#311](https://github.com/TommiContursi/Polku/issues/311))
 
 While a round trip is open, the toolbox has only undo and redo: a tap on the map then picks a loop or moves its start, and draws nothing. The drawing mode, **More** and, on a desktop, **Done** come back once you take a loop or close the round trip. On a phone, the bottom of the round trip's form, with **Make 3 loops**, is no longer cut off by a few pixels.

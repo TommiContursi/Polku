@@ -630,7 +630,8 @@ function closeActs() {
     if (box.querySelector('.act-menu').hidden) actHovered = true;
     openActs();
   });
-  box.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches) { clearTimeout(actTimer); actTimer = setTimeout(closeActs, 250); } });
+  // (not the question about a route: it closes with an answer, Keep, Escape or a click outside, B of #233)
+  box.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches && box.querySelector('.act-menu').getAttribute('role') !== 'dialog') { clearTimeout(actTimer); actTimer = setTimeout(closeActs, 250); } });
   box.addEventListener('keydown', (e) => {
     const opts = [...box.querySelectorAll('.act-menu .act')];
     const i = opts.indexOf(document.activeElement);

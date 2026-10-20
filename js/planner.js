@@ -4591,10 +4591,12 @@ export class Planner {
         { icon: 'sliders', label: 'Fine-tune in How you go', fn: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } },
       ] };
       // in the order the button reads: how it's drawn, its sport ("Hike · Balanced") and the style
+      // three parts, apart: how the next leg is drawn (and its note), its sport and speed, the whole route's style
       return [
         desk ? null : { group: 'Draw the next leg', items: MODES.map((m) => ({ icon: MODE_ICON[m], label: MODE_LABEL[m], desc: MODE_DESC[m], radio: true, checked: this.mode === m, fn: () => this.setMode(m) })) },
-        desk ? null : { group: 'Sport · the legs you draw next', items: this.nextLegItems(refill) },
         desk || !this.legs.length ? null : { note: 'Only the legs you draw next. To change a drawn leg, tap it on the map.' },
+        desk ? null : 'hr',
+        desk ? null : { group: 'Sport · the legs you draw next', items: this.nextLegItems(refill) },
         desk ? null : 'hr',
         styles,
       ];
@@ -4614,12 +4616,14 @@ export class Planner {
   // Next leg (B of #233): the next leg's sport, which opens the sport menu's own items for every sport (picking one
   // is Only the legs you draw next: pickNext()), and its speed, whose editor (Your speed's) opens in place
   nextLegItems(refill) {
-    const ns = this.nextLegSport();
-    const out = [{ icon: this.sportIcon(ns), label: escapeHtml(ACTIVITIES[ns].label), desc: 'Legs already drawn keep their sport', keep: true, expanded: !!this.nlOpen, cls: 'nl-sport',
-      after: icon(this.nlOpen ? 'chevronUp' : 'chevronDown', 16), fn: () => { this.nlOpen = !this.nlOpen; this.nlSpeed = false; refill('.nl-sport'); } }];
+    const ns = this.nextLegSport(), out = [];
+    // the sport, which opens the list of sports in its place (yours ticked); a pick folds it again
     if (this.nlOpen) {
       out.push(...this.app.sportItems({ checked: ns, route: this.points.length > 1 ? this.routeSports() : [], fn: (k) => { this.nlOpen = false; this.pickNext(k); refill('.nl-sport'); } })
         .map((it) => ({ ...it, keep: true, cls: 'nl-pick' })));
+    } else {
+      out.push({ icon: this.sportIcon(ns), label: escapeHtml(ACTIVITIES[ns].label), desc: 'Legs already drawn keep their sport', keep: true, expanded: false, cls: 'nl-sport',
+        after: icon('chevronDown', 16), fn: () => { this.nlOpen = true; this.nlSpeed = false; refill('.nl-pick[aria-checked="true"]'); } });
     }
     out.push({ icon: 'clock', label: `<span class="nl-line">Your speed: ${escapeHtml(this.speedLine(ns))}</span>`, keep: true, expanded: !!this.nlSpeed, cls: 'nl-speed',
       after: `<span class="nl-speeds">Change</span>${icon(this.nlSpeed ? 'chevronUp' : 'chevronRight', 16)}`, fn: () => { this.nlSpeed = !this.nlSpeed; this.nlOpen = false; refill('.nl-speed'); } });
@@ -4957,6 +4961,7 @@ export class Planner {
 
       this.chart.setData(null);
       this.renderBreakdown();
+      this.renderSpeed(); // your speeds for the sport, before there's a route and after Clear (#87)
       this.els.climbs.innerHTML = '';
       this.els.warnings.innerHTML = '';
       this.els.wind.innerHTML = '';
