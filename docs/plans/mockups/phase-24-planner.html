@@ -404,6 +404,16 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 /* ------------------------------------------------ 2026-10-20: the three journeys (Codex's review) */
 /* the ways to begin: the map first, then three chips in the peek (a row on desktops) */
 .ways { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 2px; }
+/* the route style before the first leg: a compact row on the phone's card; the chips and Fine-tune when raised */
+.srow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; margin: 2px 0 4px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); text-align: left; color: var(--text); font-size: 14px; }
+.srow > span { flex: 1; min-width: 0; } .srow > .ic { color: var(--accent); }
+.sblock { display: grid; gap: 4px; margin: 2px 0 6px; } .sblock .stylechips { padding: 0 0 2px; }
+.sblock .mi { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font-size: 14.5px; text-align: left; }
+.sblock .mi > span { flex: 1; min-width: 0; } .sblock .mi .ic { color: var(--muted); }
+.nostyle { display: flex; align-items: center; gap: 6px; font-weight: 500; margin: 2px 0 6px; }
+.howgo2 { border-top: 1px solid var(--line); padding-top: 4px; }
+.slider { flex: 1; min-width: 80px; height: 4px; border-radius: 2px; background: var(--line); position: relative; }
+.slider::after { content: ""; position: absolute; left: var(--at, 50%); top: -8px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50%; background: var(--surface-solid); box-shadow: 0 0 0 2px var(--text); }
 /* iteration 2: four equal ways to begin, two by two on phones; one Back, top left, in every way */
 .waytiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; padding-bottom: 2px; }
 .waytile { display: flex; align-items: flex-start; gap: 10px; min-height: 60px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-solid); color: var(--text); text-align: left; }
@@ -691,21 +701,26 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-row" id="sa">
     <h2>A · Start or find a route</h2>
-    <p><b>Iteration 2 (2026-10-20, after the user's feedback):</b> Draw it is back as the first of four equal choices, and every way to begin has the same <b>Ways to begin</b> at the top left, which brings the four back as they were (the first version's way back from Round trip didn't).</p>
+    <p><b>Iteration 2 (2026-10-20, after the user's feedback):</b> Draw it is back as the first of four equal choices, each with its line, on phones and desktops; a tap or click on the map from the ways to begin still starts drawing. Every way has the same <b>Ways to begin</b> at the top left, which brings the four back as they were (on phones the system's back gesture does the same). Before a loop or a marked route is taken, Back keeps nothing; once taken there's a route, so there's Undo, not Back. Map taps inside a way belong to it: in Marked routes a tap picks a route, in Round trip it picks a loop or sets the start; only from the ways to begin and in Draw it does a tap add a point. <b>Draw it and Round trip show the route style before the first leg or the loops</b> (How you go's own section, so a change anywhere shows everywhere, the mode's menu too); Marked routes and a file bring their own line, so they don't. Choosing it first costs no routing calls; changing it afterwards routes every leg again, and the loops' calls twice. Swim has no marked routes in LIPAS, so it shows three ways. Your routes (#157) appears only once there are saved routes, with their count: no placeholder.</p>
     <p>Today the peek says only "Tap the map to add a start point"; the other three ways to begin (a round trip, a marked route, a file) are in the sheet, under the fold on a phone. "Ride a marked route" focuses the search box, and is offered for Hike, Paddle and Swim too (Swim has no marked routes in LIPAS). Here the map stays the first way (the hint), and the other three are chips in the peek, each one tap. <b>Marked routes</b> lists LIPAS's routes for the sport in the map's view as cards side by side, like the loops: a tap on a card or its coloured line picks it, <b>Follow this route</b> makes it your route on its own line (as Ride this route does today, in words for every sport). When the layer is off, LIPAS doesn't answer, or there's none in view, it says so; Find by name searches all of Finland as the search does today. A round trip from the start says that <b>Where I am</b> sends your position to the router (#281). Names and lengths here are illustrative.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="ja-start" data-st='{"stage":"start"}'><figcaption><b>The ways to begin (iteration 2)</b>Four equal choices, Draw it first, each with a line on what it does; a tap on the map still starts drawing at once. Try each, then Ways to begin.</figcaption></figure>
-      <figure class="fr phone" id="ja-draw" data-st='{"stage":"start","drawing":true}'><figcaption><b>Draw it</b>What to do, in words, and the same Ways to begin at the top left as in every other way.</figcaption></figure>
+      <figure class="fr phone" id="ja-draw" data-st='{"stage":"start","drawing":true}'><figcaption><b>Draw it</b>The card stays low: what to do, a line that follows the drawing mode, and one row for the route style. No Done before the first point; Ways to begin at the top left.</figcaption></figure>
+      <figure class="fr phone" id="ja-draw-style" data-st='{"stage":"start","drawing":true,"dstyle":true}'><figcaption><b>Draw it: the route style</b>The row raises the sheet to the chips and Fine-tune; Back lowers it to the card. Picking one re-routes nothing yet, so no note.</figcaption></figure>
+      <figure class="fr phone" id="ja-draw-tune" data-st='{"stage":"start","drawing":true,"tune":true}'><figcaption><b>Fine-tune</b>How you go's own section, in place; Back returns to the Draw it card with the sheet lowered.</figcaption></figure>
+      <figure class="fr phone" id="ja-draw-line" data-st='{"stage":"start","drawing":true,"draw":"line"}'><figcaption><b>Straight line</b>The line says what Polku does, and that straight lines don't use a route style.</figcaption></figure>
       <figure class="fr phone" id="ja-find" data-st='{"stage":"start","find":true}'><figcaption><b>Marked routes in view</b>Cards like the loops'; the picked one glows on the map. Follow this route, or swipe to the next card.</figcaption></figure>
       <figure class="fr phone" id="ja-find2" data-st='{"stage":"start","find":true,"mrPick":2}'><figcaption><b>Another one picked</b>Its line glows; the map would frame it above the sheet.</figcaption></figure>
       <figure class="fr phone" id="ja-followed" data-st='{"stage":"route","followed":0,"calm":true,"toast":"followed"}'><figcaption><b>Followed</b>Your route now, on its own line, with Undo. Editing goes on as with any route.</figcaption></figure>
       <figure class="fr phone" id="ja-off" data-st='{"stage":"start","find":true,"mr":"off"}'><figcaption><b>The layer is off</b>The list still works; the note says why the map doesn't show them, and turns them on.</figcaption></figure>
       <figure class="fr phone" id="ja-fail" data-st='{"stage":"start","find":true,"mr":"fail"}'><figcaption><b>LIPAS isn't answering</b>Said as missing, with Retry, never as "none here".</figcaption></figure>
-      <figure class="fr phone" id="ja-rt" data-st='{"stage":"first","rt":{"open":true,"val":20,"nostart":true}}'><figcaption><b>A round trip from the start</b>Tap the map for its start, or Where I am, which says what it sends (#281).</figcaption></figure>
+      <figure class="fr phone" id="ja-rt" data-st='{"stage":"first","rt":{"open":true,"val":20,"nostart":true}}'><figcaption><b>A round trip from the start</b>Tap the map for its start, or Where I am, which says what it sends (#281). The route style above Make 3 loops: chosen first, it costs no calls twice.</figcaption></figure>
+      <figure class="fr phone" id="ja-rt-style" data-st='{"stage":"first","rt":{"open":true,"val":20,"nostart":true},"rtstyle":true}'><figcaption><b>Round trip: the route style</b>The same chips as in Draw it and the mode's menu.</figcaption></figure>
       <figure class="fr phone" id="ja-swim" data-st='{"stage":"start","sport":"swim"}'><figcaption><b>Swim</b>No marked routes in LIPAS for swimming: no chip for them.</figcaption></figure>
       <figure class="fr phone" id="ja-360" data-st='{"stage":"start","find":true,"w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish</b>Long names wrap to two lines in the cards.</figcaption></figure>
       <figure class="fr phone" id="ja-200" data-st='{"stage":"start","z":2}'><figcaption><b>200 % zoom</b>The chips wrap; nothing is cut.</figcaption></figure>
-      <figure class="fr desk" id="ja-desk" data-st='{"stage":"start"}'><figcaption><b>Desktop: the ways to begin</b>A row each, with one line on what it does.</figcaption></figure>
+      <figure class="fr desk" id="ja-desk" data-st='{"stage":"start"}'><figcaption><b>Desktop: the ways to begin</b>A row each, Draw it among them, with one line on what it does; a click on the map starts drawing at once.</figcaption></figure>
+      <figure class="fr desk" id="ja-desk-draw" data-st='{"stage":"start","drawing":true}'><figcaption><b>Desktop: Draw it</b>"Click the map where you start", the line for the mode, then the route style's chips and Fine-tune, which opens How you go's section in place.</figcaption></figure>
       <figure class="fr desk" id="ja-desk-find" data-st='{"stage":"start","find":true,"mrPick":1}'><figcaption><b>Desktop: marked routes in view</b>The same cards as a list in the panel; the picked one glows on the map.</figcaption></figure>
     </div>
   </section>
@@ -965,6 +980,8 @@ const STR = {
     stretchT: '{A} → {B}', viaShaping: 'via {n} shaping points', showShaping: 'Show the {n} shaping points', foldShaping: 'Fold the shaping points', listNote: 'Tap a point or a stretch to change it.', reorder: 'Reorder', reorderNote: 'Drag a point, or move it earlier or later.',
     noChange: 'No change', noNight: 'No night', breakL: 'Break', noStop: 'No stop', addStop: 'Add a stop', stayNight: 'Stay overnight', changeSport: 'Change sport here', stretchAfter: 'The stretch after it', pointH: 'Point', stretchH: 'Stretch',
     appliesN: 'Changes apply to this stretch: its {n} legs', applies1: 'Changes apply to this stretch', ownOnly: 'this stretch only · the route is {R}', asRoute: 'as the rest of the route', styleAs: '{S}’s style, for this stretch', avoidSpot: 'Avoid a spot here', sameCardS: 'The same card opens when you tap this stretch on the map.',
+    lineAuto: 'Polku follows the paths between your points', lineLine: 'Polku joins your points with straight lines', lineWater: 'Polku finds a way over the water between your points', noStyle: 'Straight lines don’t use a route style',
+    tuneH: 'How you go', tunePaths: 'Paths ↔ roads', tuneWet: 'Wet ground', tuneSpeed: 'Your speed', tuneNormal: 'Normal', tuneNote: 'The full section, as in Route › How you go: it stays there after the first point.',
     waysTitle: 'Start a route', tapAny: 'or tap the map to start drawing', tapAnyD: 'or click the map to start drawing', backWays: 'Ways to begin',
     drawWayS: 'Point by point on the map', rtWayS: 'A loop of a length you pick', mrWayS: 'From LIPAS, in view', fileWayS: 'GPX or KML', fileWayT: 'A file',
     drawWayL: 'Click where you start, then each place on the way: Polku follows the paths between them.',
@@ -1019,6 +1036,8 @@ const STR = {
     stretchT: '{A} → {B}', viaShaping: '{n} muotoilupisteen kautta', showShaping: 'Näytä {n} muotoilupistettä', foldShaping: 'Piilota muotoilupisteet', listNote: 'Muuta pistettä tai osuutta napauttamalla sitä.', reorder: 'Järjestä', reorderNote: 'Vedä pistettä tai siirrä sitä aiemmaksi tai myöhemmäksi.',
     noChange: 'Ei vaihtoa', noNight: 'Ei yötä', breakL: 'Tauko', noStop: 'Ei taukoa', addStop: 'Lisää tauko', stayNight: 'Yövy tässä', changeSport: 'Vaihda lajia tässä', stretchAfter: 'Seuraava osuus', pointH: 'Piste', stretchH: 'Osuus',
     appliesN: 'Muutokset koskevat tätä osuutta: sen {n} osaa', applies1: 'Muutokset koskevat tätä osuutta', ownOnly: 'vain tämä osuus · reitti on {R}', asRoute: 'kuten muu reitti', styleAs: 'Lajin {S} tyyli tälle osuudelle', avoidSpot: 'Kierrä kohta tässä', sameCardS: 'Sama kortti avautuu, kun napautat osuutta kartalla.',
+    lineAuto: 'Polku seuraa polkuja pisteidesi välillä', lineLine: 'Polku yhdistää pisteesi suorilla viivoilla', lineWater: 'Polku etsii vesireitin pisteidesi välille', noStyle: 'Suorat viivat eivät käytä reittityyliä',
+    tuneH: 'Miten kuljet', tunePaths: 'Polut ↔ tiet', tuneWet: 'Märkä maa', tuneSpeed: 'Nopeutesi', tuneNormal: 'Normaali', tuneNote: 'Koko osio, kuten kohdassa Reitti › Miten kuljet: se pysyy siellä ensimmäisen pisteen jälkeen.',
     waysTitle: 'Aloita reitti', tapAny: 'tai aloita piirtäminen napauttamalla karttaa', tapAnyD: 'tai aloita piirtäminen napsauttamalla karttaa', backWays: 'Aloitustavat',
     drawWayS: 'Piste pisteeltä kartalle', rtWayS: 'Lenkki valitsemallasi pituudella', mrWayS: 'LIPAS-reitit näkymässä', fileWayS: 'GPX tai KML', fileWayT: 'Tiedosto',
     drawWayL: 'Napsauta lähtöpaikkaa ja sitten jokaista paikkaa matkan varrella: Polku seuraa polkuja niiden välillä.',
@@ -1073,6 +1092,8 @@ const STR = {
     stretchT: '{A} → {B}', viaShaping: 'via {n} formpunkter', showShaping: 'Visa de {n} formpunkterna', foldShaping: 'Dölj formpunkterna', listNote: 'Tryck på en punkt eller en sträcka för att ändra den.', reorder: 'Ordna om', reorderNote: 'Dra en punkt eller flytta den tidigare eller senare.',
     noChange: 'Inget byte', noNight: 'Ingen natt', breakL: 'Paus', noStop: 'Ingen paus', addStop: 'Lägg till en paus', stayNight: 'Övernatta här', changeSport: 'Byt sport här', stretchAfter: 'Sträckan efter', pointH: 'Punkt', stretchH: 'Sträcka',
     appliesN: 'Ändringarna gäller den här sträckan: dess {n} etapper', applies1: 'Ändringarna gäller den här sträckan', ownOnly: 'bara den här sträckan · rutten är {R}', asRoute: 'som resten av rutten', styleAs: '{S}s stil för den här sträckan', avoidSpot: 'Undvik en plats här', sameCardS: 'Samma kort öppnas när du trycker på sträckan på kartan.',
+    lineAuto: 'Polku följer stigarna mellan dina punkter', lineLine: 'Polku binder ihop dina punkter med raka linjer', lineWater: 'Polku hittar en väg över vattnet mellan dina punkter', noStyle: 'Raka linjer använder ingen ruttstil',
+    tuneH: 'Hur du tar dig fram', tunePaths: 'Stigar ↔ vägar', tuneWet: 'Blöt mark', tuneSpeed: 'Din fart', tuneNormal: 'Normal', tuneNote: 'Hela avsnittet, som i Rutt › Hur du tar dig fram: det finns kvar där efter första punkten.',
     waysTitle: 'Börja en rutt', tapAny: 'eller tryck på kartan för att börja rita', tapAnyD: 'eller klicka på kartan för att börja rita', backWays: 'Sätt att börja',
     drawWayS: 'Punkt för punkt på kartan', rtWayS: 'En runda med en längd du väljer', mrWayS: 'Från LIPAS, i vyn', fileWayS: 'GPX eller KML', fileWayT: 'En fil',
     drawWayL: 'Klicka där du börjar och sedan varje plats på vägen: Polku följer stigarna mellan dem.',
@@ -1425,6 +1446,26 @@ function modeButton(st) {
 function phoneToolbox(st) {
   return st.mode === 'edit' ? `${modeButton(st)}${undoRedo(st)}${moreBtn(st)}` : moreBtn(st);
 }
+// The route style before the first leg (iteration 2): one section, shown in more places (Draw it, Round trip, the mode's
+// menu, How you go), so a change anywhere shows everywhere. Before there's a route nothing is routed again, so no note.
+const modeLine = (st) => t({ auto: 'lineAuto', line: 'lineLine', water: 'lineWater' }[st.draw]);
+function styleChips(st) {
+  return `<div class="stylechips">${SPORTS[st.sport].styles.map(([k, n]) => `<button type="button" class="chip" role="radio" aria-checked="${st.style === k}" aria-pressed="${st.style === k}" data-act="style" data-v="${k}">${st.style === k ? ic('check', 16) : ''}${esc(n)}</button>`).join('')}</div>`;
+}
+// row: one compact line that opens the chips; full: the chips and Fine-tune; tune: How you go's own section, in place
+function styleBlock(st, how, act = 'dstyle') {
+  if (st.draw === 'line' && st.stage === 'start') return `<div class="cap nostyle">${ic('line', 15)}${t('noStyle')}</div>`;
+  const name = (SPORTS[st.sport].styles.find((x) => x[0] === st.style) || SPORTS[st.sport].styles[0])[1];
+  if (how === 'row') return `<button type="button" class="srow" data-act="${act}" aria-expanded="false">${ic('route', 18)}<span>${t('styleRow')} · <b>${esc(name)}</b></span>${ic('right', 16)}</button>`;
+  const tune = how === 'tune' || st.tune;
+  return `<div class="sblock"><div class="mh" style="padding:4px 0">${t('styleH')}</div>${styleChips(st)}
+    <button type="button" class="mi compact" data-act="tune" aria-expanded="${tune}">${ic('route', 20)}<span><b>${t('fineTune')}</b></span>${ic(tune ? 'up' : 'right', 16)}</button>
+    ${tune ? `<div class="howgo2"><div class="mh" style="padding:4px 0">${t('tuneH')} · ${esc(name)}</div>
+      <div class="pc-r"><span class="lab2">${t('tunePaths')}</span><i class="slider" style="--at:62%"></i></div>
+      <div class="pc-r"><span class="lab2">${t('tuneWet')}</span><span class="sel">Auto ${ic('down', 12)}</span></div>
+      <div class="pc-r"><span class="lab2">${t('tuneSpeed')}</span><span class="sel">${t('tuneNormal')} ${ic('down', 12)}</span></div>
+      <div class="cap" style="font-weight:500">${t('tuneNote')}</div></div>` : ''}</div>`;
+}
 function modesMenu(st) {
   const S = SPORTS[st.sport];
   const item = (m) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}">${ic(m, 22)}<span><b>${t(m)}</b><small>${t(m + 'D')}</small></span>${st.draw === m ? ic('check', 18, 'tick') : ''}</button>`;
@@ -1434,7 +1475,7 @@ function modesMenu(st) {
   return `<div class="popmenu" role="menu" aria-label="${t('nextLeg')}" data-anchor="modes">
     <div class="mh" id="mh-${st._id}-a">${t('nextLeg')}</div>
     <div role="group" aria-labelledby="mh-${st._id}-a">${['auto', 'line', 'water'].map(item).join('')}</div>
-    <div class="note">${t('nextNote')}</div><hr>
+    ${st.stage === 'route' ? `<div class="note">${t('nextNote')}</div>` : ''}<hr>
     <div class="mh" id="mh-${st._id}-b">${t('styleH')}</div>
     <div role="group" aria-labelledby="mh-${st._id}-b">${styles}</div></div>`;
 }
@@ -1773,8 +1814,12 @@ function plannerHtml(st, v, desk, docked) {
     // at the top left, back to these four as they were. Desktops: a row each.
     const mr = (MARKED[st.map] || []).length > 0;
     if (st.drawing) {
-      return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}${backRow(st, t('drawWay'))}
-        <div class="row"><div class="hint">${t(desk ? 'clickStartHint' : 'startHint')}<small>${t('drawWayD')}</small></div>${desk ? '' : `<button type="button" class="btn" data-act="done">${t('done')}</button>`}</div></div>`;
+      // the line under the headline follows the drawing mode; no Done before the first point (Back is the way out)
+      const head = `<div class="row"><div class="hint">${t(desk ? 'clickStartHint' : 'startHint')}<small>${modeLine(st)}</small></div></div>`;
+      if (desk) return `<div class="pl" role="region" aria-label="Route planner">${backRow(st, t('drawWay'))}${head}${styleBlock(st, 'full')}</div>`;
+      // phones: the card stays low, one style row; a tap raises the sheet to the chips and Fine-tune; Back lowers it again
+      const raised = st.dstyle || st.tune;
+      return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}${raised ? backBar('dsback', t('drawWay'), t('styleRow')) : backRow(st, t('drawWay'))}${head}${raised ? styleBlock(st, st.tune ? 'tune' : 'full') : styleBlock(st, 'row')}</div>`;
     }
     const ways = [['drawway', 'route', t('drawWay'), t(desk ? 'drawWayL' : 'drawWayS')], ['rtopen', 'roundtrip', t('rtWay'), t(desk ? 'rtWayD' : 'rtWayS')],
       mr ? ['mrfind', 'sign', t('mrWay'), t(desk ? 'mrWayD' : 'mrWayS')] : null, ['noop', 'upload', t(desk ? 'fileWay' : 'fileWayT'), t(desk ? 'fileWayD' : 'fileWayS')],
@@ -1814,6 +1859,7 @@ function plannerHtml(st, v, desk, docked) {
         <div class="stepper"><button type="button" class="tbtn ring" data-act="dec" aria-label="${unit === 'km' ? `${S.step} km shorter` : '15 minutes shorter'}">${ic('minus', 20)}</button><label class="len"><input type="text" inputmode="decimal" enterkeyhint="done" value="${R.val}" aria-label="${unit === 'km' ? 'Length in kilometres' : 'Length in minutes'}" data-in="len"><span>${unit === 'km' ? 'km' : 'min'}</span></label><button type="button" class="tbtn ring" data-act="inc" aria-label="${unit === 'km' ? `${S.step} km longer` : '15 minutes longer'}">${ic('plus', 20)}</button></div>
         ${R.nostart ? `<div class="row wrap" style="min-height:44px;gap:4px 8px"><span class="cap" style="font-weight:650;color:var(--text)">${t('rtStartQ')}: ${t('rtStartTap')}</span><button type="button" class="chip" data-act="whereami">${ic('me', 16)}${t('whereIAm')}</button></div>
         <div class="cap" style="font-weight:500">${t('whereNote')}<br>${t('calls')}</div>` : `<div class="cap" style="font-weight:500">${t('moveStart')}<br>${t('calls')}</div>`}
+        ${st.rtstyle ? styleBlock(st, 'full') : styleBlock(st, 'row', 'rtstyle')}
         <button type="button" class="btn primary big" data-act="make"${making || R.nostart ? ' disabled aria-disabled="true"' : ''}>${making ? `<span style="display:grid;gap:6px;width:70%;justify-items:center">${t('making')} ${R.making} ${t('of3')}<span class="progress" style="--p:${R.making * 33}%"><i></i></span></span>` : `${ic('roundtrip', 20)}${t('make3')}`}</button>
         <span class="sr" role="status">${making ? `${t('making')} ${R.making} ${t('of3')}` : ''}</span></div></div>`;
     }
@@ -1847,7 +1893,7 @@ function deskToolbar(st, v, compact = 0) {
   const whole = route && compact < 1 ? `${sep}${tb('reverse', 'reverse', t('reverse'), 'reverse')}${tb('backstart', 'loop', t('backStart'), 'backstart')}` : '';
   return `<div class="deskbar" role="toolbar" aria-label="Drawing tools"><div class="seg" role="radiogroup" aria-label="${t('nextLeg')}">${seg}</div>
     ${sep}<button type="button" class="stylebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('styleRow')}: ${esc(styleName(st))}" data-tip="style"><span class="two">${compact < 2 ? `<small>${t('styleRow')}</small>` : ''}<span>${esc(styleName(st))}</span></span>${ic('down', 12)}</button>
-    ${hasHist(st) ? `${sep}${undoRedo(st, 40)}` : ''}${whole}${fit ? `${route && compact < 1 ? '' : sep}${fit}` : ''}${sep}${moreBtn(st, 40)}<button type="button" class="btn" data-act="done" data-tip="done">${t('done')}</button></div>`;
+    ${hasHist(st) ? `${sep}${undoRedo(st, 40)}` : ''}${whole}${fit ? `${route && compact < 1 ? '' : sep}${fit}` : ''}${sep}${moreBtn(st, 40)}${st.stage === 'start' ? '' : `<button type="button" class="btn" data-act="done" data-tip="done">${t('done')}</button>`}</div>`;
 }
 // The timeline over the map while planning (#225, as 25a built it), drawn simply: its chips, the 48 h strip, the
 // reading and the departure. On the water the warnings for wind and waves follow the departure it shows.
@@ -2036,7 +2082,7 @@ function act(f, a, val, ev) {
       if (st.mode !== 'edit') break;
       if (st.stage === 'first' && R.making) break; // the map waits while the loops are made (#109)
       if (st.stage === 'first' && R.open && !R.results) break; // moves the round trip's start (shown, not moved here)
-      if (st.stage === 'start') change(f, () => { st.stage = 'first'; R.open = false; st.drawing = false; });
+      if (st.stage === 'start') change(f, () => { st.stage = 'first'; R.open = false; st.drawing = false; st.dstyle = false; st.tune = false; });
       else if (st.stage === 'first') change(f, () => { st.stage = 'route'; R.open = false; R.results = false; });
       else change(f, () => { st.wps = [...st.wps.slice(0, -1), { ...st.wps[st.wps.length - 1], kind: 'via' }, { name: 'New point', km: +(st.wps[st.wps.length - 1].km + 0.6).toFixed(2), tm: '07:52', kind: 'end' }]; st.sel = st.wps.length - 1; if (st.next) st.drawnNext = true; });
       break;
@@ -2091,8 +2137,12 @@ function act(f, a, val, ev) {
     case 'trip': st.pop = st.pop === 'trip' ? null : 'trip'; break;
     case 'draw': st.draw = val; close(); break;
     case 'styleopen': st.styleOpen = true; break;
-    case 'style': change(f, () => { st.style = val; }); close(); toast('style'); break;
-    case 'finetune': close(); st.sheet = 'full'; st.tab = 'route'; break;
+    case 'style': if (st.stage !== 'route') { st.style = val; if (st.pop) close(); break; } change(f, () => { st.style = val; }); close(); toast('style'); break;
+    case 'finetune': close(); if (st.stage === 'start' && st.drawing) { st.tune = true; break; } st.sheet = 'full'; st.tab = 'route'; break;
+    case 'dstyle': st.dstyle = true; break;
+    case 'tune': st.tune = !st.tune; if (!st.tune && !desk) st.dstyle = true; break;
+    case 'dsback': st.dstyle = false; st.tune = false; break; // back to the Draw it card, the sheet lowered
+    case 'rtstyle': st.rtstyle = !st.rtstyle; break;
     case 'undo': if (f.past.length) { const o = JSON.parse(f.past.pop()); f.future.push(SNAP(st, 'map' in o)); Object.assign(st, o); st.step = null; st.hist = f.past.length; st.fut = f.future.length; st.toast = null; if (st.stage === 'start') st.mode = 'edit'; } break;
     case 'redo': if (f.future.length) { const o = JSON.parse(f.future.pop()); f.past.push(SNAP(st, 'map' in o)); Object.assign(st, o); st.step = null; st.hist = f.past.length; st.fut = f.future.length; } break;
     case 'done': close(); if (st.stage === 'route') st.mode = 'view'; else { st.mode = 'closed'; toast('closed'); } break;
@@ -2108,7 +2158,7 @@ function act(f, a, val, ev) {
     case 'rtopen': if (st.stage === 'start') { st.stage = 'first'; R.nostart = true; R.fromWays = true; } R.open = true; R.results = false; R.val = R.val || (R.unit === 'km' ? SPORTS[st.sport].km[1] : SPORTS[st.sport].min[1]); break;
     case 'rtclose': R.open = false; R.results = false; R.making = 0; if (R.fromWays && R.nostart) st.stage = 'start'; break;
     // back to the four ways, as they were (iteration 2)
-    case 'waysback': st.find = false; st.drawing = false; if (st.stage === 'first' && (R.fromWays || R.nostart)) { st.stage = 'start'; R.open = false; R.results = false; R.making = 0; R.nostart = false; R.fromWays = false; } break;
+    case 'waysback': st.find = false; st.drawing = false; st.dstyle = false; st.tune = false; st.rtstyle = false; if (st.stage === 'first' && (R.fromWays || R.nostart)) { st.stage = 'start'; R.open = false; R.results = false; R.making = 0; R.nostart = false; R.fromWays = false; } break;
     case 'drawway': st.drawing = true; break;
     case 'rtchange': R.results = false; R.open = true; break;
     case 'preset': R.open = true; R.val = +val; break;
