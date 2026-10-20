@@ -4511,6 +4511,117 @@ def changelog(chrome):
     return not fails
 
 
+# #133: recorded FMI palette samples, rebuilt as tiny multi-strip TIFFs. There
+# are no live radar requests. Reordered indexes must keep the same measurements.
+RADAR = r"""(async () => {
+  const errs = [], fx = window.radarFixture, w = fx.samples.length * 8, h = 8;
+  const { fmiRadar } = await import('./js/radar.js'), net = await import('./js/net.js');
+  const real = window.fetch, calls = [], box = [-1, -1, 1, 1];
+  let mode = 'normal', le = true, remap = false;
+  const index = s => remap ? (s.index + 12345) % 65536 : s.index;
+  const tiff = (raw = false, bad = false, dbz = false, missingWhite = true) => {
+    const bits = raw ? 8 : 16, n = raw ? 0 : 65536, bpp = bits / 8;
+    const count = raw ? 9 : 10, arrays = 8 + 2 + count * 12 + 4, pal = arrays + 16, pixels = pal + n * 6;
+    const buf = new ArrayBuffer(pixels + w * h * bpp), d = new DataView(buf);
+    const u16 = (p, v) => d.setUint16(p, v, le), u32 = (p, v) => d.setUint32(p, v, le);
+    u16(0, 0x4949); if (!le) u16(0, 0x4d4d); u16(2, 42); u32(4, 8); u16(8, count);
+    const tags = [[256,4,1,w],[257,4,1,h],[258,3,1,bits],[259,3,1,1],[262,3,1,raw?1:3],
+      [273,4,2,arrays],[277,3,1,1],[278,4,1,4],[279,4,2,arrays+8]];
+    if (!raw) tags.push([320,3,n*3,pal]);
+    tags.forEach(([tag,type,num,value],i) => { const p=10+i*12; u16(p,tag);u16(p+2,type);u32(p+4,num); if(type===3 && num===1)u16(p+8,value);else u32(p+8,value); });
+    u32(arrays,pixels);u32(arrays+4,pixels+w*4*bpp);u32(arrays+8,w*4*bpp);u32(arrays+12,w*4*bpp);
+    if (!raw) fx.samples.forEach(s => {
+      const rgb=dbz ? s.expectedMmh===null?(missingWhite?[255,255,255]:[255,0,255]):s.name==='dry'?[0,0,1]:s.name==='trace'?fx.reflectivityReference.encodedRgb:[255,128,0] : s.rgb;
+      rgb.forEach((c,k) => u16(pal+(index(s)+k*n)*2,c*257));
+    });
+    if (bad) [1,2,3].forEach((v,k) => u16(pal+(index(fx.samples[2])+k*n)*2,v*257));
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++) {
+      const s=fx.samples[Math.floor(x/8)], v=raw ? s.expectedMmh===null?255:s.name==='dry'?0:100 : index(s);
+      if(raw)d.setUint8(pixels+y*w+x,v);else u16(pixels+(y*w+x)*2,v);
+    }
+    return buf;
+  };
+  const center = i => [-1 + (i*8+4.5)*2/w, -0.125];
+  const colour = v => [Math.min(255,Math.round(v*20)),40,80];
+  window.fetch = (input, init) => {
+    const url = String(input?.url || input);
+    if (!url.startsWith('https://openwms.fmi.fi/')) return real(input, init);
+    const q = new URL(url).searchParams, layer = q.get('layers'); calls.push(layer);
+    if(q.get('format')!=='image/geotiff') errs.push('radar requested styled view tiles instead of a download');
+    if(layer==='Radar:radar_finland_cappi_rate') {
+      const sld=q.get('SLD_BODY') || '';
+      if(!sld.includes('extended="true"') || !sld.includes('quantity="1000"') || q.get('bgcolor')!=='0xffffff') errs.push('replacement has no fixed encoding/background');
+      if(mode==='limited')return Promise.resolve(new Response('limited',{status:429,headers:{'Retry-After':'60'}}));
+      if(mode==='404' || mode==='both404' || mode==='fallbackraw')return Promise.resolve(new Response('missing',{status:404}));
+      const bytes=tiff(mode==='raw',mode==='bad');
+      return Promise.resolve(new Response(mode==='truncated' ? bytes.slice(0,-2) : bytes));
+    }
+    if(layer!=='Radar:radar_finland_cappi_dbzh') errs.push(`unexpected radar source ${layer}`);
+    if(!(q.get('SLD_BODY')||'').includes('quantity="95"'))errs.push('reflectivity has no fixed physical encoding');
+    // The live service leaves its no-data sentinel unscaled. Without a white
+    // entry at that value, the SLD clamps it to the highest reflectivity colour.
+    const entries=new DOMParser().parseFromString(q.get('SLD_BODY')||'','text/xml').getElementsByTagName('ColorMapEntry');
+    const missingWhite=[...entries].some(e=>+e.getAttribute('quantity')===fx.reflectivityReference.noDataValue && e.getAttribute('color')==='#ffffff');
+    return Promise.resolve(mode==='both404' ? new Response('missing',{status:404}) : new Response(tiff(mode==='fallbackraw',false,true,missingWhite)));
+  };
+  try {
+    const before=net.usage().find(s=>s.id==='fmi').session;
+    for(const variant of ['little endian','big endian, reordered palette']) {
+      le=variant==='little endian'; remap=!le;
+      const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      if(calls.length!==from+1 || calls[from]!=='Radar:radar_finland_cappi_rate') errs.push(`${variant}: did not use the replacement alone`);
+      for(let i=0;i<fx.samples.length;i++) {
+        const s=fx.samples[i], got=image.rateAt(...center(i));
+        if(s.expectedMmh===null ? got!==null : got===null || Math.abs(got-s.expectedMmh)>.001) errs.push(`${variant} ${s.name}: ${got} mm/h (expected ${s.expectedMmh})`);
+      }
+      if(image.rateAt(2,0)!==null) errs.push(`${variant}: outside the image is dry`);
+      const img=new Image();img.src=image.url;await img.decode();
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
+      const px=ctx.getImageData(0,0,w,h).data;
+      for(let i=0;i<fx.samples.length;i++) {
+        const s=fx.samples[i], at=(4*w+i*8+4)*4, alpha=px[at+3];
+        if(s.expectedMmh>0 ? alpha<100 : alpha!==0) errs.push(`${variant} ${s.name}: wrong rendered rain alpha ${alpha}`);
+      }
+      // The extreme's index is below the heavy anchor: colour saturation must
+      // not copy the preceding palette slot, which may be unused or no-data.
+      const a=(4*w+5*8+4)*4,b=(4*w+6*8+4)*4;
+      if(px[a]!==px[b] || px[a+3]!==px[b+3]) errs.push(`${variant}: extreme rain colour depends on palette order`);
+    }
+    for(const failure of ['404','raw','bad','truncated']) {
+      mode=failure; const from=calls.length, image=await fmiRadar(box,w,h,colour);
+      if(calls.slice(from).join(',')!=='Radar:radar_finland_cappi_rate,Radar:radar_finland_cappi_dbzh') errs.push(`${failure}: no reflectivity fallback`);
+      const rain=image.rateAt(...center(2));
+      if(!(rain>.3 && rain<2) || image.rateAt(...center(0))!==0 || image.rateAt(...center(1))!==0 || image.rateAt(...center(4))!==null) errs.push(`${failure}: fallback units/dry/no-data are wrong`);
+    }
+    mode='both404';let rejected=false;
+    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    if(!rejected) errs.push('both radar layers failed but returned a complete image');
+    mode='fallbackraw';rejected=false;
+    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    if(!rejected) errs.push('unstyled fallback bytes were interpreted as dBZ');
+    mode='limited';const from=calls.length;rejected=false;
+    try { await fmiRadar(box,w,h,colour); } catch { rejected=true; }
+    if(!rejected || calls.length!==from+1 || net.sourceStatus('fmi')?.reason!=='limit') errs.push('FMI request limit was bypassed for the fallback');
+    if(net.usage().find(s=>s.id==='fmi').session!==before+calls.length) errs.push('radar requests did not all go through request()');
+  } finally { window.fetch=real; }
+  return errs;
+})()"""
+
+
+def radar(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        fixture = json.load(open(os.path.join(os.path.dirname(__file__), 'fixtures', 'radar-rate.json')))
+        pg.js('window.radarFixture=' + json.dumps(fixture))
+        fails = pg.js(RADAR, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} FMI rain-rate replacement" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # White on the accent (#239): the contrast of each control that puts white on the
 # green, measured from its computed colours, and no rule that puts white text on
 # --accent itself (the light accent of dark mode is for text, icons and borders).
@@ -5185,9 +5296,87 @@ def runner(chrome):
     return not fails
 
 
+# #298: a cold map still waits for the end of a zoom-out sequence; the
+# forecast budget counts cached and pending short forecasts at every lattice level.
+WEATHER_REQUESTS = r"""(async () => {
+  const errs = [], {WeatherOverlay}=await import('./js/wxmap.js');
+  const W=await import('./js/weather.js'), {idb}=await import('./js/idb.js');
+  await idb('weather').prune(()=>false);
+  const realFetch=fetch, realSet=setTimeout, realClear=clearTimeout;
+  const requests=[], list=[0,1,2,3].map(i=>({L:6,i:8+i,j:40}));
+  let release;
+  const answer=url=>{
+    const q=new URL(url).searchParams,lats=q.get('latitude').split(',').map(Number),lons=q.get('longitude').split(',').map(Number);
+    const times=Array.from({length:52},(_,i)=>Math.floor(Date.now()/3600e3)*3600-3600+i*3600),fill=v=>times.map(()=>v);
+    return new Response(JSON.stringify(lats.map((lat,i)=>({latitude:lat,longitude:lons[i],hourly:{time:times,wind_speed_10m:fill(4),wind_direction_10m:fill(220),wind_gusts_10m:fill(6),temperature_2m:fill(8),precipitation:fill(.1),cloud_cover:fill(80),snow_depth:fill(0),snowfall:fill(0)}}))),{headers:{'Content-Type':'application/json'}});
+  };
+  window.fetch=(input,init)=>{
+    const url=String(input?.url||input);
+    if(!url.includes('api.open-meteo.com/'))return realFetch(input,init);
+    requests.push(url);
+    return new Promise(ok=>{release=()=>ok(answer(url));});
+  };
+  try {
+    if(W.uncached(list)!==4)errs.push('the four cold forecast cells were not counted');
+    const pending=W.forecastCells(list);
+    for(let n=0;!release && n<100;n++)await new Promise(r=>realSet(r,10));
+    if(!release)throw new Error('the mocked forecast was not requested');
+    if(W.uncached(list)!==0)errs.push(`${W.uncached(list)} cells on the way still consume the forecast budget`);
+    release();await pending;
+    if(W.uncached(list)!==0)errs.push(`${W.uncached(list)} fresh cells still consume the forecast budget`);
+    const nested=list.map(c=>({L:c.L-1,i:c.i*2,j:c.j*2}));
+    if(W.uncached(nested)!==0)errs.push('cached forecasts are not recognised at a finer lattice level');
+    await W.forecastCells(nested);
+    if(requests.length!==1)errs.push('the same cached locations were fetched again');
+
+    // Only the scheduling clock is fake. Drive the real move handlers with the
+    // zoom at each camera stop and a slow, still-pending first forecast (no grid).
+    let now=0,seq=0,zoom=11;const timers=new Map(),asked=[];
+    window.setTimeout=(fn,ms)=>{timers.set(++seq,{at:now+ms,fn});return seq;};
+    window.clearTimeout=id=>timers.delete(id);
+    const tick=ms=>{
+      const end=now+ms;
+      for(;;){const next=[...timers].sort((a,b)=>a[1].at-b[1].at)[0];if(!next || next[1].at>end)break;now=next[1].at;timers.delete(next[0]);next[1].fn();}
+      now=end;
+    };
+    const overlay=Object.assign(Object.create(WeatherOverlay.prototype),{
+      map:{getZoom:()=>zoom},on:{wind:false,temp:false,rain:false,snow:false},open:true,
+      viewZoom:zoom,grid:null,renderStrip(){},readout(){},loadFiRadar(){},
+      maybeFetch(){asked.push(zoom);},
+    });
+    for(const z of [10,9,8,7,6,5]){
+      overlay.onMoveStart();zoom=z;overlay.onMoveEnd();tick(800);
+    }
+    if(asked.length)errs.push(`a cold zoom-out asks for ${asked.length} intermediate views`);
+    tick(400);
+    if(asked.length!==1 || asked[0]!==5)errs.push(`the final overview was requested ${asked.length} times: ${asked}`);
+    // A pan or zoom-in keeps the shorter ordinary delay.
+    asked.length=0;overlay.onMoveStart();zoom=6;overlay.onMoveEnd();tick(600);
+    if(asked.length!==1 || asked[0]!==6)errs.push('zooming back in did not request detail after the ordinary delay');
+  } finally {
+    window.fetch=realFetch;window.setTimeout=realSet;window.clearTimeout=realClear;
+  }
+  return errs;
+})()"""
+
+
+def weather_requests(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'hike'}, {'polku:winter': '"off"'})
+        fails = pg.js(WEATHER_REQUESTS)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} weather requests: cold zoom-out, cached and pending cells" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
 GROUPS = [
+    ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
+    ('weather', [weather_requests], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
     ('layers', [layers], 'the Layers panel in every sport'),

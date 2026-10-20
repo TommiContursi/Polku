@@ -4,6 +4,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-20
 
+### Rain radar ready for FMI's new feed ([#133](https://github.com/TommiContursi/Polku/issues/133))
+
+Rain “now” in Finland uses FMI's replacement radar data, keeping light drizzle in proportion when the old feed is retired. Missing radar coverage stays distinct from dry weather. The backup radar remains available if the rain-rate layer cannot load. Both feeds use a fixed scale, so changing the map view does not change what the rain measurements mean.
+
+### Fewer weather requests while zooming out ([#298](https://github.com/TommiContursi/Polku/issues/298))
+
+The weather forecast waits for you to finish zooming out even while its first view is still loading. Forecasts already loaded or on the way count correctly towards the request budget, so they do not cause unnecessary coarser views or pauses. Forecast detail stays the same.
+
 ### Fixed: the map's buttons stay put while the map loads on a phone ([#292](https://github.com/TommiContursi/Polku/issues/292))
 
 On a phone with the timeline left open, the map's buttons (compass, **Locate**, **3D**, **Weather**, **Layers**) used to show near the bottom of the screen, then jump up above the timeline a few seconds later, once the map had loaded. A tap meant for one of them could land on the map or on another button. The timeline and any weather layers you left on now open as Polku starts, and the buttons appear once they're in their place above it. When the forecast comes in, the timeline can still grow by a few pixels.

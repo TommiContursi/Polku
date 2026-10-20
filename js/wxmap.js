@@ -82,6 +82,7 @@ export class WeatherOverlay {
     this.open = false; // timeline bar visible
     this.hour = 0;
     this.grid = null;
+    this.viewZoom = map.getZoom();
     this.cur = null;
     this.cam = null;
     this.field = null;
@@ -229,11 +230,14 @@ export class WeatherOverlay {
 
   onMoveEnd() {
     this.moving = false;
+    const zoom = this.map.getZoom(), previousZoom = this.viewZoom;
+    this.viewZoom = zoom;
     if (!this.active) return;
     // ask once the map has settled, not on every stop of a pan; zooming out
     // usually comes in several steps, so wait a little longer for the last one
     clearTimeout(this.fetchTimer);
-    const out = this.grid && this.map.getZoom() < this.grid.zoom - 0.3;
+    // A slow first forecast has no grid yet: still recognise zooming out.
+    const out = zoom < Math.max(previousZoom, this.grid?.zoom ?? zoom) - 0.3;
     this.fetchTimer = setTimeout(() => { this.maybeFetch(); this.loadFiRadar(); }, out ? 1200 : 600);
     this.renderStrip();
     this.readout();

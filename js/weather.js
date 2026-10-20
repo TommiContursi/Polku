@@ -51,7 +51,7 @@ const pointOfKey = (k) => { const [, I, J] = k.split('/').map(Number); return la
 export function uncached(list) {
   const now = Date.now();
   let n = 0;
-  for (const k of new Set(list.map(keyOf))) { const c = cells.get(k); if (!(c && now - c.at < FRESH) && !inflight.has(k)) n++; }
+  for (const k of new Set(list.map((c) => keyOf(c)))) { const c = cells.get(k); if (!(c && now - c.at < FRESH) && !inflight.has(k)) n++; }
   return n;
 }
 
