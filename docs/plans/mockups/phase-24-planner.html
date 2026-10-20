@@ -204,7 +204,19 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .dockbox .modebtn { flex: 1 1 150px; } /* its name stays whole: undo and redo go to a line of their own first */
 .modebtn .two { display: grid; line-height: 1.15; min-width: 0; }
 .modebtn .two b { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.modebtn .two small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modebtn .two small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; min-width: 0; }
+.modebtn .two small .nls { flex: none; color: var(--text); font-weight: 600; } /* the next leg's sport stays whole */
+.modebtn .two small .nlst { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.modebtn .two small .nldot { flex: none; margin: 0 .3em; }
+.popmenu .nlspeed > .nlsp { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 2px; } /* at 200 % Speeds goes under the line */
+.popmenu .nlsp > small { flex: 1 1 8em; min-width: 0; }
+.popmenu .nlspeed small { display: block; color: var(--muted); }
+.popmenu .nlsp > .nlspeeds { flex: none; margin-left: auto; color: var(--accent); font-weight: 600; font-size: 13px; }
+.nleditor { display: grid; gap: 8px; padding: 4px 8px 8px 44px; }
+.deskbar .sportbtn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font-weight: 650; }
+.toast.twobtn { flex-wrap: wrap; gap: 6px; padding: 10px 8px 8px 14px; } /* two answers: the question on its own line */
+.toast.twobtn > span { flex-basis: 100%; }
+.toast.twobtn button { white-space: normal; text-align: left; }
 .modebtn[aria-expanded="true"] { background: var(--accent-soft); }
 .seg { display: flex; gap: 2px; padding: 2px; border-radius: 12px; background: var(--surface-2); }
 .seg button { height: 40px; min-width: 44px; padding: 0 10px; white-space: nowrap; border: 0; border-radius: 10px; background: none; display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 650; color: var(--muted); }
@@ -756,6 +768,22 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="jb-fi" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"trailrun","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish</b>The question in long words.</figcaption></figure>
       <figure class="fr desk" id="jb-desk" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>Desktop</b>The same menu under the pill; the toolbar's mode says the next leg's sport when it differs.</figcaption></figure>
     </div>
+    <h3 id="sb-multi">Multisport, easy to find (B's addition, approved 2026-10-20)</h3>
+    <p>The sport of the next leg, and how fast it goes, at the top of the drawing menu: the same sports, names and icons as the sport menu (one component), and picking one is its <b>Only the legs you draw next</b>: what's drawn stays, the map follows, Paddle and Swim switch to Over water. A speed line under it, from Your speed (<code>speedsFor()</code>; paddling by its craft, <code>CRAFT</code>), opens Your speed's own editor in place, and a change re-times the route. Everything the menu has today stays, with today's words. The drawing button says the next leg's sport from the first point ("Hike · Balanced"): the sport stays whole, the style shortens. Draw it says that the sport can change along the way; Go › Time says what the time is based on. A point on the water while the next leg is a land sport offers Paddle from here. Desktops: a sport button at the toolbar's start. The words, speeds, icons and chips here are the app's; this is layout.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="jb-nl-menu" data-st='{"stage":"route","calm":true,"pop":"modes"}'><figcaption><b>The drawing menu, the next leg first</b>The next leg's sport and its speed; then, as today, Draw the next leg, the note, and Route style · the whole route.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-list" data-st='{"stage":"route","calm":true,"pop":"modes","nlOpen":true}'><figcaption><b>The next leg's sports</b>The sport menu's own list: every sport, its line, "your route". Picking one is Only the legs you draw next.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-speed" data-st='{"stage":"route","calm":true,"pop":"modes","nlSpeed":true}'><figcaption><b>The speed, in place</b>Your speed's editor, opened from the speed line; a change re-times the route.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-hike" data-st='{"stage":"route","calm":true,"map":"hike","next":"hike"}'><figcaption><b>Hike picked for the next leg</b>The drawn legs stay MTB; the button says Hike. Draw the next leg: the route has two sports and a changeover.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-paddle" data-st='{"stage":"route","calm":true,"pop":"modes","map":"paddle","next":"paddle","draw":"water"}'><figcaption><b>Paddle picked</b>Over water for the next leg, and the speed line says the craft.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-first" data-st='{"stage":"first"}'><figcaption><b>From the first point</b>The button says the next leg's sport, not only when the route mixes sports.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-draw" data-st='{"stage":"start","drawing":true}'><figcaption><b>Draw it</b>One more line: the sport can change along the way.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-go" data-st='{"stage":"route","calm":true,"sheet":"half","tab":"go"}'><figcaption><b>Go › Time</b>What the time is based on, and Change: the same editor.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-water" data-st='{"stage":"route","calm":true,"map":"hike","next":"hike","toast":"onwater"}'><figcaption><b>A point on the water, the next leg Hike</b>"On the water? Paddle from here (sea kayak) · Keep Hike". Not on bridges, ferries or a tap on the shoreline.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-360" data-st='{"stage":"route","calm":true,"w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish</b>"Maastopyöräily" whole; the style shortens.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-200" data-st='{"stage":"route","calm":true,"z":2,"pop":"modes"}'><figcaption><b>200 % zoom</b>The menu as a sheet of its own; it scrolls.</figcaption></figure>
+      <figure class="fr desk" id="jb-nl-desk" data-st='{"stage":"route","calm":true,"pop":"nl"}'><figcaption><b>Desktop</b>A sport button at the toolbar's start, with the next leg's sports and speed; the modes and the style stay on the toolbar.</figcaption></figure>
+    </div>
   </section>
 
   <section class="cv-row" id="sc">
@@ -997,6 +1025,8 @@ const STR = {
     stretchT: '{A} → {B}', viaShaping: 'via {n} shaping points', showShaping: 'Show the {n} shaping points', foldShaping: 'Fold the shaping points', listNote: 'Tap a point or a stretch to change it.', reorder: 'Reorder', reorderNote: 'Drag a point, or move it earlier or later.',
     noChange: 'No change', noNight: 'No night', breakL: 'Break', noStop: 'No stop', addStop: 'Add a stop', stayNight: 'Stay overnight', changeSport: 'Change sport here', stretchAfter: 'The stretch after it', pointH: 'Point', stretchH: 'Stretch',
     appliesN: 'Changes apply to this stretch: its {n} legs', applies1: 'Changes apply to this stretch', ownOnly: 'this stretch only · the route is {R}', asRoute: 'as the rest of the route', styleAs: '{S}’s style, for this stretch', avoidSpot: 'Avoid a spot here', sameCardS: 'The same card opens when you tap this stretch on the map.',
+    nlHead: 'Next leg', nlLine: 'The legs you draw next · what’s drawn stays', speedsBtn: 'Speeds', changeAlong: 'You can change sport along the way.',
+    basedOn: 'Based on your speeds', onWater: 'On the water?', paddleHere: 'Paddle from here ({C})',
     lineAuto: 'Polku follows the paths between your points', lineLine: 'Polku joins your points with straight lines', lineWater: 'Polku finds a way over the water between your points', noStyle: 'Straight lines don’t use a route style',
     tuneH: 'How you go', tunePaths: 'Paths ↔ roads', tuneWet: 'Wet ground', tuneSpeed: 'Your speed', tuneNormal: 'Normal', tuneNote: 'The full section, as in Route › How you go: it stays there after the first point.',
     mrNoneSwim: 'No marked routes for swimming in LIPAS.',
@@ -1054,6 +1084,8 @@ const STR = {
     stretchT: '{A} → {B}', viaShaping: '{n} muotoilupisteen kautta', showShaping: 'Näytä {n} muotoilupistettä', foldShaping: 'Piilota muotoilupisteet', listNote: 'Muuta pistettä tai osuutta napauttamalla sitä.', reorder: 'Järjestä', reorderNote: 'Vedä pistettä tai siirrä sitä aiemmaksi tai myöhemmäksi.',
     noChange: 'Ei vaihtoa', noNight: 'Ei yötä', breakL: 'Tauko', noStop: 'Ei taukoa', addStop: 'Lisää tauko', stayNight: 'Yövy tässä', changeSport: 'Vaihda lajia tässä', stretchAfter: 'Seuraava osuus', pointH: 'Piste', stretchH: 'Osuus',
     appliesN: 'Muutokset koskevat tätä osuutta: sen {n} osaa', applies1: 'Muutokset koskevat tätä osuutta', ownOnly: 'vain tämä osuus · reitti on {R}', asRoute: 'kuten muu reitti', styleAs: 'Lajin {S} tyyli tälle osuudelle', avoidSpot: 'Kierrä kohta tässä', sameCardS: 'Sama kortti avautuu, kun napautat osuutta kartalla.',
+    nlHead: 'Seuraava osuus', nlLine: 'Seuraavaksi piirrettävät osuudet · piirretty pysyy', speedsBtn: 'Nopeudet', changeAlong: 'Lajia voi vaihtaa matkan varrella.',
+    basedOn: 'Omien nopeuksiesi mukaan', onWater: 'Vesillä?', paddleHere: 'Melo tästä ({C})',
     lineAuto: 'Polku seuraa polkuja pisteidesi välillä', lineLine: 'Polku yhdistää pisteesi suorilla viivoilla', lineWater: 'Polku etsii vesireitin pisteidesi välille', noStyle: 'Suorat viivat eivät käytä reittityyliä',
     tuneH: 'Miten kuljet', tunePaths: 'Polut ↔ tiet', tuneWet: 'Märkä maa', tuneSpeed: 'Nopeutesi', tuneNormal: 'Normaali', tuneNote: 'Koko osio, kuten kohdassa Reitti › Miten kuljet: se pysyy siellä ensimmäisen pisteen jälkeen.',
     mrNoneSwim: 'LIPAS:ssa ei ole merkittyjä uintireittejä.',
@@ -1111,6 +1143,8 @@ const STR = {
     stretchT: '{A} → {B}', viaShaping: 'via {n} formpunkter', showShaping: 'Visa de {n} formpunkterna', foldShaping: 'Dölj formpunkterna', listNote: 'Tryck på en punkt eller en sträcka för att ändra den.', reorder: 'Ordna om', reorderNote: 'Dra en punkt eller flytta den tidigare eller senare.',
     noChange: 'Inget byte', noNight: 'Ingen natt', breakL: 'Paus', noStop: 'Ingen paus', addStop: 'Lägg till en paus', stayNight: 'Övernatta här', changeSport: 'Byt sport här', stretchAfter: 'Sträckan efter', pointH: 'Punkt', stretchH: 'Sträcka',
     appliesN: 'Ändringarna gäller den här sträckan: dess {n} etapper', applies1: 'Ändringarna gäller den här sträckan', ownOnly: 'bara den här sträckan · rutten är {R}', asRoute: 'som resten av rutten', styleAs: '{S}s stil för den här sträckan', avoidSpot: 'Undvik en plats här', sameCardS: 'Samma kort öppnas när du trycker på sträckan på kartan.',
+    nlHead: 'Nästa etapp', nlLine: 'Etapperna du ritar härnäst · det ritade står kvar', speedsBtn: 'Hastigheter', changeAlong: 'Du kan byta sport på vägen.',
+    basedOn: 'Efter dina hastigheter', onWater: 'På vattnet?', paddleHere: 'Paddla härifrån ({C})',
     lineAuto: 'Polku följer stigarna mellan dina punkter', lineLine: 'Polku binder ihop dina punkter med raka linjer', lineWater: 'Polku hittar en väg över vattnet mellan dina punkter', noStyle: 'Raka linjer använder ingen ruttstil',
     tuneH: 'Hur du tar dig fram', tunePaths: 'Stigar ↔ vägar', tuneWet: 'Blöt mark', tuneSpeed: 'Din fart', tuneNormal: 'Normal', tuneNote: 'Hela avsnittet, som i Rutt › Hur du tar dig fram: det finns kvar där efter första punkten.',
     mrNoneSwim: 'LIPAS har inga märkta leder för simning.',
@@ -1158,6 +1192,12 @@ const SPORT_WORDS = {
     verb: { mtb: 'cyklas', gravel: 'cyklas', road: 'cyklas', hike: 'gås', trailrun: 'springas', run: 'springas', paddle: 'paddlas', swim: 'simmas' } },
 };
 const SW = () => SPORT_WORDS[LANG] || SPORT_WORDS.en;
+// B's addition (approved 2026-10-20): the speed line under the next leg's sport, from the app's own numbers
+// (speedSummary() in js/speeds.js at Normal; paddling by the craft, CRAFT in js/config.js)
+const SPEED_TXT = { mtb: '20 / 16 / 11 km/h · 600 m/h up', gravel: '25 / 20 / 12 km/h · 700 m/h up', road: '27 / 15 / 8 km/h · 800 m/h up', hike: '5 km/h on the flat',
+  trailrun: '6:00 /km paved · 7:04 trail', run: '5:43 /km paved · 6:19 trail', swim: '2:24 /100 m' };
+const CRAFTS = [['kayak', 'Sea kayak', 6.5], ['canoe', 'Canoe', 5.5], ['sup', 'SUP', 4.5]];
+const speedLine = (k) => (k === 'paddle' ? `${CRAFTS[0][1]} · ${String(CRAFTS[0][2]).replace('.', LANG === 'en' ? '.' : ',')} km/h` : `${t('tuneNormal')} · ${SPEED_TXT[k]}`);
 const sL = (k) => SW().label[k];
 
 // ------------------------------------------------ data
@@ -1334,10 +1374,34 @@ function sportMenu(st, v) {
       <button type="button" class="btn quiet" data-act="spcancel" style="width:100%;border:0">${esc(tf('keepS', { R: sL(st.map) }))}</button></div>`;
   }
   const lead = route ? (v.sport === 'next' ? tf('stayNote', { R }) : `<b>${t('yourRouteIs')}:</b> ${esc(routeSports(st))}${st.mix ? ', LIPAS' : ''} · ${legCount(st)} ${t('legsN')}`) : t('sportLead');
-  const inRoute = (k) => route && (k === st.sport || (st.drawnNext && k === st.next) || (st.mix && k === 'paddle'));
-  const item = (k) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.map === k}" data-act="sportpick" data-v="${k}">${ic(SPORT_ICON[k], 22)}<span><b>${esc(sL(k))}${inRoute(k) ? ` <span class="cur">${t('yourRouteIs').toLowerCase()}</span>` : ''}</b><small>${esc(SW().note[k])}</small></span>${st.map === k ? ic('check', 18, 'tick') : ''}</button>`;
   return `<div class="popmenu sportmenu" role="menu" aria-label="${t('sportH')}" data-anchor="sport">
-    <div class="mh">${t('sportH')}</div><div class="lead">${route ? lead : esc(lead)}</div>${ALLSPORTS.map(item).join('')}</div>`;
+    <div class="mh">${t('sportH')}</div><div class="lead">${route ? lead : esc(lead)}</div>${ALLSPORTS.map((k) => sportItem(st, k, 'sportpick', st.map)).join('')}</div>`;
+}
+// one sport in the sport menu: its icon, name, "your route" where it is, and its line; the next leg's list (B's addition,
+// 2026-10-20) is the same item, picked for the next leg only
+function sportItem(st, k, act, on) {
+  const route = st.stage === 'route', inRoute = route && (k === st.sport || (st.drawnNext && k === st.next) || (st.mix && k === 'paddle'));
+  return `<button type="button" class="mi" role="menuitemradio" aria-checked="${on === k}" data-act="${act}" data-v="${k}">${ic(SPORT_ICON[k], 22)}<span><b>${esc(sL(k))}${inRoute ? ` <span class="cur">${t('yourRouteIs').toLowerCase()}</span>` : ''}</b><small>${esc(SW().note[k])}</small></span>${on === k ? ic('check', 18, 'tick') : ''}</button>`;
+}
+// The next leg's sport and its speed, at the top of the drawing menu (phones: the mode button's; desktops: the sport
+// button's at the toolbar's start). Picking a sport is the sport menu's "Only the legs you draw next": what's drawn
+// stays, the map follows, Paddle and Swim switch to Over water. The speed line opens Your speed's editor in place.
+function nextLegBlock(st) {
+  const nx = nextOf(st);
+  const list = st.nlOpen ? `<div role="group" aria-label="${t('nlHead')}">${ALLSPORTS.map((k) => sportItem(st, k, 'nlpick', nx)).join('')}</div>` : '';
+  const editor = st.nlSpeed ? speedEditor(nx) : '';
+  return `<div class="mh">${t('nlHead')}</div>
+    <button type="button" class="mi nlsport" data-act="nlopen" aria-expanded="${!!st.nlOpen}">${ic(SPORT_ICON[nx], 22)}<span><b>${esc(sL(nx))}</b><small>${t('nlLine')}</small></span>${ic(st.nlOpen ? 'up' : 'down', 16)}</button>${list}
+    <button type="button" class="mi compact nlspeed" data-act="nlspeed" aria-expanded="${!!st.nlSpeed}">${ic('clock', 20)}<span class="nlsp"><small>${esc(speedLine(nx))}</small><span class="nlspeeds">${t('speedsBtn')}</span></span>${ic(st.nlSpeed ? 'up' : 'right', 16)}</button>${editor}`;
+}
+// Your speed's own editor (renderSpeedEditor() in js/speeds.js), drawn simply: the presets, and paddling's crafts
+function speedEditor(k) {
+  const seg = ['Easy', t('tuneNormal'), 'Fast', 'Custom'].map((n, i) => `<button type="button" role="radio" aria-checked="${i === 1}">${esc(n)}</button>`).join('');
+  const crafts = k === 'paddle' ? `<div class="seg small" role="radiogroup" aria-label="Craft">${CRAFTS.map(([c, n], i) => `<button type="button" role="radio" aria-checked="${i === 0}">${esc(n)}</button>`).join('')}</div>` : '';
+  return `<div class="nleditor">${crafts}<div class="seg small" role="radiogroup" aria-label="${t('tuneSpeed')}">${seg}</div><div class="cap" style="font-weight:500">A change re-times the route.</div></div>`;
+}
+function nextLegMenu(st) {
+  return `<div class="popmenu" role="menu" aria-label="${t('nlHead')}" data-anchor="nl">${nextLegBlock(st)}</div>`;
 }
 // fold: where the column doesn't fit between the top bar and a raised sheet (short phones), it leaves out first the
 // compass while north is up (it's back as soon as the map is turned), then 3D (still in Layers); at 200 % both (#73)
@@ -1457,10 +1521,12 @@ function undoRedo(st, size = 44) {
 // the next leg: its mode, and under it its style; its sport too when the route has legs in another sport (2026-10-20),
 // so "only the legs you draw next" stays visible after its note has gone
 function modeButton(st) {
-  const showStyle = st.draw !== 'line', nx = nextOf(st), showSport = st.stage === 'route' && (nx !== st.sport || st.mix);
-  const style = (SPORTS[nx].styles.find((x) => x[0] === st.style) || SPORTS[nx].styles[0])[1];
+  // (B's addition, 2026-10-20: the next leg's sport from the first point, whole; the style shortens where there's no room)
+  const showStyle = st.draw !== 'line', nx = nextOf(st), showSport = st.stage !== 'start';
+  const style = styleName(st);
   const second = [showSport ? sL(nx) : '', showStyle ? style : ''].filter(Boolean).join(' · ');
-  return `<button type="button" class="modebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('nextLeg')}: ${t(st.draw)}${second ? `, ${esc(second)}` : ''}">${ic(st.draw, 20)}<span class="two"><b>${t(st.draw)}</b>${second ? `<small>${esc(second)}</small>` : ''}</span>${ic('down', 14)}</button>`;
+  const small = second ? `<small>${showSport ? `<span class="nls">${esc(sL(nx))}</span>` : ''}${showSport && showStyle ? '<span class="nldot">·</span>' : ''}${showStyle ? `<span class="nlst">${esc(style)}</span>` : ''}</small>` : '';
+  return `<button type="button" class="modebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('nextLeg')}: ${t(st.draw)}${second ? `, ${esc(second)}` : ''}">${ic(st.draw, 20)}<span class="two"><b>${t(st.draw)}</b>${small}</span>${ic('down', 14)}</button>`;
 }
 // editing: the next leg's mode, undo, redo, More; in the route's view only More stays (nothing is drawn there)
 function phoneToolbox(st) {
@@ -1488,13 +1554,14 @@ function styleBlock(st, how, act = 'dstyle') {
       <div class="pc-r"><span class="lab2">${t('tuneSpeed')}</span><span class="sel">${t('tuneNormal')} ${ic('down', 12)}</span></div>
       <div class="cap" style="font-weight:500">${t('tuneNote')}</div></div>` : ''}</div>`;
 }
-function modesMenu(st) {
+function modesMenu(st, desk = false) {
   const S = SPORTS[st.sport];
   const item = (m) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}">${ic(m, 22)}<span><b>${t(m)}</b><small>${t(m + 'D')}</small></span>${st.draw === m ? ic('check', 18, 'tick') : ''}</button>`;
   // the styles as chips, not a second list: one tap away, and plainly a different kind of choice from the modes
   const styles = `<div class="stylechips">${S.styles.map(([k, n]) => `<button type="button" class="chip" role="menuitemradio" aria-checked="${st.style === k}" aria-pressed="${st.style === k}" data-act="style" data-v="${k}">${st.style === k ? ic('check', 16) : ''}${esc(n)}</button>`).join('')}</div>
     <button type="button" class="mi compact" role="menuitem" data-act="finetune">${ic('route', 20)}<span><b>${t('fineTune')}</b></span>${ic('right', 16)}</button>`;
   return `<div class="popmenu" role="menu" aria-label="${t('nextLeg')}" data-anchor="modes">
+    ${st.stage !== 'start' && !desk ? `${nextLegBlock(st)}<hr>` : ''}
     <div class="mh" id="mh-${st._id}-a">${t('nextLeg')}</div>
     <div role="group" aria-labelledby="mh-${st._id}-a">${['auto', 'line', 'water'].map(item).join('')}</div>
     ${st.stage === 'route' ? `<div class="note">${t('nextNote')}</div>` : ''}<hr>
@@ -1545,7 +1612,8 @@ function checkBody(st, v) {
     <div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div><div class="sec-h">On the map</div>`;
 }
 function goBody(st) {
-  return `<div class="gosec"><h4>Time</h4><div class="row"><span class="btn quiet">${ic('clock', 18)}${t('depart')} ${t('now')} ${ic('down', 12)}</span><span style="color:var(--muted)">arrive 07:46</span></div></div>
+  return `<div class="gosec"><h4>Time</h4><div class="row"><span class="btn quiet">${ic('clock', 18)}${t('depart')} ${t('now')} ${ic('down', 12)}</span><span style="color:var(--muted)">arrive 07:46</span></div>
+    <div class="row"><span style="color:var(--muted)">${t('basedOn')} · ${esc(speedLine(nextOf(st)))}</span><button type="button" class="btn small quiet" data-act="gospeed" aria-expanded="${!!st.goSpeed}">${t('change')}</button></div>${st.goSpeed ? speedEditor(nextOf(st)) : ''}</div>
     <div class="gosec"><h4>Departure &amp; weather</h4><div style="font-size:13.5px">Dry, 7–9 °C, wind 4 m/s from the west; sunset 18:31.</div></div>
     <div class="gosec"><h4>${t('takeAlong')}</h4><div class="chips"><button type="button" class="chip">${ic('link', 18)}${t('shareLink')}</button><button type="button" class="chip">${ic('gpx', 18)}${t('gpx')}</button><button type="button" class="chip">${ic('offline', 18)}${t('offline')}</button></div></div>
     <div class="later">${ic('play', 16)} <b>Later (23b):</b> Start, here and in the route’s view: On the way, with what’s left and what’s next.</div>`;
@@ -1843,7 +1911,7 @@ function plannerHtml(st, v, desk, docked) {
     const mr = (MARKED[st.map] || []).length > 0;
     if (st.drawing) {
       // the line under the headline follows the drawing mode; no Done before the first point (Back is the way out)
-      const head = `<div class="row"><div class="hint">${t(desk ? 'clickStartHint' : 'startHint')}<small>${modeLine(st)}</small></div></div>`;
+      const head = `<div class="row"><div class="hint">${t(desk ? 'clickStartHint' : 'startHint')}<small>${modeLine(st)}</small><small>${t('changeAlong')}</small></div></div>`;
       if (desk) return `<div class="pl" role="region" aria-label="Route planner">${backRow(st)}${head}${styleBlock(st, 'full')}</div>`;
       // phones: the card stays low, one style row; a tap raises the sheet to the chips and Fine-tune; Back lowers it again
       const raised = st.dstyle || st.tune;
@@ -1927,7 +1995,8 @@ function deskToolbar(st, v, compact = 0) {
   const seg = ['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}" data-tip="${m}" aria-keyshortcuts="${{ auto: 'P', line: 'S', water: 'W' }[m]}">${ic(m, 19)}${t(m)}</button>`).join('');
   // where room runs out (a narrower window, longer words), Reverse and Back to start fold into More first, then the style's label
   const whole = route && compact < 1 ? `${sep}${tb('reverse', 'reverse', t('reverse'), 'reverse')}${tb('backstart', 'loop', t('backStart'), 'backstart')}` : '';
-  return `<div class="deskbar" role="toolbar" aria-label="Drawing tools"><div class="seg" role="radiogroup" aria-label="${t('nextLeg')}">${seg}</div>
+  const sportBtn = `<button type="button" class="sportbtn" data-act="nlmenu" aria-haspopup="menu" aria-expanded="${st.pop === 'nl'}" aria-label="${t('nlHead')}: ${esc(sL(nextOf(st)))}">${ic(SPORT_ICON[nextOf(st)], 18)}<span>${esc(sL(nextOf(st)))}</span>${ic('down', 12)}</button>${sep}`;
+  return `<div class="deskbar" role="toolbar" aria-label="Drawing tools">${sportBtn}<div class="seg" role="radiogroup" aria-label="${t('nextLeg')}">${seg}</div>
     ${sep}<button type="button" class="stylebtn" data-act="modes" aria-haspopup="menu" aria-expanded="${st.pop === 'modes'}" aria-label="${t('styleRow')}: ${esc(styleName(st))}" data-tip="style"><span class="two">${compact < 2 ? `<small>${t('styleRow')}</small>` : ''}<span>${esc(styleName(st))}</span></span>${ic('down', 12)}</button>
     ${hasHist(st) ? `${sep}${undoRedo(st, 40)}` : ''}${whole}${fit ? `${route && compact < 1 ? '' : sep}${fit}` : ''}${sep}${moreBtn(st, 40)}${st.stage === 'start' ? '' : `<button type="button" class="btn" data-act="done" data-tip="done">${t('done')}</button>`}</div>`;
 }
@@ -2035,10 +2104,10 @@ function render(f) {
   if (st.settings) scr.insertAdjacentHTML('beforeend', settingsHtml(st, v, desk));
   // menus, anchored to what opened them
   if (st.pop) {
-    const trig = scr.querySelector(st.pop === 'modes' ? '[data-act="modes"]' : st.pop === 'sport' ? (st.popAt === 'start' && scr.querySelector('[data-at="start"]') ? '[data-at="start"]' : '.top [data-act="sport"]') : '[data-act="trip"]');
+    const trig = scr.querySelector(st.pop === 'nl' ? '[data-act="nlmenu"]' : st.pop === 'modes' ? '[data-act="modes"]' : st.pop === 'sport' ? (st.popAt === 'start' && scr.querySelector('[data-at="start"]') ? '[data-at="start"]' : '.top [data-act="sport"]') : '[data-act="trip"]');
     if (trig) {
       const r = box(trig, scr);
-      scr.insertAdjacentHTML('beforeend', st.pop === 'modes' ? modesMenu(st) : st.pop === 'sport' ? sportMenu(st, v) : tripMenu(st, v));
+      scr.insertAdjacentHTML('beforeend', st.pop === 'nl' ? nextLegMenu(st) : st.pop === 'modes' ? modesMenu(st, desk) : st.pop === 'sport' ? sportMenu(st, v) : tripMenu(st, v));
       const m = scr.querySelector('.popmenu');
       if (st._popWas === st.pop) m.classList.add('still');
       // the sport menu hangs under the pill, right-aligned, and scrolls inside when taller than the room
@@ -2076,6 +2145,7 @@ function render(f) {
       sportmap: [`${sL(st.map)}: ${SW().note[st.map]}. Change any of it in Layers.`, '', ''],
       spall: [tf('nowAll', { S: sL(st.sport), n: mainLegs(st) }), t('undoBtn'), 'undo'],
       spnext: [tf('nowNext', { S: sL(st.map), R: sL(st.sport) }), '', ''],
+      onwater: [t('onWater'), tf('paddleHere', { C: CRAFTS[0][1].toLowerCase() }), 'paddlehere', tf('keepS', { R: sL(nextOf(st)) }), 'keepsport'],
       spnowater: [tf('nowNoWater', { R: sL(st.sport), V: SW().verb[st.map], S: sL(st.map) }), '', ''],
       mron: ['Marked routes are on in Layers', t('undoBtn'), 'mroff'] }[st.toast];
     if (T) {
@@ -2083,7 +2153,7 @@ function render(f) {
       const bottom = desk ? 24 : (fl3 ? H - fl3.offsetTop + 10 : pl3 ? H - pl3.offsetTop + 10 : 20);
       // on a phone a note stays left of the map's buttons, so it never covers Layers or Plan
       const place = desk ? '' : `left:8px;right:${c3 ? W - c3.offsetLeft + 8 : 8}px;transform:none;width:auto;`;
-      scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${bottom}px;${place}"><span>${esc(T[0])}</span>${T[1] ? `<button type="button" data-act="${T[2]}">${T[1]}</button>` : ''}</div>`);
+      scr.insertAdjacentHTML('beforeend', `<div class="toast${T[3] ? ' twobtn' : ''}" role="status" style="bottom:${bottom}px;${place}"><span>${esc(T[0])}</span>${T[1] ? `<button type="button" data-act="${T[2]}">${T[1]}</button>` : ''}${T[3] ? `<button type="button" class="t2" data-act="${T[4]}">${T[3]}</button>` : ''}</div>`);
     }
   }
   scr.insertAdjacentHTML('beforeend', `<span class="sr" aria-live="polite">${st.mode === 'view' ? 'Done editing. ' + t('mapTap') : ''}</span>`);
@@ -2175,7 +2245,15 @@ function act(f, a, val, ev) {
     case 'wnext': st.step = Math.min(alongList(st, view(st)).length - 1, st.step + 1); break;
     case 'wclose': st.step = null; if (st.stepFrom) { st.sheet = st.stepFrom.sheet; st.tab = st.stepFrom.tab; } break;
     case 'wopen': st.mode = 'view'; st.toast = null; if (!desk) st.sheet = 'peek'; else st.tab = 'check'; break;
-    case 'modes': st.pop = st.pop === 'modes' ? null : 'modes'; st.styleOpen = false; break;
+    case 'modes': st.pop = st.pop === 'modes' ? null : 'modes'; st.styleOpen = false; st.nlOpen = false; st.nlSpeed = false; break;
+    // B's addition (2026-10-20): the next leg's sport and speed in the drawing menu (desktops: the toolbar's sport button)
+    case 'nlmenu': st.pop = st.pop === 'nl' ? null : 'nl'; st.nlOpen = false; st.nlSpeed = false; break;
+    case 'nlopen': st.nlOpen = !st.nlOpen; st.nlSpeed = false; break;
+    case 'nlspeed': st.nlSpeed = !st.nlSpeed; st.nlOpen = false; break;
+    case 'nlpick': st.nlOpen = false; if (val !== nextOf(st)) { toNext(val); toast('spnext'); } break; // as "Only the legs you draw next"
+    case 'gospeed': st.goSpeed = !st.goSpeed; break;
+    case 'keepsport': close(); break;
+    case 'paddlehere': toNext('paddle'); toast(null); break;
     case 'trip': st.pop = st.pop === 'trip' ? null : 'trip'; break;
     case 'draw': st.draw = val; close(); break;
     case 'styleopen': st.styleOpen = true; break;
@@ -2257,7 +2335,7 @@ for (const el of document.querySelectorAll('.fr')) {
   }
   scr.addEventListener('click', (e) => {
     // with a menu open, a tap outside it (and its own button) only closes it
-    if (f.st.pop && !e.target.closest('.popmenu, [data-act="modes"], [data-act="trip"], [data-act="sport"]')) { f.st.pop = null; f.st.styleOpen = false; f.st.sp = null; f.st.spPick = null; render(f); return; }
+    if (f.st.pop && !e.target.closest('.popmenu, [data-act="modes"], [data-act="trip"], [data-act="sport"], [data-act="nlmenu"]')) { f.st.pop = null; f.st.styleOpen = false; f.st.sp = null; f.st.spPick = null; render(f); return; }
     const b = e.target.closest('[data-act]');
     if (b && scr.contains(b)) { if (b.disabled) return; act(f, b.dataset.act, b.dataset.v, e); return; }
     if (e.target.closest('input, select, label, .popmenu, .pl, .float, .deskbar, .cols, .top, .toast, .mapinfo, .tl, .setp, .wmk')) return;
