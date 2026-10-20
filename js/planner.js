@@ -3617,7 +3617,8 @@ export class Planner {
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
     return h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', 'data-k': 'back', onclick: fn, html: `${icon('chevronLeft', 18)}<span>${escapeHtml(label)}</span>` }), this.sportChip());
   }
-  doneBtn() { return h('button', { type: 'button', class: 'btn done', 'data-k': 'done', title: 'Close the planner (R)', onclick: () => this.setActive(false) }, 'Done'); }
+  // phones' way out of the planner: Close on the ways to begin, where nothing is done yet (decided 2026-10-20), Done after the first point
+  doneBtn(label = 'Done') { return h('button', { type: 'button', class: 'btn done', 'data-k': label.toLowerCase(), title: 'Close the planner (R)', onclick: () => this.setActive(false) }, label); }
 
   // The four ways to begin, equal: phones two by two in the peek, desktops a row each. A tap on the map
   // starts drawing at once. Swim has no marked routes in LIPAS (#306).
@@ -3627,7 +3628,7 @@ export class Planner {
       h('span', { class: 'way-ic', 'aria-hidden': 'true', html: icon(ic, 22) }), h('span', { class: 'way-t' }, h('b', {}, title), h('small', {}, line)),
       desk ? h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 16) }) : null);
     return [
-      h('div', { class: 'way-head' }, h('div', { class: 'way-title' }, h('h2', {}, 'Start a route'), this.sportChip(), h('small', {}, `or ${tap} the map to start drawing`)), this.doneBtn()),
+      h('div', { class: 'way-head' }, h('div', { class: 'way-title' }, h('h2', {}, 'Start a route'), this.sportChip(), h('small', {}, `or ${tap} the map to start drawing`)), this.doneBtn('Close')),
       h('div', { class: 'way-tiles', role: 'group', 'aria-label': 'Ways to begin' }, ...[
         way('draw', 'route', 'Draw it', desk ? `${tap === 'tap' ? 'Tap' : 'Click'} where you start, then each place on the way: Polku follows the paths between them.` : 'Point by point on the map', () => this.openWay('draw')),
         roundTripSports.includes(sp) ? way('loop', 'roundtrip', 'Round trip', desk ? 'A loop of the length or time you pick: three to choose from.' : 'A loop of a length you pick', () => this.openLoop(null, { fromWays: true })) : null,
