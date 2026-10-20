@@ -28,6 +28,7 @@ A route can change sport from one leg to the next: ride to the shore, paddle acr
 - **A point on open water:** while you draw on land, Polku asks how you get there: **Paddle**, **Swim** or **Stay on land**, and in winter over the ice too. Paddle and Swim take the leg to the point over the water and keep the point where you tapped it; the legs after it carry on in that sport. A leg over the ice is a straight line, and Check says that Polku can't see whether the ice holds: check the ice yourself before you go. A point on a bridge or a ferry line, or right by the shore, doesn't ask.
 - **The map's sport** doesn't change your route: the route keeps its sports and its own route style for each of them.
 - **Your speeds** for every sport are also in **Settings → Your speeds**, one line each; tap a sport to change them. Polku times your route with them.
+- **Your craft** for paddling (**Sea kayak**, **Canoe** or **SUP**) is in the sport menu at the start of a route when the sport is Paddle, and in your speeds. Polku keeps a canoe or a SUP to calmer water than a sea kayak.
 
 While you plan, **Weather** and <kbd>T</kbd> open the weather timeline over the map, and the planner stays where it was. On a phone the timeline sits just above the planner, with the toolbox and the map's buttons above it; with the planner pulled up to half or more, it sits on the planner's top until you close it. Go keeps the departure and the weather along the route.
 

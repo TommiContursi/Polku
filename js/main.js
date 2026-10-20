@@ -3,7 +3,7 @@
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
   DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
-  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY,
+  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
 } from './config.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
 import { pointForecasts, sampleAt } from './weather.js';
@@ -595,14 +595,27 @@ function pickSport(k, menu) {
 }
 // The same choice from the planner's start (A, #233): "Start a route · MTB ▾" opens the pill's own sports,
 // picked with the same setActivity(), so the pill and the chip always match: one control, two ways in (#245)
+// For Paddle it has the craft too, which the round trip's loops and the time depend on: picking Paddle keeps it open
+// at the craft (the start is drawn again for the sport, so it opens again at the new chip).
 let sportPop = null;
-function openSportMenu(anchor) {
+function openSportMenu(anchor, { craft = false } = {}) {
   if (sportPop) { sportPop.close(); return; }
   closeActs();
   anchor.setAttribute('aria-expanded', 'true');
-  sportPop = popMenu(anchor, [{ group: 'Sport', items: [{ note: SPORT_LEAD }, ...sportItems({ checked: state.activity, fn: (k) => {
-    setActivity(k); $('.pl-way .sport-chip')?.focus({ preventScroll: true });
-  } })] }], { label: 'Sport', align: 'left', sheet: true, onClose: () => { sportPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
+  const again = (opts) => { sportPop?.close(); const chip = $('.pl-way .sport-chip'); if (chip) openSportMenu(chip, opts); };
+  const paddle = state.activity === 'paddle';
+  sportPop = popMenu(anchor, [
+    { group: 'Sport', items: [{ note: SPORT_LEAD }, ...sportItems({ checked: state.activity, fn: (k) => {
+      setActivity(k);
+      if (k === 'paddle') again({ craft: true }); else $('.pl-way .sport-chip')?.focus({ preventScroll: true });
+    } }).map((it) => (it.k === 'paddle' && !paddle ? { ...it, keep: true } : it))] },
+    paddle ? 'hr' : null,
+    paddle ? { group: 'Craft', items: [
+      { chips: Object.entries(CRAFT).map(([k, c]) => ({ label: escapeAttr(c.label), radio: true, checked: planner.craft === k, keep: true, fn: () => { planner.setCraft(k); again({ craft: true }); } })) },
+      { note: 'Polku keeps a canoe or a SUP to calmer water than a sea kayak, and times the route at its speed.' },
+    ] } : null,
+  ], { label: 'Sport', align: 'left', sheet: true, onClose: () => { sportPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
+  if (craft) sportPop.el.querySelector('.chip[aria-checked="true"]')?.focus({ preventScroll: true });
 }
 let actTimer = 0;
 let actHovered = false; // the hover opened the menu, and no click on the pill since

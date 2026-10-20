@@ -5254,6 +5254,24 @@ def nextleg(chrome):
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
 
+    # ---- the start's sport menu, by touch: Paddle keeps it open at the craft, and a craft is picked there
+    name = '390x844 start'
+    pg = page(390, 844, True, 'mtb')
+    pg.js('polku.planner.setActive(true), true')
+    time.sleep(0.5)
+    press(pg, pg.js("nlT.at('.pl-way .sport-chip')"), f'{name}: the sport chip', True)
+    press(pg, pg.js("nlT.item('Paddle')"), f'{name}: Paddle', True)
+    c = pg.js("(() => { const m = document.querySelector('.menu-pop'); return m ? { crafts: [...m.querySelectorAll('.menu-chips .chip')].map((b) => b.textContent.trim() + (b.getAttribute('aria-checked') === 'true' ? '*' : '')).join(','), focus: document.activeElement.textContent.trim() } : null; })()")
+    if not c or c['crafts'] != 'Sea kayak*,Canoe,SUP' or c['focus'] != 'Sea kayak':
+        fails.append(f'{name}: after Paddle, the menu’s crafts: {c}')
+    press(pg, pg.js("nlT.at([...document.querySelectorAll('.menu-pop .menu-chips .chip')].find((b) => b.textContent.trim() === 'SUP'))"), f'{name}: SUP', True)
+    c = pg.js("({ craft: polku.planner.craft, sport: polku.state.activity, checked: document.querySelector('.menu-pop .menu-chips [aria-checked=true]')?.textContent.trim() })")
+    if c != {'craft': 'sup', 'sport': 'paddle', 'checked': 'SUP'}:
+        fails.append(f'{name}: SUP picked: {c}')
+    pg.js("polku.planner.setCraft('kayak'), true")
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
     # ---- 360 x 740 with long sport names: the sport stays whole on the button, the question fits
     name = '360x740'
     pg = page(360, 740, True, 'mtb')
@@ -6647,7 +6665,7 @@ GROUPS = [
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
-    ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), Settings\' speeds by sport (#87)'),
+    ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
