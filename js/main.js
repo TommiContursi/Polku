@@ -558,24 +558,34 @@ function sportItems({ checked, route = [], fn }) {
   }));
 }
 const SPORT_LEAD = 'The map shows what matters for the sport you pick, and the legs you draw are planned for it.';
-// The pill's menu: the sports, and with a route in another sport what a change is for (option A of B, #233)
+// The pill's menu: the sports, with Paddle its craft, and with a route in another sport what a change is for
+// (option A of B, #233)
+const CRAFT_NOTE = 'Polku keeps a canoe or a SUP to calmer water than a sea kayak, and times the route at its speed.';
 function sportList(menu) {
   const route = planner.points.length > 1 ? planner.routeSports() : [];
-  menu.setAttribute('role', 'listbox');
-  menu.setAttribute('aria-label', 'Sport');
-  menu.setAttribute('aria-describedby', 'act-lead');
+  menu.removeAttribute('role');
   menu.removeAttribute('aria-labelledby');
-  menu.replaceChildren(h('div', { class: 'act-head', 'aria-hidden': 'true' }, 'Sport'),
-    h('p', { class: 'act-lead', id: 'act-lead' }, route.length ? `Your route: ${planner.sportsLabel()}, ${planner.legs.length} ${planner.legs.length === 1 ? 'leg' : 'legs'}` : SPORT_LEAD),
+  const list = h('div', { class: 'act-list', role: 'listbox', 'aria-label': 'Sport', 'aria-describedby': 'act-lead' },
     ...sportItems({ checked: state.activity, route, fn: (k) => pickSport(k, menu) }).map((it) => h('button', {
       type: 'button', role: 'option', class: 'act two', 'aria-selected': String(it.checked), 'data-k': it.k,
       onclick: it.fn, html: `${icon(it.icon, 20)}<span><b>${it.label}</b><small>${it.desc}</small></span>${it.checked ? icon('check', 18) : ''}`,
     })));
+  // the craft, which the water routes and the time depend on: as in the start's sport menu
+  const craft = state.activity !== 'paddle' ? null : h('div', { class: 'act-craft', role: 'group', 'aria-labelledby': 'act-craft-h' },
+    h('div', { class: 'act-head', id: 'act-craft-h' }, 'Craft'),
+    h('div', { class: 'act-chips' }, ...Object.entries(CRAFT).map(([k, c]) => h('button', { type: 'button', class: 'act-chip', 'data-craft': k, 'aria-pressed': String(planner.craft === k),
+      onclick: () => { planner.setCraft(k); sportList(menu); menu.querySelector(`[data-craft="${k}"]`)?.focus(); }, html: `${planner.craft === k ? icon('check', 15) : ''}<span>${escapeAttr(c.label)}</span>` }))),
+    h('p', { class: 'act-lead' }, CRAFT_NOTE));
+  menu.replaceChildren(h('div', { class: 'act-head', 'aria-hidden': 'true' }, 'Sport'),
+    h('p', { class: 'act-lead', id: 'act-lead' }, route.length ? `Your route: ${planner.sportsLabel()}, ${planner.legs.length} ${planner.legs.length === 1 ? 'leg' : 'legs'}` : SPORT_LEAD),
+    list, craft);
 }
 // one tap with no route or for the route's own sport; otherwise the menu asks: The whole route, or Only the legs
 // you draw next. Keep, ‹ Sports and a tap outside change nothing.
 function pickSport(k, menu) {
   const q = planner.sportQuestion(k);
+  // Paddle keeps the menu open at its craft (the bar is drawn again for the sport)
+  if (!q && k === 'paddle' && state.activity !== k) { setActivity(k); openActs(); $('#activity-bar .act-chip[aria-pressed="true"]')?.focus(); return; }
   if (!q) { closeActs(); setActivity(k); return; }
   const back = () => { sportList(menu); menu.querySelector(`[data-k="${k}"]`)?.focus(); };
   const opt = (cls, ic, title, line, fn, disabled = false) => h('button', { type: 'button', class: `act two act-opt ${cls}`, 'aria-disabled': disabled ? 'true' : null,
@@ -612,7 +622,7 @@ function openSportMenu(anchor, { craft = false } = {}) {
     paddle ? 'hr' : null,
     paddle ? { group: 'Craft', items: [
       { chips: Object.entries(CRAFT).map(([k, c]) => ({ label: escapeAttr(c.label), radio: true, checked: planner.craft === k, keep: true, fn: () => { planner.setCraft(k); again({ craft: true }); } })) },
-      { note: 'Polku keeps a canoe or a SUP to calmer water than a sea kayak, and times the route at its speed.' },
+      { note: CRAFT_NOTE },
     ] } : null,
   ], { label: 'Sport', align: 'left', sheet: true, onClose: () => { sportPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
   if (craft) sportPop.el.querySelector('.chip[aria-checked="true"]')?.focus({ preventScroll: true });

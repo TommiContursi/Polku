@@ -5277,6 +5277,19 @@ def nextleg(chrome):
     if c != {'craft': 'sup', 'sport': 'paddle', 'checked': 'SUP'}:
         fails.append(f'{name}: SUP picked: {c}')
     pg.js("polku.planner.setCraft('kayak'), true")
+    # …and in the pill's menu, the same choice
+    escape(pg)
+    pg.js("polku.set({ activity: 'mtb' }), true")
+    time.sleep(0.4)
+    press(pg, pg.js("nlT.at('#activity-bar .act-current')"), f'{name}: the pill', True)
+    press(pg, pg.js("nlT.at('#activity-bar .act[data-k=paddle]')"), f'{name}: the pill’s Paddle', True)
+    c = pg.js("(() => { const m = document.querySelector('#activity-bar .act-menu'); return { open: !m.hidden, crafts: [...m.querySelectorAll('.act-chip')].map((b) => b.textContent.trim() + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(','), focus: document.activeElement.textContent.trim() }; })()")
+    if c != {'open': True, 'crafts': 'Sea kayak*,Canoe,SUP', 'focus': 'Sea kayak'}:
+        fails.append(f'{name}: the pill’s menu after Paddle: {c}')
+    press(pg, pg.js("nlT.at('#activity-bar .act-chip[data-craft=canoe]')"), f'{name}: the pill’s Canoe', True)
+    if pg.js('polku.planner.craft') != 'canoe':
+        fails.append(f"{name}: the pill's Canoe left the craft at {pg.js('polku.planner.craft')}")
+    pg.js("polku.planner.setCraft('kayak'), true")
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
 
