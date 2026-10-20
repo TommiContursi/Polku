@@ -6162,6 +6162,19 @@ START_LIB = """(() => {
     if (p.points.length !== 1 || view() !== 'first') err(`Undo after Use loop C: ${p.points.length} points, ${view()}`);
     return T.errs.splice(0);
   };
+  // the round trip's form whole on the screen, Make 3 loops on top of it (a shorter window, a side panel with tabs under it)
+  T.formWhole = async () => {
+    await T.fresh();
+    const c = map.getCenter();
+    p.addPoint([c.lng, c.lat]);
+    await wait(300);
+    click('.pl-way .rt-here .chip');
+    await wait(300);
+    const at = await T.at('.pl-way .rt-make');
+    if (!at || !at.clear) err(`${innerWidth} × ${innerHeight}: Make 3 loops is ${at ? `under ${at.over}` : 'not on screen'}`);
+    p.closeLoop();
+    return T.errs.splice(0);
+  };
   // a long sport name at 360 px: the steps' top row wraps rather than cutting it
   T.longName = async () => {
     const A = (await import(location.origin + '/js/config.js')).ACTIVITIES, was = A.mtb.label;
@@ -6249,7 +6262,7 @@ def start(chrome):
         P('stT.loopTapped()', 'Use loop C')
         fails += pg.js('stT.loopUsed()', timeout=10000)
 
-    for w, h_, phone in [(390, 844, True), (1440, 900, False), (360, 740, True)]:
+    for w, h_, phone in [(390, 844, True), (1440, 900, False), (360, 740, True), (1024, 768, False)]:
         name = f'{w}x{h_}'
         fails = []
         pg = chrome.page(w, h_, phone)
@@ -6260,9 +6273,11 @@ def start(chrome):
             pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"', **LOCAL_BROUTER}, '#13/61.50/23.80')
             pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
             pg.js(START_LIB)
-            if w == 360:  # the ways, and a long sport name in a step
+            if w in (360, 1024):  # the ways, the round trip's form, and (on a phone) a long sport name in a step
                 fails += pg.js('stT.ways()', timeout=30000)
-                fails += pg.js('stT.longName()', timeout=30000)
+                fails += pg.js('stT.formWhole()', timeout=30000)
+                if phone:
+                    fails += pg.js('stT.longName()', timeout=30000)
             else:
                 journeys(pg, fails, phone)
             fails += pg.js('stT.errs.splice(0)')
@@ -6313,7 +6328,7 @@ GROUPS = [
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251'),
-    ('start', [start], 'the start (A with 25b): the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
+    ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
