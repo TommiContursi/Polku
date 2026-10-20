@@ -257,7 +257,7 @@ let toastTimer = 0;
 export function toast(msg, { tone = 'info', ms = 3500, action = null } = {}) {
   const t = $('#toast');
   t.textContent = msg;
-  // one thing to do about it ("Paddle this leg"), right in the message; or two, a choice ("Paddle from here", "Keep Hike")
+  // one thing to do about it ("Paddle this leg"), right in the message; or a choice of a few ("Paddle", "Swim", "Stay on land")
   t.classList.toggle('choice', [].concat(action || []).length > 1);
   for (const act of [].concat(action || [])) {
     const b = document.createElement('button');

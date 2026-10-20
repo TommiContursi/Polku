@@ -1261,7 +1261,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast .toast-act { pointer-events: auto; margin-left: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
-/* a choice ("On the water? Paddle from here · Keep Hike"): the question, then each answer on a line of its own */
+/* a choice ("This point is on the water. How do you get there?"): the question, then each answer on a line of its own */
 .toast.choice { display: grid; justify-items: start; gap: 8px; }
 .toast.choice .toast-act { min-height: 44px; margin: 0; padding: 6px 14px; text-align: left; }
 .toast[data-tone="warn"] { background: #7c2d12; }
