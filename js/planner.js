@@ -4398,7 +4398,7 @@ export class Planner {
     // the style is what Follow paths (or the water router, paddling) prefers; a straight line has none
     const styled = m === 'auto' || (m === 'water' && isWater(ns));
     // the sport stays whole and the style shortens when there's no room (css/app.css)
-    this.els.modeBtn.innerHTML = `${icon(MODE_ICON[m], 20)}<span class="two"><b>${MODE_LABEL[m]}</b><small><span class="tb-sport">${escapeHtml(sport)}</span>${styled ? `<span class="tb-style"> · ${escapeHtml(name)}</span>` : ''}</small></span>${icon('chevronDown', 14)}`;
+    this.els.modeBtn.innerHTML = `${icon(MODE_ICON[m], 20)}<span class="two"><b>${MODE_LABEL[m]}</b><small><span class="tb-sport">${escapeHtml(sport)}</span>${styled ? `<span class="tb-style">&nbsp;· ${escapeHtml(name)}</span>` : ''}</small></span>${icon('chevronDown', 14)}`;
     this.els.modeBtn.setAttribute('aria-label', `Draw the next leg: ${MODE_LABEL[m]}, ${sport}${styled ? `, route style ${name}` : ''}`);
     this.els.sportBtn.innerHTML = `${icon(this.sportIcon(ns), 18)}<span>${escapeHtml(sport)}</span>${icon('chevronDown', 12)}`;
     this.els.sportBtn.setAttribute('aria-label', `Next leg: ${sport}`);

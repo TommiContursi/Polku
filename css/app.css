@@ -1494,7 +1494,7 @@ body.dropping .drop-hint { display: flex; }
 /* the next leg's sport stays whole, its style shortens where there's no room (B of #233) */
 .modebtn .tb-sport { flex: none; }
 .modebtn .tb-style { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.pl-tools:not(.docked):not(.desk) .modebtn .two { max-width: 9.5em; } /* floating: the style shortens before the toolbox docks */
+.pl-tools:not(.docked):not(.desk) .modebtn .two small { max-width: 7.5em; } /* floating: the style shortens before the toolbox docks */
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
