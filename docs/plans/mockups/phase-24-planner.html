@@ -228,6 +228,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 /* menus */
 .popmenu { position: absolute; z-index: 9; width: 316px; max-width: calc(100% - 16px); padding: 6px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line); display: flex; flex-direction: column; max-height: calc(100% - 80px); overflow: auto; overscroll-behavior: contain; transform-origin: var(--origin, bottom left); animation: pop 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes pop { from { opacity: 0; transform: scale(.97); } }
+.popmenu.still { animation: none; } /* already open: a step inside it swaps in place, no second entrance */
 .popmenu .mh { padding: 8px 10px 4px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .popmenu .mhead { padding: 8px 10px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .popmenu .mhead b { display: block; font-size: 15px; overflow-wrap: anywhere; }
@@ -260,7 +261,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .sel { height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font-weight: 600; font-size: 13.5px; position: relative; }
 .sel::after { content: ""; position: absolute; inset: -2px 0; }
 .sel select { position: absolute; inset: 0; opacity: 0; width: 100%; }
-.loopcards { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 6px; margin: 0 -12px; padding-left: 12px; scroll-padding-left: 12px; }
+.loopcards { display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; padding: 2px 2px 6px; margin: 0 -12px; padding-left: 12px; scroll-padding-left: 12px; }
 .lc { flex: none; width: min(250px, 82%); scroll-snap-align: start; display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-solid); text-align: left; }
 .lc.on { border: 2px solid var(--accent); padding: 9px 11px; }
 .lc .h { display: flex; align-items: center; gap: 8px; }
@@ -864,7 +865,7 @@ const STR = {
     stayNote: 'Your route stays {R}: change it in Route › The route’s sport.', nextSport: 'Next leg',
     stepOf: 'of', inCheck: 'All in Check', wholeRoute: 'the whole route', back2: 'Back', notChecked: 'not checked',
     openPl: 'Open in the planner', speedsFor: 'Speeds for', settings: 'Settings', mixedKeep: 'The paddle leg and the LIPAS stretch',
-    paced: 'The calls are paced, so it takes about {m} min; the legs come in one by one.',
+    keepS: 'Keep {R}', paced: 'The calls are paced, so it takes about {m} min; the legs come in one by one.',
   },
   fi: {
     tapStart: 'Aloita napauttamalla karttaa', tapStartSub: 'tai aloita kierroksesta tai tiedostosta', clickStart: 'Aloita napsauttamalla karttaa',
@@ -908,7 +909,7 @@ const STR = {
     stayNote: 'Reittisi pysyy: {R}. Muuta sitä kohdassa Reitti › Reitin laji.', nextSport: 'Seuraava osuus',
     stepOf: '/', inCheck: 'Kaikki listana', wholeRoute: 'koko reitti', back2: 'Takaisin', notChecked: 'tarkistamatta',
     openPl: 'Avaa suunnittelijassa', speedsFor: 'Nopeudet lajille', settings: 'Asetukset', mixedKeep: 'Melontaosuus ja LIPAS-osuus',
-    paced: 'Kyselyt tahditetaan, joten se kestää noin {m} min; osuudet valmistuvat yksi kerrallaan.',
+    keepS: 'Pidä {R}', paced: 'Kyselyt tahditetaan, joten se kestää noin {m} min; osuudet valmistuvat yksi kerrallaan.',
   },
   sv: {
     tapStart: 'Tryck på kartan för att börja', tapStartSub: 'eller börja med en rundtur eller en fil', clickStart: 'Klicka på kartan för att börja',
@@ -952,7 +953,7 @@ const STR = {
     stayNote: 'Din rutt förblir {R}: ändra den i Rutt › Ruttens sport.', nextSport: 'Nästa etapp',
     stepOf: 'av', inCheck: 'Alla i Kolla', wholeRoute: 'hela rutten', back2: 'Tillbaka', notChecked: 'inte kollade',
     openPl: 'Öppna i planeraren', speedsFor: 'Hastigheter för', settings: 'Inställningar', mixedKeep: 'Paddlingsetappen och LIPAS-sträckan',
-    paced: 'Frågorna sprids ut, så det tar ungefär {m} min; etapperna kommer en i taget.',
+    keepS: 'Behåll {R}', paced: 'Frågorna sprids ut, så det tar ungefär {m} min; etapperna kommer en i taget.',
   },
 };
 let LANG = 'en';
@@ -1146,10 +1147,12 @@ function sportMenu(st, v) {
       <div class="scopeq" id="sq-${st._id}">${ic(SPORT_ICON[st.spPick], 20).replace('class="ic ', 'style="display:inline;vertical-align:-3px;margin-right:6px" class="ic ')}${esc(tf('scopeFor', { S }))}</div>
       <div role="group" aria-labelledby="sq-${st._id}">
       <button type="button" class="opt" data-act="spall"${cross ? ' aria-disabled="true"' : ''}>${ic('route', 22)}<span><b>${t('scopeAll')}</b><small>${esc(allD)}</small></span></button>
-      <button type="button" class="opt" data-act="spnext">${ic(st.draw === 'line' ? 'line' : isWaterS(st.spPick) ? 'water' : 'auto', 22)}<span><b>${t('scopeNext')}${same ? ` <span class="cur">${t('already')}</span>` : ''}</b><small>${esc(tf('scopeNextD', { R, S }))}</small></span></button></div></div>`;
+      <button type="button" class="opt" data-act="spnext">${ic(st.draw === 'line' ? 'line' : isWaterS(st.spPick) ? 'water' : 'auto', 22)}<span><b>${t('scopeNext')}${same ? ` <span class="cur">${t('already')}</span>` : ''}</b><small>${esc(tf('scopeNextD', { R, S }))}</small></span></button></div>
+      <button type="button" class="btn quiet" data-act="spcancel" style="width:100%;border:0">${esc(tf('keepS', { R: sL(st.map) }))}</button></div>`;
   }
   const lead = route ? (v.sport === 'next' ? tf('stayNote', { R }) : `<b>${t('yourRouteIs')}:</b> ${esc(routeSports(st))}${st.mix ? ', LIPAS' : ''} · ${legCount(st)} ${t('legsN')}`) : t('sportLead');
-  const item = (k) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.map === k}" data-act="sportpick" data-v="${k}">${ic(SPORT_ICON[k], 22)}<span><b>${esc(sL(k))}</b><small>${esc(SW().note[k])}</small></span>${st.map === k ? ic('check', 18, 'tick') : ''}</button>`;
+  const inRoute = (k) => route && (k === st.sport || (st.drawnNext && k === st.next) || (st.mix && k === 'paddle'));
+  const item = (k) => `<button type="button" class="mi" role="menuitemradio" aria-checked="${st.map === k}" data-act="sportpick" data-v="${k}">${ic(SPORT_ICON[k], 22)}<span><b>${esc(sL(k))}${inRoute(k) ? ` <span class="cur">${t('yourRouteIs').toLowerCase()}</span>` : ''}</b><small>${esc(SW().note[k])}</small></span>${st.map === k ? ic('check', 18, 'tick') : ''}</button>`;
   return `<div class="popmenu sportmenu" role="menu" aria-label="${t('sportH')}" data-anchor="sport">
     <div class="mh">${t('sportH')}</div><div class="lead">${route ? lead : esc(lead)}</div>${ALLSPORTS.map(item).join('')}</div>`;
 }
@@ -1201,7 +1204,7 @@ function wcard(st, v) {
   const w = it.w, G = { t1: [t('t1'), 'warnf'], t2: [t('t2'), 'eye'], t3: [t('t3'), 'unk'] }[it.g];
   const acts = w.a.map((a) => `<button type="button" class="btn small quiet" data-act="noop">${a === 'Avoid' ? t('avoid') : t('retry')}</button>`).join('');
   return `<div class="wcard ${it.g}" role="group" aria-label="${esc(G[0])}: ${esc(w.b)}">
-    <div class="wc-h">${ic(G[1], 22)}<span><span class="wc-g">${G[0]}</span><b>${esc(w.b)}</b></span><button type="button" class="tbtn" data-act="wclose" aria-label="${t('back2')}: the map and the planner as they were">${ic('close', 20)}</button></div>
+    <div class="wc-h">${ic(G[1], 22)}<span><span class="wc-g">${G[0]}</span><b>${esc(w.b)}</b></span><button type="button" class="btn small quiet" data-act="wclose" aria-label="${t('back2')}: the map and the planner as they were">${t('back2')}</button></div>
     <div class="wc-w">${esc(w.w)}${it.at ? '' : ` · ${t('wholeRoute')}`}</div>${w.n ? `<div class="wc-n">${esc(w.n)}</div>` : ''}<span class="src">${w.s}</span>
     <div class="wc-a"><button type="button" class="tbtn ring" data-act="wprev" aria-label="Previous along the route"${st.step === 0 ? ' disabled' : ''}>${ic('left', 18)}</button><span class="cnt" aria-live="polite">${st.step + 1} ${t('stepOf')} ${L.length}</span><button type="button" class="tbtn ring" data-act="wnext" aria-label="Next along the route"${st.step === L.length - 1 ? ' disabled' : ''}>${ic('right', 18)}</button><span class="spacer"></span>${acts}<button type="button" class="btn small quiet keep" data-act="tocheck">${t('inCheck')}</button></div></div>`;
 }
@@ -1582,6 +1585,7 @@ function render(f) {
       const r = box(trig, scr);
       scr.insertAdjacentHTML('beforeend', st.pop === 'modes' ? modesMenu(st) : st.pop === 'sport' ? sportMenu(st, v) : tripMenu(st, v));
       const m = scr.querySelector('.popmenu');
+      if (st._popWas === st.pop) m.classList.add('still');
       // the sport menu hangs under the pill, right-aligned, and scrolls inside when taller than the room
       if (st.pop === 'sport') { const mw = Math.min(340, W - 16); m.style.width = `${mw}px`; m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${Math.max(8, Math.min(r.x + r.w - mw, W - 8 - mw))}px`; m.style.maxHeight = `${H - r.y - r.h - 16}px`; m.style.setProperty('--origin', 'top right'); m.style.zIndex = 15; }
       else if (desk) { m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${st.pop === 'trip' ? Math.max(8, r.x + r.w - 316) : r.x}px`; m.style.setProperty('--origin', st.pop === 'trip' ? 'top right' : 'top left'); }
@@ -1599,6 +1603,7 @@ function render(f) {
       }
     }
   }
+  st._popWas = st.pop;
   if (st.tip && desk) { const tr = scr.querySelector(`[data-tip="${st.tip}"]`); if (tr) { const r = box(tr, scr); scr.insertAdjacentHTML('beforeend', tipHtml(st.tip, r.x, r.y + r.h + 10)); } }
   if (st.info) scr.insertAdjacentHTML('beforeend', `<div class="mapinfo" style="left:${Math.min(st.info[0], W - 250)}px;top:${Math.max(70, st.info[1] - 90)}px" role="status"><b>Path · gravel, 2.5 m wide</b>Kauppi’s trails · open all year<br><small style="color:var(--muted)">${t('mapTap')}</small></div>`);
   // a warning's marker with the planner put away: the map's own card for it, and the way back to the planner
@@ -1669,12 +1674,13 @@ function act(f, a, val, ev) {
     case 'sportpick': {
       const k = val, vs = view(st).sport;
       if (st.stage !== 'route') { close(); st.map = k; st.sport = k; st.draw = isWaterS(k) ? 'water' : st.draw === 'water' ? 'auto' : st.draw; toast('sportmap'); break; } // no route: just the sport
-      if (k === st.sport && k === nextOf(st)) { close(); st.map = k; break; } // the route's own: nothing changes but the map
+      if (k === st.sport) { close(); toNext(k); break; } // the route's own sport: the map and the next legs go back to it; the drawn legs don't change
       if (vs === 'next') { close(); toNext(k); toast('spnext'); break; }
       if (vs === 'all') { close(); if (isWaterS(k) !== isWaterS(st.sport)) { toNext(k); toast('spnowater', 7000); } else { change(f, () => toAll(k), true); toast('spall', 7000); } break; }
       st.pop = 'sport'; st.sp = 'scope'; st.spPick = k; break; // ask: the menu turns to the question
     }
     case 'spback': st.sp = 'list'; st.spPick = null; break;
+    case 'spcancel': close(); break; // nothing changes
     case 'spall': { const k = st.spPick; if (!k || isWaterS(k) !== isWaterS(st.sport)) break; close(); change(f, () => toAll(k), true); toast('spall', 7000); break; }
     case 'spnext': { const k = st.spPick; close(); toNext(k); toast('spnext'); break; }
     case 'settings': close(); st.settings = !st.settings; break;
