@@ -3592,6 +3592,7 @@ export class Planner {
       const hd = this.els.head;
       const peek = `${Math.ceil(hd.offsetTop + hd.offsetHeight + 6)}px`;
       this.panel.style.setProperty('--peek-h', peek);
+      document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
       // the route's numbers came in just after it was framed and wrap onto a second line (#242): the
       // peek is taller now, so frame it once more, unless the map has been moved since
       const f = this.fitAt;
