@@ -228,6 +228,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
 /* menus */
 .popmenu { position: absolute; z-index: 9; width: 316px; max-width: calc(100% - 16px); padding: 6px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow), 0 0 0 1px var(--line); display: flex; flex-direction: column; max-height: calc(100% - 80px); overflow: auto; overscroll-behavior: contain; transform-origin: var(--origin, bottom left); animation: pop 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+.popmenu > * { flex: none; } /* a menu given a height scrolls; its items never squeeze */
 @keyframes pop { from { opacity: 0; transform: scale(.97); } }
 .popmenu.still { animation: none; } /* already open: a step inside it swaps in place, no second entrance */
 .popmenu .mh { padding: 8px 10px 4px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
@@ -421,6 +422,14 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .waytile > span { display: grid; gap: 1px; min-width: 0; }
 .waytile b { font-size: 14.5px; line-height: 1.2; overflow-wrap: anywhere; }
 .waytile small { font-size: 12.5px; color: var(--muted); line-height: 1.25; }
+.sporthdr { position: relative; display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 8px 0 10px; margin-left: 2px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-2); color: var(--text); font: 650 14px/1 system-ui, sans-serif; vertical-align: middle; white-space: nowrap; }
+.sporthdr::after { content: ""; position: absolute; inset: -6px -2px; }
+.sporthdr .ic:first-child { color: var(--accent); }
+.sporthdr { margin: 2px 0 2px 4px; max-width: 100%; }
+/* enlarged text: the header wraps, Done under it, nothing over anything */
+.bigtext .row:has(.sporthdr) { flex-wrap: wrap; }
+.bigtext .row:has(.sporthdr) .hint { flex-basis: 100%; }
+.bigtext .sporthdr { margin-left: 0; white-space: normal; height: auto; min-height: 40px; }
 .backbar { display: flex; align-items: center; gap: 6px; min-height: 44px; margin: 0 -4px; }
 .backbar .back { padding: 0 10px 0 4px; border: 0; background: none; color: var(--accent); font-weight: 700; }
 .backbar .here { margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--muted); padding-right: 4px; }
@@ -701,10 +710,11 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 
   <section class="cv-row" id="sa">
     <h2>A · Start or find a route</h2>
-    <p><b>Iteration 2 (2026-10-20, after the user's feedback):</b> Draw it is back as the first of four equal choices, each with its line, on phones and desktops; a tap or click on the map from the ways to begin still starts drawing. Every way has the same <b>Ways to begin</b> at the top left, which brings the four back as they were (on phones the system's back gesture does the same). Before a loop or a marked route is taken, Back keeps nothing; once taken there's a route, so there's Undo, not Back. Map taps inside a way belong to it: in Marked routes a tap picks a route, in Round trip it picks a loop or sets the start; only from the ways to begin and in Draw it does a tap add a point. <b>Draw it and Round trip show the route style before the first leg or the loops</b> (How you go's own section, so a change anywhere shows everywhere, the mode's menu too); Marked routes and a file bring their own line, so they don't. Choosing it first costs no routing calls; changing it afterwards routes every leg again, and the loops' calls twice. Swim has no marked routes in LIPAS, so it shows three ways. Your routes (#157) appears only once there are saved routes, with their count: no placeholder.</p>
+    <p><b>Iteration 2 (2026-10-20, after the user's feedback):</b> Draw it is back as the first of four equal choices, each with its line, on phones and desktops; a tap or click on the map from the ways to begin still starts drawing. Every way has the same <b>Ways to begin</b> at the top left, which brings the four back as they were (on phones the system's back gesture does the same). Before a loop or a marked route is taken, Back keeps nothing; once taken there's a route, so there's Undo, not Back. Map taps inside a way belong to it: in Marked routes a tap picks a route, in Round trip it picks a loop or sets the start; only from the ways to begin and in Draw it does a tap add a point. <b>Draw it and Round trip show the route style before the first leg or the loops</b> (How you go's own section, so a change anywhere shows everywhere, the mode's menu too); Marked routes and a file bring their own line, so they don't. Choosing it first costs no routing calls; changing it afterwards routes every leg again, and the loops' calls twice. Swim has no marked routes in LIPAS, so it shows three ways. Your routes (#157) appears only once there are saved routes, with their count: no placeholder. <b>Approved on 2026-10-20, with the sport in the ways' header:</b> it opens the pill's own menu, so the two always match.</p>
     <p>Today the peek says only "Tap the map to add a start point"; the other three ways to begin (a round trip, a marked route, a file) are in the sheet, under the fold on a phone. "Ride a marked route" focuses the search box, and is offered for Hike, Paddle and Swim too (Swim has no marked routes in LIPAS). Here the map stays the first way (the hint), and the other three are chips in the peek, each one tap. <b>Marked routes</b> lists LIPAS's routes for the sport in the map's view as cards side by side, like the loops: a tap on a card or its coloured line picks it, <b>Follow this route</b> makes it your route on its own line (as Ride this route does today, in words for every sport). When the layer is off, LIPAS doesn't answer, or there's none in view, it says so; Find by name searches all of Finland as the search does today. A round trip from the start says that <b>Where I am</b> sends your position to the router (#281). Names and lengths here are illustrative.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="ja-start" data-st='{"stage":"start"}'><figcaption><b>The ways to begin (iteration 2)</b>Four equal choices, Draw it first, each with a line on what it does; a tap on the map still starts drawing at once. Try each, then Ways to begin.</figcaption></figure>
+      <figure class="fr phone" id="ja-sport" data-st='{"stage":"start","pop":"sport","sp":"list","popAt":"start"}'><figcaption><b>The sport, first</b>"Start a route · MTB ▾" opens the same menu as the top bar's pill: one control, two ways in. It decides the style chips, the round trip's lengths and whether Marked routes is there. No route yet, so one tap.</figcaption></figure>
       <figure class="fr phone" id="ja-draw" data-st='{"stage":"start","drawing":true}'><figcaption><b>Draw it</b>The card stays low: what to do, a line that follows the drawing mode, and one row for the route style. No Done before the first point; Ways to begin at the top left.</figcaption></figure>
       <figure class="fr phone" id="ja-draw-style" data-st='{"stage":"start","drawing":true,"dstyle":true}'><figcaption><b>Draw it: the route style</b>The row raises the sheet to the chips and Fine-tune; Back lowers it to the card. Picking one re-routes nothing yet, so no note.</figcaption></figure>
       <figure class="fr phone" id="ja-draw-tune" data-st='{"stage":"start","drawing":true,"tune":true}'><figcaption><b>Fine-tune</b>How you go's own section, in place; Back returns to the Draw it card with the sheet lowered.</figcaption></figure>
@@ -1577,6 +1587,9 @@ function wpList(st, v) {
 // Marked routes in view (2026-10-20): LIPAS's routes for the map's sport in the map's view (one small request, as the
 // layer's own), as cards like the loops': a tap on a card or its line picks it, Follow this route makes it the route
 // (its own line, as Ride this route does today). Desktops: the same cards as a list in the panel.
+// the sport in the ways' header (approved 2026-10-20): the same menu as the top bar's pill, one control with two ways in;
+// it decides the style chips, the round trip's lengths and whether Marked routes is there, so it comes first
+const sportHdr = (st) => `<button type="button" class="sporthdr" data-act="sport" data-at="start" aria-haspopup="menu" aria-expanded="${st.pop === 'sport' && st.popAt === 'start'}" aria-label="${t('sportH')}: ${esc(sL(st.map))}">${ic(SPORT_ICON[st.map], 16)}${esc(sL(st.map))}${ic('down', 14)}</button>`;
 // the way back from any way to begin: the same words, the same place (iteration 2, 2026-10-20)
 const backBar = (act, label, here, aria = '') => `<div class="backbar"><button type="button" class="btn small quiet back" data-act="${act}"${aria ? ` aria-label="${esc(aria)}"` : ''}>${ic('left', 18)}${esc(label)}</button><span class="here">${esc(here)}</span></div>`;
 const backRow = (st, here) => backBar('waysback', t('backWays'), here);
@@ -1827,12 +1840,12 @@ function plannerHtml(st, v, desk, docked) {
     if (desk) {
       const row = ([act, icn, b, sub]) => `<button type="button" class="wayrow" data-act="${act}">${ic(icn, 24)}<span><b>${b}</b><small>${sub}</small></span>${ic('right', 16)}</button>`;
       return `<div class="pl" role="region" aria-label="Route planner">
-        <div class="row"><div class="hint">${t('waysTitle')}<small>${t('tapAnyD')}</small></div></div>
+        <div class="row"><div class="hint">${t('waysTitle')} ${sportHdr(st)}<small>${t('tapAnyD')}</small></div></div>
         <div class="wayrows">${ways.map(row).join('')}</div>${later}</div>`;
     }
     const tile = ([act, icn, b, sub]) => `<button type="button" class="waytile" data-act="${act}">${ic(icn, 22)}<span><b>${b}</b><small>${sub}</small></span></button>`;
     return `<div class="pl" role="region" aria-label="Route planner">${grab}${dock}
-      <div class="row"><div class="hint">${t('waysTitle')}<small>${t('tapAny')}</small></div><button type="button" class="btn" data-act="done">${t('done')}</button></div>
+      <div class="row"><div class="hint">${t('waysTitle')} ${sportHdr(st)}<small>${t('tapAny')}</small></div><button type="button" class="btn" data-act="done">${t('done')}</button></div>
       <div class="waytiles" role="group" aria-label="${t('waysTitle')}">${ways.map(tile).join('')}</div>${later}</div>`;
   }
   if (st.stage === 'first') {
@@ -1997,14 +2010,17 @@ function render(f) {
   if (st.settings) scr.insertAdjacentHTML('beforeend', settingsHtml(st, v, desk));
   // menus, anchored to what opened them
   if (st.pop) {
-    const trig = scr.querySelector(st.pop === 'modes' ? '[data-act="modes"]' : st.pop === 'sport' ? '[data-act="sport"]' : '[data-act="trip"]');
+    const trig = scr.querySelector(st.pop === 'modes' ? '[data-act="modes"]' : st.pop === 'sport' ? (st.popAt === 'start' && scr.querySelector('[data-at="start"]') ? '[data-at="start"]' : '.top [data-act="sport"]') : '[data-act="trip"]');
     if (trig) {
       const r = box(trig, scr);
       scr.insertAdjacentHTML('beforeend', st.pop === 'modes' ? modesMenu(st) : st.pop === 'sport' ? sportMenu(st, v) : tripMenu(st, v));
       const m = scr.querySelector('.popmenu');
       if (st._popWas === st.pop) m.classList.add('still');
       // the sport menu hangs under the pill, right-aligned, and scrolls inside when taller than the room
-      if (st.pop === 'sport') { const mw = Math.min(340, W - 16); m.style.width = `${mw}px`; m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${Math.max(8, Math.min(r.x + r.w - mw, W - 8 - mw))}px`; m.style.maxHeight = `${H - r.y - r.h - 16}px`; m.style.setProperty('--origin', 'top right'); m.style.zIndex = 15; }
+      // from the ways' header with no room above it (enlarged text): a sheet of its own, as More does
+      if (st.pop === 'sport' && st.popAt === 'start' && !desk && r.y - 72 < 240) { m.style.left = '8px'; m.style.right = '8px'; m.style.width = 'auto'; m.style.top = '64px'; m.style.bottom = '8px'; m.style.maxHeight = 'none'; m.style.zIndex = 15; }
+      else if (st.pop === 'sport' && st.popAt === 'start' && !desk) { const mw = Math.min(340, W - 16); m.style.width = `${mw}px`; m.style.bottom = `${H - r.y + 8}px`; m.style.left = `${Math.max(8, Math.min(r.x, W - 8 - mw))}px`; m.style.maxHeight = `${r.y - 72}px`; m.style.setProperty('--origin', 'bottom left'); m.style.zIndex = 15; }
+      else if (st.pop === 'sport') { const mw = Math.min(340, W - 16); m.style.width = `${mw}px`; m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${Math.max(8, Math.min(r.x + r.w - mw, W - 8 - mw))}px`; m.style.maxHeight = `${H - r.y - r.h - 16}px`; m.style.setProperty('--origin', 'top right'); m.style.zIndex = 15; }
       else if (desk) { m.style.top = `${r.y + r.h + 8}px`; m.style.left = `${st.pop === 'trip' ? Math.max(8, r.x + r.w - 316) : r.x}px`; m.style.setProperty('--origin', st.pop === 'trip' ? 'top right' : 'top left'); }
       else {
         // above its button, below the top bar, clear of the map's buttons; it scrolls inside if it's taller than
@@ -2076,11 +2092,12 @@ function act(f, a, val, ev) {
       if (st.pop) { close(); break; }
       if (st.settings) { st.settings = false; break; }
       if (st.step != null) { st.step = null; if (st.stepFrom) { st.sheet = st.stepFrom.sheet; st.tab = st.stepFrom.tab; } break; } // a tap beside an open card closes it, and adds nothing
-      if (st.find) break;
+      if (st.find) { const L = MARKED[st.map] || []; if (L.length) st.mrPick = ((st.mrPick || 0) + 1) % L.length; break; } // a tap picks a route (here: the next one; in Polku the one under the tap)
       if (st.stage === 'first' && R.open && R.nostart) { R.nostart = false; break; } // the round trip's start, tapped
       if (st.mode === 'view') { st.info = val; break; }
       if (st.mode !== 'edit') break;
       if (st.stage === 'first' && R.making) break; // the map waits while the loops are made (#109)
+      if (st.stage === 'first' && R.open && R.results) { R.pick = (R.pick + 1) % 3; break; } // a tap picks a loop (here: the next one; in Polku the one under the tap)
       if (st.stage === 'first' && R.open && !R.results) break; // moves the round trip's start (shown, not moved here)
       if (st.stage === 'start') change(f, () => { st.stage = 'first'; R.open = false; st.drawing = false; st.dstyle = false; st.tune = false; });
       else if (st.stage === 'first') change(f, () => { st.stage = 'route'; R.open = false; R.results = false; });
@@ -2103,10 +2120,10 @@ function act(f, a, val, ev) {
     case 'shfold': st.shOpen = { ...(st.shOpen || {}), [val]: !(st.shOpen && st.shOpen[val]) }; break;
     case 'pedit': st.pedit = !st.pedit; st.psel = null; break;
     // ---- 2026-10-20: the sport, and what it changes
-    case 'sport': if (st.pop === 'sport') close(); else { close(); st.pop = 'sport'; st.sp = 'list'; } break;
+    case 'sport': if (st.pop === 'sport') close(); else { close(); st.pop = 'sport'; st.sp = 'list'; st.popAt = ev && ev.target.closest && ev.target.closest('[data-at="start"]') ? 'start' : 'pill'; } break;
     case 'sportpick': {
       const k = val, vs = view(st).sport;
-      if (st.stage !== 'route') { close(); st.map = k; st.sport = k; st.draw = isWaterS(k) ? 'water' : st.draw === 'water' ? 'auto' : st.draw; toast('sportmap'); break; } // no route: just the sport
+      if (st.stage !== 'route') { close(); st.map = k; st.sport = k; st.draw = isWaterS(k) ? 'water' : st.draw === 'water' ? 'auto' : st.draw; st.style = 'balanced'; if (R.val != null) R.val = (R.unit === 'km' ? SPORTS[k].km : SPORTS[k].min)[1]; if (!(MARKED[k] || []).length) st.find = false; toast('sportmap'); break; } // no route: just the sport (styles and lengths are per sport)
       if (k === st.sport) { close(); toNext(k); break; } // the route's own sport: the map and the next legs go back to it; the drawn legs don't change
       if (vs === 'next') { close(); toNext(k); toast('spnext'); break; }
       if (vs === 'all') { close(); if (isWaterS(k) !== isWaterS(st.sport)) { toNext(k); toast('spnowater', 7000); } else { change(f, () => toAll(k), true); toast('spall', 7000); } break; }
