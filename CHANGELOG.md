@@ -2,7 +2,7 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-10-19
+## 2026-10-20
 
 ### Rain radar ready for FMI's new feed ([#133](https://github.com/TommiContursi/Polku/issues/133))
 
