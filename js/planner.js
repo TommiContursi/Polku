@@ -3582,6 +3582,8 @@ export class Planner {
     // a length being typed keeps its text
     if (view && view === box.dataset.view && box.contains(document.activeElement) && document.activeElement.matches('input')) return;
     const focus = box.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+    // the same view drawn again keeps where it was scrolled to, and its cards where they were
+    const same = view && view === box.dataset.view, top = same ? box.scrollTop : 0, left = same ? box.querySelector('.loop-cards')?.scrollLeft || 0 : 0;
     this.returnHow();
     box.dataset.view = view || '';
     box.hidden = !view;
@@ -3589,7 +3591,10 @@ export class Planner {
     this.panel.classList.toggle('starting', !!view && !this.points.length); // no route yet: the start is all there is
     this.panel.classList.toggle('way-only', this.peekOnly());
     box.replaceChildren(...(view ? this[`${view}View`]().filter(Boolean) : []));
+    if (top) box.scrollTop = top;
+    if (left) box.querySelector('.loop-cards')?.scrollTo({ left });
     if (focus) (box.querySelector(`[data-k="${focus}"]`) || box.querySelector('.way-back'))?.focus({ preventScroll: true });
+    this.measureSheet?.(); // the peek is the view's height (its box may not change when the sheet holds it)
     if (this.peekOnly() && this.layout() === 'sheet' && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
     this.renderTools(); // Done waits for the first point
   }
@@ -3980,8 +3985,11 @@ export class Planner {
       return Math.round(Math.min(innerHeight * 0.45, peek + (this.profZoneH || (this.profCompact ? 120 : 190)) + 6));
     };
     const sizes = () => {
-      const hd = this.els.head;
-      const peek = `${Math.ceil(hd.offsetTop + hd.offsetHeight + 6)}px`;
+      const hd = this.els.head, w = this.els.way;
+      // the start's view as tall as it is, not as tall as the sheet let it be: it scrolls inside only once the
+      // sheet stops below the top bar (css/app.css .way-only)
+      const grow = w && !w.hidden ? w.scrollHeight - w.clientHeight : 0;
+      const peek = `${Math.ceil(hd.offsetTop + hd.offsetHeight + grow + 6)}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
       // the route's numbers came in just after it was framed and wrap onto a second line (#242): the

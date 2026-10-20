@@ -4,6 +4,21 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-20
 
+### A calmer planner: starting a route ([#233](https://github.com/TommiContursi/Polku/issues/233))
+
+With no route yet, the planner offers four ways to begin, each with a line on what it does: **Draw it**, **Round trip**, **Marked routes** and **A file**. They're two by two on a phone and a row each on a desktop, and a tap or click on the map still starts drawing at once.
+
+- The sport is at the top, in **Start a route · MTB ▾**. It opens the same sports as the button beside the search, and the two always match. The sport decides the route styles, the round trip's lengths and whether there are marked routes: Swim has none in LIPAS, so it has three ways.
+- Each way has **‹ Ways to begin** at its top left, which brings the four back as they were, and the sport at its right. On a phone the back gesture does the same. Once you've taken a loop or a marked route there's a route, and **Undo** takes it back.
+- **Draw it** says what to do and how Polku joins your points in the drawing mode you've chosen, and lets you pick the route style before the first leg. On a phone that's one row that opens the styles, and **Fine-tune** opens How you go's controls in place. A style picked before there's a route routes nothing. Straight lines don't use a route style, and it says so.
+- After the first point, the planner says to tap the map for the next point and offers **Round trip from here** with three lengths and **Other…**. The card that used to open by the start and cover the map is gone, so four points take four taps ([#232](https://github.com/TommiContursi/Polku/issues/232)).
+- The round trip is in the planner's peek: distance or time, the sport's lengths, **−** and **+** (5 km for bikes, 1 km on foot or on the water, 15 minutes by time) or a length you type, the direction, the route style and **Make 3 loops**. Picking a length makes no routing calls; Make 3 loops does. While the loops are made, the map waits: a tap on it adds no point and doesn't move the start ([#109](https://github.com/TommiContursi/Polku/issues/109)).
+- The loops are cards side by side, the next one peeking in, and a list on a desktop. A tap on a card or on a loop's line on the map picks it and the map frames it; the picked one has **Use loop A**, and a note offers **Undo** ([#89](https://github.com/TommiContursi/Polku/issues/89)).
+- From the ways to begin, a round trip starts where you tap the map, or at **Where I am**. It says that it sends your position to the router as the start, rounded to about a metre ([#281](https://github.com/TommiContursi/Polku/issues/281)).
+- **Marked routes** lists LIPAS's routes for your sport in the map's view as cards, and the picked one's line glows on the map. A tap on a card or on a route's line picks it, and **Follow this route** makes it your route on its own line, with no routing. It lists them even with them off in **Layers**, and says so with **Show them**. If LIPAS isn't answering it says that, with **Retry**, and with none in view it suggests zooming out or **Find by name**.
+- A marked route is followed, whatever the sport: the cards, a route's card on the map and its tip say **Follow this route**, not Ride ([#306](https://github.com/TommiContursi/Polku/issues/306)).
+- The toolbox grows with the route. Before the first point it isn't there, apart from undo and redo when there's something to undo. The first point brings the drawing mode, undo, redo and **More**, and the first leg brings the route's actions, as far as there's room. New buttons fade in where they are, and the map's buttons don't move. **Back to start** isn't offered on a round trip, and on a desktop there's no **Done** before the first point.
+
 ### A calmer planner: the toolbox ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 The planner's header now shows just your route: its distance, time and climb, with **Done** at their right on a phone. The drawing tools have a toolbox of their own, and the whole route's actions are on it where there's room, or in **More**.

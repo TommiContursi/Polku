@@ -2819,7 +2819,7 @@ QUICK_TAPS = """(() => {
   // nothing open over the map, the sheet low, the map where it started
   const tidy = async () => {
     if (p.menu) p.menu.remove();
-    p.closeStartTip();
+    if (p.closeStartTip) p.closeStartTip(); // (before 25b: the first point's card)
     p.setSheetState('peek');
     await wait(600);
     m.jumpTo({ center: [23.76, 61.5025], zoom: 13 });
@@ -5761,7 +5761,7 @@ START_LIB = """(() => {
   const until = async (ok, ms = 5000) => { for (const t0 = Date.now(); !ok() && Date.now() - t0 < ms;) await wait(100); return ok(); };
   const routed = async () => { const n = await import(location.origin + '/js/net.js'); return n.usage().filter((u) => /^brouter|^valhalla/.test(u.id)).reduce((s, u) => s + (u.session || 0), 0); };
   // a control's middle, for a tap or click from Python, and whether it's what's there (nothing over it)
-  T.at = async (sel) => { await settled(); const el = typeof sel === 'string' ? $(sel) : sel; if (!el || !el.offsetParent) return null; el.scrollIntoView({ block: 'nearest' }); const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y); return { x, y, clear: !!top && (el === top || el.contains(top)) }; };
+  T.at = async (sel) => { await settled(); const el = typeof sel === 'string' ? $(sel) : sel; if (!el || !el.offsetParent) return null; el.scrollIntoView({ block: 'nearest' }); const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y); return { x, y, clear: !!top && (el === top || el.contains(top)), over: top ? top.id || String(top.className) : 'nothing' }; };
   // the map you can see: below the top bar, above the sheet and what floats over it, beside the side panel
   const free = () => {
     const bar = $('.topbar').getBoundingClientRect(), pl = $('#planner').getBoundingClientRect(), side = p.layout() === 'side';
@@ -6093,6 +6093,7 @@ START_LIB = """(() => {
 
   // ---------------------------------------------------------------- round trips from the first point (25b)
   T.loopFirst = async () => {
+    await until(() => $('#toast').hidden, 9000); // (Following's note, from before)
     await T.fresh();
     map.jumpTo({ center: [23.80, 61.50], zoom: 12 });
     await new Promise((ok) => map.once('idle', ok));
@@ -6188,7 +6189,7 @@ def start(chrome):
             fails.append(f'{name}: not on screen')
             return False
         if not s.get('clear', True):
-            fails.append(f'{name}: something is over it')
+            fails.append(f"{name}: something is over it ({s.get('over')})")
         if touch:
             pg.quick_tap(s['x'], s['y'])
         else:
