@@ -4760,9 +4760,11 @@ def column_early(chrome):
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COLUMN_HOLD}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True, **({'weather': {'wind': False, 'rain': False, **wx}} if wx else {})},
                     {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'})
-        time.sleep(1)  # the map stays short of its load event a while longer
-        if not pg.js('__col.release()'):
-            fails.append(f'{name}: MapLibre’s load event was never held back (the check proves nothing)')
+        # open_app() returns once the map has loaded, which can be well before MapLibre fires its load event
+        if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => __col.held || Date.now() - t0 > 45000 ? ok(!!__col.held)"
+                     " : setTimeout(go, 100); go(); })"):
+            fails.append(f'{name}: MapLibre’s load event didn’t come in 45 s (the check proves nothing)')
+        pg.js('__col.release()')
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 20000 ? ok() : setTimeout(go, 100); go(); })")
         pg.js(SETTLED)
         pg.js('new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => ok(true)))))')
