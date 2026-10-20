@@ -852,6 +852,8 @@ export class Planner {
   update() {
     // a route (or its first point) ends the start's steps; Undo back to none starts at the ways
     if (this.points.length && (this.way || this.wayDepth)) { this.leaveWay(); this.dropWayHist(); }
+    // a round trip from your first point goes with it (Undo, Clear): the ways to begin come back
+    if (this.loop.open && !this.loop.fromWays && !this.points.length) this.closeLoop();
     this.clearAlts();
     this.clearCategoryPreview();
     this.drawNogos();
@@ -1381,6 +1383,7 @@ export class Planner {
         r.score = loopScore({ km: r.a.total / 1000, targetKm: targetM / 1000, twice: r.twice, warnings: r.a.warnings.filter((w) => !/^Carry/.test(w.text)).length + (r.a.trailWarn || []).length + r.events.length, carryM: wet ? r.carry : 0 }) + (r.o.outBack ? 10 : 0); // a ring, where there's room for one
       }
       lap('analyse');
+      if (!L.open) return; // put away meanwhile (Close, Back, the point it started from undone): nothing to show
       L.timing = { ...T, t: undefined, tried };
       ok.sort((x, y) => x.score - y.score);
       const n0 = L.results.length;
@@ -1480,7 +1483,7 @@ export class Planner {
     const close = L.fromWays ? null : h('button', { type: 'button', class: 'tool way-x', 'data-k': 'loop-x', 'aria-label': 'Close the round trip', title: 'Close the round trip', onclick: () => this.closeLoop(), html: icon('close', 20) });
     if (!roundTripSports.includes(sport)) return [top, h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip')), close), h('p', { class: 'note' }, `No round trips for ${ACTIVITIES[sport].label} yet.`)];
     if (L.results.length && !L.editing) return [top, ...this.loopResults(close)];
-    if (L.busy) return [top, ...this.loopMaking()];
+    if (L.busy) return [top, ...this.loopMaking(close)];
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb, min = L.mode === 'min', val = min ? L.min : L.km;
     const step = min ? 15 : groupOf(sport) === 'bike' ? 5 : 1; // 5 km for bikes, 1 km on foot or water, 15 minutes by time
     const set = (v) => {
@@ -1531,12 +1534,12 @@ export class Planner {
 
   // While the loops are made the map waits (#109) and the choices can't change: the form folds to what's being
   // made and how far it's got, so the map above it has the room to show the loops' area (a 360 × 740 phone too)
-  loopMaking() {
+  loopMaking(close) {
     const L = this.loop, DIR_NAME = { 0: 'north', 45: 'north-east', 90: 'east', 135: 'south-east', 180: 'south', 225: 'south-west', 270: 'west', 315: 'north-west', wind: 'into the wind first' };
     const len = L.mode === 'min' ? (L.min >= 60 ? `${Math.floor(L.min / 60)} h${L.min % 60 ? ` ${L.min % 60} min` : ''}` : `${L.min} min`) : `${L.km} km`;
     const making = `Making loops…${L.progress ? ` ${L.progress} of 3` : ''}`;
     return [
-      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start'), h('small', {}, `${len} · ${L.dir == null ? 'any direction' : DIR_NAME[L.dir]} · from ${L.startLabel}`))),
+      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start'), h('small', {}, `${len} · ${L.dir == null ? 'any direction' : DIR_NAME[L.dir]} · from ${L.startLabel}`)), close),
       h('button', { type: 'button', class: 'btn primary big rt-make', 'data-k': 'make', disabled: true,
         html: `<span class="rt-making">${making}${L.progress ? `<span class="rt-progress" style="--p:${Math.round((L.progress / 3) * 100)}%"><i></i></span>` : ''}</span>` }),
       h('span', { class: 'sr-only', role: 'status' }, making)];
@@ -3581,11 +3584,13 @@ export class Planner {
     const view = this.startView();
     // a length being typed keeps its text
     if (view && view === box.dataset.view && box.contains(document.activeElement) && document.activeElement.matches('input')) return;
-    const focus = box.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+    const focus = box.contains(document.activeElement) || this.refocus ? this.refocus || document.activeElement.dataset.k : null;
+    this.refocus = null;
     // the same view drawn again keeps where it was scrolled to, and its cards where they were
     const same = view && view === box.dataset.view, top = same ? box.scrollTop : 0, left = same ? box.querySelector('.loop-cards')?.scrollLeft || 0 : 0;
     this.returnHow();
     box.dataset.view = view || '';
+    box.setAttribute('aria-label', { ways: 'Start a route', draw: 'Draw it', find: 'Marked routes', loop: 'Round trip', first: 'Your first point' }[view] || 'Start a route');
     box.hidden = !view;
     this.els.row.hidden = !!view;
     this.panel.classList.toggle('starting', !!view && !this.points.length); // no route yet: the start is all there is
@@ -3705,9 +3710,10 @@ export class Planner {
   }
   // one step back: Draw it's raised style lowers; a step goes back to the ways as they were
   wayStepBack() {
-    if (this.way === 'draw' && this.wayRaised) { this.wayRaised = false; this.wayTune = false; }
-    else if (this.loop.open && this.loop.fromWays) { this.loop.fromWays = false; this.closeLoop(); }
-    else this.leaveWay();
+    // (focus goes back to what opened the step: its way, or Draw it's style row)
+    if (this.way === 'draw' && this.wayRaised) { this.wayRaised = false; this.wayTune = false; this.refocus = 'srow'; }
+    else if (this.loop.open && this.loop.fromWays) { this.loop.fromWays = false; this.refocus = 'way-loop'; this.closeLoop(); }
+    else { this.refocus = this.way ? `way-${this.way}` : null; this.leaveWay(); }
     this.renderStart();
   }
   leaveWay() {
