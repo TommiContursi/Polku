@@ -5711,6 +5711,556 @@ def toolbox(chrome):
     return not fails
 
 
+# The start (A with 25b of #233, #232, #109, #89, #281, #306). LIPAS answers from the recorded Multamäki place (and a
+# second route made from it, south-east of it), through request(); BRouter mocked with straight lines (FIT_ROUTER).
+START_LIPAS = """(() => {
+  const real = window.fetch.bind(window), json = (o) => new Response(JSON.stringify(o), { headers: { 'Content-Type': 'application/json' } });
+  const empty = { type: 'FeatureCollection', features: [] };
+  let fx = null;
+  const load = async () => {
+    if (fx) return fx;
+    const f = await (await real(location.origin + '/tools/fixtures/lipas-multamaki.json')).json();
+    const twin = JSON.parse(JSON.stringify(f.place));
+    for (const x of twin.features) { x.properties.id = 615380; x.properties.nimi_fi = 'Multamäen pitkä lenkki'; x.geometry.coordinates = x.geometry.coordinates.map(([e, n]) => [e + 900, n - 700]); }
+    return (fx = { place: f.place, twin });
+  };
+  window.lipasMode = 'ok'; // 'fail': LIPAS isn't answering; 'none': nothing in view
+  window.lipasAsked = 0;
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/lipas\\.fi\\//.test(url)) return real(input, init);
+    window.lipasAsked++;
+    const { place, twin } = await load();
+    if (window.lipasMode === 'fail') return new Response('', { status: 400 }); // (a 5xx would pause LIPAS for a minute: net.js)
+    if (/CQL_FILTER=id%3D615379/.test(url)) return json(place);
+    if (/CQL_FILTER=id%3D615380/.test(url)) return json(twin);
+    if (window.lipasMode === 'none' || !/lipas_4411_/.test(url)) return json(empty);
+    return json({ type: 'FeatureCollection', features: [...place.features, ...twin.features] });
+  };
+})()"""
+START_LIB = """(() => {
+  const p = polku.planner, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const T = (window.stT = { errs: [] }), err = (s) => T.errs.push(s), txt = (e) => (e ? e.textContent.replace(/\\s+/g, ' ').trim() : '');
+  const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+  const M = () => p.marked || { state: 'none', list: [], on: 0 };
+  const click = (s) => { const el = $(s); if (el) el.click(); else err(`nothing to press: ${s}`); return !!el; };
+  // (what the header shows; on a planner from before the start's views, nothing: so the checks below fail one by one)
+  const way = () => $('.pl-way') || document.createElement('div'), view = () => (p.startView ? p.startView() : 'none');
+  const settled = () => """ + SETTLED + """;
+  const until = async (ok, ms = 5000) => { for (const t0 = Date.now(); !ok() && Date.now() - t0 < ms;) await wait(100); return ok(); };
+  const routed = async () => { const n = await import(location.origin + '/js/net.js'); return n.usage().filter((u) => /^brouter|^valhalla/.test(u.id)).reduce((s, u) => s + (u.session || 0), 0); };
+  // a control's middle, for a tap or click from Python, and whether it's what's there (nothing over it)
+  T.at = async (sel) => { await settled(); const el = typeof sel === 'string' ? $(sel) : sel; if (!el || !el.offsetParent) return null; el.scrollIntoView({ block: 'nearest' }); const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y); return { x, y, clear: !!top && (el === top || el.contains(top)) }; };
+  // the map you can see: below the top bar, above the sheet and what floats over it, beside the side panel
+  const free = () => {
+    const bar = $('.topbar').getBoundingClientRect(), pl = $('#planner').getBoundingClientRect(), side = p.layout() === 'side';
+    const over = ['#pl-tools:not(.docked)', '#wx-bar'].map((s) => $(s)).filter((e) => e && !e.hidden && getComputedStyle(e).display !== 'none').map((e) => e.getBoundingClientRect());
+    return { top: Math.max(bar.bottom, ...over.filter(() => side).map((r) => r.bottom)) + 10, bottom: side ? innerHeight - 20 : Math.min(pl.top, ...over.map((r) => r.top)) - 10, left: side ? pl.right + 20 : 20, right: $('#map-ctrls').getBoundingClientRect().left - 20 };
+  };
+  const onMap = (x, y) => document.elementFromPoint(x, y) === map.getCanvas();
+  // a spot of the map you can see, a share of the way across and down it
+  T.spot = async (fx, fy) => { await settled(); const f = free(), x = f.left + (f.right - f.left) * fx, y = f.top + (f.bottom - f.top) * fy; return onMap(x, y) ? { x, y } : null; };
+  T.fresh = async () => { p.setActive(false); p.clear(); p.past = []; p.future = []; p.setActive(true); await wait(200); return view(); };
+  // The toolbox grows with the route (2026-10-20): what's on it, and what's in More
+  const shown = () => (p.tools.hidden ? [] : [...p.tools.querySelectorAll('button')].filter((b) => b.offsetParent && !b.closest('[role=radiogroup]')).map((b) => b.getAttribute('aria-label') || txt(b)));
+  const moreItems = async () => {
+    if (p.tools.hidden || !p.els.more.offsetParent) return null;
+    p.els.more.click();
+    await wait(150);
+    const items = $$('.menu-pop .menu-item').map((b) => txt(b.querySelector('span')).replace(/\s+/g, ' '));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await wait(100);
+    return items;
+  };
+  T.toolsAt = async (stage, what) => {
+    await settled();
+    const on = shown(), desk = p.sideMQ.matches, has = (re) => on.some((x) => re.test(x));
+    const acts = /^(Reverse|Back to start|Share link|Export GPX|Save offline|Clear route|Show the whole route)/;
+    if (stage === 0) {
+      const hist = p.past.length || p.future.length;
+      if (!hist && !p.tools.hidden) err(`${what}: a toolbox with nothing it can do: ${on.join(', ')}`);
+      if (hist && (on.join('|') !== 'Undo|Redo')) err(`${what}: with history and no point, the toolbox has ${on.join(', ') || 'nothing'} (only undo and redo)`);
+      return T.errs.splice(0);
+    }
+    const mode = desk ? !!p.els.modeSeg.offsetParent && !!p.els.styleBtn.offsetParent : has(/^Draw the next leg/);
+    if (!mode || !has(/^Undo$/) || !has(/^Redo$/) || !has(/^More/)) err(`${what}: the toolbox has ${on.join(', ')}`);
+    const more = await moreItems() || [];
+    if (stage === 1) {
+      if (on.some((x) => acts.test(x))) err(`${what}: the route’s actions before there’s a leg: ${on.filter((x) => acts.test(x)).join(', ')}`);
+      if (!more.some((x) => /^Clear route/.test(x)) || more.some((x) => /^(Share link|Export GPX|Save offline|Reverse|Back to start)/.test(x))) err(`${what}: More has ${more.join(', ')}`);
+      T.left = p.tools.getBoundingClientRect().left;
+      const c = $('#map-ctrls').getBoundingClientRect();
+      T.col = `${c.left},${c.right}`; // (the sheet's height may change with the route's numbers: only sideways)
+    } else {
+      for (const a of ['Reverse', 'Share link', 'Export GPX', 'Save offline', 'Clear route', ...(p.isLoop() ? [] : ['Back to start']), ...(desk ? ['Show the whole route'] : [])]) {
+        const n = on.filter((x) => x.startsWith(a)).length + more.filter((x) => x.startsWith(a)).length;
+        if (n !== 1) err(`${what}: ${a} ${n ? 'twice' : 'neither on the toolbox nor in More'}`);
+      }
+      if (p.isLoop() && (on.concat(more)).some((x) => /^Back to start/.test(x))) err(`${what}: Back to start on a loop`);
+      if (stage === 2 && T.left != null) {
+        if (Math.abs(p.tools.getBoundingClientRect().left - T.left) > 0.5) err(`${what}: the toolbox’s left edge moved from ${T.left} to ${p.tools.getBoundingClientRect().left}`);
+        const c = $('#map-ctrls').getBoundingClientRect();
+        if (`${c.left},${c.right}` !== T.col) err(`${what}: the map’s buttons moved sideways as the toolbox grew`);
+        T.left = null;
+      }
+    }
+    return T.errs.splice(0);
+  };
+
+  // ---------------------------------------------------------------- the ways to begin
+  T.ways = async () => {
+    await T.fresh();
+    const late = await settled();
+    if (late) err(`opening: ${late}`);
+    const desk = p.sideMQ.matches;
+    if (view() !== 'ways') err(`the empty planner shows ${view()}, not the ways to begin`);
+    const head = txt($('.pl-way .way-title'));
+    if (!/^Start a route/.test(head) || !/the map to start drawing/.test(head)) err(`the ways' header: ${head}`);
+    const tiles = $$('.pl-way .way-tile'), names = tiles.map((b) => txt(b.querySelector('b')));
+    const want = desk ? 'Draw it|Round trip|Marked routes|A GPX or KML file' : 'Draw it|Round trip|Marked routes|A file';
+    if (names.join('|') !== want) err(`the ways: ${names.join(' | ') || 'none'}`);
+    if (tiles.some((b) => !txt(b.querySelector('small')))) err('a way without its line');
+    if (tiles.length === 4) {
+      const r = tiles.map((b) => b.getBoundingClientRect());
+      if (desk && !(r[1].top >= r[0].bottom && r[3].top >= r[2].bottom)) err('desktop: the ways aren’t a row each');
+      if (!desk && !(Math.abs(r[0].top - r[1].top) < 1 && r[2].top >= r[0].bottom && Math.abs(r[2].top - r[3].top) < 1)) err('phone: the ways aren’t two by two');
+      const bottom = desk ? p.panel.getBoundingClientRect().bottom : innerHeight;
+      if (r.some((x) => x.bottom > bottom + 1)) err('a way to begin is cut off');
+    }
+    if (/\\bRide\\b/.test(txt(way()))) err('the ways say Ride (#306)');
+    T.errs.push(...(await T.toolsAt(0, 'no route, no history')));
+    // no Done before the first point on desktops (Back is the way out); the phone's ways card keeps its own
+    if (desk && p.els.toolDone.offsetParent) err('the toolbar has Done before the first point');
+    // the sport in the header: the pill's own sports, the same in both
+    const chip = $('.pl-way .sport-chip');
+    if (!chip || !/MTB/.test(chip.getAttribute('aria-label'))) err(`the header's sport: ${chip ? chip.getAttribute('aria-label') : 'none'}`);
+    return T.errs.splice(0);
+  };
+  T.sportMenu = () => {
+    const m = $('.menu-pop');
+    if (!m) return { menu: false };
+    const items = [...m.querySelectorAll('[role=menuitemradio]')].map((b) => txt(b)), pill = $$('#activity-bar .act-menu .act').map((b) => txt(b));
+    return { menu: true, items, pill, checked: txt(m.querySelector('[aria-checked=true]')), expanded: $('.pl-way .sport-chip').getAttribute('aria-expanded') };
+  };
+  T.pickSport = (label) => { const b = $$('.menu-pop [role=menuitemradio]').find((x) => txt(x) === label); if (b) b.dataset.stPick = '1'; return !!b; };
+  T.sportIs = async (sport, label) => {
+    await wait(300);
+    const pill = $('#activity-bar .act-current').getAttribute('title'), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
+    if (polku.state.activity !== sport || !pill.includes(label) || !chip.includes(label)) err(`after picking ${label}: the map’s ${polku.state.activity}, the pill’s “${pill}”, the chip’s “${chip}”`);
+    return T.errs.splice(0);
+  };
+  T.swimWays = () => {
+    const names = $$('.pl-way .way-tile b').map(txt);
+    if (names.includes('Marked routes') || names.length !== 3) err(`Swim's ways: ${names.join(' | ')} (Swim has no marked routes in LIPAS)`);
+    return T.errs.splice(0);
+  };
+
+  // ---------------------------------------------------------------- a tap from the ways, then four points in four taps (#232)
+  T.tapAdded = async (n) => {
+    await until(() => p.points.length >= n, 3000);
+    if (p.points.length !== n) err(`after ${n} tap${n > 1 ? 's' : ''}: ${p.points.length} points`);
+    if ($('.maplibregl-popup')) err(`a card on the map after tap ${n} (#232): ${txt($('.maplibregl-popup'))}`);
+    if (n === 1) {
+      await wait(200);
+      if (view() !== 'first') err(`the first point's peek isn't there: ${view()}`);
+      const hint = txt($('.pl-way .way-hint b'));
+      if (!/the map for your next point/.test(hint)) err(`the first point's peek says: ${hint}`);
+      const chips = $$('.pl-way .rt-here .chip').map(txt);
+      if (chips.length !== 4 || chips[3] !== 'Other…') err(`Round trip from here: ${chips.join(' | ') || 'none'}`);
+      if (p.sideMQ.matches ? !p.els.toolDone.offsetParent : !$('.pl-way .done')) err('no Done after the first point');
+    }
+    // what appeared on the toolbox faded in where it is (reduced motion, as here: it simply appears)
+    const faded = (p.toolsFaded || []).map((b) => b.getAttribute('aria-label') || b.className);
+    if (n === 1 && !faded.some((x) => /pl-tools|^Draw the next leg|tb-modes/.test(x))) err(`the first point: the toolbox didn’t fade in (${faded.join(', ') || 'nothing'})`);
+    const acts = shown().filter((x) => /^(Reverse|Back to start|Share link|Export GPX|Save offline|Clear route|Show the whole route)/.test(x));
+    if (n === 2 && acts.some((x) => !faded.includes(x))) err(`the first leg: ${acts.filter((x) => !faded.includes(x)).join(', ')} came without fading in`);
+    return T.errs.splice(0).concat(await T.toolsAt(Math.min(n, 2), `after ${n} point${n > 1 ? 's' : ''}`));
+  };
+
+  // ---------------------------------------------------------------- Draw it
+  T.draw = async () => {
+    await T.fresh();
+    p.setMode('auto');
+    const desk = p.sideMQ.matches;
+    click('.pl-way [data-way=draw]');
+    await wait(200);
+    if (view() !== 'draw') return [`Draw it opened ${view()}`];
+    if (history.state?.polkuWay !== 1) err(`Draw it isn't a step of history (${JSON.stringify(history.state)})`);
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar .sport-chip')) err('Draw it has no Ways to begin and sport at its top');
+    if ($('.pl-way .done') || (desk && p.els.toolDone.offsetParent)) err('Done before the first point in Draw it');
+    const hint = () => txt($('.pl-way .way-hint'));
+    if (!/the map where you start/.test(hint()) || !/follows the paths between your points/.test(hint())) err(`Draw it says: ${hint()}`);
+    p.setMode('line');
+    await wait(100);
+    if (!/joins your points with straight lines/.test(hint()) || !/Straight lines don’t use a route style/.test(txt(way()))) err(`Straight line: ${txt(way())}`);
+    p.setMode('water');
+    await wait(100);
+    if (!/finds a way over the water/.test(hint())) err(`Over water: ${hint()}`);
+    p.setMode('auto');
+    await wait(100);
+    // the mode's menu has no note about drawn legs before there's one
+    if (!desk) {
+      p.els.modeBtn.click();
+      await wait(200);
+      if (/To change a drawn leg/.test(txt($('.menu-pop')))) err('the mode’s menu talks about drawn legs before there’s one');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await wait(100);
+    }
+    // the route style: phones open it from one row, which raises the sheet; desktops show the chips
+    const u0 = p.past.length, r0 = await routed();
+    if (!desk) {
+      const row = $('.pl-way .way-srow[data-k=srow]');
+      if (!row || !/Route style · Balanced/.test(txt(row))) err(`the style row: ${txt(row) || 'none'}`);
+      const before = p.panel.getBoundingClientRect().height;
+      if (row) row.click();
+      await settled();
+      if (!$('.pl-way .way-chips') || p.panel.getBoundingClientRect().height <= before) err('the style row didn’t raise the sheet to the chips');
+      if (!/Draw it/.test(txt($('.pl-way .way-back')))) err(`raised, Back says ${txt($('.pl-way .way-back'))}`);
+    } else if (!$('.pl-way .way-chips')) err('desktop: no style chips in Draw it');
+    const flowy = $$('.pl-way .way-chips .chip').find((b) => /Flowy/.test(txt(b)));
+    if (!flowy) return T.errs.splice(0).concat('no Flowy trails chip');
+    flowy.click();
+    await wait(900);
+    if (p.styleOf('mtb').p !== 'flowy') err(`the chip set ${p.styleOf('mtb').p}`);
+    if (p.past.length !== u0) err('a style before there’s a route made an Undo step');
+    if ((await routed()) !== r0 || /routed again/.test(txt($('#toast')))) err('a style before there’s a route routed or said so');
+    // the same style everywhere: the toolbox, How you go's own section
+    if (!/Flowy/.test(p.els.modeBtn.getAttribute('aria-label'))) err(`the toolbox says ${p.els.modeBtn.getAttribute('aria-label')}`);
+    const how = [...p.els.styleBox.querySelectorAll('.style-presets [aria-pressed=true]')].map(txt);
+    if (!how.some((t) => /Flowy/.test(t))) err(`How you go says ${how.join(', ') || 'nothing'}`);
+    // Fine-tune: How you go's own section, in place (the same element), and back in How you go after
+    click('.pl-way [data-k=tune]');
+    await wait(200);
+    if (!p.els.styleBox.closest('.pl-way')) err('Fine-tune didn’t open How you go’s section in place');
+    if (!desk) {
+      click('.pl-way .way-back'); // ‹ Draw it: back to the card, the sheet lowered
+      await until(() => !p.wayRaised);
+      await settled();
+      if (!$('.pl-way .way-srow[data-k=srow]') || p.els.styleBox.closest('.pl-way')) err('Back from Fine-tune didn’t lower the Draw it card');
+    }
+    if (!p.els.styleBox.closest('[data-sec=style]') && !desk) err('How you go’s section isn’t back in How you go');
+    // the phone's back gesture: back to the ways, as they were
+    history.back();
+    await until(() => view() === 'ways');
+    if (view() !== 'ways') err(`the back gesture from Draw it: ${view()}`);
+    if (p.els.styleBox.closest('.pl-way') || !p.els.styleBox.closest('[data-sec=style]')) err('How you go’s section isn’t back in How you go after the ways');
+    // put the style back as it was, from How you go
+    p.setStyle({ p: 'balanced', v: {}, wet: 'auto' });
+    return T.errs.splice(0);
+  };
+
+  // ---------------------------------------------------------------- Round trip from the ways
+  T.roundTrip = async () => {
+    await T.fresh();
+    // a GPS fix with seven decimals: the start gets five (#281)
+    navigator.geolocation.getCurrentPosition = (ok) => setTimeout(() => ok({ coords: { longitude: 25.9031234, latitude: 62.4351234, accuracy: 8 } }), 20);
+    click('.pl-way [data-way=loop]');
+    await wait(200);
+    if (view() !== 'loop' || !p.loop.fromWays) return [`Round trip from the ways: ${view()}`]; // (on main: Round trip opens the old form)
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar .sport-chip')) err('the round trip from the ways has no Ways to begin and sport');
+    const make = () => $('.pl-way .rt-make');
+    if (history.state?.polkuWay !== 1) err(`the round trip from the ways isn't a step of history (${JSON.stringify(history.state)})`);
+    if (!make() || !make().disabled) err('Make 3 loops works before there’s a start');
+    if (!/The start: (Tap|Click) the map for it/.test(txt(way())) || !/sends your position to the router/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))} / ${txt($('.pl-way .rt-cost'))}`);
+    const lens = () => $$('.pl-way .rt-chips .chip').map(txt).join(' ');
+    if (lens() !== '10 km 20 km 30 km 50 km') err(`MTB's lengths: ${lens()}`);
+    if (!/5 km shorter/.test($('.pl-way [data-k=dec]').getAttribute('aria-label'))) err('MTB’s step isn’t 5 km');
+    click('.pl-way [data-k=where]');
+    await until(() => p.loop.start);
+    const s = p.loop.start || [];
+    if (!s.length || s.some((v) => String(v).split('.')[1]?.length > 5)) err(`the start from Where I am: ${s.join(', ') || 'none'} (five decimals at most, #281)`);
+    if (!/From your position/.test(txt(way())) || !make() || make().disabled) err(`after Where I am: ${txt($('.pl-way .rt-start'))}`);
+    return T.errs.splice(0);
+  };
+  T.loopSport = async (lens, step) => {
+    await wait(300);
+    const got = $$('.pl-way .rt-chips .chip').map(txt).join(' '), dec = ($('.pl-way [data-k=dec]') || { getAttribute: () => '' }).getAttribute('aria-label');
+    if (view() !== 'loop' || got !== lens || !dec.startsWith(step)) err(`the round trip after a sport change: ${view()}, ${got}, ${dec}`);
+    return T.errs.splice(0);
+  };
+  T.loopBack = async () => {
+    click('.pl-way .way-back');
+    await until(() => view() === 'ways');
+    if (view() !== 'ways' || p.loop.open || p.loopMarker) err(`Back from the round trip: ${view()}, open ${p.loop.open}, the start's marker ${!!p.loopMarker}`);
+    return T.errs.splice(0);
+  };
+
+  // ---------------------------------------------------------------- Marked routes
+  const asked = async () => (await import(location.origin + '/js/net.js')).usage().find((u) => u.id === 'lipas').session;
+  T.marked = async () => {
+    await T.fresh();
+    map.jumpTo({ center: [25.9026, 62.4345], zoom: 13 });
+    // the layer off and nothing kept: the list asks LIPAS for the view itself, through request(), and still works
+    polku.set({ overlays: { ...polku.state.overlays, lipasRoutes: false } });
+    for (const k of [...polku.lipas.tiles.keys()]) polku.lipas.tiles.delete(k);
+    await wait(300);
+    const n0 = await asked();
+    click('.pl-way [data-way=find]');
+    await until(() => M().state !== 'loading' && view() === 'find', 8000);
+    if (view() !== 'find') return [`Marked routes opened ${view()}`];
+    if ((await asked()) <= n0) err('Marked routes didn’t ask LIPAS through request()');
+    const off = $('.pl-way .mr-state[data-state=off]');
+    if (!off) err('with the layer off: no note that the map doesn’t show them');
+    else { off.querySelector('button').click(); await wait(300); }
+    if (!polku.state.overlays.lipasRoutes || $('.pl-way .mr-state[data-state=off]')) err('Show them didn’t turn Marked routes on');
+    const cards = () => $$('.pl-way .mr-card');
+    if (cards().length !== 2) return T.errs.splice(0).concat(`${cards().length} marked routes listed (${M().state}: ${txt(way())})`);
+    const names = cards().map((c) => txt(c.querySelector('.mr-name')));
+    if (!names.includes('Multamäen MTB-lenkki') || !names.includes('Multamäen pitkä lenkki')) err(`the cards: ${names.join(', ')}`);
+    if (!cards()[0].classList.contains('on') || !/Follow this route/.test(txt(cards()[0].querySelector('.loop-use')))) err('the first card isn’t picked with Follow this route');
+    if (/\\bRide\\b/.test(txt(way()))) err('Marked routes say Ride (#306)');
+    if (!map.queryRenderedFeatures({ layers: ['lipas-pick'] }).length) err('the picked route doesn’t glow');
+    return T.errs.splice(0);
+  };
+  // the other route's line, tapped on the map: it's picked, and no point goes down
+  T.markedSpot = async () => {
+    const r = M().list.find((x, i) => i !== M().on);
+    if (!r) return null;
+    T.other = r.key;
+    // both in the map you can see (the list follows the move)
+    p.frame(M().list.flatMap((x) => x.parts.flat()).reduce((b, q) => [Math.min(b[0], q[0]), Math.min(b[1], q[1]), Math.max(b[2], q[0]), Math.max(b[3], q[1])], [180, 90, -180, -90]), { duration: 0, maxZoom: 15 });
+    await wait(900);
+    await until(() => map.queryRenderedFeatures({ layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key), 5000);
+    await settled();
+    const f = free();
+    for (const c of r.parts) for (let i = 0; i < c.length; i += 3) {
+      const q = map.project(c[i]);
+      if (q.x > f.left + 20 && q.x < f.right - 20 && q.y > f.top + 20 && q.y < f.bottom - 20 && onMap(q.x, q.y) && map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], { layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key)) return { x: q.x, y: q.y };
+    }
+    err('no spot on the other marked route in view');
+    return null;
+  };
+  T.markedTapped = async () => {
+    await until(() => M().list[M().on]?.key === T.other, 3000);
+    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key}`);
+    if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
+    return T.errs.splice(0);
+  };
+  T.markedStates = async () => {
+    // LIPAS not answering: said as missing, with Retry, never "none here"
+    window.lipasMode = 'fail';
+    const L = polku.lipas;
+    for (const k of [...L.tiles.keys()]) L.tiles.delete(k);
+    (p.listMarked && p.listMarked());
+    await until(() => M().state === 'fail', 6000);
+    if (!$('.pl-way .mr-state[data-state=fail]') || /No marked routes/.test(txt(way()))) err(`LIPAS not answering: ${txt(way())}`);
+    window.lipasMode = 'none';
+    click('.pl-way .mr-state[data-state=fail] button');
+    await until(() => M().state === 'ok', 6000);
+    if (!$('.pl-way .mr-state[data-state=none]') || !/No marked routes for MTB in view/.test(txt(way()))) err(`none in view: ${txt(way())}`);
+    window.lipasMode = 'ok';
+    for (const k of [...L.tiles.keys()]) L.tiles.delete(k);
+    (p.listMarked && p.listMarked());
+    await until(() => $$('.pl-way .mr-card').length === 2, 6000);
+    return T.errs.splice(0);
+  };
+  T.swimMarked = async () => {
+    await wait(300);
+    const s = $('.pl-way .mr-state[data-state=swim]');
+    if (view() !== 'find' || !s || !/No marked routes for swimming in LIPAS/.test(txt(s)) || $$('.pl-way .mr-card').length) err(`Swim in Marked routes: ${txt(way())}`);
+    return T.errs.splice(0);
+  };
+  T.follow = async () => {
+    const r0 = await routed(), i = M().list.findIndex((x) => /615379$/.test(x.key));
+    if (p.pickMarked) p.pickMarked(i);
+    await wait(100);
+    const b = $('.pl-way .mr-card.on .loop-use');
+    if (!b) return ['no Follow this route on the picked card'];
+    b.click();
+    await until(() => p.legs.length && p.legs.every((l) => l.mode === 'fixed'), 8000);
+    if (!p.legs.length || !p.legs.every((l) => l.mode === 'fixed' && l.src) || p.routeName !== 'Multamäen MTB-lenkki') err(`Follow this route: ${p.legs.map((l) => l.mode).join(', ')} (${p.routeName})`);
+    if (view() !== null || p.way) err(`after following: ${view()}`);
+    if ((await routed()) !== r0) err('following a marked route routed');
+    if (!/^Following Multamäen MTB-lenkki/.test(txt($('#toast')))) err(`the note: ${txt($('#toast'))}`);
+    await wait(400);
+    if (p.wayDepth || history.state?.polkuWay) err('the step’s history stayed after following a route');
+    p.undo(); // Undo, not Back: back to no route, and the ways
+    await wait(300);
+    if (p.points.length || view() !== 'ways') err(`Undo after following: ${p.points.length} points, ${view()}`);
+    return T.errs.splice(0).concat(await T.toolsAt(0, 'Undo back to no points'));
+  };
+
+  // ---------------------------------------------------------------- round trips from the first point (25b)
+  T.loopFirst = async () => {
+    await T.fresh();
+    map.jumpTo({ center: [23.80, 61.50], zoom: 12 });
+    await new Promise((ok) => map.once('idle', ok));
+    p.addPoint([23.80, 61.50]);
+    await wait(300);
+    T.r0 = await routed();
+    return T.at('.pl-way .rt-here .chip');
+  };
+  T.lengthTapped = async () => {
+    await until(() => view() === 'loop');
+    const L = p.loop;
+    if (view() !== 'loop' || L.km !== 10 || L.results.length || L.busy) err(`the 10 km chip: ${view()}, ${L.km} km, ${L.results.length} loops, busy ${L.busy}`);
+    if ((await routed()) !== T.r0) err('a length opened the form with routing calls');
+    if (!/From your first point/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
+    window.holdRoutes();
+    return T.at('.pl-way .rt-make');
+  };
+  T.making = async () => {
+    await until(() => p.loop.busy);
+    if (!p.loop.busy || !/Making loops/.test(txt($('.pl-way .rt-make')))) err('Make 3 loops isn’t making them');
+    await settled();
+    T.start = (p.loop.start || []).slice();
+    return T.spot(0.3, 0.3);
+  };
+  T.madeLoops = async () => {
+    await wait(400);
+    if (p.points.length !== 1) err(`a tap while the loops were made added ${p.points.length - 1} points (#109)`);
+    if (String(p.loop.start) !== T.start.join()) err('a tap while the loops were made moved the start (#109)');
+    window.releaseRoutes();
+    await until(() => !p.loop.busy && p.loop.results.length, 30000);
+    if (p.loop.results.length !== 3) err(`${p.loop.results.length} loops (${p.loop.note})`);
+    const cards = $$('.pl-way .loop-card:not(.loop-more)');
+    if (cards.length !== 3 || !cards[0].classList.contains('on') || !cards[0].querySelector('.loop-use').offsetParent || cards[1].querySelector('.loop-use').offsetParent) err('the loops’ cards: not three, or Use loop not on the picked one only');
+    if (!p.sideMQ.matches && cards.length > 1 && Math.abs(cards[0].getBoundingClientRect().top - cards[1].getBoundingClientRect().top) > 1) err('phone: the loops aren’t side by side');
+    await settled();
+    if (p.loop.results.length < 3) return null;
+    // a spot on a loop that isn't picked, clear of the others
+    const f = free(), k = 2, segs = (c) => c.slice(1).map((b, i) => [map.project(c[i]), map.project(b)]);
+    const others = p.loop.results.flatMap((r, i) => (i === k ? [] : segs(r.line.coords)));
+    const toSeg = (s, [a, b]) => { const dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((s.x - a.x) * dx + (s.y - a.y) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(s.x - a.x - t * dx, s.y - a.y - t * dy); };
+    let best = null;
+    for (const [a, b] of segs(p.loop.results[k].line.coords)) for (const t of [0.25, 0.5, 0.75]) {
+      const s = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      if (s.x < f.left + 20 || s.x > f.right - 20 || s.y < f.top + 20 || s.y > f.bottom - 20 || !onMap(s.x, s.y)) continue;
+      const d = Math.min(...others.map((g) => toSeg(s, g)));
+      if (!best || d > best.d) best = { x: s.x, y: s.y, d };
+    }
+    if (!best || best.d < 20) { err('no spot on loop C clear of the others'); return null; }
+    return best;
+  };
+  T.loopTapped = async () => {
+    await until(() => p.loop.on === 2, 3000);
+    if (p.loop.on !== 2 || p.loop.results.length !== 3) err(`a tap on loop C's line: picked ${p.loop.on}, ${p.loop.results.length} loops (#89)`);
+    if (String(p.loop.start) !== T.start.join()) err('a tap on a loop moved the start');
+    if (!$$('.pl-way .loop-card:not(.loop-more)')[2]?.classList.contains('on')) err('loop C’s card isn’t marked');
+    return T.at('.pl-way .loop-card.on .loop-use');
+  };
+  T.loopUsed = async () => {
+    await until(() => !p.loop.open);
+    if (p.loop.open || p.points.length < 3 || !p.isLoop() || view() !== null) err(`Use loop C: open ${p.loop.open}, ${p.points.length} points, ${view()}`);
+    const toast = txt($('#toast'));
+    if (!/^Loop C is your route now/.test(toast) || !$('#toast button')) err(`the note after Use loop C: ${toast}`);
+    T.errs.push(...(await T.toolsAt(3, 'a loop')));
+    p.undo();
+    await wait(300);
+    if (p.points.length !== 1 || view() !== 'first') err(`Undo after Use loop C: ${p.points.length} points, ${view()}`);
+    return T.errs.splice(0);
+  };
+  // a long sport name at 360 px: the steps' top row wraps rather than cutting it
+  T.longName = async () => {
+    const A = (await import(location.origin + '/js/config.js')).ACTIVITIES, was = A.mtb.label;
+    A.mtb.label = 'Maastopyöräily';
+    await T.fresh();
+    click('.pl-way [data-way=draw]');
+    await wait(200);
+    const chip = $('.pl-way .sport-chip'), back = $('.pl-way .way-back'), box = way().getBoundingClientRect();
+    const out = [chip, back].filter((e) => { const r = e.getBoundingClientRect(); return r.right > box.right + 1 || e.scrollWidth > e.clientWidth + 1; });
+    if (out.length || way().scrollWidth > way().clientWidth + 1) err(`a long sport name at ${innerWidth} px: ${out.map((e) => e.className).join(', ') || 'the step overflows'}`);
+    A.mtb.label = was;
+    history.back();
+    await until(() => view() === 'ways');
+    return T.errs.splice(0);
+  };
+  return true;
+})()"""
+
+
+def start(chrome):
+    ok = True
+
+    def press(pg, s, name, fails, touch):
+        if not s:
+            fails.append(f'{name}: not on screen')
+            return False
+        if not s.get('clear', True):
+            fails.append(f'{name}: something is over it')
+        if touch:
+            pg.quick_tap(s['x'], s['y'])
+        else:
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': s['x'], 'y': s['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                      'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.5)
+        return True
+
+    def journeys(pg, fails, phone):
+        P = lambda sel_js, what: press(pg, pg.js(sel_js), what, fails, phone)
+        mtb = "(() => { document.querySelector('#activity-bar .act-current').click(); document.querySelector('#activity-bar .act[data-k=mtb]').click(); return true; })()"
+        # the ways to begin, and the sport in their header: the pill's own sports, Swim with three ways
+        fails += pg.js('stT.ways()', timeout=30000)
+        if P("stT.at('.pl-way .sport-chip')", 'the sport chip'):
+            m = pg.js('stT.sportMenu()')
+            if not m['menu'] or m['items'] != m['pill'] or m['checked'] != 'MTB' or m['expanded'] != 'true':
+                fails.append(f'the sport chip’s menu: {m}')
+            if m['menu'] and pg.js("stT.pickSport('Swim')"):
+                P("stT.at('.menu-pop [data-st-pick]')", 'Swim')
+                fails += pg.js("stT.sportIs('swim', 'Swim')")
+                fails += pg.js('stT.swimWays()')
+        # …and the pill changes the chip
+        pg.js(mtb)
+        fails += pg.js("stT.sportIs('mtb', 'MTB')")
+        # a tap on the map from the ways adds the first point; four points take four taps (#232)
+        pg.js("polku.planner.setMode('line'); true")
+        for i, (fx, fy) in enumerate([(0.15, 0.2), (0.75, 0.25), (0.8, 0.75), (0.2, 0.7)]):
+            P(f'stT.spot({fx}, {fy})', f'map spot {i + 1}')
+            fails += pg.js(f'stT.tapAdded({i + 1})', timeout=10000)
+        # Draw it, its style before the first leg, Fine-tune, Back and the back gesture
+        fails += pg.js('stT.draw()', timeout=30000)
+        # a round trip from the ways: Where I am (#281), the sport inside it, Back
+        fails += pg.js('stT.roundTrip()', timeout=30000)
+        for label, lens, step in (('Hike', '5 km 10 km 15 km 20 km', '1 km'), ('MTB', '10 km 20 km 30 km 50 km', '5 km')):
+            if P("stT.at('.pl-way .sport-chip')", 'the round trip’s sport') and pg.js(f"stT.pickSport({json.dumps(label)})"):
+                P("stT.at('.menu-pop [data-st-pick]')", label)
+                fails += pg.js(f"stT.loopSport({json.dumps(lens)}, {json.dumps(step)})")
+        fails += pg.js('stT.loopBack()', timeout=10000)
+        # Marked routes: the list (the layer off), a tap on a line, its states, Swim, Follow this route and Undo
+        fails += pg.js('stT.marked()', timeout=30000)
+        P('stT.markedSpot()', 'the other marked route’s line')
+        fails += pg.js('stT.markedTapped()', timeout=10000)
+        fails += pg.js('stT.markedStates()', timeout=30000)
+        if P("stT.at('.pl-way .sport-chip')", 'Marked routes’ sport') and pg.js("stT.pickSport('Swim')"):
+            P("stT.at('.menu-pop [data-st-pick]')", 'Swim')
+            fails += pg.js('stT.swimMarked()')
+        pg.js(mtb)
+        time.sleep(0.6)
+        fails += pg.js('stT.follow()', timeout=30000)
+        # round trips from the first point: a length opens the form with no calls, Make 3 loops makes three,
+        # the map waits meanwhile (#109), a loop's line picks it (#89), Use loop C, then Undo
+        P('stT.loopFirst()', 'the 10 km chip')
+        P('stT.lengthTapped()', 'Make 3 loops')
+        P('stT.making()', 'a map spot while the loops are made')
+        P('stT.madeLoops()', 'loop C’s line')
+        P('stT.loopTapped()', 'Use loop C')
+        fails += pg.js('stT.loopUsed()', timeout=10000)
+
+    for w, h_, phone in [(390, 844, True), (1440, 900, False), (360, 740, True)]:
+        name = f'{w}x{h_}'
+        fails = []
+        pg = chrome.page(w, h_, phone)
+        try:
+            pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0.002, 0)}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': START_LIPAS}, pg.s)
+            pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"', **LOCAL_BROUTER}, '#13/61.50/23.80')
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            pg.js(START_LIB)
+            if w == 360:  # the ways, and a long sport name in a step
+                fails += pg.js('stT.ways()', timeout=30000)
+                fails += pg.js('stT.longName()', timeout=30000)
+            else:
+                journeys(pg, fails, phone)
+            fails += pg.js('stT.errs.splice(0)')
+            fails += [f'console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+        print(f"{'ok  ' if not fails else 'FAIL'} the start: ways, Draw it, Round trip, Marked routes ({name})" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+        ok = ok and not fails
+    return ok
+
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298)'),
@@ -5751,6 +6301,7 @@ GROUPS = [
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251'),
+    ('start', [start], 'the start (A with 25b): the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]

@@ -23,7 +23,7 @@ import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflin
 import { initSearch } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
-import { $, $$, h, icon, toast, store } from './ui.js';
+import { $, $$, h, icon, toast, store, popMenu } from './ui.js';
 import { initGestures } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
@@ -303,6 +303,14 @@ const planner = new Planner(map, {
   sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),
   // the planner's own picker: the route's sport (the map's too); the map in it already: just the route
   setSport: (k) => (state.activity === k ? planner.routeAs(k) : setActivity(k, { from: 'planner' })),
+  // the start's sport chip: the pill's own choices (#245)
+  sportMenu: (anchor) => openSportMenu(anchor),
+  // Marked routes (A): LIPAS's routes in a view, whether the map shows them, and turning them on
+  lipasRoutesIn: (b, types, centre) => lipas.routesIn(b, types, centre),
+  overlayOn: (id) => !!state.overlays[id],
+  setOverlay: (id, on) => setOverlay(id, on),
+  rideLipas: (props, opts) => rideLipas(props, opts),
+  lipasRide: (props) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, {})),
   setData,
   onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
   onAnalysis: () => { weather.renderTime(); weather.renderStrip(); },
@@ -542,6 +550,18 @@ function renderActivityBar() {
   });
   box.append(btn, menu);
 }
+// The same choice from the planner's start (A, #233): "Start a route · MTB ▾" opens the pill's own sports,
+// picked with the same setActivity(), so the pill and the chip always match: one control, two ways in (#245)
+let sportPop = null;
+function openSportMenu(anchor) {
+  if (sportPop) { sportPop.close(); return; }
+  closeActs();
+  anchor.setAttribute('aria-expanded', 'true');
+  sportPop = popMenu(anchor, [{ group: 'Sport', items: Object.entries(ACTIVITIES).map(([k, a]) => ({
+    icon: ACT_ICONS[k], label: escapeAttr(a.label), radio: true, checked: state.activity === k,
+    fn: () => { setActivity(k); $('.pl-way .sport-chip')?.focus({ preventScroll: true }); },
+  })) }], { label: 'Sport', align: 'left', sheet: true, onClose: () => { sportPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
+}
 let actTimer = 0;
 let actHovered = false; // the hover opened the menu, and no click on the pill since
 function openActs() {
@@ -658,6 +678,7 @@ function setOverlays(patch) {
   state.overlaysByActivity[state.activity] = { ...(state.overlaysByActivity[state.activity] || {}), ...patch };
   applyStyle();
   configureLayers();
+  if ('lipasRoutes' in patch) planner.renderStart(); // Marked routes says whether the map shows them
 }
 
 const OVERLAY_LABEL = {
@@ -1080,6 +1101,8 @@ map.on('data', (e) => {
   refreshQuickSoon();
 });
 onStatus(() => refreshQuickSoon());
+// LIPAS back after a pause: Marked routes lists the view again (A)
+onStatus((src, s) => { if (src === 'lipas' && (!s || s.retry)) planner.lipasBack(); });
 
 // The six maps: with an MML key, MML WMTS takes Maastokartta's place while it's the map you have on
 const QUICK_BASE_LABEL = { maasto: 'Maasto­kartta' };
