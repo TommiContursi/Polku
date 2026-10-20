@@ -707,7 +707,7 @@ body:not(.ready) .map-ctrls { display: none; }
 /* one line, always: with a long sport name the back link's words wrap in their button, so the sport never moves */
 .way-bar .way-back { min-width: 0; }
 .way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
-.way-end .way-x { margin: 0 -6px 0 0; }
+.way-end .way-x { margin: 0; }
 .way-sub small { color: var(--muted); font-size: 13px; }
 .way-hint { display: grid; gap: 2px; }
 .way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
