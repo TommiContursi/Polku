@@ -4626,7 +4626,7 @@ export class Planner {
         after: icon('chevronDown', 16), fn: () => { this.nlOpen = true; this.nlSpeed = false; refill('.nl-pick[aria-checked="true"]'); } });
     }
     out.push({ icon: 'clock', label: `<span class="nl-line">Your speed: ${escapeHtml(this.speedLine(ns))}</span>`, keep: true, expanded: !!this.nlSpeed, cls: 'nl-speed',
-      after: `<span class="nl-speeds">Change</span>${icon(this.nlSpeed ? 'chevronUp' : 'chevronRight', 16)}`, fn: () => { this.nlSpeed = !this.nlSpeed; this.nlOpen = false; refill('.nl-speed'); } });
+      after: `<span class="nl-speeds">Change</span>${icon(this.nlSpeed ? 'chevronUp' : 'chevronDown', 16)}`, fn: () => { this.nlSpeed = !this.nlSpeed; this.nlOpen = false; refill('.nl-speed'); } });
     if (this.nlSpeed) {
       const box = h('div', { class: 'nl-editor' });
       const line = () => { const el = box.closest('.menu')?.querySelector('.nl-line'); if (el) el.textContent = `Your speed: ${this.speedLine(ns)}`; };

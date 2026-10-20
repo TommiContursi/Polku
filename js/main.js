@@ -1347,7 +1347,7 @@ phoneMQ.addEventListener('change', () => {
 map.once('idle', () => (window.requestIdleCallback || setTimeout)(() => { for (const [k] of BASES) new Image().src = thumb(k); }));
 
 // ------------------------------------------------------------------ settings panel
-// How Polku behaves (not what the map shows): sport, planner, display, offline, data.
+// How Polku behaves (not what the map shows): your speeds, the planner, display, offline, data (#321).
 let speedOpen = null; // the sport whose speeds Settings shows opened (none at first)
 function renderSettingsPanel() {
   const p = $('#settings-body');
