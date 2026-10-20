@@ -1465,6 +1465,7 @@ function modeButton(st) {
 // editing: the next leg's mode, undo, redo, More; in the route's view only More stays (nothing is drawn there)
 function phoneToolbox(st) {
   if (st.stage === 'start') return undoRedo(st); // it grows with the route (2026-10-20): before the first point, only undo and redo
+  if (st.stage === 'first' && (st.rt.open || st.rt.results)) return undoRedo(st); // in a round trip too (#311)
   return st.mode === 'edit' ? `${modeButton(st)}${undoRedo(st)}${moreBtn(st)}` : moreBtn(st);
 }
 // The route style before the first leg (iteration 2): one section, shown in more places (Draw it, Round trip, the mode's
@@ -1922,7 +1923,7 @@ function deskToolbar(st, v, compact = 0) {
   const tb = (act, icn, label, tip, dis = false) => `<button type="button" class="tbtn" data-act="${act}" aria-label="${label}" data-tip="${tip}"${dis ? ' disabled' : ''}>${ic(icn, 20)}</button>`;
   const fit = route ? tb('fit', 'fit', 'Show the whole route', 'fit') : '';
   if (st.mode === 'view') return `<div class="deskbar" role="toolbar" aria-label="Your route">${fit}${moreBtn(st, 40)}${sep}<button type="button" class="btn" data-act="edit" data-tip="edit">${ic('pencil', 18)}${t('edit')}</button></div>`;
-  if (st.stage === 'start') return `<div class="deskbar" role="toolbar" aria-label="Drawing tools">${undoRedo(st, 40)}</div>`; // (2026-10-20: only undo and redo before the first point)
+  if (st.stage === 'start' || (st.stage === 'first' && (st.rt.open || st.rt.results))) return `<div class="deskbar" role="toolbar" aria-label="Drawing tools">${undoRedo(st, 40)}</div>`; // (2026-10-20: only undo and redo before the first point and in a round trip, #311)
   const seg = ['auto', 'line', 'water'].map((m) => `<button type="button" role="radio" aria-checked="${st.draw === m}" data-act="draw" data-v="${m}" data-tip="${m}" aria-keyshortcuts="${{ auto: 'P', line: 'S', water: 'W' }[m]}">${ic(m, 19)}${t(m)}</button>`).join('');
   // where room runs out (a narrower window, longer words), Reverse and Back to start fold into More first, then the style's label
   const whole = route && compact < 1 ? `${sep}${tb('reverse', 'reverse', t('reverse'), 'reverse')}${tb('backstart', 'loop', t('backStart'), 'backstart')}` : '';
@@ -2010,7 +2011,8 @@ function render(f) {
   // the toolbox: phones float it above the sheet (docked into the sheet where the map is too narrow); desktops hang it off the panel.
   // Not while marked routes are listed, nor while a warning is in view on a phone (nothing is drawn then).
   // (and, since 2026-10-20, none before the first point unless there's something to undo or redo: it grows with the route)
-  if (pl && (editing || st.stage === 'route') && (st.stage !== 'start' || st.hist > 0 || st.fut > 0) && !(st.stage === 'first' && (st.rt.open || st.rt.results)) && !st.find && !(st.step != null && !desk && st.sheet === 'peek') && !(st.uc && st.pcard && !desk && st.sheet === 'peek' && v.wv === 'v1')) {
+  // (in a round trip, since 2026-10-20, only undo and redo: phoneToolbox() and deskToolbar(), #311)
+  if (pl && (editing || st.stage === 'route') && (st.stage !== 'start' || st.hist > 0 || st.fut > 0) && !st.find && !(st.step != null && !desk && st.sheet === 'peek') && !(st.uc && st.pcard && !desk && st.sheet === 'peek' && v.wv === 'v1')) {
     if (desk) {
       // the toolbar may not reach the map's buttons: fold its least used parts first
       const right = scr.querySelector('.cols').offsetLeft - 12;
