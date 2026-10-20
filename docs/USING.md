@@ -31,7 +31,7 @@ In **Check → On the map**, distance marks, arrival times and elapsed times def
 
 The route glows on the map, and white chevrons drift along it the way it goes; they rest when you leave the map alone, and **Settings → Display → Moving arrows on the route** turns them off.
 
-On a phone, swipe the planner up or down to change how much of it is visible: from its handle, its top rows (over the buttons too), its tabs, or its list when the list is scrolled to the top. Let go where you like and it settles at the nearest size; a quick flick moves it at least one size. A tap on the handle folds it down or opens it again. On a desktop, the button at the end of the tabs moves the planner between the side and bottom of the map.
+On a phone, swipe the planner up or down to change how much of it is visible: from its handle, its top rows (over the buttons too), its tabs, or its list when the list is scrolled to the top. Let go where you like and it settles at the nearest size; a quick flick moves it at least one size. A tap on the handle folds it down or opens it again. On a desktop, the button in the planner's header, next to the one that folds it, moves the planner between the side and bottom of the map.
 
 ## Read the map
 
