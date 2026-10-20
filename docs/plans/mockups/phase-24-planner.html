@@ -415,7 +415,10 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .mrhead { display: flex; align-items: center; gap: 6px; min-height: 48px; }
 .mrhead .hint { font-size: 15px; }
 .lc .swatch { width: 28px; height: 6px; border-radius: 3px; flex: none; }
-.lc .nm2 { font-size: 14.5px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lc .nm2 { font-size: 14.5px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; hyphens: auto; } /* a route's name is how it's told apart: wrapped, never cut */
+.lc > button > * { min-width: 0; } /* enlarged text: nothing runs past the card */
+.lc .l { overflow-wrap: anywhere; }
+.lc .h .l { flex: 1 1 auto; min-width: 0; }
 .lc.find { justify-content: center; align-items: center; text-align: center; width: 140px; color: var(--text); gap: 6px; }
 .lc.find small { color: var(--muted); font-size: 12px; }
 .mrstate { display: flex; align-items: center; gap: 10px; margin: 2px 0 8px; padding: 8px 10px; border-radius: 12px; font-size: 13.5px; background: var(--surface-2); }
@@ -453,6 +456,9 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .wcard .wc-a { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
 .wcard .wc-a .cnt { font-size: 13px; font-weight: 700; min-width: 3.4em; text-align: center; font-variant-numeric: tabular-nums; }
 .wcard .wc-a .spacer { flex: 1; }
+.wcard .wc-a .btn { max-width: 100%; white-space: normal; overflow-wrap: anywhere; height: auto; min-height: 36px; }
+/* enlarged text: the card keeps what finds the item on the route (what, where, ‹ ›, ✕, Check); the rest is in Check */
+.bigtext .wcard .wc-n, .bigtext .wcard > .src, .bigtext .wcard .wc-a .btn:not(.keep) { display: none; }
 .desk .wcard.float2 { position: absolute; z-index: 8; width: 340px; box-shadow: var(--shadow); }
 /* the sport menu: names and what each shows; with a route drawn, what changes is a choice */
 .popmenu.sportmenu { width: 340px; }
@@ -858,6 +864,7 @@ const STR = {
     stayNote: 'Your route stays {R}: change it in Route › The route’s sport.', nextSport: 'Next leg',
     stepOf: 'of', inCheck: 'All in Check', wholeRoute: 'the whole route', back2: 'Back', notChecked: 'not checked',
     openPl: 'Open in the planner', speedsFor: 'Speeds for', settings: 'Settings', mixedKeep: 'The paddle leg and the LIPAS stretch',
+    paced: 'The calls are paced, so it takes about {m} min; the legs come in one by one.',
   },
   fi: {
     tapStart: 'Aloita napauttamalla karttaa', tapStartSub: 'tai aloita kierroksesta tai tiedostosta', clickStart: 'Aloita napsauttamalla karttaa',
@@ -899,8 +906,9 @@ const STR = {
     nowAll: 'Reittisi on nyt {S} · {n} osuutta reititetty uudelleen', nowNext: '{S} kartalle ja seuraaville osuuksille · reittisi pysyy: {R}',
     nowNoWater: 'Reittisi pysyy: {R}, sitä ei voi {V}. Seuraavat osuudet: {S}.', routeSport: 'Reitin laji', change2: 'Muuta…',
     stayNote: 'Reittisi pysyy: {R}. Muuta sitä kohdassa Reitti › Reitin laji.', nextSport: 'Seuraava osuus',
-    stepOf: '/', inCheck: 'Kaikki Tarkista-välilehdellä', wholeRoute: 'koko reitti', back2: 'Takaisin', notChecked: 'tarkistamatta',
+    stepOf: '/', inCheck: 'Kaikki listana', wholeRoute: 'koko reitti', back2: 'Takaisin', notChecked: 'tarkistamatta',
     openPl: 'Avaa suunnittelijassa', speedsFor: 'Nopeudet lajille', settings: 'Asetukset', mixedKeep: 'Melontaosuus ja LIPAS-osuus',
+    paced: 'Kyselyt tahditetaan, joten se kestää noin {m} min; osuudet valmistuvat yksi kerrallaan.',
   },
   sv: {
     tapStart: 'Tryck på kartan för att börja', tapStartSub: 'eller börja med en rundtur eller en fil', clickStart: 'Klicka på kartan för att börja',
@@ -944,6 +952,7 @@ const STR = {
     stayNote: 'Din rutt förblir {R}: ändra den i Rutt › Ruttens sport.', nextSport: 'Nästa etapp',
     stepOf: 'av', inCheck: 'Alla i Kolla', wholeRoute: 'hela rutten', back2: 'Tillbaka', notChecked: 'inte kollade',
     openPl: 'Öppna i planeraren', speedsFor: 'Hastigheter för', settings: 'Inställningar', mixedKeep: 'Paddlingsetappen och LIPAS-sträckan',
+    paced: 'Frågorna sprids ut, så det tar ungefär {m} min; etapperna kommer en i taget.',
   },
 };
 let LANG = 'en';
@@ -1056,6 +1065,8 @@ const MR_MTB = [
 const MR_FOOT = [{ name: 'Kaupin luontopolku', type: 'Nature trail', c: '#15803d', km: 2.4, loop: false,
   phone: [[75, 868], [115, 895], [160, 875], [200, 858], [250, 828], [300, 840], [350, 820], [420, 808], [480, 798], [550, 792], [620, 805], [650, 795], [690, 750], [710, 690], [700, 648]],
   desk: [[565, 465], [620, 455], [650, 442], [700, 440], [750, 430], [800, 425], [850, 425], [870, 400], [880, 370], [875, 345], [860, 327]] }];
+// the worst case: names as long as LIPAS's longest, Finnish types, and more routes than fit
+const MR_WORST = (L) => [{ ...L[0], name: 'Pyhäjärvenrannan luontopolun pysäköintialueen maastopyöräilyreitit ja yhdysreitit', type: 'Maastopyöräilyreitti · verkosto', km: 123.4 }, ...L.slice(1), ...L.map((r, i) => ({ ...r, name: `${r.name} ${i + 2}`, km: +(r.km * 1.7).toFixed(1) }))];
 const MARKED = { mtb: MR_MTB, gravel: [MR_MTB[2]], road: [MR_MTB[2]], hike: MR_FOOT, trailrun: MR_FOOT, run: MR_FOOT,
   paddle: [{ name: 'Näsijärven melontareitti', type: 'Paddling route', c: '#0284c7', km: 34, phone: [[0, 560], [120, 530], [260, 500], [420, 470], [560, 440], [700, 420], [780, 410]], desk: [[0, 400], [200, 380], [450, 330], [620, 300], [860, 290], [1000, 260], [1080, 140]] }],
   swim: [] }; // no LIPAS route kinds for swimming: the start doesn't offer them
@@ -1119,8 +1130,8 @@ function topbar(desk, st) {
 }
 // the route's legs in each sport, for the menu's words: a plain route is 2 legs of its sport; a mixed one (st.mix) has a
 // paddle crossing and a LIPAS stretch that keep their own
-const legCount = (st) => (st.stage === 'route' ? (st.long ? 51 : 2 + (st.mix ? 2 : 0)) : 0);
-const mainLegs = (st) => (st.stage === 'route' ? (st.long ? 51 : 2) : 0);
+const legCount = (st) => (st.stage === 'route' ? (st.long || st._worst ? 51 : 2) + (st.mix ? 2 : 0) : 0);
+const mainLegs = (st) => (st.stage === 'route' ? (st.long || st._worst ? 51 : 2) : 0);
 const nextOf = (st) => st.next || st.sport;
 // The sport menu: the sports with their names and one line each; with a route drawn and a sport other than the
 // route's, the choice of what it changes. `v.sport`: 'ask' (recommended), 'next' (the map and the next legs only),
@@ -1129,7 +1140,7 @@ function sportMenu(st, v) {
   const route = st.stage === 'route', R = sL(st.sport);
   if (st.sp === 'scope' && st.spPick) {
     const S = sL(st.spPick), n = mainLegs(st), cross = isWaterS(st.spPick) !== isWaterS(st.sport), same = st.spPick === nextOf(st) && st.spPick === st.map;
-    const allD = cross ? tf('scopeNo', { R, V: SW().verb[st.spPick] }) : `${tf('scopeAllD', { n, R, S })}${st.mix ? ` ${tf('scopeKeep', { K: t('mixedKeep') })}` : ''}`;
+    const allD = cross ? tf('scopeNo', { R, V: SW().verb[st.spPick] }) : `${tf('scopeAllD', { n, R, S })}${n > 10 ? ` ${tf('paced', { m: Math.ceil(n / 12) })}` : ''}${st.mix ? ` ${tf('scopeKeep', { K: t('mixedKeep') })}` : ''}`;
     return `<div class="popmenu sportmenu" role="dialog" aria-label="${esc(tf('scopeFor', { S }))}" data-anchor="sport">
       <div class="backrow"><button type="button" class="btn" data-act="spback">${ic('left', 18)}${t('backSports')}</button></div>
       <div class="scopeq" id="sq-${st._id}">${ic(SPORT_ICON[st.spPick], 20).replace('class="ic ', 'style="display:inline;vertical-align:-3px;margin-right:6px" class="ic ')}${esc(tf('scopeFor', { S }))}</div>
@@ -1192,7 +1203,7 @@ function wcard(st, v) {
   return `<div class="wcard ${it.g}" role="group" aria-label="${esc(G[0])}: ${esc(w.b)}">
     <div class="wc-h">${ic(G[1], 22)}<span><span class="wc-g">${G[0]}</span><b>${esc(w.b)}</b></span><button type="button" class="tbtn" data-act="wclose" aria-label="${t('back2')}: the map and the planner as they were">${ic('close', 20)}</button></div>
     <div class="wc-w">${esc(w.w)}${it.at ? '' : ` · ${t('wholeRoute')}`}</div>${w.n ? `<div class="wc-n">${esc(w.n)}</div>` : ''}<span class="src">${w.s}</span>
-    <div class="wc-a"><button type="button" class="tbtn ring" data-act="wprev" aria-label="Previous along the route"${st.step === 0 ? ' disabled' : ''}>${ic('left', 18)}</button><span class="cnt" aria-live="polite">${st.step + 1} ${t('stepOf')} ${L.length}</span><button type="button" class="tbtn ring" data-act="wnext" aria-label="Next along the route"${st.step === L.length - 1 ? ' disabled' : ''}>${ic('right', 18)}</button><span class="spacer"></span>${acts}<button type="button" class="btn small quiet" data-act="tocheck">${t('inCheck')}</button></div></div>`;
+    <div class="wc-a"><button type="button" class="tbtn ring" data-act="wprev" aria-label="Previous along the route"${st.step === 0 ? ' disabled' : ''}>${ic('left', 18)}</button><span class="cnt" aria-live="polite">${st.step + 1} ${t('stepOf')} ${L.length}</span><button type="button" class="tbtn ring" data-act="wnext" aria-label="Next along the route"${st.step === L.length - 1 ? ' disabled' : ''}>${ic('right', 18)}</button><span class="spacer"></span>${acts}<button type="button" class="btn small quiet keep" data-act="tocheck">${t('inCheck')}</button></div></div>`;
 }
 // the markers, the picked stretch's glow and the "not checked" dashes on the map picture, or a marked route's glow
 function mapMarks(st, v, desk) {
@@ -1372,7 +1383,7 @@ function wpList(st, v) {
 // layer's own), as cards like the loops': a tap on a card or its line picks it, Follow this route makes it the route
 // (its own line, as Ride this route does today). Desktops: the same cards as a list in the panel.
 function findHtml(st, v, desk, grab) {
-  const S = st.map, L = MARKED[S] || [];
+  const S = st.map, L = v.worst && (MARKED[S] || []).length ? MR_WORST(MARKED[S]) : MARKED[S] || [];
   const head = `<div class="mrhead"><button type="button" class="tbtn" data-act="mrback" aria-label="${t('back2')}: the ways to begin">${ic('left', 20)}</button><div class="hint">${t('mrTitle')}<small>${t('mrSub')}</small></div></div>`;
   const note = st.mr === 'off' ? `<div class="mrstate">${ic('info', 18)}<span>${t('mrOff')}</span><button type="button" class="btn small" data-act="mron">${t('showThem')}</button></div>`
     : st.mr === 'fail' ? `<div class="mrstate fail">${ic('unk', 20)}<span>${t('mrFail')}</span><button type="button" class="btn small" data-act="noop">${t('retry')}</button></div>`
@@ -1517,7 +1528,7 @@ function render(f) {
   const z = st.z || 1, W = (st.w || (desk ? 1440 : 390)) / z, H = (st.h || (desk ? 900 : 844)) / z;
   scr.style.width = `${W}px`; scr.style.height = `${H}px`; scr.style.setProperty('--k', String(z));
   scr.classList.toggle('bigtext', z >= 2);
-  st._h = H; st._W = W; st._H = H; st._id = el.id;
+  st._h = H; st._W = W; st._H = H; st._id = el.id; st._worst = v.worst;
   if (!st.wps || st._wpsKey !== `${st.long}|${v.worst}|${st.sport}`) { st.wps = waypoints(st.long, v.worst, st.sport); st._wpsKey = `${st.long}|${v.worst}|${st.sport}`; if (st.sel >= st.wps.length) st.sel = 1; }
   // the map behind (2026-10-20: the start and a followed marked route on a map with LIPAS's routes on it)
   const mapPic = st.stage === 'start' || st.followed != null;
