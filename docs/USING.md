@@ -6,6 +6,15 @@
 
 Open **Plan**, choose a sport and add points on the map. Drag a point or the route line to change the plan. On a phone, hold the line before dragging it.
 
+The planner's header shows your route: its distance, time and climb. How the next leg is drawn is in the toolbox, with undo, redo and **More** (⋯):
+
+- **On a phone** the toolbox floats above the planner, beside the map's buttons. Where there's no room for it there (a narrow phone, large text, the planner pulled up), it's the planner's first row. Tap the mode, under which the route style shows, to draw the next legs with **Follow paths**, **Straight line** or **Over water**, or to pick a route style for the whole route. **Done** is at the right of the route's numbers.
+- **On a desktop** it's a toolbar on the planner's edge: the three modes, the route style, undo and redo, **Show the whole route**, the route's actions that fit, **More** and **Done**. Point at a button, or reach it with the keyboard, for its name, its key and what it does. In a narrow window, more of them move into More.
+
+A mode changes only the legs you draw next. To change a drawn leg, select it on the map. A route style is for the whole route and routes it again; a leg with a style of its own keeps it. The route's actions are a share link, GPX export and saving offline; reversing it and a leg back to the start; and **Clear route**, which a note lets you undo. Those that fit are on the toolbox or toolbar, and **More** has the rest, with a round trip from the start and importing a GPX or KML file. **Show the whole route** is under **Locate** with the map's buttons whenever a route is on the map (on a desktop, while the planner is closed).
+
+While you plan, **Weather** and <kbd>T</kbd> open the weather timeline over the map, and the planner stays where it was. On a phone the timeline sits just above the planner, with the toolbox and the map's buttons above it; with the planner pulled up to half or more, it sits on the planner's top until you close it. Go keeps the departure and the weather along the route.
+
 Select a part of the route to add a point there, change that leg's sport, routing mode or style, or ask for **Other ways**. After you add a point and stop for a moment, up to two other ways to it may appear on the map in blue, each labelled with how much longer or shorter it is and its share of trails; your route's label shows its own share, so you can compare. When you take your time between points they come together; otherwise the second can follow a few seconds later. Select one to take it, or carry on and the route stays as it is. After you take one, the way you had stays, grey, until your next point, so you can go back. **Other ways** in the menu shows up to two for any part. Selecting your route with the planner closed opens it again. Undo and redo let you try changes.
 
 The planner has three tabs:
@@ -22,7 +31,7 @@ In **Check → On the map**, distance marks, arrival times and elapsed times def
 
 The route glows on the map, and white chevrons drift along it the way it goes; they rest when you leave the map alone, and **Settings → Display → Moving arrows on the route** turns them off.
 
-On a phone, swipe the planner up or down to change how much of it is visible: from its handle, its top rows (over the buttons too), its tabs, or its list when the list is scrolled to the top. Let go where you like and it settles at the nearest size; a quick flick moves it at least one size. A tap on the handle folds it down or opens it again. On a desktop, the button at the end of the tabs moves the planner between the side and bottom of the map.
+On a phone, swipe the planner up or down to change how much of it is visible: from its handle, its top rows (over the buttons too), its tabs, or its list when the list is scrolled to the top. Let go where you like and it settles at the nearest size; a quick flick moves it at least one size. A tap on the handle folds it down or opens it again. On a desktop, the button in the planner's header, next to the one that folds it, moves the planner between the side and bottom of the map.
 
 ## Read the map
 
@@ -46,6 +55,7 @@ Shortcuts work when you are not typing in an input field.
 | <kbd>L</kbd> | Open or close the quick layer drawer (the maps, your sport's tiles, More for every layer); the arrow keys choose a map |
 | <kbd>R</kbd> | Open or close the route planner |
 | <kbd>F</kbd> | Show the whole route |
+| <kbd>P</kbd>, <kbd>S</kbd>, <kbd>W</kbd> | While planning: draw the next leg with Follow paths, a straight line or over water |
 | <kbd>/</kbd> | Focus search |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd> | Undo |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> | Redo |
@@ -57,7 +67,7 @@ Pinching, or Ctrl+scrolling, over a panel zooms the map. In 3D, a two-finger tra
 
 ## Before going offline
 
-Use **Save offline** in Go or the planner's **⋯** menu. Then use **Preview offline** to check the saved coverage. On an iPhone, add Polku to the home screen to help keep the saved data available.
+Use **Save offline** in Go or the planner's **More** (⋯). Then use **Preview offline** to check the saved coverage. On an iPhone, add Polku to the home screen to help keep the saved data available.
 
 The saved map, terrain, route and profile work without a connection; routing, search, weather and traffic do not. Read the [limitations](../README.md#limitations), especially before planning on water.
 

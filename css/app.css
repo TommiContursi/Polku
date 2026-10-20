@@ -139,7 +139,7 @@ button { font: inherit; color: inherit; }
 .base-opt[aria-pressed="true"] img { border-color: var(--accent); }
 
 .zoom-hint {
-  position: absolute; top: 62px; left: calc(12px + var(--pl-left)); z-index: 3; height: 30px; padding: 0 12px; border: 0; border-radius: 999px;
+  position: absolute; top: max(62px, var(--tools-bottom, 0px)); left: calc(12px + var(--pl-left)); z-index: 3; height: 30px; /* under a desktop toolbar beside the panel */ padding: 0 12px; border: 0; border-radius: 999px;
   background: var(--surface); color: var(--muted); box-shadow: var(--shadow); font-size: 12px; font-weight: 600; cursor: pointer;
 }
 .zoom-hint:hover { color: var(--text); }
@@ -228,7 +228,7 @@ body:not(.ready) .map-ctrls { display: none; }
 .wx-canvas { position: absolute; top: 0; left: 0; pointer-events: none; transition: opacity .3s; }
 .wx-canvas.wx-hide { opacity: 0; transition: opacity .1s; }
 .wx-bar {
-  position: absolute; left: calc(50% + var(--pl-left) / 2); transform: translateX(-50%); bottom: calc(var(--sheet-h) + 40px); z-index: 6;
+  position: absolute; left: calc(50% + var(--pl-left) / 2); transform: translateX(-50%); bottom: calc(var(--sheet-h) + max(40px, var(--tools-h, 0px) + 8px)); z-index: 6;
   width: min(640px, calc(100% - 200px - var(--pl-left))); padding: 6px 12px 8px 6px; border-radius: 16px;
   background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); transition: bottom .2s;
 }
@@ -286,7 +286,7 @@ body:not(.ready) .map-ctrls { display: none; }
 /* 3D tilt & rotate */
 .view3d {
   /* bottom left: the right side holds the map controls */
-  position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 40px); z-index: 5;
+  position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 40px); z-index: 5;
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px 8px;
   background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
   transition: bottom .2s;
@@ -310,6 +310,8 @@ body:not(.ready) .map-ctrls { display: none; }
 .maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; background: var(--surface-solid); }
 .maplibregl-ctrl-group button { width: 36px; height: 36px; }
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); transition: bottom .2s; }
+/* --tools-h: the planner's toolbox floating above the sheet, or its toolbar above a bottom panel (planner.js placeTools()) */
+.maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + var(--tools-h, 0px) + 4px); }
 .maplibregl-ctrl-bottom-left { left: var(--pl-left); display: flex; align-items: flex-end; }
 /* scale bar and the attribution (i) side by side, bottom left */
 .maplibregl-ctrl-bottom-left .maplibregl-ctrl { float: none; clear: none; }
@@ -323,9 +325,9 @@ body:not(.ready) .map-ctrls { display: none; }
    timeline; ⓘ or dragging the map folds them away. The map is a stacking context of its own,
    so the card can't go over the timeline or the buttons: it keeps clear of them */
 @media (max-width: 719px) {
-  .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 4px); }
+  .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 4px); }
   .maplibregl-ctrl-bottom-left .maplibregl-ctrl-attrib.maplibregl-compact-show {
-    position: fixed; left: 8px; right: 76px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 8px); z-index: 21; margin: 0;
+    position: fixed; left: 8px; right: 76px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 8px); z-index: 21; margin: 0;
     padding: 8px 12px 8px 38px; border-radius: 12px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font-size: 12px; line-height: 1.5;
   }
   .maplibregl-ctrl-attrib.maplibregl-compact-show a { color: inherit; }
@@ -586,62 +588,14 @@ body:not(.ready) .map-ctrls { display: none; }
 .sheet-handle::before { content: ""; position: absolute; left: 20px; right: 20px; top: 7px; height: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
 .sheet-handle:focus-visible { outline: 2px solid var(--accent); }
 .sheet-head { flex: none; padding: 0 10px 8px 14px; touch-action: none; container-type: inline-size; }
-/* a wide bottom panel fits the summary and the tools on one row: collapsed, it is one slim bar */
-/* a wide header: everything on one line */
-/* (unless planner.js measured that it doesn't fit: .two-line) */
-@container (min-width: 1240px) {
-  .sheet-head:not(.two-line) .sheet-head-in { display: flex; align-items: center; gap: 18px; }
-  .sheet-head:not(.two-line) .sheet-head-in > .sheet-row { display: contents; }
-  .sheet-head:not(.two-line) .sheet-head-in .sheet-sum { flex: none; order: 1; }
-  .sheet-head:not(.two-line) .sheet-head-in .modes { order: 2; }
-  .sheet-head:not(.two-line) .sheet-head-in .quick-pair { order: 3; }
-  .sheet-head:not(.two-line) .sheet-head-in .tools { order: 4; margin-left: auto; }
-  .sheet-head:not(.two-line) .sheet-head-in .sheet-min { order: 5; }
-  .sheet-head:not(.two-line) .sheet-head-in .done { order: 6; }
-  .sheet-head-in .seg.modes button span { display: inline; }
-}
-.tool-wide { display: none; }
-/* and the common tools out of ⋯ when there's room for them too */
-@container (min-width: 1560px) { .sheet-head-in .tool-wide { display: inline-flex; } .sheet-head-in .tool-sep.tool-wide { display: block; } }
 .sheet-row { display: flex; align-items: center; gap: 8px; }
-/* Round trip and Style: plain words, always in the header. On a phone they
-   take a line of their own above the routing modes; wider, they sit after them. */
-.tools-row { flex-wrap: wrap; row-gap: 8px; }
-.quick-pair { display: flex; gap: 6px; order: -1; flex: 1 0 100%; }
-/* the profile size is for the chart: on a line of their own, the two step aside there */
-.sheet[data-state="profile"] .quick-pair { display: none; }
-@container (min-width: 560px) { .sheet[data-state="profile"] .quick-pair { display: flex; } }
-@container (min-width: 560px) {
-  .tools-row { flex-wrap: nowrap; }
-  .quick-pair { order: 0; flex: none; margin-right: auto; } /* right after the modes; the tools at the far end */
-}
-/* measured too narrow (planner.js fitHeader): the quick buttons take a line of their
-   own, then shorter labels; while measuring they show even where the profile size hides them */
-.sheet-head.stack .tools-row { flex-wrap: wrap; }
-.sheet-head.stack .quick-pair { order: -1; flex: 1 0 100%; margin-right: 0; }
-.sheet-head.tight .quick-sport > span, .sheet-head.tight .q-pre { display: none; }
-.sheet-head.measuring .quick-pair { display: flex !important; }
-.sheet[data-state="profile"] .sheet-head.stack .quick-pair { display: none; }
-.btn.quick { height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12.5px; gap: 6px; white-space: nowrap; }
-.btn.quick b { font-weight: 700; }
-/* the sport and the route's colours: a native list laid over the button, so it opens right there */
-.quick-sel { position: relative; cursor: pointer; }
-.quick-sel select { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
-.quick-sel:focus-within { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
-.q-swatch { width: 22px; height: 8px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
-.sheet-head.tight .quick-color .q-label { display: none; }
-.sheet-head.tightest .quick-loop span { display: none; }
-/* one slim line (planner.js fitHeader): only the active mode keeps its label, the extra tools stay in ⋯ */
-.sheet-head.slim .sheet-head-in .seg.modes button:not([aria-pressed="true"]) span { display: none; }
-.sheet-head.slim .sheet-head-in .tool-wide, .sheet-head.slim .sheet-head-in .tool-sep.tool-wide { display: none; }
-.btn.quick[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
-.sheet-row + .sheet-row { margin-top: 8px; }
-.sheet-sum { flex: 1; min-width: 0; display: flex; gap: 6px 20px; align-items: flex-end; }
+/* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
+.sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }
 /* a 360 px phone: the three figures and Done in one row without touching */
 @container (max-width: 340px) { .sheet-sum { column-gap: 12px; } .sheet-sum .sum-item b { font-size: 16.5px; } }
 .sum-item b { font-size: 19px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sum-item small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sum-item small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .sum-elev .sum-down { color: var(--muted); font-weight: 600; }
 .sum-empty { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
 .sum-time { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 6px; }
@@ -650,13 +604,8 @@ body:not(.ready) .map-ctrls { display: none; }
 .sum-time:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn.done { flex: none; height: 34px; padding: 0 14px; }
 .sheet-min { display: none; }
-.tools-row { justify-content: space-between; }
-.tools { display: flex; align-items: center; }
-.seg.modes button { padding: 0 10px; }
-.seg.modes button span { display: none; }
-.seg.modes button[aria-pressed="true"] span { display: inline; }
-/* the narrowest headers: the modes as icons, so they share a line with the tools */
-.sheet-head.tighter .seg.modes button span { display: none; }
+/* desktops: Done is at the toolbar's end */
+@media (min-width: 900px) { .sheet-head .done { display: none; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 .sheet.busy .sheet-head::after {
@@ -695,7 +644,6 @@ body:not(.ready) .map-ctrls { display: none; }
 .pl-tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .pl-tab { height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .pl-tab:hover { color: var(--text); }
-.pl-tabs-gap { flex: 1; }
 .pl-tabs .sheet-dock { align-self: center; color: var(--muted); }
 .pl-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .pl-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
@@ -1200,7 +1148,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 
 /* ---------------------------------------------------------------- misc */
 .toast {
-  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(calc(var(--sheet-h) + 24px), calc(100% - 150px)); z-index: 20; transform: translate(-50%, 10px);
+  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 24px), calc(100% - 150px)); z-index: 20; transform: translate(-50%, 10px);
   max-width: min(520px, calc(100vw - 32px)); padding: 10px 16px; border-radius: 12px;
   background: #111a16; color: #fff; box-shadow: var(--shadow); font-weight: 500; opacity: 0; transition: opacity .2s, transform .2s;
 }
@@ -1208,7 +1156,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .toast .toast-act { pointer-events: auto; margin-left: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
 .toast[data-tone="warn"] { background: #7c2d12; }
 .track-card {
-  position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + 40px); z-index: 7;
+  position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 40px); z-index: 7;
   display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px;
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
 }
@@ -1256,7 +1204,8 @@ body.dropping .drop-hint { display: flex; }
   .tl-now-main b { font-size: 19px; }
   .tl-note { display: none; }
   .wx-time { width: auto; flex: 0 1 auto; }
-  body.planning .wx-bar:not(.docked) { display: none; }
+  body.planning .wx-bar { bottom: calc(var(--sheet-h) + 16px); } /* while planning: just above the sheet, the toolbox and the map's buttons above it (#225) */
+  body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 8px + var(--sheet-head, 0px)); z-index: 7; } /* no room above a raised sheet: on top of it, under its header (the numbers and Done) */
   .wx-bar.docked { width: auto; }
   .orbit { width: 62px; height: 62px; }
   /* above the planner's sheet, under the top bar; with too little room there it covers the sheet in its
@@ -1266,6 +1215,9 @@ body.dropping .drop-hint { display: flex; }
   body.panels-over .topbar { z-index: 8; }
   .sheet { left: 8px; right: 8px; bottom: 8px; }
   .sheet-head { padding: 0 8px 8px 12px; }
+  /* the header's controls are 44 px to touch: Done, and the time that opens the departure */
+  .sheet-head .btn.done { height: 44px; }
+  .sum-time { min-height: 44px; justify-content: flex-end; }
   .sum-item b { font-size: 18px; }
   .tool { width: 30px; height: 32px; }
   .tool-sep { display: none; }
@@ -1401,3 +1353,82 @@ body.dropping .drop-hint { display: flex; }
 .changelog-notes li { margin: 7px 0; }
 .changelog-source { font-size: 13px; }
 .changelog-notes a, .changelog-source a { color: var(--accent); text-underline-offset: 2px; }
+
+/* ---------------------------------------------------------------- the planner's toolbox (25a) */
+/* Phones: floating at the bottom left above the sheet, or docked into it as its first row. Desktops: a labelled
+   toolbar on the panel's edge, one surface with it (planner.js placeTools()). */
+.pl-tools { position: fixed; z-index: 5; /* over the map, under the panels (Settings, Layers) and the sheet */ display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 16px; background: var(--surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--shadow); }
+.pl-tools:not(.docked):not(.desk) { left: 8px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 16px); }
+.pl-tools.probe { visibility: hidden; left: 8px; bottom: 0; }
+.pl-tools.docked { position: static; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin: 0 8px 6px 10px; padding: 0 0 6px; border-radius: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid var(--line); }
+.pl-tools .tb-desk { display: none; }
+.pl-tools.desk .tb-desk { display: flex; }
+.pl-tools.desk .tb-phone { display: none; }
+.pl-tools [hidden] { display: none !important; }
+.tbtn { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--text); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.tbtn:disabled { opacity: .35; cursor: default; }
+.tbtn:focus-visible, .modebtn:focus-visible, .stylebtn:focus-visible, .tb-modes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tbtn[aria-expanded="true"], .modebtn[aria-expanded="true"], .stylebtn[aria-expanded="true"] { background: var(--accent-soft); }
+@media (hover: hover) { .tbtn:hover:not(:disabled), .modebtn:hover, .stylebtn:hover { background: var(--surface-2); } }
+.tbtn:active:not(:disabled), .modebtn:active { background: var(--surface-2); }
+/* the mode button: its icon, its name, the route style under it */
+.modebtn { height: 44px; min-width: 0; display: inline-flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.modebtn > .ic:first-child { color: var(--accent); flex: none; }
+.modebtn .two, .stylebtn .two { display: grid; line-height: 1.15; min-width: 0; }
+.modebtn .two b { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.modebtn .two small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
+/* desktops */
+.pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
+.pl-tools.desk.at-side { border-radius: 0 16px 16px 0; border-left: 1px solid var(--line); box-shadow: 8px 6px 20px rgba(16, 24, 20, 0.12); }
+/* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
+@media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } }
+.pl-tools.desk.docked { position: static; height: 56px; flex-wrap: nowrap; margin: 0 8px 0 10px; padding: 0 0 4px; border-radius: 0; border-bottom: 1px solid var(--line); box-shadow: none; background: none; }
+.pl-tools.desk.at-bottom { border-radius: 16px 16px 0 0; border-bottom: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12); }
+.pl-tools.desk .tbtn { width: 40px; height: 40px; }
+.tb-modes button { height: 40px; min-width: 40px; padding: 0 8px; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.tb-modes button .ic { color: var(--muted); }
+.tb-modes button[aria-checked="true"] { background: var(--surface-solid); box-shadow: 0 1px 3px rgba(0,0,0,.16), inset 0 0 0 1px var(--line); }
+.tb-modes button[aria-checked="true"] .ic { color: var(--accent); }
+.stylebtn { height: 40px; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; text-align: left; cursor: pointer; }
+.stylebtn .two small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.stylebtn .two span { white-space: nowrap; }
+.tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
+.pl-tools .btn.done { height: 40px; padding: 0 12px; margin-left: 4px; }
+/* where room runs out, once the route's actions that don't fit are in More (planner.js FOLDS): the style's caption,
+   then the names of the modes not in use, then all of them */
+.pl-tools.fold1 .stylebtn .two small { display: none; }
+.pl-tools.fold2 .tb-modes button[aria-checked="false"] span, .pl-tools.fold3 .tb-modes button span { display: none; }
+@media (hover: hover) { .tbtn.danger:hover:not(:disabled) { color: var(--bad); } }
+
+/* the toolbar's tooltips (ui.js tooltip()) */
+.tip { position: fixed; z-index: 30; max-width: 280px; padding: 8px 10px; border-radius: 10px; background: #1c2420; color: #fff; font-size: 12.5px; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+.tip b { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 13px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tip { background: #e8ece9; color: #111; } }
+:root[data-theme="dark"] .tip { background: #e8ece9; color: #111; }
+.tip kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; border: 1px solid currentColor; font: 600 11px/1 ui-monospace, Menlo, monospace; opacity: .8; }
+
+/* menus with groups, a head, notes and chips (ui.js popMenu): the mode's menu and More */
+.menu-head { padding: 6px 10px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.menu-head b { display: block; font-size: 14.5px; overflow-wrap: anywhere; }
+.menu-head small { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.menu-h { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.menu-note { margin: 2px 10px 6px; font-size: 12px; color: var(--muted); max-width: 300px; }
+.menu-item.two-line { height: auto; min-height: 44px; padding: 6px 10px; }
+.menu-item > span { flex: 1; min-width: 0; display: grid; }
+.menu-item small { font-size: 12px; color: var(--muted); font-weight: 400; }
+.menu-item.danger small { color: var(--muted); }
+.menu-item[aria-checked="true"]:not(.chip) { background: var(--accent-soft); }
+.menu-tick { flex: none; display: grid; color: var(--accent); }
+.menu-item.menu-apart { margin-top: 6px; }
+.menu-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px; max-width: 320px; }
+.menu-chips .menu-item.chip { height: 36px; padding: 0 12px; gap: 4px; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; }
+.menu-chips .menu-item.chip > span { display: inline; }
+.menu-chips .menu-item.chip[aria-checked="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
+.menu-chips .menu-item.chip:disabled { opacity: 1; }
+/* with no room beside its button (enlarged text, a raised sheet): a sheet of its own */
+.menu-pop.menu-sheet { left: 8px; right: 8px; top: 64px; bottom: 8px; width: auto; max-height: none; }
+@media (pointer: coarse) { .menu-pop .menu-item { min-height: 44px; } .menu-chips .menu-item.chip { min-height: 44px; } }
+
+/* the map's column on short phones with the sheet raised (main.js fitColumn()) */
+.map-ctrls.no-compass .ctrl-compass, .map-ctrls.no-3d .ctrl-3d { display: none; }

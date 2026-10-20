@@ -48,6 +48,8 @@
     <button id="btn-locate" class="ctrl-btn fab-locate" type="button" aria-pressed="false" title="Show my location" aria-label="Show my location">
       <svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
     </button>
+    <!-- Show the whole route (25a): with a route on the map; a desktop's toolbar has it while planning -->
+    <button id="btn-fit" class="ctrl-btn" type="button" title="Show the whole route (F)" aria-label="Show the whole route" aria-keyshortcuts="F" hidden></button>
     <div class="ctrl-zoom" role="group" aria-label="Zoom">
       <button id="btn-zoom-in" class="ctrl-btn" type="button" title="Zoom in" aria-label="Zoom in"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
       <button id="btn-zoom-out" class="ctrl-btn" type="button" title="Zoom out" aria-label="Zoom out"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
@@ -90,6 +92,8 @@
   </aside>
 
   <section id="planner" class="sheet" hidden aria-label="Route planner"></section>
+  <!-- the planner's toolbox: floating above the sheet on phones (or docked into it), on the panel's edge on desktops (25a) -->
+  <div id="pl-tools" class="pl-tools" role="toolbar" aria-label="Drawing tools" aria-controls="planner" hidden></div>
   <div id="track-card" class="track-card" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <div class="drop-hint" aria-hidden="true">Drop a GPX or KML file</div>

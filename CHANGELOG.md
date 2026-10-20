@@ -4,6 +4,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-20
 
+### A calmer planner: the toolbox ([#233](https://github.com/TommiContursi/Polku/issues/233))
+
+The planner's header now shows just your route: its distance, time and climb, with **Done** at their right on a phone. The drawing tools have a toolbox of their own, and the whole route's actions are on it where there's room, or in **More**.
+
+- On a phone, the toolbox floats above the planner, beside the map's buttons. On a narrow phone, with large text or with the planner pulled up, it's the planner's first row instead. It holds the drawing mode, undo, redo and **More** (⋯).
+- The drawing mode is one button, with the route style under its name. Tap it to draw the next legs with **Follow paths**, **Straight line** or **Over water**, or to pick a route style for the whole route. A leg you've drawn keeps its mode: select it on the map to change it. A leg with a style of its own keeps that style too.
+- On a desktop, the toolbox is a toolbar on the planner's edge, with the three modes by name, the route style, undo and redo, **Show the whole route** and **Done**. Point at a button, or reach it with the keyboard, to see its name, its key and what it does. **P**, **S** and **W** pick the mode.
+- **Reverse**, **Back to start**, **Share link**, **Export GPX**, **Save offline** and **Clear route** are on the toolbar or toolbox as far as the screen has room, and **More** has the rest, with a round trip from the start and importing a file. Nothing is in both places. After Clear route, a note offers **Undo**.
+- On a desktop, the button that moves the planner between the left and the bottom is now in its header, next to the one that folds it.
+- **Show the whole route** sits under **Locate** with the map's buttons whenever a route is on the map. On a desktop it's on the toolbar while you plan.
+- While you plan, **Weather** and **T** open the weather timeline over the map, and the planner stays on its tab. On a phone the timeline sits just above the planner, with the toolbox and the map's buttons above it, and where there's no room for them above it (the planner pulled up, or a short phone), it sits on the planner under its numbers and **Done**; its ✕ or **Weather** closes it. Go still has the departure and the weather along the route ([#225](https://github.com/TommiContursi/Polku/issues/225)).
+- The route's colours are now chosen only under the profile, in **Colour by** and **On map**. The sport is chosen with the sport button beside the search. **Round trip** is in More, in the Route tab's tools and at the start.
+- On short phones with the planner pulled up, the map's buttons leave out the compass while north is up, then **3D**, so the others still fit. 3D is still in **Layers**.
+- **Straight line** and **Over water** have new icons: a plain line, and waves under a dashed line.
+- Undo and redo are greyed out until there's something to undo or redo, from the moment the planner opens ([#241](https://github.com/TommiContursi/Polku/issues/241)). A long route's numbers no longer run together on a narrow phone or with large text: they wrap onto lines of their own ([#242](https://github.com/TommiContursi/Polku/issues/242)). A tap on a control in the planner's header no longer folds the planner on a phone ([#251](https://github.com/TommiContursi/Polku/issues/251)).
+
 ### Rain radar ready for FMI's new feed ([#133](https://github.com/TommiContursi/Polku/issues/133))
 
 Rain “now” in Finland uses FMI's replacement radar data, keeping light drizzle in proportion when the old feed is retired. Missing radar coverage stays distinct from dry weather. The backup radar remains available if the rain-rate layer cannot load. Both feeds use a fixed scale, so changing the map view does not change what the rain measurements mean.

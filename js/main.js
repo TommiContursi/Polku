@@ -315,8 +315,7 @@ const planner = new Planner(map, {
   },
   onActiveChange: (on) => {
     syncPlanButton(on);
-    // one clock: while planning, the timeline is the planner's departure section
-    weather.dock(on ? planner.els.dock : null); // (planner only opens after boot, so weather exists)
+    syncWxH(); // the timeline stays over the map while planning (#225): on a phone, just above the sheet
     // the long attribution line would run into the planner: keep it behind its (i)
     if (on) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
     syncPlannerPadding();
@@ -462,8 +461,34 @@ function syncPlannerPadding() {
   document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
   placePanels();
   if (quickOpen()) placeQuick();
+  syncWxH(); // (and the map's column)
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
+
+// Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
+// the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D
+// (still in Layers). Its bottom moves with a transition, so its top is worked out, not measured.
+// whether the column, with what it can leave out, fits between the top bar and the sheet plus `extra`
+function columnFits(extra) {
+  const col = $('#map-ctrls'), had = [...col.classList];
+  col.classList.add('no-compass', 'no-3d');
+  const h = col.offsetHeight;
+  col.className = had.join(' ');
+  const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
+  return innerHeight - sheet - extra - 12 - h >= $('.topbar').getBoundingClientRect().bottom + 8;
+}
+function fitColumn() {
+  const col = $('#map-ctrls');
+  col.classList.remove('no-compass', 'no-3d');
+  if (!phoneMQ.matches) return;
+  const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
+  const room = () => innerHeight - css('--sheet-h') - css('--wx-h') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
+  if (room()) return;
+  if (Math.abs(map.getBearing()) < 0.5) col.classList.add('no-compass');
+  if (!room()) col.classList.add('no-3d');
+}
+new ResizeObserver(fitColumn).observe($('#map-ctrls'));
+map.on('rotateend', fitColumn);
 $('#planner').addEventListener('sheetrest', syncPlannerPadding);
 
 // On a phone Settings sits above the planner's sheet while that leaves it 320 px under the top bar, as the
@@ -1372,24 +1397,36 @@ for (const btn of $$('.panel .panel-close')) btn.addEventListener('click', () =>
 $('#layers-panel .panel-back').addEventListener('click', () => openPanel('quick-layers', { back: true }));
 
 for (const b of $$('#btn-plan, #btn-plan-search')) b.addEventListener('click', () => planner.setActive(!planner.active));
-// While planning, the timeline is docked in the planner: the button and T open it there.
+// The button and T open and close the timeline over the map, while planning too (#225).
 const toggleTimeline = () => {
-  if (planner.active) { planner.reveal('depart'); return; }
   setTimeline(!state.timeline);
   renderLayersPanel();
 };
 $('#btn-time').addEventListener('click', toggleTimeline);
 $('#btn-zoom-in').addEventListener('click', () => map.zoomIn());
+$('#btn-fit').innerHTML = icon('fit', 20);
+$('#btn-fit').addEventListener('click', () => planner.fitRoute());
 $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 
-// Phones: the floating timeline sits above the Plan pill; the map controls ride above it.
-function placeAboveTimeline() {
-  const b = $('#wx-bar');
-  const floating = !b.hidden && !b.classList.contains('docked') && matchMedia('(max-width: 720px)').matches;
-  // the column normally sits 12 px up; above the timeline (at 44 px) it needs its height plus that offset
-  document.documentElement.style.setProperty('--wx-h', `${floating ? b.offsetHeight + 40 : 0}px`);
+// Phones: the floating timeline sits above the Plan pill, or 16 px above the planner's sheet while
+// planning; the map's buttons and the planner's toolbox ride above it. Where they wouldn't fit above it
+// (a half or full sheet, or a short phone), it's on the sheet under its header instead (body.wx-over).
+function syncWxH() {
+  const b = $('#wx-bar'), st = planner.panel.dataset.state, phone = matchMedia('(max-width: 720px)').matches;
+  const shown = !b.hidden && !b.classList.contains('docked'), open = shown && phone;
+  const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
+  // desktops: a bottom panel raised too high for it above (unless you've placed it yourself)
+  const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
+    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < $('.topbar').getBoundingClientRect().bottom + 8;
+  const over = deskOver || (open && planner.active && (st === 'half' || st === 'full' || (st === 'profile' && !columnFits(b.offsetHeight + 12))));
+  document.body.classList.toggle('wx-over', over);
+  const floating = open && !over;
+  // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
+  document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
+  planner.placeToolsSoon();
+  fitColumn();
 }
-new ResizeObserver(placeAboveTimeline).observe($('#wx-bar'));
+new ResizeObserver(syncWxH).observe($('#wx-bar'));
 
 // ------------------------------------------------------------------ GPX / KML import (button + drag & drop)
 async function importFile(file) {
@@ -1435,6 +1472,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '/') { e.preventDefault(); $('#search-input').focus(); }
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'f' && !mod && planner.points.length) { if (!planner.active) planner.setActive(true); planner.fitRoute(); }
+  else if (planner.active && !mod && !e.altKey && { p: 1, s: 1, w: 1 }[e.key]) planner.setMode({ p: 'auto', s: 'line', w: 'water' }[e.key]); // the next leg's mode
   else if (e.key === 'l' && !mod) openPanel('quick-layers', { instant: true });
   else if (e.key === 't' && !mod) toggleTimeline();
   else if (e.key === 'Escape') {
@@ -1514,7 +1552,7 @@ renderSettingsPanel();
 // own, before this one), in their place, without sliding there.
 if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
 if (state.timeline) setTimeline(true);
-requestAnimationFrame(() => { placeAboveTimeline(); document.body.classList.add('ready'); });
+requestAnimationFrame(() => { syncWxH(); document.body.classList.add('ready'); });
 map.on('load', () => {
   // Start with the attribution collapsed to its (i) button on small screens (and it stays so: above).
   if (window.innerWidth < 720) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
