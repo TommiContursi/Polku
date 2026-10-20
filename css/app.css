@@ -703,7 +703,10 @@ body:not(.ready) .map-ctrls { display: none; }
 /* the ways to begin: the same top row as a step's (the title where a step has ‹ Ways to begin), then its line */
 .way-name { margin: 0 0 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 .way-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.way-end { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.way-end { display: flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
+/* one line, always: with a long sport name the back link's words wrap in their button, so the sport never moves */
+.way-bar .way-back { min-width: 0; }
+.way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
 .way-end .way-x { margin: 0 -6px 0 0; }
 .way-sub small { color: var(--muted); font-size: 13px; }
 .way-hint { display: grid; gap: 2px; }
@@ -713,7 +716,7 @@ body:not(.ready) .map-ctrls { display: none; }
 .sport-chip .ic { color: var(--accent); flex: none; }
 .way-x { flex: none; width: 44px; height: 44px; margin: -4px -6px 0 0; }
 /* a step's top row: Back on the left, the sport on the right (it wraps rather than cutting a long name) */
-.way-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
+.way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
 .btn.quiet { border-color: transparent; background: transparent; }
 .btn.quiet:hover { background: var(--surface-2); }
 .way-back { height: 44px; padding: 0 10px 0 4px; color: var(--accent); font-size: 15px; font-weight: 650; }
