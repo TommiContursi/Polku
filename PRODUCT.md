@@ -77,13 +77,14 @@ What Polku does that its neighbours don't do together:
 
 **Polku's words:** Plan; the planner's tabs Route, Check and Go; Heads-up and Avoid; Other ways; Round trip; Route style and How you go; Save offline and Preview offline; Follow me; On the way (planned); Layers and Settings; S0–S6 and ↑S0–↑S5 for difficulty.
 
+**Code licensing:** Polku's original code is proprietary, with all rights reserved; see [LICENSE](LICENSE). Third-party rights are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The service is currently free; this source-code licence does not rule out future freemium or commercial use. Any future integration of copyleft code needs a compatibility check first (#279).
+
 **Not decided yet:**
 - which countries come after Finland, and when (#176);
 - Strava and Garmin (phase 16, research first);
 - native apps for iPhone and Android, and what they'd do that a web page can't, such as tracking with the screen off (#195);
 - routing on the device, in the browser or in a native app (#279);
-- a service of Polku's own, if one ever earns its cost;
-- a licence for Polku's own code (the repository has none yet; the choice also decides which code Polku can build on, GPL-licensed routing engines for one, #279).
+- a service of Polku's own, if one ever earns its cost.
 
 ## Brand Commitments
 
