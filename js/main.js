@@ -1412,9 +1412,13 @@ $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 // planning; the map's buttons and the planner's toolbox ride above it. Where they wouldn't fit above it
 // (a half or full sheet, or a short phone), it's on the sheet under its header instead (body.wx-over).
 function syncWxH() {
-  const b = $('#wx-bar'), st = planner.panel.dataset.state;
-  const open = !b.hidden && !b.classList.contains('docked') && matchMedia('(max-width: 720px)').matches;
-  const over = open && planner.active && (st === 'half' || st === 'full' || (st === 'profile' && !columnFits(b.offsetHeight + 12)));
+  const b = $('#wx-bar'), st = planner.panel.dataset.state, phone = matchMedia('(max-width: 720px)').matches;
+  const shown = !b.hidden && !b.classList.contains('docked'), open = shown && phone;
+  const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
+  // desktops: a bottom panel raised too high for it above (unless you've placed it yourself)
+  const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
+    && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < $('.topbar').getBoundingClientRect().bottom + 8;
+  const over = deskOver || (open && planner.active && (st === 'half' || st === 'full' || (st === 'profile' && !columnFits(b.offsetHeight + 12))));
   document.body.classList.toggle('wx-over', over);
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)

@@ -1381,6 +1381,8 @@ body.dropping .drop-hint { display: flex; }
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
 .pl-tools.desk.at-side { border-radius: 0 16px 16px 0; border-left: 1px solid var(--line); box-shadow: 8px 6px 20px rgba(16, 24, 20, 0.12); }
+/* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
+@media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } }
 .pl-tools.desk.docked { position: static; height: 56px; flex-wrap: nowrap; margin: 0 8px 0 10px; padding: 0 0 4px; border-radius: 0; border-bottom: 1px solid var(--line); box-shadow: none; background: none; }
 .pl-tools.desk.at-bottom { border-radius: 16px 16px 0 0; border-bottom: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12); }
 .pl-tools.desk .tbtn { width: 40px; height: 40px; }
