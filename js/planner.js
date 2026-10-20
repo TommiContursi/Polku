@@ -3710,8 +3710,8 @@ export class Planner {
     this.placeTools();
     const box = this.tools, wx = $('#wx-bar');
     const tools = box && !box.hidden && !box.classList.contains('docked') ? box.offsetHeight : 0;
-    if (box && box.classList.contains('desk')) return tools;
-    const time = wx && !wx.hidden && ['peek', 'profile'].includes(this.panel.dataset.state) ? wx.offsetHeight : 0;
+    if (box && box.classList.contains('desk')) return tools; // (docked into a raised bottom panel: none)
+    const time = wx && !wx.hidden && !document.body.classList.contains('wx-over') ? wx.offsetHeight : 0;
     return tools ? (time ? time + 20 : 8) + tools : time ? time + 8 : 0;
   }
 
@@ -3845,7 +3845,7 @@ export class Planner {
     box.hidden = !show;
     const desk = this.sideMQ.matches;
     box.classList.toggle('desk', desk);
-    if (!show || desk) this.dockTools(false);
+    if (!show) this.dockTools(false);
     // the room it takes, for what sits there too: above the sheet (--tools-h: the scale, notes, the 3D pad,
     // a track's card) and under the top bar (--tools-bottom: the zoom note)
     const root = document.documentElement.style;
@@ -3860,13 +3860,16 @@ export class Planner {
     };
     if (desk) {
       const r = this.panel.getBoundingClientRect(), side = this.layout() === 'side';
+      // a bottom panel raised up to the top bar has no room above it: the toolbar is its first row then
+      const inPanel = !side && r.top - 56 < $('.topbar').getBoundingClientRect().bottom + 8;
+      this.dockTools(inPanel);
       box.classList.toggle('at-side', side);
-      box.classList.toggle('at-bottom', !side);
-      Object.assign(box.style, side ? { left: `${r.right}px`, top: `${r.top}px`, bottom: '' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top}px` });
+      box.classList.toggle('at-bottom', !side && !inPanel);
+      Object.assign(box.style, inPanel ? { left: '', top: '', bottom: '' } : side ? { left: `${r.right}px`, top: `${r.top}px`, bottom: '' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top}px` });
       // the map's buttons only count where they're level with the toolbar
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
-      const over = () => box.getBoundingClientRect().right > limit;
+      const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 : box.getBoundingClientRect().right > limit);
       // in turn: the route's actions from the last, the style's caption, the names of the modes not in use,
       // Show the whole route (an action to keep in sight), then all the modes' names
       box.classList.remove(...FOLDS);
@@ -3879,7 +3882,7 @@ export class Planner {
         step();
       }
       const tb = box.getBoundingClientRect();
-      toolsH(side ? 0 : Math.round(innerHeight - r.bottom + tb.height), side ? Math.round(tb.bottom + 8) : 0);
+      toolsH(side || inPanel ? 0 : Math.round(innerHeight - r.bottom + tb.height), side ? Math.round(tb.bottom + 8) : 0);
       return;
     }
     box.classList.remove('at-side', 'at-bottom', ...FOLDS);

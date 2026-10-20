@@ -28,7 +28,7 @@ BOXES = """(() => {
     '.maplibregl-ctrl-attrib', '.maplibregl-ctrl-scale', '.offline-banner', '.panel'];
   const out = [];
   // (on a phone the timeline is on top of a half or full sheet's upper part on purpose, #225)
-  const overSheet = innerWidth <= 720 && document.body.matches('.planning:is([data-sheet="half"], [data-sheet="full"])');
+  const overSheet = document.body.classList.contains('wx-over');
   for (const s of sel) for (const e of document.querySelectorAll(s)) {
     if (e.closest('[hidden]') || getComputedStyle(e).display === 'none' || getComputedStyle(e).visibility === 'hidden') continue;
     if (overSheet && e.id === 'wx-bar') continue;
@@ -5219,7 +5219,11 @@ def button3d(chrome):
             if late:
                 fails.append(f'{name} planning/{st}: {late}')
             fails += [f'{name} planning/{st}: {o}' for o in overlaps(pg.js(BOXES))]
-            if st == 'half':
+            # (on a short phone a raised sheet leaves no room for 3D in the column: 25a leaves it out, in Layers still)
+            if st == 'half' and pg.js("document.querySelector('#map-ctrls').classList.contains('no-3d')"):
+                if pg.js("getComputedStyle(document.querySelector('#btn-3d')).display") != 'none':
+                    fails.append(f'{name}: the column has no room for 3D at half, but it shows')
+            elif st == 'half':
                 pg.tap(*aim(pg, f'{name}, a tap with the sheet at half'))
                 time.sleep(0.6)
                 expect(pg, f'{name}, a tap with the sheet at half', True)

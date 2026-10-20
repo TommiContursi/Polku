@@ -468,6 +468,15 @@ new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
 // the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D
 // (still in Layers). Its bottom moves with a transition, so its top is worked out, not measured.
+// whether the column, with what it can leave out, fits between the top bar and the sheet plus `extra`
+function columnFits(extra) {
+  const col = $('#map-ctrls'), had = [...col.classList];
+  col.classList.add('no-compass', 'no-3d');
+  const h = col.offsetHeight;
+  col.className = had.join(' ');
+  const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
+  return innerHeight - sheet - extra - 12 - h >= $('.topbar').getBoundingClientRect().bottom + 8;
+}
 function fitColumn() {
   const col = $('#map-ctrls');
   col.classList.remove('no-compass', 'no-3d');
@@ -1400,11 +1409,14 @@ $('#btn-fit').addEventListener('click', () => planner.fitRoute());
 $('#btn-zoom-out').addEventListener('click', () => map.zoomOut());
 
 // Phones: the floating timeline sits above the Plan pill, or 16 px above the planner's sheet while
-// planning; the map's buttons and the planner's toolbox ride above it. Over a half or full sheet it's on
-// top of the sheet's upper part instead (css/app.css), and they come down to the sheet.
+// planning; the map's buttons and the planner's toolbox ride above it. Where they wouldn't fit above it
+// (a half or full sheet, or a short phone), it's on the sheet under its header instead (body.wx-over).
 function syncWxH() {
-  const b = $('#wx-bar'), raised = planner.active && ['half', 'full'].includes(planner.panel.dataset.state);
-  const floating = !b.hidden && !b.classList.contains('docked') && !raised && matchMedia('(max-width: 720px)').matches;
+  const b = $('#wx-bar'), st = planner.panel.dataset.state;
+  const open = !b.hidden && !b.classList.contains('docked') && matchMedia('(max-width: 720px)').matches;
+  const over = open && planner.active && (st === 'half' || st === 'full' || (st === 'profile' && !columnFits(b.offsetHeight + 12)));
+  document.body.classList.toggle('wx-over', over);
+  const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
   document.documentElement.style.setProperty('--wx-h', `${floating && b.offsetHeight ? b.offsetHeight + (planner.active ? 12 : 40) : 0}px`);
   planner.placeToolsSoon();
