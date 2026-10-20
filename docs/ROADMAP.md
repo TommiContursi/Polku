@@ -1,47 +1,13 @@
 # Polku roadmap
 
-**GitHub holds what to do; the repo holds how things work.** Every bug, improvement, idea and risk to watch is a GitHub issue, which holds its status. This file says how the order is decided, the order of the phases, and what holds for all of them. How to work on Polku is in [AGENTS.md](../AGENTS.md).
+**The order and priorities are in [the GitHub Project](https://github.com/users/TommiContursi/projects/1):** Now, Next, Later and Someday, changed there by the user without a commit. How to work on Polku is in [AGENTS.md](../AGENTS.md).
 
-- **The board:** [Polku](https://github.com/users/TommiContursi/projects/1): Now, Next, Later, Someday. Work is picked from Now, top first.
-- **[Milestones](https://github.com/TommiContursi/Polku/milestones):** one for each planned phase, with its phase issue and the issues that belong to it, and one for each round of fixes.
-- **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`.
-- **Designs:** [docs/plans/](plans/), one file for each planned phase. Finished phases are in [plans/done.md](plans/done.md).
-- **Retros:** [docs/retros/](retros/), one for each finished milestone.
-- **What shipped:** the [CHANGELOG](../CHANGELOG.md), and closed milestones and issues.
+- **[Milestones](https://github.com/TommiContursi/Polku/milestones)** group the issues that ship together: one for each phase, one for each round of fixes. A milestone says what belongs together, not when it's done.
+- **Phase issues** hold a phase's scope, decisions and latest Hand-over, and [docs/plans/](plans/) its design. Finished phases are in [plans/done.md](plans/done.md).
+- **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`. A `watch` issue says when to look again: a date (in its title and the Project's Due field) or a trigger.
+- **What shipped:** the [CHANGELOG](../CHANGELOG.md), closed issues and milestones, and the [retros](retros/).
 
-## How the order is decided
-
-- **The user decides the order of the phases.** A change comes as a docs PR that edits the table below, with the user's OK.
-- **One phase at a time,** one PR each, in this order. A phase's PR takes its row out of the table and writes what was built into its plan.
-- **Confirmed bugs with a small fix** go into the open round of fixes (milestone "Fixes N") and are fixed between phases, in Fix PRs of their own. A bug that needs a design first goes into a phase's milestone, with the user's OK.
-- **Improvements the user wants** (`enhancement`): a small one is done in a PR of its own when the user picks it; a bigger one goes into its phase's milestone.
-- **Ideas** (`idea`) wait in Someday until the user picks one. Then it becomes an `enhancement`, with a size and a place on the board.
-- **Risks to watch** (`watch`) say when to look again: a date (in the title, and the board's Due field) or a trigger. A dated one moves to Now in time.
-- **The board follows this:** Now holds what's being worked on and what to pick next; Next what comes after it; Later the phases further down; Someday the rest.
-
-## The order (re-planned 2026-10-15; phase 25 first since 2026-10-18)
-
-| # | Phase | Size | Why here | Issue | Plan |
-|---|---|---|---|---|---|
-| 1 | **25, a calmer planner** (25a–25d) | big | Approved 2026-10-18. After the shared fixes it needs first (#239, #240, #245) and the 3D button (#226); before 22b, which moves the same panel. | #233 | [25](plans/issue-233-calmer-planner.md) |
-| 2 | **21, say what it means** | big | Every layer explained, nothing worked out kept hidden. It goes before the map's look changes (20) and before the wording is translated (18). | #178 | [21](plans/21-say-what-it-means.md) |
-| 3 | **22b, the panel on desktop moves** | medium | Desktop only; 22a's tabs first show how much the panel still needs to move. | #179 | [22](plans/22-drawer.md) |
-| 4 | **23b, on the way** | medium–big | Needs 22a's drawer (it becomes the On the way view) and 23a's heading. | #180 | [23](plans/23-out-on-the-trail.md) |
-| 5 | **20, map style** | big | Builds on 21; the route's glow goes with the map's look. | #181 | [20](plans/20-map-style.md) |
-| 6 | **17, weather layers** | medium | | #182 | [17](plans/17-weather.md) |
-| 7 | **23c, your track** | medium | After 23b: it records what 23b follows. | #183 | [23](plans/23-out-on-the-trail.md) |
-| 8 | **18, languages** | big | Once the words have settled through 21 and 22. | #184 | [18](plans/18-languages.md) |
-| 9 | **15c, skiing** | big | When there's snow to test on (December–January), whatever its place here. | #185 | [15](plans/15c-skiing.md) |
-| 10 | **22c, cards to pull out** | medium | Only if 22a and 22b haven't made it unnecessary. | #186 | [22](plans/22-drawer.md) |
-| 11 | **23d, alerts on the way** | small–medium | After real use of 23b shows what's worth a buzz. | #187 | [23](plans/23-out-on-the-trail.md) |
-| 12 | **16, Strava & Garmin** | research | Outside accounts and terms. | #188 | [16](plans/16-strava-garmin.md) |
-| 13 | **19, help and a tutorial** | big | Last, when the rest holds still. | #189 | [19](plans/19-help.md) |
-
-**Phase 25, a calmer planner (#233):** [its plan](plans/issue-233-calmer-planner.md) and [the mock-up](plans/mockups/phase-24-planner.html), designed in phase 24 and approved on 2026-10-18. Four parts, each a PR: 25a the toolbox and the header; 25b round trips in the peek; 25c Done and the route's view; 25d Check and the waypoints. Before it, in their own PRs: #239, #240 and #245 from Fixes 2, and the 3D button (#226). #241, #242 and #251 close with 25a, each with its regression check.
-
-**Phase 24's milestone stays open** for the real-phone checks of #73 and #134; its row is out of the order since the review itself is done (#177), and #123's build is in (#249).
-
-**Dated, outside the order:** #133, a rain-rate source before FMI retires the layer Polku's rain "now" reads, by 2026-11-30.
+The order of the phases and the reasons for it, as last kept in this file, are in [its 2026-10-18 version](https://github.com/TommiContursi/Polku/blob/6b1e2932cab389cfc9e9367918d126a38f5d2047/docs/ROADMAP.md).
 
 ## What holds for every phase
 
