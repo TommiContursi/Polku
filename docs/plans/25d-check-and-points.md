@@ -35,7 +35,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
 **To reconsider in a later part** (the user, 2026-10-21): #364. It covers when you leave and when you go on (any time, not a few fixed hours); where Avoid this spot belongs; and On the profile on the route's and a point's card.
 
 **Next**
-1. #356's fix the cards need: the route's numbers' labels wrap (its own Fix PR).
+1. Done: #356's fix the cards need, the route's numbers' labels wrap (#360).
 2. Then #352 is restyled to Revision 5's frames as 1a (its desktop card, the edits as buttons, Reverse, the lit row), then 1b.
 3. Before parts 2 to 4: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) get a Revision 5 version behind a switch: the same rows, warning box, switch and words as the cards, and nothing else changed. The user chooses it before part 2.
 4. Then parts 2 to 6, in the order below.
