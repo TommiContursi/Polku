@@ -352,6 +352,8 @@ button.warnr span { flex: 1; font-weight: 600; }
 }
 /* the narrowest (200 % on a 360 px phone): the mark gives its room to undo, redo and ✕ */
 @container (max-width: 190px) { .c2-g { display: none; } }
+/* narrow: the item's ‹ 1 of 3 › keep their row, and All in Check takes the next */
+@container (max-width: 290px) { .c2-stepper { flex-wrap: wrap; } .c2-stepper .grow { flex-basis: 100%; height: 0; } }
 .fr.dark .c2-warn.read { background: rgba(255,138,138,.14); }
 .c2-warn.read { background: #fbe9e9; }
 .c2-warn.read > .ic:first-child { color: var(--danger); }

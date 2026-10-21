@@ -655,11 +655,268 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 @media (prefers-reduced-motion: reduce) { .screen button { transition: none; } .popmenu { animation: none; } }
 @media (prefers-reduced-transparency: reduce) { .pl, .float, .deskbar { background: var(--surface-solid); backdrop-filter: none; } }
 @media (prefers-contrast: more) { .pl, .float, .deskbar, .popmenu { background: var(--surface-solid); box-shadow: 0 0 0 2px var(--text); } }
+
+/* ================================================================ Revision 5 of C and D (2026-10-22, for the user's choice)
+   The map cards' parts, copied from issue-345-map-cards.html at a25cfe9 with the same class names: c2-* (Revision 1's
+   card), its Revision 3 to 5 rules (here under .r5, the "Cards and lists" switch) and c5-* (the desktop buttons).
+   Change them there, then copy again. Below them, only how this mock-up holds them. */
+.card5 { gap: 14px; container-type: inline-size; }
+.c2-top { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; }
+.c2-top .c2-x, .c2-top .c2-back { flex: none; width: 44px; height: 44px; margin: -6px -10px 0 0; border: 0; border-radius: 12px; background: none; color: var(--text); display: grid; place-items: center; }
+.c2-top .c2-back { margin: -6px 0 0 -12px; color: var(--accent); }
+.c2-br { display: none; }
+.c2-dock { display: flex; } .c2-dock button { width: 44px; height: 44px; border: 0; border-radius: 12px; background: none; color: var(--text); display: grid; place-items: center; }
+.c2-g ~ .c2-x { margin-left: auto; }
+.c2-top .c2-back { order: 0; } .c2-g { order: 1; } .c2-ttl { order: 2; } .c2-save { order: 3; } .c2-top .c2-x { order: 9; }
+.c2-g { flex: none; display: grid; place-items: center; width: 34px; height: 34px; }
+.c2-g svg { display: block; }
+.mk2 { width: 28px; height: 28px; margin: 3px; border-radius: 50%; border: 3px solid #111; background: #fff; color: #111; font-weight: 800; font-size: 13.5px; }
+.c2-ttl { flex: 1; min-width: 0; display: grid; gap: 2px; padding-top: 3px; }
+.c2-ttl b { font-size: 17px; line-height: 1.25; font-weight: 700; letter-spacing: -.005em; overflow-wrap: anywhere; }
+.c2-ttl small { font-size: 13.5px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.c2-in { width: 100%; min-height: 44px; padding: 0 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: 600 17px/1 system-ui, sans-serif; }
+.c2-save { flex: none; min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--accent-bg); color: var(--on-accent); font-weight: 700; }
+/* three numbers, as the route's summary has them; a missing one in a dashed box that says so */
+.c2-nums { display: flex; gap: 0; }
+.c2-num { flex: 1 1 0; min-width: 0; display: grid; align-content: start; gap: 2px; padding: 0 12px; border-left: 1px solid var(--line); }
+.c2-num:first-child { padding-left: 0; border-left: 0; }
+.c2-num b { font-size: 21px; line-height: 1.15; font-weight: 700; letter-spacing: -.015em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.c2-num em { font-style: normal; font-size: 13.5px; line-height: 1.25; font-weight: 650; color: var(--text); overflow-wrap: anywhere; }
+.c2-num small { font-size: 12.5px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.c2-num.miss { margin-left: 8px; padding: 4px 10px; border: 1.5px dashed var(--muted); border-radius: 12px; }
+.c2-num.miss b { color: var(--muted); }
+.c2-src { justify-self: start; margin-top: -6px; font-size: 12.5px; color: var(--muted); }
+/* the point's switch: what happens at this point, and its details under it */
+.c2-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 15px; background: var(--surface-2); }
+.c2-seg.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.c2-seg button { min-height: 48px; padding: 6px 4px; border: 0; border-radius: 12px; background: none; color: var(--text); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 650; text-align: center; overflow-wrap: anywhere; }
+.c2-seg.two button { min-height: 46px; flex-direction: row; gap: 6px; }
+.c2-seg button[aria-checked="true"] { background: var(--surface-solid); color: var(--accent); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
+.c2-detail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: -4px; font-size: 14px; }
+.c2-detail small { flex: 1 1 160px; font-size: 13px; color: var(--muted); }
+.c2-step { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); }
+.c2-step button { width: 44px; height: 44px; border: 0; background: none; color: var(--accent); display: grid; place-items: center; }
+.c2-step b { min-width: 64px; text-align: center; font-size: 15.5px; font-variant-numeric: tabular-nums; }
+.c2-time { min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+/* groups with short headings, as the ⋯ menu has them */
+.c2-h { margin: 2px 0 -8px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.c2-list { display: grid; margin: 0 -10px; }
+.c2-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 -10px; }
+.c2-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 6px 10px; border: 0; border-radius: 12px; background: none; color: var(--text); text-align: left; font: inherit; }
+.c2-item:active { background: var(--surface-2); }
+/* (mobile-native: every control answers while the finger is down) */
+.c2-main, .c2-seg button, .c2-step button, .c2-lock button, .c2-foot button, .c2-save { transition: transform 100ms ease-out; }
+.c2-main:active, .c2-seg button:active, .c2-step button:active, .c2-lock button:active, .c2-foot button:active, .c2-save:active { transform: scale(.97); }
+.c2-item > .ic:first-child { color: var(--text); }
+.c2-item > span { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.c2-item b { font-size: 15px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.c2-item small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.c2-item .val { flex: none; max-width: 42%; font-size: 15px; font-weight: 650; color: var(--accent); text-align: right; overflow-wrap: anywhere; }
+.c2-item .chev { flex: none; color: var(--muted); }
+.c2-item.danger b, .c2-item.danger > .ic:first-child { color: var(--danger); }
+.c2-item[role="menuitemradio"][aria-checked="true"] { background: var(--accent-soft); }
+.c2-item .tick { flex: none; color: var(--accent); }
+.c2-hr { height: 1px; margin: 0; background: var(--line); }
+.c2-tg { cursor: pointer; }
+.c2-tg i { flex: none; position: relative; width: 46px; height: 28px; border-radius: 14px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.c2-tg i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.c2-tg i.on { background: var(--accent-bg); box-shadow: none; }
+.c2-tg i.on::after { left: 21px; }
+/* the one main action in a card (the pill is the map's own, at the finger) */
+.c2-main { width: 100%; min-height: 50px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--accent-bg); color: var(--on-accent); font-weight: 700; font-size: 15.5px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px rgba(16,24,20,.18); }
+/* a warning on the stretch: how serious, in words and shape too */
+.c2-warn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 50px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--look-soft); color: var(--text); text-align: left; font: inherit; font-size: 14px; }
+.c2-warn > .ic:first-child { color: var(--look); }
+.c2-warn span { flex: 1; min-width: 0; display: grid; }
+.c2-warn b { font-weight: 650; }
+.c2-warn small { font-size: 12.5px; color: var(--muted); }
+.c2-note { margin: -4px 0 0; font-size: 14px; line-height: 1.4; color: var(--text); }
+.c2-facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 15px; font-weight: 600; }
+.c2-facts li { display: flex; align-items: center; gap: 10px; }
+.c2-facts .ic { color: var(--accent); }
+.c2-kv { margin: -4px 0 0; display: grid; }
+.c2-kv div { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 40px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.c2-kv dt { color: var(--muted); }
+.c2-kv dd { margin: 0; font-weight: 650; text-align: right; overflow-wrap: anywhere; display: flex; align-items: center; gap: 6px; }
+.c2-kv button { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
+.c2-stepper { display: flex; align-items: center; gap: 4px; margin: 0 -10px; }
+.c2-stepper > button { min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; background: none; color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-weight: 650; font-size: 14px; padding: 0 10px; }
+.c2-stepper > span { font-size: 14px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.c2-stepper .grow { flex: 1; }
+/* the last row: Share, the weather there, and Not right? */
+.c2-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 2px; margin: 0 -10px; padding-top: 4px; border-top: 1px solid var(--line); }
+.c2-foot button { min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: none; color: var(--text); display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.c2-foot .grow { flex: 1; }
+.c2-foot .nr { color: var(--muted); }
+/* the route's view: the planner's own note, and Edit */
+.c2-lock { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; line-height: 1.35; }
+.c2-lock > .ic { color: var(--muted); }
+.c2-lock span { flex: 1; min-width: 0; }
+.c2-lock button { flex: none; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font-weight: 650; display: inline-flex; align-items: center; gap: 6px; }
+/* the first point's peek: how to see what's on the map, where a phone has no hover */
+.c2-first { display: grid; gap: 6px; padding: 2px 0 4px; }
+.c2-first b { font-size: 16px; }
+.c2-first p { margin: 0; font-size: 14px; }
+.c2-hint { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+/* the card at the pointer (desktops) keeps the same parts, a little denser */
+.r5 .pop5 { width: 344px; max-height: calc(100% - 16px); overflow: auto; overscroll-behavior: contain; padding: 12px 14px 8px; gap: 12px; border-radius: 16px; }
+.r5 .pop5.card5 { gap: 12px; }
+.r5 .pop5 .c2-item { min-height: 44px; }
+/* a 360 px phone: the switch's words under their icons, so Finnish fits */
+@container (max-width: 335px) { .c2-seg:not(.two) button { flex-direction: column; min-height: 54px; gap: 2px; } }
+/* narrow (200 %, a small phone): Back and ✕ on a row of their own, the numbers one to a row, the switch in a column */
+@container (max-width: 290px) {
+  .c2-top { flex-wrap: wrap; row-gap: 6px; }
+  .c2-top .c2-back { order: 0; } .c2-g { order: 1; }
+  .c2-dock { order: 2; margin-left: auto; } .c2-top .c2-x { order: 3; margin-left: auto; } .c2-dock + .c2-x { margin-left: 0; }
+  .c2-g + .c2-ttl, .c2-ttl { order: 5; flex-basis: 100%; }
+  .c2-br { display: block; order: 4; flex-basis: 100%; height: 0; }
+  .c2-save { order: 6; }
+  .c2-nums { flex-direction: column; }
+  .c2-num { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 0; border-left: 0; border-top: 1px solid var(--line); }
+  .c2-num:first-child { border-top: 0; }
+  .c2-num.miss { margin: 4px 0 0; padding: 6px 10px; }
+  .c2-seg, .c2-seg.two { grid-template-columns: 1fr; }
+  .c2-seg button, .c2-seg:not(.two) button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
+  .c2-pair { grid-template-columns: 1fr; }
+  .c2-item .val { max-width: 50%; }
+}
+/* the narrowest (200 % on a 360 px phone): the mark gives its room to undo, redo and ✕ */
+@container (max-width: 190px) { .c2-g { display: none; } }
+/* narrow: the item's ‹ 1 of 3 › keep their row, and All in Check takes the next */
+@container (max-width: 290px) { .c2-stepper { flex-wrap: wrap; } .c2-stepper .grow { flex-basis: 100%; height: 0; } }
+.fr.dark .c2-warn.read { background: rgba(255,138,138,.14); }
+.c2-warn.read { background: #fbe9e9; }
+.c2-warn.read > .ic:first-child { color: var(--danger); }
+/* ================================================================ Revision 3: Revision 1's look, with Back in words, and compact on desktops */
+.c2-back-words { width: auto !important; padding: 0 10px 0 4px; display: inline-flex !important; align-items: center; gap: 4px; font-size: 15px; font-weight: 650; color: var(--accent); }
+.c2-back-words span { white-space: normal; text-align: left; line-height: 1.15; }
+/* with Back, Back and ✕ have a row of their own, and the mark and the name the next (as the start's steps) */
+.r5 .c2-top:has(.c2-back) { flex-wrap: wrap; row-gap: 4px; }
+.r5 .c2-top:has(.c2-back) .c2-back { order: 0; margin: -6px 0 0 -10px; }
+.r5 .c2-top:has(.c2-back) .c2-dock { order: 1; margin-left: auto; }
+.r5 .c2-top:has(.c2-back) .c2-x { order: 2; margin-left: auto; }
+.r5 .c2-top:has(.c2-back) .c2-dock + .c2-x { margin-left: 0; }
+.r5 .c2-top:has(.c2-back) .c2-br { display: block; order: 3; flex-basis: 100%; height: 0; }
+.r5 .c2-top:has(.c2-back) .c2-g { order: 4; }
+.r5 .c2-top:has(.c2-back) .c2-ttl { order: 5; flex: 1 1 0; }
+/* desktops: compact; an explanation is the item's tooltip, a stretch's ends stay */
+.r5 .pop5 .c2-item small.desc { display: none; }
+.r5 .pop5 .c2-item { min-height: 40px; }
+
+/* ================================================================ Revision 4: Revision 3 with an icon on every row, a hover, a line on all */
+/* a row that opens something: its icon, its line, ›, and a hairline between rows so a list reads as buttons, not text */
+.r5 .c2-list > .c2-item + .c2-item { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
+.r5 .c2-list > .c2-item:first-child { border-radius: 12px 12px 0 0; }
+.r5 .c2-list > .c2-item:last-child { border-radius: 0 0 12px 12px; }
+.r5 .c2-list > .c2-item:only-child { border-radius: 12px; }
+@media (hover: hover) { .r5 .c2-item:hover, .r5 .c2-warn:hover, .r5 .c2-foot button:hover, .r5 .c2-back:hover, .r5 .c2-x:hover { background: var(--surface-2); } }
+.r5 .c2-item:focus-visible, .r5 .c2-warn:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.r5 .c2-item .chev { transition: transform 120ms ease-out; }
+@media (hover: hover) { .r5 .c2-item:hover .chev { transform: translateX(2px); } }
+/* desktops: every line is the row's tooltip, so a list reads alike */
+.r5 .pop5 .c2-item small { display: none; }
+.r5 .pop5 .c2-item { min-height: 40px; }
+
+/* ================================================================ Revision 5: compact cards on desktops; the point's edits as buttons there */
+/* desktops: a card at the pointer is a quick look, not a sheet: smaller type, tighter rows, the lines as tooltips */
+.r5 .pop5 { width: 320px; max-height: min(calc(100% - 16px), 480px); padding: 8px 12px 10px; }
+/* a group of buttons names itself: no heading above it on desktops */
+.r5 .pop5 .c2-h:has(+ .c5-btns) { display: none; }
+
+.r5 .pop5 .card { gap: 8px; }
+.r5 .pop5 .c2-top { min-height: 36px; gap: 8px; }
+.r5 .pop5 .c2-top .c2-x, .r5 .pop5 .c2-top .c2-back { width: 36px; height: 36px; }
+.r5 .pop5 .c2-top .c2-back-words { width: auto !important; height: 36px; font-size: 14px; }
+.r5 .pop5 .c2-g { width: 28px; height: 28px; }
+.r5 .pop5 .c2-g svg { width: 24px; height: 24px; }
+.r5 .pop5 .mk2 { width: 22px; height: 22px; border-width: 2.5px; font-size: 11.5px; }
+.r5 .pop5 .c2-ttl { padding-top: 0; }
+.r5 .pop5 .c2-ttl b { font-size: 15px; }
+.r5 .pop5 .c2-ttl small { font-size: 12.5px; }
+.r5 .pop5 .c2-num b { font-size: 17px; }
+.r5 .pop5 .c2-num small { font-size: 12px; }
+.r5 .pop5 .c2-h { margin: 0 0 -4px; font-size: 11px; }
+.r5 .pop5 .c2-seg button { min-height: 36px; flex-direction: row; gap: 6px; font-size: 13px; }
+.r5 .pop5 .c2-detail { font-size: 13px; margin-top: -2px; }
+.r5 .pop5 .c2-step button { width: 34px; height: 34px; }
+.r5 .pop5 .c2-time { min-height: 34px; font-size: 14px; }
+.r5 .pop5 .c2-list { margin: 0 -8px; }
+.r5 .pop5 .c2-item { min-height: 34px; padding: 4px 8px; gap: 10px; }
+.r5 .pop5 .c2-item b { font-size: 14px; font-weight: 600; }
+.r5 .pop5 .c2-item .val { font-size: 14px; }
+.r5 .pop5 .c2-item > .ic:first-child { width: 18px; height: 18px; }
+.r5 .pop5 .c2-main { min-height: 38px; font-size: 14.5px; border-radius: 12px; }
+.r5 .pop5 .c2-warn { min-height: 38px; padding: 6px 10px; font-size: 13.5px; }
+.r5 .pop5 .c2-note { font-size: 13px; }
+.r5 .pop5 .c2-foot button { min-height: 34px; font-size: 13px; }
+.r5 .pop5 .c2-kv div { min-height: 32px; font-size: 13px; }
+/* the point's edits on desktops: buttons with their names, two a row; Remove on a row of its own, in red */
+.c5-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.c5-btns:has(> :only-child) { grid-template-columns: 1fr; }
+.c5-btn .ic { flex: none; }
+.c5-btn { min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.c5-btn span { min-width: 0; overflow-wrap: anywhere; }
+.c5-remove { width: 100%; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1.5px solid var(--danger); border-radius: 10px; background: transparent; color: var(--danger); font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; }
+@media (hover: hover) { .c5-btn:hover { background: var(--surface-2); } .c5-remove:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); } }
+.c5-btn:focus-visible, .c5-remove:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* phones: Copy is a finger's size too */
+.fr.phone .r5 .c2-kv button { min-height: 44px; padding: 0 12px; }
+/* how this mock-up holds them: a card in the peek on a phone (half the screen at most, scrolling inside), a compact card
+   beside the panel on a desktop, at the row it came from */
+.card5 { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; } /* nothing in a card widens it past the sheet */
+.r5 .pl.card-in { max-height: 52%; overflow-y: auto; overscroll-behavior: contain; }
+.r5 .pl.card-in > .card5 { padding: 2px 0 6px; }
+.pop5 { position: absolute; z-index: 8; overflow: auto; overscroll-behavior: contain; border-radius: 16px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+.pop5.card5 { display: grid; }
+.mapcard5 { position: absolute; z-index: 8; width: min(320px, calc(100% - 16px)); padding: 10px 14px 12px; border-radius: 16px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+.c2-src { display: flex; align-items: center; gap: 5px; }
+.c2-src .ic { flex: none; }
+.c2-item > span.mk { flex: none; display: grid; }
+/* a source that didn't answer: dashed, as a missing number on a card and the approved row */
+.c2-warn.unk { padding: 6.5px 10.5px; border: 1.5px dashed var(--unk); background: var(--unk-soft); }
+.c2-warn.unk > .ic:first-child { color: var(--unk); }
+.r5 .pl > .c2-warn { margin: 2px 0 6px; }
+.r5 .sec2 .c2-warn { margin: 6px 0 2px; min-height: 44px; }
+.r5 .pop5 .c2-warn small, .r5 .c2-warn small { overflow-wrap: anywhere; }
+/* Check's items, the list's points and its stretches: the cards' rows, a hairline between them, lit while open */
+.r5 .tier .c2-list { margin: 0 -10px 4px; }
+.r5 .tier .c2-list > .c2-item { min-height: 52px; }
+.r5 .c5-w.t1 > .ic:first-child { color: var(--danger); }
+.r5 .c5-w.t2 > .ic:first-child { color: var(--look); }
+.r5 .c5-w.t3 > .ic:first-child { color: var(--unk); }
+.c5-list { display: grid; margin: 4px -10px 0; }
+.c5-list > * + * { box-shadow: inset 0 1px 0 var(--line); }
+.c5-list .c2-item { border-radius: 0; }
+.c5-list > :first-child .c2-item, .c5-list > .c2-item:first-child { border-radius: 12px 12px 0 0; }
+.c5-strow { display: flex; align-items: center; }
+.c5-strow .c2-item { flex: 1; min-width: 0; }
+.c5-strow .unfold { margin-right: 4px; }
+.c5-pt > .mk { margin: 0 -1px; }
+.c5-st { min-height: 46px; }
+.c5-st > .ic:first-child { width: 26px; color: var(--muted); }
+.c5-st b { font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.c5-st small { font-size: 12.5px; }
+.c2-item .c5-tag { display: flex; align-items: center; gap: 5px; color: var(--text); font-weight: 600; }
+.c2-item .c5-tag .ic { flex: none; }
+.c5-lit, .c5-list .c5-lit { background: var(--accent-soft); }
+.c5-lit > .mk { box-shadow: 0 0 0 3px var(--surface-solid), 0 0 0 5px var(--accent-bg); }
+@media (hover: hover) { .r5 .c5-list .c2-item:not(.c5-lit):hover { background: var(--surface-2); } }
+.r5 .c5-list .shfold { border-top: 0; min-height: 44px; }
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/></symbol>
+  <symbol id="i-avoid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+<symbol id="i-flagend" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h14v9H5"/><path d="M5 4h3.5v3H5zM12 4h3.5v3H12zM8.5 7H12v3H8.5zM15.5 7H19v3h-3.5zM5 10h3.5v3H5zM12 10h3.5v3H12z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol>
+<symbol id="i-pass" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+<symbol id="i-style" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+<symbol id="i-tent" viewBox="0 0 24 24"><path d="M3 20 12 5l9 15H3Z"/><path d="M9 20l3-6 3 6"/></symbol>
+<symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.8"/><path d="m10 21 2.5-6 2.5 2.5V21M8 12l2.5-4.5 3.5 1.5 2 3.5M12.5 15l-1.5-4"/></symbol>
+<symbol id="i-retry" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.8h-4.8"/></symbol>
+<symbol id="i-auto" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/></symbol>
   <symbol id="i-line" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5 17.5 6.5"/></symbol>
   <symbol id="i-water" viewBox="0 0 24 24"><path d="M2.5 17c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><path d="M2.5 21c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><circle cx="5" cy="9" r="1.8"/><circle cx="19" cy="5" r="1.8"/><path d="M6.6 8.2c3-1.5 6.8-2.2 10.6-2.6" stroke-dasharray="2.2 2"/></symbol>
   <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
@@ -822,6 +1079,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <section class="cv-row" id="sc">
     <h2>C · A warning: notice it, find it on the route, come back</h2>
     <p>Today, with the sheet at its peek, nothing says there's anything to read before you go: Check's count is on its tab, under the fold, and a row in Check frames the map without marking the place (#84, #85). Here the peek has a row while there's something to read before you go or something wasn't checked, in words. Each located item has a marker on the route, in its group's shape and icon (a filled triangle, a dashed "?", an eye for "worth a look", which shows while Check or an item is in view); close ones merge into one with a count. A tap on the row, a marker or an item in Check shows it on the route: the stretch glows, the marker is ringed, and the peek holds the item (what, where, how sure, Avoid or Retry) with ‹ › along the route. <b>✕ comes back</b> to where you were (the peek, or Check at half). A stretch that wasn't checked is dashed on the route; a source missing for the whole route says so in words, with no invented place. The approved row opened Check at half; this keeps the map in view. <b>Decided 2026-10-20: the row shows the item on the route.</b></p>
+    <p><b>Revision 5, for the user's choice (2026-10-22):</b> with <b>Cards and lists: Revision 5</b> at the bottom (the default), these frames use the map cards' own parts from <a href="issue-345-map-cards.html">#345's mock-up</a>. The row is the cards' warning box. Check's items are the cards' rows, each in its group's shape and colour, and lit while it's open. The item's card is Revision 5's: its group in words and shape, where it is, its source, its one action, then ‹ › and All in Check. On a desktop it opens beside the panel at its row. <b>As approved</b> shows the frames as they were.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jc-peek" data-st='{"stage":"route"}'><figcaption><b>Noticed at a glance</b>The row in the peek; the road works' marker on the route. Tap either.</figcaption></figure>
       <figure class="fr phone" id="jc-step" data-st='{"stage":"route","step":4}'><figcaption><b>Found on the route</b>Its stretch glows and its marker is ringed; ‹ › go along the route; ✕ back.</figcaption></figure>
@@ -841,6 +1099,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <section class="cv-row" id="sd">
     <h2>D · Points and legs: three ways to keep them (iteration 2)</h2>
     <p>From the user's feedback on section 6: a selected waypoint took much of the screen, some of its settings were hard to read, and the list may not show what's needed. In every option below the list is made of <b>sections</b>: a new one starts where the sport changes, at a stop and at a night, and each says what Check says about that part (its distance, time and climb, the weather when you get to its end, its warnings, which open the item on the route). Points that only shape the line fold inside, so a leg of 30 m never gets a forecast of its own. The list stays because it's the only way to manage points without the map (keyboard, screen readers) and to see their order and names at once. The options differ in where a point is changed. <b>Chosen on 2026-10-20: V1, refined</b> (stretches between the points you see, with both ends named and their scope in words; the everyday actions by name; Reorder). Five kinds of route: a day ride, a multisport trip, three days with nights, 52 points, and a marked route followed. <b>Use the "Points" switch at the bottom</b> to see any frame in V1, V2 or V3.</p>
+    <p><b>Revision 5, for the user's choice (2026-10-22):</b> with <b>Cards and lists: Revision 5</b> (the default), V1's list keeps its sections and gets the cards' rows. A point's row has its mark, its name, what happens there, and a line. A stretch's row has its numbers and how it's drawn. A section's warnings are in the warning box. The point's and the stretch's cards are Revision 5's, with At this point and Edit this stretch, so the paddle stretch's frame opens Edit this stretch. On a desktop the card opens beside the panel at its row, which stays lit. Reorder, V2 and V3 stay as they were.</p>
     <ul>
       <li><b>V1, a card (chosen, then refined):</b> a tap on a point selects it on the map and opens its card in the peek, the same card as a tap on the point on the map: what it is, its stop, change or night, the leg after it, and its place. The leg is one tap further, in words (sport, how it's drawn, style). Back returns to the list as it was.</li>
       <li><b>V2, in the list:</b> the point's controls open under it in its section, as in the approved section 6.</li>
@@ -852,7 +1111,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="jd-day" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","psel":1,"pcard":"point"}'><figcaption><b>V1: a day ride, a point picked</b>Ringed on the map. Its name and arrival first; Add a stop, Stay overnight and Change sport here by name; the stretch after it, both ends named.</figcaption></figure>
       <figure class="fr phone" id="jd-leg" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","psel":1,"pcard":"stretch","str":[1,2],"strBack":1}'><figcaption><b>V1: the stretch after it</b>Lit on the map exactly between its two ends; what the changes apply to, then only the settings that fit its sport. Back returns to the point.</figcaption></figure>
       <figure class="fr phone" id="jd-maptap" data-st='{"stage":"route","uc":"day","calm":true,"wv":"v1","pcard":"stretch","str":[0,1],"strFromMap":true}'><figcaption><b>V1: a tap on the line</b>A tap on the route on the map opens that stretch's card at once: the same card as from the list.</figcaption></figure>
-      <figure class="fr phone" id="jd-stretch" data-st='{"stage":"route","uc":"multi","calm":true,"wv":"v1","pcard":"stretch","str":[7,10]}'><figcaption><b>V1: the paddle stretch</b>Lielahti → Siilinkari, its three legs (two shaping points folded); Paddle "this stretch only · the route is MTB"; only Over water and Straight line; the toolbox for the next leg steps aside.</figcaption></figure>
+      <figure class="fr phone" id="jd-stretch" data-st='{"stage":"route","uc":"multi","calm":true,"wv":"v1","pcard":"stretch","str":[7,10],"sedit":true}'><figcaption><b>V1: the paddle stretch</b>Lielahti → Siilinkari, its three legs (two shaping points folded); Paddle "this stretch only · the route is MTB"; only Over water and Straight line; the toolbox for the next leg steps aside.</figcaption></figure>
       <figure class="fr phone" id="jd-reorder" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1","reorder":true}'><figcaption><b>V1: Reorder</b>Every point, with its grip and Earlier and Later; Done goes back to the sections.</figcaption></figure>
       <figure class="fr phone" id="jd-days" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>Three days with nights</b>A section a day, each night with the morning's start.</figcaption></figure>
       <figure class="fr phone" id="jd-long" data-st='{"stage":"route","uc":"long","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>52 points</b>Two breaks make three sections; the points that only shape the line fold away.</figcaption></figure>
@@ -992,12 +1251,13 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 </main>
 
 <nav class="picker" aria-label="Mock-up switches" data-open="false">
-  <button type="button" class="pk-toggle" aria-expanded="false" aria-controls="pk-groups">Switches: worst case, words, theme</button>
+  <button type="button" class="pk-toggle" aria-expanded="false" aria-controls="pk-groups">Switches: cards and lists, worst case, words, theme</button>
   <div class="pk-groups" id="pk-groups">
   <div role="group" aria-label="Data"><span>Data</span><button type="button" data-o="worst" data-v="0">Normal</button><button type="button" data-o="worst" data-v="1">Worst case</button></div>
   <div role="group" aria-label="Language"><span>Words</span><button type="button" data-o="lang" data-v="en">EN</button><button type="button" data-o="lang" data-v="fi">FI</button><button type="button" data-o="lang" data-v="sv">SV</button></div>
   <div role="group" aria-label="Theme"><span>Theme</span><button type="button" data-o="theme" data-v="light">Light</button><button type="button" data-o="theme" data-v="dark">Dark</button></div>
   <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask (decided)</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
+  <div role="group" aria-label="Cards and lists in C and D"><span>Cards and lists</span><button type="button" data-o="look" data-v="v1">As approved</button><button type="button" data-o="look" data-v="r5">Revision 5</button></div>
   <div role="group" aria-label="Points and legs"><span>Points</span><button type="button" data-o="wv" data-v="v1">V1: card (chosen)</button><button type="button" data-o="wv" data-v="v2">V2: in the list</button><button type="button" data-o="wv" data-v="v3">V3: on the map</button></div>
   </div>
 </nav>
@@ -1024,6 +1284,8 @@ const OPT = {
   sport: ['ask', 'next', 'all'].includes(Q.get('sport')) ? Q.get('sport') : 'ask',
   // iteration 2: how points and legs are kept (V1 sections and a card, V2 sections editing in place, V3 read here, edit on the map)
   wv: ['v1', 'v2', 'v3'].includes(Q.get('pts')) ? Q.get('pts') : 'v1',
+  // 2026-10-22: C and D as approved (v1), or with the map cards' Revision 5 parts (r5, for the user's choice)
+  look: Q.get('look') === 'v1' ? 'v1' : 'r5',
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
 
@@ -1390,7 +1652,7 @@ function fresh(base) {
   return st;
 }
 const opt = (st, k) => (touched || st[k] == null ? OPT[k] : st[k]);
-const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv });
+const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look });
 
 // ------------------------------------------------ building blocks
 // the pill is the map's sport (st.map); its menu says what a change does (2026-10-20)
@@ -1491,6 +1753,7 @@ function alongList(st, v) {
 // The peek's row (2026-10-20): what to read before you go, and what wasn't checked, in words. A tap shows the first
 // one on the route (phones: in the peek, with ‹ › along the route and ✕ back; desktops: selected in Check).
 function warnRow(st, v, desk) {
+  if (v.look === 'r5') return warnRow5(st, v, desk);
   const W = warnsOf(st, v), n1 = W.t1.length, n3 = W.t3.length;
   if ((!n1 && !n3) || (st.tab === 'check' && (desk || st.sheet !== 'peek')) || (st.step != null && !desk && st.sheet === 'peek')) return ''; // not while Check or the item is in sight
   const first = n1 ? W.t1[0] : W.t3[0], n = n1 || n3;
@@ -1500,6 +1763,7 @@ function warnRow(st, v, desk) {
 }
 // One item in view: its group, what and where, how sure, its actions; ‹ › along the route; ✕ back to where you were
 function wcard(st, v) {
+  if (v.look === 'r5') { const h = itemCard5(st, v, false); return h ? `<div class="card5" role="group">${h}</div>` : ''; }
   const L = alongList(st, v), it = L[st.step];
   if (!it) return '';
   const w = it.w, G = { t1: [t('t1'), 'warnf'], t2: [t('t2'), 'eye'], t3: [t('t3'), 'unk'] }[it.g];
@@ -1663,7 +1927,8 @@ function checkBody(st, v) {
   // (2026-10-20: selected together; on a phone the sheet steps down to show it, and ✕ comes back here)
   const item = (w, g, i) => { const idx = L.findIndex((x) => x.g === g && x.i === i); return `<div class="wi${st.step === idx ? ' picked' : ''}"${st.step === idx ? ' aria-current="true"' : ''}>${ic(w.ic, 20)}<div class="tx"><button type="button" class="wibtn" data-act="wpick" data-v="${idx}" aria-label="${esc(w.b)}, ${esc(w.w)}: show on the route"><b>${esc(w.b)}</b><span class="wh">${esc(w.w)} · ${(kmOf(w) ? t('showMap') : t('wholeRoute')).toLowerCase()} ›</span></button>${w.n ? `<span class="nt">${esc(w.n)}</span>` : ''}<span class="src">${w.s}</span>
     ${w.a.length ? `<div class="wa">${w.a.map((a) => `<button type="button" class="btn small quiet" data-act="noop">${a === 'Avoid' ? t('avoid') : t('retry')}</button>`).join('')}<button type="button" class="tbtn" aria-label="More for ${esc(w.b)}: hide this kind, correct the map">${ic('more', 18)}</button></div>` : ''}</div></div>`; };
-  const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span></h3><p class="tsub">${sub}</p>${list.map((w, i) => item(w, cls, i)).join('')}</section>` : '');
+  const rows = (list, cls) => (v.look === 'r5' ? `<div class="c2-list">${list.map((w, i) => checkRow5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>` : list.map((w, i) => item(w, cls, i)).join(''));
+  const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span></h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
   const sum = '';
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
   return `${sum}${tier('t1', 'warnf', t('t1'), W.t1, 'What can stop you, turn you back or hurt')}${tier('t3', 'unk', t('t3'), W.t3, 'A source didn’t answer: the route may miss something')}${tier('t2', 'eye', t('t2'), W.t2, 'Sections to know about')}${cov}
@@ -1859,6 +2124,7 @@ function pointBody(st, v, q, i, inline) {
 }
 // V1: the point's card, in the peek on a phone (a card by the point on desktops), the same as a tap on the point on the map
 function pointCard(st, v, desk) {
+  if (v.look === 'r5' && v.wv === 'v1' && (st.pcard === 'point' || (st.pcard === 'stretch' && st.str))) return card5(st, v, desk);
   if (v.wv === 'v1' && st.pcard === 'stretch' && st.str) return stretchCard(st, v, desk);
   if (v.wv === 'v1' && st.pcard === 'point') return pointCard1(st, v, desk);
   const P = ucPoints(st), i = st.psel, q = P[i];
@@ -1902,6 +2168,7 @@ function stretchOf(st, a, b) {
   return { A, B, sp, d, min, up, legs: b - a, fixed: B.fixed };
 }
 function sectionsV1(st, v, desk) {
+  if (v.look === 'r5' && !st.reorder) return sectionsV1r5(st, v, desk); // Reorder stays as approved
   const P = ucPoints(st), V = visibleIdx(st), sel = st.psel, S0 = st.str;
   const row = (i) => {
     const q = P[i], on = sel === i && st.pcard === 'point';
@@ -1962,6 +2229,270 @@ function stretchCard(st, v, desk) {
     <label class="pc-r"><span class="lab2">${t('styleRow')}</span><span class="sel">${esc(style)} ${ic('down', 12)}</span><small class="scope2">${esc(tf('styleAs', { S: sL(x.sp) }))}</small></label>`}
     <div class="wpacts">${!x.fixed && x.legs === 1 && !isWaterS(x.sp) ? `<button type="button" class="act" data-act="noop">${ic('route', 16)}${t('otherWays')}</button>` : ''}<button type="button" class="act" data-act="noop">${ic('mountain', 16)}${t('onProfile')}</button><button type="button" class="act" data-act="noop">${ic('close', 16)}${t('avoidSpot')}</button></div>
     <div class="pc-same">${t('sameCardS')}</div></div>`;
+}
+
+// ------------------------------------------------ Revision 5 of C and D (2026-10-22, for the user's choice)
+// The same rows, warning box, switch and words as the map cards' Revision 5 (issue-345-map-cards.html), on this mock-up's
+// routes: the peek's row and a section's warnings in the warning box; Check's items and the list's points and stretches as
+// the cards' rows; the point's, the stretch's and the item's cards as Revision 5 draws them. Nothing else here changes.
+const W5 = {
+  en: {
+    start: 'Start', end: 'End', via: 'Via', close: 'Close',
+    there: 'there at', youLeave: 'you leave', fromStart: 'from the start', height: 'height',
+    atPoint: 'At this point', pass: 'Pass by', stop: 'Stop', night: 'Night', min: 'min',
+    getHere: (a, b) => `You get here at ${a} and go on at ${b}`, goOnAt: 'Go on at', nextMorning: 'the next morning',
+    less: '5 minutes less', more5: '5 minutes more',
+    sleep: 'Places to sleep nearby', sleepSub: 'Lean-tos, huts and campsites within 3 km',
+    leave: 'Leave at', leaveSub: 'Sets the times and the weather along the route',
+    sportFrom: 'Sport from here', sportFromSub: 'To the next change of sport, or the end', changeover: 'Changeover',
+    bikeAlong: 'Take the bike along', bikeAlongSub: 'Off: it stays here, and Check makes sure you come back for it',
+    after: 'The stretch after it', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
+    startHere: 'Start here', startSub: 'The part before it is removed, Undo brings it back', endHere: 'End here', endSub: 'The part after it is removed, Undo brings it back',
+    remove: 'Remove', removeSub: 'Undo brings it back', theRoute: 'The route', backStart: 'Back to start', backStartSub: 'Adds a leg back to the start',
+    reverse: 'Reverse', reverseSub: 'The route runs the other way, from the end to the start',
+    locked: 'You’re not editing: the route stays as it is.', editBtn: 'Edit',
+    stretch: 'This stretch', distance: 'distance', time: 'time', climb: 'climb', lookOut: 'Look out for',
+    edit: 'Edit this stretch', editNote: (n) => (n > 1 ? `Changes apply to this stretch: its ${n} legs` : 'Changes apply to this stretch: its one leg'),
+    howYouGo: 'How you go', sport: 'Sport', sportSame: 'Like the rest of the route', sportOwn: (r) => `This stretch only · the route is ${r}`,
+    drawn: 'How it’s drawn', follow: 'Follow paths', straight: 'Straight line', overWater: 'Over water',
+    style: 'Route style', styleSub: (s) => `${s}’s style, the same as the route`, ownLine: (n) => `Its own line: ${n} (LIPAS)`,
+    onStretch: 'On this stretch', other: 'Other ways', otherSub: 'Up to two, on the map', stopHere: 'Stop here', stopHereSub: 'A break or a night at this spot',
+    avoid: 'Avoid this spot', avoidSub: 'The route goes around it, 40 m', profile: 'On the profile', profileSub: 'Zooms the profile to this stretch',
+    long: 'long', wholeRoute: 'The whole route', avoidIt: 'Avoid it', retry: 'Retry', ofN: (i, n) => `${i} of ${n}`, prev: 'Previous', next: 'Next', allCheck: 'All in Check',
+    more: (n) => ` and ${n} more`, notChecked: (n) => `${n} not checked`, openPl: 'Open the planner at it', openPlSub: 'Check and the route, at this item',
+    viaShaping: (n) => `via ${n} shaping point${n > 1 ? 's' : ''}`,
+    tagNight: (x) => `Night · go on at ${x}`, tagStop: (m) => `Stop · ${m} min`, tagChange: (s, m) => `${s} from here · changeover ${m} min`,
+    say: {
+      stays: ['Places to sleep nearby open in a list: tap one to move the night there', false], leave: ['The times to leave open in a list', false],
+      sport: ['The sports open in a list: the one you pick runs to the next change of sport, or the end', false],
+      move: ['Tap the map where the point goes. Cancel leaves it where it was', false], rename: ['The name becomes a field in the card, with Save', false],
+      startat: ['The route starts here now', true], endat: ['The route ends here now', true], remove: [(n) => `${n} removed`, true],
+      backstart: ['A leg back to the start is added', true], reverse: ['The route runs the other way now', true],
+      esport: ['The sports open in a list, for this stretch only', false], estyle: ['The route styles open in a list, for this stretch only', false],
+      other: ['Two other ways are on the map: tap one to take it', false], stophere: ['A stop at this spot, 30 min', true],
+      avoid: ['The route goes around this spot, 40 m', true], profile: ['The profile shows this stretch', false],
+      avoidit: ['The route goes around it', true], retry: ['Polku asks the source again', false],
+    },
+  },
+  fi: {
+    start: 'Lähtö', end: 'Loppu', via: 'Välipiste', close: 'Sulje',
+    there: 'perillä', youLeave: 'lähdet', fromStart: 'lähdöstä', height: 'korkeus',
+    atPoint: 'Tässä pisteessä', pass: 'Ohitse', stop: 'Tauko', night: 'Yöpyminen', min: 'min',
+    getHere: (a, b) => `Olet täällä ${a} ja jatkat ${b}`, goOnAt: 'Jatka klo', nextMorning: 'seuraavana aamuna',
+    less: '5 minuuttia vähemmän', more5: '5 minuuttia enemmän',
+    sleep: 'Yöpaikat lähellä', sleepSub: 'Laavut, kodat ja leirintäalueet 3 km:n sisällä',
+    leave: 'Lähtöaika', leaveSub: 'Ajat ja sää reitin varrella lasketaan tästä',
+    sportFrom: 'Laji tästä eteenpäin', sportFromSub: 'Seuraavaan lajinvaihtoon tai loppuun', changeover: 'Vaihtoaika',
+    bikeAlong: 'Pyörä mukaan', bikeAlongSub: 'Pois: se jää tähän, ja Tarkista varmistaa, että palaat hakemaan sen',
+    after: 'Seuraava osuus', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
+    startHere: 'Aloita tästä', startSub: 'Osa ennen tätä poistetaan, Kumoa tuo sen takaisin', endHere: 'Lopeta tähän', endSub: 'Osa tämän jälkeen poistetaan, Kumoa tuo sen takaisin',
+    remove: 'Poista', removeSub: 'Kumoa tuo sen takaisin', theRoute: 'Reitti', backStart: 'Takaisin lähtöön', backStartSub: 'Lisää osuuden takaisin lähtöön',
+    reverse: 'Käännä', reverseSub: 'Reitti kulkee toiseen suuntaan, lopusta lähtöön',
+    locked: 'Et muokkaa: reitti pysyy sellaisenaan.', editBtn: 'Muokkaa',
+    stretch: 'Tämä osuus', distance: 'matka', time: 'aika', climb: 'nousu', lookOut: 'Huomaa',
+    edit: 'Muokkaa tätä osuutta', editNote: (n) => (n > 1 ? `Muutokset koskevat tätä osuutta: sen ${n} osaa` : 'Muutokset koskevat tätä osuutta: sen ainoaa osaa'),
+    howYouGo: 'Miten kuljet', sport: 'Laji', sportSame: 'Kuten muu reitti', sportOwn: (r) => `Vain tämä osuus · reitti on ${r}`,
+    drawn: 'Miten se piirretään', follow: 'Seuraa polkuja', straight: 'Suora viiva', overWater: 'Vesitse',
+    style: 'Reitin tyyli', styleSub: (s) => `Lajin ${s} tyyli, sama kuin reitillä`, ownLine: (n) => `Oma reittinsä: ${n} (LIPAS)`,
+    onStretch: 'Tällä osuudella', other: 'Muita reittejä', otherSub: 'Enintään kaksi, kartalla', stopHere: 'Pysähdy tähän', stopHereSub: 'Tauko tai yö tässä kohdassa',
+    avoid: 'Vältä tätä kohtaa', avoidSub: 'Reitti kiertää sen, 40 m', profile: 'Profiilissa', profileSub: 'Zoomaa profiilin tähän osuuteen',
+    long: 'pitkä', wholeRoute: 'Koko reitti', avoidIt: 'Vältä', retry: 'Yritä uudelleen', ofN: (i, n) => `${i}/${n}`, prev: 'Edellinen', next: 'Seuraava', allCheck: 'Kaikki Tarkista-välilehdellä',
+    more: (n) => ` ja ${n} muuta`, notChecked: (n) => `${n} tarkistamatta`, openPl: 'Avaa suunnittelija tähän', openPlSub: 'Tarkista ja reitti tässä kohdassa',
+    viaShaping: (n) => `${n} muotopisteen kautta`,
+    tagNight: (x) => `Yöpyminen · jatka klo ${x}`, tagStop: (m) => `Tauko · ${m} min`, tagChange: (s, m) => `${s} tästä eteenpäin · vaihtoaika ${m} min`,
+    say: {
+      stays: ['Yöpaikat lähellä aukeavat listaksi: napauta yhtä, niin yö siirtyy sinne', false], leave: ['Lähtöajat aukeavat listaksi', false],
+      sport: ['Lajit aukeavat listaksi: valitsemasi laji jatkuu seuraavaan lajinvaihtoon tai loppuun', false],
+      move: ['Napauta karttaa, minne piste menee. Peru jättää sen paikalleen', false], rename: ['Nimestä tulee kenttä korttiin, ja Tallenna', false],
+      startat: ['Reitti alkaa nyt tästä', true], endat: ['Reitti loppuu nyt tähän', true], remove: [(n) => `${n} poistettu`, true],
+      backstart: ['Osuus takaisin lähtöön lisätty', true], reverse: ['Reitti kulkee nyt toiseen suuntaan', true],
+      esport: ['Lajit aukeavat listaksi, vain tälle osuudelle', false], estyle: ['Reittityylit aukeavat listaksi, vain tälle osuudelle', false],
+      other: ['Kaksi muuta reittiä on kartalla: napauta yhtä', false], stophere: ['Tauko tässä kohdassa, 30 min', true],
+      avoid: ['Reitti kiertää tämän kohdan, 40 m', true], profile: ['Profiili näyttää tämän osuuden', false],
+      avoidit: ['Reitti kiertää sen', true], retry: ['Polku kysyy lähteeltä uudelleen', false],
+    },
+  },
+};
+const U5 = () => W5[LANG] || W5.en; // Swedish: the English words (the cards' Revision 5 has English and Finnish)
+const ele5 = (km) => Math.round(104 + 18 * Math.sin(km * 0.9) + km * 2.2); // a height for the cards' numbers (illustrative)
+// the thing's own mark, as the map draws it (Revision 5's G2), and a mark for each of Check's groups
+const G5 = {
+  via: (n) => `<span class="c2-g" aria-hidden="true"><span class="mk2 c2-g" style="width:28px;height:28px">${n}</span></span>`,
+  start: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#2e9e5b" stroke="#fff" stroke-width="2.5"/><path d="M12 9.8v10.4l8.4-5.2z" fill="#fff"/></svg></span>',
+  end: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#111" stroke="#fff" stroke-width="2.5"/><rect x="10" y="10" width="10" height="10" rx="1.5" fill="#fff"/></svg></span>',
+  stretch: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+  edit: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#1f6f4a" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+  look: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#fbf4e2" stroke="#8a5a00" stroke-width="1.5"/><path d="M6.5 15s3.2-5.2 8.5-5.2 8.5 5.2 8.5 5.2-3.2 5.2-8.5 5.2S6.5 15 6.5 15Z" fill="none" stroke="#8a5a00" stroke-width="1.8"/><circle cx="15" cy="15" r="2.4" fill="#8a5a00"/></svg></span>',
+  read: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#fbe9e9" stroke="#b4232a" stroke-width="1.5"/><path d="M15 7.5 23 21.5H7z" fill="#b4232a" stroke="#b4232a" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 12.5v4.2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="19.2" r="1.15" fill="#fff"/></svg></span>',
+  unk: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#eaf0f6" stroke="#47607a" stroke-width="1.6" stroke-dasharray="3.2 2.6"/><path d="M12 12.2a3 3 0 1 1 4.4 2.6c-.9.5-1.4 1-1.4 2v.6" fill="none" stroke="#47607a" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="20.6" r="1.2" fill="#47607a"/></svg></span>',
+};
+const TIER5 = (g) => ({ t1: [t('t1'), G5.read, ' read'], t2: [t('t2'), G5.look, ''], t3: [t('t3'), G5.unk, ' unk'] }[g]);
+// the parts, as Revision 5 builds them: the top row, the numbers, a group's heading, a row, a list, the route's view's note
+function head5(glyph, title, sub, back, x) {
+  return `<div class="c2-top">${back ? `<button type="button" class="c2-back c2-back-words" data-act="${back[0]}">${ic('left', 22)}<span>${esc(back[1])}</span></button>` : ''}<button type="button" class="c2-x" data-act="${x}" aria-label="${esc(U5().close)}">${ic('close', 22)}</button><span class="c2-br"></span>${glyph}<span class="c2-ttl"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></div>`;
+}
+const nums5 = (list) => `<div class="c2-nums">${list.map(([n, l]) => `<span class="c2-num"><b>${esc(n)}</b><small>${esc(l)}</small></span>`).join('')}</div>`;
+const grp5 = (s) => `<h4 class="c2-h">${esc(s)}</h4>`;
+const item5 = (act, icon, label, sub, { v = null, val = null, chev = false, cls = '' } = {}) =>
+  `<button type="button" class="c2-item${cls ? ` ${cls}` : ''}" data-act="${act}"${v != null ? ` data-v="${esc(v)}"` : ''}${sub ? ` title="${esc(sub)}"` : ''}>${icon ? ic(icon, 20) : ''}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${val ? `<span class="val">${esc(val)}</span>` : ''}${chev ? `<span class="chev">${ic('right', 18)}</span>` : ''}</button>`;
+const list5 = (items) => `<div class="c2-list">${items.filter(Boolean).join('')}</div>`;
+const lock5 = () => `<div class="c2-lock" role="note">${ic('info', 18)}<span>${esc(U5().locked)}</span><button type="button" data-act="edit">${ic('pencil', 16)}${esc(U5().editBtn)}</button></div>`;
+// desktops: an action is a button with its icon and name, two a row, and Remove a red button of its own (Revision 5's buttons())
+const buttons5 = (html) => html.replace(/<div class="c2-list">([\s\S]*?)<\/div>/g, (m, inner) => {
+  if (/class="chev"/.test(inner)) return m;
+  const btns = [...inner.matchAll(/<button type="button" class="c2-item([^"]*)" data-act="([^"]+)"( data-v="[^"]*")?[^>]*>(<svg[\s\S]*?<\/svg>)?<span><b>([\s\S]*?)<\/b>(?:<small>([\s\S]*?)<\/small>)?<\/span>[\s\S]*?<\/button>/g)];
+  if (!btns.length) return m;
+  const one = (c) => `<button type="button" class="${/danger/.test(c[1]) ? 'c5-remove' : 'c5-btn'}" data-act="${c[2]}"${c[3] || ''}${c[6] ? ` title="${c[6]}"` : ''}>${c[4] || ''}<span>${c[5]}</span></button>`;
+  const danger = btns.filter((c) => /danger/.test(c[1])), rest = btns.filter((c) => !/danger/.test(c[1]));
+  return (rest.length ? `<div class="c5-btns">${rest.map(one).join('')}</div>` : '') + danger.map(one).join('');
+});
+// what's been changed on a point in this frame (the switch, the minutes, the morning, the bike), over what the route has
+function pget5(st, i) {
+  const q = ucPoints(st)[i] || {};
+  return { here: q.leave ? 'night' : q.stop ? 'stop' : 'pass', min: q.stop || 30, goon: q.leave ? q.leave.split(' ').pop() : '07:00', co: q.change ? q.change.min : 10, bike: false, ...((st.e5 || {})[i]) };
+}
+const pset5 = (st, i, o) => { st.e5 = { ...(st.e5 || {}), [i]: { ...((st.e5 || {})[i]), ...o } }; };
+const addMin5 = (tm, m) => { const [h, mm] = tm.split(':').map(Number), x = h * 60 + mm + m; return `${Math.floor(x / 60) % 24}:${String(x % 60).padStart(2, '0')}`; };
+// the items on a stretch, and one in the warning box: its group in words and shape, where it is, › to see it on the route
+const inStretch5 = (st, v, A, B) => alongList(st, v).map((x, idx) => ({ ...x, idx })).filter((x) => x.at && x.at[0] >= A.km && x.at[0] <= B.km);
+const warn5 = (x) => `<button type="button" class="c2-warn${TIER5(x.g)[2]}" data-act="wpick" data-v="${x.idx}">${ic(x.w.ic, 20)}<span><b>${esc(x.w.b)}</b><small>${esc(TIER5(x.g)[0])} · ${esc(x.w.w)}</small></span>${ic('right', 18)}</button>`;
+
+// a point's card (Revision 5's pointCard2, on this mock-up's points)
+function pointCard5(st, v, desk) {
+  const u = U5(), P = ucPoints(st), V = visibleIdx(st), i = st.psel, q = P[i];
+  if (!q) return '';
+  const first = q.k === 'start', last = q.k === 'end', mid = !first && !last, E = pget5(st, i);
+  const nextI = V.find((j) => j > i), x = nextI != null ? stretchOf(st, i, nextI) : null;
+  let h = head5(first ? G5.start : last ? G5.end : G5.via(q.n), q.name, first ? u.start : last ? u.end : `${u.via} ${q.n}`, null, 'cardx');
+  h += nums5(first ? [[q.tm, u.youLeave], [`${ele5(q.km)} m`, u.height]] : [...(q.tm ? [[q.tm, u.there]] : []), [kmS(q.km), u.fromStart], [`${ele5(q.km)} m`, u.height]]);
+  if (mid) {
+    h += grp5(u.atPoint) + `<div class="c2-seg" role="radiogroup" aria-label="${esc(u.atPoint)}">${[['pass', 'pass', u.pass], ['stop', 'pause', u.stop], ['night', 'moon', u.night]].map(([k, icn, l]) => `<button type="button" role="radio" aria-checked="${E.here === k}" data-act="here5" data-v="${i}:${k}">${ic(icn, 20)}<span>${esc(l)}</span></button>`).join('')}</div>`;
+    if (E.here === 'stop') h += `<div class="c2-detail"><span class="c2-step"><button type="button" data-act="min5" data-v="${i}:-5" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${E.min} ${u.min}</b><button type="button" data-act="min5" data-v="${i}:5" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span>${q.tm ? `<small>${esc(u.getHere(q.tm, addMin5(q.tm, E.min)))}</small>` : ''}</div>`;
+    if (E.here === 'night') h += `<div class="c2-detail"><span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="goon5" data-v="${i}">${esc(E.goon)} ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span></div>${list5([item5('say', 'tent', u.sleep, u.sleepSub, { v: 'stays', chev: true })])}`;
+  }
+  if (first) h += list5([item5('say', 'clock', u.leave, u.leaveSub, { v: 'leave', val: q.depart || q.tm, chev: true })]);
+  const after = x ? item5('stsel', 'route', u.after, `${x.A.name} → ${x.B.name}`, { v: `${i}-${nextI}`, chev: true }) : '';
+  if (st.mode === 'view') return h + list5([after]) + lock5();
+  if (!last) {
+    const sp = q.change ? q.change.to : x ? x.sp : q.sp;
+    h += list5([item5('say', SPORT_ICON[sp], u.sportFrom, u.sportFromSub, { v: 'sport', val: sL(sp), chev: true })]);
+    if (q.change) h += `<div class="c2-detail"><span>${esc(u.changeover)}</span><span class="c2-step"><button type="button" data-act="co5" data-v="${i}:-5" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${E.co} ${u.min}</b><button type="button" data-act="co5" data-v="${i}:5" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span></div><button type="button" class="c2-item c2-tg" data-act="bike5" data-v="${i}" role="switch" aria-checked="${E.bike}" style="margin:0 -10px;width:auto"><span><b>${esc(u.bikeAlong)}</b><small>${esc(u.bikeAlongSub)}</small></span><i class="${E.bike ? 'on' : ''}" aria-hidden="true"></i></button>`;
+    h += list5([after]);
+  } else h += grp5(u.theRoute) + list5([item5('say', 'loop', u.backStart, u.backStartSub, { v: 'backstart' }), item5('say', 'reverse', u.reverse, u.reverseSub, { v: 'reverse' })]);
+  if (first) h += grp5(u.theRoute) + list5([item5('say', 'reverse', u.reverse, u.reverseSub, { v: 'reverse' })]);
+  if (desk) {
+    const b5 = (k, icn, label, tip) => `<button type="button" class="c5-btn" data-act="say" data-v="${k}" title="${esc(tip)}">${ic(icn, 18)}<span>${esc(label)}</span></button>`;
+    return h + grp5(u.editPoint) + `<div class="c5-btns">${mid ? b5('startat', 'flag', u.startHere, u.startSub) + b5('endat', 'flagend', u.endHere, u.endSub) : ''}${b5('move', 'move', u.move, u.moveSub)}${b5('rename', 'pencil', u.rename, u.renameSub)}</div><button type="button" class="c5-remove" data-act="say" data-v="remove" title="${esc(u.removeSub)}">${ic('trash', 18)}<span>${esc(u.remove)}</span></button>`;
+  }
+  return h + grp5(u.editPoint) + list5([item5('say', 'move', u.move, u.moveSub, { v: 'move' }), item5('say', 'pencil', u.rename, u.renameSub, { v: 'rename' }), mid ? item5('say', 'flag', u.startHere, u.startSub, { v: 'startat' }) : '', mid ? item5('say', 'flagend', u.endHere, u.endSub, { v: 'endat' }) : ''])
+    + '<div class="c2-hr"></div>' + list5([item5('say', 'trash', u.remove, u.removeSub, { v: 'remove', cls: 'danger' })]);
+}
+// a stretch's card: both ends, its numbers, what to look out for on it, the one filled button, the profile
+function stretchCard5(st, v) {
+  const u = U5(), [a, b] = st.str, x = stretchOf(st, a, b);
+  let h = head5(G5.stretch, `${x.A.name} → ${x.B.name}`, u.stretch, st.strBack != null ? ['stclose', x.A.name] : null, 'cardx');
+  h += nums5([[kmS(x.d), u.distance], [hm2(x.min), u.time], ...(x.up ? [[x.up, u.climb]] : [])]);
+  const W = inStretch5(st, v, x.A, x.B);
+  if (W.length) h += grp5(u.lookOut) + W.slice(0, 3).map(warn5).join('');
+  if (x.fixed) h += `<p class="c2-note">${esc(u.ownLine(x.fixed))}</p>`;
+  else h += st.mode === 'view' ? lock5() : `<button type="button" class="c2-main" data-act="sedit5">${ic('pencil', 20)}${esc(u.edit)}</button>`;
+  return h + list5([item5('say', 'mountain', u.profile, u.profileSub, { v: 'profile' })]);
+}
+// Edit this stretch: what the changes apply to, then only what fits its sport
+function editCard5(st, v) {
+  const u = U5(), [a, b] = st.str, x = stretchOf(st, a, b), main = mainSportOf(st), water = isWaterS(x.sp), key = `${a}-${b}`;
+  const drawn = (st.drawn5 && st.drawn5[key]) || (water ? 'water' : 'auto');
+  let h = head5(G5.edit, u.edit, `${x.A.name} → ${x.B.name}`, ['sedback', u.stretch], 'cardx') + `<p class="c2-note">${esc(u.editNote(x.legs))}</p>`;
+  h += grp5(u.howYouGo) + list5([item5('say', SPORT_ICON[x.sp], u.sport, x.sp !== main ? u.sportOwn(sL(main)) : u.sportSame, { v: 'esport', val: sL(x.sp), chev: true })]);
+  h += `<div class="c2-seg two" role="radiogroup" aria-label="${esc(u.drawn)}">${[[water ? 'water' : 'auto', water ? u.overWater : u.follow], ['line', u.straight]].map(([k, l]) => `<button type="button" role="radio" aria-checked="${drawn === k}" data-act="drawn5" data-v="${key}:${k}">${ic(k, 18)}<span>${esc(l)}</span></button>`).join('')}</div>`;
+  if (!water) h += list5([item5('say', 'style', u.style, u.styleSub(sL(x.sp)), { v: 'estyle', val: (SPORTS[x.sp].styles[0] || ['', 'Balanced'])[1], chev: true })]);
+  return h + grp5(u.onStretch) + list5([x.legs === 1 && !water ? item5('say', 'route', u.other, u.otherSub, { v: 'other' }) : '', item5('say', 'pause', u.stopHere, u.stopHereSub, { v: 'stophere' }), item5('say', 'avoid', u.avoid, u.avoidSub, { v: 'avoid' }), item5('say', 'mountain', u.profile, u.profileSub, { v: 'profile' })]);
+}
+// an item from Check, the row or a marker: its group in words and shape, where, how sure, its one action; ‹ › along the route
+function itemCard5(st, v, desk) {
+  const u = U5(), L = alongList(st, v), it = L[st.step];
+  if (!it) return '';
+  const w = it.w, at = it.at, [gName, glyph] = TIER5(it.g);
+  let h = head5(glyph, w.b, gName, null, 'wclose');
+  h += at ? nums5([[kmS(at[0]), u.fromStart], ...(at[1] ? [[at[1] >= 1 ? kmS(+at[1].toFixed(1)) : `${Math.round(at[1] * 1000)} m`, u.long]] : [])]) : `<p class="c2-note"><b>${esc(u.wholeRoute)}</b></p>`;
+  h += `${it.g === 't3' ? '' : `<span class="c2-src">${w.s}</span>`}${w.n ? `<p class="c2-note">${esc(w.n)}</p>` : ''}`; // (Not checked says its source in its group's name)
+  const avoid = w.a[0] === 'Avoid';
+  if (st.mode !== 'view' && w.a.length) h += `<button type="button" class="c2-main" data-act="say" data-v="${avoid ? 'avoidit' : 'retry'}">${ic(avoid ? 'avoid' : 'retry', 20)}${esc(avoid ? u.avoidIt : u.retry)}</button>`;
+  if (desk) return h;
+  const fromCheck = st.stepFrom && st.stepFrom.tab === 'check' && st.stepFrom.sheet !== 'peek';
+  return h + `<div class="c2-stepper"><button type="button" data-act="wprev" aria-label="${esc(u.prev)}"${st.step === 0 ? ' disabled' : ''}>${ic('left', 20)}</button><span aria-live="polite">${esc(u.ofN(st.step + 1, L.length))}</span><button type="button" data-act="wnext" aria-label="${esc(u.next)}"${st.step === L.length - 1 ? ' disabled' : ''}>${ic('right', 20)}</button><span class="grow"></span>${fromCheck ? '' : `<button type="button" data-act="tocheck">${esc(u.allCheck)} ${ic('right', 16)}</button>`}</div>`;
+}
+// with the planner put away: the item's card at its marker, and the way to the planner
+function closedCard5(st, v) {
+  const u = U5(), it = alongList(st, v)[st.step];
+  if (!it) return '';
+  const [gName, glyph] = TIER5(it.g);
+  return head5(glyph, it.w.b, gName, null, 'wclose') + `<p class="c2-note">${esc(it.w.w)}</p>`
+    + (it.w.a.includes('Avoid') ? `<button type="button" class="c2-main" data-act="say" data-v="avoidit">${ic('avoid', 20)}${esc(u.avoidIt)}</button>` : '')
+    + list5([item5('wopen', 'route', u.openPl, u.openPlSub, { chev: true })]);
+}
+// the card in its place: in the peek on a phone, a compact card on a desktop (beside the panel, at its row: place5())
+function card5(st, v, desk) {
+  const html = st.pcard === 'point' ? pointCard5(st, v, desk) : st.sedit ? editCard5(st, v) : stretchCard5(st, v);
+  if (!html) return '';
+  const label = (/<span class="c2-ttl"><b>([^<]*)<\/b>/.exec(html) || [])[1] || '';
+  return desk ? `<div class="pop5 card5" role="dialog" aria-label="${label}">${buttons5(html)}</div>` : `<div class="card5" role="group" aria-label="${label}">${html}</div>`;
+}
+function place5(scr, W, H) {
+  const c = scr.querySelector('.pop5:not(.mapcard5)'), pl = scr.querySelector('.pl');
+  if (!c || !pl) return;
+  const p = box(pl, scr), lit = pl.querySelector('.c5-lit'), y = lit ? box(lit, scr).y - 10 : p.y + 60;
+  c.style.left = `${Math.min(p.x + p.w + 12, W - c.offsetWidth - 8)}px`;
+  c.style.top = `${Math.max(64, Math.min(y, H - c.offsetHeight - 12))}px`;
+}
+// the peek's row: what to read before you go and what wasn't checked, in the cards' warning box
+function warnRow5(st, v, desk) {
+  const W = warnsOf(st, v), n1 = W.t1.length, n3 = W.t3.length, u = U5();
+  if ((!n1 && !n3) || (st.tab === 'check' && (desk || st.sheet !== 'peek')) || (st.step != null && !desk && st.sheet === 'peek')) return '';
+  const first = n1 ? W.t1[0] : W.t3[0], n = n1 || n3;
+  const line = `${first.b}${n > 1 ? u.more(n - 1) : ''}${n1 && n3 ? ` · ${u.notChecked(n3)}` : ''}`;
+  return `<button type="button" class="c2-warn c5-row${n1 ? ' read' : ' unk'}" data-act="wstep">${ic(n1 ? 'warnf' : 'unk', 22)}<span><b>${n} ${t(n1 ? 't1s' : 't3s')}</b><small>${esc(line)}</small></span>${ic('right', 18)}</button>`;
+}
+// Check's items: the cards' rows, in their group's shape and colour; › shows the item on the route (lit while it's open)
+const checkRow5 = (st, w, g, idx) => item5('wpick', w.ic, w.b, w.w, { v: idx, chev: true, cls: `c5-w ${g}${st.step === idx ? ' c5-lit' : ''}` });
+// the list: sections as approved, with the cards' rows for the points and the stretches, and a section's warnings in the box
+function sectionsV1r5(st, v, desk) {
+  const u = U5(), P = ucPoints(st), V = visibleIdx(st), sel = st.psel, S0 = st.str;
+  const tag = (i, q) => {
+    const E = pget5(st, i);
+    const x = q.change ? [SPORT_ICON[q.change.to], u.tagChange(sL(q.change.to), E.co)] : E.here === 'night' ? ['moon', u.tagNight(E.goon)] : E.here === 'stop' && q.k !== 'start' && q.k !== 'end' ? ['pause', u.tagStop(E.min)] : null;
+    return x ? `<small class="c5-tag">${ic(x[0], 15)}${esc(x[1])}</small>` : '';
+  };
+  const row = (i) => {
+    const q = P[i], lit = sel === i && st.pcard === 'point';
+    const sub = [q.k === 'start' ? `${u.leave} ${q.depart || q.tm}` : q.tm ? `${u.there} ${q.tm}` : '', kmS(q.km), q.k === 'start' ? u.start : q.k === 'end' ? u.end : `${u.via} ${q.n}`].filter(Boolean).join(' · ');
+    return `<button type="button" class="c2-item c5-pt${lit ? ' c5-lit' : ''}" data-act="psel" data-v="${i}"${lit ? ' aria-current="true"' : ''}>${ucMark(q)}<span><b>${esc(q.name)}</b>${tag(i, q)}<small>${esc(sub)}</small></span><span class="chev">${ic('right', 18)}</span></button>`;
+  };
+  const strRow = (a, b) => {
+    const x = stretchOf(st, a, b), lit = S0 && S0[0] === a && S0[1] === b && st.pcard === 'stretch', shaping = b - a - 1, d5 = st.drawn5 && st.drawn5[`${a}-${b}`];
+    const how = x.fixed ? u.ownLine(x.fixed) : d5 === 'line' ? u.straight : isWaterS(x.sp) ? u.overWater : u.follow;
+    const line = [how, shaping > 0 ? u.viaShaping(shaping) : ''].filter(Boolean).join(' · ');
+    const open = st.shOpen && st.shOpen[x.B.si];
+    return `<div class="c5-strow"><button type="button" class="c2-item c5-st${lit ? ' c5-lit' : ''}" data-act="stsel" data-v="${a}-${b}"${lit ? ' aria-current="true"' : ''}>${ic(x.fixed ? 'sign' : d5 === 'line' ? 'line' : isWaterS(x.sp) ? 'water' : 'auto', 18)}<span><b>${esc([kmS(x.d), hm2(x.min), x.up].filter(Boolean).map((n) => n.replace(/ /g, '\u00a0')).join(' · '))}</b><small>${esc(line)}</small></span><span class="chev">${ic('right', 16)}</span></button>${shaping > 0 && !open ? `<button type="button" class="tbtn unfold" data-act="shfold" data-v="${x.B.si}" aria-label="${esc(tf('showShaping', { n: shaping }))}">${ic('down', 16)}</button>` : ''}</div>`;
+  };
+  const secWarn = (sec) => {
+    if (!sec.w1 && !sec.w3) return '';
+    const L = WARN[warnKey(sec.sp)], first = (sec.w1 ? L.t1[0] : L.t3[0]) || L.t1[0];
+    const line = `${first ? first.b : ''}${sec.w1 > 1 ? u.more(sec.w1 - 1) : ''}${sec.w1 && sec.w3 ? ` · ${u.notChecked(sec.w3)}` : ''}`;
+    return `<button type="button" class="c2-warn${sec.w1 ? ' read' : ' unk'}" data-act="wstep">${ic(sec.w1 ? 'warnf' : 'unk', 20)}<span><b>${sec.w1 || sec.w3} ${t(sec.w1 ? 't1s' : 't3s')}</b><small>${esc(line)}</small></span>${ic('right', 18)}</button>`;
+  };
+  const secs = UC[st.uc].sections.map((sec, si) => {
+    const items = [];
+    V.forEach((i, k) => { if (P[i].si !== si) return; if (k > 0) items.push(strRow(V[k - 1], i)); items.push(row(i)); });
+    if (st.shOpen && st.shOpen[si]) items.push(`<button type="button" class="shfold" data-act="shfold" data-v="${si}">${ic('up', 14)}${t('foldShaping')}</button>`);
+    const ttl = `${sec.day ? `${esc(tf('dayN', { n: sec.day }))} · ` : ''}${esc(sL(sec.sp))} · ${esc(sec.from)} → ${esc(sec.to)}`;
+    const tmp = (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
+    return `<section class="sec2" aria-label="${ttl}"><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b></div>
+      <div class="sec2-n">${esc(sec.d)} · ${esc(sec.t)} · ${esc(sec.up)}<button type="button" class="wxc" data-act="wxmore" data-v="${si}" aria-expanded="${!!wxOpen}" aria-label="${esc(tf('arriveWx', { w: sec.wx }))}">${ic('weather', 15)}${esc([tmp, wind].filter(Boolean).join(' · '))}</button></div>
+      ${wxOpen ? `<div class="sec2-w">${ic('weather', 15)}${esc(tf('arriveWx', { w: sec.wx }))}</div>` : ''}${sec.fixed ? `<div class="sec2-w">${ic('sign', 15)}${esc(tf('fixedLine', { N: sec.fixed }))}</div>` : ''}${secWarn(sec)}
+      <div class="c5-list">${items.join('')}</div></section>`;
+  }).join('');
+  return `<div class="wptools"><span class="cap" style="flex:1">${esc(t('listNote'))}</span><button type="button" class="btn small" data-act="reorder">${t('reorder')}</button></div>${secs}`;
 }
 
 // the sheet (phone) and the panel (desktop)
@@ -2060,7 +2591,7 @@ function plannerHtml(st, v, desk, docked) {
   const big = desk || (st.sheet !== 'peek' && !stepping && !pcarding);
   const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
   const body = st.tab === 'check' ? checkBody(st, v) : st.tab === 'go' ? goBody(st) : st.uc ? sectionsHtml(st, v, desk) : wpList(st, v);
-  return `<div class="pl${desk && !viewing ? ' joined' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
+  return `<div class="pl${desk && !viewing ? ' joined' : ''}${(stepping || pcarding) && v.look === 'r5' ? ' card-in' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
 }
 function deskToolbar(st, v, compact = 0) {
   const route = st.stage === 'route', sep = '<span class="sep" aria-hidden="true"></span>';
@@ -2128,6 +2659,7 @@ function render(f) {
   const z = st.z || 1, W = (st.w || (desk ? 1440 : 390)) / z, H = (st.h || (desk ? 900 : 844)) / z;
   scr.style.width = `${W}px`; scr.style.height = `${H}px`; scr.style.setProperty('--k', String(z));
   scr.classList.toggle('bigtext', z >= 2);
+  scr.classList.toggle('r5', v.look === 'r5');
   st._h = H; st._W = W; st._H = H; st._id = el.id; st._worst = v.worst;
   if (!st.wps || st._wpsKey !== `${st.long}|${v.worst}|${st.sport}`) { st.wps = waypoints(st.long, v.worst, st.sport); st._wpsKey = `${st.long}|${v.worst}|${st.sport}`; if (st.sel >= st.wps.length) st.sel = 1; }
   // the map behind (2026-10-20: the start and a followed marked route on a map with LIPAS's routes on it)
@@ -2177,6 +2709,8 @@ function render(f) {
     scr.querySelector('.scale').style.bottom = `${top2 + 12 + lift}px`;
   }
   if (desk && st.uc && (st.psel != null || st.str) && st.pcard && v.wv === 'v1') scr.insertAdjacentHTML('beforeend', pointCard(st, v, true));
+  if (desk && v.look === 'r5' && st.step != null && st.mode !== 'closed' && st.tab === 'check') { const h = itemCard5(st, v, true); if (h) scr.insertAdjacentHTML('beforeend', `<div class="pop5 card5" role="dialog" aria-label="${esc(alongList(st, v)[st.step].w.b)}">${h}</div>`); }
+  if (desk && v.look === 'r5') place5(scr, W, H);
   if (st.settings) scr.insertAdjacentHTML('beforeend', settingsHtml(st, v, desk));
   // menus, anchored to what opened them
   if (st.pop) {
@@ -2210,7 +2744,10 @@ function render(f) {
   if (st.tip && desk) { const tr = scr.querySelector(`[data-tip="${st.tip}"]`); if (tr) { const r = box(tr, scr); scr.insertAdjacentHTML('beforeend', tipHtml(st.tip, r.x, r.y + r.h + 10)); } }
   if (st.info) scr.insertAdjacentHTML('beforeend', `<div class="mapinfo" style="left:${Math.min(st.info[0], W - 250)}px;top:${Math.max(70, st.info[1] - 90)}px" role="status"><b>Path · gravel, 2.5 m wide</b>Kauppi’s trails · open all year<br><small style="color:var(--muted)">${t('mapTap')}</small></div>`);
   // a warning's marker with the planner put away: the map's own card for it, and the way back to the planner
-  if (st.mode === 'closed' && st.step != null) {
+  if (st.mode === 'closed' && st.step != null && v.look === 'r5') {
+    const mk = scr.querySelector('.wmk.on'), h = closedCard5(st, v);
+    if (mk && h) { scr.insertAdjacentHTML('beforeend', `<div class="card5 mapcard5${desk ? ' pop5' : ''}" role="dialog" aria-label="${esc(alongList(st, v)[st.step].w.b)}">${h}</div>`); const c = scr.querySelector('.mapcard5'); c.style.left = `${Math.max(8, Math.min(mk.offsetLeft - c.offsetWidth / 2, W - c.offsetWidth - 8))}px`; c.style.top = `${Math.max(70, Math.min(mk.offsetTop - c.offsetHeight - 16, H - c.offsetHeight - 8))}px`; }
+  } else if (st.mode === 'closed' && st.step != null) {
     const it = alongList(st, v)[st.step], mk = scr.querySelector('.wmk.on');
     if (it && mk) scr.insertAdjacentHTML('beforeend', `<div class="mapinfo" style="left:${Math.max(8, Math.min(mk.offsetLeft - 120, W - 248))}px;top:${Math.max(70, mk.offsetTop - 150)}px" role="dialog" aria-label="${esc(it.w.b)}"><span class="src" style="margin:0 0 2px">${ic(it.g === 't1' ? 'warnf' : it.g === 't3' ? 'unk' : 'eye', 14)}${{ t1: t('t1'), t2: t('t2'), t3: t('t3') }[it.g]}</span><b>${esc(it.w.b)}</b>${esc(it.w.w)}<div class="wa2">${it.w.a.includes('Avoid') ? `<button type="button" class="btn small quiet" data-act="noop">${t('avoid')}</button>` : ''}<button type="button" class="btn small" data-act="wopen">${t('openPl')}</button></div></div>`);
   }
@@ -2223,7 +2760,8 @@ function render(f) {
       spnext: [tf('nowNext', { S: sL(st.map), R: sL(st.sport) }), '', ''],
       onwater: [t('onWater'), tf('paddleHere', { C: CRAFTS[0][1].toLowerCase() }), 'paddlehere', tf('keepS', { R: sL(nextOf(st)) }), 'keepsport'],
       spnowater: [tf('nowNoWater', { R: sL(st.sport), V: SW().verb[st.map], S: sL(st.map) }), '', ''],
-      mron: ['Marked routes are on in Layers', t('undoBtn'), 'mroff'] }[st.toast];
+      mron: ['Marked routes are on in Layers', t('undoBtn'), 'mroff'],
+      say: [st.sayText || '', st.sayUndo ? t('undoBtn') : '', 'sayundo'] }[st.toast];
     if (T) {
       const pl3 = scr.querySelector('.pl'), fl3 = scr.querySelector('.float'), c3 = scr.querySelector('.cols:not([hidden])');
       const bottom = desk ? 24 : (fl3 ? H - fl3.offsetTop + 10 : pl3 ? H - pl3.offsetTop + 10 : 20);
@@ -2275,15 +2813,27 @@ function act(f, a, val, ev) {
       else change(f, () => { st.wps = [...st.wps.slice(0, -1), { ...st.wps[st.wps.length - 1], kind: 'via' }, { name: 'New point', km: +(st.wps[st.wps.length - 1].km + 0.6).toFixed(2), tm: '07:52', kind: 'end' }]; st.sel = st.wps.length - 1; if (st.next) st.drawnNext = true; });
       break;
     // ---- iteration 2: points and legs (V1 a card, V2 in the list, V3 read here and edit on the map)
+    // Revision 5 of C and D (2026-10-22): the cards' controls; what the mock-up can't show is said in a note, as the app would
+    case 'cardx': st.pcard = null; st.psel = null; st.str = null; st.strBack = null; st.sedit = false; st.pleg = false; if (st.pFrom) { st.sheet = st.pFrom; st.pFrom = null; } break;
+    case 'here5': { const [i, k] = String(val).split(':'); pset5(st, +i, { here: k }); break; }
+    case 'min5': { const [i, d] = String(val).split(':').map(Number); pset5(st, i, { min: Math.max(5, Math.min(600, pget5(st, i).min + d)) }); break; }
+    case 'co5': { const [i, d] = String(val).split(':').map(Number); pset5(st, i, { co: Math.max(0, Math.min(120, pget5(st, i).co + d)) }); break; }
+    case 'bike5': pset5(st, +val, { bike: !pget5(st, +val).bike }); break;
+    case 'goon5': { const T5 = ['06:00', '07:00', '08:00', '09:00'], g = pget5(st, +val).goon; pset5(st, +val, { goon: T5[(T5.indexOf(g) + 1) % T5.length] }); break; }
+    case 'drawn5': { const [k, m] = String(val).split(':'); st.drawn5 = { ...(st.drawn5 || {}), [k]: m }; break; }
+    case 'sedit5': st.sedit = true; break;
+    case 'sedback': st.sedit = false; break;
+    case 'say': { const s = U5().say[val] || [String(val), false], q = st.uc && st.psel != null ? ucPoints(st)[st.psel] : null; st.sayText = typeof s[0] === 'function' ? s[0](q ? q.name : '') : s[0]; st.sayUndo = s[1]; toast('say'); break; }
+    case 'sayundo': st.toast = null; break;
     case 'psel': { const i = +val, wv = view(st).wv;
       if (wv === 'v2') { st.psel = st.psel === i ? null : i; st.pleg = false; break; }
       st.psel = i;
       if (wv === 'v1') { st.pFrom = st.pFrom || st.sheet; st.pcard = 'point'; if (!desk) st.sheet = 'peek'; }
       break; }
     case 'pclose': st.pcard = null; st.psel = null; st.pleg = false; if (st.pFrom) { st.sheet = st.pFrom; st.pFrom = null; } break;
-    case 'stsel': { const [x, y] = String(val).split('-').map(Number); if (st.pcard !== 'point') st.pFrom = st.pFrom || st.sheet; st.strBack = st.pcard === 'point' ? st.psel : null; st.str = [x, y]; st.pcard = 'stretch'; if (!desk) st.sheet = 'peek'; break; }
+    case 'stsel': { const [x, y] = String(val).split('-').map(Number); st.sedit = false; if (st.pcard !== 'point') st.pFrom = st.pFrom || st.sheet; st.strBack = st.pcard === 'point' ? st.psel : null; st.str = [x, y]; st.pcard = 'stretch'; if (!desk) st.sheet = 'peek'; break; }
     // Back from a stretch: to the point it was opened from, else to the list (or the map) as it was
-    case 'stclose': if (st.strBack != null) { st.psel = st.strBack; st.pcard = 'point'; st.strBack = null; st.str = null; break; } st.str = null; st.pcard = null; st.psel = null; if (st.pFrom) { st.sheet = st.pFrom; st.pFrom = null; } break;
+    case 'stclose': st.sedit = false; if (st.strBack != null) { st.psel = st.strBack; st.pcard = 'point'; st.strBack = null; st.str = null; break; } st.str = null; st.pcard = null; st.psel = null; if (st.pFrom) { st.sheet = st.pFrom; st.pFrom = null; } break;
     case 'wxmore': st.wxOpen = { ...(st.wxOpen || {}), [val]: !(st.wxOpen && st.wxOpen[val]) }; break;
     case 'reorder': st.reorder = !st.reorder; st.psel = null; st.pcard = null; break;
     case 'plegopen': if (view(st).wv === 'v1') st.pcard = 'leg'; else st.pleg = !st.pleg; break;
@@ -2459,7 +3009,7 @@ function renderAll() {
   for (const f of FR.values()) render(f);
 }
 const PK = document.querySelector('.picker'), PKT = PK.querySelector('.pk-toggle');
-const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: worst case, words, theme, sport change'; };
+const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: cards and lists, worst case, words, theme, sport change'; };
 pkOpen(innerWidth >= 1100);
 PKT.addEventListener('click', () => pkOpen(PK.dataset.open !== 'true'));
 document.querySelector('.picker').addEventListener('click', (e) => {

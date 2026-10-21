@@ -4,7 +4,7 @@ The implementation plan for the last part of Phase 25. What's still to do, and i
 
 - **Status (2026-10-21): approved,** with Revision 4 chosen (#355) and Revision 5's desktop changes; see "Where 25d stands" below.
 - **What it builds:** journeys C and D of the [calmer planner](issue-233-calmer-planner.md#revised-journeys-2026-10-20-proposals), and #345's [map cards](issue-345-map-cards.md).
-- **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 5** (the default) is what to build; **As approved** and **Revisions 1 to 4** stay there to compare. Every control in Revision 5 does what it says, or says in a note what the app would do. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)); where its cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
+- **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 5** (the default) is what to build; **As approved** and **Revisions 1 to 4** stay there to compare. Every control in Revision 5 does what it says, or says in a note what the app would do. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)). Its **Cards and lists** switch shows them as approved, or in Revision 5 (the default, for the user's choice) with the cards' own rows, warning box and cards. Where its approved cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
 - **How to build it:** one part a session, one PR a part (part 1 in two), in this order. Each session starts from the last Hand-over on #233 (AGENTS.md).
 
 ## Where 25d stands
@@ -30,15 +30,16 @@ The one list of what's decided, what waits for the user and what's next. The oth
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
-- **#357:** the rule for shared controls.
+- **The planner mock-up's C and D in Revision 5** (step 3 below): Revision 5 or As approved, before part 2.
 
 **To reconsider in a later part** (the user, 2026-10-21): #364. It covers when you leave and when you go on (any time, not a few fixed hours); where Avoid this spot belongs; and On the profile on the route's and a point's card.
 
 **Next**
 1. Done: #356's fix the cards need, the route's numbers' labels wrap (#360).
 2. Then #352 is restyled to Revision 5's frames as 1a (its desktop card, the edits as buttons, Reverse, the lit row), then 1b.
-3. Before parts 2 to 4: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) get a Revision 5 version behind a switch: the same rows, warning box, switch and words as the cards, and nothing else changed. The user chooses it before part 2.
+3. Drawn, for the user's choice before part 2: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) have a Revision 5 version behind its **Cards and lists** switch. It has the same rows, warning box, switch and words as the cards, and nothing else changed.
 4. Then parts 2 to 6, in the order below.
+5. Before the milestone closes: #365. The finished planner is used in the browser as a newcomer and as an expert, and everything that test finds is fixed.
 
 > **For agentic workers:** use superpowers:executing-plans for one part at a time. Steps use checkboxes (`- [ ]`). AGENTS.md wins where they differ: no subagents to verify or run the suite.
 
