@@ -707,6 +707,18 @@ body:not(.ready) .map-ctrls { display: none; }
 .way-bar .way-back { min-width: 0; }
 .way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
 .way-bar .way-x { flex: none; margin: 0 0 0 auto; }
+.way-bar .way-dock + .way-x { margin-left: 0; }
+/* the steps: the sport as a chip beside the route style it decides (2026-10-21) */
+.way-pair { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.way-pair > .way-srow, .way-pair > .way-nostyle { flex: 1 1 200px; width: auto; }
+.way-sh-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.way-sh-row > .way-sh { flex: 1 1 auto; }
+.way-hint-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.way-hint-row > .sport-pill { flex: none; }
+.sport-pill { flex: none; }
+/* Make 3 loops says what it costs, under its name */
+.rt-make-t { display: grid; line-height: 1.2; }
+.rt-make-t small { font-size: 12px; font-weight: 500; opacity: .85; }
 /* the start's sport: a row of its own under the top row, as in the drawing menu (B of #233, 2026-10-21) */
 .sport-chip.sport-row { display: flex; align-items: center; gap: 12px; width: 100%; height: auto; min-height: 52px; max-width: none; margin: 2px 0 6px;
   padding: 6px 12px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }

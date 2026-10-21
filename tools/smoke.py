@@ -5093,8 +5093,6 @@ NL = """(() => {
     }
     return best ? { x: best.x, y: best.y, clear: onMap(best.x, best.y), over: 'not the map' } : null; };
   T.view = (c, z) => new Promise((ok) => { m.jumpTo({ center: c, zoom: z }); m.once('idle', () => ok(true)); });
-  // the start's sport chip, where it is in its card: the same in the ways to begin and in each step (2026-10-21)
-  T.chipAt = () => { const c = $('.pl-way .sport-chip')?.getBoundingClientRect(), w = $('.pl-way').getBoundingClientRect(); return c ? [Math.round(c.left - w.left), Math.round(c.top - w.top), Math.round(c.width)] : null; };
   T.state = () => ({ n: p.points.length, sports: p.legs.map((_, i) => p.legSport(i)).join(','), modes: p.legs.map((l) => l.mode).join(','), next: p.nextSport(), real: p.nextLegSport(), map: polku.state.activity, mode: p.mode,
     label: p.els.modeBtn.getAttribute('aria-label'), sport: p.els.sportBtn.textContent.trim(), past: p.past.length, menu: !!$('.menu-pop'), toast: $('#toast').hidden ? '' : $('#toast').innerText.replace(/\\s+/g, ' ').trim(),
     time: p.analysis ? Math.round(p.analysis.time) : null, waits: p.analysis && p.analysis.waits ? p.analysis.waits.length : 0 });
@@ -5261,11 +5259,12 @@ def nextleg(chrome):
     pg = page(390, 844, True, 'mtb')
     pg.js('polku.planner.setActive(true), true')
     time.sleep(0.5)
-    # the sport chip stays where it is between the ways to begin and a step
-    ways = pg.js('nlT.chipAt()')
+    # the sport: a row of its own in the ways to begin, a chip beside the route style in Draw it (2026-10-21)
+    if not pg.js("!!document.querySelector('.pl-way .way-top + .sport-row')"):
+        fails.append(f'{name}: the ways to begin have no sport row under their top row')
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', True)
-    if pg.js('nlT.chipAt()') != ways:
-        fails.append(f"{name}: the sport chip moves from the ways to begin ({ways}) to Draw it ({pg.js('nlT.chipAt()')})")
+    if not pg.js("!!document.querySelector('.pl-way .way-pair > .sport-pill + .way-srow')"):
+        fails.append(f'{name}: Draw it has no sport beside its route style')
     press(pg, pg.js("nlT.at('.pl-way .way-back')"), f'{name}: Ways to begin', True)
     press(pg, pg.js("nlT.at('.pl-way .sport-chip')"), f'{name}: the sport chip', True)
     press(pg, pg.js("nlT.item('Paddle')"), f'{name}: Paddle', True)
@@ -5326,10 +5325,16 @@ def nextleg(chrome):
     pg = page(1440, 900, False, 'mtb')
     pg.js('polku.planner.setActive(true), true')
     time.sleep(0.5)
-    ways = pg.js('nlT.chipAt()')
+    # the panel's place can change from the start too (its header waits while the start shows)
+    press(pg, pg.js("nlT.at('.pl-way .way-dock')"), f'{name}: the start’s Move the planner', False)
+    time.sleep(0.5)
+    if pg.js('polku.planner.layout()') != 'bottom':
+        fails.append(f"{name}: the start's Move the planner left it at {pg.js('polku.planner.layout()')}")
+    press(pg, pg.js("nlT.at('.pl-way .way-dock')"), f'{name}: the start’s Move the planner back', False)
+    time.sleep(0.5)
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', False)
-    if pg.js('nlT.chipAt()') != ways:
-        fails.append(f"{name}: the sport chip moves from the ways to begin ({ways}) to Draw it ({pg.js('nlT.chipAt()')})")
+    if pg.js('polku.planner.layout()') != 'side' or not pg.js("!!document.querySelector('.pl-way .way-sh-row > .sport-pill')"):
+        fails.append(f"{name}: Draw it, the panel {pg.js('polku.planner.layout()')}: no sport beside the route style")
     # its ✕ closes the planner, as in the ways to begin
     press(pg, pg.js("nlT.at('.pl-way .way-x[data-k=close]')"), f'{name}: Draw it’s ✕', False)
     if pg.js('polku.planner.active'):
@@ -6262,7 +6267,7 @@ START_LIB = """(() => {
     await wait(200);
     if (view() !== 'draw') return [`Draw it opened ${view()}`];
     if (history.state?.polkuWay !== 1) err(`Draw it isn't a step of history (${JSON.stringify(history.state)})`);
-    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar + .sport-row')) err('Draw it has no Ways to begin and sport at its top');
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .sport-pill')) err('Draw it has no Ways to begin and sport at its top');
     if ($('.pl-way .done') || (desk && p.els.toolDone.offsetParent)) err('Done before the first point in Draw it');
     const hint = () => txt($('.pl-way .way-hint'));
     if (!/the map where you start/.test(hint()) || !/follows the paths between your points/.test(hint())) err(`Draw it says: ${hint()}`);
@@ -6333,7 +6338,7 @@ START_LIB = """(() => {
     click('.pl-way [data-way=loop]');
     await wait(200);
     if (view() !== 'loop' || !p.loop.fromWays) return [`Round trip from the ways: ${view()}`]; // (on main: Round trip opens the old form)
-    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar + .sport-row')) err('the round trip from the ways has no Ways to begin and sport');
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .sport-pill')) err('the round trip from the ways has no Ways to begin and sport');
     const make = () => $('.pl-way .rt-make');
     if (history.state?.polkuWay !== 1) err(`the round trip from the ways isn't a step of history (${JSON.stringify(history.state)})`);
     if (!make() || !make().disabled) err('Make 3 loops works before there’s a start');
