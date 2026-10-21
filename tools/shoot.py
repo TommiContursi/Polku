@@ -682,6 +682,35 @@ SCENES.update({
     'phone-3d-375': dict(PHONE, w=375, h=667, timeline=True, activity='paddle', water=WATER_PTS, state='half'),
 })
 
+# B of #233: the sport and what it changes: the next leg's sport and speed in the drawing menu (phones) and the sport
+# button (desktops), the pill's question with a route drawn, Settings' speeds, a point on open water. Straight legs.
+SPORT_ROUTE = ("const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setMode('line');"
+               " for (const q of [[23.7355, 61.4972], [23.738, 61.4980], [23.7405, 61.4972]]) p.addPoint(q); await p.analysing; p.fitRoute(); await wait(800);")
+SPORT_SHOTS = {
+    'menu': "p.els.modeBtn.click(); await wait(300); document.querySelector('.menu-pop .nl-sport')?.click(); await wait(300);",
+    'speed': "p.els.modeBtn.click(); await wait(300); document.querySelector('.menu-pop .nl-speed')?.click(); await wait(300);",
+    'button': "(p.els.sportBtn || p.els.styleBtn).click(); await wait(300); document.querySelector('.menu-pop .nl-sport')?.click(); await wait(300);",
+    'ask': "document.querySelector('#activity-bar .act-current').click(); await wait(300); document.querySelector('#activity-bar .act[data-k=hike]').click(); await wait(400);",
+    'settings': "document.querySelector('#btn-settings').click(); await wait(400); document.querySelector('#settings-body .speed-sport-row[data-k=mtb]')?.click(); await wait(300);",
+    'water': ("polku.map.jumpTo({ center: [23.735, 61.519], zoom: 14 }); await new Promise((r) => polku.map.once('idle', r)); const q = polku.map.project([23.735, 61.522]);"
+              " polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') }); await wait(600);"),
+    'long': "const A = (await import(location.origin + '/js/config.js')).ACTIVITIES; A.mtb.label = 'Maastopyöräily'; p.setMode('auto'); p.renderTools(); await wait(400);",
+}
+SPORT_JS = lambda k: f"(async () => {{ {SPORT_ROUTE} {SPORT_SHOTS[k]} return true; }})()"
+SCENES.update({
+    'phone-sport-menu': dict(PHONE, timeline=False, hash='#15/61.4975/23.738', js=SPORT_JS('menu')),
+    'phone-sport-speed': dict(PHONE, timeline=False, hash='#15/61.4975/23.738', js=SPORT_JS('speed')),
+    'phone-sport-ask': dict(PHONE, timeline=False, hash='#15/61.4975/23.738', js=SPORT_JS('ask')),
+    'phone-sport-settings': dict(PHONE, timeline=False, hash='#15/61.4975/23.738', js=SPORT_JS('settings')),
+    'phone-sport-water': dict(PHONE, timeline=False, activity='hike', hash='#15/61.4975/23.738', js=SPORT_JS('water')),
+    'phone-sport-360': dict(PHONE, w=360, h=740, timeline=False, hash='#15/61.4975/23.738', js=SPORT_JS('long')),
+    'desk-sport-button': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js=SPORT_JS('button')),
+    'desk-sport-ask': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js=SPORT_JS('ask')),
+    # the start: the sport in a row of its own under Start a route (2026-10-21)
+    'phone-sport-start': dict(PHONE, timeline=False, hash='#15/61.4975/23.738', js="(async () => { polku.planner.clear(); polku.planner.setActive(true); return true; })()"),
+    'desk-sport-start': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js="(async () => { polku.planner.clear(); polku.planner.setActive(true); return true; })()"),
+})
+
 
 def shoot(chrome, out_dir, label, name):
     sc = SCENES[name]

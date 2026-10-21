@@ -3,7 +3,7 @@
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
   DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
-  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY,
+  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
 } from './config.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
 import { pointForecasts, sampleAt } from './weather.js';
@@ -296,13 +296,17 @@ flow = new RouteFlow(map, {
 });
 if (data.route) flow.setData(data.route);
 map.on('mouseout', () => routeHoverLeg(null)); // off the map (onto the planner, say): no leg is under the pointer
+// each sport's icon (the planner's toolbox asks for it as it's built)
+const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
 const planner = new Planner(map, {
   activity: () => state.activity,
   hoverLeg: routeHoverLeg,
   winter: () => ({ on: !!state.winterOn, setting: winterSetting() }), // winter on the route (15b): snow in the time, Heads-up
   sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),
-  // the planner's own picker: the route's sport (the map's too); the map in it already: just the route
-  setSport: (k) => (state.activity === k ? planner.routeAs(k) : setActivity(k, { from: 'planner' })),
+  // the map's sport, from the planner: Next leg and the water note (the next legs), or a whole route's change and its Undo ('route')
+  setSport: (k, opts) => setActivity(k, opts),
+  // the sports as menu items, for the planner's Next leg: the same as the pill's menu and the start's chip
+  sportItems: (opts) => sportItems(opts),
   // the start's sport chip: the pill's own choices (#245)
   sportMenu: (anchor) => openSportMenu(anchor),
   // Marked routes (A): LIPAS's routes in a view, whether the map shows them, and turning them on
@@ -531,17 +535,12 @@ function configureLayers() {
 // ------------------------------------------------------------------ activity pill
 // Only the active sport shows, beside the search. Hover (mouse) or tap opens the
 // others; picking one, Escape or leaving closes it.
-const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
 const hoverPointer = matchMedia('(hover: hover) and (pointer: fine)');
 function renderActivityBar() {
   const box = $('#activity-bar');
   box.innerHTML = '';
   const cur = ACTIVITIES[state.activity];
-  const menu = h('div', { class: 'act-menu', role: 'listbox', 'aria-label': 'Activity', hidden: true },
-    ...Object.entries(ACTIVITIES).map(([k, a]) => h('button', {
-      type: 'button', role: 'option', class: 'act', 'aria-selected': String(state.activity === k), 'data-k': k,
-      onclick: () => { closeActs(); setActivity(k); }, html: `${icon(ACT_ICONS[k], 20)}<span>${a.label}</span>`,
-    })));
+  const menu = h('div', { class: 'act-menu', hidden: true });
   const btn = h('button', {
     type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', title: `Activity: ${cur.label}`,
     // a click just after the hover opened the menu keeps it open (#245); a click on a menu it opened closes it
@@ -549,24 +548,91 @@ function renderActivityBar() {
     html: `${icon(ACT_ICONS[state.activity], 20)}<span>${cur.label}</span>${state.winterOn ? `<span class="act-winter" title="${escapeAttr(winterNote())}">${icon('snow', 14)}</span>` : ''}${icon('chevronDown', 16)}`,
   });
   box.append(btn, menu);
+  sportList(menu);
+}
+// The sports, each with its icon, its name, one line on what the map shows for it, and "your route" where the
+// route has it (B of #233): the pill's menu, the start's chip and the planner's Next leg are made of these
+function sportItems({ checked, route = [], fn }) {
+  return Object.entries(ACTIVITIES).map(([k, a]) => ({
+    k, icon: ACT_ICONS[k], label: `<span>${escapeAttr(a.label)}${route.includes(k) ? ' <span class="cur">your route</span>' : ''}</span>`, desc: escapeAttr(a.line), radio: true, checked: checked === k, fn: () => fn(k),
+  }));
+}
+const SPORT_LEAD = 'The map shows what matters for the sport you pick, and the legs you draw are planned for it.';
+// The pill's menu: the sports, with Paddle its craft, and with a route in another sport what a change is for
+// (option A of B, #233)
+const CRAFT_NOTE = 'Polku keeps a canoe or a SUP to calmer water than a sea kayak, and times the route at its speed.';
+function sportList(menu) {
+  const route = planner.points.length > 1 ? planner.routeSports() : [];
+  menu.removeAttribute('role');
+  menu.removeAttribute('aria-labelledby');
+  const list = h('div', { class: 'act-list', role: 'listbox', 'aria-label': 'Sport', 'aria-describedby': 'act-lead' },
+    ...sportItems({ checked: state.activity, route, fn: (k) => pickSport(k, menu) }).map((it) => h('button', {
+      type: 'button', role: 'option', class: 'act two', 'aria-selected': String(it.checked), 'data-k': it.k,
+      onclick: it.fn, html: `${icon(it.icon, 20)}<span><b>${it.label}</b><small>${it.desc}</small></span>${it.checked ? icon('check', 18) : ''}`,
+    })));
+  // the craft, which the water routes and the time depend on: as in the start's sport menu
+  const craft = state.activity !== 'paddle' ? null : h('div', { class: 'act-craft', role: 'group', 'aria-labelledby': 'act-craft-h' },
+    h('div', { class: 'act-head', id: 'act-craft-h' }, 'Craft'),
+    h('div', { class: 'act-chips' }, ...Object.entries(CRAFT).map(([k, c]) => h('button', { type: 'button', class: 'act-chip', 'data-craft': k, 'aria-pressed': String(planner.craft === k),
+      onclick: () => { planner.setCraft(k); sportList(menu); menu.querySelector(`[data-craft="${k}"]`)?.focus(); }, html: `${planner.craft === k ? icon('check', 15) : ''}<span>${escapeAttr(c.label)}</span>` }))),
+    h('p', { class: 'act-lead' }, CRAFT_NOTE));
+  menu.replaceChildren(h('div', { class: 'act-head', 'aria-hidden': 'true' }, 'Sport'),
+    h('p', { class: 'act-lead', id: 'act-lead' }, route.length ? `Your route: ${planner.sportsLabel()}, ${planner.legs.length} ${planner.legs.length === 1 ? 'leg' : 'legs'}` : SPORT_LEAD),
+    list, craft);
+}
+// one tap with no route or for the route's own sport; otherwise the menu asks: The whole route, or Only the legs
+// you draw next. Keep, ‹ Sports and a tap outside change nothing.
+function pickSport(k, menu) {
+  const q = planner.sportQuestion(k);
+  // Paddle keeps the menu open at its craft (the bar is drawn again for the sport)
+  if (!q && k === 'paddle' && state.activity !== k) { setActivity(k); openActs(); $('#activity-bar .act-chip[aria-pressed="true"]')?.focus(); return; }
+  if (!q) { closeActs(); setActivity(k); return; }
+  const back = () => { sportList(menu); menu.querySelector(`[data-k="${k}"]`)?.focus(); };
+  const opt = (cls, ic, title, line, fn, disabled = false) => h('button', { type: 'button', class: `act two act-opt ${cls}`, 'aria-disabled': disabled ? 'true' : null,
+    onclick: () => { if (!disabled) fn(); }, html: `${icon(ic, 20)}<span><b>${title}</b><small>${escapeAttr(line)}</small></span>` });
+  menu.setAttribute('role', 'dialog');
+  menu.removeAttribute('aria-label');
+  menu.removeAttribute('aria-describedby');
+  menu.setAttribute('aria-labelledby', 'act-q');
+  menu.replaceChildren(
+    h('button', { type: 'button', class: 'act act-back', onclick: back, html: `${icon('chevronLeft', 18)}<span>Sports</span>` }),
+    h('div', { class: 'act-q', id: 'act-q', html: `${icon(ACT_ICONS[k], 20)}<span>${escapeAttr(q.title)}</span>` }),
+    h('div', { role: 'group', 'aria-labelledby': 'act-q', class: 'act-opts' },
+      opt('act-all', 'route', 'The whole route', q.all, () => { closeActs(); planner.wholeRoute(k); }, q.cross),
+      opt('act-next', isWater(k) ? 'water' : 'auto', `Only the legs you draw next${q.already ? ' <span class="cur">already</span>' : ''}`, q.next, () => { closeActs(); setActivity(k); })),
+    h('button', { type: 'button', class: 'act act-keep', onclick: () => { closeActs(); $('#activity-bar .act-current').focus(); } }, q.keep));
+  menu.querySelector('.act-opt:not([aria-disabled])').focus();
 }
 // The same choice from the planner's start (A, #233): "Start a route · MTB ▾" opens the pill's own sports,
 // picked with the same setActivity(), so the pill and the chip always match: one control, two ways in (#245)
+// For Paddle it has the craft too, which the round trip's loops and the time depend on: picking Paddle keeps it open
+// at the craft (the start is drawn again for the sport, so it opens again at the new chip).
 let sportPop = null;
-function openSportMenu(anchor) {
+function openSportMenu(anchor, { craft = false } = {}) {
   if (sportPop) { sportPop.close(); return; }
   closeActs();
   anchor.setAttribute('aria-expanded', 'true');
-  sportPop = popMenu(anchor, [{ group: 'Sport', items: Object.entries(ACTIVITIES).map(([k, a]) => ({
-    icon: ACT_ICONS[k], label: escapeAttr(a.label), radio: true, checked: state.activity === k,
-    fn: () => { setActivity(k); $('.pl-way .sport-chip')?.focus({ preventScroll: true }); },
-  })) }], { label: 'Sport', align: 'left', sheet: true, onClose: () => { sportPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
+  const again = (opts) => { sportPop?.close(); const chip = $('.pl-way .sport-chip'); if (chip) openSportMenu(chip, opts); };
+  const paddle = state.activity === 'paddle';
+  sportPop = popMenu(anchor, [
+    { group: 'Sport', items: [{ note: SPORT_LEAD }, ...sportItems({ checked: state.activity, fn: (k) => {
+      setActivity(k);
+      if (k === 'paddle') again({ craft: true }); else $('.pl-way .sport-chip')?.focus({ preventScroll: true });
+    } }).map((it) => (it.k === 'paddle' && !paddle ? { ...it, keep: true } : it))] },
+    paddle ? 'hr' : null,
+    paddle ? { group: 'Craft', items: [
+      { chips: Object.entries(CRAFT).map(([k, c]) => ({ label: escapeAttr(c.label), radio: true, checked: planner.craft === k, keep: true, fn: () => { planner.setCraft(k); again({ craft: true }); } })) },
+      { note: CRAFT_NOTE },
+    ] } : null,
+  ], { label: 'Sport', align: 'left', sheet: true, onClose: () => { sportPop = null; anchor.setAttribute('aria-expanded', 'false'); } });
+  if (craft) sportPop.el.querySelector('.chip[aria-checked="true"]')?.focus({ preventScroll: true });
 }
 let actTimer = 0;
 let actHovered = false; // the hover opened the menu, and no click on the pill since
 function openActs() {
   const box = $('#activity-bar');
   clearTimeout(actTimer);
+  if (box.querySelector('.act-menu').hidden) sportList(box.querySelector('.act-menu')); // the route as it is now
   box.querySelector('.act-menu').hidden = false;
   box.querySelector('.act-current').setAttribute('aria-expanded', 'true');
   box.classList.add('open');
@@ -587,7 +653,8 @@ function closeActs() {
     if (box.querySelector('.act-menu').hidden) actHovered = true;
     openActs();
   });
-  box.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches) { clearTimeout(actTimer); actTimer = setTimeout(closeActs, 250); } });
+  // (not the question about a route: it closes with an answer, Keep, Escape or a click outside, B of #233)
+  box.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && hoverPointer.matches && box.querySelector('.act-menu').getAttribute('role') !== 'dialog') { clearTimeout(actTimer); actTimer = setTimeout(closeActs, 250); } });
   box.addEventListener('keydown', (e) => {
     const opts = [...box.querySelectorAll('.act-menu .act')];
     const i = opts.indexOf(document.activeElement);
@@ -637,8 +704,8 @@ const SPORT_NOTE = {
   swim: 'open-water routes near the shore, shipping lanes avoided, beaches and swimming places',
 };
 
-// `from`: 'map' (the sport pill: the map's sport; a drawn route keeps its sports) or
-// 'planner' (the planner's picker: the route goes with it, and Undo brings it back)
+// The map's sport, and the legs you draw next: a drawn route keeps its sports and its style (B of #233).
+// `from: 'route'`: the planner is changing the whole route itself (The whole route, its Undo).
 function setActivity(k, { from = 'map' } = {}) {
   if (state.activity === k) return;
   const prev = state.activity;
@@ -1303,36 +1370,39 @@ phoneMQ.addEventListener('change', () => {
 map.once('idle', () => (window.requestIdleCallback || setTimeout)(() => { for (const [k] of BASES) new Image().src = thumb(k); }));
 
 // ------------------------------------------------------------------ settings panel
-// How Polku behaves (not what the map shows): sport, planner, display, offline, data.
-let speedSport = null; // which sport's speeds Settings shows (defaults to the current one)
+// How Polku behaves (not what the map shows): your speeds, the planner, display, offline, data (#321).
+let speedOpen = null; // the sport whose speeds Settings shows opened (none at first)
 function renderSettingsPanel() {
   const p = $('#settings-body');
   const keepScroll = p.scrollTop;
   requestAnimationFrame(() => { p.scrollTop = keepScroll; });
   p.innerHTML = '';
-  p.append(section('Sport',
-    h('div', { class: 'seg small full sport-seg' }, ...Object.entries(ACTIVITIES).map(([k, a]) => h('button', {
-      type: 'button', 'aria-pressed': String(state.activity === k), onclick: () => setActivity(k), html: `${icon(ACT_ICONS[k], 16)}<span>${a.label}</span>`,
-    }))),
-    h('p', { class: 'note' }, `Also the pill beside the search. ${ACTIVITIES[state.activity].label} gives you ${SPORT_NOTE[state.activity]}; the planner routes and times the route for it.`)));
-
   p.append(section('About Polku',
     h('button', { type: 'button', class: 'btn', id: 'btn-changelog', onclick: (e) => openChangelog(e.currentTarget) }, 'What’s new'),
     h('p', { class: 'note' }, 'Read recent changes without leaving your route.')));
 
-  // speeds: the same editor as the planner's Time & speed, for any sport
-  speedSport = ACTIVITIES[speedSport] ? speedSport : state.activity;
-  const speedBox = h('div', { class: 'speed-box' });
-  const pickSport = h('select', { class: 'start-select', 'aria-label': 'Sport for these speeds', onchange: (e) => { speedSport = e.target.value; renderSettingsPanel(); } },
-    ...Object.entries(ACTIVITIES).map(([k, a]) => h('option', { value: k, selected: k === speedSport }, a.label)));
-  p.append(section('Speeds',
-    h('label', { class: 'speed-sport' }, 'Speeds for ', pickSport),
-    speedBox,
-    h('p', { class: 'note' }, 'They set the time estimate (and so the weather along the route). The planner’s Time & speed section shows the same, and where the time goes on your route. Kept on this device only.')));
-  renderSpeedEditor(speedBox, speedSport, {
-    craft: planner.craft, onCraft: (k) => planner.setCraft(k),
-    onChange: () => { if (speedSport === state.activity) planner.retime(); },
-  });
+  // Your speeds: every sport in a row of its own, its speeds in one line; a tap opens the planner's own editor in
+  // place, one sport at a time. A change re-times the route when it has legs in that sport, whatever the map's
+  // sport is (#87). The sport itself is the pill's (and the next leg's, the planner's drawing menu): Settings holds
+  // settings, not the map's choices (#321).
+  const inRoute = planner.points.length > 1 ? planner.routeSports() : [];
+  const speeds = h('div', { class: 'speed-list' });
+  for (const [k, a] of Object.entries(ACTIVITIES)) {
+    const open = speedOpen === k;
+    const row = h('button', { type: 'button', class: 'speed-sport-row', 'data-k': k, 'aria-expanded': String(open),
+      onclick: () => { speedOpen = open ? null : k; renderSettingsPanel(); $(`#settings-body .speed-sport-row[data-k="${k}"]`)?.focus(); },
+      html: `${icon(ACT_ICONS[k], 18)}<span><b>${a.label}${inRoute.includes(k) ? ' <span class="cur">your route</span>' : ''}</b><small>${escapeAttr(planner.speedLine(k))}</small></span>${icon(open ? 'chevronUp' : 'chevronDown', 16)}` });
+    speeds.append(row);
+    if (!open) continue;
+    const box = h('div', { class: 'speed-box' });
+    speeds.append(box);
+    renderSpeedEditor(box, k, {
+      craft: planner.craft, onCraft: (c) => planner.setCraft(c),
+      onChange: () => { row.querySelector('small').textContent = planner.speedLine(k); if (planner.routeSports().includes(k)) planner.retime(); },
+    });
+  }
+  p.append(section('Your speeds', speeds,
+    h('p', { class: 'note' }, 'Polku times your route with these speeds, so they also decide when you reach each place and the weather you meet there. A change applies at once to your route’s legs in that sport. The planner has the same speeds in its drawing menu and in Route › How you go. Kept on this device only.')));
 
   if (planner.sideMQ && planner.sideMQ.matches) {
     p.append(section('Route planner',
@@ -1393,7 +1463,7 @@ function renderSettingsPanel() {
 // (the full panel: More, a step from the drawer), 'settings-panel', or null to close them all.
 // instant: no animation (the keyboard); step: More's step in; back: from the full panel to the drawer.
 function openPanel(id, { instant = false, step = false, back = false } = {}) {
-  if (id === 'settings-panel') { speedSport = state.activity; renderSettingsPanel(); } // fresh: speeds may have changed in the planner
+  if (id === 'settings-panel') renderSettingsPanel(); // fresh: speeds may have changed in the planner
   const wasLayers = layersOpen(), focusIn = $$('#quick-layers, #layers-panel').some((el) => el.contains(document.activeElement));
   if (id === 'quick-layers' && wasLayers && !back) id = null;
   lpSwipe.stop();

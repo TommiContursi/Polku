@@ -129,6 +129,31 @@ button { font: inherit; color: inherit; }
 .act { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; color: var(--text); font: inherit; font-weight: 600; text-align: left; }
 .act:hover, .act:focus-visible { background: var(--surface-2); outline: none; }
 .act[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+/* each sport with its line, and "your route"; with a route in another sport, the question (B of #233) */
+.act-menu { width: 320px; }
+.act.two { height: auto; min-height: 48px; padding: 6px 12px; }
+.act.two > span { flex: 1; min-width: 0; display: grid; }
+.act.two small, .act-lead { font-size: 12px; font-weight: 400; color: var(--muted); }
+.act[aria-selected="true"] small { color: var(--text); }
+.act > .ic:last-child:not(:first-child) { flex: none; color: var(--accent); }
+.act-head { padding: 6px 12px 0; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.act-lead { margin: 2px 12px 6px; }
+.act-back { align-self: flex-start; height: 44px; color: var(--accent); }
+.act-q { display: flex; align-items: center; gap: 8px; padding: 2px 12px 8px; font-size: 16px; font-weight: 750; overflow-wrap: anywhere; }
+.act-opts { display: grid; gap: 6px; }
+.act-opt { align-items: flex-start; border: 1px solid var(--line); }
+.act-opt > .ic { margin-top: 2px; color: var(--accent); flex: none; }
+.act-opt[aria-disabled="true"] { cursor: default; }
+.act-opt[aria-disabled="true"] b, .act-opt[aria-disabled="true"] > .ic { color: var(--muted); }
+.act-keep { justify-content: center; height: 44px; margin-top: 4px; }
+.act-list { display: flex; flex-direction: column; gap: 2px; }
+/* with Paddle, its craft under the sports, as chips */
+.act-craft { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+.act-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 12px 2px; }
+.act-chip { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.act-chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
+.act-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (pointer: coarse) { .act-chip { min-height: 44px; } }
 
 /* ---------------------------------------------------------------- base maps (in Layers) */
 .base-grid { display: grid; grid-template-columns: repeat(4, 64px); gap: 10px 8px; justify-content: space-between; }
@@ -379,8 +404,6 @@ body:not(.ready) .map-ctrls { display: none; }
 .lg-key { margin-top: 6px; font-size: 12px; }
 .lg-key > summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 4px 0; }
 .lg-key h4 { margin: 8px 0 2px; font-size: 11px; color: var(--muted); font-weight: 700; }
-.seg.sport-seg { display: grid; grid-template-columns: 1fr 1fr; }
-.sport-seg button { gap: 5px; }
 .note a { color: var(--accent); }
 
 .tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
@@ -677,9 +700,36 @@ body:not(.ready) .map-ctrls { display: none; }
 .sheet[data-layout="side"] .pl-way { padding-top: 0; }
 .way-head { display: flex; align-items: flex-start; gap: 8px; }
 .way-head > :first-child { flex: 1; min-width: 0; }
-.way-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
-.way-title h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
-.way-title small { flex-basis: 100%; color: var(--muted); font-size: 13px; }
+/* the ways to begin: the same top row as a step's (the title where a step has ‹ Ways to begin), then its line */
+.way-name { margin: 0 0 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.way-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* one line, always: with a long sport name the back link's words wrap in their button, so the sport never moves */
+.way-bar .way-back { min-width: 0; }
+.way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
+.way-bar .way-x { flex: none; margin: 0 0 0 auto; }
+.way-bar .way-dock + .way-x { margin-left: 0; }
+/* the steps: the sport as a chip beside the route style it decides (2026-10-21) */
+.way-pair { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.way-pair > .way-srow, .way-pair > .way-nostyle { flex: 1 1 200px; width: auto; }
+.way-sh-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.way-sh-row > .way-sh { flex: 1 1 auto; }
+.way-hint-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.way-hint-row > .sport-pill { flex: none; }
+.sport-pill { flex: none; }
+/* Make 3 loops says what it costs, under its name */
+.rt-make-t { display: grid; line-height: 1.2; }
+.rt-make-t small { font-size: 12px; font-weight: 500; opacity: .85; }
+/* the start's sport: a row of its own under the top row, as in the drawing menu (B of #233, 2026-10-21) */
+.sport-chip.sport-row { display: flex; align-items: center; gap: 12px; width: 100%; height: auto; min-height: 52px; max-width: none; margin: 2px 0 6px;
+  padding: 6px 12px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sport-row > span { flex: 1; min-width: 0; display: grid; }
+.sport-row b { font-size: 15px; font-weight: 650; }
+.sport-row small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.sport-row > .ic:last-child { flex: none; color: var(--muted); }
+.sport-row[aria-expanded="true"] { background: var(--accent-soft); }
+@media (hover: hover) { .sport-row:hover { box-shadow: inset 0 0 0 1px var(--line); } }
+.sport-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.way-sub small { color: var(--muted); font-size: 13px; }
 .way-hint { display: grid; gap: 2px; }
 .way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
 .way-hint small { color: var(--muted); font-size: 13.5px; }
@@ -687,7 +737,7 @@ body:not(.ready) .map-ctrls { display: none; }
 .sport-chip .ic { color: var(--accent); flex: none; }
 .way-x { flex: none; width: 44px; height: 44px; margin: -4px -6px 0 0; }
 /* a step's top row: Back on the left, the sport on the right (it wraps rather than cutting a long name) */
-.way-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; margin: 0 0 -2px -8px; }
+.way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
 .btn.quiet { border-color: transparent; background: transparent; }
 .btn.quiet:hover { background: var(--surface-2); }
 .way-back { height: 44px; padding: 0 10px 0 4px; color: var(--accent); font-size: 15px; font-weight: 650; }
@@ -752,7 +802,21 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .how-h { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 8px; font-size: 12px; font-weight: 700; }
 .how-h small { font-weight: 500; color: var(--muted); }
 .speed-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); border-radius: 0; }
-.speed-at { margin: 8px 0 0; }
+.speed-at { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 10px 0 0; }
+.speed-at .note { flex: 1 1 200px; margin: 0; }
+.speed-go { margin-top: 10px; }
+/* Settings' speeds: every sport a row, its speeds in one line; a tap opens the editor under it */
+.speed-list { display: grid; gap: 2px; }
+.speed-sport-row { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.speed-sport-row > span { flex: 1; min-width: 0; display: grid; }
+.speed-sport-row b { font-size: 14px; }
+.speed-sport-row small { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.speed-sport-row > .ic { flex: none; color: var(--muted); }
+.speed-sport-row > .ic:first-child { color: var(--accent); }
+.speed-sport-row[aria-expanded="true"] { background: var(--surface-2); }
+@media (hover: hover) { .speed-sport-row:hover { background: var(--surface-2); } }
+.speed-sport-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.speed-list .speed-box { padding: 8px 8px 12px 36px; }
 .go-depart { display: grid; grid-column: 1 / -1; padding: 3px; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 0 14px; }
 .go-depart-label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
 .go-depart select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
@@ -761,7 +825,6 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .time-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .time-head span { font-size: 12.5px; color: var(--muted); }
 .wpl-foot .btn { white-space: nowrap; }
-.speed-at .link { padding: 0; font-size: inherit; }
 .onmap .tg { max-width: 360px; }
 .onmap .tg.off { opacity: .5; }
 .take-along { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -786,6 +849,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .menu { position: absolute; z-index: 10; min-width: 220px; padding: 6px; border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .menu-pop { position: fixed; z-index: 25; overflow-y: auto; overscroll-behavior: contain; }
 .menu-pop > * { flex: none; }
+.menu-pop > [role="group"] { display: flex; flex-direction: column; } /* its items as wide as the menu, as outside a group */
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 .menu-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; font: inherit; font-size: 13px; text-align: left; color: var(--text); }
 .menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--surface-2); outline: none; }
@@ -1232,6 +1296,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast .toast-act { pointer-events: auto; margin-left: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+/* a choice ("This point is on the water. How do you get there?"): the question, then each answer on a line of its own */
+.toast.choice { display: grid; justify-items: start; gap: 8px; }
+.toast.choice .toast-act { min-height: 44px; margin: 0; padding: 6px 14px; text-align: left; }
 .toast[data-tone="warn"] { background: #7c2d12; }
 .track-card {
   position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 40px); z-index: 7;
@@ -1253,6 +1320,7 @@ body.dropping .drop-hint { display: flex; }
   .search kbd { display: none; }
   .act-current { padding: 0 8px 0 11px; }
   .act-current span:not(.act-winter) { display: none; }
+  .act-menu { position: fixed; top: 62px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 74px); overflow-y: auto; overscroll-behavior: contain; }
   /* the map controls keep their place (bottom right, thumb reach); the sheet is full
      width here, so they ride above it */
   .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 12px); }
@@ -1448,16 +1516,20 @@ body.dropping .drop-hint { display: flex; }
 @keyframes tb-in { from { opacity: 0; } }
 .tbtn { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--text); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .tbtn:disabled { opacity: .35; cursor: default; }
-.tbtn:focus-visible, .modebtn:focus-visible, .stylebtn:focus-visible, .tb-modes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.tbtn[aria-expanded="true"], .modebtn[aria-expanded="true"], .stylebtn[aria-expanded="true"] { background: var(--accent-soft); }
-@media (hover: hover) { .tbtn:hover:not(:disabled), .modebtn:hover, .stylebtn:hover { background: var(--surface-2); } }
+.tbtn:focus-visible, .modebtn:focus-visible, .stylebtn:focus-visible, .sportbtn:focus-visible, .tb-modes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tbtn[aria-expanded="true"], .modebtn[aria-expanded="true"], .stylebtn[aria-expanded="true"], .sportbtn[aria-expanded="true"] { background: var(--accent-soft); }
+@media (hover: hover) { .tbtn:hover:not(:disabled), .modebtn:hover, .stylebtn:hover, .sportbtn:hover { background: var(--surface-2); } }
 .tbtn:active:not(:disabled), .modebtn:active { background: var(--surface-2); }
 /* the mode button: its icon, its name, the route style under it */
 .modebtn { height: 44px; min-width: 0; display: inline-flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .modebtn > .ic:first-child { color: var(--accent); flex: none; }
 .modebtn .two, .stylebtn .two { display: grid; line-height: 1.15; min-width: 0; }
 .modebtn .two b { font-size: 14px; font-weight: 700; white-space: nowrap; }
-.modebtn .two small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modebtn .two small { display: flex; min-width: 0; font-size: 12px; color: var(--muted); white-space: nowrap; }
+/* the next leg's sport stays whole, its style shortens where there's no room (B of #233) */
+.modebtn .tb-sport { flex: none; }
+.modebtn .tb-style { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pl-tools:not(.docked):not(.desk) .modebtn .two small { max-width: 7.5em; } /* floating: the style shortens before the toolbox docks */
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
@@ -1474,12 +1546,16 @@ body.dropping .drop-hint { display: flex; }
 .stylebtn { height: 40px; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; text-align: left; cursor: pointer; }
 .stylebtn .two small { font-size: 11px; font-weight: 600; color: var(--muted); }
 .stylebtn .two span { white-space: nowrap; }
+/* desktops: the next leg's sport, beside the route style it decides (B of #233) */
+.sportbtn { margin-right: 4px; height: 40px; flex: none; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
 .pl-tools .btn.done { height: 40px; padding: 0 12px; margin-left: 4px; }
 /* where room runs out, once the route's actions that don't fit are in More (planner.js FOLDS): the style's caption,
    then the names of the modes not in use, then all of them */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
 .pl-tools.fold2 .tb-modes button[aria-checked="false"] span, .pl-tools.fold3 .tb-modes button span { display: none; }
+.pl-tools.foldS .sportbtn > span { display: none; }
 @media (hover: hover) { .tbtn.danger:hover:not(:disabled) { color: var(--bad); } }
 
 /* the toolbar's tooltips (ui.js tooltip()) */
@@ -1500,7 +1576,7 @@ body.dropping .drop-hint { display: flex; }
 .menu-item small { font-size: 12px; color: var(--muted); font-weight: 400; }
 .menu-item.danger small { color: var(--muted); }
 .menu-item[aria-checked="true"]:not(.chip) { background: var(--accent-soft); }
-.menu-tick { flex: none; display: grid; color: var(--accent); }
+.menu-item > .menu-tick { flex: none; display: grid; color: var(--accent); }
 .menu-item.menu-apart { margin-top: 6px; }
 .menu-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px; max-width: 320px; }
 .menu-chips .menu-item.chip { height: 36px; padding: 0 12px; gap: 4px; border: 1px solid var(--line); border-radius: 999px; font-weight: 600; }
@@ -1509,6 +1585,14 @@ body.dropping .drop-hint { display: flex; }
 .menu-chips .menu-item.chip:disabled { opacity: 1; }
 /* with no room beside its button (enlarged text, a raised sheet): a sheet of its own */
 .menu-pop.menu-sheet { left: 8px; right: 8px; top: 64px; bottom: 8px; width: auto; max-height: none; }
+/* "your route" beside a sport, "already" beside a choice (the sport menus, B of #233) */
+.cur { margin-left: 4px; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+/* the drawing menu's Next leg: the sport, its list, the speed line and Your speed's editor in place */
+.menu-item.nl-speed .nl-line { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.menu-item.nl-speed { height: auto; min-height: 40px; padding: 6px 10px; }
+.menu-item > .nl-speeds { flex: none; font-size: 12.5px; font-weight: 700; color: var(--accent); }
+.nl-editor { max-width: 320px; padding: 4px 10px 8px 37px; }
+.nl-editor .speed-how { display: none; } /* the full words are in How you go */
 @media (pointer: coarse) { .menu-pop .menu-item { min-height: 44px; } .menu-chips .menu-item.chip { min-height: 44px; } }
 
 /* the map's column on short phones with the sheet raised (main.js fitColumn()) */

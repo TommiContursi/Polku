@@ -150,6 +150,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     if (it === 'hr') { to.append(h('hr')); return; }
     if (it.head != null) { to.append(h('div', { class: 'menu-head' }, h('b', {}, it.head), it.sub ? h('small', { html: `${icon('check', 13)}${escapeHtml(it.sub)}` }) : null)); return; }
     if (it.note) { to.append(h('p', { class: 'menu-note' }, it.note)); return; }
+    if (it.node) { to.append(it.node); return; } // a part of its own (the drawing menu's Next leg)
     if (it.group) {
       const id = `menu-h-${++menuIds}`, g = h('div', { role: 'group', 'aria-labelledby': id });
       to.append(h('div', { class: 'menu-h', id }, it.group), g);
@@ -159,33 +160,41 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     if (it.chips) { const c = h('div', { class: 'menu-chips' }); for (const x of it.chips) add(c, x, true); to.append(c); return; }
     const role = it.radio ? 'menuitemradio' : it.checked != null ? 'menuitemcheckbox' : 'menuitem';
     const html = chip ? `${it.checked ? icon('check', 15) : ''}<span>${it.label}</span>`
-      : `${icon(it.icon, 17)}<span>${it.label}${it.desc ? `<small>${it.desc}</small>` : ''}</span>${it.radio && it.checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}`;
-    const b = h('button', { type: 'button', role, class: `menu-item${chip ? ' chip' : ''}${it.desc ? ' two-line' : ''} ${it.cls || ''}`, html, onclick: () => { close(); it.fn(); } });
+      : `${icon(it.icon, 17)}<span>${it.label}${it.desc ? `<small>${it.desc}</small>` : ''}</span>${it.radio && it.checked ? `<span class="menu-tick">${icon('check', 17)}</span>` : ''}${it.after || ''}`;
+    // `keep`: the menu stays open (a part that opens in place, a choice that changes what it lists)
+    const b = h('button', { type: 'button', role, class: `menu-item${chip ? ' chip' : ''}${it.desc ? ' two-line' : ''} ${it.cls || ''}`, html, onclick: () => { if (!it.keep) close(); it.fn(); } });
     if (it.disabled) b.disabled = true;
     if (it.checked != null) b.setAttribute('aria-checked', String(!!it.checked));
+    if (it.expanded != null) b.setAttribute('aria-expanded', String(!!it.expanded));
     to.append(b);
   };
   for (const it of items) add(el, it);
   document.body.append(el);
-  const r = anchor.getBoundingClientRect(), gap = 8;
-  const right = Math.min(innerWidth - gap, maxRight ?? Infinity);
-  if (el.offsetWidth > right - gap) Object.assign(el.style, { width: `${right - gap}px`, minWidth: '0' });
-  const mh = el.scrollHeight, mw = el.offsetWidth;
-  const below = innerHeight - r.bottom - gap - 4, above = r.top - gap - 4;
-  if (sheet && (Math.max(below, above) < Math.min(mh, 240) || right - gap < 240)) {
-    Object.assign(el.style, { width: '', minWidth: '' });
-    el.classList.add('menu-sheet'); // no room beside its button (enlarged text, a raised sheet): a sheet of its own
-  } else {
-    if (mh <= below || (mh > above && below >= above)) {
-      el.style.top = `${r.bottom + 4}px`;
-      if (mh > below) el.style.maxHeight = `${below}px`;
+  // where it goes: beside its button, on screen, scrolling inside when taller than the room; again when it grows
+  const place = () => {
+    Object.assign(el.style, { width: '', minWidth: '', top: '', left: '', maxHeight: '' });
+    el.classList.remove('menu-sheet', 'menu-up');
+    const r = anchor.getBoundingClientRect(), gap = 8;
+    const right = Math.min(innerWidth - gap, maxRight ?? Infinity);
+    if (el.offsetWidth > right - gap) Object.assign(el.style, { width: `${right - gap}px`, minWidth: '0' });
+    const mh = el.scrollHeight, mw = el.offsetWidth;
+    const below = innerHeight - r.bottom - gap - 4, above = r.top - gap - 4;
+    if (sheet && (Math.max(below, above) < Math.min(mh, 240) || right - gap < 240)) {
+      Object.assign(el.style, { width: '', minWidth: '' });
+      el.classList.add('menu-sheet'); // no room beside its button (enlarged text, a raised sheet): a sheet of its own
     } else {
-      el.style.top = `${Math.max(gap, r.top - 4 - mh)}px`;
-      if (mh > above) el.style.maxHeight = `${above}px`;
-      el.classList.add('menu-up');
+      if (mh <= below || (mh > above && below >= above)) {
+        el.style.top = `${r.bottom + 4}px`;
+        if (mh > below) el.style.maxHeight = `${below}px`;
+      } else {
+        el.style.top = `${Math.max(gap, r.top - 4 - mh)}px`;
+        if (mh > above) el.style.maxHeight = `${above}px`;
+        el.classList.add('menu-up');
+      }
+      el.style.left = `${Math.max(gap, Math.min(right - mw, align === 'left' ? r.left : r.right - mw))}px`;
     }
-    el.style.left = `${Math.max(gap, Math.min(right - mw, align === 'left' ? r.left : r.right - mw))}px`;
-  }
+  };
+  place();
   (el.querySelector('.menu-item[aria-checked="true"]:not(:disabled)') || el.querySelector('.menu-item:not(:disabled)'))?.focus({ preventScroll: true });
   setTimeout(() => {
     if (!open) return;
@@ -193,7 +202,9 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     document.addEventListener('keydown', key, true);
     addEventListener('resize', onResize);
   });
-  return { el, close };
+  // the same menu with new contents, where it is (a choice inside it that changes what it lists)
+  const refill = (next) => { const top = el.scrollTop; el.replaceChildren(); for (const it of next) add(el, it); place(); el.scrollTop = top; };
+  return { el, close, refill };
 }
 
 /**
@@ -246,13 +257,14 @@ let toastTimer = 0;
 export function toast(msg, { tone = 'info', ms = 3500, action = null } = {}) {
   const t = $('#toast');
   t.textContent = msg;
-  // one thing to do about it ("Paddle this leg"), right in the message
-  if (action) {
+  // one thing to do about it ("Paddle this leg"), right in the message; or a choice of a few ("Paddle", "Swim", "Stay on land")
+  t.classList.toggle('choice', [].concat(action || []).length > 1);
+  for (const act of [].concat(action || [])) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'toast-act';
-    b.textContent = action.label;
-    b.addEventListener('click', () => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); action.fn(); });
+    b.textContent = act.label;
+    b.addEventListener('click', () => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); act.fn(); });
     t.append(' ', b);
   }
   t.dataset.tone = tone;

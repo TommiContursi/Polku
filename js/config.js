@@ -50,6 +50,7 @@ export const wmsTiles = (url, layers, styles = '') =>
 export const ACTIVITIES = {
   mtb: {
     label: 'MTB',
+    line: 'Trails by MTB difficulty · MTB routes', // what the map shows for it, in the sport menus
     group: 'bike',
     brouter: 'mtb',
     mode: 'auto',
@@ -57,6 +58,7 @@ export const ACTIVITIES = {
   },
   gravel: {
     label: 'Gravel',
+    line: 'Unpaved roads highlighted · gravel routing',
     group: 'bike',
     brouter: 'gravel',
     mode: 'auto',
@@ -64,6 +66,7 @@ export const ACTIVITIES = {
   },
   road: {
     label: 'Road cycling',
+    line: 'Paved, quieter roads · road works',
     group: 'bike',
     brouter: 'fastbike-lowtraffic',
     mode: 'auto',
@@ -71,6 +74,7 @@ export const ACTIVITIES = {
   },
   hike: {
     label: 'Hike',
+    line: 'Paths, hiking trails and huts',
     group: 'foot',
     brouter: 'hiking-mountain',
     mode: 'auto',
@@ -78,6 +82,7 @@ export const ACTIVITIES = {
   },
   trailrun: {
     label: 'Trail run',
+    line: 'Paths and trails · running times',
     group: 'foot',
     brouter: 'hiking-mountain',
     mode: 'auto',
@@ -85,6 +90,7 @@ export const ACTIVITIES = {
   },
   run: {
     label: 'Run',
+    line: 'Footways and lit fitness trails',
     group: 'foot',
     brouter: 'hiking-mountain',
     mode: 'auto',
@@ -92,6 +98,7 @@ export const ACTIVITIES = {
   },
   paddle: {
     label: 'Paddle',
+    line: 'Water routing · depths, marks and ships',
     group: 'water',
     brouter: 'river',
     mode: 'water',
@@ -100,6 +107,7 @@ export const ACTIVITIES = {
   // open water: the water router near the shore; land between swims on foot (swimrun)
   swim: {
     label: 'Swim',
+    line: 'Near the shore · beaches',
     group: 'water',
     brouter: 'hiking-mountain',
     mode: 'water',
