@@ -606,6 +606,7 @@ SCENES = {
     'phone-rt-ways': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('loop')),
     'phone-rt-tapped': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=RT_TAPPED),
     'desk-rt-tapped': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=RT_TAPPED),
+    'desk-rt-bottom': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage={'polku:plannerDock': '"bottom"'}, js=RT_TAPPED),
     'phone-rt-first': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=FIRST_LENGTH),
     'desk-rt-first': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=FIRST_LENGTH),
     'phone-marked': dict(PHONE, timeline=False, hash='#13.4/61.5085/23.8270', js=WAY('find'), settle=4),
