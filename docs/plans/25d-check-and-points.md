@@ -2,7 +2,7 @@
 
 The implementation plan for the last part of Phase 25. What's still to do, and its status, is on GitHub: #233 and #345, in the [Phase 25](https://github.com/TommiContursi/Polku/milestone/16) milestone.
 
-- **Status (2026-10-21): revised, for the user's OK;** see "Where 25d stands" below. No more app code until the user chooses.
+- **Status (2026-10-21): approved,** with Revision 4 chosen (#355); see "Where 25d stands" below.
 - **What it builds:** journeys C and D of the [calmer planner](issue-233-calmer-planner.md#revised-journeys-2026-10-20-proposals), and #345's [map cards](issue-345-map-cards.md).
 - **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 4** (the default) is what to build; **As approved** and **Revisions 1 to 3** stay there to compare. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)); where its cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
 - **How to build it:** one part a session, one PR a part (part 1 in two), in this order. Each session starts from the last Hand-over on #233 (AGENTS.md).
@@ -12,7 +12,7 @@ The implementation plan for the last part of Phase 25. What's still to do, and i
 The one list of what's decided, what waits for the user and what's next. The other plans (the calmer planner's, #345's) and the mock-ups' older versions are background: where they differ, this list wins. Each part's detail is further down.
 
 **Decided by the user**
-- *2026-10-21 morning (b21a63c):* Change sport on a point changes the legs to the next change of sport; All leg settings goes; Find and Move to wait (#350); Check's groups as part 2's table says; with the planner put away a card opens at the spot; on a desktop a card from the list opens beside the panel.
+- *2026-10-21, the order of parts below (#355), and in the morning (b21a63c):* Change sport on a point changes the legs to the next change of sport; All leg settings goes; Find and Move to wait (#350); Check's groups as part 2's table says; with the planner put away a card opens at the spot; on a desktop a card from the list opens beside the panel.
 - *2026-10-21, the cards:*
   - **At this point:** Pass by · Stop · Night, with the minutes (− 30 min +) or the morning's hour under it.
   - **Start here** and **End here** on a point and on a spot, each with a line on what it does. "End", not "finish".
@@ -21,18 +21,17 @@ The one list of what's decided, what waits for the user and what's next. The oth
   - **Undo and redo** stay while a card is open. The phone's back gesture closes the card.
   - **The first point's peek** says "Hold the map to see what's there."
   - **In the route's view,** the planner's "You're not editing" note, with Edit.
-  - **The look is Revision 4:** Revision 1's look, with Back in words; plain rows on phones, each with its icon, a hairline between rows, and a hover on desktops; a line under every item of a list (all or none, so a list reads alike); compact cards on desktops, where every line is the row's tooltip.
+  - **The look is Revision 4** (chosen 2026-10-21, #355): Revision 1's look, with Back in words; plain rows on phones, each with its icon, a hairline between rows, and a hover on desktops; a line under every item of a list (all or none, so a list reads alike); compact cards on desktops, where every line is the row's tooltip.
   - **25d stays within the cards:** the toolbar, the start and the ⋯ menu don't change.
   - **Don't redesign what works.** Keep one style throughout, with a different element only where the job is different. Every version stays in the mock-up to compare.
+- *2026-10-21, the app's controls (#356):* black icons in lists (the ⋯ menu, the cards), green on the start's tiles and in switches; the chosen chip green with a border everywhere; one stepper, − 30 min + in one box with the number typable, for the cards and the round trip; switches with icons where they help, and one chosen look for all: white, black words, a green icon or tick.
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
-- **#355:** Revision 4, and the parts' order below.
-- **#356:** green or black icons in menu items; one chosen chip; one − field + stepper for the round trip and the cards (the app's `rt-step` or the cards' − 30 min +).
 - **#357:** the rule for shared controls.
 
 **Next**
-1. When #355 is chosen: #356's fixes the cards need (the route's numbers' labels wrap).
+1. #356's fix the cards need: the route's numbers' labels wrap (its own Fix PR).
 2. Then #352 is restyled to Revision 4's frames as 1a, then 1b.
 3. Then parts 2 to 6, in the order below.
 
@@ -109,8 +108,8 @@ Every part's requirements include these.
 | Back in words, ✕ | the app's `btn small quiet way-back` and `tool way-x`; with Back, both on a row of their own |
 | The name and its line | the app's `way-hint` (17 px, 13.5 px), with the thing's own mark from the map left of it (new: `card-mark`) |
 | Three numbers | the app's `sum-item`, its labels wrapping (#356) |
-| At this point: Pass by · Stop · Night | the app's `seg`, as a variant with icons over the words and the chosen one in the accent colour (new: `seg icons`); #356 says whether Distance · Time follows |
-| A stop's minutes | one stepper (− field +) for the round trip and the cards (#356) |
+| At this point: Pass by · Stop · Night | the app's `seg`, as a variant with icons over the words (new: `seg icons`); the chosen one as every switch's: white, black words, a green icon (#356) |
+| A stop's minutes | one stepper for the round trip and the cards: − 30 min + in one box, the number typable (#356) |
 | Rows: This stretch, What's here, Edit this stretch, The stretch after it, Sport from here: MTB, Leave at: Now, Route style: Balanced, Not right?'s links, and the actions (Move, Start here, Remove) | one plain row: always an icon, its name, its line, a value in the accent colour, ›; a hairline between rows; a hover on desktops; Remove in red, apart (new: `row`, which the app's `speed-sport-row` can share, #356) |
 | A warning on a stretch | the yellow box with its words (new: `warn-row`, which part 3's row in the peek uses too) |
 | The one main action | the app's `btn primary big` |
