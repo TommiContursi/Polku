@@ -220,7 +220,7 @@ The rules are in [AGENTS.md](../AGENTS.md). In short: start from the latest Hand
 
 ### Shared controls
 
-Every screen is built from these, with these classes (AGENTS.md: one set of controls). The cards of 25d use them too; [#345's list](https://github.com/TommiContursi/Polku/issues/345#issuecomment-6319843803) has their measurements, and #356 the places where the app still styles one of them twice.
+Where a screen needs a control that does one of these jobs, it uses this one, with its class (AGENTS.md: one style, and don't redesign what works). A different element is fine where the job is different, once the user has chosen it; then it joins this table. The cards of 25d use them too; [#345's list](https://github.com/TommiContursi/Polku/issues/345#issuecomment-6319843803) has their measurements, and #356 the places where the app still styles one of them twice.
 
 | Control | Class | Where it's from |
 |---|---|---|
@@ -240,7 +240,7 @@ Every screen is built from these, with these classes (AGENTS.md: one set of cont
 | A Heads-up row | `li` | Check |
 | Facts as rows | `insp-row`, `insp-info` for the source | the map's card |
 
-- **A new screen** reuses these. If none fits, a new control is proposed to the user first, and once chosen it joins this table.
+- **A new screen** reuses these for the same jobs. A new control is proposed to the user first, and once chosen it joins this table. 25d's cards propose a few (#355): the plain row with a value, the switch with icons, the yellow warning row and the name field.
 - **A mock-up** copies the CSS of the controls it uses from `css/app.css`, with the same class names, in a marked block (as `docs/plans/mockups/issue-345-map-cards.html` does), so what the user approves is what gets built. When the app's controls change, the copy is made again.
 - **No copies:** no second class for a control that exists (a `card-row` beside `way-tile`, say). A variant of one is a modifier on its class, said in this table.
 
