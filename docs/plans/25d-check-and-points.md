@@ -627,12 +627,21 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 Each part adds what it built here, as the calmer planner's Built section does.
 
-### Part 1, the card and a point's card (2026-10-21)
+### 1a, the card and a point's card (2026-10-21)
 
-- **`js/card.js`:** `CardHost` and `num()` as the interfaces above say. Beyond them: `onPop` (the map stays where it is when a step of history goes back) and `pad()` (the planner's room) in the constructor; `place` (`'peek'`, `'float'` or null), `box`, `keep()` and `escape()`; `fold(text, cancel)` and `unfold()` for `pickOnMap()`; and a card may have `at()`, so the float follows its point. `beside` is built (a fixed box beside the rect) but nothing opens one yet: that's part 5's.
-- **The history settles in one place** (`syncHistory()`): one step for each card open. A card closed and another opened at once (a quick ✕ and a tap) once let the step back land after the new push and leave the page; `pointcard` checks it.
-- **`openPointCard(p)`** replaces `openPointMenu()`, with every action kept. The next leg's sport, mode and style are behind **The stretch after it ›**, today's leg menu, until part 2. The stop editor's line reads "You'd get here at 16:06 and go on at 16:36." (no dots), and on a card its Break and Night say their names on phones too.
-- **Decided while building:** a missing number is a dashed tile, "? there at not known yet" or "? no terrain here". The start's first number is "you leave". In the route's view a changeover's minutes change there, as a stop does. A tap on the header around a card in the peek does nothing, and the sheet raised past its peek closes the card.
-- **Not in part 1:** with the timeline open at 200 %, there's no map left between the timeline and the card, so the point can't be in sight. The card keeps clear of the timeline when there's room.
+- **`js/card.js`:** `CardHost` as the interfaces say, and the card's parts: `nums()`, `group()`, `rows()`, `item()`, `segIcons()`, `mainButton()`, `lockNote()`. Beyond the interfaces: `onPop`, `pad()`, `keep()` and `restore()` (the planner as it was, for Back) and `dock()` (undo and redo for a narrow card) in the constructor; `place`, `narrow`, `box`, `escape()`, `fold()` and `unfold()`. `beside` is built but nothing opens one yet (part 4).
+- **`js/cards.js`:** `pointCard()`, and the cards it opens with Back: Sport from here, Leave at, Places to sleep nearby. **`js/facts.js`:** `pointNums()` and `heightAt()`.
+- **`js/planner.js`:** `openPointCard()` in place of `openPointMenu()`; `findPoint()`, `openLegAfter()`, `moveOnCard()`, `pickOnMap()`, `removeOnCard()`, `movePoint()`, `setSportFrom()` with `legInSport()`, `gearAt()`, `departChoices()`. The old point menu's `stopEditor()`, `listStays()` and `gearToggle()` are gone.
+- **The history settles in one place** (`syncHistory()`): one step for each card open. A card closed and another opened at once once let the step back land after the new push and leave the page; `pointcard` checks it.
+- **Beside its frame** (p-point, r-stop, r-night, r-change, r-sport, r-start, r-end, r-rename, p-move, r-view-point, r-200, r-fi, d-point, r-dark at their sizes, headless). The differences, each with its reason:
+  - The numbers are the app's `sum-item` (this plan's table), without the frames' dividers, at 18 px on phones and 19 px on desktops, not 21.
+  - The stepper is the round trip's `rt-step` as it is today, three boxes; #356's Fix PR makes both one box, − 30 min +.
+  - A night's hour is the browser's own time field, not the frame's ▾ button.
+  - The chosen choice of the switch has black words and a green icon (#356), where the frames have green words.
+  - On a desktop, The stretch after it keeps its two ends under its name, so it's taller than the other rows' 40 px.
+  - At 200 %, a word longer than its row breaks where it must, as the route's numbers' labels do (#360); #184's soft hyphens will place the breaks.
+  - The sports' lines and the changeover's minutes are the app's own (`ACTIVITIES[k].line`, with ", " for " · "; 15 min from MTB to Paddle).
+- **Decided while building:** Back says where it goes: the card it came from by name, or Route from the list, Check from Check. The title's focus ring shows only when the card was opened from the keyboard. While a phone's peek has a card, the toolbox's stage is `card`: only undo and redo. The end's note says "The route ends here now". The pill is built and checked with a stand-in card, for 1b and 5.
+- **Not in 1a:** with the timeline open at 200 %, there's no map between it and the card, so the point can't be in sight. Places to sleep nearby asks LIPAS and OpenStreetMap, so the smoke checks only see its row. Real phones: the peek's scroll at 200 %, the back gesture.
 - **Found:** #351, Undo straight after adding a point throws in the other ways' timer (on `main` too).
-- **Checks:** `python3 tools/smoke.py pointcard`, new; `stops`, `routebits`, `backtostart` and `routeview` use the card.
+- **Checks:** `python3 tools/smoke.py pointcard`, rewritten for Revision 4; `stops`, `routebits`, `backtostart` and `routeview` use the card.
