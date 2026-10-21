@@ -11,6 +11,7 @@ Opened from **Start a route**, the round trip now asks only where it starts: tap
 - The sport has its row right under the top row in every step, as under **Start a route**: in **Draw it**, the round trip and **Marked routes**. It stays in one place as you go from one to another, and it has a border, like the four ways under it.
 - On a phone, the round trip shows three lengths and **Other…** in one row, and the route style and the direction are two buttons side by side. On a desktop there's room for four lengths: in the side panel each choice has a row of its own, and with the planner at the bottom the form is in two columns, the sport and the start on the left and the rest on the right, with **Make 3 loops** across both.
 - **Start a route** has a line less: the **Draw it** card now says that a tap on the map starts drawing. **Draw it** says what to do in one line under its heading, and its route style is a button like the toolbar's.
+- After your first point, **✕** at the top right closes the planner, as in the start and its steps, where it said **Done**. On a phone the **✕** is a finger's size again: it had become smaller than the other buttons.
 
 ### A calmer planner: the sport, and what it changes ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
