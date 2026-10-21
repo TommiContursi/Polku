@@ -1238,71 +1238,115 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 @keyframes wp-pulse { 0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, .55); } 100% { box-shadow: 0 0 0 16px rgba(225, 29, 72, 0); } }
 @media (prefers-reduced-motion: reduce) { .wp-hit.pulse .wp { animation: none; outline: 3px solid var(--accent); } }
 
-/* ---------------------------------------------------------------- cards (js/card.js, 25d)
-   One card for what's on the map: in the planner's peek on a phone, at its spot elsewhere. Its top row is Back
-   (when it came from somewhere), the name with its line under it, and ✕; then three numbers, then what to do.
-   A narrow card (200 %, a small phone) rearranges rather than squeezes: Back and ✕ on a row of their own, the
-   title the card's whole width, the numbers one to a row. A number never breaks; a word only at a soft hyphen. */
-.card { container: card / inline-size; display: flex; flex-direction: column; gap: 10px; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 3px; margin: -3px; }
-.card-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "back ttl x"; align-items: start; gap: 2px 6px; }
-.card-back { grid-area: back; color: var(--accent); margin: -4px 0 0 -3px; }
-.card-x { grid-area: x; margin: -4px -3px 0 0; }
-.card-ttl { grid-area: ttl; margin: 0; padding-top: 3px; min-width: 0; font-size: 16px; font-weight: 700; line-height: 1.25; overflow-wrap: break-word; hyphens: manual; }
-.card-ttl:focus { outline: none; }
-.card-ttl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-.card-ttl b { display: block; font-weight: 700; }
-.card-ttl small { display: block; margin-top: 1px; font-size: 13px; font-weight: 500; color: var(--muted); }
-.card-ttl .card-name { width: 100%; height: 36px; padding: 0 8px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 700; }
-.card-nums { display: flex; flex-wrap: wrap; gap: 6px 20px; }
-.card-num { display: flex; flex-direction: column; min-width: 0; }
-.card-num b { font-size: 18px; font-weight: 650; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.card-num small { font-size: 12.5px; color: var(--muted); }
-.card-num.missing { padding: 2px 8px; border: 1.5px dashed var(--line); border-radius: 8px; }
-.card-num.missing b { color: var(--muted); }
-.card-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.card .pt-stop > .pt-label { display: none; } /* (No stop, Break and Night say it; the group is named for screen readers) */
-.card .seg { display: grid; grid-template-columns: repeat(3, 1fr); }
-.card-last .card-remove { margin-left: auto; }
-.card .btn { min-height: 36px; height: auto; padding: 4px 12px; }
-.card .btn.danger-text { padding: 4px 8px; }
-.card-sport { color: var(--text); font-size: 13px; }
-.card-sport .mode-select-label { display: inline-flex; align-items: center; gap: 6px; }
-.card-sport .mode-select-box { flex: 1; }
-.card-sport select { width: 100%; min-width: 0; }
-.card-link { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.card-link > span:first-child { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.card-link b { font-size: 14px; }
-.card-link small { font-size: 12.5px; color: var(--muted); overflow-wrap: break-word; }
-.card-link:hover { background: var(--line); }
-.card-fold { flex-direction: row; align-items: center; gap: 10px; }
-.card-fold-text { flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 650; }
-.card-fold-text:focus { outline: none; }
-@container card (max-width: 300px) {
-  .card-top { grid-template-columns: auto 1fr auto; grid-template-areas: "back . x" "ttl ttl ttl"; }
-  .card-top:not(:has(.card-back)) { grid-template-areas: ". . x" "ttl ttl ttl"; }
-  .card-ttl { padding-top: 0; }
-  .card-nums { flex-direction: column; gap: 4px; }
-  .card-num { flex-direction: row; align-items: baseline; gap: 8px; }
-  .card-num small { min-width: 0; overflow-wrap: break-word; }
-  .card-sport { flex-direction: column; align-items: stretch; gap: 4px; }
+/* ---------------------------------------------------------------- cards (js/card.js, 25d, Revision 4 of #355)
+   A card is the planner's step container (.pl-way) holding the app's own controls: the start's top row (way-bar,
+   way-back, way-x) and heading (way-head, way-hint), the route's numbers (sheet-sum, sum-item), the ⋯ menu's
+   headings (menu-h) and line (hr), the round trip's stepper (rt-step), a toggle (tg) and the "You're not editing"
+   note (pl-viewnote). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, card-pill.
+   Where a card sits: card-peek (a phone's peek), card-float (at its spot), card-banner (Move's "Tap where it goes"). */
+.pl-way.card { container: card / inline-size; overflow-y: auto; overscroll-behavior: contain; margin-inline: -8px; padding-inline: 8px; } /* (room for the rows' hover, inside the card) */
+.card h3.way-hint { margin: 0; padding-top: 3px; }
+.card h3.way-hint:focus { outline: none; }
+.card h3.way-hint:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.card[data-pointer] h3.way-hint:focus-visible { outline: none; } /* (opened by a tap or a click: the ring is the keyboard's) */
+.card .way-hint b { line-height: 1.25; hyphens: manual; }
+.card .way-head { align-items: flex-start; }
+.card .way-head > .way-x { margin: -6px -8px 0 0; }
+/* the top row: only with Back (in words), or narrow; otherwise ✕ is in the name's row */
+.card > .way-bar { margin-bottom: -6px; }
+.card[data-back="no"] > .way-bar { display: none; }
+.card[data-back="yes"] > .way-head > .way-x { display: none; }
+.card > .way-bar [data-k] { display: none; }
+.card > .way-bar .way-back { margin-right: auto; }
+/* the thing's own mark from the map, left of its name */
+.card-mark { flex: none; order: -1; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -2px; }
+.card-mark .wp { width: 28px; height: 28px; font-size: 13.5px; border-width: 3px; box-shadow: none; }
+.card-mark .wp-start, .card-mark .wp-end { border-color: var(--surface-solid); box-shadow: 0 0 0 1px var(--line); }
+/* a number the map doesn't have: a dashed box that says so */
+.sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
+.sum-item.miss b { color: var(--muted); }
+.card .sheet-sum { flex: none; align-items: flex-start; column-gap: 20px; }
+.card .sheet-sum .sum-item b { font-size: 19px; } /* (the header's 360 px size isn't the card's) */
+@media (max-width: 720px) { .card .sheet-sum .sum-item b { font-size: 18px; } }
+/* a plain row: its icon, its name, a line on what it does, a value in the accent colour, ›; a hairline between rows */
+.rows { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0 -8px; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 6px 10px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.rows > .row + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
+.rows > .row:first-child:not(:only-child) { border-radius: 12px 12px 0 0; }
+.rows > .row:last-child:not(:only-child) { border-radius: 0 0 12px 12px; }
+.row > span:first-child { flex: none; display: grid; color: var(--text); }
+.row > span:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 1px; }
+/* (a word longer than its row breaks where it must, as the route's numbers' labels do, #356; #184's soft hyphens will place it) */
+.row b { font-size: 15px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.row small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.row .val { flex: none; max-width: 42%; font-size: 15px; font-weight: 650; color: var(--accent); text-align: right; overflow-wrap: break-word; }
+.row .way-chev { transition: transform 120ms ease-out; }
+.row:active { background: var(--surface-2); }
+.row.danger b, .row.danger > span:first-child { color: var(--bad); }
+.row[aria-checked="true"] { background: var(--accent-soft); }
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) { .row:hover { background: var(--surface-2); } .row:hover .way-chev { transform: translateX(2px); } }
+@media (prefers-reduced-motion: reduce) { .row .way-chev { transition: none; } }
+.card hr { height: 1px; margin: 0; border: 0; background: var(--line); }
+.card .menu-h { margin: 2px 0 -8px; padding: 0; }
+.card .rt-cost { margin-top: -6px; }
+.card .rt-step > span { font-size: 14px; }
+.card .rt-step > small { flex: 1 1 150px; font-size: 13px; line-height: 1.3; color: var(--muted); }
+.card .rt-len input[type="time"] { width: auto; font-size: 18px; text-align: left; }
+.card .tg { margin: -4px 0; }
+.card .tg-text { font-size: 15px; font-weight: 600; }
+.card .tg-text small { font-size: 13px; font-weight: 400; }
+.card .pl-viewnote { margin: 0; }
+/* a switch with icons over its words; the chosen one white, black words, a green icon (#356) */
+.seg.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 15px; }
+.seg.icons button { height: auto; min-height: 48px; padding: 6px 4px; border-radius: 12px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
+.seg.icons button span { display: inline; }
+.seg.icons button[aria-checked="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
+.seg.icons button[aria-checked="true"] .ic { color: var(--accent); }
+.seg.icons button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* the name typed where it's shown, with Save */
+.name-field { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 0 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 17px; font-weight: 600; }
+.name-field:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.card .way-head:has(.name-field) .btn.primary { flex: none; height: 44px; padding: 0 14px; font-size: 15px; }
+/* a 360 px phone: the switch's words under their icons, so long words fit */
+@container card (max-width: 335px) { .seg.icons button { flex-direction: column; min-height: 54px; gap: 2px; } }
+/* narrow (200 %, a small phone): Back, undo, redo and ✕ on a row of their own, the name the card's whole width, the
+   numbers one to a row, the switch in a column */
+@container card (max-width: 290px) {
+  .card[data-back] > .way-bar { display: flex; }
+  .card > .way-bar [data-k] { display: inline-flex; width: 44px; height: 44px; }
+  .card > .way-bar [data-k="undo"] { margin-left: auto; }
+  .card > .way-head > .way-x { display: none; }
+  .card .sheet-sum { flex-direction: column; flex-wrap: nowrap; gap: 0; }
+  .card .sum-item { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 0; box-shadow: inset 0 1px 0 var(--line); }
+  .card .sum-item:first-child { box-shadow: none; }
+  .card .sum-item.miss { margin-top: 4px; padding: 6px 10px; box-shadow: none; }
+  .seg.icons { grid-template-columns: 1fr; }
+  .seg.icons button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
+  .row .val { max-width: 50%; }
 }
-/* in the peek: the card is the peek, half the screen at most (it scrolls inside); the route's numbers wait under it */
-.card-peek { padding-top: 2px; }
-.card-peek .card { max-height: calc(50dvh - 8px); touch-action: pan-y; }
+@container card (max-width: 190px) { .card-mark { display: none; } }
+/* a phone's peek: the card is the peek, 52 % of the window at most (it scrolls inside), the point in sight above it */
+.card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
-/* at its spot: the corner at the point, no tip */
+/* at its spot (desktops, the planner put away): compact rows, every line the row's tooltip, but a stretch's ends */
 .card-float { z-index: 4; }
 .card-float .maplibregl-popup-tip { display: none; }
-.card-float .maplibregl-popup-content { padding: 10px 12px; }
-.card-float .card { width: 320px; max-width: calc(100vw - 32px); max-height: var(--card-max, 70vh); }
-.card-beside { position: fixed; z-index: 6; padding: 10px 12px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); }
-.card-beside .card { width: 320px; max-height: calc(100vh - 88px); }
+.card-float .maplibregl-popup-content { padding: 12px 14px 8px; border-radius: 16px; }
+.card-float .card { width: 344px; max-width: calc(100vw - 32px); max-height: var(--card-max, 70vh); gap: 10px; }
+.card-float .row { min-height: 40px; }
+.card-float .row:not(.keep) small { display: none; }
+.card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.card-beside .card { max-height: calc(100vh - 88px); }
+/* Move: the card gives way to a note under the top bar, with Cancel; the point stays ringed */
+.card-banner { position: fixed; z-index: 7; left: 12px; right: 12px; top: 64px; max-width: 440px; margin: 0 auto; background: var(--surface-solid); box-shadow: var(--shadow); font-weight: 600; }
+.card-banner [role="status"]:focus { outline: none; }
+.wp-hit[data-card] .wp { box-shadow: 0 0 0 4px var(--accent-bg), 0 0 0 7px #fff; }
+/* the card's action at the spot, on a phone: just above it, clear of the finger */
+.card-pill { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
 @media (pointer: coarse) {
-  .card .btn, .card .tool, .card select, .card .seg button { min-height: 44px; }
-  .card .tool { min-width: 44px; }
-  .card input[type="number"], .card input[type="time"] { min-height: 44px; }
-  .card .tg { min-height: 44px; }
-  .card .card-name { height: 44px; }
+  .card .btn, .card .tool, .card .tool.ring { min-height: 44px; min-width: 44px; }
+  .card .rt-len { min-height: 44px; }
 }
 
 /* ---------------------------------------------------------------- popups */
@@ -1478,7 +1522,7 @@ body.dropping .drop-hint { display: flex; }
   .tool { width: 30px; height: 32px; }
   .tool-sep { display: none; }
   .seg button span { display: none; }
-  :is(.pt-menu, .card) .seg button span { display: inline; } /* a menu and a card have room to say what each is */
+  .pt-menu .seg button span { display: inline; } /* the menu has room to say what each mode is */
 
 
   .stat-value { font-size: 17px; }

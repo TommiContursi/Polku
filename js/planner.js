@@ -20,7 +20,8 @@ import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView } from './inspect.js';
-import { CardHost, num } from './card.js';
+import { CardHost } from './card.js';
+import { pointCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -553,7 +554,7 @@ export class Planner {
     this.commit();
     this.points = this.points.slice(0, i + 1);
     this.legs = this.legs.slice(0, i);
-    toast('The route finishes here now — undo brings back the rest');
+    toast('The route ends here now — undo brings back the rest');
     this.update();
   }
 
@@ -2244,18 +2245,23 @@ export class Planner {
 
   // Keep a focused picker in place; rebuild its relative-hour choices only when the hour changes.
   refreshDepartSelect(sel) {
-    const now = Date.now() / 1000, hour = Math.floor(now / 3600), today = new Date().toDateString();
+    const hour = Math.floor(Date.now() / 1000 / 3600);
     if (sel.dataset.hour !== String(hour)) {
-      sel.replaceChildren();
-      for (let k = 0; k <= 48; k++) {
-        const d = new Date((k ? (hour + k) * 3600 : now) * 1000);
-        const day = d.toDateString() === today ? '' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
-        sel.append(h('option', { value: String(k) }, k ? `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Now'));
-      }
+      sel.replaceChildren(...this.departChoices().map(({ k, label }) => h('option', { value: String(k) }, label)));
       sel.dataset.hour = String(hour);
     }
     sel.value = String(this.startOffsetH);
   }
+  // when you can leave: now, or each hour of the next two days ("Thu 08:00" past today)
+  departChoices() {
+    const now = Date.now() / 1000, hour = Math.floor(now / 3600), today = new Date().toDateString();
+    return Array.from({ length: 49 }, (_, k) => {
+      const d = new Date((k ? (hour + k) * 3600 : now) * 1000);
+      const day = d.toDateString() === today ? '' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
+      return { k, label: k ? `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Now' };
+    });
+  }
+  departLabel() { return (this.departChoices()[this.startOffsetH] || { label: 'Now' }).label; }
 
   // Heads-up from the water router (water.js events): shipping lanes and
   // harbours on the way, keep-clear zones it had to pass, rough water, and any
@@ -3296,23 +3302,13 @@ export class Planner {
       h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
   }
 
-  // A point's card (25d, #345): its name, when you'd get there, how far along and how high, then what you can do with
-  // it, by name. `p` is the point itself, not its index: the card follows it through a move, Undo and a new order,
-  // and closes when it's gone. From the map there's no Back, only ✕.
+  // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
+  // card follows it through a move, Undo and a new order, and closes when it's gone. From the map there's no Back.
   openPointCard(p, { from = 'map' } = {}) {
     if (!this.points.includes(p)) return;
     if (this.menu) this.menu.remove();
     this.stopPicking();
-    const self = this;
-    const card = {
-      kind: 'point', key: p, pill: null,
-      get title() { return self.nameOf(self.points.indexOf(card.key)); },
-      get sub() { const i = self.points.indexOf(card.key); return self.nameOf(i) !== self.label(i) ? self.label(i) : i === 0 ? 'Where the route begins' : ''; },
-      at: () => card.key,
-      alive: () => this.findPoint(card),
-      build: (body) => this.pointCardBody(body, card),
-    };
-    this.cards.open(card, { at: p, from });
+    this.cards.open(pointCard(this, p), { at: p, from });
   }
 
   // is the card's point still on the route? After Undo it's a copy of itself: the one point where it was
@@ -3324,109 +3320,17 @@ export class Planner {
     return true;
   }
 
-  // the terrain's height at point i (null: no terrain there yet)
-  heightAt(i) {
-    const a = this.analysis;
-    if (!a || !a.ele || !a.along) return null;
-    const at = this.lengthTo(i);
-    let k = 0;
-    while (k < a.along.length - 1 && a.along[k] < at - 1) k++;
-    return (a.eleGap && a.eleGap[k]) || !Number.isFinite(a.ele[k]) ? null : a.ele[k];
+  // The stretch after it ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)
+  openLegAfter(i) {
+    const leg = this.legs[i];
+    if (!leg) return;
+    const c = leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]];
+    const at = c.length > 2 ? c[Math.floor(c.length / 2)] : [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+    this.cards.close();
+    this.openLegMenu(i, { lng: at[0], lat: at[1] });
   }
 
-  pointCardBody(body, card) {
-    const i = this.points.indexOf(card.key), n = this.points.length;
-    const last = i === n - 1 && i > 0, via = i > 0 && !last, loop = this.isLoop();
-    // in the route's view a stop, a changeover's minutes and the departure change there; the rest goes back to editing first (25c)
-    const edit = (fn) => () => { if (this.inView()) this.setEditing(true); fn(); };
-    const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: fn, html: `${icon(ic, 16)}<span>${label}</span>` });
-    // three numbers: when you'd get there (from the start, when you leave), how far along, how high
-    const when = i === 0 ? this.startSec() : this.analysis ? this.arriveAt(i) : null, ele = this.heightAt(i);
-    const whenLabel = i === 0 ? 'you leave' : 'there at';
-    body.append(h('div', { class: 'card-nums' },
-      when != null ? num(this.clockOf(when), whenLabel) : num('?', `${whenLabel} not known yet`, { missing: true }),
-      i > 0 ? num(fmtDist(this.lengthTo(i)), 'from the start') : null,
-      ele != null ? num(`${Math.round(ele)} m`, 'height') : num('?', n > 1 ? 'no terrain here' : 'height not known yet', { missing: true })));
-    if (i === 0 && n > 1) {
-      body.append(h('label', { class: 'pt-depart' }, h('span', { html: icon('clock', 15) }), 'Depart',
-        h('span', { class: 'mode-select-box' }, this.departSelect(), h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }))));
-    }
-    // a stop: a break or a night, and its minutes or morning hour (places to sleep for a night)
-    if (via) {
-      body.append(this.stopAt(i) ? this.stopEditor(i) : h('div', { class: 'card-row' },
-        act('pause', 'Make it a stop', `A break at ${this.nameOf(i)}: ${DEFAULT_BREAK} min, yours to change`, () => { this.setStop(i, { min: DEFAULT_BREAK }); this.cards.refresh(); }),
-        act('moon', 'Stay the night', `A night at ${this.nameOf(i)}: on again at ${hhmm(DEFAULT_ON)}, yours to change`, () => { this.setStop(i, { on: DEFAULT_ON }); this.cards.refresh(); })));
-    }
-    // the sport from here on, and at a change of sport its minutes and the gear
-    if (this.legs[i]) body.append(this.sportFromPicker(i));
-    const ch = this.changeAt(i);
-    if (ch) {
-      body.append(h('label', { class: 'pt-change' }, `Change to ${ACTIVITIES[ch.to].label}:`,
-        h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }), 'min'));
-    }
-    const gear = this.gearToggle(i);
-    if (gear) body.append(gear);
-    const ends = [
-      via ? act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', edit(() => this.startAt(this.points.indexOf(card.key)))) : null,
-      via && !loop ? act('check', 'Finish here', 'Make this the finish: the rest is removed', edit(() => this.finishAt(this.points.indexOf(card.key)))) : null,
-      last && !loop ? act('loop', 'Back to start', 'Add a leg back to the start', edit(() => this.backToStart())) : null,
-    ].filter(Boolean);
-    if (ends.length) body.append(h('div', { class: 'card-row' }, ...ends));
-    // the stretch after it: its settings (part 2 of 25d gives it a card of its own)
-    if (this.legs[i]) {
-      body.append(h('button', { type: 'button', class: 'card-link', onclick: () => {
-        const c = this.legs[i].result ? this.legs[i].result.coords : [this.points[i], this.points[i + 1]], mid = c[Math.floor(c.length / 2)];
-        const at = c.length > 2 ? mid : [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
-        this.cards.close();
-        this.openLegMenu(i, { lng: at[0], lat: at[1] });
-      } }, h('span', {}, h('b', {}, 'The stretch after it'), h('small', {}, `${this.nameOf(i)} → ${this.nameOf(i + 1)}`)), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) })));
-    }
-    // Remove apart from the rest, at the far right, in the warning colour
-    body.append(h('div', { class: 'card-row card-last' },
-      act('pencil', 'Rename', `A name for ${this.nameOf(i)}, on this device`, edit(() => this.renameOnCard(card))),
-      act('move', 'Move', `${this.coarse() ? 'Tap' : 'Click'} where it goes (or drag the point)`, edit(() => this.moveOnCard(card))),
-      act('trash', 'Remove', `Remove ${this.nameOf(i)}: Undo brings it back`, edit(() => this.removeOnCard(card)), 'btn danger-text card-remove')));
-  }
-
-  // "Change sport" on a point: the legs from it to the next change of sport, or the finish (setSportFrom())
-  sportFromPicker(i) {
-    const sports = this.app.sports ? this.app.sports() : Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: 'route' }));
-    const cur = this.legSport(i);
-    const sel = h('select', { 'aria-label': `Change sport from ${this.nameOf(i)}`, onchange: (e) => { if (this.inView()) this.setEditing(true); this.setSportFrom(i, e.target.value); } },
-      ...sports.map((x) => h('option', { value: x.k }, x.label)));
-    sel.value = cur;
-    const ic = (sports.find((x) => x.k === cur) || {}).icon || 'route';
-    return h('label', { class: 'mode-select card-sport', title: 'From here to the next change of sport, or the finish' },
-      h('span', { class: 'mode-select-label', html: `${icon(ic, 16)}<span>Change sport</span>` }),
-      h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
-  }
-
-  // Rename: the card's title becomes its name to type; Enter or leaving it keeps it, Escape doesn't
-  renameOnCard(card) {
-    const ttl = this.cards.box && this.cards.box.querySelector('.card-ttl');
-    const i = this.points.indexOf(card.key);
-    if (!ttl || i < 0) return;
-    let done = false;
-    const end = (keep) => {
-      if (done) return;
-      done = true;
-      const v = input.value;
-      ttl.focus({ preventScroll: true });
-      const k = this.points.indexOf(card.key);
-      if (keep && k >= 0) this.setName(k, v);
-      this.cards.refresh();
-      this.cards.box?.querySelector('.card-ttl')?.focus({ preventScroll: true });
-    };
-    const input = h('input', { class: 'card-name', type: 'text', value: this.pname.get(card.key) || '', placeholder: this.autoName(i) || this.label(i), maxlength: 60, spellcheck: 'false',
-      'aria-label': `Name of ${i === 0 ? 'the start' : i === this.points.length - 1 ? 'the finish' : `via point ${i}`}`,
-      onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); end(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(false); } },
-      onblur: () => end(true) });
-    ttl.replaceChildren(input);
-    input.focus();
-    input.select();
-  }
-
-  // Move: the card folds to "Tap where it goes"; the next tap on the map moves the point there (Cancel, Escape: it stays)
+  // Move: the card gives way to "Tap where it goes"; the next tap on the map moves the point there (Cancel, Escape: it stays)
   async moveOnCard(card) {
     const ll = await this.pickOnMap(`${this.coarse() ? 'Tap' : 'Click'} where it goes`);
     const i = this.points.indexOf(card.key);
@@ -3478,54 +3382,6 @@ export class Planner {
         : h('span', {}, ' ', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, 'aria-label': `Minutes of the break at ${this.nameOf(i)}`, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), ' min'));
   }
 
-  // The point menu's stop: none, a break or a night; for a night, places to sleep near it
-  stopEditor(i) {
-    const stop = this.stopAt(i), night = isNight(stop);
-    const set = (st) => { this.setStop(i, st); this.cards.refresh(); };
-    const w = this.analysis && (this.analysis.waits || []).find((x) => x.i === i);
-    const arrive = this.analysis ? this.arriveAt(i) : null;
-    const box = h('div', { class: 'pt-stop' },
-      h('div', { class: 'pt-label' }, 'Stop here'),
-      h('div', { class: 'seg small', role: 'group', 'aria-label': `Stop at ${this.nameOf(i)}` },
-        ...[['', 'No stop', 'close'], ['break', 'Break', 'pause'], ['night', 'Night', 'moon']].map(([k, label, ic]) =>
-          h('button', { type: 'button', 'aria-pressed': String(k === (night ? 'night' : stop ? 'break' : '')), onclick: () => set(k === 'night' ? { on: (stop && stop.on) ?? DEFAULT_ON } : k === 'break' ? { min: (stop && stop.min) || DEFAULT_BREAK } : null), html: `${icon(ic, 15)}<span>${label}</span>` }))),
-      stop && !night ? h('label', { class: 'pt-change' }, 'For', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), 'min') : null,
-      night ? h('label', { class: 'pt-change' }, 'Go on at', h('input', { type: 'time', step: 900, value: hhmm(stop.on), onchange: (e) => { const on = parseHhmm(e.target.value); if (on != null) set({ on }); } })) : null,
-      stop && arrive ? h('div', { class: 'pt-sub' }, `You’d get here at ${this.clockOf(arrive)}${w ? ` and go on at ${this.clockOf(arrive + w.sec)}` : ''}.`) : null);
-    if (night) {
-      const list = h('div', { class: 'stay-list' });
-      const find = h('button', { type: 'button', class: 'btn', onclick: () => this.listStays(i, list, find), html: `${icon('search', 15)} Places to sleep nearby` });
-      box.append(find, list);
-    }
-    return box;
-  }
-
-  // Lean-tos, huts and campsites within 3 km of point i (LIPAS and OpenStreetMap): move the point to one
-  async listStays(i, list, btn) {
-    const p = this.points[i];
-    btn.disabled = true;
-    list.replaceChildren(h('div', { class: 'pt-sub' }, 'Looking in LIPAS and OpenStreetMap…'));
-    // what's in so far (LIPAS usually answers first), then the whole list
-    const show = (found, done) => {
-      if (this.points[i] !== p) return; // the route changed meanwhile
-      const rows = found.map((x) => h('div', { class: 'stay' },
-        x.icon ? h('img', { class: 'li-ico', src: iconUrl(x.icon), alt: '' }) : h('span', { html: icon('moon', 14) }),
-        h('span', { class: 'stay-main' }, h('b', {}, x.name), h('small', {}, `${x.kind} · ${fmtDist(x.d)} · ${x.src}`)),
-        h('button', { type: 'button', class: 'btn small', title: `Move ${this.nameOf(i)} to ${x.name}`, onclick: () => this.moveToStay(i, x) }, 'Go here')));
-      if (!done) rows.push(h('div', { class: 'pt-sub' }, 'Still looking…'));
-      else if (!found.length) rows.push(h('div', { class: 'pt-sub' }, 'No lean-tos, huts or campsites within 3 km in LIPAS or OpenStreetMap.'));
-      list.replaceChildren(...rows);
-      if (this.cards.box && this.cards.box.contains(list)) this.cards.keep(); // wider and taller now
-    };
-    try {
-      show(await staysNear(p, 3, (part) => show(part, false)), true);
-      btn.hidden = true;
-    } catch {
-      list.replaceChildren(h('div', { class: 'pt-sub' }, 'LIPAS and OpenStreetMap didn’t answer. Try again in a moment.'));
-      btn.disabled = false;
-    }
-  }
-
   // point i moved to a place to sleep, named after it (its legs are routed again)
   moveToStay(i, x) {
     if (!this.points[i]) return;
@@ -3545,15 +3401,11 @@ export class Planner {
     this.openPointCard(this.points[k]);
   }
 
-  // At a changeover out of a bike or a boat: is it left here, or taken along?
-  gearToggle(i) {
+  // At a changeover out of a bike or a boat, what's left there unless it's taken along ("the bike"); null: nothing
+  gearAt(i) {
     const c = this.changeAt(i), g = c && GEAR[c.from];
     if (!g || GEAR[c.to] === g) return null;
-    const what = g === 'bike' ? 'the bike' : `the ${(CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase()}`;
-    return h('label', { class: 'tg tg-inline pt-gear', title: `Off: ${what} stays here, and Heads-up checks the route comes back for it. On: it goes along (a packraft, a folding bike).` },
-      h('span', { class: 'tg-text' }, `Take ${what} along`),
-      h('input', { type: 'checkbox', role: 'switch', checked: this.carryAt(i), onchange: (e) => this.setCarry(i, e.target.checked) }),
-      h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    return g === 'bike' ? 'the bike' : `the ${(CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase()}`;
   }
 
   // Heads-up from the stops: gear left behind, and a night too short to sleep
@@ -3823,11 +3675,24 @@ export class Planner {
       onChange: (card) => {
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
         if (card && this.cards.place === 'peek' && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
-        this.placeTools();
+        // the card's point ringed on the map, while its card (or Move's banner) is open
+        const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
+        this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
+        this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.measureSheet?.();
       },
       onPop: () => { this.keepView = Date.now() + 600; },
       pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
+      // Back and ✕ leave the planner as it was before the card: its sheet's size, its list's scroll
+      keep: () => ({ sheet: this.panel.dataset.state, scroll: this.els.body.scrollTop }),
+      restore: (was) => {
+        if (!this.active) return;
+        if (this.layout() === 'sheet' && was.sheet && was.sheet !== this.panel.dataset.state) this.setSheetState(was.sheet, { remember: false });
+        requestAnimationFrame(() => { this.els.body.scrollTop = was.scroll; });
+      },
+      // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
+      dock: () => (this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
+        ? { undo: () => this.undo(), redo: () => this.redo(), canUndo: !!this.past.length, canRedo: !!this.future.length } : null),
     });
     this.buildTools();
     this.els.stats = h('div', { class: 'stats' });
@@ -4427,7 +4292,7 @@ export class Planner {
     if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
     // the start's views are the sheet's whole height: its peek grows with them (A)
     if (lay === 'sheet' && this.peekOnly()) { st = 'peek'; remember = false; }
-    if (st !== 'peek' && st !== 'min' && this.cards.place === 'peek') this.cards.close(); // (a card is the peek's)
+    if (st !== 'peek' && st !== 'min' && this.cards.place === 'peek') this.cards.close({ restore: false }); // (a card is the peek's)
     this.panel.dataset.layout = lay;
     this.panel.dataset.state = st;
     if (st !== 'peek' && st !== 'min') this.lastOpen = st;
@@ -4732,8 +4597,9 @@ export class Planner {
     // as there's room (placeTools()). New buttons fade in where they are (fadeNewTools()).
     // While a round trip is open nothing is drawn: only undo and redo stay, until a loop is taken or the form closes (#311)
     // In the route's view nothing is drawn (25c): phones keep only More, desktops Show the whole route, More and Edit
-    const loop = this.loop.open, view = this.inView();
-    this.tools.dataset.stage = view ? 'view' : loop ? 'loop' : String(Math.min(n, 2));
+    // A card in a phone's peek: only undo and redo too, until it closes (25d)
+    const carded = this.cards.place === 'peek' && !this.sideMQ?.matches, loop = this.loop.open || carded, view = this.inView();
+    this.tools.dataset.stage = view ? 'view' : carded ? 'card' : loop ? 'loop' : String(Math.min(n, 2));
     this.tools.setAttribute('aria-label', view ? 'Your route' : 'Drawing tools');
     for (const el of [this.els.modeBtn, this.els.sportBtn, this.els.modeSeg, this.els.styleBtn, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop || view;
     this.els.more.hidden = !n || loop;
@@ -4792,8 +4658,9 @@ export class Planner {
     if (!box || !this.sideMQ) return;
     // no toolbox until there's something it can do: a point, or something to undo or redo
     const desk = this.sideMQ.matches;
-    // (phones: not while a card is in the peek, 25d)
-    const show = this.active && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(this.cards.place === 'peek' && !desk);
+    // (a card in a phone's peek keeps undo and redo here, or in its own top row when it's narrow; none in the route's view, 25d)
+    const carded = this.cards.place === 'peek' && !desk;
+    const show = this.active && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && (this.cards.narrow || this.inView()));
     box.hidden = !show;
     box.classList.toggle('desk', desk);
     if (!show) this.dockTools(false);
@@ -4805,7 +4672,7 @@ export class Planner {
     const colLeft = $('#map-ctrls').getBoundingClientRect().left;
     // the route's actions once there's a leg (Back to start not on a loop); in turn, as far as there's room
     const view = this.inView(); // (the route's view: of them only Show the whole route, on desktops, 25c)
-    const can = (b) => this.points.length > 1 && !this.loop.open && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk')) && (!view || b === this.els.fit);
+    const can = (b) => this.points.length > 1 && !this.loop.open && !carded && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk')) && (!view || b === this.els.fit);
     for (const b of box.querySelectorAll('[data-opt]')) if (!can(b)) b.hidden = true;
     const opts = [...box.querySelectorAll('[data-opt]')].filter(can).sort((a, b) => a.dataset.opt - b.dataset.opt);
     // the first n of them on the toolbar (in `root`, the toolbox or a copy of it), each group's separator with them
