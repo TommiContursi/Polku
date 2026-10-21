@@ -3491,7 +3491,7 @@ export class Planner {
           h('button', { type: 'button', 'aria-pressed': String(k === (night ? 'night' : stop ? 'break' : '')), onclick: () => set(k === 'night' ? { on: (stop && stop.on) ?? DEFAULT_ON } : k === 'break' ? { min: (stop && stop.min) || DEFAULT_BREAK } : null), html: `${icon(ic, 15)}<span>${label}</span>` }))),
       stop && !night ? h('label', { class: 'pt-change' }, 'For', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), 'min') : null,
       night ? h('label', { class: 'pt-change' }, 'Go on at', h('input', { type: 'time', step: 900, value: hhmm(stop.on), onchange: (e) => { const on = parseHhmm(e.target.value); if (on != null) set({ on }); } })) : null,
-      stop && arrive ? h('div', { class: 'pt-sub' }, `You’d get here ${this.clockOf(arrive)}${w ? ` · on ${this.clockOf(arrive + w.sec)}` : ''}`) : null);
+      stop && arrive ? h('div', { class: 'pt-sub' }, `You’d get here at ${this.clockOf(arrive)}${w ? ` and go on at ${this.clockOf(arrive + w.sec)}` : ''}.`) : null);
     if (night) {
       const list = h('div', { class: 'stay-list' });
       const find = h('button', { type: 'button', class: 'btn', onclick: () => this.listStays(i, list, find), html: `${icon('search', 15)} Places to sleep nearby` });
@@ -4531,7 +4531,7 @@ export class Planner {
     // a tap on the handle, or on the header outside its buttons, folds the sheet or opens it again
     // (not when the target has gone from it: a control that re-rendered itself, #251)
     const tap = (e) => {
-      if (this.layout() !== 'sheet' || !e.currentTarget.contains(e.target) || (e.currentTarget === this.els.head && e.target.closest('button, input, select, a, label, .pl-way'))) return;
+      if (this.layout() !== 'sheet' || !e.currentTarget.contains(e.target) || (e.currentTarget === this.els.head && (e.target.closest('button, input, select, a, label, .pl-way') || this.panel.classList.contains('carded')))) return; // (a card in the peek keeps its taps)
       this.setSheetState(this.panel.dataset.state === 'peek' ? (this.lastOpen || 'profile') : 'peek');
     };
     this.els.handle.addEventListener('click', tap);

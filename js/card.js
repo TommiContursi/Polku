@@ -225,7 +225,9 @@ export class CardHost {
     const go = () => {
       if (!this.box || !this.box.isConnected || this.popup) return;
       const sheet = this.peek.closest('.sheet') || this.peek, R = this.map.getCanvas().getBoundingClientRect();
-      const top = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 24, bottom = sheet.getBoundingClientRect().top - 24;
+      const top = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 24, wx = document.getElementById('wx-bar');
+      // above the sheet, and above the timeline when it's open over the map
+      const bottom = Math.min(sheet.getBoundingClientRect().top, wx && wx.offsetParent && !wx.hidden ? wx.getBoundingClientRect().top : Infinity) - 24;
       const pt = this.map.project(at), x = R.left + pt.x, y = R.top + pt.y;
       const dy = y > bottom || y < top ? y - (bottom > top ? (top + bottom) / 2 : top) : 0;
       const dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;

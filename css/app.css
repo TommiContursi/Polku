@@ -1260,6 +1260,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .card-num.missing { padding: 2px 8px; border: 1.5px dashed var(--line); border-radius: 8px; }
 .card-num.missing b { color: var(--muted); }
 .card-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.card .pt-stop > .pt-label { display: none; } /* (No stop, Break and Night say it; the group is named for screen readers) */
+.card .seg { display: grid; grid-template-columns: repeat(3, 1fr); }
 .card-last .card-remove { margin-left: auto; }
 .card .btn { min-height: 36px; height: auto; padding: 4px 12px; }
 .card .btn.danger-text { padding: 4px 8px; }
@@ -1476,7 +1478,7 @@ body.dropping .drop-hint { display: flex; }
   .tool { width: 30px; height: 32px; }
   .tool-sep { display: none; }
   .seg button span { display: none; }
-  .pt-menu .seg button span { display: inline; } /* the menu has room to say what each mode is */
+  :is(.pt-menu, .card) .seg button span { display: inline; } /* a menu and a card have room to say what each is */
 
 
   .stat-value { font-size: 17px; }

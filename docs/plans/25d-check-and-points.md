@@ -626,3 +626,13 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 ## Built
 
 Each part adds what it built here, as the calmer planner's Built section does.
+
+### Part 1, the card and a point's card (2026-10-21)
+
+- **`js/card.js`:** `CardHost` and `num()` as the interfaces above say. Beyond them: `onPop` (the map stays where it is when a step of history goes back) and `pad()` (the planner's room) in the constructor; `place` (`'peek'`, `'float'` or null), `box`, `keep()` and `escape()`; `fold(text, cancel)` and `unfold()` for `pickOnMap()`; and a card may have `at()`, so the float follows its point. `beside` is built (a fixed box beside the rect) but nothing opens one yet: that's part 5's.
+- **The history settles in one place** (`syncHistory()`): one step for each card open. A card closed and another opened at once (a quick ✕ and a tap) once let the step back land after the new push and leave the page; `pointcard` checks it.
+- **`openPointCard(p)`** replaces `openPointMenu()`, with every action kept. The next leg's sport, mode and style are behind **The stretch after it ›**, today's leg menu, until part 2. The stop editor's line reads "You'd get here at 16:06 and go on at 16:36." (no dots), and on a card its Break and Night say their names on phones too.
+- **Decided while building:** a missing number is a dashed tile, "? there at not known yet" or "? no terrain here". The start's first number is "you leave". In the route's view a changeover's minutes change there, as a stop does. A tap on the header around a card in the peek does nothing, and the sheet raised past its peek closes the card.
+- **Not in part 1:** with the timeline open at 200 %, there's no map left between the timeline and the card, so the point can't be in sight. The card keeps clear of the timeline when there's room.
+- **Found:** #351, Undo straight after adding a point throws in the other ways' timer (on `main` too).
+- **Checks:** `python3 tools/smoke.py pointcard`, new; `stops`, `routebits`, `backtostart` and `routeview` use the card.

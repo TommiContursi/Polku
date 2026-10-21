@@ -4,6 +4,19 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-21
 
+### A point's card, the same on a phone and a desktop ([#233](https://github.com/TommiContursi/Polku/issues/233))
+
+A tap or click on a point of your route opens its card. On a phone it's in the planner, at your thumb, and the toolbox steps aside while it's open; on a desktop it opens at the point. The map moves so the point stays in sight.
+
+- The card gives the point's name and three numbers: when you'd get **there at**, how far it is **from the start**, and its **height**. The start says when you leave, with **Depart**. A number Polku doesn't know yet says so in its place.
+- Its actions say what they do: **Make it a stop**, **Stay the night**, **Change sport**, **Start here**, **Finish here**, **Back to start** on the finish (not on a loop), **Rename**, **Move** and **Remove**. **Remove** is at the far right, in the warning colour, and its note has **Undo**.
+- **Change sport** changes the legs from that point up to the next change of sport, or to the finish, in one step of Undo. A paddle leg drawn by following paths goes over water.
+- **Move** works without dragging: the card asks you to tap where the point goes, and the next tap moves it there. **Cancel** or **Escape** leaves it where it was. Dragging a point still works.
+- A stop shows its minutes and a night its morning hour, with **Places to sleep nearby**. A change of sport shows its minutes and whether the bike or the boat goes along. **The stretch after it** names both ends and opens that leg's settings.
+- **✕**, **Escape**, the phone's back gesture and a tap on the map close the card; the tap adds no point. The card follows its point when you move it or undo, and closes when the point is gone.
+- While you're not editing, a stop and the departure change right there; the card's other actions go back to editing first.
+- With large text or a narrow phone, the card is half the screen at most and scrolls inside. Its close button goes on a row of its own above the name, and its numbers one to a row, so names and numbers are never cut.
+
 ### Fixed: the labels under your route's numbers are never cut short ([#356](https://github.com/TommiContursi/Polku/issues/356))
 
 The small words under the planner's numbers, such as "distance", "from now" and "ascent · descent", are a little larger now. Where there's no room for a label on one line, for example on a narrow phone or with large text, it goes onto a second line instead of being cut short with "…". The numbers themselves stay on one line.
