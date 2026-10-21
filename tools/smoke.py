@@ -7165,7 +7165,8 @@ def point_card(chrome):
     def free_spot(pg, i, dx, dy):
         return pg.js(f"""(() => {{ const p = polku.planner, R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project(p.points[{i}]);
           const x = Math.round(R.left + q.x + {dx}), y = Math.round(R.top + q.y + {dy}), el = document.elementFromPoint(x, y);
-          return el === polku.map.getCanvas() ? {{ x, y }} : null; }})()""")
+          const top = document.querySelector('.topbar').getBoundingClientRect().bottom + 30, bottom = (p.layout() === 'side' ? innerHeight : Math.min(p.panel.getBoundingClientRect().top, innerHeight)) - 30;
+          return el === polku.map.getCanvas() && x >= 40 && x <= innerWidth - 80 && y >= top && y <= bottom ? {{ x, y }} : null; }})()""")
 
     for w, h_, phone in ((390, 844, True), (1440, 900, False)):
         name, touch = f'{w}x{h_}', phone
@@ -7187,6 +7188,13 @@ def point_card(chrome):
             if s['place'] != 'float' or corner > 30:
                 fails.append(f"{name}: the card {s['place']}, its nearest corner {round(corner)} px from the point")
         fails += [f'{name}: {o}' for o in pg.js(f"({PC_LOOK})({json.dumps(phone)})")]
+        # a tap on the card's words, not a button: the card stays, and so does the sheet's size
+        if phone:
+            sheet0 = pg.js("polku.planner.panel.dataset.state")
+            press(pg, at(pg, "'.card .card-nums'"), f'{name}: the card’s numbers', touch)
+            r = pg.js("({ kind: polku.planner.cards.current && polku.planner.cards.current.kind, sheet: polku.planner.panel.dataset.state })")
+            if r['kind'] != 'point' or r['sheet'] != sheet0:
+                fails.append(f"{name}: a tap on the card’s numbers: card {r['kind'] or 'closed'}, the sheet {sheet0} → {r['sheet']}")
         # Make it a stop: one step of Undo, and the card stays with the stop's minutes
         past = s['past']
         click(pg, 'Make it a stop')
@@ -7194,6 +7202,9 @@ def point_card(chrome):
         r = pg.js("({ min: polku.planner.stopAt(1) && polku.planner.stopAt(1).min, past: polku.planner.past.length, kind: polku.planner.cards.current && polku.planner.cards.current.kind, editor: !!document.querySelector('.card .pt-stop') })")
         if r['min'] != 30 or r['past'] != past + 1 or r['kind'] != 'point' or not r['editor']:
             fails.append(f'{name}: Make it a stop: {r}')
+        kinds = pg.js("[...document.querySelectorAll('.card .pt-stop .seg button')].map((b) => b.innerText.trim())")
+        if kinds != ['No stop', 'Break', 'Night']:
+            fails.append(f'{name}: the stop’s kinds read {kinds}')
         # Undo: the card follows its point back
         pg.js("polku.planner.undo(); true")
         time.sleep(0.3)
@@ -7224,7 +7235,7 @@ def point_card(chrome):
         fold = st(pg)['fold']
         if fold not in ('Tap where it goes', 'Click where it goes'):
             fails.append(f'{name}: Move: the card says “{fold}”')
-        spot = free_spot(pg, 1, -120, -160) or free_spot(pg, 1, 120, -160) or free_spot(pg, 1, 0, -200)
+        spot = next((x for x in (free_spot(pg, 1, dx, dy) for dx, dy in ((-120, -160), (120, -160), (0, -200), (160, 120), (-160, 120), (200, 0), (-200, 0))) if x), None)
         if not spot:
             fails.append(f'{name}: Move: no free spot on the map to tap')
         else:
