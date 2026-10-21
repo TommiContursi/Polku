@@ -363,15 +363,16 @@ export class CardHost {
       const dy = y > bottom || y < top ? y - (bottom > top ? (top + bottom) / 2 : top) : 0;
       let dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;
       // …and clear of what floats over the map there: the toolbox's undo and redo, the zoom note, the map's buttons
-      const ny = y - dy;
+      let ddy = dy;
       for (const el of [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')]) {
-        const b = el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null, nx = x - dx;
+        const b = el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null, nx = x - dx, ny = y - ddy;
         if (!b || nx < b.left - 20 || nx > b.right + 20 || ny < b.top - 20 || ny > b.bottom + 20) continue;
-        // beside it, on whichever side keeps the point on the screen (none: it stays where it is)
+        // beside it, on whichever side keeps the point on the screen; else under it, while that's above the card
         const side = [b.right + 32, b.left - 32].find((to) => to >= 24 && to <= innerWidth - 72);
         if (side != null) dx = x - side;
+        else if (b.bottom + 28 <= bottom) ddy = y - (b.bottom + 28);
       }
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) this.map.panBy([dx, dy], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
+      if (Math.abs(dx) > 1 || Math.abs(ddy) > 1) this.map.panBy([dx, ddy], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
     };
     requestAnimationFrame(() => requestAnimationFrame(go));
     setTimeout(go, 320); // once the sheet has come to its new size

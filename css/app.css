@@ -1313,7 +1313,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 /* narrow (200 %, a small phone): Back, undo, redo and ✕ on a row of their own, the name the card's whole width, the
    numbers one to a row, the switch in a column */
 @container card (max-width: 290px) {
-  .card[data-back] > .way-bar { display: flex; }
+  .card[data-back] > .way-bar { display: flex; flex-wrap: wrap; } /* (Back on a line of its own where undo, redo and ✕ don't fit beside it) */
   .card > .way-bar [data-k] { display: inline-flex; width: 44px; height: 44px; }
   .card > .way-bar [data-k="undo"] { margin-left: auto; }
   .card > .way-head > .way-x { display: none; }

@@ -7497,11 +7497,11 @@ def point_card(chrome):
     # 200 %: undo, redo and ✕ in a row of their own, the title under them, the numbers one to a row; at 360 × 740 with
     # long Finnish names, nothing cut
     LONG = 'Pirunvuoren näköalapaikan pohjoisrinteellä'
-    for w, h_, narrow, label in ((195, 422, True, '390x844 at 200 %'), (180, 370, True, '360x740 at 200 %, Finnish'), (360, 740, False, '360x740, Finnish')):
+    for w, h_, narrow, label in ((195, 422, True, '390x844 at 200 %'), (180, 370, True, '360x740 at 200 %, Finnish'), (180, 370, True, '360x740 at 200 %, Finnish, from the list'), (360, 740, False, '360x740, Finnish')):
         pg = page(w, h_, True)
         pg.js(f"(() => {{ const p = polku.planner; p.setName(1, {json.dumps(LONG)}); p.setName(0, 'Lielahden kartanon uimaranta'); p.setStop(1, {{ min: 30 }}); return true; }})()")
-        pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[1]); return true; })()")
-        time.sleep(0.8)
+        pg.js(f"(() => {{ const p = polku.planner; p.openPointCard(p.points[1], {{ from: {json.dumps('list' if 'list' in label else 'map')} }}); return true; }})()")
+        time.sleep(1.2)
         s = st(pg)
         if s['kind'] != 'point':
             fails.append(f'{label}: no card')
@@ -7515,6 +7515,16 @@ def point_card(chrome):
             fails.append(f"{label}: the point at {m}, not in sight above the card (the sheet's top {round(pg.js('polku.planner.panel.getBoundingClientRect().top'))} px)")
         if narrow and not pg.js("polku.planner.tools.hidden"):
             fails.append(f'{label}: the toolbox still shows beside a narrow card')
+        over = pg.js(PC_OVER)
+        if over:
+            fails.append(f'{label}: the point is under {over}')
+        if 'list' in label:
+            # Back, undo, redo and ✕, none over another, all inside the card
+            o = pg.js("""(() => { const c = document.querySelector('.pl-way.card'), cr = c.getBoundingClientRect(), bs = [...c.querySelectorAll(':scope > .way-bar > *')].filter((b) => b.getClientRects().length).map((b) => b.getBoundingClientRect());
+              const out = [];
+              bs.forEach((a, k) => { if (a.right > cr.right + 1 || a.left < cr.left - 11) out.push(`top row item ${k} past the card`); bs.slice(k + 1).forEach((b) => { if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) out.push('two of Back, undo, redo and ✕ over each other'); }); });
+              return [...new Set(out)]; })()""")
+            fails += [f'{label}: {x}' for x in o]
         fails += [f'{label}: {o}' for o in pg.js(f"({PC_FIT})({json.dumps(narrow)})")]
         if narrow:
             pg.js("polku.planner.setStop(1, null); true")  # (a step to undo, from the card's own Undo)
