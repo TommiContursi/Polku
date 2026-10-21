@@ -2,7 +2,7 @@
 
 The implementation plan for the last part of Phase 25. What's still to do, and its status, is on GitHub: #233 and #345, in the [Phase 25](https://github.com/TommiContursi/Polku/milestone/16) milestone.
 
-- **Status (2026-10-21): approved,** with Revision 4 chosen (#355); see "Where 25d stands" below.
+- **Status (2026-10-21): approved,** with Revision 4 chosen (#355) and Revision 5's desktop changes; see "Where 25d stands" below.
 - **What it builds:** journeys C and D of the [calmer planner](issue-233-calmer-planner.md#revised-journeys-2026-10-20-proposals), and #345's [map cards](issue-345-map-cards.md).
 - **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 5** (the default) is what to build; **As approved** and **Revisions 1 to 4** stay there to compare. Every control in Revision 5 does what it says, or says in a note what the app would do. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)); where its cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
 - **How to build it:** one part a session, one PR a part (part 1 in two), in this order. Each session starts from the last Hand-over on #233 (AGENTS.md).
@@ -81,7 +81,7 @@ Each has a recommendation. The plan is written with it. 1 to 8 were approved at 
 6. **In the route's view** (revised), a card shows what works there (a point's stop or night, the start's leaving time) and ends with the planner's own note, "You're not editing: the route stays as it is.", with **Edit** [r-view-point, r-view-route]. What only editing can do isn't shown, and nothing switches to editing on its own. *Why:* the Route tab already says it so (25c), and a card shows only what can be done now.
 7. **With the planner put away,** a card opens at the spot, on phones too. The peek holds cards only while the planner is open.
 8. **On a desktop,** a card from the list opens beside the panel at its row [jd-desk]. A card from the map opens at the pointer [d-route].
-9. **The look is Revision 4** (below). *Why:* the user preferred Revision 1's look in most places (the warning box, the rows with values, darker text, the switch with icons, Night and Leave at, the rename field), with Back in words, an icon on every row, a line under every item of a list, and compact desktops.
+9. **The look is Revision 5** (below). *Why:* the user preferred Revision 1's look in most places (the warning box, the rows with values, darker text, the switch with icons, Night and Leave at, the rename field), with Back in words, an icon on every row, a line under every item of a list, and compact desktops.
 10. **Start here and End here, on a point and on a spot,** each with one line on what it does. On a point: "The part before it is removed, Undo brings it back", "The part after it is removed, Undo brings it back". On a spot: "Adds a new start point", "Adds a new end point". **End**, not finish, on every card and note.
 11. **What's here ›** on every card, for the map's details: one name instead of What's here and More.
 12. **Only what can be done now:** no route, only Start a route here and Round trip from here; a spot by the line, Add a point here; in the route's view, no pill.
@@ -106,7 +106,7 @@ Every part's requirements include these.
 
 ### How every card is built
 
-**To Revision 5's frames** (the mock-up's default). Revision 4 is Revision 1's look with the user's changes of 2026-10-21. In the code, a part that does the same job as a control the app already has uses it, with its class (DEVELOPING, "Shared controls"). The rest are new shared controls, added to that list once #355 is chosen.
+**To Revision 5's frames** (the mock-up's default). Revision 5 is Revision 1's look with the user's changes of 2026-10-21 (Revisions 3 to 5). In the code, a part that does the same job as a control the app already has uses it, with its class (DEVELOPING, "Shared controls"). The rest are new shared controls, added to that list once #355 is chosen.
 
 | In a card | In the code |
 |---|---|
