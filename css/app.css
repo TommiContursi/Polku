@@ -719,6 +719,7 @@ body:not(.ready) .map-ctrls { display: none; }
 @media (hover: hover) { .pl-way .stylebtn:hover { background: var(--surface-2); } }
 @media (pointer: coarse) { .pl-way .stylebtn { min-height: 44px; } }
 /* the round trip's style and direction: side by side on a phone, a row each on a desktop (2026-10-21) */
+.rt-pair > .stylebtn { flex: 1 1 140px; } /* the row's width, half each (2026-10-21) */
 .rt-pair.stack { flex-direction: column; align-items: stretch; }
 .rt-pair.stack > .stylebtn { width: 100%; }
 /* Make 3 loops says what it costs, under its name */
