@@ -203,6 +203,9 @@ MARKS_JS = "(async () => { const p = polku.planner; if (p.setMarks) p.setMarks({
 SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); try { const S = await import(location.origin + '/js/sun.js'); const s = S.sunTimes(Date.now() / 1000, [23.761, 61.498]); const k = Math.max(0, Math.round((s.set - Date.now() / 1000) / 3600) - 1); p.setStartOffset(k); } catch (e) { /* main */ }")
 
 
+# a point's card (25d), or before it the point menu; `from` 'list' gives the card Back
+POINT_CARD = lambda name=None, from_='map': ("(async () => { const p = polku.planner; " + (f"p.setName(1, {json.dumps(name)}); " if name else '')
+    + "await new Promise((r) => setTimeout(r, 300)); if (p.openPointCard) p.openPointCard(p.points[1], { from: " + json.dumps(from_) + " }); else p.openPointMenu(1, p.markers[1]); return true; })()")
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 # the quick layer drawer (#123): Layers, then a step in it (a tile's ›, Edit, More), or the worst case
@@ -663,6 +666,10 @@ SCENES = {
     # mid-drag: the line pulled aside, shot while the new legs are still on their way (dashed)
     'desk-drag': dict(DESK, timeline=True, route='route-kauppi-mtb.json', settle=0.5, js=DRAG),
     'phone-drag': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', settle=0.5, js=DRAG),
+    # 25d part 1: a point's card (on main, the point menu it replaces), at the thumb on a phone, at the point on a desktop, and at 200 % in Finnish
+    'phone-point-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
+    'desk-point-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
+    'phone-point-card-200': dict(w=180, h=370, phone=True, timeline=False, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD('Pirunvuoren näköalapaikan pohjoisrinteellä', 'list')),
 }
 
 WAIT_ROUTE = ("new Promise((ok) => { const p = polku.planner, t0 = Date.now();"
