@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polku map cards</title>
+<meta name="description" content="A clickable mock-up for #345: a tap on the route or a point shows its facts, right-click or a long press shows actions and what's there, and Add a point here sits right at the finger. Phones and desktops, with switches for 360 px, 200 % zoom, Finnish, long names and dark. Not wired to the app.">
+<!--
+  The map's cards (#345), 2026-10-21. The design, the research and the decisions are in
+  docs/plans/issue-345-map-cards.md. Not wired to the app: nothing here is loaded by Polku. The map behind
+  each frame is the calmer planner's mock-up picture (docs/plans/mockups/phase-24-planner.html, on the
+  pr-screenshots branch), with the route at known pixels.
+
+  Every frame can be tapped, clicked, long-pressed (hold 0.5 s) and, on desktops, right-clicked; each keeps
+  its own state (Reset under it). A desktop frame takes the keyboard too: Tab to its map, the arrows move the
+  crosshair, Enter is a click there, Shift+F10 or the menu key a right-click.
+
+  ?frame=<id>     one frame alone at full size
+  &w=&h=          its screen size; &z=2 renders it as at 200 % zoom
+  &lang=fi &worst=1 &theme=dark
+-->
+<style>
+:root, .fr {
+  --accent: #1f6f4a; --accent-soft: #e3f1e9; --on-accent: #fff; --accent-bg: #1f6f4a;
+  --surface: rgba(255,255,255,.97); --surface-solid: #fff; --surface-2: #f3f4f1;
+  --text: #1c2420; --muted: #56625c; --line: rgba(28,36,32,.14);
+  --shadow: 0 6px 24px rgba(16,24,20,.16), 0 1px 3px rgba(16,24,20,.12);
+  --look: #8a5a00; --look-soft: #fbf4e2; --danger: #b4232a; --route: #e11d48; --focus: #1f6f4a;
+  color-scheme: light;
+}
+.fr.dark {
+  --accent: #56c48f; --accent-soft: rgba(86,196,143,.16); --accent-bg: #237a52;
+  --surface: rgba(24,28,26,.97); --surface-solid: #181c1a; --surface-2: #242a27;
+  --text: #ecf0ed; --muted: #a4b0a9; --line: rgba(236,240,237,.16);
+  --shadow: 0 8px 28px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.4);
+  --look: #f2c45a; --look-soft: rgba(242,196,90,.12); --danger: #ff8a8a; --focus: #6fd3a2;
+  color-scheme: dark;
+}
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #fff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 140px max(16px, env(safe-area-inset-left, 0px)); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+html { -webkit-tap-highlight-color: transparent; }
+/* (mobile-native: a tap answers at once and never waits for a double tap; the press shows while the finger is down) */
+.screen button { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.screen .btn:active, .screen .pill:active { transform: scale(.97); }
+.screen .pill:active { transform: translateX(-50%) scale(.97); }
+.screen .btn, .screen .pill { transition: transform 100ms ease-out; }
+.ic { flex: none; display: block; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.cv { max-width: 1520px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv-head h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.01em; text-wrap: balance; }
+.cv-head p { margin: 0 0 8px; max-width: 940px; opacity: .9; }
+.cv-q { margin: 18px 0 8px; padding: 14px 18px; border-radius: 14px; background: var(--page-card); max-width: 1000px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.cv-q h2 { margin: 0 0 6px; font-size: 15px; }
+.cv-q ul { margin: 0; padding-left: 20px; }
+.cv-q li { margin: 4px 0; }
+.cv-row { margin-top: 44px; }
+.cv-row > h2 { margin: 0 0 4px; font-size: 19px; }
+.cv-row > p { margin: 0 0 14px; max-width: 940px; opacity: .9; }
+.cv-frames { display: flex; flex-wrap: wrap; gap: 28px 30px; align-items: flex-start; }
+.fr { margin: 0; display: flex; flex-direction: column; gap: 8px; color: var(--text); }
+.fr figcaption { max-width: var(--cap, 260px); font-size: 13px; color: var(--page-cap); }
+.fr figcaption b { display: block; font-size: 13.5px; }
+.fr .reset { align-self: flex-start; border: 0; background: none; padding: 2px 0; color: var(--page-link); font-size: 12.5px; text-decoration: underline; cursor: pointer; }
+.fr.phone { --cap: 242px; }
+.fr.desk { --cap: 720px; }
+.screen { position: relative; overflow: hidden; width: 390px; height: 844px; zoom: calc(.62 * var(--k, 1)); border-radius: 28px; box-shadow: 0 0 0 1px rgba(16,24,20,.18), 0 18px 48px rgba(16,24,20,.22); background: #e8eee6 center / cover no-repeat; font: 14px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.fr.desk .screen { width: 1440px; height: 900px; zoom: calc(.5 * var(--k, 1)); border-radius: 12px; }
+.screen:focus-visible { outline: 4px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 800px) { .fr.desk .screen { zoom: calc(.24 * var(--k, 1)); } .fr.desk { --cap: 346px; } }
+body.single { padding: 0; background: #000; }
+body.single .cv > :not(.cv-row), body.single .cv-row > :not(.cv-frames), body.single .fr:not(.only), body.single .cv-row:not(:has(.only)), body.single figcaption, body.single .reset, body.single .picker { display: none !important; }
+body.single .cv-row { margin: 0; }
+body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: none; }
+/* the picker (chrome, not part of the design) */
+.picker { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: calc(100vw - 24px); font: 600 13px system-ui, sans-serif; }
+.pk-groups { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 760px; }
+.picker[data-open="false"] .pk-groups { display: none; }
+.pk-groups > div { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); box-shadow: 0 2px 10px rgba(0,0,0,.15); align-items: center; }
+.pk-groups > div > span { padding: 0 6px 0 10px; color: var(--switch-fg); opacity: .75; }
+.picker button { min-height: 44px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; }
+.picker .pk-toggle { background: var(--switch-bg); box-shadow: 0 2px 10px rgba(0,0,0,.15); }
+.picker button[aria-pressed="true"] { background: var(--switch-on); }
+.picker button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
+
+/* ------------------------------------------------ Polku's chrome over the map */
+.top { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; gap: 8px; z-index: 4; }
+.tb { height: 44px; min-width: 44px; border: 0; border-radius: 999px; display: grid; place-items: center; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); padding: 0; }
+.tb.brand i { width: 30px; height: 30px; border-radius: 9px; background: #1f6f4a; display: grid; place-items: center; color: #fff; }
+.tb.search { flex: 1; min-width: 0; display: flex; gap: 8px; padding: 0 14px; color: var(--muted); font-size: 15px; white-space: nowrap; overflow: hidden; }
+.tb.sport { display: flex; gap: 6px; padding: 0 12px; background: var(--accent-bg); color: var(--on-accent); }
+.fr.desk .top { left: 12px; right: auto; width: 720px; }
+.cols { position: absolute; right: 12px; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.cb { width: 44px; height: 44px; border: 0; border-radius: 12px; display: grid; place-items: center; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); }
+.fab { width: 54px; height: 52px; border: 0; border-radius: 14px; display: grid; place-items: center; align-content: center; gap: 2px; background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font-size: 10px; font-weight: 700; }
+.tbox { position: absolute; left: 8px; z-index: 3; display: flex; gap: 4px; padding: 4px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
+.tbtn { width: 44px; height: 44px; border: 0; border-radius: 12px; display: grid; place-items: center; background: none; color: var(--text); }
+.modebtn { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); text-align: left; }
+.modebtn small { display: block; font-size: 11.5px; color: var(--muted); }
+/* the sheet: its peek, or a card in it (D and C of #233: points, stretches and warnings open in the peek) */
+.sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 5; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px)); max-height: calc(100% - 76px); overflow: auto; overscroll-behavior: contain; }
+/* a card in the peek leaves a strip of map for its spot and the pill (200 %: it scrolls inside; Polku moves the map to put the spot there) */
+.sheet.card-in { max-height: max(45%, calc(100% - 300px)); }
+.grab { display: block; width: 72px; height: 18px; margin: 0 auto; position: relative; }
+.grab::before { content: ""; position: absolute; left: 20px; right: 20px; top: 7px; height: 4px; border-radius: 2px; background: rgba(95,107,101,.4); }
+.nums { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; flex: 1; min-width: 0; }
+.nums span { display: flex; flex-direction: column; }
+.nums b { font-size: 18px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.nums small { font-size: 11px; color: var(--muted); }
+.row { display: flex; align-items: center; gap: 8px; }
+.btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font-weight: 650; font-size: 14px; text-align: left; }
+.btn.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: var(--on-accent); }
+.btn.quiet { border-color: transparent; background: transparent; }
+.btn.small { min-height: 36px; padding: 0 10px; font-size: 13px; }
+.fr.phone .btn.small { min-height: 44px; }
+.btn.link { border: 0; background: none; padding: 0 2px; color: var(--accent); justify-content: flex-start; }
+/* a card: the top row (Back, its title, ✕), then facts, then what to do */
+.card { display: grid; gap: 10px; padding-top: 2px; }
+.ctop { display: flex; align-items: center; gap: 6px; min-height: 44px; margin: 0 -6px 0 0; }
+.ctop:has(.back) { margin-left: -8px; }
+.ctop .back { color: var(--accent); }
+.ctop .ttl { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+.facts { display: grid; gap: 2px; }
+.facts b { font-size: 15.5px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.facts small { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sect { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.sect h4 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.warnr { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--look-soft); color: var(--text); font-size: 13.5px; }
+.warnr .ic { color: var(--look); }
+.small-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; color: var(--muted); }
+.small-line .btn { color: var(--text); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; border-radius: 12px; background: var(--surface-2); }
+.seg button { min-height: 44px; border: 0; border-radius: 10px; background: none; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--surface-solid); box-shadow: 0 1px 3px rgba(0,0,0,.16); }
+.sel { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); }
+/* the pin and the pill at the spot (phones): the pill just above the finger, so the finger doesn't cover it */
+.pin { position: absolute; z-index: 3; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
+.pin.around { width: 38px; height: 38px; margin: -19px 0 0 -19px; background: transparent; border-color: var(--accent-bg); box-shadow: 0 0 0 2px #fff; } /* a place: its icon ringed, not covered */
+.pill { position: absolute; z-index: 4; transform: translateX(-50%); white-space: nowrap; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: var(--on-accent); font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.pill::after { content: ""; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--accent-bg); }
+.pill.below::after { bottom: auto; top: -6px; border-top: 0; border-bottom: 6px solid var(--accent-bg); }
+/* the card at the pointer (desktops), like a right-click menu: its top-left corner at the click, the action first */
+.pop { position: absolute; z-index: 6; width: 310px; padding: 8px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); display: grid; gap: 8px; }
+.pop .btn { min-height: 36px; }
+.pop .btn.primary { min-height: 40px; justify-content: flex-start; }
+.pop.up > .btn.primary { order: 99; } /* opened above the pointer: the action at the bottom, still next to it */
+.pop .sep { height: 1px; background: var(--line); margin: 0 -8px; }
+.pop .facts b { font-size: 14px; }
+.pop .facts small { font-size: 12.5px; }
+.pop .menu { display: grid; }
+.pop .menu .btn { border: 0; justify-content: flex-start; font-weight: 600; }
+.pop .menu .btn:hover { background: var(--surface-2); }
+/* a long press: a ring fills under the finger in 0.5 s (no buzz on iPhones: it's shown, not felt) */
+.ring { position: absolute; z-index: 6; width: 64px; height: 64px; margin: -32px 0 0 -32px; pointer-events: none; }
+.ring circle { fill: rgba(255,255,255,.35); stroke: var(--accent-bg); stroke-width: 5; stroke-dasharray: 176; stroke-dashoffset: 176; transform: rotate(-90deg); transform-origin: center; }
+.ring.go circle { animation: fill .5s linear forwards; }
+.ring.half circle { stroke-dashoffset: 70; }
+@keyframes fill { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .ring.go circle { animation-duration: .01s; } }
+.mk { position: absolute; z-index: 3; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 3px solid #111; background: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #111; pointer-events: none; }
+.mk.ring2 { box-shadow: 0 0 0 4px var(--accent-bg), 0 0 0 7px #fff; }
+.cross { position: absolute; z-index: 6; width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: none; }
+.cross::before, .cross::after { content: ""; position: absolute; background: #111; box-shadow: 0 0 0 2px #fff; }
+.cross::before { left: 21px; top: 0; width: 2px; height: 44px; }
+.cross::after { top: 21px; left: 0; height: 2px; width: 44px; }
+.toast { position: absolute; z-index: 7; left: 12px; right: 78px; padding: 10px 14px; border-radius: 12px; background: #111a16; color: #fff; font-weight: 500; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.toast button { min-height: 44px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: #fff; font-weight: 700; }
+.fr.desk .toast { left: 50%; right: auto; transform: translateX(-50%); bottom: 24px; }
+.banner { position: absolute; z-index: 7; left: 12px; right: 12px; top: 64px; padding: 10px 12px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.banner span { flex: 1; }
+.panel { position: absolute; left: 12px; top: 64px; bottom: 12px; width: 392px; z-index: 4; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 12px 14px; display: grid; align-content: start; gap: 12px; }
+.panel .wp { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.panel .wp i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #111; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 800; }
+.dtool { position: absolute; left: 404px; top: 64px; z-index: 4; display: flex; gap: 4px; align-items: center; padding: 6px 8px; border-radius: 0 16px 16px 0; background: var(--surface); box-shadow: var(--shadow); }
+.dtool .tbtn { width: 40px; height: 40px; }
+.dtool .btn { min-height: 40px; }
+.bigtext .sheet, .bigtext .pop { font-size: 14px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></symbol>
+  <symbol id="i-roundtrip" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" stroke-dasharray="3 2.2"/><circle cx="12" cy="4.5" r="2.2" fill="currentColor" stroke="none"/><path d="m15.5 9.5 2-1.6.4 2.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/><path d="M8 15.5c2-1 2.5-4 4.5-4.5s2.5 2 3.5 1"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
+  <symbol id="i-weather" viewBox="0 0 24 24"><path d="M8 2.5v1.5M2.5 8H4M3.9 3.9l1 1M12.1 3.9l-1 1"/><path d="M5 10.5a3.5 3.5 0 0 1 6.3-3.4"/><path d="M8 20a4 4 0 1 1 1.3-7.8A5 5 0 0 1 19 14a3 3 0 0 1-1 6H8Z"/></symbol>
+  <symbol id="i-line" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5 17.5 6.5"/></symbol>
+  <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/></symbol>
+  <symbol id="i-water" viewBox="0 0 24 24"><path d="M2.5 17c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><path d="M2.5 21c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><circle cx="5" cy="9" r="1.8"/><circle cx="19" cy="5" r="1.8"/><path d="M6.6 8.2c3-1.5 6.8-2.2 10.6-2.6" stroke-dasharray="2.2 2"/></symbol>
+  <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol>
+  <symbol id="i-avoid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-finish" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/></symbol>
+</svg>
+<main class="cv">
+  <header class="cv-head">
+    <h1>The map's cards: facts at a tap, actions on right-click</h1>
+    <p>A clickable mock-up for <a href="https://github.com/TommiContursi/Polku/issues/345">#345</a>, with its plan in <a href="../issue-345-map-cards.md">docs/plans/issue-345-map-cards.md</a> (the research, what's reused, the order of work). Tap, click, hold 0.5 s, and on desktops right-click; each frame keeps its own state, and Reset starts it again. The switches at the bottom right apply to every frame: the size (390, 360, 200 %), Finnish (rough, only to test the room words take), long names, and dark.</p>
+  </header>
+  <section class="cv-q">
+    <h2>Decided with the user (2026-10-21)</h2>
+    <ul>
+      <li><b>A tap on the empty map adds a point,</b> as today: drawing stays one tap a point, with Undo on the toolbox.</li>
+      <li><b>A tap on the route or a point shows its facts;</b> what you can do with it is one step away.</li>
+      <li><b>Right-click, or a long press on a phone, shows actions and what's there</b>, since a phone has no hover. On a desktop the hover tip stays.</li>
+      <li><b>The pill at the spot:</b> on a phone, <b>+ Add a point here</b> (or <b>+ Add to my route</b>) sits just above the finger, and the facts go in the planner's peek, as points, stretches and warnings already do (D and C of #233). On a desktop the card opens at the pointer, its action first, like a right-click menu.</li>
+      <li><b>A stretch's settings are one step away</b> (a change to D): facts first, <b>Edit this part ›</b> for D's settings as approved; a right-click or a long press on the route opens them directly.</li>
+    </ul>
+  </section>
+
+  <section class="cv-row" id="s1">
+    <h2>1 · A tap on the route (phones)</h2>
+    <p>The pin marks the spot, and <b>+ Add a point here</b> sits right above it. The peek holds the spot's facts (where on the route, the height and gradient, the way and its name, when you'd be there), the stretch it's on with its warnings, and <b>What's under ›</b> for the map's own card of the trail under the line. The toolbox steps aside while a card is open (D). A tap on the map, Back or ✕ closes the card and adds nothing.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="p-route" data-st='{"card":"route","at":[218,745]}'><figcaption><b>Tap the route</b>The pill at the spot; the facts in the peek. Try the pill, What's under and Edit this part.</figcaption></figure>
+      <figure class="fr phone" id="p-under" data-st='{"card":"under","at":[218,745]}'><figcaption><b>What's under ›</b>The map's own card for the way under the line, as with the planner closed. Back returns to the spot.</figcaption></figure>
+      <figure class="fr phone" id="p-edit" data-st='{"card":"edit","at":[218,745]}'><figcaption><b>Edit this part ›</b>D's settings, as approved: the stretch's sport, how it's drawn, its style, Other ways, Stop here, Avoid this spot.</figcaption></figure>
+      <figure class="fr phone" id="p-holdroute" data-st='{"card":"edit","at":[458,653],"held":true}'><figcaption><b>Hold the route (or right-click)</b>Straight to the part's settings, for those who know what they want; the pill still adds a point.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s2">
+    <h2>2 · A long press on the map (phones)</h2>
+    <p>Hold still for half a second: a ring fills under the finger (a phone's web page can't buzz on an iPhone, so it's shown, not felt). A move of 10 px, or a second finger, is the map's: it pans or zooms, and nothing opens. The card is short, in the order decided: <b>Add to my route</b> at the finger, one line of what's there with <b>More ›</b>, the route's actions, and small at the bottom the coordinates with <b>Copy</b> and <b>Weather here ›</b>.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="p-press" data-st='{"pressing":true,"at":[470,820]}'><figcaption><b>Holding</b>The ring fills in 0.5 s; let go before, and it was a tap (a point at the end).</figcaption></figure>
+      <figure class="fr phone" id="p-spot" data-st='{"card":"spot","at":[470,820]}'><figcaption><b>What's there, and what to do</b>Add to my route puts the point in its place in the route, between the two nearest points, not at the end.</figcaption></figure>
+      <figure class="fr phone" id="p-more" data-st='{"card":"more","at":[470,820]}'><figcaption><b>More ›</b>The full card of what's there; Back to the short one.</figcaption></figure>
+      <figure class="fr phone" id="p-added" data-st='{"added":[[470,820,1]],"toast":"added"}'><figcaption><b>Added in its place</b>Between Via 1 and the finish, where it adds the least; the note says where, with Undo.</figcaption></figure>
+      <figure class="fr phone" id="p-place" data-st='{"card":"place","at":[238,632]}'><figcaption><b>Tap a place's icon</b>Even while drawing, a tap on a place's icon (a campfire site, a toilet, a lean-to, a LIPAS place) shows it: what it is, LIPAS and its website, More › for OpenStreetMap's details on demand; the pill adds it to the route in its place. A tap on a line or open map still adds a point.</figcaption></figure>
+      <figure class="fr phone" id="p-none" data-st='{"card":"spot","at":[470,820],"noRoute":true}'><figcaption><b>No route yet</b>The pill starts one there; a round trip from there, the coordinates and the weather are the same.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s3">
+    <h2>3 · A tap on a point (phones)</h2>
+    <p>D's point card: its name and when you're there first, then the everyday actions by name. <b>Move</b> is the way without dragging (WCAG 2.2's 2.5.7): tap where it goes. Dragging the marker stays.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="p-point" data-st='{"card":"point","pt":1}'><figcaption><b>Tap a point</b>Via 1: there at 10:09, 1.65 km. Make it a stop, stay the night, change sport from here; Move, Remove; the stretch after it.</figcaption></figure>
+      <figure class="fr phone" id="p-move" data-st='{"card":"move","pt":1}'><figcaption><b>Move</b>Tap where Via 1 goes; Cancel keeps it. One step of Undo.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s4">
+    <h2>4 · Desktops: at the pointer</h2>
+    <p><i>The planner beside the map is drawn simply here, on purpose: only what the cards need; the real panel stays as it is (the calmer planner's plan keeps it).</i> A click on the route, and a right-click anywhere, open a card at the pointer, its top-left corner at the click and its action first, as a right-click menu does; near an edge it opens the other way. The hover tip stays. The keyboard does the same: Tab to the map, the arrows move the crosshair, Enter clicks there, Shift+F10 (or the menu key) right-clicks there.</p>
+    <div class="cv-frames">
+      <figure class="fr desk" id="d-route" data-st='{"card":"route","at":[640,490]}'><figcaption><b>Click the route</b>Add a point here at the pointer, the spot's facts, the stretch, What's under ›, Edit this part ›.</figcaption></figure>
+      <figure class="fr desk" id="d-spot" data-st='{"card":"spot","at":[1000,560]}'><figcaption><b>Right-click the map</b>Add to my route first (in its place), one line of what's there with More ›, the route's actions, the coordinates with Copy, Weather here ›.</figcaption></figure>
+      <figure class="fr desk" id="d-edit" data-st='{"card":"edit","at":[1060,300],"held":true}'><figcaption><b>Right-click the route</b>Straight to the part's settings, Add a point here first.</figcaption></figure>
+      <figure class="fr desk" id="d-place" data-st='{"card":"place","at":[740,291],"osm":true}'><figcaption><b>Click a place's icon</b>Its card at the pointer, Add to my route first; More › has opened OpenStreetMap's details.</figcaption></figure>
+      <figure class="fr desk" id="d-key" data-st='{"key":[1000,520]}'><figcaption><b>The keyboard</b>The map focused: the crosshair in the middle, arrows to move, Enter to click, Shift+F10 to right-click there.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s5">
+    <h2>5 · The worst case</h2>
+    <p>360 × 740 in Finnish with long names, and 200 % zoom (a 390 phone's 195 × 422 CSS pixels). The switches turn any frame into these; here they're fixed.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="w-route" data-st='{"card":"route","at":[218,745],"w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 px, Finnish, long names</b>Names wrap, never cut; the pill stays whole.</figcaption></figure>
+      <figure class="fr phone" id="w-spot" data-st='{"card":"spot","at":[470,820],"w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>The long-press card</b>The actions wrap onto a second row rather than shrink.</figcaption></figure>
+      <figure class="fr phone" id="w-200" data-st='{"card":"route","at":[218,745],"z":2}'><figcaption><b>200 %</b>The card scrolls inside half the screen, so a strip of map keeps the spot and the pill in sight; Polku moves the map to put the spot there.</figcaption></figure>
+      <figure class="fr phone" id="w-dark" data-st='{"card":"spot","at":[470,820],"theme":"dark"}'><figcaption><b>Dark</b>The long-press card at night.</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<div class="picker" data-open="true">
+  <div class="pk-groups" role="group" aria-label="Mock-up switches">
+    <div><span>Size</span><button type="button" data-pk="size" data-v="390" aria-pressed="true">390</button><button type="button" data-pk="size" data-v="360" aria-pressed="false">360</button><button type="button" data-pk="size" data-v="200" aria-pressed="false">200 %</button></div>
+    <div><span>Words</span><button type="button" data-pk="lang" data-v="en" aria-pressed="true">English</button><button type="button" data-pk="lang" data-v="fi" aria-pressed="false">Suomi</button></div>
+    <div><span>Data</span><button type="button" data-pk="worst" data-v="0" aria-pressed="true">Normal</button><button type="button" data-pk="worst" data-v="1" aria-pressed="false">Long names</button></div>
+    <div><span>Theme</span><button type="button" data-pk="theme" data-v="light" aria-pressed="true">Light</button><button type="button" data-pk="theme" data-v="dark" aria-pressed="false">Dark</button></div>
+  </div>
+  <button type="button" class="pk-toggle" aria-expanded="true">Switches</button>
+</div>
+
+<script>
+const Q = new URLSearchParams(location.search);
+const BG = Q.get('bg') || 'https://raw.githubusercontent.com/TommiContursi/Polku/c33edbe302eaaaf277315836b3f51f52af5ba941/claude/phase-24-design/mockup-bg/';
+// the route drawn in each map picture: [x, y, km] in the picture's own pixels (from the calmer planner's mock-up)
+const GEO = {
+  phone: { pic: 'phone-mtb-calm.jpg', bw: 780, bh: 1688, km: 3.05, pts: [[80, 874, 0], [130, 800, 0.35], [218, 745, 0.72], [245, 733, 1], [300, 718, 1.2], [305, 690, 1.35], [310, 650, 1.5], [328, 612, 1.65], [377, 616, 2], [440, 655, 2.3], [458, 653, 2.4], [520, 640, 2.65], [600, 646, 3.05]],
+    lon: [23.765, 0.10 / 780], lat: [61.5335, 0.045 / 1688], water: 560, town: 950 },
+  desk: { pic: 'desk-mtb-calm.jpg', bw: 1440, bh: 900, km: 3.05, pts: [[483, 675, 0], [520, 615, 0.25], [580, 520, 0.5], [640, 490, 0.7], [705, 470, 0.85], [743, 456, 1], [830, 425, 1.25], [855, 330, 1.45], [880, 255, 1.65], [955, 262, 2], [1060, 300, 2.3], [1090, 320, 2.4], [1200, 298, 2.7], [1320, 310, 3.05]],
+    lon: [23.742, 0.13 / 1440], lat: [61.5265, 0.03 / 900], water: 230, town: 720 },
+};
+const POINTS = [{ km: 0, kind: 'start' }, { km: 1.65, kind: 'via' }, { km: 3.05, kind: 'end' }];
+// places with an icon in the map pictures (LIPAS's campfire sites); a tap on one shows it, even while drawing
+const PLACES = { phone: [[238, 632], [602, 480]], desk: [[740, 291], [1325, 44]] };
+const T = {
+  en: {
+    add: 'Add a point here', addRoute: 'Add to my route', startHere: 'Start a route here', back: 'Back', close: 'Close',
+    under: 'What’s under', edit: 'Edit this part', more: 'More', copy: 'Copy', weather: 'Weather here',
+    startAt: 'Start here', endAt: 'End here', round: 'Round trip from here', avoid: 'Avoid this spot',
+    at: 'At', there: 'there at', There: 'There at', from: 'from the start', thisPart: 'This stretch', changes: 'Changes apply to this stretch only',
+    sport: 'Sport', follow: 'Follow', straight: 'Straight', water: 'Water', style: 'Style', routes: 'the route’s (Balanced)',
+    other: 'Other ways', stopHere: 'Stop here', profile: 'On the profile',
+    stop: 'Make it a stop', night: 'Stay the night', change: 'Change sport from here', move: 'Move', remove: 'Remove', after: 'The stretch after it',
+    rename: 'Rename', moveHint: 'Tap where it goes', cancel: 'Cancel', addedBetween: 'Added between', and: 'and', undo: 'Undo', addedEnd: 'Added at the end',
+    nums: ['distance', 'from now', 'ascent · descent'], done: 'Done', tapNote: 'A tap on the map adds a point at the end; Undo is on the toolbox.',
+    lake: 'Näsijärvi · lake', forest: 'Forest path · easy', town: 'Kaupintie · residential street', noPath: 'Forest · no path here',
+    warn1: 'Steep descent · 14 % · 80 m', worth: 'Worth a look', fromMap: 'From the map: OpenStreetMap',
+    place: 'Kaupin nuotiopaikka', placeType: 'Campfire site · LIPAS · Tampere', placeFacts: 'Toilet · firewood in summer · lean-to nearby', osmMore: 'OSM details: wheelchair no · drinking water no · fee no', lipas: 'LIPAS', site: 'Website',
+    viaPts: 'Via', start: 'Start', finish: 'Finish', mtb: 'MTB', min: 'min',
+  },
+  fi: {
+    add: 'Lisää piste tähän', addRoute: 'Lisää reitilleni', startHere: 'Aloita reitti tästä', back: 'Takaisin', close: 'Sulje',
+    under: 'Mitä alla on', edit: 'Muokkaa tätä osuutta', more: 'Lisää tietoja', copy: 'Kopioi', weather: 'Sää tässä',
+    startAt: 'Aloita tästä', endAt: 'Lopeta tähän', round: 'Kierros tästä', avoid: 'Vältä tätä kohtaa',
+    at: 'Kohdassa', there: 'perillä', There: 'Perillä', from: 'lähdöstä', thisPart: 'Tämä osuus', changes: 'Muutokset koskevat vain tätä osuutta',
+    sport: 'Laji', follow: 'Polkuja', straight: 'Suoraan', water: 'Vesitse', style: 'Tyyli', routes: 'reitin oma (Tasapainoinen)',
+    other: 'Muita reittejä', stopHere: 'Pysähdy tähän', profile: 'Profiilissa',
+    stop: 'Tee tästä tauko', night: 'Yövy tässä', change: 'Vaihda lajia tästä', move: 'Siirrä', remove: 'Poista', after: 'Seuraava osuus',
+    rename: 'Nimeä', moveHint: 'Napauta, minne se siirtyy', cancel: 'Peru', addedBetween: 'Lisätty väliin', and: 'ja', undo: 'Kumoa', addedEnd: 'Lisätty loppuun',
+    nums: ['matka', 'nyt lähtien', 'nousu · lasku'], done: 'Valmis', tapNote: 'Kartan napautus lisää pisteen loppuun; Kumoa on työkaluissa.',
+    lake: 'Näsijärvi · järvi', forest: 'Metsäpolku · helppo', town: 'Kaupintie · asuinkatu', noPath: 'Metsä · ei polkua',
+    warn1: 'Jyrkkä lasku · 14 % · 80 m', worth: 'Katso', fromMap: 'Kartalta: OpenStreetMap',
+    place: 'Kaupin nuotiopaikka', placeType: 'Nuotiopaikka · LIPAS · Tampere', placeFacts: 'WC · polttopuut kesällä · laavu lähellä', osmMore: 'OSM-tiedot: esteetön ei · juomavesi ei · maksu ei', lipas: 'LIPAS', site: 'Verkkosivu',
+    viaPts: 'Välipiste', start: 'Lähtö', finish: 'Maali', mtb: 'Maastopyöräily', min: 'min',
+  },
+};
+const NAMES = { en: ['Kaupin urheilupuisto', 'Pirunvuoren näköala', 'Tapatoran laituri'], worst: ['Kaupin urheilupuiston pohjoinen pysäköintialue', 'Pirunvuoren näköalapaikan levähdyspaikka', 'Tapatoranlahden uimarannan laituri'] };
+// the way along the route, by km (illustrative)
+const WAYS = [[0.7, 'Gravel path', 'Sorapolku', 'Kaupin ulkoilureitti', 'gravel · 2.5 m wide · MTB S0'], [1.65, 'Forest path', 'Metsäpolku', 'Pirunvuoren polku', 'dirt · 1 m wide · MTB S1 · ↑S1'], [2.4, 'Shore path', 'Rantapolku', 'Näsijärven rantapolku', 'gravel · 1.5 m wide · MTB S0'], [3.05, 'Gravel road', 'Soratie', 'Tapatorantie', 'gravel · 4 m wide']];
+
+let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light' };
+const ic = (id, s = 20) => `<svg class="ic" width="${s}" height="${s}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ------------------------------------------------ geometry
+const kOf = (f) => Math.max(f.W / f.g.bw, f.H / f.g.bh);
+const toScr = (f, [px, py]) => { const k = kOf(f); return [(f.W - f.g.bw * k) / 2 + px * k, (f.H - f.g.bh * k) / 2 + py * k]; };
+const toPic = (f, [x, y]) => { const k = kOf(f); return [(x - (f.W - f.g.bw * k) / 2) / k, (y - (f.H - f.g.bh * k) / 2) / k]; };
+function along(g, km) {
+  const P = g.pts; km = Math.max(0, Math.min(g.km, km));
+  for (let i = 1; i < P.length; i++) if (km <= P[i][2]) { const a = P[i - 1], b = P[i], t = (km - a[2]) / ((b[2] - a[2]) || 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
+  return P[P.length - 1];
+}
+// the route's nearest spot to a picture point: { km, d } (d in the picture's pixels)
+function nearest(g, [x, y]) {
+  let best = { km: 0, d: Infinity };
+  for (let i = 1; i < g.pts.length; i++) {
+    const a = g.pts[i - 1], b = g.pts[i], dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)), px = a[0] + dx * t, py = a[1] + dy * t, d = Math.hypot(x - px, y - py);
+    if (d < best.d) best = { km: a[2] + (b[2] - a[2]) * t, d };
+  }
+  return best;
+}
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+// where Add to my route puts a point: in the stretch where it adds the least, or after the finish; never before the start
+function placeFor(g, p) {
+  const P = POINTS.map((q) => along(g, q.km));
+  let best = { i: P.length - 1, cost: dist(P[P.length - 1], p) };
+  for (let i = 0; i < P.length - 1; i++) { const c = dist(P[i], p) + dist(p, P[i + 1]) - dist(P[i], P[i + 1]); if (c < best.cost) best = { i, cost: c }; }
+  return best.i; // between point i and i + 1; the last index: after the finish
+}
+
+// ------------------------------------------------ facts (illustrative)
+const ele = (km) => Math.round(118 + 18 * Math.sin(km * 2.1) + 7 * Math.cos(km * 5.3));
+const grade = (km) => ((ele(km + 0.05) - ele(km - 0.05)) / 100) * 100;
+const clock = (km) => { const m = 600 + Math.round(km * 5.6); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+const fmtKm = (km) => `${km.toFixed(km < 10 ? 2 : 1).replace(/0$/, '')} km`;
+const wayAt = (km) => WAYS.find((w) => km <= w[0] + 1e-9) || WAYS[WAYS.length - 1];
+function ptName(f, i) {
+  const t = T[f.lang], n = (f.worst ? NAMES.worst : NAMES.en)[i];
+  return n || [t.start, `${t.viaPts} 1`, t.finish][i];
+}
+function spotLine(f, p) {
+  const t = T[f.lang], g = f.g;
+  if (p[1] < g.water) return t.lake;
+  if (p[1] > g.town) return `${t.town} · ${ele(0.2)} m`;
+  return `${t.forest} · ${ele(1.2)} m`;
+}
+const coords = (f, p) => `${(f.g.lat[0] - p[1] * f.g.lat[1]).toFixed(5)}, ${(f.g.lon[0] + p[0] * f.g.lon[1]).toFixed(5)}`;
+
+// ------------------------------------------------ the cards
+const btn = (act, label, icon, cls = 'btn', extra = '') => `<button type="button" class="${cls}" data-act="${act}"${extra}>${icon ? ic(icon, 18) : ''}<span>${esc(label)}</span></button>`;
+function topRow(f, title, backTo) {
+  const t = T[f.lang];
+  return `<div class="ctop">${backTo ? `<button type="button" class="btn quiet back" data-act="${backTo}" aria-label="${esc(t.back)}">${ic('left', 20)}<span>${esc(t.back)}</span></button>` : ''}<span class="ttl">${esc(title)}</span><button type="button" class="btn quiet" data-act="close" aria-label="${esc(t.close)}">${ic('close', 20)}</button></div>`;
+}
+function stretchOf(km) { return km < POINTS[1].km ? 0 : 1; }
+function routeCard(f, st, desk) {
+  const t = T[f.lang], km = st.km, w = wayAt(km), s = stretchOf(km), g = grade(km);
+  const ends = [ptName(f, s), ptName(f, s + 1)], len = POINTS[s + 1].km - POINTS[s].km;
+  const spot = desk ? `<div class="facts"><b>${esc(t.at)} ${fmtKm(km)} · ${ele(km)} m · ${g >= 0 ? '+' : ''}${g.toFixed(0)} %</b><small>${esc(f.lang === 'fi' ? w[2] : w[1])} · ${esc(w[3])} · ${esc(t.there)} ${clock(km)}</small></div>`
+    : `<div class="facts"><b>${ele(km)} m · ${g >= 0 ? '+' : ''}${g.toFixed(0)} % · ${esc(t.there)} ${clock(km)}</b><small>${esc(f.lang === 'fi' ? w[2] : w[1])} · ${esc(w[3])}</small></div>`;
+  const stretch = `<div class="sect"><h4>${esc(t.thisPart)}</h4><b style="overflow-wrap:anywhere">${esc(ends[0])} → ${esc(ends[1])}</b><span class="small-line">${fmtKm(len)} · ${Math.round(len * 5.6)} ${t.min} · ↑${s ? 14 : 28} m ↓${s ? 48 : 14} m</span>${s ? `<div class="warnr">${ic('eye', 18)}<span><b>${esc(t.worth)}:</b> ${esc(t.warn1)}</span></div>` : ''}</div>`;
+  const links = `<div class="chips">${btn('under', `${t.under} ›`, 'info', 'btn small')}${btn('edit', `${t.edit} ›`, 'pencil', 'btn small')}</div>`;
+  if (desk) return `${btn('addpt', t.add, 'plus', 'btn primary')}${spot}<div class="sep"></div>${stretch}${links}`;
+  return `<div class="card">${topRow(f, `${t.at} ${fmtKm(km)}`, null)}${spot}${stretch}${links}</div>`;
+}
+function underCard(f, st, desk) {
+  const t = T[f.lang], w = wayAt(st.km);
+  const body = `<div class="facts"><b>${esc(f.lang === 'fi' ? w[2] : w[1])} · ${esc(w[3])}</b><small>${esc(w[4])}</small><small>Kaupin maastopyöräilyreitit (LIPAS) · ${esc(t.fromMap)}</small></div><div class="chips">${btn('noop', t.avoid, 'avoid', 'btn small')}</div>`;
+  return desk ? `${btn('route', `‹ ${t.back}`, null, 'btn small quiet')}${body}` : `<div class="card">${topRow(f, t.under, 'route')}${body}</div>`;
+}
+function editCard(f, st, desk) {
+  const t = T[f.lang], s = stretchOf(st.km), ends = `${ptName(f, s)} → ${ptName(f, s + 1)}`;
+  const body = `<div class="facts"><b style="font-size:14.5px">${esc(ends)}</b><small>${esc(t.changes)}</small></div>
+    <button type="button" class="sel" data-act="noop"><span>${ic('bike', 18)}</span><span style="flex:1;text-align:left">${esc(t.sport)}: ${esc(t.mtb)}</span>${ic('down', 16)}</button>
+    <div class="seg" role="radiogroup" aria-label="How this stretch is drawn"><button type="button" role="radio" aria-pressed="true" aria-checked="true" data-act="noop">${ic('auto', 16)}${esc(t.follow)}</button><button type="button" role="radio" aria-pressed="false" aria-checked="false" data-act="noop">${ic('line', 16)}${esc(t.straight)}</button><button type="button" role="radio" aria-pressed="false" aria-checked="false" data-act="noop">${ic('water', 16)}${esc(t.water)}</button></div>
+    <button type="button" class="sel" data-act="noop"><span style="flex:1;text-align:left">${esc(t.style)}: ${esc(t.routes)}</span>${ic('down', 16)}</button>
+    <div class="chips">${btn('noop', t.other, 'route', 'btn small')}${btn('noop', t.stopHere, 'pause', 'btn small')}${btn('noop', t.avoid, 'avoid', 'btn small')}${btn('noop', t.profile, null, 'btn small')}</div>`;
+  if (desk) return `${btn('addpt', t.add, 'plus', 'btn primary')}${st.held ? '' : btn('route', `‹ ${t.back}`, null, 'btn small quiet')}${body}`;
+  return `<div class="card">${topRow(f, t.edit, st.held ? null : 'route')}${body}</div>`;
+}
+function spotCard(f, st, desk) {
+  const t = T[f.lang], p = st.at;
+  const line = `<div class="row" style="justify-content:space-between;gap:10px"><span class="facts"><b>${esc(spotLine(f, p))}</b></span>${btn('more', `${t.more} ›`, null, 'btn small')}</div>`;
+  const acts = st.noRoute ? `<div class="chips">${btn('noop', t.round, 'roundtrip', 'btn small')}</div>`
+    : `<div class="chips">${btn('noop', t.startAt, 'flag', 'btn small')}${btn('noop', t.endAt, 'finish', 'btn small')}${btn('noop', t.round, 'roundtrip', 'btn small')}${btn('noop', t.avoid, 'avoid', 'btn small')}</div>`;
+  const foot = `<div class="small-line"><span>${coords(f, p)}</span>${btn('copied', t.copy, 'copy', 'btn small quiet')}${btn('noop', `${t.weather} ›`, 'weather', 'btn small quiet')}</div>`;
+  if (desk) return `${btn('addspot', st.noRoute ? t.startHere : t.addRoute, 'plus', 'btn primary')}${line}<div class="sep"></div>${acts}<div class="sep"></div>${foot}`;
+  return `<div class="card"><div class="ctop"><span class="ttl">${esc(spotLine(f, p))}</span>${btn('more', `${t.more} ›`, null, 'btn small')}<button type="button" class="btn quiet" data-act="close" aria-label="${esc(t.close)}">${ic('close', 20)}</button></div>${acts}${foot}</div>`;
+}
+function placeCard(f, st, desk) {
+  const t = T[f.lang];
+  const body = `<div class="facts"><b>${esc(t.placeType)}</b><small>${esc(t.placeFacts)}</small></div>
+    <div class="chips">${btn('noop', `${t.lipas} ›`, null, 'btn small')}${btn('noop', `${t.site} ›`, null, 'btn small')}${btn('placemore', `${t.more} ›`, null, 'btn small')}</div>${st.osm ? `<div class="sect"><small>${esc(t.osmMore)}</small><small>${esc(t.fromMap)}</small></div>` : ''}
+    <div class="small-line"><span>${coords(f, st.at)}</span>${btn('copied', t.copy, 'copy', 'btn small quiet')}${btn('noop', `${t.weather} ›`, 'weather', 'btn small quiet')}</div>`;
+  if (desk) return `${btn('addspot', t.addRoute, 'plus', 'btn primary')}<div class="facts"><b>${esc(t.place)}</b></div>${body}`;
+  return `<div class="card">${topRow(f, t.place, null)}${body}</div>`;
+}
+function moreCard(f, st, desk) {
+  const t = T[f.lang], p = st.at;
+  const body = `<div class="facts"><b>${esc(spotLine(f, p))}</b><small>dirt · 1 m wide · visible · MTB S0 · ↑S0</small><small>${esc(t.fromMap)}</small><small>${coords(f, p)} · ${ele(1.2)} m</small></div>`;
+  return desk ? `${btn('spot', `‹ ${t.back}`, null, 'btn small quiet')}${body}` : `<div class="card">${topRow(f, t.more, 'spot')}${body}</div>`;
+}
+function pointCard(f, st) {
+  const t = T[f.lang], i = st.pt, q = POINTS[i];
+  return `<div class="card">${topRow(f, ptName(f, i), null)}<div class="facts"><b>${esc(t.There)} ${clock(q.km)} · ${fmtKm(q.km)}</b><small>${esc(`${t.viaPts} ${i}`)} · ${ele(q.km)} m</small></div>
+    <div class="chips">${btn('noop', t.stop, 'pause', 'btn small')}${btn('noop', t.night, 'moon', 'btn small')}${btn('noop', t.change, 'bike', 'btn small')}</div>
+    <div class="chips">${btn('move', t.move, 'move', 'btn small')}${btn('noop', t.rename, 'pencil', 'btn small')}${btn('noop', t.remove, 'trash', 'btn small')}</div>
+    <button type="button" class="sel" data-act="noop"><span style="flex:1;text-align:left;overflow-wrap:anywhere">${esc(t.after)}: ${esc(ptName(f, i))} → ${esc(ptName(f, i + 1))}</span>${ic('right', 16)}</button></div>`;
+}
+
+// ------------------------------------------------ one frame
+const frames = [];
+function view(fr) { const st = fr.st; return { lang: st.lang || PK.lang, worst: st.worst ?? PK.worst === '1', theme: st.theme || PK.theme, z: st.z || (PK.size === '200' ? 2 : 1), w: st.w || (PK.size === '360' ? 360 : 390), h: st.h || (PK.size === '360' ? 740 : 844) }; }
+function render(fr) {
+  const { el, st } = fr, desk = el.classList.contains('desk'), v = view(fr);
+  const f = { g: desk ? GEO.desk : GEO.phone, lang: v.lang, worst: v.worst };
+  f.W = desk ? 1440 : v.w / v.z; f.H = desk ? 900 : v.h / v.z;
+  fr.f = f;
+  el.classList.toggle('dark', v.theme === 'dark');
+  const scr = el.querySelector('.screen'), t = T[f.lang];
+  scr.style.width = `${f.W}px`; scr.style.height = `${f.H}px`; scr.style.setProperty('--k', String(desk ? 1 : v.z));
+  scr.classList.toggle('bigtext', v.z >= 2);
+  scr.style.backgroundImage = `url(${BG}${f.g.pic})`;
+  if (st.at && st.km == null) st.km = nearest(f.g, st.at).km;
+  let html = `<div class="top"><span class="tb brand"><i>${ic('route', 18)}</i></span><span class="tb search">${ic('search', 18)}<span>Search places or paste coordinates</span></span><span class="tb sport">${ic('bike', 18)}</span></div>`;
+  const card = st.card;
+  // added points: a marker each, with straight lines to its neighbours while it's routed
+  for (const [x, y, i] of st.added || []) {
+    const [sx, sy] = toScr(f, [x, y]), P = POINTS.map((q) => toScr(f, along(f.g, q.km)));
+    const a = P[Math.min(i, P.length - 1)], b = P[i + 1], k = kOf(f);
+    const off = (from, to, d) => { const L = Math.hypot(to[0] - from[0], to[1] - from[1]) || 1; return [from[0] + ((to[0] - from[0]) * d) / L, from[1] + ((to[1] - from[1]) * d) / L]; };
+    const a2 = off(a, [sx, sy], 30 * k), b2 = b && off(b, [sx, sy], 30 * k);
+    html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><path d="M${a2[0]},${a2[1]} L${sx},${sy}${b2 ? ` L${b2[0]},${b2[1]}` : ''}" fill="none" stroke="#e11d48" stroke-width="5" stroke-dasharray="8 6" stroke-linecap="round"/></svg><span class="mk" style="left:${sx}px;top:${sy}px">+</span>`;
+  }
+  if (desk) {
+    html += `<div class="panel" aria-label="Route planner"><div class="row"><span class="nums"><span><b>3.05 km</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span></div>
+      ${[0, 1, 2].map((i) => `<div class="wp"><i>${i === 1 ? '1' : ''}</i><span style="overflow-wrap:anywhere"><b>${esc(ptName(f, i))}</b><br><small style="color:var(--muted)">${fmtKm(POINTS[i].km)} · ${clock(POINTS[i].km)}</small></span></div>`).join('')}</div>
+      <div class="dtool" aria-label="Drawing tools"><button type="button" class="btn small" data-act="noop">${ic('auto', 18)}Follow paths</button><button class="tbtn" type="button" data-act="noop" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="Redo">${ic('redo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button><button type="button" class="btn small" data-act="noop">${esc(t.done)}</button></div>`;
+  }
+  if ((card === 'route' || card === 'under' || card === 'edit') && st.km != null) {
+    const s = stretchOf(st.km), a = POINTS[s].km, b = POINTS[s + 1].km;
+    const P = [along(f.g, a), ...f.g.pts.filter((q) => q[2] > a && q[2] < b), along(f.g, b)].map((q) => toScr(f, q).map((n) => n.toFixed(1)).join(',')).join(' ');
+    html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><polyline points="${P}" fill="none" stroke="#fff" stroke-width="${desk ? 13 : 11}" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><polyline points="${P}" fill="none" stroke="var(--accent-bg)" stroke-width="${desk ? 7 : 6}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+  scr.innerHTML = html;
+  // the sheet (phones): the peek with the numbers, or the card
+  let sheetTop = f.H;
+  if (!desk) {
+    const inner = card === 'route' ? routeCard(f, st) : card === 'under' ? underCard(f, st) : card === 'edit' ? editCard(f, st) : card === 'spot' ? spotCard(f, st) : card === 'more' ? moreCard(f, st) : card === 'place' ? placeCard(f, st) : card === 'point' ? pointCard(f, st)
+      : `<div class="row" style="padding-top:2px"><span class="nums"><span><b>${st.added && st.added.length ? '3.52 km' : '3.05 km'}</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span><button type="button" class="btn" data-act="noop">${esc(t.done)}</button></div>`;
+    scr.insertAdjacentHTML('beforeend', `<div class="sheet${card ? ' card-in' : ''}" role="region" aria-label="Route planner"><span class="grab" aria-hidden="true"></span>${inner}</div>`);
+    const sh = scr.querySelector('.sheet');
+    sheetTop = f.H - 8 - sh.offsetHeight;
+    // the toolbox steps aside while a card is open (D); the map's buttons above the sheet
+    if (!card || card === 'move') scr.insertAdjacentHTML('beforeend', `<div class="tbox" style="bottom:${f.H - sheetTop + 12}px" aria-label="Drawing tools"><button type="button" class="modebtn" data-act="noop">${ic('auto', 20)}<span><b>Follow paths</b><small>MTB · Balanced</small></span></button><button class="tbtn" type="button" data-act="${st.added && st.added.length ? 'undo' : 'noop'}" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button></div>`);
+    const room = sheetTop - 76;
+    const colH = 44 * 3 + 52 * 2 + 8 * 4;
+    if (room > colH) scr.insertAdjacentHTML('beforeend', `<div class="cols" style="bottom:${f.H - sheetTop + 12}px"><span class="cb">${ic('locate')}</span><span class="cb">${ic('fit')}</span><span class="fab">${ic('weather', 22)}Weather</span><span class="fab">${ic('layers', 22)}Layers</span></div>`);
+  }
+  // the spot: a pin and the pill (phones), or the card at the pointer (desktops)
+  if (st.at && card && card !== 'point' && card !== 'move') {
+    const [x, y] = toScr(f, card === 'route' || card === 'under' || card === 'edit' ? along(f.g, st.km) : st.at);
+    if (desk) {
+      const inner = card === 'route' ? routeCard(f, st, true) : card === 'under' ? underCard(f, st, true) : card === 'edit' ? editCard(f, st, true) : card === 'spot' ? spotCard(f, st, true) : card === 'place' ? placeCard(f, st, true) : moreCard(f, st, true);
+      scr.insertAdjacentHTML('beforeend', `<span class="pin${card === 'place' ? ' around' : ''}" style="left:${x}px;top:${y}px"></span><div class="pop" role="dialog" aria-label="${esc(card)}">${inner}</div>`);
+      const pop = scr.querySelector('.pop'), w = pop.offsetWidth, h = pop.offsetHeight;
+      const up = y + 8 + h > f.H - 8;
+      pop.classList.toggle('up', up);
+      pop.style.left = `${x + 8 + w > f.W - 8 ? x - 8 - w : x + 8}px`;
+      pop.style.top = `${up ? Math.max(8, y - 8 - h) : y + 8}px`;
+    } else if (y < sheetTop - 10) {
+      const spotty = card === 'spot' || card === 'more' || card === 'place', label = spotty ? (st.noRoute ? t.startHere : t.addRoute) : t.add;
+      scr.insertAdjacentHTML('beforeend', `<span class="pin${card === 'place' ? ' around' : ''}" style="left:${x}px;top:${y}px"></span><button type="button" class="pill" data-act="${spotty ? 'addspot' : 'addpt'}">${ic('plus', 20)}<span>${esc(label)}</span></button>`);
+      const pill = scr.querySelector('.pill'), ph = pill.offsetHeight, pw = pill.offsetWidth;
+      const above = y - 22 - ph > 64; // under the top bar it goes below the spot
+      pill.style.top = `${above ? y - 22 - ph : y + 22}px`;
+      pill.classList.toggle('below', !above);
+      pill.style.left = `${Math.max(8 + pw / 2, Math.min(f.W - 8 - pw / 2, x))}px`;
+    }
+  }
+  if (card === 'point' || card === 'move') {
+    const [x, y] = toScr(f, along(f.g, POINTS[st.pt].km));
+    scr.insertAdjacentHTML('beforeend', `<span class="mk ring2" style="left:${x}px;top:${y}px">${st.pt}</span>`);
+  }
+  if (card === 'move') scr.insertAdjacentHTML('beforeend', `<div class="banner" role="status">${ic('move', 20)}<span>${esc(t.moveHint)}: ${esc(ptName(f, st.pt))}</span>${btn('point', t.cancel, null, 'btn small')}</div>`);
+  if (st.pressing && st.at) { const [x, y] = toScr(f, st.at); scr.insertAdjacentHTML('beforeend', `<svg class="ring ${st.live ? 'go' : 'half'}" style="left:${x}px;top:${y}px" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28"/></svg>`); }
+  if (st.key) { const [x, y] = toScr(f, st.key); scr.insertAdjacentHTML('beforeend', `<span class="cross" style="left:${x}px;top:${y}px"></span><div class="toast" role="status" style="bottom:24px"><span>Map in focus: arrows move the crosshair · Enter clicks · Shift+F10 right-clicks</span></div>`); }
+  if (st.toast) {
+    const msg = st.toast === 'added' ? (() => { const a = st.added[st.added.length - 1], i = a[2]; return i >= POINTS.length - 1 ? t.addedEnd : `${t.addedBetween}: ${ptName(f, i)} ${t.and} ${ptName(f, i + 1)}`; })() : st.toast === 'copied' ? `${coords(f, st.at)} · copied` : t.tapNote;
+    const tb = scr.querySelector('.tbox'), above = tb ? f.H - tb.offsetTop + 10 : f.H - sheetTop + 12;
+    scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${desk ? 24 : above}px"><span>${esc(msg)}</span>${st.toast === 'added' || st.toast === 'tap' ? `<button type="button" data-act="undo">${esc(t.undo)}</button>` : ''}</div>`);
+  }
+}
+
+// ------------------------------------------------ what a tap, a hold and a right-click do
+function hit(fr, x, y) {
+  const f = fr.f, p = toPic(f, [x, y]), k = kOf(f), r = (fr.el.classList.contains('desk') ? 8 : 16) / k;
+  for (let i = 0; i < POINTS.length; i++) if (dist(p, along(f.g, POINTS[i].km)) < 22 / k) return { kind: 'point', i, p };
+  for (const q of PLACES[fr.el.classList.contains('desk') ? 'desk' : 'phone']) if (dist(p, q) < 22 / k) return { kind: 'place', p: q };
+  const n = nearest(f.g, p);
+  if (n.d < r) return { kind: 'route', km: n.km, p };
+  return { kind: 'map', p };
+}
+function act(fr, a) {
+  const st = fr.st;
+  switch (a) {
+    case 'close': fr.st = { added: st.added }; break;
+    case 'route': st.card = 'route'; break;
+    case 'under': st.card = 'under'; break;
+    case 'edit': st.card = 'edit'; st.held = false; break;
+    case 'spot': st.card = 'spot'; break;
+    case 'more': st.card = 'more'; break;
+    case 'placemore': st.osm = true; break; // (a place's OpenStreetMap details, on demand, as a way's card has them)
+    case 'point': st.card = 'point'; break;
+    case 'move': st.card = 'move'; break;
+    case 'copied': st.toast = 'copied'; break;
+    case 'addpt': fr.st = { added: [...(st.added || []), [...along(fr.f.g, st.km), stretchOf(st.km)]], toast: 'added' }; break;
+    case 'addspot': if (st.noRoute) { fr.st = { added: [] }; break; } fr.st = { added: [...(st.added || []), [...st.at, placeFor(fr.f.g, st.at)]], toast: 'added' }; break;
+    case 'undo': { const added = (st.added || []).slice(0, -1); fr.st = { added }; break; }
+    default: return;
+  }
+  render(fr);
+}
+function tapAt(fr, x, y, right) {
+  const st = fr.st, h = hit(fr, x, y);
+  if (st.card === 'move') { fr.st = { added: st.added, toast: null }; render(fr); return; } // (the point moved there: drawn as done)
+  if (st.card && !right) { fr.st = { added: st.added }; render(fr); return; } // a tap beside a card closes it, and adds nothing
+  if (h.kind === 'point') fr.st = { card: 'point', pt: h.i, added: st.added };
+  else if (h.kind === 'place') fr.st = { card: 'place', at: h.p, added: st.added };
+  else if (h.kind === 'route') fr.st = { card: right ? 'edit' : 'route', held: !!right, at: h.p, km: h.km, added: st.added };
+  else if (right) fr.st = { card: 'spot', at: h.p, added: st.added, noRoute: st.noRoute };
+  else fr.st = { added: [...(st.added || []), [...h.p, POINTS.length - 1]], toast: 'tap' };
+  render(fr);
+}
+function bind(fr) {
+  const scr = fr.el.querySelector('.screen'), desk = fr.el.classList.contains('desk');
+  let down = null;
+  const local = (e) => { const r = scr.getBoundingClientRect(), z = r.width / fr.f.W; return [(e.clientX - r.left) / z, (e.clientY - r.top) / z]; };
+  scr.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) { e.stopPropagation(); act(fr, b.dataset.act); } });
+  scr.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button, [data-act]') || e.button !== 0) return;
+    const [x, y] = local(e);
+    down = { x, y, id: e.pointerId, timer: 0 };
+    // a long press (phones; a mouse held still too): 0.5 s without moving 10 px
+    down.timer = setTimeout(() => {
+      const st0 = fr.st; fr.st = { ...st0, pressing: false };
+      const h = hit(fr, x, y);
+      if (h.kind === 'point') fr.st = { card: 'point', pt: h.i, added: st0.added };
+      else if (h.kind === 'place') fr.st = { card: 'place', at: h.p, added: st0.added };
+      else if (h.kind === 'route') fr.st = { card: 'edit', held: true, at: h.p, km: h.km, added: st0.added };
+      else fr.st = { card: 'spot', at: h.p, added: st0.added, noRoute: st0.noRoute };
+      down = null; render(fr);
+    }, 500);
+    if (!desk) { fr.st = { ...fr.st, pressing: true, live: true, at: fr.st.card ? fr.st.at : toPic(fr.f, [x, y]) }; render(fr); fr.st.pressing = false; }
+  });
+  scr.addEventListener('pointermove', (e) => { if (!down) return; const [x, y] = local(e); if (Math.hypot(x - down.x, y - down.y) > 10) { clearTimeout(down.timer); down = null; render(fr); } });
+  scr.addEventListener('pointerup', () => { if (!down) return; clearTimeout(down.timer); const { x, y } = down; down = null; tapAt(fr, x, y, false); });
+  scr.addEventListener('pointercancel', () => { if (down) clearTimeout(down.timer); down = null; });
+  scr.addEventListener('contextmenu', (e) => { e.preventDefault(); if (down) { clearTimeout(down.timer); down = null; } const [x, y] = local(e); tapAt(fr, x, y, true); });
+  // the keyboard (desktops): the crosshair at the map's middle; arrows move it; Enter clicks, Shift+F10 right-clicks
+  if (desk) {
+    scr.tabIndex = 0;
+    scr.setAttribute('role', 'application');
+    scr.setAttribute('aria-label', 'Map: arrows move the crosshair, Enter clicks there, Shift+F10 right-clicks there');
+    scr.addEventListener('keydown', (e) => {
+      const st = fr.st, f = fr.f;
+      if (!st.key && /^Arrow|Enter|ContextMenu|F10/.test(e.key)) st.key = toPic(f, [f.W / 2 + 200, f.H / 2]);
+      if (!st.key) return;
+      const d = { ArrowLeft: [-20, 0], ArrowRight: [20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20] }[e.key];
+      if (d) { e.preventDefault(); st.key = [st.key[0] + d[0], st.key[1] + d[1]]; st.card = null; render(fr); return; }
+      if (e.key === 'Enter' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+        e.preventDefault(); const [x, y] = toScr(f, st.key), key = st.key; tapAt(fr, x, y, e.key !== 'Enter'); fr.st.key = key; render(fr);
+      }
+      if (e.key === 'Escape') { fr.st = { added: st.added }; render(fr); }
+    });
+  }
+}
+
+// ------------------------------------------------ the page
+for (const el of document.querySelectorAll('.fr')) {
+  el.insertAdjacentHTML('afterbegin', '<div class="screen"></div>');
+  const init = JSON.parse(el.dataset.st || '{}');
+  const fr = { el, init, st: JSON.parse(JSON.stringify(init)) };
+  el.insertAdjacentHTML('beforeend', '<button type="button" class="reset">Reset</button>');
+  el.querySelector('.reset').addEventListener('click', () => { fr.st = JSON.parse(JSON.stringify(fr.init)); render(fr); });
+  frames.push(fr);
+}
+const only = Q.get('frame');
+if (only) { document.body.classList.add('single'); document.getElementById(only)?.classList.add('only'); }
+function renderAll() { for (const fr of frames) render(fr); }
+for (const fr of frames) { render(fr); bind(fr); }
+const picker = document.querySelector('.picker');
+picker.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.classList.contains('pk-toggle')) { const open = picker.dataset.open !== 'true'; picker.dataset.open = String(open); b.setAttribute('aria-expanded', String(open)); return; }
+  PK[b.dataset.pk] = b.dataset.v;
+  for (const x of picker.querySelectorAll(`[data-pk="${b.dataset.pk}"]`)) x.setAttribute('aria-pressed', String(x === b));
+  if (b.dataset.pk === 'theme') document.documentElement.dataset.theme = b.dataset.v;
+  renderAll();
+});
+for (const [k, v] of Object.entries(PK)) for (const x of picker.querySelectorAll(`[data-pk="${k}"]`)) x.setAttribute('aria-pressed', String(x.dataset.v === v));
+</script>
+</body>
+</html>
