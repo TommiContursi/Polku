@@ -2,7 +2,7 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-10-20
+## 2026-10-21
 
 ### A calmer planner: the sport, and what it changes ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
@@ -19,6 +19,8 @@ The map's sport, each leg's sport and the sport of the legs you draw next are no
 - With Paddle, the sport menus (the button beside the search and the one at the start of a route) also have your craft: **Sea kayak**, **Canoe** or **SUP**. Polku keeps a canoe or a SUP to calmer water than a sea kayak, so it matters for a round trip on the water too.
 - **Settings** no longer has a sport of its own: the sport is on the button beside the search. Settings lists your speeds for every sport, one line each, and a tap opens them. A change re-times your route when it has legs in that sport ([#87](https://github.com/TommiContursi/Polku/issues/87)).
 - On a desktop 1440 px wide, **Save offline** and **Clear route** are now in **More**, to make room for the sport.
+
+## 2026-10-20
 
 ### A round trip keeps only undo and redo in the toolbox ([#311](https://github.com/TommiContursi/Polku/issues/311))
 
