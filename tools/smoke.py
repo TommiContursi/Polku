@@ -6262,7 +6262,7 @@ START_LIB = """(() => {
     await wait(200);
     if (view() !== 'draw') return [`Draw it opened ${view()}`];
     if (history.state?.polkuWay !== 1) err(`Draw it isn't a step of history (${JSON.stringify(history.state)})`);
-    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar .sport-chip')) err('Draw it has no Ways to begin and sport at its top');
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar + .sport-row')) err('Draw it has no Ways to begin and sport at its top');
     if ($('.pl-way .done') || (desk && p.els.toolDone.offsetParent)) err('Done before the first point in Draw it');
     const hint = () => txt($('.pl-way .way-hint'));
     if (!/the map where you start/.test(hint()) || !/follows the paths between your points/.test(hint())) err(`Draw it says: ${hint()}`);
@@ -6333,7 +6333,7 @@ START_LIB = """(() => {
     click('.pl-way [data-way=loop]');
     await wait(200);
     if (view() !== 'loop' || !p.loop.fromWays) return [`Round trip from the ways: ${view()}`]; // (on main: Round trip opens the old form)
-    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar .sport-chip')) err('the round trip from the ways has no Ways to begin and sport');
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar + .sport-row')) err('the round trip from the ways has no Ways to begin and sport');
     const make = () => $('.pl-way .rt-make');
     if (history.state?.polkuWay !== 1) err(`the round trip from the ways isn't a step of history (${JSON.stringify(history.state)})`);
     if (!make() || !make().disabled) err('Make 3 loops works before there’s a start');
