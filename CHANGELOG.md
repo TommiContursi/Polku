@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-21
 
+### Fixed: the labels under your route's numbers are never cut short ([#356](https://github.com/TommiContursi/Polku/issues/356))
+
+The small words under the planner's numbers, such as "distance", "from now" and "ascent · descent", are a little larger now. Where there's no room for a label on one line, for example on a narrow phone or with large text, it goes onto a second line instead of being cut short with "…". The numbers themselves stay on one line.
+
 ### Done keeps your route open to read ([#233](https://github.com/TommiContursi/Polku/issues/233), [#238](https://github.com/TommiContursi/Polku/issues/238))
 
 **Done** now ends editing instead of closing the planner. Your route stays open to read, check and take along: above its numbers are its name, its sports and **Kept on this device**. The drawing tools go and **More** stays. **Edit**, where **Done** was, takes you back to drawing, and undo still has everything you did.
