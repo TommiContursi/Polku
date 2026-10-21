@@ -913,16 +913,17 @@ STOPS = """(async () => {
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
   if (!rows.some((t) => /^Breaks \(1\)/.test(t)) || !rows.some((t) => /^Nights \(1\)/.test(t))) errs.push(`Time & speed: ${rows.join(' / ')}`);
-  // the point menu has the stop, places to sleep for a night, and the gear switch
-  p.openPointMenu(2, p.markers[2]);
+  // the point's card has the stop, places to sleep for a night, and the gear switch (25d)
+  p.openPointCard(p.points[2]);
   await wait(200);
-  const menu = document.querySelector('.polku-popup .pt-menu');
-  if (!menu || !menu.querySelector('.pt-stop [aria-pressed=true]') || !/Places to sleep nearby/.test(menu.textContent)) errs.push('the point menu: no stop or places to sleep');
-  if (p.menu) p.menu.remove();
-  p.openPointMenu(1, p.markers[1]);
+  const card = document.querySelector('.card-point');
+  if (!card || !card.querySelector('.pt-stop [aria-pressed=true]') || !/Places to sleep nearby/.test(card.textContent)) errs.push('the point’s card: no stop or places to sleep');
+  p.cards.close();
+  p.openPointCard(p.points[1]);
   await wait(200);
-  if (!document.querySelector('.polku-popup .pt-gear input:checked')) errs.push('the point menu: no "Take the bike along"');
-  if (p.menu) p.menu.remove();
+  if (!document.querySelector('.card-point .pt-gear input:checked')) errs.push('the point’s card: no "Take the bike along"');
+  if (!/Change to Paddle/.test(document.querySelector('.card-point')?.textContent || '')) errs.push('the point’s card: no change to Paddle and its minutes');
+  p.cards.close();
   // a night too short to sleep
   const ready2 = new Date((w2.arrive + w2.change + 3600) * 1000);
   p.setStop(2, { on: ready2.getHours() * 60 + ready2.getMinutes() });
@@ -2767,7 +2768,7 @@ BACK_TO_START = """(async (entry) => {
   p.reveal('points');
   const before = p.snapshot(), past = p.past.length;
   if (entry === 'finish') p.markers[p.markers.length - 1].getElement().click();
-  const selector = entry === 'finish' ? '.pt-menu button[title="Add a leg back to the start"]'
+  const selector = entry === 'finish' ? '.card-point button[title="Add a leg back to the start"]'
     : entry === 'toolbar' ? '#pl-tools button[aria-label="Back to start"]' // the desktop toolbar (25a), room for it at 1920
     : 'button[title="Route back to where you started"]';
   const button = document.querySelector(selector);
@@ -2980,17 +2981,17 @@ ROUTE_BITS = """(async () => {
   p.addPoint([23.750, 61.500]);
   p.addPoint([23.770, 61.505]);
   await wait(300);
-  p.openPointMenu(1, p.markers[1]);
+  p.openPointCard(p.points[1]);
   const q = m.project([23.740, 61.495]);
   m.fire('mousedown', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('mousedown') });
   m.fire('click', { point: q, lngLat: m.unproject(q), originalEvent: new MouseEvent('click') });
   await wait(200);
-  if (p.points.length !== 2) errs.push(`a click beside an open menu added a point (${p.points.length})`);
-  if (!document.querySelector('.polku-popup .maplibregl-popup-close-button')) { /* closed by the click: fine */ }
-  p.openPointMenu(0, p.markers[0]);
-  if (!document.querySelector('.polku-popup .maplibregl-popup-close-button')) errs.push('the point menu has no close button');
-  if (!document.querySelector('.polku-popup .pt-depart select')) errs.push('no departure in the start point’s menu');
-  if (p.menu) p.menu.remove();
+  if (p.points.length !== 2) errs.push(`a click beside an open card added a point (${p.points.length})`);
+  if (p.cards.current) errs.push('a click beside an open card left it open');
+  p.openPointCard(p.points[0]);
+  if (!document.querySelector('.card-point .card-x')) errs.push('the point’s card has no close button');
+  if (!document.querySelector('.card-point .pt-depart select')) errs.push('no departure in the start point’s card');
+  p.cards.close();
   p.clear();
   return errs;
 })()"""
@@ -6894,6 +6895,14 @@ def route_view(chrome):
         drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
         if pg.js("JSON.stringify(polku.planner.points)") != line0:
             fails.append(f'{name}: a marker moved in the route’s view')
+        # a tap on a point: its card (25d), and nothing changes; ✕ closes it
+        press(pg, at(pg, "polku.planner.markers[1].getElement()"), f'{name}: via 1', touch)
+        c = pg.js("({ kind: polku.planner.cards.current && polku.planner.cards.current.kind, view: polku.planner.inView(), past: polku.planner.past.length, pts: JSON.stringify(polku.planner.points) })")
+        if c['kind'] != 'point' or not c['view'] or c['past'] != s0['past'] or c['pts'] != line0:
+            fails.append(f'{name}: a tap on a point in the route’s view: {c}')
+        press(pg, at(pg, "document.querySelector('.card .card-x')"), f'{name}: the card’s ✕', touch)
+        if pg.js("!!polku.planner.cards.current"):
+            fails.append(f'{name}: the point’s card’s ✕ left it open')
         # Edit: the drawing tools are back, with undo as it was; a tap adds a point again
         press(pg, at(pg, "polku.planner.els.edit"), f'{name}: Edit', touch)
         e = pg.js("(() => { const p = polku.planner; return { view: p.inView(), mode: !!p.els.modeBtn.offsetParent, undo: !p.els.undo.disabled && !!p.els.undo.offsetParent, past: p.past.length, done: !!p.els.done.offsetParent, ghosts: p.ghosts.length }; })()")
@@ -7264,6 +7273,15 @@ def point_card(chrome):
         time.sleep(0.5)
         if st(pg)['kind']:
             fails.append(f'{name}: the back gesture left the card open')
+        # closed and another opened at once, three times (a quick ✕ and a tap): one step of history, the page stays
+        href = pg.js("location.href.split('#')[0]")
+        pg.js("(() => { const p = polku.planner; for (let k = 0; k < 3; k++) { p.openPointCard(p.points[1 + (k % 2)]); p.cards.close(); } p.openPointCard(p.points[2]); return true; })()")
+        time.sleep(0.6)
+        pg.js("history.back(); true")
+        time.sleep(0.6)
+        r = pg.js("({ href: location.href.split('#')[0], kind: polku.planner.cards.current && polku.planner.cards.current.kind, n: polku.planner.points.length })")
+        if r['href'] != href or r['kind'] or r['n'] != 4:
+            fails.append(f'{name}: cards closed and opened at once, then the back gesture: {r}')
         # Start here and Finish here on a via point; Back to start on the finish; none on a loop
         s = tap_marker(pg, 2, name, touch)
         if not {'Start here', 'Finish here'} <= set(s['buttons']) or 'Back to start' in s['buttons']:

@@ -25,17 +25,33 @@ export class CardHost {
     this.pad = pad;
     this.stack = []; // [{ card, at, beside, from }], the open one last
     this.depth = 0; // steps of history the cards pushed
-    this.skip = 0; // pops of our own to let by
+    this.skip = 0; // steps back of our own still to come (history.go() is asynchronous)
     this.popup = null;
     this.folded = null;
     this.focusBack = null;
     addEventListener('popstate', () => {
-      if (this.skip) { this.skip--; this.onPop(); return; }
+      if (this.skip) { this.skip--; this.onPop(); this.syncHistory(); return; }
       if (!this.depth) return;
       this.depth--;
       this.onPop();
       this.stepBack();
     });
+  }
+
+  // One step of history for each card open, no more and no fewer: pushed for a card opened, gone back over for one
+  // closed. While a step back of our own is on its way, nothing is pushed: it would be the one gone back over.
+  syncHistory() {
+    if (this.skip) return;
+    const want = this.stack.length;
+    while (this.depth < want) {
+      history.pushState({ ...(history.state || {}), polkuCard: this.depth + 1 }, '');
+      this.depth++;
+    }
+    if (this.depth > want) {
+      this.skip++;
+      history.go(want - this.depth);
+      this.depth = want;
+    }
   }
 
   get current() { return this.stack.length ? this.stack[this.stack.length - 1].card : null; }
@@ -50,24 +66,18 @@ export class CardHost {
     }
     this.folded = null;
     const entry = { card, at, beside, from };
+    // from the card open now: Back goes back to it; else a card of its own, and the ones before it go (their history too)
     if (from && typeof from === 'object' && this.stack.some((e) => e.card === from)) this.stack.push(entry);
-    else {
-      // a card of its own: the cards before it go, and their history with them
-      if (this.depth > 1) { this.skip++; history.go(-(this.depth - 1)); this.depth = 1; }
-      this.stack = [entry];
-    }
-    if (this.stack.length > this.depth) {
-      history.pushState({ ...(history.state || {}), polkuCard: this.depth + 1 }, '');
-      this.depth++;
-    }
+    else this.stack = [entry];
+    this.syncHistory();
     this.render({ fresh: true });
   }
 
   // Back, Escape: one card back; from the first, closed. With steps in history, the browser's (its popstate does it)
   back() {
     if (!this.stack.length) return;
-    if (this.depth > 0) history.back();
-    else this.stepBack();
+    if (this.depth > 0 && !this.skip) history.back();
+    else { this.stepBack(); this.syncHistory(); }
   }
   stepBack() {
     if (this.folded) { const f = this.folded; this.folded = null; f.cancel(); }
@@ -77,8 +87,8 @@ export class CardHost {
 
   close() {
     if (!this.stack.length && !this.box) return;
-    if (this.depth) { this.skip++; history.go(-this.depth); this.depth = 0; }
     this.closeNow();
+    this.syncHistory();
   }
   closeNow() {
     const f = this.folded;
