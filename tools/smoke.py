@@ -5338,8 +5338,10 @@ def nextleg(chrome):
     # the panel's place can change from the start too (its header waits while the start shows)
     press(pg, pg.js("nlT.at('.pl-way .way-dock')"), f'{name}: the start’s Move the planner', False)
     time.sleep(0.5)
-    if pg.js('polku.planner.layout()') != 'bottom':
-        fails.append(f"{name}: the start's Move the planner left it at {pg.js('polku.planner.layout()')}")
+    # at the bottom (a sheet's layout on a desktop), and the button now says it moves it back
+    d = pg.js("({ layout: polku.planner.layout(), label: document.querySelector('.pl-way .way-dock')?.getAttribute('aria-label') })")
+    if d != {'layout': 'sheet', 'label': 'Move the planner to the left'}:
+        fails.append(f"{name}: the start's Move the planner: {d}")
     press(pg, pg.js("nlT.at('.pl-way .way-dock')"), f'{name}: the start’s Move the planner back', False)
     time.sleep(0.5)
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', False)

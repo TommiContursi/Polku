@@ -3815,7 +3815,7 @@ export class Planner {
   dockX() {
     if (!this.sideMQ.matches) return null;
     const side = this.layout() === 'side', label = side ? 'Move the planner to the bottom' : 'Move the planner to the left';
-    return h('button', { type: 'button', class: 'tool way-x way-dock', 'data-k': 'dock', 'aria-label': label, title: label, onclick: () => this.setDock(side ? 'bottom' : 'left'), html: icon(side ? 'panelBottom' : 'panelLeft', 19) });
+    return h('button', { type: 'button', class: 'tool way-x way-dock', 'data-k': 'dock', 'aria-label': label, title: label, onclick: () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), html: icon(side ? 'panelBottom' : 'panelLeft', 19) });
   }
   // phones' way out of the planner: Close on the ways to begin, where nothing is done yet (decided 2026-10-20), Done after the first point
   doneBtn(label = 'Done') { return h('button', { type: 'button', class: 'btn done', 'data-k': label.toLowerCase(), title: 'Close the planner (R)', onclick: () => this.setActive(false) }, label); }
@@ -4126,6 +4126,7 @@ export class Planner {
     this.renderDockBtn();
     this.setSheetState(store.get('sheetState', {})[this.layout()], { remember: false });
     this.app.onActiveChange(this.active); // padding vars, button states
+    this.renderStart(); // the start's own button says where the panel goes next
     requestAnimationFrame(() => this.chart.draw());
   }
 
