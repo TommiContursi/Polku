@@ -33,7 +33,8 @@ The one list of what's decided, what waits for the user and what's next. The oth
 **Next**
 1. #356's fix the cards need: the route's numbers' labels wrap (its own Fix PR).
 2. Then #352 is restyled to Revision 4's frames as 1a, then 1b.
-3. Then parts 2 to 6, in the order below.
+3. Before parts 2 to 4: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) get a Revision 4 version behind a switch: the same rows, warning box, switch and words as the cards, and nothing else changed. The user chooses it before part 2.
+4. Then parts 2 to 6, in the order below.
 
 > **For agentic workers:** use superpowers:executing-plans for one part at a time. Steps use checkboxes (`- [ ]`). AGENTS.md wins where they differ: no subagents to verify or run the suite.
 
@@ -195,7 +196,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - Back, Escape, the phone's back gesture and a tap on the map close the card; the tap adds nothing.
 - **Undo and redo stay** above the card while it's open; the rest of the toolbox steps aside (decision 13).
 - **The route's view:** the numbers, At this point (it still works), the start's leaving time, The stretch after it, and the note with Edit [r-view-point].
-- At 200 % and at 360 × 740 in Finnish, as "How every card is built" says [r-200, r-fi].
+- At 200 % and at 360 × 740 in Finnish, as "How every card is built" says [r-200, r-fi]; in Hike [r-hike-point] and dark [r-dark] too.
 
 **Files:**
 - Create: `js/card.js`, `CardHost` and the card's parts (`head()`, `nums()`, `group()`, `item()`, `mainButton()`, `lockNote()`); `js/cards.js`, the cards' contents, starting with `pointCard()`.
@@ -305,7 +306,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 **Title:** Phase 25d: Check says how serious and how sure.
 
 **For people:**
-- Heads-up becomes three groups, each a heading: **Read before you go**, **Worth a look**, **Not checked** [jc-check].
+- Heads-up becomes three groups, each a heading: **Read before you go**, **Worth a look**, **Not checked** [jc-check; the Check tab itself: chk-phone, chk-paddle, chk-desk].
 - Each item says where it comes from: "Live · Fintraffic, 18:40", "From the map · OpenStreetMap", "An estimate · the terrain model", "Calculated · the sun's times".
 - A source that didn't answer is in Not checked, with Retry: Fintraffic, trail details, winter ways, the weather, the water's sources, the terrain.
 - It stays there until the source answers. A later note can't replace it (#265).
@@ -382,6 +383,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - A stretch a source didn't cover is dashed on the route: a terrain gap, a water leg routed without a source. A source missing for the whole route says so in words, with no marker [jc-rocks].
 - **The planner put away:** the triangles stay with the route. A tap opens a card with Avoid and Open in the planner [jc-closed].
 - **At 200 %** the item's card keeps what, where, ‹ ›, Back and All in Check [jc-200].
+- **Paddle, with the timeline open** [jc-paddle]: the row, the toolbox and the map's buttons ride above the timeline.
+- **A forecast item is for the departure the timeline shows** [jc-paddle-step]: "Rough water, at 13:00" says the time, and moving the timeline checks again; its source says it's an estimate from the forecast.
 
 **Files:**
 - Modify: `js/planner.js`: `drawHeads()`, `openItemCard()`, `stepItem()`; `els.readRow` in `buildPanel()`; `focusRange()` lights through `routeLit`.
@@ -417,7 +420,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 **Title:** Phase 25d: the route's list in sections, with Reorder.
 
 **For people:**
-- **Route's list is sections** [jd-multi]. A new one starts where the sport changes, at a stop and at a night.
+- **Route's list is sections** [jd-multi]. A new one starts where the sport changes, at a stop and at a night: three days with nights are a section a day, each night with the morning's start [jd-days]. A 52-point route has two breaks and three sections, the points that only shape the line folded [jd-long].
 - Each section: its sport and its two ends; its distance, time and climb; a short forecast for its end ("9° · 4 m/s", the rest a tap away in Go); its warnings, which open the item on the route.
 - **Point rows** for the points you see: the name, then "there at 07:58 · 5.7 km · Via 4", and a stop, night or change of sport.
 - **Stretch rows** between them: "5.7 km · 31 min · ↑108 m · via 3 shaping points". An arrow unfolds the shaping points.
@@ -546,10 +549,10 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 **For people:**
 - **What's here ›** [p-more]: your sport's details first, then the other sports', then the spot: its height, its coordinates with **Copy**, and when it was last checked.
-- **A place's What's here** is grouped [p-placemore]: at the site, getting there, when it's open, last checked, links. A toilet has its fee, opening hours, seasons, wheelchair access, its kind and who runs it, as far as the map knows.
+- **A place's What's here** is grouped [p-placemore, d-place on a desktop]: at the site, getting there, when it's open, last checked, links. A toilet has its fee, opening hours, seasons, wheelchair access, its kind and who runs it, as far as the map knows.
 - **All OpenStreetMap details** [p-osm]: the map's own data, asked for when you press it, for a way or a place.
 - **Not right?** on every card [p-notright]: OpenStreetMap's note page at the spot, which needs no account, or its editor for that way or node. LIPAS's page for a LIPAS place.
-- **The sport orders the facts, never hides them** [w-hike]. **A missing fact says so** [w-missing].
+- **The sport orders the facts, never hides them** [w-hike, r-hike-spot]. **A missing fact says so** [w-missing]. At 200 % [w-200] and in the dark [w-dark] as every card.
 - **One card system:** with the planner put away, the map's own cards for a way, a place and a LIPAS route or place open in the same card (`CardHost`, at the spot) with the same parts and levels; `js/inspect.js`'s renderers give What's here its content. Ships, cameras, sea marks, road works and the water's depth keep their own cards.
 
 **Files:**
@@ -604,6 +607,9 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 ---
 
 ## Not in 25d
+
+- The planner mock-up's frames not built: D's tap on the line opening the stretch's card at once [jd-maptap], replaced by #345's route card; the options not chosen for the list [jd-v2, jd-v3, jd-v3e]; section 6's waypoint list [wp-*], replaced by D; section 5's peek row [chk-peek], replaced by C's row [jc-peek].
+- The planner mock-up's other sections are built: A (the start) and B (the sport) in 25b, 1 (the toolbox) and 3 (More) in 25a, 2 (round trips) in 25b, 4 (Done and the route's view) in 25c. Section 7 (the worst cases) applies to every part; section 8 is today's planner, for comparison.
 
 - A form in Polku that posts a note to OpenStreetMap: #347.
 - A swipe below the peek that puts the route away: #338.
