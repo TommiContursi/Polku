@@ -11,7 +11,7 @@ The implementation plan for the last part of Phase 25. What's still to do, and i
 
 **Goal:** a tap on a point, the route, a warning or a place shows one card; a long press or a right-click shows what's there and what you can do; Check sorts every Heads-up item by how serious and how sure.
 
-**Architecture:** one card component (`js/card.js`, `CardHost`) shows every card, the map's own cards included: in the planner's peek on a phone, at the pointer on a desktop, at the spot with the planner put away. Every card is built from the same parts (below), to its frame. The cards' contents go in `js/cards.js`, which builds them from what the planner gives it; `js/planner.js` (5,700 lines) keeps the actions. The facts come from one module (`js/facts.js`), ordered by sport. Heads-up items get a group and a source where each is made.
+**Architecture:** one card component (`js/card.js`, `CardHost`) shows every card, the map's own cards included: in the planner's peek on a phone, at the pointer on a desktop, at the spot with the planner put away. Every card is built from the app's own controls (below), to its frame. The cards' contents go in `js/cards.js`, which builds them from what the planner gives it; `js/planner.js` (5,700 lines) keeps the actions. The facts come from one module (`js/facts.js`), ordered by sport. Heads-up items get a group and a source where each is made.
 
 **Tech stack:** plain ES modules, MapLibre, `tools/smoke.py` with headless Chrome. Nothing new to install.
 
@@ -48,7 +48,7 @@ Each has a recommendation. The plan is written with it. 1 to 8 were approved at 
 6. **In the route's view** (revised), a card shows what works there (a point's stop or night, the start's leaving time) and ends with the planner's own note, "You're not editing: the route stays as it is.", with **Edit** [r-view-point, r-view-route]. What only editing can do isn't shown, and nothing switches to editing on its own. *Why:* the Route tab already says it so (25c), and a card shows only what can be done now.
 7. **With the planner put away,** a card opens at the spot, on phones too. The peek holds cards only while the planner is open.
 8. **On a desktop,** a card from the list opens beside the panel at its row [jd-desk]. A card from the map opens at the pointer [d-route].
-9. **One look for every card, the ⋯ menu's** (below). *Why:* the cards as approved were walls of equal buttons, each card in a different style.
+9. **The cards use the app's own controls** (below): rows like the ways to begin, actions like the ⋯ menu, the main action like Make 3 loops, switches like Distance · Time, chips like the lengths, Back in words. *Why:* the cards as approved were walls of equal buttons, and the first revision made its own copies of controls the app already has.
 10. **Start here and End here, on a point and on a spot,** each with one line on what it does. On a point: "The part before it is removed, Undo brings it back", "The part after it is removed, Undo brings it back". On a spot: "Adds a new start point", "Adds a new end point". **End**, not finish, on every card and note.
 11. **What's here ›** on every card, for the map's details: one name instead of What's here and More.
 12. **Only what can be done now:** no route, only Start a route here and Round trip from here; a spot by the line, Add a point here; in the route's view, no pill.
@@ -73,18 +73,34 @@ Every part's requirements include these.
 
 ### How every card is built
 
-The revised mock-up draws each part; build to it, and check it side by side (Every part's steps).
+**From the app's own controls, nothing new** (decided 2026-10-21, after the user compared the cards with the start view). The list of the app's controls, with their classes and where they drift, is on #345. The mock-up's CSS is a copy of the app's, with the same class names; its section 0 shows the app's screenshots, the copy and the cards side by side [s0].
 
-- **The top row:** Back at the left when the card came from somewhere (the list, Check, another card), never from the map; the thing's own mark from the map (a point's marker, a stretch's two markers and its line, a spot's pin, a place's icon, a warning's sign); its name in 17 px weight 700 with one line under it; ✕ at the right.
-- **Three numbers at most,** as the route's summary has them: the value 21 px weight 700 in tabular figures, its label under it in 12.5 px; a hairline between them, no grey tiles. A grade has its word under it ("S1", then "fairly easy", then "difficulty"). A missing number is a dashed box that says so: "? difficulty not mapped". A number never breaks.
-- **One main thing stands out:** the pill at the finger on the map (Add a point here, Add to my route, Start a route here), or a full-width filled button in the card (Edit this stretch, Avoid it, Retry), or a point's **At this point** switch. Never two.
-- **The rest in groups, as the ⋯ menu has them:** a short heading in small capitals (At this point, Edit this point, Your route, How you go, On this stretch, Look out for); each item an icon, its name and one muted line on what it does; a value in the accent colour and › where it opens a choice (Sport from here: MTB ›). **Remove** apart under a hairline, in red, with "Undo brings it back".
-- **The bottom row** of a spot's and a place's cards: Share, Weather here ›, Not right?.
-- **The route's view:** the planner's own note and Edit (decision 6).
-- **Narrow (200 %, a small phone):** Back, undo, redo and ✕ on a row of their own, the title the card's whole width; the numbers one to a row; the switch in a column; the mark hidden at the narrowest. Words break only at soft hyphens.
-- **The peek:** a card takes 52 % of the window at most on a phone, and scrolls inside, so the point or the spot stays in sight above it. On a desktop the card stays on the screen and scrolls inside.
+| In a card | The app's control | As in |
+|---|---|---|
+| Back, in words, and ✕ on a row of their own | `way-bar`, `btn small quiet way-back` ("‹ Pirunvuoren polku": where it goes back to), `tool way-x` | "‹ Ways to begin" |
+| The name and its line | `way-head`, `way-hint` | "Round trip from your start" |
+| Three numbers | `sheet-sum`, `sum-item` | the peek's summary |
+| A row that opens the next step (This stretch, What's here, Edit this stretch, The stretch after it, Sport from here, Places to sleep nearby) | `way-tile` with `way-ic`, `way-t`, `way-chev` | the ways to begin |
+| A choice with its value (Leave at, Go on at, Route style) | `stylebtn` with `two` | Route style, Direction |
+| A switch (At this point: Pass by, Stop, Night; how it's drawn) | `seg full rt-unit`, the chosen one ticked | Distance · Time |
+| Minutes (a stop, a changeover) | `rt-chips` `chip`, the chosen one ticked, Other… for the rest | the round trip's lengths |
+| The one main action (Edit this stretch, Avoid it, Add a point here on a desktop) | `btn primary big` with `rt-make-t` | Make 3 loops |
+| Actions in a group (Edit this point, Your route, On this stretch, Sport from here's list) | `menu-h`, `menu-item two-line` (`role="menuitemradio"` and `cur` for the sports), `hr`, `menu-item danger menu-apart` for Remove | the ⋯ menu |
+| The route's view | `pl-viewnote` with its `btn` Edit | the Route tab (25c) |
+| Take the bike along | `tg` | Settings |
+| A warning on a stretch | `li` | Check |
+| What's here's facts | `insp-row`, `insp-info` for the source | the map's card |
+| Share, Weather here, Not right? | `way-chips` `chip` | Where I am |
+| Rename | `wpl-name` | the list |
+
+- **In the code,** the cards use these classes and `css/app.css`'s rules for them: no copies under new names. An action group is built by the same function as the ⋯ menu's items (taken out of `popMenu()` in `js/ui.js`, so both share it).
+- **New, and only these** (each in the mock-up's section 0, for the user's OK): the thing's own mark from the map (`card-mark`), a missing number's dashed box (`sum-item miss`, #345), a menu that sits in a card (`menu in-card`), and the pill at the finger (#345).
+- **A fix the cards need first:** the route's numbers' labels wrap at 12.5 px instead of 11 px cut with "…". It's in the controls' own Fix PR, which also fixes the summary in the peek, and lands before 1a.
+- **Not decided yet:** icons in menu items, black (the ⋯ menu now) or green (the start's rows); the chosen chip, green with a border (the start) or black (Layers). The cards follow what the user picks in the controls' Fix PR.
+- **The peek:** a card takes 52 % of the window at most on a phone and scrolls inside, so the point or the spot stays in sight above it. On a desktop the card stays on the screen and scrolls inside.
+- **200 %:** Back and ✕ are already on a row of their own (`way-bar`); undo and redo join it as `tool way-x way-dock`; the mark hides at the narrowest. The switch keeps its words (`pl-way .rt-unit`).
 - **The words:** the name first; one short line under it; no facts strung with dots, no brackets ("Forest path, 0.72 km from the start"; "Easy to ride, on dirt"). "There at", never "you're here". **Edit this stretch**, never "Edit this part". The ways are the app's: **Follow paths**, **Straight line**, **Over water**. Notes use the points' numbers ("Point added after Via 1"), as #345 decided: the marker shows the number, and long names wrap. Not right? says "Its mappers can fix what you tell them."
-- **One short word a grade,** in `js/facts.js` beside the legend's long ones in `js/config.js`: S0 easy, S1 fairly easy, S2 medium, S3 hard, S4 very hard, S5 and S6 extreme; T1 easy, T2 medium, T3 hard, T4 to T6 alpine.
+- **One short word a grade,** in `js/facts.js` beside the legend's long ones in `js/config.js`: S0 easy, S1 fairly easy, S2 medium, S3 hard, S4 very hard, S5 and S6 extreme; T1 easy, T2 medium, T3 hard, T4 to T6 alpine. It goes on its own line under the grade.
 
 ## Review focus
 
@@ -119,6 +135,7 @@ Each part below gives its own checks and what to build. These steps wrap them.
 - [ ] **Run the new group** on the branch's own server (`python3 serve.py 8771`, `POLKU_URL=http://localhost:8771/`). Expected: ok.
 - [ ] **Run the groups the part names.** Then the whole suite, from a frozen worktree on a server started from Bash. Expected: ok, but for a known flaky check (#314, #340, #292), each with its evidence.
 - [ ] **Look at it as a person,** in the browser pane: 1440 × 900 and 390 × 844, MTB and paddle, a route drawn, the timeline open; 360 × 740 in Finnish; 200 %; dark.
+- [ ] **The app's controls only:** `css/app.css` gets no new class for a control the app already has (no `c2-`, no copy of `way-tile`, `seg`, `chip`, `btn`, `menu-item` under another name); new classes are only the four in "How every card is built". The mock-up's section 0 still matches the app; if the app's controls changed, copy them into the mock-up again.
 - [ ] **Beside its frame:** open the part's frames in the revised mock-up (`?frame=<id>`, Cards: Revised) at the same size as the app, and compare the two screenshots side by side, at 390 × 844 and 1440 × 900, light and dark. A difference is a bug unless this plan says why.
 - [ ] **The regression list** below, as a person would, at 390 × 844 and 1440 × 900.
 - [ ] **Screenshots** before and after with `tools/shoot.py`, on `pr-screenshots` under the branch.
@@ -159,7 +176,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 **Files:**
 - Create: `js/card.js`, `CardHost` and the card's parts (`head()`, `nums()`, `group()`, `item()`, `mainButton()`, `lockNote()`); `js/cards.js`, the cards' contents, starting with `pointCard()`.
 - Modify: `js/planner.js`: `openPointCard()` replaces `openPointMenu()`; `renderMarkers()`; `onMapClick()`; `pickOnMap()`; `movePoint()`; `setSportFrom()`; the toolbox's `placeToolsNow()` (undo and redo stay).
-- Modify: `css/app.css`: the card's parts, from the mock-up's `.c2-*` rules.
+- Modify: `css/app.css`: only the four new parts (`card-mark`, `sum-item miss`, `menu in-card`, the pill); everything else is the app's existing classes.
 - Test: `tools/smoke.py`, new group `pointcard`; update `stops`, `multi`, `backtostart`, `routeview`.
 
 **Interfaces:**
@@ -167,6 +184,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
   - `class CardHost`, `constructor(map, { peek: HTMLElement, where: () => 'peek' | 'float', onChange: (card | null) => void })`.
   - `open(card, { at: [lng, lat] | null, beside: DOMRect | null, from: card | string | null })`. `from` is the card it came from, or the place: `'map'`, `'list'`, `'check'`, `'row'`, `'section'`. A card is `{ kind, key, title, sub, mark, build: (body) => void, alive: () => boolean, pill: { label, icon, fn } | null }`.
   - `back()` returns where the card came from as it was: another card, the list at its scroll and unfolded rows, Check at its height (parts 3 and 4 need this). `close()`, `refresh()` (builds the open card again; closes it when `alive()` is false), `get current()`.
+  - The card's top, numbers, rows, switches, chips and groups are the app's controls ("How every card is built"); `js/card.js` builds them with the app's classes, and the action groups with the item builder taken out of `popMenu()`.
   - Every card's history goes through `CardHost` (its `onPop` meets the planner's `pushWay()`); no card pushes its own.
   - The pill: placed by `CardHost` above the spot on a phone, as the card's first button on a desktop (1b and 5 use it).
   - A card is a `region` named by its title. The focus goes to its title when it opens, and back where it was when it closes.
@@ -194,10 +212,11 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
   - Sport from here → Paddle: legs 1 and 2 paddle, leg 0 as it was, one step of Undo; legs 1 and 2 never `auto`.
   - No card's text has " · " in it; no number's value is taller than one line.
   - The card's height ≤ 52 % of the window on the phone; the point's marker above it, on screen.
+  - The card's controls are the app's: its rows are `.way-tile`, its switch `.seg.rt-unit`, its minutes `.rt-chips .chip`, its groups `.menu-item.two-line` under `.menu-h`, Back `.way-back` with words; no element in the card has a class `css/app.css` didn't have before, but for the four new ones.
   - At 200 %: undo, redo and ✕ in the card's top row, the title below them; at 360 × 740 in Finnish with a 40-letter name, no "…", no text past the card.
   - The route's view: the switch works and stays in the view; no Move, Rename, Start here, End here, Sport from here or Remove; the note's Edit goes back to editing.
   - The end on a loop: no Back to start; a loop's via point: Start here with the loop's line, no End here.
-- [ ] **Build** each card to its frame (Cards: Revised). Today's functions do the work behind the new controls (`setStop()`, `stopEditor()`'s times, `listStays()`, `setCarry()`, `startAt()`, `finishAt()`, `backToStart()`, `removePoint()`), but none of today's menu controls is reused as it looks: no select, no full-size button rows. The peek is `els.card` in the header's `sheet-head-in`, measured by `measureSheet()`. The float is a `maplibregl.Popup` (`polku-popup`), kept on screen by `keepInView()`.
+- [ ] **Build** each card to its frame (Cards: Revised), from the app's controls. Today's functions do the work behind them (`setStop()`, `stopEditor()`'s times, `listStays()`, `setCarry()`, `startAt()`, `finishAt()`, `backToStart()`, `removePoint()`), but none of today's point-menu controls is reused as it looks: no select, no `seg small`, no full-size button rows. The peek is `els.card` in the header's `sheet-head-in`, measured by `measureSheet()`. The float is a `maplibregl.Popup` (`polku-popup`), kept on screen by `keepInView()`.
 - [ ] **Groups to run:** `pointcard stops multi backtostart routeview editing toolbox drawer routebits`.
 
 ### 1b. The route's card and a stretch's card

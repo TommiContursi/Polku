@@ -222,139 +222,172 @@ button.warnr span { flex: 1; font-weight: 600; }
 .bigtext .sheet, .bigtext .pop { font-size: 14px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-/* ------------------------------------------------ Revised cards (2026-10-21, after the user's second review)
-   One anatomy for every card, in the ⋯ menu's look: the thing's own mark and its name; three numbers as the route's
-   summary has them; one main action that stands out (a pill at the finger, a filled button, or the point's switch);
-   the rest quieter, in groups with short headings, each item with one line on what it does; Remove apart, in red.
-   The route's view shows the planner's own "You're not editing" note instead of what only editing can do. */
-.v2 .card { gap: 14px; container-type: inline-size; }
+/* ================================================================ The app's own controls
+   Copied from css/app.css at 615d2d7, with the same class names, so what is approved here is what gets built.
+   Don't change them here: change css/app.css, then copy again. Scoped under .app, since the mock-up's own chrome
+   (its map buttons, the picker) uses some of the same names. Phone frames take the app's phone and touch rules (its
+   max-width: 720px and pointer: coarse blocks), scoped to .fr.phone. */
+.app { --accent: #1f6f4a; --accent-2: #2f8f62; --accent-soft: #e3f1e9; --accent-bg: #1f6f4a; --surface: rgba(255, 255, 255, 0.94); --surface-solid: #ffffff; --surface-2: #f3f4f1; --text: #1c2420; --muted: #5f6b65; --line: rgba(28, 36, 32, 0.12); --shadow: 0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12); --good: #16a34a; --ok: #ca8a04; --warn: #ea580c; --bad: #dc2626;
+  font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); }
+:is(.fr.dark, .ctl.dark) .app { --accent: #3fb07a; --accent-2: #56c48f; --accent-soft: rgba(63, 176, 122, 0.16); --accent-bg: #237a52; --surface: rgba(24, 28, 26, 0.94); --surface-solid: #181c1a; --surface-2: #232825; --text: #e8ece9; --muted: #9aa69f; --line: rgba(232, 236, 233, 0.12); --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4); }
+.app button { font: inherit; color: inherit; }
+.app .ic { flex: none; display: block; }
+/* (the mock-up's chrome defines .btn and .seg too: undo what of it the app's rules don't set) */
+.app .btn, .app .seg button, .app .chip { min-height: 0; justify-content: normal; }
+.app .seg { grid-template-columns: none; }
+/* buttons */
+.app .btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px; }
+.app .btn:hover { background: var(--surface-2); }
+.app .btn.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: #fff; }
+.app .btn.quiet { border-color: transparent; background: transparent; }
+.app .btn.quiet:hover { background: var(--surface-2); }
+.app .btn.big { justify-content: center; width: 100%; height: 52px; border-radius: 14px; font-size: 17px; }
+.app .rt-make-t { display: grid; line-height: 1.2; }
+.app .rt-make-t small { font-size: 12px; font-weight: 500; opacity: .85; }
+.app .tool { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; }
+.app .tool:hover { background: var(--surface-2); }
+/* a step of the planner's start: its container, its top row, Back in words, its heading, ✕ */
+.app.pl-way, .app .pl-way { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; gap: 10px; padding: 2px 2px 4px; min-width: 0; }
+.app .way-head { display: flex; align-items: flex-start; gap: 8px; }
+.app .way-head > :first-child { flex: 1; min-width: 0; }
+.app .way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
+.app .way-bar .way-back { min-width: 0; }
+.app .way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
+.app .way-bar .way-x { flex: none; margin: 0 0 0 auto; }
+.app .way-bar .way-dock + .way-x { margin-left: 0; }
+.app .way-back { height: 44px; padding: 0 10px 0 4px; color: var(--accent); font-size: 15px; font-weight: 650; }
+.app .way-x { flex: none; margin: -4px -6px 0 0; }
+.app .pl-way .way-x, .app.pl-way .way-x { width: 44px; height: 44px; }
+.app .way-hint { display: grid; gap: 2px; }
+.app .way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
+.app .way-hint small { color: var(--muted); font-size: 13.5px; }
+/* a row that opens the next step (the ways to begin's tile) */
+.app .way-tile { display: flex; gap: 10px; align-items: flex-start; min-width: 0; min-height: 64px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-solid); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.app .way-tile:hover { background: var(--accent-soft); }
+.app .way-ic { flex: none; display: inline-flex; color: var(--accent); }
+.app .way-t { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.app .way-t b { font-size: 15px; overflow-wrap: break-word; }
+.app .way-t small { color: var(--muted); font-size: 13px; line-height: 1.3; }
+.app .way-chev { flex: none; align-self: center; color: var(--muted); display: inline-flex; }
+/* a choice with its value (Route style, Direction) */
+.app .stylebtn { height: 40px; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; text-align: left; cursor: pointer; }
+.app .stylebtn .two { display: grid; line-height: 1.15; min-width: 0; }
+.app .stylebtn .two small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.app .stylebtn .two span { white-space: nowrap; }
+.app .pl-way .stylebtn, .app.pl-way .stylebtn { display: inline-flex; height: auto; min-height: 40px; max-width: 100%; margin: 0; padding-block: 3px; white-space: normal; }
+.app .pl-way .stylebtn .two, .app.pl-way .stylebtn .two { flex: 1; }
+.app .pl-way .stylebtn .two span, .app.pl-way .stylebtn .two span { white-space: normal; overflow-wrap: anywhere; }
+.app.pl-way .stylebtn > .ic:last-child { color: var(--muted); }
+/* the switch (Distance · Time) */
+.app .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: 12px; }
+.app .seg.full { display: flex; flex-wrap: wrap; }
+.app .seg.full button { flex: 1 1 auto; }
+.app .seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.app .seg button[aria-pressed="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.app .rt-unit { flex-wrap: wrap; }
+.app .rt-unit button { height: 36px; padding: 0 14px; font-size: 14px; }
+.app .rt-unit button .ic { color: var(--accent); }
+/* chips (the round trip's lengths) */
+.app .chip { height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; }
+.app .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
+.app .rt-chips, .app .way-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.app .way-chips .chip, .app .rt-chips .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
+.app .way-chips .chip[aria-pressed="true"], .app .rt-chips .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
+/* the ⋯ menu's items, its headings, the line between groups, Clear route apart */
+.app .menu { display: flex; flex-direction: column; min-width: 220px; padding: 6px; border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.app .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+.app .menu-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; font: inherit; font-size: 13px; text-align: left; color: var(--text); }
+.app .menu-item:hover:not(:disabled), .app .menu-item:focus-visible { background: var(--surface-2); outline: none; }
+.app .menu-item.danger { color: var(--bad); }
+.app .menu-h { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.app .menu-item.two-line { height: auto; min-height: 44px; padding: 6px 10px; }
+.app .menu-item > span { flex: 1; min-width: 0; display: grid; }
+.app .menu-item small { font-size: 12px; color: var(--muted); font-weight: 400; }
+.app .menu-item.danger small { color: var(--muted); }
+.app .menu-item[aria-checked="true"]:not(.chip) { background: var(--accent-soft); }
+.app .menu-item > .menu-tick { flex: none; display: grid; color: var(--accent); }
+.app .menu-item.menu-apart { margin-top: 6px; }
+.app .cur { margin-left: 4px; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+/* the route's numbers (the peek's summary) */
+.app .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
+.app .sum-item { display: flex; flex-direction: column; min-width: 0; }
+.app .sum-item b { font-size: 19px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.app .sum-item small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* not editing (the Route tab in the route's view, 25c) */
+.app .pl-viewnote { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
+.app .pl-viewnote > span:first-child { flex: none; display: grid; color: var(--muted); }
+.app .pl-viewnote > span:nth-child(2) { flex: 1; min-width: 0; }
+.app .pl-viewnote .btn { flex: none; gap: 6px; }
+/* a toggle (Settings, Take the bike along) */
+.app .tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
+.app .tg-text { flex: 1; display: flex; flex-direction: column; }
+.app .tg-text small { color: var(--muted); font-size: 11px; }
+.app .tg input { position: absolute; right: 0; top: 50%; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.app .tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: background .15s; }
+.app .tg-ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.app .tg input:checked + .tg-ui { background: var(--accent-bg); }
+.app .tg input:checked + .tg-ui::after { transform: translateX(15px); }
+/* Heads-up's rows (Check) */
+.app .li { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; text-align: left; color: var(--text); }
+.app .li:hover { background: var(--surface-2); }
+.app .li .ic { color: var(--warn); }
+/* the map's card's rows (js/inspect.js) */
+.app .insp-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
+.app .insp-row span { color: var(--muted); }
+.app .insp-row b { font-weight: 600; overflow-wrap: anywhere; }
+.app .insp-info { font-size: 12px; color: var(--muted); margin: 6px 0; }
+/* the list's name field (rename) */
+.app .wpl-name { width: 100%; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 2px 5px; margin-left: -6px; }
+.app .wpl-name:focus { border-color: var(--accent); background: var(--surface-solid); outline: none; }
+/* the app's touch and phone rules, for phone frames */
+:is(.fr.phone, .ctl) .app .rt-unit button { height: 40px; }
+:is(.fr.phone, .ctl) .app .way-chips .chip, :is(.fr.phone, .ctl) .app .rt-chips .chip { min-height: 44px; }
+:is(.fr.phone, .ctl) .app .pl-way .stylebtn, :is(.fr.phone, .ctl) .app.pl-way .stylebtn { min-height: 44px; }
+:is(.fr.phone, .ctl) .app .menu-item { min-height: 44px; }
+:is(.fr.phone, .ctl) .app .pl-viewnote .btn { min-height: 44px; }
+:is(.fr.phone, .ctl) .app .sum-item b { font-size: 18px; }
+:is(.fr.phone, .ctl) .app .tool { width: 30px; height: 32px; }
+:is(.fr.phone, .ctl) .app .pl-way .way-x, :is(.fr.phone, .ctl) .app.pl-way .way-x { width: 44px; height: 44px; }
+
+/* ================================================================ Proposed fixes to the app's controls
+   Not in the app yet: each waits for the controls' own Fix PR (#345's list), and the cards need them. */
+/* the route's numbers: their labels wrap, at 12.5 px, never cut with "…" (the accessibility baseline) */
+.app .sum-item small { white-space: normal; overflow: visible; text-overflow: clip; font-size: 12.5px; overflow-wrap: anywhere; }
+
+/* ================================================================ New, for the cards only
+   Each is new because the app has nothing like it; each needs the user's OK before it's built (#355). */
+/* the card itself: the planner's step container, in the peek or at the pointer */
+.app.card { container-type: inline-size; }
+/* the thing's own mark from the map, left of its name */
+.app .card-mark { flex: none; order: -1; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -2px; }
+.app .card-mark .mk2 { width: 28px; height: 28px; border-radius: 50%; border: 3px solid #111; background: #fff; color: #111; font-weight: 800; font-size: 13.5px; display: grid; place-items: center; }
+/* a menu that sits in a card: the ⋯ menu's items, without its popup */
+.app .menu.in-card { min-width: 0; margin: -4px -10px; padding: 0; background: none; box-shadow: none; }
+/* a number the map doesn't have: a dashed box that says so (#345) */
+.app .sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
+.app .sum-item.miss b { color: var(--muted); }
 .v2 .sheet.card-in { padding-top: 0; max-height: 52%; } /* the point or the spot stays in sight above it; the rest scrolls */
-.c2-top { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; }
-.c2-top .c2-x, .c2-top .c2-back { flex: none; width: 44px; height: 44px; margin: -6px -10px 0 0; border: 0; border-radius: 12px; background: none; color: var(--text); display: grid; place-items: center; }
-.c2-top .c2-back { margin: -6px 0 0 -12px; color: var(--accent); }
-.c2-br { display: none; }
-.c2-dock { display: flex; } .c2-dock button { width: 44px; height: 44px; border: 0; border-radius: 12px; background: none; color: var(--text); display: grid; place-items: center; }
-.c2-g ~ .c2-x { margin-left: auto; }
-.c2-top .c2-back { order: 0; } .c2-g { order: 1; } .c2-ttl { order: 2; } .c2-save { order: 3; } .c2-top .c2-x { order: 9; }
-.c2-g { flex: none; display: grid; place-items: center; width: 34px; height: 34px; }
-.c2-g svg { display: block; }
-.mk2 { width: 28px; height: 28px; margin: 3px; border-radius: 50%; border: 3px solid #111; background: #fff; color: #111; font-weight: 800; font-size: 13.5px; }
-.c2-ttl { flex: 1; min-width: 0; display: grid; gap: 2px; padding-top: 3px; }
-.c2-ttl b { font-size: 17px; line-height: 1.25; font-weight: 700; letter-spacing: -.005em; overflow-wrap: anywhere; }
-.c2-ttl small { font-size: 13.5px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
-.c2-in { width: 100%; min-height: 44px; padding: 0 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: 600 17px/1 system-ui, sans-serif; }
-.c2-save { flex: none; min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--accent-bg); color: var(--on-accent); font-weight: 700; }
-/* three numbers, as the route's summary has them; a missing one in a dashed box that says so */
-.c2-nums { display: flex; gap: 0; }
-.c2-num { flex: 1 1 0; min-width: 0; display: grid; align-content: start; gap: 2px; padding: 0 12px; border-left: 1px solid var(--line); }
-.c2-num:first-child { padding-left: 0; border-left: 0; }
-.c2-num b { font-size: 21px; line-height: 1.15; font-weight: 700; letter-spacing: -.015em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.c2-num em { font-style: normal; font-size: 13.5px; line-height: 1.25; font-weight: 650; color: var(--text); overflow-wrap: anywhere; }
-.c2-num small { font-size: 12.5px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
-.c2-num.miss { margin-left: 8px; padding: 4px 10px; border: 1.5px dashed var(--muted); border-radius: 12px; }
-.c2-num.miss b { color: var(--muted); }
-.c2-src { justify-self: start; margin-top: -6px; font-size: 12.5px; color: var(--muted); }
-/* the point's switch: what happens at this point, and its details under it */
-.c2-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 15px; background: var(--surface-2); }
-.c2-seg.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.c2-seg button { min-height: 48px; padding: 6px 4px; border: 0; border-radius: 12px; background: none; color: var(--text); display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 650; text-align: center; overflow-wrap: anywhere; }
-.c2-seg.two button { min-height: 46px; flex-direction: row; gap: 6px; }
-.c2-seg button[aria-checked="true"] { background: var(--surface-solid); color: var(--accent); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
-.c2-detail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: -4px; font-size: 14px; }
-.c2-detail small { flex: 1 1 160px; font-size: 13px; color: var(--muted); }
-.c2-step { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); }
-.c2-step button { width: 44px; height: 44px; border: 0; background: none; color: var(--accent); display: grid; place-items: center; }
-.c2-step b { min-width: 64px; text-align: center; font-size: 15.5px; font-variant-numeric: tabular-nums; }
-.c2-time { min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
-/* groups with short headings, as the ⋯ menu has them */
-.c2-h { margin: 2px 0 -8px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
-.c2-list { display: grid; margin: 0 -10px; }
-.c2-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 -10px; }
-.c2-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 6px 10px; border: 0; border-radius: 12px; background: none; color: var(--text); text-align: left; font: inherit; }
-.c2-item:active { background: var(--surface-2); }
-/* (mobile-native: every control answers while the finger is down) */
-.c2-main, .c2-seg button, .c2-step button, .c2-lock button, .c2-foot button, .c2-save { transition: transform 100ms ease-out; }
-.c2-main:active, .c2-seg button:active, .c2-step button:active, .c2-lock button:active, .c2-foot button:active, .c2-save:active { transform: scale(.97); }
-.c2-item > .ic:first-child { color: var(--text); }
-.c2-item > span { flex: 1; min-width: 0; display: grid; gap: 1px; }
-.c2-item b { font-size: 15px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
-.c2-item small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
-.c2-item .val { flex: none; max-width: 42%; font-size: 15px; font-weight: 650; color: var(--accent); text-align: right; overflow-wrap: anywhere; }
-.c2-item .chev { flex: none; color: var(--muted); }
-.c2-item.danger b, .c2-item.danger > .ic:first-child { color: var(--danger); }
-.c2-item[role="menuitemradio"][aria-checked="true"] { background: var(--accent-soft); }
-.c2-item .tick { flex: none; color: var(--accent); }
-.c2-hr { height: 1px; margin: 0; background: var(--line); }
-.c2-tg { cursor: pointer; }
-.c2-tg i { flex: none; position: relative; width: 46px; height: 28px; border-radius: 14px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
-.c2-tg i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-.c2-tg i.on { background: var(--accent-bg); box-shadow: none; }
-.c2-tg i.on::after { left: 21px; }
-/* the one main action in a card (the pill is the map's own, at the finger) */
-.c2-main { width: 100%; min-height: 50px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--accent-bg); color: var(--on-accent); font-weight: 700; font-size: 15.5px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px rgba(16,24,20,.18); }
-/* a warning on the stretch: how serious, in words and shape too */
-.c2-warn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 50px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--look-soft); color: var(--text); text-align: left; font: inherit; font-size: 14px; }
-.c2-warn > .ic:first-child { color: var(--look); }
-.c2-warn span { flex: 1; min-width: 0; display: grid; }
-.c2-warn b { font-weight: 650; }
-.c2-warn small { font-size: 12.5px; color: var(--muted); }
-.c2-note { margin: -4px 0 0; font-size: 14px; line-height: 1.4; color: var(--text); }
-.c2-facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 15px; font-weight: 600; }
-.c2-facts li { display: flex; align-items: center; gap: 10px; }
-.c2-facts .ic { color: var(--accent); }
-.c2-kv { margin: -4px 0 0; display: grid; }
-.c2-kv div { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 40px; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
-.c2-kv dt { color: var(--muted); }
-.c2-kv dd { margin: 0; font-weight: 650; text-align: right; overflow-wrap: anywhere; display: flex; align-items: center; gap: 6px; }
-.c2-kv button { min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
-.c2-stepper { display: flex; align-items: center; gap: 4px; margin: 0 -10px; }
-.c2-stepper > button { min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; background: none; color: var(--text); display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-weight: 650; font-size: 14px; padding: 0 10px; }
-.c2-stepper > span { font-size: 14px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
-.c2-stepper .grow { flex: 1; }
-/* the last row: Share, the weather there, and Not right? */
-.c2-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 2px; margin: 0 -10px; padding-top: 4px; border-top: 1px solid var(--line); }
-.c2-foot button { min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: none; color: var(--text); display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
-.c2-foot .grow { flex: 1; }
-.c2-foot .nr { color: var(--muted); }
-/* the route's view: the planner's own note, and Edit */
-.c2-lock { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--surface-2); font-size: 14px; line-height: 1.35; }
-.c2-lock > .ic { color: var(--muted); }
-.c2-lock span { flex: 1; min-width: 0; }
-.c2-lock button { flex: none; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font-weight: 650; display: inline-flex; align-items: center; gap: 6px; }
-/* the first point's peek: how to see what's on the map, where a phone has no hover */
-.c2-first { display: grid; gap: 6px; padding: 2px 0 4px; }
-.c2-first b { font-size: 16px; }
-.c2-first p { margin: 0; font-size: 14px; }
-.c2-hint { display: flex; align-items: center; gap: 8px; color: var(--muted); }
-/* the card at the pointer (desktops) keeps the same parts, a little denser */
-.v2 .pop { width: 344px; max-height: calc(100% - 16px); overflow: auto; overscroll-behavior: contain; padding: 12px 14px 8px; gap: 12px; border-radius: 16px; }
-.v2 .pop .card { gap: 12px; }
-.v2 .pop .c2-item { min-height: 44px; }
-.v2 .pop.up > .c2-main { order: 99; }
-/* a 360 px phone: the switch's words under their icons, so Finnish fits */
-@container (max-width: 335px) { .c2-seg:not(.two) button { flex-direction: column; min-height: 54px; gap: 2px; } }
-/* narrow (200 %, a small phone): Back and ✕ on a row of their own, the numbers one to a row, the switch in a column */
-@container (max-width: 290px) {
-  .c2-top { flex-wrap: wrap; row-gap: 6px; }
-  .c2-top .c2-back { order: 0; } .c2-g { order: 1; }
-  .c2-dock { order: 2; margin-left: auto; } .c2-top .c2-x { order: 3; margin-left: auto; } .c2-dock + .c2-x { margin-left: 0; }
-  .c2-g + .c2-ttl, .c2-ttl { order: 5; flex-basis: 100%; }
-  .c2-br { display: block; order: 4; flex-basis: 100%; height: 0; }
-  .c2-save { order: 6; }
-  .c2-nums { flex-direction: column; }
-  .c2-num { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 0; border-left: 0; border-top: 1px solid var(--line); }
-  .c2-num:first-child { border-top: 0; }
-  .c2-num.miss { margin: 4px 0 0; padding: 6px 10px; }
-  .c2-seg, .c2-seg.two { grid-template-columns: 1fr; }
-  .c2-seg button, .c2-seg:not(.two) button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
-  .c2-pair { grid-template-columns: 1fr; }
-  .c2-item .val { max-width: 50%; }
-}
-/* the narrowest (200 % on a 360 px phone): the mark gives its room to undo, redo and ✕ */
-@container (max-width: 190px) { .c2-g { display: none; } }
-.fr.dark .c2-warn.read { background: rgba(255,138,138,.14); }
-.c2-warn.read { background: #fbe9e9; }
-.c2-warn.read > .ic:first-child { color: var(--danger); }
+.v2 .pop { width: 344px; max-height: calc(100% - 16px); overflow: auto; overscroll-behavior: contain; padding: 10px 14px 8px; border-radius: 16px; }
+.v2 .pop > .btn.big { margin-bottom: 2px; }
+.v2 .pop.up .card > .btn.big:first-child { order: 99; }
+.c3-first { display: grid; gap: 6px; padding: 2px 0 4px; }
+.c3-first p { margin: 0; font-size: 14px; }
+.c3-first .hint { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+/* the narrowest (200 % on a 360 px phone): the mark gives its room to the name */
+@container (max-width: 190px) { .app .card-mark { display: none; } }
+
+/* ================================================================ the Controls frame (mock-up chrome, not the design) */
+.ctl { display: grid; grid-template-columns: repeat(auto-fill, minmax(374px, 1fr)); gap: 18px; align-items: start; max-width: 1480px; }
+.ctl-col { display: grid; gap: 10px; align-content: start; }
+.ctl-col > h3 { margin: 0; font-size: 15px; }
+.ctl-col > p { margin: 0; font-size: 13px; color: var(--page-cap); }
+.ctl-pane { width: 374px; max-width: 100%; padding: 12px 12px 14px; border-radius: 18px; background: #fff; box-shadow: 0 1px 3px rgba(16,24,20,.12), 0 8px 24px rgba(16,24,20,.1); }
+.ctl.dark .ctl-pane { background: #181c1a; }
+.ctl-pane img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 10px; } /* at the app's own size: 390 px wide frames, a quarter of the 4× picture */
+.ctl-k { margin: 6px 0 -6px; font: 600 11.5px ui-monospace, Menlo, monospace; color: #8a5a00; }
+.ctl.dark .ctl-k { color: #f2c45a; }
+.ctl-new { margin: 0; padding-left: 18px; font-size: 13px; color: var(--page-cap); }
+.ctl-new li { margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -411,7 +444,7 @@ button.warnr span { flex: 1; font-weight: 600; }
   <section class="cv-q">
     <h2>Revised (2026-10-21, after the user's second review)</h2>
     <ul>
-      <li><b>One look for every card,</b> the ⋯ menu's: the thing's own mark from the map and its name; three numbers as the route's summary has them; groups with short headings; each action with one line on what it does; Remove apart, in red.</li>
+      <li><b>The app's own controls, nothing new:</b> rows that open the next step are the ways to begin's tiles; actions in a group are the ⋯ menu's items; the main action is Make 3 loops' button; switches are Distance · Time; chips are the lengths'; Back has words. The CSS is a copy of the app's, with the same class names (section 0 shows them side by side).</li>
       <li><b>One main thing stands out:</b> the pill at your finger, a filled button (Edit this stretch, Avoid it), or a point's <b>At this point</b> switch.</li>
       <li><b>Start here</b> and <b>End here</b> on a point and on a spot, each saying what it does. <b>End</b>, not finish.</li>
       <li><b>What's here ›</b> on every card, for the map's details.</li>
@@ -431,6 +464,83 @@ button.warnr span { flex: 1; font-weight: 600; }
       <li><b>Not right?</b> on every card opens OpenStreetMap's note page or its editor.</li>
       <li><b>Share</b> sends a link to the spot. The coordinates are in <b>More</b>.</li>
     </ul>
+  </section>
+
+  <section class="cv-row" id="s0">
+    <h2>0 · Controls: the app's, used by the cards</h2>
+    <p>The left column is the app itself (<code>main</code> at 615d2d7, 390 × 844). The middle draws the same controls from the copy of the app's CSS in this page, with the same class names. The right is how the cards use them. Every class name is under its control. Where they differ, the copy is wrong.</p>
+    <div class="ctl" id="controls">
+      <div class="ctl-col"><h3>The app, now</h3><p>The start, a round trip, the ⋯ menu.</p>
+        <div class="ctl-pane"><img src="https://raw.githubusercontent.com/TommiContursi/Polku/962acdcf7ba57393267f1cf906c409dd05c1e24b/claude/25d-cards-design/controls/app-start.jpg" width="366" alt="The app's ways to begin"></div>
+        <div class="ctl-pane"><img src="https://raw.githubusercontent.com/TommiContursi/Polku/962acdcf7ba57393267f1cf906c409dd05c1e24b/claude/25d-cards-design/controls/app-roundtrip.jpg" width="366" alt="The app's round trip form"></div>
+        <div class="ctl-pane"><img src="https://raw.githubusercontent.com/TommiContursi/Polku/962acdcf7ba57393267f1cf906c409dd05c1e24b/claude/25d-cards-design/controls/app-more.jpg" width="261" alt="The app's ⋯ menu"></div>
+      </div>
+      <div class="ctl-col"><h3>The same, from the copied CSS</h3><p>If this doesn't match the left, the copy is out of date.</p>
+        <div class="ctl-pane"><div class="app pl-way">
+<div class="ctl-k">way-bar · btn small quiet way-back · tool way-x</div>
+<div class="way-bar"><button type="button" class="btn small quiet way-back"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#i-left"/></svg><span>Ways to begin</span></button><button type="button" class="tool way-x" aria-label="Close"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+<div class="ctl-k">way-tile · way-ic · way-t</div>
+<button type="button" class="way-tile"><span class="way-ic"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#i-route"/></svg></span><span class="way-t"><b>Draw it</b><small>Tap the map, point by point</small></span></button>
+<div class="ctl-k">way-hint</div>
+<div class="way-hint"><b>Round trip from your start</b></div>
+<div class="ctl-k">seg rt-unit</div>
+<div><div class="seg rt-unit"><button type="button" aria-pressed="true"><svg class="ic" width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span>Distance</span></button><button type="button" aria-pressed="false"><span>Time</span></button></div></div>
+<div class="ctl-k">rt-chips · chip</div>
+<div class="rt-chips"><button type="button" class="chip" aria-pressed="false">10 km</button><button type="button" class="chip" aria-pressed="true"><svg class="ic" width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg>20 km</button><button type="button" class="chip" aria-pressed="false">30 km</button><button type="button" class="chip" aria-pressed="false">Other…</button></div>
+<div class="ctl-k">stylebtn · two</div>
+<div><button type="button" class="stylebtn"><span class="two"><small>Route style</small><span>Balanced</span></span><svg class="ic" width="12" height="12" aria-hidden="true"><use href="#i-down"/></svg></button></div>
+<div class="ctl-k">btn primary big · rt-make-t</div>
+<button type="button" class="btn primary big"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#i-roundtrip"/></svg><span class="rt-make-t"><span>Make 3 loops</span><small>3 routing calls, up to 6</small></span></button>
+<div class="ctl-k">menu · menu-h · menu-item two-line · hr · danger menu-apart</div>
+<div class="menu in-card"><div class="menu-h">Take it along</div><button type="button" class="menu-item two-line"><svg class="ic" width="17" height="17" aria-hidden="true"><use href="#i-share"/></svg><span>Share link<small>Copies a link to this route</small></span></button><button type="button" class="menu-item two-line"><svg class="ic" width="17" height="17" aria-hidden="true"><use href="#i-copy"/></svg><span>Export GPX<small>For a GPS watch or another app</small></span></button><hr><button type="button" class="menu-item two-line danger menu-apart"><svg class="ic" width="17" height="17" aria-hidden="true"><use href="#i-trash"/></svg><span>Clear route<small>Undo brings it back</small></span></button></div>
+</div></div>
+      </div>
+      <div class="ctl-col"><h3>The cards use them</h3><p>The same classes; only the words change.</p>
+        <div class="ctl-pane"><div class="app pl-way card">
+<div class="ctl-k">way-bar · btn small quiet way-back · tool way-x</div>
+<div class="way-bar"><button type="button" class="btn small quiet way-back"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#i-left"/></svg><span>Pirunvuoren polku</span></button><button type="button" class="tool way-x" aria-label="Close"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+<div class="ctl-k">way-head · way-hint · card-mark (new)</div>
+<div class="way-head"><div class="way-hint"><b>Pirunvuoren näköala</b><small>Via 1</small></div><span class="card-mark"><span class="mk2">1</span></span></div>
+<div class="ctl-k">sheet-sum · sum-item</div>
+<div class="sheet-sum"><div class="sum-item"><b>10:09</b><small>there at</small></div><div class="sum-item"><b>1.65 km</b><small>from the start</small></div><div class="sum-item"><b>107 m</b><small>height</small></div></div>
+<div class="ctl-k">way-tile · way-ic · way-t · way-chev</div>
+<button type="button" class="way-tile"><span class="way-ic"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#i-route"/></svg></span><span class="way-t"><b>This stretch</b><small>Kaupin urheilupuisto → Pirunvuoren näköala</small></span><span class="way-chev"><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#i-right"/></svg></span></button>
+<div class="ctl-k">seg full rt-unit</div>
+<div class="seg full rt-unit"><button type="button" aria-pressed="false"><span>Pass by</span></button><button type="button" aria-pressed="true"><svg class="ic" width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg><span>Stop</span></button><button type="button" aria-pressed="false"><span>Night</span></button></div>
+<div class="ctl-k">rt-chips · chip</div>
+<div class="rt-chips"><button type="button" class="chip" aria-pressed="false">15 min</button><button type="button" class="chip" aria-pressed="true"><svg class="ic" width="16" height="16" aria-hidden="true"><use href="#i-check"/></svg>30 min</button><button type="button" class="chip" aria-pressed="false">1 h</button><button type="button" class="chip" aria-pressed="false">Other…</button></div>
+<div class="ctl-k">stylebtn · two</div>
+<div><button type="button" class="stylebtn"><span class="two"><small>Go on at (the next morning)</small><span>07:00</span></span><svg class="ic" width="12" height="12" aria-hidden="true"><use href="#i-down"/></svg></button></div>
+<div class="ctl-k">btn primary big · rt-make-t</div>
+<button type="button" class="btn primary big"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="#i-pencil"/></svg><span class="rt-make-t"><span>Edit this stretch</span><small>Sport, how it’s drawn, style</small></span></button>
+<div class="ctl-k">menu in-card (new) · menu-h · menu-item two-line · hr · danger menu-apart</div>
+<div class="menu in-card"><div class="menu-h">Edit this point</div><button type="button" class="menu-item two-line"><svg class="ic" width="17" height="17" aria-hidden="true"><use href="#i-move"/></svg><span>Move<small>Tap where it goes</small></span></button><button type="button" class="menu-item two-line"><svg class="ic" width="17" height="17" aria-hidden="true"><use href="#i-flag"/></svg><span>Start here<small>The part before it is removed, Undo brings it back</small></span></button><hr><button type="button" class="menu-item two-line danger menu-apart"><svg class="ic" width="17" height="17" aria-hidden="true"><use href="#i-trash"/></svg><span>Remove<small>Undo brings it back</small></span></button></div>
+<div class="ctl-k">pl-viewnote · btn</div>
+<div class="pl-viewnote"><span><svg class="ic" width="18" height="18" aria-hidden="true"><use href="#i-info"/></svg></span><span>You’re not editing: the route stays as it is.</span><button type="button" class="btn"><svg class="ic" width="16" height="16" aria-hidden="true"><use href="#i-pencil"/></svg>Edit</button></div>
+<div class="ctl-k">tg · tg-text · tg-ui</div>
+<label class="tg"><span class="tg-text">Take the bike along<small>Off: it stays here, and Check makes sure you come back for it</small></span><input type="checkbox" role="switch"><span class="tg-ui"></span></label>
+<div class="ctl-k">way-chips · chip</div>
+<div class="way-chips"><button type="button" class="chip"><svg class="ic" width="16" height="16" aria-hidden="true"><use href="#i-share"/></svg>Share</button><button type="button" class="chip"><svg class="ic" width="16" height="16" aria-hidden="true"><use href="#i-weather"/></svg>Weather here</button><button type="button" class="chip">Not right?</button></div>
+</div></div>
+      </div>
+      <div class="ctl-col"><h3>New for the cards</h3><p>The app has nothing like these. Each needs your OK.</p>
+        <ul class="ctl-new">
+          <li><b>The thing's own mark</b> (<code>card-mark</code>): the point's marker, the stretch's line, a spot's pin, a place's icon, left of its name.</li>
+          <li><b>A missing number</b> (<code>sum-item miss</code>): a dashed box that says so, as #345 decided.</li>
+          <li><b>A menu that sits in a card</b> (<code>menu in-card</code>): the ⋯ menu's items and headings without its popup.</li>
+          <li><b>The pill</b> at the finger on the map, as #345 decided.</li>
+        </ul>
+        <h3>Fixes the cards need</h3>
+        <ul class="ctl-new">
+          <li><b>The route's numbers' labels</b> wrap at 12.5 px instead of 11 px cut with "…" (the accessibility baseline). Drawn here already; it lands in the controls' own Fix PR, in the peek too.</li>
+        </ul>
+        <h3>Not decided</h3>
+        <ul class="ctl-new">
+          <li>Icons in menu items: black (the ⋯ menu now) or green (the start's rows). The cards follow whichever you pick.</li>
+          <li>The chosen chip: green with a border (the start) or black (Layers). The cards use the start's.</li>
+        </ul>
+      </div>
+    </div>
   </section>
 
   <section class="cv-row" id="s1">
@@ -853,35 +963,53 @@ const T2 = {
   },
 };
 const U = (f) => T2[f.lang];
-// the thing's own mark, as the map draws it: a point's marker, the stretch between two, a spot's pin, a place's icon
+// the thing's own mark, as the map draws it (new for the cards): a point's marker, the stretch, a spot's pin, a place's icon
 const G2 = {
-  via: (n) => `<span class="c2-g" aria-hidden="true"><span class="mk2 c2-g" style="width:28px;height:28px">${n}</span></span>`,
-  start: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#2e9e5b" stroke="#fff" stroke-width="2.5"/><path d="M12 9.8v10.4l8.4-5.2z" fill="#fff"/></svg></span>',
-  end: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#111" stroke="#fff" stroke-width="2.5"/><rect x="10" y="10" width="10" height="10" rx="1.5" fill="#fff"/></svg></span>',
-  stretch: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
-  way: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M2 23C13 23 19 7 32 7" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" fill="#1f6f4a" stroke="#fff" stroke-width="2.6"/></svg></span>',
-  pin: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="8" fill="#1f6f4a" stroke="#fff" stroke-width="3"/><circle cx="15" cy="15" r="11.5" fill="none" stroke="#1f6f4a" stroke-width="2"/></svg></span>',
-  place: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#d93a2f" stroke="#fff" stroke-width="2.5"/><path d="M15 8.5c2.6 3 4.4 5 4.4 7.7a4.4 4.4 0 0 1-8.8 0c0-1.6.8-2.7 1.9-3.8.2 1.3.8 2 1.6 2.3-.5-2.2.1-4.2.9-6.2Z" fill="#fff"/></svg></span>',
-  look: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#fbf4e2" stroke="#8a5a00" stroke-width="1.5"/><path d="M6.5 15s3.2-5.2 8.5-5.2 8.5 5.2 8.5 5.2-3.2 5.2-8.5 5.2S6.5 15 6.5 15Z" fill="none" stroke="#8a5a00" stroke-width="1.8"/><circle cx="15" cy="15" r="2.4" fill="#8a5a00"/></svg></span>',
-  edit: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#1f6f4a" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+  via: (n) => `<span class="mk2">${n}</span>`,
+  start: '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="12.5" fill="#2e9e5b" stroke="#fff" stroke-width="2.5"/><path d="M12 9.8v10.4l8.4-5.2z" fill="#fff"/></svg>',
+  end: '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="12.5" fill="#111" stroke="#fff" stroke-width="2.5"/><rect x="10" y="10" width="10" height="10" rx="1.5" fill="#fff"/></svg>',
+  stretch: '<svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg>',
+  way: '<svg width="34" height="30" viewBox="0 0 34 30" aria-hidden="true"><path d="M2 23C13 23 19 7 32 7" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" fill="#1f6f4a" stroke="#fff" stroke-width="2.6"/></svg>',
+  pin: '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="8" fill="#1f6f4a" stroke="#fff" stroke-width="3"/><circle cx="15" cy="15" r="11.5" fill="none" stroke="#1f6f4a" stroke-width="2"/></svg>',
+  place: '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="12.5" fill="#d93a2f" stroke="#fff" stroke-width="2.5"/><path d="M15 8.5c2.6 3 4.4 5 4.4 7.7a4.4 4.4 0 0 1-8.8 0c0-1.6.8-2.7 1.9-3.8.2 1.3.8 2 1.6 2.3-.5-2.2.1-4.2.9-6.2Z" fill="#fff"/></svg>',
+  look: '<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="13" fill="#fbf4e2" stroke="#8a5a00" stroke-width="1.5"/><path d="M6.5 15s3.2-5.2 8.5-5.2 8.5 5.2 8.5 5.2-3.2 5.2-8.5 5.2S6.5 15 6.5 15Z" fill="none" stroke="#8a5a00" stroke-width="1.8"/><circle cx="15" cy="15" r="2.4" fill="#8a5a00"/></svg>',
 };
+G2.edit = G2.stretch;
 const pn = (f, i) => { const u = U(f), n = (f.worst ? NAMES.worst : NAMES.en)[i]; return n || [u.start, `${u.via} 1`, u.end][i]; };
 const ptSub = (f, i) => { const u = U(f); return i === 0 ? u.start : i === POINTS.length - 1 ? u.end : `${u.via} ${i}`; };
-// the parts
-function head2(f, glyph, title, sub, backTo, { raw = false, save = false } = {}) {
-  const u = U(f);
-  const dock = f.z >= 2 && !f.view ? `<span class="c2-dock"><button type="button" data-act="noop" aria-label="Undo">${ic('undo', 22)}</button><button type="button" data-act="noop" aria-label="Redo">${ic('redo', 22)}</button></span>` : '';
-  return `<div class="c2-top">${backTo ? `<button type="button" class="c2-back" data-act="${backTo}" aria-label="${esc(u.back)}">${ic('left', 22)}</button>` : ''}${dock}<button type="button" class="c2-x" data-act="close" aria-label="${esc(u.close)}">${ic('close', 22)}</button><span class="c2-br"></span>${glyph || ''}<span class="c2-ttl">${raw ? title : `<b>${esc(title)}</b>`}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${save ? `<button type="button" class="c2-save" data-act="renamed">${esc(u.save)}</button>` : ''}</div>`;
+
+// ------------------------------------------------ the parts, all the app's own (the copied CSS above)
+// the top: Back in words with ✕ on a row of their own (way-bar), as the start's steps; from the map only the heading and ✕
+function head2(f, mark, title, sub, back, { raw = false, after = '' } = {}) {
+  const u = U(f), x = `<button type="button" class="tool way-x" data-act="close" aria-label="${esc(u.close)}">${ic('close', 20)}</button>`;
+  // at 200 % the toolbox has no room above the card: undo and redo sit in its top row (25a docks the toolbox likewise)
+  const dock = f.z >= 2 && !f.view ? `<button type="button" class="tool way-x way-dock" data-act="noop" aria-label="Undo">${ic('undo', 20)}</button><button type="button" class="tool way-x way-dock" data-act="noop" aria-label="Redo">${ic('redo', 20)}</button>` : '';
+  const hint = `<div class="way-hint">${raw ? title : `<b>${esc(title)}</b>`}${sub ? `<small>${esc(sub)}</small>` : ''}</div>${mark ? `<span class="card-mark">${mark}</span>` : ''}${after}`;
+  if (back || dock) return `<div class="way-bar">${back ? `<button type="button" class="btn small quiet way-back" data-act="${back[0]}">${ic('left', 18)}<span>${esc(back[1])}</span></button>` : '<span></span>'}${dock}${x}</div><div class="way-head">${hint}</div>`;
+  return `<div class="way-head">${hint}${x}</div>`;
 }
-// numbers as the route's summary has them: [value, label, missing, word]
-const nums2 = (list) => `<div class="c2-nums">${list.map(([v, l, miss, word]) => `<span class="c2-num${miss ? ' miss' : ''}"><b>${esc(v)}</b>${word ? `<em>${esc(word)}</em>` : ''}<small>${esc(l)}</small></span>`).join('')}</div>`;
-const grp = (t) => `<h4 class="c2-h">${esc(t)}</h4>`;
-// an item, as the ⋯ menu has them: its icon, its name, one line on what it does; a value and › when it opens a choice
-const item = (act, icon, label, sub, { val = null, chev = false, cls = '', role = '', checked = null } = {}) =>
-  `<button type="button" class="c2-item ${cls}" data-act="${act}"${role ? ` role="${role}"` : ''}${checked != null ? ` aria-checked="${checked}"` : ''}>${icon ? ic(icon, 20) : ''}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${val ? `<span class="val">${esc(val)}</span>` : ''}${chev ? `<span class="chev">${ic('right', 18)}</span>` : ''}${checked ? `<span class="tick">${ic('check', 20)}</span>` : ''}</button>`;
-const list = (items) => `<div class="c2-list">${items.filter(Boolean).join('')}</div>`;
-const lock = (f) => { const u = U(f); return `<div class="c2-lock" role="note">${ic('info', 18)}<span>${esc(u.locked)}</span><button type="button" data-act="edit-on">${ic('pencil', 16)}${esc(u.editBtn)}</button></div>`; };
-const foot2 = (f, { share = true } = {}) => { const u = U(f); return `<div class="c2-foot">${share ? `<button type="button" data-act="share">${ic('share', 18)}${esc(u.share)}</button><button type="button" data-act="noop">${ic('weather', 18)}${esc(u.weather)} ›</button>` : ''}<span class="grow"></span><button type="button" class="nr" data-act="notright">${esc(u.notRight)}</button></div>`; };
+// the route's numbers, as the peek's summary has them: [value, label, missing, word]
+const nums2 = (list) => `<div class="sheet-sum">${list.map(([v, l, miss, word]) => `<div class="sum-item${miss ? ' miss' : ''}"><b>${esc(v)}</b>${word ? `<small>${esc(word)}</small>` : ''}<small>${esc(l)}</small></div>`).join('')}</div>`;
+// a row that opens the next step: the ways to begin's tile
+const tile = (act, icon, title, sub) => `<button type="button" class="way-tile" data-act="${act}"><span class="way-ic">${ic(icon, 20)}</span><span class="way-t"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><span class="way-chev">${ic('right', 18)}</span></button>`;
+// a choice with its value: Route style's button
+const choice = (act, label, value) => `<button type="button" class="stylebtn" data-act="${act}"><span class="two"><small>${esc(label)}</small><span>${esc(value)}</span></span>${ic('down', 12)}</button>`;
+// the switch: Distance · Time's (the chosen one ticked)
+const sw = (label, opts, cur) => `<div class="seg full rt-unit" role="group" aria-label="${esc(label)}">${opts.map(([k, l]) => `<button type="button" aria-pressed="${k === cur}" data-act="${k}">${k === cur ? ic('check', 16) : ''}<span>${esc(l)}</span></button>`).join('')}</div>`;
+// chips: the round trip's lengths (the chosen one ticked)
+const chips = (label, opts, cur) => `<div class="rt-chips" role="group" aria-label="${esc(label)}">${opts.map(([k, l]) => `<button type="button" class="chip" aria-pressed="${k === cur}" data-act="${k}">${k === cur ? ic('check', 16) : ''}${esc(l)}</button>`).join('')}</div>`;
+// a group of actions: the ⋯ menu's heading and items, each with its line; Remove apart, in red, under a line
+const mi = (act, icon, label, desc, cls = '') => `<button type="button" class="menu-item two-line ${cls}" data-act="${act}">${ic(icon, 17)}<span>${esc(label)}${desc ? `<small>${esc(desc)}</small>` : ''}</span></button>`;
+const acts = (title, items) => `<div class="menu in-card" role="group">${title ? `<div class="menu-h">${esc(title)}</div>` : ''}${items.filter(Boolean).join('')}</div>`;
+const removeItem = (f, desc) => { const u = U(f); return `<div class="menu in-card"><hr>${mi('remove', 'trash', u.remove, desc || u.removeSub, 'danger menu-apart')}</div>`; };
+// the one main action: Make 3 loops'
+const main = (act, icon, label, sub) => `<button type="button" class="btn primary big" data-act="${act}">${ic(icon, 20)}<span class="rt-make-t"><span>${esc(label)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
+// the route's view: the Route tab's own note and Edit
+const lock = (f) => { const u = U(f); return `<div class="pl-viewnote" role="note"><span>${ic('info', 18)}</span><span>${esc(u.locked)}</span><button type="button" class="btn" data-act="edit-on">${ic('pencil', 16)}${esc(u.editBtn)}</button></div>`; };
+// the bottom row of a spot's and a place's cards: chips, like Where I am
+const foot2 = (f, { share = true } = {}) => { const u = U(f); return `<div class="way-chips">${share ? `<button type="button" class="chip" data-act="share">${ic('share', 16)}${esc(u.share)}</button><button type="button" class="chip" data-act="noop">${ic('weather', 16)}${esc(u.weather)}</button>` : ''}<button type="button" class="chip" data-act="notright">${esc(u.notRight)}</button></div>`; };
+const kv2 = (rows) => rows.map(([k, v, extra = '']) => `<div class="insp-row"><span>${esc(k)}</span><b>${esc(v)}${extra}</b></div>`).join('');
+const src2 = (s) => `<div class="insp-info">${esc(s)}</div>`;
 const gradeNum = (f, w) => {
   const u = U(f), g = f.sport === 'hike' ? w[5] : w[4], label = f.sport === 'hike' ? u.trailGrade : u.diff;
   return g ? [g, label, false, u.grades[g]] : ['?', `${label} ${u.notMapped}`, true];
@@ -891,109 +1019,108 @@ function routeNums2(f, km) {
   return nums2([[clock(km, f.sport), u.there], [`${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(0)} %`, g >= 0 ? u.uphill : u.downhill], gradeNum(f, w)]);
 }
 const kindOf = (f, w) => U(f).kinds[w[1]] || (f.lang === 'fi' ? w[2] : w[1]);
+const warnRow = (f) => { const u = U(f); return `<button type="button" class="li" data-act="item">${ic('eye', 18)}<span><b>${esc(u.look)}</b>, ${esc(u.lookLine.toLowerCase())}</span>${ic('right', 16)}</button>`; };
 
 // ------------------------------------------------ the revised cards
 function pointCard2(f, st) {
   const u = U(f), i = st.pt, q = POINTS[i], first = i === 0, last = i === POINTS.length - 1, here = st.here || 'pass', view = st.view;
-  const glyph = first ? G2.start : last ? G2.end : G2.via(i);
-  const title = st.renaming ? `<input class="c2-in" aria-label="${esc(u.renameLabel)}" value="${esc(pn(f, i))}">` : pn(f, i);
-  let h = head2(f, glyph, title, ptSub(f, i), st.from || null, { raw: !!st.renaming, save: !!st.renaming });
+  const mark = first ? G2.start : last ? G2.end : G2.via(i);
+  const title = st.renaming ? `<input class="wpl-name" aria-label="${esc(u.renameLabel)}" value="${esc(pn(f, i))}">` : pn(f, i);
+  let h = head2(f, mark, title, ptSub(f, i), st.from || null, { raw: !!st.renaming, after: st.renaming ? `<button type="button" class="btn primary" data-act="renamed">${esc(u.save)}</button>` : '' });
   h += nums2(first ? [[clock(0, f.sport), u.youLeave], [`${ele(0)} m`, u.height]] : [[clock(q.km, f.sport), u.there], [fmtKm(q.km), u.fromStart], [`${ele(q.km)} m`, u.height]]);
   if (!first && !last) {
-    h += grp(u.atPoint) + `<div class="c2-seg" role="radiogroup" aria-label="${esc(u.atPoint)}">${[['pass', 'pass', u.pass], ['stop', 'pause', u.stop], ['night', 'moon', u.night]].map(([k, icn, l]) => `<button type="button" role="radio" aria-checked="${here === k}" data-act="here-${k}">${ic(icn, 20)}<span>${esc(l)}</span></button>`).join('')}</div>`;
-    const arr = clock(q.km, f.sport), m = st.min || 30;
-    if (here === 'stop') { const [hh, mm] = arr.split(':').map(Number), t = hh * 60 + mm + m; h += `<div class="c2-detail"><span class="c2-step"><button type="button" data-act="min-" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${m} ${u.min}</b><button type="button" data-act="min+" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span><small>${esc(u.getHere(arr, `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`))}</small></div>`; }
-    if (here === 'night') h += `<div class="c2-detail"><span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="noop">07:00 ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span></div>${list([item('noop', 'tent', u.sleep, u.sleepSub, { chev: true })])}`;
+    h += `<div class="menu-h" style="padding:4px 0 0">${esc(u.atPoint)}</div>` + sw(u.atPoint, [['here-pass', u.pass], ['here-stop', u.stop], ['here-night', u.night]], `here-${here}`);
+    if (here === 'stop') { const m = st.min || 30, [hh, mm] = clock(q.km, f.sport).split(':').map(Number), t = hh * 60 + mm + m; h += chips(u.stop, [['min-15', `15 ${u.min}`], ['min-30', `30 ${u.min}`], ['min-60', '1 h'], ['min-other', f.lang === 'fi' ? 'Muu…' : 'Other…']], `min-${m}`) + `<div class="insp-info" style="margin:-4px 0 0">${esc(u.getHere(clock(q.km, f.sport), `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`))}</div>`; }
+    if (here === 'night') h += `<div>${choice('noop', `${u.goOnAt} (${u.nextMorning})`, '07:00')}</div>` + tile('noop', 'tent', u.sleep, u.sleepSub);
   }
-  if (first) h += list([item('noop', 'clock', u.leave, u.leaveSub, { val: u.leaveVal, chev: true })]);
-  const afterRow = !last ? item('noop', null, u.after, `${pn(f, i)} → ${pn(f, i + 1)}`, { chev: true }) : '';
-  if (view) return h + list([afterRow]) + lock(f);
+  if (first) h += `<div>${choice('noop', u.leave, u.leaveVal)}</div>`;
+  const afterRow = !last ? tile('noop', 'route', u.after, `${pn(f, i)} → ${pn(f, i + 1)}`) : '';
+  if (view) return h + afterRow + lock(f);
   if (!last) {
     const ch = st.change;
-    h += list([item('sport', ch ? 'water' : 'bike', u.sportFrom, u.sportFromSub, { val: ch ? u.sportNames.paddle : (u.sportNames[f.sport] || f.sport), chev: true })]);
-    if (ch) h += `<div class="c2-detail"><span>${esc(u.changeover)}</span><span class="c2-step"><button type="button" data-act="noop" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>10 ${u.min}</b><button type="button" data-act="noop" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span></div><label class="c2-item c2-tg" style="margin:0 -10px;width:auto"><span><b>${esc(u.bikeAlong)}</b><small>${esc(u.bikeAlongSub)}</small></span><i class="${st.bike ? 'on' : ''}" data-act="bike" role="switch" aria-checked="${!!st.bike}" tabindex="0"></i></label>`;
-    h += list([afterRow]);
-  } else h += grp(u.theRoute) + list([item('noop', 'loop', u.backStart, u.backStartSub)]);
-  h += grp(u.editPoint) + `<div class="c2-pair">${item('move', 'move', u.move, null)}${item('rename', 'pencil', u.rename, null)}</div>`;
-  if (!first && !last) h += list([item('startat', 'flag', u.startHere, u.startSub), item('endat', 'finish', u.endHere, u.endSub)]);
-  return h + `<div class="c2-hr"></div>` + list([item('remove', 'trash', u.remove, u.removeSub, { cls: 'danger' })]);
+    h += tile('sport', ch ? 'water' : 'bike', ch ? u.sportNames.paddle : (u.sportNames[f.sport] || f.sport), `${u.sportFrom}, ${u.sportFromSub.toLowerCase()}`);
+    if (ch) h += `<div class="menu-h" style="padding:4px 0 0">${esc(u.changeover)}</div>` + chips(u.changeover, [['co-5', `5 ${u.min}`], ['co-10', `10 ${u.min}`], ['co-15', `15 ${u.min}`]], `co-${st.co || 10}`) + `<label class="tg"><span class="tg-text">${esc(u.bikeAlong)}<small>${esc(u.bikeAlongSub)}</small></span><input type="checkbox" role="switch" data-act="bike"${st.bike ? ' checked' : ''}><span class="tg-ui"></span></label>`;
+    h += afterRow;
+  } else h += acts(u.theRoute, [mi('noop', 'loop', u.backStart, u.backStartSub)]);
+  h += acts(u.editPoint, [mi('move', 'move', u.move, u.moveSub), mi('rename', 'pencil', u.rename, u.renameSub), !first && !last ? mi('startat', 'flag', u.startHere, u.startSub) : '', !first && !last ? mi('endat', 'finish', u.endHere, u.endSub) : '']);
+  return h + removeItem(f);
 }
 function sportCard2(f, st) {
   const u = U(f), cur = st.change ? 'paddle' : f.sport;
-  return head2(f, G2.via(st.pt), u.sportsTitle, u.sportsSub(pn(f, st.pt)), 'point') + list(u.sports.map(([k, l, icn]) => item(`pick-${k}`, icn, l, k === f.sport ? u.yourRoute : null, { role: 'menuitemradio', checked: k === cur })));
+  return head2(f, G2.via(st.pt), u.sportsTitle, u.sportsSub(pn(f, st.pt)), ['point', pn(f, st.pt)])
+    + `<div class="menu in-card" role="menu">${u.sports.map(([k, l, icn]) => `<button type="button" class="menu-item two-line" role="menuitemradio" aria-checked="${k === cur}" data-act="pick-${k}">${ic(icn, 17)}<span>${esc(l)}${k === f.sport ? `<small>${esc(u.yourRoute)}</small>` : ''}</span>${k === cur ? `<span class="menu-tick">${ic('check', 17)}</span>` : ''}</button>`).join('')}</div>`;
 }
 function routeCard2(f, st) {
   const u = U(f), km = st.km, w = wayAt(km), s = stretchOf(km);
   let h = head2(f, G2.way, w[3], `${kindOf(f, w)}, ${fmtKm(km)} ${u.fromStart}`) + routeNums2(f, km);
-  if (s) h += `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
-  h += list([item('stretch', null, u.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, { chev: true }), item('here', null, u.here, u.hereSub, { chev: true }), st.view ? '' : item('edit', null, u.edit, u.editSub, { chev: true })]);
+  if (s) h += warnRow(f);
+  h += tile('stretch', 'route', u.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`) + tile('here', 'info', u.here, u.hereSub) + (st.view ? '' : tile('edit', 'pencil', u.edit, u.editSub));
   return st.view ? h + lock(f) : h;
 }
 function stretchCard2(f, st) {
-  const u = U(f), s = stretchOf(st.km), len = POINTS[s + 1].km - POINTS[s].km;
-  let h = head2(f, G2.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, u.stretch, 'route') + nums2([[fmtKm(len), u.distance], [`${Math.round(len * PACE[f.sport])} ${u.min}`, u.time], [`↑${s ? 14 : 28} m`, u.climb]]);
-  if (s) h += grp(u.lookOut) + `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
-  h += st.view ? lock(f) : `<button type="button" class="c2-main" data-act="edit">${ic('pencil', 20)}${esc(u.edit)}</button>`;
-  return h + list([item('noop', 'mountain', u.profile, u.profileSub)]);
+  const u = U(f), s = stretchOf(st.km), len = POINTS[s + 1].km - POINTS[s].km, w = wayAt(st.km);
+  let h = head2(f, G2.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, u.stretch, ['route', w[3]]) + nums2([[fmtKm(len), u.distance], [`${Math.round(len * PACE[f.sport])} ${u.min}`, u.time], [`↑${s ? 14 : 28} m`, u.climb]]);
+  if (s) h += `<div class="menu-h" style="padding:4px 0 0">${esc(u.lookOut)}</div>` + warnRow(f);
+  h += st.view ? lock(f) : main('edit', 'pencil', u.edit, u.editSub);
+  return h + acts(null, [mi('noop', 'mountain', u.profile, u.profileSub)]);
 }
 function editCard2(f, st) {
-  const u = U(f), s = stretchOf(st.km), sp = u.sportNames[f.sport] || f.sport;
-  return head2(f, G2.edit, u.edit, `${pn(f, s)} → ${pn(f, s + 1)}`, st.held ? null : 'route') + `<p class="c2-note">${esc(u.editNote)}</p>`
-    + grp(u.howYouGo) + list([item('noop', f.sport === 'hike' ? 'walk' : 'bike', u.sport, u.sportSame, { val: sp, chev: true })])
-    + `<div class="c2-seg two" role="radiogroup" aria-label="${esc(u.drawn)}"><button type="button" role="radio" aria-checked="${st.drawn !== 'line'}" data-act="drawn-auto">${ic('auto', 18)}<span>${esc(u.follow)}</span></button><button type="button" role="radio" aria-checked="${st.drawn === 'line'}" data-act="drawn-line">${ic('line', 18)}<span>${esc(u.straight)}</span></button></div>`
-    + list([item('noop', 'style', u.style, u.styleSub(sp), { val: u.balanced, chev: true })])
-    + grp(u.onStretch) + list([item('noop', 'route', u.other, u.otherSub), item('noop', 'pause', u.stopHere, u.stopHereSub), item('noop', 'avoid', u.avoid, u.avoidSub), item('noop', 'mountain', u.profile, u.profileSub)]);
+  const u = U(f), s = stretchOf(st.km), sp = u.sportNames[f.sport] || f.sport, w = wayAt(st.km);
+  return head2(f, G2.edit, u.edit, `${pn(f, s)} → ${pn(f, s + 1)}`, st.held ? null : ['route', w[3]]) + `<div class="insp-info" style="margin:-4px 0 0">${esc(u.editNote)}</div>`
+    + tile('noop', f.sport === 'hike' ? 'walk' : 'bike', sp, `${u.sport}, ${u.sportSame.toLowerCase()}`)
+    + sw(u.drawn, [['drawn-auto', u.follow], ['drawn-line', u.straight]], st.drawn === 'line' ? 'drawn-line' : 'drawn-auto')
+    + `<div>${choice('noop', u.style, u.balanced)}</div>`
+    + acts(u.onStretch, [mi('noop', 'route', u.other, u.otherSub), mi('noop', 'pause', u.stopHere, u.stopHereSub), mi('noop', 'avoid', u.avoid, u.avoidSub), mi('noop', 'mountain', u.profile, u.profileSub)]);
 }
 const spotOf2 = (f, p) => { const u = U(f), g = f.g; if (p[1] < g.water) return u.spots.lake; if (p[1] > g.town) return u.spots.town; return [u.spots.forest[0], u.spots.forest[1][f.sport]]; };
 function spotCard2(f, st) {
-  const u = U(f), [name, line] = spotOf2(f, st.at), d = Math.round(nearest(f.g, st.at).d * 2.9 / 10) * 10, w = { 4: 'S0', 5: 'T1' };
+  const u = U(f), [name, line] = spotOf2(f, st.at), d = Math.round(nearest(f.g, st.at).d * 2.9 / 10) * 10;
   const third = st.at[1] < f.g.water ? ['?', `${f.sport === 'hike' ? u.trailGrade : u.diff} ${u.notMapped}`, true] : gradeNum(f, ['', '', '', '', 'S0', 'T1']);
   let h = head2(f, G2.pin, name, line) + nums2([...(st.noRoute ? [] : [[`${d} m`, u.fromRoute]]), [`${ele(1.2)} m`, u.height], third]);
-  h += list([item('here', null, u.here, u.hereSpotSub, { chev: true })]);
+  h += tile('here', 'info', u.here, u.hereSpotSub);
   if (st.view) return h + lock(f) + foot2(f);
-  h += grp(u.yourRouteH) + list(st.noRoute ? [item('noop', 'roundtrip', u.round, u.roundSub)] : [item('startspot', 'flag', u.startSpot, u.startSpotSub), item('endspot', 'finish', u.endSpot, u.endSpotSub), item('noop', 'roundtrip', u.round, u.roundSub), item('noop', 'avoid', u.avoid, u.avoidSub)]);
+  h += acts(u.yourRouteH, st.noRoute ? [mi('noop', 'roundtrip', u.round, u.roundSub)] : [mi('startspot', 'flag', u.startSpot, u.startSpotSub), mi('endspot', 'finish', u.endSpot, u.endSpotSub), mi('noop', 'roundtrip', u.round, u.roundSub), mi('noop', 'avoid', u.avoid, u.avoidSub)]);
   return h + foot2(f);
 }
 function placeCard2(f, st) {
-  const u = U(f), t = T[f.lang];
-  let h = head2(f, G2.place, t.place, t.placeSub) + `<span class="c2-src">${esc(u.fromLipas)}</span>` + `<ul class="c2-facts">${u.placeFacts.map((c) => `<li>${ic('check', 20)}${esc(c)}</li>`).join('')}</ul>`;
-  h += list([item('placemore', null, u.here, u.hereSpotSub, { chev: true })]);
+  const u = U(f), t = T[f.lang], fi = f.lang === 'fi';
+  let h = head2(f, G2.place, t.place, t.placeSub) + src2(u.fromLipas) + `<div>${kv2(fi ? [['WC', 'ilmainen'], ['Polttopuut', 'kesällä'], ['Laavu', 'lähellä']] : [['Toilet', 'free'], ['Firewood', 'in summer'], ['Lean-to', 'nearby']])}</div>`;
+  h += tile('placemore', 'info', u.here, u.hereSpotSub);
   if (st.view) return h + lock(f) + foot2(f);
-  h += grp(u.yourRouteH) + list([item('noop', 'flag', u.startSpot, u.startSpotSub), item('noop', 'finish', u.endSpot, u.endSpotSub), item('noop', 'roundtrip', u.round, u.roundSub)]);
+  h += acts(u.yourRouteH, [mi('noop', 'flag', u.startSpot, u.startSpotSub), mi('noop', 'finish', u.endSpot, u.endSpotSub), mi('noop', 'roundtrip', u.round, u.roundSub)]);
   return h + foot2(f);
 }
-const kv2 = (rows) => `<dl class="c2-kv">${rows.map(([k, v, extra = '']) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}${extra}</dd></div>`).join('')}</dl>`;
 function hereCard2(f, st) {
   const u = U(f), k = u.kv, onRoute = st.kind === 'route', w = onRoute ? wayAt(st.km) : ['', 'Forest path', 'Metsäpolku', u.spots.forest[0], 'S0', 'T1', '1 m', 'dirt'];
   const [name, line] = onRoute ? [w[3], kindOf(f, w)] : spotOf2(f, st.at);
   const g = (x) => (x ? `${x}, ${u.grades[x]}` : u.notMapped);
   const G = { mtb: kv2([[k.diffK, g(w[4])], [k.upK, g(w[4])], [k.surface, k.dirt], [k.width, w[6]]]), hike: kv2([[k.sac, g(w[5])], [k.vis, k.clear]]) };
-  const other = f.sport === 'hike' ? 'mtb' : 'hike';
-  let h = head2(f, onRoute ? G2.way : G2.pin, name, line, onRoute ? 'route' : 'spot') + `<span class="c2-src">${esc(u.fromOsm)}</span>`;
-  h += grp(u.groups[f.sport]) + G[f.sport] + grp(u.groups[other]) + G[other] + grp(u.groups.winter) + kv2([[k.surface, k.ploughed]]);
-  if (!onRoute) h += grp(u.groups.spot) + kv2([[u.height[0].toUpperCase() + u.height.slice(1), `${ele(1.2)} m`], [k.coords, coords(f, st.at), ` <button type="button" data-act="copied">${ic('copy', 15)}${esc(k.copy)}</button>`]]);
-  h += grp(u.groups.checked) + kv2([['OpenStreetMap', f.lang === 'fi' ? 'kesäkuu 2024' : 'June 2024']]);
-  return h + list([item('osm', null, u.osm, null, { chev: true })]) + foot2(f, { share: false });
+  const other = f.sport === 'hike' ? 'mtb' : 'hike', H = (t) => `<div class="menu-h" style="padding:6px 0 0">${esc(t)}</div>`;
+  let h = head2(f, onRoute ? G2.way : G2.pin, name, line, onRoute ? ['route', w[3]] : ['spot', name]) + src2(u.fromOsm);
+  h += `<div>${H(u.groups[f.sport])}${G[f.sport]}${H(u.groups[other])}${G[other]}${H(u.groups.winter)}${kv2([[k.surface, k.ploughed]])}`;
+  if (!onRoute) h += H(u.groups.spot) + kv2([[u.height[0].toUpperCase() + u.height.slice(1), `${ele(1.2)} m`], [k.coords, coords(f, st.at)]]);
+  h += `${H(u.groups.checked)}${kv2([['OpenStreetMap', f.lang === 'fi' ? 'kesäkuu 2024' : 'June 2024']])}</div>`;
+  return h + (onRoute ? '' : `<div class="way-chips"><button type="button" class="chip" data-act="copied">${ic('copy', 16)}${esc(k.copy)}</button></div>`) + tile('osm', 'info', u.osm, null) + foot2(f, { share: false });
 }
 function placeMoreCard2(f, st) {
-  const u = U(f), t = T[f.lang], by = (g) => t.placeRows.filter((r) => r[0] === g).map((r) => [r[1], r[2]]);
-  return head2(f, G2.place, t.place, t.placeSub, 'place') + `<span class="c2-src">${esc(u.fromLipas)}</span>` + [['site', 'site'], ['there', 'thereG'], ['when', 'when'], ['checked', 'checked']].map(([g, n]) => grp(u.groups[n]) + kv2(by(g))).join('')
-    + list([item('noop', null, t.lipasLink.replace(' ›', ''), null, { chev: true }), item('noop', null, t.website.replace(' ›', ''), null, { chev: true }), item('osm', null, u.osm, null, { chev: true })]) + foot2(f, { share: false });
+  const u = U(f), t = T[f.lang], by = (g) => t.placeRows.filter((r) => r[0] === g).map((r) => [r[1], r[2]]), H = (x) => `<div class="menu-h" style="padding:6px 0 0">${esc(x)}</div>`;
+  return head2(f, G2.place, t.place, t.placeSub, ['place', t.place]) + src2(u.fromLipas) + `<div>${[['site', 'site'], ['there', 'thereG'], ['when', 'when'], ['checked', 'checked']].map(([g, n]) => H(u.groups[n]) + kv2(by(g))).join('')}</div>`
+    + tile('noop', 'info', t.lipasLink.replace(' ›', ''), null) + tile('noop', 'info', t.website.replace(' ›', ''), null) + tile('osm', 'info', u.osm, null) + foot2(f, { share: false });
 }
 function itemCard2(f, st) {
-  const u = U(f);
-  let h = head2(f, G2.look, u.look, u.lookLine, 'route') + nums2([[u.lookWhere, u.fromStart], ['80 m', u.long], ['14 %', u.steepest]]) + `<span class="c2-src">${esc(u.lookSrc)}</span><p class="c2-note">${esc(u.lookNote)}</p>`;
-  if (!st.view) h += `<button type="button" class="c2-main" data-act="noop">${ic('avoid', 20)}${esc(u.avoidIt)}</button>`;
-  return h + `<div class="c2-stepper"><button type="button" data-act="noop" aria-label="${esc(u.prev)}">${ic('left', 20)}</button><span>${esc(u.ofN(1, 2))}</span><button type="button" data-act="noop" aria-label="${esc(u.next)}">${ic('right', 20)}</button><span class="grow"></span><button type="button" data-act="noop">${esc(u.allCheck)} ${ic('right', 16)}</button></div>`;
+  const u = U(f), w = wayAt(st.km);
+  let h = head2(f, G2.look, u.look, u.lookLine, ['route', w[3]]) + nums2([[u.lookWhere, u.fromStart], ['80 m', u.long], ['14 %', u.steepest]]) + src2(u.lookSrc) + `<div style="font-size:14px">${esc(u.lookNote)}</div>`;
+  if (!st.view) h += main('noop', 'avoid', u.avoidIt, u.avoidSub);
+  return h + `<div class="way-bar" style="margin:0"><span><button type="button" class="tool way-x" data-act="noop" aria-label="${esc(u.prev)}">${ic('left', 20)}</button><button type="button" class="tool way-x" data-act="noop" aria-label="${esc(u.next)}">${ic('right', 20)}</button> <span class="insp-info" style="display:inline">${esc(u.ofN(1, 2))}</span></span><button type="button" class="btn quiet" data-act="noop">${esc(u.allCheck)} ${ic('right', 16)}</button></div>`;
 }
 function osmCard2(f, st) {
   const u = U(f), t = T[f.lang], tags = OSM_TAGS[st.place ? 'place' : 'way'];
-  return head2(f, null, u.osm, st.place ? t.place : spotOf2(f, st.at)[0], st.from || 'more') + `<ul class="tags">${tags.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` + foot2(f, { share: false });
+  return head2(f, null, u.osm, st.place ? t.place : spotOf2(f, st.at)[0], [st.from || 'more', u.here]) + `<ul class="tags">${tags.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` + foot2(f, { share: false });
 }
 function notRightCard2(f, st) {
   const t = T[f.lang], u = U(f);
-  return head2(f, null, u.notRight, null, st.from || 'spot') + `<p class="c2-note">${esc(t.nrText.replace('fix what you tell them', 'can fix what you tell them').replace('korjaavat', 'voivat korjata'))}</p>`
-    + list([item('noop', 'pencil', t.nrNote, t.nrNoteSub, { chev: true }), item('noop', null, t.nrEdit, t.nrEditSub, { chev: true }), st.place ? item('noop', null, t.nrLipas, t.nrLipasSub, { chev: true }) : '']);
+  return head2(f, null, u.notRight, null, [st.from || 'spot', u.here]) + `<div style="font-size:14px">${esc(t.nrText.replace('fix what you tell them', 'can fix what you tell them').replace('korjaavat', 'voivat korjata'))}</div>`
+    + tile('noop', 'pencil', t.nrNote, t.nrNoteSub) + tile('noop', 'info', t.nrEdit, t.nrEditSub) + (st.place ? tile('noop', 'info', t.nrLipas, t.nrLipasSub) : '');
 }
 const CARDS2 = { route: routeCard2, stretch: stretchCard2, under: hereCard2, here: hereCard2, more: hereCard2, edit: editCard2, spot: spotCard2, osm: osmCard2, notright: notRightCard2, place: placeCard2, placemore: placeMoreCard2, point: pointCard2, sport: sportCard2, item: itemCard2 };
 
@@ -1038,13 +1165,13 @@ function render(fr) {
   }
   scr.innerHTML = html;
   const CC = v2 ? CARDS2 : CARDS;
-  const inner = card && CC[card] ? `<div class="card">${CC[card](f, st)}</div>` : '';
+  const inner = card && CC[card] ? (v2 ? `<div class="app pl-way card">${CC[card](f, st)}</div>` : `<div class="card">${CC[card](f, st)}</div>`) : '';
   // a spot within reach of the line goes onto it: Add a point here, not Add to my route (revised)
   const near = v2 && st.kind === 'spot' && !st.place && st.at && !st.noRoute && nearest(f.g, st.at).d < 14;
   // the sheet (phones): the peek with the route's numbers, or the card
   let sheetTop = f.H;
   if (!desk) {
-    const first = v2 && st.first && !inner ? `<div class="c2-first"><b>${esc(pn(f, 0))}</b><p>${esc(u.firstLine)}</p><p class="c2-hint">${ic('hold', 20)}${esc(u.hint)}</p></div>` : '';
+    const first = v2 && st.first && !inner ? `<div class="app c3-first"><div class="way-hint"><b>${esc(pn(f, 0))}</b><small>${esc(u.firstLine)}</small></div><p class="hint">${ic('hold', 20)}${esc(u.hint)}</p></div>` : '';
     const body = inner || first || `<div class="row" style="padding-top:2px"><span class="nums"><span><b>${st.added && st.added.length ? '3.52 km' : '3.05 km'}</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span><button type="button" class="btn" data-act="noop">${esc(t.done)}</button></div>`;
     scr.insertAdjacentHTML('beforeend', `<div class="sheet${inner ? ' card-in' : ''}" role="region" aria-label="Route planner"><span class="grab" aria-hidden="true"></span>${body}</div>`);
     sheetTop = f.H - 8 - scr.querySelector('.sheet').offsetHeight;
@@ -1059,7 +1186,7 @@ function render(fr) {
     const label = onRoute || near ? t.add : st.noRoute ? t.startHere : t.addRoute, action = onRoute ? 'addpt' : 'addspot';
     const pin = `<span class="pin${st.place ? ' around' : ''}" style="left:${x}px;top:${y}px"></span>`;
     if (desk) {
-      scr.insertAdjacentHTML('beforeend', `${pin}<div class="pop" role="dialog" aria-label="${esc(card)}">${v2 ? `<button type="button" class="c2-main" data-act="${action}">${ic('plus', 20)}${esc(label)}</button>` : btn(action, label, 'plus', 'btn primary')}${inner}</div>`);
+      scr.insertAdjacentHTML('beforeend', `${pin}<div class="pop" role="dialog" aria-label="${esc(card)}">${v2 ? inner.replace('<div class="app pl-way card">', `<div class="app pl-way card">${main(action, 'plus', label)}`) : btn(action, label, 'plus', 'btn primary') + inner}</div>`);
       const pop = scr.querySelector('.pop'), w = pop.offsetWidth, h = pop.offsetHeight, up = y + 8 + h > f.H - 8;
       pop.classList.toggle('up', up); // opened above the pointer: the action at its bottom, still next to it
       pop.style.left = `${x + 8 + w > f.W - 8 ? x - 8 - w : x + 8}px`;
@@ -1121,6 +1248,8 @@ function act(fr, a) {
   if (a.startsWith('here-')) { st.here = a.slice(5); render(fr); return; }
   if (a.startsWith('pick-')) { st.change = a.slice(5) !== (st.sport || PK.sport); st.card = 'point'; render(fr); return; }
   if (a.startsWith('drawn-')) { st.drawn = a.slice(6); render(fr); return; }
+  if (/^min-\d+$/.test(a)) { st.min = +a.slice(4); render(fr); return; }
+  if (/^co-\d+$/.test(a)) { st.co = +a.slice(3); render(fr); return; }
   switch (a) {
     case 'close': fr.st = keep; break;
     case 'min-': st.min = Math.max(5, (st.min || 30) - 5); break;
@@ -1208,7 +1337,7 @@ picker.addEventListener('click', (e) => {
   if (b.classList.contains('pk-toggle')) { const open = picker.dataset.open !== 'true'; picker.dataset.open = String(open); b.setAttribute('aria-expanded', String(open)); return; }
   PK[b.dataset.pk] = b.dataset.v;
   for (const x of picker.querySelectorAll(`[data-pk="${b.dataset.pk}"]`)) x.setAttribute('aria-pressed', String(x === b));
-  if (b.dataset.pk === 'theme') document.documentElement.dataset.theme = b.dataset.v;
+  if (b.dataset.pk === 'theme') { document.documentElement.dataset.theme = b.dataset.v; document.getElementById('controls')?.classList.toggle('dark', b.dataset.v === 'dark'); }
   renderAll();
 });
 for (const [k, v] of Object.entries(PK)) for (const x of picker.querySelectorAll(`[data-pk="${k}"]`)) x.setAttribute('aria-pressed', String(x.dataset.v === v));
