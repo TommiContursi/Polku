@@ -2,7 +2,7 @@
 
 The implementation plan for the last part of Phase 25. What's still to do, and its status, is on GitHub: #233 and #345, in the [Phase 25](https://github.com/TommiContursi/Polku/milestone/16) milestone.
 
-- **Status (2026-10-21): for the user's OK.** No app code before it.
+- **Status (2026-10-21): approved,** with its eight decisions as recommended and how the cards read and look. Built part by part, in the order below.
 - **What it builds:** journeys C and D of the [calmer planner](issue-233-calmer-planner.md#revised-journeys-2026-10-20-proposals), and #345's [map cards](issue-345-map-cards.md), approved on 2026-10-21 (PR #346).
 - **The mock-ups:** [the planner's](mockups/phase-24-planner.html) sections C and D; [the map cards'](mockups/issue-345-map-cards.html). Frame ids are in brackets below.
 - **How to build it:** one part a session, one PR a part, in this order. Each session starts from the last Hand-over on #233 (AGENTS.md).
@@ -24,7 +24,7 @@ Each has a recommendation. The plan is written with it.
 1. **The order:** the card first, with a point's card. *Why:* the card decides Back, the peek, the toolbox stepping aside and focus for all eight cards that follow. A point's card is the smallest real use, so it can be tried on a phone before the rest.
 2. **Change sport on a point** changes the legs from that point to the next change of sport, or to the finish. One stretch only is Edit this stretch. *Why:* #345 asks for both, "from a point onward" and "for one part only".
 3. **All leg settings goes.** Each stretch row says its sport and how it's drawn, and Edit this stretch is one tap away.
-4. **Find and Move to wait.** They were §7's tools for long routes. D's frames don't draw them: folding, Reorder and a point's Move cover them. An issue keeps the idea.
+4. **Find and Move to wait.** They were §7's tools for long routes. D's frames don't draw them: folding, Reorder and a point's Move cover them. #350 keeps the idea.
 5. **Items §6 doesn't place** go as the table in part 3 says: road conditions in Read before you go; twilight, snow on the way and snowing in Worth a look; on the ice in Read before you go.
 6. **In the route's view,** a stop and the departure change without leaving the view, as 25c built. Every other action on a card goes back to editing first, as #345 says.
 7. **With the planner put away,** a card opens at the spot, on phones too, as the map's cards do today. The peek holds cards only while the planner is open.
@@ -544,7 +544,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
 
 - A form in Polku that posts a note to OpenStreetMap: #347.
 - A swipe below the peek that puts the route away: #338.
-- Find a point by name, and Move to a number: an issue, if decision 4 stands.
+- Find a point by name, and Move to a number: #350.
 - A test with someone new (§8's script): after part 5, and again after part 9.
 
 ## Built
