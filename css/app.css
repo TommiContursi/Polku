@@ -722,12 +722,13 @@ body:not(.ready) .map-ctrls { display: none; }
 .rt-pair > .stylebtn { flex: 1 1 140px; } /* the row's width, half each (2026-10-21) */
 .rt-pair.stack { flex-direction: column; align-items: stretch; }
 /* a wide panel at the bottom (a desktop's, a phone on its side): the round trip's form in two columns, what's chosen
-   first on the left, so it isn't stretched to the panel's width and height (2026-10-21) */
+   first on the left, so it isn't stretched to the panel's width and height; Make 3 loops across both under them
+   (2026-10-21) */
 @container (min-width: 720px) {
   .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; column-gap: 24px; }
   .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > * { grid-column: 1; }
-  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > :is(.rt-how, .rt-chips, .rt-step, .rt-pair, .note, .rt-make) { grid-column: 2; }
-  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > :is(.way-bar, .way-head:has(> .way-x)) { grid-column: 1 / -1; }
+  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > :is(.rt-how, .rt-chips, .rt-step, .rt-pair) { grid-column: 2; }
+  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > :is(.way-bar, .way-head:has(> .way-x), .note, .rt-make) { grid-column: 1 / -1; }
 }
 .rt-pair.stack > .stylebtn { width: 100%; }
 /* Make 3 loops says what it costs, under its name */
