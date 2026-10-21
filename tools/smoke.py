@@ -6765,6 +6765,8 @@ RV_FIT = """(() => {
   const sum = [...p.els.sum.querySelectorAll('.sum-item b')].map(r), er = r(e);
   sum.forEach((a, i) => { if (a.right > er.left && a.bottom > er.top && a.top < er.bottom) out.push(`number ${i} under Edit`); if (a.top < tr.bottom - 1) out.push(`number ${i} under the name`); });
   if (pl.top < document.querySelector('.topbar').getBoundingClientRect().bottom) out.push('the sheet under the top bar');
+  const sub = r(p.els.titleSub);
+  if (sub.top < tr.top - 1 || sub.bottom > tr.bottom + 1) out.push('its sports and Kept on this device out of sight');
   return out; })()"""
 
 

@@ -629,10 +629,10 @@ body:not(.ready) .map-ctrls { display: none; }
 /* The route's view (25c): a row above the numbers with the route's name (it wraps, never cut), its sports and
    "Kept on this device", and ✕; Edit where Done was */
 .pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }
-/* (a short screen, 200 % and a long name: the name scrolls in its row, whole, so the sheet stops below the top bar) */
-.pl-title.scrolls { overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
 .pl-ttl { flex: 1; min-width: 0; display: grid; gap: 1px; margin: 5px 0 0; font: inherit; }
 .pl-ttl b { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+/* (a short screen, 200 % and a long name: the name scrolls in its place, whole, so the sheet stops below the top bar) */
+.pl-ttl b.scrolls { overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
 .pl-ttl small { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
 .pl-ttl small .ic { color: var(--accent); }
 .pl-title .way-x { width: 44px; height: 44px; margin: -4px -6px 0 0; }

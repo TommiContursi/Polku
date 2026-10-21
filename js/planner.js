@@ -4303,14 +4303,14 @@ export class Planner {
       // the start's view as tall as it is, not as tall as the sheet let it be: it scrolls inside only once the
       // sheet stops below the top bar (css/app.css .way-only)
       const grow = w && !w.hidden ? w.scrollHeight - w.clientHeight : 0;
-      // the route's view on a short screen (200 %, a long name): its name scrolls in its row, whole, so the sheet stops
-      // below the top bar as the start's views do (25c)
-      const t = this.els.title;
-      if (t) t.style.maxHeight = '';
+      // the route's view on a short screen (200 %, a long name): the name scrolls in its place, whole, so the sheet stops
+      // below the top bar as the start's views do, and its sports and "Kept on this device" stay in sight (25c)
+      const t = this.els.title, n = this.els.titleName;
+      if (n) n.style.maxHeight = '';
       let h = Math.ceil(hd.offsetTop + hd.offsetHeight + grow + 6);
       const over = t && !t.hidden && this.layout() === 'sheet' ? h - (dvh() - 76) : 0;
-      if (over > 0) { const th = t.offsetHeight, to = Math.max(44, th - over); t.style.maxHeight = `${to}px`; h -= th - to; }
-      if (t) t.classList.toggle('scrolls', over > 0);
+      if (over > 0) { const nh = n.offsetHeight, to = Math.max(38, nh - over); n.style.maxHeight = `${to}px`; h -= nh - to; }
+      if (n) n.classList.toggle('scrolls', over > 0);
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
