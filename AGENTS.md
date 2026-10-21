@@ -130,6 +130,13 @@ the whole conversation again, so change models only between sessions
   needs none. The mock-up and a short plan are enough: no probe scripts,
   measurements or evidence files unless the user asks. The user chooses
   before it's built; #123's plan shows how.
+- **One style, and don't redesign what works.** Where a screen needs a control
+  that does the same job as one the app has (DEVELOPING, "Shared controls"),
+  it uses that one, with its class, and a mock-up copies its CSS from
+  `css/app.css`. A different element is fine where the job is different:
+  propose it to the user first, and once chosen it joins the list. Never a
+  copy of an existing control under a new name. A mock-up keeps its earlier
+  versions behind a switch, so they can be compared.
 
 ## Testing
 
