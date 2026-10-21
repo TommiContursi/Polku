@@ -4,7 +4,7 @@ The implementation plan for the last part of Phase 25. What's still to do, and i
 
 - **Status (2026-10-21): approved,** with Revision 4 chosen (#355); see "Where 25d stands" below.
 - **What it builds:** journeys C and D of the [calmer planner](issue-233-calmer-planner.md#revised-journeys-2026-10-20-proposals), and #345's [map cards](issue-345-map-cards.md).
-- **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 4** (the default) is what to build; **As approved** and **Revisions 1 to 3** stay there to compare. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)); where its cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
+- **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 5** (the default) is what to build; **As approved** and **Revisions 1 to 4** stay there to compare. Every control in Revision 5 does what it says, or says in a note what the app would do. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)); where its cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
 - **How to build it:** one part a session, one PR a part (part 1 in two), in this order. Each session starts from the last Hand-over on #233 (AGENTS.md).
 
 ## Where 25d stands
@@ -21,7 +21,9 @@ The one list of what's decided, what waits for the user and what's next. The oth
   - **Undo and redo** stay while a card is open. The phone's back gesture closes the card.
   - **The first point's peek** says "Hold the map to see what's there."
   - **In the route's view,** the planner's "You're not editing" note, with Edit.
-  - **The look is Revision 4** (chosen 2026-10-21, #355): Revision 1's look, with Back in words; plain rows on phones, each with its icon, a hairline between rows, and a hover on desktops; a line under every item of a list (all or none, so a list reads alike); compact cards on desktops, where every line is the row's tooltip.
+  - **The look is Revision 5** (Revision 4, chosen 2026-10-21 in #355, with the user's desktop changes the same day): Revision 1's look, with Back in words; plain rows on phones, each with its icon, a hairline between rows, and a hover on desktops; a line under every item of a list (all or none, so a list reads alike); compact cards on desktops, where every line is the row's tooltip.
+  - **Desktops (Revision 5):** a card is 320 px wide and 480 px tall at most, scrolling inside. A row with › goes somewhere; an action is a button with its icon and name, two a row (a point's Start here and End here, Move and Rename; a spot's Your route; a stretch's actions), and **Remove** is a red button on a row of its own. While a point's card is open, its row in the planner's list is lit; the card doesn't move there.
+  - **The start and the end have Reverse** ("The route runs the other way, from the end to the start"); the end has Back to start too. **End here** has a flag.
   - **25d stays within the cards:** the toolbar, the start and the ⋯ menu don't change.
   - **Don't redesign what works.** Keep one style throughout, with a different element only where the job is different. Every version stays in the mock-up to compare.
 - *2026-10-21, the app's controls (#356):* black icons in lists (the ⋯ menu, the cards), green on the start's tiles and in switches; the chosen chip green with a border everywhere; one stepper, − 30 min + in one box with the number typable, for the cards and the round trip; switches with icons where they help, and one chosen look for all: white, black words, a green icon or tick.
@@ -32,15 +34,15 @@ The one list of what's decided, what waits for the user and what's next. The oth
 
 **Next**
 1. #356's fix the cards need: the route's numbers' labels wrap (its own Fix PR).
-2. Then #352 is restyled to Revision 4's frames as 1a, then 1b.
-3. Before parts 2 to 4: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) get a Revision 4 version behind a switch: the same rows, warning box, switch and words as the cards, and nothing else changed. The user chooses it before part 2.
+2. Then #352 is restyled to Revision 5's frames as 1a (its desktop card, the edits as buttons, Reverse, the lit row), then 1b.
+3. Before parts 2 to 4: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) get a Revision 5 version behind a switch: the same rows, warning box, switch and words as the cards, and nothing else changed. The user chooses it before part 2.
 4. Then parts 2 to 6, in the order below.
 
 > **For agentic workers:** use superpowers:executing-plans for one part at a time. Steps use checkboxes (`- [ ]`). AGENTS.md wins where they differ: no subagents to verify or run the suite.
 
 **Goal:** a tap on a point, the route, a warning or a place shows one card; a long press or a right-click shows what's there and what you can do; Check sorts every Heads-up item by how serious and how sure.
 
-**Architecture:** one card component (`js/card.js`, `CardHost`) shows every card, the map's own cards included: in the planner's peek on a phone, at the pointer on a desktop, at the spot with the planner put away. Every card is built to Revision 4's frames, from the shared controls (below). The cards' contents go in `js/cards.js`, which builds them from what the planner gives it; `js/planner.js` (5,700 lines) keeps the actions. The facts come from one module (`js/facts.js`), ordered by sport. Heads-up items get a group and a source where each is made.
+**Architecture:** one card component (`js/card.js`, `CardHost`) shows every card, the map's own cards included: in the planner's peek on a phone, at the pointer on a desktop, at the spot with the planner put away. Every card is built to Revision 5's frames, from the shared controls (below). The cards' contents go in `js/cards.js`, which builds them from what the planner gives it; `js/planner.js` (5,700 lines) keeps the actions. The facts come from one module (`js/facts.js`), ordered by sport. Heads-up items get a group and a source where each is made.
 
 **Tech stack:** plain ES modules, MapLibre, `tools/smoke.py` with headless Chrome. Nothing new to install.
 
@@ -102,7 +104,7 @@ Every part's requirements include these.
 
 ### How every card is built
 
-**To Revision 4's frames** (the mock-up's default). Revision 4 is Revision 1's look with the user's changes of 2026-10-21. In the code, a part that does the same job as a control the app already has uses it, with its class (DEVELOPING, "Shared controls"). The rest are new shared controls, added to that list once #355 is chosen.
+**To Revision 5's frames** (the mock-up's default). Revision 4 is Revision 1's look with the user's changes of 2026-10-21. In the code, a part that does the same job as a control the app already has uses it, with its class (DEVELOPING, "Shared controls"). The rest are new shared controls, added to that list once #355 is chosen.
 
 | In a card | In the code |
 |---|---|
@@ -122,7 +124,7 @@ Every part's requirements include these.
 
 - **A line under every item of a list,** or none in that list, so a list reads alike (the user, 2026-10-21). The line says what the name doesn't: what an action removes or adds ("The part before it is removed, Undo brings it back"), how far it reaches ("To the next change of sport, or the end"), a stretch's two ends, or what's behind a row ("Sport, how it's drawn, style"). On desktops every line is the row's tooltip instead. Lines can be dropped in a later phase if they turn out to be clutter.
 - **Every row that opens something has an icon** and ›, and a hover on desktops: they say it's a button without a box around it.
-- **Desktops:** compact rows, 40 px; no boxes around rows; a hover on every row.
+- **Desktops:** 320 px wide, 480 px tall at most; rows 34 px with a hover; a row with › goes somewhere, an action is a button with its icon and name, two a row; Remove a red button on a row of its own; the lines as tooltips; no heading above a group of buttons.
 - **Narrow (200 %, a small phone):** Back, undo, redo and ✕ on a row of their own, the name the card's whole width; the numbers one to a row; the switch in a column. Words break only at soft hyphens.
 - **The peek:** a card takes 52 % of the window at most on a phone, and scrolls inside, so the point or the spot stays in sight. On a desktop the card stays on the screen and scrolls inside.
 - **The words:** the name first, one short line under it, no facts strung with dots, no brackets ("Forest path, 0.72 km from the start"). "There at", never "you're here". **Edit this stretch**. The ways are the app's: **Follow paths**, **Straight line**, **Over water**. Notes use the points' numbers ("Point added after Via 1"). Not right? says "Its mappers can fix what you tell them." One short word a grade (S0 easy, S1 fairly easy, S2 medium, S3 hard, S4 very hard, S5 and S6 extreme; T1 easy, T2 medium, T3 hard, T4 to T6 alpine), on its own line under the grade.
@@ -242,7 +244,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
   - At 200 %: undo, redo and ✕ in the card's top row, the title below them; at 360 × 740 in Finnish with a 40-letter name, no "…", no text past the card.
   - The route's view: the switch works and stays in the view; no Move, Rename, Start here, End here, Sport from here or Remove; the note's Edit goes back to editing.
   - The end on a loop: no Back to start; a loop's via point: Start here with the loop's line, no End here.
-- [ ] **Build** each card to its frame (Cards: Revision 4), from the shared controls. Today's functions do the work behind them (`setStop()`, `stopEditor()`'s times, `listStays()`, `setCarry()`, `startAt()`, `finishAt()`, `backToStart()`, `removePoint()`), but none of today's point-menu controls is reused as it looks: no select, no `seg small`, no full-size button rows. The peek is `els.card` in the header's `sheet-head-in`, measured by `measureSheet()`. The float is a `maplibregl.Popup` (`polku-popup`), kept on screen by `keepInView()`.
+- [ ] **Build** each card to its frame (Cards: Revision 5), from the shared controls. Today's functions do the work behind them (`setStop()`, `stopEditor()`'s times, `listStays()`, `setCarry()`, `startAt()`, `finishAt()`, `backToStart()`, `removePoint()`), but none of today's point-menu controls is reused as it looks: no select, no `seg small`, no full-size button rows. The peek is `els.card` in the header's `sheet-head-in`, measured by `measureSheet()`. The float is a `maplibregl.Popup` (`polku-popup`), kept on screen by `keepInView()`.
 - [ ] **Groups to run:** `pointcard stops multi backtostart routeview editing toolbox drawer routebits`.
 
 ### 1b. The route's card and a stretch's card
