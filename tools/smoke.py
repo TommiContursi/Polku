@@ -6370,7 +6370,9 @@ START_LIB = """(() => {
     // the route style and the direction: side by side on a phone, a row each on a desktop
     const pair = $('.pl-way .rt-pair'), kids = pair ? [...pair.children] : [];
     if (kids.length !== 2 || !kids[0].matches('.stylebtn[data-k=srow]') || !kids[1].matches('.rt-dir') || !kids[1].querySelector('select[data-k=dir]')) err(`the style and the direction: ${pair ? txt(pair) : 'none'}`);
-    else if (Math.abs(kids[0].getBoundingClientRect().top - kids[1].getBoundingClientRect().top) < 1 === p.sideMQ.matches) err(`the style and the direction ${p.sideMQ.matches ? 'side by side on a desktop' : 'a row each on a phone'}`);
+    else if (Math.abs(kids[0].getBoundingClientRect().top - kids[1].getBoundingClientRect().top) < 1 === (p.layout() === 'side')) err(`the style and the direction ${p.layout() === 'side' ? 'side by side in the side panel' : 'a row each at the bottom'}`);
+    // a wide panel at the bottom: the form in two columns, How long beside the sport (2026-10-21)
+    if (p.layout() === 'sheet' && $('.sheet-head').clientWidth >= 720 && !(Math.abs($('.pl-way .rt-how').getBoundingClientRect().top - $('.pl-way .sport-row').getBoundingClientRect().top) < 30)) err('a wide panel at the bottom: the round trip isn’t in two columns');
     if ($('.pl-way [data-k=where]') || $('.pl-way .rt-where')) err('Where I am is still offered when the start is your position');
     if (way().getBoundingClientRect().height <= tall) err('the form didn’t open with the start');
     // the start stays in sight above the form

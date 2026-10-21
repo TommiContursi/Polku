@@ -1642,9 +1642,10 @@ export class Planner {
     const making = L.busy ? `Making loops…${L.progress ? ` ${L.progress} of 3` : ''}` : '';
     const make = h('button', { type: 'button', class: 'btn primary big rt-make', 'data-k': 'make', disabled: L.busy || !L.start, onclick: () => this.generateLoops(),
       html: L.busy ? `<span class="rt-making">${making}${L.progress ? `<span class="rt-progress" style="--p:${Math.round((L.progress / 3) * 100)}%"><i></i></span>` : ''}</span>` : `${icon('roundtrip', 20)}<span class="rt-make-t"><span>Make 3 loops</span><small>${cost}</small></span>` });
-    // in the order it's chosen: the sport, where it starts, how long, then the style and which way: side by side on a
-    // phone, a row each on a desktop and while the style's choices are open (2026-10-21)
-    const ways = h('div', { class: `way-pair rt-pair${desk || L.styleOpen ? ' stack' : ''}` }, style, dir);
+    // in the order it's chosen: the sport, where it starts, how long, then the style and which way: side by side, or a
+    // row each in the side panel and while the style's choices are open (2026-10-21; a wide panel at the bottom has
+    // the form in two columns, css/app.css)
+    const ways = h('div', { class: `way-pair rt-pair${this.layout() === 'side' || L.styleOpen ? ' stack' : ''}` }, style, dir);
     return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start')), close)),
       startLine, whereNote, seg, chips, stepper, ways,
       L.note ? h('p', { class: 'note' }, L.note) : null, make,
