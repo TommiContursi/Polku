@@ -706,6 +706,9 @@ SCENES.update({
     'phone-sport-360': dict(PHONE, w=360, h=740, timeline=False, hash='#15/61.4975/23.738', js=SPORT_JS('long')),
     'desk-sport-button': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js=SPORT_JS('button')),
     'desk-sport-ask': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js=SPORT_JS('ask')),
+    # the start: the sport in a row of its own under Start a route (2026-10-21)
+    'phone-sport-start': dict(PHONE, timeline=False, hash='#15/61.4975/23.738', js="(async () => { polku.planner.clear(); polku.planner.setActive(true); return true; })()"),
+    'desk-sport-start': dict(DESK, timeline=False, hash='#15/61.4975/23.738', storage=SIDE, js="(async () => { polku.planner.clear(); polku.planner.setActive(true); return true; })()"),
 })
 
 
