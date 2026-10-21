@@ -306,7 +306,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 **Title:** Phase 25d: Check says how serious and how sure.
 
 **For people:**
-- Heads-up becomes three groups, each a heading: **Read before you go**, **Worth a look**, **Not checked** [jc-check].
+- Heads-up becomes three groups, each a heading: **Read before you go**, **Worth a look**, **Not checked** [jc-check; the Check tab itself: chk-phone, chk-paddle, chk-desk].
 - Each item says where it comes from: "Live · Fintraffic, 18:40", "From the map · OpenStreetMap", "An estimate · the terrain model", "Calculated · the sun's times".
 - A source that didn't answer is in Not checked, with Retry: Fintraffic, trail details, winter ways, the weather, the water's sources, the terrain.
 - It stays there until the source answers. A later note can't replace it (#265).
@@ -608,7 +608,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 ## Not in 25d
 
-- The planner mock-up's frames not built: D's tap on the line opening the stretch's card at once [jd-maptap], replaced by #345's route card; the options not chosen for the list [jd-v2, jd-v3, jd-v3e].
+- The planner mock-up's frames not built: D's tap on the line opening the stretch's card at once [jd-maptap], replaced by #345's route card; the options not chosen for the list [jd-v2, jd-v3, jd-v3e]; section 6's waypoint list [wp-*], replaced by D; section 5's peek row [chk-peek], replaced by C's row [jc-peek].
+- The planner mock-up's other sections are built: A (the start) and B (the sport) in 25b, 1 (the toolbox) and 3 (More) in 25a, 2 (round trips) in 25b, 4 (Done and the route's view) in 25c. Section 7 (the worst cases) applies to every part; section 8 is today's planner, for comparison.
 
 - A form in Polku that posts a note to OpenStreetMap: #347.
 - A swipe below the peek that puts the route away: #338.
