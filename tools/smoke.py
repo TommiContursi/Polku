@@ -2838,9 +2838,12 @@ QUICK_TAPS = """(() => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, m = polku.map;
   const title = () => { const t = document.querySelector('.maplibregl-popup .pt-title'); return t ? t.textContent : ''; };
   const at = (ll) => { const q = m.project(ll), el = document.elementFromPoint(q.x, q.y); return el === m.getCanvas() ? { x: q.x, y: q.y } : { under: el ? el.id || el.className || el.tagName : 'nothing' }; };
-  // nothing open over the map, the sheet low, the map where it started
+  // nothing open over the map (Clear route's note too: over a taller start it can reach the spot), the sheet low,
+  // the map where it started
   const tidy = async () => {
     if (p.menu) p.menu.remove();
+    const t = document.querySelector('#toast');
+    t.classList.remove('show'); t.hidden = true;
     if (p.closeStartTip) p.closeStartTip(); // (before 25b: the first point's card)
     p.setSheetState('peek');
     await wait(600);
@@ -5251,6 +5254,13 @@ def nextleg(chrome):
       return { i, leg: l ? l.mode + (l.ice ? ' ice' : '') : 'none', sport: l && p.legSport(i), mode: p.mode, w, ic: new URL(url).searchParams.get('ic'), back: back.ice }; })()""")
     if ice['leg'] != 'line ice' or ice['sport'] != 'hike' or ice['mode'] != 'line' or ice['w'] != ['On the ice: Polku can’t see whether it holds'] or ice['ic'] != str(ice['i']) or ice['back'] != [ice['i']]:
         fails.append(f'{name}: on the ice: {ice}')
+    # a first point on the lake: no leg goes there, so no note (it covered the round trip's loops)
+    pg.js("(() => { const p = polku.planner; p.app.winter = () => ({ on: false, setting: 'off' }); p.clear(); p.setMode('auto'); const t = document.querySelector('#toast'); t.classList.remove('show'); t.hidden = true; return true; })()")
+    pg.js('nlT.view([23.735, 61.519], 14)')
+    press(pg, pg.js(f'nlT.spot({lake})'), f'{name}: a first point on the lake', True)
+    st = S()
+    if st['n'] != 1 or 'on the water' in st['toast']:
+        fails.append(f"{name}: a first point on the lake: {st['n']} points, the note “{st['toast']}”")
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
 

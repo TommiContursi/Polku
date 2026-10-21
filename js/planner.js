@@ -2481,7 +2481,7 @@ export class Planner {
     // "Add a point here" comes first in it, and a drag still reshapes the route
     if (hit && !hit.properties.loading) this.openLegMenu(hit.properties.leg, e.lngLat);
     else {
-      const wet = this.onOpenWater(e.point);
+      const wet = this.points.length > 0 && this.onOpenWater(e.point); // (a first point has no leg to get there by)
       this.addPoint(ll); // (the first point's peek offers a round trip from it: #232)
       // the note first (no other ways for a leg into the water), and the spot you tapped kept for its answer
       if (wet) { this.altFor = null; this.waterTap = { pt: ll, at: ll.slice() }; this.offerPaddle(); } else this.sportHint();
