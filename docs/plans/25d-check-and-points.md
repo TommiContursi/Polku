@@ -24,10 +24,10 @@ The one list of what's decided, what waits for the user and what's next. The oth
   - **The look is Revision 4** (chosen 2026-10-21, #355): Revision 1's look, with Back in words; plain rows on phones, each with its icon, a hairline between rows, and a hover on desktops; a line under every item of a list (all or none, so a list reads alike); compact cards on desktops, where every line is the row's tooltip.
   - **25d stays within the cards:** the toolbar, the start and the ⋯ menu don't change.
   - **Don't redesign what works.** Keep one style throughout, with a different element only where the job is different. Every version stays in the mock-up to compare.
+- *2026-10-21, the app's controls (#356):* black icons in lists (the ⋯ menu, the cards), green on the start's tiles and in switches; the chosen chip green with a border everywhere; one stepper, − 30 min + in one box with the number typable, for the cards and the round trip; switches with icons where they help, and one chosen look for all: white, black words, a green icon or tick.
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
-- **#356:** green or black icons in menu items; one chosen chip; one − field + stepper for the round trip and the cards (the app's `rt-step` or the cards' − 30 min +).
 - **#357:** the rule for shared controls.
 
 **Next**
@@ -108,8 +108,8 @@ Every part's requirements include these.
 | Back in words, ✕ | the app's `btn small quiet way-back` and `tool way-x`; with Back, both on a row of their own |
 | The name and its line | the app's `way-hint` (17 px, 13.5 px), with the thing's own mark from the map left of it (new: `card-mark`) |
 | Three numbers | the app's `sum-item`, its labels wrapping (#356) |
-| At this point: Pass by · Stop · Night | the app's `seg`, as a variant with icons over the words and the chosen one in the accent colour (new: `seg icons`); #356 says whether Distance · Time follows |
-| A stop's minutes | one stepper (− field +) for the round trip and the cards (#356) |
+| At this point: Pass by · Stop · Night | the app's `seg`, as a variant with icons over the words (new: `seg icons`); the chosen one as every switch's: white, black words, a green icon (#356) |
+| A stop's minutes | one stepper for the round trip and the cards: − 30 min + in one box, the number typable (#356) |
 | Rows: This stretch, What's here, Edit this stretch, The stretch after it, Sport from here: MTB, Leave at: Now, Route style: Balanced, Not right?'s links, and the actions (Move, Start here, Remove) | one plain row: always an icon, its name, its line, a value in the accent colour, ›; a hairline between rows; a hover on desktops; Remove in red, apart (new: `row`, which the app's `speed-sport-row` can share, #356) |
 | A warning on a stretch | the yellow box with its words (new: `warn-row`, which part 3's row in the peek uses too) |
 | The one main action | the app's `btn primary big` |
