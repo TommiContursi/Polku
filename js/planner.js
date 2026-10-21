@@ -4310,6 +4310,7 @@ export class Planner {
       let h = Math.ceil(hd.offsetTop + hd.offsetHeight + grow + 6);
       const over = t && !t.hidden && this.layout() === 'sheet' ? h - (dvh() - 76) : 0;
       if (over > 0) { const th = t.offsetHeight, to = Math.max(44, th - over); t.style.maxHeight = `${to}px`; h -= th - to; }
+      if (t) t.classList.toggle('scrolls', over > 0);
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header

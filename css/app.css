@@ -630,7 +630,7 @@ body:not(.ready) .map-ctrls { display: none; }
    "Kept on this device", and ✕; Edit where Done was */
 .pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }
 /* (a short screen, 200 % and a long name: the name scrolls in its row, whole, so the sheet stops below the top bar) */
-.pl-title[style*="max-height"] { overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
+.pl-title.scrolls { overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
 .pl-ttl { flex: 1; min-width: 0; display: grid; gap: 1px; margin: 5px 0 0; font: inherit; }
 .pl-ttl b { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
 .pl-ttl small { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
