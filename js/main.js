@@ -122,6 +122,8 @@ const ctx = {
 // you left it last time, else (a first visit) Helsinki, and Polku asks for your location.
 const lastView = store.get('view', null);
 const firstVisit = !/^#\d/.test(location.hash) && !lastView && !shared;
+// the planner left open (25c, #238): it opens again after a reload, as it was (editing or the route's view)
+const leftOpen = !!(store.get('plannerOpen', null) || {}).open;
 const map = new maplibregl.Map({
   container: 'map',
   style: buildStyle(state, ctx),
@@ -361,22 +363,24 @@ async function rideLipas(props, { click = null, near = null, add = false } = {})
   }
 }
 const inspector = initInspector(map, {
-  isPlanning: () => planner.active,
+  // the map's own cards: with the planner put away, and in the route's view for what the planner doesn't take (25c)
+  isPlanning: (e) => planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent)),
   activity: () => state.activity,
   difficulty: showsDifficulty,
   bike: isBike,
   routeFrom: (ll, mode) => {
-    planner.setActive(true);
+    planner.setActive(true, { edit: true });
     if (mode) planner.setMode(mode);
     planner.clear();
     planner.addPoint(ll);
     toast('Now click where you want to go');
   },
-  routeTo: (ll) => { planner.setActive(true); planner.addPoint(ll); },
+  routeTo: (ll) => { planner.setActive(true, { edit: true }); planner.addPoint(ll); },
   avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
   rideLipas,
   // a click on your route with the planner closed: open it, with that part's choices
-  openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; planner.setActive(true); setTimeout(() => planner.openLegMenu(leg, lngLat), 60); }, // (the same click mustn't add a point too)
+  // (in the route's view too, where the planner leaves map taps to the map: 25c)
+  openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openLegMenu(leg, lngLat), 60); }, // (the same click mustn't add a point too)
   lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
@@ -452,15 +456,14 @@ window.polku = {
   },
 };
 
-// Plan sits where the planner opens: in the search bar on desktop (side panel
-// below it), at the bottom on phones (the sheet takes its place, with its own Done).
+// Plan sits where the planner opens: in the search bar on desktop (side panel below it), and last in the
+// map's column, where the planner put away comes back. While planning both stay where they are, pressed,
+// and close it again (on phones the sheet takes the column's place). Done ends editing since 25c.
 function syncPlanButton(on) {
   for (const b of $$('#btn-plan, #btn-plan-search')) {
     b.setAttribute('aria-expanded', String(on));
-    b.title = on ? 'Done — close the planner (R), the route stays' : 'Plan a route (R)';
+    b.title = on ? 'Close the planner (R): your route stays' : planner.points.length ? 'Plan: open your route (R)' : 'Plan a route (R)';
   }
-  // the column's button stays in its place: Plan, or Done while planning
-  $('#btn-plan').innerHTML = on ? `${icon('check', 22)}<span>Done</span>` : `${icon('route', 22)}<span>Plan<span class="plan-more"> route</span></span>`;
 }
 
 // What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel.
@@ -1565,7 +1568,9 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '/') { e.preventDefault(); $('#search-input').focus(); }
   else if (e.key === 'r' && !mod) planner.setActive(!planner.active);
   else if (e.key === 'f' && !mod && planner.points.length) { if (!planner.active) planner.setActive(true); planner.fitRoute(); }
-  else if (planner.active && !mod && !e.altKey && { p: 1, s: 1, w: 1 }[e.key]) planner.setMode({ p: 'auto', s: 'line', w: 'water' }[e.key]); // the next leg's mode
+  // E: Done or Edit, where the button is (25c)
+  else if (e.key === 'e' && !mod && !e.altKey && planner.active && planner.points.length && !planner.loop.open) { if (planner.inView()) planner.setEditing(true); else planner.done(); }
+  else if (planner.active && !planner.inView() && !mod && !e.altKey && { p: 1, s: 1, w: 1 }[e.key]) planner.setMode({ p: 'auto', s: 'line', w: 'water' }[e.key]); // the next leg's mode
   else if (e.key === 'l' && !mod) openPanel('quick-layers', { instant: true });
   else if (e.key === 't' && !mod) toggleTimeline();
   else if (e.key === 'Escape') {
@@ -1594,7 +1599,7 @@ function openOfflineArea(area) {
   openPanel(null);
   const r = area.route;
   if (r.activity && r.activity !== state.activity) setActivity(r.activity);
-  planner.setActive(true);
+  planner.setActive(true, { edit: false }); // (the route's view: 25c)
   planner.restoreSnapshot(r);
   planner.frame(area.bbox, { duration: 0, maxZoom: map.getMaxZoom() });
 }
@@ -1656,13 +1661,14 @@ map.on('load', () => {
   if (firstVisit && navigator.geolocation) setTimeout(() => locate.start({ quiet: true }), 600);
   if (shared && shared.points.length) {
     planner.restore(shared);
-    planner.setActive(true);
+    planner.setActive(true, { edit: false }); // a shared route opens in the route's view, to read it first (25c)
     // its points now, its routed line once the legs are in
     const b = bbox(shared.points);
     if (b[0] !== b[2]) planner.frame(b, { duration: 0, maxZoom: map.getMaxZoom() });
     planner.frameWhenRouted();
     history.replaceState(null, '', location.pathname + location.hash);
-  } else if (planner.loadSaved()) {
-    /* restored last session's route (planner stays closed until opened) */
+  } else {
+    planner.loadSaved(); // last session's route
+    if (leftOpen) planner.setActive(true); // and the planner, if it was left open (#238)
   }
 });

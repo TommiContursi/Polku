@@ -792,6 +792,19 @@ for sport in ['mtb', 'gravel', 'hike', 'paddle']:
         SCENES[f'{size}-radar-{sport}'] = dict(viewport, activity=sport, timeline=True, hash='#11/62.235/25.74', js=RAIN_RADAR_VIEW)
 
 
+# 25c of #233: Done and the route's view (before 25c, Done closed the planner), and ✕ with its note
+DONE = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); __PRE__"
+        " if (p.done) p.done(); else (p.sideMQ.matches ? p.els.toolDone : p.panel.querySelector('.sheet-head .done')).click(); await wait(600); __THEN__ return true; })()")
+DONE_JS = lambda pre='', then='': DONE.replace('__PRE__', pre).replace('__THEN__', then)
+for size, viewport in [('desk', DESK), ('phone', PHONE)]:
+    SCENES[f'{size}-done'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='peek', js=DONE_JS())
+    SCENES[f'{size}-done-route'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='half', js=DONE_JS("p.setTab('route');"))
+    SCENES[f'{size}-done-closed'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='peek', js=DONE_JS(then='if (p.close) p.close();'))
+    SCENES[f'{size}-done-paddle'] = dict(viewport, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='peek', js=DONE_JS())
+SCENES['phone-done-360'] = dict(PHONE, w=360, h=740, timeline=True, route='route-kauppi-mtb.json', state='peek',
+                                js=DONE_JS("p.routeName = 'Pirkkalan–Lempäälän retkeilyreittien yhdistelmälenkki Vesilahdelta Kangasalle';"))
+
+
 def main():
     if '--list' in sys.argv:
         print('\n'.join(SCENES))

@@ -6067,10 +6067,10 @@ def toolbox(chrome):
     pg.js("polku.planner.closeLoop(); true")
     # (the route's actions come back on the toolbar in the next frame, and Done moves along with them: #311)
     pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
-    # Done: the planner closes, and Show the whole route is in the map's column
+    # Done: the route's view (25c), and Show the whole route stays on the toolbar (the routeview group has the rest)
     click(pg, '#pl-tools .done', f'{name}: Done')
-    d = pg.js("({ active: polku.planner.active, tools: polku.planner.tools.hidden, fit: !document.getElementById('btn-fit').hidden })")
-    if d['active'] or not d['tools'] or not d['fit']:
+    d = pg.js("({ active: polku.planner.active, view: polku.planner.inView(), tools: !!polku.planner.els.fit.offsetParent && !!polku.planner.els.toolEdit.offsetParent, fit: !document.getElementById('btn-fit').hidden })")
+    if not d['active'] or not d['view'] or not d['tools'] or d['fit']:
         fails.append(f'{name}: after Done: {d}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
@@ -6710,6 +6710,299 @@ def start(chrome):
         ok = ok and not fails
     return ok
 
+# Done and the route's view (25c, #238): what a tap on the map does in each state, what's on screen, ✕ and its
+# note, and the planner opened again as it was left: by Open, Plan, R and a reload.
+# A spot on the map with a way under it, clear of the route, the planner and the map's buttons: a tap there shows
+# what's there in the route's view, and adds a point while editing.
+RV_SPOT = """(() => {
+  const map = polku.map, R = map.getCanvas().getBoundingClientRect(), top = document.querySelector('.topbar').getBoundingClientRect().bottom + 30;
+  for (let y = top; y < innerHeight - 40; y += 12) for (let x = 30; x < innerWidth - 30; x += 12) {
+    const px = [x - R.left, y - R.top];
+    if (document.elementFromPoint(x, y) !== map.getCanvas()) continue;
+    if (map.queryRenderedFeatures([[px[0] - 40, px[1] - 40], [px[0] + 40, px[1] + 40]], { layers: ['route-casing'] }).length) continue;
+    if (map.queryRenderedFeatures(px).some((f) => /^(path|track|cycleway)-|^road-/.test(f.layer.id) && !/label|name|shield/.test(f.layer.id))) return { x, y };
+  }
+  return null; })()"""
+# the middle of the first leg, where nothing is over the line
+RV_LINE = """(() => {
+  const map = polku.map, p = polku.planner, c = p.legs[0].result.coords, R = map.getCanvas().getBoundingClientRect();
+  for (const t of [0.5, 0.4, 0.6, 0.3, 0.7]) {
+    const q = map.project([c[0][0] + (c[1][0] - c[0][0]) * t, c[0][1] + (c[1][1] - c[0][1]) * t]), x = R.left + q.x, y = R.top + q.y;
+    if (document.elementFromPoint(x, y) === map.getCanvas()) return { x, y };
+  }
+  return null; })()"""
+# what's on screen in the route's view, and whether it's what the plan says
+RV_VIEW = """(() => {
+  const p = polku.planner, el = (e) => !!e && !e.hidden && !!e.offsetParent, out = [];
+  const tools = [...p.tools.querySelectorAll('button')].filter(el).map((b) => (b.getAttribute('aria-label') || b.textContent).trim().split(':')[0]);
+  const t = p.els.title, x = t.querySelector('.way-x'), tr = t.getBoundingClientRect();
+  if (!p.inView()) out.push('not the route’s view');
+  if (!el(t)) out.push('no title row');
+  else {
+    if (p.els.titleName.textContent !== p.routeTitle()) out.push(`its title “${p.els.titleName.textContent}”, not “${p.routeTitle()}”`);
+    if (!/Kept on this device/.test(p.els.titleSub.textContent)) out.push(`its line “${p.els.titleSub.textContent}”`);
+    if (!el(x)) out.push('no ✕');
+  }
+  const edit = p.sideMQ.matches ? p.els.toolEdit : p.els.edit, done = p.sideMQ.matches ? p.els.toolDone : p.els.done;
+  if (!el(edit) || el(done)) out.push(`Edit ${el(edit) ? 'with' : 'without'} Done${el(done) ? '' : ' gone'}`);
+  if (p.ghosts.length) out.push(`${p.ghosts.length} handles on the line`);
+  if (p.markers.some((m) => m.isDraggable())) out.push('the markers can be dragged');
+  if (!el(p.els.viewNote) && p.panel.dataset.state !== 'peek' && p.tab === 'route') out.push('no “You’re not editing” on Route');
+  if (p.els.points.querySelector('.wpl-grip, .wpl-tools, input.wpl-name')) out.push('Route’s list has its controls');
+  if (p.map.getCanvas().style.cursor === 'crosshair') out.push('the crosshair');
+  return { out, tools, small: [x, edit].filter((b) => el(b) && (b.offsetWidth < 44 || b.offsetHeight < 44) && matchMedia('(pointer: coarse)').matches).map((b) => b.getAttribute('aria-label') || b.textContent.trim()) }; })()"""
+# The route's view's header at a small size: the name wraps (never cut), ✕ and Edit a finger's size and on screen, nothing over another
+RV_FIT = """(() => {
+  const p = polku.planner, r = (e) => e.getBoundingClientRect(), out = [], n = p.els.titleName, x = p.els.title.querySelector('.way-x'), e = p.els.edit, pl = r(p.panel);
+  if (n.scrollWidth > n.clientWidth + 1 || getComputedStyle(n).textOverflow === 'ellipsis') out.push('the name is cut');
+  for (const [b, k] of [[x, '✕'], [e, 'Edit']]) {
+    const a = r(b);
+    if (a.width < 44 || a.height < 44) out.push(`${k} ${Math.round(a.width)} × ${Math.round(a.height)} px`);
+    if (a.left < 0 || a.right > innerWidth || a.top < 0 || a.bottom > innerHeight) out.push(`${k} off the screen`);
+  }
+  const nr = r(n), xr = r(x), tr = r(p.els.title); // (the name may scroll in its row: what shows of it is the row's)
+  if (nr.right > xr.left && nr.bottom > xr.top && nr.top < xr.bottom) out.push('the name under ✕');
+  const sum = [...p.els.sum.querySelectorAll('.sum-item b')].map(r), er = r(e);
+  sum.forEach((a, i) => { if (a.right > er.left && a.bottom > er.top && a.top < er.bottom) out.push(`number ${i} under Edit`); if (a.top < tr.bottom - 1) out.push(`number ${i} under the name`); });
+  if (pl.top < document.querySelector('.topbar').getBoundingClientRect().bottom) out.push('the sheet under the top bar');
+  return out; })()"""
+
+
+def route_view(chrome):
+    fails = []
+
+    def page(w, h_, phone, sport='mtb'):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'})
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        return pg
+
+    def press(pg, at, name, touch):
+        if not at:
+            fails.append(f'{name}: not on screen')
+            return False
+        if not at.get('clear', True):
+            fails.append(f'{name}: something is over it')
+        if touch:
+            pg.tap(at['x'], at['y'])
+        else:
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                      'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.6)
+        return True
+
+    def drag(pg, at, touch):
+        if touch:
+            pg.swipe(at['x'], at['y'], at['y'] - 50, ms=400)
+        else:
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': at['x'], 'y': at['y'], 'button': 'left', 'buttons': 1, 'clickCount': 1}, pg.s)
+            for k in range(1, 9):
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'] + k * 6, 'y': at['y'] - k * 6, 'button': 'left', 'buttons': 1}, pg.s)
+                time.sleep(0.03)
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': at['x'] + 48, 'y': at['y'] - 48, 'button': 'left', 'buttons': 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.6)
+
+    def key(pg, k, code, vk):
+        for event in ('rawKeyDown', 'char', 'keyUp'):
+            fields = {'type': event, 'key': k, 'code': code, 'windowsVirtualKeyCode': vk}
+            if event == 'char':
+                fields['text'] = k
+            chrome.send('Input.dispatchKeyEvent', fields, pg.s)
+        time.sleep(0.3)
+
+    at = lambda pg, sel: pg.js(f"({TB_AT})({sel})")
+    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: !!document.querySelector('.maplibregl-popup .insp'), menu: document.querySelector('.maplibregl-popup .pt-menu .btn.primary')?.textContent.trim() || '' }; })()")
+    shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); return true; })()")
+
+    def ready(pg, name):
+        if not pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000):
+            fails.append(f'{name}: no route')
+            return False
+        pg.js("polku.planner.fitRoute({ animate: false }); true")
+        pg.js(SETTLED)
+        time.sleep(0.8)
+        return True
+
+    def view_ok(pg, name):
+        v = pg.js(RV_VIEW)
+        if v['out'] or v['small']:
+            fails.append(f"{name}: {', '.join(v['out'] + [f'under 44 px: {s}' for s in v['small']])}")
+        return v
+
+    # ---------------------------------------------------------------- a phone, by touch
+    for sport in ('mtb', 'paddle'):
+        name, touch = f'390x844 {sport}', True
+        pg = page(390, 844, True, sport)
+        if not ready(pg, name):
+            pg.close()
+            continue
+        pg.js("polku.planner.setSheetState('peek'); true")
+        pg.js(SETTLED)
+        s0 = state(pg)
+        line0 = pg.js("JSON.stringify(polku.planner.points)")
+        press(pg, at(pg, "polku.planner.els.done"), f'{name}: Done', touch)
+        v = view_ok(pg, f'{name}: after Done')
+        if v['tools'] != ['More']:
+            fails.append(f"{name}: the toolbox in the route’s view: {', '.join(v['tools']) or 'nothing'}, not only More")
+        if pg.js("document.getElementById('btn-fit').hidden"):
+            fails.append(f'{name}: no Show the whole route in the map’s column in the route’s view')
+        # a tap on the map shows what's there and adds nothing; on the line, that part's menu
+        spot = pg.js(RV_SPOT)
+        if not spot:
+            fails.append(f'{name}: no way on the map to tap (the tiles?)')
+        else:
+            press(pg, spot, f'{name}: a way on the map', touch)
+            s = state(pg)
+            if s['n'] != s0['n'] or not s['popup']:
+                fails.append(f"{name}: a tap on the map in the route’s view: {s['n'] - s0['n']} points added, {'its card' if s['popup'] else 'no card'}")
+            shut(pg)
+        pg.js("polku.planner.fitRoute({ animate: false }); true")  # (the map's card moved the map to keep itself in view)
+        time.sleep(0.6)
+        press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
+        s = state(pg)
+        if s['n'] != s0['n'] or s['menu'] != 'Add a point here':
+            fails.append(f"{name}: a tap on the line in the route’s view: {s['n'] - s0['n']} points added, menu “{s['menu']}”")
+        shut(pg)
+        # the markers stay put
+        drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
+        if pg.js("JSON.stringify(polku.planner.points)") != line0:
+            fails.append(f'{name}: a marker moved in the route’s view')
+        # Edit: the drawing tools are back, with undo as it was; a tap adds a point again
+        press(pg, at(pg, "polku.planner.els.edit"), f'{name}: Edit', touch)
+        e = pg.js("(() => { const p = polku.planner; return { view: p.inView(), mode: !!p.els.modeBtn.offsetParent, undo: !p.els.undo.disabled && !!p.els.undo.offsetParent, past: p.past.length, done: !!p.els.done.offsetParent, ghosts: p.ghosts.length }; })()")
+        if e['view'] or not e['mode'] or not e['undo'] or e['past'] != s0['past'] or not e['done'] or not e['ghosts']:
+            fails.append(f'{name}: after Edit: {e} (undo steps before Done: {s0["past"]})')
+        if spot:
+            press(pg, spot, f'{name}: a way on the map, editing', touch)
+            if state(pg)['n'] != s0['n'] + 1:
+                fails.append(f'{name}: a tap on the map while editing added {state(pg)["n"] - s0["n"]} points, not 1')
+            pg.js("polku.planner.undo(); true")
+            time.sleep(0.5)
+        # ✕ puts it away with a note; the route stays on the map; Open brings it back as it was
+        press(pg, at(pg, "polku.planner.els.done"), f'{name}: Done again', touch)
+        press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕', touch)
+        c = pg.js("""(() => { const p = polku.planner, t = document.getElementById('toast'), b = t.querySelector('.toast-act'), col = document.getElementById('map-ctrls').getBoundingClientRect();
+          return { active: p.active, legs: p.legs.length, drawn: polku.map.queryRenderedFeatures({ layers: ['route-casing'] }).length > 0, text: t.hidden ? '' : t.firstChild.textContent.trim(), open: b && b.textContent,
+            h: b ? b.offsetHeight : 0, clear: t.getBoundingClientRect().right <= col.left - 4, plan: !!document.getElementById('btn-plan').offsetParent, fit: !document.getElementById('btn-fit').hidden }; })()""")
+        if c['active'] or c['legs'] != s0['n'] - 1 or not c['drawn'] or c['text'] != 'Planner closed · your route stays' or c['open'] != 'Open' or not c['plan'] or not c['fit']:
+            fails.append(f'{name}: after ✕: {c}')
+        if c['h'] < 44 or not c['clear']:
+            fails.append(f"{name}: the note’s Open {c['h']} px tall, {'clear of' if c['clear'] else 'over'} the map’s buttons")
+        press(pg, at(pg, "document.querySelector('#toast .toast-act')"), f'{name}: the note’s Open', touch)
+        s = state(pg)
+        if not s['active'] or not s['view'] or s['sheet'] != s0['sheet']:
+            fails.append(f"{name}: Open: {s} (it was the route’s view at {s0['sheet']})")
+        # Plan in the map's column, then a reload: as it was left (#238)
+        press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕ again', touch)
+        press(pg, at(pg, "document.getElementById('btn-plan')"), f'{name}: Plan', touch)
+        if not state(pg)['view']:
+            fails.append(f'{name}: Plan opened {state(pg)}, not the route’s view')
+        for want in ('view', 'editing', 'closed'):
+            if want == 'editing':
+                pg.js("polku.planner.setEditing(true); true")
+            elif want == 'closed':
+                pg.js("polku.planner.done(); polku.planner.close(); true")
+            pg.reload()
+            pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => polku.planner.points.length || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
+            time.sleep(0.6)
+            s = state(pg)
+            got = 'closed' if not s['active'] else 'view' if s['view'] else 'editing'
+            if got != want or s['n'] != s0['n']:
+                fails.append(f"{name}: left {want}, a reload opened it {got} with {s['n']} points (#238)")
+        if sport == 'mtb':
+            # Clear from the route's view's More: the start, editing; Undo brings the route back
+            pg.js("polku.planner.setActive(true); polku.planner.setEditing(false); true")
+            pg.js(SETTLED)
+            time.sleep(0.4)
+            press(pg, at(pg, "polku.planner.els.more"), f'{name}: More', touch)
+            if not pg.js("(() => { const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith('Clear route')); if (b) { b.dataset.rvPick = '1'; b.scrollIntoView({ block: 'nearest' }); } return !!b; })()"):
+                fails.append(f"{name}: no Clear route in the route’s view’s More: {pg.js('[...document.querySelectorAll(`.menu-pop .menu-item`)].map((b) => b.textContent.trim())')}")
+            press(pg, at(pg, "document.querySelector('.menu-pop [data-rv-pick]')"), f'{name}: Clear route', touch)
+            c = pg.js("({ n: polku.planner.points.length, way: polku.planner.startView(), editing: polku.planner.editing, store: JSON.parse(localStorage.getItem('polku:plannerOpen')) })")
+            if c['n'] or c['way'] != 'ways' or not c['editing'] or c['store'].get('view'):
+                fails.append(f'{name}: Clear in the route’s view: {c}')
+            pg.js("polku.planner.undo(); true")
+            time.sleep(0.5)
+            if state(pg)['n'] != s0['n']:
+                fails.append(f'{name}: Undo after Clear: {state(pg)}')
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+
+    # ---------------------------------------------------------------- a desktop, by mouse and keys
+    name, touch = '1440x900', False
+    pg = page(1440, 900, False)
+    if ready(pg, name):
+        s0 = state(pg)
+        line0 = pg.js("JSON.stringify(polku.planner.points)")
+        press(pg, at(pg, "polku.planner.els.toolDone"), f'{name}: Done', touch)
+        v = view_ok(pg, f'{name}: after Done')
+        if v['tools'] != ['Show the whole route', 'More', 'Edit']:
+            fails.append(f"{name}: the toolbar in the route’s view: {', '.join(v['tools'])}")
+        b = pg.js("({ fit: !document.getElementById('btn-fit').hidden, plan: document.getElementById('btn-plan').textContent.trim(), cursor: polku.map.getCanvas().style.cursor })")
+        if b['fit'] or b['plan'] != 'Plan route' and b['plan'] != 'Plan':
+            fails.append(f'{name}: the map’s column in the route’s view: {b}')
+        spot = pg.js(RV_SPOT)
+        if spot:
+            press(pg, spot, f'{name}: a way on the map', touch)
+            s = state(pg)
+            if s['n'] != s0['n'] or not s['popup']:
+                fails.append(f"{name}: a click on the map in the route’s view: {s['n'] - s0['n']} points added, {'its card' if s['popup'] else 'no card'}")
+            shut(pg)
+        else:
+            fails.append(f'{name}: no way on the map to click (the tiles?)')
+        pg.js("polku.planner.fitRoute({ animate: false }); true")
+        time.sleep(0.6)
+        press(pg, pg.js(RV_LINE), f'{name}: the line', touch)
+        if state(pg)['menu'] != 'Add a point here':
+            fails.append(f'{name}: a click on the line in the route’s view: {state(pg)}')
+        shut(pg)
+        drag(pg, at(pg, "polku.planner.markers[1].getElement()"), touch)
+        if pg.js("JSON.stringify(polku.planner.points)") != line0:
+            fails.append(f'{name}: a marker moved in the route’s view')
+        # E: Edit and Done; R closes and opens it as it was
+        key(pg, 'e', 'KeyE', 69)
+        if pg.js("polku.planner.inView() || !polku.planner.els.modeSeg.offsetParent"):
+            fails.append(f'{name}: E didn’t go back to editing')
+        key(pg, 'e', 'KeyE', 69)
+        if not pg.js("polku.planner.inView()"):
+            fails.append(f'{name}: E didn’t end editing')
+        key(pg, 'r', 'KeyR', 82)
+        key(pg, 'r', 'KeyR', 82)
+        if not pg.js("polku.planner.active && polku.planner.inView()"):
+            fails.append(f'{name}: R twice: {state(pg)}')
+        press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕', touch)
+        if pg.js("polku.planner.active") or 'Planner closed' not in pg.js("document.getElementById('toast').textContent"):
+            fails.append(f'{name}: ✕: {state(pg)}')
+        # a shared route opens in the route's view, to read it first
+        url = pg.js("polku.planner.shareUrl()")
+        pg.goto(url)
+        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => (window.polku && polku.planner.points.length) || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
+        time.sleep(0.6)
+        if not pg.js("polku.planner.active && polku.planner.inView()"):
+            fails.append(f'{name}: a share link opened {state(pg)}, not the route’s view')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # ---------------------------------------------------------------- small phones: a long name at 360 px and at 200 %
+    LONG_NAME = 'Pirkkalan–Lempäälän retkeilyreittien yhdistelmälenkki Vesilahdelta Kangasalan Kirkkoharjulle'
+    for w, h_ in ((360, 740), (195, 422)):
+        name = f'{w}x{h_}'
+        pg = page(w, h_, True)
+        if ready(pg, name):
+            pg.js(f"(() => {{ const p = polku.planner; p.routeName = {json.dumps(LONG_NAME)}; p.setSheetState('peek'); p.setEditing(false); return true; }})()")
+            pg.js(SETTLED)
+            view_ok(pg, name)
+            out = pg.js(RV_FIT)
+            if out:
+                fails.append(f"{name}: the route’s view’s header: {', '.join(out)}")
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Done and the route’s view (25c): taps, ✕ and its note, reopening as left (#238)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298)'),
@@ -6751,6 +7044,7 @@ GROUPS = [
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
+    ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
     ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),

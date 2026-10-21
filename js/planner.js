@@ -54,7 +54,8 @@ const TIPS = {
   offline: { name: 'Save offline', text: 'Saves the map and terrain along the route, for no signal.' },
   clear: { name: 'Clear route', text: 'Takes the route off the map. Undo brings it back.' },
   more: { name: 'More', text: 'The whole route’s actions that aren’t on the toolbar: a round trip, import and the rest.' },
-  done: { name: 'Done', keys: 'R', text: 'Closes the planner. The route stays on the map, and Plan brings it back.' },
+  done: { name: 'Done', keys: 'E', text: 'Ends editing: the route stays open to read, check and take along.' },
+  edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a point.' },
 };
 // a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
 const STAND_IN_AFTER = 6000;
@@ -179,6 +180,7 @@ export class Planner {
     this.past = [];
     this.future = [];
     this.active = false;
+    this.editing = !(store.get('plannerOpen', null) || {}).view; // editing, or the route's view as it was left (25c)
     this.markers = [];
     this.ghosts = []; // drag handles in the middle of each leg
     this.pname = new WeakMap(); // point → the name you gave it (points move as arrays, so names follow them)
@@ -681,7 +683,7 @@ export class Planner {
     this.points = [c[0], c[c.length - 1]];
     this.legs = [{ mode: 'fixed', status: 'ok', result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } }];
     this.routeName = name;
-    this.setActive(true);
+    this.setActive(true, { edit: true }); // (a track to plan on)
     this.update();
     this.fitRoute(); // above the sheet that just opened
   }
@@ -784,7 +786,7 @@ export class Planner {
         this.splitLeg(1, null, alongAt(this.legs[1].result.coords, L / 3));
       }
     }
-    this.setActive(true);
+    this.setActive(true, { edit: true });
     this.update();
     this.frame(bbox(this.legs.flatMap((l, i) => (l.result ? l.result.coords : [this.points[i], this.points[i + 1]]))), { maxZoom: 15, duration: 700 });
     const km = fmtDist(ride.km * 1000);
@@ -914,9 +916,13 @@ export class Planner {
     this.renderTools();
   }
 
-  setActive(on) {
+  // The planner open or put away (25c, #233). Open, it's editing or the route's view (setEditing()): `edit` says
+  // which, else it opens as it was left. Either is remembered, so a reload opens it again as it was (#238).
+  setActive(on, { edit = null } = {}) {
     if (!on) this.clearCategoryPreview();
     this.active = on;
+    if (on && edit != null) this.editing = edit;
+    this.remember();
     this.panel.hidden = !on;
     if (!on) {
       this.closeMore(); this.litLeg(null); this.clearAlts(); delete document.body.dataset.sheet; delete document.body.dataset.pl;
@@ -928,9 +934,8 @@ export class Planner {
     // an empty route opens small, so the map is there to tap; otherwise as you left it
     if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
     document.body.classList.toggle('planning', on);
-    this.map.getCanvas().style.cursor = on ? 'crosshair' : '';
     for (const m of this.markers) m.getElement().hidden = !on;
-    this.renderGhosts();
+    this.renderState();
     this.app.onActiveChange(on);
     if (on && !this.analysis) this.renderAnalysis(); // the empty planner's first words (and its round-trip button)
     if (!on) { this.modesMenu?.close(); }
@@ -941,12 +946,68 @@ export class Planner {
     if (on && this.points.length && !this.routeInView()) requestAnimationFrame(() => this.fitRoute());
   }
 
+  // Done and Edit (25c): Done ends editing for the route's view, to read, check and take along. The drawing tools go
+  // (More stays), the markers stay put, and a tap on the map shows what's there (the map's own cards) instead of
+  // adding a point. Edit goes back, where Done was. Nothing is lost: the route is kept on this device all along,
+  // and undo outlives both.
+  setEditing(on) {
+    if ((!on && this.points.length < 2) || this.editing === on) return;
+    const had = [this.els.done, this.els.edit, this.els.toolDone, this.els.toolEdit].indexOf(document.activeElement);
+    this.editing = on;
+    this.remember();
+    if (!on) { if (this.menu) this.menu.remove(); this.modesMenu?.close(); this.closeMore(); this.clearAlts(); clearTimeout(this.altTimer); }
+    this.renderState();
+    this.renderWaypoints();
+    this.renderTools();
+    this.els.said.textContent = on ? 'Editing: a tap on the map adds a point.' : 'Done editing: a tap on the map shows what’s there.';
+    // the keyboard's focus stays where it was: on Edit where Done was, and back
+    if (had >= 0) [this.els.edit, this.els.done, this.els.toolEdit, this.els.toolDone][had].focus();
+  }
+  // the route's view: the planner open, a route, not editing
+  inView() { return this.active && !this.editing && this.points.length > 1; }
+  // Done (the route's numbers on phones, the toolbar on desktops, E): the route's view; with only a first point there's
+  // nothing to view yet, and Done puts the planner away, as ✕ does
+  done() { if (this.points.length > 1) this.setEditing(false); else this.close(); }
+  // ✕: the planner put away, with a note that offers it back as it was; the route stays on the map
+  close() {
+    this.setActive(false);
+    if (this.points.length) toast('Planner closed · your route stays', { ms: 6000, action: { label: 'Open', fn: () => { if (!this.active) this.setActive(true); } } });
+  }
+  // open or put away, and editing or the route's view, for the next visit (#238; main.js opens it again)
+  remember() { store.set('plannerOpen', { open: this.active, view: !this.editing }); }
+
+  // What editing and the route's view change around the panel: its title row and Done or Edit, the markers (they
+  // stay put in the view), the leg's handles, the pointer
+  renderState() {
+    const view = this.inView();
+    this.panel.classList.toggle('viewing', view);
+    this.panel.setAttribute('aria-label', view ? 'Route planner: your route' : 'Route planner');
+    this.map.getCanvas().style.cursor = this.active && !view ? 'crosshair' : '';
+    for (const m of this.markers) m.setDraggable(!view);
+    this.renderGhosts();
+    this.renderTitle();
+  }
+  // The route's view's top row: the route's name, its sports and that it's kept on this device, and ✕; and Edit in
+  // Done's place (the toolbar's on desktops)
+  renderTitle() {
+    if (!this.els || !this.els.title) return;
+    const view = this.inView();
+    this.els.title.hidden = !view;
+    this.els.done.hidden = view;
+    this.els.edit.hidden = !view;
+    if (!view) return;
+    this.els.titleName.textContent = this.routeTitle();
+    this.els.titleSub.innerHTML = `${escapeHtml(this.sportsLabel())} · ${icon('check', 13)}<span>Kept on this device</span>`;
+  }
+
   // ---------------------------------------------------------------- routing
   update() {
     // a route (or its first point) ends the start's steps; Undo back to none starts at the ways
     if (this.points.length && (this.way || this.wayDepth)) { this.leaveWay(); this.dropWayHist(); }
     // a round trip from your first point goes with it (Undo, Clear): the ways to begin come back
     if (this.loop.open && !this.loop.fromWays && !this.points.length) this.closeLoop();
+    // no route to view (Clear, Undo back to a point): editing, at the start or the first point
+    if (!this.editing && this.points.length < 2) { this.editing = true; this.remember(); this.renderState(); }
     this.clearAlts();
     this.clearCategoryPreview();
     this.drawNogos();
@@ -1034,7 +1095,7 @@ export class Planner {
     const own = routerHeadroom() === Infinity, calm = this.altCalm;
     clearTimeout(this.altTimer);
     this.altTimer = setTimeout(async () => {
-      if (!same()) return;
+      if (!same() || this.inView()) return; // (none on their own after Done: 25c)
       const both = own || (calm && routerHeadroom() >= 4 && routerRoomThisMinute() >= 8);
       await this.offerAlts(li, false, both ? [1, 2] : [1]);
       if (both || !same()) return;
@@ -1295,7 +1356,8 @@ export class Planner {
   // `len`: a length picked in the first point's peek, in the form's unit. Opening it makes no routing calls.
   openLoop(start = null, { fromWays = false, len = null } = {}) {
     const L = this.loop;
-    if (!this.active) this.setActive(true);
+    if (!this.active) this.setActive(true, { edit: true });
+    else this.setEditing(true); // (from the route's view's More: a round trip is drawn)
     const sport = this.app.activity();
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
     if (L.km == null || L.sport !== sport) { L.km = pre.km[1]; L.min = pre.min[1]; L.sport = sport; }
@@ -2497,9 +2559,13 @@ export class Planner {
     if (this.startView() === 'find') { this.pickMarkedAt(e.point, r); return; }
     // a way on offer for a leg (#95): a tap takes it
     const alt = this.alts && this.map.getLayer('route-alts-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label'] }).find((f) => !f.properties.route);
+    const ng = !alt && this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
+    if (this.inView() && (alt || ng)) this.tookClick = e.originalEvent; // (so the map's card doesn't open too)
     if (alt) { this.pickAlt(alt.properties.i); return; }
-    const ng = this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
     if (ng) { this.openNogoMenu(ng.properties.i, e.lngLat); return; }
+    // The route's view (25c): the rest is the map's, its own cards (initInspector(), js/main.js), and a tap on the
+    // route that part's menu, as with the planner put away. Nothing is added or moved.
+    if (this.inView()) return;
     const hit = this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
     // the line itself: a click or a tap gets that part's menu, mouse and finger alike (a point
@@ -2615,7 +2681,8 @@ export class Planner {
     const over = this.map.queryRenderedFeatures([[e.point.x - 5, e.point.y - 5], [e.point.x + 5, e.point.y + 5]], { layers: ['route-casing'] }).find((f) => f.properties.kind !== 'gap');
     const hit = !!over;
     glow(over ? over.properties.leg : null);
-    this.map.getCanvas().style.cursor = hit ? 'grab' : 'crosshair'; // the line can be dragged
+    const view = this.inView();
+    this.map.getCanvas().style.cursor = hit ? (view ? 'pointer' : 'grab') : (view ? '' : 'crosshair'); // the line can be dragged (not in the route's view)
     if (!hit) {
       if (this.mapHover) { this.mapHover = false; this.chart.setHover(-1); this.app.setData('routeHover', EMPTY); this.app.routeTip(null); }
       return;
@@ -2630,7 +2697,7 @@ export class Planner {
     }
     this.mapHover = true;
     const d = routeReadout(a, best, this.roadAt(best));
-    d.lines.push('<i class="tip-hint">Click for options · drag to reshape</i>');
+    d.lines.push(`<i class="tip-hint">${view ? 'Click for options' : 'Click for options · drag to reshape'}</i>`);
     const onMap = this.app.routeTip(e.originalEvent, d);
     this.chart.setHover(best, !onMap);
     this.hoverAt(best, true);
@@ -2665,8 +2732,13 @@ export class Planner {
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
     this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
     box.innerHTML = '';
+    this.renderTitle(); // (the route's view's title: the names come with the map's tiles)
+    // the route's view (25c): the points without their controls, and Edit; the departure and the stops still work
+    const ro = this.inView();
+    this.els.viewNote.hidden = !ro;
+    this.els.hint.hidden = ro;
     // the whole list the other way round (the same as Reverse in the tools)
-    const showLegs = n > 1 && store.get('legSettings', false);
+    const showLegs = n > 1 && !ro && store.get('legSettings', false);
     for (const k of this.openLegs) if (k >= n - 1) this.openLegs.delete(k); // rows that are gone
     const loops = roundTripSports.includes(this.app.activity());
     this.els.pointsFoot.replaceChildren(...[
@@ -2675,7 +2747,7 @@ export class Planner {
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.backToStart(), html: `${icon('loop', 16)} Back to start` }) : null,
       h('button', { type: 'button', class: 'btn', title: 'Import a GPX or KML file (or drop it on the map)', onclick: () => $('#file-input').click(), html: `${icon('upload', 16)} Import` }),
       // each leg's routing and style, between its points (folded away by default)
-      n > 1 ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showLegs), title: 'Every leg’s routing and style (or open one with the route button on its row)', onclick: () => { store.set('legSettings', !showLegs); this.openLegs.clear(); this.renderWaypoints(); }, html: `${icon('route', 16)} All leg settings` }) : null,
+      n > 1 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showLegs), title: 'Every leg’s routing and style (or open one with the route button on its row)', onclick: () => { store.set('legSettings', !showLegs); this.openLegs.clear(); this.renderWaypoints(); }, html: `${icon('route', 16)} All leg settings` }) : null,
     ].filter(Boolean)); // (replaceChildren would write a null as "null")
     const loop = this.isLoop();
     const btn = (ic, label, fn, disabled = false, cls = '') => h('button', { type: 'button', class: `tool small ${cls}`, title: label, 'aria-label': label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 16) });
@@ -2683,7 +2755,7 @@ export class Planner {
       const last = i === n - 1 && i > 0;
       const own = this.pname.get(p) || '';
       const auto = this.autoName(i);
-      const input = h('input', {
+      const input = ro ? h('b', { class: 'wpl-name' }, own || auto || this.label(i)) : h('input', {
         class: 'wpl-name', type: 'text', value: own, placeholder: auto || this.label(i), maxlength: 60, spellcheck: 'false',
         'aria-label': `Name of ${i === 0 ? 'the start' : last ? 'the finish' : `via point ${i}`}`,
         onclick: (e) => e.stopPropagation(),
@@ -2697,15 +2769,15 @@ export class Planner {
       const ch = this.changeAt(i);
       const change = ch ? h('span', { class: 'wpl-change', onclick: (e) => e.stopPropagation() },
         h('span', { html: icon(this.sportIcon(ch.to), 13) }), `${ACTIVITIES[ch.to].label} · `,
-        h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }),
+        ro ? `${ch.min}` : h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }),
         ' min to change') : null;
       const stop = this.stopAt(i);
       const row = h('li', { class: 'wpl-row', 'data-i': String(i), title: 'Show on the map', onclick: () => this.focusPoint(i) },
-        h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
+        ro ? null : h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
         h('span', { class: 'wpl-main' }, input, h('small', {}, sub), change, stop ? this.stopChip(i, stop) : null,
           i === 0 && n > 1 ? h('label', { class: 'wpl-depart', onclick: (e) => e.stopPropagation() }, h('span', { html: icon('clock', 12) }), 'Depart ', this.departSelect()) : null),
-        h('span', { class: 'wpl-tools' },
+        ro ? null : h('span', { class: 'wpl-tools' },
           // this one leg's settings, under its point
           i < n - 1 ? h('button', { type: 'button', class: 'tool small', title: `The leg after ${this.nameOf(i)}: routing and style`, 'aria-label': `Settings of the leg after ${this.nameOf(i)}`, 'aria-pressed': String(showLegs || this.openLegs.has(i)), 'aria-expanded': String(showLegs || this.openLegs.has(i)),
             onclick: (e) => { e.stopPropagation(); if (showLegs) { store.set('legSettings', false); for (let k = 0; k < n - 1; k++) if (k !== i) this.openLegs.add(k); this.openLegs.delete(i); } else if (this.openLegs.has(i)) this.openLegs.delete(i); else this.openLegs.add(i); this.renderWaypoints(); },
@@ -2716,13 +2788,13 @@ export class Planner {
           btn('chevronUp', `Move ${this.nameOf(i)} earlier`, () => this.movePointTo(i, i - 1), i === 0),
           btn('chevronDown', `Move ${this.nameOf(i)} later`, () => this.movePointTo(i, i + 1), i === n - 1),
           btn('trash', `Remove ${this.nameOf(i)}`, () => this.removePoint(i), false, 'danger')));
-      row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => this.dragRow(e, row, i));
+      row.querySelector('.wpl-grip')?.addEventListener('pointerdown', (e) => this.dragRow(e, row, i));
       row.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
       row.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
       box.append(row);
       const leg = this.legs[i];
       if (!leg) return;
-      if (showLegs || this.openLegs.has(i)) {
+      if (!ro && (showLegs || this.openLegs.has(i))) {
         const legRow = this.legSettingsRow(i);
         legRow.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i); });
         legRow.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
@@ -2737,7 +2809,7 @@ export class Planner {
         if (leg.mode === 'fixed') bits.push(leg.src ? 'LIPAS route' : 'Imported track');
         if (leg.style) bits.push(`style: ${styleName(sp, leg.style)}`);
         if (bits.length) {
-          box.append(h('li', { class: 'wpl-leg', title: 'This leg differs from the rest — click for its settings', onclick: () => { this.openLegs.add(i); this.renderWaypoints(); },
+          box.append(h('li', { class: 'wpl-leg', title: ro ? 'This leg differs from the rest' : 'This leg differs from the rest — click for its settings', onclick: () => { if (ro) return; this.openLegs.add(i); this.renderWaypoints(); },
             onpointerenter: (e) => { if (e.pointerType === 'mouse') this.litLeg(i); }, onpointerleave: (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); } },
             h('span', { html: icon('route', 14) }), [...new Set(bits)].join(' · ')));
         }
@@ -2808,12 +2880,12 @@ export class Planner {
       const last = i === this.points.length - 1 && i > 0;
       const loopEnd = last && dist(p, this.points[0]) < 3;
       const ch = this.changeAt(i);
-      const el = h('div', { class: 'wp-hit', title: `${this.nameOf(i)}${ch ? ` · change to ${ACTIVITIES[ch.to].label} (${ch.min} min)` : ''}${this.stopAt(i) ? ` · ${stopLabel(this.stopAt(i))}` : ''} · drag to move · click for options` }, h('div', {
+      const el = h('div', { class: 'wp-hit', title: `${this.nameOf(i)}${ch ? ` · change to ${ACTIVITIES[ch.to].label} (${ch.min} min)` : ''}${this.stopAt(i) ? ` · ${stopLabel(this.stopAt(i))}` : ''}${this.inView() ? '' : ' · drag to move'} · click for options` }, h('div', {
         class: `wp ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loopEnd ? ' wp-loop' : ''}`,
       }, i === 0 ? '' : last ? '' : String(i)), ch ? h('span', { class: 'wp-sport', html: icon(this.sportIcon(ch.to), 12) }) : null,
       this.stopAt(i) ? h('span', { class: `wp-stop${isNight(this.stopAt(i)) ? ' night' : ''}`, html: icon(isNight(this.stopAt(i)) ? 'moon' : 'pause', 11) }) : null);
       el.hidden = !this.active;
-      const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(p).addTo(this.map);
+      const m = new maplibregl.Marker({ element: el, draggable: !this.inView() }).setLngLat(p).addTo(this.map); // (they stay put in the route's view)
       m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
@@ -2828,7 +2900,7 @@ export class Planner {
   renderGhosts() {
     for (const g of this.ghosts) g.remove();
     this.ghosts = [];
-    if (!this.active) return;
+    if (!this.active || this.inView()) return; // (the route's view changes nothing by touch: 25c)
     this.legs.forEach((leg, li) => {
       if (!leg.result || leg.status !== 'ok') return;
       const c = leg.result.coords;
@@ -2982,7 +3054,7 @@ export class Planner {
   // mouse the drag starts as soon as it moves; on a touch screen hold the line
   // for a moment first, so a swipe across it still pans the map.
   onLinePress(e) {
-    if (!this.active || this.edit || this.panel.hidden) return;
+    if (!this.active || this.edit || this.panel.hidden || this.inView()) return; // (in the route's view a tap on the line is its menu)
     // Marker presses bubble through the map too: their own drag must be the
     // only edit, even when the marker sits directly over the route.
     if (e.originalEvent.target?.closest?.('.maplibregl-marker, .maplibregl-popup')) return;
@@ -3082,7 +3154,7 @@ export class Planner {
       h('div', { class: 'pt-head' },
         h('div', { class: 'pt-title' }, `${this.nameOf(li)} → ${this.nameOf(li + 1)}`),
         h('div', { class: 'pt-sub' }, `${ACTIVITIES[sp].label} · ${fmtDist(len)} · from km ${(from / 1000).toFixed(1)}`)),
-      act('plus', 'Add a point here', 'A via point at this spot: drag it to change the way', () => this.insertPoint(li, ll), 'btn primary'),
+      act('plus', 'Add a point here', 'A via point at this spot: drag it to change the way', () => { this.setEditing(true); this.insertPoint(li, ll); }, 'btn primary'),
       h('div', { class: 'pt-label' }, 'This part'),
       this.legSportPicker(li, () => this.menu.remove()),
       leg.mode === 'fixed'
@@ -3117,7 +3189,7 @@ export class Planner {
       lastTouch = Date.now();
       cancel();
       if (e.points.length !== 1 || this.edit || onUi(e)) return;
-      if (this.map.getLayer('route-casing') && this.map.queryRenderedFeatures(e.point, { layers: ['route-casing'] }).length && this.active) return; // the line's own hold
+      if (this.map.getLayer('route-casing') && this.map.queryRenderedFeatures(e.point, { layers: ['route-casing'] }).length && this.active && !this.inView()) return; // the line's own hold
       p0 = e.point;
       t0 = e.originalEvent.timeStamp;
       held = null;
@@ -3159,12 +3231,13 @@ export class Planner {
     if (this.menu) this.menu.remove();
     const ll = [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)];
     const act = (ic, label, title, fn) => h('button', { type: 'button', class: 'btn', title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
+    const drawing = this.active && !this.inView(); // (the route's view is as the planner put away: these edit, 25c)
     const body = h('div', { class: 'pt-menu' },
       h('div', { class: 'pt-title' }, 'This spot'),
-      this.active
+      drawing
         ? act('plus', 'Add a point here', 'The route goes on to here', () => { this.addPoint(ll); this.autoPeek(); })
-        : act('flag', 'Route from here', 'Start a new route here', () => { this.setActive(true); this.clear(); this.addPoint(ll); toast('Now tap or click where you want to go'); }),
-      !this.active && this.points.length ? act('plus', 'Add to my route', 'Your route goes on to here', () => { this.setActive(true); this.addPoint(ll); }) : null,
+        : act('flag', 'Route from here', 'Start a new route here', () => { this.setActive(true, { edit: true }); this.clear(); this.addPoint(ll); toast('Now tap or click where you want to go'); }),
+      !drawing && this.points.length ? act('plus', 'Add to my route', 'Your route goes on to here', () => { this.setActive(true, { edit: true }); this.addPoint(ll); }) : null,
       roundTripSports.includes(this.app.activity()) ? act('roundtrip', 'Round trip from here', 'Loops of the length you choose, starting and ending here', () => this.openLoop(ll)) : null,
       act('close', 'Avoid this spot', 'Routes go around it (40 m)', () => { if (!this.active) this.setActive(true); this.addNogo(ll, 40, 'Avoided place'); }));
     this.menu = new maplibregl.Popup({ offset: 6, closeButton: true, maxWidth: '320px', className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
@@ -3563,13 +3636,19 @@ export class Planner {
     }, 'sheet-min');
     this.els.dockBtn = tool('panelBottom', 'Move to the bottom', () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), 'sheet-dock');
     this.els.handle = h('div', { class: 'sheet-handle', role: 'button', tabindex: '0', 'aria-label': 'Planner size: drag, or press to change', 'aria-controls': 'planner' });
-    // The header shows the route: its numbers, and on phones Done at their right, at the thumb (25a).
-    // How the next leg is drawn, undo, redo and More are in the toolbox (buildTools()). Before there's a
-    // route, and while a round trip is open, it holds the start instead (renderStart(), A with 25b).
-    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.min,
-      h('button', { type: 'button', class: 'btn done', title: 'Close the planner (R): the route stays', onclick: () => this.setActive(false) }, 'Done'));
+    // The header shows the route: its numbers, and on phones Done at their right, at the thumb (25a), Edit in the
+    // route's view (25c), whose name and ✕ are a row above them (renderTitle()). How the next leg is drawn, undo,
+    // redo and More are in the toolbox (buildTools()). Before there's a route, and while a round trip is open,
+    // it holds the start instead (renderStart(), A with 25b).
+    this.els.done = h('button', { type: 'button', class: 'btn done', title: 'Done editing (E): the route stays open to read and take along', onclick: () => this.done() }, 'Done');
+    this.els.edit = h('button', { type: 'button', class: 'btn done edit', title: 'Edit the route (E)', onclick: () => this.setEditing(true), hidden: true }, 'Edit');
+    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.min, this.els.done, this.els.edit);
+    this.els.titleName = h('b');
+    this.els.titleSub = h('small');
+    this.els.title = h('div', { class: 'pl-title', hidden: true }, h('h2', { class: 'pl-ttl' }, this.els.titleName, this.els.titleSub), this.closeX());
+    this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.row, this.els.way));
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.title, this.els.row, this.els.way), this.els.said);
     this.buildTools();
     this.els.stats = h('div', { class: 'stats' });
     this.els.modesBar = h('div', { class: 'chip-groups' });
@@ -3619,6 +3698,10 @@ export class Planner {
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
       route: pane('route',
+        // the route's view (25c): the list and the map stay as they are, until Edit
+        this.els.viewNote = h('div', { class: 'pl-viewnote', hidden: true },
+          h('span', { html: icon('info', 18), 'aria-hidden': 'true' }), h('span', {}, 'You’re not editing: the list and the map stay as they are.'),
+          h('button', { type: 'button', class: 'btn small', onclick: () => this.setEditing(true), html: `${icon('pencil', 16)}<span>Edit</span>` })),
         this.section('points', 'Waypoints', this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order' }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // how you go: which ways the router prefers, and how fast the time is counted (shown in a start step's
         // Fine-tune too, the same elements: borrowHow())
@@ -3827,7 +3910,7 @@ export class Planner {
   // ✕ closes the planner, as the other panels have it (decided 2026-10-21: it replaces the ways' Close and the first
   // point's Done, and is in every step too)
   closeX() {
-    return h('button', { type: 'button', class: 'tool way-x', 'data-k': 'close', 'aria-label': 'Close the planner', title: 'Close the planner (R)', onclick: () => this.setActive(false), html: icon('close', 20) });
+    return h('button', { type: 'button', class: 'tool way-x', 'data-k': 'close', 'aria-label': 'Close the planner', title: 'Close the planner (R): your route stays', onclick: () => this.close(), html: icon('close', 20) });
   }
   // desktops: the header's button that moves the panel, here too (the header waits while the start shows)
   dockX() {
@@ -4220,7 +4303,14 @@ export class Planner {
       // the start's view as tall as it is, not as tall as the sheet let it be: it scrolls inside only once the
       // sheet stops below the top bar (css/app.css .way-only)
       const grow = w && !w.hidden ? w.scrollHeight - w.clientHeight : 0;
-      const peek = `${Math.ceil(hd.offsetTop + hd.offsetHeight + grow + 6)}px`;
+      // the route's view on a short screen (200 %, a long name): its name scrolls in its row, whole, so the sheet stops
+      // below the top bar as the start's views do (25c)
+      const t = this.els.title;
+      if (t) t.style.maxHeight = '';
+      let h = Math.ceil(hd.offsetTop + hd.offsetHeight + grow + 6);
+      const over = t && !t.hidden && this.layout() === 'sheet' ? h - (dvh() - 76) : 0;
+      if (over > 0) { const th = t.offsetHeight, to = Math.max(44, th - over); t.style.maxHeight = `${to}px`; h -= th - to; }
+      const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
       // the route's numbers came in just after it was framed and wrap onto a second line (#242): the
@@ -4399,17 +4489,20 @@ export class Planner {
     this.els.more = tb('more', 'More: the whole route’s actions', () => this.toggleMore());
     this.els.more.setAttribute('aria-haspopup', 'menu');
     this.els.more.setAttribute('aria-expanded', 'false');
-    this.els.toolDone = h('button', { type: 'button', class: 'btn done tb-desk', 'aria-keyshortcuts': 'R', onclick: () => this.setActive(false) }, 'Done');
+    this.els.toolDone = h('button', { type: 'button', class: 'btn done tb-desk', 'aria-keyshortcuts': 'E', onclick: () => this.done() }, 'Done');
+    // the route's view (25c): Edit where Done was
+    this.els.toolEdit = h('button', { type: 'button', class: 'btn done edit tb-desk', 'aria-keyshortcuts': 'E', onclick: () => this.setEditing(true), html: `${icon('pencil', 18)}<span>Edit</span>` });
     const gsep = (group) => { const el = sep(); el.dataset.group = group; return el; };
     box.append(this.els.modeBtn, this.els.modeSeg, sep(), this.els.sportBtn, this.els.styleBtn, sep('tb-hist'), this.els.undo, this.els.redo,
       gsep('nav'), this.els.fit, this.els.reverse, this.els.backToStart, gsep('take'), this.els.share, this.els.gpx, this.els.offline,
-      gsep('clear'), this.els.clearTool, sep(), this.els.more, this.els.toolDone);
+      gsep('clear'), this.els.clearTool, sep(), this.els.more, this.els.toolDone, this.els.toolEdit);
     for (const b of this.els.modeSeg.children) tooltip(b, TIPS[b.dataset.mode]);
     for (const k of ['undo', 'redo', 'reverse', 'backToStart', 'fit', 'share', 'gpx', 'offline', 'more']) tooltip(this.els[k], TIPS[k]);
     tooltip(this.els.clearTool, TIPS.clear);
     tooltip(this.els.styleBtn, TIPS.style);
     tooltip(this.els.sportBtn, TIPS.sport);
     tooltip(this.els.toolDone, TIPS.done);
+    tooltip(this.els.toolEdit, TIPS.edit);
     // a toolbar: one stop for Tab, the arrows move along it
     box.addEventListener('keydown', (e) => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
@@ -4456,10 +4549,13 @@ export class Planner {
     // first point how the next leg is drawn and More (Clear route); with a leg the route's actions too, as far
     // as there's room (placeTools()). New buttons fade in where they are (fadeNewTools()).
     // While a round trip is open nothing is drawn: only undo and redo stay, until a loop is taken or the form closes (#311)
-    const loop = this.loop.open;
-    this.tools.dataset.stage = loop ? 'loop' : String(Math.min(n, 2));
-    for (const el of [this.els.modeBtn, this.els.sportBtn, this.els.modeSeg, this.els.styleBtn, this.els.more, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop;
-    for (const el of this.tools.querySelectorAll('.tbtn.tb-hist')) el.hidden = !(hist || n);
+    // In the route's view nothing is drawn (25c): phones keep only More, desktops Show the whole route, More and Edit
+    const loop = this.loop.open, view = this.inView();
+    this.tools.dataset.stage = view ? 'view' : loop ? 'loop' : String(Math.min(n, 2));
+    this.tools.setAttribute('aria-label', view ? 'Your route' : 'Drawing tools');
+    for (const el of [this.els.modeBtn, this.els.sportBtn, this.els.modeSeg, this.els.styleBtn, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop || view;
+    this.els.more.hidden = !n || loop;
+    for (const el of this.tools.querySelectorAll('.tbtn.tb-hist')) el.hidden = !(hist || n) || view;
     this.els.undo.disabled = !this.past.length;
     this.els.redo.disabled = !this.future.length;
     this.els.reverse.disabled = n < 2;
@@ -4467,7 +4563,8 @@ export class Planner {
     this.els.fit.disabled = n < 2;
     for (const k of ['share', 'gpx', 'offline']) this.els[k].disabled = n < 2;
     this.els.clearTool.disabled = !n;
-    this.els.toolDone.hidden = !n || loop; // no Done before the first point (Back is the way out of a start step, A), nor in a round trip
+    this.els.toolDone.hidden = !n || loop || view; // no Done before the first point (Back is the way out of a start step, A), nor in a round trip
+    this.els.toolEdit.hidden = !view;
     // Show the whole route in the map's column: whenever a route is on the map, but on desktops
     // the toolbar has it while planning
     const col = document.getElementById('btn-fit');
@@ -4524,7 +4621,8 @@ export class Planner {
     if (!show) { toolsH(0); return; }
     const colLeft = $('#map-ctrls').getBoundingClientRect().left;
     // the route's actions once there's a leg (Back to start not on a loop); in turn, as far as there's room
-    const can = (b) => this.points.length > 1 && !this.loop.open && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk'));
+    const view = this.inView(); // (the route's view: of them only Show the whole route, on desktops, 25c)
+    const can = (b) => this.points.length > 1 && !this.loop.open && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk')) && (!view || b === this.els.fit);
     for (const b of box.querySelectorAll('[data-opt]')) if (!can(b)) b.hidden = true;
     const opts = [...box.querySelectorAll('[data-opt]')].filter(can).sort((a, b) => a.dataset.opt - b.dataset.opt);
     // the first n of them on the toolbar (in `root`, the toolbox or a copy of it), each group's separator with them

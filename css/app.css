@@ -229,7 +229,7 @@ body:not(.ready) .map-ctrls { display: none; }
 
 /* Plan: in the search bar on desktop (the side panel opens right below it), and
    last in the map column — a fab on desktop, a pill on phones. While planning
-   it stays where it is and reads Done. */
+   it stays where it is, pressed (Done ends editing since 25c). */
 .plan-btn {
   margin-top: 4px;
   width: 60px; height: 56px; border: 0; border-radius: 16px; cursor: pointer;
@@ -626,6 +626,23 @@ body:not(.ready) .map-ctrls { display: none; }
 .sum-time:hover small, .sum-time:focus-visible small { color: var(--text); }
 .sum-time:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn.done { flex: none; height: 34px; padding: 0 14px; }
+/* The route's view (25c): a row above the numbers with the route's name (it wraps, never cut), its sports and
+   "Kept on this device", and ✕; Edit where Done was */
+.pl-title { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 2px; }
+/* (a short screen, 200 % and a long name: the name scrolls in its row, whole, so the sheet stops below the top bar) */
+.pl-title[style*="max-height"] { overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
+.pl-ttl { flex: 1; min-width: 0; display: grid; gap: 1px; margin: 5px 0 0; font: inherit; }
+.pl-ttl b { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.pl-ttl small { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
+.pl-ttl small .ic { color: var(--accent); }
+.pl-title .way-x { width: 44px; height: 44px; margin: -4px -6px 0 0; }
+.btn.edit { gap: 6px; }
+/* Route's list in the view: the points without their controls, and Edit */
+.pl-viewnote { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
+.pl-viewnote > span:first-child { flex: none; display: grid; color: var(--muted); }
+.pl-viewnote > span:nth-child(2) { flex: 1; min-width: 0; }
+.pl-viewnote .btn { flex: none; gap: 6px; }
+b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere; }
 .sheet-min { display: none; }
 /* desktops: Done is at the toolbar's end */
 @media (min-width: 900px) { .sheet-head .done { display: none; } }
@@ -1344,7 +1361,7 @@ body.dropping .drop-hint { display: flex; }
   /* the map controls keep their place (bottom right, thumb reach); the sheet is full
      width here, so they ride above it */
   .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 12px); }
-  body.planning .plan-btn { display: none; } /* the sheet opens where the pill was, with its own Done */
+  body.planning .plan-btn { display: none; } /* the sheet opens where the pill was, with its own ✕ */
   .ctrl-btn { width: 44px; height: 44px; }
   .ctrl-compass .maplibregl-ctrl-group button { width: 44px; height: 44px; }
   @media (pointer: coarse) { .ctrl-zoom { display: none; } } /* pinch zooms */
@@ -1383,6 +1400,11 @@ body.dropping .drop-hint { display: flex; }
   .sheet-head { padding: 0 8px 8px 12px; }
   /* the header's controls are 44 px to touch: Done, and the time that opens the departure */
   .sheet-head .btn.done { height: 44px; }
+  .pl-viewnote .btn { min-height: 44px; }
+  /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */
+  body:not(.planning) .toast { left: 12px; right: 78px; max-width: none; transform: translate(0, 10px); }
+  body:not(.planning) .toast.show { transform: none; }
+  .toast .toast-act { min-height: 44px; } /* (Open, Undo: a finger's size) */
   .sum-time { min-height: 44px; justify-content: flex-end; }
   .sum-item b { font-size: 18px; }
   .tool { width: 30px; height: 32px; }
@@ -1571,6 +1593,8 @@ body.dropping .drop-hint { display: flex; }
 .sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
 .pl-tools .btn.done { height: 40px; padding: 0 12px; margin-left: 4px; }
+/* the route's view (25c): Show the whole route, More and Edit; nothing to keep apart */
+.pl-tools[data-stage="view"] .tb-sep { display: none; }
 /* where room runs out, once the route's actions that don't fit are in More (planner.js FOLDS): the style's caption,
    then the names of the modes not in use, then all of them */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
