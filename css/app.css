@@ -1245,7 +1245,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
    note (pl-viewnote). New for the cards: card-mark, row (in rows), seg icons, name-field, sum-item miss, card-pill.
    Where a card sits: card-peek (a phone's peek), card-float (at its spot), card-banner (Move's "Tap where it goes"). */
 .pl-way.card { container: card / inline-size; overflow-y: auto; overscroll-behavior: contain; margin-inline: -8px; padding-inline: 8px; } /* (room for the rows' hover, inside the card) */
-.card h3.way-hint { margin: 0; padding-top: 3px; }
+.card h3.way-hint { margin: 0; padding-top: 3px; font: inherit; } /* (a heading for screen readers; its line regular, as the start's) */
 .card h3.way-hint:focus { outline: none; }
 .card h3.way-hint:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .card[data-pointer] h3.way-hint:focus-visible { outline: none; } /* (opened by a tap or a click: the ring is the keyboard's) */
