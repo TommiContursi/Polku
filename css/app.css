@@ -702,34 +702,38 @@ body:not(.ready) .map-ctrls { display: none; }
 .way-head > :first-child { flex: 1; min-width: 0; }
 /* the ways to begin: the same top row as a step's (the title where a step has ‹ Ways to begin), then its line */
 .way-name { margin: 0 0 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
-.way-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* one line, always: with a long sport name the back link's words wrap in their button, so the sport never moves */
 .way-bar .way-back { min-width: 0; }
 .way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
 .way-bar .way-x { flex: none; margin: 0 0 0 auto; }
 .way-bar .way-dock + .way-x { margin-left: 0; }
-/* the steps: the sport as a chip beside the route style it decides (2026-10-21) */
+/* the steps: the sport beside the route style it decides, as the toolbar's two buttons (2026-10-21); a long name
+   wraps in its button rather than leaving the card */
 .way-pair { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.way-pair > .way-srow, .way-pair > .way-nostyle { flex: 1 1 200px; width: auto; }
+.way-pair > .way-nostyle { flex: 1 1 200px; width: auto; }
 .way-sh-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
 .way-sh-row > .way-sh { flex: 1 1 auto; }
-.way-hint-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.way-hint-row > .sport-pill { flex: none; }
-.sport-pill { flex: none; }
+.pl-way .sportbtn, .pl-way .stylebtn { display: inline-flex; height: auto; min-height: 40px; max-width: 100%; margin: 0; padding-block: 3px; white-space: normal; }
+.pl-way .stylebtn .two span { white-space: normal; overflow-wrap: anywhere; }
+.pl-way .sportbtn > span { min-width: 0; overflow-wrap: anywhere; }
+.pl-way .sportbtn .ic, .pl-way .stylebtn .ic { flex: none; }
+.pl-way .stylebtn > .ic:last-child, .pl-way .sportbtn > .ic:last-child { color: var(--muted); }
+@media (hover: hover) { .pl-way .sportbtn:hover, .pl-way .stylebtn:hover { background: var(--surface-2); } }
+.pl-way .sportbtn[aria-expanded="true"] { background: var(--accent-soft); }
+@media (pointer: coarse) { .pl-way .sportbtn, .pl-way .stylebtn { min-height: 44px; } }
 /* Make 3 loops says what it costs, under its name */
 .rt-make-t { display: grid; line-height: 1.2; }
 .rt-make-t small { font-size: 12px; font-weight: 500; opacity: .85; }
 /* the start's sport: a row of its own under the top row, as in the drawing menu (B of #233, 2026-10-21) */
 .sport-chip.sport-row { display: flex; align-items: center; gap: 12px; width: 100%; height: auto; min-height: 52px; max-width: none; margin: 2px 0 6px;
-  padding: 6px 12px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  padding: 8px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-solid); color: var(--text); font: inherit; text-align: left; cursor: pointer; } /* the way tiles' button */
 .sport-row > span { flex: 1; min-width: 0; display: grid; }
 .sport-row b { font-size: 15px; font-weight: 650; }
 .sport-row small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .sport-row > .ic:last-child { flex: none; color: var(--muted); }
 .sport-row[aria-expanded="true"] { background: var(--accent-soft); }
-@media (hover: hover) { .sport-row:hover { box-shadow: inset 0 0 0 1px var(--line); } }
+@media (hover: hover) { .sport-row:hover { background: var(--accent-soft); } }
 .sport-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.way-sub small { color: var(--muted); font-size: 13px; }
 .way-hint { display: grid; gap: 2px; }
 .way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
 .way-hint small { color: var(--muted); font-size: 13.5px; }
@@ -779,7 +783,7 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 /* How long: its heading, and by distance or by time as two chips like the lengths under them (2026-10-21) */
 .rt-how { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px; }
 .rt-how > b { font-size: 15px; }
-.rt-unit { display: flex; gap: 8px; }
+.rt-unit { display: flex; flex-wrap: wrap; gap: 8px; } /* at 200 % Distance and Time wrap rather than leave the card */
 .rt-dir { position: relative; display: flex; align-items: center; min-width: 0; width: 100%; } /* a row of its own (2026-10-21) */
 .rt-dir select { width: 100%; }
 .rt-dir select { appearance: none; height: 44px; max-width: 100%; text-overflow: ellipsis; padding: 0 30px 0 34px; border: 1px solid var(--line); border-radius: 12px;

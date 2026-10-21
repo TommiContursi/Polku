@@ -239,6 +239,9 @@ START = ("(async () => { const p = polku.planner; p.setActive(true); p.clear(); 
 def WAY(k, then=None):
     return START.replace("return true; })()", f"const w = document.querySelector('.pl-way [data-way={k}]'); if (w) w.click(); await new Promise((r) => setTimeout(r, 900));"
                          + (f" const b = document.querySelector({json.dumps(then)}); if (b) b.click(); await new Promise((r) => setTimeout(r, 900));" if then else '') + " return true; })()")
+# the round trip from the ways, with its start tapped on the map (25b, 2026-10-21: the rest of the form comes with it)
+RT_TAPPED = WAY('loop').replace(" return true; })()", " const c = polku.map.getCenter(); if (p.loop && p.loop.open && !p.loop.start) p.setLoopStart([+c.lng.toFixed(6), +c.lat.toFixed(6)], 'the spot you tapped');"
+                                " await new Promise((r) => setTimeout(r, 900)); return true; })()")
 # the first point's peek, a length tapped there (older code: its card on the map, then its round trip)
 FIRST_LENGTH = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); const c = polku.map.getCenter();"
                 " p.addPoint([+c.lng.toFixed(6), +c.lat.toFixed(6)]); await wait(500); const chip = document.querySelector('.pl-way .rt-here .chip');"
@@ -598,9 +601,11 @@ SCENES = {
     'phone-start-360': dict(PHONE, w=360, h=740, timeline=False, hash='#14/61.4975/23.7605', js=START),
     'phone-start-swim': dict(PHONE, timeline=False, activity='swim', hash='#14/61.4975/23.7605', js=START),
     'phone-draw-it': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('draw')),
-    'phone-draw-style': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('draw', '.pl-way .way-srow')),
+    'phone-draw-style': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('draw', '.pl-way [data-k=srow]')),
     'desk-draw-it': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=WAY('draw')),
     'phone-rt-ways': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=WAY('loop')),
+    'phone-rt-tapped': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=RT_TAPPED),
+    'desk-rt-tapped': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=RT_TAPPED),
     'phone-rt-first': dict(PHONE, timeline=False, hash='#14/61.4975/23.7605', js=FIRST_LENGTH),
     'desk-rt-first': dict(DESK, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=FIRST_LENGTH),
     'phone-marked': dict(PHONE, timeline=False, hash='#13.4/61.5085/23.8270', js=WAY('find'), settle=4),
