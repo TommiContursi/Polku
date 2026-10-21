@@ -2,21 +2,24 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-10-21
+## 2026-10-22
 
 ### A point's card, the same on a phone and a desktop ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
-A tap or click on a point of your route opens its card. On a phone it's in the planner, at your thumb, with the point ringed and in sight above it; undo and redo stay, and the rest of the toolbox steps aside. On a desktop the card opens at the point.
+A tap or click on a point of your route opens its card. On a phone it's in the planner, at your thumb, with the point ringed and in sight above it; undo and redo stay, and the rest of the toolbox steps aside. On a desktop the card opens at the point, small enough to leave the map in view, and the point's row in the planner's list lights up.
 
 - The card gives the point's name and three numbers: when you'd get **there at**, how far it is **from the start**, and its **height**. The start gives when **you leave**, with **Leave at**. A number Polku doesn't know yet says so in its place.
-- **At this point** is one switch, **Pass by**, **Stop** or **Night**, showing what happens there now. A stop has its minutes with **−** and **+**, and says when you get there and go on. A night has the hour you go on the next morning, and **Places to sleep nearby**, which lists the lean-tos, huts and campsites within 3 km; a tap on one moves the point there.
+- **At this point** is one switch, **Pass by**, **Stop** or **Night**, showing what happens there now. A stop has its minutes with **−** and **+**, and says when you get there and go on. A night has **Go on at**, the hour you go on the next morning, and **Places to sleep nearby**, which lists the lean-tos, huts and campsites within 3 km; a tap on one moves the night there.
 - **Sport from here** lists the sports, with **your route** on the route's own. A pick changes the legs from the point to the next change of sport, or to the end, in one step of Undo; a paddle leg drawn by following paths goes over water. A change of sport has its changeover minutes and **Take the bike along**.
 - **The stretch after it** names both ends and opens that leg's settings.
-- **Edit this point** has **Move** and **Rename**. **Move** works without dragging: a note asks you to tap where the point goes, and the next tap moves it there; **Cancel** or **Escape** leaves it where it was, and dragging still works. **Rename** lets you type the name where it's shown, with **Save**.
-- **Start here** and **End here** say what they remove, and Undo brings it back. On a loop, **Start here** starts the same loop from that point. The end has **Back to start**, except on a loop. **Remove** is apart at the bottom, in red, and its note has **Undo**.
+- **Move** works without dragging: a note asks you to tap where the point goes, and the next tap moves it there; **Cancel** or **Escape** leaves it where it was, and dragging still works. **Rename** lets you type the name where it's shown, with **Save**.
+- **Start here** and **End here** say what they remove, and Undo brings it back. On a loop, **Start here** starts the same loop from that point. The start and the end have **Reverse**, and the end **Back to start**, except on a loop. **Remove** is apart at the bottom, in red, and its note has **Undo**.
+- On a desktop the edits are buttons, two a row, and **Remove** a red button of its own; point at one for what it does.
 - **✕**, **Escape**, the phone's back gesture and a tap on the map close the card; the tap adds no point. The planner is then as it was, at the same size and scroll. The card follows its point when you move it or undo, and closes when the point is gone.
 - While you're not editing, the card has the point's stop or night and the start's leaving time, and the planner's note with **Edit**.
 - With large text or a narrow phone, the card takes half the screen at most and scrolls inside. Undo, redo and its close button go on a row of their own above the name, and its numbers one to a row, so names and numbers are never cut.
+
+## 2026-10-21
 
 ### Fixed: the labels under your route's numbers are never cut short ([#356](https://github.com/TommiContursi/Polku/issues/356))
 

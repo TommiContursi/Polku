@@ -627,18 +627,18 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 Each part adds what it built here, as the calmer planner's Built section does.
 
-### 1a, the card and a point's card (2026-10-21)
+### 1a, the card and a point's card (2026-10-21 and 22, Revisions 4 and 5)
 
-- **`js/card.js`:** `CardHost` as the interfaces say, and the card's parts: `nums()`, `group()`, `rows()`, `item()`, `segIcons()`, `mainButton()`, `lockNote()`. Beyond the interfaces: `onPop`, `pad()`, `keep()` and `restore()` (the planner as it was, for Back) and `dock()` (undo and redo for a narrow card) in the constructor; `place`, `narrow`, `box`, `escape()`, `fold()` and `unfold()`. `beside` is built but nothing opens one yet (part 4).
-- **`js/cards.js`:** `pointCard()`, and the cards it opens with Back: Sport from here, Leave at, Places to sleep nearby. **`js/facts.js`:** `pointNums()` and `heightAt()`.
+- **`js/card.js`:** `CardHost` as the interfaces say, and the card's parts: `nums()`, `group()`, `rows()`, `acts()`, `item()`, `segIcons()`, `mainButton()`, `lockNote()`. Beyond the interfaces: `onPop`, `pad()`, `keep()` and `restore()` (the planner as it was, for Back) and `dock()` (undo and redo for a narrow card) in the constructor; `place`, `narrow`, `box`, `escape()`, `fold()` and `unfold()`. `beside` is built but nothing opens one yet (part 4).
+- **`js/cards.js`:** `pointCard()`, and the cards it opens with Back: Sport from here, Leave at, Go on at, Places to sleep nearby [r-sport, r-leave, r-goon, r-stays]. **`js/facts.js`:** `pointNums()` and `heightAt()`.
 - **`js/planner.js`:** `openPointCard()` in place of `openPointMenu()`; `findPoint()`, `openLegAfter()`, `moveOnCard()`, `pickOnMap()`, `removeOnCard()`, `movePoint()`, `setSportFrom()` with `legInSport()`, `gearAt()`, `departChoices()`. The old point menu's `stopEditor()`, `listStays()` and `gearToggle()` are gone.
 - **The history settles in one place** (`syncHistory()`): one step for each card open. A card closed and another opened at once once let the step back land after the new push and leave the page; `pointcard` checks it.
-- **Beside its frame** (p-point, r-stop, r-night, r-change, r-sport, r-start, r-end, r-rename, p-move, r-view-point, r-200, r-fi, d-point, r-dark at their sizes, headless). The differences, each with its reason:
+- **Revision 5 on desktops** (#363): the card 320 px wide and 480 px tall at most, smaller type, 34 px rows, the lines as tooltips; the edits (`acts()`) are buttons, two a row, Start here and End here first, with no heading; Remove a red button of its own. Phones and desktops share the DOM; only `css/app.css` tells them apart. The start and the end have Reverse, End here a flag, and the point's row in the list is lit (`aria-current`).
+- **Beside its frame** (p-point, r-stop, r-night, r-change, r-sport, r-start, r-end, r-rename, p-move, r-view-point, r-200, r-fi, r-dark, and Revision 5's d-point, r-stays, r-goon, r-leave, at their sizes, headless). The differences, each with its reason:
   - The numbers are the app's `sum-item` (this plan's table), without the frames' dividers, at 18 px on phones and 19 px on desktops, not 21.
   - The stepper is the round trip's `rt-step` as it is today, three boxes; #356's Fix PR makes both one box, − 30 min +.
-  - A night's hour is the browser's own time field, not the frame's ▾ button.
+  - Go on at offers 05:00 to 10:00, and the hour set now; the frame has 06:00 to 09:00.
   - The chosen choice of the switch has black words and a green icon (#356), where the frames have green words.
-  - On a desktop, The stretch after it keeps its two ends under its name, so it's taller than the other rows' 40 px.
   - At 200 %, a word longer than its row breaks where it must, as the route's numbers' labels do (#360); #184's soft hyphens will place the breaks.
   - The sports' lines and the changeover's minutes are the app's own (`ACTIVITIES[k].line`, with ", " for " · "; 15 min from MTB to Paddle).
 - **Decided while building:** Back says where it goes: the card it came from by name, or Route from the list, Check from Check. The title's focus ring shows only when the card was opened from the keyboard. While a phone's peek has a card, the toolbox's stage is `card`: only undo and redo. The end's note says "The route ends here now". The pill is built and checked with a stand-in card, for 1b and 5.
