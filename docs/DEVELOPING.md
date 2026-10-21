@@ -242,7 +242,7 @@ Where a screen needs a control that does one of these jobs, it uses this one, wi
 | A Heads-up row | `li` | Check |
 | Facts as rows | `insp-row`, `insp-info` for the source | the map's card |
 | A card's mark: the thing's own mark from the map, left of its name | `card-mark` (holding the map's `wp`, …) | 25d's cards (#355) |
-| A plain row: its icon, its name, its line, a value in the accent colour (`val`), ›; a hairline between rows; Remove in red (`danger`) | `row` in a `rows` list (`keep`: its line stays on a desktop) | 25d's cards (#355) |
+| A plain row: its icon, its name, its line, a value in the accent colour (`val`), ›; a hairline between rows; Remove in red (`danger`) | `row` in a `rows` list; `rows acts` for actions, buttons with their icon and name on a desktop (Revision 5) | 25d's cards (#355, #363) |
 | A switch with icons | `seg icons`, `role="radio"`, the chosen one `aria-checked`: white, black words, a green icon (#356) | At this point: Pass by · Stop · Night |
 | The name typed where it's shown, with Save | `name-field` | Rename on a card |
 | A number the map doesn't have | `sum-item miss`, dashed | 25d's cards (#345) |

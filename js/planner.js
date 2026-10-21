@@ -2808,7 +2808,7 @@ export class Planner {
         ro ? `${ch.min}` : h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }),
         ' min to change') : null;
       const stop = this.stopAt(i);
-      const row = h('li', { class: 'wpl-row', 'data-i': String(i), title: 'Show on the map', onclick: () => this.focusPoint(i) },
+      const row = h('li', { class: 'wpl-row', 'data-i': String(i), 'aria-current': this.cards.current && this.cards.current.key === p ? 'true' : null, title: 'Show on the map', onclick: () => this.focusPoint(i) },
         ro ? null : h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
         h('span', { class: 'wpl-main' }, input, h('small', {}, sub), change, stop ? this.stopChip(i, stop) : null,
@@ -3678,6 +3678,8 @@ export class Planner {
         // the card's point ringed on the map, while its card (or Move's banner) is open
         const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
+        // …and its row in the list lit, where the card leaves it in sight (desktops)
+        for (const r of this.els.points.querySelectorAll('.wpl-row')) { if (this.points[+r.dataset.i] === ringed) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.measureSheet?.();
       },

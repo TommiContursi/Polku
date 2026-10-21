@@ -1,12 +1,12 @@
 // The cards' contents (25d, Revision 4 of #355): built from the card's parts (js/card.js) and what the planner says;
 // the planner keeps the actions. A card shows only what can be done now: in the route's view, what works there and
 // the planner's note with Edit.
-import { h, icon } from './ui.js';
-import { nums, group, rows, item, lockNote, segIcons } from './card.js';
+import { h, icon, toast } from './ui.js';
+import { nums, group, rows, acts, item, lockNote, segIcons } from './card.js';
 import { pointNums } from './facts.js';
 import { ACTIVITIES } from './config.js';
 import { fmtDist } from './geo.js';
-import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
+import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm } from './stops.js';
 
 // the point's own marker, as the map draws it
 export function pointMark(pl, i) {
@@ -83,8 +83,9 @@ function pointBody(pl, card, body) {
         line: arrive ? `You get here at ${pl.clockOf(arrive)}${w ? ` and go on at ${pl.clockOf(arrive + w.sec)}` : ''}` : null }));
     }
     if (night) {
+      // Go on at: the morning's hour, a choice with its value (as Route style), its hours a card of their own [r-goon]
       body.append(h('div', { class: 'rt-step' }, h('span', {}, 'Go on at'),
-        h('label', { class: 'rt-len' }, h('input', { type: 'time', step: 900, value: hhmm(stop.on), 'aria-label': `Go on from ${name} at`, onchange: (e) => { const on = parseHhmm(e.target.value); if (on != null) set({ on }); } })),
+        h('button', { type: 'button', class: 'stylebtn', 'aria-label': `Go on from ${name} at ${hhmm(stop.on)}`, onclick: () => pl.cards.open(goOnCard(pl, card), { at: card.key, from: card }), html: icon('chevronDown', 14) }, h('span', {}, hhmm(stop.on))),
         h('span', {}, 'the next morning')));
       if (!view) body.append(rows(item({ icon: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km', chev: true, onclick: () => pl.cards.open(staysCard(pl, card), { at: card.key, from: card }) })));
     }
@@ -93,7 +94,7 @@ function pointBody(pl, card, body) {
   if (i === 0 && n > 1) {
     body.append(rows(item({ icon: 'clock', label: 'Leave at', line: 'Sets the times and the weather along the route', val: pl.departLabel(), chev: true, onclick: () => pl.cards.open(leaveCard(pl, card), { at: card.key, from: card }) })));
   }
-  const after = pl.legs[i] ? item({ icon: 'route', label: 'The stretch after it', line: `${name} → ${pl.nameOf(i + 1)}`, keep: true, chev: true, onclick: () => pl.openLegAfter(i) }) : null;
+  const after = pl.legs[i] ? item({ icon: 'route', label: 'The stretch after it', line: `${name} → ${pl.nameOf(i + 1)}`, chev: true, onclick: () => pl.openLegAfter(i) }) : null;
   if (view) { body.append(rows(after), lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); })); return; }
   // the sport from here on, and at a change of sport its minutes and the gear
   if (pl.legs[i]) {
@@ -111,17 +112,31 @@ function pointBody(pl, card, body) {
     }
   }
   if (after) body.append(rows(after));
-  if (last && !loop) body.append(...group('The route', item({ icon: 'loop', label: 'Back to start', line: 'Adds a leg back to the start', onclick: () => pl.backToStart() })));
+  // The route: the start and the end turn it round; the end, not on a loop, goes back to the start
+  const undo = { label: 'Undo', fn: () => pl.undo() };
+  const reverse = item({ icon: 'reverse', label: 'Reverse', line: 'The route runs the other way, from the end to the start', k: 'reverse', onclick: () => { pl.reverse(); toast('The route runs the other way now', { ms: 7000, action: undo }); } });
+  if (last) body.append(...group('The route', loop ? null : item({ icon: 'loop', label: 'Back to start', line: 'Adds a leg back to the start', k: 'back', onclick: () => { pl.backToStart(); toast('A leg back to the start is added', { ms: 7000, action: undo }); } }), reverse));
+  if (i === 0 && n > 1) body.append(...group('The route', reverse));
   // Edit this point; Start here and End here say what they remove; Remove apart, in red
-  body.append(...group('Edit this point',
-    item({ icon: 'move', label: 'Move', line: `${pl.coarse() ? 'Tap' : 'Click'} where it goes`, onclick: () => pl.moveOnCard(card) }),
-    item({ icon: 'pencil', label: 'Rename', line: 'Give it a name of your own', onclick: () => { card.renaming = true; pl.cards.refresh(); card.input?.focus(); card.input?.select(); } })));
-  if (via) {
-    body.append(rows(
-      item({ icon: 'flag', label: 'Start here', line: loop ? 'The same loop, starting from this point' : 'The part before it is removed, Undo brings it back', onclick: () => pl.startAt(card.i) }),
-      loop ? null : item({ icon: 'finish', label: 'End here', line: 'The part after it is removed, Undo brings it back', onclick: () => pl.finishAt(card.i) })));
-  }
-  body.append(h('hr'), rows(item({ icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, onclick: () => pl.removeOnCard(card) })));
+  body.append(h('h4', { class: 'menu-h' }, 'Edit this point'), acts(
+    item({ icon: 'move', label: 'Move', line: `${pl.coarse() ? 'Tap' : 'Click'} where it goes`, k: 'move', onclick: () => pl.moveOnCard(card) }),
+    item({ icon: 'pencil', label: 'Rename', line: 'Give it a name of your own', k: 'rename', onclick: () => { card.renaming = true; pl.cards.refresh(); card.input?.focus(); card.input?.select(); } }),
+    via ? item({ icon: 'flag', label: 'Start here', line: loop ? 'The same loop, starting from this point' : 'The part before it is removed, Undo brings it back', k: 'start', onclick: () => pl.startAt(card.i) }) : null,
+    via && !loop ? item({ icon: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back', k: 'end', onclick: () => pl.finishAt(card.i) }) : null));
+  body.append(h('hr'), acts(item({ icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, k: 'remove', onclick: () => pl.removeOnCard(card) })));
+}
+
+// Go on at ›: the morning's hour of a night [r-goon]
+function goOnCard(pl, point) {
+  const stop = () => pl.stopAt(point.i);
+  return {
+    kind: 'goon', key: point.key, pill: null, title: 'Go on at', sub: 'the next morning',
+    mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point) && isNight(stop()),
+    build: (body) => {
+      const on = stop().on, hours = [...new Set([...Array.from({ length: 6 }, (_, k) => (5 + k) * 60), on])].sort((a, b) => a - b); // (05:00 to 10:00, and the hour set now)
+      body.append(rows(...hours.map((m) => item({ icon: 'clock', label: hhmm(m), role: 'menuitemradio', checked: m === on, onclick: () => { const k = point.i; pl.cards.back(); if (k >= 0) pl.setStop(k, { on: m }); } }))));
+    },
+  };
 }
 
 // Sport from here ›: the sports, the one in force ticked, "your route" on the route's own [r-sport]
@@ -149,15 +164,20 @@ function leaveCard(pl, point) {
   };
 }
 
-// Places to sleep nearby ›: lean-tos, huts and campsites within 3 km (LIPAS and OpenStreetMap); a tap moves the point there
+// Places to sleep nearby ›: lean-tos, huts and campsites within 3 km (LIPAS and OpenStreetMap); a tap moves the night there [r-stays]
 function staysCard(pl, point) {
   const card = {
-    kind: 'stays', key: point.key, pill: null, title: 'Places to sleep nearby', sub: 'Lean-tos, huts and campsites within 3 km',
+    kind: 'stays', key: point.key, pill: null, title: 'Places to sleep nearby', get sub() { return pl.nameOf(point.i); },
     mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point), found: null, state: 'looking',
     build: (body) => {
-      const list = (card.found || []).map((x) => item({ icon: 'hut', label: x.name, line: `${x.kind}, ${fmtDist(x.d)} away, from ${x.src}`, onclick: () => { const k = point.i; pl.cards.back(); if (k >= 0) pl.moveToStay(k, x); } }));
+      const list = (card.found || []).map((x) => item({ icon: 'hut', label: x.name, line: `${x.kind}, ${fmtDist(x.d)}`, chev: true, onclick: () => {
+        const k = point.i;
+        pl.cards.back();
+        if (k >= 0) { pl.moveToStay(k, x); toast(`The night moved to ${x.name}`, { ms: 7000, action: { label: 'Undo', fn: () => pl.undo() } }); }
+      } }));
       body.append(rows(...list) || h('p', { class: 'rt-cost' }, { looking: 'Looking in LIPAS and OpenStreetMap…', none: 'No lean-tos, huts or campsites within 3 km in LIPAS or OpenStreetMap.', failed: 'LIPAS and OpenStreetMap didn’t answer.' }[card.state] || ''));
       if (card.state === 'looking' && list.length) body.append(h('p', { class: 'rt-cost' }, 'Still looking…'));
+      if (list.length) body.append(h('p', { class: 'rt-cost' }, 'From LIPAS and OpenStreetMap. Tap one to move the night there.'));
       if (card.state === 'failed') body.append(h('button', { type: 'button', class: 'btn', onclick: () => look(), html: icon('reverse', 16) }, h('span', {}, 'Try again')));
     },
   };

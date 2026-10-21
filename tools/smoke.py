@@ -7085,8 +7085,8 @@ PC_LOOK = """((phone) => {
   if (!c) return ['no card'];
   // DEVELOPING's "Shared controls", and the cards' new ones (25d's "How every card is built")
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'wp', 'wp-start', 'wp-via', 'wp-end', 'wp-loop',
-    'sheet-sum', 'sum-item', 'miss', 'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'keep', 'val', 'way-chev', 'menu-tick', 'rt-step', 'ring', 'rt-len', 'rt-cost', 'tg', 'tg-text', 'tg-ui',
-    'pl-viewnote', 'primary', 'big', 'name-field']);
+    'sheet-sum', 'sum-item', 'miss', 'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-step', 'ring', 'rt-len', 'rt-cost', 'tg', 'tg-text', 'tg-ui',
+    'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'stylebtn']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   if (phone) for (const b of c.querySelectorAll('button, input:not([type=checkbox]), .tg')) {
@@ -7095,7 +7095,7 @@ PC_LOOK = """((phone) => {
   }
   const w = +getComputedStyle(c.querySelector('.way-hint b')).fontWeight;
   if (w > 700) out.push(`the title at weight ${w}`);
-  for (const l of c.querySelectorAll('.sum-item small')) if (parseFloat(getComputedStyle(l).fontSize) < 12.5) out.push(`a number's label at ${getComputedStyle(l).fontSize}`);
+  for (const l of c.querySelectorAll('.sum-item small')) if (phone && parseFloat(getComputedStyle(l).fontSize) < 12.5) out.push(`a number's label at ${getComputedStyle(l).fontSize}`);
   for (const b of c.querySelectorAll('.sum-item b')) { const lh = parseFloat(getComputedStyle(b).lineHeight) || 20; if (b.offsetHeight > lh * 1.5) out.push(`“${b.textContent}” on more than one line`); }
   if (/ · /.test(c.textContent)) out.push('facts strung with “ · ”');
   const rows = [...c.querySelectorAll('.row')], rm = rows[rows.length - 1];
@@ -7106,10 +7106,27 @@ PC_LOOK = """((phone) => {
     if (!row.querySelector('.ic')) out.push(`${row.querySelector('b').textContent}: no icon`);
     if (!line) out.push(`${row.querySelector('b').textContent}: no line under it`);
     if (!phone) {
-      if (!row.classList.contains('keep') && Math.round(r(row).height) !== 40) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not 40`);
-      if (line && !row.classList.contains('keep') && line.getClientRects().length) out.push(`${row.querySelector('b').textContent}'s line shows on a desktop`);
+      const btn = row.parentElement.classList.contains('acts'), want = btn ? 36 : 34;
+      if (Math.round(r(row).height) !== want) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not ${want}`);
+      if (line && line.getClientRects().length) out.push(`${row.querySelector('b').textContent}'s line shows on a desktop`);
       if (line && row.title !== line.textContent) out.push(`${row.querySelector('b').textContent}'s tooltip isn't its line`);
     }
+  }
+  if (!phone) {
+    // Revision 5: 320 px wide, 480 px tall at most; the edits as buttons, two a row, Start here and End here first; no
+    // heading above them; Remove a red button on a row of its own
+    const box = r(c.closest('.maplibregl-popup-content') || c);
+    if (Math.round(r(c).width) !== 320 || box.height > 480 + 20) out.push(`the desktop card ${Math.round(r(c).width)} × ${Math.round(box.height)} px, not 320 wide and 480 tall at most`);
+    const edits = [...c.querySelectorAll('.rows.acts')].find((l) => l.querySelector('[data-k=move]'));
+    if (edits) {
+      const b = [...edits.children].filter((x) => x.getClientRects().length).map((x) => ({ k: x.dataset.k, top: Math.round(r(x).top) }));
+      const rowsOf = [...new Set(b.map((x) => x.top))].sort((x, y) => x - y).map((t) => b.filter((x) => x.top === t).map((x) => x.k).join('+'));
+      const want = c.querySelector('[data-k=end]') ? ['start+end', 'move+rename'] : c.querySelector('[data-k=start]') ? ['start+move', 'rename'] : ['move+rename'];
+      if (rowsOf.join(' / ') !== want.join(' / ')) out.push(`the edits as buttons: ${rowsOf.join(' / ')}, not ${want.join(' / ')}`);
+      if (edits.previousElementSibling?.getClientRects().length) out.push('a heading above the edit buttons');
+    }
+    const rmb = c.querySelector('[data-k=remove]');
+    if (rmb && (Math.abs(r(rmb).width - r(rmb.parentElement).width) > 1 || getComputedStyle(rmb).borderTopColor === getComputedStyle(c).color)) out.push('Remove isn’t a red button on a row of its own');
   }
   return out; })"""
 # no "…", nothing past the card's edges; narrow: undo, redo and ✕ in a row of their own above the title, numbers one to a row
@@ -7178,10 +7195,13 @@ def point_card(chrome):
         return pg
 
     def tap_marker(pg, i, name, touch):
-        # where the point is under the toolbox, a button or the card, the map moves to it first, as a person moves it
-        pg.js(f"""(() => {{ const p = polku.planner, m = p.markers[{i}]; if (!m) return false; const el = m.getElement().querySelector('.wp'), b = el.getBoundingClientRect();
-          if (el.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2))) return true;
-          const v = p.viewPadding(0); p.map.jumpTo({{ center: p.points[{i}], offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }}); return true; }})()""")
+        # where the point is under the toolbox, a button, a note or the card, the map moves to it first, as a person moves it
+        pg.js(f"""(async () => {{ const p = polku.planner, m = p.markers[{i}]; if (!m) return false; const el = m.getElement().querySelector('.wp');
+          const clear = () => {{ const b = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }};
+          if (clear()) return true;
+          const v = p.viewPadding(0); p.map.jumpTo({{ center: p.points[{i}], offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }});
+          for (const d of [[0, 0], [0, -80], [0, 160], [0, 80], [-80, -160], [160, 0]]) {{ if (d[0] || d[1]) p.map.panBy(d, {{ duration: 0 }}); await new Promise((r) => setTimeout(r, 60)); if (clear()) return true; }}
+          return false; }})()""")
         time.sleep(0.3)
         if not press(pg, at(pg, f"polku.planner.markers[{i}]?.getElement().querySelector('.wp')"), f'{name}: point {i} of {pg.js("polku.planner.points.length")}', touch):
             return st(pg)
@@ -7225,6 +7245,10 @@ def point_card(chrome):
             if s['place'] != 'float' or corner > 30:
                 fails.append(f"{name}: the card {s['place']}, its nearest corner {round(corner)} px from the point")
         fails += [f'{name}: {o}' for o in pg.js(f"({PC_LOOK})({json.dumps(phone)})")]
+        if not phone:
+            lit = pg.js("[...document.querySelectorAll('.wpl-row[aria-current=true]')].map((r) => r.dataset.i)")
+            if lit != ['1']:
+                fails.append(f'{name}: the rows lit in the list while via 1’s card is open: {lit}')
         # a tap on the card's words, not a row: the card stays, and so does the sheet's size
         if phone:
             sheet0 = pg.js("polku.planner.panel.dataset.state")
@@ -7252,6 +7276,18 @@ def point_card(chrome):
         tap_seg(pg, 'Night', name, touch)
         if not pg.js("(async () => (await import(location.origin + '/js/stops.js')).isNight(polku.planner.stopAt(1)))()") or 'Places to sleep nearby' not in st(pg)['rows']:
             fails.append(f"{name}: Night: {pg.js('JSON.stringify(polku.planner.stopAt(1))')}, rows {st(pg)['rows']}")
+        # Go on at ›: the morning's hours; 06:00, and the card is back with it
+        press(pg, at(pg, "document.querySelector('.pl-way.card .rt-step .stylebtn')"), f'{name}: Go on at', touch)
+        s = st(pg)
+        if s['kind'] != 'goon' or '06:00' not in s['rows']:
+            fails.append(f"{name}: Go on at ›: {s['kind']} card, {s['rows']}")
+        else:
+            tap_row(pg, '06:00', name, touch)
+            time.sleep(0.4)
+            r = pg.js("({ on: polku.planner.stopAt(1) && polku.planner.stopAt(1).on, kind: polku.planner.cards.current && polku.planner.cards.current.kind, shown: document.querySelector('.pl-way.card .rt-step .stylebtn')?.textContent.trim() })")
+            if r['on'] != 360 or r['kind'] != 'point' or r['shown'] != '06:00':
+                fails.append(f'{name}: Go on at 06:00: {r}')
+            pg.js("polku.planner.undo(); true")
         pg.js("polku.planner.undo(); true")
         time.sleep(0.3)
         # Sport from here ›: its card, with Back in words; Paddle changes legs 1 and 2, not leg 0, in one step of Undo
@@ -7342,7 +7378,7 @@ def point_card(chrome):
             fails.append(f'{name}: cards closed and opened at once, then the back gesture: {r}')
         # the start: you leave, and Leave at ›; the end: Back to start; a loop's end has none, its via points no End here
         s = tap_marker(pg, 0, name, touch)
-        if s['labels'][:1] != ['you leave'] or 'Leave at' not in s['rows'] or 'Start here' in s['rows'] or 'At this point' in s['heads']:
+        if s['labels'][:1] != ['you leave'] or 'Leave at' not in s['rows'] or 'Reverse' not in s['rows'] or 'The route' not in s['heads'] or 'Start here' in s['rows'] or 'At this point' in s['heads']:
             fails.append(f"{name}: the start's card: {s['labels']}, {s['rows']}, {s['heads']}")
         tap_row(pg, 'Leave at', name, touch)
         pick = pg.js("[...document.querySelectorAll('.pl-way.card .row')][3]?.querySelector('b').textContent")
@@ -7352,12 +7388,24 @@ def point_card(chrome):
             fails.append(f"{name}: Leave at › “{pick}”: offset {pg.js('polku.planner.startOffsetH')}, card {st(pg)['kind']}")
         pg.js("polku.planner.setStartOffset(0); polku.planner.cards.close(); true")
         s = tap_marker(pg, 3, name, touch)
-        if 'Back to start' not in s['rows'] or 'Start here' in s['rows'] or 'Sport from here' in s['rows']:
+        if 'Back to start' not in s['rows'] or 'Reverse' not in s['rows'] or 'Start here' in s['rows'] or 'Sport from here' in s['rows']:
             fails.append(f"{name}: the end's card: {s['rows']}")
+        # Reverse: the route the other way, one step of Undo, its note with Undo; the card follows its point (now the start)
+        before = pg.js("({ pts: JSON.stringify(polku.planner.points), past: polku.planner.past.length })")
+        tap_row(pg, 'Reverse', name, touch)
+        r = pg.js("(() => { const p = polku.planner; return { first: JSON.stringify(p.points[0]), past: p.past.length, i: p.cards.current ? p.points.indexOf(p.cards.current.key) : null, note: document.getElementById('toast').textContent }; })()")
+        if r['first'] != json.dumps(json.loads(before['pts'])[-1], separators=(',', ':')) or r['past'] != before['past'] + 1 or r['i'] != 0 or 'other way' not in r['note']:
+            fails.append(f'{name}: Reverse on the end: {r}')
+        pg.js("polku.planner.undo(); polku.planner.cards.close(); true")
+        time.sleep(0.4)
+        s = tap_marker(pg, 3, name, touch)
         tap_row(pg, 'Back to start', name, touch)
         time.sleep(0.4)
-        s = tap_marker(pg, 4, name, touch)
-        if s['kind'] != 'point' or 'Back to start' in s['rows']:
+        # (the loop's end and its start are one spot on the map: the end's card, opened as the list opens it)
+        pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[4], { from: 'list' }); return true; })()")
+        time.sleep(0.4)
+        s = st(pg)
+        if s['kind'] != 'point' or 'Back to start' in s['rows'] or 'Reverse' not in s['rows']:
             fails.append(f"{name}: a loop's end: {s['kind']} card, {s['rows']}")
         s = tap_marker(pg, 2, name, touch)
         if 'End here' in s['rows'] or 'The same loop, starting from this point' not in s['text']:

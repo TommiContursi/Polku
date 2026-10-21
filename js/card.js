@@ -35,11 +35,18 @@ export function rows(...items) {
   const kept = items.flat().filter(Boolean);
   return kept.length ? h('div', { class: 'rows' }, ...kept) : null;
 }
+// Actions in a list: rows on a phone; on a desktop buttons with their icon and name, two a row, each line its tooltip,
+// and a red one on a row of its own (Revision 5)
+export function acts(...items) {
+  const list = rows(...items);
+  if (list) list.classList.add('acts');
+  return list;
+}
 
 // A plain row: its icon, its name, one line on what it does, a value in the accent colour and › when it opens a
-// choice. On a desktop the line is the row's tooltip instead (keep: a line that stays, a stretch's ends).
-export function item({ icon: ic, label, line = '', val = null, chev = false, danger = false, keep = false, role = null, checked = null, cur = null, onclick, el = 'button' }) {
-  const b = h(el, { type: el === 'button' ? 'button' : null, class: `row${danger ? ' danger' : ''}${keep ? ' keep' : ''}`, role, 'aria-checked': checked == null ? null : String(checked), title: line || null, onclick },
+// choice. On a desktop the line is the row's tooltip instead.
+export function item({ icon: ic, label, line = '', val = null, chev = false, danger = false, role = null, checked = null, cur = null, k = null, onclick, el = 'button' }) {
+  const b = h(el, { type: el === 'button' ? 'button' : null, class: `row${danger ? ' danger' : ''}`, role, 'aria-checked': checked == null ? null : String(checked), 'data-k': k, title: line || null, onclick },
     h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }),
     h('span', {}, h('b', {}, label), line ? h('small', {}, line) : null),
     val != null || cur ? h('span', { class: 'val' }, val ?? cur) : null,
