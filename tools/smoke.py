@@ -5782,8 +5782,9 @@ def weather_requests(chrome):
 # the sheet; the mode's menu changes only the next leg; a style from it is the whole route's, and a leg with its
 # own keeps it; More does what it says; Show the whole route is in the map's column; undo and redo from the first
 # render (#241); a touch tap on a header control that re-renders itself leaves the sheet as it was (#251); a long
-# route's numbers apart at 360 px and 200 % (#242). Desktops: the toolbar on the panel's edge, side or bottom,
-# narrow or wide, folding before the map's buttons; its keys, its tooltips, More and Done. Straight legs: no routing.
+# route's numbers apart at 360 px and 200 % (#242), their labels wrapped at 12.5 px, never cut (#356). Desktops: the
+# toolbar on the panel's edge, side or bottom, narrow or wide, folding before the map's buttons; its keys, its
+# tooltips, More and Done. Straight legs: no routing.
 TB_ROUTE = """(async (pts) => {
   const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line');
   for (const q of pts) p.addPoint(q);
@@ -5997,6 +5998,28 @@ def toolbox(chrome):
           return { out, km: p.analysis && Math.round(p.analysis.total / 1000), text: p.els.sum.textContent }; })()""")
         if r['out']:
             fails.append(f"{name}: a {r['km']} km route ({r['text']}): {', '.join(r['out'])} (#242)")
+        # #356: the labels under the numbers wrap, at 12.5 px, and are never cut with "…": as the app draws them, with a
+        # departure set ("from 14:00"), and Finnish-length ones; the numbers with their labels stay apart, in the sheet
+        # and clear of Done
+        pg.js("(() => { const p = polku.planner; p.startOffsetH = 3; p.renderAnalysis(); return true; })()")
+        for lang, labels in (('English', None), ('Finnish-length', ['kokonaismatka', 'lähtöajasta klo 14.00', 'nousumetrit · laskumetrit'])):
+            if labels:
+                pg.js(f"(() => {{ const t = {json.dumps(labels)}; polku.planner.els.sum.querySelectorAll('.sum-item small').forEach((s, i) => {{ s.textContent = t[i]; }}); return true; }})()")
+            pg.js(SETTLED)
+            r = pg.js("""(() => { const p = polku.planner, head = p.els.head.getBoundingClientRect(), sheet = p.panel.getBoundingClientRect(), out = [];
+              const done = p.els.head.querySelector('.done').getBoundingClientRect(), items = [...p.els.sum.querySelectorAll('.sum-item')];
+              const box = (it) => { const r = [...it.children].map((e) => e.getBoundingClientRect());
+                return { left: Math.min(...r.map((q) => q.left)), right: Math.max(...r.map((q) => q.right)), top: Math.min(...r.map((q) => q.top)), bottom: Math.max(...r.map((q) => q.bottom)) }; };
+              const boxes = items.map(box);
+              items.forEach((it, i) => { const s = it.querySelector('small'), size = getComputedStyle(s).fontSize, a = boxes[i];
+                if (size !== '12.5px') out.push(`label ${i} at ${size}`);
+                if (s.scrollWidth > s.clientWidth) out.push(`label ${i} cut (${s.scrollWidth} px in ${s.clientWidth})`);
+                if (a.left < head.left - 0.5 || a.right > head.right + 0.5 || a.bottom > sheet.bottom + 0.5) out.push(`item ${i} outside the sheet's header`);
+                if (a.right > done.left && a.bottom > done.top && a.top < done.bottom) out.push(`item ${i} under Done`);
+                boxes.slice(i + 1).forEach((b, j) => { if (a.bottom > b.top && b.bottom > a.top && b.left - a.right < 8 && a.left - b.right < 8) out.push(`items ${i} and ${i + j + 1} touch`); }); });
+              return { out, text: items.map((it) => it.querySelector('small').textContent).join(' | ') }; })()""")
+            if r['out']:
+                fails.append(f"{name}, {lang} labels ({r['text']}): {', '.join(r['out'])} (#356)")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
@@ -6086,7 +6109,7 @@ def toolbox(chrome):
         fails.append('1024x768: Show the whole route is neither on the toolbar nor in More')
     fails += [f'1024x768 console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251, #356" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -7044,7 +7067,7 @@ GROUPS = [
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
-    ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251'),
+    ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),

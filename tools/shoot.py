@@ -804,6 +804,16 @@ for size, viewport in [('desk', DESK), ('phone', PHONE)]:
 SCENES['phone-done-360'] = dict(PHONE, w=360, h=740, timeline=True, route='route-kauppi-mtb.json', state='peek',
                                 js=DONE_JS("p.routeName = 'Pirkkalan–Lempäälän retkeilyreittien yhdistelmälenkki Vesilahdelta Kangasalle';"))
 
+# #356: the labels under the route's numbers, with a departure set, at 360 px and at 200 % (a 390 phone's 195 x 422),
+# as the app draws them and Finnish-length (put in once the weather is in, so nothing draws over them)
+SUM = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.startOffsetH = 3; p.renderAnalysis(); await wait(3000);"
+       " const t = __LABELS__; if (t) p.els.sum.querySelectorAll('.sum-item small').forEach((s, i) => { s.textContent = t[i]; }); await wait(600); return true; })()")
+SUM_JS = lambda labels=None: SUM.replace('__LABELS__', json.dumps(labels))
+SUM_FI = ['kokonaismatka', 'lähtöajasta klo 14.00', 'nousumetrit · laskumetrit']
+SCENES['phone-peek-360-fi'] = dict(PHONE, w=360, h=740, timeline=True, route='route-kauppi-mtb.json', state='peek', js=SUM_JS(SUM_FI), settle=0.3)
+SCENES['phone-peek-200'] = dict(PHONE, w=195, h=422, timeline=True, route='route-kauppi-mtb.json', state='peek', js=SUM_JS(), settle=0.3)
+SCENES['phone-peek-200-fi'] = dict(PHONE, w=195, h=422, timeline=True, route='route-kauppi-mtb.json', state='peek', js=SUM_JS(SUM_FI), settle=0.3)
+
 
 def main():
     if '--list' in sys.argv:
