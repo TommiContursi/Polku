@@ -5,6 +5,10 @@ The design, for the user to choose from before it's built. What's still to do, a
 - **Status (2026-10-21): a proposal.** Research, a clickable mock-up and this plan; nothing is built.
 - **The mock-up:** [mockups/issue-345-map-cards.html](mockups/issue-345-map-cards.html).
 
+## Revised (2026-10-21)
+
+The cards were revised three times on 2026-10-21; the mock-up's **Cards** switch shows each version on every frame. What's decided, what waits for the user and what's next is in one place: [25d's plan, "Where 25d stands"](25d-check-and-points.md#where-25d-stands). Where it differs from the text below, it wins.
+
 ## What Polku does today, and what can be reused
 
 How the map answers a tap or a click while you plan (`js/planner.js` unless it says otherwise), at `59ec31e`:
