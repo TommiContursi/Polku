@@ -1299,7 +1299,7 @@ export class Planner {
     const sport = this.app.activity();
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
     if (L.km == null || L.sport !== sport) { L.km = pre.km[1]; L.min = pre.min[1]; L.sport = sport; }
-    if (len != null) { if (L.mode === 'min') L.min = len; else L.km = len; }
+    if (len != null) { if (L.mode === 'min') L.min = len; else L.km = len; L.other = false; }
     L.open = true;
     L.results = [];
     L.editing = false;
@@ -1321,6 +1321,7 @@ export class Planner {
     L.open = false;
     L.results = [];
     L.busy = false;
+    L.other = false; // the length's field closes with the form
     if (L.fromWays) { L.fromWays = false; this.dropWayHist(); }
     this.clearLoopStart();
     this.app.setData('loops', EMPTY);
@@ -1584,9 +1585,12 @@ export class Planner {
       if (min) L.min = v; else L.km = v;
       this.loopChanged();
     };
-    const seg = h('div', { class: 'seg small', role: 'group', 'aria-label': 'Distance or time' }, ...[['km', 'Distance'], ['min', 'Time']].map(([k, t]) => h('button', {
-      type: 'button', 'data-k': `unit-${k}`, 'aria-pressed': String(L.mode === k), onclick: () => { if (L.mode !== k) { L.mode = k; this.loopChanged(); } },
-    }, t)));
+    // How long: by distance or by time, two plain choices beside their heading (2026-10-21)
+    const seg = h('div', { class: 'rt-how' }, h('b', { id: 'rt-how-h' }, 'How long'),
+      h('div', { class: 'rt-unit', role: 'group', 'aria-labelledby': 'rt-how-h' }, ...[['km', 'Distance'], ['min', 'Time']].map(([k, t]) => h('button', {
+        type: 'button', class: 'chip', 'data-k': `unit-${k}`, 'aria-pressed': String(L.mode === k), onclick: () => { if (L.mode !== k) { L.mode = k; this.loopChanged(); } },
+        html: `${L.mode === k ? icon('check', 15) : ''}<span>${t}</span>`,
+      }))));
     const DIRS = [['', 'Any direction'], ['0', 'North'], ['45', 'North-east'], ['90', 'East'], ['135', 'South-east'], ['180', 'South'], ['225', 'South-west'], ['270', 'West'], ['315', 'North-west']];
     if (sport !== 'hike' && sport !== 'run') DIRS.push(['wind', 'Into the wind first']);
     const cur = L.dir == null ? '' : String(L.dir);
@@ -1596,11 +1600,14 @@ export class Planner {
         ...DIRS.map(([v, t]) => h('option', { value: v, selected: v === cur }, t))),
       h('span', { class: 'rt-dir-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }));
     const fmt = (v) => (min ? (v >= 60 ? `${Math.floor(v / 60)} h${v % 60 ? ` ${v % 60}` : ''}` : `${v} min`) : `${v} km`);
-    const chips = h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Lengths' }, ...(min ? pre.min : pre.km).map((v) => h('button', {
-      type: 'button', class: 'chip', 'data-k': `len-${v}`, 'aria-pressed': String(v === val), onclick: () => set(v), html: `${v === val ? icon('check', 15) : ''}<span>${fmt(v)}</span>`,
-    })));
+    // the sport's four lengths and Other…, which opens the field (also open for a length of your own)
+    const lens = min ? pre.min : pre.km, own = L.other || !lens.includes(val);
+    const chips = h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Lengths' }, ...lens.map((v) => h('button', {
+      type: 'button', class: 'chip', 'data-k': `len-${v}`, 'aria-pressed': String(!own && v === val), onclick: () => { L.other = false; set(v); }, html: `${!own && v === val ? icon('check', 15) : ''}<span>${fmt(v)}</span>`,
+    })), h('button', { type: 'button', class: 'chip rt-other', 'data-k': 'len-other', 'aria-pressed': String(own), 'aria-expanded': String(own),
+      onclick: () => { L.other = true; this.refocus = 'len'; this.renderStart(); }, html: `${own ? icon('check', 15) : ''}<span>Other…</span>` }));
     const unit = min ? 'min' : 'km';
-    const stepper = h('div', { class: 'rt-step' },
+    const stepper = !own ? null : h('div', { class: 'rt-step' },
       h('button', { type: 'button', class: 'tool ring', 'data-k': 'dec', 'aria-label': min ? '15 minutes shorter' : `${step} km shorter`, disabled: val <= 1, onclick: () => set(val - step), html: icon('minus', 20) }),
       h('label', { class: 'rt-len' }, h('input', { type: 'text', inputmode: 'numeric', enterkeyhint: 'done', value: String(val), 'data-k': 'len', 'aria-label': min ? 'Length in minutes' : 'Length in kilometres',
         onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
@@ -1619,9 +1626,10 @@ export class Planner {
     const making = L.busy ? `Making loops…${L.progress ? ` ${L.progress} of 3` : ''}` : '';
     const make = h('button', { type: 'button', class: 'btn primary big rt-make', 'data-k': 'make', disabled: L.busy || !L.start, onclick: () => this.generateLoops(),
       html: L.busy ? `<span class="rt-making">${making}${L.progress ? `<span class="rt-progress" style="--p:${Math.round((L.progress / 3) * 100)}%"><i></i></span>` : ''}</span>` : `${icon('roundtrip', 20)}<span class="rt-make-t"><span>Make 3 loops</span><small>${cost}</small></span>` });
+    // in the order it's chosen: where it starts, how long, which way, then the sport and style (2026-10-21)
     return [...top,
       h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start')), close),
-      h('div', { class: 'rt-row' }, seg, dir), chips, stepper, startLine, whereNote, style,
+      startLine, whereNote, seg, chips, stepper, dir, style,
       L.note ? h('p', { class: 'note' }, L.note) : null, make,
       h('span', { class: 'sr-only', role: 'status' }, making)];
   }
@@ -3968,7 +3976,7 @@ export class Planner {
         h('span', { class: 'way-cap', html: `${icon('roundtrip', 14)}<span>Round trip from here</span>` }),
         h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Round trip from here' },
           ...(min ? pre.min : pre.km).slice(0, 3).map((v) => h('button', { type: 'button', class: 'chip', 'data-k': `rt-${v}`, 'aria-label': `Round trip from here: ${fmt(v)}`, onclick: () => this.openLoop(this.points[0].slice(), { len: v }) }, fmt(v))),
-          h('button', { type: 'button', class: 'chip', 'data-k': 'rt-other', 'aria-label': 'Round trip from here: another length or a time', onclick: () => this.openLoop(this.points[0].slice()) }, 'Other…'))) : null,
+          h('button', { type: 'button', class: 'chip', 'data-k': 'rt-other', 'aria-label': 'Round trip from here: another length or a time', onclick: () => { this.loop.other = true; this.openLoop(this.points[0].slice()); } }, 'Other…'))) : null,
     ];
   }
 

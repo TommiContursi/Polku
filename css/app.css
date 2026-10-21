@@ -764,8 +764,8 @@ body:not(.ready) .map-ctrls { display: none; }
 .way-sh { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-align: left; }
 button.way-sh { min-height: 40px; cursor: pointer; }
 .way-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.way-chips .chip, .rt-chips .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
-.way-chips .chip[aria-pressed="true"], .rt-chips .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
+.way-chips .chip, .rt-chips .chip, .rt-unit .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
+.way-chips .chip[aria-pressed="true"], .rt-chips .chip[aria-pressed="true"], .rt-unit .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
 .way-how { padding: 10px 0 0; border-top: 1px solid var(--line); }
 /* How you go's own section, in place: its presets are the chips just above it, and its note is about a drawn route */
 .way-how .style-box > :is(.style-presets, .note:last-child) { display: none; }
@@ -776,9 +776,12 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 /* the round trip: its form, then the loops side by side */
 .rt-here { display: grid; gap: 6px; }
 .rt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.rt-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.rt-row .seg button { height: 38px; padding: 0 12px; font-size: 14px; }
-.rt-dir { position: relative; display: inline-flex; align-items: center; min-width: 0; max-width: 100%; }
+/* How long: its heading, and by distance or by time as two chips like the lengths under them (2026-10-21) */
+.rt-how { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px; }
+.rt-how > b { font-size: 15px; }
+.rt-unit { display: flex; gap: 8px; }
+.rt-dir { position: relative; display: flex; align-items: center; min-width: 0; width: 100%; } /* a row of its own (2026-10-21) */
+.rt-dir select { width: 100%; }
 .rt-dir select { appearance: none; height: 44px; max-width: 100%; text-overflow: ellipsis; padding: 0 30px 0 34px; border: 1px solid var(--line); border-radius: 12px;
   background: var(--surface-solid); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .rt-dir-ic, .rt-dir-chev { position: absolute; display: inline-flex; pointer-events: none; color: var(--muted); }
@@ -1192,7 +1195,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .mr-ic { flex: none; display: inline-flex; color: var(--muted); }
 .mr-text { flex: 1 1 180px; min-width: 0; }
 .mr-state .btn { height: 40px; }
-@media (pointer: coarse) { .way-chips .chip, .rt-chips .chip, .rt-row .seg button, .sport-chip, .mr-state .btn { min-height: 44px; } }
+@media (pointer: coarse) { .way-chips .chip, .rt-chips .chip, .rt-unit .chip, .sport-chip, .mr-state .btn { min-height: 44px; } }
 .sum-empty + .btn { margin-left: 8px; }
 
 /* the marker of a point picked in the list */

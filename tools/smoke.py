@@ -6355,9 +6355,16 @@ START_LIB = """(() => {
     if (history.state?.polkuWay !== 1) err(`the round trip from the ways isn't a step of history (${JSON.stringify(history.state)})`);
     if (!make() || !make().disabled) err('Make 3 loops works before there’s a start');
     if (!/The start: (Tap|Click) the map for it/.test(txt(way())) || !/sends your position to the router/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))} / ${txt($('.pl-way .rt-cost'))}`);
-    const lens = () => $$('.pl-way .rt-chips .chip').map(txt).join(' ');
+    const lens = () => $$('.pl-way .rt-chips .chip:not([data-k=len-other])').map(txt).join(' ');
     if (lens() !== '10 km 20 km 30 km 50 km') err(`MTB's lengths: ${lens()}`);
-    if (!/5 km shorter/.test($('.pl-way [data-k=dec]').getAttribute('aria-label'))) err('MTB’s step isn’t 5 km');
+    // in the order it's chosen: the start, How long (Distance or Time), the lengths, the direction (2026-10-21)
+    const order = ['.rt-start', '.rt-how', '.rt-chips', '.rt-dir'].map((q) => [...way().children].findIndex((e) => e.matches(q)));
+    if (order.some((i, k) => i < 0 || (k && i < order[k - 1]))) err(`the round trip's order: ${order.join(', ')} (the start, How long, the lengths, the direction)`);
+    if ($('.pl-way [data-k=len]')) err('the length field shows before Other…');
+    click('.pl-way [data-k=len-other]');
+    await wait(200);
+    if (document.activeElement !== $('.pl-way [data-k=len]')) err('Other… didn’t open the length field');
+    if (!/5 km shorter/.test(($('.pl-way [data-k=dec]') || { getAttribute: () => '' }).getAttribute('aria-label'))) err('MTB’s step isn’t 5 km');
     click('.pl-way [data-k=where]');
     await until(() => p.loop.start);
     const s = p.loop.start || [];
@@ -6367,7 +6374,7 @@ START_LIB = """(() => {
   };
   T.loopSport = async (lens, step) => {
     await wait(300);
-    const got = $$('.pl-way .rt-chips .chip').map(txt).join(' '), dec = ($('.pl-way [data-k=dec]') || { getAttribute: () => '' }).getAttribute('aria-label');
+    const got = $$('.pl-way .rt-chips .chip:not([data-k=len-other])').map(txt).join(' '), dec = ($('.pl-way [data-k=dec]') || { getAttribute: () => '' }).getAttribute('aria-label');
     if (view() !== 'loop' || got !== lens || !dec.startsWith(step)) err(`the round trip after a sport change: ${view()}, ${got}, ${dec}`);
     return T.errs.splice(0);
   };
