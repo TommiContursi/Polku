@@ -618,7 +618,8 @@ body:not(.ready) .map-ctrls { display: none; }
 /* a 360 px phone: the three figures and Done in one row without touching */
 @container (max-width: 340px) { .sheet-sum { column-gap: 12px; } .sheet-sum .sum-item b { font-size: 16.5px; } }
 .sum-item b { font-size: 19px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sum-item small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* (their labels wrap, never cut with "…": the accessibility baseline, #356) */
+.sum-item small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .sum-elev .sum-down { color: var(--muted); font-weight: 600; }
 .sum-empty { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
 .sum-time { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 6px; }
