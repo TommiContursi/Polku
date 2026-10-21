@@ -564,7 +564,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - A form in Polku that posts a note to OpenStreetMap: #347.
 - A swipe below the peek that puts the route away: #338.
 - Find a point by name, and Move to a number: #350.
-- Renaming the route's last point from Finish to End outside the cards (the list, the route's title): an issue of its own, since 25d stays within the cards.
+- Renaming the route's last point from Finish to End outside the cards (the list, the route's title): #353, since 25d stays within the cards.
+- The ⋯ menu's top repeating the sheet's title: #354.
 - A test with someone new (§8's script): after part 4, and again after part 6.
 
 ## Built
