@@ -6199,9 +6199,9 @@ START_LIB = """(() => {
     }
     if (/\\bRide\\b/.test(txt(way()))) err('the ways say Ride (#306)');
     // the way out on a phone says Close: nothing is done yet (2026-10-20)
-    // the way out is ✕ at the top right, beside the sport, as the other panels have it (2026-10-21)
+    // the way out is ✕ at the top right, as the other panels have it, and the sport is a row of its own under it (2026-10-21)
     const out = $('.pl-way .way-top .way-x[data-k=close]');
-    if (!out || out.getAttribute('aria-label') !== 'Close the planner' || out.previousElementSibling !== $('.pl-way .way-top .sport-chip')) err(`the ways' way out: ${out ? out.getAttribute('aria-label') : 'none'}, not ✕ after the sport`);
+    if (!out || out.getAttribute('aria-label') !== 'Close the planner' || !$('.pl-way .way-top + .sport-row')) err(`the ways' way out: ${out ? out.getAttribute('aria-label') : 'none'}, and the sport ${$('.pl-way .way-top + .sport-row') ? 'under it' : 'not under it'}`);
     T.errs.push(...(await T.toolsAt(0, 'no route, no history')));
     // no Done before the first point on desktops (Back is the way out); the phone's ways card keeps its own
     if (desk && p.els.toolDone.offsetParent) err('the toolbar has Done before the first point');

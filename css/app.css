@@ -703,11 +703,20 @@ body:not(.ready) .map-ctrls { display: none; }
 /* the ways to begin: the same top row as a step's (the title where a step has ‹ Ways to begin), then its line */
 .way-name { margin: 0 0 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
 .way-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.way-end { display: flex; align-items: center; gap: 4px; margin-left: auto; flex: none; }
 /* one line, always: with a long sport name the back link's words wrap in their button, so the sport never moves */
 .way-bar .way-back { min-width: 0; }
 .way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
-.way-end .way-x { margin: 0; }
+.way-bar .way-x { flex: none; margin: 0 0 0 auto; }
+/* the start's sport: a row of its own under the top row, as in the drawing menu (B of #233, 2026-10-21) */
+.sport-chip.sport-row { display: flex; align-items: center; gap: 12px; width: 100%; height: auto; min-height: 52px; max-width: none; margin: 2px 0 6px;
+  padding: 6px 12px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.sport-row > span { flex: 1; min-width: 0; display: grid; }
+.sport-row b { font-size: 15px; font-weight: 650; }
+.sport-row small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.sport-row > .ic:last-child { flex: none; color: var(--muted); }
+.sport-row[aria-expanded="true"] { background: var(--accent-soft); }
+@media (hover: hover) { .sport-row:hover { box-shadow: inset 0 0 0 1px var(--line); } }
+.sport-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .way-sub small { color: var(--muted); font-size: 13px; }
 .way-hint { display: grid; gap: 2px; }
 .way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
