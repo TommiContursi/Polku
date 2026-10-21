@@ -4749,7 +4749,7 @@ def contrast(chrome):
             # Weather and Settings pressed as a person presses them (Settings' panel covers Weather); the round trip's Make 3 loops
             click('#btn-time')
             click('#btn-settings')
-            pg.js("(() => { polku.planner.openLoop(); return true; })()")
+            pg.js("(() => { polku.planner.openLoop(polku.map.getCenter().toArray()); return true; })()")
             time.sleep(0.4)
             pressed = pg.js("['#btn-settings', '#btn-time'].filter((s) => document.querySelector(s).getAttribute('aria-pressed') !== 'true')")
             fails += [f'{scheme}: {s} not pressed by a click' for s in pressed]
@@ -5148,9 +5148,9 @@ def nextleg(chrome):
     pg.js('polku.planner.setActive(true), true')
     time.sleep(0.5)
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', True)
-    along = pg.js("document.querySelector('.pl-way .way-along')?.textContent || ''")
-    if along != 'You can change sport along the way.':
-        fails.append(f'{name}: Draw it says “{along}”, not that the sport can change along the way')
+    along = pg.js("document.querySelector('.pl-way .way-line')?.textContent || ''")
+    if along != 'Polku follows the paths, and the sport can change on the way.':
+        fails.append(f'{name}: Draw it says “{along}”, not that the sport can change on the way')
     L = [[23.7355, 61.4972], [23.738, 61.4980], [23.7405, 61.4972]]
     if any(pg.js(f'nlT.water({ll})') for ll in L):
         fails.append(f'{name}: a point for the land legs is on the water')
@@ -5269,12 +5269,12 @@ def nextleg(chrome):
     pg = page(390, 844, True, 'mtb')
     pg.js('polku.planner.setActive(true), true')
     time.sleep(0.5)
-    # the sport: a row of its own in the ways to begin, a chip beside the route style in Draw it (2026-10-21)
+    # the sport: a row of its own under the top row, in the ways to begin and in Draw it, over its route style (2026-10-21)
     if not pg.js("!!document.querySelector('.pl-way .way-top + .sport-row')"):
         fails.append(f'{name}: the ways to begin have no sport row under their top row')
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', True)
-    if not pg.js("!!document.querySelector('.pl-way .way-pair > .sport-pill + .way-srow')"):
-        fails.append(f'{name}: Draw it has no sport beside its route style')
+    if not pg.js("!!document.querySelector('.pl-way .way-bar + .sport-row') && !!document.querySelector('.pl-way .stylebtn[data-k=srow]')"):
+        fails.append(f'{name}: Draw it has no sport row under its top row and route style button')
     press(pg, pg.js("nlT.at('.pl-way .way-back')"), f'{name}: Ways to begin', True)
     press(pg, pg.js("nlT.at('.pl-way .sport-chip')"), f'{name}: the sport chip', True)
     press(pg, pg.js("nlT.item('Paddle')"), f'{name}: Paddle', True)
@@ -5345,8 +5345,8 @@ def nextleg(chrome):
     press(pg, pg.js("nlT.at('.pl-way .way-dock')"), f'{name}: the start’s Move the planner back', False)
     time.sleep(0.5)
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', False)
-    if pg.js('polku.planner.layout()') != 'side' or not pg.js("!!document.querySelector('.pl-way .way-sh-row > .sport-pill')"):
-        fails.append(f"{name}: Draw it, the panel {pg.js('polku.planner.layout()')}: no sport beside the route style")
+    if pg.js('polku.planner.layout()') != 'side' or not pg.js("!!document.querySelector('.pl-way .way-bar + .sport-row') && !!document.querySelector('.pl-way .way-chips')"):
+        fails.append(f"{name}: Draw it, the panel {pg.js('polku.planner.layout()')}: no sport row and route styles")
     # its ✕ closes the planner, as in the ways to begin
     press(pg, pg.js("nlT.at('.pl-way .way-x[data-k=close]')"), f'{name}: Draw it’s ✕', False)
     if pg.js('polku.planner.active'):
@@ -6201,12 +6201,14 @@ START_LIB = """(() => {
     if (late) err(`opening: ${late}`);
     const desk = p.sideMQ.matches;
     if (view() !== 'ways') err(`the empty planner shows ${view()}, not the ways to begin`);
-    const head = `${txt($('.pl-way .way-top'))} ${txt($('.pl-way .way-sub'))}`;
-    if (!/^Start a route/.test(head) || !/the map to start drawing/.test(head)) err(`the ways' header: ${head}`);
+    const head = txt($('.pl-way .way-top'));
+    if (!/^Start a route/.test(head)) err(`the ways' header: ${head}`);
     const tiles = $$('.pl-way .way-tile'), names = tiles.map((b) => txt(b.querySelector('b')));
     const want = desk ? 'Draw it|Round trip|Marked routes|A GPX or KML file' : 'Draw it|Round trip|Marked routes|A file';
     if (names.join('|') !== want) err(`the ways: ${names.join(' | ') || 'none'}`);
     if (tiles.some((b) => !txt(b.querySelector('small')))) err('a way without its line');
+    // a tap on the map starts drawing: Draw it's line says so, with no line of its own above the ways (2026-10-21)
+    if (!/^(Tap|Click) the map/.test(txt(tiles[0]?.querySelector('small')))) err(`Draw it's line: ${txt(tiles[0]?.querySelector('small'))}`);
     if (tiles.length === 4) {
       const r = tiles.map((b) => b.getBoundingClientRect());
       if (desk && !(r[1].top >= r[0].bottom && r[3].top >= r[2].bottom)) err('desktop: the ways aren’t a row each');
@@ -6218,6 +6220,8 @@ START_LIB = """(() => {
     // the way out on a phone says Close: nothing is done yet (2026-10-20)
     // the way out is ✕ at the top right, as the other panels have it, and the sport is a row of its own under it (2026-10-21)
     const out = $('.pl-way .way-top .way-x[data-k=close]');
+    // a finger's size on a phone (narrow screens made it 30 × 32 px)
+    if (out && matchMedia('(pointer: coarse)').matches && (out.offsetWidth < 44 || out.offsetHeight < 44)) err(`the ways' ✕ is ${out.offsetWidth} × ${out.offsetHeight} px`);
     if (!out || out.getAttribute('aria-label') !== 'Close the planner' || !$('.pl-way .way-top + .sport-row')) err(`the ways' way out: ${out ? out.getAttribute('aria-label') : 'none'}, and the sport ${$('.pl-way .way-top + .sport-row') ? 'under it' : 'not under it'}`);
     T.errs.push(...(await T.toolsAt(0, 'no route, no history')));
     // no Done before the first point on desktops (Back is the way out); the phone's ways card keeps its own
@@ -6260,7 +6264,9 @@ START_LIB = """(() => {
       if (!/the map for your next point/.test(hint)) err(`the first point's peek says: ${hint}`);
       const chips = $$('.pl-way .rt-here .chip').map(txt);
       if (chips.length !== 4 || chips[3] !== 'Other…') err(`Round trip from here: ${chips.join(' | ') || 'none'}`);
-      if (p.sideMQ.matches ? !p.els.toolDone.offsetParent : !$('.pl-way .done')) err('no Done after the first point');
+      if (p.sideMQ.matches && !p.els.toolDone.offsetParent) err('no Done on the toolbar after the first point');
+      // ✕ at the top right, as in the start and its steps, not Done (2026-10-21)
+      if (!$('.pl-way .way-head .way-x[data-k=close]') || $('.pl-way .done')) err(`the first point's way out: ${$('.pl-way .done') ? 'Done' : 'no ✕'}`);
     }
     // what appeared on the toolbox faded in where it is (reduced motion, as here: it simply appears)
     const faded = (p.toolsFaded || []).map((b) => b.getAttribute('aria-label') || b.className);
@@ -6279,10 +6285,10 @@ START_LIB = """(() => {
     await wait(200);
     if (view() !== 'draw') return [`Draw it opened ${view()}`];
     if (history.state?.polkuWay !== 1) err(`Draw it isn't a step of history (${JSON.stringify(history.state)})`);
-    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .sport-pill')) err('Draw it has no Ways to begin and sport at its top');
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .way-bar + .sport-row')) err('Draw it has no Ways to begin and the sport’s row at its top');
     if ($('.pl-way .done') || (desk && p.els.toolDone.offsetParent)) err('Done before the first point in Draw it');
     const hint = () => txt($('.pl-way .way-hint'));
-    if (!/the map where you start/.test(hint()) || !/follows the paths between your points/.test(hint())) err(`Draw it says: ${hint()}`);
+    if (!/the map where you start/.test(hint()) || !/follows the paths, and the sport can change on the way/.test(hint())) err(`Draw it says: ${hint()}`);
     p.setMode('line');
     await wait(100);
     if (!/joins your points with straight lines/.test(hint()) || !/Straight lines don’t use a route style/.test(txt(way()))) err(`Straight line: ${txt(way())}`);
@@ -6302,8 +6308,8 @@ START_LIB = """(() => {
     // the route style: phones open it from one row, which raises the sheet; desktops show the chips
     const u0 = p.past.length, r0 = await routed();
     if (!desk) {
-      const row = $('.pl-way .way-srow[data-k=srow]');
-      if (!row || !/Route style · Balanced/.test(txt(row))) err(`the style row: ${txt(row) || 'none'}`);
+      const row = $('.pl-way .stylebtn[data-k=srow]');
+      if (!row || !/Route style\s*Balanced/.test(txt(row))) err(`the style button: ${txt(row) || 'none'}`);
       const before = p.panel.getBoundingClientRect().height;
       if (row) row.click();
       await settled();
@@ -6329,7 +6335,7 @@ START_LIB = """(() => {
       click('.pl-way .way-back'); // ‹ Draw it: back to the card, the sheet lowered
       await until(() => !p.wayRaised);
       await settled();
-      if (!$('.pl-way .way-srow[data-k=srow]') || p.els.styleBox.closest('.pl-way')) err('Back from Fine-tune didn’t lower the Draw it card');
+      if (!$('.pl-way .stylebtn[data-k=srow]') || p.els.styleBox.closest('.pl-way')) err('Back from Fine-tune didn’t lower the Draw it card');
     }
     if (!p.els.styleBox.closest('[data-sec=style]') && !desk) err('How you go’s section isn’t back in How you go');
     // the phone's back gesture: back to the ways, as they were
@@ -6350,25 +6356,53 @@ START_LIB = """(() => {
     click('.pl-way [data-way=loop]');
     await wait(200);
     if (view() !== 'loop' || !p.loop.fromWays) return [`Round trip from the ways: ${view()}`]; // (on main: Round trip opens the old form)
-    if (!/Ways to begin/.test(txt($('.pl-way .way-back'))) || !$('.pl-way .sport-pill')) err('the round trip from the ways has no Ways to begin and sport');
+    if (!/Ways to begin/.test(txt($('.pl-way .way-back')))) err('the round trip from the ways has no Ways to begin');
     const make = () => $('.pl-way .rt-make');
     if (history.state?.polkuWay !== 1) err(`the round trip from the ways isn't a step of history (${JSON.stringify(history.state)})`);
-    if (!make() || !make().disabled) err('Make 3 loops works before there’s a start');
-    if (!/The start: (Tap|Click) the map for it/.test(txt(way())) || !/sends your position to the router/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))} / ${txt($('.pl-way .rt-cost'))}`);
-    const lens = () => $$('.pl-way .rt-chips .chip').map(txt).join(' ');
-    if (lens() !== '10 km 20 km 30 km 50 km') err(`MTB's lengths: ${lens()}`);
-    if (!/5 km shorter/.test($('.pl-way [data-k=dec]').getAttribute('aria-label'))) err('MTB’s step isn’t 5 km');
+    // the start first, and only that, so the map has the room for it (2026-10-21)
+    if (!/(Tap|Click) the map where the loop starts/.test(txt(way())) || !$('.pl-way [data-k=where]') || !/sends your position to the router/.test(txt(way()))) err(`before a start: ${txt(way())}`);
+    if (make() || $('.pl-way .rt-how') || $('.pl-way .rt-chips') || $('.pl-way .rt-pair')) err(`before a start, the rest shows too: ${txt(way())}`);
+    // the sport's row under the top row, in every step (2026-10-21)
+    if (!$('.pl-way .way-bar + .sport-row')) err('the round trip has no sport row under its top row');
+    const tall = way().getBoundingClientRect().height;
     click('.pl-way [data-k=where]');
     await until(() => p.loop.start);
     const s = p.loop.start || [];
     if (!s.length || s.some((v) => String(v).split('.')[1]?.length > 5)) err(`the start from Where I am: ${s.join(', ') || 'none'} (five decimals at most, #281)`);
-    if (!/From your position/.test(txt(way())) || !make() || make().disabled) err(`after Where I am: ${txt($('.pl-way .rt-start'))}`);
+    await settled();
+    if (!/From your position/.test(txt(way())) || !make() || make().disabled || !$('.pl-way .way-bar + .sport-row')) err(`after Where I am: ${txt(way())}`);
+    // the route style and the direction: side by side on a phone, a row each on a desktop
+    const pair = $('.pl-way .rt-pair'), kids = pair ? [...pair.children] : [];
+    if (kids.length !== 2 || !kids[0].matches('.stylebtn[data-k=srow]') || !kids[1].matches('.rt-dir') || !kids[1].querySelector('select[data-k=dir]')) err(`the style and the direction: ${pair ? txt(pair) : 'none'}`);
+    else if (kids.some((k) => k.getBoundingClientRect().height > 60)) err(`the style and the direction stretched: ${kids.map((k) => Math.round(k.getBoundingClientRect().height)).join(' and ')} px tall`);
+    else if (Math.abs(kids[0].getBoundingClientRect().top - kids[1].getBoundingClientRect().top) < 1 === (p.layout() === 'side')) err(`the style and the direction ${p.layout() === 'side' ? 'side by side in the side panel' : 'a row each at the bottom'}`);
+    // a wide panel at the bottom: the form in two columns, How long beside the sport (2026-10-21)
+    if (p.layout() === 'sheet' && $('.sheet-head').clientWidth >= 720 && !(Math.abs($('.pl-way .rt-how').getBoundingClientRect().top - $('.pl-way .sport-row').getBoundingClientRect().top) < 30)) err('a wide panel at the bottom: the round trip isn’t in two columns');
+    if ($('.pl-way [data-k=where]') || $('.pl-way .rt-where')) err('Where I am is still offered when the start is your position');
+    if (way().getBoundingClientRect().height <= tall) err('the form didn’t open with the start');
+    // the start stays in sight above the form
+    const q = map.project(s), r = p.panel.getBoundingClientRect(), side = p.layout() === 'side';
+    if (s.length && !(side ? q.x > r.right && q.x < innerWidth : q.y > 0 && q.y < r.top)) err(`the start is at ${Math.round(q.x)}, ${Math.round(q.y)} px, the form at ${Math.round(side ? r.right : r.top)}`);
+    const lens = () => $$('.pl-way .rt-chips .chip:not([data-k=len-other])').map(txt).join(' ');
+    // three on a phone, in one row; four on a desktop (2026-10-21)
+    if (lens() !== (p.sideMQ.matches ? '10 km 20 km 30 km 50 km' : '10 km 20 km 30 km')) err(`MTB's lengths: ${lens()}`);
+    const ch = $$('.pl-way .rt-chips .chip').map((c) => Math.round(c.getBoundingClientRect().top));
+    if (!p.sideMQ.matches && innerWidth >= 375 && new Set(ch).size > 1) err('the lengths and Other… aren’t in one row');
+    // in the order it's chosen: the start, How long (Distance or Time), the lengths, the direction (2026-10-21)
+    const order = ['.sport-row', '.rt-start', '.rt-how', '.rt-chips', '.rt-pair'].map((q) => [...way().children].findIndex((e) => e.matches(q)));
+    if (order.some((i, k) => i < 0 || (k && i < order[k - 1]))) err(`the round trip's order: ${order.join(', ')} (the sport, the start, How long, the lengths, the style and direction)`);
+    if ($('.pl-way [data-k=len]')) err('the length field shows before Other…');
+    click('.pl-way [data-k=len-other]');
+    await wait(200);
+    if (document.activeElement !== $('.pl-way [data-k=len]')) err('Other… didn’t open the length field');
+    if (!/5 km shorter/.test(($('.pl-way [data-k=dec]') || { getAttribute: () => '' }).getAttribute('aria-label'))) err('MTB’s step isn’t 5 km');
     return T.errs.splice(0);
   };
   T.loopSport = async (lens, step) => {
     await wait(300);
-    const got = $$('.pl-way .rt-chips .chip').map(txt).join(' '), dec = ($('.pl-way [data-k=dec]') || { getAttribute: () => '' }).getAttribute('aria-label');
-    if (view() !== 'loop' || got !== lens || !dec.startsWith(step)) err(`the round trip after a sport change: ${view()}, ${got}, ${dec}`);
+    const got = $$('.pl-way .rt-chips .chip:not([data-k=len-other])').map(txt).join(' '), dec = ($('.pl-way [data-k=dec]') || { getAttribute: () => '' }).getAttribute('aria-label');
+    const want = lens.split(/(?<=km) /).slice(0, p.sideMQ.matches ? 4 : 3).join(' '); // (three on a phone)
+    if (view() !== 'loop' || got !== want || !dec.startsWith(step)) err(`the round trip after a sport change: ${view()}, ${got}, ${dec}`);
     return T.errs.splice(0);
   };
   T.loopBack = async () => {
@@ -6402,6 +6436,8 @@ START_LIB = """(() => {
     if (!names.includes('Multamäen MTB-lenkki') || !names.includes('Multamäen pitkä lenkki')) err(`the cards: ${names.join(', ')}`);
     if (!cards()[0].classList.contains('on') || !/Follow this route/.test(txt(cards()[0].querySelector('.loop-use')))) err('the first card isn’t picked with Follow this route');
     if (/\\bRide\\b/.test(txt(way()))) err('Marked routes say Ride (#306)');
+    // the sport's row under the top row, as in the ways: it decides what's listed (2026-10-21)
+    if (!$('.pl-way .way-bar + .sport-row')) err('Marked routes have no sport row under their top row');
     if (!map.queryRenderedFeatures({ layers: ['lipas-pick'] }).length) err('the picked route doesn’t glow');
     return T.errs.splice(0);
   };

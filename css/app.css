@@ -702,40 +702,55 @@ body:not(.ready) .map-ctrls { display: none; }
 .way-head > :first-child { flex: 1; min-width: 0; }
 /* the ways to begin: the same top row as a step's (the title where a step has ‹ Ways to begin), then its line */
 .way-name { margin: 0 0 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
-.way-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 /* one line, always: with a long sport name the back link's words wrap in their button, so the sport never moves */
 .way-bar .way-back { min-width: 0; }
 .way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
 .way-bar .way-x { flex: none; margin: 0 0 0 auto; }
 .way-bar .way-dock + .way-x { margin-left: 0; }
-/* the steps: the sport as a chip beside the route style it decides (2026-10-21) */
+/* the steps: the sport beside the route style it decides, as the toolbar's two buttons (2026-10-21); a long name
+   wraps in its button rather than leaving the card */
 .way-pair { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.way-pair > .way-srow, .way-pair > .way-nostyle { flex: 1 1 200px; width: auto; }
-.way-sh-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
-.way-sh-row > .way-sh { flex: 1 1 auto; }
-.way-hint-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.way-hint-row > .sport-pill { flex: none; }
-.sport-pill { flex: none; }
+.way-pair > .way-nostyle { flex: 1 1 200px; width: auto; }
+.pl-way .stylebtn { display: inline-flex; height: auto; min-height: 40px; max-width: 100%; margin: 0; padding-block: 3px; white-space: normal; }
+.pl-way .stylebtn .two { flex: 1; }
+.pl-way .stylebtn .two span { white-space: normal; overflow-wrap: anywhere; }
+.pl-way .stylebtn .ic { flex: none; }
+.pl-way .stylebtn > .ic:last-child { color: var(--muted); }
+@media (hover: hover) { .pl-way .stylebtn:hover { background: var(--surface-2); } }
+@media (pointer: coarse) { .pl-way .stylebtn { min-height: 44px; } }
+/* the round trip's style and direction: side by side on a phone, a row each on a desktop (2026-10-21) */
+.rt-pair:not(.stack) > .stylebtn { flex: 1 1 140px; } /* the row's width, half each (2026-10-21) */
+.rt-pair.stack { flex-direction: column; align-items: stretch; }
+/* a wide panel at the bottom (a desktop's, a phone on its side): the round trip's form in two columns, what's chosen
+   first on the left, so it isn't stretched to the panel's width and height; Make 3 loops across both under them
+   (2026-10-21) */
+@container (min-width: 720px) {
+  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; column-gap: 24px; }
+  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > * { grid-column: 1; }
+  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > :is(.rt-how, .rt-chips, .rt-step, .rt-pair) { grid-column: 2; }
+  .sheet[data-layout="sheet"] .pl-way[data-view="loop"]:has(> .rt-how) > :is(.way-bar, .way-head:has(> .way-x), .note, .rt-make) { grid-column: 1 / -1; }
+}
+.rt-pair.stack > .stylebtn { width: 100%; }
 /* Make 3 loops says what it costs, under its name */
 .rt-make-t { display: grid; line-height: 1.2; }
 .rt-make-t small { font-size: 12px; font-weight: 500; opacity: .85; }
 /* the start's sport: a row of its own under the top row, as in the drawing menu (B of #233, 2026-10-21) */
 .sport-chip.sport-row { display: flex; align-items: center; gap: 12px; width: 100%; height: auto; min-height: 52px; max-width: none; margin: 2px 0 6px;
-  padding: 6px 12px; border: 0; border-radius: 12px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  padding: 8px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-solid); color: var(--text); font: inherit; text-align: left; cursor: pointer; } /* the way tiles' button */
 .sport-row > span { flex: 1; min-width: 0; display: grid; }
 .sport-row b { font-size: 15px; font-weight: 650; }
 .sport-row small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .sport-row > .ic:last-child { flex: none; color: var(--muted); }
 .sport-row[aria-expanded="true"] { background: var(--accent-soft); }
-@media (hover: hover) { .sport-row:hover { box-shadow: inset 0 0 0 1px var(--line); } }
+@media (hover: hover) { .sport-row:hover { background: var(--accent-soft); } }
 .sport-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.way-sub small { color: var(--muted); font-size: 13px; }
 .way-hint { display: grid; gap: 2px; }
 .way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
 .way-hint small { color: var(--muted); font-size: 13.5px; }
 .sport-chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px 0 12px; background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 650; overflow-wrap: break-word; max-width: 100%; }
 .sport-chip .ic { color: var(--accent); flex: none; }
-.way-x { flex: none; width: 44px; height: 44px; margin: -4px -6px 0 0; }
+.way-x { flex: none; margin: -4px -6px 0 0; }
+.pl-way .way-x { width: 44px; height: 44px; } /* (narrow screens make a .tool 30 px: this one stays a finger's size) */
 /* a step's top row: Back on the left, the sport on the right (it wraps rather than cutting a long name) */
 .way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
 .btn.quiet { border-color: transparent; background: transparent; }
@@ -776,14 +791,19 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 /* the round trip: its form, then the loops side by side */
 .rt-here { display: grid; gap: 6px; }
 .rt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.rt-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.rt-row .seg button { height: 38px; padding: 0 12px; font-size: 14px; }
-.rt-dir { position: relative; display: inline-flex; align-items: center; min-width: 0; max-width: 100%; }
-.rt-dir select { appearance: none; height: 44px; max-width: 100%; text-overflow: ellipsis; padding: 0 30px 0 34px; border: 1px solid var(--line); border-radius: 12px;
-  background: var(--surface-solid); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
-.rt-dir-ic, .rt-dir-chev { position: absolute; display: inline-flex; pointer-events: none; color: var(--muted); }
-.rt-dir-ic { left: 10px; }
-.rt-dir-chev { right: 10px; }
+/* How long: its heading, and by distance or by time as two chips like the lengths under them (2026-10-21) */
+.rt-how { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px; }
+.rt-how > b { font-size: 15px; }
+.rt-unit { flex-wrap: wrap; } /* a switch; at 200 % Distance and Time wrap rather than leave the card */
+.rt-unit button { height: 36px; padding: 0 14px; font-size: 14px; }
+.rt-unit button .ic { color: var(--accent); }
+.pl-way .rt-unit button span { display: inline; } /* (narrow screens hide a switch's words: these stay) */
+@media (pointer: coarse) { .rt-unit button { height: 40px; } }
+/* the direction: the route style's button, with the browser's list over it (it opens the list, a screen reader reads it) */
+.rt-dir { position: relative; cursor: pointer; }
+.rt-dir select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
+.rt-dir-chev { display: inline-flex; flex: none; color: var(--muted); }
+.rt-dir:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .rt-step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } /* (wraps rather than running off at 200 %) */
 .tool.ring { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); }
 .rt-len { display: inline-flex; align-items: baseline; justify-content: center; gap: 6px; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--muted); font-size: 15px; }
@@ -1192,7 +1212,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .mr-ic { flex: none; display: inline-flex; color: var(--muted); }
 .mr-text { flex: 1 1 180px; min-width: 0; }
 .mr-state .btn { height: 40px; }
-@media (pointer: coarse) { .way-chips .chip, .rt-chips .chip, .rt-row .seg button, .sport-chip, .mr-state .btn { min-height: 44px; } }
+@media (pointer: coarse) { .way-chips .chip, .rt-chips .chip, .sport-chip, .mr-state .btn { min-height: 44px; } }
 .sum-empty + .btn { margin-left: 8px; }
 
 /* the marker of a point picked in the list */

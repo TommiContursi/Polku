@@ -1299,7 +1299,7 @@ export class Planner {
     const sport = this.app.activity();
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
     if (L.km == null || L.sport !== sport) { L.km = pre.km[1]; L.min = pre.min[1]; L.sport = sport; }
-    if (len != null) { if (L.mode === 'min') L.min = len; else L.km = len; }
+    if (len != null) { if (L.mode === 'min') L.min = len; else L.km = len; L.other = false; }
     L.open = true;
     L.results = [];
     L.editing = false;
@@ -1321,6 +1321,7 @@ export class Planner {
     L.open = false;
     L.results = [];
     L.busy = false;
+    L.other = false; // the length's field closes with the form
     if (L.fromWays) { L.fromWays = false; this.dropWayHist(); }
     this.clearLoopStart();
     this.app.setData('loops', EMPTY);
@@ -1345,7 +1346,16 @@ export class Planner {
     this.app.setData('loops', EMPTY);
     if (!this.loopMarker) this.loopMarker = new maplibregl.Marker({ element: h('div', { class: 'wp-hit' }, h('div', { class: 'wp wp-start' })) }).setLngLat(ll).addTo(this.map);
     else this.loopMarker.setLngLat(ll);
-    if (render) this.renderLoop();
+    if (render) { this.renderLoop(); this.startInView(ll, label === 'your position'); }
+  }
+
+  // The form grows when the start is chosen: the start stays in sight above it (and Where I am centres on it there)
+  startInView(ll, centre = false) {
+    requestAnimationFrame(() => {
+      const pad = this.viewPadding(), q = this.map.project(ll), c = this.map.getContainer();
+      if (!centre && q.x > pad.left && q.x < c.clientWidth - pad.right && q.y > pad.top && q.y < c.clientHeight - pad.bottom) return;
+      this.map.easeTo({ center: ll, offset: [(pad.left - pad.right) / 2, (pad.top - pad.bottom) / 2], duration: 500 });
+    });
   }
 
   // Where I am: the browser’s position, once, as the loops' start. It's sent to the router like any
@@ -1357,7 +1367,6 @@ export class Planner {
       if (!this.loop.open) return;
       const ll = [+pos.coords.longitude.toFixed(5), +pos.coords.latitude.toFixed(5)];
       this.setLoopStart(ll, 'your position');
-      this.map.easeTo({ center: ll, duration: 500 });
     }, () => toast(`Couldn’t get your position — ${this.coarse() ? 'tap' : 'click'} the map for the start`), { enableHighAccuracy: true, timeout: 10000 });
   }
 
@@ -1568,13 +1577,15 @@ export class Planner {
     this.renderStart();
   }
 
-  // The form: distance or time, the lengths, − / +, the direction, where it starts, what it costs, the
-  // route style, and Make 3 loops. With loops made: the loops, side by side.
+  // The form: where it starts, and once it has a start, distance or time, the lengths, − / +, the direction, the
+  // sport and route style, and Make 3 loops with what it costs. With loops made: the loops, side by side.
   loopView() {
-    const L = this.loop, sport = this.app.activity(), tap = this.coarse() ? 'tap' : 'click';
+    const L = this.loop, sport = this.app.activity(), tap = this.coarse() ? 'tap' : 'click', desk = this.sideMQ.matches;
     const top = L.fromWays ? [this.backRow()] : [];
     const close = L.fromWays ? null : h('button', { type: 'button', class: 'tool way-x', 'data-k': 'loop-x', 'aria-label': 'Close the round trip', title: 'Close the round trip', onclick: () => this.closeLoop(), html: icon('close', 20) });
-    if (!roundTripSports.includes(sport)) return [...top, h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip')), this.sportPill(), close), h('p', { class: 'note' }, `No round trips for ${ACTIVITIES[sport].label} yet.`)];
+    // the form's top: the sport's row right under the top row, as in every step (2026-10-21)
+    const lead = (head) => (L.fromWays ? [...top, this.sportRow(), head] : [head, this.sportRow()]);
+    if (!roundTripSports.includes(sport)) return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip')), close)), h('p', { class: 'note' }, `No round trips for ${ACTIVITIES[sport].label} yet.`)];
     if (L.results.length && !L.editing) return [...top, ...this.loopResults(close)];
     if (L.busy) return [...top, ...this.loopMaking(close)];
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb, min = L.mode === 'min', val = min ? L.min : L.km;
@@ -1584,44 +1595,59 @@ export class Planner {
       if (min) L.min = v; else L.km = v;
       this.loopChanged();
     };
-    const seg = h('div', { class: 'seg small', role: 'group', 'aria-label': 'Distance or time' }, ...[['km', 'Distance'], ['min', 'Time']].map(([k, t]) => h('button', {
-      type: 'button', 'data-k': `unit-${k}`, 'aria-pressed': String(L.mode === k), onclick: () => { if (L.mode !== k) { L.mode = k; this.loopChanged(); } },
-    }, t)));
+    // How long: by distance or by time, a switch on its heading's line (2026-10-21)
+    const seg = h('div', { class: 'rt-how' }, h('b', { id: 'rt-how-h' }, 'How long'),
+      h('div', { class: 'seg rt-unit', role: 'group', 'aria-labelledby': 'rt-how-h' }, ...[['km', 'Distance'], ['min', 'Time']].map(([k, t]) => h('button', {
+        type: 'button', 'data-k': `unit-${k}`, 'aria-pressed': String(L.mode === k), onclick: () => { if (L.mode !== k) { L.mode = k; this.loopChanged(); } },
+        html: `${L.mode === k ? icon('check', 15) : ''}<span>${t}</span>`,
+      }))));
     const DIRS = [['', 'Any direction'], ['0', 'North'], ['45', 'North-east'], ['90', 'East'], ['135', 'South-east'], ['180', 'South'], ['225', 'South-west'], ['270', 'West'], ['315', 'North-west']];
     if (sport !== 'hike' && sport !== 'run') DIRS.push(['wind', 'Into the wind first']);
-    const cur = L.dir == null ? '' : String(L.dir);
-    const dir = h('label', { class: 'rt-dir', title: 'Which way the loop heads out (into the wind first: back with it behind you)' },
-      h('span', { class: 'rt-dir-ic', 'aria-hidden': 'true', html: icon('roundtrip', 16) }),
+    const cur = L.dir == null ? '' : String(L.dir), name = { '': 'Any', wind: 'Into the wind' }[cur] || DIRS.find(([v]) => v === cur)?.[1] || 'Any';
+    // the direction: a button like the route style's beside it, the browser's own list under it (2026-10-21)
+    const dir = h('label', { class: 'stylebtn rt-dir', title: 'Which way the loop heads out (into the wind first: back with it behind you)' },
+      h('span', { class: 'two', 'aria-hidden': 'true' }, h('small', {}, 'Direction'), h('span', {}, name)),
+      h('span', { class: 'rt-dir-chev', 'aria-hidden': 'true', html: icon('chevronDown', 12) }),
       h('select', { 'aria-label': 'Direction', 'data-k': 'dir', onchange: (e) => { const v = e.target.value; L.dir = v === '' ? null : v === 'wind' ? 'wind' : +v; this.loopChanged(); } },
-        ...DIRS.map(([v, t]) => h('option', { value: v, selected: v === cur }, t))),
-      h('span', { class: 'rt-dir-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }));
+        ...DIRS.map(([v, t]) => h('option', { value: v, selected: v === cur }, t))));
     const fmt = (v) => (min ? (v >= 60 ? `${Math.floor(v / 60)} h${v % 60 ? ` ${v % 60}` : ''}` : `${v} min`) : `${v} km`);
-    const chips = h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Lengths' }, ...(min ? pre.min : pre.km).map((v) => h('button', {
-      type: 'button', class: 'chip', 'data-k': `len-${v}`, 'aria-pressed': String(v === val), onclick: () => set(v), html: `${v === val ? icon('check', 15) : ''}<span>${fmt(v)}</span>`,
-    })));
+    // the sport's lengths (three on a phone, in one row, as the first point's peek has them; four on a desktop) and
+    // Other…, which opens the field (also open for a length of your own)
+    const lens = (min ? pre.min : pre.km).slice(0, desk ? 4 : 3), own = L.other || !lens.includes(val);
+    const chips = h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Lengths' }, ...lens.map((v) => h('button', {
+      type: 'button', class: 'chip', 'data-k': `len-${v}`, 'aria-pressed': String(!own && v === val), onclick: () => { L.other = false; set(v); }, html: `${!own && v === val ? icon('check', 15) : ''}<span>${fmt(v)}</span>`,
+    })), h('button', { type: 'button', class: 'chip rt-other', 'data-k': 'len-other', 'aria-pressed': String(own), 'aria-expanded': String(own),
+      onclick: () => { L.other = true; this.refocus = 'len'; this.renderStart(); }, html: `${own ? icon('check', 15) : ''}<span>Other…</span>` }));
     const unit = min ? 'min' : 'km';
-    const stepper = h('div', { class: 'rt-step' },
+    const stepper = !own ? null : h('div', { class: 'rt-step' },
       h('button', { type: 'button', class: 'tool ring', 'data-k': 'dec', 'aria-label': min ? '15 minutes shorter' : `${step} km shorter`, disabled: val <= 1, onclick: () => set(val - step), html: icon('minus', 20) }),
       h('label', { class: 'rt-len' }, h('input', { type: 'text', inputmode: 'numeric', enterkeyhint: 'done', value: String(val), 'data-k': 'len', 'aria-label': min ? 'Length in minutes' : 'Length in kilometres',
         onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
         onchange: (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (Number.isFinite(v) && v > 0) set(v); else e.target.value = String(val); } }), h('span', {}, unit)),
       h('button', { type: 'button', class: 'tool ring', 'data-k': 'inc', 'aria-label': min ? '15 minutes longer' : `${step} km longer`, onclick: () => set(val + step), html: icon('plus', 20) }));
-    // where it starts: with no point of yours yet, a tap on the map or Where I am (which says that it sends your position, #281)
-    const here = !this.points.length;
+    // where it starts: with no point of yours yet, a tap on the map or Where I am (which says that it sends your
+    // position, #281), until the start is your position
+    const here = !this.points.length && L.startLabel !== 'your position';
     const where = here ? h('button', { type: 'button', class: 'chip', 'data-k': 'where', onclick: () => this.loopFromHere(), html: `${icon('locate', 16)}<span>Where I am</span>` }) : null;
-    const startLine = L.start ? h('div', { class: 'rt-start' }, h('span', {}, `From ${L.startLabel} · ${tap} the map to move it`), where)
-      : h('div', { class: 'rt-start' }, h('b', {}, `The start: ${tap === 'tap' ? 'Tap' : 'Click'} the map for it, or`), where);
     // what Where I am sends, said by it (#281); what the loops cost, said by Make 3 loops (decided 2026-10-21)
     const whereNote = here ? h('p', { class: 'rt-cost rt-where' }, 'Where I am sends your position to the router, rounded to about a metre.') : null;
+    // no start yet: only that, so the map has the room for it; the rest comes with the start (2026-10-21)
+    if (!L.start) return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${tap === 'tap' ? 'Tap' : 'Click'} the map where the loop starts`)), close)),
+      where ? h('div', { class: 'rt-start' }, where) : null, whereNote,
+      L.note ? h('p', { class: 'note' }, L.note) : null];
+    const startLine = h('div', { class: 'rt-start' }, h('span', {}, `From ${L.startLabel} · ${tap} the map to move it`), where);
     const wet = waterLoop(sport), used = L.gens.filter((t) => Date.now() - t < 600e3).length;
     const cost = wet ? 'No routing calls' : `3 routing calls, up to 6${used ? ` · ${used} of ${LOOP_CAP} round trips in 10 minutes` : ''}`;
     const style = this.styleBlock(L.styleOpen ? 'full' : 'row', { view: 'loop', raise: () => { L.styleOpen = true; this.renderStart(); }, fold: () => { L.styleOpen = false; this.wayTune = false; this.renderStart(); } });
     const making = L.busy ? `Making loops…${L.progress ? ` ${L.progress} of 3` : ''}` : '';
     const make = h('button', { type: 'button', class: 'btn primary big rt-make', 'data-k': 'make', disabled: L.busy || !L.start, onclick: () => this.generateLoops(),
       html: L.busy ? `<span class="rt-making">${making}${L.progress ? `<span class="rt-progress" style="--p:${Math.round((L.progress / 3) * 100)}%"><i></i></span>` : ''}</span>` : `${icon('roundtrip', 20)}<span class="rt-make-t"><span>Make 3 loops</span><small>${cost}</small></span>` });
-    return [...top,
-      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start')), close),
-      h('div', { class: 'rt-row' }, seg, dir), chips, stepper, startLine, whereNote, style,
+    // in the order it's chosen: the sport, where it starts, how long, then the style and which way: side by side, or a
+    // row each in the side panel and while the style's choices are open (2026-10-21; a wide panel at the bottom has
+    // the form in two columns, css/app.css)
+    const ways = h('div', { class: `way-pair rt-pair${this.layout() === 'side' || L.styleOpen ? ' stack' : ''}` }, style, dir);
+    return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start')), close)),
+      startLine, whereNote, seg, chips, stepper, ways,
       L.note ? h('p', { class: 'note' }, L.note) : null, make,
       h('span', { class: 'sr-only', role: 'status' }, making)];
   }
@@ -3783,10 +3809,9 @@ export class Planner {
     this.renderTools(); // Done waits for the first point
   }
 
-  // The sport at the start (decided with the user, 2026-10-21). In the ways to begin, a row of its own under the top row,
-  // so new people see it before the first point: the drawing menu's sport row, with the sport's line (and Paddle's
-  // craft). In each step, a chip beside the route style it decides (sportPill()). Both open the same menu as the top
-  // bar's pill (#245), so they always match.
+  // The sport at the start (decided with the user, 2026-10-21): a row of its own right under the top row in the ways
+  // to begin and every step, so new people see it before the first point and it never moves: the drawing menu's
+  // sport row, with the sport's line (and Paddle's craft). It opens the same menu as the top bar's pill (#245).
   sportRow() {
     const sp = this.app.activity(), label = ACTIVITIES[sp].label;
     const line = sp === 'paddle' ? `${(CRAFT[this.craft] || CRAFT.kayak).label} · ${ACTIVITIES[sp].line}` : ACTIVITIES[sp].line;
@@ -3795,19 +3820,12 @@ export class Planner {
     b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
     return b;
   }
-  sportPill() {
-    const sp = this.app.activity(), label = ACTIVITIES[sp].label;
-    const b = h('button', { type: 'button', class: 'chip sport-chip sport-pill', 'data-k': 'sport', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Sport: ${label}`, title: 'The sport: what the map shows, and what the route is planned for',
-      html: `${icon(this.sportIcon(sp), 16)}<span>${escapeHtml(label)}</span>${icon('chevronDown', 14)}` });
-    b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
-    return b;
-  }
   // a step's top row: Back on the left; on the right the panel's place (desktops) and ✕
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
     return h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', 'data-k': 'back', onclick: fn, html: `${icon('chevronLeft', 18)}<span>${escapeHtml(label)}</span>` }), this.dockX(), this.closeX());
   }
-  // ✕ closes the planner, as the other panels have it (decided 2026-10-21: it replaces the ways' Close, and is in
-  // every step too)
+  // ✕ closes the planner, as the other panels have it (decided 2026-10-21: it replaces the ways' Close and the first
+  // point's Done, and is in every step too)
   closeX() {
     return h('button', { type: 'button', class: 'tool way-x', 'data-k': 'close', 'aria-label': 'Close the planner', title: 'Close the planner (R)', onclick: () => this.setActive(false), html: icon('close', 20) });
   }
@@ -3817,8 +3835,6 @@ export class Planner {
     const side = this.layout() === 'side', label = side ? 'Move the planner to the bottom' : 'Move the planner to the left';
     return h('button', { type: 'button', class: 'tool way-x way-dock', 'data-k': 'dock', 'aria-label': label, title: label, onclick: () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), html: icon(side ? 'panelBottom' : 'panelLeft', 19) });
   }
-  // phones' way out of the planner: Close on the ways to begin, where nothing is done yet (decided 2026-10-20), Done after the first point
-  doneBtn(label = 'Done') { return h('button', { type: 'button', class: 'btn done', 'data-k': label.toLowerCase(), title: 'Close the planner (R)', onclick: () => this.setActive(false) }, label); }
 
   // The four ways to begin, equal: phones two by two in the peek, desktops a row each. A tap on the map
   // starts drawing at once. Swim has no marked routes in LIPAS (#306).
@@ -3831,9 +3847,9 @@ export class Planner {
       // the same top row as each step's: the title where a step has ‹ Ways to begin, ✕ on the right; then the sport
       h('div', { class: 'way-bar way-top' }, h('h2', { class: 'way-name' }, 'Start a route'), this.dockX(), this.closeX()),
       this.sportRow(),
-      h('div', { class: 'way-sub' }, h('small', {}, `or ${tap} the map to start drawing`)),
       h('div', { class: 'way-tiles', role: 'group', 'aria-label': 'Ways to begin' }, ...[
-        way('draw', 'route', 'Draw it', desk ? `${tap === 'tap' ? 'Tap' : 'Click'} where you start, then each place on the way: Polku follows the paths between them.` : 'Point by point on the map', () => this.openWay('draw')),
+        // (a tap on the map starts drawing at once: Draw it's line says so, 2026-10-21)
+        way('draw', 'route', 'Draw it', `${tap === 'tap' ? 'Tap' : 'Click'} the map${desk ? ' where you start, then each place on the way: Polku follows the paths between them.' : ', point by point'}`, () => this.openWay('draw')),
         roundTripSports.includes(sp) ? way('loop', 'roundtrip', 'Round trip', desk ? 'A loop of the length or time you pick: three to choose from.' : 'A loop of a length you pick', () => this.openLoop(null, { fromWays: true })) : null,
         markedFor(sp).length ? way('find', 'sign', 'Marked routes', desk ? 'Routes from LIPAS in the map’s view: follow one as it is.' : 'From LIPAS, in view', () => this.openWay('find')) : null,
         way('file', 'upload', desk ? 'A GPX or KML file' : 'A file', desk ? 'Plan on a track from a file, or drop it on the map.' : 'GPX or KML', () => $('#file-input').click()),
@@ -3845,11 +3861,11 @@ export class Planner {
   // Phones keep the card low, one row for the style; it raises the sheet to the chips, and Back lowers it.
   drawView() {
     const desk = this.sideMQ.matches, raised = !desk && this.wayRaised;
-    const LINE = { auto: 'Polku follows the paths between your points', line: 'Polku joins your points with straight lines', water: 'Polku finds a way over the water between your points' };
+    const LINE = { auto: 'Polku follows the paths', line: 'Polku joins your points with straight lines', water: 'Polku finds a way over the water' };
     return [
       raised ? this.backRow('Draw it', () => this.wayBack()) : this.backRow(),
-      h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map where you start`), h('small', { class: 'way-line' }, LINE[this.mode]),
-        h('small', { class: 'way-line way-along' }, 'You can change sport along the way.')),
+      this.sportRow(),
+      h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map where you start`), h('small', { class: 'way-line' }, `${LINE[this.mode]}, and the sport can change on the way.`)),
       this.styleBlock(desk || raised ? 'full' : 'row', { raise: () => { this.wayRaised = true; this.pushWay(); this.renderStart(); } }),
     ];
   }
@@ -3860,17 +3876,16 @@ export class Planner {
   // 'row': one line that opens it. `fold`: the heading folds it again (the round trip's).
   styleBlock(how, { view = 'draw', raise = null, fold = null } = {}) {
     const route = this.mainSport(), m = this.mode;
-    // the sport first, beside the style it decides (as the toolbar has them, and the drawing button "MTB · Balanced")
-    const pair = (el) => h('div', { class: 'way-pair' }, this.sportPill(), el);
-    if (view === 'draw' && m === 'line') return pair(h('p', { class: 'way-nostyle', html: `${icon('straight', 16)}<span>Straight lines don’t use a route style</span>` }));
-    if (view === 'draw' && m === 'water' && !isWater(route)) return pair(h('p', { class: 'way-nostyle', html: `${icon('water', 16)}<span>Legs over water are paddled, in your Paddle style</span>` }));
+    if (view === 'draw' && m === 'line') return h('p', { class: 'way-nostyle', html: `${icon('straight', 16)}<span>Straight lines don’t use a route style</span>` });
+    if (view === 'draw' && m === 'water' && !isWater(route)) return h('p', { class: 'way-nostyle', html: `${icon('water', 16)}<span>Legs over water are paddled, in your Paddle style</span>` });
     const st = this.styleOf(route), name = styleName(route, st);
-    if (how === 'row') return pair(h('button', { type: 'button', class: 'way-srow', 'data-k': 'srow', 'aria-expanded': 'false', onclick: raise, html: `${icon('sliders', 18)}<span>Route style · <b>${escapeHtml(name)}</b></span>${icon('chevronRight', 16)}` }));
+    // one button like the toolbar's (2026-10-21), which opens the choices
+    if (how === 'row') return h('button', { type: 'button', class: 'stylebtn', 'data-k': 'srow', 'aria-expanded': 'false', onclick: raise, html: `<span class="two"><small>Route style</small><span>${escapeHtml(name)}</span></span>${icon('chevronDown', 12)}` });
     const cat = STYLES[route] || STYLES.mtb, custom = isCustom(route, st);
     const pick = (k) => { this.styleLeg = null; this.setStyle({ p: k, v: {}, wet: st.wet || 'auto' }); };
     const head = fold ? h('button', { type: 'button', class: 'way-sh', 'data-k': 'sfold', 'aria-expanded': 'true', onclick: fold, html: `<span>Route style · the whole route</span>${icon('chevronUp', 16)}` })
       : h('div', { class: 'way-sh' }, 'Route style · the whole route');
-    const out = h('div', { class: 'way-style' }, h('div', { class: 'way-sh-row' }, this.sportPill(), head),
+    const out = h('div', { class: 'way-style' }, head,
       h('div', { class: 'style-presets way-chips', role: 'group', 'aria-label': 'Route style' }, ...cat.presets.map(([k, label]) => h('button', {
         type: 'button', class: 'chip', 'data-k': `style-${k}`, 'aria-pressed': String(!custom && st.p === k), onclick: () => pick(k), html: `${!custom && st.p === k ? icon('check', 15) : ''}<span>${escapeHtml(label)}</span>`,
       })), custom ? h('span', { class: 'chip chip-on', 'aria-hidden': 'true' }, 'Custom') : null),
@@ -3963,12 +3978,13 @@ export class Planner {
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
     const fmt = (v) => (min ? (v >= 60 ? `${v / 60} h` : `${v} min`) : `${v} km`);
     return [
-      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map for your next point`)), this.doneBtn()),
+      // ✕ at the top right, as in the start and its steps (2026-10-21: it replaces Done here too)
+      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map for your next point`)), this.dockX(), this.closeX()),
       roundTripSports.includes(sport) ? h('div', { class: 'rt-here' },
         h('span', { class: 'way-cap', html: `${icon('roundtrip', 14)}<span>Round trip from here</span>` }),
         h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Round trip from here' },
           ...(min ? pre.min : pre.km).slice(0, 3).map((v) => h('button', { type: 'button', class: 'chip', 'data-k': `rt-${v}`, 'aria-label': `Round trip from here: ${fmt(v)}`, onclick: () => this.openLoop(this.points[0].slice(), { len: v }) }, fmt(v))),
-          h('button', { type: 'button', class: 'chip', 'data-k': 'rt-other', 'aria-label': 'Round trip from here: another length or a time', onclick: () => this.openLoop(this.points[0].slice()) }, 'Other…'))) : null,
+          h('button', { type: 'button', class: 'chip', 'data-k': 'rt-other', 'aria-label': 'Round trip from here: another length or a time', onclick: () => { this.loop.other = true; this.openLoop(this.points[0].slice()); } }, 'Other…'))) : null,
     ];
   }
 
@@ -3978,7 +3994,8 @@ export class Planner {
   // it asks LIPAS for the view, as the layer does, through request().
   findView() {
     const M = this.marked, sp = this.app.activity(), label = ACTIVITIES[sp].label, desk = this.sideMQ.matches;
-    const out = [this.backRow(), h('div', { class: 'way-hint-row' }, h('div', { class: 'way-hint' }, h('b', {}, 'Marked routes in view'), h('small', {}, `From LIPAS · ${this.coarse() ? 'tap' : 'click'} a card or a coloured line`)), this.sportPill())];
+    // the sport's row, as in the ways: it decides what's listed, and says so (2026-10-21)
+    const out = [this.backRow(), this.sportRow(), h('div', { class: 'way-hint' }, h('b', {}, 'Marked routes in view'), h('small', {}, `From LIPAS · ${this.coarse() ? 'tap' : 'click'} a card or a coloured line`))];
     const note = (state, ic, text, btn = null) => h('div', { class: `mr-state${state === 'fail' ? ' fail' : ''}`, 'data-state': state, role: 'status' },
       h('span', { class: 'mr-ic', 'aria-hidden': 'true', html: icon(ic, 18) }), h('span', { class: 'mr-text' }, text), btn);
     const act = (k, label, fn) => h('button', { type: 'button', class: 'btn small', 'data-k': k, onclick: fn }, label);
