@@ -349,19 +349,33 @@ export class CardHost {
 
   // a card in the peek: the map moves so its spot is in sight above it (and under the top bar)
   inSight(at) {
+    let moved = false; // (once you move the map yourself, it's yours)
+    const mine = (e) => { if (e.originalEvent) moved = true; };
+    this.map.on('movestart', mine);
+    setTimeout(() => this.map.off('movestart', mine), 1200);
     const go = () => {
-      if (!this.box || !this.box.isConnected || this.popup || this.folded) return;
+      if (moved || !this.box || !this.box.isConnected || this.popup || this.folded) return;
       const sheet = this.peek.closest('.sheet') || this.peek, R = this.map.getCanvas().getBoundingClientRect();
       const top = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 24, wx = document.getElementById('wx-bar');
       // above the sheet, and above the timeline when it's open over the map
       const bottom = Math.min(sheet.getBoundingClientRect().top, wx && wx.offsetParent && !wx.hidden ? wx.getBoundingClientRect().top : Infinity) - 24;
       const pt = this.map.project(at), x = R.left + pt.x, y = R.top + pt.y;
       const dy = y > bottom || y < top ? y - (bottom > top ? (top + bottom) / 2 : top) : 0;
-      const dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;
+      let dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;
+      // …and clear of what floats over the map there: the toolbox's undo and redo, the zoom note, the map's buttons
+      const ny = y - dy;
+      for (const el of [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')]) {
+        const b = el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null, nx = x - dx;
+        if (!b || nx < b.left - 20 || nx > b.right + 20 || ny < b.top - 20 || ny > b.bottom + 20) continue;
+        // beside it, on whichever side keeps the point on the screen (none: it stays where it is)
+        const side = [b.right + 32, b.left - 32].find((to) => to >= 24 && to <= innerWidth - 72);
+        if (side != null) dx = x - side;
+      }
       if (Math.abs(dx) > 1 || Math.abs(dy) > 1) this.map.panBy([dx, dy], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
     };
     requestAnimationFrame(() => requestAnimationFrame(go));
     setTimeout(go, 320); // once the sheet has come to its new size
+    setTimeout(go, 900); // …and the timeline over the map to its place above it
   }
 
   remove() {

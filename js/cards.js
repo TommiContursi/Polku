@@ -33,7 +33,7 @@ export function pointCard(pl, p) {
     get i() { return pl.points.indexOf(card.key); },
     get title() { return card.renaming ? card.nameField() : pl.nameOf(card.i); },
     get label() { return pl.nameOf(card.i); },
-    get sub() { const i = card.i; return i === 0 ? 'Start' : i === pl.points.length - 1 ? 'End' : `Via ${i}`; },
+    get sub() { const i = card.i, kind = i === 0 ? 'Start' : i === pl.points.length - 1 ? 'End' : `Via ${i}`; return pl.nameOf(i) === kind || pl.nameOf(i) === pl.label(i) ? '' : kind; }, // (no name of its own: "Via 1" once)
     get save() { return card.renaming ? h('button', { type: 'button', class: 'btn primary', onclick: () => card.endRename(true) }, 'Save') : null; },
     mark: () => pointMark(pl, card.i),
     at: () => card.key,

@@ -7056,9 +7056,15 @@ PC_AT = """((x) => {
   const el = typeof x === 'string' ? document.querySelector(x) : x;
   if (Array.isArray(el)) { const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project(el); return { x: R.left + q.x, y: R.top + q.y }; }
   if (!el || !el.getClientRects().length) return null;
-  if (el.closest && el.closest('.pl-way.card')) el.scrollIntoView({ block: 'nearest' }); // (as a person scrolls the card to it)
+  // (as a person scrolls the card to it: the card only, never the page, which the app scrolls back at once)
+  const c = el.closest && el.closest('.pl-way.card');
+  if (c) { const a = el.getBoundingClientRect(), r = c.getBoundingClientRect(); if (a.bottom > r.bottom) c.scrollTop += a.bottom - r.bottom + 4; else if (a.top < r.top) c.scrollTop -= r.top - a.top + 4; }
   const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })"""
 # the card as it is: what it says, its place, its boxes
+# what's over the open card's point on the screen ('' when it's in sight)
+PC_OVER = """(() => { const p = polku.planner, k = p.cards.current && p.points.indexOf(p.cards.current.key), m = k >= 0 && p.markers[k];
+  if (!m) return 'no marker'; const el = m.getElement().querySelector('.wp'), b = el.getBoundingClientRect(), top = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+  return !top || el.contains(top) ? '' : (top.id || top.className.baseVal || top.className || top.tagName); })()"""
 PC_STATE = """(() => {
   const p = polku.planner, c = document.querySelector('.pl-way.card'), r = (e) => e.getBoundingClientRect(), vis = (e) => !!e && e.getClientRects().length > 0;
   const m = p.cards.current && p.cards.current.key && p.points.indexOf(p.cards.current.key);
@@ -7225,6 +7231,8 @@ def point_card(chrome):
             continue
         if s['labels'] != ['there at', 'from the start', 'height']:
             fails.append(f"{name}: the card's numbers say {s['labels']}")
+        if s['title'] != 'Via 1' or 'Via 1Via 1' in s['text']:
+            fails.append(f"{name}: an unnamed via point's card says “{s['title']}”{', and Via 1 twice' if 'Via 1Via 1' in s['text'] else ''}")
         if s['heads'] != ['At this point', 'Edit this point']:
             fails.append(f"{name}: via 1's groups are {s['heads']}")
         if s['back'] or s['chosen'] != 'Pass by' or s['ringed'] != 1:
@@ -7239,6 +7247,9 @@ def point_card(chrome):
             m = s['marker']
             if not m or m['y'] >= s['card']['top'] or m['y'] < 0 or m['x'] < 0 or m['x'] > w:
                 fails.append(f"{name}: the point at {m}, not in sight above the card at {round(s['card']['top'])} px")
+            over = pg.js(PC_OVER)
+            if over:
+                fails.append(f'{name}: the point is under {over}')
         else:
             c, m = s['card'], s['marker']
             corner = min(((x - m['x']) ** 2 + (y - m['y']) ** 2) ** 0.5 for x in (c['left'], c['right']) for y in (c['top'], c['bottom']))
