@@ -9,7 +9,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 Opened from **Start a route**, the round trip now asks only where it starts: tap the map, or **Where I am**. On a phone that leaves most of the map free for the tap. Once it has a start, the rest of the form appears: **How long**, with a switch for **Distance** or **Time**, the sport's lengths, or **Other…**, which opens a field for a length of your own with **−** and **+**; then the route style and the direction; and **Make 3 loops** last. The map moves so that the start stays in sight above the form.
 
 - The sport has its row right under the top row in every step, as under **Start a route**: in **Draw it**, the round trip and **Marked routes**. It stays in one place as you go from one to another, and it has a border, like the four ways under it.
-- On a phone, the round trip shows three lengths and **Other…** in one row, and the route style and the direction are two buttons side by side. On a desktop the side panel has room for four lengths, and each choice has a row of its own.
+- On a phone, the round trip shows three lengths and **Other…** in one row, and the route style and the direction are two buttons side by side. On a desktop there's room for four lengths: in the side panel each choice has a row of its own, and with the planner at the bottom the form is in two columns, the sport and the start on the left and the rest on the right.
 - **Start a route** has a line less: the **Draw it** card now says that a tap on the map starts drawing. **Draw it** says what to do in one line under its heading, and its route style is a button like the toolbar's.
 
 ### A calmer planner: the sport, and what it changes ([#233](https://github.com/TommiContursi/Polku/issues/233))
