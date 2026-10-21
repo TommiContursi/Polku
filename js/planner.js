@@ -20,6 +20,7 @@ import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView } from './inspect.js';
+import { CardHost, num } from './card.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -228,7 +229,7 @@ export class Planner {
     map.on('mousemove', (e) => this.onMapMove(e));
     map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     // was a menu or card open when this press began? (MapLibre closes it on the click; the click shouldn't add a point too)
-    const pressed = () => { this.popupAtPress = !!this.map.getContainer().querySelector('.maplibregl-popup'); };
+    const pressed = () => { this.popupAtPress = !this.picking && (!!this.map.getContainer().querySelector('.maplibregl-popup') || !!this.cards.current); };
     map.on('mousedown', pressed);
     map.on('touchstart', pressed);
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
@@ -383,12 +384,29 @@ export class Planner {
     const leg = this.legs[i];
     if (!leg || !ACTIVITIES[sport] || this.legSport(i) === sport) return;
     this.commit();
+    this.legInSport(i, sport);
+    this.update();
+  }
+  // (leg i's sport changed, and how it's drawn with it: no step of Undo, no routing yet)
+  legInSport(i, sport) {
+    const leg = this.legs[i];
     const route = this.app.activity();
     const fixed = leg.mode === 'fixed';
     const mode = fixed ? 'fixed' : isWater(sport) ? (leg.mode === 'line' ? 'line' : 'water') : leg.mode === 'water' ? 'auto' : leg.mode;
     this.legs[i] = { ...(fixed ? leg : {}), mode, style: null, sport: sport === route ? undefined : sport };
     // the last leg: the next one goes on in its sport (after a change, you keep paddling)
     if (i === this.legs.length - 1) { this.next = sport === route ? null : sport; this.matchMode(); }
+  }
+
+  // Change sport on point i (25d): the legs from it to the next change of sport, or to the finish. One step of Undo.
+  setSportFrom(i, sport) {
+    if (!this.legs[i] || !ACTIVITIES[sport]) return;
+    const was = this.legSport(i);
+    if (was === sport) return;
+    let j = i;
+    while (j + 1 < this.legs.length && this.legSport(j + 1) === was) j++;
+    this.commit();
+    for (let k = i; k <= j; k++) this.legInSport(k, sport);
     this.update();
   }
 
@@ -436,6 +454,14 @@ export class Planner {
     });
     this.points = pts;
     this.update();
+  }
+
+  // Point i to ll without dragging (Move on its card): one step of Undo, its two legs routed again
+  movePoint(i, ll) {
+    if (!this.points[i]) return;
+    this.beginEdit(i, this.snapshot());
+    this.editTo(ll);
+    this.endEdit();
   }
 
   // Show point i on the map, and make its marker pulse.
@@ -925,6 +951,7 @@ export class Planner {
     this.remember();
     this.panel.hidden = !on;
     if (!on) {
+      this.cards.close(); this.stopPicking();
       this.closeMore(); this.litLeg(null); this.clearAlts(); delete document.body.dataset.sheet; delete document.body.dataset.pl;
       // the start opens at the ways to begin next time
       if (this.loop.open && this.loop.fromWays) this.closeLoop();
@@ -955,7 +982,7 @@ export class Planner {
     const had = [this.els.done, this.els.edit, this.els.toolDone, this.els.toolEdit].indexOf(document.activeElement);
     this.editing = on;
     this.remember();
-    if (!on) { if (this.menu) this.menu.remove(); this.modesMenu?.close(); this.closeMore(); this.clearAlts(); clearTimeout(this.altTimer); }
+    if (!on) { if (this.menu) this.menu.remove(); this.cards.close(); this.stopPicking(); this.modesMenu?.close(); this.closeMore(); this.clearAlts(); clearTimeout(this.altTimer); }
     this.renderState();
     this.renderWaypoints();
     this.renderTools();
@@ -2539,8 +2566,10 @@ export class Planner {
     const tl = this.tapOnLeg; // this click only
     this.tapOnLeg = null;
     if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
+    // Move on a card asked where: this is the answer
+    if (this.picking) { this.popupAtPress = false; this.picking.done([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return; }
     // a menu or card was open: this click (a tap beside it) closes it, and adds nothing
-    if (this.popupAtPress) { this.popupAtPress = false; return; }
+    if (this.popupAtPress) { this.popupAtPress = false; this.cards.close(); return; }
     // a quick tap on the line that a busy page took for a hold: that part's menu, though the map
     // may not have redrawn the route without the hold's split yet (#293)
     if (tl && Date.now() - tl.at < 1000 && this.legs[tl.li]) { this.openLegMenu(tl.li, e.lngLat); this.autoPeek(); return; }
@@ -2727,6 +2756,7 @@ export class Planner {
   renderWaypoints() {
     const box = this.els && this.els.points;
     if (!box) return;
+    this.cards.refresh(); // an open card follows its point, or closes when it's gone
     if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return; // don't take a name you're typing
     const n = this.points.length;
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
@@ -2889,7 +2919,7 @@ export class Planner {
       m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointMenu(i, m); });
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p); });
       return m;
     });
   }
@@ -2972,6 +3002,7 @@ export class Planner {
     this.points[ed.i] = ll;
     // what belongs to the point goes with it: its name, changeover minutes, stop and gear
     for (const m of [this.pname, this.pchange, this.pstop, this.pcarry]) if (m.has(old)) m.set(ll, m.get(old));
+    if (this.cards.current && this.cards.current.key === old) this.cards.current.key = ll; // its card goes with it
     for (const li of [ed.i - 1, ed.i]) if (this.legs[li]) this.previewLeg(li);
     this.drawRoute();
   }
@@ -3265,34 +3296,171 @@ export class Planner {
       h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
   }
 
-  openPointMenu(i, marker) {
+  // A point's card (25d, #345): its name, when you'd get there, how far along and how high, then what you can do with
+  // it, by name. `p` is the point itself, not its index: the card follows it through a move, Undo and a new order,
+  // and closes when it's gone. From the map there's no Back, only ✕.
+  openPointCard(p, { from = 'map' } = {}) {
+    if (!this.points.includes(p)) return;
     if (this.menu) this.menu.remove();
-    const n = this.points.length;
-    const legOut = this.legs[i];
+    this.stopPicking();
+    const self = this;
+    const card = {
+      kind: 'point', key: p, pill: null,
+      get title() { return self.nameOf(self.points.indexOf(card.key)); },
+      get sub() { const i = self.points.indexOf(card.key); return self.nameOf(i) !== self.label(i) ? self.label(i) : i === 0 ? 'Where the route begins' : ''; },
+      at: () => card.key,
+      alive: () => this.findPoint(card),
+      build: (body) => this.pointCardBody(body, card),
+    };
+    this.cards.open(card, { at: p, from });
+  }
+
+  // is the card's point still on the route? After Undo it's a copy of itself: the one point where it was
+  findPoint(card) {
+    if (this.points.includes(card.key)) return true;
+    const same = this.points.filter((q) => q[0] === card.key[0] && q[1] === card.key[1]);
+    if (same.length !== 1) return false;
+    card.key = same[0];
+    return true;
+  }
+
+  // the terrain's height at point i (null: no terrain there yet)
+  heightAt(i) {
+    const a = this.analysis;
+    if (!a || !a.ele || !a.along) return null;
+    const at = this.lengthTo(i);
+    let k = 0;
+    while (k < a.along.length - 1 && a.along[k] < at - 1) k++;
+    return (a.eleGap && a.eleGap[k]) || !Number.isFinite(a.ele[k]) ? null : a.ele[k];
+  }
+
+  pointCardBody(body, card) {
+    const i = this.points.indexOf(card.key), n = this.points.length;
     const last = i === n - 1 && i > 0, via = i > 0 && !last, loop = this.isLoop();
-    const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
-    const body = h('div', { class: 'pt-menu' },
-      h('div', { class: 'pt-head' },
-        h('div', { class: 'pt-title' }, this.nameOf(i)),
-        h('div', { class: 'pt-sub' }, [this.nameOf(i) !== this.label(i) ? this.label(i) : '', i > 0 ? `${fmtDist(this.lengthTo(i))} from the start` : ''].filter(Boolean).join(' · ') || 'Where the route begins')),
-      i === 0 ? h('label', { class: 'pt-depart' }, h('span', { html: icon('clock', 15) }), 'Depart', h('span', { class: 'mode-select-box' }, this.departSelect(), h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }))) : null,
-      legOut ? h('div', { class: 'pt-label' }, 'Next leg') : null,
-      legOut ? this.legSportPicker(i, () => this.menu.remove()) : null,
-      this.changeAt(i) ? h('label', { class: 'pt-change' }, `Change to ${ACTIVITIES[this.changeAt(i).to].label}`,
-        h('input', { type: 'number', min: 0, max: 600, step: 1, value: this.changeAt(i).min, onchange: (e) => this.setChangeMin(i, e.target.value) }), 'min') : null,
-      legOut ? h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
-        h('button', { type: 'button', 'aria-pressed': String(legOut.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(i, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))) : null,
-      legOut && legOut.mode !== 'line' && legOut.mode !== 'fixed' ? this.legStylePicker(i, () => this.menu.remove()) : null,
-      via ? this.stopEditor(i) : null,
-      this.gearToggle(i),
-      via ? h('div', { class: 'pt-row' },
-        act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', () => this.startAt(i)),
-        loop ? null : act('check', 'Finish here', 'Make this the finish: the rest is removed', () => this.finishAt(i))) : null,
-      last && !loop && n > 1 ? act('loop', 'Back to start', 'Add a leg back to the start', () => this.backToStart()) : null,
-      act('trash', 'Remove point', '', () => this.removePoint(i), 'btn danger-text'));
-    this.menu = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '320px', className: 'polku-popup' })
-      .setLngLat(marker.getLngLat()).setDOMContent(body).addTo(this.map);
-    this.keepMenuInView();
+    // in the route's view a stop, a changeover's minutes and the departure change there; the rest goes back to editing first (25c)
+    const edit = (fn) => () => { if (this.inView()) this.setEditing(true); fn(); };
+    const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: fn, html: `${icon(ic, 16)}<span>${label}</span>` });
+    // three numbers: when you'd get there (from the start, when you leave), how far along, how high
+    const when = i === 0 ? this.startSec() : this.analysis ? this.arriveAt(i) : null, ele = this.heightAt(i);
+    const whenLabel = i === 0 ? 'you leave' : 'there at';
+    body.append(h('div', { class: 'card-nums' },
+      when != null ? num(this.clockOf(when), whenLabel) : num('?', `${whenLabel} not known yet`, { missing: true }),
+      i > 0 ? num(fmtDist(this.lengthTo(i)), 'from the start') : null,
+      ele != null ? num(`${Math.round(ele)} m`, 'height') : num('?', n > 1 ? 'no terrain here' : 'height not known yet', { missing: true })));
+    if (i === 0 && n > 1) {
+      body.append(h('label', { class: 'pt-depart' }, h('span', { html: icon('clock', 15) }), 'Depart',
+        h('span', { class: 'mode-select-box' }, this.departSelect(), h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }))));
+    }
+    // a stop: a break or a night, and its minutes or morning hour (places to sleep for a night)
+    if (via) {
+      body.append(this.stopAt(i) ? this.stopEditor(i) : h('div', { class: 'card-row' },
+        act('pause', 'Make it a stop', `A break at ${this.nameOf(i)}: ${DEFAULT_BREAK} min, yours to change`, () => { this.setStop(i, { min: DEFAULT_BREAK }); this.cards.refresh(); }),
+        act('moon', 'Stay the night', `A night at ${this.nameOf(i)}: on again at ${hhmm(DEFAULT_ON)}, yours to change`, () => { this.setStop(i, { on: DEFAULT_ON }); this.cards.refresh(); })));
+    }
+    // the sport from here on, and at a change of sport its minutes and the gear
+    if (this.legs[i]) body.append(this.sportFromPicker(i));
+    const ch = this.changeAt(i);
+    if (ch) {
+      body.append(h('label', { class: 'pt-change' }, `Change to ${ACTIVITIES[ch.to].label}:`,
+        h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }), 'min'));
+    }
+    const gear = this.gearToggle(i);
+    if (gear) body.append(gear);
+    const ends = [
+      via ? act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', edit(() => this.startAt(this.points.indexOf(card.key)))) : null,
+      via && !loop ? act('check', 'Finish here', 'Make this the finish: the rest is removed', edit(() => this.finishAt(this.points.indexOf(card.key)))) : null,
+      last && !loop ? act('loop', 'Back to start', 'Add a leg back to the start', edit(() => this.backToStart())) : null,
+    ].filter(Boolean);
+    if (ends.length) body.append(h('div', { class: 'card-row' }, ...ends));
+    // the stretch after it: its settings (part 2 of 25d gives it a card of its own)
+    if (this.legs[i]) {
+      body.append(h('button', { type: 'button', class: 'card-link', onclick: () => {
+        const c = this.legs[i].result ? this.legs[i].result.coords : [this.points[i], this.points[i + 1]], mid = c[Math.floor(c.length / 2)];
+        const at = c.length > 2 ? mid : [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+        this.cards.close();
+        this.openLegMenu(i, { lng: at[0], lat: at[1] });
+      } }, h('span', {}, h('b', {}, 'The stretch after it'), h('small', {}, `${this.nameOf(i)} → ${this.nameOf(i + 1)}`)), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) })));
+    }
+    // Remove apart from the rest, at the far right, in the warning colour
+    body.append(h('div', { class: 'card-row card-last' },
+      act('pencil', 'Rename', `A name for ${this.nameOf(i)}, on this device`, edit(() => this.renameOnCard(card))),
+      act('move', 'Move', `${this.coarse() ? 'Tap' : 'Click'} where it goes (or drag the point)`, edit(() => this.moveOnCard(card))),
+      act('trash', 'Remove', `Remove ${this.nameOf(i)}: Undo brings it back`, edit(() => this.removeOnCard(card)), 'btn danger-text card-remove')));
+  }
+
+  // "Change sport" on a point: the legs from it to the next change of sport, or the finish (setSportFrom())
+  sportFromPicker(i) {
+    const sports = this.app.sports ? this.app.sports() : Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: 'route' }));
+    const cur = this.legSport(i);
+    const sel = h('select', { 'aria-label': `Change sport from ${this.nameOf(i)}`, onchange: (e) => { if (this.inView()) this.setEditing(true); this.setSportFrom(i, e.target.value); } },
+      ...sports.map((x) => h('option', { value: x.k }, x.label)));
+    sel.value = cur;
+    const ic = (sports.find((x) => x.k === cur) || {}).icon || 'route';
+    return h('label', { class: 'mode-select card-sport', title: 'From here to the next change of sport, or the finish' },
+      h('span', { class: 'mode-select-label', html: `${icon(ic, 16)}<span>Change sport</span>` }),
+      h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
+  }
+
+  // Rename: the card's title becomes its name to type; Enter or leaving it keeps it, Escape doesn't
+  renameOnCard(card) {
+    const ttl = this.cards.box && this.cards.box.querySelector('.card-ttl');
+    const i = this.points.indexOf(card.key);
+    if (!ttl || i < 0) return;
+    let done = false;
+    const end = (keep) => {
+      if (done) return;
+      done = true;
+      const v = input.value;
+      ttl.focus({ preventScroll: true });
+      const k = this.points.indexOf(card.key);
+      if (keep && k >= 0) this.setName(k, v);
+      this.cards.refresh();
+      this.cards.box?.querySelector('.card-ttl')?.focus({ preventScroll: true });
+    };
+    const input = h('input', { class: 'card-name', type: 'text', value: this.pname.get(card.key) || '', placeholder: this.autoName(i) || this.label(i), maxlength: 60, spellcheck: 'false',
+      'aria-label': `Name of ${i === 0 ? 'the start' : i === this.points.length - 1 ? 'the finish' : `via point ${i}`}`,
+      onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); end(true); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); end(false); } },
+      onblur: () => end(true) });
+    ttl.replaceChildren(input);
+    input.focus();
+    input.select();
+  }
+
+  // Move: the card folds to "Tap where it goes"; the next tap on the map moves the point there (Cancel, Escape: it stays)
+  async moveOnCard(card) {
+    const ll = await this.pickOnMap(`${this.coarse() ? 'Tap' : 'Click'} where it goes`);
+    const i = this.points.indexOf(card.key);
+    if (ll && i >= 0) this.movePoint(i, ll);
+  }
+
+  // A spot on the map, asked for by a card: it folds to `text` with Cancel, and the next tap answers (null: cancelled)
+  pickOnMap(text) {
+    this.stopPicking();
+    return new Promise((resolve) => {
+      const pick = {
+        done: (ll) => {
+          if (this.picking !== pick) return;
+          this.picking = null;
+          this.map.getCanvas().style.cursor = this.active && !this.inView() ? 'crosshair' : '';
+          resolve(ll);
+          // the card unfolds once the answer has been used (the point moved), so it opens where the point is now
+          if (ll) setTimeout(() => this.cards.unfold(), 0); else this.cards.unfold();
+        },
+      };
+      this.picking = pick;
+      this.map.getCanvas().style.cursor = 'crosshair';
+      this.cards.fold(text, () => pick.done(null));
+    });
+  }
+  stopPicking() { if (this.picking) this.picking.done(null); }
+
+  // Remove, with Undo in its note
+  removeOnCard(card) {
+    const i = this.points.indexOf(card.key);
+    if (i < 0) return;
+    const name = this.nameOf(i);
+    this.removePoint(i);
+    toast(`${name} removed`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // A stop in a waypoint row: Break / Night / no stop, and its minutes or morning hour
@@ -3313,8 +3481,7 @@ export class Planner {
   // The point menu's stop: none, a break or a night; for a night, places to sleep near it
   stopEditor(i) {
     const stop = this.stopAt(i), night = isNight(stop);
-    const reopen = () => { if (this.markers[i]) this.openPointMenu(i, this.markers[i]); };
-    const set = (st) => { this.setStop(i, st); reopen(); };
+    const set = (st) => { this.setStop(i, st); this.cards.refresh(); };
     const w = this.analysis && (this.analysis.waits || []).find((x) => x.i === i);
     const arrive = this.analysis ? this.arriveAt(i) : null;
     const box = h('div', { class: 'pt-stop' },
@@ -3348,7 +3515,7 @@ export class Planner {
       if (!done) rows.push(h('div', { class: 'pt-sub' }, 'Still looking…'));
       else if (!found.length) rows.push(h('div', { class: 'pt-sub' }, 'No lean-tos, huts or campsites within 3 km in LIPAS or OpenStreetMap.'));
       list.replaceChildren(...rows);
-      if (this.menu && this.menu.getElement() && this.menu.getElement().contains(list)) this.keepMenuInView(); // wider and taller now
+      if (this.cards.box && this.cards.box.contains(list)) this.cards.keep(); // wider and taller now
     };
     try {
       show(await staysNear(p, 3, (part) => show(part, false)), true);
@@ -3361,13 +3528,11 @@ export class Planner {
 
   // point i moved to a place to sleep, named after it (its legs are routed again)
   moveToStay(i, x) {
-    if (this.menu) this.menu.remove();
     if (!this.points[i]) return;
     this.beginEdit(i, this.snapshot());
     this.editTo(x.at.slice());
     this.pname.set(this.points[i], x.name);
     this.endEdit();
-    if (this.menu) this.menu.remove();
   }
 
   // "Stop here" on the line: a point there with a break, and its menu to make it a night
@@ -3377,7 +3542,7 @@ export class Planner {
     const k = this.splitLeg(li, ll);
     this.pstop.set(this.points[k], { min: DEFAULT_BREAK });
     this.update();
-    if (this.markers[k]) this.openPointMenu(k, this.markers[k]);
+    this.openPointCard(this.points[k]);
   }
 
   // At a changeover out of a bike or a boat: is it left here, or taken along?
@@ -3648,7 +3813,22 @@ export class Planner {
     this.els.title = h('div', { class: 'pl-title', hidden: true }, h('h2', { class: 'pl-ttl' }, this.els.titleName, this.els.titleSub), this.closeX());
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.title, this.els.row, this.els.way), this.els.said);
+    this.els.card = h('div', { class: 'card-peek', hidden: true });
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.row, this.els.way), this.els.said);
+    // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, at
+    // its spot elsewhere (js/card.js, 25d)
+    this.cards = new CardHost(this.map, {
+      peek: this.els.card,
+      where: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
+      onChange: (card) => {
+        this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
+        if (card && this.cards.place === 'peek' && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
+        this.placeTools();
+        this.measureSheet?.();
+      },
+      onPop: () => { this.keepView = Date.now() + 600; },
+      pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
+    });
     this.buildTools();
     this.els.stats = h('div', { class: 'stats' });
     this.els.modesBar = h('div', { class: 'chip-groups' });
@@ -4247,6 +4427,7 @@ export class Planner {
     if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
     // the start's views are the sheet's whole height: its peek grows with them (A)
     if (lay === 'sheet' && this.peekOnly()) { st = 'peek'; remember = false; }
+    if (st !== 'peek' && st !== 'min' && this.cards.place === 'peek') this.cards.close(); // (a card is the peek's)
     this.panel.dataset.layout = lay;
     this.panel.dataset.state = st;
     if (st !== 'peek' && st !== 'min') this.lastOpen = st;
@@ -4332,7 +4513,7 @@ export class Planner {
     this.sheetSwipe = swipeSheet(this.panel, {
       enabled: () => this.active && this.layout() === 'sheet',
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows
-      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
+      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize, .card')
         && (type !== 'mouse' || !!t.closest('.sheet-handle, .sheet-head, .pl-tabs')),
       start: () => {
         sizes();
@@ -4610,9 +4791,10 @@ export class Planner {
     const box = this.tools;
     if (!box || !this.sideMQ) return;
     // no toolbox until there's something it can do: a point, or something to undo or redo
-    const show = this.active && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length);
-    box.hidden = !show;
     const desk = this.sideMQ.matches;
+    // (phones: not while a card is in the peek, 25d)
+    const show = this.active && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(this.cards.place === 'peek' && !desk);
+    box.hidden = !show;
     box.classList.toggle('desk', desk);
     if (!show) this.dockTools(false);
     // the room it takes, for what sits there too: above the sheet (--tools-h: the scale, notes, the 3D pad,
