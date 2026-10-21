@@ -22,8 +22,8 @@ The implementation plan for the last part of Phase 25. What's still to do, and i
 Each has a recommendation. The plan is written with it.
 
 1. **The order:** the card first, with a point's card. *Why:* the card decides Back, the peek, the toolbox stepping aside and focus for all eight cards that follow. A point's card is the smallest real use, so it can be tried on a phone before the rest.
-2. **Change sport on a point** changes the legs from that point to the next change of sport, or to the finish. One stretch only is Edit this part. *Why:* #345 asks for both, "from a point onward" and "for one part only".
-3. **All leg settings goes.** Each stretch row says its sport and how it's drawn, and Edit this part is one tap away.
+2. **Change sport on a point** changes the legs from that point to the next change of sport, or to the finish. One stretch only is Edit this stretch. *Why:* #345 asks for both, "from a point onward" and "for one part only".
+3. **All leg settings goes.** Each stretch row says its sport and how it's drawn, and Edit this stretch is one tap away.
 4. **Find and Move to wait.** They were §7's tools for long routes. D's frames don't draw them: folding, Reorder and a point's Move cover them. An issue keeps the idea.
 5. **Items §6 doesn't place** go as the table in part 3 says: road conditions in Read before you go; twilight, snow on the way and snowing in Worth a look; on the ice in Read before you go.
 6. **In the route's view,** a stop and the departure change without leaving the view, as 25c built. Every other action on a card goes back to editing first, as #345 says.
@@ -45,6 +45,22 @@ Every part's requirements include these.
 - WCAG 2.2 AA. 44 px targets on phones, 40 px on desktops, 8 px apart. Keyboard and screen readers. Reduced motion. Never colour alone.
 - **The app's words** (from #345, "How a card reads"): the name first; one short line under it; three numbers at most, each with its label under it; one fact per line; no facts strung with dots, no brackets; a missing fact as a dashed tile, "? difficulty not mapped".
 - No framework, dependency or build step.
+
+### How the cards read and look
+
+Decided on 2026-10-21, after a review of #345's frames. Where those frames differ, build this.
+
+- **The time you'd reach a spot is labelled "there at",** as in the route's list, never "you're here": on a map that means where you are now.
+- **A grade says its word:** the tile reads "S1, fairly easy" (MTB) or "T2, medium" (SAC), labelled "difficulty" or "trail grade", as More does. The uphill grade is "S1, fairly easy" labelled "uphill difficulty", never "↑S1". One short word a grade, in `js/facts.js` beside the legend's long ones in `js/config.js`: S0 easy, S1 fairly easy, S2 medium, S3 hard, S4 very hard, S5 and S6 extreme; T1 easy, T2 medium, T3 hard, T4 to T6 alpine. The word may wrap in its tile; the grade never breaks.
+- **One name for one thing:** a stretch is a stretch everywhere, so the action is **Edit this stretch**, never "Edit this part". The new finish is **Finish here** on every card, as the point menu says today. The ways are the app's: **Follow paths**, **Straight line**, **Over water**.
+- **No facts strung with dots on a card:** "Forest path, 0.72 km from the start"; "Easy to ride, on dirt"; "Steep descent: 14 % for 80 m"; "For this stretch only. The route is MTB."
+- **Edit this stretch's title** is just that; the two ends go on the line under it, so the title is one line in Finnish too.
+- **A spot's card has numbers too:** how far it is from your route (none with no route), its height, and the sport's fact ("Easy to ride").
+- **A spot's card says a little:** **Start here**, **Finish here**, **Round trip from here** and **Avoid this spot** are buttons; **Share**, **Weather here ›** and **Not right?** share one quiet row at the bottom; **More ›** is a row of its own, without a line under it.
+- **Remove stands apart:** on a point's card it's at the far right of the last row, in the warning colour, as on the planner's point card [jd-card]. Never beside Rename.
+- **Notes name the point:** "Added after Pirunvuoren näköala", from `nameOf()`, never "Via 1" when the point has a name.
+- **Not right?** says what can happen: "Its mappers can fix what you tell them."
+- **Style:** a card's title is weight 700, the heaviest the app uses; a number's label is 12.5 px at least on a phone, for bright sun; the pill stays the card's only filled colour.
 
 ## Review focus
 
@@ -97,9 +113,9 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
 
 **For people:**
 - A tap on a point opens its card. Phones: in the peek. Desktops: at the point.
-- The card: its name, then "Via 1". Three numbers: **10:09** you're here, **1.65 km** from the start, **107 m** height [p-point].
+- The card: its name, then "Via 1". Three numbers: **10:09** there at, **1.65 km** from the start, **107 m** height [p-point].
 - The start says when you leave, with Depart.
-- Actions by name: **Make it a stop**, **Stay the night**, **Change sport**, **Move**, **Rename**, **Remove** (last, with Undo).
+- Actions by name: **Make it a stop**, **Stay the night**, **Change sport**, **Move**, **Rename**, **Remove** (last, apart from the rest, in the warning colour, with Undo).
 - A stop shows its minutes, a night its morning hour, with Places to sleep nearby. A change of sport shows its minutes and the gear.
 - **Start here**, **Finish here** on a via point. **Back to start** on the finish, not on a loop.
 - **The stretch after it ›** names both ends. Until part 2 it opens today's leg menu.
@@ -135,7 +151,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   // a tap on via 1's marker
   p.cards.current.kind === 'point' && !document.querySelector('.maplibregl-popup .pt-menu')
   // the three labels, in order
-  ['you’re here', 'from the start', 'height']
+  ['there at', 'from the start', 'height']
   // phones: the card in the sheet, the toolbox aside
   p.panel.contains(document.querySelector('.card')) && document.querySelector('#pl-tools').hidden
   // Make it a stop: one step of Undo
@@ -158,6 +174,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - Undo of the point's own adding closes its card (`alive()`).
   - Start here and Finish here on via points; Back to start on the finish, none on a loop.
   - Every control at least 44 × 44 px on the phone.
+  - The title's `font-weight` ≤ 700; each `.card-num` label ≥ 12.5 px on the phone. Remove is the last button, with at least 8 px and no other button between it and the row's right edge; Rename isn't next to it.
   - 200 % at 390 × 844: the card's height ≤ 50 % of the window, the point's marker above it on screen.
   - 200 % at 360 × 740 in Finnish: Back and ✕ above the title; every `.card-num` value one line tall; the title's narrowest line at least 60 % of the card's width.
   - 360 × 740 in Finnish with a 40-letter name: no "…", no text past the card.
@@ -174,14 +191,14 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
 
 **For people:**
 - A tap on the route shows the spot's facts. Phones: a pin at the spot and **+ Add a point here** just above it; the card in the peek [p-route]. Desktops: the card at the pointer, Add a point here first [d-route]. Near an edge it opens the other way, and the action moves to the side nearest the pointer.
-- The card: the way's name, and a line like "Forest path · 0.72 km from the start". Three numbers for your sport. A warning on that stretch, if there is one.
-- Then three rows: **This stretch ›**, **What's under ›**, **Edit this part ›**.
+- The card: the way's name, and a line like "Forest path, 0.72 km from the start". Three numbers for your sport. A warning on that stretch, if there is one.
+- Then three rows: **This stretch ›**, **What's under ›**, **Edit this stretch ›**.
 - **+ Add a point here** puts a point at the spot. No routing call, one step of Undo.
-- **This stretch ›** [p-stretch]: both ends ("Lielahti → Siilinkari"), its distance, time and climb, and what to look out for. Then Edit this part and On the profile.
+- **This stretch ›** [p-stretch]: both ends ("Lielahti → Siilinkari"), its distance, time and climb, and what to look out for. Then Edit this stretch and On the profile.
 - **What's under ›** [p-under]: the trail under the line, from the route's own tags. Your sport's facts first, then the other sports' grades, surface, width, the route it's part of, winter.
-- **Edit this part ›** [p-edit, jd-stretch]: "Changes apply to this stretch: its 3 legs". Sport, with "this stretch only · the route is MTB". How it's drawn: only what fits (Follow paths or Straight line on land, Over water or Straight line on water, nothing on a fixed line). Style, with "Paddle's style, for this stretch". Other ways (one leg only), Stop here, Avoid this spot, On the profile. Opened from the list there's no spot, so it's **Avoid a spot here**: tap where.
+- **Edit this stretch ›** [p-edit, jd-stretch]: "Changes apply to this stretch: its 3 legs". Sport, with "For this stretch only. The route is MTB." How it's drawn: only what fits (Follow paths or Straight line on land, Over water or Straight line on water, nothing on a fixed line). Style, with "Paddle's style, for this stretch". Other ways (one leg only), Stop here, Avoid this spot, On the profile. Opened from the list there's no spot, so it's **Avoid a spot here**: tap where.
 - **A stretch** runs between two points you see: the start, the finish, a stop or night, a change of sport, a point you named, or where a leg's settings change. The points between only shape the line.
-- **A long press on the route** (0.5 s, still) or a right-click opens Edit this part directly [p-holdroute, d-edit]. A hold that moves still reshapes the line, as today.
+- **A long press on the route** (0.5 s, still) or a right-click opens Edit this stretch directly [p-holdroute, d-edit]. A hold that moves still reshapes the line, as today.
 - A tap on a handle opens the route's card there.
 - In the route's view: the card without the pill. With the planner put away: Plan opens at the card.
 - The point's **The stretch after it ›** opens the stretch's card now. Today's leg menu goes.
@@ -198,7 +215,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - `SPORT_FACTS = { mtb: ['clock', 'grade', 'mtb'], gravel: ['clock', 'grade', 'surface'], road: ['clock', 'grade', 'surface'], hike: ['clock', 'grade', 'sac'], trailrun: ['clock', 'grade', 'sac'], run: ['clock', 'grade', 'surface'], paddle: ['clock', 'wind', 'temp'], swim: ['clock', 'wind', 'temp'] }`.
   - `headline(a, i, sport) → [{ key, value, label, missing }]`, three of them, at analysis sample `i`.
   - `wayFacts(tags, sport) → [{ key, label, value, missing, src }]`: the sport's own first, then the rest.
-  - Labels: "you're here", "uphill" or "downhill", "difficulty" (MTB S0–S5), "trail grade" (SAC T1–T6), "surface", "wind", "temperature".
+  - Labels: "there at", "uphill" or "downhill", "difficulty" (MTB S0–S6, the value with its word: "S1, fairly easy"), "uphill difficulty", "trail grade" (SAC T1–T6, "T2, medium"), "surface", "wind", "temperature".
   - Missing: "? difficulty not mapped", "? trail grade not mapped", "? surface not mapped", "? no terrain here", "? not known yet" (weather).
 - Produces, in `js/planner.js`:
   - `keyPoint(i) → boolean`, as above.
@@ -211,19 +228,19 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - A tap in the middle of a leg: `p.cards.current.kind === 'route'`; the pill's bottom within 60 px above the tap; points and Undo unchanged.
   - The pill: one more point, within 2 m of the line at the tap; one step of Undo; no routing request.
   - 1440 × 900: the card's first button reads "Add a point here", within 30 px of the click. At the window's right edge it opens to the left, on screen. Near the bottom it opens upwards, its action still within 30 px of the click.
-  - MTB: labels `['you’re here', /uphill|downhill/, 'difficulty']`. On a way with no `mtb:scale`: a dashed tile, "? difficulty not mapped".
+  - MTB: labels `['there at', /uphill|downhill/, 'difficulty']`, the difficulty's value `S1, fairly easy` on an `mtb:scale=1` way. No card's text has ' · ' in it. On a way with no `mtb:scale`: a dashed tile, "? difficulty not mapped".
   - Hike: the third label is "trail grade". What's under still lists MTB difficulty.
   - Three unnamed via points between two named ones: This stretch reads "A → B" and "its 4 legs".
-  - Edit this part, Paddle: every leg of the stretch is paddle and Over water; the legs outside are unchanged; one step of Undo.
+  - Edit this stretch, Paddle: every leg of the stretch is paddle and Over water; the legs outside are unchanged; one step of Undo.
   - The ways offered: land `['Follow paths', 'Straight line']`, water `['Over water', 'Straight line']`, a followed LIPAS leg none.
   - Other ways only on a one-leg stretch.
-  - Touch: held still 0.5 s on the line → Edit this part. Held 0.3 s, then a move of 30 px → reshaped, one point after the release. A 0.2 s tap → the route's card.
-  - Right-click on the line → Edit this part.
+  - Touch: held still 0.5 s on the line → Edit this stretch. Held 0.3 s, then a move of 30 px → reshaped, one point after the release. A 0.2 s tap → the route's card.
+  - Right-click on the line → Edit this stretch.
   - A quick tap on a busy page (#293) → the route's card, nothing in Undo.
-  - The route's view: the card has no pill; Edit this part's Sport switches to editing first.
+  - The route's view: the card has no pill; Edit this stretch's Sport switches to editing first.
   - The planner put away: a tap on the route opens the planner and the route's card.
   - A card open while the leg's routing answer comes in: its numbers change, it stays open.
-- [ ] **Build** `facts.js`, then the cards. The route's numbers come from `routeReadout()`'s sources, `roadAt()` and `a.attr[i].tags`. `onLinePress()`: the split waits for the first move after the 300 ms hold; held still to 500 ms, Edit this part opens and nothing is split.
+- [ ] **Build** `facts.js`, then the cards. The route's numbers come from `routeReadout()`'s sources, `roadAt()` and `a.attr[i].tags`. `onLinePress()`: the split waits for the first move after the 300 ms hold; held still to 500 ms, Edit this stretch opens and nothing is split.
 - [ ] **Groups to run:** `routecard routemenu editing otherways multi stops avoid sweep routeview pointcard water loops`.
 
 ---
@@ -369,7 +386,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - MTB for three legs, then Paddle for three: two sections, their titles start "MTB" and "Paddle"; the change point's row reads "Change to Paddle".
   - A stop at via 4 makes three sections; a night ends one with its morning's start.
   - Six unnamed via points: one stretch row, "via 6 shaping points". Unfolded: six rows. Open a card, Back: still unfolded, `scrollTop` within 2 px.
-  - A stretch row opens its card; Edit this part changes every leg in it.
+  - A stretch row opens its card; Edit this stretch changes every leg in it.
   - A section's warning opens that item's card.
   - Reorder: Earlier on via 2 swaps it, one step of Undo. A mouse drag drops it at place 4. A touch held 0.45 s drags; a move of 30 px within 0.2 s scrolls and never drags. Done: the sections.
   - Keys: Alt+↓ moves; Delete removes, with Undo in the note.
@@ -388,8 +405,8 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
 **For people:**
 - **Hold the map still for 0.5 s,** within 10 px: a ring fills under the finger, then the spot's card [p-press, p-spot]. Let go sooner and it's a tap. A move or a second finger is the map's own.
 - **Right-click** on a desktop: the same card at the pointer [d-spot]. A right-drag still turns the map.
-- **The card:** what's there and its line ("Forest path", "Easy to ride · dirt"); **More ›**; then **Start here**, **End here**, **Round trip from here**, **Avoid this spot**.
-- **+ Add to my route** in the pill puts the point where it fits: where it adds the least distance, between two points or after the finish, never before the start [p-added]. The note says where ("Point added after Via 1"), with Undo.
+- **The card:** what's there and its line ("Forest path", "Easy to ride, on dirt"); three numbers: from your route, height and the sport's fact; **More ›**; then **Start here**, **Finish here**, **Round trip from here**, **Avoid this spot**.
+- **+ Add to my route** in the pill puts the point where it fits: where it adds the least distance, between two points or after the finish, never before the start [p-added]. The note names the point it follows ("Added after Pirunvuoren näköala"), with Undo.
 - With no route the pill says **+ Start a route here** [p-none].
 - **A tap on a place's icon** while drawing shows its card instead of adding a point [p-place]: a campfire site, a toilet, a lean-to, a LIPAS place, an obstacle. A tap on a road, a trail or the open map still adds a point.
 - A place's card: its name and kind, its source, three labelled facts, More ›, the same actions and pill.
@@ -416,10 +433,11 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - The ring shows from 0.15 s of the hold, and goes after it.
   - A hold on a point's marker or a label selects no text: the map's container has `-webkit-touch-callout: none` and `user-select: none`, the card's text stays selectable. iOS's callout and magnifier need a real phone.
   - Right-click: the card at the pointer. A right-drag of 40 px turns the map and opens nothing.
-  - Points A, B, C. A spot beside the middle of A–B: the new point is at index 1. Past C: at the end. Behind A: index 1, never 0. The note reads "Point added after Start". Undo: as before, one step.
-  - Start here: the new start at the spot. End here: the new finish.
+  - Points A, B, C. A spot beside the middle of A–B: the new point is at index 1. Past C: at the end. Behind A: index 1, never 0. The note reads "Added after " and the start's name. Undo: as before, one step.
+  - Start here: the new start at the spot. Finish here: the new finish.
   - A tap on a rendered `poi-outdoor` icon while drawing: its card, no point. A tap on the path beside it: a point.
   - No route: the pill starts a route with one point, editing.
+  - The spot's card: three numbers, "from your route" first (none with no route); Share, Weather here and Not right? in one row, last.
   - The planner put away: a hold opens the card at the spot.
 - [ ] **Build** `bindHold()` from `bindSpotMenu()`'s guards (a second finger, a move, a late touchend, Android's `contextmenu`), at 500 ms. Then the cards, then Add to my route. The planner's hint (`els.hint`) and `TIPS` say what a tap and a hold do now.
 - [ ] **Groups to run:** `spotcard routemenu routeview start editing pointcard routecard`.
