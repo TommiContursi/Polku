@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-21
 
+### The round trip asks in the order you choose ([#233](https://github.com/TommiContursi/Polku/issues/233))
+
+Opened from **Start a route**, the round trip now asks where it starts first: tap the map, or **Where I am**. Then **How long**: **Distance** or **Time**, one of the sport's lengths, or **Other…**, which opens a field for a length of your own with **−** and **+**. The direction has a row of its own, and **Make 3 loops** comes last, as before.
+
 ### A calmer planner: the sport, and what it changes ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 The map's sport, each leg's sport and the sport of the legs you draw next are now kept apart, and changing one no longer quietly changes the others.
