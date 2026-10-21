@@ -355,6 +355,22 @@ button.warnr span { flex: 1; font-weight: 600; }
 .fr.dark .c2-warn.read { background: rgba(255,138,138,.14); }
 .c2-warn.read { background: #fbe9e9; }
 .c2-warn.read > .ic:first-child { color: var(--danger); }
+/* ================================================================ Revision 3: Revision 1's look, with Back in words, and compact on desktops */
+.c2-back-words { width: auto !important; padding: 0 10px 0 4px; display: inline-flex !important; align-items: center; gap: 4px; font-size: 15px; font-weight: 650; color: var(--accent); }
+.c2-back-words span { white-space: normal; text-align: left; line-height: 1.15; }
+/* with Back, Back and ✕ have a row of their own, and the mark and the name the next (as the start's steps) */
+.r3 .c2-top:has(.c2-back) { flex-wrap: wrap; row-gap: 4px; }
+.r3 .c2-top:has(.c2-back) .c2-back { order: 0; margin: -6px 0 0 -10px; }
+.r3 .c2-top:has(.c2-back) .c2-dock { order: 1; margin-left: auto; }
+.r3 .c2-top:has(.c2-back) .c2-x { order: 2; margin-left: auto; }
+.r3 .c2-top:has(.c2-back) .c2-dock + .c2-x { margin-left: 0; }
+.r3 .c2-top:has(.c2-back) .c2-br { display: block; order: 3; flex-basis: 100%; height: 0; }
+.r3 .c2-top:has(.c2-back) .c2-g { order: 4; }
+.r3 .c2-top:has(.c2-back) .c2-ttl { order: 5; flex: 1 1 0; }
+/* desktops: compact; an explanation is the item's tooltip, a stretch's ends stay */
+.r3 .pop .c2-item small.desc { display: none; }
+.r3 .pop .c2-item { min-height: 40px; }
+
 /* ================================================================ The app's own controls
    Copied from css/app.css at 615d2d7, with the same class names, so what is approved here is what gets built.
    Don't change them here: change css/app.css, then copy again. Scoped under .app, since the mock-up's own chrome
@@ -576,7 +592,7 @@ button.warnr span { flex: 1; font-weight: 600; }
   </header>
   <section class="cv-q">
     <h2>Revised (2026-10-21, after the user's second review)</h2>
-    <p>The <b>Cards</b> switch at the bottom right shows each version on every frame: <b>As approved</b> (the morning), <b>Revision 1</b> (its own controls, 08bd488) and <b>Revision 2</b> (the app's controls). Nothing is overwritten.</p>
+    <p>The <b>Cards</b> switch at the bottom right shows each version on every frame: <b>As approved</b> (the morning), <b>Revision 1</b> (its own controls, 08bd488), <b>Revision 2</b> (the app's controls) and <b>Revision 3</b> (the default: Revision 1's look, with Back in words, a line only where it adds what the name doesn't say, and compact on desktops). Nothing is overwritten.</p>
     <ul>
       <li><b>The app's own controls, nothing new:</b> rows that open the next step are the ways to begin's tiles; actions in a group are the ⋯ menu's items; the main action is Make 3 loops' button; switches are Distance · Time; chips are the lengths'; Back has words. The CSS is a copy of the app's, with the same class names (section 0 shows them side by side).</li>
       <li><b>One main thing stands out:</b> the pill at your finger, a filled button (Edit this stretch, Avoid it), or a point's <b>At this point</b> switch.</li>
@@ -784,7 +800,7 @@ button.warnr span { flex: 1; font-weight: 600; }
 
 <div class="picker" data-open="true">
   <div class="pk-groups" role="group" aria-label="Mock-up switches">
-    <div><span>Cards</span><button type="button" data-pk="cards" data-v="v1" aria-pressed="false">As approved</button><button type="button" data-pk="cards" data-v="r1" aria-pressed="false">Revision 1</button><button type="button" data-pk="cards" data-v="v2" aria-pressed="true">Revision 2</button></div>
+    <div><span>Cards</span><button type="button" data-pk="cards" data-v="v1" aria-pressed="false">As approved</button><button type="button" data-pk="cards" data-v="r1" aria-pressed="false">Revision 1</button><button type="button" data-pk="cards" data-v="v2" aria-pressed="false">Revision 2</button><button type="button" data-pk="cards" data-v="r3" aria-pressed="true">Revision 3</button></div>
     <div><span>Size</span><button type="button" data-pk="size" data-v="390" aria-pressed="true">390</button><button type="button" data-pk="size" data-v="360" aria-pressed="false">360</button><button type="button" data-pk="size" data-v="200" aria-pressed="false">200 %</button></div>
     <div><span>Sport</span><button type="button" data-pk="sport" data-v="mtb" aria-pressed="true">MTB</button><button type="button" data-pk="sport" data-v="hike" aria-pressed="false">Hike</button></div>
     <div><span>Words</span><button type="button" data-pk="lang" data-v="en" aria-pressed="true">English</button><button type="button" data-pk="lang" data-v="fi" aria-pressed="false">Suomi</button></div>
@@ -865,7 +881,7 @@ const WAYS = [[0.7, 'Gravel path', 'Sorapolku', 'Kaupin ulkoilureitti', 'S0', 'T
 const OSM_TAGS = { way: ['highway=path', 'surface=dirt', 'mtb:scale=1', 'mtb:scale:uphill=1', 'sac_scale=hiking', 'trail_visibility=excellent', 'width=1', 'check_date=2024-06-12', 'way 123456789'],
   place: ['amenity=toilets', 'toilets:disposal=pitlatrine', 'fee=no', 'wheelchair=no', 'leisure=firepit', 'check_date=2023-08-02', 'node 987654321'] };
 
-let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb', cards: ['v1', 'r1'].includes(Q.get('cards')) ? Q.get('cards') : 'v2' };
+let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb', cards: ['v1', 'r1', 'v2'].includes(Q.get('cards')) ? Q.get('cards') : 'r3' };
 const ic = (id, s = 20) => `<svg class="ic" width="${s}" height="${s}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -1008,6 +1024,256 @@ function pointCard(f, st) {
     <div class="rows">${rowBtn('noop', t.after, `${ptName(f, i)} → ${ptName(f, i + 1)}`)}</div>`;
 }
 const CARDS = { route: routeCard, stretch: stretchCard, under: underCard, edit: editCard, spot: spotCard, more: moreCard, osm: osmCard, notright: notRightCard, place: placeCard, placemore: placeMoreCard, point: pointCard };
+
+// ------------------------------------------------ Revision 3: Revision 1 with the user's answers (2026-10-21): Back in words,
+// a line only where it adds what the name doesn't say, compact on desktops with the rest as a tooltip
+const CARDS_R3 = (() => {
+// ------------------------------------------------ the revised cards (2026-10-21): their words
+const T2 = {
+  en: {
+    start: 'Start', end: 'End', via: 'Via', back: 'Back', close: 'Close',
+    there: 'there at', youLeave: 'you leave', fromStart: 'from the start', height: 'height', uphill: 'uphill', downhill: 'downhill',
+    diff: 'difficulty', upDiff: 'uphill difficulty', trailGrade: 'trail grade', notMapped: 'not mapped', fromRoute: 'from your route',
+    grades: { S0: 'easy', S1: 'fairly easy', S2: 'medium', S3: 'hard', S4: 'very hard', S5: 'extreme', T1: 'easy', T2: 'medium', T3: 'hard', T4: 'alpine' },
+    atPoint: 'At this point', pass: 'Pass by', stop: 'Stop', night: 'Night',
+    getHere: (a, b) => `You get here at ${a} and go on at ${b}`, goOnAt: 'Go on at', nextMorning: 'the next morning',
+    less: '5 minutes less', more5: '5 minutes more',
+    sleep: 'Places to sleep nearby', sleepSub: 'Lean-tos, huts and campsites within 3 km',
+    leave: 'Leave at', leaveVal: 'Now', leaveSub: 'Sets the times and the weather along the route',
+    fromHere: 'From here', sportFrom: 'Sport from here', sportFromSub: 'To the next change of sport, or the end',
+    changeover: 'Changeover', bikeAlong: 'Take the bike along', bikeAlongSub: 'Off: it stays here, and Check makes sure you come back for it',
+    after: 'The stretch after it', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
+    startHere: 'Start here', startSub: 'The part before it is removed, Undo brings it back', endHere: 'End here', endSub: 'The part after it is removed, Undo brings it back',
+    loopStart: 'Start here', loopStartSub: 'The same loop, starting from this point',
+    remove: 'Remove', removeSub: 'Undo brings it back',
+    theRoute: 'The route', backStart: 'Back to start', backStartSub: 'Adds a leg back to the start',
+    renameLabel: 'The point’s name', save: 'Save',
+    sportsTitle: 'Sport from here', sportsSub: (a) => `From ${a} to the next change of sport, or the end`, yourRoute: 'your route',
+    sports: [['mtb', 'MTB', 'bike'], ['gravel', 'Gravel', 'bike'], ['road', 'Road cycling', 'bike'], ['hike', 'Hike', 'walk'], ['trailrun', 'Trail running', 'walk'], ['run', 'Running', 'walk'], ['paddle', 'Paddle', 'water'], ['swim', 'Swim', 'water']],
+    sportNames: { mtb: 'MTB', hike: 'Hike', paddle: 'Paddle' },
+    stretch: 'This stretch', here: 'What’s here', hereSub: 'The trail, as the map knows it', hereSpotSub: 'Everything Polku knows here',
+    edit: 'Edit this stretch', editSub: 'Sport, how it’s drawn, style', editNote: 'Changes apply to this stretch: its 3 legs',
+    howYouGo: 'How you go', sport: 'Sport', sportSame: 'Like the rest of the route', drawn: 'How it’s drawn', follow: 'Follow paths', straight: 'Straight line',
+    style: 'Route style', styleSub: (sp) => `${sp}’s style, the same as the route`, balanced: 'Balanced',
+    onStretch: 'On this stretch', other: 'Other ways', otherSub: 'Up to two, on the map', stopHere: 'Stop here', stopHereSub: 'A break or a night at this spot',
+    avoid: 'Avoid this spot', avoidSub: 'The route goes around it, 40 m', profile: 'On the profile', profileSub: 'Zooms the profile to this stretch',
+    lookOut: 'Look out for', distance: 'distance', time: 'time', climb: 'climb', min: 'min',
+    yourRouteH: 'Your route', startSpot: 'Start here', startSpotSub: 'Adds a new start point', endSpot: 'End here', endSpotSub: 'Adds a new end point',
+    round: 'Round trip from here', roundSub: 'Loops of the length you choose, from here',
+    share: 'Share', weather: 'Weather here', notRight: 'Not right?',
+    locked: 'You’re not editing: the route stays as it is.', editBtn: 'Edit',
+    look: 'Steep descent', lookLine: 'Worth a look', lookWhere: '2.3 km', long: 'long', steepest: 'steepest', lookSrc: 'An estimate from the terrain model',
+    lookNote: 'Downhill for 80 m. Walk it if it’s wet.', avoidIt: 'Avoid it', allCheck: 'All in Check', ofN: (i, n) => `${i} of ${n}`, prev: 'Previous', next: 'Next',
+    removed: (n) => `${n} removed`, startsHere: 'The route starts here now', endsHere: 'The route ends here now', undo: 'Undo',
+    firstLine: 'Tap the map where you go next.', hint: 'Hold the map to see what’s there.',
+    fromOsm: 'From OpenStreetMap', fromLipas: 'From LIPAS', groups: { mtb: 'For MTB', hike: 'For hiking', winter: 'In winter', spot: 'The spot', checked: 'Last checked', site: 'At the site', thereG: 'Getting there', when: 'When' },
+    kv: { diffK: 'Difficulty', upK: 'Uphill difficulty', surface: 'Surface', width: 'Width', sac: 'Trail grade', vis: 'Visibility', clear: 'Clear', dirt: 'Dirt', ploughed: 'Not ploughed', coords: 'Coordinates', copy: 'Copy', partOf: 'Part of' },
+    osm: 'All OpenStreetMap details', spots: { forest: ['Forest path', { mtb: 'Easy to ride, on dirt', hike: 'Easy to walk, on dirt' }], lake: ['Näsijärvi', 'Lake: depths shown, not for navigation'], town: ['Kaupintie', 'Residential street, asphalt'] },
+    kinds: { 'Gravel path': 'Gravel path', 'Forest path': 'Forest path', 'Shore path': 'Shore path', 'Gravel road': 'Gravel road' },
+    placeFacts: ['Free toilet', 'Firewood in summer', 'Lean-to nearby'],
+  },
+  fi: {
+    start: 'Lähtö', end: 'Loppu', via: 'Välipiste', back: 'Takaisin', close: 'Sulje',
+    there: 'perillä', youLeave: 'lähdet', fromStart: 'lähdöstä', height: 'korkeus', uphill: 'ylämäkeä', downhill: 'alamäkeä',
+    diff: 'vaativuus', upDiff: 'ylämäen vaativuus', trailGrade: 'polun luokka', notMapped: 'ei kartalla', fromRoute: 'reitiltäsi',
+    grades: { S0: 'helppo', S1: 'melko helppo', S2: 'keskivaikea', S3: 'vaikea', S4: 'hyvin vaikea', S5: 'äärimmäinen', T1: 'helppo', T2: 'keskivaikea', T3: 'vaikea', T4: 'alppimaasto' },
+    atPoint: 'Tässä pisteessä', pass: 'Ohitse', stop: 'Tauko', night: 'Yöpyminen',
+    getHere: (a, b) => `Olet täällä ${a} ja jatkat ${b}`, goOnAt: 'Jatka klo', nextMorning: 'seuraavana aamuna',
+    less: '5 minuuttia vähemmän', more5: '5 minuuttia enemmän',
+    sleep: 'Yöpaikat lähellä', sleepSub: 'Laavut, kodat ja leirintäalueet 3 km:n sisällä',
+    leave: 'Lähtöaika', leaveVal: 'Nyt', leaveSub: 'Ajat ja sää reitin varrella lasketaan tästä',
+    fromHere: 'Tästä eteenpäin', sportFrom: 'Laji tästä eteenpäin', sportFromSub: 'Seuraavaan lajinvaihtoon tai loppuun',
+    changeover: 'Vaihtoaika', bikeAlong: 'Pyörä mukaan', bikeAlongSub: 'Pois: se jää tähän, ja Tarkista varmistaa, että palaat hakemaan sen',
+    after: 'Seuraava osuus', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
+    startHere: 'Aloita tästä', startSub: 'Osa ennen tätä poistetaan, Kumoa tuo sen takaisin', endHere: 'Lopeta tähän', endSub: 'Osa tämän jälkeen poistetaan, Kumoa tuo sen takaisin',
+    loopStart: 'Aloita tästä', loopStartSub: 'Sama kierros, alkaen tästä pisteestä',
+    remove: 'Poista', removeSub: 'Kumoa tuo sen takaisin',
+    theRoute: 'Reitti', backStart: 'Takaisin lähtöön', backStartSub: 'Lisää osuuden takaisin lähtöön',
+    renameLabel: 'Pisteen nimi', save: 'Tallenna',
+    sportsTitle: 'Laji tästä eteenpäin', sportsSub: (a) => `Pisteestä ${a} seuraavaan lajinvaihtoon tai loppuun`, yourRoute: 'reittisi',
+    sports: [['mtb', 'Maastopyöräily', 'bike'], ['gravel', 'Gravel', 'bike'], ['road', 'Maantiepyöräily', 'bike'], ['hike', 'Retkeily', 'walk'], ['trailrun', 'Polkujuoksu', 'walk'], ['run', 'Juoksu', 'walk'], ['paddle', 'Melonta', 'water'], ['swim', 'Uinti', 'water']],
+    sportNames: { mtb: 'Maastopyöräily', hike: 'Retkeily', paddle: 'Melonta' },
+    stretch: 'Tämä osuus', here: 'Mitä tässä on', hereSub: 'Polku sellaisena kuin kartta sen tuntee', hereSpotSub: 'Kaikki, mitä Polku tästä tietää',
+    edit: 'Muokkaa tätä osuutta', editSub: 'Laji, miten se piirretään, tyyli', editNote: 'Muutokset koskevat tätä osuutta: sen 3 osaa',
+    howYouGo: 'Miten kuljet', sport: 'Laji', sportSame: 'Kuten muu reitti', drawn: 'Miten se piirretään', follow: 'Seuraa polkuja', straight: 'Suora viiva',
+    style: 'Reitin tyyli', styleSub: (sp) => `Lajin ${sp} tyyli, sama kuin reitillä`, balanced: 'Tasapainoinen',
+    onStretch: 'Tällä osuudella', other: 'Muita reittejä', otherSub: 'Enintään kaksi, kartalla', stopHere: 'Pysähdy tähän', stopHereSub: 'Tauko tai yö tässä kohdassa',
+    avoid: 'Vältä tätä kohtaa', avoidSub: 'Reitti kiertää sen, 40 m', profile: 'Profiilissa', profileSub: 'Zoomaa profiilin tähän osuuteen',
+    lookOut: 'Huomaa', distance: 'matka', time: 'aika', climb: 'nousu', min: 'min',
+    yourRouteH: 'Reittisi', startSpot: 'Aloita tästä', startSpotSub: 'Lisää uuden lähtöpisteen', endSpot: 'Lopeta tähän', endSpotSub: 'Lisää uuden loppupisteen',
+    round: 'Kierros tästä', roundSub: 'Valitsemasi pituisia kierroksia tästä',
+    share: 'Jaa', weather: 'Sää tässä', notRight: 'Eikö pidä paikkaansa?',
+    locked: 'Et muokkaa: reitti pysyy sellaisenaan.', editBtn: 'Muokkaa',
+    look: 'Jyrkkä lasku', lookLine: 'Katso tarkemmin', lookWhere: '2,3 km', long: 'pitkä', steepest: 'jyrkimmillään', lookSrc: 'Arvio maastomallista',
+    lookNote: 'Alamäkeä 80 m. Taluta, jos on märkää.', avoidIt: 'Vältä', allCheck: 'Kaikki Tarkista-välilehdellä', ofN: (i, n) => `${i}/${n}`, prev: 'Edellinen', next: 'Seuraava',
+    removed: (n) => `${n} poistettu`, startsHere: 'Reitti alkaa nyt tästä', endsHere: 'Reitti loppuu nyt tähän', undo: 'Kumoa',
+    firstLine: 'Napauta karttaa, minne menet seuraavaksi.', hint: 'Pidä karttaa painettuna nähdäksesi, mitä siinä on.',
+    fromOsm: 'OpenStreetMapista', fromLipas: 'LIPASista', groups: { mtb: 'Maastopyöräilyyn', hike: 'Retkeilyyn', winter: 'Talvella', spot: 'Paikka', checked: 'Tarkistettu viimeksi', site: 'Paikalla', thereG: 'Perille', when: 'Milloin' },
+    kv: { diffK: 'Vaativuus', upK: 'Ylämäen vaativuus', surface: 'Pinta', width: 'Leveys', sac: 'Polun luokka', vis: 'Näkyvyys', clear: 'Selvä', dirt: 'Maapohja', ploughed: 'Ei aurata', coords: 'Koordinaatit', copy: 'Kopioi', partOf: 'Osa reittiä' },
+    osm: 'Kaikki OpenStreetMapin tiedot', spots: { forest: ['Metsäpolku', { mtb: 'Helppo ajaa, maapohja', hike: 'Helppo kävellä, maapohja' }], lake: ['Näsijärvi', 'Järvi: syvyydet vain näytetään, ei navigointiin'], town: ['Kaupintie', 'Asuinkatu, asfaltti'] },
+    kinds: { 'Gravel path': 'Sorapolku', 'Forest path': 'Metsäpolku', 'Shore path': 'Rantapolku', 'Gravel road': 'Soratie' },
+    placeFacts: ['Ilmainen WC', 'Polttopuita kesällä', 'Laavu lähellä'],
+  },
+};
+const U = (f) => T2[f.lang];
+// the thing's own mark, as the map draws it: a point's marker, the stretch between two, a spot's pin, a place's icon
+const G2 = {
+  via: (n) => `<span class="c2-g" aria-hidden="true"><span class="mk2 c2-g" style="width:28px;height:28px">${n}</span></span>`,
+  start: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#2e9e5b" stroke="#fff" stroke-width="2.5"/><path d="M12 9.8v10.4l8.4-5.2z" fill="#fff"/></svg></span>',
+  end: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#111" stroke="#fff" stroke-width="2.5"/><rect x="10" y="10" width="10" height="10" rx="1.5" fill="#fff"/></svg></span>',
+  stretch: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+  way: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M2 23C13 23 19 7 32 7" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" fill="#1f6f4a" stroke="#fff" stroke-width="2.6"/></svg></span>',
+  pin: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="8" fill="#1f6f4a" stroke="#fff" stroke-width="3"/><circle cx="15" cy="15" r="11.5" fill="none" stroke="#1f6f4a" stroke-width="2"/></svg></span>',
+  place: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#d93a2f" stroke="#fff" stroke-width="2.5"/><path d="M15 8.5c2.6 3 4.4 5 4.4 7.7a4.4 4.4 0 0 1-8.8 0c0-1.6.8-2.7 1.9-3.8.2 1.3.8 2 1.6 2.3-.5-2.2.1-4.2.9-6.2Z" fill="#fff"/></svg></span>',
+  look: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#fbf4e2" stroke="#8a5a00" stroke-width="1.5"/><path d="M6.5 15s3.2-5.2 8.5-5.2 8.5 5.2 8.5 5.2-3.2 5.2-8.5 5.2S6.5 15 6.5 15Z" fill="none" stroke="#8a5a00" stroke-width="1.8"/><circle cx="15" cy="15" r="2.4" fill="#8a5a00"/></svg></span>',
+  edit: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#1f6f4a" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+};
+const pn = (f, i) => { const u = U(f), n = (f.worst ? NAMES.worst : NAMES.en)[i]; return n || [u.start, `${u.via} 1`, u.end][i]; };
+const ptSub = (f, i) => { const u = U(f); return i === 0 ? u.start : i === POINTS.length - 1 ? u.end : `${u.via} ${i}`; };
+// the parts
+function head2(f, glyph, title, sub, backTo, { raw = false, save = false } = {}) {
+  const u = U(f);
+  const dock = f.z >= 2 && !f.view ? `<span class="c2-dock"><button type="button" data-act="noop" aria-label="Undo">${ic('undo', 22)}</button><button type="button" data-act="noop" aria-label="Redo">${ic('redo', 22)}</button></span>` : '';
+  return `<div class="c2-top">${backTo ? `<button type="button" class="c2-back" data-act="${backTo}" aria-label="${esc(u.back)}">${ic('left', 22)}</button>` : ''}${dock}<button type="button" class="c2-x" data-act="close" aria-label="${esc(u.close)}">${ic('close', 22)}</button><span class="c2-br"></span>${glyph || ''}<span class="c2-ttl">${raw ? title : `<b>${esc(title)}</b>`}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${save ? `<button type="button" class="c2-save" data-act="renamed">${esc(u.save)}</button>` : ''}</div>`;
+}
+// numbers as the route's summary has them: [value, label, missing, word]
+const nums2 = (list) => `<div class="c2-nums">${list.map(([v, l, miss, word]) => `<span class="c2-num${miss ? ' miss' : ''}"><b>${esc(v)}</b>${word ? `<em>${esc(word)}</em>` : ''}<small>${esc(l)}</small></span>`).join('')}</div>`;
+const grp = (t) => `<h4 class="c2-h">${esc(t)}</h4>`;
+// an item, as the ⋯ menu has them: its icon, its name, one line on what it does; a value and › when it opens a choice
+const item = (act, icon, label, sub, { val = null, chev = false, cls = '', role = '', checked = null } = {}) =>
+  `<button type="button" class="c2-item ${cls}" data-act="${act}"${role ? ` role="${role}"` : ''}${checked != null ? ` aria-checked="${checked}"` : ''}>${icon ? ic(icon, 20) : ''}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${val ? `<span class="val">${esc(val)}</span>` : ''}${chev ? `<span class="chev">${ic('right', 18)}</span>` : ''}${checked ? `<span class="tick">${ic('check', 20)}</span>` : ''}</button>`;
+const list = (items) => `<div class="c2-list">${items.filter(Boolean).join('')}</div>`;
+const lock = (f) => { const u = U(f); return `<div class="c2-lock" role="note">${ic('info', 18)}<span>${esc(u.locked)}</span><button type="button" data-act="edit-on">${ic('pencil', 16)}${esc(u.editBtn)}</button></div>`; };
+const foot2 = (f, { share = true } = {}) => { const u = U(f); return `<div class="c2-foot">${share ? `<button type="button" data-act="share">${ic('share', 18)}${esc(u.share)}</button><button type="button" data-act="noop">${ic('weather', 18)}${esc(u.weather)} ›</button>` : ''}<span class="grow"></span><button type="button" class="nr" data-act="notright">${esc(u.notRight)}</button></div>`; };
+const gradeNum = (f, w) => {
+  const u = U(f), g = f.sport === 'hike' ? w[5] : w[4], label = f.sport === 'hike' ? u.trailGrade : u.diff;
+  return g ? [g, label, false, u.grades[g]] : ['?', `${label} ${u.notMapped}`, true];
+};
+function routeNums2(f, km) {
+  const u = U(f), w = wayAt(km), g = grade(km);
+  return nums2([[clock(km, f.sport), u.there], [`${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(0)} %`, g >= 0 ? u.uphill : u.downhill], gradeNum(f, w)]);
+}
+const kindOf = (f, w) => U(f).kinds[w[1]] || (f.lang === 'fi' ? w[2] : w[1]);
+
+// ------------------------------------------------ the revised cards
+function pointCard2(f, st) {
+  const u = U(f), i = st.pt, q = POINTS[i], first = i === 0, last = i === POINTS.length - 1, here = st.here || 'pass', view = st.view;
+  const glyph = first ? G2.start : last ? G2.end : G2.via(i);
+  const title = st.renaming ? `<input class="c2-in" aria-label="${esc(u.renameLabel)}" value="${esc(pn(f, i))}">` : pn(f, i);
+  let h = head2(f, glyph, title, ptSub(f, i), st.from || null, { raw: !!st.renaming, save: !!st.renaming });
+  h += nums2(first ? [[clock(0, f.sport), u.youLeave], [`${ele(0)} m`, u.height]] : [[clock(q.km, f.sport), u.there], [fmtKm(q.km), u.fromStart], [`${ele(q.km)} m`, u.height]]);
+  if (!first && !last) {
+    h += grp(u.atPoint) + `<div class="c2-seg" role="radiogroup" aria-label="${esc(u.atPoint)}">${[['pass', 'pass', u.pass], ['stop', 'pause', u.stop], ['night', 'moon', u.night]].map(([k, icn, l]) => `<button type="button" role="radio" aria-checked="${here === k}" data-act="here-${k}">${ic(icn, 20)}<span>${esc(l)}</span></button>`).join('')}</div>`;
+    const arr = clock(q.km, f.sport), m = st.min || 30;
+    if (here === 'stop') { const [hh, mm] = arr.split(':').map(Number), t = hh * 60 + mm + m; h += `<div class="c2-detail"><span class="c2-step"><button type="button" data-act="min-" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${m} ${u.min}</b><button type="button" data-act="min+" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span><small>${esc(u.getHere(arr, `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`))}</small></div>`; }
+    if (here === 'night') h += `<div class="c2-detail"><span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="noop">07:00 ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span></div>${list([item('noop', 'tent', u.sleep, u.sleepSub, { chev: true })])}`;
+  }
+  if (first) h += list([item('noop', 'clock', u.leave, u.leaveSub, { val: u.leaveVal, chev: true })]);
+  const afterRow = !last ? item('noop', null, u.after, `${pn(f, i)} → ${pn(f, i + 1)}`, { chev: true }) : '';
+  if (view) return h + list([afterRow]) + lock(f);
+  if (!last) {
+    const ch = st.change;
+    h += list([item('sport', ch ? 'water' : 'bike', u.sportFrom, u.sportFromSub, { val: ch ? u.sportNames.paddle : (u.sportNames[f.sport] || f.sport), chev: true })]);
+    if (ch) h += `<div class="c2-detail"><span>${esc(u.changeover)}</span><span class="c2-step"><button type="button" data-act="noop" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>10 ${u.min}</b><button type="button" data-act="noop" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span></div><label class="c2-item c2-tg" style="margin:0 -10px;width:auto"><span><b>${esc(u.bikeAlong)}</b><small>${esc(u.bikeAlongSub)}</small></span><i class="${st.bike ? 'on' : ''}" data-act="bike" role="switch" aria-checked="${!!st.bike}" tabindex="0"></i></label>`;
+    h += list([afterRow]);
+  } else h += grp(u.theRoute) + list([item('noop', 'loop', u.backStart, u.backStartSub)]);
+  h += grp(u.editPoint) + `<div class="c2-pair">${item('move', 'move', u.move, null)}${item('rename', 'pencil', u.rename, null)}</div>`;
+  if (!first && !last) h += list([item('startat', 'flag', u.startHere, u.startSub), item('endat', 'finish', u.endHere, u.endSub)]);
+  return h + `<div class="c2-hr"></div>` + list([item('remove', 'trash', u.remove, u.removeSub, { cls: 'danger' })]);
+}
+function sportCard2(f, st) {
+  const u = U(f), cur = st.change ? 'paddle' : f.sport;
+  return head2(f, G2.via(st.pt), u.sportsTitle, u.sportsSub(pn(f, st.pt)), 'point') + list(u.sports.map(([k, l, icn]) => item(`pick-${k}`, icn, l, k === f.sport ? u.yourRoute : null, { role: 'menuitemradio', checked: k === cur })));
+}
+function routeCard2(f, st) {
+  const u = U(f), km = st.km, w = wayAt(km), s = stretchOf(km);
+  let h = head2(f, G2.way, w[3], `${kindOf(f, w)}, ${fmtKm(km)} ${u.fromStart}`) + routeNums2(f, km);
+  if (s) h += `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
+  h += list([item('stretch', null, u.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, { chev: true }), item('here', null, u.here, null, { chev: true }), st.view ? '' : item('edit', null, u.edit, null, { chev: true })]);
+  return st.view ? h + lock(f) : h;
+}
+function stretchCard2(f, st) {
+  const u = U(f), s = stretchOf(st.km), len = POINTS[s + 1].km - POINTS[s].km;
+  let h = head2(f, G2.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, u.stretch, 'route') + nums2([[fmtKm(len), u.distance], [`${Math.round(len * PACE[f.sport])} ${u.min}`, u.time], [`↑${s ? 14 : 28} m`, u.climb]]);
+  if (s) h += grp(u.lookOut) + `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
+  h += st.view ? lock(f) : `<button type="button" class="c2-main" data-act="edit">${ic('pencil', 20)}${esc(u.edit)}</button>`;
+  return h + list([item('noop', 'mountain', u.profile, null)]);
+}
+function editCard2(f, st) {
+  const u = U(f), s = stretchOf(st.km), sp = u.sportNames[f.sport] || f.sport;
+  return head2(f, G2.edit, u.edit, `${pn(f, s)} → ${pn(f, s + 1)}`, st.held ? null : 'route') + `<p class="c2-note">${esc(u.editNote)}</p>`
+    + grp(u.howYouGo) + list([item('noop', f.sport === 'hike' ? 'walk' : 'bike', u.sport, u.sportSame, { val: sp, chev: true })])
+    + `<div class="c2-seg two" role="radiogroup" aria-label="${esc(u.drawn)}"><button type="button" role="radio" aria-checked="${st.drawn !== 'line'}" data-act="drawn-auto">${ic('auto', 18)}<span>${esc(u.follow)}</span></button><button type="button" role="radio" aria-checked="${st.drawn === 'line'}" data-act="drawn-line">${ic('line', 18)}<span>${esc(u.straight)}</span></button></div>`
+    + list([item('noop', 'style', u.style, u.styleSub(sp), { val: u.balanced, chev: true })])
+    + grp(u.onStretch) + list([item('noop', 'route', u.other, u.otherSub), item('noop', 'pause', u.stopHere, null), item('noop', 'avoid', u.avoid, u.avoidSub), item('noop', 'mountain', u.profile, null)]);
+}
+const spotOf2 = (f, p) => { const u = U(f), g = f.g; if (p[1] < g.water) return u.spots.lake; if (p[1] > g.town) return u.spots.town; return [u.spots.forest[0], u.spots.forest[1][f.sport]]; };
+function spotCard2(f, st) {
+  const u = U(f), [name, line] = spotOf2(f, st.at), d = Math.round(nearest(f.g, st.at).d * 2.9 / 10) * 10, w = { 4: 'S0', 5: 'T1' };
+  const third = st.at[1] < f.g.water ? ['?', `${f.sport === 'hike' ? u.trailGrade : u.diff} ${u.notMapped}`, true] : gradeNum(f, ['', '', '', '', 'S0', 'T1']);
+  let h = head2(f, G2.pin, name, line) + nums2([...(st.noRoute ? [] : [[`${d} m`, u.fromRoute]]), [`${ele(1.2)} m`, u.height], third]);
+  h += list([item('here', null, u.here, null, { chev: true })]);
+  if (st.view) return h + lock(f) + foot2(f);
+  h += grp(u.yourRouteH) + list(st.noRoute ? [item('noop', 'roundtrip', u.round, null)] : [item('startspot', 'flag', u.startSpot, u.startSpotSub), item('endspot', 'finish', u.endSpot, u.endSpotSub), item('noop', 'roundtrip', u.round, null), item('noop', 'avoid', u.avoid, u.avoidSub)]);
+  return h + foot2(f);
+}
+function placeCard2(f, st) {
+  const u = U(f), t = T[f.lang];
+  let h = head2(f, G2.place, t.place, t.placeSub) + `<span class="c2-src">${esc(u.fromLipas)}</span>` + `<ul class="c2-facts">${u.placeFacts.map((c) => `<li>${ic('check', 20)}${esc(c)}</li>`).join('')}</ul>`;
+  h += list([item('placemore', null, u.here, null, { chev: true })]);
+  if (st.view) return h + lock(f) + foot2(f);
+  h += grp(u.yourRouteH) + list([item('noop', 'flag', u.startSpot, u.startSpotSub), item('noop', 'finish', u.endSpot, u.endSpotSub), item('noop', 'roundtrip', u.round, null)]);
+  return h + foot2(f);
+}
+const kv2 = (rows) => `<dl class="c2-kv">${rows.map(([k, v, extra = '']) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}${extra}</dd></div>`).join('')}</dl>`;
+function hereCard2(f, st) {
+  const u = U(f), k = u.kv, onRoute = st.kind === 'route', w = onRoute ? wayAt(st.km) : ['', 'Forest path', 'Metsäpolku', u.spots.forest[0], 'S0', 'T1', '1 m', 'dirt'];
+  const [name, line] = onRoute ? [w[3], kindOf(f, w)] : spotOf2(f, st.at);
+  const g = (x) => (x ? `${x}, ${u.grades[x]}` : u.notMapped);
+  const G = { mtb: kv2([[k.diffK, g(w[4])], [k.upK, g(w[4])], [k.surface, k.dirt], [k.width, w[6]]]), hike: kv2([[k.sac, g(w[5])], [k.vis, k.clear]]) };
+  const other = f.sport === 'hike' ? 'mtb' : 'hike';
+  let h = head2(f, onRoute ? G2.way : G2.pin, name, line, onRoute ? 'route' : 'spot') + `<span class="c2-src">${esc(u.fromOsm)}</span>`;
+  h += grp(u.groups[f.sport]) + G[f.sport] + grp(u.groups[other]) + G[other] + grp(u.groups.winter) + kv2([[k.surface, k.ploughed]]);
+  if (!onRoute) h += grp(u.groups.spot) + kv2([[u.height[0].toUpperCase() + u.height.slice(1), `${ele(1.2)} m`], [k.coords, coords(f, st.at), ` <button type="button" data-act="copied">${ic('copy', 15)}${esc(k.copy)}</button>`]]);
+  h += grp(u.groups.checked) + kv2([['OpenStreetMap', f.lang === 'fi' ? 'kesäkuu 2024' : 'June 2024']]);
+  return h + list([item('osm', null, u.osm, null, { chev: true })]) + foot2(f, { share: false });
+}
+function placeMoreCard2(f, st) {
+  const u = U(f), t = T[f.lang], by = (g) => t.placeRows.filter((r) => r[0] === g).map((r) => [r[1], r[2]]);
+  return head2(f, G2.place, t.place, t.placeSub, 'place') + `<span class="c2-src">${esc(u.fromLipas)}</span>` + [['site', 'site'], ['there', 'thereG'], ['when', 'when'], ['checked', 'checked']].map(([g, n]) => grp(u.groups[n]) + kv2(by(g))).join('')
+    + list([item('noop', null, t.lipasLink.replace(' ›', ''), null, { chev: true }), item('noop', null, t.website.replace(' ›', ''), null, { chev: true }), item('osm', null, u.osm, null, { chev: true })]) + foot2(f, { share: false });
+}
+function itemCard2(f, st) {
+  const u = U(f);
+  let h = head2(f, G2.look, u.look, u.lookLine, 'route') + nums2([[u.lookWhere, u.fromStart], ['80 m', u.long], ['14 %', u.steepest]]) + `<span class="c2-src">${esc(u.lookSrc)}</span><p class="c2-note">${esc(u.lookNote)}</p>`;
+  if (!st.view) h += `<button type="button" class="c2-main" data-act="noop">${ic('avoid', 20)}${esc(u.avoidIt)}</button>`;
+  return h + `<div class="c2-stepper"><button type="button" data-act="noop" aria-label="${esc(u.prev)}">${ic('left', 20)}</button><span>${esc(u.ofN(1, 2))}</span><button type="button" data-act="noop" aria-label="${esc(u.next)}">${ic('right', 20)}</button><span class="grow"></span><button type="button" data-act="noop">${esc(u.allCheck)} ${ic('right', 16)}</button></div>`;
+}
+function osmCard2(f, st) {
+  const u = U(f), t = T[f.lang], tags = OSM_TAGS[st.place ? 'place' : 'way'];
+  return head2(f, null, u.osm, st.place ? t.place : spotOf2(f, st.at)[0], st.from || 'more') + `<ul class="tags">${tags.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` + foot2(f, { share: false });
+}
+function notRightCard2(f, st) {
+  const t = T[f.lang], u = U(f);
+  return head2(f, null, u.notRight, null, st.from || 'spot') + `<p class="c2-note">${esc(t.nrText.replace('fix what you tell them', 'can fix what you tell them').replace('korjaavat', 'voivat korjata'))}</p>`
+    + list([item('noop', 'pencil', t.nrNote, t.nrNoteSub, { chev: true }), item('noop', null, t.nrEdit, t.nrEditSub, { chev: true }), st.place ? item('noop', null, t.nrLipas, t.nrLipasSub, { chev: true }) : '']);
+}
+const CARDS2 = { route: routeCard2, stretch: stretchCard2, under: hereCard2, here: hereCard2, more: hereCard2, edit: editCard2, spot: spotCard2, osm: osmCard2, notright: notRightCard2, place: placeCard2, placemore: placeMoreCard2, point: pointCard2, sport: sportCard2, item: itemCard2 };
+// Back in words: where it goes back to (as the start's "‹ Ways to begin")
+const backTo = (f, st, act) => { const u = U(f); return { route: () => wayAt(st.km)[3], point: () => pn(f, st.pt), spot: () => spotOf2(f, st.at)[0], place: () => T[f.lang].place, more: () => u.here, under: () => u.here, placemore: () => u.here }[act]?.() || u.back; };
+const words = (html, f, st) => html
+  .replace(/<button type="button" class="c2-back" data-act="([a-z]+)" aria-label="[^"]*">(<svg[\s\S]*?<\/svg>)<\/button>/, (m, act, svg) => `<button type="button" class="c2-back c2-back-words" data-act="${act}">${svg}<span>${esc(backTo(f, st, act))}</span></button>`)
+  // a line that's data (a stretch's two ends) stays on desktops; the rest is the item's tooltip there
+  .replace(/<button type="button" class="c2-item([^"]*)"([^>]*)>([\s\S]*?)<\/button>/g, (m, cls, attrs, inner) => {
+    const s = inner.match(/<small>([\s\S]*?)<\/small>/);
+    if (!s) return m;
+    const data = s[1].includes('→');
+    return `<button type="button" class="c2-item${cls}"${attrs}${data ? '' : ` title="${s[1]}"`}>${inner.replace('<small>', `<small class="${data ? 'data' : 'desc'}">`)}</button>`;
+  });
+const out = {};
+for (const [k, fn] of Object.entries(CARDS2)) out[k] = (f, st) => words(fn(f, st), f, st);
+return out;
+})();
 
 // ------------------------------------------------ Revision 1 (08bd488), kept to compare: its own words and parts, in a scope of its own
 const CARDS_R1 = (() => {
@@ -1506,9 +1772,10 @@ function render(fr) {
   f.z = desk ? 1 : v.z; f.view = !!st.view;
   el.classList.toggle('dark', v.theme === 'dark');
   const scr = el.querySelector('.screen'), t = T[f.lang];
-  const rev = st.v || PK.cards, v2 = rev !== 'v1', r1 = rev === 'r1', u = T2[f.lang];
+  const rev = st.v || PK.cards, v2 = rev !== 'v1', r3 = rev === 'r3', r1 = rev === 'r1' || r3, u = T2[f.lang];
   scr.classList.toggle('v2', v2);
   scr.classList.toggle('r1', r1);
+  scr.classList.toggle('r3', r3);
   scr.style.width = `${f.W}px`; scr.style.height = `${f.H}px`; scr.style.setProperty('--k', String(desk ? 1 : v.z));
   scr.classList.toggle('bigtext', v.z >= 2);
   scr.style.backgroundImage = `url(${BG}${f.g.pic})`;
@@ -1535,7 +1802,7 @@ function render(fr) {
     html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><polyline points="${P}" fill="none" stroke="#fff" stroke-width="${desk ? 13 : 11}" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><polyline points="${P}" fill="none" stroke="var(--accent-bg)" stroke-width="${desk ? 7 : 6}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
   scr.innerHTML = html;
-  const CC = !v2 ? CARDS : r1 ? CARDS_R1 : CARDS2;
+  const CC = !v2 ? CARDS : r3 ? CARDS_R3 : r1 ? CARDS_R1 : CARDS2;
   const inner = card && CC[card] ? (v2 && !r1 ? `<div class="app pl-way card">${CC[card](f, st)}</div>` : `<div class="card">${CC[card](f, st)}</div>`) : '';
   // a spot within reach of the line goes onto it: Add a point here, not Add to my route (revised)
   const near = v2 && st.kind === 'spot' && !st.place && st.at && !st.noRoute && nearest(f.g, st.at).d < 14;

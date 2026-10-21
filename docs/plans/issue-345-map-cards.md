@@ -5,18 +5,9 @@ The design, for the user to choose from before it's built. What's still to do, a
 - **Status (2026-10-21): a proposal.** Research, a clickable mock-up and this plan; nothing is built.
 - **The mock-up:** [mockups/issue-345-map-cards.html](mockups/issue-345-map-cards.html).
 
-## Revised (2026-10-21, after the user's second review)
+## Revised (2026-10-21)
 
-Building 25d's part 1 showed the cards as approved were walls of equal buttons, each card in its own style, and that a point's card drew only its first state. The mock-up's **Cards** switch now shows the revised cards (the default) beside the ones approved in the morning. What changed, and the rules every card is built by, are in [25d's plan](25d-check-and-points.md#how-every-card-is-built); in short:
-
-- **The app's own controls, nothing new:** rows that open the next step are the ways to begin's tiles, actions in a group the ⋯ menu's items, the main action Make 3 loops' button, switches Distance · Time, chips the lengths', Back in words. The mock-up's CSS is a copy of the app's with the same class names, and its section 0 shows the app, the copy and the cards side by side. The list of the app's controls and where they drift is in a comment on #345.
-- One main thing stands out: the pill at the finger, a filled button, or a point's **At this point** switch (Pass by, Stop, Night).
-- **Start here** and **End here** on a point and on a spot, each saying what it does; **End**, not finish. **What's here ›** on every card for the map's details, instead of What's under and More.
-- Only what can be done now: no route, only Start a route here and Round trip from here; a spot by the line, Add a point here; in the route's view, the planner's "You're not editing" note with Edit, and no pill.
-- Undo and redo stay while a card is open. The first point's peek says how to see what's on the map.
-- Every state of a point's card is drawn (section 4b), and the route's view, a warning's card, Hike, desktops and the worst cases (4c, 5).
-
-This section and the mock-up's revised frames are for the user's OK; where they differ from the text below, they win once chosen.
+The cards were revised three times on 2026-10-21; the mock-up's **Cards** switch shows each version on every frame. What's decided, what waits for the user and what's next is in one place: [25d's plan, "Where 25d stands"](25d-check-and-points.md#where-25d-stands). Where it differs from the text below, it wins.
 
 ## What Polku does today, and what can be reused
 
