@@ -95,8 +95,8 @@ Every part's requirements include these.
 
 - **In the code,** the cards use these classes and `css/app.css`'s rules for them: no copies under new names. An action group is built by the same function as the ⋯ menu's items (taken out of `popMenu()` in `js/ui.js`, so both share it).
 - **New, and only these** (each in the mock-up's section 0, for the user's OK): the thing's own mark from the map (`card-mark`), a missing number's dashed box (`sum-item miss`, #345), a menu that sits in a card (`menu in-card`), and the pill at the finger (#345).
-- **A fix the cards need first:** the route's numbers' labels wrap at 12.5 px instead of 11 px cut with "…". It's in the controls' own Fix PR, which also fixes the summary in the peek, and lands before 1a.
-- **Not decided yet:** icons in menu items, black (the ⋯ menu now) or green (the start's rows); the chosen chip, green with a border (the start) or black (Layers). The cards follow what the user picks in the controls' Fix PR.
+- **A fix the cards need first:** the route's numbers' labels wrap at 12.5 px instead of 11 px cut with "…". It's in the controls' own Fix PR (#356), which also fixes the summary in the peek, and lands before 1a.
+- **Not decided yet:** icons in menu items, black (the ⋯ menu now) or green (the start's rows); the chosen chip, green with a border (the start) or black (Layers). The cards follow what the user picks in #356.
 - **The peek:** a card takes 52 % of the window at most on a phone and scrolls inside, so the point or the spot stays in sight above it. On a desktop the card stays on the screen and scrolls inside.
 - **200 %:** Back and ✕ are already on a row of their own (`way-bar`); undo and redo join it as `tool way-x way-dock`; the mark hides at the narrowest. The switch keeps its words (`pl-way .rt-unit`).
 - **The words:** the name first; one short line under it; no facts strung with dots, no brackets ("Forest path, 0.72 km from the start"; "Easy to ride, on dirt"). "There at", never "you're here". **Edit this stretch**, never "Edit this part". The ways are the app's: **Follow paths**, **Straight line**, **Over water**. Notes use the points' numbers ("Point added after Via 1"), as #345 decided: the marker shows the number, and long names wrap. Not right? says "Its mappers can fix what you tell them."
@@ -585,6 +585,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - Find a point by name, and Move to a number: #350.
 - Renaming the route's last point from Finish to End outside the cards (the list, the route's title): #353, since 25d stays within the cards.
 - The ⋯ menu's top repeating the sheet's title: #354.
+- The same controls styled differently across the app (four row styles, black and green icons, two chosen chips, three switch heights, three headings): #356, a Fix PR of its own, before 1a.
 - A test with someone new (§8's script): after part 4, and again after part 6.
 
 ## Built
