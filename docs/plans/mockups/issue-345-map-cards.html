@@ -385,6 +385,54 @@ button.warnr span { flex: 1; font-weight: 600; }
 .r4 .pop .c2-item small { display: none; }
 .r4 .pop .c2-item { min-height: 40px; }
 
+/* ================================================================ Revision 5: compact cards on desktops; the point's edits as buttons there */
+/* desktops: a card at the pointer is a quick look, not a sheet: smaller type, tighter rows, the lines as tooltips */
+.screen.r5 .pop { width: 320px; max-height: min(calc(100% - 16px), 480px); padding: 8px 12px 10px; }
+/* a group of buttons names itself: no heading above it on desktops */
+.r5 .pop .c2-h:has(+ .c5-btns) { display: none; }
+
+.r5 .pop .card { gap: 8px; }
+.r5 .pop .c2-top { min-height: 36px; gap: 8px; }
+.r5 .pop .c2-top .c2-x, .r5 .pop .c2-top .c2-back { width: 36px; height: 36px; }
+.r5 .pop .c2-top .c2-back-words { width: auto !important; height: 36px; font-size: 14px; }
+.r5 .pop .c2-g { width: 28px; height: 28px; }
+.r5 .pop .c2-g svg { width: 24px; height: 24px; }
+.r5 .pop .mk2 { width: 22px; height: 22px; border-width: 2.5px; font-size: 11.5px; }
+.r5 .pop .c2-ttl { padding-top: 0; }
+.r5 .pop .c2-ttl b { font-size: 15px; }
+.r5 .pop .c2-ttl small { font-size: 12.5px; }
+.r5 .pop .c2-num b { font-size: 17px; }
+.r5 .pop .c2-num small { font-size: 12px; }
+.r5 .pop .c2-h { margin: 0 0 -4px; font-size: 11px; }
+.r5 .pop .c2-seg button { min-height: 36px; flex-direction: row; gap: 6px; font-size: 13px; }
+.r5 .pop .c2-detail { font-size: 13px; margin-top: -2px; }
+.r5 .pop .c2-step button { width: 34px; height: 34px; }
+.r5 .pop .c2-time { min-height: 34px; font-size: 14px; }
+.r5 .pop .c2-list { margin: 0 -8px; }
+.r5 .pop .c2-item { min-height: 34px; padding: 4px 8px; gap: 10px; }
+.r5 .pop .c2-item b { font-size: 14px; font-weight: 600; }
+.r5 .pop .c2-item .val { font-size: 14px; }
+.r5 .pop .c2-item > .ic:first-child { width: 18px; height: 18px; }
+.r5 .pop .c2-main { min-height: 38px; font-size: 14.5px; border-radius: 12px; }
+.r5 .pop .c2-warn { min-height: 38px; padding: 6px 10px; font-size: 13.5px; }
+.r5 .pop .c2-note { font-size: 13px; }
+.r5 .pop .c2-foot button { min-height: 34px; font-size: 13px; }
+.r5 .pop .c2-kv div { min-height: 32px; font-size: 13px; }
+/* the point's edits on desktops: buttons with their names, two a row; Remove on a row of its own, in red */
+.c5-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.c5-btns:has(> :only-child) { grid-template-columns: 1fr; }
+.c5-btn .ic { flex: none; }
+.c5-btn { min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.c5-btn span { min-width: 0; overflow-wrap: anywhere; }
+.c5-remove { width: 100%; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1.5px solid var(--danger); border-radius: 10px; background: transparent; color: var(--danger); font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; }
+@media (hover: hover) { .c5-btn:hover { background: var(--surface-2); } .c5-remove:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); } }
+.c5-btn:focus-visible, .c5-remove:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* phones: Copy is a finger's size too */
+.fr.phone .r5 .c2-kv button { min-height: 44px; padding: 0 12px; }
+/* the point's row in the planner's list lights up while its card is open: one point, two places, nothing jumps */
+.r5 .panel .wp.wp-lit { margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 10px; border-bottom-color: transparent; background: var(--accent-soft); }
+.r5 .panel .wp.wp-lit i { border-color: var(--accent-bg); box-shadow: 0 0 0 3px var(--surface-solid), 0 0 0 5px var(--accent-bg); }
+
 /* ================================================================ The app's own controls
    Copied from css/app.css at 615d2d7, with the same class names, so what is approved here is what gets built.
    Don't change them here: change css/app.css, then copy again. Scoped under .app, since the mock-up's own chrome
@@ -569,6 +617,8 @@ button.warnr span { flex: 1; font-weight: 600; }
   <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z"/><path d="M9 4v14M15 6v14"/></symbol>
   <symbol id="i-tags" viewBox="0 0 24 24"><path d="M4 4h7l9 9-7 7-9-9V4Z"/><circle cx="8.5" cy="8.5" r="1.5"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-flagend" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h14v9H5"/><path d="M5 4h3.5v3H5zM12 4h3.5v3H12zM8.5 7H12v3H8.5zM15.5 7H19v3h-3.5zM5 10h3.5v3H5zM12 10h3.5v3H12z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-reverse" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
@@ -610,7 +660,7 @@ button.warnr span { flex: 1; font-weight: 600; }
   </header>
   <section class="cv-q">
     <h2>Revised (2026-10-21, after the user's second review)</h2>
-    <p>The <b>Cards</b> switch at the bottom right shows each version on every frame: <b>As approved</b> (the morning), <b>Revision 1</b> (its own controls, 08bd488), <b>Revision 2</b> (the app's controls) and <b>Revision 3</b> (Revision 1's look, with Back in words, a line only where it adds what the name doesn't say, and compact on desktops) and <b>Revision 4</b> (the default: Revision 3 with an icon on every row, a hover, and a line on every item of a list). Nothing is overwritten.</p>
+    <p>The <b>Cards</b> switch at the bottom right shows each version on every frame: <b>As approved</b> (the morning), <b>Revision 1</b> (its own controls, 08bd488), <b>Revision 2</b> (the app's controls) and <b>Revision 3</b> (Revision 1's look, with Back in words, a line only where it adds what the name doesn't say, and compact on desktops) <b>Revision 4</b> (Revision 3 with an icon on every row, a hover, and a line on every item of a list) and <b>Revision 5</b> (the default: Revision 4 with compact cards on desktops, the point's edits as buttons in rows there, End here with a flag, the point's row lit in the list, and every control doing what it says). Nothing is overwritten.</p>
     <ul>
       <li><b>The app's own controls, nothing new:</b> rows that open the next step are the ways to begin's tiles; actions in a group are the ⋯ menu's items; the main action is Make 3 loops' button; switches are Distance · Time; chips are the lengths'; Back has words. The CSS is a copy of the app's, with the same class names (section 0 shows them side by side).</li>
       <li><b>One main thing stands out:</b> the pill at your finger, a filled button (Edit this stretch, Avoid it), or a point's <b>At this point</b> switch.</li>
@@ -767,6 +817,9 @@ button.warnr span { flex: 1; font-weight: 600; }
       <figure class="fr phone" id="r-start" data-st='{"card":"point","pt":0}'><figcaption><b>The start</b>When you leave.</figcaption></figure>
       <figure class="fr phone" id="r-end" data-st='{"card":"point","pt":2}'><figcaption><b>The end</b>Back to start, when it isn't a loop.</figcaption></figure>
       <figure class="fr phone" id="r-rename" data-st='{"card":"point","pt":1,"renaming":true}'><figcaption><b>Rename</b>The name is typed where it's shown.</figcaption></figure>
+      <figure class="fr phone" id="r-stays" data-st='{"card":"stays","pt":1,"here":"night"}'><figcaption><b>Places to sleep nearby ›</b>Tap one to move the night there.</figcaption></figure>
+      <figure class="fr phone" id="r-goon" data-st='{"card":"goon","pt":1,"here":"night"}'><figcaption><b>Go on at ›</b>The morning's hour.</figcaption></figure>
+      <figure class="fr phone" id="r-leave" data-st='{"card":"leave","pt":0}'><figcaption><b>Leave at ›</b>Now, or an hour of your own.</figcaption></figure>
       <figure class="fr phone" id="r-removed" data-st='{"toast":"removed","removed":1}'><figcaption><b>Removed</b>The note names it, with Undo.</figcaption></figure>
     </div>
   </section>
@@ -777,6 +830,8 @@ button.warnr span { flex: 1; font-weight: 600; }
     <div class="cv-frames">
       <figure class="fr phone" id="r-view-point" data-st='{"card":"point","pt":1,"here":"stop","view":true}'><figcaption><b>A point, not editing</b>A stop still changes; the rest waits for Edit.</figcaption></figure>
       <figure class="fr phone" id="r-view-route" data-st='{"card":"route","kind":"route","at":[218,745],"view":true}'><figcaption><b>The route, not editing</b>No pill: nothing is added here.</figcaption></figure>
+      <figure class="fr phone" id="r-esport" data-st='{"card":"esport","kind":"route","at":[218,745]}'><figcaption><b>A stretch's sport ›</b>For this stretch only.</figcaption></figure>
+      <figure class="fr phone" id="r-estyle" data-st='{"card":"estyle","kind":"route","at":[218,745]}'><figcaption><b>A stretch's style ›</b>The sport's styles, as the route's.</figcaption></figure>
       <figure class="fr phone" id="r-item" data-st='{"card":"item","kind":"route","at":[458,653]}'><figcaption><b>A warning's card</b>How sure, from where; Avoid it stands out.</figcaption></figure>
       <figure class="fr phone" id="r-near" data-st='{"card":"spot","kind":"spot","at":[392,640]}'><figcaption><b>Held beside the route</b>The spot goes onto the line: Add a point here.</figcaption></figure>
       <figure class="fr phone" id="r-first" data-st='{"first":true}'><figcaption><b>The first point</b>One line says how to see what's on the map. (The picture still shows the whole route.)</figcaption></figure>
@@ -818,7 +873,7 @@ button.warnr span { flex: 1; font-weight: 600; }
 
 <div class="picker" data-open="true">
   <div class="pk-groups" role="group" aria-label="Mock-up switches">
-    <div><span>Cards</span><button type="button" data-pk="cards" data-v="v1" aria-pressed="false">As approved</button><button type="button" data-pk="cards" data-v="r1" aria-pressed="false">Revision 1</button><button type="button" data-pk="cards" data-v="v2" aria-pressed="false">Revision 2</button><button type="button" data-pk="cards" data-v="r3" aria-pressed="false">Revision 3</button><button type="button" data-pk="cards" data-v="r4" aria-pressed="true">Revision 4</button></div>
+    <div><span>Cards</span><button type="button" data-pk="cards" data-v="v1" aria-pressed="false">As approved</button><button type="button" data-pk="cards" data-v="r1" aria-pressed="false">Revision 1</button><button type="button" data-pk="cards" data-v="v2" aria-pressed="false">Revision 2</button><button type="button" data-pk="cards" data-v="r3" aria-pressed="false">Revision 3</button><button type="button" data-pk="cards" data-v="r4" aria-pressed="false">Revision 4</button><button type="button" data-pk="cards" data-v="r5" aria-pressed="true">Revision 5</button></div>
     <div><span>Size</span><button type="button" data-pk="size" data-v="390" aria-pressed="true">390</button><button type="button" data-pk="size" data-v="360" aria-pressed="false">360</button><button type="button" data-pk="size" data-v="200" aria-pressed="false">200 %</button></div>
     <div><span>Sport</span><button type="button" data-pk="sport" data-v="mtb" aria-pressed="true">MTB</button><button type="button" data-pk="sport" data-v="hike" aria-pressed="false">Hike</button></div>
     <div><span>Words</span><button type="button" data-pk="lang" data-v="en" aria-pressed="true">English</button><button type="button" data-pk="lang" data-v="fi" aria-pressed="false">Suomi</button></div>
@@ -899,7 +954,7 @@ const WAYS = [[0.7, 'Gravel path', 'Sorapolku', 'Kaupin ulkoilureitti', 'S0', 'T
 const OSM_TAGS = { way: ['highway=path', 'surface=dirt', 'mtb:scale=1', 'mtb:scale:uphill=1', 'sac_scale=hiking', 'trail_visibility=excellent', 'width=1', 'check_date=2024-06-12', 'way 123456789'],
   place: ['amenity=toilets', 'toilets:disposal=pitlatrine', 'fee=no', 'wheelchair=no', 'leisure=firepit', 'check_date=2023-08-02', 'node 987654321'] };
 
-let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb', cards: ['v1', 'r1', 'v2', 'r3'].includes(Q.get('cards')) ? Q.get('cards') : 'r4' };
+let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb', cards: ['v1', 'r1', 'v2', 'r3', 'r4'].includes(Q.get('cards')) ? Q.get('cards') : 'r5' };
 const ic = (id, s = 20) => `<svg class="ic" width="${s}" height="${s}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -1042,6 +1097,293 @@ function pointCard(f, st) {
     <div class="rows">${rowBtn('noop', t.after, `${ptName(f, i)} → ${ptName(f, i + 1)}`)}</div>`;
 }
 const CARDS = { route: routeCard, stretch: stretchCard, under: underCard, edit: editCard, spot: spotCard, more: moreCard, osm: osmCard, notright: notRightCard, place: placeCard, placemore: placeMoreCard, point: pointCard };
+
+// ------------------------------------------------ Revision 5: Revision 4 with compact cards on desktops, the point's edits as
+// buttons in rows there, End here with a flag, the point's row lit in the list, and every control doing what it says
+const CARDS_R5 = (() => {
+// ------------------------------------------------ the revised cards (2026-10-21): their words
+const T2 = {
+  en: {
+    start: 'Start', end: 'End', via: 'Via', back: 'Back', close: 'Close',
+    there: 'there at', youLeave: 'you leave', fromStart: 'from the start', height: 'height', uphill: 'uphill', downhill: 'downhill',
+    diff: 'difficulty', upDiff: 'uphill difficulty', trailGrade: 'trail grade', notMapped: 'not mapped', fromRoute: 'from your route',
+    grades: { S0: 'easy', S1: 'fairly easy', S2: 'medium', S3: 'hard', S4: 'very hard', S5: 'extreme', T1: 'easy', T2: 'medium', T3: 'hard', T4: 'alpine' },
+    atPoint: 'At this point', pass: 'Pass by', stop: 'Stop', night: 'Night',
+    getHere: (a, b) => `You get here at ${a} and go on at ${b}`, goOnAt: 'Go on at', nextMorning: 'the next morning',
+    less: '5 minutes less', more5: '5 minutes more',
+    sleep: 'Places to sleep nearby', sleepSub: 'Lean-tos, huts and campsites within 3 km',
+    leave: 'Leave at', leaveVal: 'Now', leaveSub: 'Sets the times and the weather along the route',
+    fromHere: 'From here', sportFrom: 'Sport from here', sportFromSub: 'To the next change of sport, or the end',
+    changeover: 'Changeover', bikeAlong: 'Take the bike along', bikeAlongSub: 'Off: it stays here, and Check makes sure you come back for it',
+    after: 'The stretch after it', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
+    startHere: 'Start here', startSub: 'The part before it is removed, Undo brings it back', endHere: 'End here', endSub: 'The part after it is removed, Undo brings it back',
+    loopStart: 'Start here', loopStartSub: 'The same loop, starting from this point',
+    remove: 'Remove', removeSub: 'Undo brings it back',
+    theRoute: 'The route', backStart: 'Back to start', backStartSub: 'Adds a leg back to the start',
+    renameLabel: 'The point’s name', save: 'Save',
+    sportsTitle: 'Sport from here', sportsSub: (a) => `From ${a} to the next change of sport, or the end`, yourRoute: 'your route',
+    sports: [['mtb', 'MTB', 'bike'], ['gravel', 'Gravel', 'bike'], ['road', 'Road cycling', 'bike'], ['hike', 'Hike', 'walk'], ['trailrun', 'Trail running', 'walk'], ['run', 'Running', 'walk'], ['paddle', 'Paddle', 'water'], ['swim', 'Swim', 'water']],
+    sportNames: { mtb: 'MTB', hike: 'Hike', paddle: 'Paddle' },
+    sportLines: { mtb: 'Trails by MTB difficulty', gravel: 'Gravel roads and easy paths', road: 'Paved roads', hike: 'Paths and trails by trail grade', trailrun: 'Paths and trails, at a run', run: 'Paths and light traffic roads', paddle: 'Over water, carries flagged', swim: 'Short crossings over water' },
+    osmSub: 'The map\u2019s own data, as tags', lipasSub: 'LIPAS\u2019s page for this place', webSub: 'The place\u2019s own page',
+    stays5: 'Places to sleep nearby', staysNote5: 'From LIPAS and OpenStreetMap. Tap one to move the night there.', staysList5: [['Kaupin laavu', 'Lean-to', '0.8 km'], ['Tapatoran kota', 'Hut', '1.4 km'], ['Camping Härmälä', 'Campsite', '2.6 km']],
+    stayMoved5: (n) => `The night moved to ${n}`, leaveTimes5: ['Now', '11:00', '12:00', '13:00', 'Tomorrow 08:00'], goonTimes5: ['06:00', '07:00', '08:00', '09:00'],
+    sport5: 'Sport for this stretch', styles5: { mtb: ['Balanced', 'Flowy trails', 'Technical', 'Smooth & easy', 'Roads to the trail'], hike: ['Balanced', 'Nature paths', 'Easy paths', 'Mountain'] },
+    reverse5: 'Reverse', reverseSub5: 'The route runs the other way, from the end to the start',
+    look2: 'Loose gravel', lookWhere2: '2.6 km', lookSrc2: 'From the map: OpenStreetMap', lookNote2: 'Loose gravel on the shore path. Slow down on the descent.',
+    stretch: 'This stretch', here: 'What’s here', hereSub: 'The trail, as the map knows it', hereSpotSub: 'Everything Polku knows here',
+    edit: 'Edit this stretch', editSub: 'Sport, how it’s drawn, style', editNote: 'Changes apply to this stretch: its 3 legs',
+    howYouGo: 'How you go', sport: 'Sport', sportSame: 'Like the rest of the route', drawn: 'How it’s drawn', follow: 'Follow paths', straight: 'Straight line',
+    style: 'Route style', styleSub: (sp) => `${sp}’s style, the same as the route`, balanced: 'Balanced',
+    onStretch: 'On this stretch', other: 'Other ways', otherSub: 'Up to two, on the map', stopHere: 'Stop here', stopHereSub: 'A break or a night at this spot',
+    avoid: 'Avoid this spot', avoidSub: 'The route goes around it, 40 m', profile: 'On the profile', profileSub: 'Zooms the profile to this stretch',
+    lookOut: 'Look out for', distance: 'distance', time: 'time', climb: 'climb', min: 'min',
+    yourRouteH: 'Your route', startSpot: 'Start here', startSpotSub: 'Adds a new start point', endSpot: 'End here', endSpotSub: 'Adds a new end point',
+    round: 'Round trip from here', roundSub: 'Loops of the length you choose, from here',
+    share: 'Share', weather: 'Weather here', notRight: 'Not right?',
+    locked: 'You’re not editing: the route stays as it is.', editBtn: 'Edit',
+    look: 'Steep descent', lookLine: 'Worth a look', lookWhere: '2.3 km', long: 'long', steepest: 'steepest', lookSrc: 'An estimate from the terrain model',
+    lookNote: 'Downhill for 80 m. Walk it if it’s wet.', avoidIt: 'Avoid it', allCheck: 'All in Check', ofN: (i, n) => `${i} of ${n}`, prev: 'Previous', next: 'Next',
+    removed: (n) => `${n} removed`, startsHere: 'The route starts here now', endsHere: 'The route ends here now', undo: 'Undo',
+    firstLine: 'Tap the map where you go next.', hint: 'Hold the map to see what’s there.',
+    fromOsm: 'From OpenStreetMap', fromLipas: 'From LIPAS', groups: { mtb: 'For MTB', hike: 'For hiking', winter: 'In winter', spot: 'The spot', checked: 'Last checked', site: 'At the site', thereG: 'Getting there', when: 'When' },
+    kv: { diffK: 'Difficulty', upK: 'Uphill difficulty', surface: 'Surface', width: 'Width', sac: 'Trail grade', vis: 'Visibility', clear: 'Clear', dirt: 'Dirt', ploughed: 'Not ploughed', coords: 'Coordinates', copy: 'Copy', partOf: 'Part of' },
+    osm: 'All OpenStreetMap details', spots: { forest: ['Forest path', { mtb: 'Easy to ride, on dirt', hike: 'Easy to walk, on dirt' }], lake: ['Näsijärvi', 'Lake: depths shown, not for navigation'], town: ['Kaupintie', 'Residential street, asphalt'] },
+    kinds: { 'Gravel path': 'Gravel path', 'Forest path': 'Forest path', 'Shore path': 'Shore path', 'Gravel road': 'Gravel road' },
+    placeFacts: ['Free toilet', 'Firewood in summer', 'Lean-to nearby'],
+  },
+  fi: {
+    start: 'Lähtö', end: 'Loppu', via: 'Välipiste', back: 'Takaisin', close: 'Sulje',
+    there: 'perillä', youLeave: 'lähdet', fromStart: 'lähdöstä', height: 'korkeus', uphill: 'ylämäkeä', downhill: 'alamäkeä',
+    diff: 'vaativuus', upDiff: 'ylämäen vaativuus', trailGrade: 'polun luokka', notMapped: 'ei kartalla', fromRoute: 'reitiltäsi',
+    grades: { S0: 'helppo', S1: 'melko helppo', S2: 'keskivaikea', S3: 'vaikea', S4: 'hyvin vaikea', S5: 'äärimmäinen', T1: 'helppo', T2: 'keskivaikea', T3: 'vaikea', T4: 'alppimaasto' },
+    atPoint: 'Tässä pisteessä', pass: 'Ohitse', stop: 'Tauko', night: 'Yöpyminen',
+    getHere: (a, b) => `Olet täällä ${a} ja jatkat ${b}`, goOnAt: 'Jatka klo', nextMorning: 'seuraavana aamuna',
+    less: '5 minuuttia vähemmän', more5: '5 minuuttia enemmän',
+    sleep: 'Yöpaikat lähellä', sleepSub: 'Laavut, kodat ja leirintäalueet 3 km:n sisällä',
+    leave: 'Lähtöaika', leaveVal: 'Nyt', leaveSub: 'Ajat ja sää reitin varrella lasketaan tästä',
+    fromHere: 'Tästä eteenpäin', sportFrom: 'Laji tästä eteenpäin', sportFromSub: 'Seuraavaan lajinvaihtoon tai loppuun',
+    changeover: 'Vaihtoaika', bikeAlong: 'Pyörä mukaan', bikeAlongSub: 'Pois: se jää tähän, ja Tarkista varmistaa, että palaat hakemaan sen',
+    after: 'Seuraava osuus', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
+    startHere: 'Aloita tästä', startSub: 'Osa ennen tätä poistetaan, Kumoa tuo sen takaisin', endHere: 'Lopeta tähän', endSub: 'Osa tämän jälkeen poistetaan, Kumoa tuo sen takaisin',
+    loopStart: 'Aloita tästä', loopStartSub: 'Sama kierros, alkaen tästä pisteestä',
+    remove: 'Poista', removeSub: 'Kumoa tuo sen takaisin',
+    theRoute: 'Reitti', backStart: 'Takaisin lähtöön', backStartSub: 'Lisää osuuden takaisin lähtöön',
+    renameLabel: 'Pisteen nimi', save: 'Tallenna',
+    sportsTitle: 'Laji tästä eteenpäin', sportsSub: (a) => `Pisteestä ${a} seuraavaan lajinvaihtoon tai loppuun`, yourRoute: 'reittisi',
+    sports: [['mtb', 'Maastopyöräily', 'bike'], ['gravel', 'Gravel', 'bike'], ['road', 'Maantiepyöräily', 'bike'], ['hike', 'Retkeily', 'walk'], ['trailrun', 'Polkujuoksu', 'walk'], ['run', 'Juoksu', 'walk'], ['paddle', 'Melonta', 'water'], ['swim', 'Uinti', 'water']],
+    sportNames: { mtb: 'Maastopyöräily', hike: 'Retkeily', paddle: 'Melonta' },
+    sportLines: { mtb: 'Polut vaativuuden mukaan', gravel: 'Soratiet ja helpot polut', road: 'Päällystetyt tiet', hike: 'Polut luokan mukaan', trailrun: 'Polut, juosten', run: 'Polut ja hiljaiset tiet', paddle: 'Vesitse, kantamiset merkitty', swim: 'Lyhyet ylitykset' },
+    osmSub: 'Kartan omat tiedot tageina', lipasSub: 'LIPASin sivu tästä paikasta', webSub: 'Paikan oma sivu',
+    stays5: 'Yöpaikat lähellä', staysNote5: 'LIPASista ja OpenStreetMapista. Napauta, niin yö siirtyy sinne.', staysList5: [['Kaupin laavu', 'Laavu', '0,8 km'], ['Tapatoran kota', 'Kota', '1,4 km'], ['Camping Härmälä', 'Leirintäalue', '2,6 km']],
+    stayMoved5: (n) => `Yö siirtyi: ${n}`, leaveTimes5: ['Nyt', '11:00', '12:00', '13:00', 'Huomenna 08:00'], goonTimes5: ['06:00', '07:00', '08:00', '09:00'],
+    sport5: 'Laji tällä osuudella', styles5: { mtb: ['Tasapainoinen', 'Virtaavat polut', 'Tekninen', 'Tasainen ja helppo', 'Teitä polulle'], hike: ['Tasapainoinen', 'Luontopolut', 'Helpot polut', 'Vuoristo'] },
+    reverse5: 'Käännä', reverseSub5: 'Reitti kulkee toiseen suuntaan, lopusta lähtöön',
+    look2: 'Irtosoraa', lookWhere2: '2,6 km', lookSrc2: 'Kartalta: OpenStreetMap', lookNote2: 'Irtosoraa rantapolulla. Hidasta alamäessä.',
+    stretch: 'Tämä osuus', here: 'Mitä tässä on', hereSub: 'Polku sellaisena kuin kartta sen tuntee', hereSpotSub: 'Kaikki, mitä Polku tästä tietää',
+    edit: 'Muokkaa tätä osuutta', editSub: 'Laji, miten se piirretään, tyyli', editNote: 'Muutokset koskevat tätä osuutta: sen 3 osaa',
+    howYouGo: 'Miten kuljet', sport: 'Laji', sportSame: 'Kuten muu reitti', drawn: 'Miten se piirretään', follow: 'Seuraa polkuja', straight: 'Suora viiva',
+    style: 'Reitin tyyli', styleSub: (sp) => `Lajin ${sp} tyyli, sama kuin reitillä`, balanced: 'Tasapainoinen',
+    onStretch: 'Tällä osuudella', other: 'Muita reittejä', otherSub: 'Enintään kaksi, kartalla', stopHere: 'Pysähdy tähän', stopHereSub: 'Tauko tai yö tässä kohdassa',
+    avoid: 'Vältä tätä kohtaa', avoidSub: 'Reitti kiertää sen, 40 m', profile: 'Profiilissa', profileSub: 'Zoomaa profiilin tähän osuuteen',
+    lookOut: 'Huomaa', distance: 'matka', time: 'aika', climb: 'nousu', min: 'min',
+    yourRouteH: 'Reittisi', startSpot: 'Aloita tästä', startSpotSub: 'Lisää uuden lähtöpisteen', endSpot: 'Lopeta tähän', endSpotSub: 'Lisää uuden loppupisteen',
+    round: 'Kierros tästä', roundSub: 'Valitsemasi pituisia kierroksia tästä',
+    share: 'Jaa', weather: 'Sää tässä', notRight: 'Eikö pidä paikkaansa?',
+    locked: 'Et muokkaa: reitti pysyy sellaisenaan.', editBtn: 'Muokkaa',
+    look: 'Jyrkkä lasku', lookLine: 'Katso tarkemmin', lookWhere: '2,3 km', long: 'pitkä', steepest: 'jyrkimmillään', lookSrc: 'Arvio maastomallista',
+    lookNote: 'Alamäkeä 80 m. Taluta, jos on märkää.', avoidIt: 'Vältä', allCheck: 'Kaikki Tarkista-välilehdellä', ofN: (i, n) => `${i}/${n}`, prev: 'Edellinen', next: 'Seuraava',
+    removed: (n) => `${n} poistettu`, startsHere: 'Reitti alkaa nyt tästä', endsHere: 'Reitti loppuu nyt tähän', undo: 'Kumoa',
+    firstLine: 'Napauta karttaa, minne menet seuraavaksi.', hint: 'Pidä karttaa painettuna nähdäksesi, mitä siinä on.',
+    fromOsm: 'OpenStreetMapista', fromLipas: 'LIPASista', groups: { mtb: 'Maastopyöräilyyn', hike: 'Retkeilyyn', winter: 'Talvella', spot: 'Paikka', checked: 'Tarkistettu viimeksi', site: 'Paikalla', thereG: 'Perille', when: 'Milloin' },
+    kv: { diffK: 'Vaativuus', upK: 'Ylämäen vaativuus', surface: 'Pinta', width: 'Leveys', sac: 'Polun luokka', vis: 'Näkyvyys', clear: 'Selvä', dirt: 'Maapohja', ploughed: 'Ei aurata', coords: 'Koordinaatit', copy: 'Kopioi', partOf: 'Osa reittiä' },
+    osm: 'Kaikki OpenStreetMapin tiedot', spots: { forest: ['Metsäpolku', { mtb: 'Helppo ajaa, maapohja', hike: 'Helppo kävellä, maapohja' }], lake: ['Näsijärvi', 'Järvi: syvyydet vain näytetään, ei navigointiin'], town: ['Kaupintie', 'Asuinkatu, asfaltti'] },
+    kinds: { 'Gravel path': 'Sorapolku', 'Forest path': 'Metsäpolku', 'Shore path': 'Rantapolku', 'Gravel road': 'Soratie' },
+    placeFacts: ['Ilmainen WC', 'Polttopuita kesällä', 'Laavu lähellä'],
+  },
+};
+const U = (f) => T2[f.lang];
+// the thing's own mark, as the map draws it: a point's marker, the stretch between two, a spot's pin, a place's icon
+const G2 = {
+  via: (n) => `<span class="c2-g" aria-hidden="true"><span class="mk2 c2-g" style="width:28px;height:28px">${n}</span></span>`,
+  start: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#2e9e5b" stroke="#fff" stroke-width="2.5"/><path d="M12 9.8v10.4l8.4-5.2z" fill="#fff"/></svg></span>',
+  end: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#111" stroke="#fff" stroke-width="2.5"/><rect x="10" y="10" width="10" height="10" rx="1.5" fill="#fff"/></svg></span>',
+  stretch: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+  way: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M2 23C13 23 19 7 32 7" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" fill="#1f6f4a" stroke="#fff" stroke-width="2.6"/></svg></span>',
+  pin: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="8" fill="#1f6f4a" stroke="#fff" stroke-width="3"/><circle cx="15" cy="15" r="11.5" fill="none" stroke="#1f6f4a" stroke-width="2"/></svg></span>',
+  place: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#d93a2f" stroke="#fff" stroke-width="2.5"/><path d="M15 8.5c2.6 3 4.4 5 4.4 7.7a4.4 4.4 0 0 1-8.8 0c0-1.6.8-2.7 1.9-3.8.2 1.3.8 2 1.6 2.3-.5-2.2.1-4.2.9-6.2Z" fill="#fff"/></svg></span>',
+  look: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#fbf4e2" stroke="#8a5a00" stroke-width="1.5"/><path d="M6.5 15s3.2-5.2 8.5-5.2 8.5 5.2 8.5 5.2-3.2 5.2-8.5 5.2S6.5 15 6.5 15Z" fill="none" stroke="#8a5a00" stroke-width="1.8"/><circle cx="15" cy="15" r="2.4" fill="#8a5a00"/></svg></span>',
+  edit: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#1f6f4a" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+};
+const pn = (f, i) => { const u = U(f), n = (f.worst ? NAMES.worst : NAMES.en)[i]; return n || [u.start, `${u.via} 1`, u.end][i]; };
+const ptSub = (f, i) => { const u = U(f); return i === 0 ? u.start : i === POINTS.length - 1 ? u.end : `${u.via} ${i}`; };
+// the parts
+function head2(f, glyph, title, sub, backTo, { raw = false, save = false } = {}) {
+  const u = U(f);
+  const dock = f.z >= 2 && !f.view ? `<span class="c2-dock"><button type="button" data-act="tbundo" aria-label="Undo">${ic('undo', 22)}</button><button type="button" data-act="tbredo" aria-label="Redo">${ic('redo', 22)}</button></span>` : '';
+  return `<div class="c2-top">${backTo ? `<button type="button" class="c2-back" data-act="${backTo}" aria-label="${esc(u.back)}">${ic('left', 22)}</button>` : ''}${dock}<button type="button" class="c2-x" data-act="close" aria-label="${esc(u.close)}">${ic('close', 22)}</button><span class="c2-br"></span>${glyph || ''}<span class="c2-ttl">${raw ? title : `<b>${esc(title)}</b>`}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${save ? `<button type="button" class="c2-save" data-act="renamed">${esc(u.save)}</button>` : ''}</div>`;
+}
+// numbers as the route's summary has them: [value, label, missing, word]
+const nums2 = (list) => `<div class="c2-nums">${list.map(([v, l, miss, word]) => `<span class="c2-num${miss ? ' miss' : ''}"><b>${esc(v)}</b>${word ? `<em>${esc(word)}</em>` : ''}<small>${esc(l)}</small></span>`).join('')}</div>`;
+const grp = (t) => `<h4 class="c2-h">${esc(t)}</h4>`;
+// an item, as the ⋯ menu has them: its icon, its name, one line on what it does; a value and › when it opens a choice
+const item = (act, icon, label, sub, { val = null, chev = false, cls = '', role = '', checked = null } = {}) =>
+  `<button type="button" class="c2-item ${cls}" data-act="${act}"${role ? ` role="${role}"` : ''}${checked != null ? ` aria-checked="${checked}"` : ''}>${icon ? ic(icon, 20) : ''}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${val ? `<span class="val">${esc(val)}</span>` : ''}${chev ? `<span class="chev">${ic('right', 18)}</span>` : ''}${checked ? `<span class="tick">${ic('check', 20)}</span>` : ''}</button>`;
+const list = (items) => `<div class="c2-list">${items.filter(Boolean).join('')}</div>`;
+const lock = (f) => { const u = U(f); return `<div class="c2-lock" role="note">${ic('info', 18)}<span>${esc(u.locked)}</span><button type="button" data-act="edit-on">${ic('pencil', 16)}${esc(u.editBtn)}</button></div>`; };
+const foot2 = (f, { share = true } = {}) => { const u = U(f); return `<div class="c2-foot">${share ? `<button type="button" data-act="share">${ic('share', 18)}${esc(u.share)}</button><button type="button" data-act="weather">${ic('weather', 18)}${esc(u.weather)} ›</button>` : ''}<span class="grow"></span><button type="button" class="nr" data-act="notright">${esc(u.notRight)}</button></div>`; };
+const gradeNum = (f, w) => {
+  const u = U(f), g = f.sport === 'hike' ? w[5] : w[4], label = f.sport === 'hike' ? u.trailGrade : u.diff;
+  return g ? [g, label, false, u.grades[g]] : ['?', `${label} ${u.notMapped}`, true];
+};
+function routeNums2(f, km) {
+  const u = U(f), w = wayAt(km), g = grade(km);
+  return nums2([[clock(km, f.sport), u.there], [`${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(0)} %`, g >= 0 ? u.uphill : u.downhill], gradeNum(f, w)]);
+}
+const kindOf = (f, w) => U(f).kinds[w[1]] || (f.lang === 'fi' ? w[2] : w[1]);
+
+// ------------------------------------------------ the revised cards
+function pointCard2(f, st) {
+  const u = U(f), i = st.pt, q = POINTS[i], first = i === 0, last = i === POINTS.length - 1, here = st.here || 'pass', view = st.view;
+  const glyph = first ? G2.start : last ? G2.end : G2.via(i);
+  const title = st.renaming ? `<input class="c2-in" aria-label="${esc(u.renameLabel)}" value="${esc(pn(f, i))}">` : pn(f, i);
+  let h = head2(f, glyph, title, ptSub(f, i), st.from || null, { raw: !!st.renaming, save: !!st.renaming });
+  h += nums2(first ? [[clock(0, f.sport), u.youLeave], [`${ele(0)} m`, u.height]] : [[clock(q.km, f.sport), u.there], [fmtKm(q.km), u.fromStart], [`${ele(q.km)} m`, u.height]]);
+  if (!first && !last) {
+    h += grp(u.atPoint) + `<div class="c2-seg" role="radiogroup" aria-label="${esc(u.atPoint)}">${[['pass', 'pass', u.pass], ['stop', 'pause', u.stop], ['night', 'moon', u.night]].map(([k, icn, l]) => `<button type="button" role="radio" aria-checked="${here === k}" data-act="here-${k}">${ic(icn, 20)}<span>${esc(l)}</span></button>`).join('')}</div>`;
+    const arr = clock(q.km, f.sport), m = st.min || 30;
+    if (here === 'stop') { const [hh, mm] = arr.split(':').map(Number), t = hh * 60 + mm + m; h += `<div class="c2-detail"><span class="c2-step"><button type="button" data-act="min-" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${m} ${u.min}</b><button type="button" data-act="min+" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span><small>${esc(u.getHere(arr, `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`))}</small></div>`; }
+    if (here === 'night') h += `<div class="c2-detail"><span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="goon">${st.goon || '07:00'} ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span></div>${list([item('stays', 'tent', u.sleep, u.sleepSub, { chev: true })])}`;
+  }
+  if (first) h += list([item('leave', 'clock', u.leave, u.leaveSub, { val: st.leave || u.leaveVal, chev: true })]);
+  const afterRow = !last ? item('after', 'route', u.after, `${pn(f, i)} → ${pn(f, i + 1)}`, { chev: true }) : '';
+  if (view) return h + list([afterRow]) + lock(f);
+  if (!last) {
+    const ch = st.change;
+    h += list([item('sport', ch ? 'water' : 'bike', u.sportFrom, u.sportFromSub, { val: ch ? u.sportNames.paddle : (u.sportNames[f.sport] || f.sport), chev: true })]);
+    if (ch) h += `<div class="c2-detail"><span>${esc(u.changeover)}</span><span class="c2-step"><button type="button" data-act="co-" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${st.co ?? 10} ${u.min}</b><button type="button" data-act="co+" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span></div><label class="c2-item c2-tg" data-act="bike" role="switch" aria-checked="${!!st.bike}" tabindex="0" style="margin:0 -10px;width:auto"><span><b>${esc(u.bikeAlong)}</b><small>${esc(u.bikeAlongSub)}</small></span><i class="${st.bike ? 'on' : ''}" aria-hidden="true"></i></label>`;
+    h += list([afterRow]);
+  } else h += grp(u.theRoute) + list([item('backstart', 'loop', u.backStart, u.backStartSub), item('reverse', 'reverse', u.reverse5, u.reverseSub5)]);
+  if (first) h += grp(u.theRoute) + list([item('reverse', 'reverse', u.reverse5, u.reverseSub5)]);
+  if (f.g === GEO.desk) {
+    // desktops: the edits as buttons with their names, in rows; each line is its tooltip; Remove on a row of its own, in red
+    const b5 = (act, icn, label, tip) => `<button type="button" class="c5-btn" data-act="${act}" title="${esc(tip)}">${ic(icn, 18)}<span>${esc(label)}</span></button>`;
+    h += grp(u.editPoint) + `<div class="c5-btns">${!first && !last ? b5('startat', 'flag', u.startHere, u.startSub) + b5('endat', 'flagend', u.endHere, u.endSub) : ''}${b5('move', 'move', u.move, u.moveSub)}${b5('rename', 'pencil', u.rename, u.renameSub)}</div>`;
+    return h + `<button type="button" class="c5-remove" data-act="remove" title="${esc(u.removeSub)}">${ic('trash', 18)}<span>${esc(u.remove)}</span></button>`;
+  }
+  h += grp(u.editPoint) + list([item('move', 'move', u.move, u.moveSub), item('rename', 'pencil', u.rename, u.renameSub), !first && !last ? item('startat', 'flag', u.startHere, u.startSub) : '', !first && !last ? item('endat', 'flagend', u.endHere, u.endSub) : '']);
+  return h + `<div class="c2-hr"></div>` + list([item('remove', 'trash', u.remove, u.removeSub, { cls: 'danger' })]);
+}
+function sportCard2(f, st) {
+  const u = U(f), cur = st.change ? 'paddle' : f.sport;
+  return head2(f, G2.via(st.pt), u.sportsTitle, u.sportsSub(pn(f, st.pt)), 'point') + list(u.sports.map(([k, l, icn]) => item(`pick-${k}`, icn, l, u.sportLines[k], { role: 'menuitemradio', checked: k === cur, val: k === f.sport ? u.yourRoute : null })));
+}
+function routeCard2(f, st) {
+  const u = U(f), km = st.km, w = wayAt(km), s = stretchOf(km);
+  let h = head2(f, G2.way, w[3], `${kindOf(f, w)}, ${fmtKm(km)} ${u.fromStart}`) + routeNums2(f, km);
+  if (s) h += `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
+  h += list([item('stretch', 'route', u.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, { chev: true }), item('here', 'info', u.here, u.hereSub, { chev: true }), st.view ? '' : item('edit', 'pencil', u.edit, u.editSub, { chev: true })]);
+  return st.view ? h + lock(f) : h;
+}
+function stretchCard2(f, st) {
+  const u = U(f), s = stretchOf(st.km), len = POINTS[s + 1].km - POINTS[s].km;
+  let h = head2(f, G2.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, u.stretch, st.backPt ? 'point' : 'route') + nums2([[fmtKm(len), u.distance], [`${Math.round(len * PACE[f.sport])} ${u.min}`, u.time], [`↑${s ? 14 : 28} m`, u.climb]]);
+  if (s) h += grp(u.lookOut) + `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
+  h += st.view ? lock(f) : `<button type="button" class="c2-main" data-act="edit">${ic('pencil', 20)}${esc(u.edit)}</button>`;
+  return h + list([item('profile', 'mountain', u.profile, u.profileSub)]);
+}
+function editCard2(f, st) {
+  const u = U(f), s = stretchOf(st.km), sp = u.sportNames[f.sport] || f.sport;
+  return head2(f, G2.edit, u.edit, `${pn(f, s)} → ${pn(f, s + 1)}`, st.held ? null : 'route') + `<p class="c2-note">${esc(u.editNote)}</p>`
+    + grp(u.howYouGo) + list([item('esport', (st.esport || f.sport) === 'hike' ? 'walk' : (st.esport || f.sport) === 'paddle' ? 'water' : 'bike', u.sport, u.sportSame, { val: st.esport ? (u.sports.find((x) => x[0] === st.esport) || [0, sp])[1] : sp, chev: true })])
+    + `<div class="c2-seg two" role="radiogroup" aria-label="${esc(u.drawn)}"><button type="button" role="radio" aria-checked="${st.drawn !== 'line'}" data-act="drawn-auto">${ic('auto', 18)}<span>${esc(u.follow)}</span></button><button type="button" role="radio" aria-checked="${st.drawn === 'line'}" data-act="drawn-line">${ic('line', 18)}<span>${esc(u.straight)}</span></button></div>`
+    + list([item('estyle', 'style', u.style, u.styleSub(sp), { val: st.estyle || u.balanced, chev: true })])
+    + grp(u.onStretch) + list([item('other', 'route', u.other, u.otherSub), item('stophere', 'pause', u.stopHere, u.stopHereSub), item('avoid', 'avoid', u.avoid, u.avoidSub), item('profile', 'mountain', u.profile, u.profileSub)]);
+}
+const spotOf2 = (f, p) => { const u = U(f), g = f.g; if (p[1] < g.water) return u.spots.lake; if (p[1] > g.town) return u.spots.town; return [u.spots.forest[0], u.spots.forest[1][f.sport]]; };
+function spotCard2(f, st) {
+  const u = U(f), [name, line] = spotOf2(f, st.at), d = Math.round(nearest(f.g, st.at).d * 2.9 / 10) * 10, w = { 4: 'S0', 5: 'T1' };
+  const third = st.at[1] < f.g.water ? ['?', `${f.sport === 'hike' ? u.trailGrade : u.diff} ${u.notMapped}`, true] : gradeNum(f, ['', '', '', '', 'S0', 'T1']);
+  let h = head2(f, G2.pin, name, line) + nums2([...(st.noRoute ? [] : [[`${d} m`, u.fromRoute]]), [`${ele(1.2)} m`, u.height], third]);
+  h += list([item('here', 'info', u.here, u.hereSpotSub, { chev: true })]);
+  if (st.view) return h + lock(f) + foot2(f);
+  h += grp(u.yourRouteH) + list(st.noRoute ? [item('round', 'roundtrip', u.round, u.roundSub)] : [item('startspot', 'flag', u.startSpot, u.startSpotSub), item('endspot', 'flagend', u.endSpot, u.endSpotSub), item('round', 'roundtrip', u.round, u.roundSub), item('avoid', 'avoid', u.avoid, u.avoidSub)]);
+  return h + foot2(f);
+}
+function placeCard2(f, st) {
+  const u = U(f), t = T[f.lang];
+  let h = head2(f, G2.place, t.place, t.placeSub) + `<span class="c2-src">${esc(u.fromLipas)}</span>` + `<ul class="c2-facts">${u.placeFacts.map((c) => `<li>${ic('check', 20)}${esc(c)}</li>`).join('')}</ul>`;
+  h += list([item('placemore', 'info', u.here, u.hereSpotSub, { chev: true })]);
+  if (st.view) return h + lock(f) + foot2(f);
+  h += grp(u.yourRouteH) + list([item('startspot', 'flag', u.startSpot, u.startSpotSub), item('endspot', 'flagend', u.endSpot, u.endSpotSub), item('round', 'roundtrip', u.round, u.roundSub)]);
+  return h + foot2(f);
+}
+const kv2 = (rows) => `<dl class="c2-kv">${rows.map(([k, v, extra = '']) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}${extra}</dd></div>`).join('')}</dl>`;
+function hereCard2(f, st) {
+  const u = U(f), k = u.kv, onRoute = st.kind === 'route', w = onRoute ? wayAt(st.km) : ['', 'Forest path', 'Metsäpolku', u.spots.forest[0], 'S0', 'T1', '1 m', 'dirt'];
+  const [name, line] = onRoute ? [w[3], kindOf(f, w)] : spotOf2(f, st.at);
+  const g = (x) => (x ? `${x}, ${u.grades[x]}` : u.notMapped);
+  const G = { mtb: kv2([[k.diffK, g(w[4])], [k.upK, g(w[4])], [k.surface, k.dirt], [k.width, w[6]]]), hike: kv2([[k.sac, g(w[5])], [k.vis, k.clear]]) };
+  const other = f.sport === 'hike' ? 'mtb' : 'hike';
+  let h = head2(f, onRoute ? G2.way : G2.pin, name, line, onRoute ? 'route' : 'spot') + `<span class="c2-src">${esc(u.fromOsm)}</span>`;
+  h += grp(u.groups[f.sport]) + G[f.sport] + grp(u.groups[other]) + G[other] + grp(u.groups.winter) + kv2([[k.surface, k.ploughed]]);
+  if (!onRoute) h += grp(u.groups.spot) + kv2([[u.height[0].toUpperCase() + u.height.slice(1), `${ele(1.2)} m`], [k.coords, coords(f, st.at), ` <button type="button" data-act="copied">${ic('copy', 15)}${esc(k.copy)}</button>`]]);
+  h += grp(u.groups.checked) + kv2([['OpenStreetMap', f.lang === 'fi' ? 'kesäkuu 2024' : 'June 2024']]);
+  return h + list([item('osm', 'tags', u.osm, u.osmSub, { chev: true })]) + foot2(f, { share: false });
+}
+function placeMoreCard2(f, st) {
+  const u = U(f), t = T[f.lang], by = (g) => t.placeRows.filter((r) => r[0] === g).map((r) => [r[1], r[2]]);
+  return head2(f, G2.place, t.place, t.placeSub, 'place') + `<span class="c2-src">${esc(u.fromLipas)}</span>` + [['site', 'site'], ['there', 'thereG'], ['when', 'when'], ['checked', 'checked']].map(([g, n]) => grp(u.groups[n]) + kv2(by(g))).join('')
+    + list([item('lipas', 'map', t.lipasLink.replace(' ›', ''), u.lipasSub, { chev: true }), item('website', 'link', t.website.replace(' ›', ''), u.webSub, { chev: true }), item('osm', 'tags', u.osm, u.osmSub, { chev: true })]) + foot2(f, { share: false });
+}
+function itemCard2(f, st) {
+  const u = U(f);
+  const two = !!st.item2;
+  let h = head2(f, G2.look, two ? u.look2 : u.look, u.lookLine, 'route') + nums2(two ? [[u.lookWhere2, u.fromStart], ['400 m', u.long], ['S1', u.diff]] : [[u.lookWhere, u.fromStart], ['80 m', u.long], ['14 %', u.steepest]]) + `<span class="c2-src">${esc(two ? u.lookSrc2 : u.lookSrc)}</span><p class="c2-note">${esc(two ? u.lookNote2 : u.lookNote)}</p>`;
+  if (!st.view) h += `<button type="button" class="c2-main" data-act="avoidit">${ic('avoid', 20)}${esc(u.avoidIt)}</button>`;
+  return h + `<div class="c2-stepper"><button type="button" data-act="item-step" aria-label="${esc(u.prev)}">${ic('left', 20)}</button><span>${esc(u.ofN(two ? 2 : 1, 2))}</span><button type="button" data-act="item-step" aria-label="${esc(u.next)}">${ic('right', 20)}</button><span class="grow"></span><button type="button" data-act="allcheck">${esc(u.allCheck)} ${ic('right', 16)}</button></div>`;
+}
+function osmCard2(f, st) {
+  const u = U(f), t = T[f.lang], tags = OSM_TAGS[st.place ? 'place' : 'way'];
+  return head2(f, null, u.osm, st.place ? t.place : spotOf2(f, st.at)[0], st.from || 'more') + `<ul class="tags">${tags.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` + foot2(f, { share: false });
+}
+function notRightCard2(f, st) {
+  const t = T[f.lang], u = U(f);
+  return head2(f, null, u.notRight, null, st.from || 'spot') + `<p class="c2-note">${esc(t.nrText.replace('fix what you tell them', 'can fix what you tell them').replace('korjaavat', 'voivat korjata'))}</p>`
+    + list([item('osmnote', 'note', t.nrNote, t.nrNoteSub, { chev: true }), item('osmedit', 'map', t.nrEdit, t.nrEditSub, { chev: true }), st.place ? item('lipas', 'map', t.nrLipas, t.nrLipasSub, { chev: true }) : '']);
+}
+const CARDS2 = { route: routeCard2, stretch: stretchCard2, under: hereCard2, here: hereCard2, more: hereCard2, edit: editCard2, spot: spotCard2, osm: osmCard2, notright: notRightCard2, place: placeCard2, placemore: placeMoreCard2, point: pointCard2, sport: sportCard2, item: itemCard2 };
+// the steps behind a row: places to sleep, when you leave, when you go on, a stretch's sport and style
+function staysCard5(f, st) { const u = U(f); return head2(f, G2.via(st.pt), u.stays5, pn(f, st.pt), 'point') + list(u.staysList5.map(([n, kind, d], i) => item(`stay-${i}`, 'tent', n, `${kind}, ${d}`, { chev: true }))) + `<p class="c2-note">${esc(u.staysNote5)}</p>`; }
+function leaveCard5(f, st) { const u = U(f), cur = st.leave || u.leaveTimes5[0]; return head2(f, G2.start, u.leave, u.leaveSub, 'point') + list(u.leaveTimes5.map((v) => item(`leave-${v}`, 'clock', v, null, { role: 'menuitemradio', checked: v === cur }))); }
+function goonCard5(f, st) { const u = U(f), cur = st.goon || '07:00'; return head2(f, G2.via(st.pt), u.goOnAt, u.nextMorning, 'point') + list(u.goonTimes5.map((v) => item(`goon-${v}`, 'clock', v, null, { role: 'menuitemradio', checked: v === cur }))); }
+function esportCard5(f, st) { const u = U(f), s = stretchOf(st.km), cur = st.esport || f.sport; return head2(f, G2.edit, u.sport5, `${pn(f, s)} → ${pn(f, s + 1)}`, 'edit') + list(u.sports.map(([k, l, icn]) => item(`esp-${k}`, icn, l, u.sportLines[k], { role: 'menuitemradio', checked: k === cur, val: k === f.sport ? u.yourRoute : null }))); }
+function estyleCard5(f, st) { const u = U(f), sp = u.sportNames[f.sport] || f.sport, cur = st.estyle || u.balanced; return head2(f, G2.edit, u.style, u.styleSub(sp), 'edit') + list(u.styles5[f.sport === 'hike' ? 'hike' : 'mtb'].map((l) => item(`est-${l}`, 'style', l, null, { role: 'menuitemradio', checked: l === cur }))); }
+Object.assign(CARDS2, { stays: staysCard5, leave: leaveCard5, goon: goonCard5, esport: esportCard5, estyle: estyleCard5 });
+const backTo = (f, st, act) => { const u = U(f); return { route: () => wayAt(st.km)[3], point: () => pn(f, st.pt), spot: () => spotOf2(f, st.at)[0], place: () => T[f.lang].place, more: () => u.here, under: () => u.here, placemore: () => u.here, edit: () => u.edit }[act]?.() || u.back; };
+const words = (html, f, st) => html
+  .replace(/<button type="button" class="c2-back" data-act="([a-z]+)" aria-label="[^"]*">(<svg[\s\S]*?<\/svg>)<\/button>/, (m, act, svg) => `<button type="button" class="c2-back c2-back-words" data-act="${act}">${svg}<span>${esc(backTo(f, st, act))}</span></button>`)
+  .replace(/<button type="button" class="c2-item([^"]*)"([^>]*)>([\s\S]*?)<\/button>/g, (m, cls, attrs, inner) => {
+    const s = inner.match(/<small>([\s\S]*?)<\/small>/);
+    return s ? `<button type="button" class="c2-item${cls}"${attrs} title="${s[1]}">${inner}</button>` : m;
+  });
+const buttons = (html) => html.replace(/<div class="c2-list">([\s\S]*?)<\/div>/g, (m, inner) => {
+  if (/class="chev"|role="menuitemradio"/.test(inner)) return m;
+  const btns = [...inner.matchAll(/<button type="button" class="c2-item([^"]*)" data-act="([^"]+)"[^>]*>(<svg[\s\S]*?<\/svg>)?<span><b>([\s\S]*?)<\/b>(?:<small>([\s\S]*?)<\/small>)?<\/span>[\s\S]*?<\/button>/g)];
+  if (!btns.length) return m;
+  const one = (c) => `<button type="button" class="${/danger/.test(c[1]) ? 'c5-remove' : 'c5-btn'}" data-act="${c[2]}"${c[5] ? ` title="${c[5]}"` : ''}>${c[3] || ''}<span>${c[4]}</span></button>`;
+  const danger = btns.filter((c) => /danger/.test(c[1])), rest = btns.filter((c) => !/danger/.test(c[1]));
+  return (rest.length ? `<div class="c5-btns">${rest.map(one).join('')}</div>` : '') + danger.map(one).join('');
+});
+const out = {};
+for (const [k, fn] of Object.entries(CARDS2)) out[k] = (f, st) => { const h = words(fn(f, st), f, st); return f.g === GEO.desk ? buttons(h) : h; };
+return out;
+})();
+// what a control does where the mock-up can't show it: said in a note, as the app would (Undo where the app has it)
+const SAY5 = {
+  en: { reverse: ['The route runs the other way now', true], backstart: ['A leg back to the start is added', true], other: ['Two other ways are on the map: tap one to take it', false], stophere: ['A stop at this spot, 30 min', true], avoid: ['The route goes around this spot, 40 m', true], profile: ['The profile shows this stretch', false], round: ['Round trip from here: pick how long', false], weather: ['The timeline shows the weather here', false], lipas: ['LIPAS\u2019s page opens in a new tab', false], website: ['The place\u2019s page opens in a new tab', false], osmnote: ['OpenStreetMap\u2019s note page opens at this spot', false], osmedit: ['OpenStreetMap\u2019s editor opens here', false], avoidit: ['The route goes around the steep descent', true], allcheck: ['Check opens at Worth a look', false], tbundo: ['Undone', false], tbredo: ['Redone', false] },
+  fi: { reverse: ['Reitti kulkee nyt toiseen suuntaan', true], backstart: ['Osuus takaisin lähtöön lisätty', true], other: ['Kaksi muuta reittiä on kartalla: napauta yhtä', false], stophere: ['Tauko tässä kohdassa, 30 min', true], avoid: ['Reitti kiertää tämän kohdan, 40 m', true], profile: ['Profiili näyttää tämän osuuden', false], round: ['Kierros tästä: valitse pituus', false], weather: ['Aikajana näyttää sään tässä', false], lipas: ['LIPASin sivu aukeaa uuteen välilehteen', false], website: ['Paikan sivu aukeaa uuteen välilehteen', false], osmnote: ['OpenStreetMapin huomautussivu aukeaa tähän kohtaan', false], osmedit: ['OpenStreetMapin muokkain aukeaa tähän', false], avoidit: ['Reitti kiertää jyrkän laskun', true], allcheck: ['Tarkista aukeaa kohdasta Katso tarkemmin', false], tbundo: ['Kumottu', false], tbredo: ['Tehty uudelleen', false] },
+};
 
 // ------------------------------------------------ Revision 4: Revision 3 with the user's answers (2026-10-21): an icon on every
 // row that opens something, a hover on every row, and a line on every item of a list (on desktops, every line is a tooltip)
@@ -2040,11 +2382,12 @@ function render(fr) {
   f.z = desk ? 1 : v.z; f.view = !!st.view;
   el.classList.toggle('dark', v.theme === 'dark');
   const scr = el.querySelector('.screen'), t = T[f.lang];
-  const rev = st.v || PK.cards, v2 = rev !== 'v1', r4 = rev === 'r4', r3 = rev === 'r3' || r4, r1 = rev === 'r1' || r3, u = T2[f.lang];
+  const rev = st.v || PK.cards, v2 = rev !== 'v1', r5 = rev === 'r5', r4 = rev === 'r4' || r5, r3 = rev === 'r3' || r4, r1 = rev === 'r1' || r3, u = T2[f.lang];
   scr.classList.toggle('v2', v2);
   scr.classList.toggle('r1', r1);
   scr.classList.toggle('r3', r3);
   scr.classList.toggle('r4', r4);
+  scr.classList.toggle('r5', r5);
   scr.style.width = `${f.W}px`; scr.style.height = `${f.H}px`; scr.style.setProperty('--k', String(desk ? 1 : v.z));
   scr.classList.toggle('bigtext', v.z >= 2);
   scr.style.backgroundImage = `url(${BG}${f.g.pic})`;
@@ -2061,7 +2404,7 @@ function render(fr) {
   }
   if (desk) {
     html += `<div class="panel" aria-label="Route planner"><div class="row"><span class="nums"><span><b>3.05 km</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span></div>
-      ${[0, 1, 2].map((i) => `<div class="wp"><i>${i === 1 ? '1' : ''}</i><span style="overflow-wrap:anywhere"><b>${esc(ptName(f, i))}</b><br><small style="color:var(--muted)">${fmtKm(POINTS[i].km)} · ${clock(POINTS[i].km, f.sport)}</small></span></div>`).join('')}</div>
+      ${[0, 1, 2].map((i) => `<div class="wp${r5 && ['point', 'sport', 'stays', 'leave', 'goon'].includes(card) && st.pt === i ? ' wp-lit' : ''}"><i>${i === 1 ? '1' : ''}</i><span style="overflow-wrap:anywhere"><b>${esc(ptName(f, i))}</b><br><small style="color:var(--muted)">${fmtKm(POINTS[i].km)} · ${clock(POINTS[i].km, f.sport)}</small></span></div>`).join('')}</div>
       <div class="dtool" aria-label="Drawing tools"><button type="button" class="btn small" data-act="noop">${ic('auto', 18)}Follow paths</button><button class="tbtn" type="button" data-act="noop" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="Redo">${ic('redo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button><button type="button" class="btn small" data-act="noop">${esc(t.done)}</button></div>`;
   }
   // the stretch a route card is about, lit on the map (D)
@@ -2071,7 +2414,7 @@ function render(fr) {
     html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><polyline points="${P}" fill="none" stroke="#fff" stroke-width="${desk ? 13 : 11}" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><polyline points="${P}" fill="none" stroke="var(--accent-bg)" stroke-width="${desk ? 7 : 6}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
   scr.innerHTML = html;
-  const CC = !v2 ? CARDS : r4 ? CARDS_R4 : r3 ? CARDS_R3 : r1 ? CARDS_R1 : CARDS2;
+  const CC = !v2 ? CARDS : r5 ? CARDS_R5 : r4 ? CARDS_R4 : r3 ? CARDS_R3 : r1 ? CARDS_R1 : CARDS2;
   const inner = card && CC[card] ? (v2 && !r1 ? `<div class="app pl-way card">${CC[card](f, st)}</div>` : `<div class="card">${CC[card](f, st)}</div>`) : '';
   // a spot within reach of the line goes onto it: Add a point here, not Add to my route (revised)
   const near = v2 && st.kind === 'spot' && !st.place && st.at && !st.noRoute && nearest(f.g, st.at).d < 14;
@@ -2083,7 +2426,7 @@ function render(fr) {
     scr.insertAdjacentHTML('beforeend', `<div class="sheet${inner ? ' card-in' : ''}" role="region" aria-label="Route planner"><span class="grab" aria-hidden="true"></span>${body}</div>`);
     sheetTop = f.H - 8 - scr.querySelector('.sheet').offsetHeight;
     // the toolbox steps aside while a card is open (D); the map's buttons above the sheet
-    if (inner && v2 && !st.view && f.z < 2) scr.insertAdjacentHTML('beforeend', `<div class="tbox" style="bottom:${f.H - sheetTop + 12}px" aria-label="Undo and redo"><button class="tbtn" type="button" data-act="noop" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="Redo">${ic('redo')}</button></div>`);
+    if (inner && v2 && !st.view && f.z < 2) scr.insertAdjacentHTML('beforeend', `<div class="tbox" style="bottom:${f.H - sheetTop + 12}px" aria-label="Undo and redo"><button class="tbtn" type="button" data-act="tbundo" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="tbredo" aria-label="Redo">${ic('redo')}</button></div>`);
     if (!inner && !first) scr.insertAdjacentHTML('beforeend', `<div class="tbox" style="bottom:${f.H - sheetTop + 12}px" aria-label="Drawing tools"><button type="button" class="modebtn" data-act="noop">${ic('auto', 20)}<span><b>Follow paths</b><small>${esc(t[f.sport])} · Balanced</small></span></button><button class="tbtn" type="button" data-act="${st.added && st.added.length ? 'undo' : 'noop'}" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button></div>`);
     if (sheetTop - 76 > 44 * 2 + 52 * 2 + 8 * 4) scr.insertAdjacentHTML('beforeend', `<div class="cols" style="bottom:${f.H - sheetTop + 12}px"><span class="cb">${ic('locate')}</span><span class="cb">${ic('fit')}</span><span class="fab">${ic('weather', 22)}Weather</span><span class="fab">${ic('layers', 22)}Layers</span></div>`);
   }
@@ -2127,8 +2470,9 @@ function render(fr) {
     if (st.toast === 'removed') msg = u.removed(pn(f, st.removed ?? 1));
     if (st.toast === 'starts') msg = u.startsHere;
     if (st.toast === 'ends') msg = u.endsHere;
+    if (st.toast === 'msg') msg = st.msg;
     const tb = scr.querySelector('.tbox'), above = tb ? f.H - tb.offsetTop + 10 : f.H - sheetTop + 12;
-    scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${desk ? 24 : above}px"><span>${esc(msg)}</span>${['added', 'tap', 'removed', 'starts', 'ends'].includes(st.toast) ? `<button type="button" data-act="undo">${esc(t.undo)}</button>` : ''}</div>`);
+    scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${desk ? 24 : above}px"><span>${esc(msg)}</span>${['added', 'tap', 'removed', 'starts', 'ends'].includes(st.toast) || (st.toast === 'msg' && st.undoable) ? `<button type="button" data-act="undo">${esc(t.undo)}</button>` : ''}</div>`);
   }
 }
 
@@ -2152,6 +2496,17 @@ function opened(st, h, right) {
 }
 function act(fr, a) {
   const st = fr.st, keep = { added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z, v: st.v, view: st.view, noRoute: st.noRoute };
+  const say = (SAY5[st.lang || PK.lang] || SAY5.en)[a];
+  if (say) { st.toast = 'msg'; st.msg = say[0]; st.undoable = say[1]; render(fr); return; }
+  if (a.startsWith('stay-')) { const u5 = T2[st.lang || PK.lang]; st.card = 'point'; st.toast = 'msg'; st.msg = (st.lang || PK.lang) === 'fi' ? `Yö siirtyi: ${['Kaupin laavu', 'Tapatoran kota', 'Camping Härmälä'][+a.slice(5)]}` : `The night moved to ${['Kaupin laavu', 'Tapatoran kota', 'Camping Härmälä'][+a.slice(5)]}`; st.undoable = true; render(fr); return; }
+  if (a.startsWith('leave-')) { st.leave = a.slice(6); st.card = 'point'; render(fr); return; }
+  if (a.startsWith('goon-')) { st.goon = a.slice(5); st.card = 'point'; render(fr); return; }
+  if (a.startsWith('esp-')) { st.esport = a.slice(4); st.card = 'edit'; render(fr); return; }
+  if (a.startsWith('est-')) { st.estyle = a.slice(4); st.card = 'edit'; render(fr); return; }
+  if (a === 'after') { st.backPt = true; st.card = 'stretch'; st.kind = 'route'; st.km = (POINTS[st.pt].km + POINTS[st.pt + 1].km) / 2; st.at = along(fr.f.g, st.km); st.toast = null; render(fr); return; }
+  if (['stays', 'leave', 'goon', 'esport', 'estyle'].includes(a)) { st.card = a; st.toast = null; render(fr); return; }
+  if (a === 'co-' || a === 'co+') { st.co = Math.max(0, (st.co ?? 10) + (a === 'co+' ? 5 : -5)); render(fr); return; }
+  if (a === 'item-step') { st.item2 = !st.item2; render(fr); return; }
   if (a.startsWith('here-')) { st.here = a.slice(5); render(fr); return; }
   if (a.startsWith('pick-')) { st.change = a.slice(5) !== (st.sport || PK.sport); st.card = 'point'; render(fr); return; }
   if (a.startsWith('drawn-')) { st.drawn = a.slice(6); render(fr); return; }
