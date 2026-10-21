@@ -711,16 +711,16 @@ body:not(.ready) .map-ctrls { display: none; }
    wraps in its button rather than leaving the card */
 .way-pair { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .way-pair > .way-nostyle { flex: 1 1 200px; width: auto; }
-.way-sh-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
-.way-sh-row > .way-sh { flex: 1 1 auto; }
-.pl-way .sportbtn, .pl-way .stylebtn { display: inline-flex; height: auto; min-height: 40px; max-width: 100%; margin: 0; padding-block: 3px; white-space: normal; }
+.pl-way .stylebtn { display: inline-flex; height: auto; min-height: 40px; max-width: 100%; margin: 0; padding-block: 3px; white-space: normal; }
+.pl-way .stylebtn .two { flex: 1; }
 .pl-way .stylebtn .two span { white-space: normal; overflow-wrap: anywhere; }
-.pl-way .sportbtn > span { min-width: 0; overflow-wrap: anywhere; }
-.pl-way .sportbtn .ic, .pl-way .stylebtn .ic { flex: none; }
-.pl-way .stylebtn > .ic:last-child, .pl-way .sportbtn > .ic:last-child { color: var(--muted); }
-@media (hover: hover) { .pl-way .sportbtn:hover, .pl-way .stylebtn:hover { background: var(--surface-2); } }
-.pl-way .sportbtn[aria-expanded="true"] { background: var(--accent-soft); }
-@media (pointer: coarse) { .pl-way .sportbtn, .pl-way .stylebtn { min-height: 44px; } }
+.pl-way .stylebtn .ic { flex: none; }
+.pl-way .stylebtn > .ic:last-child { color: var(--muted); }
+@media (hover: hover) { .pl-way .stylebtn:hover { background: var(--surface-2); } }
+@media (pointer: coarse) { .pl-way .stylebtn { min-height: 44px; } }
+/* the round trip's style and direction: side by side on a phone, a row each on a desktop (2026-10-21) */
+.rt-pair.stack { flex-direction: column; align-items: stretch; }
+.rt-pair.stack > .stylebtn { width: 100%; }
 /* Make 3 loops says what it costs, under its name */
 .rt-make-t { display: grid; line-height: 1.2; }
 .rt-make-t small { font-size: 12px; font-weight: 500; opacity: .85; }
@@ -768,8 +768,8 @@ body:not(.ready) .map-ctrls { display: none; }
 .way-sh { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-align: left; }
 button.way-sh { min-height: 40px; cursor: pointer; }
 .way-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.way-chips .chip, .rt-chips .chip, .rt-unit .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
-.way-chips .chip[aria-pressed="true"], .rt-chips .chip[aria-pressed="true"], .rt-unit .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
+.way-chips .chip, .rt-chips .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
+.way-chips .chip[aria-pressed="true"], .rt-chips .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
 .way-how { padding: 10px 0 0; border-top: 1px solid var(--line); }
 /* How you go's own section, in place: its presets are the chips just above it, and its note is about a drawn route */
 .way-how .style-box > :is(.style-presets, .note:last-child) { display: none; }
@@ -783,14 +783,16 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 /* How long: its heading, and by distance or by time as two chips like the lengths under them (2026-10-21) */
 .rt-how { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 4px; }
 .rt-how > b { font-size: 15px; }
-.rt-unit { display: flex; flex-wrap: wrap; gap: 8px; } /* at 200 % Distance and Time wrap rather than leave the card */
-.rt-dir { position: relative; display: flex; align-items: center; min-width: 0; width: 100%; } /* a row of its own (2026-10-21) */
-.rt-dir select { width: 100%; }
-.rt-dir select { appearance: none; height: 44px; max-width: 100%; text-overflow: ellipsis; padding: 0 30px 0 34px; border: 1px solid var(--line); border-radius: 12px;
-  background: var(--surface-solid); color: var(--text); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
-.rt-dir-ic, .rt-dir-chev { position: absolute; display: inline-flex; pointer-events: none; color: var(--muted); }
-.rt-dir-ic { left: 10px; }
-.rt-dir-chev { right: 10px; }
+.rt-unit { flex-wrap: wrap; } /* a switch; at 200 % Distance and Time wrap rather than leave the card */
+.rt-unit button { height: 36px; padding: 0 14px; font-size: 14px; }
+.rt-unit button .ic { color: var(--accent); }
+.pl-way .rt-unit button span { display: inline; } /* (narrow screens hide a switch's words: these stay) */
+@media (pointer: coarse) { .rt-unit button { height: 40px; } }
+/* the direction: the route style's button, with the browser's list over it (it opens the list, a screen reader reads it) */
+.rt-dir { position: relative; cursor: pointer; }
+.rt-dir select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
+.rt-dir-chev { display: inline-flex; flex: none; color: var(--muted); }
+.rt-dir:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .rt-step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } /* (wraps rather than running off at 200 %) */
 .tool.ring { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); }
 .rt-len { display: inline-flex; align-items: baseline; justify-content: center; gap: 6px; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--muted); font-size: 15px; }
@@ -1199,7 +1201,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .mr-ic { flex: none; display: inline-flex; color: var(--muted); }
 .mr-text { flex: 1 1 180px; min-width: 0; }
 .mr-state .btn { height: 40px; }
-@media (pointer: coarse) { .way-chips .chip, .rt-chips .chip, .rt-unit .chip, .sport-chip, .mr-state .btn { min-height: 44px; } }
+@media (pointer: coarse) { .way-chips .chip, .rt-chips .chip, .sport-chip, .mr-state .btn { min-height: 44px; } }
 .sum-empty + .btn { margin-left: 8px; }
 
 /* the marker of a point picked in the list */

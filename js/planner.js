@@ -1580,10 +1580,12 @@ export class Planner {
   // The form: where it starts, and once it has a start, distance or time, the lengths, − / +, the direction, the
   // sport and route style, and Make 3 loops with what it costs. With loops made: the loops, side by side.
   loopView() {
-    const L = this.loop, sport = this.app.activity(), tap = this.coarse() ? 'tap' : 'click';
+    const L = this.loop, sport = this.app.activity(), tap = this.coarse() ? 'tap' : 'click', desk = this.sideMQ.matches;
     const top = L.fromWays ? [this.backRow()] : [];
     const close = L.fromWays ? null : h('button', { type: 'button', class: 'tool way-x', 'data-k': 'loop-x', 'aria-label': 'Close the round trip', title: 'Close the round trip', onclick: () => this.closeLoop(), html: icon('close', 20) });
-    if (!roundTripSports.includes(sport)) return [...top, h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip')), this.sportPill(), close), h('p', { class: 'note' }, `No round trips for ${ACTIVITIES[sport].label} yet.`)];
+    // the form's top: the sport's row right under the top row, as in every step (2026-10-21)
+    const lead = (head) => (L.fromWays ? [...top, this.sportRow(), head] : [head, this.sportRow()]);
+    if (!roundTripSports.includes(sport)) return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip')), close)), h('p', { class: 'note' }, `No round trips for ${ACTIVITIES[sport].label} yet.`)];
     if (L.results.length && !L.editing) return [...top, ...this.loopResults(close)];
     if (L.busy) return [...top, ...this.loopMaking(close)];
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb, min = L.mode === 'min', val = min ? L.min : L.km;
@@ -1593,23 +1595,25 @@ export class Planner {
       if (min) L.min = v; else L.km = v;
       this.loopChanged();
     };
-    // How long: by distance or by time, two plain choices beside their heading (2026-10-21)
+    // How long: by distance or by time, a switch on its heading's line (2026-10-21)
     const seg = h('div', { class: 'rt-how' }, h('b', { id: 'rt-how-h' }, 'How long'),
-      h('div', { class: 'rt-unit', role: 'group', 'aria-labelledby': 'rt-how-h' }, ...[['km', 'Distance'], ['min', 'Time']].map(([k, t]) => h('button', {
-        type: 'button', class: 'chip', 'data-k': `unit-${k}`, 'aria-pressed': String(L.mode === k), onclick: () => { if (L.mode !== k) { L.mode = k; this.loopChanged(); } },
+      h('div', { class: 'seg rt-unit', role: 'group', 'aria-labelledby': 'rt-how-h' }, ...[['km', 'Distance'], ['min', 'Time']].map(([k, t]) => h('button', {
+        type: 'button', 'data-k': `unit-${k}`, 'aria-pressed': String(L.mode === k), onclick: () => { if (L.mode !== k) { L.mode = k; this.loopChanged(); } },
         html: `${L.mode === k ? icon('check', 15) : ''}<span>${t}</span>`,
       }))));
     const DIRS = [['', 'Any direction'], ['0', 'North'], ['45', 'North-east'], ['90', 'East'], ['135', 'South-east'], ['180', 'South'], ['225', 'South-west'], ['270', 'West'], ['315', 'North-west']];
     if (sport !== 'hike' && sport !== 'run') DIRS.push(['wind', 'Into the wind first']);
-    const cur = L.dir == null ? '' : String(L.dir);
-    const dir = h('label', { class: 'rt-dir', title: 'Which way the loop heads out (into the wind first: back with it behind you)' },
-      h('span', { class: 'rt-dir-ic', 'aria-hidden': 'true', html: icon('roundtrip', 16) }),
+    const cur = L.dir == null ? '' : String(L.dir), name = { '': 'Any', wind: 'Into the wind' }[cur] || DIRS.find(([v]) => v === cur)?.[1] || 'Any';
+    // the direction: a button like the route style's beside it, the browser's own list under it (2026-10-21)
+    const dir = h('label', { class: 'stylebtn rt-dir', title: 'Which way the loop heads out (into the wind first: back with it behind you)' },
+      h('span', { class: 'two', 'aria-hidden': 'true' }, h('small', {}, 'Direction'), h('span', {}, name)),
+      h('span', { class: 'rt-dir-chev', 'aria-hidden': 'true', html: icon('chevronDown', 12) }),
       h('select', { 'aria-label': 'Direction', 'data-k': 'dir', onchange: (e) => { const v = e.target.value; L.dir = v === '' ? null : v === 'wind' ? 'wind' : +v; this.loopChanged(); } },
-        ...DIRS.map(([v, t]) => h('option', { value: v, selected: v === cur }, t))),
-      h('span', { class: 'rt-dir-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }));
+        ...DIRS.map(([v, t]) => h('option', { value: v, selected: v === cur }, t))));
     const fmt = (v) => (min ? (v >= 60 ? `${Math.floor(v / 60)} h${v % 60 ? ` ${v % 60}` : ''}` : `${v} min`) : `${v} km`);
-    // the sport's four lengths and Other…, which opens the field (also open for a length of your own)
-    const lens = min ? pre.min : pre.km, own = L.other || !lens.includes(val);
+    // the sport's lengths (three on a phone, in one row, as the first point's peek has them; four on a desktop) and
+    // Other…, which opens the field (also open for a length of your own)
+    const lens = (min ? pre.min : pre.km).slice(0, desk ? 4 : 3), own = L.other || !lens.includes(val);
     const chips = h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Lengths' }, ...lens.map((v) => h('button', {
       type: 'button', class: 'chip', 'data-k': `len-${v}`, 'aria-pressed': String(!own && v === val), onclick: () => { L.other = false; set(v); }, html: `${!own && v === val ? icon('check', 15) : ''}<span>${fmt(v)}</span>`,
     })), h('button', { type: 'button', class: 'chip rt-other', 'data-k': 'len-other', 'aria-pressed': String(own), 'aria-expanded': String(own),
@@ -1628,8 +1632,7 @@ export class Planner {
     // what Where I am sends, said by it (#281); what the loops cost, said by Make 3 loops (decided 2026-10-21)
     const whereNote = here ? h('p', { class: 'rt-cost rt-where' }, 'Where I am sends your position to the router, rounded to about a metre.') : null;
     // no start yet: only that, so the map has the room for it; the rest comes with the start (2026-10-21)
-    if (!L.start) return [...top,
-      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${tap === 'tap' ? 'Tap' : 'Click'} the map where the loop starts`)), close),
+    if (!L.start) return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${tap === 'tap' ? 'Tap' : 'Click'} the map where the loop starts`)), close)),
       where ? h('div', { class: 'rt-start' }, where) : null, whereNote,
       L.note ? h('p', { class: 'note' }, L.note) : null];
     const startLine = h('div', { class: 'rt-start' }, h('span', {}, `From ${L.startLabel} · ${tap} the map to move it`), where);
@@ -1639,10 +1642,11 @@ export class Planner {
     const making = L.busy ? `Making loops…${L.progress ? ` ${L.progress} of 3` : ''}` : '';
     const make = h('button', { type: 'button', class: 'btn primary big rt-make', 'data-k': 'make', disabled: L.busy || !L.start, onclick: () => this.generateLoops(),
       html: L.busy ? `<span class="rt-making">${making}${L.progress ? `<span class="rt-progress" style="--p:${Math.round((L.progress / 3) * 100)}%"><i></i></span>` : ''}</span>` : `${icon('roundtrip', 20)}<span class="rt-make-t"><span>Make 3 loops</span><small>${cost}</small></span>` });
-    // in the order it's chosen: where it starts, how long, which way, then the sport and style (2026-10-21)
-    return [...top,
-      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start')), close),
-      startLine, whereNote, seg, chips, stepper, dir, style,
+    // in the order it's chosen: the sport, where it starts, how long, then the style and which way: side by side on a
+    // phone, a row each on a desktop and while the style's choices are open (2026-10-21)
+    const ways = h('div', { class: `way-pair rt-pair${desk || L.styleOpen ? ' stack' : ''}` }, style, dir);
+    return [...lead(h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, 'Round trip from your start')), close)),
+      startLine, whereNote, seg, chips, stepper, ways,
       L.note ? h('p', { class: 'note' }, L.note) : null, make,
       h('span', { class: 'sr-only', role: 'status' }, making)];
   }
@@ -3804,22 +3808,14 @@ export class Planner {
     this.renderTools(); // Done waits for the first point
   }
 
-  // The sport at the start (decided with the user, 2026-10-21). In the ways to begin and Marked routes, a row of its
-  // own under the top row, so new people see it before the first point (and what Marked routes lists): the drawing
-  // menu's sport row, with the sport's line (and Paddle's craft). In the other steps, the toolbar's sport button
-  // beside the route style it decides (sportPill()). Both open the same menu as the top bar's pill (#245).
+  // The sport at the start (decided with the user, 2026-10-21): a row of its own right under the top row in the ways
+  // to begin and every step, so new people see it before the first point and it never moves: the drawing menu's
+  // sport row, with the sport's line (and Paddle's craft). It opens the same menu as the top bar's pill (#245).
   sportRow() {
     const sp = this.app.activity(), label = ACTIVITIES[sp].label;
     const line = sp === 'paddle' ? `${(CRAFT[this.craft] || CRAFT.kayak).label} · ${ACTIVITIES[sp].line}` : ACTIVITIES[sp].line;
     const b = h('button', { type: 'button', class: 'sport-chip sport-row', 'data-k': 'sport', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Sport: ${label}. ${line}`,
       html: `${icon(this.sportIcon(sp), 22)}<span><b>${escapeHtml(label)}</b><small>${escapeHtml(line)}</small></span>${icon('chevronDown', 16)}` });
-    b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
-    return b;
-  }
-  sportPill() {
-    const sp = this.app.activity(), label = ACTIVITIES[sp].label;
-    const b = h('button', { type: 'button', class: 'sportbtn sport-chip sport-pill', 'data-k': 'sport', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Sport: ${label}`, title: 'The sport: what the map shows, and what the route is planned for',
-      html: `${icon(this.sportIcon(sp), 18)}<span>${escapeHtml(label)}</span>${icon('chevronDown', 12)}` });
     b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
     return b;
   }
@@ -3869,6 +3865,7 @@ export class Planner {
     const LINE = { auto: 'Polku follows the paths', line: 'Polku joins your points with straight lines', water: 'Polku finds a way over the water' };
     return [
       raised ? this.backRow('Draw it', () => this.wayBack()) : this.backRow(),
+      this.sportRow(),
       h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map where you start`), h('small', { class: 'way-line' }, `${LINE[this.mode]}, and the sport can change on the way.`)),
       this.styleBlock(desk || raised ? 'full' : 'row', { raise: () => { this.wayRaised = true; this.pushWay(); this.renderStart(); } }),
     ];
@@ -3880,17 +3877,16 @@ export class Planner {
   // 'row': one line that opens it. `fold`: the heading folds it again (the round trip's).
   styleBlock(how, { view = 'draw', raise = null, fold = null } = {}) {
     const route = this.mainSport(), m = this.mode;
-    // the sport first, beside the style it decides: the toolbar's two buttons (2026-10-21), and the drawing button's "MTB · Balanced"
-    const pair = (el) => h('div', { class: 'way-pair' }, this.sportPill(), el);
-    if (view === 'draw' && m === 'line') return pair(h('p', { class: 'way-nostyle', html: `${icon('straight', 16)}<span>Straight lines don’t use a route style</span>` }));
-    if (view === 'draw' && m === 'water' && !isWater(route)) return pair(h('p', { class: 'way-nostyle', html: `${icon('water', 16)}<span>Legs over water are paddled, in your Paddle style</span>` }));
+    if (view === 'draw' && m === 'line') return h('p', { class: 'way-nostyle', html: `${icon('straight', 16)}<span>Straight lines don’t use a route style</span>` });
+    if (view === 'draw' && m === 'water' && !isWater(route)) return h('p', { class: 'way-nostyle', html: `${icon('water', 16)}<span>Legs over water are paddled, in your Paddle style</span>` });
     const st = this.styleOf(route), name = styleName(route, st);
-    if (how === 'row') return pair(h('button', { type: 'button', class: 'stylebtn', 'data-k': 'srow', 'aria-expanded': 'false', onclick: raise, html: `<span class="two"><small>Route style</small><span>${escapeHtml(name)}</span></span>${icon('chevronDown', 12)}` }));
+    // one button like the toolbar's (2026-10-21), which opens the choices
+    if (how === 'row') return h('button', { type: 'button', class: 'stylebtn', 'data-k': 'srow', 'aria-expanded': 'false', onclick: raise, html: `<span class="two"><small>Route style</small><span>${escapeHtml(name)}</span></span>${icon('chevronDown', 12)}` });
     const cat = STYLES[route] || STYLES.mtb, custom = isCustom(route, st);
     const pick = (k) => { this.styleLeg = null; this.setStyle({ p: k, v: {}, wet: st.wet || 'auto' }); };
     const head = fold ? h('button', { type: 'button', class: 'way-sh', 'data-k': 'sfold', 'aria-expanded': 'true', onclick: fold, html: `<span>Route style · the whole route</span>${icon('chevronUp', 16)}` })
       : h('div', { class: 'way-sh' }, 'Route style · the whole route');
-    const out = h('div', { class: 'way-style' }, h('div', { class: 'way-sh-row' }, this.sportPill(), head),
+    const out = h('div', { class: 'way-style' }, head,
       h('div', { class: 'style-presets way-chips', role: 'group', 'aria-label': 'Route style' }, ...cat.presets.map(([k, label]) => h('button', {
         type: 'button', class: 'chip', 'data-k': `style-${k}`, 'aria-pressed': String(!custom && st.p === k), onclick: () => pick(k), html: `${!custom && st.p === k ? icon('check', 15) : ''}<span>${escapeHtml(label)}</span>`,
       })), custom ? h('span', { class: 'chip chip-on', 'aria-hidden': 'true' }, 'Custom') : null),
