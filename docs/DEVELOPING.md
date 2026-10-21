@@ -218,6 +218,32 @@ docs/               ROADMAP (the order), plans/ (phase designs), retros/, review
 
 The rules are in [AGENTS.md](../AGENTS.md). In short: start from the latest Hand-over or the Project's Now column, and claim the issue; one part of a phase or one fix per pull request, with "Fixes #n" and the issue's milestone; `tools/smoke.py` passes; CHANGELOG updated in the same PR (and a phase's plan); every request through `js/net.js`; share links keep working; and only the user merges.
 
+### Shared controls
+
+Every screen is built from these, with these classes (AGENTS.md: one set of controls). The cards of 25d use them too; [#345's list](https://github.com/TommiContursi/Polku/issues/345#issuecomment-6319843803) has their measurements, and #356 the places where the app still styles one of them twice.
+
+| Control | Class | Where it's from |
+|---|---|---|
+| Back, in words, and ✕ on a row of their own | `way-bar`, `btn small quiet way-back`, `tool way-x` | the start's steps ("‹ Ways to begin") |
+| A heading and its line | `way-head`, `way-hint` | "Round trip from your start" |
+| A row that opens the next step | `way-tile` with `way-ic`, `way-t`, `way-chev` | Ways to begin |
+| A choice with its value | `stylebtn` with `two` | Route style, Direction |
+| A switch | `seg` (`full`, `rt-unit`), the chosen one with `aria-pressed` and a tick | Distance · Time |
+| Chips to pick one | `rt-chips` or `way-chips` with `chip` | the round trip's lengths |
+| The one main action | `btn primary big`, with `rt-make-t` for a line under it | Make 3 loops |
+| A button | `btn` (`quiet`, `primary`) | everywhere |
+| Actions in a group | `menu-h`, `menu-item two-line`, `hr`, `menu-item danger menu-apart` for the dangerous one; built by `popMenu()` in `js/ui.js` | the ⋯ menu |
+| A choice in a list | `menu-item` with `role="menuitemradio"`, `menu-tick`, `cur` ("your route") | the sport menus |
+| Numbers with their labels | `sheet-sum`, `sum-item` | the peek's summary |
+| A note with its action | `pl-viewnote` | "You're not editing" (25c) |
+| A toggle | `tg` with `tg-text`, `tg-ui` | Settings |
+| A Heads-up row | `li` | Check |
+| Facts as rows | `insp-row`, `insp-info` for the source | the map's card |
+
+- **A new screen** reuses these. If none fits, a new control is proposed to the user first, and once chosen it joins this table.
+- **A mock-up** copies the CSS of the controls it uses from `css/app.css`, with the same class names, in a marked block (as `docs/plans/mockups/issue-345-map-cards.html` does), so what the user approves is what gets built. When the app's controls change, the copy is made again.
+- **No copies:** no second class for a control that exists (a `card-row` beside `way-tile`, say). A variant of one is a modifier on its class, said in this table.
+
 ### Design skills
 
 - **Emil Kowalski's skills** ([emilkowal.ski/skill](https://emilkowal.ski/skill), MIT: `.agents/skills/LICENSE`) are kept in `.agents/skills/`, so every checkout and worktree has them, for Claude Code and Codex alike. Claude Code finds them through the links in `.claude/skills/`. `skills-lock.json` records each one's source and hash.
