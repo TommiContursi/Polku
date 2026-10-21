@@ -114,11 +114,11 @@ body.single .fr.only .screen { zoom: 1; border-radius: 0; box-shadow: none; }
 .fab-layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
 .fab-layers[aria-expanded="true"] { box-shadow: var(--shadow), 0 0 0 3px var(--accent); }
 .plan { margin-top: 4px; width: 60px; height: 56px; border: 0; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--route); color: #fff; box-shadow: var(--shadow); font-size: 11px; font-weight: 700; padding: 0; }
-.plan.done { background: var(--surface-solid); color: var(--route); box-shadow: var(--shadow), inset 0 0 0 2px var(--route); }
+.plan.on { background: var(--surface-solid); color: var(--route); box-shadow: var(--shadow), inset 0 0 0 2px var(--route); }
 .phone .cbtn { width: 44px; height: 44px; }
 .phone .fab, .phone .plan { width: 54px; height: 52px; }
 .needle .n { fill: #e11d48; stroke: #e11d48; }
-/* #226, as phase 24 proposes it: 3D with the buttons for how you look at the map (compass, locate, zoom), not
+/* #226, as built in #289: 3D with the buttons for how you look at the map (compass, locate, zoom), not
    between Weather and Layers (what it shows); on a touch phone it takes zoom's place under locate */
 .c3d { font: 700 13px/1 system-ui, sans-serif; letter-spacing: .02em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .c3d[aria-pressed="true"] { background: var(--accent); color: #fff; }
@@ -372,6 +372,7 @@ body.fs .fs-bar { display: flex; }
   <header class="cv-head">
     <h1>A quick layer drawer, before the full Layers panel</h1>
     <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/123">#123</a>, 2026-10-16, reviewed with design skills for coding agents and changed after the first round of answers. Not wired to the app: the map behind each frame is a screenshot of Polku; the drawer, buttons and panels are drawn in Polku's own colours and icons. The plan is <code>docs/plans/issue-123-layer-drawer.md</code>.</p>
+    <p><b>Built in #249 on 2026-10-17.</b> On 2026-10-18, #289 took the 3D tile out of the drawer: 3D is a button in the map's column, and still in Layers under More. Updated on 2026-10-21 to match what's built. While planning on a desktop, Plan in the column stays pressed.</p>
     <p><b>Updated in phase 24's review (2026-10-17):</b> tighter on short phones, more room for a tile's label and Finnish words that break only at their compounds, Edit offering every layer switch, a 3D button on the map (#226) in place of MTB's 3D tile, and frame 7 with the planner's sheet to try the same swipe.</p>
     <p><b>Try it:</b> tap maps and tiles; › on a tile opens its settings; Edit changes the tiles; More opens all layers. On a phone frame, drag the sheet down to close it or up for all layers; Layers opens it again. On a phone, <b>Try it full size</b> under a frame, and <b>Swipe numbers</b> to tune the swipe.</p>
   </header>
@@ -379,7 +380,7 @@ body.fs .fs-bar { display: flex; }
   <section class="cv-q" aria-labelledby="q-h">
     <h2 id="q-h">Decided (2026-10-16)</h2>
     <ul>
-      <li><b>Tiles follow the sport:</b> five and More. A tile that holds more settings (trail colours, depths, rain, 3D) has a › side that opens them in the drawer.</li>
+      <li><b>Tiles follow the sport:</b> five and More. A tile that holds more settings (trail colours, depths, rain radar, temperature) has a › side that opens them in the drawer.</li>
       <li><b>Your own tiles:</b> Edit beside the tiles, and a reset to the sport's tiles.</li>
       <li><b>A sheet on a phone</b>, closed with a swipe, with the same swipe as the planner's sheet (#96): one gesture for every sheet.</li>
       <li><b>More opens the full panel as it is</b>, with a way back; regrouping it waits for phase 21 (#119, #121).</li>
@@ -523,7 +524,6 @@ const TILES = {
   places: ['pin', 'Outdoor places'],
   restricted: ['zone', 'Military areas'],
   numbers: ['num', 'Difficulty numbers'],
-  d3: ['cube', '3D terrain'],
   rain: ['rain', 'Rain radar'],
   wind: ['wind', 'Wind'],
   temp: ['temp', 'Temperature'],
@@ -535,9 +535,9 @@ const TILES = {
   roadcond: ['car', 'Road conditions'], cameras: ['car', 'Road weather cameras'], paved: ['car', 'Paved roads'], private: ['car', 'Private roads'], speed: ['car', 'Speed limits'],
 };
 // the tiles whose › opens more settings (their group in the full panel)
-const HAS_OPTS = new Set(['trailcolors', 'depths', 'rain', 'temp', 'd3']);
+const HAS_OPTS = new Set(['trailcolors', 'depths', 'rain', 'temp']);
 const SPORTS = {
-  // MTB's fifth tile was 3D terrain; with the 3D button on the map (#226) it's Waymarked MTB, so 3D shows once
+  // MTB's fifth tile was 3D terrain; with the 3D button on the map (#226, built in #289) it's Waymarked MTB, so 3D shows once
   mtb: { label: 'MTB', tiles: ['trailcolors', 'details', 'lipasroutes', 'wmtmtb', 'rain'], on: ['trailcolors', 'details', 'lipasroutes'], more: 3 },
   hike: { label: 'Hike', tiles: ['wmthiking', 'lipasroutes', 'huts', 'details', 'rain'], on: ['wmthiking', 'lipasroutes', 'huts', 'details'], more: 2 },
   paddle: { label: 'Paddle', tiles: ['nautical', 'depths', 'ships', 'landing', 'wind'], on: ['nautical', 'depths', 'ships', 'landing'], more: 4 },
@@ -580,7 +580,6 @@ if (WORST) {
     nautical: ['buoy', 'Meri\u00ADmerkit ja turva\u00ADlaitteet'],
     depths: ['depth', 'Syvyys\u00ADtiedot', 'Ei navigointiin'],
     ships: ['ship', 'Alukset', 'AIS, reaaliaikainen'],
-    d3: ['cube', 'Kolmi\u00ADulotteinen maasto'],
     rain: ['rain', 'Sade\u00ADtutka'],
     wind: ['wind', 'Tuuli'],
   });
@@ -624,7 +623,6 @@ const OPTS = {
     <p class="note">Traficom's nautical chart data: shown, never used for routing. Not for navigation.</p>`,
   rain: () => `${tg('Rain radar', 'Radar now (FMI / RainViewer), forecast later', true)}${rng('Opacity', 85)}${tg('Timeline', '48 h clock for the weather · also the Weather button', false)}`,
   temp: () => `${tg('Temperature', 'Colour field with °C labels', true)}${rng('Opacity', 50)}`,
-  d3: () => `${tg('3D terrain', 'Tilt with two fingers or right-drag', true)}<label class="rng"><span>Exaggeration</span><input type="range" min="1" max="3" step="0.1" value="1.4"><b>1.4×</b></label>`,
 };
 function opts(o, id) {
   return `${head(o, esc(TILES[id][1]), true)}<div class="qd-body qd-opts">${OPTS[id]()}</div>`;
@@ -677,7 +675,7 @@ function ctrls(o) {
     <button type="button" class="cbtn c3d" aria-pressed="false" title="3D terrain">3D</button>
     <button type="button" class="fab" aria-label="Time & weather">${ic('weather', 22)}<span>Weather</span></button>
     <button type="button" class="fab fab-layers" aria-expanded="${o.layersOpen !== false}"><img src="${thumb(o.base)}" alt=""><span>Layers</span></button>
-    ${o.planning ? (phone ? '' : `<button type="button" class="plan done">${ic('check', 22)}<span>Done</span></button>`) : `<button type="button" class="plan">${ic('route', 22)}<span>Plan</span></button>`}
+    ${o.planning ? (phone ? '' : `<button type="button" class="plan on" aria-pressed="true">${ic('route', 22)}<span>Plan</span></button>`) : `<button type="button" class="plan" aria-pressed="false">${ic('route', 22)}<span>Plan</span></button>`}
   </div>`;
 }
 

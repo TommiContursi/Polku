@@ -2,7 +2,7 @@
 
 The design. What's still to do, and its status, is on GitHub: [#123](https://github.com/TommiContursi/Polku/issues/123), in the milestone [Phase 24: design review](https://github.com/TommiContursi/Polku/milestone/1). The order of phases is in [ROADMAP](../ROADMAP.md).
 
-Planned 2026-10-16: a mock-up and this plan first, reviewed with design skills for coding agents, then the user's answers to its four questions (below). Phase 24's review answered the four questions it was left on 2026-10-17 ([below](#phase-24s-answers-2026-10-17)), all but the swipe's final numbers, which need real phones. Nothing built yet.
+Planned 2026-10-16: a mock-up and this plan first, reviewed with design skills for coding agents, then the user's answers to its four questions (below). Phase 24's review answered the four questions it was left on 2026-10-17 ([below](#phase-24s-answers-2026-10-17)), all but the swipe's final numbers, which need real phones. **Built in #249 on 2026-10-17.** On 2026-10-18, #289 took the 3D tile out of the drawer: 3D is a button in the map's column (#226), and still in Layers under More. The mock-up was updated to match on 2026-10-21.
 
 ## Why
 
@@ -26,7 +26,7 @@ Changing the map quickly (another base map, or one layer such as terrain or trai
 - **Map:** the base maps as thumbnails, three to a row: Trail map, Maastokartta, Aerial, Aerial FI, Plain, Night. With an MML key, MML WMTS takes Maastokartta's place while it's the map you have on, so there are always six (a seventh left a row of one and grew the sheet to 72–82 % of a phone).
 - **On the map:** five tiles for your sport, two to a row, and More, which says how many other layers are on ("3 more on"), so nothing on is hidden.
   - A tile turns the same switch (or switches) as in the full panel.
-  - A tile with more settings (trail colours, depths, rain, temperature, 3D) has a › side, its own 44 px button: it opens those settings in the drawer, one step in, with ‹ back. They're the same switches as the tile's group in the full panel. The step in keeps the sheet's height.
+  - A tile with more settings (trail colours, depths, rain, temperature) has a › side, its own 44 px button: it opens those settings in the drawer, one step in, with ‹ back. They're the same switches as the tile's group in the full panel. The step in keeps the sheet's height.
 - **Phone (under 720 px wide):** a sheet from the bottom, over the planner's peek, which comes back as it was. About half a 390 × 844 screen (56 %). Under 760 px high it's tighter (34 px thumbnails, 48 px tiles, shorter headings): 58 % of a 360 × 740 screen and 62 % of a 375 × 667 one (66 % and 69 % in Finnish). Never taller than the room below the top bar (its body scrolls, the header with ✕ stays).
 - **Desktop:** a card beside the Layers button, its bottom level with the button's, where today's panel opens. In a window under 560 px high it reaches down to the bottom, like today's panel.
 - **Closing:** ✕, Esc, Layers again; on a phone also a swipe down, or a tap on the map. That tap does nothing else (no waypoint while planning). On a desktop the card stays while you use the map, like today's panel.
