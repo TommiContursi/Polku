@@ -40,7 +40,7 @@ Every part's requirements include these.
 - Share and Weather here send a spot you chose on the map, never your position, and only when you press them. A spot's link has five decimals.
 - Missing, late or partial data never looks complete. A missing fact says so in its place.
 - Saved routes, settings and share links keep working, old ones too. No stored format changes. New: the spot link's `pin` and `pn` (part 8).
-- Every Heads-up item of today stays, in one group, with its source. An item with no group shows in Worth a look and logs a console error, so a check fails.
+- Every Heads-up item of today stays, in one group, with its source. An item with no group shows in Read before you go, so a forgotten one looks more serious, never less, and logs a console error, so a check fails.
 - Every action of today's point menu, leg menu and spot menu stays, moved to a card.
 - WCAG 2.2 AA. 44 px targets on phones, 40 px on desktops, 8 px apart. Keyboard and screen readers. Reduced motion. Never colour alone.
 - **The app's words** (from #345, "How a card reads"): the name first; one short line under it; three numbers at most, each with its label under it; one fact per line; no facts strung with dots, no brackets; a missing fact as a dashed tile, "? difficulty not mapped".
@@ -104,9 +104,10 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
 - **Start here**, **Finish here** on a via point. **Back to start** on the finish, not on a loop.
 - **The stretch after it ›** names both ends. Until part 2 it opens today's leg menu.
 - **Move** without dragging: "Tap where it goes", then a tap moves it [p-move]. Cancel and Escape stop. Dragging stays.
-- **Back** at the top left, ✕ at the right. Back, Escape, the phone's back gesture and a tap on the map close it. The tap adds nothing.
+- **Back** at the top left when the card came from somewhere (the list, Check, another card); from the map, only ✕ [p-point]. ✕ at the right. Back, Escape, the phone's back gesture and a tap on the map close it. The tap adds nothing.
 - On phones the toolbox steps aside while a card is open.
 - At 200 % the card is half the screen at most and scrolls inside. The map moves so the point stays in sight.
+- **At 200 %, and in a narrow card, it rearranges rather than squeezes,** as the planner's item card does [jc-200]: Back and ✕ go on a row of their own above the title, so the title has the card's whole width; the three numbers go one to a row, each value beside its label. A number never breaks (`10:09`, `1.65 km`, `+3 %` stay whole), and a word breaks only at its soft hyphens, never letter by letter. #345's frames at 200 % don't show this yet: there the title runs one syllable a line and `10:04` breaks in three.
 
 **Files:**
 - Create: `js/card.js`, the card component.
@@ -143,6 +144,8 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   isNight(p.stopAt(1))
   // Change sport → Paddle on via 1: legs 1 to 2 change, leg 0 stays
   [p.legSport(0), p.legSport(1), p.legSport(2)].join() === 'mtb,paddle,paddle' && p.changeAt(1)
+  // and how they're drawn: legs 1 and 2 never 'auto' (a followed leg turns 'water', a straight one stays 'line'), leg 0 as it was; one step of Undo
+  p.legs[1].mode !== 'auto' && p.legs[2].mode !== 'auto' && p.legs[0].mode === mode0 && p.past.length === before + 1
   // Move, then a tap 200 px away
   Math.abs(p.points[1][0] - tapped[0]) < 1e-5 && p.past.length === before + 1
   // Rename "Kahvila", Enter
@@ -156,6 +159,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - Start here and Finish here on via points; Back to start on the finish, none on a loop.
   - Every control at least 44 × 44 px on the phone.
   - 200 % at 390 × 844: the card's height ≤ 50 % of the window, the point's marker above it on screen.
+  - 200 % at 360 × 740 in Finnish: Back and ✕ above the title; every `.card-num` value one line tall; the title's narrowest line at least 60 % of the card's width.
   - 360 × 740 in Finnish with a 40-letter name: no "…", no text past the card.
   - 1440 × 900: the card's corner within 30 px of the marker. A marker at the right edge: the card opens to its left, fully on screen.
   - The route's view: Make it a stop works and stays in the view; Move switches to editing first.
@@ -370,7 +374,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - Reorder: Earlier on via 2 swaps it, one step of Undo. A mouse drag drops it at place 4. A touch held 0.45 s drags; a move of 30 px within 0.2 s scrolls and never drags. Done: the sections.
   - Keys: Alt+↓ moves; Delete removes, with Undo in the note.
   - The route's view: no Reorder, no grip; a row opens its card.
-  - A 52-point route draws in under 150 ms; its key points are in view, the rest folded.
+  - A 52-point route draws in no more than twice the time `main`'s list takes on the same machine, measured in the same run; its key points are in view, the rest folded. A fixed number of milliseconds fails on a slower test machine.
   - Every row at least 44 px tall on the phone; no "…" at 360 × 740 in Finnish.
 - [ ] **Build** `sections()`, then the rows, then Reorder and the keys.
 - [ ] **Groups to run:** `sections drawer stops multi routeview backtostart lipas pointcard routecard toolbox`.
@@ -410,6 +414,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
   - A late touchend under 0.5 s on a busy page (#293): a tap.
   - Android's `contextmenu` after the hold: no second card.
   - The ring shows from 0.15 s of the hold, and goes after it.
+  - A hold on a point's marker or a label selects no text: the map's container has `-webkit-touch-callout: none` and `user-select: none`, the card's text stays selectable. iOS's callout and magnifier need a real phone.
   - Right-click: the card at the pointer. A right-drag of 40 px turns the map and opens nothing.
   - Points A, B, C. A spot beside the middle of A–B: the new point is at index 1. Past C: at the end. Behind A: index 1, never 0. The note reads "Point added after Start". Undo: as before, one step.
   - Start here: the new start at the spot. End here: the new finish.
