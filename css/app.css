@@ -1309,7 +1309,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .name-field:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 .card .way-head:has(.name-field) .btn.primary { flex: none; height: 44px; padding: 0 14px; font-size: 15px; }
 /* a 360 px phone: the switch's words under their icons, so long words fit */
-@container card (max-width: 335px) { .seg.icons button { flex-direction: column; min-height: 54px; gap: 2px; } }
+@container card (max-width: 335px) { .card-peek .seg.icons button { flex-direction: column; min-height: 54px; gap: 2px; } }
 /* narrow (200 %, a small phone): Back, undo, redo and ✕ on a row of their own, the name the card's whole width, the
    numbers one to a row, the switch in a column */
 @container card (max-width: 290px) {
@@ -1322,7 +1322,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .card .sum-item:first-child { box-shadow: none; }
   .card .sum-item.miss { margin-top: 4px; padding: 6px 10px; box-shadow: none; }
   .seg.icons { grid-template-columns: 1fr; }
-  .seg.icons button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
+  .seg.icons button, .card-peek .seg.icons button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
   .row .val { max-width: 50%; }
 }
 @container card (max-width: 190px) { .card-mark { display: none; } }
