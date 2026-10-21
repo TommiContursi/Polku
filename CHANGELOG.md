@@ -4,6 +4,18 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-21
 
+### Done keeps your route open to read ([#233](https://github.com/TommiContursi/Polku/issues/233), [#238](https://github.com/TommiContursi/Polku/issues/238))
+
+**Done** now ends editing instead of closing the planner. Your route stays open to read, check and take along: above its numbers are its name, its sports and **Kept on this device**. The drawing tools go and **More** stays. **Edit**, where **Done** was, takes you back to drawing, and undo still has everything you did.
+
+- While you're not editing, a tap on the map shows what's there, as with the planner closed, instead of adding a point. A tap on your route opens that part's menu, and the points stay where they are. **Route** lists the points without their controls, with **Edit**.
+- On a phone the toolbox then has only **More**. On a desktop the toolbar has **Show the whole route**, **More** and **Edit**, and **E** is **Done** or **Edit**.
+- **✕** at the top right closes the planner. Your route stays on the map, and a note says so, with **Open**. **Plan** opens the planner again as you left it, at the size you left it.
+- After a reload, the planner opens again if it was open, as you left it. A shared route opens ready to read.
+- **Route from here**, **Add to route**, a round trip, a file and a marked route to follow go back to editing on their own.
+- On a phone, a note shown while the planner is closed stays left of the map's buttons, and its buttons are a finger's size.
+- On a desktop, **Plan** in the map's buttons stays **Plan** while the planner is open, and closes it; it used to say **Done**.
+
 ### The start of a route asks one thing at a time ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 Opened from **Start a route**, the round trip now asks only where it starts: tap the map, or **Where I am**. On a phone that leaves most of the map free for the tap. Once it has a start, the rest of the form appears: **How long**, with a switch for **Distance** or **Time**, the sport's lengths, or **Other…**, which opens a field for a length of your own with **−** and **+**; then the route style and the direction; and **Make 3 loops** last. The map moves so that the start stays in sight above the form.

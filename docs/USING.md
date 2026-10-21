@@ -17,6 +17,10 @@ The planner's header shows your route: its distance, time and climb. How the nex
 - **On a phone** the toolbox floats above the planner, beside the map's buttons. Where there's no room for it there (a narrow phone, large text, the planner pulled up), it's the planner's first row. The drawing button shows the mode, and under it the next leg's sport and route style ("Hike · Balanced"). Tap it to draw the next legs with **Follow paths**, **Straight line** or **Over water**, to pick their sport and see your speed in it, or to pick a route style for the whole route. **Done** is at the right of the route's numbers.
 - **On a desktop** it's a toolbar on the planner's edge: the three modes, the next leg's sport, the route style, undo and redo, **Show the whole route**, the route's actions that fit, **More** and **Done**. Point at a button, or reach it with the keyboard, for its name, its key and what it does. In a narrow window, more of them move into More, and the sport shows only its icon.
 
+**Done** ends editing and keeps your route open to read, check and take along: the route's view. Above its numbers are the route's name, its sports and **Kept on this device**, with **✕** at the top right. The drawing tools go and **More** stays; on a desktop the toolbar also keeps **Show the whole route**. A tap on the map then shows what's there instead of adding a point, a tap on your route opens that part's menu, and the points stay where they are. **Route** lists the points without their controls. **Edit**, where **Done** was, goes back to drawing, with undo as it was. **Route from here**, **Add to route**, a round trip, a file and a marked route to follow go back to editing on their own. With only your first point, **Done** closes the planner instead. A shared route opens in the route's view.
+
+**✕** closes the planner. Your route stays on the map, and a note says so, with **Open**. **Plan** opens the planner again as you left it: in the route's view or editing, at the size you left it. After a reload it opens again if it was open.
+
 A mode changes only the legs you draw next. To change a drawn leg, select it on the map. A route style is for the whole route and routes it again; a leg with a style of its own keeps it. The route's actions are a share link, GPX export and saving offline; reversing it and a leg back to the start; and **Clear route**, which a note lets you undo. Those that fit are on the toolbox or toolbar, and **More** has the rest, with a round trip from the start and importing a GPX or KML file. **Show the whole route** is under **Locate** with the map's buttons whenever a route is on the map (on a desktop, while the planner is closed).
 
 ### Sports along a route
@@ -71,8 +75,9 @@ Shortcuts work when you are not typing in an input field.
 | <kbd>T</kbd> | Toggle the weather timeline |
 | <kbd>L</kbd> | Open or close the quick layer drawer (the maps, your sport's tiles, More for every layer); the arrow keys choose a map |
 | <kbd>R</kbd> | Open or close the route planner |
+| <kbd>E</kbd> | **Done** or **Edit**: end editing for the route's view, or go back to drawing |
 | <kbd>F</kbd> | Show the whole route |
-| <kbd>P</kbd>, <kbd>S</kbd>, <kbd>W</kbd> | While planning: draw the next leg with Follow paths, a straight line or over water |
+| <kbd>P</kbd>, <kbd>S</kbd>, <kbd>W</kbd> | While editing: draw the next leg with Follow paths, a straight line or over water |
 | <kbd>/</kbd> | Focus search |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Z</kbd> | Undo |
 | <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> | Redo |

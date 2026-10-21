@@ -139,7 +139,7 @@ export function initInspector(map, app) {
   let lastTouch = 0, openAtPress = false;
   map.on('touchstart', () => { lastTouch = Date.now(); openAtPress = !!popup && popup.isOpen(); });
   map.on('click', async (e) => {
-    if (app.isPlanning()) return;
+    if (app.isPlanning(e)) return; // (the planner's: drawing, or something it took in the route's view)
     const touch = Date.now() - lastTouch < 800;
     // a finger beside an open card closes it; another tap opens the next one
     if (touch && openAtPress) { openAtPress = false; if (popup) popup.remove(); return; }
