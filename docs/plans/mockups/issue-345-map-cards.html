@@ -178,6 +178,46 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .dtool { position: absolute; left: 404px; top: 64px; z-index: 4; display: flex; gap: 4px; align-items: center; padding: 6px 8px; border-radius: 0 16px 16px 0; background: var(--surface); box-shadow: var(--shadow); }
 .dtool .tbtn { width: 40px; height: 40px; }
 .dtool .btn { min-height: 40px; }
+/* the card's parts (2026-10-21, after the user's review): a name first with its line under it; three numbers, each
+   labelled; rows that open the next level; facts as labelled pairs; where a fact comes from as a small tag */
+.ctop .ttl { display: grid; gap: 1px; }
+.ctop .ttl b { font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; }
+.ctop .ttl small { font-size: 13px; font-weight: 500; color: var(--muted); overflow-wrap: anywhere; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.tile { display: grid; align-content: start; gap: 1px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.tile b { font-size: 17px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tile small { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.tile.miss { background: none; border: 1.5px dashed var(--line); }
+.tile.miss b { color: var(--muted); }
+.rows { display: grid; }
+.rowbtn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 6px 2px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--text); text-align: left; }
+.rowbtn:first-child { border-top: 1px solid var(--line); }
+.rowbtn > span { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.rowbtn b { font-size: 14.5px; font-weight: 650; overflow-wrap: anywhere; }
+.rowbtn small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.rowbtn > .ic:first-child { color: var(--muted); }
+.kv { margin: 0; display: grid; }
+.kv div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; display: flex; align-items: center; gap: 4px; }
+.gh { margin: 4px 0 -4px; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.src { justify-self: start; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.fact { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--accent-soft); font-weight: 600; font-size: 13.5px; }
+.fact .ic { color: var(--accent); }
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin: 0 -8px; }
+.foot .grow, .sel .grow { flex: 1; }
+.sel .grow { text-align: left; display: grid; }
+.sel small { font-size: 12px; color: var(--muted); font-weight: 500; }
+.btn.tiny { min-height: 28px; padding: 0 6px; font-size: 12px; }
+.btn.nr { color: var(--muted); }
+.tags { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font: 12.5px/1.4 ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+.note { margin: 0; font-size: 13.5px; color: var(--muted); }
+button.warnr { width: 100%; border: 0; text-align: left; font: inherit; }
+button.warnr span { flex: 1; font-weight: 600; }
+.keys { position: absolute; z-index: 7; left: 420px; bottom: 24px; margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); display: grid; gap: 6px; font-size: 13.5px; }
+.keys div { display: grid; grid-template-columns: 110px auto; align-items: center; gap: 10px; }
+.keys dd { margin: 0; }
+.keys kbd { font: 600 12px ui-monospace, Menlo, monospace; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
 .bigtext .sheet, .bigtext .pop { font-size: 14px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
@@ -211,6 +251,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M7 19h4c2 0 3-1 3-3v-2c0-2 1-3 3-3h0c1.5 0 2-1 2-2V7"/></symbol>
   <symbol id="i-water" viewBox="0 0 24 24"><path d="M2.5 17c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><path d="M2.5 21c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6.5 0"/><circle cx="5" cy="9" r="1.8"/><circle cx="19" cy="5" r="1.8"/><path d="M6.6 8.2c3-1.5 6.8-2.2 10.6-2.6" stroke-dasharray="2.2 2"/></symbol>
   <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
   <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
   <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol>
   <symbol id="i-avoid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></symbol>
@@ -219,72 +260,90 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 <main class="cv">
   <header class="cv-head">
     <h1>The map's cards: facts at a tap, actions on right-click</h1>
-    <p>A clickable mock-up for <a href="https://github.com/TommiContursi/Polku/issues/345">#345</a>, with its plan in <a href="../issue-345-map-cards.md">docs/plans/issue-345-map-cards.md</a> (the research, what's reused, the order of work). Tap, click, hold 0.5 s, and on desktops right-click; each frame keeps its own state, and Reset starts it again. The switches at the bottom right apply to every frame: the size (390, 360, 200 %), Finnish (rough, only to test the room words take), long names, and dark.</p>
+    <p>A clickable mock-up for <a href="https://github.com/TommiContursi/Polku/issues/345">#345</a>. The plan, the research and the order of work are in <a href="../issue-345-map-cards.md">docs/plans/issue-345-map-cards.md</a>.</p>
+    <p>Tap a frame, hold it for half a second, or right-click it on a desktop. Reset starts a frame again. The switches at the bottom right change every frame.</p>
   </header>
   <section class="cv-q">
     <h2>Decided with the user (2026-10-21)</h2>
     <ul>
-      <li><b>A tap on the empty map adds a point,</b> as today: drawing stays one tap a point, with Undo on the toolbox.</li>
-      <li><b>A tap on the route or a point shows its facts;</b> what you can do with it is one step away.</li>
-      <li><b>Right-click, or a long press on a phone, shows actions and what's there</b>, since a phone has no hover. On a desktop the hover tip stays.</li>
-      <li><b>The pill at the spot:</b> on a phone, <b>+ Add a point here</b> (or <b>+ Add to my route</b>) sits just above the finger, and the facts go in the planner's peek, as points, stretches and warnings already do (D and C of #233). On a desktop the card opens at the pointer, its action first, like a right-click menu.</li>
-      <li><b>A stretch's settings are one step away</b> (a change to D): facts first, <b>Edit this part ›</b> for D's settings as approved; a right-click or a long press on the route opens them directly.</li>
+      <li>A tap on the empty map adds a point, as today.</li>
+      <li>A tap on the route, a point or a place's icon shows its facts.</li>
+      <li>A long press or a right-click shows what's there and what you can do.</li>
+      <li>The action sits at your finger: a pill on a phone, the first row on a desktop.</li>
+      <li>A stretch's settings are one step away, behind <b>Edit this part</b>.</li>
+      <li>A card shows three facts for your sport. <b>More</b> shows the rest.</li>
+      <li><b>Not right?</b> on every card opens OpenStreetMap's note page or its editor.</li>
+      <li><b>Share</b> sends a link to the spot. The coordinates are in <b>More</b>.</li>
     </ul>
   </section>
 
   <section class="cv-row" id="s1">
-    <h2>1 · A tap on the route (phones)</h2>
-    <p>The pin marks the spot, and <b>+ Add a point here</b> sits right above it. The peek holds the spot's facts (where on the route, the height and gradient, the way and its name, when you'd be there), the stretch it's on with its warnings, and <b>What's under ›</b> for the map's own card of the trail under the line. The toolbox steps aside while a card is open (D). A tap on the map, Back or ✕ closes the card and adds nothing.</p>
+    <h2>1 · A tap on the route</h2>
+    <p>A pin marks the spot, with <b>+ Add a point here</b> just above it. The facts go in the peek at the bottom.</p>
     <div class="cv-frames">
-      <figure class="fr phone" id="p-route" data-st='{"card":"route","at":[218,745]}'><figcaption><b>Tap the route</b>The pill at the spot; the facts in the peek. Try the pill, What's under and Edit this part.</figcaption></figure>
-      <figure class="fr phone" id="p-under" data-st='{"card":"under","at":[218,745]}'><figcaption><b>What's under ›</b>The map's own card for the way under the line, as with the planner closed. Back returns to the spot.</figcaption></figure>
-      <figure class="fr phone" id="p-edit" data-st='{"card":"edit","at":[218,745]}'><figcaption><b>Edit this part ›</b>D's settings, as approved: the stretch's sport, how it's drawn, its style, Other ways, Stop here, Avoid this spot.</figcaption></figure>
-      <figure class="fr phone" id="p-holdroute" data-st='{"card":"edit","at":[458,653],"held":true}'><figcaption><b>Hold the route (or right-click)</b>Straight to the part's settings, for those who know what they want; the pill still adds a point.</figcaption></figure>
+      <figure class="fr phone" id="p-route" data-st='{"card":"route","kind":"route","at":[218,745]}'><figcaption><b>Tap the route</b>Three facts for your sport. The rest is one tap away.</figcaption></figure>
+      <figure class="fr phone" id="p-stretch" data-st='{"card":"stretch","kind":"route","at":[458,653]}'><figcaption><b>This stretch ›</b>Its distance, time and climb, and what to look out for.</figcaption></figure>
+      <figure class="fr phone" id="p-under" data-st='{"card":"under","kind":"route","at":[218,745]}'><figcaption><b>What's under ›</b>The trail under the line, as the map knows it.</figcaption></figure>
+      <figure class="fr phone" id="p-edit" data-st='{"card":"edit","kind":"route","at":[218,745]}'><figcaption><b>Edit this part ›</b>The stretch's sport, how it's drawn, its style.</figcaption></figure>
+      <figure class="fr phone" id="p-holdroute" data-st='{"card":"edit","kind":"route","at":[458,653],"held":true}'><figcaption><b>Hold the route</b>Straight to its settings.</figcaption></figure>
     </div>
   </section>
 
   <section class="cv-row" id="s2">
-    <h2>2 · A long press on the map (phones)</h2>
-    <p>Hold still for half a second: a ring fills under the finger (a phone's web page can't buzz on an iPhone, so it's shown, not felt). A move of 10 px, or a second finger, is the map's: it pans or zooms, and nothing opens. The card is short, in the order decided: <b>Add to my route</b> at the finger, one line of what's there with <b>More ›</b>, the route's actions, and small at the bottom the coordinates with <b>Copy</b> and <b>Weather here ›</b>.</p>
+    <h2>2 · A long press on the map</h2>
+    <p>Hold still for half a second. A ring fills under your finger.</p>
     <div class="cv-frames">
-      <figure class="fr phone" id="p-press" data-st='{"pressing":true,"at":[470,820]}'><figcaption><b>Holding</b>The ring fills in 0.5 s; let go before, and it was a tap (a point at the end).</figcaption></figure>
-      <figure class="fr phone" id="p-spot" data-st='{"card":"spot","at":[470,820]}'><figcaption><b>What's there, and what to do</b>Add to my route puts the point in its place in the route, between the two nearest points, not at the end.</figcaption></figure>
-      <figure class="fr phone" id="p-more" data-st='{"card":"more","at":[470,820]}'><figcaption><b>More ›</b>The full card of what's there; Back to the short one.</figcaption></figure>
-      <figure class="fr phone" id="p-added" data-st='{"added":[[470,820,1]],"toast":"added"}'><figcaption><b>Added in its place</b>Between Via 1 and the finish, where it adds the least; the note says where, with Undo.</figcaption></figure>
-      <figure class="fr phone" id="p-place" data-st='{"card":"place","at":[238,632]}'><figcaption><b>Tap a place's icon</b>Even while drawing, a tap on a place's icon (a campfire site, a toilet, a lean-to, a LIPAS place) shows it: what it is, LIPAS and its website, More › for OpenStreetMap's details on demand; the pill adds it to the route in its place. A tap on a line or open map still adds a point.</figcaption></figure>
-      <figure class="fr phone" id="p-none" data-st='{"card":"spot","at":[470,820],"noRoute":true}'><figcaption><b>No route yet</b>The pill starts one there; a round trip from there, the coordinates and the weather are the same.</figcaption></figure>
+      <figure class="fr phone" id="p-press" data-st='{"pressing":true,"at":[470,820]}'><figcaption><b>Holding</b>Let go sooner, and it's a tap: a new point at the end.</figcaption></figure>
+      <figure class="fr phone" id="p-spot" data-st='{"card":"spot","kind":"spot","at":[470,820]}'><figcaption><b>What's there</b>The pill adds the spot to your route, where it fits.</figcaption></figure>
+      <figure class="fr phone" id="p-more" data-st='{"card":"more","kind":"spot","at":[470,820]}'><figcaption><b>More ›</b>Everything Polku knows here, your sport's first.</figcaption></figure>
+      <figure class="fr phone" id="p-osm" data-st='{"card":"osm","kind":"spot","from":"more","at":[470,820]}'><figcaption><b>All OpenStreetMap details</b>The map's own data, for those who want it.</figcaption></figure>
+      <figure class="fr phone" id="p-notright" data-st='{"card":"notright","kind":"spot","from":"spot","at":[470,820]}'><figcaption><b>Not right?</b>Tell OpenStreetMap what's wrong at this spot.</figcaption></figure>
+      <figure class="fr phone" id="p-shared" data-st='{"card":"spot","kind":"spot","at":[470,820],"toast":"shared"}'><figcaption><b>Share</b>A link to the spot, with its name and coordinates.</figcaption></figure>
+      <figure class="fr phone" id="p-added" data-st='{"added":[[470,820,1]],"toast":"added"}'><figcaption><b>Added where it fits</b>The note says where, with Undo.</figcaption></figure>
+      <figure class="fr phone" id="p-none" data-st='{"card":"spot","kind":"spot","at":[470,820],"noRoute":true}'><figcaption><b>No route yet</b>The pill starts a route here.</figcaption></figure>
     </div>
   </section>
 
   <section class="cv-row" id="s3">
-    <h2>3 · A tap on a point (phones)</h2>
-    <p>D's point card: its name and when you're there first, then the everyday actions by name. <b>Move</b> is the way without dragging (WCAG 2.2's 2.5.7): tap where it goes. Dragging the marker stays.</p>
+    <h2>3 · A place on the map</h2>
+    <p>A tap on a place's icon shows it, even while you draw.</p>
     <div class="cv-frames">
-      <figure class="fr phone" id="p-point" data-st='{"card":"point","pt":1}'><figcaption><b>Tap a point</b>Via 1: there at 10:09, 1.65 km. Make it a stop, stay the night, change sport from here; Move, Remove; the stretch after it.</figcaption></figure>
-      <figure class="fr phone" id="p-move" data-st='{"card":"move","pt":1}'><figcaption><b>Move</b>Tap where Via 1 goes; Cancel keeps it. One step of Undo.</figcaption></figure>
+      <figure class="fr phone" id="p-place" data-st='{"card":"place","kind":"spot","place":true,"at":[238,632]}'><figcaption><b>A campfire site</b>The three things you'd want to know there.</figcaption></figure>
+      <figure class="fr phone" id="p-placemore" data-st='{"card":"placemore","kind":"spot","place":true,"at":[238,632]}'><figcaption><b>More ›</b>Grouped, with when it was last checked.</figcaption></figure>
     </div>
   </section>
 
   <section class="cv-row" id="s4">
-    <h2>4 · Desktops: at the pointer</h2>
-    <p><i>The planner beside the map is drawn simply here, on purpose: only what the cards need; the real panel stays as it is (the calmer planner's plan keeps it).</i> A click on the route, and a right-click anywhere, open a card at the pointer, its top-left corner at the click and its action first, as a right-click menu does; near an edge it opens the other way. The hover tip stays. The keyboard does the same: Tab to the map, the arrows move the crosshair, Enter clicks there, Shift+F10 (or the menu key) right-clicks there.</p>
+    <h2>4 · A tap on a point</h2>
+    <p>When you get there, and what you can do with it.</p>
     <div class="cv-frames">
-      <figure class="fr desk" id="d-route" data-st='{"card":"route","at":[640,490]}'><figcaption><b>Click the route</b>Add a point here at the pointer, the spot's facts, the stretch, What's under ›, Edit this part ›.</figcaption></figure>
-      <figure class="fr desk" id="d-spot" data-st='{"card":"spot","at":[1000,560]}'><figcaption><b>Right-click the map</b>Add to my route first (in its place), one line of what's there with More ›, the route's actions, the coordinates with Copy, Weather here ›.</figcaption></figure>
-      <figure class="fr desk" id="d-edit" data-st='{"card":"edit","at":[1060,300],"held":true}'><figcaption><b>Right-click the route</b>Straight to the part's settings, Add a point here first.</figcaption></figure>
-      <figure class="fr desk" id="d-place" data-st='{"card":"place","at":[740,291],"osm":true}'><figcaption><b>Click a place's icon</b>Its card at the pointer, Add to my route first; More › has opened OpenStreetMap's details.</figcaption></figure>
-      <figure class="fr desk" id="d-key" data-st='{"key":[1000,520]}'><figcaption><b>The keyboard</b>The map focused: the crosshair in the middle, arrows to move, Enter to click, Shift+F10 to right-click there.</figcaption></figure>
+      <figure class="fr phone" id="p-point" data-st='{"card":"point","pt":1}'><figcaption><b>Tap a point</b>Stop, stay the night, change sport, move it.</figcaption></figure>
+      <figure class="fr phone" id="p-move" data-st='{"card":"move","pt":1}'><figcaption><b>Move</b>Tap where it goes. No dragging needed.</figcaption></figure>
     </div>
   </section>
 
   <section class="cv-row" id="s5">
-    <h2>5 · The worst case</h2>
-    <p>360 × 740 in Finnish with long names, and 200 % zoom (a 390 phone's 195 × 422 CSS pixels). The switches turn any frame into these; here they're fixed.</p>
+    <h2>5 · Desktops</h2>
+    <p>The card opens at the pointer, its action first.</p>
+    <p><i>The planner beside the map is drawn simply here, on purpose. The real panel stays as it is.</i></p>
     <div class="cv-frames">
-      <figure class="fr phone" id="w-route" data-st='{"card":"route","at":[218,745],"w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 px, Finnish, long names</b>Names wrap, never cut; the pill stays whole.</figcaption></figure>
-      <figure class="fr phone" id="w-spot" data-st='{"card":"spot","at":[470,820],"w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>The long-press card</b>The actions wrap onto a second row rather than shrink.</figcaption></figure>
-      <figure class="fr phone" id="w-200" data-st='{"card":"route","at":[218,745],"z":2}'><figcaption><b>200 %</b>The card scrolls inside half the screen, so a strip of map keeps the spot and the pill in sight; Polku moves the map to put the spot there.</figcaption></figure>
-      <figure class="fr phone" id="w-dark" data-st='{"card":"spot","at":[470,820],"theme":"dark"}'><figcaption><b>Dark</b>The long-press card at night.</figcaption></figure>
+      <figure class="fr desk" id="d-route" data-st='{"card":"route","kind":"route","at":[640,490]}'><figcaption><b>Click the route</b>Add a point here, then the facts.</figcaption></figure>
+      <figure class="fr desk" id="d-spot" data-st='{"card":"spot","kind":"spot","at":[1000,560]}'><figcaption><b>Right-click the map</b>Opened upwards, the action stays next to the pointer.</figcaption></figure>
+      <figure class="fr desk" id="d-edit" data-st='{"card":"edit","kind":"route","at":[1060,300],"held":true}'><figcaption><b>Right-click the route</b>Straight to its settings.</figcaption></figure>
+      <figure class="fr desk" id="d-place" data-st='{"card":"placemore","kind":"spot","place":true,"at":[740,291]}'><figcaption><b>A place's More ›</b>At the pointer, as on a phone.</figcaption></figure>
+      <figure class="fr desk" id="d-key" data-st='{"key":[1000,520]}'><figcaption><b>The keyboard</b>Tab to the map. The keys are listed on the map.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s6">
+    <h2>6 · Another sport, missing data, the worst case</h2>
+    <p>Each frame here has its switch fixed.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="w-hike" data-st='{"card":"route","kind":"route","at":[218,745],"sport":"hike"}'><figcaption><b>Hike</b>The same tap shows what a walker needs.</figcaption></figure>
+      <figure class="fr phone" id="w-missing" data-st='{"card":"route","kind":"route","at":[377,616]}'><figcaption><b>Missing data</b>A fact the map doesn't have says so.</figcaption></figure>
+      <figure class="fr phone" id="w-route" data-st='{"card":"route","kind":"route","at":[218,745],"w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 px, Finnish</b>Long names wrap. Nothing is cut.</figcaption></figure>
+      <figure class="fr phone" id="w-200" data-st='{"card":"route","kind":"route","at":[218,745],"z":2}'><figcaption><b>200 %</b>The card scrolls. The spot stays in sight.</figcaption></figure>
+      <figure class="fr phone" id="w-dark" data-st='{"card":"spot","kind":"spot","at":[470,820],"theme":"dark"}'><figcaption><b>Dark</b>The long-press card at night.</figcaption></figure>
     </div>
   </section>
 </main>
@@ -292,8 +351,9 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 <div class="picker" data-open="true">
   <div class="pk-groups" role="group" aria-label="Mock-up switches">
     <div><span>Size</span><button type="button" data-pk="size" data-v="390" aria-pressed="true">390</button><button type="button" data-pk="size" data-v="360" aria-pressed="false">360</button><button type="button" data-pk="size" data-v="200" aria-pressed="false">200 %</button></div>
+    <div><span>Sport</span><button type="button" data-pk="sport" data-v="mtb" aria-pressed="true">MTB</button><button type="button" data-pk="sport" data-v="hike" aria-pressed="false">Hike</button></div>
     <div><span>Words</span><button type="button" data-pk="lang" data-v="en" aria-pressed="true">English</button><button type="button" data-pk="lang" data-v="fi" aria-pressed="false">Suomi</button></div>
-    <div><span>Data</span><button type="button" data-pk="worst" data-v="0" aria-pressed="true">Normal</button><button type="button" data-pk="worst" data-v="1" aria-pressed="false">Long names</button></div>
+    <div><span>Names</span><button type="button" data-pk="worst" data-v="0" aria-pressed="true">Normal</button><button type="button" data-pk="worst" data-v="1" aria-pressed="false">Long</button></div>
     <div><span>Theme</span><button type="button" data-pk="theme" data-v="light" aria-pressed="true">Light</button><button type="button" data-pk="theme" data-v="dark" aria-pressed="false">Dark</button></div>
   </div>
   <button type="button" class="pk-toggle" aria-expanded="true">Switches</button>
@@ -315,40 +375,62 @@ const PLACES = { phone: [[238, 632], [602, 480]], desk: [[740, 291], [1325, 44]]
 const T = {
   en: {
     add: 'Add a point here', addRoute: 'Add to my route', startHere: 'Start a route here', back: 'Back', close: 'Close',
-    under: 'What’s under', edit: 'Edit this part', more: 'More', copy: 'Copy', weather: 'Weather here',
+    stretch: 'This stretch', under: 'What’s under', underSub: 'The trail, as the map knows it', edit: 'Edit this part', more: 'More', moreSub: 'Everything Polku knows here',
+    osm: 'All OpenStreetMap details', notRight: 'Not right?', share: 'Share', copy: 'Copy', weather: 'Weather here',
     startAt: 'Start here', endAt: 'End here', round: 'Round trip from here', avoid: 'Avoid this spot',
-    at: 'At', there: 'there at', There: 'There at', from: 'from the start', thisPart: 'This stretch', changes: 'Changes apply to this stretch only',
-    sport: 'Sport', follow: 'Follow', straight: 'Straight', water: 'Water', style: 'Style', routes: 'the route’s (Balanced)',
+    diff: 'difficulty', trailGrade: 'trail grade', visibility: 'visibility', Height: 'Height',
+    here: 'you’re here', uphill: 'uphill', downhill: 'downhill', fromStart: 'from the start', height: 'height', distance: 'distance', time: 'time', climb: 'climb',
+    sport: 'Sport', follow: 'Follow paths', straight: 'Straight', water: 'Water', style: 'Style', sameRoute: 'same as the route', onlyThis: 'Only this stretch changes',
     other: 'Other ways', stopHere: 'Stop here', profile: 'On the profile',
-    stop: 'Make it a stop', night: 'Stay the night', change: 'Change sport from here', move: 'Move', remove: 'Remove', after: 'The stretch after it',
-    rename: 'Rename', moveHint: 'Tap where it goes', cancel: 'Cancel', addedBetween: 'Added between', and: 'and', undo: 'Undo', addedEnd: 'Added at the end',
-    nums: ['distance', 'from now', 'ascent · descent'], done: 'Done', tapNote: 'A tap on the map adds a point at the end; Undo is on the toolbox.',
-    lake: 'Näsijärvi · lake', forest: 'Forest path · easy', town: 'Kaupintie · residential street', noPath: 'Forest · no path here',
-    warn1: 'Steep descent · 14 % · 80 m', worth: 'Worth a look', fromMap: 'From the map: OpenStreetMap',
-    place: 'Kaupin nuotiopaikka', placeType: 'Campfire site · LIPAS · Tampere', placeFacts: 'Toilet · firewood in summer · lean-to nearby', osmMore: 'OSM details: wheelchair no · drinking water no · fee no', lipas: 'LIPAS', site: 'Website',
-    viaPts: 'Via', start: 'Start', finish: 'Finish', mtb: 'MTB', min: 'min',
+    stop: 'Make it a stop', night: 'Stay the night', change: 'Change sport', move: 'Move', remove: 'Remove', rename: 'Rename', after: 'The stretch after it',
+    moveHint: 'Tap where it goes', cancel: 'Cancel', undo: 'Undo', addedAfter: 'Point added after', addedEnd: 'Point added at the end', theStart: 'the start',
+    nums: ['distance', 'from now', 'ascent · descent'], done: 'Done', tapNote: 'Point added at the end.',
+    shared: 'Your phone’s share sheet opens: a link to this spot, with its name and coordinates.', sharedDesk: 'Copied: a link to this spot, with its name and coordinates.', copied: 'Coordinates copied.',
+    look: 'Steep descent ahead', lookFull: 'Steep descent · 14 % for 80 m', notMapped: 'not mapped', fromOsm: 'From OpenStreetMap', fromLipas: 'From LIPAS', estimate: 'The uphill grade is Polku’s estimate from the terrain.',
+    nrText: 'These details come from OpenStreetMap. Its mappers fix what you tell them.', nrNote: 'Leave a note on OpenStreetMap', nrNoteSub: 'No account needed. It opens at this spot.', nrEdit: 'Edit it on OpenStreetMap', nrEditSub: 'With an OpenStreetMap account.', nrLipas: 'Tell LIPAS', nrLipasSub: 'LIPAS’s page for this place.',
+    keys: [['← ↑ → ↓', 'Move the crosshair'], ['Enter', 'Click there'], ['Shift F10', 'Right-click there'], ['Esc', 'Close the card']],
+    viaPts: 'Via', start: 'Start', finish: 'Finish', min: 'min', mtb: 'MTB', hike: 'Hike',
+    // what's under the spot, by where it is in the picture
+    lake: ['Näsijärvi', 'Lake · depth shown, not for navigation'], town: ['Kaupintie', 'Residential street · asphalt'],
+    forestName: 'Forest path', forestSub: { mtb: 'Easy to ride · dirt', hike: 'Easy to walk · dirt' },
+    groups: { mtb: 'For MTB', hike: 'For hiking', spot: 'The spot', winter: 'In winter', site: 'At the site', there: 'Getting there', when: 'When', checked: 'Last checked' },
+    place: 'Kaupin nuotiopaikka', placeSub: 'Campfire site in Tampere', placeChips: ['Free toilet', 'Firewood in summer', 'Lean-to nearby'],
+    placeRows: [['site', 'Toilet', 'Dry toilet, free'], ['site', 'Fireplace', 'With a grill'], ['site', 'Firewood', 'In summer'], ['there', 'Car park', '300 m away'], ['there', 'Trail', 'Kaupin ulkoilureitti'], ['when', 'Open', 'All year'], ['checked', 'LIPAS', 'June 2025']],
+    lipasLink: 'LIPAS ›', website: 'Website ›',
   },
   fi: {
     add: 'Lisää piste tähän', addRoute: 'Lisää reitilleni', startHere: 'Aloita reitti tästä', back: 'Takaisin', close: 'Sulje',
-    under: 'Mitä alla on', edit: 'Muokkaa tätä osuutta', more: 'Lisää tietoja', copy: 'Kopioi', weather: 'Sää tässä',
+    stretch: 'Tämä osuus', under: 'Mitä alla on', underSub: 'Polku sellaisena kuin kartta sen tuntee', edit: 'Muokkaa tätä osuutta', more: 'Lisää', moreSub: 'Kaikki, mitä Polku tästä tietää',
+    osm: 'Kaikki OpenStreetMapin tiedot', notRight: 'Eikö pidä paikkaansa?', share: 'Jaa', copy: 'Kopioi', weather: 'Sää tässä',
     startAt: 'Aloita tästä', endAt: 'Lopeta tähän', round: 'Kierros tästä', avoid: 'Vältä tätä kohtaa',
-    at: 'Kohdassa', there: 'perillä', There: 'Perillä', from: 'lähdöstä', thisPart: 'Tämä osuus', changes: 'Muutokset koskevat vain tätä osuutta',
-    sport: 'Laji', follow: 'Polkuja', straight: 'Suoraan', water: 'Vesitse', style: 'Tyyli', routes: 'reitin oma (Tasapainoinen)',
+    diff: 'vaativuus', trailGrade: 'polun luokka', visibility: 'näkyvyys', Height: 'Korkeus',
+    here: 'olet täällä', uphill: 'ylämäkeä', downhill: 'alamäkeä', fromStart: 'lähdöstä', height: 'korkeus', distance: 'matka', time: 'aika', climb: 'nousu',
+    sport: 'Laji', follow: 'Seuraa polkuja', straight: 'Suoraan', water: 'Vesitse', style: 'Tyyli', sameRoute: 'sama kuin reitillä', onlyThis: 'Vain tämä osuus muuttuu',
     other: 'Muita reittejä', stopHere: 'Pysähdy tähän', profile: 'Profiilissa',
-    stop: 'Tee tästä tauko', night: 'Yövy tässä', change: 'Vaihda lajia tästä', move: 'Siirrä', remove: 'Poista', after: 'Seuraava osuus',
-    rename: 'Nimeä', moveHint: 'Napauta, minne se siirtyy', cancel: 'Peru', addedBetween: 'Lisätty väliin', and: 'ja', undo: 'Kumoa', addedEnd: 'Lisätty loppuun',
-    nums: ['matka', 'nyt lähtien', 'nousu · lasku'], done: 'Valmis', tapNote: 'Kartan napautus lisää pisteen loppuun; Kumoa on työkaluissa.',
-    lake: 'Näsijärvi · järvi', forest: 'Metsäpolku · helppo', town: 'Kaupintie · asuinkatu', noPath: 'Metsä · ei polkua',
-    warn1: 'Jyrkkä lasku · 14 % · 80 m', worth: 'Katso', fromMap: 'Kartalta: OpenStreetMap',
-    place: 'Kaupin nuotiopaikka', placeType: 'Nuotiopaikka · LIPAS · Tampere', placeFacts: 'WC · polttopuut kesällä · laavu lähellä', osmMore: 'OSM-tiedot: esteetön ei · juomavesi ei · maksu ei', lipas: 'LIPAS', site: 'Verkkosivu',
-    viaPts: 'Välipiste', start: 'Lähtö', finish: 'Maali', mtb: 'Maastopyöräily', min: 'min',
+    stop: 'Tee tauko', night: 'Yövy tässä', change: 'Vaihda lajia', move: 'Siirrä', remove: 'Poista', rename: 'Nimeä', after: 'Seuraava osuus',
+    moveHint: 'Napauta, minne se siirtyy', cancel: 'Peru', undo: 'Kumoa', addedAfter: 'Piste lisätty pisteen jälkeen:', addedEnd: 'Piste lisätty loppuun', theStart: 'lähtö',
+    nums: ['matka', 'nyt lähtien', 'nousu · lasku'], done: 'Valmis', tapNote: 'Piste lisätty loppuun.',
+    shared: 'Puhelimen jakovalikko aukeaa: linkki tähän kohtaan, sen nimi ja koordinaatit.', sharedDesk: 'Kopioitu: linkki tähän kohtaan, sen nimi ja koordinaatit.', copied: 'Koordinaatit kopioitu.',
+    look: 'Jyrkkä lasku edessä', lookFull: 'Jyrkkä lasku · 14 % 80 m matkalla', notMapped: 'ei kartalla', fromOsm: 'OpenStreetMapista', fromLipas: 'LIPASista', estimate: 'Mäen jyrkkyys on Polun arvio maastomallista.',
+    nrText: 'Nämä tiedot ovat OpenStreetMapista. Sen kartoittajat korjaavat, mitä kerrot.', nrNote: 'Jätä huomautus OpenStreetMapiin', nrNoteSub: 'Tiliä ei tarvita. Se aukeaa tähän kohtaan.', nrEdit: 'Muokkaa OpenStreetMapissa', nrEditSub: 'OpenStreetMap-tilillä.', nrLipas: 'Kerro LIPASille', nrLipasSub: 'LIPASin sivu tästä paikasta.',
+    keys: [['← ↑ → ↓', 'Siirrä tähtäintä'], ['Enter', 'Napsauta siinä'], ['Shift F10', 'Oikea napsautus siinä'], ['Esc', 'Sulje kortti']],
+    viaPts: 'Välipiste', start: 'Lähtö', finish: 'Maali', min: 'min', mtb: 'Maastopyöräily', hike: 'Retkeily',
+    lake: ['Näsijärvi', 'Järvi · syvyys vain näytetään, ei navigointiin'], town: ['Kaupintie', 'Asuinkatu · asfaltti'],
+    forestName: 'Metsäpolku', forestSub: { mtb: 'Helppo ajaa · maapohja', hike: 'Helppo kävellä · maapohja' },
+    groups: { mtb: 'Maastopyöräilyyn', hike: 'Retkeilyyn', spot: 'Paikka', winter: 'Talvella', site: 'Paikalla', there: 'Perille', when: 'Milloin', checked: 'Tarkistettu viimeksi' },
+    place: 'Kaupin nuotiopaikka', placeSub: 'Nuotiopaikka Tampereella', placeChips: ['Ilmainen WC', 'Polttopuita kesällä', 'Laavu lähellä'],
+    placeRows: [['site', 'WC', 'Kuivakäymälä, ilmainen'], ['site', 'Tulisija', 'Grillillä'], ['site', 'Polttopuut', 'Kesällä'], ['there', 'Pysäköinti', '300 m päässä'], ['there', 'Reitti', 'Kaupin ulkoilureitti'], ['when', 'Auki', 'Ympäri vuoden'], ['checked', 'LIPAS', 'kesäkuu 2025']],
+    lipasLink: 'LIPAS ›', website: 'Verkkosivu ›',
   },
 };
 const NAMES = { en: ['Kaupin urheilupuisto', 'Pirunvuoren näköala', 'Tapatoran laituri'], worst: ['Kaupin urheilupuiston pohjoinen pysäköintialue', 'Pirunvuoren näköalapaikan levähdyspaikka', 'Tapatoranlahden uimarannan laituri'] };
-// the way along the route, by km (illustrative)
-const WAYS = [[0.7, 'Gravel path', 'Sorapolku', 'Kaupin ulkoilureitti', 'gravel · 2.5 m wide · MTB S0'], [1.65, 'Forest path', 'Metsäpolku', 'Pirunvuoren polku', 'dirt · 1 m wide · MTB S1 · ↑S1'], [2.4, 'Shore path', 'Rantapolku', 'Näsijärven rantapolku', 'gravel · 1.5 m wide · MTB S0'], [3.05, 'Gravel road', 'Soratie', 'Tapatorantie', 'gravel · 4 m wide']];
+// the way along the route, by km: [to km, type (en, fi), name, MTB scale, hiking grade, width, surface] (illustrative; the shore path has no MTB scale mapped)
+const WAYS = [[0.7, 'Gravel path', 'Sorapolku', 'Kaupin ulkoilureitti', 'S0', 'T1', '2.5 m', 'gravel'], [1.65, 'Forest path', 'Metsäpolku', 'Pirunvuoren polku', 'S1', 'T1', '1 m', 'dirt'], [2.4, 'Shore path', 'Rantapolku', 'Näsijärven rantapolku', null, 'T2', '1.5 m', 'gravel'], [3.05, 'Gravel road', 'Soratie', 'Tapatorantie', null, null, '4 m', 'gravel']];
+// the map's own data under the spot (All OpenStreetMap details), illustrative
+const OSM_TAGS = { way: ['highway=path', 'surface=dirt', 'mtb:scale=1', 'mtb:scale:uphill=1', 'sac_scale=hiking', 'trail_visibility=excellent', 'width=1', 'check_date=2024-06-12', 'way 123456789'],
+  place: ['amenity=toilets', 'toilets:disposal=pitlatrine', 'fee=no', 'wheelchair=no', 'leisure=firepit', 'check_date=2023-08-02', 'node 987654321'] };
 
-let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light' };
+let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb' };
 const ic = (id, s = 20) => `<svg class="ic" width="${s}" height="${s}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -383,89 +465,122 @@ function placeFor(g, p) {
 // ------------------------------------------------ facts (illustrative)
 const ele = (km) => Math.round(118 + 18 * Math.sin(km * 2.1) + 7 * Math.cos(km * 5.3));
 const grade = (km) => ((ele(km + 0.05) - ele(km - 0.05)) / 100) * 100;
-const clock = (km) => { const m = 600 + Math.round(km * 5.6); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+const PACE = { mtb: 5.6, hike: 13 }; // min/km
+const clock = (km, sport = 'mtb') => { const m = 600 + Math.round(km * PACE[sport]); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
 const fmtKm = (km) => `${km.toFixed(km < 10 ? 2 : 1).replace(/0$/, '')} km`;
 const wayAt = (km) => WAYS.find((w) => km <= w[0] + 1e-9) || WAYS[WAYS.length - 1];
+const stretchOf = (km) => (km < POINTS[1].km ? 0 : 1);
 function ptName(f, i) {
   const t = T[f.lang], n = (f.worst ? NAMES.worst : NAMES.en)[i];
   return n || [t.start, `${t.viaPts} 1`, t.finish][i];
 }
-function spotLine(f, p) {
+// what's under a spot off the route: [title, its line]
+function spotOf(f, p) {
   const t = T[f.lang], g = f.g;
   if (p[1] < g.water) return t.lake;
-  if (p[1] > g.town) return `${t.town} · ${ele(0.2)} m`;
-  return `${t.forest} · ${ele(1.2)} m`;
+  if (p[1] > g.town) return t.town;
+  return [t.forestName, t.forestSub[f.sport]];
 }
 const coords = (f, p) => `${(f.g.lat[0] - p[1] * f.g.lat[1]).toFixed(5)}, ${(f.g.lon[0] + p[0] * f.g.lon[1]).toFixed(5)}`;
 
-// ------------------------------------------------ the cards
+// ------------------------------------------------ the parts of a card
 const btn = (act, label, icon, cls = 'btn', extra = '') => `<button type="button" class="${cls}" data-act="${act}"${extra}>${icon ? ic(icon, 18) : ''}<span>${esc(label)}</span></button>`;
-function topRow(f, title, backTo) {
+// the top row: Back (when there's somewhere to go back to), the name with its line under it, ✕
+function head(f, title, sub, backTo) {
   const t = T[f.lang];
-  return `<div class="ctop">${backTo ? `<button type="button" class="btn quiet back" data-act="${backTo}" aria-label="${esc(t.back)}">${ic('left', 20)}<span>${esc(t.back)}</span></button>` : ''}<span class="ttl">${esc(title)}</span><button type="button" class="btn quiet" data-act="close" aria-label="${esc(t.close)}">${ic('close', 20)}</button></div>`;
+  return `<div class="ctop">${backTo ? `<button type="button" class="btn quiet back" data-act="${backTo}" aria-label="${esc(t.back)}">${ic('left', 20)}</button>` : ''}<span class="ttl"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span><button type="button" class="btn quiet" data-act="close" aria-label="${esc(t.close)}">${ic('close', 20)}</button></div>`;
 }
-function stretchOf(km) { return km < POINTS[1].km ? 0 : 1; }
-function routeCard(f, st, desk) {
-  const t = T[f.lang], km = st.km, w = wayAt(km), s = stretchOf(km), g = grade(km);
-  const ends = [ptName(f, s), ptName(f, s + 1)], len = POINTS[s + 1].km - POINTS[s].km;
-  const spot = desk ? `<div class="facts"><b>${esc(t.at)} ${fmtKm(km)} · ${ele(km)} m · ${g >= 0 ? '+' : ''}${g.toFixed(0)} %</b><small>${esc(f.lang === 'fi' ? w[2] : w[1])} · ${esc(w[3])} · ${esc(t.there)} ${clock(km)}</small></div>`
-    : `<div class="facts"><b>${ele(km)} m · ${g >= 0 ? '+' : ''}${g.toFixed(0)} % · ${esc(t.there)} ${clock(km)}</b><small>${esc(f.lang === 'fi' ? w[2] : w[1])} · ${esc(w[3])}</small></div>`;
-  const stretch = `<div class="sect"><h4>${esc(t.thisPart)}</h4><b style="overflow-wrap:anywhere">${esc(ends[0])} → ${esc(ends[1])}</b><span class="small-line">${fmtKm(len)} · ${Math.round(len * 5.6)} ${t.min} · ↑${s ? 14 : 28} m ↓${s ? 48 : 14} m</span>${s ? `<div class="warnr">${ic('eye', 18)}<span><b>${esc(t.worth)}:</b> ${esc(t.warn1)}</span></div>` : ''}</div>`;
-  const links = `<div class="chips">${btn('under', `${t.under} ›`, 'info', 'btn small')}${btn('edit', `${t.edit} ›`, 'pencil', 'btn small')}</div>`;
-  if (desk) return `${btn('addpt', t.add, 'plus', 'btn primary')}${spot}<div class="sep"></div>${stretch}${links}`;
-  return `<div class="card">${topRow(f, `${t.at} ${fmtKm(km)}`, null)}${spot}${stretch}${links}</div>`;
+// three numbers, each with what it is under it; a missing one says so
+const tiles = (list) => `<div class="tiles">${list.map(([v, l, miss]) => `<span class="tile${miss ? ' miss' : ''}"><b>${esc(v)}</b><small>${esc(l)}</small></span>`).join('')}</div>`;
+// a row that opens the next level
+const rowBtn = (act, label, sub, icon) => `<button type="button" class="rowbtn" data-act="${act}">${icon ? ic(icon, 18) : ''}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${ic('right', 18)}</button>`;
+const kv = (rows) => `<dl class="kv">${rows.map(([k, v, extra = '']) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}${extra}</dd></div>`).join('')}</dl>`;
+const src = (s) => `<span class="src">${esc(s)}</span>`;
+// the last row of a card: Share, the weather there, and Not right?
+const foot = (f, { share = true, nr = true } = {}) => { const t = T[f.lang]; return `<div class="foot">${share ? btn('share', t.share, 'share', 'btn small quiet') : ''}${share ? btn('noop', `${t.weather} ›`, 'weather', 'btn small quiet') : ''}<span class="grow"></span>${nr ? btn('notright', t.notRight, null, 'btn small quiet nr') : ''}</div>`; };
+
+// the three facts for the sport, at a spot on the route
+function routeTiles(f, km) {
+  const t = T[f.lang], w = wayAt(km), g = grade(km), sl = `${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(0)} %`;
+  const third = f.sport === 'hike' ? (w[5] ? [w[5], t.trailGrade] : ['?', `${t.trailGrade} ${t.notMapped}`, true]) : (w[4] ? [w[4], t.diff] : ['?', `${t.diff} ${t.notMapped}`, true]);
+  return tiles([[clock(km, f.sport), t.here], [sl, g >= 0 ? t.uphill : t.downhill], third]);
 }
-function underCard(f, st, desk) {
+
+// ------------------------------------------------ the cards
+function routeCard(f, st) {
+  const t = T[f.lang], km = st.km, w = wayAt(km), s = stretchOf(km);
+  return `${head(f, w[3], `${f.lang === 'fi' ? w[2] : w[1]} · ${fmtKm(km)} ${t.fromStart}`)}${routeTiles(f, km)}
+    ${s ? `<button type="button" class="warnr" data-act="stretch">${ic('eye', 18)}<span>${esc(t.look)}</span>${ic('right', 16)}</button>` : ''}
+    <div class="rows">${rowBtn('stretch', t.stretch, `${ptName(f, s)} → ${ptName(f, s + 1)}`)}${rowBtn('under', t.under, t.underSub)}${rowBtn('edit', t.edit, null, 'pencil')}</div>`;
+}
+function stretchCard(f, st) {
+  const t = T[f.lang], s = stretchOf(st.km), len = POINTS[s + 1].km - POINTS[s].km;
+  return `${head(f, `${ptName(f, s)} → ${ptName(f, s + 1)}`, t.stretch, 'route')}${tiles([[fmtKm(len), t.distance], [`${Math.round(len * PACE[f.sport])} ${t.min}`, t.time], [`↑${s ? 14 : 28} m`, t.climb]])}
+    ${s ? `<div class="warnr">${ic('eye', 18)}<span>${esc(t.lookFull)}</span></div>` : ''}<div class="rows">${rowBtn('edit', t.edit, null, 'pencil')}</div>`;
+}
+function underCard(f, st) {
   const t = T[f.lang], w = wayAt(st.km);
-  const body = `<div class="facts"><b>${esc(f.lang === 'fi' ? w[2] : w[1])} · ${esc(w[3])}</b><small>${esc(w[4])}</small><small>Kaupin maastopyöräilyreitit (LIPAS) · ${esc(t.fromMap)}</small></div><div class="chips">${btn('noop', t.avoid, 'avoid', 'btn small')}</div>`;
-  return desk ? `${btn('route', `‹ ${t.back}`, null, 'btn small quiet')}${body}` : `<div class="card">${topRow(f, t.under, 'route')}${body}</div>`;
+  const facts = f.sport === 'hike' ? [[w[5] || '?', w[5] ? t.trailGrade : `${t.trailGrade} ${t.notMapped}`, !w[5]], ['Clear', t.visibility], [w[6], 'wide']] : [[w[4] || '?', w[4] ? t.diff : `${t.diff} ${t.notMapped}`, !w[4]], [w[4] ? `↑${w[4]}` : '?', t.uphill, !w[4]], [w[6], 'wide']];
+  return `${head(f, w[3], f.lang === 'fi' ? w[2] : w[1], 'route')}${src(t.fromOsm)}${tiles(facts)}
+    ${kv([...(f.sport === 'hike' ? [['MTB', w[4] || t.notMapped]] : [['Hiking (SAC)', w[5] || t.notMapped]]), ['Surface', w[7][0].toUpperCase() + w[7].slice(1)], ['Part of', 'Kaupin maastopyöräilyreitit'], [t.groups.winter, 'Not ploughed']])}
+    <div class="rows">${rowBtn('osm', t.osm, null)}</div>${foot(f, { share: false })}`;
 }
-function editCard(f, st, desk) {
-  const t = T[f.lang], s = stretchOf(st.km), ends = `${ptName(f, s)} → ${ptName(f, s + 1)}`;
-  const body = `<div class="facts"><b style="font-size:14.5px">${esc(ends)}</b><small>${esc(t.changes)}</small></div>
-    <button type="button" class="sel" data-act="noop"><span>${ic('bike', 18)}</span><span style="flex:1;text-align:left">${esc(t.sport)}: ${esc(t.mtb)}</span>${ic('down', 16)}</button>
+function editCard(f, st) {
+  const t = T[f.lang], s = stretchOf(st.km);
+  return `${head(f, `${t.edit}: ${ptName(f, s)} → ${ptName(f, s + 1)}`, t.onlyThis, st.held ? null : 'route')}
+    <button type="button" class="sel" data-act="noop"><span>${ic('bike', 18)}</span><span class="grow">${esc(t.sport)}: ${esc(t[f.sport])}</span>${ic('down', 16)}</button>
     <div class="seg" role="radiogroup" aria-label="How this stretch is drawn"><button type="button" role="radio" aria-pressed="true" aria-checked="true" data-act="noop">${ic('auto', 16)}${esc(t.follow)}</button><button type="button" role="radio" aria-pressed="false" aria-checked="false" data-act="noop">${ic('line', 16)}${esc(t.straight)}</button><button type="button" role="radio" aria-pressed="false" aria-checked="false" data-act="noop">${ic('water', 16)}${esc(t.water)}</button></div>
-    <button type="button" class="sel" data-act="noop"><span style="flex:1;text-align:left">${esc(t.style)}: ${esc(t.routes)}</span>${ic('down', 16)}</button>
+    <button type="button" class="sel" data-act="noop"><span class="grow">${esc(t.style)}: Balanced<small>${esc(t.sameRoute)}</small></span>${ic('down', 16)}</button>
     <div class="chips">${btn('noop', t.other, 'route', 'btn small')}${btn('noop', t.stopHere, 'pause', 'btn small')}${btn('noop', t.avoid, 'avoid', 'btn small')}${btn('noop', t.profile, null, 'btn small')}</div>`;
-  if (desk) return `${btn('addpt', t.add, 'plus', 'btn primary')}${st.held ? '' : btn('route', `‹ ${t.back}`, null, 'btn small quiet')}${body}`;
-  return `<div class="card">${topRow(f, t.edit, st.held ? null : 'route')}${body}</div>`;
 }
-function spotCard(f, st, desk) {
-  const t = T[f.lang], p = st.at;
-  const line = `<div class="row" style="justify-content:space-between;gap:10px"><span class="facts"><b>${esc(spotLine(f, p))}</b></span>${btn('more', `${t.more} ›`, null, 'btn small')}</div>`;
+function spotCard(f, st) {
+  const t = T[f.lang], [name, line] = spotOf(f, st.at);
   const acts = st.noRoute ? `<div class="chips">${btn('noop', t.round, 'roundtrip', 'btn small')}</div>`
     : `<div class="chips">${btn('noop', t.startAt, 'flag', 'btn small')}${btn('noop', t.endAt, 'finish', 'btn small')}${btn('noop', t.round, 'roundtrip', 'btn small')}${btn('noop', t.avoid, 'avoid', 'btn small')}</div>`;
-  const foot = `<div class="small-line"><span>${coords(f, p)}</span>${btn('copied', t.copy, 'copy', 'btn small quiet')}${btn('noop', `${t.weather} ›`, 'weather', 'btn small quiet')}</div>`;
-  if (desk) return `${btn('addspot', st.noRoute ? t.startHere : t.addRoute, 'plus', 'btn primary')}${line}<div class="sep"></div>${acts}<div class="sep"></div>${foot}`;
-  return `<div class="card"><div class="ctop"><span class="ttl">${esc(spotLine(f, p))}</span>${btn('more', `${t.more} ›`, null, 'btn small')}<button type="button" class="btn quiet" data-act="close" aria-label="${esc(t.close)}">${ic('close', 20)}</button></div>${acts}${foot}</div>`;
+  return `${head(f, name, line)}<div class="rows">${rowBtn('more', t.more, t.moreSub)}</div>${acts}${foot(f)}`;
 }
-function placeCard(f, st, desk) {
+function moreCard(f, st) {
+  const t = T[f.lang], [name, line] = spotOf(f, st.at), copyBtn = ` ${btn('copied', t.copy, 'copy', 'btn tiny quiet')}`;
+  const G = { mtb: [['Difficulty', 'S0, easy'], ['Uphill', '↑S0']], hike: [['Trail grade', 'T1, easy'], ['Visibility', 'Clear']] }, other = f.sport === 'hike' ? 'mtb' : 'hike';
+  return `${head(f, name, line, 'spot')}<h4 class="gh">${esc(t.groups[f.sport])}</h4>${kv([...G[f.sport], ['Surface', 'Dirt'], ['Width', '1 m']])}<h4 class="gh">${esc(t.groups[other])}</h4>${kv(G[other])}<h4 class="gh">${esc(t.groups.spot)}</h4>${kv([[t.Height, `${ele(1.2)} m`], ['Coordinates', coords(f, st.at), copyBtn]])}
+    <h4 class="gh">${esc(t.groups.checked)}</h4>${kv([['OpenStreetMap', 'June 2024']])}<div class="rows">${rowBtn('osm', t.osm, null)}</div>${foot(f, { share: false })}`;
+}
+function osmCard(f, st) {
+  const t = T[f.lang], tags = OSM_TAGS[st.place ? 'place' : 'way'];
+  return `${head(f, t.osm, st.place ? t.place : spotOf(f, st.at)[0], st.from || 'more')}<ul class="tags">${tags.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${foot(f, { share: false })}`;
+}
+function notRightCard(f, st) {
   const t = T[f.lang];
-  const body = `<div class="facts"><b>${esc(t.placeType)}</b><small>${esc(t.placeFacts)}</small></div>
-    <div class="chips">${btn('noop', `${t.lipas} ›`, null, 'btn small')}${btn('noop', `${t.site} ›`, null, 'btn small')}${btn('placemore', `${t.more} ›`, null, 'btn small')}</div>${st.osm ? `<div class="sect"><small>${esc(t.osmMore)}</small><small>${esc(t.fromMap)}</small></div>` : ''}
-    <div class="small-line"><span>${coords(f, st.at)}</span>${btn('copied', t.copy, 'copy', 'btn small quiet')}${btn('noop', `${t.weather} ›`, 'weather', 'btn small quiet')}</div>`;
-  if (desk) return `${btn('addspot', t.addRoute, 'plus', 'btn primary')}<div class="facts"><b>${esc(t.place)}</b></div>${body}`;
-  return `<div class="card">${topRow(f, t.place, null)}${body}</div>`;
+  return `${head(f, t.notRight, null, st.from || 'spot')}<p class="note">${esc(t.nrText)}</p>
+    <div class="rows">${rowBtn('noop', t.nrNote, t.nrNoteSub, 'pencil')}${rowBtn('noop', t.nrEdit, t.nrEditSub, null)}${st.place ? rowBtn('noop', t.nrLipas, t.nrLipasSub, null) : ''}</div>
+    ${st.kind === 'route' ? `<p class="note">${esc(t.estimate)}</p>` : ''}`;
 }
-function moreCard(f, st, desk) {
-  const t = T[f.lang], p = st.at;
-  const body = `<div class="facts"><b>${esc(spotLine(f, p))}</b><small>dirt · 1 m wide · visible · MTB S0 · ↑S0</small><small>${esc(t.fromMap)}</small><small>${coords(f, p)} · ${ele(1.2)} m</small></div>`;
-  return desk ? `${btn('spot', `‹ ${t.back}`, null, 'btn small quiet')}${body}` : `<div class="card">${topRow(f, t.more, 'spot')}${body}</div>`;
+function placeCard(f, st) {
+  const t = T[f.lang];
+  return `${head(f, t.place, t.placeSub)}${src(t.fromLipas)}<div class="chips">${t.placeChips.map((c) => `<span class="fact">${ic('check', 16)}${esc(c)}</span>`).join('')}</div>
+    <div class="rows">${rowBtn('placemore', t.more, t.moreSub)}</div>${foot(f)}`;
+}
+function placeMoreCard(f, st) {
+  const t = T[f.lang], by = (g) => t.placeRows.filter((r) => r[0] === g).map((r) => [r[1], r[2]]);
+  return `${head(f, t.place, t.placeSub, 'place')}${['site', 'there', 'when', 'checked'].map((g) => `<h4 class="gh">${esc(t.groups[g])}</h4>${kv(by(g))}`).join('')}
+    <div class="chips">${btn('noop', t.lipasLink, null, 'btn small')}${btn('noop', t.website, null, 'btn small')}</div><div class="rows">${rowBtn('osm', t.osm, null)}</div>${foot(f, { share: false })}`;
 }
 function pointCard(f, st) {
   const t = T[f.lang], i = st.pt, q = POINTS[i];
-  return `<div class="card">${topRow(f, ptName(f, i), null)}<div class="facts"><b>${esc(t.There)} ${clock(q.km)} · ${fmtKm(q.km)}</b><small>${esc(`${t.viaPts} ${i}`)} · ${ele(q.km)} m</small></div>
+  return `${head(f, ptName(f, i), `${t.viaPts} ${i}`)}${tiles([[clock(q.km, f.sport), t.here], [fmtKm(q.km), t.fromStart], [`${ele(q.km)} m`, t.height]])}
     <div class="chips">${btn('noop', t.stop, 'pause', 'btn small')}${btn('noop', t.night, 'moon', 'btn small')}${btn('noop', t.change, 'bike', 'btn small')}</div>
     <div class="chips">${btn('move', t.move, 'move', 'btn small')}${btn('noop', t.rename, 'pencil', 'btn small')}${btn('noop', t.remove, 'trash', 'btn small')}</div>
-    <button type="button" class="sel" data-act="noop"><span style="flex:1;text-align:left;overflow-wrap:anywhere">${esc(t.after)}: ${esc(ptName(f, i))} → ${esc(ptName(f, i + 1))}</span>${ic('right', 16)}</button></div>`;
+    <div class="rows">${rowBtn('noop', t.after, `${ptName(f, i)} → ${ptName(f, i + 1)}`)}</div>`;
 }
+const CARDS = { route: routeCard, stretch: stretchCard, under: underCard, edit: editCard, spot: spotCard, more: moreCard, osm: osmCard, notright: notRightCard, place: placeCard, placemore: placeMoreCard, point: pointCard };
 
 // ------------------------------------------------ one frame
 const frames = [];
-function view(fr) { const st = fr.st; return { lang: st.lang || PK.lang, worst: st.worst ?? PK.worst === '1', theme: st.theme || PK.theme, z: st.z || (PK.size === '200' ? 2 : 1), w: st.w || (PK.size === '360' ? 360 : 390), h: st.h || (PK.size === '360' ? 740 : 844) }; }
+function view(fr) { const st = fr.st; return { lang: st.lang || PK.lang, worst: st.worst ?? PK.worst === '1', theme: st.theme || PK.theme, sport: st.sport || PK.sport, z: st.z || (PK.size === '200' ? 2 : 1), w: st.w || (PK.size === '360' ? 360 : 390), h: st.h || (PK.size === '360' ? 740 : 844) }; }
+const ROUTE_CARDS = new Set(['route', 'stretch', 'under', 'edit']);
 function render(fr) {
   const { el, st } = fr, desk = el.classList.contains('desk'), v = view(fr);
-  const f = { g: desk ? GEO.desk : GEO.phone, lang: v.lang, worst: v.worst };
+  const f = { g: desk ? GEO.desk : GEO.phone, lang: v.lang, worst: v.worst, sport: v.sport };
   f.W = desk ? 1440 : v.w / v.z; f.H = desk ? 900 : v.h / v.z;
   fr.f = f;
   el.classList.toggle('dark', v.theme === 'dark');
@@ -475,8 +590,8 @@ function render(fr) {
   scr.style.backgroundImage = `url(${BG}${f.g.pic})`;
   if (st.at && st.km == null) st.km = nearest(f.g, st.at).km;
   let html = `<div class="top"><span class="tb brand"><i>${ic('route', 18)}</i></span><span class="tb search">${ic('search', 18)}<span>Search places or paste coordinates</span></span><span class="tb sport">${ic('bike', 18)}</span></div>`;
-  const card = st.card;
-  // added points: a marker each, with straight lines to its neighbours while it's routed
+  const card = st.card, onRoute = st.kind === 'route';
+  // added points: a marker each, with dashes to its neighbours while it's routed
   for (const [x, y, i] of st.added || []) {
     const [sx, sy] = toScr(f, [x, y]), P = POINTS.map((q) => toScr(f, along(f.g, q.km)));
     const a = P[Math.min(i, P.length - 1)], b = P[i + 1], k = kOf(f);
@@ -486,59 +601,60 @@ function render(fr) {
   }
   if (desk) {
     html += `<div class="panel" aria-label="Route planner"><div class="row"><span class="nums"><span><b>3.05 km</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span></div>
-      ${[0, 1, 2].map((i) => `<div class="wp"><i>${i === 1 ? '1' : ''}</i><span style="overflow-wrap:anywhere"><b>${esc(ptName(f, i))}</b><br><small style="color:var(--muted)">${fmtKm(POINTS[i].km)} · ${clock(POINTS[i].km)}</small></span></div>`).join('')}</div>
+      ${[0, 1, 2].map((i) => `<div class="wp"><i>${i === 1 ? '1' : ''}</i><span style="overflow-wrap:anywhere"><b>${esc(ptName(f, i))}</b><br><small style="color:var(--muted)">${fmtKm(POINTS[i].km)} · ${clock(POINTS[i].km, f.sport)}</small></span></div>`).join('')}</div>
       <div class="dtool" aria-label="Drawing tools"><button type="button" class="btn small" data-act="noop">${ic('auto', 18)}Follow paths</button><button class="tbtn" type="button" data-act="noop" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="Redo">${ic('redo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button><button type="button" class="btn small" data-act="noop">${esc(t.done)}</button></div>`;
   }
-  if ((card === 'route' || card === 'under' || card === 'edit') && st.km != null) {
+  // the stretch a route card is about, lit on the map (D)
+  if (card && onRoute && st.km != null) {
     const s = stretchOf(st.km), a = POINTS[s].km, b = POINTS[s + 1].km;
     const P = [along(f.g, a), ...f.g.pts.filter((q) => q[2] > a && q[2] < b), along(f.g, b)].map((q) => toScr(f, q).map((n) => n.toFixed(1)).join(',')).join(' ');
     html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><polyline points="${P}" fill="none" stroke="#fff" stroke-width="${desk ? 13 : 11}" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><polyline points="${P}" fill="none" stroke="var(--accent-bg)" stroke-width="${desk ? 7 : 6}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
   scr.innerHTML = html;
-  // the sheet (phones): the peek with the numbers, or the card
+  const inner = card && CARDS[card] ? `<div class="card">${CARDS[card](f, st)}</div>` : '';
+  // the sheet (phones): the peek with the route's numbers, or the card
   let sheetTop = f.H;
   if (!desk) {
-    const inner = card === 'route' ? routeCard(f, st) : card === 'under' ? underCard(f, st) : card === 'edit' ? editCard(f, st) : card === 'spot' ? spotCard(f, st) : card === 'more' ? moreCard(f, st) : card === 'place' ? placeCard(f, st) : card === 'point' ? pointCard(f, st)
-      : `<div class="row" style="padding-top:2px"><span class="nums"><span><b>${st.added && st.added.length ? '3.52 km' : '3.05 km'}</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span><button type="button" class="btn" data-act="noop">${esc(t.done)}</button></div>`;
-    scr.insertAdjacentHTML('beforeend', `<div class="sheet${card ? ' card-in' : ''}" role="region" aria-label="Route planner"><span class="grab" aria-hidden="true"></span>${inner}</div>`);
-    const sh = scr.querySelector('.sheet');
-    sheetTop = f.H - 8 - sh.offsetHeight;
+    const body = inner || `<div class="row" style="padding-top:2px"><span class="nums"><span><b>${st.added && st.added.length ? '3.52 km' : '3.05 km'}</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span><button type="button" class="btn" data-act="noop">${esc(t.done)}</button></div>`;
+    scr.insertAdjacentHTML('beforeend', `<div class="sheet${inner ? ' card-in' : ''}" role="region" aria-label="Route planner"><span class="grab" aria-hidden="true"></span>${body}</div>`);
+    sheetTop = f.H - 8 - scr.querySelector('.sheet').offsetHeight;
     // the toolbox steps aside while a card is open (D); the map's buttons above the sheet
-    if (!card || card === 'move') scr.insertAdjacentHTML('beforeend', `<div class="tbox" style="bottom:${f.H - sheetTop + 12}px" aria-label="Drawing tools"><button type="button" class="modebtn" data-act="noop">${ic('auto', 20)}<span><b>Follow paths</b><small>MTB · Balanced</small></span></button><button class="tbtn" type="button" data-act="${st.added && st.added.length ? 'undo' : 'noop'}" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button></div>`);
-    const room = sheetTop - 76;
-    const colH = 44 * 3 + 52 * 2 + 8 * 4;
-    if (room > colH) scr.insertAdjacentHTML('beforeend', `<div class="cols" style="bottom:${f.H - sheetTop + 12}px"><span class="cb">${ic('locate')}</span><span class="cb">${ic('fit')}</span><span class="fab">${ic('weather', 22)}Weather</span><span class="fab">${ic('layers', 22)}Layers</span></div>`);
+    if (!inner) scr.insertAdjacentHTML('beforeend', `<div class="tbox" style="bottom:${f.H - sheetTop + 12}px" aria-label="Drawing tools"><button type="button" class="modebtn" data-act="noop">${ic('auto', 20)}<span><b>Follow paths</b><small>${esc(t[f.sport])} · Balanced</small></span></button><button class="tbtn" type="button" data-act="${st.added && st.added.length ? 'undo' : 'noop'}" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button></div>`);
+    if (sheetTop - 76 > 44 * 2 + 52 * 2 + 8 * 4) scr.insertAdjacentHTML('beforeend', `<div class="cols" style="bottom:${f.H - sheetTop + 12}px"><span class="cb">${ic('locate')}</span><span class="cb">${ic('fit')}</span><span class="fab">${ic('weather', 22)}Weather</span><span class="fab">${ic('layers', 22)}Layers</span></div>`);
   }
-  // the spot: a pin and the pill (phones), or the card at the pointer (desktops)
+  // the spot: a pin and the pill (phones), or the card at the pointer with its action first (desktops)
   if (st.at && card && card !== 'point' && card !== 'move') {
-    const [x, y] = toScr(f, card === 'route' || card === 'under' || card === 'edit' ? along(f.g, st.km) : st.at);
+    const [x, y] = toScr(f, onRoute ? along(f.g, st.km) : st.at);
+    const label = onRoute ? t.add : st.noRoute ? t.startHere : t.addRoute, action = onRoute ? 'addpt' : 'addspot';
+    const pin = `<span class="pin${st.place ? ' around' : ''}" style="left:${x}px;top:${y}px"></span>`;
     if (desk) {
-      const inner = card === 'route' ? routeCard(f, st, true) : card === 'under' ? underCard(f, st, true) : card === 'edit' ? editCard(f, st, true) : card === 'spot' ? spotCard(f, st, true) : card === 'place' ? placeCard(f, st, true) : moreCard(f, st, true);
-      scr.insertAdjacentHTML('beforeend', `<span class="pin${card === 'place' ? ' around' : ''}" style="left:${x}px;top:${y}px"></span><div class="pop" role="dialog" aria-label="${esc(card)}">${inner}</div>`);
-      const pop = scr.querySelector('.pop'), w = pop.offsetWidth, h = pop.offsetHeight;
-      const up = y + 8 + h > f.H - 8;
-      pop.classList.toggle('up', up);
+      scr.insertAdjacentHTML('beforeend', `${pin}<div class="pop" role="dialog" aria-label="${esc(card)}">${btn(action, label, 'plus', 'btn primary')}${inner}</div>`);
+      const pop = scr.querySelector('.pop'), w = pop.offsetWidth, h = pop.offsetHeight, up = y + 8 + h > f.H - 8;
+      pop.classList.toggle('up', up); // opened above the pointer: the action at its bottom, still next to it
       pop.style.left = `${x + 8 + w > f.W - 8 ? x - 8 - w : x + 8}px`;
       pop.style.top = `${up ? Math.max(8, y - 8 - h) : y + 8}px`;
     } else if (y < sheetTop - 10) {
-      const spotty = card === 'spot' || card === 'more' || card === 'place', label = spotty ? (st.noRoute ? t.startHere : t.addRoute) : t.add;
-      scr.insertAdjacentHTML('beforeend', `<span class="pin${card === 'place' ? ' around' : ''}" style="left:${x}px;top:${y}px"></span><button type="button" class="pill" data-act="${spotty ? 'addspot' : 'addpt'}">${ic('plus', 20)}<span>${esc(label)}</span></button>`);
-      const pill = scr.querySelector('.pill'), ph = pill.offsetHeight, pw = pill.offsetWidth;
-      const above = y - 22 - ph > 64; // under the top bar it goes below the spot
+      scr.insertAdjacentHTML('beforeend', `${pin}<button type="button" class="pill" data-act="${action}">${ic('plus', 20)}<span>${esc(label)}</span></button>`);
+      const pill = scr.querySelector('.pill'), ph = pill.offsetHeight, pw = pill.offsetWidth, above = y - 22 - ph > 64; // under the top bar it goes below the spot
       pill.style.top = `${above ? y - 22 - ph : y + 22}px`;
       pill.classList.toggle('below', !above);
       pill.style.left = `${Math.max(8 + pw / 2, Math.min(f.W - 8 - pw / 2, x))}px`;
     }
   }
+  if (desk && (card === 'point') && inner) scr.insertAdjacentHTML('beforeend', `<div class="pop" style="left:${toScr(f, along(f.g, POINTS[st.pt].km))[0] + 12}px;top:${toScr(f, along(f.g, POINTS[st.pt].km))[1] + 12}px">${inner}</div>`);
   if (card === 'point' || card === 'move') {
     const [x, y] = toScr(f, along(f.g, POINTS[st.pt].km));
     scr.insertAdjacentHTML('beforeend', `<span class="mk ring2" style="left:${x}px;top:${y}px">${st.pt}</span>`);
   }
-  if (card === 'move') scr.insertAdjacentHTML('beforeend', `<div class="banner" role="status">${ic('move', 20)}<span>${esc(t.moveHint)}: ${esc(ptName(f, st.pt))}</span>${btn('point', t.cancel, null, 'btn small')}</div>`);
+  if (card === 'move') scr.insertAdjacentHTML('beforeend', `<div class="banner" role="status">${ic('move', 20)}<span>${esc(t.moveHint)}</span>${btn('point', t.cancel, null, 'btn small')}</div>`);
   if (st.pressing && st.at) { const [x, y] = toScr(f, st.at); scr.insertAdjacentHTML('beforeend', `<svg class="ring ${st.live ? 'go' : 'half'}" style="left:${x}px;top:${y}px" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28"/></svg>`); }
-  if (st.key) { const [x, y] = toScr(f, st.key); scr.insertAdjacentHTML('beforeend', `<span class="cross" style="left:${x}px;top:${y}px"></span><div class="toast" role="status" style="bottom:24px"><span>Map in focus: arrows move the crosshair · Enter clicks · Shift+F10 right-clicks</span></div>`); }
+  // the keyboard: a crosshair in the map's middle, and the keys listed on the map
+  if (st.key) { const [x, y] = toScr(f, st.key); scr.insertAdjacentHTML('beforeend', `<span class="cross" style="left:${x}px;top:${y}px"></span><dl class="keys" aria-label="Keys">${t.keys.map(([k, d]) => `<div><dt><kbd>${esc(k)}</kbd></dt><dd>${esc(d)}</dd></div>`).join('')}</dl>`); }
   if (st.toast) {
-    const msg = st.toast === 'added' ? (() => { const a = st.added[st.added.length - 1], i = a[2]; return i >= POINTS.length - 1 ? t.addedEnd : `${t.addedBetween}: ${ptName(f, i)} ${t.and} ${ptName(f, i + 1)}`; })() : st.toast === 'copied' ? `${coords(f, st.at)} · copied` : t.tapNote;
+    let msg = t.tapNote;
+    if (st.toast === 'added') { const i = st.added[st.added.length - 1][2]; msg = i >= POINTS.length - 1 ? t.addedEnd : `${t.addedAfter} ${i === 0 ? t.theStart : `${t.viaPts} ${i}`}`; }
+    if (st.toast === 'shared') msg = desk ? t.sharedDesk : t.shared;
+    if (st.toast === 'copied') msg = t.copied;
     const tb = scr.querySelector('.tbox'), above = tb ? f.H - tb.offsetTop + 10 : f.H - sheetTop + 12;
     scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${desk ? 24 : above}px"><span>${esc(msg)}</span>${st.toast === 'added' || st.toast === 'tap' ? `<button type="button" data-act="undo">${esc(t.undo)}</button>` : ''}</div>`);
   }
@@ -553,35 +669,36 @@ function hit(fr, x, y) {
   if (n.d < r) return { kind: 'route', km: n.km, p };
   return { kind: 'map', p };
 }
+// what a press opens: a tap (right = false) or a long press and a right-click (right = true)
+function opened(st, h, right) {
+  const keep = { added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z };
+  if (h.kind === 'point') return { ...keep, card: 'point', pt: h.i };
+  if (h.kind === 'place') return { ...keep, card: 'place', kind: 'spot', place: true, at: h.p };
+  if (h.kind === 'route') return { ...keep, card: right ? 'edit' : 'route', kind: 'route', held: right, at: h.p, km: h.km };
+  if (right) return { ...keep, card: 'spot', kind: 'spot', at: h.p, noRoute: st.noRoute };
+  return { ...keep, added: [...(st.added || []), [...h.p, POINTS.length - 1]], toast: 'tap' };
+}
 function act(fr, a) {
-  const st = fr.st;
+  const st = fr.st, keep = { added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z };
   switch (a) {
-    case 'close': fr.st = { added: st.added }; break;
-    case 'route': st.card = 'route'; break;
-    case 'under': st.card = 'under'; break;
+    case 'close': fr.st = keep; break;
+    case 'route': case 'stretch': case 'under': case 'spot': case 'more': case 'place': case 'placemore': case 'point': case 'move': st.card = a; st.toast = null; break;
     case 'edit': st.card = 'edit'; st.held = false; break;
-    case 'spot': st.card = 'spot'; break;
-    case 'more': st.card = 'more'; break;
-    case 'placemore': st.osm = true; break; // (a place's OpenStreetMap details, on demand, as a way's card has them)
-    case 'point': st.card = 'point'; break;
-    case 'move': st.card = 'move'; break;
+    case 'osm': case 'notright': st.from = st.card; st.card = a; break;
+    case 'share': st.toast = 'shared'; break;
     case 'copied': st.toast = 'copied'; break;
-    case 'addpt': fr.st = { added: [...(st.added || []), [...along(fr.f.g, st.km), stretchOf(st.km)]], toast: 'added' }; break;
-    case 'addspot': if (st.noRoute) { fr.st = { added: [] }; break; } fr.st = { added: [...(st.added || []), [...st.at, placeFor(fr.f.g, st.at)]], toast: 'added' }; break;
-    case 'undo': { const added = (st.added || []).slice(0, -1); fr.st = { added }; break; }
+    case 'addpt': fr.st = { ...keep, added: [...(st.added || []), [...along(fr.f.g, st.km), stretchOf(st.km)]], toast: 'added' }; break;
+    case 'addspot': if (st.noRoute) { fr.st = { ...keep, added: [] }; break; } fr.st = { ...keep, added: [...(st.added || []), [...st.at, placeFor(fr.f.g, st.at)]], toast: 'added' }; break;
+    case 'undo': fr.st = { ...keep, added: (st.added || []).slice(0, -1) }; break;
     default: return;
   }
   render(fr);
 }
 function tapAt(fr, x, y, right) {
-  const st = fr.st, h = hit(fr, x, y);
-  if (st.card === 'move') { fr.st = { added: st.added, toast: null }; render(fr); return; } // (the point moved there: drawn as done)
-  if (st.card && !right) { fr.st = { added: st.added }; render(fr); return; } // a tap beside a card closes it, and adds nothing
-  if (h.kind === 'point') fr.st = { card: 'point', pt: h.i, added: st.added };
-  else if (h.kind === 'place') fr.st = { card: 'place', at: h.p, added: st.added };
-  else if (h.kind === 'route') fr.st = { card: right ? 'edit' : 'route', held: !!right, at: h.p, km: h.km, added: st.added };
-  else if (right) fr.st = { card: 'spot', at: h.p, added: st.added, noRoute: st.noRoute };
-  else fr.st = { added: [...(st.added || []), [...h.p, POINTS.length - 1]], toast: 'tap' };
+  const st = fr.st, keep = { added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z };
+  if (st.card === 'move') { fr.st = keep; render(fr); return; } // (the point moved there: drawn as done)
+  if (st.card && !right) { fr.st = keep; render(fr); return; } // a tap beside a card closes it, and adds nothing
+  fr.st = opened(st, hit(fr, x, y), right);
   render(fr);
 }
 function bind(fr) {
@@ -594,15 +711,7 @@ function bind(fr) {
     const [x, y] = local(e);
     down = { x, y, id: e.pointerId, timer: 0 };
     // a long press (phones; a mouse held still too): 0.5 s without moving 10 px
-    down.timer = setTimeout(() => {
-      const st0 = fr.st; fr.st = { ...st0, pressing: false };
-      const h = hit(fr, x, y);
-      if (h.kind === 'point') fr.st = { card: 'point', pt: h.i, added: st0.added };
-      else if (h.kind === 'place') fr.st = { card: 'place', at: h.p, added: st0.added };
-      else if (h.kind === 'route') fr.st = { card: 'edit', held: true, at: h.p, km: h.km, added: st0.added };
-      else fr.st = { card: 'spot', at: h.p, added: st0.added, noRoute: st0.noRoute };
-      down = null; render(fr);
-    }, 500);
+    down.timer = setTimeout(() => { fr.st = opened({ ...fr.st, pressing: false }, hit(fr, x, y), true); down = null; render(fr); }, 500);
     if (!desk) { fr.st = { ...fr.st, pressing: true, live: true, at: fr.st.card ? fr.st.at : toPic(fr.f, [x, y]) }; render(fr); fr.st.pressing = false; }
   });
   scr.addEventListener('pointermove', (e) => { if (!down) return; const [x, y] = local(e); if (Math.hypot(x - down.x, y - down.y) > 10) { clearTimeout(down.timer); down = null; render(fr); } });
@@ -623,7 +732,7 @@ function bind(fr) {
       if (e.key === 'Enter' || e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
         e.preventDefault(); const [x, y] = toScr(f, st.key), key = st.key; tapAt(fr, x, y, e.key !== 'Enter'); fr.st.key = key; render(fr);
       }
-      if (e.key === 'Escape') { fr.st = { added: st.added }; render(fr); }
+      if (e.key === 'Escape') { fr.st = { added: st.added, key: st.key }; render(fr); }
     });
   }
 }
