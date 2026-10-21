@@ -6220,6 +6220,8 @@ START_LIB = """(() => {
     // the way out on a phone says Close: nothing is done yet (2026-10-20)
     // the way out is ✕ at the top right, as the other panels have it, and the sport is a row of its own under it (2026-10-21)
     const out = $('.pl-way .way-top .way-x[data-k=close]');
+    // a finger's size on a phone (narrow screens made it 30 × 32 px)
+    if (out && matchMedia('(pointer: coarse)').matches && (out.offsetWidth < 44 || out.offsetHeight < 44)) err(`the ways' ✕ is ${out.offsetWidth} × ${out.offsetHeight} px`);
     if (!out || out.getAttribute('aria-label') !== 'Close the planner' || !$('.pl-way .way-top + .sport-row')) err(`the ways' way out: ${out ? out.getAttribute('aria-label') : 'none'}, and the sport ${$('.pl-way .way-top + .sport-row') ? 'under it' : 'not under it'}`);
     T.errs.push(...(await T.toolsAt(0, 'no route, no history')));
     // no Done before the first point on desktops (Back is the way out); the phone's ways card keeps its own
@@ -6262,7 +6264,9 @@ START_LIB = """(() => {
       if (!/the map for your next point/.test(hint)) err(`the first point's peek says: ${hint}`);
       const chips = $$('.pl-way .rt-here .chip').map(txt);
       if (chips.length !== 4 || chips[3] !== 'Other…') err(`Round trip from here: ${chips.join(' | ') || 'none'}`);
-      if (p.sideMQ.matches ? !p.els.toolDone.offsetParent : !$('.pl-way .done')) err('no Done after the first point');
+      if (p.sideMQ.matches && !p.els.toolDone.offsetParent) err('no Done on the toolbar after the first point');
+      // ✕ at the top right, as in the start and its steps, not Done (2026-10-21)
+      if (!$('.pl-way .way-head .way-x[data-k=close]') || $('.pl-way .done')) err(`the first point's way out: ${$('.pl-way .done') ? 'Done' : 'no ✕'}`);
     }
     // what appeared on the toolbox faded in where it is (reduced motion, as here: it simply appears)
     const faded = (p.toolsFaded || []).map((b) => b.getAttribute('aria-label') || b.className);

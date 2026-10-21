@@ -3824,8 +3824,8 @@ export class Planner {
   backRow(label = 'Ways to begin', fn = () => this.wayBack()) {
     return h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', 'data-k': 'back', onclick: fn, html: `${icon('chevronLeft', 18)}<span>${escapeHtml(label)}</span>` }), this.dockX(), this.closeX());
   }
-  // ✕ closes the planner, as the other panels have it (decided 2026-10-21: it replaces the ways' Close, and is in
-  // every step too)
+  // ✕ closes the planner, as the other panels have it (decided 2026-10-21: it replaces the ways' Close and the first
+  // point's Done, and is in every step too)
   closeX() {
     return h('button', { type: 'button', class: 'tool way-x', 'data-k': 'close', 'aria-label': 'Close the planner', title: 'Close the planner (R)', onclick: () => this.setActive(false), html: icon('close', 20) });
   }
@@ -3835,8 +3835,6 @@ export class Planner {
     const side = this.layout() === 'side', label = side ? 'Move the planner to the bottom' : 'Move the planner to the left';
     return h('button', { type: 'button', class: 'tool way-x way-dock', 'data-k': 'dock', 'aria-label': label, title: label, onclick: () => this.setDock(this.layout() === 'side' ? 'bottom' : 'left'), html: icon(side ? 'panelBottom' : 'panelLeft', 19) });
   }
-  // phones' way out of the planner: Close on the ways to begin, where nothing is done yet (decided 2026-10-20), Done after the first point
-  doneBtn(label = 'Done') { return h('button', { type: 'button', class: 'btn done', 'data-k': label.toLowerCase(), title: 'Close the planner (R)', onclick: () => this.setActive(false) }, label); }
 
   // The four ways to begin, equal: phones two by two in the peek, desktops a row each. A tap on the map
   // starts drawing at once. Swim has no marked routes in LIPAS (#306).
@@ -3980,7 +3978,8 @@ export class Planner {
     const pre = LOOP_PRESETS[sport] || LOOP_PRESETS.mtb;
     const fmt = (v) => (min ? (v >= 60 ? `${v / 60} h` : `${v} min`) : `${v} km`);
     return [
-      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map for your next point`)), this.doneBtn()),
+      // ✕ at the top right, as in the start and its steps (2026-10-21: it replaces Done here too)
+      h('div', { class: 'way-head' }, h('div', { class: 'way-hint' }, h('b', {}, `${this.coarse() ? 'Tap' : 'Click'} the map for your next point`)), this.dockX(), this.closeX()),
       roundTripSports.includes(sport) ? h('div', { class: 'rt-here' },
         h('span', { class: 'way-cap', html: `${icon('roundtrip', 14)}<span>Round trip from here</span>` }),
         h('div', { class: 'rt-chips', role: 'group', 'aria-label': 'Round trip from here' },

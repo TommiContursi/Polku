@@ -749,7 +749,8 @@ body:not(.ready) .map-ctrls { display: none; }
 .way-hint small { color: var(--muted); font-size: 13.5px; }
 .sport-chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px 0 12px; background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 650; overflow-wrap: break-word; max-width: 100%; }
 .sport-chip .ic { color: var(--accent); flex: none; }
-.way-x { flex: none; width: 44px; height: 44px; margin: -4px -6px 0 0; }
+.way-x { flex: none; margin: -4px -6px 0 0; }
+.pl-way .way-x { width: 44px; height: 44px; } /* (narrow screens make a .tool 30 px: this one stays a finger's size) */
 /* a step's top row: Back on the left, the sport on the right (it wraps rather than cutting a long name) */
 .way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
 .btn.quiet { border-color: transparent; background: transparent; }
