@@ -7119,6 +7119,19 @@ PC_AT = """((x) => {
   const c = el.closest && el.closest('.pl-way.card');
   if (c) { const a = el.getBoundingClientRect(), r = c.getBoundingClientRect(); if (a.bottom > r.bottom) c.scrollTop += a.bottom - r.bottom + 4; else if (a.top < r.top) c.scrollTop -= r.top - a.top + 4; }
   const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })"""
+# PC_AT once the thing has stayed put: the same place twice in a row, two frames apart, the map still. A card that
+# changes size moves the map to keep itself in view a frame or two later, and a press measured before that missed.
+PC_STILL = """(async (get) => {
+  const at = """ + PC_AT + """, frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  let a = at(get()), same = 0;
+  for (let k = 0; k < 30 && same < 2; k++) {
+    await frames();
+    const b = at(get());
+    same = a && b && Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1 && !polku.map.isMoving() ? same + 1 : 0;
+    a = b;
+  }
+  return a;
+})"""
 # the card as it is: what it says, its place, its boxes
 # what's over the open card's point on the screen ('' when it's in sight)
 PC_OVER = """(() => { const p = polku.planner, k = p.cards.current && p.points.indexOf(p.cards.current.key), m = k >= 0 && p.markers[k];
@@ -7246,10 +7259,10 @@ def point_card(chrome):
             chrome.send('Input.dispatchKeyEvent', fields, pg.s)
         time.sleep(0.3)
 
-    # (where it is once the route's numbers are in and the sheet has come to its size: the card is built again when the
-    # numbers come, and a click that went down on the old card and up on the new one was lost; a tap measured while the
-    # sheet grows lands where the thing was)
-    at = lambda pg, x: (pg.js("Promise.resolve(polku.planner.analysing).then(() => true, () => true)"), pg.js(SETTLED), pg.js(f"({PC_AT})({x})"))[2]
+    # (where it is once the route's numbers are in, the sheet has come to its size and the thing has stayed put: the card
+    # is built again when the numbers come, and a click that went down on the old card and up on the new one was lost;
+    # a tap measured while the sheet grew, or before the map moved to keep the card in view, landed where it had been)
+    at = lambda pg, x: (pg.js("Promise.resolve(polku.planner.analysing).then(() => true, () => true)"), pg.js(SETTLED), pg.js(f"({PC_STILL})(() => ({x}))"))[2]
     st = lambda pg: pg.js(PC_STATE)
     # a row by its name, a switch's choice by its word, a button by its words or label
     row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b').textContent === {json.dumps(label)})"
