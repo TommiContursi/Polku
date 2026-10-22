@@ -5857,7 +5857,10 @@ def toolbox(chrome):
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })")
         return pg
 
+    # (where it is once the sheet has come to its size: a tap measured while the sheet changed after Clear route
+    # landed on the map, not on the note's Undo, and added a point)
     def at(pg, sel):
+        pg.js(SETTLED)
         return pg.js(f"({TB_AT})({json.dumps(sel)})")
 
     # the panel at its size, then the toolbar placed for it: in a frame after the change, late on a busy machine (#367)
@@ -6002,9 +6005,10 @@ def toolbox(chrome):
                 fails.append(f'{name}: a touch tap on the time folded the sheet (#251)')
             # a reload: the route is back, undo and redo can't do anything yet (#241)
             pg.reload()
-            pg.js("new Promise((ok) => { const go = () => polku.planner.points.length ? ok(true) : setTimeout(go, 100); go(); })")
+            if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => polku.planner.points.length || Date.now() - t0 > 20000 ? ok(polku.planner.points.length) : setTimeout(go, 100); go(); })"):
+                fails.append(f'{name}: a reload: no route back in 20 s')
             pg.js("polku.planner.setActive(true); true")
-            time.sleep(0.4)
+            placed(pg)
             r = pg.js("({ undo: polku.planner.els.undo.disabled, redo: polku.planner.els.redo.disabled, shown: !!polku.planner.els.undo.offsetParent })")
             if not (r['undo'] and r['redo'] and r['shown']):
                 fails.append(f'{name}: after a reload, undo and redo: {r} (#241)')
@@ -7218,6 +7222,8 @@ def point_card(chrome):
 
     # (where it is once the sheet has come to its size: a tap measured while it grows lands where the thing was)
     at = lambda pg, x: (pg.js(SETTLED), pg.js(f"({PC_AT})({x})"))[1]
+    # the sheet at its size and the toolbox placed for it, in a frame after a change (late on a busy machine: #390)
+    settle = lambda pg: (pg.js(SETTLED), pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))"))
     st = lambda pg: pg.js(PC_STATE)
     # a row by its name, a switch's choice by its word, a button by its words or label
     row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b').textContent === {json.dumps(label)})"
@@ -7241,6 +7247,8 @@ def point_card(chrome):
 
     def tap_marker(pg, i, name, touch):
         # where the point is under the toolbox, a button, a note or the card, the map moves to it first, as a person moves it
+        # (looked at once the sheet and the toolbox are in place, as at() does)
+        settle(pg)
         cov = pg.js(f"""(async () => {{ const p = polku.planner, m = p.markers[{i}]; if (!m) return false; const el = m.getElement().querySelector('.wp');
           const clear = () => {{ const b = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }};
           if (clear()) return true;
@@ -7262,7 +7270,9 @@ def point_card(chrome):
           const x = Math.round(R.left + q.x + {dx}), y = Math.round(R.top + q.y + {dy}), el = document.elementFromPoint(x, y);
           const top = document.querySelector('.topbar').getBoundingClientRect().bottom + 30, bottom = (p.layout() === 'side' ? innerHeight : Math.min(p.panel.getBoundingClientRect().top, innerHeight)) - 30;
           return el === polku.map.getCanvas() && x >= 40 && x <= innerWidth - 80 && y >= top && y <= bottom ? {{ x, y }} : null; }})()""")
-    spot_near = lambda pg, i: next((x for x in (free_spot(pg, i, dx, dy) for dx, dy in ((-120, -160), (120, -160), (0, -200), (160, 120), (-160, 120), (200, 0), (-200, 0), (-60, -90), (60, -90))) if x), None)
+    def spot_near(pg, i):
+        settle(pg)  # (once the sheet and the toolbox are in place: the toolbox redrawn after Move covered a spot, #390)
+        return next((x for x in (free_spot(pg, i, dx, dy) for dx, dy in ((-120, -160), (120, -160), (0, -200), (160, 120), (-160, 120), (200, 0), (-200, 0), (-60, -90), (60, -90))) if x), None)
 
     def one_size(pg, w, h_, phone, name, touch):
         nonlocal fails
