@@ -2,7 +2,7 @@
 
 A second look at the design-system draft of 2026-10-22, written in another session and not committed. The first parts below were read from the CSS. [design-system-audit.md](design-system-audit.md) then went through the running app, and its section "Against the approved plans" comes before these notes where they differ. Where 25d, #356 or the calmer planner already decide something, that decision stands. It checks the draft against the code, measures what the draft measured, and adds ideas. The mock-up [mockups/design-system.html](mockups/design-system.html) shows today's tokens as [DESIGN.md](../../DESIGN.md) records them and, behind a switch, the proposal.
 
-- **Status (2026-10-22): for the user's review.** Nothing is built.
+- **Status (2026-10-22): for the user's review.** Nothing is built. Ideas A–F approved on 2026-10-22. Targets settled the same day: 44 px by touch at any width, 36 px with a mouse or trackpad, 8 px apart (#380); idea A's `--target` follows the pointer, not the width.
 - **From:** `main` at b4bcdb1, and the cards branch `claude/25d-1-card` at 34e5a02 (#352), the latest work on the app.
 - **Goes with:** #356 (the same controls look different), #368 (DESIGN.md), #370 (red text in dark mode).
 

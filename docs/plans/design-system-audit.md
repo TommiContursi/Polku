@@ -117,7 +117,7 @@ The screens above are the app as it is. Much of the planner and the map's cards 
 | The timeline over the planner (#377) | Calmer planner, 2026-10-20 | While planning, the timeline stays over the map, on phones 16 px above the sheet. #377 is the case where the full sheet leaves it no room, a bug against that decision. |
 | A point's card at 200 % (on #352) | 25d part 1a | Fixed in #352 before it merges. |
 
-**One conflict to settle:** targets on desktops. 25d and the calmer planner say **40 px**. The design-system draft of 2026-10-22 says **36 px**, as the cards are built, replacing 25d's rule. Until the user confirms the draft, the plans' 40 px stands.
+**Targets, settled on 2026-10-22:** 25d and the calmer planner said 40 px on desktops, and the design-system draft 36 px. The user chose **44 px by touch at any width** (`pointer: coarse`, tablets and touch laptops too) and **36 px with a mouse or trackpad**, 8 px apart. The two plans change in #380.
 
 **Not in any plan: open, for the user to decide when their time comes:**
 
