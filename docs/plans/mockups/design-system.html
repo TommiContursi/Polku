@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en" data-v="a" data-theme="light" data-density="phone" data-contrast="normal" data-words="demo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polku design system</title>
+<!--
+  Mock-up: Polku's design system as DESIGN.md records it (Today), and the design-system draft of 2026-10-22 with
+  docs/plans/design-system-notes.md (Proposed), behind the switch at the top. Theme, Density, Contrast and Words
+  switch the same page between light and dark, a phone's card and a desktop's, normal and outdoor contrast, and
+  demo words and the worst case (long Finnish words). Nothing here is built in the app.
+-->
+<style>
+/* ===================================================================================================
+   COPIED FROM css/app.css at 34e5a02 (claude/25d-1-card, #352), with the same class names, so what is
+   approved here is what gets built. Trimmed to the rules this page uses; nothing changed inside them.
+   =================================================================================================== */
+:root {
+  --accent: #1f6f4a;
+  --accent-2: #2f8f62;
+  --accent-soft: #e3f1e9;
+  --accent-bg: #1f6f4a;
+  --route: #e11d48;
+  --surface: rgba(255, 255, 255, 0.94);
+  --surface-solid: #ffffff;
+  --surface-2: #f3f4f1;
+  --text: #1c2420;
+  --muted: #5f6b65;
+  --line: rgba(28, 36, 32, 0.12);
+  --shadow: 0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12);
+  --radius: 14px;
+  --good: #16a34a;
+  --ok: #ca8a04;
+  --warn: #ea580c;
+  --bad: #dc2626;
+  --you: #1a73e8;
+  --you-soft: rgba(26, 115, 232, 0.12);
+}
+:root[data-theme="dark"] {
+  --accent: #3fb07a; --accent-2: #56c48f; --accent-soft: rgba(63, 176, 122, 0.16); --accent-bg: #237a52;
+  --surface: rgba(24, 28, 26, 0.94); --surface-solid: #181c1a; --surface-2: #232825;
+  --text: #e8ece9; --muted: #9aa69f; --line: rgba(232, 236, 233, 0.12);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --you: #4c9bff; --you-soft: rgba(76, 155, 255, 0.16);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+.ic { flex: none; display: block; }
+
+.tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
+.tg-text { flex: 1; display: flex; flex-direction: column; }
+.tg-text small { color: var(--muted); font-size: 11px; }
+.tg input { position: absolute; right: 0; top: 50%; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); position: relative; flex: none; transition: background .15s; }
+.tg-ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.tg input:checked + .tg-ui { background: var(--accent-bg); }
+.tg input:checked + .tg-ui::after { transform: translateX(15px); }
+.tg input:focus-visible + .tg-ui { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: 12px; }
+.seg button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; cursor: pointer;
+  color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap;
+}
+.seg button[aria-pressed="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.chip {
+  height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: #fff; }
+.btn.danger-text { color: var(--bad); border-color: transparent; background: transparent; padding: 0 4px; }
+.tool {
+  width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer;
+}
+.tool:hover { background: var(--surface-2); }
+
+.sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
+.sum-item { display: flex; flex-direction: column; min-width: 0; }
+.sum-item b { font-size: 19px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sum-item small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+
+.way-head { display: flex; align-items: flex-start; gap: 8px; }
+.way-head > :first-child { flex: 1; min-width: 0; }
+.way-hint { display: grid; gap: 2px; }
+.way-hint b { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; overflow-wrap: break-word; }
+.way-hint small { color: var(--muted); font-size: 13.5px; }
+.btn.quiet { border-color: transparent; background: transparent; }
+.btn.quiet:hover { background: var(--surface-2); }
+.way-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.way-tile { display: flex; gap: 10px; align-items: flex-start; min-width: 0; min-height: 64px; padding: 12px; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface-solid); color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.way-tile:hover { background: var(--accent-soft); }
+.way-ic { flex: none; display: inline-flex; color: var(--accent); }
+.way-t { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.way-t b { font-size: 15px; overflow-wrap: break-word; }
+.way-t small { color: var(--muted); font-size: 13px; line-height: 1.3; }
+.way-chev { flex: none; align-self: center; color: var(--muted); display: inline-flex; }
+.way-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.way-chips .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 14px; font-size: 14px; color: var(--text); }
+.way-chips .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
+.btn.big { justify-content: center; width: 100%; height: 52px; border-radius: 14px; font-size: 17px; }
+
+.menu-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; font: inherit; font-size: 13px; text-align: left; color: var(--text); }
+.menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--surface-2); outline: none; }
+.menu-item.danger { color: var(--bad); }
+.menu-h { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+.li {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 10px;
+  background: transparent; cursor: pointer; text-align: left; color: var(--text);
+}
+.li:hover { background: var(--surface-2); }
+.li .ic { color: var(--warn); }
+.li-main { display: flex; flex-direction: column; min-width: 0; }
+.li-main span { color: var(--muted); font-size: 12px; }
+.pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill.good { background: rgba(22,163,74,.14); color: var(--good); }
+.pill.ok { background: rgba(202,138,4,.14); color: var(--ok); }
+.pill.warn { background: rgba(234,88,12,.14); color: var(--warn); }
+.pill.bad { background: rgba(220,38,38,.14); color: var(--bad); }
+.kind-roadwork .li .ic { color: var(--bad); }
+
+.wp {
+  width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font: 700 11px/1 system-ui, sans-serif; color: #111; background: #fff; border: 2.5px solid #111;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+}
+
+/* cards (js/card.js, 25d) */
+.pl-way.card { display: flex; flex-direction: column; gap: 12px; }
+.card .way-hint b { line-height: 1.25; hyphens: manual; }
+.card-mark { flex: none; order: -1; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -2px; }
+.card-mark .wp { width: 28px; height: 28px; font-size: 13.5px; border-width: 3px; box-shadow: none; }
+.sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
+.sum-item.miss b { color: var(--muted); }
+.card .sheet-sum { flex: none; align-items: flex-start; column-gap: 20px; }
+.card .sheet-sum .sum-item b { font-size: 19px; }
+.rows { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0 -8px; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 6px 10px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.rows > .row + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
+.rows > .row:first-child:not(:only-child) { border-radius: 12px 12px 0 0; }
+.rows > .row:last-child:not(:only-child) { border-radius: 0 0 12px 12px; }
+.row > span:first-child { flex: none; display: grid; color: var(--text); }
+.row > span:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.row b { font-size: 15px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.row small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.row .val { flex: none; max-width: 42%; font-size: 15px; font-weight: 650; color: var(--accent); text-align: right; overflow-wrap: break-word; }
+.row .way-chev { transition: transform 120ms ease-out; }
+.row:active { background: var(--surface-2); }
+.row.danger b, .row.danger > span:first-child { color: var(--bad); }
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) { .row:hover { background: var(--surface-2); } .row:hover .way-chev { transform: translateX(2px); } }
+@media (prefers-reduced-motion: reduce) { .row .way-chev { transition: none; } }
+.seg.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 15px; }
+.seg.icons button { height: auto; min-height: 48px; padding: 6px 4px; border-radius: 12px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
+.seg.icons button[aria-checked="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
+.seg.icons button[aria-checked="true"] .ic { color: var(--accent); }
+.seg.icons button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@container card (max-width: 335px) { .card-peek .seg.icons button { flex-direction: column; min-height: 54px; gap: 2px; } }
+@container card (max-width: 290px) {
+  .seg.icons { grid-template-columns: 1fr; }
+  .seg.icons button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
+  .row .val { max-width: 50%; }
+}
+.pl-way.card { container: card / inline-size; }
+
+/* at its spot (desktops): Today's way of making the card a step smaller, 39 rules on the branch (the ones this page uses) */
+:root[data-v="a"] .card-float .way-hint b { font-size: 15px; }
+:root[data-v="a"] .card-float .way-hint small { font-size: 12.5px; }
+:root[data-v="a"] .card-float .card .sheet-sum .sum-item b { font-size: 17px; }
+:root[data-v="a"] .card-float .sum-item small { font-size: 12px; }
+:root[data-v="a"] .card-float .menu-h { margin: 0 0 -4px; font-size: 11px; }
+:root[data-v="a"] .card-float .seg.icons button { min-height: 36px; font-size: 13px; }
+:root[data-v="a"] .card-float .card-mark { width: 28px; height: 28px; margin-top: 0; }
+:root[data-v="a"] .card-float .card-mark .wp { width: 22px; height: 22px; border-width: 2.5px; font-size: 11.5px; }
+:root[data-v="a"] .card-float .row { min-height: 34px; padding: 4px 8px; gap: 10px; }
+:root[data-v="a"] .card-float .row b, :root[data-v="a"] .card-float .row .val { font-size: 14px; }
+:root[data-v="a"] .card-float .row > span:first-child .ic { width: 18px; height: 18px; }
+:root[data-v="a"] .card-float .li { padding: 5px 8px; }
+.card-float .row small { display: none; }
+
+/* ===================================================================================================
+   PROPOSED: the draft's values and controls (2026-10-22), with design-system-notes.md's ideas A and B.
+   Only under data-v="b". Class names stay; the controls read their sizes from values.
+   =================================================================================================== */
+:root[data-v="b"] {
+  --danger: #b4232a; --danger-soft: #fbe9e9;
+  --look: #8a5a00; --look-soft: #fbf4e2;
+  --unk: #47607a; --unk-soft: #eaf0f6;
+  --good-text: #166534; --ok-text: #854d0e; --warn-text: #9a3412; --bad-text: #b91c1c;
+  --focus: #1f6f4a;
+  --route-water: #0369a1; --route-line: #be123c; --route-loading: #9ca3af;
+  --font-small: 12px; --font-control: 13px; --font-body: 14px; --font-row: 15px; --font-field: 16px;
+  --font-title: 17px; --font-number: 19px; --font-numeral: 22px; --font-glance: 34px;
+  --weight-regular: 400; --weight-name: 600; --weight-strong: 700;
+  --radius-small: 6px; --radius-control: 10px; --radius-sheet: 20px;
+  --shadow-marker: 0 1px 4px rgba(0, 0, 0, .35);
+  --shadow-sheet: 0 -6px 28px rgba(16, 24, 20, .2);
+  --t-press: 120ms; --t-open: 180ms; --t-sheet: 260ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* idea A: the context's sizes */
+  --row-h: 50px; --target: 44px; --mark: 34px;
+}
+:root[data-v="b"][data-theme="dark"] {
+  --danger: #ff8a8a; --danger-soft: rgba(255, 138, 138, .14);
+  --look: #f2c45a; --look-soft: rgba(242, 196, 90, .12);
+  --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, .13);
+  --good-text: #4ade80; --ok-text: #facc15; --warn-text: #fb923c; --bad-text: #f87171;
+  --focus: #6fd3a2;
+  --bad: #f87171; /* #370 */
+  --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, .5);
+}
+/* idea A: a desktop card sets its values once, and every control follows */
+:root[data-v="b"] .card-float { --row-h: 36px; --target: 36px; --mark: 28px; --font-title: 15px; --font-number: 17px; --font-row: 14px; }
+:root[data-v="b"] .way-hint b { font-size: var(--font-title); }
+:root[data-v="b"] .way-hint small, :root[data-v="b"] .sum-item small { font-size: var(--font-small); }
+:root[data-v="b"] .card .sheet-sum .sum-item b { font-size: var(--font-number); }
+:root[data-v="b"] .row { min-height: var(--row-h); }
+:root[data-v="b"] .row b, :root[data-v="b"] .row .val { font-size: var(--font-row); font-weight: var(--weight-name); }
+:root[data-v="b"] .seg.icons button { min-height: var(--target); font-weight: var(--weight-name); }
+:root[data-v="b"] .card-mark { width: var(--mark); height: var(--mark); }
+:root[data-v="b"] .card-mark .wp { width: calc(var(--mark) - 6px); height: calc(var(--mark) - 6px); }
+/* idea B: one focus ring for every control; a row in a list draws it inside */
+:root[data-v="b"] :where(button, a, input, select, [tabindex]):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+:root[data-v="b"] :is(.row, .seg.icons button, .menu-item):focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+:root[data-v="b"] .tg input:focus-visible + .tg-ui { outline-color: var(--focus); }
+/* small headings: 12 px capitals */
+:root[data-v="b"] .menu-h { font-size: var(--font-small); letter-spacing: .06em; }
+/* a chosen chip: green, 2 px border, not the black fill */
+:root[data-v="b"] .chip[aria-pressed="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
+/* pills: the -text colours, which pass as text */
+:root[data-v="b"] .pill.good { color: var(--good-text); }
+:root[data-v="b"] .pill.ok { color: var(--ok-text); }
+:root[data-v="b"] .pill.warn { color: var(--warn-text); }
+:root[data-v="b"] .pill.bad { color: var(--bad-text); }
+:root[data-v="b"] :is(.row.danger b, .row.danger > span:first-child, .menu-item.danger, .btn.danger-text) { color: var(--danger); }
+/* the same pressed look everywhere */
+:root[data-v="b"] :is(.btn, .tool, .chip, .way-tile, .menu-item, .li) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+:root[data-v="b"] :is(.btn, .tool, .way-tile, .menu-item, .li):active { background: var(--surface-2); }
+/* a warning box, coloured by its group, with its shape */
+.warn-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1.5px solid transparent; }
+.warn-row > span:first-child { flex: none; display: grid; }
+.warn-row b { display: block; font-size: var(--font-row, 15px); font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.warn-row small { display: block; font-size: var(--font-small, 12px); color: var(--muted); overflow-wrap: anywhere; }
+.warn-row.danger { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.warn-row.danger > span:first-child, .warn-row.danger em { color: var(--danger); }
+.warn-row.look { background: var(--look-soft); border-color: color-mix(in srgb, var(--look) 35%, transparent); }
+.warn-row.look > span:first-child, .warn-row.look em { color: var(--look); }
+.warn-row.unk { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
+.warn-row.unk > span:first-child, .warn-row.unk em { color: var(--unk); }
+.warn-row em { font-style: normal; font-size: var(--font-small, 12px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+/* idea C: outdoor contrast, as @media (prefers-contrast: more) would set it */
+:root[data-contrast="more"] { --surface: #ffffff; --muted: #3f4944; --line: rgba(28, 36, 32, 0.28); }
+:root[data-contrast="more"][data-theme="dark"] { --surface: #181c1a; --muted: #c4cec8; --line: rgba(232, 236, 233, 0.3); }
+:root[data-contrast="more"] .floating { backdrop-filter: none; }
+
+/* ===================================================================================================
+   THE MOCK-UP'S OWN PAGE (not Polku's controls)
+   =================================================================================================== */
+html { background: var(--page); --page: #e9eee9; }
+html[data-theme="dark"] { --page: #0f1311; }
+body { margin: 0; background: var(--page); }
+a { color: var(--accent); text-underline-offset: 3px; }
+::selection { background: var(--accent-soft); color: var(--text); }
+.mk-bar { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; background: var(--surface); backdrop-filter: blur(14px); box-shadow: 0 1px 0 var(--line); }
+.mk-bar h1 { margin: 0 auto 0 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+.mk-sw { display: flex; align-items: center; gap: 6px; }
+.mk-sw > span { font-size: 12px; font-weight: 600; color: var(--muted); }
+.mk-sw .seg button { height: 36px; }
+@media (max-width: 720px) {
+  .mk-bar { position: static; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .mk-bar h1 { grid-column: 1 / -1; }
+  .mk-sw { display: grid; gap: 2px; }
+  .mk-sw .seg { width: 100%; } .mk-sw .seg button { flex: 1; height: 44px; padding: 0 8px; }
+}
+.mk-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; max-width: 1360px; margin: 0 auto; padding: 16px; }
+@media (min-width: 1000px) {
+  .mk-main { grid-template-columns: minmax(420px, 1fr) minmax(0, 1.15fr); align-items: start; }
+  html[data-density="desktop"] .mk-main { grid-template-columns: minmax(560px, 1.3fr) minmax(0, 1fr); }
+  .mk-stage-wrap { position: sticky; top: 76px; }
+}
+html[data-density="phone"] .mk-sheet { max-height: 56%; }
+.mk-note { margin: 0 0 12px; color: var(--muted); font-size: 13px; max-width: 70ch; }
+.mk-note b { color: var(--text); }
+
+/* the stage: a map with the route and a point's card */
+.mk-stage { position: relative; overflow: hidden; border-radius: 18px; box-shadow: var(--shadow); background: #e8ead9; margin: 0 auto; }
+html[data-density="phone"] .mk-stage { width: min(100%, 390px); height: 760px; }
+html[data-density="desktop"] .mk-stage { width: 100%; height: 640px; }
+.mk-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mk-sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 64%; overflow-y: auto; padding: 8px 16px 16px; border-radius: 20px 20px 0 0; background: var(--surface); backdrop-filter: blur(14px); box-shadow: 0 -6px 28px rgba(16, 24, 20, .2); }
+.mk-sheet::before { content: ""; display: block; width: 36px; height: 5px; margin: 0 auto 10px; border-radius: 999px; background: var(--line); }
+.mk-float { position: absolute; right: 16px; top: 24px; width: min(320px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow-y: auto; padding: 8px 12px 10px; border-radius: 16px; background: var(--surface); backdrop-filter: blur(14px); box-shadow: var(--shadow); }
+html[data-density="phone"] .mk-float, html[data-density="desktop"] .mk-sheet { display: none; }
+.mk-stage-cap { margin: 8px auto 0; max-width: 390px; font-size: 12px; color: var(--muted); text-align: center; }
+html[data-density="desktop"] .mk-stage-cap { max-width: none; }
+
+/* specimen sections */
+.mk-sec { margin: 0 0 28px; }
+.mk-sec > h2 { margin: 0 0 4px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.mk-sec h3:not(.way-hint) { margin: 18px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.mk-panel { padding: 14px; border-radius: 14px; background: var(--surface-solid); box-shadow: 0 0 0 1px var(--line); }
+.mk-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 8px; }
+.mk-sw-card { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 10px; align-items: center; padding: 8px; border-radius: 12px; background: var(--surface-solid); box-shadow: 0 0 0 1px var(--line); }
+.mk-chip { grid-row: span 3; width: 40px; height: 40px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); }
+.mk-sw-card b { font-size: 13px; overflow-wrap: anywhere; }
+.mk-sw-card code { font: 12px/1.3 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.mk-verdict { font-size: 12px; font-weight: 600; }
+.mk-verdict.pass { color: var(--text); }
+.mk-verdict.mid, .mk-verdict.fail { color: var(--text); }
+.mk-verdict i { font-style: normal; display: inline-block; min-width: 1.2em; }
+.mk-type { display: grid; gap: 10px; }
+.mk-type > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding-bottom: 10px; box-shadow: inset 0 -1px 0 var(--line); }
+.mk-type code, .mk-shape code { font: 12px/1.3 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); white-space: nowrap; }
+.mk-type span { overflow-wrap: anywhere; min-width: 0; }
+.mk-shapes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+.mk-shape { display: grid; gap: 6px; justify-items: start; font-size: 12px; }
+.mk-shape > div { width: 100%; height: 64px; background: var(--surface-solid); box-shadow: 0 0 0 1px var(--line); }
+.mk-gallery { display: grid; gap: 16px; }
+.mk-gallery > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mk-gallery > div > small { flex-basis: 100%; color: var(--muted); font-size: 12px; }
+.mk-motion { position: relative; height: 180px; overflow: hidden; border-radius: 14px; background: var(--surface-2); }
+.mk-motion .mk-msheet { position: absolute; left: 12px; right: 12px; bottom: 0; height: 120px; padding: 14px; border-radius: 20px 20px 0 0; background: var(--surface-solid); box-shadow: 0 -6px 28px rgba(16, 24, 20, .2); transform: translateY(100%); transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
+.mk-motion.open .mk-msheet { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .mk-motion .mk-msheet { transform: none; opacity: 0; transition: opacity 150ms ease; }
+  .mk-motion.open .mk-msheet { opacity: 1; }
+}
+.mk-motion .btn { position: absolute; left: 12px; top: 12px; }
+.mk-badge { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; }
+.mk-cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.mk-cmp > div { display: grid; gap: 8px; align-content: start; }
+.mk-cmp h4 { margin: 0; font-size: 13px; }
+.mk-glance { display: inline-grid; gap: 2px; padding: 10px 14px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.mk-glance b { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.mk-glance small { font-size: 12px; color: var(--muted); font-weight: 600; }
+.v-a, .v-b { display: contents; }
+html[data-v="a"] .v-b, html[data-v="b"] .v-a { display: none; }
+.mk-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 700; vertical-align: 2px; }
+html[data-v="b"] .mk-tag.new { background: var(--accent-soft); color: var(--text); }
+</style>
+</head>
+<body>
+
+<header class="mk-bar">
+  <h1>
+    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1f6f4a"/><path d="M8 24c3-2 4-6 8-8s6-6 8-9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="4 3.5"/></svg>
+    Polku design system
+  </h1>
+  <div class="mk-sw"><span id="l-v">Version</span><div class="seg" role="group" aria-labelledby="l-v" data-set="v"><button aria-pressed="true" data-val="a">Today</button><button aria-pressed="false" data-val="b">Proposed</button></div></div>
+  <div class="mk-sw"><span id="l-t">Theme</span><div class="seg" role="group" aria-labelledby="l-t" data-set="theme"><button aria-pressed="true" data-val="light">Light</button><button aria-pressed="false" data-val="dark">Dark</button></div></div>
+  <div class="mk-sw"><span id="l-d">Card</span><div class="seg" role="group" aria-labelledby="l-d" data-set="density"><button aria-pressed="true" data-val="phone">Phone</button><button aria-pressed="false" data-val="desktop">Desktop</button></div></div>
+  <div class="mk-sw"><span id="l-c">Contrast</span><div class="seg" role="group" aria-labelledby="l-c" data-set="contrast"><button aria-pressed="true" data-val="normal">Normal</button><button aria-pressed="false" data-val="more">Outdoor</button></div></div>
+  <div class="mk-sw"><span id="l-w">Words</span><div class="seg" role="group" aria-labelledby="l-w" data-set="words"><button aria-pressed="true" data-val="demo">Demo</button><button aria-pressed="false" data-val="worst">Worst case</button></div></div>
+</header>
+
+<main class="mk-main">
+
+  <!-- ============================================================ the stage -->
+  <div class="mk-stage-wrap">
+    <div class="mk-stage" id="stage">
+      <svg class="mk-map" viewBox="0 0 600 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <pattern id="forest" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="1.4" class="m-tree"/></pattern>
+        </defs>
+        <rect width="600" height="760" class="m-land"/>
+        <path d="M0 120 C80 90 140 160 210 130 S330 60 420 110 S560 90 600 60 V0 H0Z" class="m-forest"/>
+        <path d="M0 120 C80 90 140 160 210 130 S330 60 420 110 S560 90 600 60 V0 H0Z" fill="url(#forest)"/>
+        <path d="M380 520 C440 480 520 500 600 470 V760 H330 C350 680 330 580 380 520Z" class="m-forest"/>
+        <path d="M380 520 C440 480 520 500 600 470 V760 H330 C350 680 330 580 380 520Z" fill="url(#forest)"/>
+        <g class="m-contour" fill="none">
+          <path d="M40 520 C120 470 200 500 250 450 S330 380 300 330"/><path d="M20 560 C120 510 220 540 280 480 S370 400 340 330"/>
+          <path d="M60 600 C160 560 250 580 320 520 S410 420 380 330"/><path d="M450 300 C500 260 560 280 600 250"/><path d="M430 340 C500 300 560 320 600 290"/>
+        </g>
+        <path d="M150 260 C210 200 330 210 380 250 S420 360 350 400 S190 420 160 360 S110 300 150 260Z" class="m-water"/>
+        <path d="M0 690 C120 660 210 700 330 640" class="m-road" fill="none"/>
+        <text x="250" y="320" class="m-label">Kaukajärvi</text>
+        <!-- the route: casing, then the line; a leg over water in blue; a leg being routed in grey -->
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M90 700 C120 600 90 520 170 460 S190 330 190 300" stroke="#fff" stroke-width="10" opacity=".9"/>
+          <path d="M90 700 C120 600 90 520 170 460 S190 330 190 300" class="m-route" stroke-width="5.5"/>
+          <path d="M190 300 C250 270 300 260 350 240" stroke="#fff" stroke-width="10" opacity=".9"/>
+          <path d="M190 300 C250 270 300 260 350 240" class="m-route-water" stroke-width="5.5"/>
+          <path d="M350 240 C400 220 430 180 470 150 S520 110 540 70" stroke="#fff" stroke-width="10" opacity=".9"/>
+          <path d="M350 240 C400 220 430 180 470 150 S520 110 540 70" class="m-route" stroke-width="5.5"/>
+        </g>
+        <!-- waypoints -->
+        <g font-family="system-ui, sans-serif" font-weight="700" font-size="11" text-anchor="middle">
+          <circle cx="90" cy="700" r="12" fill="#16a34a" stroke="#fff" stroke-width="2.5"/><path d="M87 694 L96 700 L87 706Z" fill="#fff"/>
+          <circle cx="190" cy="300" r="13" fill="#fff" stroke="#111" stroke-width="3"/><text x="190" y="304" fill="#111">2</text>
+          <circle cx="190" cy="300" r="19" fill="none" class="m-sel" stroke-width="4"/>
+          <circle cx="350" cy="240" r="11" fill="#fff" stroke="#111" stroke-width="2.5"/><text x="350" y="244" fill="#111">3</text>
+          <circle cx="540" cy="70" r="12" fill="#111" stroke="#fff" stroke-width="2.5"/>
+        </g>
+        <!-- Proposed: warning markers on the route, a white disc with the group's shape -->
+        <g class="m-markers">
+          <g transform="translate(150 470)"><circle r="14" fill="#fff" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,.35))"/><circle r="11" class="m-look-soft"/><path d="M-7 0c2.2-3.6 4.6-5 7-5s4.8 1.4 7 5c-2.2 3.6-4.6 5-7 5s-4.8-1.4-7-5Z" fill="none" class="m-look" stroke-width="1.8"/><circle r="2" class="m-look-fill"/></g>
+          <g transform="translate(470 150)"><circle r="14" fill="#fff" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,.35))"/><circle r="11" class="m-danger-soft"/><path d="M0 -7 L7.5 6 H-7.5Z" class="m-danger-fill"/><path d="M0 -2.5v3.5M0 3.2v.2" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></g>
+          <g transform="translate(110 590)"><circle r="14" fill="#fff" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,.35))"/><circle r="10.5" class="m-unk-soft" stroke-dasharray="3 2.4" stroke-width="1.6"/><text y="4.5" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="12.5" class="m-unk-fill">?</text></g>
+        </g>
+        <!-- you -->
+        <circle cx="128" cy="640" r="22" class="m-you-soft"/><circle cx="128" cy="640" r="8" class="m-you" stroke="#fff" stroke-width="3"/>
+      </svg>
+
+      <!-- a point's card: on a phone the peek, on a desktop at its spot -->
+      <div class="mk-sheet card-peek floating" data-card-host="phone"></div>
+      <div class="mk-float card-float floating" data-card-host="desktop"></div>
+    </div>
+    <p class="mk-stage-cap" id="stage-cap"></p>
+  </div>
+
+  <!-- ============================================================ the specimen -->
+  <div>
+    <p class="mk-note"><b>Today</b> is Polku as <a href="../../../DESIGN.md">DESIGN.md</a> records it, with the controls copied from <code>css/app.css</code> on the cards branch (34e5a02). <b>Proposed</b> is the design-system draft of 2026-10-22 with the ideas in <a href="../design-system-notes.md">design-system-notes.md</a>. The look stays the same: what changes is readable text, one colour per meaning, and values instead of numbers typed in place. Press <kbd>Tab</kbd> to see the focus rings.</p>
+
+    <section class="mk-sec" aria-labelledby="h-col">
+      <h2 id="h-col">Colours</h2>
+      <p class="mk-note">Each is measured live against the card behind it (<code>--surface-solid</code>), and the result is said in words: text needs 4.5:1, lines and icons 3:1.</p>
+      <h3>Primary and the route</h3>
+      <div class="mk-swatches" data-swatches="accent:Accent:green accent-bg:Accent-bg (behind white):green route:Route:red you:You:blue"></div>
+      <h3>Status</h3>
+      <div class="mk-swatches" data-swatches="good:Good:green ok:Ok:amber warn:Warn:orange bad:Bad:red"></div>
+      <div class="v-b"><h3>Warnings, one colour per group <span class="mk-tag new">new</span></h3>
+      <div class="mk-swatches" data-swatches="danger:Danger, read before you go:red look:Look, worth a look:amber unk:Not known:blue-grey focus:Focus ring:green"></div>
+      <h3>Status as text <span class="mk-tag new">new</span></h3>
+      <div class="mk-swatches" data-swatches="good-text:Good text:green ok-text:Ok text:amber warn-text:Warn text:orange bad-text:Bad text:red"></div></div>
+      <h3>Neutral</h3>
+      <div class="mk-swatches" data-swatches="text:Text:near-black muted:Muted:grey-green surface-2:Surface-2:pale grey line:Line:hairline"></div>
+    </section>
+
+    <section class="mk-sec" aria-labelledby="h-type">
+      <h2 id="h-type">Type</h2>
+      <p class="mk-note">The system's own interface font, bold for hierarchy. <span class="v-a">Today, 18 sizes and 7 weights are typed in place; these are the roles DESIGN.md names.</span><span class="v-b">Proposed: nine sizes and three weights as values, nothing under 12 px, and a glance size for the trail.</span></p>
+      <div class="mk-panel mk-type" id="type-list"></div>
+    </section>
+
+    <section class="mk-sec" aria-labelledby="h-shape">
+      <h2 id="h-shape">Shapes and depth</h2>
+      <p class="mk-note">Gently rounded; one shadow for everything that floats over the map, a ring for what's chosen. <span class="v-a">Today: 25 different corner values, 21 shadows typed in place.</span><span class="v-b">Proposed: four corners, four shadows, each with a dark version.</span></p>
+      <div class="mk-panel mk-shapes">
+        <div class="mk-shape"><div style="border-radius:6px"></div><b>Small</b><code>6px</code></div>
+        <div class="mk-shape"><div style="border-radius:10px"></div><b>Control</b><code>10px</code></div>
+        <div class="mk-shape"><div style="border-radius:14px; box-shadow: var(--shadow)"></div><b>Card, floating</b><code>14px · --shadow</code></div>
+        <div class="mk-shape"><div style="border-radius:20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16,24,20,.2)"></div><b>Phone sheet</b><code>20px top</code></div>
+        <div class="mk-shape"><div style="border-radius:14px; box-shadow: var(--shadow), inset 0 0 0 2px var(--accent)"></div><b>Chosen</b><code>+ ring</code></div>
+        <div class="mk-shape"><div style="border-radius:999px; height:36px"></div><b>Pill</b><code>999px</code></div>
+      </div>
+    </section>
+
+    <section class="mk-sec" aria-labelledby="h-ctrl">
+      <h2 id="h-ctrl">Controls</h2>
+      <p class="mk-note">The jobs and classes are in DEVELOPING's "Shared controls". <span class="v-a">Today: <code>btn</code>, <code>tool</code>, <code>chip</code> and <code>way-tile</code> get the browser's own focus ring; a chosen chip is filled black.</span><span class="v-b">Proposed: one green ring for all (idea B), a chosen chip green with a 2 px border, and the same pressed look everywhere.</span></p>
+      <div class="mk-panel mk-gallery">
+        <div><small>Buttons</small>
+          <button class="btn">Save offline</button><button class="btn primary">Done</button><button class="btn quiet">Cancel</button>
+          <button class="tool" aria-label="Undo"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+          <button class="btn danger-text">Delete route</button>
+        </div>
+        <div><small>The one main action</small><button class="btn primary big" data-w="cta">Make 3 loops</button></div>
+        <div><small>A switch, and chips to pick one</small>
+          <div class="seg" role="group" aria-label="Units"><button aria-pressed="true">Distance</button><button aria-pressed="false">Time</button></div>
+          <div class="way-chips"><button class="chip" aria-pressed="false">10 km</button><button class="chip" aria-pressed="true">20 km</button><button class="chip" aria-pressed="false">40 km</button></div>
+          <button class="chip" aria-pressed="true">Grade</button><button class="chip" aria-pressed="false">Surface</button>
+        </div>
+        <div><small>A toggle</small><label class="tg" style="flex:1 1 260px"><span class="tg-text">Avoid main roads<small>Where there's another way</small></span><input type="checkbox" checked><span class="tg-ui" aria-hidden="true"></span></label></div>
+        <div><small>A row that opens the next step</small>
+          <div class="way-tiles" style="flex:1 1 100%">
+            <button class="way-tile"><span class="way-ic"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="5" r="2.2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg></span><span class="way-t"><b data-w="tile">Round trip</b><small>Loops from your start</small></span></button>
+            <button class="way-tile"><span class="way-ic"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></span><span class="way-t"><b>Point to point</b><small>Tap where you're going</small></span></button>
+          </div>
+        </div>
+        <div><small>Actions in a group</small>
+          <div style="display:grid; min-width: 220px; padding: 4px; border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow)">
+            <div class="menu-h">Route</div>
+            <button class="menu-item">Reverse</button><button class="menu-item">Export GPX</button><button class="menu-item danger">Delete route</button>
+          </div>
+        </div>
+        <div><small>Difficulty pills</small><span class="pill good">S0</span><span class="pill ok">S1</span><span class="pill warn">S2</span><span class="pill bad">S3</span></div>
+      </div>
+    </section>
+
+    <section class="mk-sec" aria-labelledby="h-warn">
+      <h2 id="h-warn">Warnings and "not sure"</h2>
+      <div class="v-a"><p class="mk-note">Today, Heads-up is one list: an orange icon for most things, red for road works, and a dashed box for a number the map doesn't have. Orange also marks Check's badge and difficulty.</p>
+        <div class="mk-panel" style="display:grid; gap:4px">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px"><b>Check</b><span class="mk-badge" style="background: var(--warn)">3</span></div>
+          <button class="li"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4.5M12 17.5v.5"/></svg><span class="li-main"><b data-w="warn1">The ferry doesn't run after 30 September</b><span>Leg 2, 1.2 km over water</span></span></button>
+          <button class="li"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4.5M12 17.5v.5"/></svg><span class="li-main"><b>Steep descent</b><span>S3 for 200 m</span></span><span class="pill warn" style="margin-left:auto">S3</span></button>
+          <div class="kind-roadwork"><button class="li"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4.5M12 17.5v.5"/></svg><span class="li-main"><b>Road works</b><span>Hervannan valtaväylä, until 14 November</span></span></button></div>
+          <div class="sheet-sum" style="margin-top:8px"><div class="sum-item miss"><b>—</b><small>Trail width not mapped</small></div></div>
+        </div>
+      </div>
+      <div class="v-b"><p class="mk-note">Proposed: three groups, each with its colour <em>and</em> its shape (idea F), so nothing depends on telling red from amber. Check's badge is red with the triangle when something can stop you. Old data says its age; estimates say so in words, with no colour.</p>
+        <div class="mk-panel" style="display:grid; gap:8px">
+          <div style="display:flex; align-items:center; gap:8px"><b>Check</b><span class="mk-badge" style="background: var(--danger)"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z" fill="#fff"/></svg>1</span><small style="color:var(--muted)">1 to read, 1 worth a look, 1 not checked</small></div>
+          <div class="warn-row danger"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4.5M12 17.5v.5"/></svg></span><span><em>Read before you go</em><b data-w="warn1">The ferry doesn't run after 30 September</b><small>Leg 2, 1.2 km over water</small></span></div>
+          <div class="warn-row look"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><span><em>Worth a look</em><b>Steep descent</b><small>S3 for 200 m · <span class="pill warn">S3</span></small></span></div>
+          <div class="warn-row unk"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-dasharray="3 2.6"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.4M12 17v.2"/></svg></span><span><em>Not checked</em><b>Trail width not mapped</b><small>3.1 km of the route; the map has no width here</small></span></div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color: var(--muted)"><span>Old: <b style="color: var(--look)">Forecast from 07:40</b></span><span>Estimated: <b style="color: var(--text)">1 h 05 min, estimated</b></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mk-sec" aria-labelledby="h-motion">
+      <h2 id="h-motion">Motion</h2>
+      <p class="mk-note">Short and quiet: 120 ms for a press, 180 ms for cards and menus, 260 ms for the sheet, on an ease that settles. With reduced motion asked for, it fades in place instead of sliding.</p>
+      <div class="mk-motion" id="motion"><button class="btn" id="motion-btn" aria-expanded="false">Open the sheet</button><div class="mk-msheet"><b>Round trip from your start</b><div style="color:var(--muted); font-size:13px">The sheet slides up in 260 ms.</div></div></div>
+    </section>
+
+    <section class="mk-sec v-b" aria-labelledby="h-glance">
+      <h2 id="h-glance">The glance size <span class="mk-tag new">new</span></h2>
+      <p class="mk-note">For numbers read while moving (phase 23): 34 px, bold, on a solid card, never on frosted glass.</p>
+      <div style="display:flex; flex-wrap:wrap; gap:12px"><div class="mk-glance"><b>4.2 km</b><small>to the next turn</small></div><div class="mk-glance"><b>14:35</b><small>at the shore, estimated</small></div></div>
+    </section>
+  </div>
+</main>
+
+<template id="card-tpl">
+  <div class="pl-way card">
+    <div class="way-head">
+      <h3 class="way-hint" style="margin:0"><b data-w="name">Lunch stop at Kauppi</b><small data-w="sub">Point 2 of 4 · MTB</small></h3>
+      <span class="card-mark"><span class="wp">2</span></span>
+      <button class="tool" aria-label="Close"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="sheet-sum">
+      <div class="sum-item"><b data-w="n1">12.4 km</b><small>from the start</small></div>
+      <div class="sum-item"><b data-w="n2">1 h 05 min</b><small>estimated</small></div>
+      <div class="sum-item miss"><b>—</b><small data-w="miss">difficulty not mapped</small></div>
+    </div>
+    <div class="seg icons" role="radiogroup" aria-label="How you go from here">
+      <button role="radio" aria-checked="true"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"/></svg><span data-w="s1">Ride</span></button>
+      <button role="radio" aria-checked="false"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4.5" r="2"/><path d="m9 21 2.5-7 3 3V21M11.5 14 12 9l-3 2v3M12 9l3 3 2.5-1"/><path d="M18 9v12"/></svg><span data-w="s2">Walk</span></button>
+      <button role="radio" aria-checked="false"><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"/><path d="M5 13.5h14l-2 2.5H7Z"/><path d="m6 5 12 9M4.5 3.8 7 5.7M17 13.3l2.5 1.9"/></svg><span data-w="s3">Paddle</span></button>
+    </div>
+    <div class="v-b"><div class="warn-row look"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><span><em>Worth a look</em><b>Steep descent after this point</b></span></div></div>
+    <div class="rows">
+      <button class="row"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16l13-8Z"/></svg></span><span><b data-w="r1">Start here</b><small>The route begins at this point</small></span><span class="way-chev"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></span></button>
+      <button class="row"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></span><span><b data-w="r2">Move</b><small>Tap where it goes</small></span></button>
+      <button class="row"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></span><span><b data-w="r3">Stop here</b><small>Time spent at this point</small></span><span class="val" data-w="v3">30 min</span></button>
+      <button class="row danger"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span><span><b data-w="r4">Remove</b><small>The route joins up around it</small></span></button>
+    </div>
+  </div>
+</template>
+
+<style>
+/* the map's colours: from js/style.js (terrain by day, the night map) */
+.m-land { fill: #eef0e3; } .m-forest { fill: #d3e4c5; } .m-tree { fill: #a9c896; } .m-water { fill: #a8d1ef; stroke: #6fa9d6; stroke-width: 1.2; }
+.m-contour path { stroke: #c9b896; stroke-width: 1; opacity: .7; } .m-road { stroke: #f7c873; stroke-width: 7; } .m-label { font: italic 600 13px system-ui, sans-serif; fill: #24618f; }
+.m-route { stroke: #e11d48; } .m-route-water { stroke: #0369a1; } .m-sel { stroke: var(--accent-bg); }
+.m-you { fill: var(--you); } .m-you-soft { fill: var(--you-soft); }
+html[data-theme="dark"] .m-land { fill: #1b2420; } html[data-theme="dark"] .m-forest { fill: #1e3226; } html[data-theme="dark"] .m-tree { fill: #2f4b37; }
+html[data-theme="dark"] .m-water { fill: #10304a; stroke: #1f5a85; } html[data-theme="dark"] .m-contour path { stroke: #5a5240; }
+html[data-theme="dark"] .m-road { stroke: #6b5a33; } html[data-theme="dark"] .m-label { fill: #7fb6e3; }
+.m-markers { display: none; } html[data-v="b"] .m-markers { display: inline; }
+.m-danger-soft { fill: var(--danger-soft, #fbe9e9); stroke: var(--danger); stroke-width: 1.5; } .m-danger-fill { fill: var(--danger); }
+.m-look-soft { fill: var(--look-soft, #fbf4e2); stroke: var(--look); stroke-width: 1.5; } .m-look { stroke: var(--look); } .m-look-fill { fill: var(--look); }
+.m-unk-soft { fill: var(--unk-soft, #eaf0f6); stroke: var(--unk); } .m-unk-fill { fill: var(--unk); }
+/* the markers sit on a white disc: their soft colours are the light theme's on the map in both themes */
+html[data-theme="dark"] .m-markers { --danger: #b4232a; --danger-soft: #fbe9e9; --look: #8a5a00; --look-soft: #fbf4e2; --unk: #47607a; --unk-soft: #eaf0f6; }
+</style>
+
+<script>
+const root = document.documentElement;
+const WORDS = {
+  demo: { name: 'Lunch stop at Kauppi', sub: 'Point 2 of 4 · MTB', n1: '12.4 km', n2: '1 h 05 min', miss: 'difficulty not mapped',
+    s1: 'Ride', s2: 'Walk', s3: 'Paddle', r1: 'Start here', r2: 'Move', r3: 'Stop here', v3: '30 min', r4: 'Remove',
+    cta: 'Make 3 loops', tile: 'Round trip', warn1: "The ferry doesn't run after 30 September" },
+  worst: { name: 'Pohjois-Pohjanmaan virkistysalueyhdistyksen Ylikiiminginjoen laavu', sub: 'Piste 12 / 48 · Maastopyöräily', n1: '1 234.5 km', n2: '112 h 45 min', miss: 'vaikeusastetta ei ole kartoitettu',
+    s1: 'Maastopyöräily', s2: 'Vaellus', s3: 'Melonta', r1: 'Aloita reitti tästä pisteestä', r2: 'Siirrä', r3: 'Pysähdy', v3: '2 h 30 min', r4: 'Poista',
+    cta: 'Muodosta kolme kiertoreittiä', tile: 'Kiertoreitti', warn1: 'Lossiliikenne päättyy syyskuun viimeisenä päivänä' },
+};
+
+function fillCards() {
+  const w = WORDS[root.dataset.words];
+  for (const host of document.querySelectorAll('[data-card-host]')) {
+    host.replaceChildren(document.getElementById('card-tpl').content.cloneNode(true));
+  }
+  for (const el of document.querySelectorAll('[data-w]')) if (w[el.dataset.w] != null) el.textContent = w[el.dataset.w];
+  wireRadios();
+}
+function wireRadios() {
+  for (const g of document.querySelectorAll('.seg.icons')) {
+    g.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; for (const x of g.querySelectorAll('button')) x.setAttribute('aria-checked', String(x === b)); };
+  }
+}
+
+// contrast, measured: the colour composited over the card behind it
+function rgba(css) { const m = css.match(/[\d.]+/g).map(Number); return { r: m[0], g: m[1], b: m[2], a: m[3] ?? 1 }; }
+function over(c, bg) { return { r: c.r * c.a + bg.r * (1 - c.a), g: c.g * c.a + bg.g * (1 - c.a), b: c.b * c.a + bg.b * (1 - c.a), a: 1 }; }
+function lum({ r, g, b }) { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); }
+function ratio(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+const probe = document.createElement('span'); probe.hidden = true; document.body.append(probe);
+function colourOf(name) { probe.style.color = `var(--${name})`; probe.hidden = false; const c = getComputedStyle(probe).color; probe.hidden = true; return c; }
+function hex({ r, g, b, a }) { const h = '#' + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join(''); return a < 1 ? `${h} at ${Math.round(a * 100)} %` : h; }
+
+function swatches() {
+  const card = rgba(colourOf('surface-solid'));
+  for (const box of document.querySelectorAll('[data-swatches]')) {
+    box.replaceChildren();
+    for (const spec of box.dataset.swatches.split(' ').join(' ').match(/[a-z0-9-]+:[^:]+:[^ ]+( [a-z-]+(?= |$))*/g)) {
+      const [name, label, word] = spec.split(':');
+      const raw = colourOf(name);
+      const c = rgba(raw);
+      const r = ratio(over(c, card), card);
+      const behindWhite = name === 'accent-bg';
+      const rr = behindWhite ? ratio({ r: 255, g: 255, b: 255 }, over(c, card)) : r;
+      const v = rr >= 4.5 ? ['pass', '✓', 'passes as text'] : rr >= 3 ? ['mid', '◐', 'lines and icons only'] : ['fail', '✕', name === 'line' || name === 'surface-2' ? 'a background, not for text' : 'fails'];
+      const el = document.createElement('div');
+      el.className = 'mk-sw-card';
+      el.innerHTML = `<span class="mk-chip" style="background: var(--${name})"></span><b>${label} <span style="font-weight:400;color:var(--muted)">(${word.replace(/-/g, ' ')})</span></b><code>--${name} · ${hex(c)}</code><span class="mk-verdict ${v[0]}"><i aria-hidden="true">${v[1]}</i>${rr.toFixed(1)}:1 ${behindWhite ? 'under white' : 'on a card'}, ${v[2]}</span>`;
+      box.append(el);
+    }
+  }
+}
+
+const TYPE = {
+  a: [['Numeral', '22px', 700, '4.2 km'], ['Title', '17px', 700, 'Round trip from your start'], ['Heading', '16px', 700, 'Layers'], ['Row', '15px', 650, 'Start here'],
+      ['Body', '14px', 400, 'The route joins up around it'], ['Control', '13px', 600, 'Save offline'], ['Small', '12px', 600, 'from the start'], ['Label', '11px', 700, 'Route', true]],
+  b: [['--font-glance', '34px', 700, '4.2 km'], ['--font-numeral', '22px', 700, '1 h 05 min'], ['--font-number', '19px', 700, '12.4 km'], ['--font-title', '17px', 700, 'Round trip from your start'],
+      ['--font-field', '16px', 400, 'A field on a phone (iOS doesn\'t zoom)'], ['--font-row', '15px', 600, 'Start here'], ['--font-body', '14px', 400, 'The route joins up around it'],
+      ['--font-control', '13px', 600, 'Save offline'], ['--font-small', '12px', 600, 'from the start · and small headings', false], ['--font-small', '12px', 700, 'Route', true]],
+};
+function typeList() {
+  const list = document.getElementById('type-list');
+  list.replaceChildren();
+  for (const [name, size, weight, sample, caps] of TYPE[root.dataset.v]) {
+    const d = document.createElement('div');
+    const s = document.createElement('span');
+    s.textContent = sample;
+    s.style.cssText = `font-size:${size};font-weight:${weight};${caps ? `text-transform:uppercase;letter-spacing:${root.dataset.v === 'b' ? '.06em' : '.04em'};color:var(--muted)` : ''}${parseInt(size) >= 19 ? ';font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1.1' : ''}`;
+    const c = document.createElement('code');
+    c.textContent = `${name} · ${size} · ${weight}`;
+    d.append(s, c);
+    list.append(d);
+  }
+}
+
+function caption() {
+  const v = root.dataset.v, d = root.dataset.density;
+  document.getElementById('stage-cap').textContent = d === 'phone'
+    ? 'A phone, 390 px: the point\'s card is the peek of the sheet.' + (v === 'b' ? ' The route\'s warnings show on the map with their shapes.' : '')
+    : (v === 'a' ? 'A desktop: the card at its spot. 39 rules in css/app.css make it a step smaller.' : 'A desktop: the card at its spot. Six values make it a step smaller (idea A), and every control follows.');
+}
+
+function set(key, val) {
+  root.dataset[key] = val;
+  for (const b of document.querySelectorAll(`[data-set="${key}"] button`)) b.setAttribute('aria-pressed', String(b.dataset.val === val));
+  if (key === 'words') fillCards();
+  swatches(); typeList(); caption();
+  try { localStorage.setItem('polku-ds-' + key, val); } catch {}
+}
+for (const g of document.querySelectorAll('[data-set]')) {
+  g.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) set(g.dataset.set, b.dataset.val); });
+}
+// chips and switches in the gallery work as they do in the app
+for (const g of document.querySelectorAll('.mk-gallery .seg, .mk-gallery .way-chips')) {
+  g.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; for (const x of g.querySelectorAll('button')) x.setAttribute('aria-pressed', String(x === b)); });
+}
+const motion = document.getElementById('motion'), mbtn = document.getElementById('motion-btn');
+mbtn.addEventListener('click', () => { const open = motion.classList.toggle('open'); mbtn.setAttribute('aria-expanded', String(open)); mbtn.textContent = open ? 'Close the sheet' : 'Open the sheet'; });
+
+fillCards();
+const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+let saved = {};
+try { for (const k of ['v', 'theme', 'density', 'contrast', 'words']) { const s = localStorage.getItem('polku-ds-' + k); if (s) saved[k] = s; } } catch {}
+set('theme', saved.theme || (prefersDark ? 'dark' : 'light'));
+for (const k of ['v', 'density', 'contrast', 'words']) if (saved[k]) set(k, saved[k]);
+const q = new URLSearchParams(location.search);
+for (const k of ['v', 'theme', 'density', 'contrast', 'words']) if (q.get(k)) set(k, q.get(k));
+</script>
+</body>
+</html>
