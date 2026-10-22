@@ -99,15 +99,33 @@ Inter shows in these numbers only because the test Mac has it (#266); people see
 - **The sport menu, the ⋯ menu, the start's tiles and 25d's cards already share one look:** two-line rows, black icons, a pale green row for the chosen one. That's the base for "one of each".
 - **Nothing scrolls sideways** at 360 or 390 px. The sheet's swipe, the chevrons and the glow respect reduced motion.
 
-## What changes in the plan because of this
+## Against the approved plans
 
-The draft and the notes hold, with these additions:
+The screens above are the app as it is. Much of the planner and the map's cards is about to change by plans already approved: [25d](25d-check-and-points.md) (Revision 5, with #356's choices of 2026-10-21 and #366's of 2026-10-22) and [the calmer planner](issue-233-calmer-planner.md). Before anything here is built, each finding was checked against them.
 
-1. **Chosen states: one look.** Today there are seven. The proposal: a pale green fill and a tick for rows, tiles and chips; white with a green icon for switches; a green underline only for tabs. Black chips go.
-2. **"Tap to change": one look,** a row with its value and ›, or the Route style button where space is short. Dotted underlines and native dropdowns go. A native dropdown stays only where the platform's picker helps, such as a time.
-3. **One remove,** red, the same in every row.
-4. **One card,** for the point's card, the LIPAS and trail popups, and Check's **On the route** blocks: Polku's own ✕ and focus ring, and no cards inside cards.
-5. **One bubble:** the water question becomes a card like the rest.
-6. **One main action colour,** green. Plan's red is a decision for the user: it marks the route, but it's the only red button.
-7. **The map buttons' words at 12 px,** and one width for the column.
-8. **Wind's red on the route** gets a colour that doesn't read as danger, with the route's colour scales in step 3.
+**Already decided: build what the plan says.** The design system doesn't reopen these:
+
+| Finding | Decided in | So |
+|---|---|---|
+| Seven looks for "chosen" | #356 (2026-10-21) | A chosen chip is green with a border, everywhere. A switch is white, with black words and a green icon or tick. Black chips and the remaining odd ones go as #356 is built. |
+| Settings' green icons in a list | #356 | Black icons in lists, green on the start's tiles and in switches. Settings is one more place for #356 to cover. |
+| Remove: red for a via, black for the ends; the list's 28 px tools | Calmer planner, point 7; 25d part 4 | Only the selected point has its controls, 44 px to touch, with no Remove on the others. The list becomes sections with Reorder, and Delete has Undo. On a card, **Remove** is a red button on a row of its own. |
+| The LIPAS and trail popups' own look, ✕ and blue focus ring | 25d parts 5 and 6 (#345) | The spot's and a place's cards replace the map's popups, built from the shared controls. |
+| Check's count, white on orange (#376) | 25d part 2 | The badge shows the Read count with a triangle in the warning colour, and otherwise a neutral count. #376 still applies to the colour that badge uses. |
+| Check's Heads-up rows, and On the route's cards inside cards | 25d part 2 (#366) | Three groups, the red warning box for Read before you go, and rows for the rest. |
+| Two Plan buttons on a desktop | Calmer planner, 2026-10-21 | The column's Plan stays where it is while the planner is open, pressed. Kept. |
+| The timeline over the planner (#377) | Calmer planner, 2026-10-20 | While planning, the timeline stays over the map, on phones 16 px above the sheet. #377 is the case where the full sheet leaves it no room, a bug against that decision. |
+| A point's card at 200 % (on #352) | 25d part 1a | Fixed in #352 before it merges. |
+
+**One conflict to settle:** targets on desktops. 25d and the calmer planner say **40 px**. The design-system draft of 2026-10-22 says **36 px**, as the cards are built, replacing 25d's rule. Until the user confirms the draft, the plans' 40 px stands.
+
+**Not in any plan: open, for the user to decide when their time comes:**
+
+1. **Plan's colour:** the only red button. The recommendation is green, with red kept for the route and danger.
+2. **"Tap to change" in four looks** (dotted-underlined words, the Route style button, native dropdowns, rows with ›), where 25d's frames don't already replace them. To look at again after 25d part 2, against what's left.
+3. **The question about a point on the water:** the calmer planner decides its words, not its look. It's a dark bubble today, and could be a card like the rest.
+4. **Wind's red on the route,** which reads as danger: for step 3 of the plan, the route's colour scales.
+5. **The map buttons' 10 px words, and their two widths:** already #235.
+6. **The layer drawer's three tile looks (chosen, unchosen, More) and the full Layers panel's second set of base maps:** built to #123's approved mock-up. Not changed now; part of the later audit.
+
+**Not looked at closely yet:** the layer drawer and Layers panel as a whole, the planner after 25d, the desktop toolbar, the map's layers and their legends, Settings in full, and the timeline. That's the second audit, after 25d (#379).
