@@ -76,7 +76,7 @@ EMPTY_DEPTHS = """(() => {
     const url = String(input && input.url ? input.url : input);
     if (!/^https:\\/\\/[^/]*traficom\\.fi\\//.test(url)) return real(input, init);
     if (!/request=GetMap/i.test(url)) return Promise.reject(new TypeError('Failed to fetch'));
-    empty ||= new OffscreenCanvas(256, 256).convertToBlob({ type: 'image/png' });
+    empty ||= (() => { const c = new OffscreenCanvas(256, 256); c.getContext('2d'); return c.convertToBlob({ type: 'image/png' }); })();
     return empty.then((png) => new Response(png, { headers: { 'Content-Type': 'image/png' } }));
   };
 })();"""
