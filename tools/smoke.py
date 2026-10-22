@@ -7092,7 +7092,7 @@ PC_LOOK = """((phone) => {
   // DEVELOPING's "Shared controls", and the cards' new ones (25d's "How every card is built")
   const ok = new Set(['pl-way', 'card', 'way-bar', 'way-back', 'btn', 'small', 'quiet', 'tool', 'way-x', 'way-head', 'way-hint', 'card-mark', 'wp', 'wp-start', 'wp-via', 'wp-end', 'wp-loop',
     'sheet-sum', 'sum-item', 'miss', 'menu-h', 'seg', 'icons', 'ic', 'rows', 'row', 'danger', 'val', 'way-chev', 'menu-tick', 'rt-step', 'ring', 'rt-len', 'rt-cost', 'tg', 'tg-text', 'tg-ui',
-    'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'stylebtn']);
+    'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'stylebtn', 'way-chips', 'chip']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   if (phone) for (const b of c.querySelectorAll('button, input:not([type=checkbox]), .tg')) {
@@ -7188,7 +7188,12 @@ def point_card(chrome):
     # a row by its name, a switch's choice by its word, a button by its words or label
     row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b').textContent === {json.dumps(label)})"
     seg = lambda label: f"[...document.querySelectorAll('.pl-way.card .seg.icons button')].find((b) => b.textContent.trim() === {json.dumps(label)})"
-    tap_row = lambda pg, label, name, touch: press(pg, at(pg, row(label)), f'{name}: {label}', touch)
+    def tap_row(pg, label, name, touch):
+        a = at(pg, row(label))
+        over = a and pg.js(f"(() => {{ const r = {row(label)}, t = document.elementFromPoint({a['x']}, {a['y']}); return !t || r.contains(t) ? '' : (t.id || t.className.baseVal || t.className || t.tagName); }})()")
+        if over:
+            fails.append(f'{name}: {label} is under {over}')
+        return press(pg, a, f'{name}: {label}', touch)
     tap_seg = lambda pg, label, name, touch: press(pg, at(pg, seg(label)), f'{name}: {label}', touch)
 
     def page(w, h_, phone):
@@ -7202,12 +7207,16 @@ def point_card(chrome):
 
     def tap_marker(pg, i, name, touch):
         # where the point is under the toolbox, a button, a note or the card, the map moves to it first, as a person moves it
-        pg.js(f"""(async () => {{ const p = polku.planner, m = p.markers[{i}]; if (!m) return false; const el = m.getElement().querySelector('.wp');
+        cov = pg.js(f"""(async () => {{ const p = polku.planner, m = p.markers[{i}]; if (!m) return false; const el = m.getElement().querySelector('.wp');
           const clear = () => {{ const b = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }};
           if (clear()) return true;
-          const v = p.viewPadding(0); p.map.jumpTo({{ center: p.points[{i}], offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }});
-          for (const d of [[0, 0], [0, -80], [0, 160], [0, 80], [-80, -160], [160, 0]]) {{ if (d[0] || d[1]) p.map.panBy(d, {{ duration: 0 }}); await new Promise((r) => setTimeout(r, 60)); if (clear()) return true; }}
-          return false; }})()""")
+          const v = p.viewPadding(0), you = {{ originalEvent: new Event('pointermove') }}; // (moved as a person moves it: the open card's own look stops)
+          p.map.jumpTo({{ center: p.points[{i}], offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }}, you);
+          for (const d of [[0, 0], [0, -80], [0, 160], [0, 80], [-80, -160], [160, 0]]) {{ if (d[0] || d[1]) p.map.panBy(d, {{ duration: 0 }}, you); await new Promise((r) => setTimeout(r, 60)); if (clear()) return true; }}
+          const b = el.getBoundingClientRect(), t = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+          return 'under ' + (t ? t.id || t.className.baseVal || t.className || t.tagName : 'nothing') + ' at ' + Math.round(b.left) + ',' + Math.round(b.top); }})()""")
+        if isinstance(cov, str):
+            fails.append(f'{name}: point {i} is {cov}')
         time.sleep(0.3)
         if not press(pg, at(pg, f"polku.planner.markers[{i}]?.getElement().querySelector('.wp')"), f'{name}: point {i} of {pg.js("polku.planner.points.length")}', touch):
             return st(pg)
@@ -7231,6 +7240,8 @@ def point_card(chrome):
             continue
         if s['labels'] != ['there at', 'from the start', 'height']:
             fails.append(f"{name}: the card's numbers say {s['labels']}")
+        if 'Next stretch, to Via 2' not in s['rows']:
+            fails.append(f"{name}: via 1's row to the stretch after it: {s['rows']}")
         if s['title'] != 'Via 1' or 'Via 1Via 1' in s['text']:
             fails.append(f"{name}: an unnamed via point's card says “{s['title']}”{', and Via 1 twice' if 'Via 1Via 1' in s['text'] else ''}")
         if s['heads'] != ['At this point', 'Edit this point']:
@@ -7311,8 +7322,21 @@ def point_card(chrome):
         tap_row(pg, 'Paddle', name, touch)
         time.sleep(0.4)
         r = pg.js("(() => { const p = polku.planner; return { sports: [0, 1, 2].map((i) => p.legSport(i)).join(), change: !!p.changeAt(1), modes: p.legs.map((l) => l.mode), past: p.past.length, kind: p.cards.current && p.cards.current.kind }; })()")
-        if r['sports'] != 'mtb,paddle,paddle' or not r['change'] or 'auto' in r['modes'][1:] or r['modes'][0] != mode0 or r['past'] != past + 1 or r['kind'] != 'point':
+        if r['sports'] != 'mtb,paddle,paddle' or not r['change'] or 'auto' in r['modes'][1:] or r['modes'][0] != mode0 or r['past'] != past + 1 or r['kind'] != 'sport':
             fails.append(f'{name}: Sport from here → Paddle on via 1: {r} (leg 0 was {mode0})')
+        # Paddle has its crafts under it, and the card stays at them; a tap on Canoe is the route's craft; Back to the point
+        craft0 = pg.js("polku.planner.craft")
+        chips = pg.js("[...document.querySelectorAll('.pl-way.card .way-chips .chip')].map((b) => b.textContent.trim() + (b.getAttribute('aria-pressed') === 'true' ? '*' : ''))")
+        if [c.rstrip('*') for c in chips] != ['Sea kayak', 'Canoe', 'SUP'] or sum(c.endswith('*') for c in chips) != 1:
+            fails.append(f'{name}: Paddle’s crafts: {chips}')
+        press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-chips .chip')].find((b) => b.textContent.trim() === 'Canoe')"), f'{name}: Canoe', touch)
+        r = pg.js("({ craft: polku.planner.craft, pressed: document.querySelector('.pl-way.card .way-chips .chip[aria-pressed=true]')?.textContent.trim(), kind: polku.planner.cards.current && polku.planner.cards.current.kind })")
+        if r['craft'] != 'canoe' or r['pressed'] != 'Canoe' or r['kind'] != 'sport':
+            fails.append(f'{name}: Canoe: {r}')
+        pg.js(f"polku.planner.setCraft({json.dumps(craft0)}); true")
+        press(pg, at(pg, "document.querySelector('.pl-way.card .way-back')"), f'{name}: Back from the sports', touch)
+        if st(pg)['kind'] != 'point':
+            fails.append(f"{name}: Back from the sports: {st(pg)['kind']} card")
         s = st(pg)
         if 'Changeover' not in s['text'] or 'Take the bike along' not in s['text']:
             fails.append(f'{name}: a change of sport: no changeover minutes or Take the bike along')

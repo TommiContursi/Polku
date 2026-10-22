@@ -126,6 +126,9 @@ export const CRAFT = {
   canoe: { label: 'Canoe', kmh: 5.5 },
   sup: { label: 'SUP', kmh: 4.5 },
 };
+// The crafts a sport has, by sport, for the places that offer them with the sport (a point's Sport from here, 25d).
+// Paddle's only for now; another sport's crafts go here once there's one, with a setting of its own like `craft`.
+export const CRAFTS = { paddle: CRAFT };
 
 // ---------------------------------------------------------------------------
 // Difficulty palettes. Same hue ladder for downhill (mtb:scale) and uphill

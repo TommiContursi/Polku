@@ -4,7 +4,7 @@
 import { h, icon, toast } from './ui.js';
 import { nums, group, rows, acts, item, lockNote, segIcons } from './card.js';
 import { pointNums } from './facts.js';
-import { ACTIVITIES } from './config.js';
+import { ACTIVITIES, CRAFTS } from './config.js';
 import { fmtDist } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm } from './stops.js';
 
@@ -94,7 +94,8 @@ function pointBody(pl, card, body) {
   if (i === 0 && n > 1) {
     body.append(rows(item({ icon: 'clock', label: 'Leave at', line: 'Sets the times and the weather along the route', val: pl.departLabel(), chev: true, onclick: () => pl.cards.open(leaveCard(pl, card), { at: card.key, from: card }) })));
   }
-  const after = pl.legs[i] ? item({ icon: 'route', label: 'The stretch after it', line: `${name} → ${pl.nameOf(i + 1)}`, chev: true, onclick: () => pl.openLegAfter(i) }) : null;
+  // Next stretch, to Via 4: where it goes, in its name, so a desktop says it too (its line is a tooltip there; 2026-10-22)
+  const after = pl.legs[i] ? item({ icon: 'route', label: `Next stretch, to ${pl.nameOf(i + 1)}`, line: 'Its sport, how it’s drawn and its style', chev: true, onclick: () => pl.openLegAfter(i) }) : null;
   if (view) { body.append(rows(after), lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); })); return; }
   // the sport from here on, and at a change of sport its minutes and the gear
   if (pl.legs[i]) {
@@ -140,16 +141,28 @@ function goOnCard(pl, point) {
 }
 
 // Sport from here ›: the sports, the one in force ticked, "your route" on the route's own [r-sport]
+// A sport with crafts (Paddle) has them under its row once it's picked, and the card stays open at them, as the pill's
+// menu does: the craft is the whole route's (it decides how calm the water must be, and the time)
 function sportCard(pl, point) {
-  const i = point.i, cur = pl.legSport(i), route = pl.mainSport();
   const sports = pl.app.sports ? pl.app.sports() : Object.keys(ACTIVITIES).map((k) => ({ k, label: ACTIVITIES[k].label, icon: 'route' }));
   return {
-    kind: 'sport', key: point.key, pill: null, title: 'Sport from here', sub: `From ${pl.nameOf(i)} to the next change of sport, or the end`,
+    kind: 'sport', key: point.key, pill: null, title: 'Sport from here', get sub() { return `From ${pl.nameOf(point.i)} to the next change of sport, or the end`; },
     mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point),
-    build: (body) => body.append(rows(...sports.map((x) => item({
-      icon: x.icon, label: x.label, line: (ACTIVITIES[x.k].line || '').replace(/ · /g, ', '), role: 'menuitemradio', checked: x.k === cur, cur: x.k === route ? 'your route' : null,
-      onclick: () => { const k = point.i; pl.cards.back(); if (k >= 0) pl.setSportFrom(k, x.k); },
-    })))),
+    build: (body) => {
+      const i = point.i, cur = pl.legSport(i), route = pl.mainSport();
+      body.append(rows(...sports.flatMap((x) => {
+        const row = item({
+          icon: x.icon, label: x.label, line: (ACTIVITIES[x.k].line || '').replace(/ · /g, ', '), role: 'menuitemradio', checked: x.k === cur, cur: x.k === route ? 'your route' : null,
+          onclick: () => { const k = point.i; if (k < 0) return; if (CRAFTS[x.k]) { pl.setSportFrom(k, x.k); pl.cards.refresh(); } else { pl.cards.back(); pl.setSportFrom(k, x.k); } },
+        });
+        const crafts = x.k === cur && CRAFTS[x.k];
+        if (!crafts) return [row];
+        return [row, h('div', { class: 'way-chips', role: 'group', 'aria-label': `${x.label}: the craft` },
+          ...Object.entries(crafts).map(([k, c]) => h('button', { type: 'button', class: 'chip', 'aria-pressed': String(pl.craft === k),
+            onclick: () => { pl.setCraft(k); pl.cards.refresh(); }, html: pl.craft === k ? icon('check', 15) : '' }, h('span', {}, c.label)))),
+        h('p', { class: 'rt-cost' }, `For all your ${x.label.toLowerCase()} legs. Polku keeps a canoe or a SUP to calmer water than a sea kayak, and times the route at its speed.`)];
+      })));
+    },
   };
 }
 

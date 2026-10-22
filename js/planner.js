@@ -3320,7 +3320,7 @@ export class Planner {
     return true;
   }
 
-  // The stretch after it ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)
+  // Next stretch, to … ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)
   openLegAfter(i) {
     const leg = this.legs[i];
     if (!leg) return;
