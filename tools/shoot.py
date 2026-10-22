@@ -728,7 +728,8 @@ SCENES.update({
 })
 
 
-def shoot(chrome, out_dir, label, name):
+def scene(chrome, name):
+    """A page with the scene set up, to look at (shoot()) or measure (the smoke suite's contrast sweep); the caller closes it."""
     sc = SCENES[name]
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
     if sc.get('dark') or sc.get('motion'):
@@ -762,6 +763,11 @@ def shoot(chrome, out_dir, label, name):
         point = pg.js("(() => { const el = document.querySelector(" + json.dumps(sc['hover']) + "); if (!el) throw new Error('Missing screenshot hover target'); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()")
         chrome.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', **point}, pg.s)
         pg.idle()  # the native hover may update a map source
+    return pg
+
+
+def shoot(chrome, out_dir, label, name):
+    pg = scene(chrome, name)
     path = pg.screenshot(os.path.join(out_dir, f'{label}-{name}.png'))
     errs = pg.errors()
     pg.close()

@@ -37,6 +37,7 @@ import { WeatherOverlay, timeAtHour } from './wxmap.js';
 import { isAerial } from './style.js';
 import { RouteFlow } from './routeflow.js';
 import { openChangelog } from './changelog.js';
+import { onTheme } from './palette.js';
 
 // ------------------------------------------------------------------ state
 const DEFAULTS = {
@@ -334,6 +335,12 @@ const planner = new Planner(map, {
     if (on) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
     syncPlannerPadding();
   },
+});
+// The theme changed: the route and the colour scales are read from the CSS again (js/palette.js), so the
+// map and the planner draw with them again.
+onTheme(() => {
+  map.setStyle(buildStyle(state, ctx), { diff: true });
+  if (planner.analysis) planner.showMode(planner.colorMode);
 });
 
 // Where you are: the dot, its cone and Follow me. While following, the dot sits in the middle
@@ -818,10 +825,10 @@ const KEYS = {
     state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
     keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
     h('h4', {}, 'Your route'),
-    keyItem(keyLine('background:#e11d48;height:5px'), 'Follows paths'),
-    keyItem(keyLine('background:#0369a1;height:5px'), 'Over water'),
+    keyItem(keyLine('background:var(--route);height:5px'), 'Follows paths'),
+    keyItem(keyLine('background:var(--route-water);height:5px'), 'Over water'),
     keyItem(keyLine('border-top:5px dotted #ea580c'), 'Carry / portage'),
-    keyItem(keyLine('border-top:4px dashed #be123c'), 'Straight line'),
+    keyItem(keyLine('border-top:4px dashed var(--route-line)'), 'Straight line'),
   ],
   places: () => Object.values(LIPAS_TYPES).filter((t) => t.icon).map((t) => keyItem(keyDot(`background:${t.color}`), t.name)),
   water: () => [

@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, RASTER_OVERLAYS, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
+  DIFF_COLORS, ROUTE_COLORS, RASTER_OVERLAYS, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
   isWater, isLipasRoute,
 } from './config.js';
 
@@ -468,7 +468,7 @@ export function buildStyle(s, ctx) {
   // a point the route couldn't reach: a thin dashed line to it (planner.js drawRoute)
   add({ id: 'route-gap', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'gap'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#64748b', 'line-width': zi(8, 1, 16, 2), 'line-dasharray': [1, 2] } });
   // the leg lit from the waypoint list: a soft glow under the line
-  add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#e11d48', 'line-width': zi(8, 16, 16, 30), 'line-opacity': 0.4, 'line-blur': zi(8, 4, 16, 9) } });
+  add({ id: 'route-lit', type: 'line', source: 'routeLit', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLORS.route, 'line-width': zi(8, 16, 16, 30), 'line-opacity': 0.4, 'line-blur': zi(8, 4, 16, 9) } });
   // the short cut through a way marked private or closed that the route goes round: dashed, in the private dots' purple
   add({ id: 'access-cut', type: 'line', source: 'accessCut', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#c4b5fd' : '#7c3aed', 'line-width': zi(8, 3, 16, 6), 'line-dasharray': [1.5, 1.2] } });
   // other ways for a leg (#95, #211): drawn like the route where they leave it (the same width,
@@ -481,7 +481,7 @@ export function buildStyle(s, ctx) {
   add({ id: 'route-alts-line', type: 'line', source: 'routeAlts', filter: altLine, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5), 'line-opacity': altLit(1, 0.75), 'line-opacity-transition': { duration: 150, delay: 0 } } });
   // the route's glow (#198): a soft halo in its colour so it stands out on a busy map, and a
   // brighter one on the leg under the pointer (ctx.hoverLeg, set while you point at it)
-  const routeGlowColor = ['case', ['==', ['get', 'mode'], 'water'], '#0369a1', '#e11d48'];
+  const routeGlowColor = ['case', ['==', ['get', 'mode'], 'water'], ROUTE_COLORS.water, ROUTE_COLORS.route];
   const glowable = ['all', ['!=', ['get', 'kind'], 'gap'], ['!', ['boolean', ['get', 'loading'], false]]];
   add({ id: 'route-glow', type: 'line', source: 'route', filter: glowable, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': routeGlowColor, 'line-width': zi(8, 12, 16, 26), 'line-blur': zi(8, 5, 16, 11), 'line-opacity': 0.3 } });
   // fades in and out in 150 ms (a hover, often seen: short and soft)
@@ -491,7 +491,7 @@ export function buildStyle(s, ctx) {
     id: 'route-line', type: 'line', source: 'route', filter: ['all', ['!=', ['get', 'kind'], 'portage'], ['!=', ['get', 'kind'], 'gap']],
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
-      'line-color': ['case', ['get', 'loading'], '#9ca3af', ['==', ['get', 'mode'], 'water'], '#0369a1', ['==', ['get', 'mode'], 'line'], '#be123c', '#e11d48'],
+      'line-color': ['case', ['get', 'loading'], ROUTE_COLORS.loading, ['==', ['get', 'mode'], 'water'], ROUTE_COLORS.water, ['==', ['get', 'mode'], 'line'], ROUTE_COLORS.line, ROUTE_COLORS.route],
       'line-width': zi(8, 3, 16, 6.5),
       'line-dasharray': ['case', ['get', 'loading'], ['literal', [1, 1.5]], ['==', ['get', 'mode'], 'line'], ['literal', [2.5, 1.2]], ['literal', [1, 0]]],
     },

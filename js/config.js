@@ -1,6 +1,8 @@
 // Data sources, activity profiles and palettes. Everything here is free and keyless,
 // except the optional MML layers that need the user's own (free) API key.
 
+import { fromCss } from './palette.js';
+
 export const OFM_TILEJSON = 'https://tiles.openfreemap.org/planet';
 export const OFM_SPRITE = 'https://tiles.openfreemap.org/sprites/ofm_f384/ofm';
 export const OFM_GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
@@ -116,7 +118,11 @@ export const ACTIVITIES = {
 };
 export const groupOf = (a) => (ACTIVITIES[a] || ACTIVITIES.mtb).group;
 // each sport's colour where a route mixes them (the profile's Sport colours and strip, the map)
-export const SPORT_COLORS = { mtb: '#c2410c', gravel: '#a16207', road: '#b91c1c', hike: '#15803d', trailrun: '#4d7c0f', run: '#0f766e', paddle: '#0369a1', swim: '#6d28d9' };
+export const SPORT_COLORS = fromCss({ mtb: '--sport-mtb', gravel: '--sport-gravel', road: '--sport-road', hike: '--sport-hike', trailrun: '--sport-trailrun', run: '--sport-run', paddle: '--sport-paddle', swim: '--sport-swim' });
+// the route on the map: the line, a leg over water, a straight leg, a leg being routed
+export const ROUTE_COLORS = fromCss({ route: '--route', water: '--route-water', line: '--route-line', loading: '--route-loading' });
+// Check's three groups (25d): Read before you go, Worth a look, Not checked, and the box behind each
+export const WARN_COLORS = fromCss({ danger: '--danger', dangerSoft: '--danger-soft', look: '--look', lookSoft: '--look-soft', unk: '--unk', unkSoft: '--unk-soft' });
 export const isWater = (a) => groupOf(a) === 'water';
 // sports where the uphill-difficulty grades (↑S0–↑S5, from mtb:scale:uphill) mean something
 export const OFFROAD_BIKE = new Set(['mtb', 'gravel']);
@@ -134,7 +140,7 @@ export const CRAFTS = { paddle: CRAFT };
 // Difficulty palettes. Same hue ladder for downhill (mtb:scale) and uphill
 // (mtb:scale:uphill) so the two views read the same way.
 
-export const DIFF_COLORS = ['#22a447', '#c7c100', '#f59e0b', '#ef4444', '#c026d3', '#7e22ce', '#4c1d95'];
+export const DIFF_COLORS = fromCss(['--diff-s0', '--diff-s1', '--diff-s2', '--diff-s3', '--diff-s4', '--diff-s5', '--diff-s6']);
 
 export const MTB_SCALE_TEXT = [
   'S0 · Easy: firm surface, no obstacles',
@@ -156,39 +162,39 @@ export const UPHILL_TEXT = [
 ];
 
 // Grade bands for the profile and route-colour mode. [min grade %, colour, label]
-export const GRADE_BANDS = [
-  [20, '#6d28d9', '20 %+'],
-  [15, '#dc2626', '15–20 %'],
-  [10, '#f97316', '10–15 %'],
-  [6, '#facc15', '6–10 %'],
-  [3, '#a3d977', '3–6 %'],
-  [-3, '#8fb996', 'flat'],
-  [-10, '#7cb7f2', 'down'],
-  [-Infinity, '#3b82f6', 'steep down'],
-];
+export const GRADE_BANDS = fromCss([
+  [20, '--grade-20', '20 %+'],
+  [15, '--grade-15', '15–20 %'],
+  [10, '--grade-10', '10–15 %'],
+  [6, '--grade-6', '6–10 %'],
+  [3, '--grade-3', '3–6 %'],
+  [-3, '--grade-flat', 'flat'],
+  [-10, '--grade-down', 'down'],
+  [-Infinity, '--grade-steep-down', 'steep down'],
+]);
 
 export const gradeColor = (g) => GRADE_BANDS.find(([min]) => g >= min)[1];
 
-export const SURFACE_COLORS = {
-  paved: '#64748b',
-  asphalt: '#64748b',
-  concrete: '#64748b',
-  paving_stones: '#94a3b8',
-  sett: '#94a3b8',
-  compacted: '#d4a017',
-  fine_gravel: '#e0b84a',
-  gravel: '#c58b2b',
-  unpaved: '#b07d3a',
-  dirt: '#8b5e34',
-  ground: '#8b5e34',
-  earth: '#8b5e34',
-  grass: '#65a30d',
-  sand: '#eab308',
-  rock: '#57534e',
-  wood: '#a16207',
-  water: '#0ea5e9',
-  unknown: '#cbd5e1',
-};
+export const SURFACE_COLORS = fromCss({
+  paved: '--surf-paved',
+  asphalt: '--surf-paved',
+  concrete: '--surf-paved',
+  paving_stones: '--surf-stones',
+  sett: '--surf-stones',
+  compacted: '--surf-compacted',
+  fine_gravel: '--surf-fine-gravel',
+  gravel: '--surf-gravel',
+  unpaved: '--surf-unpaved',
+  dirt: '--surf-dirt',
+  ground: '--surf-dirt',
+  earth: '--surf-dirt',
+  grass: '--surf-grass',
+  sand: '--surf-sand',
+  rock: '--surf-rock',
+  wood: '--surf-wood',
+  water: '--surf-water',
+  unknown: '--surf-unknown',
+});
 
 // ---------------------------------------------------------------------------
 // LIPAS (national sports & outdoor facility register) feature types

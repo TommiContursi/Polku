@@ -6,12 +6,13 @@ import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, O
 import { fmtDist, fmtDuration, compass } from './geo.js';
 import { windClass, tempBand, rainBand } from './weather.js';
 import { escapeHtml, icon } from './ui.js';
+import { fromCss } from './palette.js';
 
-export const WAY_COLORS = {
-  path: '#7c2d12', footway: '#b45309', steps: '#dc2626', track: '#a16207', cycleway: '#2563eb',
-  'minor road': '#64748b', 'main road': '#f59e0b', water: '#0ea5e9', portage: '#ea580c',
-  'straight line': '#be123c', other: '#94a3b8',
-};
+export const WAY_COLORS = fromCss({
+  path: '--way-path', footway: '--way-footway', steps: '--way-steps', track: '--way-track', cycleway: '--way-cycleway',
+  'minor road': '--way-minor-road', 'main road': '--way-main-road', water: '--way-water', portage: '--way-portage',
+  'straight line': '--way-straight', other: '--way-other',
+});
 
 export const COLOR_MODES = {
   grade: 'Gradient',
@@ -38,16 +39,16 @@ export const COLOR_GROUPS = [
 
 // Trail width and visibility along the route (analysis.js a.td): index = class + 2
 // (-2 not a trail, -1 a trail without the tag, then js/trails.js's classes).
-export const TRAIL_SCALES = {
+export const TRAIL_SCALES = fromCss({
   width: {
-    colors: ['#94a3b8', '#d6dde3', '#c2410c', '#f59e0b', '#65a30d', '#15803d'],
+    colors: ['--trail-width-road', '--trail-width-none', '--trail-width-narrowest', '--trail-width-narrow', '--trail-width-wide', '--trail-width-widest'],
     labels: ['road or track', 'width not mapped', 'under 0.6 m', '0.6–0.9 m', '0.9–1.8 m', '1.8 m or more'],
   },
   vis: {
-    colors: ['#94a3b8', '#d6dde3', '#16a34a', '#eab308', '#f97316', '#dc2626'],
+    colors: ['--trail-vis-road', '--trail-vis-none', '--trail-vis-clear', '--trail-vis-faint', '--trail-vis-hard', '--trail-vis-barely'],
     labels: ['road or track', 'visibility not mapped', 'clear', 'faint in places', 'hard to see', 'barely visible'],
   },
-};
+});
 
 // where the terrain is missing (analysis.js): no height or grade to give there
 export const noTerrain = (a, i) => !!(a.eleGap && a.eleGap[i]);

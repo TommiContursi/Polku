@@ -2,7 +2,7 @@
 
 The plan for making Polku's look consistent and readable, without changing what it looks like. What's still to do, and its status, is on GitHub: #382, whose steps are in the order of [25d's plan](25d-check-and-points.md#where-25d-stands) (#383).
 
-- **Status (2026-10-22): the user's choices are made** ("Where it stands"); the plan is for their review in #389. Nothing is built.
+- **Status (2026-10-22): the user's choices are made** ("Where it stands"), and the user merged the plan (#389). The values PR is built ("The values, as built", in §8); the controls PR is next.
 - **From:**
   - a design-system review with the user on 2026-10-22 (the draft, kept on #382);
   - [the audit of the running app](design-system-audit.md), then a second look at `main` at 00c82e2, after 25d part 1 (#352), with `tools/census.py`, Impeccable's audit and critique, and the design-system and dataviz skills;
@@ -51,8 +51,8 @@ The draft and `design-system-notes.md` are folded in here; the notes file is gon
 **To decide when their step comes:** the four looks of "tap to change" (after 25d's Journey C); the look of the question about a point on the water; the timeline over the planner's tabs on phones (#377).
 
 **Next**
-1. This plan, for the user's review (a Docs PR).
-2. The values PR (names by role, in `rem`), after #383's first Fix PRs (the flaky checks, #374, #381, #351).
+1. ~~This plan, for the user's review (a Docs PR)~~: merged (#389).
+2. ~~The values PR (names by role, in `rem`)~~: built (§8).
 3. The controls PR.
 4. Then 25d's Journey C.
 
@@ -276,6 +276,13 @@ Four PRs after this plan, in #383's order. The first two come before any more 25
 The touch PR and the map PR come after 25d's journeys, any time before #365. The rest of `css/app.css` moves onto the values when it's next touched; a last PR lists what's left and moves it. The second audit (#379) comes after 25d.
 
 Each PR: claim it on #382, the checks first (failing on `main`), then the build, the groups it touches, one full run of the suite and one review at the end (#383), screenshots for anything visible, DEVELOPING's "Shared controls" and DESIGN.md updated in the same PR, and a Hand-over on #382.
+
+### The values, as built (2026-10-22)
+
+- **On `:root`:** §1's colours with their dark versions (`--bad`'s dark one is #370's fix); §3's values: the text sizes in `rem` (`--font-small` … `--font-glance`), the weights, the corners, the four shadows, the timings and the spacing (`--space-2` … `--space-24`); idea A's `--target` (36 px, 44 px under `pointer: coarse`), `--row-h` and `--mark`, with the desktop card's own sizes set once on `.card-float`; the route's legs; and every colour scale of §2 (`--diff-s0` …, `--grade-…`, `--surf-…`, `--sport-…`, `--way-…`, `--trail-width-…`, `--trail-vis-…`, `--temp-…`, `--rain-…`, `--wind-…`), each step its colour of today. `--page` names the page's colour, so every colour in DESIGN.md is a value. `--ease-out` and `--ease-drawer` moved from `.qd`.
+- **In the JavaScript:** `fromCss()` in `js/palette.js` fills the tables from the CSS, and again when the theme changes, and then the map's style and Colour by are drawn again. The map's key for the route uses the values. The planner's colour swatches (`SWATCH`), unused since #302, are gone.
+- **Not yet:** the 200 % context sets nothing, since the controls PR decides what changes there. Still typed in the JavaScript, for the map and scales PR: the "no data" greys (`js/chart.js`, `js/planner.js`), the wind's shares in Go (`js/planner.js`), the other ways' and the loops' colours, and the weather map's (`js/wxmap.js`).
+- **Checks:** `tools/smoke.py values`: DESIGN.md's colours (idea E), the route and the scales through a change of theme, and the contrast sweep (idea D) over eleven scenes, with #376's failures listed until the controls PR fixes them.
 
 ### Checks in every PR
 
