@@ -5827,13 +5827,16 @@ TB_AT = """((sel) => { const el = typeof sel === 'string' ? document.querySelect
 TB_PHONE = """(async () => {
   const p = polku.planner, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms)), txt = (e) => e.textContent.trim();
   const fit = document.getElementById('btn-fit');
+  // (the toolbox is shown and placed in a frame after a change, which comes late on a busy machine: #367)
+  const placed = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   // #241: the start, before anything is drawn: undo and redo can't do anything, nor can Show the whole route
-  p.setActive(true); await wait(300);
+  p.setActive(true); await wait(300); await placed();
   for (const k of ['undo', 'redo']) if (p.els[k].offsetParent && !p.els[k].disabled) errs.push(`${k} looks ready at the start`);
   if (!p.els.fit.disabled) errs.push('Show the whole route looks ready at the start');
   if (!fit.hidden) errs.push('Show the whole route is in the map’s column with no route');
   // a route: undo is ready, redo isn't; Show the whole route is in the map's column
   if (!(await (""" + TB_ROUTE + """)(""" + json.dumps(TB_PTS) + """))) return ['no route'];
+  await placed();
   if (p.els.undo.disabled || !p.els.undo.offsetParent || !p.els.redo.disabled) errs.push(`with a route: undo ${p.els.undo.disabled ? 'disabled' : 'ready'}, redo ${p.els.redo.disabled ? 'disabled' : 'ready'}`);
   if (fit.hidden || !fit.offsetParent) errs.push('no Show the whole route in the map’s column with a route');
   const col = document.getElementById('map-ctrls').children, order = [...col].filter((c) => c.offsetParent).map((c) => c.id || c.className);
@@ -5855,6 +5858,11 @@ def toolbox(chrome):
 
     def at(pg, sel):
         return pg.js(f"({TB_AT})({json.dumps(sel)})")
+
+    # the panel at its size, then the toolbar placed for it: in a frame after the change, late on a busy machine (#367)
+    def placed(pg):
+        pg.js(SETTLED)
+        pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
 
     def click(pg, sel, name):
         b = at(pg, sel)
@@ -6057,12 +6065,12 @@ def toolbox(chrome):
     for label, js in (('the side panel', 'true'), ('the side panel, wide', "polku.planner.panel.style.setProperty('--pl-w', '640px'), true"),
                       ('the panel at the bottom', "polku.planner.panel.style.removeProperty('--pl-w'), polku.planner.setDock('bottom'), true")):
         pg.js(js)
-        time.sleep(0.5)
+        placed(pg)
         e = pg.js(ON_EDGE)
         if not (e['edge'] and e['clear'] and e['below'] and e['active']) or (label == 'the side panel' and e['folds']):
             fails.append(f'{name} {label}: the toolbar {e}')
     pg.js("polku.planner.setDock('left'); true")
-    time.sleep(0.5)
+    placed(pg)
     # the keys: P, S, W pick the mode; nothing else changes
     for k, code, vk, mode in (('s', 'KeyS', 83, 'line'), ('w', 'KeyW', 87, 'water'), ('p', 'KeyP', 80, 'auto')):
         key(pg, k, code, vk)
@@ -6121,7 +6129,7 @@ def toolbox(chrome):
     # a narrow desktop: the toolbar folds before the map's buttons, and the mode in use keeps its name
     pg = page(1024, 768, False)
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
-    time.sleep(0.6)
+    placed(pg)
     e = pg.js(ON_EDGE)
     if not (e['edge'] and e['clear'] and e['active']):
         fails.append(f'1024x768: the toolbar {e}')
