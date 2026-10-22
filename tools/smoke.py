@@ -7550,9 +7550,9 @@ def point_card(chrome):
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.getElementById('toast').hidden || Date.now() - t0 > 9000 ? ok(true) : setTimeout(go, 100); go(); })")
         tap_marker(pg, 1, name, touch)
         tap_row(pg, 'Remove', name, touch)
-        time.sleep(0.3)
+        pg.js(SETTLED)  # (the note goes in 7 s: its Undo is measured once the sheet has settled, and tapped at once)
         n1, note = st(pg)['n'], pg.js("document.getElementById('toast').textContent")
-        press(pg, at(pg, "'#toast .toast-act'"), f'{name}: Undo in the note', touch)
+        press(pg, pg.js(f"({PC_AT})('#toast .toast-act')"), f'{name}: Undo in the note', touch)
         if n1 != 3 or st(pg)['n'] != 4 or 'removed' not in note:
             fails.append(f"{name}: Remove: {n1} points, the note “{note}”, its Undo: {st(pg)['n']}")
         # #352's review, 1: a place to sleep (a stand-in list; LIPAS and OpenStreetMap held) moves the night there and
