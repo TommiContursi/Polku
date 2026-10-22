@@ -1322,6 +1322,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
    most, scrolling inside; smaller type and 36 px rows (#380); every line the row's tooltip; the actions
    buttons with their icon and name, two a row, no heading above them, Remove a red button on a row of its own */
 .card-float { z-index: 4; }
+/* a point dragged and let go over its card: the map gets the move and the release (MapLibre sets the popup's content to
+   pointer-events: auto, so the rule reaches it and all inside it, #352) */
+body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-float, .card-beside) * { pointer-events: none; }
 .card-float .maplibregl-popup-tip { display: none; }
 .card-float .maplibregl-popup-content { padding: 8px 12px 10px; border-radius: 16px; }
 .card-float .card { width: 320px; max-width: calc(100vw - 32px); max-height: min(480px, var(--card-max, 70vh)); gap: 8px; }

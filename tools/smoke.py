@@ -7540,6 +7540,12 @@ def point_card(chrome):
         r = pg.js("[...document.querySelectorAll('.pl-way.card .sum-item')].map((e) => (e.classList.contains('wait') ? 'wait ' : '') + e.querySelector('b').textContent + ' ' + e.querySelector('small').textContent)")
         if r != ['wait – there at', 'wait – from the start', 'wait – height']:
             fails.append(f'{name}: via 2’s numbers while leg 1 is routing: {r}')
+        # …and once routing has ended with a leg that couldn't be routed: the numbers along its straight stand-in, and a line
+        # that says so (#352's review, 5)
+        pg.js("(() => { const p = polku.planner; p.legs[1].status = 'error'; p.cards.refresh(); return true; })()")
+        r = pg.js("({ wait: document.querySelectorAll('.pl-way.card .sum-item.wait').length, note: [...document.querySelectorAll('.pl-way.card .rt-cost')].map((e) => e.textContent).join(' ') })")
+        if r['wait'] or 'couldn’t be routed' not in r['note']:
+            fails.append(f'{name}: via 2’s card after leg 1 couldn’t be routed: {r}')
         pg.js("(() => { const p = polku.planner; p.legs[1].status = 'ok'; p.cards.refresh(); return true; })()")
         # 6: a change in the card, or a late answer, keeps the focus and the card's scroll
         pg.js("(() => { const p = polku.planner; p.cards.close(); p.openPointCard(p.points[1]); document.querySelector('.pl-way.card .seg.icons [data-k=pass]').focus(); return true; })()")
@@ -7557,6 +7563,25 @@ def point_card(chrome):
             fails.append(f'{name}: the card’s scroll after a late answer: {r}')
         pg.js("(() => { const p = polku.planner; p.cards.close(); p.undo(); p.undo(); return true; })()")
         time.sleep(0.4)
+        # 8: a desktop's drag of the point, let go over its own card, ends there: one step of Undo, the card on its point
+        if not phone:
+            tap_marker(pg, 1, name, touch)
+            m, c = at(pg, "polku.planner.markers[1].getElement().querySelector('.wp')"), at(pg, "document.querySelector('.pl-way.card')")
+            past = st(pg)['past']
+            mouse = lambda kind, x, y, b: pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left', 'buttons': b, 'clickCount': 1}, pg.s)
+            mouse('mousePressed', m['x'], m['y'], 1)
+            # (up and away first, over the map, so the drag begins there; then over the card, and let go on it)
+            path = [(m['x'] - 6 * k, m['y'] - 6 * k) for k in range(1, 6)] + [(m['x'] - 30 + (c['x'] - m['x'] + 30) * k / 10, m['y'] - 30 + (c['y'] - m['y'] + 30) * k / 10) for k in range(1, 11)]
+            for x, y in path:
+                mouse('mouseMoved', x, y, 1)
+                time.sleep(0.03)
+            mouse('mouseReleased', c['x'], c['y'], 0)
+            time.sleep(0.6)
+            r = pg.js("({ edit: !!polku.planner.edit, editing: document.body.classList.contains('route-editing'), past: polku.planner.past.length, kind: polku.planner.cards.current && polku.planner.cards.current.kind, i: polku.planner.cards.current ? polku.planner.points.indexOf(polku.planner.cards.current.key) : null })")
+            if r['edit'] or r['editing'] or r['past'] != past + 1 or r['kind'] != 'point' or r['i'] != 1:
+                fails.append(f'{name}: a drag let go over the card: {r} (Undo had {past} steps)')
+            pg.js("(() => { const p = polku.planner; if (p.edit) p.endEdit(); p.cards.close(); p.undo(); return true; })()")
+            time.sleep(0.4)
         # Back from a card opened from the list: the sheet at its size and the list at its scroll, as they were
         if phone:
             pg.js("(() => { const p = polku.planner; p.setSheetState('half'); p.els.body.scrollTop = 120; return true; })()")

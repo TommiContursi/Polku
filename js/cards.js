@@ -78,6 +78,12 @@ function pointBody(pl, card, body) {
   const pending = pl.points.length > 1 && !pl.analysisFits();
   const when = i === 0 ? pl.startSec() : pl.analysis ? pl.arriveAt(i) : null;
   body.append(nums(pointNums(pl.analysis, i, { when, along: pl.lengthTo(i), clock: (s) => pl.clockOf(s), pending })));
+  // …and once routing has ended, numbers along a leg that couldn't be routed, or waits for the router, say so
+  const before = pl.legs.slice(0, i), failed = before.some((l) => l.status === 'error'), waits = before.some((l) => l.status === 'waiting');
+  if (!pending && (failed || waits)) {
+    body.append(h('p', { class: 'rt-cost' }, failed ? 'A leg before it couldn’t be routed, so these are along a straight line there. Check has a Retry.'
+      : 'A leg before it waits for the router, so these are along a straight line there for now.'));
+  }
   // At this point: Pass by · Stop · Night, and the stop's minutes or the night's morning hour under it
   if (via) {
     const stop = pl.stopAt(i), night = isNight(stop);

@@ -3331,10 +3331,11 @@ export class Planner {
     card.key = p;
     return true;
   }
-  // the analysis is of the route as it is now (not of one whose legs are still being routed)
+  // the analysis is of the route as it is now: no leg's request on its way, and as long as the route (a leg that couldn't
+  // be routed, or waits for the router, counts with its straight stand-in, as the list's numbers do)
   analysisFits() {
     const a = this.analysis;
-    return !!a && !!a.along && this.legs.every((l) => l.status === 'ok' && l.result) && Math.abs(a.along[a.along.length - 1] - this.lengthTo(this.legs.length)) < 2;
+    return !!a && !!a.along && this.legs.every((l) => l.status !== 'loading' && l.result) && Math.abs(a.along[a.along.length - 1] - this.lengthTo(this.legs.length)) < 2;
   }
 
   // Next stretch, to … ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)
