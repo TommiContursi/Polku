@@ -6314,6 +6314,8 @@ START_LIB = """(() => {
   // ---------------------------------------------------------------- a tap from the ways, then four points in four taps (#232)
   T.tapAdded = async (n) => {
     await until(() => p.points.length >= n, 3000);
+    // (the toolbox is shown, placed and faded in a frame after the point: late on a busy machine, #367)
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     if (p.points.length !== n) err(`after ${n} tap${n > 1 ? 's' : ''}: ${p.points.length} points`);
     if ($('.maplibregl-popup')) err(`a card on the map after tap ${n} (#232): ${txt($('.maplibregl-popup'))}`);
     if (n === 1) {
