@@ -45,9 +45,8 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   Someday need the user's OK). Trust a Hand-over for what ran on which
   commit, and check it against its PR and branch. What comes next is the
   user's latest choice and the plan's order on `main`, however recent the
-  Hand-over (#233's last note still named 1b). A review, an audit or a
-  proposal decides nothing until the user chooses it (#352). When unsure,
-  ask.
+  Hand-over. A review, an audit or a proposal decides nothing until the user
+  chooses it (#352). When unsure, ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
   agent you are (Claude A, Claude B or Codex: all post as the user's GitHub
   account). A phase is claimed on its phase issue. Take over only when a
@@ -119,16 +118,18 @@ not models, mid-session: a new model sends the whole conversation again
 - Follow the module that already does the job (DEVELOPING has the list). Keep
   changes to the point: tidy only what makes the change simpler, and add a
   helper, abstraction or dependency only when the task needs one. Use skills
-  where they help.
+  where they help. Where one differs from this file, this file wins:
+  same-commit runs count, the user decides scope and order (not a ledger),
+  progress goes in Hand-overs, and only the user merges.
 - Think of the phone outdoors: touch, one thumb, small screens, bright sun,
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
   `docs/plans/mockups/`, checked in the worst case too (360 px, 200 % zoom,
-  long Finnish words), with the design skills that help. A small visual change
-  needs none. The mock-up and a short plan are enough: no probe scripts,
-  measurements or evidence files unless the user asks. The user chooses
-  before it's built; #123's plan shows how.
+  long Finnish words). A small visual change needs none. The mock-up and a
+  short plan are enough: no probe scripts, measurements or evidence files
+  unless the user asks. The user chooses before it's built; #123's plan shows
+  how.
 - **One style, and don't redesign what works.** A control for a job the app
   already does is the one in DEVELOPING's "Shared controls", with its class,
   and a mock-up copies its CSS. A new kind is proposed to the user first. A
@@ -149,8 +150,7 @@ not models, mid-session: a new model sends the whole conversation again
 - **Do what a user does:** click, drag, undo, reload. A button being there
   proves nothing.
 - **Every bug fix has a check in `tools/smoke.py`** that fails before the fix
-  and passes after it: an existing one if it already shows the bug, otherwise
-  a new one.
+  and passes after it: an existing one if it shows the bug, else a new one.
 - **App changes pass `python3 tools/smoke.py`:** while working, the groups
   you touch (`python3 tools/smoke.py water loops`); before the PR leaves
   draft, the whole suite once, on its last commit that changes the app. A
@@ -207,8 +207,8 @@ not models, mid-session: a new model sends the whole conversation again
   say which PRs are ready (the ones not in draft, in their "after #N" order),
   and which wait and why.
 - **When a milestone's last issue closes,** a short retro in `docs/retros/`:
-  what cost time and what to keep, with the PRs and issues as evidence, and
-  what changes in AGENTS.md because of it. Then the milestone is closed.
+  what cost time, what to keep and what changes in AGENTS.md, with the PRs
+  and issues as evidence. Then the milestone is closed.
 
 ## Bugs and findings
 
