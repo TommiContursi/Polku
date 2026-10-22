@@ -81,6 +81,15 @@ EMPTY_DEPTHS = """(() => {
   };
 })();"""
 
+# open_app() returns once the map counts as loaded, which can be before MapLibre's load event (late on a busy machine)
+# runs Polku's load step: the saved route, the planner left open, the layers. A check that starts drawing first has its
+# route drawn again under it (#248). True once the step has run (MapLibre's own _loaded flag, or its load event).
+LOAD_STEP = """new Promise((ok) => {
+  if (polku.map._loaded) return ok(true);
+  const t = setTimeout(() => ok(false), 45000);
+  polku.map.once('load', () => { clearTimeout(t); setTimeout(() => ok(true)); });
+})"""
+
 
 # Drag the middle of the first leg (straight-line legs: no routing requests):
 # with the mouse on desktop, hold-then-drag on touch. Expect one new point under
@@ -182,7 +191,8 @@ def editing(chrome):
             try:
                 pg.open_app({'activity': sport, 'timeline': True}, {'polku:plannerDock': '"left"'})
                 pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-                fails = pg.js(MIDPOINT_EDIT)
+                fails = [] if pg.js(LOAD_STEP) else ['MapLibre’s load event didn’t come in 45 s: Polku’s load step can still draw the route again']
+                fails += pg.js(MIDPOINT_EDIT)
                 fails += [f'line: {e}' for e in pg.js(EDIT)]
                 fails += [f'console: {e[:160]}' for e in pg.errors()]
             finally:
@@ -5858,9 +5868,10 @@ def toolbox(chrome):
         return pg
 
     # (where it is once the sheet has come to its size: a tap measured while the sheet changed after Clear route
-    # landed on the map, not on the note's Undo, and added a point)
-    def at(pg, sel):
-        pg.js(SETTLED)
+    # landed on the map, not on the note's Undo, and added a point; settle=False for a note that goes in 7 s)
+    def at(pg, sel, settle=True):
+        if settle:
+            pg.js(SETTLED)
         return pg.js(f"({TB_AT})({json.dumps(sel)})")
 
     # the panel at its size, then the toolbar placed for it: in a frame after the change, late on a busy machine (#367)
@@ -5882,8 +5893,8 @@ def toolbox(chrome):
         time.sleep(0.4)
         return True
 
-    def tap(pg, sel, name):
-        b = at(pg, sel)
+    def tap(pg, sel, name, settle=True):
+        b = at(pg, sel, settle)
         if not b:
             fails.append(f'{name}: not on screen')
             return False
@@ -5980,10 +5991,11 @@ def toolbox(chrome):
             dupes(pg, name)
             n0 = pg.js("polku.planner.points.length")
             if act(pg, 'Clear route', name, tap):
+                pg.js(SETTLED)  # (the sheet changes after Clear route: its note's Undo is measured once, then tapped while the note shows)
                 c = pg.js("({ n: polku.planner.points.length, toast: document.querySelector('#toast').textContent, undo: !polku.planner.els.undo.disabled, fit: document.getElementById('btn-fit').hidden })")
                 if c['n'] or 'Route cleared' not in c['toast'] or not c['undo'] or not c['fit']:
                     fails.append(f'{name}: Clear route: {c}')
-                tap(pg, '#toast .toast-act', f'{name}: the note’s Undo')
+                tap(pg, '#toast .toast-act', f'{name}: the note’s Undo', settle=False)
                 if pg.js("polku.planner.points.length") != n0:
                     fails.append(f'{name}: Undo after Clear brought back {pg.js("polku.planner.points.length")} of {n0} points')
                 if pg.js("polku.planner.els.redo.disabled"):
