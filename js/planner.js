@@ -2021,6 +2021,7 @@ export class Planner {
 
   useAnalysis(a) {
     this.analysis = a;
+    a.gen = this.gen; // (the routing it's of: both callers checked it's this one; analysisFits())
     Object.assign(a, (({ total, tAt, waits }) => ({ time: total, tAt, waits }))(this.timed(a)));
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
@@ -3331,11 +3332,12 @@ export class Planner {
     card.key = p;
     return true;
   }
-  // the analysis is of the route as it is now: no leg's request on its way, and as long as the route (a leg that couldn't
-  // be routed, or waits for the router, counts with its straight stand-in, as the list's numbers do)
+  // the analysis is of the route as it is now: made after its last routing (routeAll()'s `gen`), and no leg's request on
+  // its way. A leg that couldn't be routed, or waits for the router, counts with its straight stand-in, as the list's
+  // numbers do. (Not by comparing lengths: a routed leg may start a few metres from its point, #352's review.)
   analysisFits() {
     const a = this.analysis;
-    return !!a && !!a.along && this.legs.every((l) => l.status !== 'loading' && l.result) && Math.abs(a.along[a.along.length - 1] - this.lengthTo(this.legs.length)) < 2;
+    return !!a && a.gen === this.gen && this.legs.every((l) => l.status !== 'loading' && l.result);
   }
 
   // Next stretch, to … ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)

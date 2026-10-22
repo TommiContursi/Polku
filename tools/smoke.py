@@ -7548,6 +7548,14 @@ def point_card(chrome):
         if r['wait'] or 'couldn’t be routed' not in r['note']:
             fails.append(f'{name}: via 2’s card after leg 1 couldn’t be routed: {r}')
         pg.js("(() => { const p = polku.planner; p.legs[1].status = 'ok'; p.cards.refresh(); return true; })()")
+        # …and a routed leg that starts a few metres from its point (BRouter starts where it joins a way): once it's
+        # analysed, the numbers show (#352's review, 5)
+        r = pg.js("""(async () => { const p = polku.planner, l = p.legs[1], c = l.result.coords;
+          l.result = { ...l.result, coords: [[+(c[0][0] + 0.0004).toFixed(6), c[0][1]], ...c.slice(1)] };
+          await p.runAnalysis(p.gen); await new Promise((r) => setTimeout(r, 200));
+          return { wait: document.querySelectorAll('.pl-way.card .sum-item.wait').length, kind: p.cards.current && p.cards.current.kind }; })()""")
+        if r['wait'] or r['kind'] != 'point':
+            fails.append(f'{name}: via 2’s card, leg 1 starting 20 m from via 1, analysed: {r}')
         # 6: a change in the card, or a late answer, keeps the focus and the card's scroll
         pg.js("(() => { const p = polku.planner; p.cards.close(); p.openPointCard(p.points[1]); document.querySelector('.pl-way.card .seg.icons [data-k=pass]').focus(); return true; })()")
         key(pg, 'ArrowRight', 'ArrowRight', 39)
