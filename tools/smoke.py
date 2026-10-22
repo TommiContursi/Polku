@@ -4867,6 +4867,7 @@ def panels(chrome):
     fails = []
     for w, h_, sport in [(390, 844, 'mtb'), (390, 844, 'paddle'), (375, 667, 'mtb'), (360, 740, 'hike'), (667, 375, 'gravel')]:
         pg = chrome.page(w, h_, True)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)  # (a slow answer kept the map from loading: #286)
         pg.open_app({'activity': sport}, {'polku:winter': '"off"'})
         pg.js(PLAN_TWO)
         centre = lambda s: pg.js(f"(() => {{ const r = document.querySelector({json.dumps(s)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
