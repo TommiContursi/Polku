@@ -99,6 +99,18 @@ Inter shows in these numbers only because the test Mac has it (#266); people see
 - **The sport menu, the ⋯ menu, the start's tiles and 25d's cards already share one look:** two-line rows, black icons, a pale green row for the chosen one. That's the base for "one of each".
 - **Nothing scrolls sideways** at 360 or 390 px. The sheet's swipe, the chevrons and the glow respect reduced motion.
 
+## A second look at `main`, after 25d part 1 (2026-10-22)
+
+`main` at 00c82e2, with #352's cards. Five ways of looking, so one doesn't anchor the others:
+
+- **The census** (`tools/census.py`, 80 scenes; light and dark, phones and desktops, 200 %, Finnish): 17 text sizes on screen, 25 shadows, 19 corner sizes, 6 timings; the same contrast failures as before (#376, #370), no new ones; 124 controls under 44 px by touch and 205 texts under 12 px, before separating what's small on purpose (the plan's §3).
+- **Impeccable's audit:** a health score of **12/20, acceptable**. Accessibility 2 (focus hidden in the menus, #385; text below 4.5:1, #376; unnamed canvas and tabs, #386). Performance 3 (the chevrons are capped at 24 frames a second and rest; frosted blur on many surfaces). Theming 2 (23 values on `:root`, but 102 hex and 46 `rgba()` typed in `css/app.css` and about 460 colours in the JavaScript; dark gaps in the weather chips, the profile's highlight and the drop hint). Responsive 2 (no sideways scroll at 360 px, but touch areas and 200 %, #375, #384). Implementation 3 (a coherent system of Polku's own, drifting in its values and states). Its detector found 118 colours and 42 corners outside DESIGN.md, and the map buttons' 10 px words.
+- **Impeccable's critique,** two assessments kept apart (a design review, and the detector in the browser): **27/40** on Nielsen's heuristics, at the top of acceptable. Weakest: consistency (2), recognition (2: the profile's colours are explained in another tab) and help (2). Its priority issues: colours have no single meaning across the map, the scales and the interface (red has nine meanings, blue eight); chosen and focus states have seven looks and focus disappears in menus; text on coloured marks fails contrast; the phone's timeline and top bar are under touch size; "null" in the sport menu (#374). Its strengths: the layer drawer (#123) is the best-crafted surface, the voice is honest everywhere, and one set of values serves light and dark.
+- **The design-system skill:** state coverage per control. `btn`, `tool`, `chip` and `way-tile` have no focus ring of their own; only `row`, `tbtn` and `modebtn` have a pressed look; 38 of 57 hover rules apply on touch screens too (#208).
+- **The dataviz skill's palette validator** on every colour scale: each fails somewhere. The details, and what the plan proposes, are in the plan's §2.
+
+Filed from it: #384 (the card at 200 %, missed by #352), #385, #386, #387, #388, and more on #376. Corrected: #377 is a decided side effect, not a bug.
+
 ## Against the approved plans
 
 The screens above are the app as it is. Much of the planner and the map's cards is about to change by plans already approved: [25d](25d-check-and-points.md) (Revision 5, with #356's choices of 2026-10-21 and #366's of 2026-10-22) and [the calmer planner](issue-233-calmer-planner.md). Before anything here is built, each finding was checked against them.
