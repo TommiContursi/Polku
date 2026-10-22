@@ -1319,7 +1319,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* at its spot (desktops, the planner put away), Revision 5: a quick look, not a sheet. 320 px wide and 480 px tall at
-   most, scrolling inside; smaller type and 34 px rows; every line the row's tooltip; the actions
+   most, scrolling inside; smaller type and 36 px rows (#380); every line the row's tooltip; the actions
    buttons with their icon and name, two a row, no heading above them, Remove a red button on a row of its own */
 .card-float { z-index: 4; }
 .card-float .maplibregl-popup-tip { display: none; }
@@ -1340,12 +1340,13 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .card-float .menu-h { margin: 0 0 -4px; font-size: 11px; }
 .card-float .seg.icons button { min-height: 36px; font-size: 13px; }
 .card-float .rt-step > span, .card-float .rt-step > small { font-size: 13px; }
-.card-float .tool.ring { width: 34px; height: 34px; }
-.card-float .rt-len { height: 34px; }
-.card-float .rt-len input { height: 32px; font-size: 17px; }
-.card-float .stylebtn { min-height: 34px; }
+.card-float .tool.ring { width: 36px; height: 36px; }
+.card-float .rt-len { height: 36px; }
+.card-float .rt-len input { height: 34px; font-size: 17px; }
+.card-float .stylebtn { min-height: 36px; }
 .card-float .rows { margin: 0 -8px; }
-.card-float .row { min-height: 34px; padding: 4px 8px; gap: 10px; }
+.card-float .row { min-height: 36px; padding: 4px 8px; gap: 10px; }
+.card-float .btn { min-height: 36px; } /* (36 px with a mouse, 44 px by touch at any width: the user, 2026-10-22, #380) */
 .card-float .row b, .card-float .row .val { font-size: 14px; }
 .card-float .row > span:first-child .ic { width: 18px; height: 18px; }
 .card-float .row small { display: none; }

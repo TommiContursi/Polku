@@ -7095,9 +7095,11 @@ PC_LOOK = """((phone) => {
     'pl-viewnote', 'primary', 'big', 'name-field', 'acts', 'stylebtn', 'way-chips', 'chip']);
   const extra = new Set([...c.querySelectorAll('[class]')].flatMap((e) => [...e.classList]).filter((k) => !ok.has(k)));
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
-  if (phone) for (const b of c.querySelectorAll('button, input:not([type=checkbox]), .tg')) {
+  // targets: 44 px by touch, 36 px with a mouse (the user, 2026-10-22, #380)
+  const least = phone ? 44 : 36;
+  for (const b of c.querySelectorAll('button, input:not([type=checkbox]), .tg')) {
     const a = r(b);
-    if (a.width && (a.width < 44 || a.height < 44)) out.push(`${(b.textContent.trim() || b.getAttribute('aria-label') || b.tagName).slice(0, 30)} ${Math.round(a.width)} × ${Math.round(a.height)} px`);
+    if (a.width && (a.width < least || a.height < least)) out.push(`${(b.textContent.trim() || b.getAttribute('aria-label') || b.tagName).slice(0, 30)} ${Math.round(a.width)} × ${Math.round(a.height)} px`);
   }
   const w = +getComputedStyle(c.querySelector('.way-hint b')).fontWeight;
   if (w > 700) out.push(`the title at weight ${w}`);
@@ -7112,8 +7114,7 @@ PC_LOOK = """((phone) => {
     if (!row.querySelector('.ic')) out.push(`${row.querySelector('b').textContent}: no icon`);
     if (!line) out.push(`${row.querySelector('b').textContent}: no line under it`);
     if (!phone) {
-      const btn = row.parentElement.classList.contains('acts'), want = btn ? 36 : 34;
-      if (Math.round(r(row).height) !== want) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not ${want}`);
+      if (Math.round(r(row).height) !== 36) out.push(`${row.querySelector('b').textContent} ${Math.round(r(row).height)} px tall, not 36`);
       if (line && line.getClientRects().length) out.push(`${row.querySelector('b').textContent}'s line shows on a desktop`);
       if (line && row.title !== line.textContent) out.push(`${row.querySelector('b').textContent}'s tooltip isn't its line`);
     }
