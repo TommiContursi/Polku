@@ -4950,8 +4950,21 @@ ACTS = """(() => { const b = document.querySelector('#activity-bar .act-current'
     pill: [r.left + r.width / 2, r.top + r.height / 2], focus: document.activeElement === b, sport: polku.state.activity,
     hover: matchMedia('(hover: hover) and (pointer: fine)').matches }; })()"""
 # The load step's snow check (FMI, else the forecast) draws the pill again when it answers, and that closes a menu
-# open then (#392). A check of the menu waits for the answer first: 30 s at most, when neither answers.
+# open then and drops its focus (#392). A check of the menu waits for the answer first: 30 s at most.
 SNOW_IN = "new Promise((ok) => { const t0 = Date.now(), go = () => polku.state.winterSnow || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })"
+# Before the page loads, for checks that need no snow: FMI's measured snow answers at once, none at a station by the
+# map's middle (a busy FMI or forecast answered after SNOW_IN had given up)
+NO_SNOW = """(() => {
+  const real = window.fetch.bind(window);
+  const xml = '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:BsWfs="http://xml.fmi.fi/schema/wfs/2.0" xmlns:gml="http://www.opengis.net/gml/3.2">'
+    + '<wfs:member><BsWfs:BsWfsElement><BsWfs:Location><gml:Point><gml:pos>61.5135 23.8170 </gml:pos></gml:Point></BsWfs:Location>'
+    + '<BsWfs:Time>2026-10-22T09:00:00Z</BsWfs:Time><BsWfs:ParameterName>snow_aws</BsWfs:ParameterName><BsWfs:ParameterValue>-1.0</BsWfs:ParameterValue>'
+    + '</BsWfs:BsWfsElement></wfs:member></wfs:FeatureCollection>';
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    return /^https:\\/\\/opendata\\.fmi\\.fi\\/wfs\\?.*parameters=snow_aws/.test(url) ? Promise.resolve(new Response(xml)) : real(input, init);
+  };
+})();"""
 
 
 def sport_menu(chrome):
@@ -4965,8 +4978,9 @@ def sport_menu(chrome):
 
     def page(w, h_, phone, sport):
         pg = chrome.page(w, h_, phone)
-        # the menu needs none of Traficom's depths
+        # the menu needs none of Traficom's depths, nor the snow
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': NO_SNOW}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"'})
         pg.js(SNOW_IN)  # (a late answer closed the menu a tap had just opened, and every tap after it was one behind: #371)
         return pg
