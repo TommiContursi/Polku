@@ -15,7 +15,7 @@ import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT } from './winter.js';
-import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
+import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
@@ -190,6 +190,8 @@ export class Planner {
     this.pstop = new WeakMap(); // point → a stop there: { min } a break, { on } a night (go on at that minute of the day)
     this.pcarry = new WeakMap(); // point → true: the gear of the sport you change out of there goes along
     this.pspot = new WeakMap(); // point → the spot you put it at, when the router moved it off a way marked private or closed (#104)
+    this.pid = new WeakMap(); // point → who it is: the same through a move, Undo and Redo (a point's card follows it, 25d)
+    this.pidN = 0;
     this.marks = { km: true, time: true, duration: true, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
@@ -260,6 +262,7 @@ export class Planner {
     return {
       map: this.app.activity(), next: this.next, sports,
       points: this.points.map((p) => p.slice()),
+      ids: this.points.map((p) => this.pidOf(p)),
       names: this.points.map((p) => this.pname.get(p) || ''),
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
@@ -282,6 +285,7 @@ export class Planner {
     // the whole route's sport: the map's and the next leg's come back with it
     if (s.sports && s.map !== map && ACTIVITIES[s.map]) this.app.setSport(s.map, { from: 'route' });
     this.points = s.points;
+    if (s.ids) this.points.forEach((p, k) => { if (s.ids[k] != null) this.pid.set(p, s.ids[k]); });
     this.nameAll(s.names);
     this.changeAll(s.changes);
     this.stopAll(s.stops);
@@ -399,16 +403,19 @@ export class Planner {
     if (i === this.legs.length - 1) { this.next = sport === route ? null : sport; this.matchMode(); }
   }
 
-  // Change sport on point i (25d): the legs from it to the next change of sport, or to the finish. One step of Undo.
-  setSportFrom(i, sport) {
-    if (!this.legs[i] || !ACTIVITIES[sport]) return;
+  // Change sport on point i (25d): the legs from it to the next change of sport, or to the finish (or to leg `last`,
+  // when Sport from here picks again). One step of Undo. Returns the last leg it changed (null: none).
+  setSportFrom(i, sport, { last = null } = {}) {
+    if (!this.legs[i] || !ACTIVITIES[sport]) return null;
     const was = this.legSport(i);
-    if (was === sport) return;
     let j = i;
-    while (j + 1 < this.legs.length && this.legSport(j + 1) === was) j++;
+    if (last != null) j = Math.min(last, this.legs.length - 1);
+    else while (j + 1 < this.legs.length && this.legSport(j + 1) === was) j++;
+    if (this.legs.slice(i, j + 1).every((_, k) => this.legSport(i + k) === sport)) return null;
     this.commit();
-    for (let k = i; k <= j; k++) this.legInSport(k, sport);
+    for (let k = i; k <= j; k++) if (this.legSport(k) !== sport) this.legInSport(k, sport);
     this.update();
+    return j;
   }
 
   label(i) { return i === 0 ? 'Start' : i === this.points.length - 1 ? 'Finish' : `Via ${i}`; }
@@ -3007,8 +3014,7 @@ export class Planner {
     const old = this.points[ed.i];
     this.points[ed.i] = ll;
     // what belongs to the point goes with it: its name, changeover minutes, stop and gear
-    for (const m of [this.pname, this.pchange, this.pstop, this.pcarry]) if (m.has(old)) m.set(ll, m.get(old));
-    if (this.cards.current && this.cards.current.key === old) this.cards.current.key = ll; // its card goes with it
+    for (const m of [this.pname, this.pchange, this.pstop, this.pcarry, this.pid]) if (m.has(old)) m.set(ll, m.get(old)); // (its card goes with it: findPoint())
     for (const li of [ed.i - 1, ed.i]) if (this.legs[li]) this.previewLeg(li);
     this.drawRoute();
   }
@@ -3311,13 +3317,24 @@ export class Planner {
     this.cards.open(pointCard(this, p), { at: p, from });
   }
 
-  // is the card's point still on the route? After Undo it's a copy of itself: the one point where it was
+  // who point p is: a number that stays with it through a move (editTo()), Undo and Redo (snapshot(), restoreSnap())
+  pidOf(p) {
+    let id = this.pid.get(p);
+    if (id == null) { id = ++this.pidN; this.pid.set(p, id); }
+    return id;
+  }
+  // is the card's point still on the route? After a move, Undo or Redo it's another array: the one that's the same point
   findPoint(card) {
     if (this.points.includes(card.key)) return true;
-    const same = this.points.filter((q) => q[0] === card.key[0] && q[1] === card.key[1]);
-    if (same.length !== 1) return false;
-    card.key = same[0];
+    const id = this.pid.get(card.key), p = id != null && this.points.find((q) => this.pid.get(q) === id);
+    if (!p) return false;
+    card.key = p;
     return true;
+  }
+  // the analysis is of the route as it is now (not of one whose legs are still being routed)
+  analysisFits() {
+    const a = this.analysis;
+    return !!a && !!a.along && this.legs.every((l) => l.status === 'ok' && l.result) && Math.abs(a.along[a.along.length - 1] - this.lengthTo(this.legs.length)) < 2;
   }
 
   // Next stretch, to … ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)

@@ -78,7 +78,8 @@ def LOOP_AT(sport, ll, km, more=False):
 STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) return true; p.setStyle({ p: 'flowy', v: {}, wet: 'auto' });"
             " await new Promise((r) => setTimeout(r, 4500)); p.reveal('style'); return true; })()")
 LEG_STYLE_JS = ("(async () => { const p = polku.planner; if (!p.setStyle) { p.openPointMenu(0, p.markers[0]); return true; } p.setStyle({ p: 'transfer', v: {}, wet: 'auto' }, 0);"
-                " await new Promise((r) => setTimeout(r, 4500)); if (p.layout() === 'side') p.reveal('points'); await new Promise((r) => setTimeout(r, 600)); p.openPointMenu(0, p.markers[0]); return true; })()")
+                " await new Promise((r) => setTimeout(r, 4500)); if (p.layout() === 'side') p.reveal('points'); await new Promise((r) => setTimeout(r, 600));"
+                " if (p.openLegAfter) p.openLegAfter(0); else p.openPointMenu(0, p.markers[0]); return true; })()")
 # the Layers panel scrolled to a group (after optionally pressing a trail colours choice)
 def LAYERS_AT(group, colours=None):
     press = (f"const b = [...document.querySelectorAll('#layers-body .seg button')].find((x) => x.textContent === {json.dumps(colours)}); b && b.click(); await wait(800);"
@@ -195,9 +196,11 @@ def STOPS_JS(sec, then=''):
             " t0 = Date.now(); while (!(p.analysis && (p.analysis.wind || p.analysis.windError)) && Date.now() - t0 < 30000) await wait(300);"
             f" p.setSheetState({json.dumps('full' if sec in ('points', 'depart') else 'half')}, {{ remember: false }}); await wait(300); p.fitRoute({{ animate: false }});"
             f" p.reveal({json.dumps(sec)}); await wait(500); {then} return true; }})()")
-# the night point's menu, with the places to sleep near it (LIPAS and OpenStreetMap, live)
-STAY_MENU = ("if (p.markers[2]) { p.openPointMenu(2, p.markers[2]); await wait(300);"
-             " const b = [...document.querySelectorAll('.polku-popup button')].find((x) => /Places to sleep/.test(x.textContent)); if (b) { b.click(); for (let k = 0; k < 80 && /Looking|Still looking/.test(document.querySelector('.stay-list')?.textContent || 'Looking'); k++) await wait(300); } }")
+# the night point's places to sleep near it (LIPAS and OpenStreetMap, live): its card's Places to sleep nearby ›
+# (25d 1a), or before it the point menu's list
+STAY_MENU = ("if (p.markers[2]) { if (p.openPointCard) p.openPointCard(p.points[2]); else p.openPointMenu(2, p.markers[2]); await wait(300);"
+             " const b = [...document.querySelectorAll('.pl-way.card .row, .polku-popup button')].find((x) => /Places to sleep/.test(x.textContent)); if (b) { b.click();"
+             " for (let k = 0; k < 80 && /Looking|Still looking/.test(document.querySelector('.pl-way.card, .stay-list')?.textContent || 'Looking'); k++) await wait(300); } }")
 MARKS_JS = "(async () => { const p = polku.planner; if (p.setMarks) p.setMarks({ km: true, time: true }); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 # the multisport route leaving an hour before sunset: Heads-up says when it gets dark
 SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); try { const S = await import(location.origin + '/js/sun.js'); const s = S.sunTimes(Date.now() / 1000, [23.761, 61.498]); const k = Math.max(0, Math.round((s.set - Date.now() / 1000) / 3600) - 1); p.setStartOffset(k); } catch (e) { /* main */ }")
@@ -470,8 +473,8 @@ SCENES = {
     'desk-paddle': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]]),
     'phone-paddle': dict(PHONE, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='half'),
     'phone-profile': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js="polku.planner.reveal('profile'); true"),
-    'desk-point-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openPointMenu(1, polku.planner.markers[1]); true"),
-    'phone-point-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openPointMenu(1, polku.planner.markers[1]); true"),
+    'desk-point-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
+    'phone-point-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
     'desk-spot-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([980, 560])); true"),
     'phone-spot-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([250, 300])); true"),
     # the waypoint list, one point named
@@ -646,7 +649,7 @@ SCENES = {
     'desk-stops-list': dict(DESK, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('points')),
     'phone-stops-list': dict(PHONE, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('points')),
     'desk-stop-menu': dict(DESK, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('speed', STAY_MENU)),
-    'phone-stop-menu': dict(PHONE, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('speed', STAY_MENU.replace("p.openPointMenu", "p.setSheetState('peek', { remember: false }); await wait(300); p.openPointMenu"))),
+    'phone-stop-menu': dict(PHONE, timeline=True, activity='hike', hash='#13/60.305/24.515', storage=LOCAL, js=STOPS_JS('speed', STAY_MENU.replace("if (p.openPointCard)", "p.setSheetState('peek', { remember: false }); await wait(300); if (p.openPointCard)"))),
     'desk-gear': dict(DESK, timeline=True, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('warnings')),
     'phone-gear': dict(PHONE, timeline=True, hash='#13/61.487/23.748', storage=LOCAL, js=MULTI_JS('warnings')),
     'desk-leg-hover': dict(DESK, timeline=False, route='route-kauppi-mtb.json', js=LINE_PICK('hover'), settle=0.8),

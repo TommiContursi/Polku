@@ -14,6 +14,14 @@ export function pointMark(pl, i) {
   return h('span', { class: `wp ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i));
 }
 
+// one choice of several, in a list of rows: a radio group named for screen readers
+function choices(label, items) {
+  const list = rows(...items);
+  list.setAttribute('role', 'radiogroup');
+  list.setAttribute('aria-label', label);
+  return list;
+}
+
 // − 30 min + in one box, the number typable (the round trip's Other… field, #356)
 function stepper({ value, unit, step, min = 0, max = 1440, label, set, line = null, lead = null }) {
   const put = (v) => { v = Math.max(min, Math.min(max, Math.round(v))); if (v !== value) set(v); };
@@ -66,8 +74,10 @@ export function pointCard(pl, p) {
 function pointBody(pl, card, body) {
   const i = card.i, n = pl.points.length, last = i === n - 1 && i > 0, via = i > 0 && !last, loop = pl.isLoop(), view = pl.inView();
   const name = pl.nameOf(i);
+  // (while a leg is routed, or the analysis is of the route before it, what isn't known yet waits in its place)
+  const pending = pl.points.length > 1 && !pl.analysisFits();
   const when = i === 0 ? pl.startSec() : pl.analysis ? pl.arriveAt(i) : null;
-  body.append(nums(pointNums(pl.analysis, i, { when, along: pl.lengthTo(i), clock: (s) => pl.clockOf(s) })));
+  body.append(nums(pointNums(pl.analysis, i, { when, along: pl.lengthTo(i), clock: (s) => pl.clockOf(s), pending })));
   // At this point: Pass by · Stop · Night, and the stop's minutes or the night's morning hour under it
   if (via) {
     const stop = pl.stopAt(i), night = isNight(stop);
@@ -131,11 +141,11 @@ function pointBody(pl, card, body) {
 function goOnCard(pl, point) {
   const stop = () => pl.stopAt(point.i);
   return {
-    kind: 'goon', key: point.key, pill: null, title: 'Go on at', sub: 'the next morning',
+    kind: 'goon', get key() { return point.key; }, pill: null, title: 'Go on at', sub: 'the next morning',
     mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point) && isNight(stop()),
     build: (body) => {
       const on = stop().on, hours = [...new Set([...Array.from({ length: 6 }, (_, k) => (5 + k) * 60), on])].sort((a, b) => a - b); // (05:00 to 10:00, and the hour set now)
-      body.append(rows(...hours.map((m) => item({ icon: 'clock', label: hhmm(m), role: 'menuitemradio', checked: m === on, onclick: () => { const k = point.i; pl.cards.back(); if (k >= 0) pl.setStop(k, { on: m }); } }))));
+      body.append(choices('Go on at', hours.map((m) => item({ icon: 'clock', label: hhmm(m), role: 'radio', checked: m === on, onclick: () => { const k = point.i; pl.cards.back(); if (k >= 0) pl.setStop(k, { on: m }); } }))));
     },
   };
 }
@@ -145,15 +155,21 @@ function goOnCard(pl, point) {
 // menu does: the craft is the whole route's (it decides how calm the water must be, and the time)
 function sportCard(pl, point) {
   const sports = pl.app.sports ? pl.app.sports() : Object.keys(ACTIVITIES).map((k) => ({ k, label: ACTIVITIES[k].label, icon: 'route' }));
-  return {
-    kind: 'sport', key: point.key, pill: null, title: 'Sport from here', get sub() { return `From ${pl.nameOf(point.i)} to the next change of sport, or the end`; },
+  const card = {
+    kind: 'sport', get key() { return point.key; }, pill: null, title: 'Sport from here', span: null, get sub() { return `From ${pl.nameOf(point.i)} to the next change of sport, or the end`; },
     mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point),
     build: (body) => {
       const i = point.i, cur = pl.legSport(i), route = pl.mainSport();
-      body.append(rows(...sports.flatMap((x) => {
+      // a second pick in this card changes the legs the first one did, no more (the end of them kept by who it is)
+      const pick = (k, sport) => {
+        const s = card.span, last = s ? pl.points.findIndex((q) => pl.pid.get(q) === s) - 1 : null;
+        const j = pl.setSportFrom(k, sport, { last: last != null && last >= k ? last : null });
+        if (!s && j != null) card.span = pl.pidOf(pl.points[j + 1]);
+      };
+      body.append(choices('Sport from here', sports.flatMap((x) => {
         const row = item({
-          icon: x.icon, label: x.label, line: (ACTIVITIES[x.k].line || '').replace(/ · /g, ', '), role: 'menuitemradio', checked: x.k === cur, cur: x.k === route ? 'your route' : null,
-          onclick: () => { const k = point.i; if (k < 0) return; if (CRAFTS[x.k]) { pl.setSportFrom(k, x.k); pl.cards.refresh(); } else { pl.cards.back(); pl.setSportFrom(k, x.k); } },
+          icon: x.icon, label: x.label, line: (ACTIVITIES[x.k].line || '').replace(/ · /g, ', '), role: 'radio', checked: x.k === cur, cur: x.k === route ? 'your route' : null,
+          onclick: () => { const k = point.i; if (k < 0) return; if (CRAFTS[x.k]) { pick(k, x.k); pl.cards.refresh(); } else { pl.cards.back(); pick(k, x.k); } },
         });
         const crafts = x.k === cur && CRAFTS[x.k];
         if (!crafts) return [row];
@@ -164,15 +180,16 @@ function sportCard(pl, point) {
       })));
     },
   };
+  return card;
 }
 
 // Leave at ›: now, or an hour of the next two days (as Go's Depart)
 function leaveCard(pl, point) {
   return {
-    kind: 'leave', key: point.key, pill: null, title: 'Leave at', sub: 'Sets the times and the weather along the route',
+    kind: 'leave', get key() { return point.key; }, pill: null, title: 'Leave at', sub: 'Sets the times and the weather along the route',
     mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point),
-    build: (body) => body.append(rows(...pl.departChoices().map(({ k, label }) => item({
-      icon: 'clock', label, role: 'menuitemradio', checked: k === pl.startOffsetH, onclick: () => { pl.cards.back(); pl.setStartOffset(k); },
+    build: (body) => body.append(choices('Leave at', pl.departChoices().map(({ k, label }) => item({
+      icon: 'clock', label, role: 'radio', checked: k === pl.startOffsetH, onclick: () => { pl.cards.back(); pl.setStartOffset(k); },
     })))),
   };
 }
@@ -180,7 +197,7 @@ function leaveCard(pl, point) {
 // Places to sleep nearby ›: lean-tos, huts and campsites within 3 km (LIPAS and OpenStreetMap); a tap moves the night there [r-stays]
 function staysCard(pl, point) {
   const card = {
-    kind: 'stays', key: point.key, pill: null, title: 'Places to sleep nearby', get sub() { return pl.nameOf(point.i); },
+    kind: 'stays', get key() { return point.key; }, pill: null, title: 'Places to sleep nearby', get sub() { return pl.nameOf(point.i); },
     mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point), found: null, state: 'looking',
     build: (body) => {
       const list = (card.found || []).map((x) => item({ icon: 'hut', label: x.name, line: `${x.kind}, ${fmtDist(x.d)}`, chev: true, onclick: () => {

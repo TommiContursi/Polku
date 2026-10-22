@@ -16,8 +16,8 @@ import { keepInView } from './inspect.js';
 
 // Three numbers, each with what it is under it ("10:09", "there at"); a missing one dashed, saying so
 export function nums(list) {
-  return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, label, missing }) =>
-    h('span', { class: `sum-item${missing ? ' miss' : ''}` }, h('b', {}, value), h('small', {}, label))));
+  return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, label, missing, wait }) =>
+    h('span', { class: `sum-item${missing ? ' miss' : wait ? ' wait' : ''}`, 'aria-busy': wait ? 'true' : null }, h('b', {}, value), h('small', {}, label))));
 }
 
 // A group's heading, as the ⋯ menu's (it names the rows under it for screen readers too)
@@ -46,7 +46,7 @@ export function acts(...items) {
 // A plain row: its icon, its name, one line on what it does, a value in the accent colour and › when it opens a
 // choice. On a desktop the line is the row's tooltip instead.
 export function item({ icon: ic, label, line = '', val = null, chev = false, danger = false, role = null, checked = null, cur = null, k = null, onclick, el = 'button' }) {
-  const b = h(el, { type: el === 'button' ? 'button' : null, class: `row${danger ? ' danger' : ''}`, role, 'aria-checked': checked == null ? null : String(checked), 'data-k': k, title: line || null, onclick },
+  const b = h(el, { type: el === 'button' ? 'button' : null, class: `row${danger ? ' danger' : ''}`, role, 'aria-checked': checked == null ? null : String(checked), 'data-k': k ?? label, title: line || null, onclick },
     h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }),
     h('span', {}, h('b', {}, label), line ? h('small', {}, line) : null),
     val != null || cur ? h('span', { class: 'val' }, val ?? cur) : null,
@@ -88,6 +88,8 @@ export function segIcons(label, choices, pick) {
 // ------------------------------------------------------------------ the host
 
 const OFFSET = 14; // the float's corner from its spot, so the point stays in sight beside it
+// a control, as it's found again in a card built anew: its kind and its key, label or words
+const keyOf = (el) => `${el.tagName}|${el.dataset.k || el.getAttribute('aria-label') || el.textContent.trim().slice(0, 60)}`;
 const NARROW = 290; // px: a card this narrow (200 %, a small phone) has its top row of its own, and undo and redo in it
 
 export class CardHost {
@@ -100,6 +102,7 @@ export class CardHost {
     this.stack = []; // [{ card, at, beside, from }], the open one last
     this.depth = 0; // steps of history the cards pushed
     this.skip = 0; // steps back of our own still to come (history.go() is asynchronous)
+    this.backing = 0; // Back's steps (history.back()) still to come
     this.popup = null;
     this.pill = null;
     this.folded = null;
@@ -113,8 +116,10 @@ export class CardHost {
       if (this.skip) { this.skip--; this.onPop(); this.syncHistory(); return; }
       if (!this.depth) return;
       this.depth--;
+      if (this.backing) this.backing--;
       this.onPop();
       this.stepBack();
+      this.syncHistory(); // (a card closed while that step was on its way: its own step goes now)
     });
   }
 
@@ -126,7 +131,7 @@ export class CardHost {
   // One step of history for each card open, no more and no fewer: pushed for a card opened, gone back over for one
   // closed. While a step back of our own is on its way, nothing is pushed: it would be the one gone back over.
   syncHistory() {
-    if (this.skip) return;
+    if (this.skip || this.backing) return;
     const want = this.stack.length;
     while (this.depth < want) {
       history.pushState({ ...(history.state || {}), polkuCard: this.depth + 1 }, '');
@@ -159,7 +164,7 @@ export class CardHost {
   // Back, Escape: one card back; from the first, closed. With steps in history, the browser's (its popstate does it)
   back() {
     if (!this.stack.length) return;
-    if (this.depth > 0 && !this.skip) history.back();
+    if (this.depth > 0 && !this.skip) { this.backing++; history.back(); }
     else { this.stepBack(); this.syncHistory(); }
   }
   stepBack() {
@@ -236,6 +241,9 @@ export class CardHost {
     if (this.box && this.box.classList.contains('card-banner')) { this.box.remove(); this.box = null; }
     const prev = this.stack[this.stack.length - 2];
     const back = prev ? prev.card.title : { list: 'Route', check: 'Check', row: 'Back', section: 'Route' }[entry.from] || null;
+    // built again (not opened): the focus and the scroll stay where they were (WCAG 2.4.3)
+    const was = !fresh && this.box && !this.box.classList.contains('card-banner') ? this.box : null;
+    const focused = was && was.contains(document.activeElement) ? keyOf(document.activeElement) : null, scroll = was ? was.scrollTop : 0;
     const box = this.cardBox(card, back);
     const where = entry.beside ? 'float' : this.where();
     if (where === 'peek') {
@@ -251,6 +259,11 @@ export class CardHost {
     this.box = box;
     this.placePill(card, at, where);
     this.onChange(card);
+    if (was) {
+      box.scrollTop = scroll;
+      const again = focused && [...box.querySelectorAll('button, input, select, [tabindex]')].find((el) => keyOf(el) === focused);
+      if (again) again.focus({ preventScroll: true });
+    }
     if (fresh) {
       const t = box.querySelector('.way-hint');
       if (t) t.focus({ preventScroll: true });
