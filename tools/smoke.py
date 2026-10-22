@@ -7238,8 +7238,10 @@ def point_card(chrome):
             chrome.send('Input.dispatchKeyEvent', fields, pg.s)
         time.sleep(0.3)
 
-    # (where it is once the sheet has come to its size: a tap measured while it grows lands where the thing was)
-    at = lambda pg, x: (pg.js(SETTLED), pg.js(f"({PC_AT})({x})"))[1]
+    # (where it is once the route's numbers are in and the sheet has come to its size: the card is built again when the
+    # numbers come, and a click that went down on the old card and up on the new one was lost; a tap measured while the
+    # sheet grows lands where the thing was)
+    at = lambda pg, x: (pg.js("Promise.resolve(polku.planner.analysing).then(() => true, () => true)"), pg.js(SETTLED), pg.js(f"({PC_AT})({x})"))[2]
     # the sheet at its size and the toolbox placed for it, in a frame after a change (late on a busy machine: #390)
     settle = lambda pg: (pg.js(SETTLED), pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))"))
     st = lambda pg: pg.js(PC_STATE)
@@ -7719,8 +7721,11 @@ def point_card(chrome):
     for w, h_, narrow, label in ((195, 422, True, '390x844 at 200 %'), (180, 370, True, '360x740 at 200 %, Finnish'), (180, 370, True, '360x740 at 200 %, Finnish, from the list'), (360, 740, False, '360x740, Finnish')):
         pg = page(w, h_, True)
         pg.js(f"(() => {{ const p = polku.planner; p.setName(1, {json.dumps(LONG)}); p.setName(0, 'Lielahden kartanon uimaranta'); p.setStop(1, {{ min: 30 }}); return true; }})()")
+        opened = time.time()
         pg.js(f"(() => {{ const p = polku.planner; p.openPointCard(p.points[1], {{ from: {json.dumps('list' if 'list' in label else 'map')} }}); return true; }})()")
-        time.sleep(1.2)
+        # the sheet at the card's size, and the card's own last look for its point (inSight(), 900 ms after it opens)
+        pg.js(SETTLED)
+        time.sleep(max(0, opened + 1.2 - time.time()))
         s = st(pg)
         if s['kind'] != 'point':
             fails.append(f'{label}: no card')
