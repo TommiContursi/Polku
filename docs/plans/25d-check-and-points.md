@@ -54,7 +54,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
 7. **Then** the rest of Phase 25's issues where "Where the other issues go" puts them, the design system's later steps (#382: the route on the map, outdoor contrast), and its second audit (#379).
 8. **Before the milestone closes:** #365, the finished planner used in the browser as a newcomer and as an expert, with everything it finds fixed; then the retro.
 
-> **For agentic workers:** use superpowers:executing-plans for one piece at a time, inside its journey's PR. Steps use checkboxes (`- [ ]`). AGENTS.md wins where they differ: no subagents to verify or run the suite.
+> **For agentic workers:** use superpowers:executing-plans for one piece at a time, inside its journey's PR. Steps use checkboxes (`- [ ]`). Where it differs from AGENTS.md, AGENTS.md wins.
 
 **Goal:** a tap on a point, the route, a warning or a place shows one card; a long press or a right-click shows what's there and what you can do; Check sorts every Heads-up item by how serious and how sure.
 
