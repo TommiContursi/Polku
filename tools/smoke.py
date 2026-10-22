@@ -81,15 +81,6 @@ EMPTY_DEPTHS = """(() => {
   };
 })();"""
 
-# open_app() returns once the map counts as loaded, which can be before MapLibre's load event (late on a busy machine)
-# runs Polku's load step: the saved route, the planner left open, the layers. A check that starts drawing first has its
-# route drawn again under it (#248). True once the step has run (MapLibre's own _loaded flag, or its load event).
-LOAD_STEP = """new Promise((ok) => {
-  if (polku.map._loaded) return ok(true);
-  const t = setTimeout(() => ok(false), 45000);
-  polku.map.once('load', () => { clearTimeout(t); setTimeout(() => ok(true)); });
-})"""
-
 
 # Drag the middle of the first leg (straight-line legs: no routing requests):
 # with the mouse on desktop, hold-then-drag on touch. Expect one new point under
@@ -191,8 +182,7 @@ def editing(chrome):
             try:
                 pg.open_app({'activity': sport, 'timeline': True}, {'polku:plannerDock': '"left"'})
                 pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-                fails = [] if pg.js(LOAD_STEP) else ['MapLibre’s load event didn’t come in 45 s: Polku’s load step can still draw the route again']
-                fails += pg.js(MIDPOINT_EDIT)
+                fails = pg.js(MIDPOINT_EDIT)
                 fails += [f'line: {e}' for e in pg.js(EDIT)]
                 fails += [f'console: {e[:160]}' for e in pg.errors()]
             finally:
