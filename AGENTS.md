@@ -183,8 +183,8 @@ not models, mid-session: a new model sends the whole conversation again
   phones", "Docs: …". Not `feat:` or `docs:`.
 - **Body:** what changes for the user, how you tested it, what isn't done or
   is still unknown. "Fixes #65" for each issue it fixes in full, and the
-  issues it found; no "fixes", "closes" or "resolves" before any other
-  number, since merging closes it (#383 closed #233). A phase's parts refer
+  issues it found; no closing word ("fixes", "closed"…) before any other
+  number, since merging closes it (#383 shut #233). A phase's parts refer
   to the phase issue; the last part fixes it.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
