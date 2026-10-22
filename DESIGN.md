@@ -117,7 +117,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 ### Secondary
 - **Route (red)**: the route line on the map, its glow, and the Plan button. It is the one strong colour on the screen and is kept for the route.
 - **Route over water (deep blue)**: water legs of a route are drawn blue instead of red, with the same glow, and the map's key says so ("Over water").
-- **Colour by** in the planner can recolour the route line on the map (with its **On map** switch) by grade, uphill difficulty, surface, kind of way, trail width, wind, temperature or rain. Those scales are the profile's and live in `js/planner.js` and `js/chart.js`; with any of them the plain red is replaced along the whole line.
+- **Colour by** in the planner can recolour the route line on the map (with its **On map** switch) by grade, uphill difficulty, surface, kind of way, trail width, wind, temperature or rain. Those scales live in `js/config.js`, `js/chart.js`, `js/weather.js` and `js/wxmap.js` (`js/planner.js` only copies them as swatches); with any of them the plain red is replaced along the whole line. How they read, for colour blindness too, is in the design-system plan's §2.
 - **You (blue)**: the location dot and its accuracy circle (`--you-soft`). Blue is kept for "where you are" and for water.
 
 ### Tertiary
@@ -144,6 +144,9 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 **Character:** one familiar sans-serif in a few weights, compact on a desktop and readable on a phone; bold carries the hierarchy, not size jumps.
 
 ### Hierarchy
+
+These are the roles. Today the CSS uses 18 sizes between 9 and 22 px, including half sizes (11.5, 12.5, 13.5, 14.5, 16.5); the design-system plan settles them on nine.
+
 - **Numeral** (700, 22 px, line-height 1, tabular figures): the big numbers, such as the time in the timeline and the round trip's length.
 - **Title** (700, 17 px): a step's title, such as the route's name and "Round trip from your start", and the main action's words (`btn primary big`).
 - **Heading** (700, 16 px): a panel's or drawer's heading.
@@ -187,15 +190,15 @@ Depth comes from floating over the map: cards and sheets are translucent with a 
 
 ## Shapes
 
-Gently rounded, never sharp. Cards and panels have 14 px corners (`--radius`); buttons and rows 10 to 12 px; small things such as swatches and inputs 6 px. Pills (999 px) are for chips, the sport pill and switches; round (50 %) for icon-only map buttons and dots. The phone's sheet has 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
+Gently rounded, never sharp. Cards and panels have 14 px corners (`--radius`); buttons and rows 10 to 12 px; small things such as swatches and inputs 6 px. Pills (999 px) are for chips, the sport pill and switches; round (50 %) for icon-only map buttons and dots. The planner's sheet floats 8 px in from the screen's edges on a phone, with 18 px corners all round; the layer drawer's and the panels' sheets have 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
 
 ## Components
 
 The controls, with their classes and where each comes from, are in **[docs/DEVELOPING.md, "Shared controls"](docs/DEVELOPING.md#shared-controls)**. That table is the one list: this file doesn't repeat it. A new screen uses those controls for the same jobs, a mock-up copies their CSS from `css/app.css`, and a new control is proposed to the user first and then joins that table.
 
 What every control shares:
-- **Focus:** a 2 px outline in the accent, 2 px out (the route colour on route controls). Today `btn`, `tool`, `chip`, `way-tile` and `way-back` still show the browser's own ring (#382).
-- **Hover:** `--surface-2` behind, only with a mouse. Today 38 of 57 hover rules also apply on touch screens, where they stay after a tap (#208).
+- **Focus:** a 2 px outline in the accent, 2 px out (the route colour on route controls), inside a row of a list. Today `btn`, `tool`, `chip`, `way-tile` and `way-back` still show the browser's own ring (#382), and the sport menu and ⋯ menus show none (#385).
+- **Hover:** `--surface-2` behind, only with a mouse. Today 38 of 57 hover rules also apply on touch screens, where they stay after a tap (#208), and the hover looks vary (`--surface-2`, `--surface-solid`, `--accent-soft`, `--accent-bg`).
 - **Pressed or chosen:** the accent, plus a tick or `aria-pressed`, never colour alone. Today "chosen" has several looks; #356 settles them on a green border for chips and white with a green icon for switches.
 - **Motion:** short and quiet. Hover and press take 120 to 150 ms; the drawer and sheets slide in 180 to 260 ms on an ease that settles (`--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1)`, `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)`). With reduced motion asked for, they fade in place instead of sliding, and pulses stop.
 

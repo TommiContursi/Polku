@@ -42,8 +42,10 @@ The draft and `design-system-notes.md` are folded in here; the notes file is gon
 3. **Sizes in `rem`.** Then the browser's own text size enlarges Polku's text and the space around it; today every size is in px and that setting does nothing. *Recommended: yes, in the values PR,* since the values are new anyway.
 4. **Press feedback.** Buttons, chips, tiles and switches shrink to 97 % for 120 ms while pressed; rows keep their grey background. *Recommended: yes, with the controls.*
 5. **The colour scales.** Keep them as riders know them and add what's missing (a word or icon beside every colour, a dark edge on map lines), or also re-step the scales that fail for colour blindness. *Recommended: keep difficulty's familiar colours with the additions, and split S1 from S2; separate the sports' two worst pairs, and show each sport's icon or name beside its colour,* since no set of eight colours can be told apart by everyone (measured on every pair). Shown first in the mock-up.
-6. **A High contrast switch in Settings,** for people who don't set it on their phone. *Recommended: an idea issue,* after outdoor contrast is built.
+6. **Settings' High contrast.** It exists today, but only thickens the trails ("Thicker trails for bright sunlight"). *Recommended: the same switch also turns on outdoor contrast for the interface* (§7), and its line says so, rather than a second switch.
 7. **What's small on purpose.** The plan's list (§3): the scale bar, the credits, the map's own labels, the chart axes and ticks, units, a word under an icon, a number inside a mark, the compact desktop card. *Recommended: that list,* and the map's buttons' words (Weather, Layers, Plan, 10 px on phones) from 10 to 11 px, since they're read outdoors at a glance.
+8. **The route keeps its identity under Colour by.** Today Colour by repaints the whole line: with Surface the route becomes a pale grey band, with Gradient its blue descents sit beside blue cycling routes. *Recommended: the route keeps a thin `--route` edge outside its white casing whatever Colour by paints inside,* so it never reads as one more trail. Drawn in the mock-up first.
+9. **The trails step back while a route is shown.** The trail overlay at full strength competes with the route. *Recommended: about 60 % while a route is on the map,* with phase 20 deciding the overlay's own look.
 
 **To decide when their step comes:** the four looks of "tap to change" (after 25d's Journey C); the look of the question about a point on the water; the timeline over the planner's tabs on phones (#377).
 
@@ -105,6 +107,7 @@ All values sit on `:root`, with dark versions under both of the app's dark rules
 - **Amber** (`--look`) is worth a look, or old.
 - **Blue-grey** (`--unk`) isn't known.
 - **Blue** (`--you`, `--route-water`) is where you are, and water.
+- **Today these meanings are shared with the scales and the map's layers:** red is also S3, a 15–20 % grade, headwind, over 25 °C, steps, LIPAS hiking routes and road cycling; blue is also descents, rain, cold, cycleways and Other ways. The rules above are for Polku's own interface and the route; §2 and §5 say how the scales and the route keep apart from them.
 - **Orange** belongs to the scales only (difficulty, gradient, way type). The five oranges typed into `css/app.css` today (`#b45309`, `#9a3412`, `#7c2d12`, `#fdba74`, `#fbbf24`, twelve uses) go to the values; the scales' own copies in the JavaScript stay with their scales (§2).
 
 ### Not sure: one look for each kind
@@ -133,17 +136,21 @@ No plan designs these, and colour carries the meaning in all of them. They live 
 | Visibility, width, rain | Not ordered by lightness. Visibility's and rain's light ends are under 2:1 on white |
 | Wind | Red for headwind and green for tailwind: the classic pair colour blindness can't tell apart. Red also means the route and danger |
 | Climb badges | White text on the scale's colours: ↑S1 1.9:1, ↑S2 2.15:1, a 6–10 % climb 1.53:1 (#376) |
+| One meaning, two colours | Temperature has different steps on the map (`js/wxmap.js` 28) and on the route (`js/weather.js` 251–258); on the wind map green means 6 m/s, on the route a tailwind. Other ways' alternatives (`#2563eb`, `js/planner.js` 75) are the same blue as cycleways |
+| Keys | Colour by's key is in another tab (Check › On the route), not under the profile; the weather legend shows only its two ends; a route coloured on the map has no key |
 
 **What the plan does:**
 - **Every scale becomes values** in the values PR, with no visible change: read by the JavaScript from the CSS, so dark mode and the night map can have their own steps later.
 - **The rest comes in the map and scales PR** (§8):
   - **Words beside every colour,** wherever a scale shows: the badges, the legends, the map's key. Climb badges get `--text` on the light steps, or a dot of colour beside text in `--text` (#376).
+  - **One set of steps per meaning:** the weather on the map and on the route use the same temperature and wind steps; Other ways get a colour that isn't water's or a cycleway's.
+  - **The key where the scale is drawn:** under the profile for Colour by, with the timeline's legend showing its steps, and on the map while the route is coloured.
   - **A dark edge on every coloured line** on the map and the profile (a 1 px `rgba(0,0,0,.35)` casing, or the white casing the route already has), so the light steps stay visible on any base map.
   - **The scales themselves** change only as the user chooses (Waiting for the user, 5). The recommendation: keep difficulty's colours, which people already know from Polku's trail map, and split S1 from S2 by lightness; separate the sports' two worst pairs (gravel to a lighter yellow, trail running to aqua) and show the sport's icon or name wherever its colour shows, since eight sports can't all be told apart by colour, for everyone, with any palette (checked with the validator on every pair); give wind orange for headwind and blue for tailwind with grey between, which stays apart on every pair with colour blindness and doesn't use red. What stays unsolved is said plainly: with deuteranopia S0, S2 and S3 still look alike (a green-to-red ladder can't avoid it) and road and hiking too, so the written grade and the sport's icon or name carry them. Each change is drawn in the mock-up first, with a **Colour vision** switch that simulates it.
 
-**The profile chart** (`js/chart.js`, drawn on a canvas): it already reads `--chart-ink`, `--chart-grid` and `--muted`, so it follows dark mode. Its axis labels (10 px) and the numbers inside its points (9.5 px) are small on purpose and stay; what changes is that they're drawn from the values, in `rem`-based sizes when that's chosen, so they grow with the browser's text size. The climb tags' white text on the scale's colours follows #376. The points' black and white become `--wp-ink` and `--wp-paper` (§5).
+**The profile chart** (`js/chart.js`, drawn on a canvas): it already reads `--chart-ink`, `--chart-grid` and `--muted`, so it follows dark mode. Its axis labels (10 px) and the numbers inside its points (9.5 px) are small on purpose and stay; what changes is that they're drawn from the values, in `rem`-based sizes when that's chosen, so they grow with the browser's text size. The climb tags' white text on the scale's colours follows #376. The points' black and white become `--wp-ink` and `--wp-paper` (§5). Its hover band (`rgba(17,24,39,.07)`) and a stretch's selection (`rgba(31,111,74,…)`, `js/chart.js` 371, 473–475) are typed for light mode, so they likely vanish in dark: they're read from the values too. Four different "no data" greys (`#d6dde3`, `#e2e8f0`, `#cbd5e1`, `#94a3b8`) become one. The canvas gets a name for screen readers (#386).
 
-**The weather timeline** (`js/wxmap.js`): its canvas labels (10 px) are axis labels, small on purpose, drawn from the values like the profile's. Its chips (Wind, Temperature, Rain, Snow) are `chip` and follow §4. Its colours are the weather scales above.
+**The weather timeline** (`js/wxmap.js`): its canvas labels (10 px) are axis labels, small on purpose, drawn from the values like the profile's. Its chips (Wind, Temperature, Rain, Snow) are `chip` and follow §4; their pressed blue (`#1d4ed8`) has no dark version today (2.57:1, #376). Its temperature line and labels are fixed oranges, and its night shading asks `matchMedia` instead of a value: both read the values. Its colours are the weather scales above.
 
 ## 3. Values for type, shape, depth and motion
 
@@ -188,6 +195,9 @@ Each scale keeps today's most-used values. A size between two steps moves to the
 | A title | 17 px (15 on desktop cards) | `way-hint`'s 17 and `insp-title`'s 15 |
 | A grip or handle | one `grip`: `--grip`, 3:1, `--accent` while held, 44 px by touch | `sheet-handle`, `qd-grab`, `sheet-resize`, `tl-grip`, `wpl-grip` (five looks today) |
 | A button's label | wraps; a least height, not a fixed one (#373) | `btn` and `btn big`'s fixed heights |
+| A switch (on and off) | `tg`; its off track gets a `--muted` outline, 3:1 (today 1.31:1) | — |
+| Folding a section | one chevron | today three: a native ▶ (the map key), a CSS chevron (Layers' groups), an SVG chevron (the planner's sections) |
+| Choosing a base map | one look in both places: a tick, a 2 px border and a tint, as the layer drawer has | All layers' 64 px squares with a border only |
 
 Icons are black in lists and menus, green on the start's tiles and in switches (#356).
 
@@ -199,13 +209,13 @@ Icons are black in lists and menus, green on the start's tiles and in switches (
 |---|---|
 | Hover | `--surface-2` behind it, only with a mouse: `@media (hover: hover) and (pointer: fine)`. Today 38 of 57 hover rules apply on touch screens too, where they stay after a tap (#208) |
 | Pressed | `--surface-2` while pressed; buttons, chips, tiles and switches also shrink to 97 % (Waiting for the user, 4); no tap flash: `-webkit-tap-highlight-color: transparent` once on `html`, `touch-action: manipulation` and `user-select: none` on every control |
-| Focus (idea B) | one 2 px `--focus` ring under `:focus-visible`, set once with `:where(button, a, input, select, [tabindex]):focus-visible`; outside a control, inside a row of a list. Today `btn`, `tool`, `chip`, `way-tile` and `way-back` show the browser's own ring |
+| Focus (idea B) | one 2 px `--focus` ring under `:focus-visible`, set once with `:where(button, a, input, select, [tabindex]):focus-visible`; outside a control, inside a row of a list. Today `btn`, `tool`, `chip`, `way-tile` and `way-back` show the browser's own ring, and the sport menu and the ⋯ menus show none at all (#385) |
 | Chosen | a green icon or tick plus a border or a word (#356) |
 | Can't be used | hidden if it never can be there; disabled and dimmed if it will be soon, like undo with nothing to undo |
 
 ### The planner's own controls
 
-The toolbar, the toolbox, the tabs, Minimise (⌃), Done, the panel's place (side or bottom), the timeline's controls, Layers and Settings: they take the same states, values and targets in the controls PR or later ones, but **not while 25d says they stay** (the toolbar, the start and the ⋯ menu during 25d). The second audit (#379) looks at them whole after 25d.
+The toolbar, the toolbox, the tabs, Minimise (⌃), Done, the panel's place (side or bottom; a 34 px icon today, and moving it leaves the route under the panel, #387), the timeline's controls, Layers (whose names drift: "On the map" and "On now", "Trail colours" and "Difficulty colours") and Settings: they take the same states, values and targets in the controls PR or later ones, but **not while 25d says they stay** (the toolbar, the start and the ⋯ menu during 25d). The second audit (#379) looks at them whole after 25d.
 
 ## 5. What Polku draws on the map
 
@@ -222,6 +232,8 @@ The base map, its roads, paths and labels, LIPAS's routes by kind and the typefa
 - **The route's colours are values** (`--route`, `--route-water`, `--route-line`, `--route-loading`, `--accent` for a selected stretch), read by `js/style.js` from the CSS (step 3).
 - **Warning markers** (25d part 3): a white disc holding the group's soft colour, its border and its icon. They sit above the route's glow, so it never washes them out. On phones each marker's tap area is 44 px; where markers crowd, they merge into one with a count (25d part 3), so none has to shrink.
 - **The chevrons show on every leg:** white at 90 % is 4.0:1 on the red line and 5.1:1 on the blue, but 1.5–2.1:1 on Colour by's light steps. Under a light colour they take a thin dark edge.
+- **The route keeps its identity under Colour by** (Waiting for the user, 8): a thin `--route` edge outside its white casing, whatever Colour by paints inside.
+- **The trails step back while a route is shown** (Waiting for the user, 9), to about 60 %; the overlay's own look is phase 20's.
 - **One thing moves without being touched:** the chevrons. Anything else animates once, in answer to something you did, and never loops.
 - **The points' black and white become values** (`--wp-ink`, `--wp-paper`, the same in both themes since they sit on the map), and the start's green becomes `--good`.
 - **Checked** in screenshots on the terrain map, aerial photos and the night map.
@@ -244,7 +256,7 @@ What Polku lets you drag, and the way without dragging that each keeps (WCAG 2.2
 
 ## 7. Outdoor contrast and reduced transparency
 
-- **Outdoor contrast (idea C):** with `@media (prefers-contrast: more)` the frosted cards turn solid, `--muted` moves closer to `--text`, lines double in weight and cards get a clear 1 px border. It changes nothing for anyone who doesn't ask for it.
+- **Outdoor contrast (idea C):** with `@media (prefers-contrast: more)`, or Settings' **High contrast** (Waiting for the user, 6), the frosted cards turn solid, `--muted` moves closer to `--text`, lines double in weight and cards get a clear 1 px border; the switch keeps thickening the trails as it does today. It changes nothing for anyone who doesn't ask for it.
 - **Reduced transparency:** today only the layer drawer turns solid with `prefers-reduced-transparency: reduce`. Every frosted surface does: the top bar, the map's buttons, the sheet, the panel and the cards.
 - **Grey text on frosted glass** is the case these two are for: over busy aerial photos the 94 % surface lets the map through.
 - **The status bar** takes one green for both themes (`theme-color` in `index.html`). The map fills the top of the screen, so it's a choice, not a mismatch; it's looked at again with the dark map in the map PR.
@@ -256,9 +268,9 @@ Four PRs after this plan, in #383's order. The first two come before any more 25
 | PR | What | Visible? | Closes or touches |
 |---|---|---|---|
 | **The values** (Fix) | Every value in §1, §3 and the route's colours on `:root`, with dark versions (in `rem`, if chosen); the JavaScript's meaningful colours read from the CSS (`getComputedStyle`, as `js/wxmap.js` does, and again when the theme changes): the route, the warning colours, the scales; #370's dark red; DESIGN.md updated to the values; the checks below (ideas D and E) | No, apart from #370's dark red | #370 |
-| **The controls** (Fix) | §4's "One of each" and its states for the controls 25d uses: rows, chips, switches, the stepper, headings and titles, the warning box, the focus ring, button labels that wrap, names that break at 200 %; the status pills and badges at 4.5:1 | Yes: screenshots before and after, for the user | #356, #376, #373, #384 |
-| **Touch and the whole app** | Hover only with a mouse, no tap flash, pressed states, touch areas of 44 px by touch (grown around small controls), reading text at 12 px or more, the grips, the top bar at 200 % | Yes | #208, #235, #375 |
-| **The map and the scales** | §2 and §5: the scales' words and edges, the scales the user chose to change, the chevrons' edge, the points' values; outdoor contrast and reduced transparency (§7) | Yes | |
+| **The controls** (Fix) | §4's "One of each" and its states for the controls 25d uses: rows, chips, switches and their off track, the stepper, headings and titles, the warning box, the focus ring (in the menus too), button labels that wrap, names that break at 200 %; the status pills and badges at 4.5:1 | Yes: screenshots before and after, for the user | #356, #376, #373, #384, #385 |
+| **Touch and the whole app** | Hover only with a mouse, no tap flash, pressed states, touch areas of 44 px by touch (grown around small controls), reading text at 12 px or more, the grips, the top bar at 200 %, names for screen readers, one fold arrow, one base-map picker | Yes | #208, #235, #375, #386 |
+| **The map and the scales** | §2 and §5: the scales' words, keys and edges, one set of steps per meaning, the scales the user chose to change, the route's edge under Colour by and the trails stepping back if chosen, the chevrons' edge, the points' values; outdoor contrast, Settings' High contrast and reduced transparency (§7) | Yes | #388 |
 
 The touch PR and the map PR come after 25d's journeys, any time before #365. The rest of `css/app.css` moves onto the values when it's next touched; a last PR lists what's left and moves it. The second audit (#379) comes after 25d.
 
