@@ -1,6 +1,6 @@
 # Design system: the app as it is
 
-An audit of the running app, not of its CSS. It's the evidence the design-system plan works from, and the baseline its PRs measure against. [design-system-notes.md](design-system-notes.md) holds the proposals.
+An audit of the running app, not of its CSS. It's the evidence the design-system plan works from, and the baseline its PRs measure against. [design-system.md](design-system.md) is the plan that follows from it.
 
 - **When and what (2026-10-22):** the cards branch `claude/25d-1-card` at 34e5a02 (#352), the latest work, which includes everything on `main`.
 - **How:**
@@ -16,10 +16,10 @@ An audit of the running app, not of its CSS. It's the evidence the design-system
 | Phones at 200 % | The search box shrinks to 4 px and the top bar runs over the timeline | #375 |
 | Both themes | Seven kinds of text below 4.5:1: Check's count, difficulty badges, wind pills, Plan in dark, the layer drawer's tiles in dark | #376 |
 | Dark mode | Red text 3.6:1: Remove, Delete, red pills | #370 |
-| Phones | The weather timeline covers the planner's tabs when the planner is open | #377 |
+| Phones | The weather timeline covers the planner's tabs when the planner is open: a side effect of the calmer planner's decision of 2026-10-20, for the user to look at (watch, not a bug) | #377 |
 | Phones at 200 % | A long point name runs off the card; a row's name squeezed to 47 px | on #352 |
 | Phase 18 risk | A button's label can't wrap | #373 |
-| Phones | 112 controls under 44 px, 148 texts under 12 px (the numbers are on the issue) | #235 |
+| Phones | 112 controls under 44 px, 148 texts under 12 px (the numbers are on the issue). Many are small on purpose (the scale bar, the credits, chart axes, a word under an icon): the plan lists those, and only reading text and touch areas count against it | #235 |
 
 ## What's typed in place, measured
 
@@ -88,7 +88,7 @@ Inter shows in these numbers only because the test Mac has it (#266); people see
 - **A floating card** with chips (Wind, Temperature, Rain, Snow, 26 px on phones), a chart, ▶ and a slider. On phones it covers the planner's tabs (#377).
 
 ### The route on the map
-- **As in the notes' "The route on the map":** the red line with a white casing and its glow, blue over water, dashed dark red for a straight line, grey dots while routing, and the moving chevrons.
+- **As in the plan's "What Polku draws on the map":** the red line with a white casing and its glow, blue over water, dashed dark red for a straight line, grey dots while routing, and the moving chevrons.
 - **With Colour by Wind,** red arrows along a red-and-blue line. Red here means headwind, next to red meaning the route and danger.
 - **Distance marks** are black text with a white halo, and the waypoints are black and white discs.
 
@@ -109,12 +109,12 @@ The screens above are the app as it is. Much of the planner and the map's cards 
 |---|---|---|
 | Seven looks for "chosen" | #356 (2026-10-21) | A chosen chip is green with a border, everywhere. A switch is white, with black words and a green icon or tick. Black chips and the remaining odd ones go as #356 is built. |
 | Settings' green icons in a list | #356 | Black icons in lists, green on the start's tiles and in switches. Settings is one more place for #356 to cover. |
-| Remove: red for a via, black for the ends; the list's 28 px tools | Calmer planner, point 7; 25d part 4 | Only the selected point has its controls, 44 px to touch, with no Remove on the others. The list becomes sections with Reorder, and Delete has Undo. On a card, **Remove** is a red button on a row of its own. |
+| Remove: red for a via, black for the ends; the list's 28 px tools | The calmer planner's D (2026-10-20), which replaced its point 7; 25d part 4 | Only the selected point has its controls, 44 px to touch, with no Remove on the others. The list becomes sections with Reorder, and Delete has Undo. On a card, **Remove** is a red button on a row of its own. |
 | The LIPAS and trail popups' own look, ✕ and blue focus ring | 25d parts 5 and 6 (#345) | The spot's and a place's cards replace the map's popups, built from the shared controls. |
 | Check's count, white on orange (#376) | 25d part 2 | The badge shows the Read count with a triangle in the warning colour, and otherwise a neutral count. #376 still applies to the colour that badge uses. |
 | Check's Heads-up rows, and On the route's cards inside cards | 25d part 2 (#366) | Three groups, the red warning box for Read before you go, and rows for the rest. |
 | Two Plan buttons on a desktop | Calmer planner, 2026-10-21 | The column's Plan stays where it is while the planner is open, pressed. Kept. |
-| The timeline over the planner (#377) | Calmer planner, 2026-10-20 | While planning, the timeline stays over the map, on phones 16 px above the sheet. #377 is the case where the full sheet leaves it no room, a bug against that decision. |
+| The timeline over the planner (#377) | Calmer planner, 2026-10-20 | While planning, the timeline stays over the map, on phones 16 px above the sheet, and on the sheet under its header where the map's buttons wouldn't fit above it (a half or full sheet). Covering the tabs follows from that: #377 is a side effect for the user to look at, not a bug. |
 | A point's card at 200 % (on #352) | 25d part 1a | Fixed in #352 before it merges. |
 
 **Targets, settled on 2026-10-22:** 25d and the calmer planner said 40 px on desktops, and the design-system draft 36 px. The user chose **44 px by touch at any width** (`pointer: coarse`, tablets and touch laptops too) and **36 px with a mouse or trackpad**, 8 px apart. The two plans change in #380.
