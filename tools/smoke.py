@@ -6901,6 +6901,7 @@ def route_view(chrome):
         c = pg.js("({ kind: polku.planner.cards.current && polku.planner.cards.current.kind, view: polku.planner.inView(), past: polku.planner.past.length, pts: JSON.stringify(polku.planner.points) })")
         if c['kind'] != 'point' or not c['view'] or c['past'] != s0['past'] or c['pts'] != line0:
             fails.append(f'{name}: a tap on a point in the route’s view: {c}')
+        pg.js(SETTLED)  # (the sheet at the card's size: a tap while it grows lands where ✕ was)
         press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-x')].find((b) => b.getClientRects().length)"), f'{name}: the card’s ✕', touch)
         if pg.js("!!polku.planner.cards.current"):
             fails.append(f'{name}: the point’s card’s ✕ left it open')
