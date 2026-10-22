@@ -126,10 +126,10 @@ not models, mid-session: a new model sends the whole conversation again
   readers, enlarged text, reduced motion, and nothing said by colour alone.
 - **A new panel, sheet or way of working starts as a clickable mock-up** in
   `docs/plans/mockups/`, checked in the worst case too (360 px, 200 % zoom,
-  long Finnish words). A small visual change needs none. The mock-up and a
-  short plan are enough: no probe scripts, measurements or evidence files
-  unless the user asks. The user chooses before it's built; #123's plan shows
-  how.
+  long Finnish words), with the design skills that help. A small visual
+  change needs none. The mock-up and a short plan are enough: no probe
+  scripts, measurements or evidence files unless the user asks. The user
+  chooses before it's built; #123's plan shows how.
 - **One style, and don't redesign what works.** A control for a job the app
   already does is the one in DEVELOPING's "Shared controls", with its class,
   and a mock-up copies its CSS. A new kind is proposed to the user first. A
@@ -154,8 +154,9 @@ not models, mid-session: a new model sends the whole conversation again
 - **App changes pass `python3 tools/smoke.py`:** while working, the groups
   you touch (`python3 tools/smoke.py water loops`); before the PR leaves
   draft, the whole suite once, on its last commit that changes the app. A
-  check stays good for the commit it ran on, whoever ran it, and for later
-  commits that touch only `docs/`, AGENTS.md, README.md or PRODUCT.md (the
+  check stays good for the commit it ran on, whoever ran it, and for any
+  later commit whose files outside `docs/`, AGENTS.md, README.md and
+  PRODUCT.md are the same: a docs-only commit, or a rebase onto one (the
   app reads `CHANGELOG.md`: run `changelog`).
 - **A check that fails only sometimes,** or only in a whole run, gets an
   issue (or a comment on its issue): the commit, the command, the browser,
