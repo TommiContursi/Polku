@@ -4,7 +4,7 @@ The implementation plan for the last part of Phase 25. What's still to do, and i
 
 - **Status (2026-10-21): approved,** with Revision 4 chosen (#355) and Revision 5's desktop changes; see "Where 25d stands" below.
 - **What it builds:** journeys C and D of the [calmer planner](issue-233-calmer-planner.md#revised-journeys-2026-10-20-proposals), and #345's [map cards](issue-345-map-cards.md).
-- **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 5** (the default) is what to build; **As approved** and **Revisions 1 to 4** stay there to compare. Every control in Revision 5 does what it says, or says in a note what the app would do. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)). Its **Cards and lists** switch shows them as approved, or in Revision 5 (the default, for the user's choice) with the cards' own rows, warning box and cards. Where its approved cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
+- **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 5** (the default) is what to build; **As approved** and **Revisions 1 to 4** stay there to compare. Every control in Revision 5 does what it says, or says in a note what the app would do. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)). Its **Cards and lists** switch shows them as approved, or in **Revision 5**, the default and chosen on 2026-10-22, with the cards' own rows, warning box and cards. Its **Check's items** switch shows C, chosen (what can stop you in the red box, the rest as rows), or A (rows for every item). Where its approved cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
 - **How to build it:** one part a session, one PR a part (part 1 in two), in this order. Each session starts from the last Hand-over on #233 (AGENTS.md).
 
 ## Where 25d stands
@@ -27,17 +27,19 @@ The one list of what's decided, what waits for the user and what's next. The oth
   - **25d stays within the cards:** the toolbar, the start and the ⋯ menu don't change.
   - **Don't redesign what works.** Keep one style throughout, with a different element only where the job is different. Every version stays in the mock-up to compare.
 - *2026-10-21, the app's controls (#356):* black icons in lists (the ⋯ menu, the cards), green on the start's tiles and in switches; the chosen chip green with a border everywhere; one stepper, − 30 min + in one box with the number typable, for the cards and the round trip; switches with icons where they help, and one chosen look for all: white, black words, a green icon or tick.
+- *2026-10-22, C and D (#366):* Revision 5 for the list, Check, the row and their cards. In Check, Read before you go's items are the red warning box, and Worth a look's and Not checked's are rows: the box marks what can stop you everywhere it shows (the peek, a section, a card, Check).
+- *2026-10-22, in 1a (#352):* a point's stretch row says **Next stretch, to …** with the next point's name, and its line is "Its sport, how it's drawn and its style". Picking Paddle in Sport from here keeps the card open at its crafts (Sea kayak · Canoe · SUP), one setting for the whole route. In the route's view, a stop, a night and the start's leaving time still change on the card.
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
-- **The planner mock-up's C and D in Revision 5** (step 3 below): Revision 5 or As approved, before part 2.
+- Nothing now.
 
 **To reconsider in a later part** (the user, 2026-10-21): #364. It covers when you leave and when you go on (any time, not a few fixed hours); where Avoid this spot belongs; and On the profile on the route's and a point's card.
 
 **Next**
 1. Done: #356's fix the cards need, the route's numbers' labels wrap (#360).
 2. Then #352 is restyled to Revision 5's frames as 1a (its desktop card, the edits as buttons, Reverse, the lit row), then 1b.
-3. Drawn, for the user's choice before part 2: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) have a Revision 5 version behind its **Cards and lists** switch. It has the same rows, warning box, switch and words as the cards, and nothing else changed.
+3. Done: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) have a Revision 5 version, chosen on 2026-10-22 with Check's items as C (#366).
 4. Then parts 2 to 6, in the order below.
 5. Before the milestone closes: #365. The finished planner is used in the browser as a newcomer and as an expert, and everything that test finds is fixed.
 
@@ -63,7 +65,7 @@ Five things are shared, and each part builds what it shares before a later part 
 | Taps and holds on the map, and the keyboard's way to them | 1 (taps), 5 (holds and keys) | 5, 6 |
 | The facts in levels (`facts.js`, What's here) | 1 (three numbers), 6 (levels) | 5, 6 |
 
-1. **The cards on the route and its points** (two PRs: 1a the card and a point's card, #352 restyled; 1b the route's and a stretch's cards). *Why first:* the point's and the stretch's cards are the same component, and "The stretch after it ›" needs the stretch's card. Today's point and leg menus go here.
+1. **The cards on the route and its points** (two PRs: 1a the card and a point's card, #352 restyled; 1b the route's and a stretch's cards). *Why first:* the point's and the stretch's cards are the same component, and "Next stretch, to … ›" needs the stretch's card. Today's point and leg menus go here.
 2. **Check in three groups.** Before anything else shows a warning's group or source.
 3. **The warning on the route.** Journey C whole.
 4. **The list in sections, with Reorder.** It opens point, stretch and warning cards, so it comes after all three.
@@ -116,7 +118,7 @@ Every part's requirements include these.
 | Three numbers | the app's `sum-item`, its labels wrapping (#356) |
 | At this point: Pass by · Stop · Night | the app's `seg`, as a variant with icons over the words (new: `seg icons`); the chosen one as every switch's: white, black words, a green icon (#356) |
 | A stop's minutes | one stepper for the round trip and the cards: − 30 min + in one box, the number typable (#356) |
-| Rows: This stretch, What's here, Edit this stretch, The stretch after it, Sport from here: MTB, Leave at: Now, Route style: Balanced, Not right?'s links, and the actions (Move, Start here, Remove) | one plain row: always an icon, its name, its line, a value in the accent colour, ›; a hairline between rows; a hover on desktops; Remove in red, apart (new: `row`, which the app's `speed-sport-row` can share, #356) |
+| Rows: This stretch, What's here, Edit this stretch, Next stretch, to …, Sport from here: MTB, Leave at: Now, Route style: Balanced, Not right?'s links, and the actions (Move, Start here, Remove) | one plain row: always an icon, its name, its line, a value in the accent colour, ›; a hairline between rows; a hover on desktops; Remove in red, apart (new: `row`, which the app's `speed-sport-row` can share, #356) |
 | A warning on a stretch | the yellow box with its words (new: `warn-row`, which part 3's row in the peek uses too) |
 | The one main action | the app's `btn primary big` |
 | The route's view | the app's `pl-viewnote` |
@@ -193,14 +195,14 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - **Three numbers:** **10:09** there at, **1.65 km** from the start, **107 m** height. The start: **10:00** you leave and its height [r-start].
 - **At this point** (a via point): one switch, **Pass by · Stop · Night**, showing what happens there now. Stop shows its minutes with − and +, and "You get here at 10:09 and go on at 10:39" [r-stop]. Night shows "Go on at 07:00 the next morning" and **Places to sleep nearby ›** [r-night].
 - **Sport from here: MTB ›** opens the sports, with "your route" on the route's own [r-sport]; a pick changes the legs from here to the next change of sport, or to the end (decision 2). A change of sport then shows its changeover minutes and **Take the bike along** [r-change].
-- **The stretch after it ›**, both ends named. Until 1b it opens today's leg menu.
+- **Next stretch, to … ›**, both ends named. Until 1b it opens today's leg menu.
 - **Edit this point:** **Move** and **Rename** side by side; **Start here** and **End here** on a via point, each with its line (decision 10); a loop's via point has "Start here: the same loop, starting from this point" and no End here.
 - **The start** has **Leave at: Now ›** ("Sets the times and the weather along the route"). **The end** has **Back to start** ("Adds a leg back to the start"), not on a loop [r-end].
 - **Remove** apart, in red, "Undo brings it back"; the note names it, with Undo [r-removed].
 - **Rename** types the name where it's shown, with **Save** [r-rename]. **Move** folds the card to a banner, "Tap where it goes", with Cancel; the point stays ringed [p-move]. Dragging stays.
 - Back, Escape, the phone's back gesture and a tap on the map close the card; the tap adds nothing.
 - **Undo and redo stay** above the card while it's open; the rest of the toolbox steps aside (decision 13).
-- **The route's view:** the numbers, At this point (it still works), the start's leaving time, The stretch after it, and the note with Edit [r-view-point].
+- **The route's view:** the numbers, At this point (it still works), the start's leaving time, Next stretch, to …, and the note with Edit [r-view-point].
 - At 200 % and at 360 × 740 in Finnish, as "How every card is built" says [r-200, r-fi]; in Hike [r-hike-point] and dark [r-dark] too.
 
 **Files:**
@@ -265,7 +267,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - **A stretch** runs between two points you see: the start, the end, a stop or night, a change of sport, a point you named, or where a leg's settings change. The points between only shape the line.
 - A tap on a handle opens the route's card there.
 - **The route's view:** the card without the pill or Edit this stretch, and the note with Edit [r-view-route, d-view]. With the planner put away: Plan opens at the card.
-- The point's **The stretch after it ›** opens the stretch's card now. Today's leg menu goes.
+- The point's **Next stretch, to … ›** opens the stretch's card now. Today's leg menu goes.
 - The long press on the route waits for part 5; until then a hold reshapes the line as today.
 
 **Files:**
@@ -317,7 +319,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - It stays there until the source answers. A later note can't replace it (#265).
 - At the end: what was looked at for this route, and that nothing listed doesn't mean open, safe or allowed.
 - The tab's badge: the Read count with a triangle, in the warning colour. Otherwise a neutral count. "?" beside it when something wasn't checked.
-- Every action stays: Avoid, Short cut, Use BRouter, Retry, ⋯ (hide this kind, fix the map), the hidden kinds to bring back. Within a group the order is along the route.
+- **How an item looks** (chosen 2026-10-22, #366): Read before you go's items are the red warning box (`warn-row`), and Worth a look's and Not checked's are rows (`row`), each with its icon in its group's shape and colour, where it is as its line, and ›. A tap shows the item on the route, and its row or box is lit while it's open [jc-check, chk-phone, chk-desk, with Cards and lists: Revision 5 and Check's items: C].
+- Every action stays, on the item's card, one tap from its row or box: Avoid, Short cut, Use BRouter, Retry, ⋯ (hide this kind, fix the map). The hidden kinds to bring back stay at the end of Check. Within a group the order is along the route.
 
 **Where each item goes.** Made where it's made; the text is today's.
 

@@ -881,6 +881,8 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .r5 .pop5 .c2-warn small, .r5 .c2-warn small { overflow-wrap: anywhere; }
 /* Check's items, the list's points and its stretches: the cards' rows, a hairline between them, lit while open */
 .r5 .tier .c2-list { margin: 0 -10px 4px; }
+.c5-boxes { display: grid; gap: 8px; margin: 2px 0 8px; }
+.c2-warn.c5-lit { outline: 2px solid var(--accent); outline-offset: 2px; }
 .r5 .tier .c2-list > .c2-item { min-height: 52px; }
 .r5 .c5-w.t1 > .ic:first-child { color: var(--danger); }
 .r5 .c5-w.t2 > .ic:first-child { color: var(--look); }
@@ -1079,7 +1081,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <section class="cv-row" id="sc">
     <h2>C · A warning: notice it, find it on the route, come back</h2>
     <p>Today, with the sheet at its peek, nothing says there's anything to read before you go: Check's count is on its tab, under the fold, and a row in Check frames the map without marking the place (#84, #85). Here the peek has a row while there's something to read before you go or something wasn't checked, in words. Each located item has a marker on the route, in its group's shape and icon (a filled triangle, a dashed "?", an eye for "worth a look", which shows while Check or an item is in view); close ones merge into one with a count. A tap on the row, a marker or an item in Check shows it on the route: the stretch glows, the marker is ringed, and the peek holds the item (what, where, how sure, Avoid or Retry) with ‹ › along the route. <b>✕ comes back</b> to where you were (the peek, or Check at half). A stretch that wasn't checked is dashed on the route; a source missing for the whole route says so in words, with no invented place. The approved row opened Check at half; this keeps the map in view. <b>Decided 2026-10-20: the row shows the item on the route.</b></p>
-    <p><b>Revision 5, for the user's choice (2026-10-22):</b> with <b>Cards and lists: Revision 5</b> at the bottom (the default), these frames use the map cards' own parts from <a href="issue-345-map-cards.html">#345's mock-up</a>. The row is the cards' warning box. Check's items are the cards' rows, each in its group's shape and colour, and lit while it's open. The item's card is Revision 5's: its group in words and shape, where it is, its source, its one action, then ‹ › and All in Check. On a desktop it opens beside the panel at its row. <b>As approved</b> shows the frames as they were.</p>
+    <p><b>Revision 5, chosen on 2026-10-22:</b> with <b>Cards and lists: Revision 5</b> at the bottom (the default), these frames use the map cards' own parts from <a href="issue-345-map-cards.html">#345's mock-up</a>. The row is the cards' warning box. In Check, what can stop you (Read before you go) is the same red box, and Worth a look and Not checked are the cards' rows, each in its group's shape and colour. The open item is lit. (<b>Check's items: A</b> shows rows for every item, to compare.) The item's card is Revision 5's: its group in words and shape, where it is, its source, its one action, then ‹ › and All in Check. On a desktop it opens beside the panel at its row. <b>As approved</b> shows the frames as they were.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jc-peek" data-st='{"stage":"route"}'><figcaption><b>Noticed at a glance</b>The row in the peek; the road works' marker on the route. Tap either.</figcaption></figure>
       <figure class="fr phone" id="jc-step" data-st='{"stage":"route","step":4}'><figcaption><b>Found on the route</b>Its stretch glows and its marker is ringed; ‹ › go along the route; ✕ back.</figcaption></figure>
@@ -1099,7 +1101,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <section class="cv-row" id="sd">
     <h2>D · Points and legs: three ways to keep them (iteration 2)</h2>
     <p>From the user's feedback on section 6: a selected waypoint took much of the screen, some of its settings were hard to read, and the list may not show what's needed. In every option below the list is made of <b>sections</b>: a new one starts where the sport changes, at a stop and at a night, and each says what Check says about that part (its distance, time and climb, the weather when you get to its end, its warnings, which open the item on the route). Points that only shape the line fold inside, so a leg of 30 m never gets a forecast of its own. The list stays because it's the only way to manage points without the map (keyboard, screen readers) and to see their order and names at once. The options differ in where a point is changed. <b>Chosen on 2026-10-20: V1, refined</b> (stretches between the points you see, with both ends named and their scope in words; the everyday actions by name; Reorder). Five kinds of route: a day ride, a multisport trip, three days with nights, 52 points, and a marked route followed. <b>Use the "Points" switch at the bottom</b> to see any frame in V1, V2 or V3.</p>
-    <p><b>Revision 5, for the user's choice (2026-10-22):</b> with <b>Cards and lists: Revision 5</b> (the default), V1's list keeps its sections and gets the cards' rows. A point's row has its mark, its name, what happens there, and a line. A stretch's row has its numbers and how it's drawn. A section's warnings are in the warning box. The point's and the stretch's cards are Revision 5's, with At this point and Edit this stretch, so the paddle stretch's frame opens Edit this stretch. On a desktop the card opens beside the panel at its row, which stays lit. Reorder, V2 and V3 stay as they were.</p>
+    <p><b>Revision 5, chosen on 2026-10-22:</b> with <b>Cards and lists: Revision 5</b> (the default), V1's list keeps its sections and gets the cards' rows. A point's row has its mark, its name, what happens there, and a line. A stretch's row has its numbers and how it's drawn. A section's warnings are in the warning box. The point's and the stretch's cards are Revision 5's, with At this point and Edit this stretch, so the paddle stretch's frame opens Edit this stretch. On a desktop the card opens beside the panel at its row, which stays lit. Reorder, V2 and V3 stay as they were.</p>
     <ul>
       <li><b>V1, a card (chosen, then refined):</b> a tap on a point selects it on the map and opens its card in the peek, the same card as a tap on the point on the map: what it is, its stop, change or night, the leg after it, and its place. The leg is one tap further, in words (sport, how it's drawn, style). Back returns to the list as it was.</li>
       <li><b>V2, in the list:</b> the point's controls open under it in its section, as in the approved section 6.</li>
@@ -1257,7 +1259,8 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <div role="group" aria-label="Language"><span>Words</span><button type="button" data-o="lang" data-v="en">EN</button><button type="button" data-o="lang" data-v="fi">FI</button><button type="button" data-o="lang" data-v="sv">SV</button></div>
   <div role="group" aria-label="Theme"><span>Theme</span><button type="button" data-o="theme" data-v="light">Light</button><button type="button" data-o="theme" data-v="dark">Dark</button></div>
   <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask (decided)</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
-  <div role="group" aria-label="Cards and lists in C and D"><span>Cards and lists</span><button type="button" data-o="look" data-v="v1">As approved</button><button type="button" data-o="look" data-v="r5">Revision 5</button></div>
+  <div role="group" aria-label="Cards and lists in C and D"><span>Cards and lists</span><button type="button" data-o="look" data-v="v1">As approved</button><button type="button" data-o="look" data-v="r5">Revision 5 (chosen)</button></div>
+  <div role="group" aria-label="Check's items, in Revision 5"><span>Check’s items</span><button type="button" data-o="check" data-v="a">A: rows</button><button type="button" data-o="check" data-v="c">C: Read as boxes (chosen)</button></div>
   <div role="group" aria-label="Points and legs"><span>Points</span><button type="button" data-o="wv" data-v="v1">V1: card (chosen)</button><button type="button" data-o="wv" data-v="v2">V2: in the list</button><button type="button" data-o="wv" data-v="v3">V3: on the map</button></div>
   </div>
 </nav>
@@ -1286,6 +1289,8 @@ const OPT = {
   wv: ['v1', 'v2', 'v3'].includes(Q.get('pts')) ? Q.get('pts') : 'v1',
   // 2026-10-22: C and D as approved (v1), or with the map cards' Revision 5 parts (r5, for the user's choice)
   look: Q.get('look') === 'v1' ? 'v1' : 'r5',
+  // 2026-10-22, chosen: in Revision 5's Check, Read before you go's items are red boxes, the rest rows (c); a, rows for all, to compare
+  check: Q.get('check') === 'a' ? 'a' : 'c',
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
 
@@ -1652,7 +1657,7 @@ function fresh(base) {
   return st;
 }
 const opt = (st, k) => (touched || st[k] == null ? OPT[k] : st[k]);
-const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look });
+const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look, check: OPT.check });
 
 // ------------------------------------------------ building blocks
 // the pill is the map's sport (st.map); its menu says what a change does (2026-10-20)
@@ -1927,7 +1932,9 @@ function checkBody(st, v) {
   // (2026-10-20: selected together; on a phone the sheet steps down to show it, and ✕ comes back here)
   const item = (w, g, i) => { const idx = L.findIndex((x) => x.g === g && x.i === i); return `<div class="wi${st.step === idx ? ' picked' : ''}"${st.step === idx ? ' aria-current="true"' : ''}>${ic(w.ic, 20)}<div class="tx"><button type="button" class="wibtn" data-act="wpick" data-v="${idx}" aria-label="${esc(w.b)}, ${esc(w.w)}: show on the route"><b>${esc(w.b)}</b><span class="wh">${esc(w.w)} · ${(kmOf(w) ? t('showMap') : t('wholeRoute')).toLowerCase()} ›</span></button>${w.n ? `<span class="nt">${esc(w.n)}</span>` : ''}<span class="src">${w.s}</span>
     ${w.a.length ? `<div class="wa">${w.a.map((a) => `<button type="button" class="btn small quiet" data-act="noop">${a === 'Avoid' ? t('avoid') : t('retry')}</button>`).join('')}<button type="button" class="tbtn" aria-label="More for ${esc(w.b)}: hide this kind, correct the map">${ic('more', 18)}</button></div>` : ''}</div></div>`; };
-  const rows = (list, cls) => (v.look === 'r5' ? `<div class="c2-list">${list.map((w, i) => checkRow5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>` : list.map((w, i) => item(w, cls, i)).join(''));
+  const rows = (list, cls) => (v.look !== 'r5' ? list.map((w, i) => item(w, cls, i)).join('')
+    : v.check === 'c' && cls === 't1' ? `<div class="c5-boxes">${list.map((w, i) => checkBox5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>`
+      : `<div class="c2-list">${list.map((w, i) => checkRow5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>`);
   const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span></h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
   const sum = '';
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
@@ -2246,7 +2253,7 @@ const W5 = {
     leave: 'Leave at', leaveSub: 'Sets the times and the weather along the route',
     sportFrom: 'Sport from here', sportFromSub: 'To the next change of sport, or the end', changeover: 'Changeover',
     bikeAlong: 'Take the bike along', bikeAlongSub: 'Off: it stays here, and Check makes sure you come back for it',
-    after: 'The stretch after it', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
+    after: 'The stretch after it', afterTo: (n) => `Next stretch, to ${n}`, afterSub: 'Its sport, how it’s drawn and its style', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
     startHere: 'Start here', startSub: 'The part before it is removed, Undo brings it back', endHere: 'End here', endSub: 'The part after it is removed, Undo brings it back',
     remove: 'Remove', removeSub: 'Undo brings it back', theRoute: 'The route', backStart: 'Back to start', backStartSub: 'Adds a leg back to the start',
     reverse: 'Reverse', reverseSub: 'The route runs the other way, from the end to the start',
@@ -2264,7 +2271,7 @@ const W5 = {
     tagNight: (x) => `Night · go on at ${x}`, tagStop: (m) => `Stop · ${m} min`, tagChange: (s, m) => `${s} from here · changeover ${m} min`,
     say: {
       stays: ['Places to sleep nearby open in a list: tap one to move the night there', false], leave: ['The times to leave open in a list', false],
-      sport: ['The sports open in a list: the one you pick runs to the next change of sport, or the end', false],
+      sport: ['The sports open in a list: the one you pick runs to the next change of sport, or the end. Paddle shows its crafts under it', false],
       move: ['Tap the map where the point goes. Cancel leaves it where it was', false], rename: ['The name becomes a field in the card, with Save', false],
       startat: ['The route starts here now', true], endat: ['The route ends here now', true], remove: [(n) => `${n} removed`, true],
       backstart: ['A leg back to the start is added', true], reverse: ['The route runs the other way now', true],
@@ -2284,7 +2291,7 @@ const W5 = {
     leave: 'Lähtöaika', leaveSub: 'Ajat ja sää reitin varrella lasketaan tästä',
     sportFrom: 'Laji tästä eteenpäin', sportFromSub: 'Seuraavaan lajinvaihtoon tai loppuun', changeover: 'Vaihtoaika',
     bikeAlong: 'Pyörä mukaan', bikeAlongSub: 'Pois: se jää tähän, ja Tarkista varmistaa, että palaat hakemaan sen',
-    after: 'Seuraava osuus', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
+    after: 'Seuraava osuus', afterTo: (n) => `Seuraava osuus: ${n}`, afterSub: 'Laji, miten se piirretään ja tyyli', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
     startHere: 'Aloita tästä', startSub: 'Osa ennen tätä poistetaan, Kumoa tuo sen takaisin', endHere: 'Lopeta tähän', endSub: 'Osa tämän jälkeen poistetaan, Kumoa tuo sen takaisin',
     remove: 'Poista', removeSub: 'Kumoa tuo sen takaisin', theRoute: 'Reitti', backStart: 'Takaisin lähtöön', backStartSub: 'Lisää osuuden takaisin lähtöön',
     reverse: 'Käännä', reverseSub: 'Reitti kulkee toiseen suuntaan, lopusta lähtöön',
@@ -2302,7 +2309,7 @@ const W5 = {
     tagNight: (x) => `Yöpyminen · jatka klo ${x}`, tagStop: (m) => `Tauko · ${m} min`, tagChange: (s, m) => `${s} tästä eteenpäin · vaihtoaika ${m} min`,
     say: {
       stays: ['Yöpaikat lähellä aukeavat listaksi: napauta yhtä, niin yö siirtyy sinne', false], leave: ['Lähtöajat aukeavat listaksi', false],
-      sport: ['Lajit aukeavat listaksi: valitsemasi laji jatkuu seuraavaan lajinvaihtoon tai loppuun', false],
+      sport: ['Lajit aukeavat listaksi: valitsemasi laji jatkuu seuraavaan lajinvaihtoon tai loppuun. Melonnan alla ovat sen alukset', false],
       move: ['Napauta karttaa, minne piste menee. Peru jättää sen paikalleen', false], rename: ['Nimestä tulee kenttä korttiin, ja Tallenna', false],
       startat: ['Reitti alkaa nyt tästä', true], endat: ['Reitti loppuu nyt tähän', true], remove: [(n) => `${n} poistettu`, true],
       backstart: ['Osuus takaisin lähtöön lisätty', true], reverse: ['Reitti kulkee nyt toiseen suuntaan', true],
@@ -2371,7 +2378,7 @@ function pointCard5(st, v, desk) {
     if (E.here === 'night') h += `<div class="c2-detail"><span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="goon5" data-v="${i}">${esc(E.goon)} ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span></div>${list5([item5('say', 'tent', u.sleep, u.sleepSub, { v: 'stays', chev: true })])}`;
   }
   if (first) h += list5([item5('say', 'clock', u.leave, u.leaveSub, { v: 'leave', val: q.depart || q.tm, chev: true })]);
-  const after = x ? item5('stsel', 'route', u.after, `${x.A.name} → ${x.B.name}`, { v: `${i}-${nextI}`, chev: true }) : '';
+  const after = x ? item5('stsel', 'route', u.afterTo(x.B.name), u.afterSub, { v: `${i}-${nextI}`, chev: true }) : ''; // (Next stretch, to …: 2026-10-22)
   if (st.mode === 'view') return h + list5([after]) + lock5();
   if (!last) {
     const sp = q.change ? q.change.to : x ? x.sp : q.sp;
@@ -2455,6 +2462,8 @@ function warnRow5(st, v, desk) {
 }
 // Check's items: the cards' rows, in their group's shape and colour; › shows the item on the route (lit while it's open)
 const checkRow5 = (st, w, g, idx) => item5('wpick', w.ic, w.b, w.w, { v: idx, chev: true, cls: `c5-w ${g}${st.step === idx ? ' c5-lit' : ''}` });
+// (C, chosen 2026-10-22) what can stop you is the red warning box, as in the peek, a section and on the cards
+const checkBox5 = (st, w, g, idx) => `<button type="button" class="c2-warn read${st.step === idx ? ' c5-lit' : ''}" data-act="wpick" data-v="${idx}"${st.step === idx ? ' aria-current="true"' : ''}>${ic(w.ic, 20)}<span><b>${esc(w.b)}</b><small>${esc(w.w)}</small></span>${ic('right', 18)}</button>`;
 // the list: sections as approved, with the cards' rows for the points and the stretches, and a section's warnings in the box
 function sectionsV1r5(st, v, desk) {
   const u = U5(), P = ucPoints(st), V = visibleIdx(st), sel = st.psel, S0 = st.str;
