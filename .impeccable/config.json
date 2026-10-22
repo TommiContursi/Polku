@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/design-system.html"
+        ],
+        "createdAt": "2026-10-22T04:43:46.414Z",
+        "reason": "Claude: the flagged box is the app's sum-item.miss, copied verbatim from css/app.css (34e5a02) so the mock-up matches what is built"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/design-system.html"
+        ],
+        "createdAt": "2026-10-22T04:43:46.487Z",
+        "reason": "Claude: the inner card is a demo of the floating menu (menu-item) shown inside the specimen's controls panel, not page structure"
+      }
+    ]
+  }
+}
