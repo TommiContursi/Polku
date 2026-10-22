@@ -66,6 +66,21 @@ SETTLED = """new Promise((done) => {
   requestAnimationFrame(frame);
 })"""
 
+# Before the page loads, for checks that need none of Traficom's depths: its map tiles answer at once, empty, and
+# its other calls fail as if blocked. (Slow to answer at times, they kept the map from loading; blocked, a tile that
+# failed last kept MapLibre's load event and Polku's load step from coming at all: #393, #378, #361.)
+EMPTY_DEPTHS = """(() => {
+  const real = window.fetch.bind(window);
+  let empty = null;
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/[^/]*traficom\\.fi\\//.test(url)) return real(input, init);
+    if (!/request=GetMap/i.test(url)) return Promise.reject(new TypeError('Failed to fetch'));
+    empty ||= new OffscreenCanvas(256, 256).convertToBlob({ type: 'image/png' });
+    return empty.then((png) => new Response(png, { headers: { 'Content-Type': 'image/png' } }));
+  };
+})();"""
+
 
 # Drag the middle of the first leg (straight-line legs: no routing requests):
 # with the mouse on desktop, hold-then-drag on touch. Expect one new point under
@@ -4816,7 +4831,7 @@ def column_early(chrome):
     for sport, wx in (('mtb', {}), ('paddle', {}), ('paddle', {'temp': True})):
         name = f"390x844 {sport}, the timeline on{', the temperature too' if wx else ''}"
         pg = chrome.page(390, 844, True)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COLUMN_HOLD}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True, **({'weather': {'wind': False, 'rain': False, **wx}} if wx else {})},
                     {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'})
@@ -4933,6 +4948,9 @@ ACTS = """(() => { const b = document.querySelector('#activity-bar .act-current'
   return { open: !document.querySelector('#activity-bar .act-menu').hidden, expanded: b.getAttribute('aria-expanded'),
     pill: [r.left + r.width / 2, r.top + r.height / 2], focus: document.activeElement === b, sport: polku.state.activity,
     hover: matchMedia('(hover: hover) and (pointer: fine)').matches }; })()"""
+# The load step's snow check (FMI, else the forecast) draws the pill again when it answers, and that closes a menu
+# open then (#392). A check of the menu waits for the answer first: 30 s at most, when neither answers.
+SNOW_IN = "new Promise((ok) => { const t0 = Date.now(), go = () => polku.state.winterSnow || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })"
 
 
 def sport_menu(chrome):
@@ -4946,9 +4964,10 @@ def sport_menu(chrome):
 
     def page(w, h_, phone, sport):
         pg = chrome.page(w, h_, phone)
-        # Traficom's depths, slow to answer at times, keep the map from loading; the menu needs none of them
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        # the menu needs none of Traficom's depths
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"'})
+        pg.js(SNOW_IN)  # (a late answer closed the menu a tap had just opened, and every tap after it was one behind: #371)
         return pg
 
     def key(pg, k, code, vk, char=None):
@@ -5111,7 +5130,7 @@ def nextleg(chrome):
 
     def page(w, h_, phone, sport):
         pg = chrome.page(w, h_, phone)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:speeds': '{}'}, '#15/61.4975/23.738')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         pg.js(NL)
@@ -5455,8 +5474,8 @@ def button3d(chrome):
 
     def page(w, h_, phone, sport, settings=None):
         pg = chrome.page(w, h_, phone)
-        # Traficom's depths, slow to answer at times, keep the map from loading; the button needs none of them
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        # the button needs none of Traficom's depths
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True, **(settings or {})}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         # open_app() returns once the map has loaded, which can be a frame before MapLibre's load event runs Polku's
@@ -5828,7 +5847,7 @@ def toolbox(chrome):
 
     def page(w, h_, phone, sport='mtb', dock='left'):
         pg = chrome.page(w, h_, phone)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"', 'polku:plannerDock': json.dumps(dock)})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })")
@@ -6714,7 +6733,7 @@ def start(chrome):
         fails = []
         pg = chrome.page(w, h_, phone)
         try:
-            pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0.002, 0)}, pg.s)
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': START_LIPAS}, pg.s)
             pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"', **LOCAL_BROUTER}, '#13/61.50/23.80')
@@ -6800,7 +6819,7 @@ def route_view(chrome):
 
     def page(w, h_, phone, sport='mtb'):
         pg = chrome.page(w, h_, phone)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         return pg
