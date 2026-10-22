@@ -73,6 +73,53 @@ The mock-up and the ideas went through Emil Kowalski's skills: design engineerin
 
 What held up: the numbers stack one to a row, the icon switch becomes a column, rows and warning boxes wrap, and nothing scrolls sideways at 320 px.
 
+## What the first pass left out: the planner, dragging, and the route on the map
+
+The draft and the first version of these notes covered the controls in DEVELOPING's table. Polku also has controls of the planner's own, things you drag, and a route line that glows and moves. They're part of the same look and get the same treatment: one style for each job, values instead of numbers typed in place, a dark version, and a check at 200 %. Read on the cards branch at 34e5a02.
+
+### The planner's own controls
+
+- **Grips and handles: five looks for one job.** The sheet's handle (`sheet-handle`, a 32 × 4 bar in a 72 × 18 target), the layer drawer's (`qd-grab`, 36 × 4), the desktop panel's and the timeline's edge (`sheet-resize`, `tl-grip`, 4 px wide) and a point's grip in the list (`wpl-grip`, an icon at 70 %). The bars are a grey typed in place (`rgba(95, 107, 101, .4)`, 1.8:1 on white) with no dark version, and the list's grip icon is 3.0:1 at its 70 %.
+  - **Proposed:** one `grip` look and a `--grip` value with a dark version, at least 3:1, since it's the only sign that something can be dragged. It turns `--accent` while held. Its target is 44 px on phones; the list's grip is 28 px tall today.
+- **Minimise (⌃), the ⋯ menus, Done, the tabs and the toolbox** (`tool`, `tbtn`, `modebtn`, `pl-tab`) come under the controls step like the rest. ⌃ is a `tool` with a `chevronUp` icon, and the sheet's handle also responds to a press. Every one of these gets the shared focus ring, press feedback and 36 / 44 px targets.
+
+### Dragging
+
+What Polku lets you drag today:
+
+| What | How it shows | Without a drag |
+|---|---|---|
+| The planner's sheet and the layer drawer | Follows the finger, rubber-bands at its ends, settles with a spring from the finger's speed (`js/sheet.js`) | A press on the handle; Done |
+| The desktop panel's and the timeline's width | `ew-resize` cursor; the edge turns green | Not yet: a gap |
+| A point on the map | `grab` / `grabbing`; the route follows live | **Move** on its card |
+| The middle of a leg (reshape) | A small handle that grows by 1.3 on hover | Add a point, then Move |
+| A point in the list | The row lifts (`--shadow`), a 2 px green line shows where it lands | ↑ and ↓ buttons |
+| The profile chart | A drag zooms into a stretch | — |
+| A GPX or KML file | A drop hint over the page | **Import** |
+
+- **Proposed: one set of drag states,** written once. *Can drag:* the grip and the `grab` cursor with a mouse. *Held:* the thing lifts with `--shadow`, follows 1:1, and turns off its transitions. *Where it lands:* a 2 px `--accent` line or ring. *Let go:* it settles on `--ease-out`, or with the sheet's spring when it carries speed.
+- **Every drag keeps a way without dragging,** as the list's ↑/↓ and a point's **Move** do. Resizing the desktop panel and the timeline has none yet (keyboard arrows on the focused edge would do). That's WCAG 2.2's 2.5.7, so it's an issue of its own.
+- **The springs are values too.** The sheet's (damping 0.85, response 0.3 s, a flick at 1.1 px/ms, rubber band 0.55) live in `SWIPE` in `js/sheet.js`. That's one place already; DESIGN.md records them beside the CSS curves, so a new drag uses the same feel.
+
+### The route on the map
+
+What draws the route today (`js/style.js`, `js/routeflow.js`, `css/app.css`):
+
+- **The line:** a white casing (90 %) under a red line, 3 px at zoom 8 to 6.5 px at zoom 16. Over water it's blue, a straight-line leg is darker red and dashed (2.5 · 1.2), a leg being routed is grey and dotted (1 · 1.5), a carry is orange dots, and a point the route couldn't reach is a thin grey dashed line.
+- **The glow (#198):** a soft halo in the route's colour at 30 %, and a brighter one at 55 % on the leg under the pointer, fading in 150 ms.
+- **The moving chevrons:** white, at 90 %, 26 px apart, drifting 14 px a second (one spacing every 2 s), drawn at no more than 24 frames a second. They run only while the route is in view, the page is visible and the map is flat. They rest 45 s after the last touch, and with reduced motion they don't move at all; static arrows show the way instead.
+- **Also on the line:** **Colour by** (grade, surface and the rest), the other ways for a leg with their labels, the round trip's loops, distance marks, the hover dot, and wind and uphill arrows.
+- **The points:** a white disc with a black ring and its number; the start green with ▶, the end black. While one is open on a card, it's ringed in `--accent-bg` and white.
+
+**Where it holds up:** the chevrons are the one thing that moves on the map, and they already respect reduced motion, a hidden page and the battery. The glow fades rather than jumps. Leave both as they are.
+
+**Proposed:**
+- **Every colour and size above becomes a value,** read by `js/style.js` from the CSS (step 3 of the draft). Today about 20 of them are typed into `style.js`, `planner.js` and `app.css` separately (`#e11d48` alone eight times), so dark mode, the night map and outdoor contrast can't reach them.
+- **One rule for the map's motion:** the chevrons are the only thing that moves without being touched. Anything else animates once, in answer to something you did (a hover, a pulse when a point is chosen), and never loops.
+- **The chevrons must show on every leg.** White at 90 % measures 4.0:1 on the red line and 5.1:1 on the blue water leg. On **Colour by**'s light colours it fades: 2.1:1 on the pale green of an easy grade and 1.5:1 on the yellow one. A thin dark edge on each chevron, or chevrons that take the line's own darkest shade under light colours, keeps them visible. To check on the terrain map, aerial photos and the night map, as the draft's part 4 says.
+- **The glow stays below the warnings.** 25d part 3 puts warning markers on the route. The glow under the pointer must not wash them out, so the markers sit above the glow, with their white disc.
+- **The points join the values too:** their black and white become `--wp-ink` and `--wp-paper` (the same in both themes, since they sit on the map), and the start's green becomes `--good`. The handles in the middle of a leg take the leg's colour from the same values as the line.
+
 ## Order
 
 The draft's order holds: values first, then the controls one PR each, then the JavaScript's colours, then the route on the map. With these notes:
