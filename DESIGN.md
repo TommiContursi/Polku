@@ -96,7 +96,7 @@ The map fills the screen and always has the stage. Everything else floats over i
 
 The components are calm and sure-footed. Surfaces are quiet and nearly neutral, a cool green-grey, so the map's colours and the red route line carry the colour. There is one clear main action at a time, in forest green. Targets are at least 44 px where a finger uses them, and words say what happens ("Make 3 loops", "Back to start") rather than leaning on icons alone. The look is built to be legible outdoors: in bright sun, with one thumb, at a glance.
 
-This file holds the tokens: colours, type, shapes, spacing, depth and motion. **The controls themselves are listed in [docs/DEVELOPING.md, "Shared controls"](docs/DEVELOPING.md#shared-controls)**, which is the one list of them; a new screen reuses those for the same jobs. The values here come from `css/app.css`, which stays the source: when the two differ, the CSS is right and this file is out of date.
+This file holds the tokens: colours, type, shapes, spacing, depth and motion. **The controls themselves are listed in [docs/DEVELOPING.md, "Shared controls"](docs/DEVELOPING.md#shared-controls)**, which is the one list of them; a new screen reuses those for the same jobs. The values here come from `css/app.css`, which stays the source: when the two differ, the CSS is right and this file is out of date. **Where a rule below isn't yet true everywhere, it says so.** [The design-system plan](docs/plans/design-system.md) (#382) is how it becomes true; until then, a new screen follows the rule, not the exception.
 
 **Key Characteristics:**
 - The map first; controls on translucent cards over it.
@@ -117,7 +117,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 ### Secondary
 - **Route (red)**: the route line on the map, its glow, and the Plan button. It is the one strong colour on the screen and is kept for the route.
 - **Route over water (deep blue)**: water legs of a route are drawn blue instead of red, with the same glow, and the map's key says so ("Over water").
-- **Colour by** in the planner can recolour the route line on the map (with its **On map** switch) by grade, uphill difficulty, surface, kind of way, trail width, wind, temperature or rain. Those scales are the profile's and live in `js/planner.js` and `js/chart.js`; with any of them the plain red is replaced along the whole line.
+- **Colour by** in the planner can recolour the route line on the map (with its **On map** switch) by grade, uphill difficulty, surface, kind of way, trail width, wind, temperature or rain. Those scales live in `js/config.js`, `js/chart.js`, `js/weather.js` and `js/wxmap.js` (`js/planner.js` only copies them as swatches); with any of them the plain red is replaced along the whole line. How they read, for colour blindness too, is in the design-system plan's §2.
 - **You (blue)**: the location dot and its accuracy circle (`--you-soft`). Blue is kept for "where you are" and for water.
 
 ### Tertiary
@@ -133,7 +133,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - The map's own colours (land, water, parks, labels) are in `js/style.js`, one palette per map style. The sports' own line colours are `SPORT_COLORS` in `js/config.js`.
 
 ### Named Rules
-**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Red belongs to the route, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative.
+**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Red belongs to the route, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. Today two things break it: the **Plan** button is red, and **Colour by**'s wind scale draws headwinds in red (#382 asks the user about both).
 
 **The Never by Colour Alone Rule.** Every colour that means something (a warning, a difficulty, a chosen state) is also said in words, a tick, an icon or a shape (PRODUCT.md, WCAG 2.2 AA).
 
@@ -144,6 +144,9 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 **Character:** one familiar sans-serif in a few weights, compact on a desktop and readable on a phone; bold carries the hierarchy, not size jumps.
 
 ### Hierarchy
+
+These are the roles. Today the CSS uses 18 sizes between 9 and 22 px, including half sizes (11.5, 12.5, 13.5, 14.5, 16.5); the design-system plan settles them on nine.
+
 - **Numeral** (700, 22 px, line-height 1, tabular figures): the big numbers, such as the time in the timeline and the round trip's length.
 - **Title** (700, 17 px): a step's title, such as the route's name and "Round trip from your start", and the main action's words (`btn primary big`).
 - **Heading** (700, 16 px): a panel's or drawer's heading.
@@ -156,7 +159,9 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 ### Named Rules
 **The Tabular Numbers Rule.** Numbers that change or line up (times, distances, the timeline) use tabular figures, so they don't jump as they update.
 
-**The Room for Finnish Rule.** Names, headings and labels wrap rather than run out of their box (`overflow-wrap: anywhere`), because Finnish and Swedish are coming (phase 18) and their words are long.
+**The Room for Finnish Rule.** Names, headings and labels wrap rather than run out of their box (`overflow-wrap: anywhere`), because Finnish and Swedish are coming (phase 18) and their words are long. Today a card's title still uses `break-word` and can run off at 200 % (#384).
+
+**The Small on Purpose Rule.** Polku is a map, and some text is small so the map has the room: the scale bar, the credits, the map's own labels, chart axes, units beside a number, a word under an icon, a number inside a mark. Those may go down to 10 px. Text you read to decide or act (names, values, actions, warnings, a row's line) is 12 px or more. Small or not, text passes 4.5:1 and grows with the browser's text size.
 
 ## Layout
 
@@ -167,11 +172,11 @@ The map is fixed behind everything (`#map`, inset 0). Over it:
 
 The switch is at **720 px**: up to 720 px wide is the phone layout, 721 px and up the desktop one; there's a wider step at 900 px, and short screens (under 500 px or 760 px high) get a more compact sheet. Touch is decided by the pointer, not the width: `pointer: coarse` grows targets to 44 px, and hover styles apply only where `hover: hover`.
 
-Spacing is a tight 2–4–6–8–12 px rhythm: 6 and 8 px between items in a row, 10 to 14 px of padding inside cards, 12 px from the screen's edges. Rows are 44 px high where they're tapped (48 px for the larger ones), 32 to 40 px for buttons with a mouse.
+Spacing is a tight 2–4–6–8–12 px rhythm: 6 and 8 px between items in a row, 10 to 14 px of padding inside cards, 12 px from the screen's edges. Targets are 44 px by touch at any width and 36 px with a mouse, 8 px apart (#380). A target is the area that answers a tap, not the size it looks: a control can be small to look at, with its touch area grown around it. Today many controls are still smaller (#235).
 
 ## Elevation & Depth
 
-Depth comes from floating over the map: cards and sheets are translucent with a background blur of 10 to 14 px and one soft shadow, and the map moves under them. There's one shadow token for everything that floats; nothing stacks shadows to make a hierarchy.
+Depth comes from floating over the map: cards and sheets are translucent with a background blur of 10 to 14 px and one soft shadow, and the map moves under them. One shadow token (`--shadow`) carries most of what floats; nothing stacks shadows to make a hierarchy. Today about 38 other shadows are typed in place in `css/app.css`, which #382 moves onto four values.
 
 ### Shadow Vocabulary
 - **Float** (`--shadow`: `0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12)`; darker in dark mode): every card, sheet, menu and map button over the map.
@@ -185,16 +190,16 @@ Depth comes from floating over the map: cards and sheets are translucent with a 
 
 ## Shapes
 
-Gently rounded, never sharp. Cards and panels have 14 px corners (`--radius`); buttons and rows 10 to 12 px; small things such as swatches and inputs 6 px. Pills (999 px) are for chips, the sport pill and switches; round (50 %) for icon-only map buttons and dots. The phone's sheet has 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
+Gently rounded, never sharp. Cards and panels have 14 px corners (`--radius`); buttons and rows 10 to 12 px; small things such as swatches and inputs 6 px. Pills (999 px) are for chips, the sport pill and switches; round (50 %) for icon-only map buttons and dots. The planner's sheet floats 8 px in from the screen's edges on a phone, with 18 px corners all round; the layer drawer's and the panels' sheets have 20 px corners at the top only. Borders are a single 1 px line in `--line`, used sparingly.
 
 ## Components
 
 The controls, with their classes and where each comes from, are in **[docs/DEVELOPING.md, "Shared controls"](docs/DEVELOPING.md#shared-controls)**. That table is the one list: this file doesn't repeat it. A new screen uses those controls for the same jobs, a mock-up copies their CSS from `css/app.css`, and a new control is proposed to the user first and then joins that table.
 
 What every control shares:
-- **Focus:** a 2 px outline in the accent, 2 px out (the route colour on route controls).
-- **Hover:** `--surface-2` behind, only on devices that hover.
-- **Pressed or chosen:** the accent, plus a tick or `aria-pressed`, never colour alone.
+- **Focus:** a 2 px outline in the accent, 2 px out (the route colour on route controls), inside a row of a list. Today `btn`, `tool`, `chip`, `way-tile` and `way-back` still show the browser's own ring (#382), and the sport menu and ⋯ menus show none (#385).
+- **Hover:** `--surface-2` behind, only with a mouse. Today 38 of 57 hover rules also apply on touch screens, where they stay after a tap (#208), and the hover looks vary (`--surface-2`, `--surface-solid`, `--accent-soft`, `--accent-bg`).
+- **Pressed or chosen:** the accent, plus a tick or `aria-pressed`, never colour alone. Today "chosen" has several looks; #356 settles them on a green border for chips and white with a green icon for switches.
 - **Motion:** short and quiet. Hover and press take 120 to 150 ms; the drawer and sheets slide in 180 to 260 ms on an ease that settles (`--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1)`, `--ease-out: cubic-bezier(0.23, 1, 0.32, 1)`). With reduced motion asked for, they fade in place instead of sliding, and pulses stop.
 
 ## Do's and Don'ts
