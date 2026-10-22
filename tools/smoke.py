@@ -5493,8 +5493,8 @@ def button3d(chrome):
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True, **(settings or {})}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-        # open_app() returns once the map has loaded, which can be a frame before MapLibre's load event runs Polku's
-        # load step: that opens the timeline, and on a phone the column then moves up above it (#292)
+        # Polku's load step opens the timeline, and on a phone the column then moves up above it (#292): open_app()
+        # waits for the step, 45 s at most, and this says so if the timeline still isn't open
         if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden ? ok(true)"
                      " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 100); go(); })"):
             fails.append(f'{w}x{h_} {sport}: the timeline did not open in 45 s (Polku’s load step)')
