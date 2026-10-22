@@ -529,6 +529,7 @@ SCENES = {
     # phase 12b: trail details along the route (recorded route + tile, no routing, no Overpass)
     'desk-trail-headsup': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('warnings')),
     'phone-trail-headsup': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='full', pre=TRAILS_PRE, js=TRAIL_ROUTE('warnings')),
+    'desk-trail-headsup-dark': dict(DESK, dark=True, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('warnings')),
     'desk-trail-width': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'width')),
     'phone-trail-width': dict(PHONE, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', state='half', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'width')),
     'desk-trail-vis': dict(DESK, timeline=False, route='route-tykkikallio-mtb.json', hash='#15/62.2285/25.7645', pre=TRAILS_PRE, js=TRAIL_ROUTE('profile', 'vis')),
@@ -673,6 +674,9 @@ SCENES = {
     'phone-point-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
     'desk-point-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
     'phone-point-card-200': dict(w=180, h=370, phone=True, timeline=False, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD('Pirunvuoren näköalapaikan pohjoisrinteellä', 'list')),
+    # #370: red words in dark mode (a point's card's Remove, Heads-up's Avoid)
+    'phone-point-card-dark': dict(PHONE, dark=True, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
+    'desk-point-card-dark': dict(DESK, dark=True, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
 }
 
 WAIT_ROUTE = ("new Promise((ok) => { const p = polku.planner, t0 = Date.now();"

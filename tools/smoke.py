@@ -4815,15 +4815,18 @@ def design_colours(chrome):
 
 # What the map draws with: the route line's colours, its glow's, the trails' difficulty, and the colours of the
 # route coloured by its gradient on the map (Colour by), with the difficulty scale itself
-PALETTE_SEEN = """(async () => {
-  const map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+PALETTE_SEEN = """(async (dark) => {
+  const map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), frame = () => new Promise((r) => requestAnimationFrame(r));
+  // the theme as asked, and two frames on, so its change has been told (that comes before a frame's callbacks)
+  for (let k = 0; k < 50 && matchMedia('(prefers-color-scheme: dark)').matches !== dark; k++) await wait(100);
+  await frame(); await frame();
   for (let k = 0; k < 50 && !map.isStyleLoaded(); k++) await wait(100);
   const paint = (id) => JSON.stringify(map.getLayer(id) ? map.getPaintProperty(id, 'line-color') : null);
   const C = await import(location.origin + '/js/config.js');
   const colored = [...new Set((await map.getSource('routeColor').getData()).features.map((f) => f.properties.color))];
   return { route: paint('route-line'), glow: paint('route-glow'), trails: JSON.stringify(map.getStyle().layers.map((l) => l.paint || {})),
     colored: colored.join(' '), diff: C.DIFF_COLORS.join(' ') };
-})()"""
+})"""
 GRADES = ['--grade-20', '--grade-15', '--grade-10', '--grade-6', '--grade-3', '--grade-flat', '--grade-down', '--grade-steep-down']
 
 
@@ -4840,7 +4843,7 @@ def palette_css(chrome):
           for (const q of [[23.80, 61.509], [23.817, 61.519], [23.838, 61.516]]) p.addPoint(q);
           await p.analysing; p.colorOnMap = true; p.showMode('grade'); return true; })()""")
         grades = pg.js(f"(() => {{ const css = getComputedStyle(document.documentElement); return {json.dumps(GRADES)}.map((n) => css.getPropertyValue(n).trim()); }})()")
-        before = pg.js(PALETTE_SEEN)
+        before = pg.js(PALETTE_SEEN + '(false)')
         for want, where in [('#e11d48', 'route'), ('#be123c', 'route'), ('#0369a1', 'glow'), ('#22a447', 'trails'), ('#22a447', 'diff')]:
             if want not in before[where]:
                 fails.append(f'light: {want} not in the {where} ({before[where][:120]})')
@@ -4851,8 +4854,7 @@ def palette_css(chrome):
           s.setProperty('--diff-s0', '#456789'); s.setProperty('--diff-s1', '#56789a');
           for (const n of {json.dumps(GRADES)}) s.setProperty(n, '#6789ab'); return true; }})()""")
         scheme(pg, 'dark')
-        pg.idle()
-        after = pg.js(PALETTE_SEEN)
+        after = pg.js(PALETTE_SEEN + '(true)')
         for want, where in [('#123456', 'route'), ('#234567', 'route'), ('#345678', 'glow'), ('#456789', 'trails'), ('#456789 #56789a', 'diff')]:
             if want not in after[where]:
                 fails.append(f'dark, with other values on :root: {want} not in the {where} ({after[where][:120]})')

@@ -206,7 +206,7 @@ These are the nine sizes, values on `:root` named by what they're for (`--font-g
 - **Row** (600, 15 px, `--font-row`): the words of a row you tap, such as Back, a way to begin or a sport. Some rows still use 650, which the system fonts draw as 600 or 700.
 - **Body** (400, 14 px, `--font-body`, line-height 1.4): the page's base size.
 - **Control** (600, 13 px, `--font-control`): button labels on a desktop, and a row's second line.
-- **Small** (600, 12 px, `--font-small`): hints, values and lists; the most used size in the panels. Reading text is never smaller.
+- **Small** (600, 12 px, `--font-small`): hints, values and lists; the most used size in the panels. Reading text is never smaller (the Small on Purpose Rule below); today some still is (#235).
 - **Label** (700, 11 px, letter-spacing 0.04–0.08em, uppercase): section labels in muted text, such as a layer group or a search result group. The controls PR makes small headings 12 px capitals.
 
 The weights are `--weight-regular` (400), `--weight-name` (600) and `--weight-strong` (700). On a desktop's card at the point (`.card-float`) the title, the numbers and the rows are one step smaller (15, 17 and 14 px), set once on the card.
