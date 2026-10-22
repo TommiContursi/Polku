@@ -352,6 +352,8 @@ button.warnr span { flex: 1; font-weight: 600; }
 }
 /* the narrowest (200 % on a 360 px phone): the mark gives its room to undo, redo and ✕ */
 @container (max-width: 190px) { .c2-g { display: none; } }
+/* narrow: the item's ‹ 1 of 3 › keep their row, and All in Check takes the next */
+@container (max-width: 290px) { .c2-stepper { flex-wrap: wrap; } .c2-stepper .grow { flex-basis: 100%; height: 0; } }
 .fr.dark .c2-warn.read { background: rgba(255,138,138,.14); }
 .c2-warn.read { background: #fbe9e9; }
 .c2-warn.read > .ic:first-child { color: var(--danger); }
@@ -427,6 +429,9 @@ button.warnr span { flex: 1; font-weight: 600; }
 .c5-remove { width: 100%; min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1.5px solid var(--danger); border-radius: 10px; background: transparent; color: var(--danger); font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer; }
 @media (hover: hover) { .c5-btn:hover { background: var(--surface-2); } .c5-remove:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); } }
 .c5-btn:focus-visible, .c5-remove:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* Paddle's crafts under its row in Sport from here, the app's own chips (2026-10-22) */
+.c5-crafts { padding: 0 10px 8px 42px; display: grid; gap: 6px; }
+.c5-crafts .c2-note { margin: 0; font-size: 13px; color: var(--muted); }
 /* phones: Copy is a finger's size too */
 .fr.phone .r5 .c2-kv button { min-height: 44px; padding: 0 12px; }
 /* the point's row in the planner's list lights up while its card is open: one point, two places, nothing jumps */
@@ -1115,7 +1120,7 @@ const T2 = {
     leave: 'Leave at', leaveVal: 'Now', leaveSub: 'Sets the times and the weather along the route',
     fromHere: 'From here', sportFrom: 'Sport from here', sportFromSub: 'To the next change of sport, or the end',
     changeover: 'Changeover', bikeAlong: 'Take the bike along', bikeAlongSub: 'Off: it stays here, and Check makes sure you come back for it',
-    after: 'The stretch after it', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
+    after: 'The stretch after it', afterTo: (n) => `Next stretch, to ${n}`, afterSub: 'Its sport, how it’s drawn and its style', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
     startHere: 'Start here', startSub: 'The part before it is removed, Undo brings it back', endHere: 'End here', endSub: 'The part after it is removed, Undo brings it back',
     loopStart: 'Start here', loopStartSub: 'The same loop, starting from this point',
     remove: 'Remove', removeSub: 'Undo brings it back',
@@ -1128,6 +1133,7 @@ const T2 = {
     osmSub: 'The map\u2019s own data, as tags', lipasSub: 'LIPAS\u2019s page for this place', webSub: 'The place\u2019s own page',
     stays5: 'Places to sleep nearby', staysNote5: 'From LIPAS and OpenStreetMap. Tap one to move the night there.', staysList5: [['Kaupin laavu', 'Lean-to', '0.8 km'], ['Tapatoran kota', 'Hut', '1.4 km'], ['Camping Härmälä', 'Campsite', '2.6 km']],
     stayMoved5: (n) => `The night moved to ${n}`, leaveTimes5: ['Now', '11:00', '12:00', '13:00', 'Tomorrow 08:00'], goonTimes5: ['06:00', '07:00', '08:00', '09:00'],
+    crafts5: [['kayak', 'Sea kayak'], ['canoe', 'Canoe'], ['sup', 'SUP']], craftNote5: 'For all your paddle legs. Polku keeps a canoe or a SUP to calmer water than a sea kayak, and times the route at its speed.',
     sport5: 'Sport for this stretch', styles5: { mtb: ['Balanced', 'Flowy trails', 'Technical', 'Smooth & easy', 'Roads to the trail'], hike: ['Balanced', 'Nature paths', 'Easy paths', 'Mountain'] },
     reverse5: 'Reverse', reverseSub5: 'The route runs the other way, from the end to the start',
     look2: 'Loose gravel', lookWhere2: '2.6 km', lookSrc2: 'From the map: OpenStreetMap', lookNote2: 'Loose gravel on the shore path. Slow down on the descent.',
@@ -1164,7 +1170,7 @@ const T2 = {
     leave: 'Lähtöaika', leaveVal: 'Nyt', leaveSub: 'Ajat ja sää reitin varrella lasketaan tästä',
     fromHere: 'Tästä eteenpäin', sportFrom: 'Laji tästä eteenpäin', sportFromSub: 'Seuraavaan lajinvaihtoon tai loppuun',
     changeover: 'Vaihtoaika', bikeAlong: 'Pyörä mukaan', bikeAlongSub: 'Pois: se jää tähän, ja Tarkista varmistaa, että palaat hakemaan sen',
-    after: 'Seuraava osuus', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
+    after: 'Seuraava osuus', afterTo: (n) => `Seuraava osuus: ${n}`, afterSub: 'Laji, miten se piirretään ja tyyli', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
     startHere: 'Aloita tästä', startSub: 'Osa ennen tätä poistetaan, Kumoa tuo sen takaisin', endHere: 'Lopeta tähän', endSub: 'Osa tämän jälkeen poistetaan, Kumoa tuo sen takaisin',
     loopStart: 'Aloita tästä', loopStartSub: 'Sama kierros, alkaen tästä pisteestä',
     remove: 'Poista', removeSub: 'Kumoa tuo sen takaisin',
@@ -1177,6 +1183,7 @@ const T2 = {
     osmSub: 'Kartan omat tiedot tageina', lipasSub: 'LIPASin sivu tästä paikasta', webSub: 'Paikan oma sivu',
     stays5: 'Yöpaikat lähellä', staysNote5: 'LIPASista ja OpenStreetMapista. Napauta, niin yö siirtyy sinne.', staysList5: [['Kaupin laavu', 'Laavu', '0,8 km'], ['Tapatoran kota', 'Kota', '1,4 km'], ['Camping Härmälä', 'Leirintäalue', '2,6 km']],
     stayMoved5: (n) => `Yö siirtyi: ${n}`, leaveTimes5: ['Nyt', '11:00', '12:00', '13:00', 'Huomenna 08:00'], goonTimes5: ['06:00', '07:00', '08:00', '09:00'],
+    crafts5: [['kayak', 'Merikajakki'], ['canoe', 'Kanootti'], ['sup', 'SUP']], craftNote5: 'Kaikille melontaosuuksillesi. Polku pitää kanootin tai SUPin tyynemmillä vesillä kuin merikajakin ja laskee ajan sen nopeudella.',
     sport5: 'Laji tällä osuudella', styles5: { mtb: ['Tasapainoinen', 'Virtaavat polut', 'Tekninen', 'Tasainen ja helppo', 'Teitä polulle'], hike: ['Tasapainoinen', 'Luontopolut', 'Helpot polut', 'Vuoristo'] },
     reverse5: 'Käännä', reverseSub5: 'Reitti kulkee toiseen suuntaan, lopusta lähtöön',
     look2: 'Irtosoraa', lookWhere2: '2,6 km', lookSrc2: 'Kartalta: OpenStreetMap', lookNote2: 'Irtosoraa rantapolulla. Hidasta alamäessä.',
@@ -1256,7 +1263,8 @@ function pointCard2(f, st) {
     if (here === 'night') h += `<div class="c2-detail"><span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="goon">${st.goon || '07:00'} ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span></div>${list([item('stays', 'tent', u.sleep, u.sleepSub, { chev: true })])}`;
   }
   if (first) h += list([item('leave', 'clock', u.leave, u.leaveSub, { val: st.leave || u.leaveVal, chev: true })]);
-  const afterRow = !last ? item('after', 'route', u.after, `${pn(f, i)} → ${pn(f, i + 1)}`, { chev: true }) : '';
+  // Next stretch, to …: where it goes, in its name, so a desktop says it too (the user's answer in 1a, 2026-10-22)
+  const afterRow = !last ? item('after', 'route', u.afterTo(pn(f, i + 1)), u.afterSub, { chev: true }) : '';
   if (view) return h + list([afterRow]) + lock(f);
   if (!last) {
     const ch = st.change;
@@ -1276,7 +1284,10 @@ function pointCard2(f, st) {
 }
 function sportCard2(f, st) {
   const u = U(f), cur = st.change ? 'paddle' : f.sport;
-  return head2(f, G2.via(st.pt), u.sportsTitle, u.sportsSub(pn(f, st.pt)), 'point') + list(u.sports.map(([k, l, icn]) => item(`pick-${k}`, icn, l, u.sportLines[k], { role: 'menuitemradio', checked: k === cur, val: k === f.sport ? u.yourRoute : null })));
+  // Paddle, once picked, has its crafts under it and the card stays open at them: the craft is the whole route's
+  // (the user's answer in 1a, 2026-10-22; the app's own chips, `way-chips chip`)
+  const craft = st.craft || 'kayak', crafts = `<div class="app c5-crafts"><div class="way-chips" role="group" aria-label="${esc(u.sportNames.paddle)}: the craft">${u.crafts5.map(([k, l]) => `<button type="button" class="chip" data-act="craft-${k}" aria-pressed="${k === craft}">${k === craft ? ic('check', 15) : ''}<span>${esc(l)}</span></button>`).join('')}</div><p class="c2-note">${esc(u.craftNote5)}</p></div>`;
+  return head2(f, G2.via(st.pt), u.sportsTitle, u.sportsSub(pn(f, st.pt)), 'point') + list(u.sports.flatMap(([k, l, icn]) => [item(`pick-${k}`, icn, l, u.sportLines[k], { role: 'menuitemradio', checked: k === cur, val: k === f.sport ? u.yourRoute : null }), k === 'paddle' && cur === 'paddle' ? crafts : '']));
 }
 function routeCard2(f, st) {
   const u = U(f), km = st.km, w = wayAt(km), s = stretchOf(km);
@@ -2508,7 +2519,8 @@ function act(fr, a) {
   if (a === 'co-' || a === 'co+') { st.co = Math.max(0, (st.co ?? 10) + (a === 'co+' ? 5 : -5)); render(fr); return; }
   if (a === 'item-step') { st.item2 = !st.item2; render(fr); return; }
   if (a.startsWith('here-')) { st.here = a.slice(5); render(fr); return; }
-  if (a.startsWith('pick-')) { st.change = a.slice(5) !== (st.sport || PK.sport); st.card = 'point'; render(fr); return; }
+  if (a.startsWith('pick-')) { st.change = a.slice(5) !== (st.sport || PK.sport); if ((st.v || PK.cards) !== 'r5' || a !== 'pick-paddle') st.card = 'point'; render(fr); return; } // (Revision 5: Paddle stays, at its crafts)
+  if (a.startsWith('craft-')) { st.craft = a.slice(6); render(fr); return; }
   if (a.startsWith('drawn-')) { st.drawn = a.slice(6); render(fr); return; }
   if (/^min-\d+$/.test(a)) { st.min = +a.slice(4); render(fr); return; }
   if (/^co-\d+$/.test(a)) { st.co = +a.slice(3); render(fr); return; }
