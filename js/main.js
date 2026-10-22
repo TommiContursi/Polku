@@ -1575,6 +1575,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 't' && !mod) toggleTimeline();
   else if (e.key === 'Escape') {
     if (layersEscape()) return;
+    if (planner.cards.escape()) return; // a card: one back (from the first, closed); Move: cancelled
     openPanel(null); if (planner.menu) planner.menu.remove(); planner.closeMore(); closeActs();
   }
 });

@@ -15,11 +15,13 @@ import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT } from './winter.js';
-import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
+import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView } from './inspect.js';
+import { CardHost } from './card.js';
+import { pointCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -188,6 +190,8 @@ export class Planner {
     this.pstop = new WeakMap(); // point → a stop there: { min } a break, { on } a night (go on at that minute of the day)
     this.pcarry = new WeakMap(); // point → true: the gear of the sport you change out of there goes along
     this.pspot = new WeakMap(); // point → the spot you put it at, when the router moved it off a way marked private or closed (#104)
+    this.pid = new WeakMap(); // point → who it is: the same through a move, Undo and Redo (a point's card follows it, 25d)
+    this.pidN = 0;
     this.marks = { km: true, time: true, duration: true, ...store.get('routeMarks', {}) }; // distance marks on the route, and the times at them
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
@@ -228,7 +232,7 @@ export class Planner {
     map.on('mousemove', (e) => this.onMapMove(e));
     map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     // was a menu or card open when this press began? (MapLibre closes it on the click; the click shouldn't add a point too)
-    const pressed = () => { this.popupAtPress = !!this.map.getContainer().querySelector('.maplibregl-popup'); };
+    const pressed = () => { this.popupAtPress = !this.picking && (!!this.map.getContainer().querySelector('.maplibregl-popup') || !!this.cards.current); };
     map.on('mousedown', pressed);
     map.on('touchstart', pressed);
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
@@ -258,6 +262,7 @@ export class Planner {
     return {
       map: this.app.activity(), next: this.next, sports,
       points: this.points.map((p) => p.slice()),
+      ids: this.points.map((p) => this.pidOf(p)),
       names: this.points.map((p) => this.pname.get(p) || ''),
       changes: this.points.map((p) => this.pchange.get(p) ?? null),
       stops: this.points.map((p) => this.pstop.get(p) || null),
@@ -280,6 +285,7 @@ export class Planner {
     // the whole route's sport: the map's and the next leg's come back with it
     if (s.sports && s.map !== map && ACTIVITIES[s.map]) this.app.setSport(s.map, { from: 'route' });
     this.points = s.points;
+    if (s.ids) this.points.forEach((p, k) => { if (s.ids[k] != null) this.pid.set(p, s.ids[k]); });
     this.nameAll(s.names);
     this.changeAll(s.changes);
     this.stopAll(s.stops);
@@ -383,13 +389,33 @@ export class Planner {
     const leg = this.legs[i];
     if (!leg || !ACTIVITIES[sport] || this.legSport(i) === sport) return;
     this.commit();
+    this.legInSport(i, sport);
+    this.update();
+  }
+  // (leg i's sport changed, and how it's drawn with it: no step of Undo, no routing yet)
+  legInSport(i, sport) {
+    const leg = this.legs[i];
     const route = this.app.activity();
     const fixed = leg.mode === 'fixed';
     const mode = fixed ? 'fixed' : isWater(sport) ? (leg.mode === 'line' ? 'line' : 'water') : leg.mode === 'water' ? 'auto' : leg.mode;
     this.legs[i] = { ...(fixed ? leg : {}), mode, style: null, sport: sport === route ? undefined : sport };
     // the last leg: the next one goes on in its sport (after a change, you keep paddling)
     if (i === this.legs.length - 1) { this.next = sport === route ? null : sport; this.matchMode(); }
+  }
+
+  // Change sport on point i (25d): the legs from it to the next change of sport, or to the finish (or to leg `last`,
+  // when Sport from here picks again). One step of Undo. Returns the last leg it changed (null: none).
+  setSportFrom(i, sport, { last = null } = {}) {
+    if (!this.legs[i] || !ACTIVITIES[sport]) return null;
+    const was = this.legSport(i);
+    let j = i;
+    if (last != null) j = Math.min(last, this.legs.length - 1);
+    else while (j + 1 < this.legs.length && this.legSport(j + 1) === was) j++;
+    if (this.legs.slice(i, j + 1).every((_, k) => this.legSport(i + k) === sport)) return null;
+    this.commit();
+    for (let k = i; k <= j; k++) if (this.legSport(k) !== sport) this.legInSport(k, sport);
     this.update();
+    return j;
   }
 
   label(i) { return i === 0 ? 'Start' : i === this.points.length - 1 ? 'Finish' : `Via ${i}`; }
@@ -436,6 +462,14 @@ export class Planner {
     });
     this.points = pts;
     this.update();
+  }
+
+  // Point i to ll without dragging (Move on its card): one step of Undo, its two legs routed again
+  movePoint(i, ll) {
+    if (!this.points[i]) return;
+    this.beginEdit(i, this.snapshot());
+    this.editTo(ll);
+    this.endEdit();
   }
 
   // Show point i on the map, and make its marker pulse.
@@ -527,7 +561,7 @@ export class Planner {
     this.commit();
     this.points = this.points.slice(0, i + 1);
     this.legs = this.legs.slice(0, i);
-    toast('The route finishes here now — undo brings back the rest');
+    toast('The route ends here now — undo brings back the rest');
     this.update();
   }
 
@@ -925,6 +959,7 @@ export class Planner {
     this.remember();
     this.panel.hidden = !on;
     if (!on) {
+      this.cards.close(); this.stopPicking();
       this.closeMore(); this.litLeg(null); this.clearAlts(); delete document.body.dataset.sheet; delete document.body.dataset.pl;
       // the start opens at the ways to begin next time
       if (this.loop.open && this.loop.fromWays) this.closeLoop();
@@ -955,7 +990,7 @@ export class Planner {
     const had = [this.els.done, this.els.edit, this.els.toolDone, this.els.toolEdit].indexOf(document.activeElement);
     this.editing = on;
     this.remember();
-    if (!on) { if (this.menu) this.menu.remove(); this.modesMenu?.close(); this.closeMore(); this.clearAlts(); clearTimeout(this.altTimer); }
+    if (!on) { if (this.menu) this.menu.remove(); this.cards.close(); this.stopPicking(); this.modesMenu?.close(); this.closeMore(); this.clearAlts(); clearTimeout(this.altTimer); }
     this.renderState();
     this.renderWaypoints();
     this.renderTools();
@@ -1986,6 +2021,7 @@ export class Planner {
 
   useAnalysis(a) {
     this.analysis = a;
+    a.gen = this.gen; // (the routing it's of: both callers checked it's this one; analysisFits())
     Object.assign(a, (({ total, tAt, waits }) => ({ time: total, tAt, waits }))(this.timed(a)));
     a.waterWarn = this.waterWarnings();
     a.darkWarn = this.darkWarnings(a);
@@ -2217,18 +2253,23 @@ export class Planner {
 
   // Keep a focused picker in place; rebuild its relative-hour choices only when the hour changes.
   refreshDepartSelect(sel) {
-    const now = Date.now() / 1000, hour = Math.floor(now / 3600), today = new Date().toDateString();
+    const hour = Math.floor(Date.now() / 1000 / 3600);
     if (sel.dataset.hour !== String(hour)) {
-      sel.replaceChildren();
-      for (let k = 0; k <= 48; k++) {
-        const d = new Date((k ? (hour + k) * 3600 : now) * 1000);
-        const day = d.toDateString() === today ? '' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
-        sel.append(h('option', { value: String(k) }, k ? `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Now'));
-      }
+      sel.replaceChildren(...this.departChoices().map(({ k, label }) => h('option', { value: String(k) }, label)));
       sel.dataset.hour = String(hour);
     }
     sel.value = String(this.startOffsetH);
   }
+  // when you can leave: now, or each hour of the next two days ("Thu 08:00" past today)
+  departChoices() {
+    const now = Date.now() / 1000, hour = Math.floor(now / 3600), today = new Date().toDateString();
+    return Array.from({ length: 49 }, (_, k) => {
+      const d = new Date((k ? (hour + k) * 3600 : now) * 1000);
+      const day = d.toDateString() === today ? '' : `${d.toLocaleDateString([], { weekday: 'short' })} `;
+      return { k, label: k ? `${day}${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Now' };
+    });
+  }
+  departLabel() { return (this.departChoices()[this.startOffsetH] || { label: 'Now' }).label; }
 
   // Heads-up from the water router (water.js events): shipping lanes and
   // harbours on the way, keep-clear zones it had to pass, rough water, and any
@@ -2539,8 +2580,10 @@ export class Planner {
     const tl = this.tapOnLeg; // this click only
     this.tapOnLeg = null;
     if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
+    // Move on a card asked where: this is the answer
+    if (this.picking) { this.popupAtPress = false; this.picking.done([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return; }
     // a menu or card was open: this click (a tap beside it) closes it, and adds nothing
-    if (this.popupAtPress) { this.popupAtPress = false; return; }
+    if (this.popupAtPress) { this.popupAtPress = false; this.cards.close(); return; }
     // a quick tap on the line that a busy page took for a hold: that part's menu, though the map
     // may not have redrawn the route without the hold's split yet (#293)
     if (tl && Date.now() - tl.at < 1000 && this.legs[tl.li]) { this.openLegMenu(tl.li, e.lngLat); this.autoPeek(); return; }
@@ -2727,6 +2770,7 @@ export class Planner {
   renderWaypoints() {
     const box = this.els && this.els.points;
     if (!box) return;
+    this.cards.refresh(); // an open card follows its point, or closes when it's gone
     if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return; // don't take a name you're typing
     const n = this.points.length;
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
@@ -2772,7 +2816,7 @@ export class Planner {
         ro ? `${ch.min}` : h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }),
         ' min to change') : null;
       const stop = this.stopAt(i);
-      const row = h('li', { class: 'wpl-row', 'data-i': String(i), title: 'Show on the map', onclick: () => this.focusPoint(i) },
+      const row = h('li', { class: 'wpl-row', 'data-i': String(i), 'aria-current': this.cards.current && this.cards.current.key === p ? 'true' : null, title: 'Show on the map', onclick: () => this.focusPoint(i) },
         ro ? null : h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
         h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
         h('span', { class: 'wpl-main' }, input, h('small', {}, sub), change, stop ? this.stopChip(i, stop) : null,
@@ -2889,7 +2933,7 @@ export class Planner {
       m.on('dragstart', () => this.beginEdit(i, this.snapshot(), m));
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointMenu(i, m); });
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openPointCard(p); });
       return m;
     });
   }
@@ -2971,7 +3015,7 @@ export class Planner {
     const old = this.points[ed.i];
     this.points[ed.i] = ll;
     // what belongs to the point goes with it: its name, changeover minutes, stop and gear
-    for (const m of [this.pname, this.pchange, this.pstop, this.pcarry]) if (m.has(old)) m.set(ll, m.get(old));
+    for (const m of [this.pname, this.pchange, this.pstop, this.pcarry, this.pid]) if (m.has(old)) m.set(ll, m.get(old)); // (its card goes with it: findPoint())
     for (const li of [ed.i - 1, ed.i]) if (this.legs[li]) this.previewLeg(li);
     this.drawRoute();
   }
@@ -3265,34 +3309,82 @@ export class Planner {
       h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
   }
 
-  openPointMenu(i, marker) {
+  // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
+  // card follows it through a move, Undo and a new order, and closes when it's gone. From the map there's no Back.
+  openPointCard(p, { from = 'map' } = {}) {
+    if (!this.points.includes(p)) return;
     if (this.menu) this.menu.remove();
-    const n = this.points.length;
-    const legOut = this.legs[i];
-    const last = i === n - 1 && i > 0, via = i > 0 && !last, loop = this.isLoop();
-    const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
-    const body = h('div', { class: 'pt-menu' },
-      h('div', { class: 'pt-head' },
-        h('div', { class: 'pt-title' }, this.nameOf(i)),
-        h('div', { class: 'pt-sub' }, [this.nameOf(i) !== this.label(i) ? this.label(i) : '', i > 0 ? `${fmtDist(this.lengthTo(i))} from the start` : ''].filter(Boolean).join(' · ') || 'Where the route begins')),
-      i === 0 ? h('label', { class: 'pt-depart' }, h('span', { html: icon('clock', 15) }), 'Depart', h('span', { class: 'mode-select-box' }, this.departSelect(), h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) }))) : null,
-      legOut ? h('div', { class: 'pt-label' }, 'Next leg') : null,
-      legOut ? this.legSportPicker(i, () => this.menu.remove()) : null,
-      this.changeAt(i) ? h('label', { class: 'pt-change' }, `Change to ${ACTIVITIES[this.changeAt(i).to].label}`,
-        h('input', { type: 'number', min: 0, max: 600, step: 1, value: this.changeAt(i).min, onchange: (e) => this.setChangeMin(i, e.target.value) }), 'min') : null,
-      legOut ? h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
-        h('button', { type: 'button', 'aria-pressed': String(legOut.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(i, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))) : null,
-      legOut && legOut.mode !== 'line' && legOut.mode !== 'fixed' ? this.legStylePicker(i, () => this.menu.remove()) : null,
-      via ? this.stopEditor(i) : null,
-      this.gearToggle(i),
-      via ? h('div', { class: 'pt-row' },
-        act('flag', 'Start here', loop ? 'Start the loop from this point: the same route' : 'Make this the start: the part before it is removed', () => this.startAt(i)),
-        loop ? null : act('check', 'Finish here', 'Make this the finish: the rest is removed', () => this.finishAt(i))) : null,
-      last && !loop && n > 1 ? act('loop', 'Back to start', 'Add a leg back to the start', () => this.backToStart()) : null,
-      act('trash', 'Remove point', '', () => this.removePoint(i), 'btn danger-text'));
-    this.menu = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '320px', className: 'polku-popup' })
-      .setLngLat(marker.getLngLat()).setDOMContent(body).addTo(this.map);
-    this.keepMenuInView();
+    this.stopPicking();
+    this.cards.open(pointCard(this, p), { at: p, from });
+  }
+
+  // who point p is: a number that stays with it through a move (editTo()), Undo and Redo (snapshot(), restoreSnap())
+  pidOf(p) {
+    let id = this.pid.get(p);
+    if (id == null) { id = ++this.pidN; this.pid.set(p, id); }
+    return id;
+  }
+  // is the card's point still on the route? After a move, Undo or Redo it's another array: the one that's the same point
+  findPoint(card) {
+    if (this.points.includes(card.key)) return true;
+    const id = this.pid.get(card.key), p = id != null && this.points.find((q) => this.pid.get(q) === id);
+    if (!p) return false;
+    card.key = p;
+    return true;
+  }
+  // the analysis is of the route as it is now: made after its last routing (routeAll()'s `gen`), and no leg's request on
+  // its way. A leg that couldn't be routed, or waits for the router, counts with its straight stand-in, as the list's
+  // numbers do. (Not by comparing lengths: a routed leg may start a few metres from its point, #352's review.)
+  analysisFits() {
+    const a = this.analysis;
+    return !!a && a.gen === this.gen && this.legs.every((l) => l.status !== 'loading' && l.result);
+  }
+
+  // Next stretch, to … ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)
+  openLegAfter(i) {
+    const leg = this.legs[i];
+    if (!leg) return;
+    const c = leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]];
+    const at = c.length > 2 ? c[Math.floor(c.length / 2)] : [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+    this.cards.close();
+    this.openLegMenu(i, { lng: at[0], lat: at[1] });
+  }
+
+  // Move: the card gives way to "Tap where it goes"; the next tap on the map moves the point there (Cancel, Escape: it stays)
+  async moveOnCard(card) {
+    const ll = await this.pickOnMap(`${this.coarse() ? 'Tap' : 'Click'} where it goes`);
+    const i = this.points.indexOf(card.key);
+    if (ll && i >= 0) this.movePoint(i, ll);
+  }
+
+  // A spot on the map, asked for by a card: it folds to `text` with Cancel, and the next tap answers (null: cancelled)
+  pickOnMap(text) {
+    this.stopPicking();
+    return new Promise((resolve) => {
+      const pick = {
+        done: (ll) => {
+          if (this.picking !== pick) return;
+          this.picking = null;
+          this.map.getCanvas().style.cursor = this.active && !this.inView() ? 'crosshair' : '';
+          resolve(ll);
+          // the card unfolds once the answer has been used (the point moved), so it opens where the point is now
+          if (ll) setTimeout(() => this.cards.unfold(), 0); else this.cards.unfold();
+        },
+      };
+      this.picking = pick;
+      this.map.getCanvas().style.cursor = 'crosshair';
+      this.cards.fold(text, () => pick.done(null));
+    });
+  }
+  stopPicking() { if (this.picking) this.picking.done(null); }
+
+  // Remove, with Undo in its note
+  removeOnCard(card) {
+    const i = this.points.indexOf(card.key);
+    if (i < 0) return;
+    const name = this.nameOf(i);
+    this.removePoint(i);
+    toast(`${name} removed`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
   }
 
   // A stop in a waypoint row: Break / Night / no stop, and its minutes or morning hour
@@ -3310,64 +3402,13 @@ export class Planner {
         : h('span', {}, ' ', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, 'aria-label': `Minutes of the break at ${this.nameOf(i)}`, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), ' min'));
   }
 
-  // The point menu's stop: none, a break or a night; for a night, places to sleep near it
-  stopEditor(i) {
-    const stop = this.stopAt(i), night = isNight(stop);
-    const reopen = () => { if (this.markers[i]) this.openPointMenu(i, this.markers[i]); };
-    const set = (st) => { this.setStop(i, st); reopen(); };
-    const w = this.analysis && (this.analysis.waits || []).find((x) => x.i === i);
-    const arrive = this.analysis ? this.arriveAt(i) : null;
-    const box = h('div', { class: 'pt-stop' },
-      h('div', { class: 'pt-label' }, 'Stop here'),
-      h('div', { class: 'seg small', role: 'group', 'aria-label': `Stop at ${this.nameOf(i)}` },
-        ...[['', 'No stop', 'close'], ['break', 'Break', 'pause'], ['night', 'Night', 'moon']].map(([k, label, ic]) =>
-          h('button', { type: 'button', 'aria-pressed': String(k === (night ? 'night' : stop ? 'break' : '')), onclick: () => set(k === 'night' ? { on: (stop && stop.on) ?? DEFAULT_ON } : k === 'break' ? { min: (stop && stop.min) || DEFAULT_BREAK } : null), html: `${icon(ic, 15)}<span>${label}</span>` }))),
-      stop && !night ? h('label', { class: 'pt-change' }, 'For', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), 'min') : null,
-      night ? h('label', { class: 'pt-change' }, 'Go on at', h('input', { type: 'time', step: 900, value: hhmm(stop.on), onchange: (e) => { const on = parseHhmm(e.target.value); if (on != null) set({ on }); } })) : null,
-      stop && arrive ? h('div', { class: 'pt-sub' }, `You’d get here ${this.clockOf(arrive)}${w ? ` · on ${this.clockOf(arrive + w.sec)}` : ''}`) : null);
-    if (night) {
-      const list = h('div', { class: 'stay-list' });
-      const find = h('button', { type: 'button', class: 'btn', onclick: () => this.listStays(i, list, find), html: `${icon('search', 15)} Places to sleep nearby` });
-      box.append(find, list);
-    }
-    return box;
-  }
-
-  // Lean-tos, huts and campsites within 3 km of point i (LIPAS and OpenStreetMap): move the point to one
-  async listStays(i, list, btn) {
-    const p = this.points[i];
-    btn.disabled = true;
-    list.replaceChildren(h('div', { class: 'pt-sub' }, 'Looking in LIPAS and OpenStreetMap…'));
-    // what's in so far (LIPAS usually answers first), then the whole list
-    const show = (found, done) => {
-      if (this.points[i] !== p) return; // the route changed meanwhile
-      const rows = found.map((x) => h('div', { class: 'stay' },
-        x.icon ? h('img', { class: 'li-ico', src: iconUrl(x.icon), alt: '' }) : h('span', { html: icon('moon', 14) }),
-        h('span', { class: 'stay-main' }, h('b', {}, x.name), h('small', {}, `${x.kind} · ${fmtDist(x.d)} · ${x.src}`)),
-        h('button', { type: 'button', class: 'btn small', title: `Move ${this.nameOf(i)} to ${x.name}`, onclick: () => this.moveToStay(i, x) }, 'Go here')));
-      if (!done) rows.push(h('div', { class: 'pt-sub' }, 'Still looking…'));
-      else if (!found.length) rows.push(h('div', { class: 'pt-sub' }, 'No lean-tos, huts or campsites within 3 km in LIPAS or OpenStreetMap.'));
-      list.replaceChildren(...rows);
-      if (this.menu && this.menu.getElement() && this.menu.getElement().contains(list)) this.keepMenuInView(); // wider and taller now
-    };
-    try {
-      show(await staysNear(p, 3, (part) => show(part, false)), true);
-      btn.hidden = true;
-    } catch {
-      list.replaceChildren(h('div', { class: 'pt-sub' }, 'LIPAS and OpenStreetMap didn’t answer. Try again in a moment.'));
-      btn.disabled = false;
-    }
-  }
-
   // point i moved to a place to sleep, named after it (its legs are routed again)
   moveToStay(i, x) {
-    if (this.menu) this.menu.remove();
     if (!this.points[i]) return;
     this.beginEdit(i, this.snapshot());
     this.editTo(x.at.slice());
     this.pname.set(this.points[i], x.name);
     this.endEdit();
-    if (this.menu) this.menu.remove();
   }
 
   // "Stop here" on the line: a point there with a break, and its menu to make it a night
@@ -3377,18 +3418,14 @@ export class Planner {
     const k = this.splitLeg(li, ll);
     this.pstop.set(this.points[k], { min: DEFAULT_BREAK });
     this.update();
-    if (this.markers[k]) this.openPointMenu(k, this.markers[k]);
+    this.openPointCard(this.points[k]);
   }
 
-  // At a changeover out of a bike or a boat: is it left here, or taken along?
-  gearToggle(i) {
+  // At a changeover out of a bike or a boat, what's left there unless it's taken along ("the bike"); null: nothing
+  gearAt(i) {
     const c = this.changeAt(i), g = c && GEAR[c.from];
     if (!g || GEAR[c.to] === g) return null;
-    const what = g === 'bike' ? 'the bike' : `the ${(CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase()}`;
-    return h('label', { class: 'tg tg-inline pt-gear', title: `Off: ${what} stays here, and Heads-up checks the route comes back for it. On: it goes along (a packraft, a folding bike).` },
-      h('span', { class: 'tg-text' }, `Take ${what} along`),
-      h('input', { type: 'checkbox', role: 'switch', checked: this.carryAt(i), onchange: (e) => this.setCarry(i, e.target.checked) }),
-      h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    return g === 'bike' ? 'the bike' : `the ${(CRAFT[this.craft] || CRAFT.kayak).label.toLowerCase()}`;
   }
 
   // Heads-up from the stops: gear left behind, and a night too short to sleep
@@ -3648,7 +3685,37 @@ export class Planner {
     this.els.title = h('div', { class: 'pl-title', hidden: true }, h('h2', { class: 'pl-ttl' }, this.els.titleName, this.els.titleSub), this.closeX());
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.title, this.els.row, this.els.way), this.els.said);
+    this.els.card = h('div', { class: 'card-peek', hidden: true });
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.row, this.els.way), this.els.said);
+    // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, at
+    // its spot elsewhere (js/card.js, 25d)
+    this.cards = new CardHost(this.map, {
+      peek: this.els.card,
+      where: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
+      onChange: (card) => {
+        this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
+        if (card && this.cards.place === 'peek' && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
+        // the card's point ringed on the map, while its card (or Move's banner) is open
+        const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
+        this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
+        // …and its row in the list lit, where the card leaves it in sight (desktops)
+        for (const r of this.els.points.querySelectorAll('.wpl-row')) { if (this.points[+r.dataset.i] === ringed) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+        this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
+        this.measureSheet?.();
+      },
+      onPop: () => { this.keepView = Date.now() + 600; },
+      pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
+      // Back and ✕ leave the planner as it was before the card: its sheet's size, its list's scroll
+      keep: () => ({ sheet: this.panel.dataset.state, scroll: this.els.body.scrollTop }),
+      restore: (was) => {
+        if (!this.active) return;
+        if (this.layout() === 'sheet' && was.sheet && was.sheet !== this.panel.dataset.state) this.setSheetState(was.sheet, { remember: false });
+        requestAnimationFrame(() => { this.els.body.scrollTop = was.scroll; });
+      },
+      // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
+      dock: () => (this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
+        ? { undo: () => this.undo(), redo: () => this.redo(), canUndo: !!this.past.length, canRedo: !!this.future.length } : null),
+    });
     this.buildTools();
     this.els.stats = h('div', { class: 'stats' });
     this.els.modesBar = h('div', { class: 'chip-groups' });
@@ -4247,6 +4314,7 @@ export class Planner {
     if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
     // the start's views are the sheet's whole height: its peek grows with them (A)
     if (lay === 'sheet' && this.peekOnly()) { st = 'peek'; remember = false; }
+    if (st !== 'peek' && st !== 'min' && this.cards.place === 'peek') this.cards.close({ restore: false }); // (a card is the peek's)
     this.panel.dataset.layout = lay;
     this.panel.dataset.state = st;
     if (st !== 'peek' && st !== 'min') this.lastOpen = st;
@@ -4332,7 +4400,7 @@ export class Planner {
     this.sheetSwipe = swipeSheet(this.panel, {
       enabled: () => this.active && this.layout() === 'sheet',
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows
-      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize')
+      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize, .card')
         && (type !== 'mouse' || !!t.closest('.sheet-handle, .sheet-head, .pl-tabs')),
       start: () => {
         sizes();
@@ -4350,7 +4418,7 @@ export class Planner {
     // a tap on the handle, or on the header outside its buttons, folds the sheet or opens it again
     // (not when the target has gone from it: a control that re-rendered itself, #251)
     const tap = (e) => {
-      if (this.layout() !== 'sheet' || !e.currentTarget.contains(e.target) || (e.currentTarget === this.els.head && e.target.closest('button, input, select, a, label, .pl-way'))) return;
+      if (this.layout() !== 'sheet' || !e.currentTarget.contains(e.target) || (e.currentTarget === this.els.head && (e.target.closest('button, input, select, a, label, .pl-way') || this.panel.classList.contains('carded')))) return; // (a card in the peek keeps its taps)
       this.setSheetState(this.panel.dataset.state === 'peek' ? (this.lastOpen || 'profile') : 'peek');
     };
     this.els.handle.addEventListener('click', tap);
@@ -4551,8 +4619,9 @@ export class Planner {
     // as there's room (placeTools()). New buttons fade in where they are (fadeNewTools()).
     // While a round trip is open nothing is drawn: only undo and redo stay, until a loop is taken or the form closes (#311)
     // In the route's view nothing is drawn (25c): phones keep only More, desktops Show the whole route, More and Edit
-    const loop = this.loop.open, view = this.inView();
-    this.tools.dataset.stage = view ? 'view' : loop ? 'loop' : String(Math.min(n, 2));
+    // A card in a phone's peek: only undo and redo too, until it closes (25d)
+    const carded = this.cards.place === 'peek' && !this.sideMQ?.matches, loop = this.loop.open || carded, view = this.inView();
+    this.tools.dataset.stage = view ? 'view' : carded ? 'card' : loop ? 'loop' : String(Math.min(n, 2));
     this.tools.setAttribute('aria-label', view ? 'Your route' : 'Drawing tools');
     for (const el of [this.els.modeBtn, this.els.sportBtn, this.els.modeSeg, this.els.styleBtn, ...this.tools.querySelectorAll('.tb-sep:not([data-group])')]) el.hidden = !n || loop || view;
     this.els.more.hidden = !n || loop;
@@ -4610,9 +4679,11 @@ export class Planner {
     const box = this.tools;
     if (!box || !this.sideMQ) return;
     // no toolbox until there's something it can do: a point, or something to undo or redo
-    const show = this.active && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length);
-    box.hidden = !show;
     const desk = this.sideMQ.matches;
+    // (a card in a phone's peek keeps undo and redo here, or in its own top row when it's narrow; none in the route's view, 25d)
+    const carded = this.cards.place === 'peek' && !desk;
+    const show = this.active && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && (this.cards.narrow || this.inView()));
+    box.hidden = !show;
     box.classList.toggle('desk', desk);
     if (!show) this.dockTools(false);
     // the room it takes, for what sits there too: above the sheet (--tools-h: the scale, notes, the 3D pad,
@@ -4623,7 +4694,7 @@ export class Planner {
     const colLeft = $('#map-ctrls').getBoundingClientRect().left;
     // the route's actions once there's a leg (Back to start not on a loop); in turn, as far as there's room
     const view = this.inView(); // (the route's view: of them only Show the whole route, on desktops, 25c)
-    const can = (b) => this.points.length > 1 && !this.loop.open && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk')) && (!view || b === this.els.fit);
+    const can = (b) => this.points.length > 1 && !this.loop.open && !carded && !(b === this.els.backToStart && this.isLoop()) && (desk || !b.classList.contains('tb-desk')) && (!view || b === this.els.fit);
     for (const b of box.querySelectorAll('[data-opt]')) if (!can(b)) b.hidden = true;
     const opts = [...box.querySelectorAll('[data-opt]')].filter(can).sort((a, b) => a.dataset.opt - b.dataset.opt);
     // the first n of them on the toolbar (in `root`, the toolbox or a copy of it), each group's separator with them
