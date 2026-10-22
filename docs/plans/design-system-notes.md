@@ -43,12 +43,42 @@ The same works for the phone's peek, 200 % zoom and the glance size of phase 23.
 
 **F. Shapes say the group, not only colour.** The draft's markers already pair each group with a shape: a triangle, an eye, a dashed "?". I'd keep the shape on every warning surface: the box, Check's badge and the toast as well as the map. A colour-blind person in sun glare then never has to tell red from amber.
 
+## The design skills' review (2026-10-22)
+
+The mock-up and the ideas went through Emil Kowalski's skills: design engineering, Apple design, native feel on a phone, and breaking a UI with worst-case data. The Proposed version shows what's marked *mock-up*.
+
+**Motion and touch (emil-design-eng, apple-design):**
+- **A press answers at once.** Buttons, chips, tiles and switches scale to 0.97 in 120 ms on `--ease-out` while pressed. A row keeps its grey background instead, because a full-width row that shrinks looks broken. With reduced motion, the scale stops. *Mock-up.*
+- **Closing is quicker than opening.** The sheet opens in 260 ms and closes in 180 ms. The draft's timing values get a `--t-close` to match (the layer drawer already does 160 in and 120 out). *Mock-up.*
+- **Every curve is one of the two values.** A row's › moves on the built-in `ease-out`; it should use `--ease-out`. *Mock-up.*
+- **Hover needs a mouse.** The shared hover rule uses `(hover: hover) and (pointer: fine)` rather than `(hover: hover)` alone, which some Android phones and styluses claim.
+
+**Reading outdoors (apple-design):**
+- **Grey text on frosted glass loses contrast** over busy aerial photos. That's idea C. Outdoor contrast also gives cards a clear 1 px border, as Apple does for more contrast.
+- **Reduced transparency works only on the layer drawer today.** It should make every frosted surface solid: the top bar, the map buttons, the sheet and the cards.
+- **Idea G: sizes in `rem`, not `px`.** Then a browser's own text-size setting enlarges Polku's text and the space around it together. Today every size is in px, so that setting does nothing. It costs nothing to do with step 1, since the values are new anyway.
+
+**On a phone (mobile-native):**
+- **The tap flash is turned off in five places.** It belongs once on `html`, with `touch-action: manipulation` and `user-select: none` on every control. That finishes #208.
+- **Pinch-zoom is blocked** (`user-scalable=no`, #73). That makes the 200 % checks matter more: people who need large text get it only from the browser's text size, never by pinching.
+- **The status bar's colour is one green for both themes** (`theme-color` in `index.html`). The map fills the top of the screen, so the green is a choice, not a mismatch. Worth a look when dark mode is on.
+
+**The worst case (break-ui), at 320 px and at 200 % (195 px), light and dark, in Finnish:**
+
+| What broke | Where | Fix |
+|---|---|---|
+| A long point name runs 38 px past the card's edge | The cards branch at 34e5a02, checked in the app at 195 × 422: `.way-hint b` breaks only between words, inside a grid | `overflow-wrap: anywhere`, as the rows already have. *Mock-up.* |
+| A row with a value squeezes its name to 47 px ("Sport from here" over three lines; in Finnish, one letter per line) | Same, checked in the app | Below 220 px, the value goes under the name and the › hides. *Mock-up.* |
+| The main action's label can't wrap ("Muodosta kolme kiertoreittiä" runs out of the button) | `.btn` and `.btn.big` have a fixed height, on `main` too | A least height (`min-height`) instead, so the label wraps. Phase 18's translations need it. *Mock-up.* |
+
+What held up: the numbers stack one to a row, the icon switch becomes a column, rows and warning boxes wrap, and nothing scrolls sideways at 320 px.
+
 ## Order
 
 The draft's order holds: values first, then the controls one PR each, then the JavaScript's colours, then the route on the map. With these notes:
 
 1. **#370 first,** as a Fix PR. It's a bug and doesn't wait for the plan.
-2. **Step 1 (the values)** takes ideas A and B's values (`--focus`, the context values) and E's check.
+2. **Step 1 (the values)** takes ideas A and B's values (`--focus`, the context values), G's `rem`, `--t-close`, and E's check.
 3. **Idea D** comes with step 1 too, so every later PR runs it.
 4. **Idea C** comes after the controls, as its own small PR.
 

@@ -181,7 +181,7 @@ button { font: inherit; color: inherit; }
 @container card (max-width: 335px) { .card-peek .seg.icons button { flex-direction: column; min-height: 54px; gap: 2px; } }
 @container card (max-width: 290px) {
   .seg.icons { grid-template-columns: 1fr; }
-  .seg.icons button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
+  .seg.icons button, .card-peek .seg.icons button { flex-direction: row; justify-content: flex-start; gap: 10px; padding: 0 12px; min-height: 48px; }
   .row .val { max-width: 50%; }
 }
 .pl-way.card { container: card / inline-size; }
@@ -274,6 +274,24 @@ button { font: inherit; color: inherit; }
 /* the same pressed look everywhere */
 :root[data-v="b"] :is(.btn, .tool, .chip, .way-tile, .menu-item, .li) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 :root[data-v="b"] :is(.btn, .tool, .way-tile, .menu-item, .li):active { background: var(--surface-2); }
+/* design skills review (2026-10-22): a press answers at once, by a small scale on buttons, chips and tiles; a row
+   keeps its background (a full-width row that shrinks looks broken) */
+:root[data-v="b"] :is(.btn, .tool, .chip, .way-tile, .seg button) { transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease; }
+:root[data-v="b"] :is(.btn, .tool, .chip, .way-tile, .seg button):active:not(:disabled) { transform: scale(0.97); }
+:root[data-v="b"] .row .way-chev { transition: transform var(--t-press) var(--ease-out); }
+/* break-ui at 200 %: a long name breaks rather than running off the card, and a row's value goes under its name
+   when the row is too narrow for both (both seen on the cards branch at 34e5a02) */
+:root[data-v="b"] .card .way-hint b { overflow-wrap: anywhere; }
+/* a button's label wraps instead of running out of it (translated words, 200 %): a least height, not a fixed one */
+:root[data-v="b"] .btn { height: auto; min-height: 32px; padding-block: 4px; overflow-wrap: anywhere; text-align: center; }
+:root[data-v="b"] .btn.big { min-height: 52px; padding-block: 8px; line-height: 1.25; }
+@container card (max-width: 220px) {
+  :root[data-v="b"] .row:has(.val) { flex-wrap: wrap; }
+  :root[data-v="b"] .row:has(.val) > span:nth-child(2) { flex-basis: calc(100% - 32px); }
+  :root[data-v="b"] .row .val { order: 3; max-width: none; margin-left: 32px; text-align: left; }
+  :root[data-v="b"] .row:has(.val) .way-chev { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { :root[data-v="b"] :is(.btn, .tool, .chip, .way-tile, .seg button):active { transform: none; } }
 /* a warning box, coloured by its group, with its shape */
 .warn-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; border: 1.5px solid transparent; }
 .warn-row > span:first-child { flex: none; display: grid; }
@@ -354,11 +372,19 @@ html[data-density="desktop"] .mk-stage-cap { max-width: none; }
 .mk-shape { display: grid; gap: 6px; justify-items: start; font-size: 12px; }
 .mk-shape > div { width: 100%; height: 64px; background: var(--surface-solid); box-shadow: 0 0 0 1px var(--line); }
 .mk-gallery { display: grid; gap: 16px; }
+.mk-gallery { grid-template-columns: minmax(0, 1fr); }
+.mk-gallery > div > * { min-width: 0; max-width: 100%; }
+@media (max-width: 420px) {
+  .mk-type > div { grid-template-columns: minmax(0, 1fr); }
+  .mk-type code, .mk-shape code { white-space: normal; overflow-wrap: anywhere; }
+  .mk-shapes { grid-template-columns: minmax(0, 1fr); }
+}
 .mk-gallery > div { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .mk-gallery > div > small { flex-basis: 100%; color: var(--muted); font-size: 12px; }
 .mk-motion { position: relative; height: 180px; overflow: hidden; border-radius: 14px; background: var(--surface-2); }
 .mk-motion .mk-msheet { position: absolute; left: 12px; right: 12px; bottom: 0; height: 120px; padding: 14px; border-radius: 20px 20px 0 0; background: var(--surface-solid); box-shadow: 0 -6px 28px rgba(16, 24, 20, .2); transform: translateY(100%); transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
-.mk-motion.open .mk-msheet { transform: none; }
+.mk-motion.open .mk-msheet { transform: none; transition-duration: 260ms; }
+.mk-motion:not(.open) .mk-msheet { transition-duration: 180ms; } /* (closing is quicker than opening) */
 @media (prefers-reduced-motion: reduce) {
   .mk-motion .mk-msheet { transform: none; opacity: 0; transition: opacity 150ms ease; }
   .mk-motion.open .mk-msheet { opacity: 1; }
@@ -517,7 +543,7 @@ html[data-v="b"] .mk-tag.new { background: var(--accent-soft); color: var(--text
           </div>
         </div>
         <div><small>Actions in a group</small>
-          <div style="display:grid; min-width: 220px; padding: 4px; border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow)">
+          <div style="display:grid; width: min(220px, 100%); padding: 4px; border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow)">
             <div class="menu-h">Route</div>
             <button class="menu-item">Reverse</button><button class="menu-item">Export GPX</button><button class="menu-item danger">Delete route</button>
           </div>
