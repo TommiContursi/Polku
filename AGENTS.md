@@ -12,16 +12,20 @@ what it must stay: PRODUCT.md keeps the commitments to people apart from it.
 [polku.si](https://polku.si) is GitHub Pages from `main`, so **merging a PR
 publishes it.**
 
-Read what the task needs (this file is already loaded):
+Read what the task needs (this file is already loaded), and more only when
+that leaves a question open:
 
 - **A fix:** its issue, the module's part of
   [docs/DEVELOPING.md](docs/DEVELOPING.md), and its smoke group.
-- **A phase, or anything people see:** also its plan in
+- **A phase, or anything people see:** also the latest Hand-over and what
+  came after it, the part's sections of its plan in
   [docs/plans/](docs/plans/), relevant issues in its milestone, and
   [PRODUCT.md](PRODUCT.md): who Polku is for, its principles and its
   accessibility baseline.
 - [README.md](README.md), [docs/ROADMAP.md](docs/ROADMAP.md) and
-  [CHANGELOG.md](CHANGELOG.md) only when the task changes them.
+  [CHANGELOG.md](CHANGELOG.md) only when the task changes them. Older
+  Hand-overs, reviews and threads are for looking things up: starting is not
+  a backlog audit.
 
 No framework, dependency, build step, backend, account or native code without
 a real need and the user's OK: an issue first, with what people gain and what
@@ -36,54 +40,50 @@ and priorities. A milestone groups the issues that ship together, not their
 order. A phase issue holds its scope, decisions and Hand-overs, and
 `docs/plans/` its design.
 
-- **Start from the latest Hand-over** on the phase issue, or from the task
-  the user picked, and check it against its PR and branch on GitHub before
-  following its next step. Otherwise pick from the Project's Now column, top
-  first; Later and Someday need the user's OK. Read older decisions, code
-  and plans only as the task needs them: starting is not a backlog audit.
+- **Start from the task the user picked, or the latest Hand-over** on the
+  phase issue; otherwise from the Project's Now column, top first (Later and
+  Someday need the user's OK). Trust a Hand-over for what ran on which
+  commit, but check its next step against its PR and branch, the comments
+  after it, and the plan on `main`: the newer decision wins, the user's or
+  one recorded as chosen. A review, an audit or a proposal decides nothing
+  until the user chooses it (#352). When unsure which is current, ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
   agent you are (Claude A, Claude B or Codex: all post as the user's GitHub
   account). A phase is claimed on its phase issue. Take over only when a
   claim is released or the user says its session has stopped, never because
-  it's old: read its last Hand-over, continue from its pushed branch (or
-  `main` if nothing was pushed), and say so on the issue.
-- **What you notice but don't do now** gets an issue at once (see "Bugs and
-  findings"). First check that it still happens on `main` and isn't replaced
-  by an approved design; if it is, link it to that phase. Small fixes go into
-  the open Fixes milestone, each in a Fix PR of its own, never mixed into a
-  phase; ideas wait in Someday. Only a blocker or a serious problem for
-  people using Polku (safety, reliability, accessibility) interrupts the
-  work at hand.
+  it's old: continue from its last Hand-over and pushed branch, and say so
+  on the issue.
+- **What you notice but don't do now** is filed (see "Bugs and findings"),
+  and the work goes on: only a blocker or a serious problem for people using
+  Polku (safety, reliability, accessibility) interrupts it. Small fixes go
+  into the open Fixes milestone, each in a Fix PR of its own, never mixed
+  into a phase; ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
 - **One session, one issue** (or one part of a phase). Start a new session
   (or Codex thread) from the Hand-over at a checkpoint: the PR is ready, a
-  part is done, or the next issue begins. In a session past about 300k
-  tokens, or after a break of more than an hour, make that the next
-  checkpoint, unless the session holds what a Hand-over can't carry: a
-  design iteration with the user's feedback, or an investigation half done.
-- **One coding session at a time,** unless the user starts more. Claude's
-  two accounts and then Codex take turns: when one reaches its usage limit,
-  the next takes over from the last Hand-over. More at once ran into the
-  limits ([retro](docs/retros/2026-10-15-16.md)). No "status" session, and no
-  subagents to verify or run the suite.
+  part is done, or the next issue begins. Past about 300k tokens, or after a
+  break of more than an hour, make that the next checkpoint, unless the
+  session holds what a Hand-over can't carry: a design iteration with the
+  user's feedback, or an investigation half done.
+- **One coding session at a time,** unless the user starts more: Claude A,
+  Claude B and Codex take turns as each reaches its usage limit, from the
+  last Hand-over. No "status" session, and no subagents to verify or run the
+  suite.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
   issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
   whether the claim is released; branch, commit and PR; done; verified, with
   the exact commands and the commit they ran on; not verified; decisions,
-  with links; next step; what to watch out for. A check stays good for the
-  commit it ran on, whoever ran it. Write one before a turn that waits for
-  the user's answer or review too, so the answer can start a fresh session.
-  Never end a turn with uncommitted work. Phase 24's first claim stopped on
-  2026-10-17 with nothing pushed, and all of it was lost (#177).
+  with links; next step; what to watch out for. Write one too before a turn
+  that waits for the user, so the answer can start a fresh session. Never
+  end a turn with uncommitted work: #177 lost a whole claim.
 - Docs and tooling PRs stay on their one subject.
 
 **Effort:** xhigh for code, design, plans, and anything touching routing,
 saved data or share links; medium for docs, rebases and filing issues; never
-`max` as a habit. Set it when the session starts, since the default is lower.
-Changing effort mid-session keeps the prompt cache; changing the model sends
-the whole conversation again, so change models only between sessions
+`max` as a habit. Set it at the start: the default is lower. Change effort,
+not models, mid-session: a new model sends the whole conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
 
 ## In the code
@@ -93,21 +93,18 @@ the whole conversation again, so change models only between sessions
   worker have their own paths.
 - **Free public services,** used within their terms (a service of Polku's own,
   or a paid one, only as above). If one doesn't hold up, add a fallback or
-  switch. **Never burst brouter.de:** it blocks the whole
-  connection, the user's too (40 s for about 20 calls in 8 s, then half an hour
-  after repeated bursts). Test routing against `tools/brouter-local.sh` or the
-  recorded files in `tools/fixtures/`.
+  switch. **Never burst brouter.de:** it blocks the whole connection, the
+  user's too (DEVELOPING, "The free services"). Test routing against
+  `tools/brouter-local.sh` or the recorded files in `tools/fixtures/`.
 - **Traficom's depth data is shown, never routed on.** Its licence excludes
   route planning, so the water router and its warnings use Väylävirasto, OSM
   and SYKE only. Water routes are for planning, not navigation.
-- **Location: private by default, local first, not local only** (PRODUCT.md).
-  A position leaves the device only for something the person asked for, as
-  precisely as it needs, once, to the service that answers, and the control
-  says so. Never a stream, never in the background, never a track unless they
-  export or share it. Rough requests get a rounded point, never a precise one:
-  search and ships the map's middle to about a kilometre, the weather the
-  nearest point of its forecast grid (about 3 km). Services of Polku's own,
-  if it has any, keep the same rules and keep no history of anyone.
+- **Location: private by default, local first, not local only.** A position
+  leaves the device only for something the person asked for, once, as
+  precisely as it needs, to the service that answers, and the control says
+  so: never a stream, in the background, or a track they didn't export or
+  share. Before a change that sends a position or the map's middle, read
+  PRODUCT.md's rule and its rounding.
 - **Missing, late or partial data never looks complete.** When weather,
   terrain, trail details or hazards fail, the route says so. Check what
   happens when a source fails, answers late, answers out of order, or comes
@@ -130,13 +127,10 @@ the whole conversation again, so change models only between sessions
   needs none. The mock-up and a short plan are enough: no probe scripts,
   measurements or evidence files unless the user asks. The user chooses
   before it's built; #123's plan shows how.
-- **One style, and don't redesign what works.** Where a screen needs a control
-  that does the same job as one the app has (DEVELOPING, "Shared controls"),
-  it uses that one, with its class, and a mock-up copies its CSS from
-  `css/app.css`. A different element is fine where the job is different:
-  propose it to the user first, and once chosen it joins the list. Never a
-  copy of an existing control under a new name. A mock-up keeps its earlier
-  versions behind a switch, so they can be compared.
+- **One style, and don't redesign what works.** A control for a job the app
+  already does is the one in DEVELOPING's "Shared controls", with its class,
+  and a mock-up copies its CSS. A new kind is proposed to the user first. A
+  mock-up keeps its earlier versions behind a switch, so they can be compared.
 
 ## Testing
 
@@ -155,19 +149,22 @@ the whole conversation again, so change models only between sessions
 - **Every bug fix has a check in `tools/smoke.py`** that fails before the fix
   and passes after it: an existing one if it already shows the bug, otherwise
   a new one.
-- **App changes pass `python3 tools/smoke.py`.** While working, run only the
-  groups you touch: `python3 tools/smoke.py water loops`.
+- **App changes pass `python3 tools/smoke.py`:** while working, the groups
+  you touch (`python3 tools/smoke.py water loops`); before the PR leaves
+  draft, the whole suite once, on its last commit that changes the app. A
+  check stays good for the commit it ran on, whoever ran it, and for later
+  commits that touch only `docs/`, AGENTS.md, README.md or PRODUCT.md (the
+  app reads `CHANGELOG.md`: run `changelog`).
+- **A check that fails only sometimes,** or only in a whole run, gets an
+  issue (or a comment on its issue): the commit, the command, the browser,
+  what was cached and what else ran, what failed, and whether it passes
+  alone. Never rerun until it's green, nor weaken or skip a check to pass.
 - **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
   the sports it touches (MTB and paddle when unsure), with a route drawn and
   the timeline open. Where your tool has a browser the user can watch (Claude
   Code's browser pane), test there.
 - The smoke tests bypass the service worker. An offline change needs a check
   with the worker running and the network off.
-- Headless Chrome runs with reduced motion, so `fitBounds` and `flyTo` fire
-  `moveend` at once: call `map.once('moveend')` before moving the map.
-- **A test that fails only sometimes:** write down the commit, the command, the
-  browser and what was cached, and say whether it's Polku or the test machine.
-  Never weaken a check or skip a test to get a pass; say what failed.
 
 ## Pull requests
 
@@ -188,17 +185,13 @@ the whole conversation again, so change models only between sessions
   fixes it.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
-- **Screenshots** of a change people see: `tools/shoot.py OUTDIR before|after
-  [scenes]` on `main` and on the branch, as JPEG on the `pr-screenshots`
-  branch under `<branch>/` (no images in `main`), linked as
-  `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
+- **Screenshots** of a change people see, before and after, on the
+  `pr-screenshots` branch (DEVELOPING, "Running it"). No images in `main`.
 - **In the same PR:**
   - CHANGELOG, as release notes (see "Release notes" below);
-  - Review README.md when adding, changing or removing a user-facing
-    capability. Update the relevant sections when the description becomes
-    incomplete or inaccurate, preserving the existing factual style and useful
-    qualifications. Update docs/USING.md when controls or workflows change.
-    Keep release-by-release details in CHANGELOG.md;
+  - README.md where a capability it describes is added, changed or removed,
+    in its factual style and keeping its qualifications, and docs/USING.md
+    where controls or workflows change;
   - for a phase's part: what was built, in its plan in `docs/plans/`;
   - DEVELOPING, where how something works has changed.
 - **Offer a review** when a phase PR, or a fix that touches routing, saved
@@ -216,16 +209,22 @@ the whole conversation again, so change models only between sessions
 
 ## Bugs and findings
 
-- **Every bug gets a GitHub issue,** small ones too, and so does every
-  improvement, idea and risk to watch, each with its kind (`bug`,
-  `enhancement`, `idea`, `watch`) and its size. Search first, and add to the
-  one that exists.
-- The issue says what goes wrong and for whom, how to make it happen, what
-  should happen, the commit, and whether it's a **confirmed bug**, **a risk to
-  look into**, or **a problem with the test machine**. There's a template:
-  "Bug or technical finding", and one for an idea. Write it so that someone
-  who wasn't there can act on it: what you found, where in the code, what's
-  still unknown.
+- **File what someone else can act on,** with its kind and size, once you've
+  searched: a check failing the same way, or a symptom that may share a
+  cause, goes on the issue that exists.
+  - `bug`: a confirmed bug, small ones too.
+  - `watch`: a suspected bug, a credible risk to safety, reliability,
+    accessibility, privacy or saved data, or a check that failed for no
+    clear reason, with when to look again. One-off failures count: #371 and
+    #378 were the app's bugs #392 and #393.
+  - `enhancement` or `idea`: when it meets a need of people using Polku, or
+    the user asks. Not every passing thought.
+- **File it before your next commit or the end of the turn:** a session can
+  stop at a usage limit without warning. Short is fine: what happens, what
+  should, for whom, where in the code, the commit, what's unknown; the
+  templates list the rest. Check `main` when your branch could be the cause
+  (then fix it there), and link it to the phase when an approved design
+  replaces it.
 - **The issue is the one place for its status,** so nothing to do is listed in
   the docs. "Fixes #n" closes it when the PR merges; anything closed without a
   fix says why (`duplicate`, `wontfix`, or done elsewhere).
