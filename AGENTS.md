@@ -43,10 +43,11 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
 - **Start from the task the user picked, or the latest Hand-over** on the
   phase issue; otherwise from the Project's Now column, top first (Later and
   Someday need the user's OK). Trust a Hand-over for what ran on which
-  commit, but check its next step against its PR and branch, the comments
-  after it, and the plan on `main`: the newer decision wins, the user's or
-  one recorded as chosen. A review, an audit or a proposal decides nothing
-  until the user chooses it (#352). When unsure which is current, ask.
+  commit, and check it against its PR and branch. What comes next is the
+  user's latest choice and the plan's order on `main`, however recent the
+  Hand-over (#233's last note still named 1b). A review, an audit or a
+  proposal decides nothing until the user chooses it (#352). When unsure,
+  ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
   agent you are (Claude A, Claude B or Codex: all post as the user's GitHub
   account). A phase is claimed on its phase issue. Take over only when a
@@ -75,9 +76,10 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
   whether the claim is released; branch, commit and PR; done; verified, with
   the exact commands and the commit they ran on; not verified; decisions,
-  with links; next step; what to watch out for. Write one too before a turn
-  that waits for the user, so the answer can start a fresh session. Never
-  end a turn with uncommitted work: #177 lost a whole claim.
+  with links; next step, from the plan's order; what to watch out for.
+  Write one too before a turn that waits for the user, so the answer can
+  start a fresh session. Never end a turn with uncommitted work: #177 lost a
+  whole claim.
 - Docs and tooling PRs stay on their one subject.
 
 **Effort:** xhigh for code, design, plans, and anything touching routing,
@@ -140,10 +142,10 @@ not models, mid-session: a new model sends the whole conversation again
   (`python3 serve.py 8771`) and point the tests at it
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
-- **To test another branch** (a PR to review, `main` to compare), make a
-  worktree of its own (`git worktree add --detach <dir> <commit>`) and serve
-  that on its own port. Never switch the branch of a checkout another session
-  may be using: a test then runs half on one branch and half on the other.
+- **To test another branch,** make a worktree of its own
+  (`git worktree add --detach <dir> <commit>`) and serve that on its own
+  port. Never switch the branch of a checkout another session may be using:
+  a test then runs half on one branch and half on the other.
 - **Do what a user does:** click, drag, undo, reload. A button being there
   proves nothing.
 - **Every bug fix has a check in `tools/smoke.py`** that fails before the fix
@@ -181,8 +183,9 @@ not models, mid-session: a new model sends the whole conversation again
   phones", "Docs: …". Not `feat:` or `docs:`.
 - **Body:** what changes for the user, how you tested it, what isn't done or
   is still unknown. "Fixes #65" for each issue it fixes in full, and the
-  issues it found. A phase's parts refer to the phase issue; the last part
-  fixes it.
+  issues it found; no "fixes", "closes" or "resolves" before any other
+  number, since merging closes it (#383 closed #233). A phase's parts refer
+  to the phase issue; the last part fixes it.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
 - **Screenshots** of a change people see, before and after, on the
