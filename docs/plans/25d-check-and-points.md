@@ -2,10 +2,10 @@
 
 The implementation plan for the last part of Phase 25. What's still to do, and its status, is on GitHub: #233 and #345, in the [Phase 25](https://github.com/TommiContursi/Polku/milestone/16) milestone.
 
-- **Status (2026-10-21): approved,** with Revision 4 chosen (#355) and Revision 5's desktop changes; see "Where 25d stands" below.
+- **Status (2026-10-22): approved; 1a is built (#352).** The rest is built in three PRs, one a journey, in the order revised on 2026-10-22 so that nothing is built twice; see "Where 25d stands" below.
 - **What it builds:** journeys C and D of the [calmer planner](issue-233-calmer-planner.md#revised-journeys-2026-10-20-proposals), and #345's [map cards](issue-345-map-cards.md).
 - **The mock-ups:** [the map cards'](mockups/issue-345-map-cards.html) with **Cards: Revision 5** (the default) is what to build; **As approved** and **Revisions 1 to 4** stay there to compare. Every control in Revision 5 does what it says, or says in a note what the app would do. The planner's mock-up keeps sections C and D for the list, Check and the row ([phase-24-planner.html](mockups/phase-24-planner.html)). Its **Cards and lists** switch shows them as approved, or in **Revision 5**, the default and chosen on 2026-10-22, with the cards' own rows, warning box and cards. Its **Check's items** switch shows C, chosen (what can stop you in the red box, the rest as rows), or A (rows for every item). Where its approved cards differ from the revised ones (the point's card [jd-card, jd-day], the stretch's settings [jd-leg, jd-stretch], the item's card [jc-step]), the revised ones win. Frame ids are in brackets below.
-- **How to build it:** one part a session, one PR a part (part 1 in two), in this order. Each session starts from the last Hand-over on #233 (AGENTS.md).
+- **How to build it:** three PRs, one a journey: **Journey C** (parts 2 and 3), **Journey D** (1b and part 4) and **the map's cards** (parts 5 and 6). A PR stays a draft across as many sessions as it takes, with a commit and a Hand-over for each piece. While building, a session runs only the groups it touches; the whole suite and the review run once, at the end of the PR ("Every PR's steps"). Each session starts from the last Hand-over on #233 (AGENTS.md).
 
 ## Where 25d stands
 
@@ -29,21 +29,32 @@ The one list of what's decided, what waits for the user and what's next. The oth
 - *2026-10-21, the app's controls (#356):* black icons in lists (the ⋯ menu, the cards), green on the start's tiles and in switches; the chosen chip green with a border everywhere; one stepper, − 30 min + in one box with the number typable, for the cards and the round trip; switches with icons where they help, and one chosen look for all: white, black words, a green icon or tick.
 - *2026-10-22, C and D (#366):* Revision 5 for the list, Check, the row and their cards. In Check, Read before you go's items are the red warning box, and Worth a look's and Not checked's are rows: the box marks what can stop you everywhere it shows (the peek, a section, a card, Check).
 - *2026-10-22, in 1a (#352):* a point's stretch row says **Next stretch, to …** with the next point's name, and its line is "Its sport, how it's drawn and its style". Picking Paddle in Sport from here keeps the card open at its crafts (Sea kayak · Canoe · SUP), one setting for the whole route. In the route's view, a stop, a night and the start's leaving time still change on the card.
+- *2026-10-22, the order:* the rest of 25d in three PRs, one a journey, after the design system's values and controls (#382), so each card, list and colour is written once, against the final controls. The order is under **Next**, and why under "The order, and why".
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
-- Nothing now.
-
-**To reconsider in a later part** (the user, 2026-10-21): #364. It covers when you leave and when you go on (any time, not a few fixed hours); where Avoid this spot belongs; and On the profile on the route's and a point's card.
+- **When the design system starts** (#382, parked with its Hand-over). 25d's next PR waits for its values and controls (step 3 below).
+- **Before Journey D, three choices,** drawn first as a Revision 6 in the map cards' mock-up, earlier versions kept, so Journey D touches the cards once:
+  - #364 (the user, 2026-10-21): any time for leaving and for going on after a night, not a few fixed hours; where Avoid this spot belongs; On the profile on the route's and a point's card.
+  - #90: whether the route's card gets the whole route's actions (Export GPX, Share, Save offline, Clear route with Undo), or the ⋯ menu keeps them and #90 closes.
+  - #334: whether a tap on the start closes the route back to it, or the start's card offers Back to start.
 
 **Next**
-1. Done: #356's fix the cards need, the route's numbers' labels wrap (#360).
-2. Then #352 is restyled to Revision 5's frames as 1a (its desktop card, the edits as buttons, Reverse, the lit row), then 1b.
-3. Done: the planner mock-up's C and D frames (Check, the row, the list's sections and rows) have a Revision 5 version, chosen on 2026-10-22 with Check's items as C (#366).
-4. Then parts 2 to 6, in the order below.
-5. Before the milestone closes: #365. The finished planner is used in the browser as a newcomer and as an expert, and everything that test finds is fixed.
+1. Done: 1a, a point's card (#352, merged 2026-10-22).
+2. **Now, while the design planning runs,** work that touches neither `css/app.css` nor the cards:
+   - one Fix PR for the checks that fail only in a whole run (#367, #371, #378, #248), so every later PR's whole run passes the first time;
+   - then the bugs people meet on polku.si, each a Fix PR: #374 ("null" at the end of the sport menu), #381 (a note can vanish with its Undo), #351 (Undo right after adding a point).
+3. **The design system's values and controls** (#382; its plan decides the PRs, ideally few). Nothing of 25d runs meanwhile.
+   - The values, with nothing changing on screen, and #370's dark red with them.
+   - The controls that the cards, Check and the list use: #356 (one row, the chips, the switches, the headings and titles, the stepper as one box) and #376 (the warning and difficulty colours, Check's count), with #373 (labels that wrap).
+   - The map's colours read from the CSS (its step 3), since part 3 adds map layers.
+4. **Journey C, one PR:** part 2 (Check in three groups) and part 3 (the warning on the route).
+5. **Journey D, one PR,** after the three choices above: 1b (the route's card, a stretch's card, Edit this stretch, What's here's groups) and part 4 (the list in sections, Reorder), with End everywhere (#353) and what's chosen for #364, #90 and #334.
+6. **The map's cards, one PR:** parts 5 and 6. Holds and keys, the spot's and a place's cards, What's here in levels, Share a spot, Weather here, and the map's own cards on `CardHost`. It fixes #233 and #345.
+7. **Then** the rest of Phase 25's issues where "Where the other issues go" puts them, the design system's later steps (#382: the route on the map, outdoor contrast), and its second audit (#379).
+8. **Before the milestone closes:** #365, the finished planner used in the browser as a newcomer and as an expert, with everything it finds fixed; then the retro.
 
-> **For agentic workers:** use superpowers:executing-plans for one part at a time. Steps use checkboxes (`- [ ]`). AGENTS.md wins where they differ: no subagents to verify or run the suite.
+> **For agentic workers:** use superpowers:executing-plans for one piece at a time, inside its journey's PR. Steps use checkboxes (`- [ ]`). AGENTS.md wins where they differ: no subagents to verify or run the suite.
 
 **Goal:** a tap on a point, the route, a warning or a place shows one card; a long press or a right-click shows what's there and what you can do; Check sorts every Heads-up item by how serious and how sure.
 
@@ -55,28 +66,45 @@ The one list of what's decided, what waits for the user and what's next. The oth
 
 ## The order, and why
 
-Five things are shared, and each part builds what it shares before a later part uses it:
+**Each thing is built once,** by the PR that first needs it, on top of what it stands on. 1a showed what the other way costs: its card was rewritten when the design moved from Revision 4 to 5, and each small PR paid for its own whole runs and review.
 
 | Shared | Built in | Used in |
 |---|---|---|
-| The card and its parts: the mark and name, the numbers, the switch, groups of items, the one filled button, the "You're not editing" note, Back, the peek, undo and redo | 1 | every part |
-| Key points and stretches (`keyPoint()`, `stretchAt()`) | 1 | 1, 4 |
-| Heads-up's groups and sources (`headsUp()`) | 2 | 3, 4 |
-| Taps and holds on the map, and the keyboard's way to them | 1 (taps), 5 (holds and keys) | 5, 6 |
-| The facts in levels (`facts.js`, What's here) | 1 (three numbers), 6 (levels) | 5, 6 |
+| The card and its parts: the mark and name, the numbers, the switch, groups of items, the one filled button, the "You're not editing" note, Back, the peek, undo and redo | 1a (#352) | every PR |
+| The values and the controls: rows, chips, switches, headings, the stepper, the warning colours | the design system, before Journey C | every PR |
+| Heads-up's groups and sources (`headsUp()`) | Journey C (part 2) | Journey C (part 3), Journey D (part 4) |
+| A warning's card (`openItemCard()`) | Journey C (part 3) | Journey D: the route's card, the list's sections |
+| Key points and stretches (`keyPoint()`, `stretchAt()`), a stretch's card, Edit this stretch | Journey D (1b) | Journey D (part 4), the map's cards (the hold on the route) |
+| Taps and holds on the map, and the keyboard's way to them | 1a (taps), the map's cards (holds and keys) | the map's cards |
+| The facts in levels (`facts.js`, What's here) | 1a (three numbers), Journey D (the way's), the map's cards (levels) | Journey D, the map's cards |
 
-1. **The cards on the route and its points** (two PRs: 1a the card and a point's card, #352 restyled; 1b the route's and a stretch's cards). *Why first:* the point's and the stretch's cards are the same component, and "Next stretch, to … ›" needs the stretch's card. Today's point and leg menus go here.
-2. **Check in three groups.** Before anything else shows a warning's group or source.
-3. **The warning on the route.** Journey C whole.
-4. **The list in sections, with Reorder.** It opens point, stretch and warning cards, so it comes after all three.
-5. **Holds and keys:** the long press and right-click on the route and the map, the spot's and a place's cards, the first point's hint, and the keyboard's crosshair in the same PR.
-6. **What's here, in levels, with Share and Weather here,** and the map's own cards moved onto `CardHost`: one card system.
+- **The design system's values and controls before the next card.** Built first, Check, the warning, the list and the spot's card would each be styled again by #356 and #376. With the values and controls in place, each is written once. The map's colours come from the CSS before part 3 adds its markers and the unchecked stretches.
+- **Journey C before Journey D.** The list's sections open a warning's card, and the route's card shows the warning on its stretch. With part 3 first, neither needs a stand-in.
+- **1b with part 4.** The stretch's card and the list's stretch rows are the same stretches, with the same keys through Undo: one PR builds and tests them together. #364's choices, #90, #334 and #353 change the same cards and rows, so they come in that PR, decided before it starts.
+- **Parts 5 and 6 together.** Apart, the spot's card would ship without its bottom row (Share, Weather here, Not right?) and with What's here's levels still to come. Part 6 also moves the map's own cards onto `CardHost`; the design system converts their CSS then, when it's next touched, as its plan says.
+- **Fixes elsewhere go where they touch nothing being built:** the checks and JavaScript bugs while the design planning runs; small CSS fixes between the PRs, after the values; the sheet, the toolbox and the tooltips after the map's cards, once the cards are final.
+
+### Where the other issues go
+
+| Issue | Where | Why there |
+|---|---|---|
+| #367, #371, #378, #248 (checks that fail only in a whole run) | One Fix PR, now | Every later whole run passes the first time |
+| #374, #381, #351 | Fix PRs, now | Live on polku.si; no CSS, no cards |
+| #370 | With the design values | A colour value |
+| #356, #376, #373 | The design system's controls, before Journey C | The cards, Check and the list use them |
+| #208, #235 | The design system's controls (#382), before #365 | The whole app's pressed states and targets |
+| #353 | Journey D (part 4) | The list's rows and the route's title are rebuilt there |
+| #364, #90, #334 | Journey D, after the user's choices | The same cards |
+| #242, #243, #257, #301, #375, #227, #126 | Fix PRs between the PRs, after the values | Outside the cards: the summary, the timeline, Settings, the search box, the tilt box, the map |
+| #338, #303, #304 | After the map's cards | The sheet, the toolbox and the tooltips, once every card is built |
+| #131 | After the map's cards | The track's card sits beside the map's own cards |
+| #377 | The user's call, as a watch | Follows 25a's decision of 2026-10-20 |
 
 ## For you to decide
 
 Each has a recommendation. The plan is written with it. 1 to 8 were approved at b21a63c (6 is revised); 9 to 14 are new.
 
-1. **The order:** as above (revised).
+1. **The order:** as in "Where 25d stands" (revised 2026-10-22: three PRs, one a journey, after the design system's values and controls).
 2. **Change sport on a point** changes the legs from that point to the next change of sport, or to the end. One stretch only is Edit this stretch. *Why:* #345 asks for both, "from a point onward" and "for one part only".
 3. **All leg settings goes.** Each stretch row says its sport and how it's drawn, and Edit this stretch is one tap away.
 4. **Find and Move to wait** (#350). Folding, Reorder and a point's Move cover them.
@@ -119,7 +147,7 @@ Every part's requirements include these.
 | At this point: Pass by · Stop · Night | the app's `seg`, as a variant with icons over the words (new: `seg icons`); the chosen one as every switch's: white, black words, a green icon (#356) |
 | A stop's minutes | one stepper for the round trip and the cards: − 30 min + in one box, the number typable (#356) |
 | Rows: This stretch, What's here, Edit this stretch, Next stretch, to …, Sport from here: MTB, Leave at: Now, Route style: Balanced, Not right?'s links, and the actions (Move, Start here, Remove) | one plain row: always an icon, its name, its line, a value in the accent colour, ›; a hairline between rows; a hover on desktops; Remove in red, apart (new: `row`, which the app's `speed-sport-row` can share, #356) |
-| A warning on a stretch | the yellow box with its words (new: `warn-row`, which part 3's row in the peek uses too) |
+| A warning | the warning box with its words, in its group's colour: red for Read before you go, yellow for Worth a look, dashed for Not checked (new: `warn-row`; part 3's row in the peek and part 4's sections use it too; in Check only Read's items are boxes, #366) |
 | The one main action | the app's `btn primary big` |
 | The route's view | the app's `pl-viewnote` |
 | Take the bike along | the app's `tg` |
@@ -129,7 +157,7 @@ Every part's requirements include these.
 
 - **A line under every item of a list,** or none in that list, so a list reads alike (the user, 2026-10-21). The line says what the name doesn't: what an action removes or adds ("The part before it is removed, Undo brings it back"), how far it reaches ("To the next change of sport, or the end"), a stretch's two ends, or what's behind a row ("Sport, how it's drawn, style"). On desktops every line is the row's tooltip instead. Lines can be dropped in a later phase if they turn out to be clutter.
 - **Every row that opens something has an icon** and ›, and a hover on desktops: they say it's a button without a box around it.
-- **Desktops:** 320 px wide, 480 px tall at most; rows 34 px with a hover; a row with › goes somewhere, an action is a button with its icon and name, two a row; Remove a red button on a row of its own; the lines as tooltips; no heading above a group of buttons.
+- **Desktops:** 320 px wide, 480 px tall at most; rows 36 px with a hover (#380); a row with › goes somewhere, an action is a button with its icon and name, two a row; Remove a red button on a row of its own; the lines as tooltips; no heading above a group of buttons.
 - **Narrow (200 %, a small phone):** Back, undo, redo and ✕ on a row of their own, the name the card's whole width; the numbers one to a row; the switch in a column. Words break only at soft hyphens.
 - **The peek:** a card takes 52 % of the window at most on a phone, and scrolls inside, so the point or the spot stays in sight. On a desktop the card stays on the screen and scrolls inside.
 - **The words:** the name first, one short line under it, no facts strung with dots, no brackets ("Forest path, 0.72 km from the start"). "There at", never "you're here". **Edit this stretch**. The ways are the app's: **Follow paths**, **Straight line**, **Over water**. Notes use the points' numbers ("Point added after Via 1"). Not right? says "Its mappers can fix what you tell them." One short word a grade (S0 easy, S1 fairly easy, S2 medium, S3 hard, S4 very hard, S5 and S6 extreme; T1 easy, T2 medium, T3 hard, T4 to T6 alpine), on its own line under the grade.
@@ -146,12 +174,15 @@ The cases the spec implies and a reviewer should try. Each has a check in the pa
 
 ---
 
-## Every part's steps
+## Every PR's steps
 
-Each part below gives its own checks and what to build. These steps wrap them.
+Each part below gives its own checks and what to build. A PR holds one journey's parts ("How to build it"). These steps wrap them.
 
-- [ ] **Claim** the part on #233: branch `claude/25d-<n>-<name>` from `main`, or from the part below if it isn't merged ("After #N").
-- [ ] **Write the part's checks** in `tools/smoke.py`: a new group (named in the part), and the updates to existing groups. Update an existing check to the new card. Never weaken what it proves.
+**At the start of the PR**
+- [ ] **Claim** it on #233: branch `claude/25d-<journey>` (`journey-c`, `journey-d`, `map-cards`) from `main`. Open a draft PR at the first push.
+
+**For each piece** (a part, or a step a part names), as many sessions as it takes:
+- [ ] **Write the piece's checks** in `tools/smoke.py`: a new group (named in the part), and the updates to existing groups. Update an existing check to the new card. Never weaken what it proves.
 - [ ] **Run them against `main`.** Serve `main` from its own worktree and point the branch's checks at it:
   ```bash
   git worktree add --detach ../polku-main origin/main
@@ -164,15 +195,18 @@ Each part below gives its own checks and what to build. These steps wrap them.
   ```
   Expected: FAIL, on the new group's assertions.
 - [ ] **Build** what the part lists.
-- [ ] **Run the new group** on the branch's own server (`python3 serve.py 8771`, `POLKU_URL=http://localhost:8771/`). Expected: ok.
-- [ ] **Run the groups the part names.** Then the whole suite, from a frozen worktree on a server started from Bash. Expected: ok, but for a known flaky check (#314, #340, #292), each with its evidence.
+- [ ] **Run the new group and the groups the part names** on the branch's own server (`python3 serve.py 8771`, `POLKU_URL=http://localhost:8771/`). Expected: ok. Not the whole suite yet.
+- [ ] **Shared controls:** where a card part does the same job as one of the app's controls, it uses that control and its class; `css/app.css` gets no copy of one under another name (no `c2-`). New classes are only the new ones in "How every card is built", each added to DEVELOPING's "Shared controls". Values come from the design system's names, never numbers typed in place.
+- [ ] **Beside its frame:** open the piece's frames in the mock-up (`?frame=<id>`, Cards: Revision 5) at the same size as the app, and compare the two screenshots side by side, at 390 × 844 and 1440 × 900, light and dark. A difference is a bug unless this plan says why.
+- [ ] **Commit, push, and a Hand-over** on #233 at each checkpoint (AGENTS.md).
+
+**At the end of the PR, once**
+- [ ] **The whole suite,** from a frozen worktree on a server started from Bash. Expected: ok. A check that fails only in a whole run gets an issue with its evidence (commit, command, what failed, and that it passes alone); never a rerun until it's green. (#268 would run it on GitHub Actions instead of this machine.)
 - [ ] **Look at it as a person,** in the browser pane: 1440 × 900 and 390 × 844, MTB and paddle, a route drawn, the timeline open; 360 × 740 in Finnish; 200 %; dark.
-- [ ] **Shared controls:** where a card part does the same job as one of the app's controls, it uses that control and its class; `css/app.css` gets no copy of one under another name (no `c2-`). New classes are only the new ones in "How every card is built", each added to DEVELOPING's "Shared controls".
-- [ ] **Beside its frame:** open the part's frames in the revised mock-up (`?frame=<id>`, Cards: Revised) at the same size as the app, and compare the two screenshots side by side, at 390 × 844 and 1440 × 900, light and dark. A difference is a bug unless this plan says why.
 - [ ] **The regression list** below, as a person would, at 390 × 844 and 1440 × 900.
 - [ ] **Screenshots** before and after with `tools/shoot.py`, on `pr-screenshots` under the branch.
-- [ ] **Docs in the same PR:** CHANGELOG (one entry), USING (controls), README (a capability), DEVELOPING (how it works), and this plan's Built section.
-- [ ] **Commit, push, PR:** a draft in the Phase 25 milestone, titled "Phase 25d: …", with "Refs #233" (and #345 from 1b on). Out of draft once verified. Offer a review for parts 1, 4, 5 and 6: they touch routing, the route's shape or links.
+- [ ] **Docs in the same PR:** CHANGELOG (one entry a journey), USING (controls), README (a capability), DEVELOPING (how it works), and this plan's Built section.
+- [ ] **Out of draft** once verified, in the Phase 25 milestone, titled "Phase 25d: …", with "Refs #233" and #345. **Offer one review** (a fresh session tries to break it; every PR here touches routing, the route's shape, history or links). Each finding gets a fix with a check that fails before it.
 - [ ] **Hand-over** on #233.
 
 ### The regression list
@@ -183,7 +217,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
 
 ## Part 1. The cards on the route and its points
 
-Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revised frames: its `CardHost`, history, focus, the point's re-keying through drags and Undo, and its checks stay.
+1a is built (#352, "Built" below). **1b is built in Journey D's PR, with part 4, after Journey C** ("The order, and why").
 
 ### 1a. The card, and a point's card
 
@@ -195,7 +229,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - **Three numbers:** **10:09** there at, **1.65 km** from the start, **107 m** height. The start: **10:00** you leave and its height [r-start].
 - **At this point** (a via point): one switch, **Pass by · Stop · Night**, showing what happens there now. Stop shows its minutes with − and +, and "You get here at 10:09 and go on at 10:39" [r-stop]. Night shows "Go on at 07:00 the next morning" and **Places to sleep nearby ›** [r-night].
 - **Sport from here: MTB ›** opens the sports, with "your route" on the route's own [r-sport]; a pick changes the legs from here to the next change of sport, or to the end (decision 2). A change of sport then shows its changeover minutes and **Take the bike along** [r-change].
-- **Next stretch, to … ›**, both ends named. Until 1b it opens today's leg menu.
+- **Next stretch, to … ›**, both ends named. Until Journey D it opens today's leg menu.
 - **Edit this point:** **Move** and **Rename** side by side; **Start here** and **End here** on a via point, each with its line (decision 10); a loop's via point has "Start here: the same loop, starting from this point" and no End here.
 - **The start** has **Leave at: Now ›** ("Sets the times and the weather along the route"). **The end** has **Back to start** ("Adds a leg back to the start"), not on a loop [r-end].
 - **Remove** apart, in red, "Undo brings it back"; the note names it, with Undo [r-removed].
@@ -254,11 +288,13 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 ### 1b. The route's card and a stretch's card
 
+**In:** Journey D's PR, with part 4.
+
 **Title:** Phase 25d: a tap on the route shows what's there; its settings one step away.
 
 **For people:**
 - A tap on the route shows the spot's facts. Phones: a pin at the spot and **+ Add a point here** just above it; the card in the peek [p-route]. Desktops: the card at the pointer, Add a point here first as its filled button [d-route]. Near an edge it opens the other way, and the button moves to the side nearest the pointer.
-- **The card:** the way's mark (the line with the pin), the way's name, and "Forest path, 0.72 km from the start". Three numbers for your sport: there at, uphill or downhill, difficulty (MTB) or trail grade (Hike) with its word [w-hike]. A warning on that stretch, as a row in its colour with its words, opening the item (part 3; until then, today's Heads-up).
+- **The card:** the way's mark (the line with the pin), the way's name, and "Forest path, 0.72 km from the start". Three numbers for your sport: there at, uphill or downhill, difficulty (MTB) or trail grade (Hike) with its word [w-hike]. A warning on that stretch, as the warning box in its group's colour, opening the item's card (part 3, built before it in Journey C).
 - Then three rows: **This stretch ›**, **What's here ›**, **Edit this stretch ›**, each with its line.
 - **+ Add a point here** puts a point at the spot. No routing call, one step of Undo.
 - **This stretch ›** [p-stretch]: the stretch's mark, both ends as its name, its distance, time and climb, **Look out for**, **Edit this stretch** as the one filled button, and On the profile.
@@ -269,6 +305,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - **The route's view:** the card without the pill or Edit this stretch, and the note with Edit [r-view-route, d-view]. With the planner put away: Plan opens at the card.
 - The point's **Next stretch, to … ›** opens the stretch's card now. Today's leg menu goes.
 - The long press on the route waits for part 5; until then a hold reshapes the line as today.
+- **What's chosen before Journey D** for #364 (Avoid this spot, On the profile, the times), #90 (the whole route's actions) and #334 (the start), built here to the Revision 6 frames.
 
 **Files:**
 - Create: `js/facts.js`'s `headline()` and `wayFacts()`.
@@ -309,6 +346,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 ---
 
 ## Part 2. Check in three groups
+
+**In:** Journey C's PR, with part 3.
 
 **Title:** Phase 25d: Check says how serious and how sure.
 
@@ -379,6 +418,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 ## Part 3. The warning on the route
 
+**In:** Journey C's PR, with part 2.
+
 **Title:** Phase 25d: a warning shows where it is on the route.
 
 **For people:**
@@ -396,7 +437,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 **Files:**
 - Modify: `js/planner.js`: `drawHeads()`, `openItemCard()`, `stepItem()`; `els.readRow` in `buildPanel()`; `focusRange()` lights through `routeLit`.
-- Modify: `js/style.js`: source `heads` (clustered: `clusterRadius` 24, `clusterProperties: { sev: ['max', ['get', 'sev']] }`), layers `heads-icon`, `heads-count`, `heads-ring`, `route-unchecked`.
+- Modify: `js/style.js`: source `heads` (clustered: `clusterRadius` 24, `clusterProperties: { sev: ['max', ['get', 'sev']] }`), layers `heads-icon`, `heads-count`, `heads-ring`, `route-unchecked`, their colours read from the CSS (the design system's step 3), and above the route's glow (#198), so the glow under the pointer never washes a marker out.
 - Modify: `js/icons.js`: the triangle, the "?" and the eye as map images.
 - Modify: `js/inspect.js`: a click on `heads-icon` comes first while the planner is put away.
 - Test: new group `onroute`; update `drawer`, `routeview`, `trails`.
@@ -425,6 +466,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 
 ## Part 4. Points and stretches in the list, and Reorder
 
+**In:** Journey D's PR, with 1b.
+
 **Title:** Phase 25d: the route's list in sections, with Reorder.
 
 **For people:**
@@ -438,11 +481,12 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - **The route's view:** the same sections, no Reorder; a card shows what works there and the note with Edit (decision 6).
 - Long names wrap; numbers stay whole (360 × 740, Finnish) [jd-fi].
 - A followed LIPAS route is one section on its own line [jd-lipas].
+- **End, not Finish** (#353): the last point's label, the list's rows and the route's title in the route's view say End, as the cards do.
 
 **Files:**
-- Modify: `js/planner.js`: `renderWaypoints()` draws `sections()`; `dragRow()` takes a touch hold; the list's keys; `els.pointsFoot` loses All leg settings.
+- Modify: `js/planner.js`: `renderWaypoints()` draws `sections()`; `dragRow()` takes a touch hold; the list's keys; `els.pointsFoot` loses All leg settings; `label()` says End (#353).
 - Modify: `css/app.css`: `.sec2`, `.wpl-point`, `.wpl-stretch`, `.reorder`.
-- Test: new group `sections`; update `drawer`, `stops`, `multi`, `routeview`, `backtostart`, `lipas`.
+- Test: new group `sections`; update `drawer`, `stops`, `multi`, `routeview`, `backtostart`, `lipas`, and every check that looks for "Finish".
 
 **Interfaces:**
 - Consumes: `keyPoint()`, `stretchAt()`, `openPointCard()`, `openStretchCard()`, `openItemCard()`, `headsUp()`.
@@ -465,6 +509,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 ---
 
 ## Part 5. Holds and keys
+
+**In:** the map's cards' PR, with part 6.
 
 **Title:** Phase 25d: hold the map to see what's there; the same by keyboard.
 
@@ -512,7 +558,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
   - No route: the pill starts a route with one point, editing.
   - The spot's card: three numbers, "from your route" first (none with no route); Share, Weather here and Not right? in one row, last.
   - The planner put away: a hold opens the card at the spot.
-  - The spot's card ends with What's here and Your route until part 6 brings its bottom row (Share, Weather here, Not right?).
+  - The spot's card's bottom row (Share, Weather here, Not right?) comes with 6b, in the same PR.
 - [ ] **Build** `bindHold()` from `bindSpotMenu()`'s guards (a second finger, a move, a late touchend, Android's `contextmenu`), at 500 ms. Then the cards, then Add to my route. The planner's hint (`els.hint`) and `TIPS` say what a tap and a hold do now.
 
 ---
@@ -550,6 +596,8 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 ---
 
 ## Part 6. What's here, in levels, with Share and Weather here
+
+**In:** the map's cards' PR, with part 5.
 
 **Title:** Phase 25d: a card says a little; What's here says the rest; share a spot.
 
@@ -610,7 +658,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
   - Weather here: the timeline open, `heldLL` at the spot. Closed: released. No request carries the spot's coordinates.
 - [ ] **Build** the link and its reading first, then Share, then Weather here.
 - [ ] **Groups to run (6a and 6b):** `facts sharespot sweep trails winter lipas avoid changelog weather radar spotcard routecard`.
-- [ ] **This part's PR fixes #233 and #345,** with this plan's Built section complete.
+- [ ] **The map's cards' PR fixes #233 and #345,** with this plan's Built section complete.
 
 ---
 
@@ -622,10 +670,9 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
 - A form in Polku that posts a note to OpenStreetMap: #347.
 - A swipe below the peek that puts the route away: #338.
 - Find a point by name, and Move to a number: #350.
-- Renaming the route's last point from Finish to End outside the cards (the list, the route's title): #353, since 25d stays within the cards.
 - The ⋯ menu's top repeating the sheet's title: #354.
-- The same controls styled differently across the app (four row styles, black and green icons, two chosen chips, three switch heights, three headings): #356, a Fix PR of its own, before 1a.
-- A test with someone new (§8's script): after part 4, and again after part 6.
+- The same controls styled differently across the app (four row styles, black and green icons, two chosen chips, three switch heights, three headings): #356, with the design system's controls (#382), before Journey C.
+- A test with someone new (§8's script): after Journey D, and #365 after the map's cards.
 
 ## Built
 
