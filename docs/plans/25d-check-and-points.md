@@ -104,7 +104,7 @@ Every part's requirements include these.
 - Every Heads-up item of today stays, in one group, with its source. An item with no group shows in Read before you go, so a forgotten one looks more serious, never less, and logs a console error, so a check fails.
 - Every action of today's point menu, leg menu and spot menu stays, moved to a card.
 - **Stay within the cards.** The toolbar, the start, the ⋯ menu and the rest of the planner don't change in 25d, except where a part says so (the peek's row in part 3, the list in part 4).
-- WCAG 2.2 AA. 44 px targets on phones, 40 px on desktops, 8 px apart. Keyboard and screen readers. Reduced motion. Never colour alone.
+- WCAG 2.2 AA. 44 px targets by touch, at any width (`pointer: coarse`: phones, tablets, touch laptops); 36 px with a mouse or trackpad (`pointer: fine`, decided 2026-10-22 in place of 40 px); 8 px apart. Keyboard and screen readers. Reduced motion. Never colour alone.
 - No framework, dependency or build step.
 
 ### How every card is built
@@ -245,7 +245,7 @@ Two PRs, 1a then 1b, both before anything else. 1a is #352 restyled to the revis
   - No card's text has " · " in it; no number's value is taller than one line.
   - The card's height ≤ 52 % of the window on the phone; the point's marker above it, on screen.
   - The card's parts are the shared controls: Back `.way-back` with words, the name `.way-hint`, numbers `.sum-item`, the switch `.seg.icons`, rows `.row`, the warning `.warn-row`, the main action `.btn.primary.big`; no class in the card that isn't in DEVELOPING's "Shared controls".
-  - Desktop: rows 40 px, no line but a stretch's ends; each other line is the item's `title`.
+  - Desktop: rows 36 px, no line but a stretch's ends; each other line is the item's `title`.
   - At 200 %: undo, redo and ✕ in the card's top row, the title below them; at 360 × 740 in Finnish with a 40-letter name, no "…", no text past the card.
   - The route's view: the switch works and stays in the view; no Move, Rename, Start here, End here, Sport from here or Remove; the note's Edit goes back to editing.
   - The end on a loop: no Back to start; a loop's via point: Start here with the loop's line, no End here.
