@@ -66,6 +66,14 @@ SETTLED = """new Promise((done) => {
   requestAnimationFrame(frame);
 })"""
 
+
+def placed(pg):
+    """The sheet at its size, then the toolbox shown and placed for it: in a frame after a change, late on a busy
+    machine. A check that read the toolbox or measured near it after a fixed wait looked too early (#367, #390)."""
+    pg.js(SETTLED)
+    pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
+
+
 # Before the page loads, for checks that need none of Traficom's depths: its map tiles answer at once, empty, and
 # its other calls fail as if blocked. (Slow to answer at times, they kept the map from loading; blocked, a tile that
 # failed last kept MapLibre's load event and Polku's load step from coming at all: #393, #378, #361.)
@@ -5878,11 +5886,6 @@ def toolbox(chrome):
             pg.js(SETTLED)
         return pg.js(f"({TB_AT})({json.dumps(sel)})")
 
-    # the panel at its size, then the toolbar placed for it: in a frame after the change, late on a busy machine (#367)
-    def placed(pg):
-        pg.js(SETTLED)
-        pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
-
     def click(pg, sel, name):
         b = at(pg, sel)
         if not b:
@@ -6889,7 +6892,9 @@ def route_view(chrome):
             chrome.send('Input.dispatchKeyEvent', fields, pg.s)
         time.sleep(0.3)
 
-    at = lambda pg, sel: pg.js(f"({TB_AT})({sel})")
+    # (where it is once the sheet has come to its size: ✕ measured while the planner came back after the note's Open had
+    # something over it; settle=False for the note, which goes in 6 s)
+    at = lambda pg, sel, settle=True: (settle and pg.js(SETTLED), pg.js(f"({TB_AT})({sel})"))[1]
     state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: !!document.querySelector('.maplibregl-popup .insp'), menu: document.querySelector('.maplibregl-popup .pt-menu .btn.primary')?.textContent.trim() || '' }; })()")
     shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); return true; })()")
 
@@ -6903,6 +6908,7 @@ def route_view(chrome):
         return True
 
     def view_ok(pg, name):
+        placed(pg)  # (the route's view's toolbox, a frame after Done)
         v = pg.js(RV_VIEW)
         if v['out'] or v['small']:
             fails.append(f"{name}: {', '.join(v['out'] + [f'under 44 px: {s}' for s in v['small']])}")
@@ -6957,6 +6963,7 @@ def route_view(chrome):
             fails.append(f'{name}: the point’s card’s ✕ left it open')
         # Edit: the drawing tools are back, with undo as it was; a tap adds a point again
         press(pg, at(pg, "polku.planner.els.edit"), f'{name}: Edit', touch)
+        placed(pg)  # (the drawing tools are back in the toolbox a frame later)
         e = pg.js("(() => { const p = polku.planner; return { view: p.inView(), mode: !!p.els.modeBtn.offsetParent, undo: !p.els.undo.disabled && !!p.els.undo.offsetParent, past: p.past.length, done: !!p.els.done.offsetParent, ghosts: p.ghosts.length }; })()")
         if e['view'] or not e['mode'] or not e['undo'] or e['past'] != s0['past'] or not e['done'] or not e['ghosts']:
             fails.append(f'{name}: after Edit: {e} (undo steps before Done: {s0["past"]})')
@@ -6969,6 +6976,7 @@ def route_view(chrome):
         # ✕ puts it away with a note; the route stays on the map; Open brings it back as it was
         press(pg, at(pg, "polku.planner.els.done"), f'{name}: Done again', touch)
         press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕', touch)
+        pg.js(SETTLED)  # (the planner put away: its note's Open is measured once, then tapped while the note shows)
         c = pg.js("""(() => { const p = polku.planner, t = document.getElementById('toast'), b = t.querySelector('.toast-act'), col = document.getElementById('map-ctrls').getBoundingClientRect();
           return { active: p.active, legs: p.legs.length, drawn: polku.map.queryRenderedFeatures({ layers: ['route-casing'] }).length > 0, text: t.hidden ? '' : t.firstChild.textContent.trim(), open: b && b.textContent,
             h: b ? b.offsetHeight : 0, clear: t.getBoundingClientRect().right <= col.left - 4, plan: !!document.getElementById('btn-plan').offsetParent, fit: !document.getElementById('btn-fit').hidden }; })()""")
@@ -6976,7 +6984,7 @@ def route_view(chrome):
             fails.append(f'{name}: after ✕: {c}')
         if c['h'] < 44 or not c['clear']:
             fails.append(f"{name}: the note’s Open {c['h']} px tall, {'clear of' if c['clear'] else 'over'} the map’s buttons")
-        press(pg, at(pg, "document.querySelector('#toast .toast-act')"), f'{name}: the note’s Open', touch)
+        press(pg, at(pg, "document.querySelector('#toast .toast-act')", False), f'{name}: the note’s Open', touch)
         s = state(pg)
         if not s['active'] or not s['view'] or s['sheet'] != s0['sheet']:
             fails.append(f"{name}: Open: {s} (it was the route’s view at {s0['sheet']})")
@@ -7242,8 +7250,6 @@ def point_card(chrome):
     # numbers come, and a click that went down on the old card and up on the new one was lost; a tap measured while the
     # sheet grows lands where the thing was)
     at = lambda pg, x: (pg.js("Promise.resolve(polku.planner.analysing).then(() => true, () => true)"), pg.js(SETTLED), pg.js(f"({PC_AT})({x})"))[2]
-    # the sheet at its size and the toolbox placed for it, in a frame after a change (late on a busy machine: #390)
-    settle = lambda pg: (pg.js(SETTLED), pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))"))
     st = lambda pg: pg.js(PC_STATE)
     # a row by its name, a switch's choice by its word, a button by its words or label
     row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b').textContent === {json.dumps(label)})"
@@ -7268,7 +7274,7 @@ def point_card(chrome):
     def tap_marker(pg, i, name, touch):
         # where the point is under the toolbox, a button, a note or the card, the map moves to it first, as a person moves it
         # (looked at once the sheet and the toolbox are in place, as at() does)
-        settle(pg)
+        placed(pg)
         cov = pg.js(f"""(async () => {{ const p = polku.planner, m = p.markers[{i}]; if (!m) return false; const el = m.getElement().querySelector('.wp');
           const clear = () => {{ const b = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }};
           if (clear()) return true;
@@ -7291,7 +7297,7 @@ def point_card(chrome):
           const top = document.querySelector('.topbar').getBoundingClientRect().bottom + 30, bottom = (p.layout() === 'side' ? innerHeight : Math.min(p.panel.getBoundingClientRect().top, innerHeight)) - 30;
           return el === polku.map.getCanvas() && x >= 40 && x <= innerWidth - 80 && y >= top && y <= bottom ? {{ x, y }} : null; }})()""")
     def spot_near(pg, i):
-        settle(pg)  # (once the sheet and the toolbox are in place: the toolbox redrawn after Move covered a spot, #390)
+        placed(pg)  # (the toolbox drawn again after Move covered a spot, #390)
         return next((x for x in (free_spot(pg, i, dx, dy) for dx, dy in ((-120, -160), (120, -160), (0, -200), (160, 120), (-160, 120), (200, 0), (-200, 0), (-60, -90), (60, -90))) if x), None)
 
     def one_size(pg, w, h_, phone, name, touch):

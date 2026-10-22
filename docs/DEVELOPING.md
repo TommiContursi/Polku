@@ -53,7 +53,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 - Wait for the state you check (the next animation frame, `SETTLED`), never a fixed time.
 - `open_app()` and `reload()` return once the map has loaded and MapLibre's `load` event has run Polku's own load step (the saved route, the planner left open, the layers), 45 s at most. That event comes a frame after the map counts as loaded, and much later on a busy machine; a check that began first had its route drawn again under it (#248). A saved timeline and weather layers open earlier, at start-up, and the map's buttons show only once they're in their place above it (#292), but the timeline still grows a little when its forecast comes in (#301). Before measuring the buttons, wait for `SETTLED`, and take a button's place again right before each tap or click, as `button3d` does. To hold the `load` event back, see `COLUMN_HOLD`.
 - A group that doesn't check Paddle's depths gives its pages `EMPTY_DEPTHS`: Traficom's map tiles answer at once, empty. Don't block a tile source with `Network.setBlockedURLs`: a tile that fails as the map's last one keeps MapLibre's `load` event, and Polku's load step, from coming at all (#393).
-- The toolbox is shown and placed in an animation frame after a change. Measure it, or anything near it, once the sheet has settled (`SETTLED`) and two frames have passed, as `toolbox` and `pointcard` do (#367, #390).
+- The toolbox is shown and placed in an animation frame after a change. Read it, or measure anything near it, once the sheet has settled and two frames have passed: `placed(pg)` in `tools/smoke.py` (#367, #390).
 - A fix's check must fail without the fix: run it on a worktree of `main` first.
 
 ## How the trickier parts work
