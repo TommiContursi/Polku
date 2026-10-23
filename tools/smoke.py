@@ -4869,12 +4869,12 @@ def palette_css(chrome):
 
 # Idea D: every text in these scenes of tools/shoot.py, against the solid colour behind it, at 4.5:1 (3:1 for large text),
 # in light and then in dark, measured by tools/census.py. Text over the map itself isn't measured (census.py says why).
-SWEEP = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick',
+CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick',
          'phone-planner', 'phone-tab-check', 'phone-point-card', 'phone-quick']
 # What still fails, by the issue that fixes it. The sweep fails on anything else, and on an entry here that passes now,
 # so the list only ever shrinks: (theme, the element and its parent as census.py names them, the start of its text or
 # None for any text)
-SWEEP_KNOWN = {
+CONTRAST_KNOWN = {
     '#376': [  # for the controls PR: the status colours' text versions, Plan in green
         ('light', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None), ('dark', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None),
         ('light', 'button.li > span.badge', None), ('dark', 'button.li > span.badge', None),
@@ -4898,7 +4898,7 @@ def contrast_sweep(chrome):
     import census
     import shoot
     found, fails = {}, []
-    for name in SWEEP:
+    for name in CONTRAST_SCENES:
         pg = shoot.scene(chrome, name)
         try:
             for theme in ('light', 'dark'):
@@ -4913,14 +4913,14 @@ def contrast_sweep(chrome):
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
-    known = {k: why for why, keys in SWEEP_KNOWN.items() for k in keys}
+    known = {k: why for why, keys in CONTRAST_KNOWN.items() for k in keys}
     match = lambda f, k: f[:2] == k[:2] and k[2] in (None, f[2])
     for f, (cr, need, where) in sorted(found.items()):
         if not any(match(f, k) for k in known):
             fails.append(f'{f[0]}: {f[1]} "{f[2]}" is {cr}:1, under {need}:1 ({", ".join(sorted(where))})')
-    fails += [f'{k[0]}: {k[1]} "{k[2] or "…"}" passes now: take it off SWEEP_KNOWN ({why})' for k, why in known.items() if not any(match(f, k) for f in found)]
+    fails += [f'{k[0]}: {k[1]} "{k[2] or "…"}" passes now: take it off CONTRAST_KNOWN ({why})' for k, why in known.items() if not any(match(f, k) for f in found)]
     told = sorted({why for k, why in known.items() if any(match(f, k) for f in found)})
-    print(f"{'ok  ' if not fails else 'FAIL'} text at 4.5:1 in {len(SWEEP)} scenes, light and dark" + (f" (known: {', '.join(told)})" if told else '')
+    print(f"{'ok  ' if not fails else 'FAIL'} text at 4.5:1 in {len(CONTRAST_SCENES)} scenes, light and dark" + (f" (known: {', '.join(told)})" if told else '')
           + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
