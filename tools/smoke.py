@@ -434,8 +434,95 @@ def trails(chrome):
     fails += [f'route: {e}' for e in pg.js(ROUTE_TRAILS)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} trail details" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    fails += trail_card(chrome)
+    print(f"{'ok  ' if not fails else 'FAIL'} trail details, a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
+
+# A trail's card on a phone, the planner put away (#435), opened by a real tap on a trail of the recorded tile. At 200 %
+# (a 390 phone's 195 × 422) it stays on the screen less 8 px each side and under the top bar, with nothing over it (the
+# map's buttons step aside; the scale and the credits are under it), its words in it, and every button in it reachable
+# by scrolling the card; ✕ closes it and the buttons are back. At 390 × 844 it sits beside the buttons, which stay.
+# CARD_FIT(sel, acts) measures the card that sel finds (the element that scrolls) once it's open and still; `warnfix`
+# measures a warning's card with it too.
+CARD_TAP = """(() => {
+  const m = polku.map, W = innerWidth, H = innerHeight, top = document.querySelector('.topbar').getBoundingClientRect().bottom;
+  for (const f of m.queryRenderedFeatures({ layers: ['path-osm-ground'] }))
+    for (const c of f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates.flat()) {
+      const p = m.project(c);
+      if (p.x > 16 && p.x < W - 90 && p.y > top + 40 && p.y < H - 60) return [p.x, p.y];
+    }
+  return null;
+})()"""
+CARD_FIT = """(async (sel, acts) => {
+  const errs = [], frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const card = () => document.querySelector(sel);
+  // open and still: the same box twice in a row, two frames apart, the map still (the card moves the map into view)
+  let a = null, same = 0;
+  for (let k = 0; k < 60 && same < 2; k++) {
+    await frames();
+    const b = card() && card().closest('.maplibregl-popup-content').getBoundingClientRect();
+    same = a && b && Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.height - b.height) < 1 && !polku.map.isMoving() ? same + 1 : 0;
+    a = b;
+  }
+  const c = card();
+  if (!c) return { errs: ['no card opened'] };
+  const pop = c.closest('.maplibregl-popup'), R = c.closest('.maplibregl-popup-content').getBoundingClientRect(), W = innerWidth, H = innerHeight; // (the card, not its tip)
+  const box = (r) => `x ${Math.round(r.left)}–${Math.round(r.right)}, y ${Math.round(r.top)}–${Math.round(r.bottom)}`;
+  if (R.left < 7.5 || R.right > W - 7.5 || R.top < document.querySelector('.topbar').getBoundingClientRect().bottom || R.bottom > H - 7.5)
+    errs.push(`the card at ${box(R)} on a ${W} × ${H} screen`);
+  if (c.scrollWidth > c.clientWidth + 1) errs.push(`its words run ${c.scrollWidth - c.clientWidth} px out of it`);
+  const over = (x, y) => { const e = document.elementFromPoint(x, y); return !e || pop.contains(e) ? '' : e.closest('[id]')?.id || String(e.className.baseVal ?? e.className) || e.tagName; };
+  for (const [x, y] of [[R.left + 8, R.top + 8], [R.right - 8, R.top + 8], [R.left + 8, R.bottom - 8], [R.right - 8, R.bottom - 8], [(R.left + R.right) / 2, (R.top + R.bottom) / 2]]) {
+    const o = over(x, y);
+    if (o) errs.push(`${o} over the card at ${Math.round(x)}, ${Math.round(y)}`);
+  }
+  const ctrls = document.querySelector('.map-ctrls'), shown = getComputedStyle(ctrls).visibility !== 'hidden';
+  for (const e of shown ? ctrls.querySelectorAll('.ctrl-btn, .fab, .ctrl-compass') : []) {
+    const r = e.getBoundingClientRect();
+    if (e.getClientRects().length && r.left < R.right && r.right > R.left && r.top < R.bottom && r.bottom > R.top) errs.push(`${e.id || e.className} (${box(r)}) over the card at ${box(R)}`);
+  }
+  // each button and link, scrolled to as a person scrolls the card (the card only)
+  for (const b of c.querySelectorAll('button, a')) {
+    if (!b.getClientRects().length) continue; // (not shown)
+    const r0 = b.getBoundingClientRect(), r1 = c.getBoundingClientRect();
+    if (r0.bottom > r1.bottom) c.scrollTop += r0.bottom - r1.bottom + 4; else if (r0.top < r1.top) c.scrollTop -= r1.top - r0.top + 4;
+    await frames();
+    const r = b.getBoundingClientRect(), o = over((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+    if (o || r.left < R.left || r.right > R.right) errs.push(`${b.textContent.trim().slice(0, 40)}: ${o ? `${o} over it` : `out of the card at ${box(r)}`}`);
+  }
+  if (acts && !c.querySelector('.insp-actions button')) errs.push('no Route from here, Add to route or Avoid');
+  c.scrollTop = 0; // (a card's ✕ scrolls with it)
+  await frames();
+  const x = [...pop.querySelectorAll('.maplibregl-popup-close-button, .way-x')].find((e) => e.getClientRects().length).getBoundingClientRect();
+  return { errs, shown, close: [(x.left + x.right) / 2, (x.top + x.bottom) / 2] };
+})"""
+
+
+def trail_card(chrome):
+    fails = []
+    for w, h_ in ((195, 422), (390, 844)):
+        name = f'{w}x{h_}' + (' (200 %)' if w == 195 else '')
+        pg = chrome.page(w, h_, True)
+        pg.open_app({'activity': 'mtb'}, hash_='#12/62.2289/25.7652')
+        pg.js(SEED_TRAILS)
+        pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16 }); true")
+        at = pg.js(f"new Promise((ok) => {{ const t0 = Date.now(), go = () => {{ const p = {CARD_TAP}; p || Date.now() - t0 > 20000 ? ok(p) : setTimeout(go, 250); }}; go(); }})")
+        if not at:
+            fails.append(f'{name}: no trail from the recorded tile on the screen')
+        else:
+            pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
+            r = pg.js(f"({CARD_FIT})('.polku-popup .insp', true)")
+            fails += [f'{name}: {e}' for e in r['errs']]
+            if w == 390 and not r.get('shown'):
+                fails.append(f"{name}: the map's buttons hidden for a card that fits beside them")
+            if r.get('close'):
+                pg.quick_tap(*r['close'])
+                if not pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!document.querySelector('.polku-popup .insp') && getComputedStyle(document.querySelector('.map-ctrls')).visibility !== 'hidden'))))"):
+                    fails.append(f"{name}: after ✕, the card still open or the map's buttons not back")
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    return fails
 
 
 # Before the page loads: the terrain tiles fail (window.__dem.mode = 'ok' makes
@@ -1320,6 +1407,35 @@ DETOUR = """(async () => {
   p.loadSaved();
   await wait(300);
   if (spots() !== want) errs.push(`after a reload: ${spots()}`);
+  // the row's card open, Clear route takes the short cut, the stretch lit, its band in the profile and the card with
+  // the route, and so does Undo back to one point (it stays while a card is open); Undo or Redo brings the route back
+  // without them (#126). Clicked as a mouse would, so an error in the app is the console's (pg.errors()).
+  const left = async (when) => {
+    await wait(300);
+    const n = async (s) => (await m.getSource(s).getData()).features.length, s = { cut: await n('accessCut'), lit: await n('routeLit'), band: !!p.focusHl, card: p.cards.current ? p.cards.current.kind : null };
+    if (s.cut || s.lit || s.band || s.card) errs.push(`${when}: ${JSON.stringify(s)}`);
+  };
+  const clearBtn = async () => { // (on the toolbar, or in More)
+    if (p.els.clearTool.offsetParent) return p.els.clearTool;
+    p.els.more.click();
+    await wait(300);
+    return [...document.querySelectorAll('.menu-pop .menu-item')].find((b) => /^Clear route/.test(b.textContent.trim()));
+  };
+  for (const [how, press, back] of [['Clear route', clearBtn, p.els.undo], ['Undo back to one point', async () => p.els.undo, p.els.redo]]) {
+    if (how !== 'Clear route') try { p.cards.close(); p.clear(); p.addPoint(A.slice()); p.addPoint(B.slice()); } catch (e) { errs.push(`before ${how}: ${e.message}`); break; }
+    if (!(await routed())) { errs.push(`before ${how}: the leg`); break; }
+    p.reveal('warnings');
+    await wait(300);
+    if (!(await cardOf(/Goes round/)) || !(await m.getSource('accessCut').getData()).features.length) { errs.push(`before ${how}: no card drawing the short cut`); break; }
+    const b = await press();
+    if (!b || !b.offsetParent || b.disabled) { errs.push(`no ${how} to press`); break; }
+    b.click();
+    await left(`after ${how} (${p.points.length} points)`);
+    back.click();
+    if (!(await routed())) { errs.push(`${back === p.els.undo ? 'Undo' : 'Redo'} after ${how}: the leg`); break; }
+    await left(`${back === p.els.undo ? 'Undo' : 'Redo'} after ${how}`);
+  }
+  p.cards.close(); // (one left open by a failure above would be built again, with its item gone, by the steps below)
   // nothing marked in the tiles: nothing said (another leg, so the router asks again)
   closed = false;
   p.clear();
@@ -2823,6 +2939,26 @@ def warnfix(chrome):
             pg.js("(() => { polku.planner.cards.close(); return true; })()")
             time.sleep(0.4)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # (#435) at 200 % (a 390 phone's 195 × 422), the planner put away: the triangle's card on the screen less 8 px each
+    # side with nothing over it (the map's buttons step aside while it's open, CARD_FIT), and they're back after its ✕
+    pg = chrome.page(195, 422, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        pg.js(f"(async () => {{ const errs = []; {CHECK_ROUTE} return true; }})()", timeout=150000)
+        pg.js("(async () => { const p = polku.planner; p.cards.close(); p.setActive(false); await new Promise((r) => setTimeout(r, 500)); return true; })()")
+        at = pg.js(f"""(async () => {{ const p = polku.planner, m = polku.map; m.jumpTo({{ center: p.analysis.pts[30], zoom: 15 }});
+            const q = m.project(p.analysis.pts[30]); m.jumpTo({{ center: m.unproject([q.x + (m.getCanvas().clientWidth / 2 - 58), q.y]) }});
+            await new Promise((ok) => m.once('idle', ok)); return {WARNFIX_AT}(p.analysis.pts[30]); }})()""")
+        pg.quick_tap(*at)
+        r = pg.js(f"({CARD_FIT})('.card-float .pl-way.card', false)")
+        fails += [f"195x422 (200 %), the planner put away, the triangle's card: {e}" for e in r['errs']]
+        if r.get('close'):
+            pg.quick_tap(*r['close'])
+            if not pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!polku.planner.cards.box && getComputedStyle(document.querySelector('.map-ctrls')).visibility !== 'hidden'))))"):
+                fails.append("195x422 (200 %), the planner put away: after the triangle's card's ✕, the card still open or the map's buttons not back")
+        fails += [f'195x422 (200 %) console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
     # (13) 360 × 740: ‹ › in sight on a card with rows
@@ -7358,6 +7494,65 @@ def weather_requests(chrome):
     return not fails
 
 
+# Before the page loads: Open-Meteo's forecast answers at once with the same weather everywhere (__wx.temp, −12 °C:
+# the widest reading), so a check of the timeline doesn't wait for the service or depend on its weather.
+WX_FIXED = """(() => {
+  const real = window.fetch.bind(window), W = window.__wx = { temp: -12, asked: 0 };
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/api\\.open-meteo\\.com\\/v1\\/forecast\\?.*temperature_2m/.test(url)) return real(input, init);
+    W.asked++;
+    const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
+    const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
+    const hourly = () => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
+      temperature_2m: fill(W.temp), precipitation: fill(0.4), cloud_cover: fill(60), snow_depth: fill(0), snowfall: fill(0) });
+    return Promise.resolve(new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly() }))), { headers: { 'Content-Type': 'application/json' } }));
+  };
+})();"""
+
+# The timeline's reading on phones (#243): opened with a tap on Weather, the forecast answering (WX_FIXED), its first
+# line (the sky's icon, the temperature, "map centre") is whole inside its box. (The wind's and the rain's lines can
+# still be longer than the box: #457.)
+TL_READING = """new Promise((done) => {
+  const t0 = Date.now(), go = () => {
+    const box = document.querySelector('#wx-bar .tl-now'), main = box && box.querySelector('.tl-now-main');
+    if (!main) { if (Date.now() - t0 < 20000) { setTimeout(go, 200); return; } done({ out: [`no reading after 20 s: ${box ? box.textContent : 'no timeline'}`] }); return; }
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const out = [], b = box.getBoundingClientRect();
+      for (const e of [main, ...main.children]) {
+        const r = e.getBoundingClientRect(), t = e.textContent.trim() || e.tagName;
+        if (r.right > b.right + 0.5 || r.left < b.left - 0.5 || r.bottom > b.bottom + 0.5) out.push(`“${t}” at x ${Math.round(r.left)}–${Math.round(r.right)}, out of its box (x ${Math.round(b.left)}–${Math.round(b.right)})`);
+        else if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth) out.push(`“${t}” cut (${e.scrollWidth} px in ${e.clientWidth})`);
+      }
+      const label = main.querySelector('small')?.textContent;
+      if (label !== 'map centre') out.push(`it says “${label}” where it's read, not “map centre”`);
+      done({ out, text: box.textContent });
+    }));
+  };
+  go();
+})"""
+
+
+def timeline_reading(chrome):
+    fails = []
+    for w, h_ in ((390, 844), (360, 740)):
+        name = f'{w}x{h_}'
+        pg = chrome.page(w, h_, True)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#12/62.2289/25.7652')
+            pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
+            b = pg.js("(() => { const r = document.getElementById('btn-time').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+            pg.quick_tap(*b)
+            r = pg.js(TL_READING)
+            fails += [f"{name}: the timeline's reading: {f}" for f in r['out']]
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline's reading on phones: its first line whole in its box (#243)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
 # 25a, the toolbox and the header (#233). Phones: the toolbox floats beside the map's buttons or docks into
@@ -7376,6 +7571,42 @@ TB_ROUTE = """(async (pts) => {
   return !!p.analysis;
 })"""
 TB_PTS = [[23.81, 61.512], [23.82, 61.515], [23.835, 61.52]]
+# #242: the profile of a long route with many points, at the sheet's full size: Colour by, its choice, On map and the
+# size apart, and the choice wide enough for its words; the distance labels apart and on the profile; the points'
+# marks apart (a mark is 14 px across), and the climbs' tags (↑1) not over each other, as the profile draws them
+TB_PROF_PTS = [[23.0 + 0.1 * i, 61.0 + 0.04 * (i % 3)] for i in range(30)]
+TB_PROFILE = """(() => {
+  const p = polku.planner, cv = document.getElementById('profile-canvas'), ctx = cv.getContext('2d'), W = cv.getBoundingClientRect().width, out = [], drawn = [];
+  const text = ctx.fillText, arc = ctx.arc, rr = ctx.roundRect;
+  ctx.fillText = function (t, x, y, ...r) { drawn.push({ k: 'text', t: String(t), x, w: this.measureText(String(t)).width, a: this.textAlign }); return text.call(this, t, x, y, ...r); };
+  ctx.arc = function (x, y, rad, ...r) { if (rad >= 6) drawn.push({ k: 'mark', x }); return arc.call(this, x, y, rad, ...r); };
+  ctx.roundRect = function (x, y, w, h, ...r) { if (w === 12 && h === 12) drawn.push({ k: 'mark', x: x + 6 }); else if (h === 14) drawn.push({ k: 'tag', x, y, w }); return rr.call(this, x, y, w, h, ...r); };
+  try { p.chart.draw(); } finally { delete ctx.fillText; delete ctx.arc; delete ctx.roundRect; }
+  const labels = drawn.filter((d) => d.k === 'text' && /^[\\d.]+ k?m$/.test(d.t)).map((d) => ({ t: d.t, l: d.a === 'center' ? d.x - d.w / 2 : d.x, r: d.a === 'center' ? d.x + d.w / 2 : d.x + d.w })).sort((a, b) => a.l - b.l);
+  labels.forEach((a, i) => { const b = labels[i + 1];
+    if (a.l < -0.5 || a.r > W + 0.5) out.push(`“${a.t}” off the profile (x ${Math.round(a.l)}–${Math.round(a.r)} of ${Math.round(W)})`);
+    if (b && b.l - a.r < 4) out.push(`“${a.t}” and “${b.t}” ${Math.round(b.l - a.r)} px apart`); });
+  if (labels.length < 2) out.push(`${labels.length} distance labels`);
+  const marks = drawn.filter((d) => d.k === 'mark').map((d) => d.x).sort((a, b) => a - b), near = marks.filter((x, i) => i && x - marks[i - 1] < 14).length;
+  if (near) out.push(`${near} of the points' ${marks.length} marks less than a mark from the one before`);
+  if (marks.length < 2) out.push(`${marks.length} marks: the start and the end not both drawn`);
+  const tags = drawn.filter((d) => d.k === 'tag'), over = tags.filter((a, i) => tags.slice(i + 1).some((b) => a.x < b.x + b.w && b.x < a.x + a.w && Math.abs(a.y - b.y) < 14)).length;
+  if (over) out.push(`${over} of the climbs' ${tags.length} tags over another`);
+  const cut = tags.filter((t) => t.x < -0.5 || t.x + t.w > W + 0.5).length;
+  if (cut) out.push(`${cut} of the climbs' tags off the profile`);
+  if (!tags.length) out.push('no climbs’ tags drawn');
+  const top = p.els.profZone.querySelector('.profile-top'), sel = top.querySelector('select');
+  if (!sel.getClientRects().length) return { out: [...out, `its controls not shown (the sheet at ${p.panel.dataset.state})`], km: p.analysis && Math.round(p.analysis.total / 1000) };
+  const parts = [top.querySelector('.mode-select-label'), sel, top.querySelector('.tg-inline'), top.querySelector('.prof-size')].filter((e) => e && e.getClientRects().length);
+  const rs = parts.map((e) => e.getBoundingClientRect()), name = (e) => e.tagName === 'SELECT' ? 'the choice' : e.textContent.trim() || e.className;
+  rs.forEach((a, i) => rs.slice(i + 1).forEach((b, j) => { if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) out.push(`${name(parts[i])} and ${name(parts[i + j + 1])} over each other`); }));
+  const m = document.createElement('canvas').getContext('2d'), cs = getComputedStyle(sel);
+  m.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const need = m.measureText(sel.selectedOptions[0]?.textContent || '').width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  if (sel.clientWidth + 1 < need) out.push(`the choice ${sel.clientWidth} px wide for “${sel.selectedOptions[0]?.textContent}” (${Math.ceil(need)} px)`);
+  if (p.chart.points.length !== 30) out.push(`${p.chart.points.length} points on the profile, not the route's 30`);
+  return { out, km: p.analysis && Math.round(p.analysis.total / 1000) };
+})()"""
 TB_DUPES = """(async () => { const p = polku.planner; p.toggleMore(); await new Promise((r) => setTimeout(r, 80));
   const name = (t) => t.trim().replace(/…$/, '');
   const bar = [...p.tools.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => name(b.getAttribute('aria-label') || b.textContent));
@@ -7611,6 +7842,18 @@ def toolbox(chrome):
               return { out, text: items.map((it) => it.querySelector('small').textContent).join(' | ') }; })()""")
             if r['out']:
                 fails.append(f"{name}, {lang} labels ({r['text']}): {', '.join(r['out'])} (#356)")
+        # #242: a long route of 30 points, its profile at the sheet's full size (TB_PROFILE)
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PROF_PTS)})", timeout=90000)
+        # (TB_ROUTE is back once there's an analysis: the route before's, still there, too)
+        pg.js("new Promise((ok) => { const p = polku.planner, t0 = Date.now(), go = () => (p.analysisFits() && p.chart.points.length === 30) || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })")
+        for _ in range(3):  # (the new route's framing brings a full sheet down to half once)
+            pg.js("polku.planner.setSheetState('full'); true")
+            pg.js(SETTLED)
+            if pg.js("polku.planner.panel.dataset.state === 'full'"):
+                break
+        r = pg.js(TB_PROFILE)
+        if r['out']:
+            fails.append(f"{name}: a {r['km']} km route of 30 points, its profile: {', '.join(r['out'])} (#242)")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
@@ -9487,6 +9730,29 @@ CT_POINTS = "(async () => { const p = polku.planner; p.setActive(true); p.clear(
 CT_RING = """((sel) => { const e = document.activeElement, c = getComputedStyle(e), probe = document.body.appendChild(document.createElement('i'));
   probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--focus'); const want = getComputedStyle(probe).color; probe.remove();
   return { at: e.matches(sel), el: (e.className && e.className.baseVal === undefined ? e.className : e.tagName).slice(0, 40), ring: `${c.outlineStyle} ${c.outlineWidth} ${c.outlineColor}`, want: `solid 2px ${want}`, offset: c.outlineOffset }; })"""
+# #375: the top bar on a phone at 200 %: its logo, search, sport and Settings on the screen and apart, the search at
+# least a target wide; a tap on the search opens its field across the bar, wide enough to type in with nothing over
+# it, and Escape folds it back. (Nothing is typed: no requests to the search's services.)
+CT_TOPBAR = """(() => {
+  const out = [], W = innerWidth, items = [['the logo', '.topbar .brand'], ['the search', '.topbar .search'], ['the sport', '#activity-bar .act-current'], ['Settings', '#btn-settings']];
+  const shown = items.map(([n, s]) => [n, document.querySelector(s)]).filter(([, e]) => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden').map(([n, e]) => [n, e.getBoundingClientRect()]);
+  const box = (r) => `x ${Math.round(r.left)}–${Math.round(r.right)}`;
+  for (const [n, r] of shown) if (r.left < -0.5 || r.right > W + 0.5) out.push(`${n} at ${box(r)} on a ${W} px screen`);
+  shown.forEach(([n, a], i) => shown.slice(i + 1).forEach(([m, b]) => { if (a.left < b.right - 0.5 && b.left < a.right - 0.5) out.push(`${n} (${box(a)}) and ${m} (${box(b)}) over each other`); }));
+  const se = shown.find(([n]) => n === 'the search'), target = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--target'));
+  if (!se) out.push('no search'); else if (se[1].width < target - 0.5) out.push(`the search ${Math.round(se[1].width)} px wide, under ${target} px`);
+  const s = document.querySelector('.topbar .search').getBoundingClientRect();
+  return { out, at: [s.left + Math.min(s.width / 2, 22), s.top + s.height / 2] };
+})()"""
+CT_TOPBAR_OPEN = """new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+  const out = [], i = document.getElementById('search-input'), r = i.getBoundingClientRect(), W = innerWidth;
+  if (document.activeElement !== i) { ok([`a tap on the search: the focus on ${document.activeElement?.id || document.activeElement?.tagName}, not its field`]); return; }
+  if (getComputedStyle(i).opacity !== '1' || r.width < 100) out.push(`its field ${Math.round(r.width)} px wide${getComputedStyle(i).opacity !== '1' ? ', not shown' : ''}`);
+  if (r.left < -0.5 || r.right > W + 0.5) out.push(`its field at x ${Math.round(r.left)}–${Math.round(r.right)} on a ${W} px screen`);
+  const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  if (top !== i && !i.contains(top)) out.push(`${top?.id || top?.className || 'nothing'} over its field`);
+  ok(out);
+})))"""
 # a button's label in Finnish at 200 %: it wraps inside its button, which stays in its card (the top bar at 200 % is #375's)
 CT_WRAP = r"""(async () => {""" + CT_HELP + r"""
   const p = polku.planner;
@@ -9595,9 +9861,25 @@ def controls(chrome):
         finally:
             pg.close()
 
+    # #375: the top bar at 200 % (CT_TOPBAR), on a 390 and a 360 phone
+    def topbar(pg, name):
+        r = pg.js(CT_TOPBAR)
+        fails.extend(f'{name}, the top bar: {f}' for f in r['out'])
+        pg.quick_tap(*r['at'])
+        fails.extend(f'{name}, the top bar: {f}' for f in pg.js(CT_TOPBAR_OPEN))
+        key(pg, 'Escape', 'Escape', 27)
+        fails.extend(f'{name}, the top bar after Escape: {f}' for f in pg.js(CT_TOPBAR)['out'])
+
+    pg = page(180, 370, True)
+    try:
+        topbar(pg, '360x740 at 200 %')
+        fails += [f'360x740 at 200 % console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     # 200 % on a phone: a button's label in Finnish (#373), a point's long Finnish name and a row with a value (#384)
     pg = page(195, 422, True)
     try:
+        topbar(pg, '390x844 at 200 %')
         fails += [f'390x844 at 200 %: {f}' for f in pg.js(CT_WRAP)]
         if not pg.js(PC_ROUTE, timeout=30000):
             fails.append('390x844 at 200 %: no route')
@@ -9612,11 +9894,11 @@ def controls(chrome):
 
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298)'),
+    ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
     ('layers', [layers], 'the Layers panel in every sport'),
-    ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), and the uphill colours when the terrain comes late (mocked)'),
+    ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
     ('water', [water, water_late], 'the paddling router\'s costs (recorded fairways, a fixed wind), and OSM\'s rocks coming late (mocked)'),
@@ -9630,7 +9912,7 @@ GROUPS = [
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
     ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network); Not checked with Retry; the groups, What Polku looked at and the badge'),
-    ('warnfix', [warnfix], 'the review of #416: the row, read marks across routes and answers, a card through a new analysis, markers clear of points and presses, Retry, 360 × 740, 200 %, Escape'),
+    ('warnfix', [warnfix], 'the review of #416: the row, read marks across routes and answers, a card through a new analysis, markers clear of points and presses, Retry, 360 × 740, 200 %, Escape, and the triangle\'s card at 200 % with the planner put away, clear of the map\'s buttons (#435)'),
     ('onroute', [onroute], 'the warning on the route (25d part 3): the item\'s card from Check, ‹ › along the route, Back, Retry, a tap on the map (mocked sources, straight legs)'),
     ('detour', [detour], 'a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)'),
     ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),
@@ -9650,7 +9932,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
-    ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), words at 4.5:1 (#376), Plan in green, a press that answers'),
+    ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
