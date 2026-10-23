@@ -1800,7 +1800,7 @@ body.dropping .drop-hint { display: flex; }
 .sportbtn { margin-right: 4px; height: 40px; flex: none; align-items: center; gap: 6px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 13.5px; font-weight: 650; white-space: nowrap; cursor: pointer; }
 .sportbtn > .ic:first-child { color: var(--accent); }
 .tb-sep { width: 1px; height: 28px; background: var(--line); margin: 0 2px; flex: none; }
-.pl-tools .btn.done { min-height: 40px; margin-left: 4px; }
+.pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-left: 4px; }
 /* the route's view (25c): Show the whole route, More and Edit; nothing to keep apart */
 .pl-tools[data-stage="view"] .tb-sep { display: none; }
 /* where room runs out, once the route's actions that don't fit are in More (planner.js FOLDS): the style's caption,

@@ -2,7 +2,7 @@
 
 The plan for making Polku's look consistent and readable, without changing what it looks like. What's still to do, and its status, is on GitHub: #382, whose steps are in the order of [25d's plan](25d-check-and-points.md#where-25d-stands) (#383).
 
-- **Status (2026-10-22): the user's choices are made** ("Where it stands"), and the user merged the plan (#389). The values PR is built ("The values, as built", in §8); the controls PR is next.
+- **Status (2026-10-23): the user's choices are made** ("Where it stands"), and the user merged the plan (#389). The values PR and the controls PR are built ("The values, as built" and "The controls, as built", in §8); 25d's Journey C is next.
 - **From:**
   - a design-system review with the user on 2026-10-22 (the draft, kept on #382);
   - [the audit of the running app](design-system-audit.md), then a second look at `main` at 00c82e2, after 25d part 1 (#352), with `tools/census.py`, Impeccable's audit and critique, and the design-system and dataviz skills;
@@ -53,7 +53,7 @@ The draft and `design-system-notes.md` are folded in here; the notes file is gon
 **Next**
 1. ~~This plan, for the user's review (a Docs PR)~~: merged (#389).
 2. ~~The values PR (names by role, in `rem`)~~: built (§8).
-3. The controls PR.
+3. ~~The controls PR~~: built (§8), waiting for the user's look at its screenshots.
 4. Then 25d's Journey C.
 
 ## How it fits with 25d and the planner
@@ -283,6 +283,18 @@ Each PR: claim it on #382, the checks first (failing on `main`), then the build,
 - **In the JavaScript:** `fromCss()` in `js/palette.js` fills the tables from the CSS, and again when the theme changes, and then the map's style and Colour by are drawn again. The map's key for the route uses the values. The planner's colour swatches (`SWATCH`), unused since #302, are gone.
 - **Not yet:** the 200 % context sets nothing, since the controls PR decides what changes there. Still typed in the JavaScript, for the map and scales PR: the "no data" greys (`js/chart.js`, `js/planner.js`), the wind's shares in Go (`js/planner.js`), the other ways' and the loops' colours, and the weather map's (`js/wxmap.js`).
 - **Checks:** `tools/smoke.py values`: DESIGN.md's colours (idea E), the route and the scales through a change of theme, and the contrast sweep (idea D) over eleven scenes, with #376's failures listed until the controls PR fixes them.
+
+### The controls, as built (2026-10-23)
+
+- **One look for each job (#356):** the start's sport, **Fine-tune in How you go** and Settings' speeds are `row`s, with black icons (their old classes stay on them). Every chosen chip is the round trip's: a green tint, a 2 px green border, black words (`chip`, `act-chip`, `chip-on`, a menu's chips, the timeline's). A switch (`seg`) is `--target` tall, the chosen one's icon green; `seg icons` too. The stepper is one box: `rt-len` holds −, the field, its unit and +. One rule gives every small heading its look, 12 px capitals in `--muted`. Titles take `--font-title`, and the map's own cards (`insp-title`) take 15 px on a desktop, as a desktop's card does.
+- **The same states:** one focus ring (idea B), `:where(button, a, input, select, summary, [tabindex]):focus-visible`, in `--focus`, drawn inside a row and a menu's item, the sport menu's too (#385). Press feedback: buttons, chips, tiles and switches shrink to 97 % for `--t-press` while held, with no grey flash; rows keep their grey; none with reduced motion.
+- **Words at 4.5:1 (#376):** the pills in the `-text` colours; Check's count in the surface's colour on `--warn-text`; black words (`--ink`) on a climb's badge or a loop's letter where white doesn't read (`darkWords()` in `js/palette.js`); the cost on **Make 3 loops** in full white; an active weather layer's chip in `--wx-text` (a new value, lighter in dark); the drop hint's words on a card of their own; a switch's off track with a `--muted` edge (3:1). On the layer drawer a tile that's on keeps its green border, icon and tick, and its name is black: green words were 4.2:1 in dark. `CONTRAST_KNOWN` in `tools/smoke.py` is empty.
+- **Plan in green** (`--accent-bg`), and green while the planner is open.
+- **Words that wrap (#373, #384):** `btn` has a least height, never a fixed one, and the buttons that set a height of their own set a least one. A card's title breaks anywhere; under about 220 px of card a row's value goes under its name and › goes.
+- **The warning box** (`warn-row`, with `danger`, `look` or `unk`), from the mock-up, for Journey C to use.
+- **Idea A for the card's controls:** rows, titles, numbers, marks, the stepper and the switch read `--row-h`, `--font-title`, `--font-number`, `--font-numeral`, `--mark` and `--target`, which `.card-float` sets; its override rules for them are gone.
+- **Not in it, for the touch PR:** hover only with a mouse, the grips, touch areas grown around small controls (the ⋯ menu's 36 px items with a mouse, the map's buttons), reading text under 12 px elsewhere, the top bar at 200 % (#375), one fold arrow and one base-map picker.
+- **Checks:** `tools/smoke.py controls` (each pair where the app draws it, the rings by keyboard, a press held, the words in light and dark, Finnish at 200 %), and `loops` measures each loop's letter.
 
 ### Checks in every PR
 

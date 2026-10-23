@@ -229,35 +229,40 @@ The rules are in [AGENTS.md](../AGENTS.md). In short: start from the latest Hand
 
 ### Shared controls
 
-Where a screen needs a control that does one of these jobs, it uses this one, with its class (AGENTS.md: one style, and don't redesign what works). A different element is fine where the job is different, once the user has chosen it; then it joins this table. The cards of 25d use them too; [#345's list](https://github.com/TommiContursi/Polku/issues/345#issuecomment-6319843803) has their measurements, and #356 the places where the app still styles one of them twice.
+Where a screen needs a control that does one of these jobs, it uses this one, with its class (AGENTS.md: one style, and don't redesign what works). A different element is fine where the job is different, once the user has chosen it; then it joins this table. The cards of 25d use them too; [#345's list](https://github.com/TommiContursi/Polku/issues/345#issuecomment-6319843803) has their measurements. Since the design system's controls PR (#382, #356), each job has one look, and `tools/smoke.py controls` measures each pair where the app draws it; the values they take are in [DESIGN.md](../DESIGN.md).
 
 | Control | Class | Where it's from |
 |---|---|---|
 | Back, in words, and ✕ on a row of their own | `way-bar`, `btn small quiet way-back`, `tool way-x` | the start's steps ("‹ Ways to begin") |
-| A heading and its line | `way-head`, `way-hint` | "Round trip from your start" |
-| A row that opens the next step | `way-tile` with `way-ic`, `way-t`, `way-chev` | Ways to begin |
+| A heading and its line | `way-head`, `way-hint`: the title 17 px (`--font-title`), 15 px on a desktop's card; a long name breaks rather than leave its card | "Round trip from your start" |
+| The same title on the map's own cards | `insp-title`: `--font-title`, 15 px on a desktop | a trail's or a LIPAS place's card |
+| A small heading | `menu-h`; `act-head`, `lp-sec h3`, `lg-title`, `qd-lab`, `chip-group-label`, `sec-title`, `stat-label` and the rest share its one rule: 12 px capitals in `--muted`, .06em | the ⋯ menu's groups |
+| A choice to begin with | `way-tile` with `way-ic`, `way-t`, `way-chev`: a tile, with a green icon (the start's tiles stay tiles) | Ways to begin |
 | A choice with its value | `stylebtn` with `two` | Route style, Direction |
-| A switch | `seg` (`full`, `rt-unit`), the chosen one with `aria-pressed` and a tick | Distance · Time |
-| Chips to pick one | `rt-chips` or `way-chips` with `chip` | the round trip's lengths |
-| The one main action | `btn primary big`, with `rt-make-t` for a line under it | Make 3 loops |
-| A number with − and +, typable | `rt-step` with `tool ring` and `rt-len` (#356 makes it one box, for the cards too) | the round trip's Other…, a stop's and a changeover's minutes |
-| A button | `btn` (`quiet`, `primary`) | everywhere |
+| A switch | `seg` (`full`, `small`, `rt-unit`): one height in a place, `--target` (36 px with a mouse, 44 px by touch); the chosen one with `aria-pressed`: white, black words, a green icon or tick | Distance · Time |
+| Chips to pick one | `rt-chips` or `way-chips` with `chip`; chosen (`aria-pressed`): a green tint, a 2 px green border, black words. `act-chip`, `chip-on` and a menu's chips (`menu-chips`) look the same | the round trip's lengths |
+| The one main action | `btn primary big`, with `rt-make-t` for a line under it; its words wrap (a least height) | Make 3 loops |
+| A number with − and +, typable | `rt-step` with `rt-len`, one box holding `tool` −, the field, its unit and `tool` +; its lead and its line beside it | the round trip's Other…, a stop's and a changeover's minutes |
+| A button | `btn` (`quiet`, `primary`): a least height, never a fixed one, so its words wrap inside it (#373) | everywhere |
 | Actions in a group | `menu-h`, `menu-item two-line`, `hr`, `menu-item danger menu-apart` for the dangerous one; built by `popMenu()` in `js/ui.js` | the ⋯ menu |
 | A choice in a list | `menu-item` with `role="menuitemradio"`, `menu-tick`, `cur` ("your route") | the sport menus |
 | Numbers with their labels | `sheet-sum`, `sum-item` | the peek's summary |
 | A note with its action | `pl-viewnote` | "You're not editing" (25c) |
-| A toggle | `tg` with `tg-text`, `tg-ui` | Settings |
+| A toggle | `tg` with `tg-text`, `tg-ui`; off, the track has a `--muted` edge (3:1) | Settings |
 | A Heads-up row | `li` | Check |
 | Facts as rows | `insp-row`, `insp-info` for the source | the map's card |
 | A card's mark: the thing's own mark from the map, left of its name | `card-mark` (holding the map's `wp`, …) | 25d's cards (#355) |
-| A plain row: its icon, its name, its line, a value in the accent colour (`val`), ›; a hairline between rows; Remove in red (`danger`) | `row` in a `rows` list; `rows acts` for actions, buttons with their icon and name on a desktop (Revision 5) | 25d's cards (#355, #363) |
-| A switch with icons | `seg icons`, `role="radio"`, the chosen one `aria-checked`: white, black words, a green icon (#356) | At this point: Pass by · Stop · Night |
+| A plain row: its icon (black), its name, its line, a value in the accent colour (`val`), ›; a hairline between rows; Remove in red (`danger`); grey while its menu or editor is open (`aria-expanded`) | `row` in a `rows` list (`item()` in `js/card.js` builds one); `rows acts` for actions, buttons with their icon and name on a desktop (Revision 5). Under about 220 px of card the value goes under the name | 25d's cards (#355, #363); the start's sport (`sport-row`), Fine-tune (`way-srow`) and Settings' speeds (`speed-sport-row`) are rows too (#356) |
+| A switch with icons | `seg icons`, `role="radio"`, the chosen one `aria-checked`: white, black words, a green icon (#356); `--target` tall | At this point: Pass by · Stop · Night |
+| A warning | `warn-row` with `danger` (Read before you go), `look` (Worth a look) or `unk` (Not checked, dashed): its icon in a first `span`, then a `span` with its group in `em`, `b` and `small` | 25d's Journey C (#366) |
+| Black or white words on one of the map's colours | `badge` or `loop-dot` with `ink` where `darkWords()` (`js/palette.js`) says white doesn't read | a climb's badge, a loop's letter |
 | The name typed where it's shown, with Save | `name-field` | Rename on a card |
 | A number the map doesn't have | `sum-item miss`, dashed | 25d's cards (#345) |
 | A number being worked out | `sum-item wait`: a muted “–”, at its size | 25d's cards, while the route is routed |
 | The action at the spot, on a phone | `card-pill` | 25d's cards (1b, 5) |
 
-- **A new screen** reuses these for the same jobs. A new control is proposed to the user first, and once chosen it joins this table. 25d's cards propose a few (#355): the plain row with a value, the switch with icons, the yellow warning row and the name field.
+- **A new screen** reuses these for the same jobs. A new control is proposed to the user first, and once chosen it joins this table. 25d's cards propose a few (#355): the plain row with a value, the switch with icons, the warning box and the name field.
+- **Every control shares** one focus ring (2 px in `--focus`, set once with `:where(…):focus-visible`, drawn inside a row and a menu's item) and press feedback (`btn`, `tool`, `chip`, `act-chip`, `way-tile` and a switch's buttons shrink to 97 % for 120 ms while held, with no grey flash; none with reduced motion). A control's own rule may move the ring (its offset), never change its colour or width.
 - **A mock-up** copies the CSS of the controls it uses from `css/app.css`, with the same class names, in a marked block (as `docs/plans/mockups/issue-345-map-cards.html` does), so what the user approves is what gets built. When the app's controls change, the copy is made again.
 - **No copies:** no second class for a control that exists (a `card-row` beside `way-tile`, say). A variant of one is a modifier on its class, said in this table.
 
