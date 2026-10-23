@@ -758,6 +758,12 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-profile .mode-select { flex: 0 1 auto; }
 .pl-profile .tg-inline { flex: none; }
 .pl-profile .prof-size { flex: none; color: var(--muted); }
+/* a narrow profile (a phone at 200 %): Colour by and its choice on rows of their own, On map and the size under them (#242) */
+@container (max-width: 280px) {
+  .pl-profile .profile-top { flex-wrap: wrap; }
+  .pl-profile .mode-select { flex: 1 1 100%; flex-wrap: wrap; gap: var(--space-4); }
+  .pl-profile .mode-select-box, .pl-profile .mode-select select { flex: 1 1 100%; width: 100%; }
+}
 .pl-profile.compact #profile-canvas { height: 72px; }
 .pl-tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .pl-tab { height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
@@ -1513,16 +1519,25 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 }
 
 /* ---------------------------------------------------------------- popups */
-.polku-popup .maplibregl-popup-content { border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); background: var(--surface-solid); color: var(--text); }
+.polku-popup { --pop-pad: 14px; z-index: 4; } /* (over the scale and the credits, as .card-float: at 200 % a card reaches them, #435) */
+.polku-popup .maplibregl-popup-content { border-radius: 14px; padding: 12px var(--pop-pad); box-shadow: var(--shadow); background: var(--surface-solid); color: var(--text); }
 .polku-popup .maplibregl-popup-tip { border-top-color: var(--surface-solid); border-bottom-color: var(--surface-solid); }
 .polku-popup .maplibregl-popup-close-button { font-size: 18px; width: 26px; height: 26px; right: 4px; top: 4px; border-radius: 8px; color: var(--muted); }
-.insp { min-width: 230px; }
-.insp-title { font-weight: 700; font-size: var(--font-title); padding-right: 22px; }
+/* the map's card: never wider than the screen less 8 px each side (at 200 %, #435; its widths and max-height are in
+   js/inspect.js); a tall one scrolls, with room in it for the focus rings */
+.insp {
+  min-width: min(calc(230px + 2 * var(--space-4)), calc(100vw - 2 * (var(--space-8) + var(--pop-pad) - var(--space-4))));
+  padding: var(--space-4); margin: calc(-1 * var(--space-4)); overflow-y: auto; overscroll-behavior: contain;
+}
+body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit beside them is over them (keepInView(), #435) */
+.insp-title { font-weight: 700; font-size: var(--font-title); padding-right: 22px; overflow-wrap: anywhere; } /* (a long name breaks rather than leave its card, #435) */
 @media (min-width: 721px) { .polku-popup { --font-title: 0.9375rem; } } /* (a desktop's card at its spot, as .card-float) */
 .insp-sub { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-.insp-row { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
+/* a fact's value beside its name, or under it where there's no room (a phone at 200 %, #435) */
+.insp-row { display: flex; flex-wrap: wrap; column-gap: 10px; row-gap: var(--space-2); padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
 .insp-row span { color: var(--muted); }
-.insp-row b { font-weight: 600; overflow-wrap: anywhere; }
+.insp-row > span { flex: 0 0 96px; }
+.insp-row b { flex: 1 1 120px; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .insp-row b .dot { vertical-align: 0; }
 .insp-info { font-size: 12px; color: var(--muted); margin: 6px 0; }
 .insp-links { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; }
