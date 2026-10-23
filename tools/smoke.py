@@ -1678,13 +1678,63 @@ OTHERWAYS_CALM = """(async () => {
 })()"""
 
 
+# #351: a point added and taken back by Undo before its leg is in, at once or while the leg is still being routed: no
+# error from the other ways' timer, no other ways asked for the leg that's gone, and the route as it was
+OTHERWAYS_UNDO = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  const routed = async () => { for (let k = 0; k < 100; k++) { if (p.legs.length && p.legs.every((l) => l.status === 'ok') && p.analysis) return true; await wait(200); } return false; };
+  const others = () => window.routerCalls.filter((u) => /lonlats=/.test(u) && new URL(u).searchParams.get('alternativeidx') !== '0').length;
+  const route = () => JSON.stringify({ points: p.points, legs: p.legs.map((l) => [l.key, l.status, l.result && l.result.coords.length]) });
+  p.setActive(true);
+  p.setMode('auto');
+  p.addPoint([24.930, 60.170]);
+  p.addPoint([24.950, 60.170]);
+  await routed();
+  for (let k = 0; k < 40 && !(p.alts && p.alts.ways.length); k++) await wait(200); // (the first leg's other way is in)
+  // at once: the point and the toolbar's Undo in the same turn
+  let before = route(), o = others();
+  p.addPoint([24.970, 60.170]);
+  p.els.undo.click();
+  await wait(2500); // (past the other ways' 1.5 s after the Undo: a timer set after it runs after it)
+  await routed();
+  if (route() !== before) errs.push(`Undo at once: the route ${route()}, not ${before}`);
+  if (others() !== o) errs.push(`Undo at once: ${others() - o} calls for other ways`);
+  // while the new leg is routed: Undo before BRouter answers (another point, so no answer is kept for its leg)
+  const mock = window.fetch;
+  let asked = 0, answer;
+  const held = new Promise((r) => { answer = r; });
+  window.fetch = async (u, init) => { if (/^https:[/][/]brouter[.]de[/].*24[.]970000,60[.]175000/.test(String(u && u.url ? u.url : u))) { asked++; await held; } return mock(u, init); };
+  try {
+    before = route(); o = others();
+    p.addPoint([24.970, 60.175]);
+    for (let k = 0; k < 160 && !asked; k++) await wait(50); // (it may wait its turn under the pacing)
+    if (!asked) errs.push('the new leg wasn’t asked for');
+    p.els.undo.click();
+    await wait(2500);
+    answer();
+    await wait(300);
+    await routed();
+    if (route() !== before) errs.push(`Undo while routed: the route ${route()}, not ${before}`);
+    if (others() !== o) errs.push(`Undo while routed: ${others() - o} calls for other ways`);
+  } finally {
+    window.fetch = mock;
+    answer();
+  }
+  p.clear();
+  return errs;
+})()"""
+
+
 def otherways(chrome):
     fails = []
     cases = [('pause and picking', OTHERWAYS, 90000),
              ('quick points', OTHERWAYS_QUICK.replace('__STALL_MS__', '0'), 45000),
              ('quick points, blocked main thread', OTHERWAYS_QUICK.replace('__STALL_MS__', '2200'), 45000),
              ('short legs and pacing', OTHERWAYS_BUSY, 120000),
-             ('taking your time', OTHERWAYS_CALM, 90000)]
+             ('taking your time', OTHERWAYS_CALM, 90000),
+             ('a point taken back at once', OTHERWAYS_UNDO, 45000)]
     for label, script, timeout in cases:
         pg = chrome.page(1440, 900, False)
         try:
@@ -7784,9 +7834,8 @@ def point_card(chrome):
             fails.append(f"{name}: Undo of Back to start with the end's card open: a {st(pg)['kind']} card for point {st(pg)['i']}")
         pg.js("polku.planner.cards.close(); true")
         time.sleep(0.4)
-        # Undo of the point's own adding closes its card
-        # (a moment between them, as a person takes: at once, the other ways' timer throws, #351)
-        pg.js("(async () => { const p = polku.planner; p.addPoint([23.86, 61.515]); await new Promise((r) => setTimeout(r, 400)); p.openPointCard(p.points[4]); p.undo(); return true; })()")
+        # Undo of the point's own adding, at once, closes its card, with no error from the other ways' timer (#351)
+        pg.js("(() => { const p = polku.planner; p.addPoint([23.86, 61.515]); p.openPointCard(p.points[4]); p.undo(); return true; })()")
         time.sleep(0.4)
         if st(pg)['kind']:
             fails.append(f'{name}: Undo of a point’s adding left its card open')
@@ -8319,7 +8368,7 @@ GROUPS = [
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
     ('detour', [detour], 'a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)'),
     ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),
-    ('otherways', [otherways], 'other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo (mocked BRouter)'),
+    ('otherways', [otherways], 'other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo, a point taken back at once (#351) (mocked BRouter)'),
     ('flow', [flow], 'the route\'s glow and moving chevrons: they move, survive a style change, stop with reduced motion, the switch off or left alone'),
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
     ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)'),
