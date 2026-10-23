@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: Clear route takes the warning's stretch and short cut with it ([#126](https://github.com/TommiContursi/Polku/issues/126))
+
+With a warning's card open, **Clear route** left the warning's stretch glowing on the map and in the profile, with the dashed short cut through a way marked private, and the card stayed open for a route that was gone. **Undo** back to one point did the same. Now they go with the route and the card closes. **Undo** brings the route back without them, until you tap the warning again.
+
 ### Fixed: the timeline says where its reading is from, whole ([#243](https://github.com/TommiContursi/Polku/issues/243))
 
 On a phone, the weather timeline's reading beside the strip said where it was read cut short, as "map c". Now "map centre" shows whole, on two short lines beside the temperature where there's no room for one, and the reading is no taller than before. A note there, such as "Weather paused…", shows up to three lines instead of one cut short, and the whole note is in its tooltip.

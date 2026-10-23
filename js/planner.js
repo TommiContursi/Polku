@@ -2021,7 +2021,11 @@ export class Planner {
   async runAnalysis(gen) {
     const line = this.mergedLine();
     if (line.coords.length < 2) {
+      // no route (Clear route, a point left): what was picked on it goes, its short cut too (#126), and Check's items
+      // with it, so an open item's card closes
       this.analysis = null;
+      this.headsList = null;
+      this.unlightItem();
       this.renderAnalysis();
       return;
     }
