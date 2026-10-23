@@ -1042,8 +1042,8 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .li-main span { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
 .li .badge { flex: none; min-width: 34px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
 .li .badge.ink { color: #000; text-shadow: none; }
-.li.chard { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
-.ctag { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-style: normal; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.cbadges { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.ctag { flex: none; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-style: normal; font-size: 12px; font-weight: 700; white-space: nowrap; }
 @media (hover: hover) and (pointer: fine) { .li:hover { background: var(--surface-2); } }
 /* On the route: the app's breakdowns, a group each, every kind with its bar and its rows */
 .breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin-top: 2px; align-items: start; }
@@ -1069,6 +1069,13 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .fr.desk .cnow { min-height: 36px; }
 .cnofc { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; padding: 8px 10px; border-radius: 12px; background: var(--unk-soft); color: var(--text); font-size: 13.5px; line-height: 1.35; }
 .cnofc .ic { flex: none; color: var(--unk); margin-top: 1px; }
+.cnofc.cinfo { background: var(--surface-2); }
+.cnofc.cinfo .ic { color: var(--muted); }
+.take-along .btn.ctwo { height: auto; min-height: 44px; padding-block: 6px; text-align: left; }
+.take-along .btn.ctwo > span { display: grid; gap: 1px; }
+.take-along .btn.ctwo small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.pwrap { position: relative; }
+.pnofc { position: absolute; top: 2px; right: 2px; padding: 1px 6px; border-radius: 6px; background: var(--surface-solid); color: var(--muted); font-size: 12px; font-weight: 650; white-space: nowrap; } /* (past the forecast is the route's end part: its words over the grey) */
 .cthere { margin: 8px 0 6px; }
 .sun-line { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
 .wind-body { font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
@@ -1375,6 +1382,12 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="tabs-c-go-wx" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","scrollC":".csec"}'><figcaption><b>C · Departure & weather, Take it along</b>Everything the app shows: the sun, the wind now, temperature, rain, head and crosswind, the hours, the colours along the route.</figcaption></figure>
       <figure class="fr phone" id="tabs-c-go-set" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","leaveC":"2026-11-01T07:30"}'><figcaption><b>C · Leave tomorrow</b>The row says the day and the time; Now beside it goes back to leaving now.</figcaption></figure>
       <figure class="fr phone" id="tabs-c-go-far" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","leaveC":"2026-11-28T07:30","scrollC":".csec"}'><figcaption><b>C · Four weeks ahead</b>No forecast yet; sunset and the dark still count (#159).</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-share" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","leaveC":"2026-10-31T07:30","scrollC":".csec + .csec"}'><figcaption><b>C · Share with the date</b>Copy share link says what it carries: "Includes when you leave". To share without it, set Now first.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-passed" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","passedC":"2026-10-24T07:30"}'><figcaption><b>C · A date that has passed</b>A saved route or a link opens at Now, saying when it was planned for.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-days" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"route","wv":"v1","tabs":"c","leaveC":"2026-11-13T10:30","colourWind":true,"noFc":{"km":"39.7","at":"Sun 09:00","si":2,"frac":0.768},"scrollC":".sec2:nth-of-type(3)"}'><figcaption><b>C · Three days, the last past the forecast</b>The profile, coloured by the wind, goes grey where the forecast stops; the third day's section says No forecast yet.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-days-go" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"go","wv":"v1","tabs":"c","leaveC":"2026-11-13T10:30","colourWind":true,"noFc":{"km":"39.7","at":"Sun 09:00","si":2,"frac":0.768},"scrollC":".csec"}'><figcaption><b>C · Go: the forecast as far as it reaches</b>No forecast yet from km 39.7, Sun 09:00; more than three days ahead, less certain.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-days-check" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"check","wv":"v1","tabs":"c","leaveC":"2026-11-13T10:30","colourWind":true,"noFc":{"km":"39.7","at":"Sun 09:00","si":2,"frac":0.768}}'><figcaption><b>C · Check: Not checked</b>Wind, rain and waves past the forecast are under Not checked, never quietly calm.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-far-check" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"c","leaveC":"2026-11-28T07:30"}'><figcaption><b>C · A start past the forecast: Check</b>No forecast yet for this trip, in Not checked.</figcaption></figure>
       <figure class="fr phone" id="tabs-c-layers" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","layersC":true}'><figcaption><b>C · Layers: Your route</b>The marks on the map, in a group of their own while a route is drawn.</figcaption></figure>
       <figure class="fr desk" id="tabs-c-desk-route" data-st='{"stage":"route","uc":"day","tab":"route","wv":"v1","tabs":"c"}'><figcaption><b>C · Desktop, Route</b>The two rows at the top of the panel.</figcaption></figure>
       <figure class="fr desk" id="tabs-c-desk-check" data-st='{"stage":"route","uc":"day","tab":"check","wv":"v1","tabs":"c","scrollC":".csec"}'><figcaption><b>C · Desktop, Check</b>Climbs and On the route in the panel.</figcaption></figure>
@@ -2047,7 +2060,13 @@ const stats = (st, v) => {
   const climb = st.sport === 'paddle' && !v.worst ? `<span><b>${s.up}</b><small>carry</small></span>` : `<span><b>${s.up}</b><small><span class="sr">descent </span>${s.down}</small></span>`;
   return `<div class="stats"><span><b>${s.d}</b><small>${t('dist')}</small></span><button type="button" class="tlink" data-act="depart" aria-label="${s.t} ${t('fromNow')}: change the departure, in Go"><b>${s.t}</b><small>${t('fromNow')}</small></button>${climb}</div>`;
 };
-const warnsOf = (st, v) => { const W = WARN[warnKey(st.sport)]; return v.worst ? WARN_WORST : st.calm ? { ...W, t1: [] } : W; };
+const warnsOf = (st, v) => { const W = WARN[warnKey(st.sport)]; return noFcItem424(st, v, v.worst ? WARN_WORST : st.calm ? { ...W, t1: [] } : W); };
+// #424, C (2026-10-24): past the forecast, the weather's checks for those parts are in Not checked, never quietly calm
+function noFcItem424(st, v, W) {
+  if (v.tabs !== 'c' || !(st.noFc || (st.leaveC && typeof aheadC === 'function' && aheadC(new Date(st.leaveC)) > FAR_C))) return W;
+  const it = st.noFc ? { ic: 'unk', b: wc('ncFrom')(st.noFc.km, st.noFc.at), w: wc('ncFromSub'), s: SRC.est('Open-Meteo, the forecast'), a: [] } : { ic: 'unk', b: wc('ncAll'), w: wc('ncAllSub'), s: SRC.est('Open-Meteo, the forecast'), a: [] };
+  return { ...W, t3: [...W.t3, it] };
+}
 // every item, in order along the route (route-wide ones last): what ‹ › step through, and what a marker selects
 function alongList(st, v) {
   const W = warnsOf(st, v), out = [];
@@ -2208,7 +2227,8 @@ function tripMenu(st, v) {
     ${mi('roundtrip', t('rtStart'), '', 'rtstart')}${mi('reverse', t('reverse'), '', 'noop')}${mi('loop', t('backStart'), '', 'noop')}${mi('upload', t('importFile') + '…', t('importD'), 'noop')}
     <hr class="gap">${mi('trash', t('clear'), t('clearD'), 'clear', 'danger')}</div>`;
 }
-function profile(desk) {
+function profile(desk, st = {}) {
+  if (st.colourWind) return profileWind424(st);
   const pts = [100, 104, 112, 118, 116, 124, 132, 128, 136, 141, 138, 130, 118, 104, 101, 103, 102, 104, 108, 106, 103];
   const W = 340, H = 80, step = W / (pts.length - 1), y = (q) => H - (q - 96) / 50 * H;
   const bars = pts.slice(1).map((q, i) => { const g = q - pts[i]; const c = g > 6 ? '#ef4444' : g > 2 ? '#f59e0b' : g < -6 ? '#2563eb' : g < -2 ? '#60a5fa' : '#22c55e';
@@ -2812,7 +2832,7 @@ function sectionsV1r5(st, v, desk) {
     V.forEach((i, k) => { if (P[i].si !== si) return; if (k > 0) items.push(strRow(V[k - 1], i)); items.push(row(i)); });
     if (st.shOpen && st.shOpen[si]) items.push(`<button type="button" class="shfold" data-act="shfold" data-v="${si}">${ic('up', 14)}${t('foldShaping')}</button>`);
     const ttl = `${sec.day ? `${esc(tf('dayN', { n: sec.day }))} · ` : ''}${esc(sL(sec.sp))} · ${esc(sec.from)} → ${esc(sec.to)}`;
-    const tmp = (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
+    const nofc = v.tabs === 'c' && st.noFc && si >= st.noFc.si, tmp = nofc ? wc('noFcSec') : (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = nofc ? null : (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
     return `<section class="sec2" aria-label="${ttl}"><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b></div>
       <div class="sec2-n">${esc(sec.d)} · ${esc(sec.t)} · ${esc(sec.up)}<button type="button" class="wxc" data-act="wxmore" data-v="${si}" aria-expanded="${!!wxOpen}" aria-label="${esc(tf('arriveWx', { w: sec.wx }))}">${ic('weather', 15)}${esc([tmp, wind].filter(Boolean).join(' · '))}</button></div>
       ${wxOpen ? `<div class="sec2-w">${ic('weather', 15)}${esc(tf('arriveWx', { w: sec.wx }))}</div>` : ''}${sec.fixed ? `<div class="sec2-w">${ic('sign', 15)}${esc(tf('fixedLine', { N: sec.fixed }))}</div>` : ''}${secWarn(sec)}
@@ -3003,7 +3023,7 @@ const WC = {
     noFc: (d) => `No forecast yet for ${d}. It comes about two weeks ahead; until then the times count without the wind.`,
     darkStill: 'Sunset and the dark still count: Check says where you’d be in the dark.',
     take: 'Take it along', takeB: [['gpx', 'gpx', 'Export GPX'], ['link', 'link', 'Copy share link'], ['offline', 'offline', 'Save offline…']],
-    climbs: 'Climbs', hardestTag: 'Hardest', climbsSum: 'hardest ↑S2 · +21 m at 12 % · at km 1.9',
+    climbs: 'Climbs', hardestTag: 'Hardest', climbsSum: 'Hardest: ↑S2, 21 m at 12 %',
     climbRows: [[1, '#c7c100', '↑S1', '1. +18 m in 260 m', 'km 0.4–0.7 · avg 7 % · max 11 %'], [2, '#f59e0b', '↑S2', '2. +21 m in 180 m', 'km 1.9–2.1 · avg 12 % · max 18 %', true], [0, '#22a447', '↑S0', '3. +5 m in 120 m', 'km 2.6–2.7 · avg 4 % · max 6 %']],
     onRoute: 'On the route', useColours: 'Use colours', selected: 'Selected',
     bd: [['Terrain', [['Gradient', true, [['#ef4444', '15–20 %', '10 m'], ['#f59e0b', '10–15 %', '50 m'], ['#eab308', '6–10 %', '40 m'], ['#84cc16', '3–6 %', '130 m'], ['#22c55e', 'Flat', '2.48 km'], ['#60a5fa', 'Down', '290 m'], ['#2563eb', 'Steep down', '50 m']]],
@@ -3016,6 +3036,11 @@ const WC = {
     yourRoute: 'Your route', yourRouteNew: 'new', yourRouteNote: 'On the map while a route is drawn. Moved here from Check.',
     marks: [['km', 'Distance marks', 'Every 1, 5, 10 or 25 km, by the route’s length'], ['time', 'Arrival times at marks', 'The clock time you reach each mark'], ['dur', 'Elapsed time at marks', 'From when you leave, with stops and changeovers']],
     groups: ['Base map', 'Terrain', 'Trails & difficulty', 'Winter', 'Marked routes', 'Places', 'Water & nautical', 'Traffic & safety', 'Roads (Digiroad)', 'Weather on the map'],
+    shareIncl: (d) => `Includes when you leave: ${d}`, shareAria: 'Copy share link, with when you leave',
+    passed: (d) => `Planned for ${d}. That’s passed, so it leaves now: pick a new time above.`,
+    noFcFrom: (km, at) => `No forecast yet from km ${km}, ${at}.`, noFcFromMore: 'Wind, rain and waves from there are under Check’s Not checked. Sunset and the dark still count.',
+    lessSure: 'It’s more than three days ahead: the forecast is less certain.', noFcSec: 'No forecast yet', noFcProfile: 'No forecast yet',
+    ncFrom: (km, at) => `No forecast yet from km ${km}, ${at}`, ncFromSub: 'Wind, rain and waves aren’t checked from there', ncAll: 'No forecast yet for this trip', ncAllSub: 'Wind, rain and waves aren’t checked; sunset and the dark are',
     say: { climb: ['This climb is lit on the map and the profile', false], bd: ['The route is coloured by this on the map', true], wxlink: ['The profile is coloured by it, in sight', false], head: ['The strongest headwind is lit on the route', false], change: ['Your sport’s menu opens', false], pick: ['Your phone’s own date and time picker opens', false] },
   },
   fi: {
@@ -3036,7 +3061,7 @@ const WC = {
     noFc: (d) => `Ei vielä sääennustetta päivälle ${d}. Se tulee noin kaksi viikkoa etukäteen; siihen asti ajat lasketaan ilman tuulta.`,
     darkStill: 'Auringonlasku ja pimeä lasketaan silti: Tarkista kertoo, missä olisit pimeällä.',
     take: 'Ota mukaan', takeB: [['gpx', 'gpx', 'Vie GPX'], ['link', 'link', 'Kopioi jakolinkki'], ['offline', 'offline', 'Tallenna offline-käyttöön…']],
-    climbs: 'Nousut', hardestTag: 'Jyrkin', climbsSum: 'jyrkin ↑S2 · +21 m, 12 % · km 1,9',
+    climbs: 'Nousut', hardestTag: 'Jyrkin', climbsSum: 'Jyrkin: ↑S2, 21 m, 12 %',
     climbRows: [[1, '#c7c100', '↑S1', '1. +18 m 260 m:n matkalla', 'km 0,4–0,7 · keskim. 7 % · enint. 11 %'], [2, '#f59e0b', '↑S2', '2. +21 m 180 m:n matkalla', 'km 1,9–2,1 · keskim. 12 % · enint. 18 %', true], [0, '#22a447', '↑S0', '3. +5 m 120 m:n matkalla', 'km 2,6–2,7 · keskim. 4 % · enint. 6 %']],
     onRoute: 'Reitillä', useColours: 'Väritä', selected: 'Valittu',
     bd: null, // (the breakdowns' words are the English ones: phase 18 translates)
@@ -3045,6 +3070,11 @@ const WC = {
     yourRoute: 'Reittisi', yourRouteNew: 'uusi', yourRouteNote: 'Kartalla, kun reitti on piirretty. Siirretty tänne Tarkista-välilehdeltä.',
     marks: [['km', 'Matkamerkit', '1, 5, 10 tai 25 km välein, reitin pituuden mukaan'], ['time', 'Saapumisajat merkeillä', 'Kellonaika, jolloin olet kunkin merkin kohdalla'], ['dur', 'Kulunut aika merkeillä', 'Lähdöstä, taukoineen ja vaihtoineen']],
     groups: ['Pohjakartta', 'Maasto', 'Polut ja vaativuus', 'Talvi', 'Merkityt reitit', 'Paikat', 'Vesillä', 'Liikenne ja turvallisuus', 'Tiet (Digiroad)', 'Sää kartalla'],
+    shareIncl: (d) => `Sisältää lähtöajan: ${d}`, shareAria: 'Kopioi jakolinkki lähtöaikoineen',
+    passed: (d) => `Suunniteltu ajalle ${d}. Se on mennyt, joten lähtö on nyt: valitse uusi aika yllä.`,
+    noFcFrom: (km, at) => `Ei vielä sääennustetta km ${km}:stä alkaen, ${at}.`, noFcFromMore: 'Tuuli, sade ja aallot sieltä ovat Tarkista-välilehden kohdassa Tarkistamatta. Auringonlasku ja pimeä lasketaan silti.',
+    lessSure: 'Yli kolmen päivän päässä: ennuste on epävarmempi.', noFcSec: 'Ei vielä ennustetta', noFcProfile: 'Ei vielä ennustetta',
+    ncFrom: (km, at) => `Ei vielä sääennustetta km ${km}:stä alkaen, ${at}`, ncFromSub: 'Tuulta, sadetta ja aaltoja ei tarkisteta sieltä', ncAll: 'Ei vielä sääennustetta tälle matkalle', ncAllSub: 'Tuulta, sadetta ja aaltoja ei tarkisteta; auringonlasku ja pimeä tarkistetaan',
     say: { climb: ['Nousu näkyy kartalla ja profiilissa', false], bd: ['Reitti väritetään tämän mukaan kartalla', true], wxlink: ['Profiili väritetään sen mukaan', false], head: ['Kovin vastatuuli näkyy reitillä', false], change: ['Lajivalikko aukeaa', false], pick: ['Puhelimen oma päivä- ja aikavalitsin aukeaa', false] },
   },
 };
@@ -3065,8 +3095,10 @@ const FAR_C = 15;
 const pickRowC = (act, icon, label, sub, val, kind, inAttr, value, aria) => `<div class="c2-list cpick">${item5(act, icon, label, sub, { val, chev: true })}<input type="${kind}" step="900" data-in="${inAttr}" data-pick="1" value="${esc(value)}"${kind === 'datetime-local' ? ` min="${isoC(NOWC)}"` : ''} aria-label="${esc(aria)}" aria-hidden="true" tabindex="-1"></div>`;
 function leaveRowC(st) {
   const set = !!st.leaveC, far = set && aheadC(new Date(st.leaveC)) > FAR_C;
+  // a saved route or a link whose date has passed opens at Now, saying when it was planned for (2026-10-24)
+  const passed = !set && st.passedC ? `<p class="cnofc cinfo">${ic('info', 16)}<span>${esc(wc('passed')(`${dayC(new Date(st.passedC))}, ${st.passedC.slice(11, 16)}`))}</span></p>` : '';
   const row = pickRowC('leavec', 'clock', wc('leave'), wc('leaveSub'), set ? labelC(st.leaveC) : wc('now'), 'datetime-local', 'leavec', st.leaveC || isoC(new Date(2026, 9, 31, 7, 30)), wc('pickAria'));
-  return `<div class="cleave">${row}${set ? `<button type="button" class="cnow" data-act="leavenowc" aria-label="${esc(wc('leaveNowAria'))}">${esc(wc('now'))}</button>` : ''}</div>${far ? `<p class="cnofc">${ic('weather', 16)}<span>${esc(wc('noFc')(dayC(new Date(st.leaveC))))}</span></p>` : ''}`;
+  return `<div class="cleave">${row}${set ? `<button type="button" class="cnow" data-act="leavenowc" aria-label="${esc(wc('leaveNowAria'))}">${esc(wc('now'))}</button>` : ''}</div>${far ? `<p class="cnofc">${ic('weather', 16)}<span>${esc(wc('noFc')(dayC(new Date(st.leaveC))))}</span></p>` : ''}${passed}`;
 }
 const styleRowsC = (st, sp) => list5([item5('howc', 'style', wc('how'), wc('howSub')(sL(sp)), { v: 'style', val: style424(st, sp), chev: true }), item5('howc', 'speed', wc('speed'), (w4('speedS') || {})[sp] || w4('speedS').mtb, { v: 'speed', val: wc('speedV'), chev: true })]);
 function routeC(st, v, desk) {
@@ -3098,7 +3130,7 @@ function speedStepC(st, sp, desk) {
 }
 // Check: what's on the way, every section with its content; the hardest climb marked in Climbs; no strip, no On the map
 function climbsC() {
-  const rows = wc('climbRows').map(([cls, bg, b, t, s, hard], k) => `<button type="button" class="li cli${hard ? ' chard' : ''}" data-act="say424c" data-v="climb"><span class="badge${cls === 1 ? ' ink' : ''}" style="background:${bg}">${esc(b)}</span><span class="li-main"><b>${esc(t)}${hard ? ` <em class="ctag">${esc(wc('hardestTag'))}</em>` : ''}</b><span>${esc(s)}</span></span></button>`).join('');
+  const rows = wc('climbRows').map(([cls, bg, b, t, s, hard]) => `<button type="button" class="li cli" data-act="say424c" data-v="climb"><span class="cbadges"><span class="badge${cls === 1 ? ' ink' : ''}" style="background:${bg}">${esc(b)}</span>${hard ? `<em class="ctag">${esc(wc('hardestTag'))}</em>` : ''}</span><span class="li-main"><b>${esc(t)}</b><span>${esc(s)}</span></span></button>`).join('');
   return `<section class="csec" aria-label="${esc(wc('climbs'))}"><div class="sec-h">${esc(wc('climbs'))} <span class="badge b2">3</span><span class="csum">${esc(wc('climbsSum'))}</span></div><div class="clist">${rows}</div></section>`;
 }
 function onRouteC() {
@@ -3109,9 +3141,14 @@ function onRouteC() {
 // Go: setting off. Leave ›, There at, where the time goes (open), Your speed ›; Departure & weather and Take it along whole
 function goC(st, desk) {
   const S = st.uc ? UC[st.uc].stats : SPORTS[st.sport].stats, set = !!st.leaveC, d = set ? new Date(st.leaveC) : null, far = set && aheadC(d) > FAR_C;
-  const end = set ? (() => { const e = new Date(d.getTime() + durMin424(S.t) * 60000); return `${p2c(e.getHours())}:${p2c(e.getMinutes())}`; })() : (st.uc ? UC[st.uc].sections.slice(-1)[0].pts.slice(-1)[0].tm : '07:46');
+  const days = st.uc && UC[st.uc].sections[0].day ? UC[st.uc].sections.length : 1;
+  const end = set && days === 1 ? (() => { const e = new Date(d.getTime() + durMin424(S.t) * 60000); return `${p2c(e.getHours())}:${p2c(e.getMinutes())}`; })() : (st.uc ? UC[st.uc].sections.slice(-1)[0].pts.slice(-1)[0].tm : '07:46');
+  const endDay = set ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + days - 1) : null;
   const tt = wc('timeRows').map(([a, b, c, dd, cls]) => `<div class="speed-row${cls ? ` ${cls}` : ''}"><span>${esc(a)}</span><b>${esc(b)}</b><b>${esc(c)}</b><small>${esc(dd)}</small></div>`).join('');
   const sp = sport424(st);
+  // a trip that runs past the forecast: the forecast as far as it reaches, then said in words; past three days, less certain
+  const part = st.noFc ? `<p class="cnofc">${ic('weather', 16)}<span><b>${esc(wc('noFcFrom')(st.noFc.km, st.noFc.at))}</b> ${esc(wc('noFcFromMore'))}</span></p>` : '';
+  const less = set && aheadC(d) > 3 && !far ? `<p class="note424">${esc(wc('lessSure'))}</p>` : '';
   const wx = far ? `<p class="sun-line">${ic('weather', 15)} ${esc(wc('sunFar'))}</p><p class="cnofc">${ic('weather', 16)}<span>${esc(wc('noFc')(dayC(d)))}</span></p><p class="note424">${esc(wc('darkStill'))}</p>`
     : `<p class="sun-line">${ic('weather', 15)} ${esc(wc('sun'))}</p><div class="wind-body"><div class="wind-now"><span class="wind-arrow" style="transform:rotate(135deg)">↑</span><span><b>${esc(wc('windB'))}</b>${esc(wc('windRest'))}</span><span class="pill ok">${esc(wc('breezy'))}</span></div>
       <div class="wx-sum"><span><b>${esc(wc('temp'))}</b></span><button type="button" class="link" data-act="say424c" data-v="wxlink">${esc(wc('rain'))}</button></div>
@@ -3120,11 +3157,11 @@ function goC(st, desk) {
       <div class="hours">${[['01:00', 4, 135], ['02:00', 4, 135], ['04:00', 3, 160], ['06:00', 3, 180], ['08:00', 3, 180], ['10:00', 4, 150], ['12:00', 2, 200], ['14:00', 2, 200]].map(([t, s, r]) => `<span class="hour"><i style="display:inline-block;transform:rotate(${r}deg)">↑</i><b>${s}</b><small>${t}</small></span>`).join('')}</div>
       <div class="wx-links">${wc('links').map((l) => `<button type="button" class="link" data-act="say424c" data-v="wxlink">${esc(l)}</button>`).join('')}</div></div>`;
   return `${leaveRowC(st)}
-    <div class="time-head cthere"><b>${esc(set && aheadC(d) > 0 ? wc('thereDay')(end, dayC(d)) : wc('there')(end))}</b><span>${esc(wc('onWay')(S.t))}</span></div>
+    <div class="time-head cthere"><b>${esc(set && (aheadC(d) > 0 || days > 1) ? wc('thereDay')(end, dayC(endDay)) : wc('there')(end))}</b><span>${esc(wc('onWay')(S.t))}</span></div>
     <div class="speed-table">${tt}</div>
     <div class="crows">${list5([item5('speedgo', 'speed', wc('speed'), (w4('speedS') || {})[sp] || w4('speedS').mtb, { val: wc('speedV'), chev: true })])}</div>
-    <section class="csec" aria-label="${esc(wc('depWx'))}"><div class="sec-h">${esc(wc('depWx'))}</div><h4 class="csub">${esc(wc('wxRoute'))}</h4>${wx}</section>
-    <section class="csec" aria-label="${esc(wc('take'))}"><div class="sec-h">${esc(wc('take'))}</div><div class="take-along">${wc('takeB').map(([k, icn, l]) => `<button type="button" class="btn" data-act="say424" data-v="${k}">${ic(icn, 16)} ${esc(l)}</button>`).join('')}</div></section>`;
+    <section class="csec" aria-label="${esc(wc('depWx'))}"><div class="sec-h">${esc(wc('depWx'))}</div><h4 class="csub">${esc(wc('wxRoute'))}</h4>${part}${less}${wx}</section>
+    <section class="csec" aria-label="${esc(wc('take'))}"><div class="sec-h">${esc(wc('take'))}</div><div class="take-along">${wc('takeB').map(([k, icn, l]) => (k === 'link' && set ? `<button type="button" class="btn ctwo" data-act="say424" data-v="${k}" aria-label="${esc(wc('shareAria'))}">${ic(icn, 16)}<span><span>${esc(l)}</span><small>${esc(wc('shareIncl')(`${dayC(d)}, ${p2c(d.getHours())}:${p2c(d.getMinutes())}`))}</small></span></button>` : `<button type="button" class="btn" data-act="say424" data-v="${k}">${ic(icn, 16)} ${esc(l)}</button>`)).join('')}</div></section>`;
 }
 // Layers' full panel, with the route's group where the marks' settings go (the rest of the groups as they are, folded here)
 function layersC(st, desk) {
@@ -3139,6 +3176,17 @@ function layersC(st, desk) {
       ${wc('groups').map((g) => `<details class="lg"><summary><span>${esc(g)}</span></summary><p class="note424">(As the app has it.)</p></details>`).join('')}</div></div>`;
 }
 
+// #424, C: the profile coloured by the wind, its part past the forecast grey and saying so (2026-10-24)
+function profileWind424(st) {
+  const pts = [100, 104, 112, 118, 116, 124, 132, 128, 136, 141, 138, 130, 118, 104, 101, 103, 102, 104, 108, 106, 103];
+  const W = 340, H = 80, step = W / (pts.length - 1), y = (q) => H - (q - 96) / 50 * H, cut = st.noFc ? st.noFc.frac * W : W;
+  const wind = ['#22c55e', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f59e0b', '#ef4444', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#22c55e', '#84cc16', '#eab308', '#eab308', '#84cc16', '#22c55e', '#22c55e', '#84cc16', '#84cc16'];
+  const bars = pts.slice(1).map((q, i) => `<path d="M${i * step} ${H} L${i * step} ${y(pts[i])} L${(i + 1) * step} ${y(q)} L${(i + 1) * step} ${H}Z" fill="${(i + 0.5) * step > cut ? '#b8bfbb' : wind[i]}" opacity=".85"/>`).join('');
+  const label = st.noFc ? `<span class="pnofc">${esc(wc('noFcProfile'))}</span>` : '';
+  return `<div class="prof"><div class="prof-top">Colour by <span class="sel" style="height:36px">Wind ${ic('down', 14)}</span>
+    <label class="sw"><span>On map</span><i role="switch" aria-checked="false" tabindex="0" aria-label="Colour the route on the map"></i></label></div>
+    <div class="pwrap"><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Profile coloured by the wind${st.noFc ? `; no forecast yet from km ${st.noFc.km}` : ''}">${bars}${st.noFc ? `<line x1="${cut}" y1="0" x2="${cut}" y2="${H}" stroke="#56625c" stroke-width="1.5" stroke-dasharray="3 3"/>` : ''}</svg>${label}</div></div>`;
+}
 // the sheet (phone) and the panel (desktop)
 function plannerHtml(st, v, desk, docked) {
   if (st.layersC && st.stage === 'route') return layersC(st, desk); // (#424, C: Layers' full panel, with the route's group)
@@ -3237,7 +3285,7 @@ function plannerHtml(st, v, desk, docked) {
   const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
   // (#424: the Route and Go tabs as they are, or as proposed; goBody() is the approved design of 2026-10-18, kept for the frames before C)
   const body = st.tab === 'check' ? checkBody(st, v) : st.tab === 'go' ? (v.tabs === 'c' ? goC(st, desk) : v.tabs === 'new' ? goNew424(st) : st.uc ? goToday424(st) : goBody(st)) : routeBody424(st, v, desk);
-  return `<div class="pl${desk && !viewing ? ' joined' : ''}${(stepping || pcarding) && v.look === 'r5' ? ' card-in' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
+  return `<div class="pl${desk && !viewing ? ' joined' : ''}${(stepping || pcarding) && v.look === 'r5' ? ' card-in' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk, st)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
 }
 function deskToolbar(st, v, compact = 0) {
   const route = st.stage === 'route', sep = '<span class="sep" aria-hidden="true"></span>';

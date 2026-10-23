@@ -463,6 +463,8 @@ button.warnr span { flex: 1; font-weight: 600; }
 .r5 .pop .c6-now { min-height: 36px; font-size: 13.5px; }
 .c6-nofc { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 12px; background: #eaf0f6; color: var(--text); font-size: 13.5px; line-height: 1.35; }
 .fr.dark .c6-nofc { background: rgba(156,192,228,.13); }
+.c6-nofc.c6-info { background: var(--surface-2); }
+.c6-nofc.c6-info .ic { color: var(--muted); }
 .c6-nofc .ic { flex: none; color: #47607a; margin-top: 1px; }
 .fr.dark .c6-nofc .ic { color: #9cc0e4; }
 .c2-step button:disabled { color: var(--muted); opacity: .45; }
@@ -949,6 +951,8 @@ button.warnr span { flex: 1; font-weight: 600; }
       <figure class="fr phone" id="r6-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c"}'><figcaption><b>C · The start's card</b>Leave · Now ›: a tap opens the phone's own date and time.</figcaption></figure>
       <figure class="fr phone" id="r6-leave-c-set" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Set to tomorrow</b>The row says the day and the time; Now under it goes back to leaving now.</figcaption></figure>
       <figure class="fr phone" id="r6-leave-c-far" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-28T07:30"}'><figcaption><b>C · Four weeks ahead</b>No forecast yet; sunset and the dark still count (#159).</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-c-passed" data-st='{"card":"point","pt":0,"v":"r6","times":"c","passedDT":"2026-10-24T07:30"}'><figcaption><b>C · A date that has passed</b>A saved route or a link opens at Now, saying when it was planned for.</figcaption></figure>
+      <figure class="fr phone" id="r6-whole-c-share" data-st='{"card":"whole","kind":"route","at":[218,745],"v":"r6","times":"c","leaveDT":"2026-10-31T16:45"}'><figcaption><b>C · Share with the date</b>Share link says it includes when you leave. Set Now first to share without it.</figcaption></figure>
       <figure class="fr phone" id="r6-night-c" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c"}'><figcaption><b>C · A night</b>Stay · 1 night with the stepper; Go on at · 07:00 › opens the phone's clock.</figcaption></figure>
       <figure class="fr phone" id="r6-night-c2" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c","nights":2,"leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Two nights</b>Going on counts from the start: Tue 3 Nov, after 2 nights.</figcaption></figure>
       <figure class="fr desk" id="r6-leave-c-desk" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Desktop</b>A click on the row opens the browser's date and time picker.</figcaption></figure>
@@ -1093,7 +1097,7 @@ let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '39
   whole: ['none', 'four'].includes(Q.get('whole')) ? Q.get('whole') : 'row', start: Q.get('start') === 'tap' ? 'tap' : 'card' };
 // what a frame keeps when a card closes or another opens: its switches, its words and the route as drawn
 const keepOf = (st) => ({ added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z, v: st.v, view: st.view, noRoute: st.noRoute,
-  times: st.times, avoid: st.avoid, prof: st.prof, whole: st.whole, start: st.start, looped: st.looped, leaveDay: st.leaveDay, leaveAt: st.leaveAt, leaveDT: st.leaveDT });
+  times: st.times, avoid: st.avoid, prof: st.prof, whole: st.whole, start: st.start, looped: st.looped, leaveDay: st.leaveDay, leaveAt: st.leaveAt, leaveDT: st.leaveDT, passedDT: st.passedDT });
 const ic = (id, s = 20) => `<svg class="ic" width="${s}" height="${s}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -1329,6 +1333,7 @@ const T2 = {
     noFcC: (d) => `No forecast yet for ${d}. Sunset and the dark still count.`,
     stayC: 'Stay', nightsC: (n) => `${n} night${n > 1 ? 's' : ''}`, fewerC: 'One night less', moreC: 'One night more',
     goOnC: 'Go on at', goOnSubC: (d, n) => `${d}, ${n === 1 ? 'the next morning' : `after ${n} nights`}`, goOnAriaC: 'Go on at: pick a time',
+    shareInclC: (d) => `Includes when you leave: ${d}`, passedC: (d) => `Planned for ${d}. That’s passed, so it leaves now: pick a new time above.`,
   },
   fi: {
     start: 'Lähtö', end: 'Loppu', via: 'Välipiste', back: 'Takaisin', close: 'Sulje',
@@ -1393,6 +1398,7 @@ const T2 = {
     noFcC: (d) => `Ei vielä sääennustetta päivälle ${d}. Auringonlasku ja pimeä lasketaan silti.`,
     stayC: 'Yövy', nightsC: (n) => `${n} yö${n > 1 ? 'tä' : ''}`, fewerC: 'Yksi yö vähemmän', moreC: 'Yksi yö enemmän',
     goOnC: 'Jatka klo', goOnSubC: (d, n) => `${d}, ${n === 1 ? 'seuraavana aamuna' : `${n} yön jälkeen`}`, goOnAriaC: 'Jatka klo: valitse kellonaika',
+    shareInclC: (d) => `Sisältää lähtöajan: ${d}`, passedC: (d) => `Suunniteltu ajalle ${d}. Se on mennyt, joten lähtö on nyt: valitse uusi aika yllä.`,
   },
 };
 const U = (f) => T2[f.lang];
@@ -1450,8 +1456,11 @@ const pickRow6 = (act, icon, label, sub, val, kind, inAttr, value, aria) => `<di
 const leaveRowC6 = (f, st) => {
   const u = U(f), set = !!st.leaveDT, d = set ? new Date(st.leaveDT) : null, far = set && aheadC6(d) > FAR_C6;
   const row = pickRow6('leavepickc', 'clock', u.leaveC, u.leaveSub, set ? labelC6(f.lang, st.leaveDT) : u.nowC, 'datetime-local', 'ldt', st.leaveDT || isoC6(new Date(2026, 9, 31, 10, 0)), u.pickAriaC);
-  return `<div class="c6-leave">${row}${set ? `<button type="button" class="c6-now" data-act="leavenowc" aria-label="${esc(u.leaveNowAriaC)}">${esc(u.nowC)}</button>` : ''}</div>${far ? `<p class="c6-nofc">${ic('weather', 16)}<span>${esc(u.noFcC(dayC6(f.lang, d)))}</span></p>` : ''}`;
+  const passed = !set && st.passedDT ? `<p class="c6-nofc c6-info">${ic('info', 16)}<span>${esc(u.passedC(`${dayC6(f.lang, new Date(st.passedDT))}, ${st.passedDT.slice(11, 16)}`))}</span></p>` : '';
+  return `<div class="c6-leave">${row}${set ? `<button type="button" class="c6-now" data-act="leavenowc" aria-label="${esc(u.leaveNowAriaC)}">${esc(u.nowC)}</button>` : ''}</div>${far ? `<p class="c6-nofc">${ic('weather', 16)}<span>${esc(u.noFcC(dayC6(f.lang, d)))}</span></p>` : ''}${passed}`;
 };
+// with a date set (C), a share link carries it, and says so (2026-10-24); to share without it, set Now first
+const shareSubC6 = (f, st, plain) => (f.o.times === 'c' && st.leaveDT ? U(f).shareInclC(`${dayC6(f.lang, new Date(st.leaveDT))}, ${st.leaveDT.slice(11, 16)}`) : plain);
 // a time to pick (#364, B): the one stepper, − and + in quarter hours, around the phone's own time field
 const timeStep = (f, k, val, label) => { const u = U(f); return `<span class="c2-step c6-step"><button type="button" data-act="${k}-" aria-label="${esc(u.earlier15)}">${ic('minus', 20)}</button><input type="time" step="900" value="${esc(val)}" data-in="${k}" aria-label="${esc(label)}"><button type="button" data-act="${k}+" aria-label="${esc(u.later15)}">${ic('plus', 20)}</button></span>`; };
 
@@ -1516,7 +1525,7 @@ function routeCard2(f, st) {
   if (acts.length) h += list(acts);
   // #90, B: one row for the whole route, opening what ⋯ has; C: #90's four rows as filed; A: neither, and ⋯ keeps them
   if (o.whole === 'row') h += `<div class="c2-hr"></div>` + list([item('whole', 'more', u.wholeRoute6, u.wholeSub6, { chev: true })]);
-  if (o.whole === 'four') h += grp(u.wholeRoute6) + list([item('gpx', 'gpx', u.gpx6, u.gpxSub6), item('copylink', 'link', u.copyLink6, u.copyLinkSub6), item('offline', 'offline', u.offline6, u.offlineSub6)])
+  if (o.whole === 'four') h += grp(u.wholeRoute6) + list([item('gpx', 'gpx', u.gpx6, u.gpxSub6), item('copylink', 'link', u.copyLink6, shareSubC6(f, st, u.copyLinkSub6)), item('offline', 'offline', u.offline6, u.offlineSub6)])
     + (st.view ? '' : `<div class="c2-hr"></div>` + list([item('clearroute', 'trash', u.clearRoute6, u.clearSub6, { cls: 'danger' })]));
   return st.view ? h + lock(f) : h;
 }
@@ -1605,7 +1614,7 @@ function estyleCard5(f, st) { const u = U(f), sp = u.sportNames[f.sport] || f.sp
 function wholeCard6(f, st) {
   const u = U(f);
   return head2(f, G2.route, `${pn(f, 0)} → ${pn(f, POINTS.length - 1)}`, u.kept6, 'route')
-    + grp(u.takeAlong6) + list([item('sharelink', 'link', u.shareLink6, u.shareLinkSub6), item('gpx', 'gpx', u.gpx6, u.gpxSub6), item('offline', 'offline', u.offline6, u.offlineSub6)])
+    + grp(u.takeAlong6) + list([item('sharelink', 'link', u.shareLink6, shareSubC6(f, st, u.shareLinkSub6)), item('gpx', 'gpx', u.gpx6, u.gpxSub6), item('offline', 'offline', u.offline6, u.offlineSub6)])
     + grp(u.wholeRoute6) + list([item('roundstart', 'roundtrip', u.roundStart6, u.roundStartSub6), item('reverse', 'reverse', u.reverse5, u.reverseSub5), st.looped ? '' : item('backstart', 'loop', u.backStart, u.backStartSub), item('importf', 'upload', u.import6, u.importSub6)])
     + `<div class="c2-hr"></div>` + list([item('clearroute', 'trash', u.clearRoute6, u.clearSub6, { cls: 'danger' })]);
 }
