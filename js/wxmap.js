@@ -1051,6 +1051,7 @@ export class WeatherOverlay {
       const s = this.sample(ll);
       if (!s) {
         this.nowEl.innerHTML = `<small>${this.loading ? 'Loading forecast…' : this.status || 'No forecast here'}</small>`;
+        this.nowEl.title = this.nowEl.textContent; // (a long note shows three lines)
         return;
       }
       const night = sunAltitude(ll[1], ll[0], this.cur.t) < -3;
