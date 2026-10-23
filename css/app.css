@@ -1381,9 +1381,11 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .looked li small { margin-left: auto; color: var(--muted); text-align: right; }
 .looked p { margin: 10px 0 0; }
 .checks .hidden-kinds { padding-top: 10px; }
-/* the peek's row (25d part 3) [jc-peek, jc-desk]: above the numbers, in the warning box */
+/* the peek's row (25d part 3) [jc-peek, jc-desk]: above the numbers, in the warning box; in a short window (200 %, a
+   phone on its side) its count alone, so the numbers stay in the peek (its name says the rest, and a tap shows them) */
 .pl-readrow { margin: 2px 0 8px; }
 .pl-readrow > span:first-child { align-self: center; }
+@media (max-height: 520px) { .pl-readrow { min-height: var(--target); padding-block: 6px; } .pl-readrow small { display: none; } }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }

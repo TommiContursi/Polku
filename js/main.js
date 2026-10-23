@@ -340,6 +340,7 @@ const planner = new Planner(map, {
 // map and the planner draw with them again.
 onTheme(() => {
   map.setStyle(buildStyle(state, ctx), { diff: true });
+  planner.drawHeads(); // (its markers' images are the theme's)
   if (planner.analysis) planner.showMode(planner.colorMode);
 });
 
@@ -387,6 +388,9 @@ const inspector = initInspector(map, {
   rideLipas,
   // a click on your route with the planner closed: open it, with that part's choices
   // (in the route's view too, where the planner leaves map taps to the map: 25c)
+  // Check's markers on the route with the planner put away: their card first (25d part 3)
+  headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10),
+  openHead: (f) => planner.openHead(f),
   openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openLegMenu(leg, lngLat), 60); }, // (the same click mustn't add a point too)
   lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   vessel: (mmsi) => safety.vessel(mmsi),

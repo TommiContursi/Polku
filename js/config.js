@@ -122,7 +122,7 @@ export const SPORT_COLORS = fromCss({ mtb: '--sport-mtb', gravel: '--sport-grave
 // the route on the map: the line, a leg over water, a straight leg, a leg being routed
 export const ROUTE_COLORS = fromCss({ route: '--route', water: '--route-water', line: '--route-line', loading: '--route-loading' });
 // Check's three groups (25d): Read before you go, Worth a look, Not checked, and the box behind each
-export const WARN_COLORS = fromCss({ danger: '--danger', dangerSoft: '--danger-soft', look: '--look', lookSoft: '--look-soft', unk: '--unk', unkSoft: '--unk-soft' });
+export const WARN_COLORS = fromCss({ danger: '--danger', dangerSoft: '--danger-soft', look: '--look', lookSoft: '--look-soft', unk: '--unk', unkSoft: '--unk-soft', surface: '--surface-solid', ink: '--text' }); // (surface and ink: Check's markers on the map, 25d part 3)
 export const isWater = (a) => groupOf(a) === 'water';
 // sports where the uphill-difficulty grades (↑S0–↑S5, from mtb:scale:uphill) mean something
 export const OFFROAD_BIKE = new Set(['mtb', 'gravel']);

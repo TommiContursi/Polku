@@ -7,7 +7,7 @@ import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWat
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
 import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong, forgetFailures as forgetTrailFailures } from './trails.js';
-import { iconUrl } from './icons.js';
+import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
@@ -956,6 +956,7 @@ export class Planner {
     if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
     document.body.classList.toggle('planning', on);
     for (const m of this.markers) m.getElement().hidden = !on;
+    this.drawHeads(); // (put away: what to read before you go stays marked on the route)
     this.renderState();
     this.app.onActiveChange(on);
     if (on && !this.analysis) this.renderAnalysis(); // the empty planner's first words (and its round-trip button)
@@ -2288,8 +2289,9 @@ export class Planner {
         } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going', tier: 'look', src: MAP });
         else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap', tier: 'look', src: MAP });
         else if (e.kind === 'rough') {
-          const w = wr.wind;
-          out.push({ at, len, kind: 'water', hide: 'Rough water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast` : 'an estimate from the forecast', tier: 'read', src: WAVES });
+          // for the departure the timeline shows (moving it routes the leg again) [jc-paddle-step]
+          const w = wr.wind, when = wr.at ? ` for ${clock(wr.at * 1000)}` : '';
+          out.push({ at, len, kind: 'water', hide: 'Rough water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}${wr.at ? `, at ${clock(wr.at * 1000)}` : ''}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast${when}` : `an estimate from the forecast${when}`, tier: 'read', src: when ? { ...WAVES, by: `${WAVES.by}${when}` } : WAVES });
         }
       }
     });
@@ -2613,6 +2615,9 @@ export class Planner {
     }
     // …and in Marked routes it picks the route under it
     if (this.startView() === 'find') { this.pickMarkedAt(e.point, r); return; }
+    // a marker of Check's (25d part 3): its card (in the route's view too: the map's card doesn't open as well)
+    const head = this.headAt(e.point, r + 6);
+    if (head) { if (this.inView()) this.tookClick = e.originalEvent; this.openHead(head); return; }
     // a way on offer for a leg (#95): a tap takes it
     const alt = this.alts && this.map.getLayer('route-alts-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label'] }).find((f) => !f.properties.route);
     const ng = !alt && this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
@@ -3719,6 +3724,7 @@ export class Planner {
         const key = card && card.kind === 'item' ? card.itemKey : null;
         for (const r of this.els.warnings.querySelectorAll('[data-key]')) { if (r.dataset.key === key) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
         if (!key && this.itemLit) this.unlightItem();
+        if (key !== this.headsOpen) { this.headsOpen = key; this.drawHeads(); } // (the open one ringed, Worth a look's shown)
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.measureSheet?.();
       },
@@ -3889,7 +3895,7 @@ export class Planner {
       if (this.layout() === 'sheet' && (st === 'peek' || st === 'profile')) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'min') this.setSheetState('open');
     }
-    this.renderReadRow(); // (gone while Check is in sight)
+    this.renderOnRoute(); // (the row gone while Check is in sight; Worth a look's markers with it)
   }
 
   // The profile at its size, or smaller (yours, kept)
@@ -4355,7 +4361,7 @@ export class Planner {
     this.els.min.title = folded ? 'Show the details' : lay === 'side' ? 'Minimise' : 'Fold down to the summary';
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { peek: 'Show more', profile: 'Drag up for the details, down for the map', half: 'Drag up for everything, down for the profile', full: 'Drag down for the map' }[st] || '';
-    this.renderReadRow(); // (gone while Check is in sight)
+    this.renderOnRoute(); // (the row gone while Check is in sight; Worth a look's markers with it)
     if (st !== 'peek' && st !== 'min') requestAnimationFrame(() => this.chart.draw());
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
   }
@@ -5670,7 +5676,7 @@ export class Planner {
     const H = this.heads = this.headsUp(a);
     this.headsList = this.itemsAlong(H);
     this.renderBadge(H);
-    this.renderReadRow();
+    this.renderOnRoute();
     if (!a) return;
     this.setSection('warnings', { count: H.read.length + H.look.length + H.not.length });
     const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
@@ -5715,6 +5721,77 @@ export class Planner {
     if (open) this.cards.refresh(); // (its "2 of 5", or closed when it's gone)
   }
 
+  // What shows Check's items outside Check: the peek's row and the markers on the route (25d part 3)
+  renderOnRoute() {
+    this.renderReadRow();
+    this.drawHeads();
+  }
+  // whether Check is in sight: a desktop's Check tab, a phone's with the sheet above its peek
+  checkInSight() {
+    return this.active && this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || this.panel.dataset.state !== 'peek');
+  }
+
+  // Check's items on the map [jc-peek, jc-check, jc-worst, jc-step]: Read before you go and Not checked with a place
+  // always (with the planner put away too), Worth a look while Check or an item is in view; the open one apart and
+  // ringed, with its obstacle's own icon (#85); the stretches a source didn't cover, dashed (a source missing for the
+  // whole route says so in words, with no marker)
+  drawHeads() {
+    const a = this.analysis, H = this.heads, set = (id, features) => this.app.setData(id, { type: 'FeatureCollection', features });
+    if (!a || !H || this.points.length < 2) { set('heads', []); set('headsOn', []); set('headsGaps', []); return; }
+    const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
+    const looks = !!open || this.checkInSight();
+    const SEV = { read: 3, not: 2, look: 1 }, pt = (c, properties) => ({ type: 'Feature', properties, geometry: { type: 'Point', coordinates: c } });
+    const marks = [], on = [];
+    for (const it of this.headsList || []) {
+      const at = this.itemPlace(it.w), k = itemKey(it);
+      if (!at || (it.g === 'look' && !looks)) continue;
+      const props = { key: k, g: it.g, sev: SEV[it.g], img: warnMarkId(it.g), text: it.w.text };
+      if (k !== open) { marks.push(pt(at, props)); continue; }
+      on.push(pt(at, { ...props, kind: 'item' }));
+      if (it.w.icon && it.w.lngLat) on.push(pt(it.w.lngLat, { kind: 'obstacle', img: it.w.icon }));
+    }
+    set('heads', marks);
+    set('headsOn', on);
+    const at = (m) => Math.max(0, a.along.findIndex((d) => d >= m)), gaps = [];
+    for (const x of H.not) for (const [m, len] of x.ranges || []) {
+      let i1 = at(m + len);
+      if (i1 <= 0) i1 = a.along.length - 1;
+      const c = a.pts.slice(at(m), i1 + 1);
+      if (c.length > 1) gaps.push({ type: 'Feature', properties: { key: x.key }, geometry: { type: 'LineString', coordinates: c } });
+    }
+    set('headsGaps', gaps);
+  }
+  // a marker under a tap or a click (r: px around it), the most serious first; and its card (merged ones: the most
+  // serious of them, the first along the route)
+  headAt(point, r = 8) {
+    if (!this.map.getLayer('heads-icon')) return null;
+    const hits = this.map.queryRenderedFeatures([[point.x - r, point.y - r], [point.x + r, point.y + r]], { layers: ['heads-on-icon', 'heads-icon'] }).filter((f) => f.properties.key || f.properties.cluster_id != null);
+    return hits.sort((x, y) => (y.properties.sev || 0) - (x.properties.sev || 0))[0] || null;
+  }
+  async openHead(f) {
+    let key = f.properties.key;
+    if (!key && f.properties.cluster_id != null) {
+      const leaves = await this.map.getSource('heads').getClusterLeaves(f.properties.cluster_id, 100, 0);
+      const L = this.headsList || [], pos = (k) => L.findIndex((it) => itemKey(it) === k);
+      key = leaves.map((l) => l.properties).sort((x, y) => y.sev - x.sev || pos(x.key) - pos(y.key))[0]?.key;
+    }
+    const it = key && this.itemByKey(key);
+    if (it) this.openItemCard(it, { from: 'marker' });
+  }
+  // the card with the planner put away: Open the planner at it [jc-closed]
+  openPlannerAt(card) {
+    const k = card.itemKey;
+    this.cards.close({ restore: false });
+    if (!this.active) this.setActive(true);
+    this.setTab('check');
+    if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
+    setTimeout(() => {
+      const it = this.itemByKey(k), el = this.els.warnings.querySelector(`[data-key="${CSS.escape(k)}"]`);
+      if (el) el.scrollIntoView({ block: 'nearest' });
+      if (it) this.openItemCard(it, { from: 'check', el });
+    }, 120);
+  }
+
   // The peek's row [jc-peek, jc-desk]: what to read before you go, else what wasn't checked, in words, in the warning
   // box; a tap shows the first of them on the route. Not while Check is in sight (a phone's sheet above its peek, a
   // desktop's Check tab); an item's card in the peek takes the head (.carded).
@@ -5722,8 +5799,7 @@ export class Planner {
     const el = this.els.readRow, H = this.heads;
     if (!el) return;
     const n1 = H ? H.read.length : 0, n3 = H ? H.not.length : 0;
-    const inSight = this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || this.panel.dataset.state !== 'peek');
-    el.hidden = !this.analysis || (!n1 && !n3) || inSight;
+    el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight();
     if (el.hidden) return;
     const first = n1 ? H.read[0] : H.not[0], n = n1 || n3;
     el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}`;

@@ -1958,6 +1958,11 @@ HEADS = """(async () => {
   const ww = p.waterWarnings.call({ legs: [{ mode: 'water', status: 'ok', result: { water: { events, missing: [], craft: 'kayak', wind: { speed: 7, dir: 225 } } } }], lengthTo: () => 0 });
   const MAP = ['map', 'Väylävirasto and OpenStreetMap'];
   expect('waterWarnings', ww, [[/^Crosses the Näsijärvi/, 'read', ...MAP], [/^Along a shipping lane/, 'read', ...MAP], [/^Through a harbour/, 'look', ...MAP], [/^Close to a marked rock/, 'look', ...MAP], [/^Rough for a (sea )?kayak/, 'read', 'estimate', 'the waves, from the forecast']]);
+  // …for the departure its wind is for (part 3, jc-paddle-step): "Rough for a kayak, at 13:00", its source the forecast for 13:00
+  const at13 = new Date(); at13.setHours(13, 0, 0, 0);
+  const hhmm = at13.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const rough = p.waterWarnings.call({ legs: [{ mode: 'water', status: 'ok', result: { water: { events: [events[4]], missing: [], craft: 'kayak', wind: { speed: 7, dir: 225 }, at: at13.getTime() / 1000 } } }], lengthTo: () => 0 })[0];
+  if (!rough || rough.text.indexOf(`, at ${hhmm}:`) < 0 || rough.src.by !== `the waves, from the forecast for ${hhmm}`) errs.push(`rough water for 13:00: ${rough && rough.text} · ${rough && rough.src.by}`);
   // winter: snow, snowing, the cold, slippery, the ways' winter tags, the ice season
   const fill = (v) => new Float32Array(n).fill(v), F = ['estimate', 'the forecast'], T = ['map', 'winter tags'];
   const cls = Array.from({ length: n }, (_, i) => ['closed', 'groomed', 'unploughed', 'open3'][Math.floor(i / 15)]);
@@ -2364,6 +2369,94 @@ def onroute(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
+    # the markers on the route (part 3) [jc-peek, jc-check, jc-worst, jc-closed]: Read before you go and placed Not checked
+    # always, Worth a look only while Check or an item is in view; two 10 m apart merge, and a tap shows the Read one;
+    # the open item ringed, apart from the rest, with its obstacle's own icon (#85); a stretch a source didn't cover dashed;
+    # with the planner put away, a tap on a triangle opens its card, and Open the planner at it
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        fails += pg.js("""(async () => {
+          const errs = [];
+        """ + CHECK_ROUTE + """
+          const m = polku.map, src = (id) => (m.getSource(id) ? m.getSource(id).serialize().data.features || [] : null);
+          if (!src('heads')) return ['no heads source on the map'];
+          const groups = () => src('heads').map((f) => f.properties.g).sort().join(',');
+          p.setTab('route'); p.setSheetState('peek');
+          await wait(300);
+          if (groups() !== 'read,read') errs.push(`markers at the peek: ${groups()}, not the two to read`);
+          p.reveal('warnings');
+          await wait(500);
+          if (groups() !== 'look,look,look,read,read') errs.push(`markers with Check open: ${groups()}, not the three worth a look as well`);
+          // the open item: ringed, out of the merging, its obstacle's icon shown (#85, the trail details off in Layers)
+          p.analysis.darkWarn = [...p.analysis.darkWarn, { at: 1300, len: 0, kind: 'trail', icon: 'td-tree', noHide: true, text: 'Fallen tree: the test', tier: 'look', src: { kind: 'map', by: 'OpenStreetMap' }, lngLat: p.analysis.pts[130] }];
+          p.renderWarnings();
+          p.openItemCard(p.itemsAlong().find((x) => /Fallen tree: the test/.test(x.w.text)), { from: 'check' });
+          await wait(600);
+          const on = src('headsOn');
+          if (!on || !on.some((f) => f.properties.kind === 'item' && f.properties.g === 'look')) errs.push(`the open item isn't ringed: ${JSON.stringify(on && on.map((f) => f.properties))}`);
+          if (!on || !on.some((f) => f.properties.kind === 'obstacle' && f.properties.img === 'td-tree')) errs.push('the open item\\'s obstacle icon isn\\'t on the map');
+          if (src('heads').some((f) => /Fallen tree: the test/.test(f.properties.text || ''))) errs.push('the open item is in the merging markers too');
+          p.cards.close();
+          await wait(300);
+          if ((src('headsOn') || []).length) errs.push('a ring after the card closed');
+          // a stretch a source didn't cover: dashed on the route
+          p.analysis.trailError = [[400, 200]];
+          p.renderWarnings();
+          const gaps = src('headsGaps') || [];
+          if (gaps.length !== 1 || gaps[0].geometry.coordinates.length < 2) errs.push(`unchecked stretches: ${gaps.length}`);
+          p.analysis.trailError = null;
+          // two items 10 m apart: one marker with 2, and a tap shows the one to read first
+          p.analysis.darkWarn = [...window.mine, { ...window.mine[0], at: 600, text: 'Close one to look at', lngLat: p.analysis.pts[60] }, { ...window.mine[2], at: 610, text: 'Close one to read', lngLat: p.analysis.pts[61] }];
+          p.renderWarnings();
+          p.reveal('warnings'); // (Worth a look's markers show while Check is in sight)
+          await wait(600);
+          m.jumpTo({ center: p.analysis.pts[60], zoom: 13, padding: p.viewPadding() });
+          await new Promise((ok) => m.once('idle', ok));
+          const q = m.project(p.analysis.pts[60]);
+          const hit = m.queryRenderedFeatures([[q.x - 20, q.y - 20], [q.x + 20, q.y + 20]], { layers: ['heads-icon'] });
+          const cl = hit.find((f) => f.properties.point_count);
+          if (!cl || cl.properties.point_count !== 2 || cl.properties.sev !== 3) errs.push(`two items 10 m apart: ${JSON.stringify(hit.map((f) => f.properties))}`);
+          window.clusterAt = [q.x, q.y];
+          return errs;
+        })()""", timeout=90000)
+        at = pg.js("(() => { const r = polku.map.getCanvas().getBoundingClientRect(); return window.clusterAt ? [r.left + window.clusterAt[0], r.top + window.clusterAt[1]] : null; })()")
+        if at:
+            pg.tap(*at)
+            time.sleep(1.2)
+            fails += card(pg, 'Close one to read', 5, {'group': 'Read before you go'})  # (fifth along the route, of eight)
+            # with the planner put away: the triangle's card, and Open the planner at it
+            fails += pg.js("""(async () => {
+              const p = polku.planner, m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+              p.cards.close();
+              p.analysis.darkWarn = [...window.mine];
+              p.renderWarnings();
+              p.setActive(false);
+              await wait(500);
+              m.jumpTo({ center: p.analysis.pts[30], zoom: 14 });
+              await new Promise((ok) => m.once('idle', ok));
+              const q = m.project(p.analysis.pts[30]), r = m.getCanvas().getBoundingClientRect();
+              if (!m.queryRenderedFeatures([[q.x - 20, q.y - 20], [q.x + 20, q.y + 20]], { layers: ['heads-icon'] }).some((f) => f.properties.g === 'read')) errs.push('no triangle on the route with the planner put away');
+              window.closedAt = [r.left + q.x, r.top + q.y];
+              return errs;
+            })()""")
+            at = pg.js("window.closedAt")
+            pg.tap(*at)
+            time.sleep(1.2)
+            fails += pg.js("""(async () => {
+              const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+              const box = p.cards.box;
+              if (!box || !/Road works: Teiskontie/.test(box.textContent)) return [`with the planner put away, a tap on the triangle: ${box ? box.textContent.slice(0, 80) : 'no card'}`];
+              const open = [...box.querySelectorAll('.row')].find((r) => /Open the planner at it/.test(r.textContent));
+              if (!open) return ['no Open the planner at it on the card'];
+              open.click();
+              await wait(900);
+              if (!p.active || p.tab !== 'check' || !p.cards.current || p.cards.current.kind !== 'item' || !/Road works/.test(p.cards.box.textContent)) errs.push(`Open the planner at it: ${p.active ? 'open' : 'closed'}, ${p.tab}, ${p.cards.current ? p.cards.current.kind : 'no card'}`);
+              return errs;
+            })()""")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     # a desktop, by mouse: beside the panel at its box, no ‹ ›, Escape closes it
     pg = chrome.page(1440, 900, False)
     try:
@@ -2390,6 +2483,19 @@ def onroute(chrome):
               if (p.cards.current) errs.push('Escape left the card open');
               if (document.querySelector('[data-sec=warnings] [aria-current="true"]')) errs.push('the box stayed lit');
               if ((polku.map.getSource('routeLit').serialize().data.features || []).length) errs.push('the stretch stayed lit');
+              // a climb's row lights its stretch on the map too (#84)
+              p.analysis.climbs = [{ start: 20, end: 60, from: 200, to: 600, gain: 30, avg: 7.5, max: 11, len: 400, cls: 2 }];
+              p.renderClimbs();
+              p.toggleSection('climbs', true);
+              const climb = p.els.climbs.querySelector('.li');
+              if (!climb) errs.push('(the test) no climb row');
+              else {
+                climb.click();
+                await wait(300);
+                const lit = (polku.map.getSource('routeLit').serialize().data.features || [])[0];
+                if (!lit || Math.hypot(lit.geometry.coordinates[0][0] - p.analysis.pts[20][0], lit.geometry.coordinates[0][1] - p.analysis.pts[20][1]) > 0.0002) errs.push(`a climb's row didn't light its stretch on the map: ${JSON.stringify(lit && lit.geometry.coordinates[0])}`);
+                p.unfocusRange();
+              }
               // the row at the panel's top, from the Route tab: Check and the card together [jc-desk, jc-desk-sel]
               p.setTab('route');
               await wait(200);

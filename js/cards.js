@@ -280,6 +280,8 @@ function itemBody(pl, card, body) {
   if (main && pl.inView() && main.edits) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
   else if (main) body.append(mainButton(main.label, main.icon, () => main.fn()));
   if (more.length) body.append(rows(...more.map((m) => item({ icon: m.icon, label: m.label, line: m.line, onclick: () => m.fn() }))));
+  // the planner put away: the way to it, at this item [jc-closed]
+  if (!pl.active) body.append(rows(item({ icon: 'route', label: 'Open the planner at it', line: 'Check and the route, at this item', chev: true, onclick: () => pl.openPlannerAt(card) })));
   // on a phone: ‹ › along the route, and All in Check › unless it was opened from Check at half
   if (pl.cards.where() !== 'peek') return;
   const [k, n] = pl.itemIndex(card.itemKey), saved = pl.cards.saved;
