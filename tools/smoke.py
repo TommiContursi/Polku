@@ -6882,6 +6882,10 @@ NL = """(() => {
   T.state = () => ({ n: p.points.length, sports: p.legs.map((_, i) => p.legSport(i)).join(','), modes: p.legs.map((l) => l.mode).join(','), next: p.nextSport(), real: p.nextLegSport(), map: polku.state.activity, mode: p.mode,
     label: p.els.modeBtn.getAttribute('aria-label'), sport: p.els.sportBtn.textContent.trim(), past: p.past.length, menu: !!$('.menu-pop'), toast: $('#toast').hidden ? '' : $('#toast').innerText.replace(/\\s+/g, ' ').trim(),
     time: p.analysis ? Math.round(p.analysis.time) : null, waits: p.analysis && p.analysis.waits ? p.analysis.waits.length : 0 });
+  // the notes shown and hidden, for a FAIL line about a note: one hidden at once is #381's
+  T.notes = [];
+  new MutationObserver(() => { const t = $('#toast'), now = `${t.hidden ? 'hidden' : 'shown'} “${t.innerText.replace(/\\s+/g, ' ').trim().slice(0, 40)}”`;
+    if (T.notes[T.notes.length - 1]?.[0] !== now) T.notes.push([now, Math.round(performance.now())]); }).observe($('#toast'), { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true });
   T.settle = async (n) => { for (let k = 0; k < 60 && !(p.analysis && p.analysis.pts && p.legs.length === n - 1 && p.legs.every((l) => l.result)); k++) await new Promise((r) => setTimeout(r, 100)); await new Promise((r) => setTimeout(r, 300)); return T.state(); };
   return true;
 })()"""
@@ -6926,6 +6930,8 @@ def nextleg(chrome):
 
     def want(name, got, **kw):
         bad = {k: got.get(k) for k, v in kw.items() if not (v(got.get(k)) if callable(v) else got.get(k) == v)}
+        if 'toast' in bad:  # (the last notes, with their times in ms)
+            bad['notes'] = pg.js("nlT.notes.slice(-4).map(([n, t]) => `${n} at ${t}`).join(', ')")
         if bad:
             fails.append(f'{name}: {bad}')
 
