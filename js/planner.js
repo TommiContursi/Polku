@@ -5745,7 +5745,9 @@ export class Planner {
   // ringed, with its obstacle's own icon (#85); the stretches a source didn't cover, dashed (a source missing for the
   // whole route says so in words, with no marker)
   drawHeads() {
-    const a = this.analysis, H = this.heads, set = (id, features) => this.app.setData(id, { type: 'FeatureCollection', features });
+    // (only what changed is set: the map rebuilds a source's tiles each time, and Check is drawn again often)
+    const a = this.analysis, H = this.heads, shown = this.headsShown || (this.headsShown = {});
+    const set = (id, features) => { const j = JSON.stringify(features); if (shown[id] === j) return; shown[id] = j; this.app.setData(id, { type: 'FeatureCollection', features }); };
     if (!a || !H || this.points.length < 2) { set('heads', []); set('headsOn', []); set('headsGaps', []); return; }
     const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
     const looks = !!open || this.checkInSight();
@@ -5774,7 +5776,9 @@ export class Planner {
   // serious of them, the first along the route)
   headAt(point, r = 8) {
     if (!this.map.getLayer('heads-icon')) return null;
-    const hits = this.map.queryRenderedFeatures([[point.x - r, point.y - r], [point.x + r, point.y + r]], { layers: ['heads-on-icon', 'heads-icon'] }).filter((f) => f.properties.key || f.properties.cluster_id != null);
+    let hits;
+    try { hits = this.map.queryRenderedFeatures([[point.x - r, point.y - r], [point.x + r, point.y + r]], { layers: ['heads-on-icon', 'heads-icon'] }); } catch { return null; } // (its tiles being rebuilt)
+    hits = hits.filter((f) => f.properties.key || f.properties.cluster_id != null);
     return hits.sort((x, y) => (y.properties.sev || 0) - (x.properties.sev || 0))[0] || null;
   }
   async openHead(f) {

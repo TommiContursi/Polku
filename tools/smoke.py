@@ -2112,6 +2112,7 @@ CHECK_ROUTE = FORGET_FORECAST + """
   p.app.hazards = async (a) => window.works(a);
   window.wx501 = true;
   window.fetch = ((real) => (input, init) => (window.wx501 && /open-meteo\\.com/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response('{}', { status: 501 })) : real(input, init)))(window.fetch);
+  p.watchTerrain = () => {}; // (no analysis again for terrain that comes later: its items are the check's own)
   p.setActive(true); p.clear(); p.setMode('line');
   p.addPoint([26.700, 63.300]); p.addPoint([26.716, 63.300]); p.addPoint([26.732, 63.300]);
   for (let k = 0; k < 150 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100);
@@ -2739,7 +2740,7 @@ FIT_LIB = """(() => {
     const span = (k) => Math.max(...q.map((s) => s[k])) - Math.min(...q.map((s) => s[k]));
     const fill = Math.max(span('x') / (f.right - f.left), span('y') / Math.max(1, f.bottom - f.top));
     if (f.bottom - f.top < 100) err(`${what}: ${Math.round(f.bottom - f.top)} px of map left above the sheet (${st})`);
-    else if (out) err(`${what}: ${out} of ${q.length} points outside the map above the sheet (${st})`);
+    else if (out) err(`${what}: ${out} of ${q.length} points outside the map above the sheet (${st}; the peek's row: ${p.els.readRow && !p.els.readRow.hidden ? `"${p.els.readRow.textContent}"` : 'none'})`);
     else if (fill < 0.3) err(`${what}: the line fills ${Math.round(fill * 100)} % of the map above the sheet (${st})`);
   };
   T.framed = framed;
