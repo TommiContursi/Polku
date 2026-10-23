@@ -8,7 +8,7 @@ How to work on it (what to work on, testing, pull requests, bugs and findings, w
 
 ## Bugs and reviews
 
-- Every bug, improvement, idea and risk to watch is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status, labelled by kind (`bug`, `enhancement`, `idea`, `watch`) and size (`small`, `medium`, `big`). Each planned phase, and each round of fixes, is a milestone. ROADMAP orders the phases.
+- Every bug, and each improvement, idea and risk worth keeping ([AGENTS.md](../AGENTS.md), "Bugs and findings"), is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status, labelled by kind (`bug`, `enhancement`, `idea`, `watch`) and size (`small`, `medium`, `big`). Each planned phase, and each round of fixes, is a milestone. ROADMAP orders the phases.
 - `docs/retros/` keeps a short retro for each finished milestone: what cost time, what to keep, and what changed in AGENTS.md because of it.
 - `docs/reviews/` keeps dated reviews of the code with the evidence they were based on. They aren't updated afterwards: what has happened since is in the issues. The first is the [review of 15 October 2026](reviews/2026-10-15/README.md), listed in [#63](https://github.com/TommiContursi/Polku/issues/63).
 
@@ -37,9 +37,11 @@ GitHub can run the same suite on its Ubuntu runner, for information only: **Acti
 
 The tests answer from recorded files in `tools/fixtures/` (a route, an Overpass tile, LIPAS answers, Väylävirasto fairways), so they make no routing calls. `tools/brouter-local.sh` starts BRouter on your computer for anything that does route; please don't burst-test brouter.de.
 
+A pull request's screenshots: `python3 tools/shoot.py OUTDIR before|after [scenes]` on `main` and on the branch, as JPEG on the `pr-screenshots` branch under `<branch>/`, linked as `https://github.com/TommiContursi/Polku/blob/pr-screenshots/<branch>/<file>.jpg?raw=true`.
+
 The README links JPEGs on the `pr-screenshots` branch. Capture its current scenes with `tools/shoot.py`: `desk-planner`, `desk-trails-close`, `phone-planner`, `desk-trail-headsup` and `desk-water-crossing`. Check the images, convert them to JPEG, put them under the documentation branch's name on `pr-screenshots`, and update the README links. Keep new images off `main`.
 
-Headless Chrome draws the map in software, and one frame can take a second when the computer is busy. So a check waits for the state it tests, not a fixed time: the next animation frame for something the app does in one, `SETTLED` in `tools/smoke.py` for the planner's size.
+Headless Chrome draws the map in software, and one frame can take a second when the computer is busy. So a check waits for the state it tests, not a fixed time: the next animation frame for something the app does in one, `SETTLED` in `tools/smoke.py` for the planner's size. It also runs with reduced motion, so `fitBounds` and `flyTo` fire `moveend` at once: call `map.once('moveend')` before moving the map.
 
 The `otherways` quick-point check schedules its edit in the same turn as the first leg's alternative-route timer, then waits for the final leg's offer. It also blocks the main thread for 2.2 seconds so both timers are overdue, checking that a slow frame preserves their order. Keep the request-count, requested-leg and offered-leg assertions; the separate pause case checks that waiting really does fetch an earlier alternative.
 
@@ -155,7 +157,7 @@ How Polku works where data or services fall short, with nothing planned to chang
 
 ## The free services: limits and quirks
 
-- **brouter.de pauses busy devices** ("retry later", escalating to about 30 minutes). Never burst-test it: use the local BRouter (`tools/brouter-local.sh`). Valhalla on FOSSGIS stands in.
+- **brouter.de pauses busy devices** ("retry later": about 40 s after some 20 calls in 8 s, escalating to about 30 minutes after repeated bursts), and the pause covers the whole connection, the user's too. Never burst-test it: use the local BRouter (`tools/brouter-local.sh`). Valhalla on FOSSGIS stands in.
 - **Overpass mirrors are flaky:** 504s on every mirror at times while building phases 12 and 13. Trail details are best-effort and cached; route warnings from BRouter don't depend on it. The water router waits 2.5 s for OSM's rocks, then routes without them (Heads-up says so) and routes the leg again when they arrive (#67, #81). If it gets worse, there's an idea for static data built weekly.
 - **Free tiers, if Polku gets popular:** Open-Meteo 10 000 calls a day per IP, non-commercial; Overpass 10 000 a day in `net.js`; FMI 20 000 a day; GitHub Pages about 100 GB a month of bandwidth. The counters are in Settings → Data sources.
 - **OpenFreeMap's tile URLs change weekly;** saved offline areas use version-free keys (`sw.js`).

@@ -11,3 +11,8 @@ __pycache__/
 .impeccable/live/
 .codex/hooks.json
 .github/hooks/impeccable.json
+
+# The superpowers skills are installed per user; their ledger and any
+# worktrees they make stay out of commits.
+.superpowers/
+.worktrees/
