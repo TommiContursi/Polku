@@ -31,11 +31,12 @@ IDLE = ("new Promise((ok) => { const m = polku.map; const t = setTimeout(ok, 200
 # holds the event back, as column does, finds the flag set and goes on.)
 LOAD_STEP = ("new Promise((ok) => { const t0 = Date.now(), go = () => polku.map._loaded ? setTimeout(() => ok(true))"
              " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 50); go(); })")
-# Polku there and its map loaded (MapLibre's loaded(): the style, and every tile in or failed), 80 s at most. A request
+# Polku there and its map loaded (MapLibre's loaded(): the style, and every tile in or failed), 150 s at most: longer than
+# the 90 s the old wait had, which button3d's 3D scene needed on GitHub's runner (#422). A request
 # that never answered kept this waiting until Chrome's own 90 s ran out, which ended the whole group without saying what
 # it had waited for (#409). false when it didn't load.
 MAP_LOADED = ("new Promise((ok) => { const t0 = Date.now(), go = () => window.polku && polku.map.loaded() ? ok(true)"
-              " : Date.now() - t0 > 80000 ? ok(false) : setTimeout(go, 200); go(); })")
+              " : Date.now() - t0 > 150000 ? ok(false) : setTimeout(go, 200); go(); })")
 # the map's sources still loading, with their tiles' host and how many tiles are on their way
 MAP_WAITING = """(() => {
   if (!window.polku) return ['Polku itself (no window.polku)'];
@@ -230,9 +231,9 @@ class Page:
             raise RuntimeError(f'{e}: the page didn’t load, still waiting for {self.waiting()}') from None
 
     def map_loaded(self):
-        """Polku there and its map loaded, 80 s at most; a RuntimeError saying what it waited for otherwise (#409)."""
-        if not self.js(MAP_LOADED, timeout=85000):
-            raise RuntimeError(f'the map didn’t load in 80 s, still waiting for {self.waiting()}')
+        """Polku there and its map loaded, 150 s at most; a RuntimeError saying what it waited for otherwise (#409)."""
+        if not self.js(MAP_LOADED, timeout=155000):
+            raise RuntimeError(f'the map didn’t load in 150 s, still waiting for {self.waiting()}')
 
     def waiting(self):
         """What a page that hasn't loaded waits for: its requests sent and neither finished nor failed (as this page's
@@ -267,7 +268,9 @@ class Page:
         self.idle()
 
     def js(self, expr, timeout=60000):
-        r = self.c.send('Runtime.evaluate', {'expression': expr, 'awaitPromise': True, 'returnByValue': True, 'timeout': timeout}, self.s)
+        # Chrome's answer may take as long as the script's own timeout, so the pipe waits a little longer than that
+        r = self.c.send('Runtime.evaluate', {'expression': expr, 'awaitPromise': True, 'returnByValue': True, 'timeout': timeout},
+                        self.s, timeout=max(90, timeout / 1000 + 5))
         if 'exceptionDetails' in r:
             d = r['exceptionDetails']
             raise RuntimeError((d.get('exception') or {}).get('description') or d.get('text'))
