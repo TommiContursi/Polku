@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-24
+
+### Fixed: the warnings' count leaves the map its room on a phone on its side ([#438](https://github.com/TommiContursi/Polku/issues/438))
+
+With large text on a phone turned on its side, the row of warnings to read before you go pushed the top of the planner under the top bar. Now, in a window that short, the count sits in the line of the route's numbers, before **Done**, as it does on a small phone, and **All read** in Check marks them all.
+
 ## 2026-10-23
 
 ### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))

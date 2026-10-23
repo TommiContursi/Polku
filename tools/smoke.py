@@ -2980,9 +2980,9 @@ def warnfix(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # (3) 200 % on a 390 and a 360 px phone: the count beside the numbers, taking none of the map, the peek below the
-    # top bar (the recheck: 360 × 740 ran under it)
-    for w, h in ((195, 422), (180, 370)):
+    # (3) 200 % on a 390 and a 360 px phone, and on its side (#438): the count beside the numbers, taking none of the map,
+    # the peek below the top bar (the recheck: 360 × 740 ran under it)
+    for w, h in ((195, 422), (180, 370), (422, 195)):
         pg = chrome.page(w, h, True)
         try:
             pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
