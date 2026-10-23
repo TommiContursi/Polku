@@ -6,6 +6,7 @@ import { OPEN_METEO } from './config.js';
 import { bearing } from './geo.js';
 import { idb } from './idb.js';
 import { request } from './net.js';
+import { fromCss } from './palette.js';
 
 const rad = (d) => (d * Math.PI) / 180;
 
@@ -247,25 +248,25 @@ export async function windAlong(pts, along, tAt, startSec) {
 }
 
 // Temperature and precipitation bands for the route profile.
-export const TEMP_BANDS = [
-  { key: 'frost', min: -Infinity, label: 'below −5 °C', color: '#6d28d9' },
-  { key: 'cold', min: -5, label: '−5…0 °C', color: '#3b82f6' },
-  { key: 'cool', min: 0, label: '0…5 °C', color: '#7dd3fc' },
-  { key: 'mild', min: 5, label: '5…10 °C', color: '#86efac' },
-  { key: 'warm', min: 10, label: '10…15 °C', color: '#fde047' },
-  { key: 'warmer', min: 15, label: '15…20 °C', color: '#fdba74' },
-  { key: 'hot', min: 20, label: '20…25 °C', color: '#f97316' },
-  { key: 'hotter', min: 25, label: 'over 25 °C', color: '#dc2626' },
-];
+export const TEMP_BANDS = fromCss([
+  { key: 'frost', min: -Infinity, label: 'below −5 °C', color: '--temp-frost' },
+  { key: 'cold', min: -5, label: '−5…0 °C', color: '--temp-cold' },
+  { key: 'cool', min: 0, label: '0…5 °C', color: '--temp-cool' },
+  { key: 'mild', min: 5, label: '5…10 °C', color: '--temp-mild' },
+  { key: 'warm', min: 10, label: '10…15 °C', color: '--temp-warm' },
+  { key: 'warmer', min: 15, label: '15…20 °C', color: '--temp-warmer' },
+  { key: 'hot', min: 20, label: '20…25 °C', color: '--temp-hot' },
+  { key: 'hotter', min: 25, label: 'over 25 °C', color: '--temp-hotter' },
+]);
 export const tempBand = (t) => TEMP_BANDS.slice().reverse().find((b) => t >= b.min);
 
-export const RAIN_BANDS = [
-  { key: 'dry', label: 'Dry', color: '#a3acb9' },
-  { key: 'drizzle', label: 'Drizzle < 0.5 mm/h', color: '#93c5fd' },
-  { key: 'rain', label: 'Rain 0.5–2 mm/h', color: '#3b82f6' },
-  { key: 'heavy', label: 'Heavy > 2 mm/h', color: '#1e3a8a' },
-  { key: 'snow', label: 'Snow', color: '#a78bfa' },
-];
+export const RAIN_BANDS = fromCss([
+  { key: 'dry', label: 'Dry', color: '--rain-dry' },
+  { key: 'drizzle', label: 'Drizzle < 0.5 mm/h', color: '--rain-drizzle' },
+  { key: 'rain', label: 'Rain 0.5–2 mm/h', color: '--rain-rain' },
+  { key: 'heavy', label: 'Heavy > 2 mm/h', color: '--rain-heavy' },
+  { key: 'snow', label: 'Snow', color: '--rain-snow' },
+]);
 const rainByKey = Object.fromEntries(RAIN_BANDS.map((b) => [b.key, b]));
 export function rainBand(mm, t) {
   if (mm < 0.1) return rainByKey.dry;
@@ -275,14 +276,14 @@ export function rainBand(mm, t) {
   return rainByKey.heavy;
 }
 
-export const WIND_CLASSES = [
-  { key: 'strongHead', label: 'Strong headwind', color: '#b91c1c' },
-  { key: 'head', label: 'Headwind', color: '#f87171' },
-  { key: 'cross', label: 'Crosswind', color: '#f59e0b' },
-  { key: 'tail', label: 'Tailwind', color: '#4ade80' },
-  { key: 'strongTail', label: 'Strong tailwind', color: '#15803d' },
-  { key: 'calm', label: 'Calm', color: '#a3acb9' },
-];
+export const WIND_CLASSES = fromCss([
+  { key: 'strongHead', label: 'Strong headwind', color: '--wind-strong-head' },
+  { key: 'head', label: 'Headwind', color: '--wind-head' },
+  { key: 'cross', label: 'Crosswind', color: '--wind-cross' },
+  { key: 'tail', label: 'Tailwind', color: '--wind-tail' },
+  { key: 'strongTail', label: 'Strong tailwind', color: '--wind-strong-tail' },
+  { key: 'calm', label: 'Calm', color: '--wind-calm' },
+]);
 const byKey = Object.fromEntries(WIND_CLASSES.map((c) => [c.key, c]));
 
 export function windClass(head, speed) {

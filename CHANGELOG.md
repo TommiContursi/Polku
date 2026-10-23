@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-22
 
+### Fixed: red words are easier to read in dark mode ([#370](https://github.com/TommiContursi/Polku/issues/370))
+
+In dark mode, red words such as **Remove** and **Delete**, **Avoid** in Heads-up and the red pills are a lighter red now, so they read as clearly as the rest of the text. The icons of incidents and road works in Heads-up, and the red edge of **Remove** on a desktop's card, take the same red. Light mode and the map are unchanged.
+
 ### A point's card, the same on a phone and a desktop ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 A tap or click on a point of your route opens its card. On a phone it's in the planner, at your thumb, with the point ringed and in sight above it; undo and redo stay, and the rest of the toolbox steps aside. On a desktop the card opens at the point, small enough to leave the map in view, and the point's row in the planner's list lights up.

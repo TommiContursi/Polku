@@ -4786,6 +4786,168 @@ def contrast(chrome):
     return not fails
 
 
+# The design system's values (#382, docs/plans/design-system.md). DESIGN.md's colours are css/app.css's
+# (idea E), the JavaScript draws with the CSS's colours, and the text in a set of scenes is readable (idea D).
+
+def scheme(pg, value):
+    """Light or dark, as the phone's or computer's own setting turns it (reduced motion stays on)."""
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': value}, {'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+
+
+# Each name's value on :root and each given value, both as the browser reads a colour, so that #fff and rgb(255, 255, 255) agree
+CSS_COLOURS = """((pairs) => {
+  const probe = document.createElement('i'), css = getComputedStyle(document.documentElement);
+  document.body.append(probe);
+  const read = (v) => { probe.style.color = ''; probe.style.color = v; return probe.style.color ? getComputedStyle(probe).color : `${v || 'nothing'} (not a colour)`; };
+  const out = pairs.map(([name, value]) => [name, read(css.getPropertyValue(name).trim()), read(value)]);
+  probe.remove();
+  return out;
+})"""
+
+
+def design_colours(chrome):
+    """Every colour in DESIGN.md's frontmatter is its value in css/app.css: `x` is `--x`, and `dark-x` is `--x` in dark
+    mode, under both of the CSS's dark rules (the setting's and `data-theme`); a colour with no `dark-` one is the
+    same in both themes."""
+    import re
+    md = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'DESIGN.md')).read()
+    block = re.search(r'^colors:\n((?:  .+\n)+)', md, re.M)
+    colours = dict(re.findall(r'^  ([a-z0-9-]+): "([^"]+)"$', block.group(1), re.M)) if block else {}
+    fails = [] if colours else ["no colours found in DESIGN.md's frontmatter"]
+    light = {k: v for k, v in colours.items() if not k.startswith('dark-')}
+    dark = {k: colours.get('dark-' + k, v) for k, v in light.items()}
+    fails += [f'DESIGN.md has {k} but no {k[5:]}' for k in colours if k.startswith('dark-') and k[5:] not in light]
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'})
+        read = lambda want: pg.js(CSS_COLOURS + f"({json.dumps([['--' + k, v] for k, v in want.items()])})")
+        for label, want, setup in [('light', light, None), ('dark', dark, 'media'), ('dark (data-theme)', dark, 'attr')]:
+            if setup == 'media':
+                scheme(pg, 'dark')
+            if setup == 'attr':
+                scheme(pg, 'light')
+                pg.js("document.documentElement.dataset.theme = 'dark'; true")
+            fails += [f'{label}: {name} is {css} in css/app.css, {md_} in DESIGN.md' for name, css, md_ in read(want) if css != md_]
+        pg.js("delete document.documentElement.dataset.theme; true")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} DESIGN.md's {len(colours)} colours are css/app.css's, in both themes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# What the map draws with: the route line's colours, its glow's, the trails' difficulty, and the colours of the
+# route coloured by its gradient on the map (Colour by), with the difficulty scale itself
+PALETTE_SEEN = """(async (dark) => {
+  const map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), frame = () => new Promise((r) => requestAnimationFrame(r));
+  // the theme as asked, and two frames on, so its change has been told (that comes before a frame's callbacks)
+  for (let k = 0; k < 50 && matchMedia('(prefers-color-scheme: dark)').matches !== dark; k++) await wait(100);
+  await frame(); await frame();
+  for (let k = 0; k < 50 && !map.isStyleLoaded(); k++) await wait(100);
+  const paint = (id) => JSON.stringify(map.getLayer(id) ? map.getPaintProperty(id, 'line-color') : null);
+  const C = await import(location.origin + '/js/config.js');
+  const colored = [...new Set((await map.getSource('routeColor').getData()).features.map((f) => f.properties.color))];
+  return { route: paint('route-line'), glow: paint('route-glow'), trails: JSON.stringify(map.getStyle().layers.map((l) => l.paint || {})),
+    colored: colored.join(' '), diff: C.DIFF_COLORS.join(' ') };
+})"""
+GRADES = ['--grade-20', '--grade-15', '--grade-10', '--grade-6', '--grade-3', '--grade-flat', '--grade-down', '--grade-steep-down']
+
+
+def palette_css(chrome):
+    """The route's colours and the colour scales come from css/app.css (js/palette.js), and come again when the
+    theme changes: with other values on :root, dark mode comes on as a phone's does at dusk, and the route on the
+    map, its glow, the trails' difficulty and the route coloured by its gradient on the map take them. Nothing is
+    missing from the CSS (a name that isn't there is a console error)."""
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'})
+        pg.js("""(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line');
+          for (const q of [[23.80, 61.509], [23.817, 61.519], [23.838, 61.516]]) p.addPoint(q);
+          await p.analysing; p.colorOnMap = true; p.showMode('grade'); return true; })()""")
+        grades = pg.js(f"(() => {{ const css = getComputedStyle(document.documentElement); return {json.dumps(GRADES)}.map((n) => css.getPropertyValue(n).trim()); }})()")
+        before = pg.js(PALETTE_SEEN + '(false)')
+        for want, where in [('#e11d48', 'route'), ('#be123c', 'route'), ('#0369a1', 'glow'), ('#22a447', 'trails'), ('#22a447', 'diff')]:
+            if want not in before[where]:
+                fails.append(f'light: {want} not in the {where} ({before[where][:120]})')
+        if not before['colored'] or set(before['colored'].split()) - set(grades) - {'#d6dde3'}:
+            fails.append(f"light: the route coloured by its gradient in {before['colored'] or 'nothing'}, not the gradient's {' '.join(grades)}")
+        pg.js(f"""(() => {{ const s = document.documentElement.style;
+          s.setProperty('--route', '#123456'); s.setProperty('--route-line', '#234567'); s.setProperty('--route-water', '#345678');
+          s.setProperty('--diff-s0', '#456789'); s.setProperty('--diff-s1', '#56789a');
+          for (const n of {json.dumps(GRADES)}) s.setProperty(n, '#6789ab'); return true; }})()""")
+        scheme(pg, 'dark')
+        after = pg.js(PALETTE_SEEN + '(true)')
+        for want, where in [('#123456', 'route'), ('#234567', 'route'), ('#345678', 'glow'), ('#456789', 'trails'), ('#456789 #56789a', 'diff')]:
+            if want not in after[where]:
+                fails.append(f'dark, with other values on :root: {want} not in the {where} ({after[where][:120]})')
+        if set(after['colored'].split()) - {'#6789ab', '#d6dde3'}:
+            fails.append(f"dark, with other values on :root: the route coloured by its gradient kept {after['colored']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the route's colours and the scales come from the CSS, and again when the theme changes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Idea D: every text in these scenes of tools/shoot.py, against the solid colour behind it, at 4.5:1 (3:1 for large text),
+# in light and then in dark, measured by tools/census.py. Text over the map itself isn't measured (census.py says why).
+CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-point-card', 'desk-acts', 'desk-settings', 'desk-quick',
+         'phone-planner', 'phone-tab-check', 'phone-point-card', 'phone-quick']
+# What still fails, by the issue that fixes it. The sweep fails on anything else, and on an entry here that passes now,
+# so the list only ever shrinks: (theme, the element and its parent as census.py names them, the start of its text or
+# None for any text)
+CONTRAST_KNOWN = {
+    '#376': [  # for the controls PR: the status colours' text versions, Plan in green
+        ('light', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None), ('dark', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None),
+        ('light', 'button.li > span.badge', None), ('dark', 'button.li > span.badge', None),
+        ('dark', 'button#btn-plan-search.search-plan > span', 'Plan'), ('dark', 'button#btn-plan.plan-btn > span', 'Plan route'),
+        ('dark', 'button.qt-tog > span.qt-l', None), ('dark', 'span.qt-l > small', None),
+    ],
+}
+
+# CSS transitions finished (a theme change fades some colours), seen on two frames in a row
+STILL = """new Promise((done) => {
+  let calm = 0;
+  const frame = () => {
+    calm = document.getAnimations().some((a) => a instanceof CSSTransition && a.playState === 'running') ? 0 : calm + 1;
+    if (calm >= 2) done(true); else requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+})"""
+
+
+def contrast_sweep(chrome):
+    import census
+    import shoot
+    found, fails = {}, []
+    for name in CONTRAST_SCENES:
+        pg = shoot.scene(chrome, name)
+        try:
+            for theme in ('light', 'dark'):
+                if theme == 'dark':
+                    scheme(pg, 'dark')
+                    pg.js(STILL)
+                for t in pg.js(census.CENSUS)['text']:
+                    need = 3 if t['large'] else 4.5
+                    if t['cr'] is not None and t['cr'] < need:
+                        key = (theme, ' > '.join(t['el'].split(' > ')[-2:]), t['t'][:24])
+                        found.setdefault(key, (t['cr'], need, set()))[2].add(name)
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    known = {k: why for why, keys in CONTRAST_KNOWN.items() for k in keys}
+    match = lambda f, k: f[:2] == k[:2] and k[2] in (None, f[2])
+    for f, (cr, need, where) in sorted(found.items()):
+        if not any(match(f, k) for k in known):
+            fails.append(f'{f[0]}: {f[1]} "{f[2]}" is {cr}:1, under {need}:1 ({", ".join(sorted(where))})')
+    fails += [f'{k[0]}: {k[1]} "{k[2] or "…"}" passes now: take it off CONTRAST_KNOWN ({why})' for k, why in known.items() if not any(match(f, k) for f in found)]
+    told = sorted({why for k, why in known.items() if any(match(f, k) for f in found)})
+    print(f"{'ok  ' if not fails else 'FAIL'} text at 4.5:1 in {len(CONTRAST_SCENES)} scenes, light and dark" + (f" (known: {', '.join(told)})" if told else '')
+          + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # A panel over the planner on a phone (#240): where it is, and whether anything lies over its heading and ✕
 PANEL_BOX = """((id) => {
   const p = document.querySelector(id), r = p.getBoundingClientRect(), body = p.querySelector('.panel-body'), b = body.getBoundingClientRect();
@@ -7816,6 +7978,7 @@ GROUPS = [
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),

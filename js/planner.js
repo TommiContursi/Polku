@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS, ROUTE_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow } from './analysis.js';
@@ -71,8 +71,8 @@ const LOOP_PRESETS = {
 // up to nine loops ("More loops" makes three at a time): a letter and a colour each
 // other ways for a leg (#95): not the route's red, the water's blue, or the purple of ways marked private
 // other ways (#95, #211): blue, a colour the trail map doesn't use; the way you had grey; the
-// short cut through a way marked private in the private dots' purple; the route's own label red
-const ALT_COLOR = '#2563eb', ALT_BEFORE = '#64748b', ALT_CUT = '#7c3aed', ALT_ROUTE = '#e11d48';
+// short cut through a way marked private in the private dots' purple; the route's own label in the route's red
+const ALT_COLOR = '#2563eb', ALT_BEFORE = '#64748b', ALT_CUT = '#7c3aed';
 const ALT_ROUTE_ID = 1000; // the route's label among the ways' (feature ids: a way's index)
 const ALT_PAUSE = 1500; // ms after a new leg is in, with no point added, before its other ways (no calls while you sketch)
 const ALT_PAUSE_OWN = 500; // …with your own routing server, which has no limit
@@ -123,18 +123,6 @@ async function pool(jobs, n) {
     while (queue.length) await queue.shift()();
   }));
 }
-
-// A tiny strip of each colour mode's colours, for the header's colour button.
-const SWATCH = {
-  plain: ['#e11d48', '#e11d48'],
-  grade: ['#3b82f6', '#8fb996', '#facc15', '#f97316', '#dc2626'],
-  uphill: DIFF_COLORS.slice(0, 5), down: DIFF_COLORS.slice(0, 5), both: DIFF_COLORS.slice(0, 5),
-  surface: ['#64748b', '#d4a017', '#8b5e34'],
-  way: [WAY_COLORS.cycleway, WAY_COLORS.track, WAY_COLORS.path],
-  width: TRAIL_SCALES.width.colors.slice(2), vis: TRAIL_SCALES.vis.colors.slice(2),
-  wind: WIND_CLASSES.map((c) => c.color), temp: TEMP_BANDS.slice(1, 7).map((b) => b.color), rain: RAIN_BANDS.slice(1).map((b) => b.color),
-};
-const swatchOf = (k) => `linear-gradient(90deg, ${(SWATCH[k] || SWATCH.plain).join(', ')})`;
 
 // Trail obstacles that repeat (three fallen trees…) become one heads-up row.
 const GROUP_TEXT = { tree: 'Fallen trees and logs', stile: 'Stiles and kissing gates', cycle: 'Cycle barriers', 'gate-no': 'Gates with no access', ford: 'Fords' };
@@ -1215,7 +1203,7 @@ export class Planner {
     if (A && A.ways.length && leg && leg.result) {
       const own = this.altParts(leg.result.coords, A.ways.map((w) => (w.r ? w.r.coords : w.parts.flat())));
       const at = own.length ? mid(own) : leg.result.coords[Math.floor(leg.result.coords.length / 2)];
-      features.push({ type: 'Feature', properties: { i: ALT_ROUTE_ID, color: ALT_ROUTE, kind: 'label', route: true, label: `This way\n${trailsText(trailShare(leg.result))}` }, geometry: { type: 'Point', coordinates: at } });
+      features.push({ type: 'Feature', properties: { i: ALT_ROUTE_ID, color: ROUTE_COLORS.route, kind: 'label', route: true, label: `This way\n${trailsText(trailShare(leg.result))}` }, geometry: { type: 'Point', coordinates: at } });
     }
     this.app.setData('routeAlts', { type: 'FeatureCollection', features });
   }

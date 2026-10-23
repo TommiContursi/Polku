@@ -22,8 +22,54 @@
   --pl-left: 0px; /* right edge of the planner side panel, when open */
   --you: #1a73e8; /* the location dot */
   --you-soft: rgba(26, 115, 232, 0.12);
+  --page: #dfe6e0; /* behind the map, before it draws */
+  /* The design system's values (docs/plans/design-system.md, #382), named by what they're for. A control
+     takes them when it's next touched; DESIGN.md lists them, and `tools/smoke.py values` keeps the two equal. */
+  /* Check's three groups (25d): Read before you go, Worth a look, Not checked, and the box behind each */
+  --danger: #b4232a; --danger-soft: #fbe9e9;
+  --look: #8a5a00; --look-soft: #fbf4e2;
+  --unk: #47607a; --unk-soft: #eaf0f6;
+  --focus: #1f6f4a; /* the focus ring */
+  /* status words and pills (--good and the rest stay for lines, bars and dots) */
+  --good-text: #166534; --ok-text: #854d0e; --warn-text: #9a3412; --bad-text: #b91c1c;
+  /* the route's legs: over water, a straight line, being routed (the same in both themes: it's on the map) */
+  --route-water: #0369a1; --route-line: #be123c; --route-loading: #9ca3af;
+  --grip: rgba(95, 107, 101, 0.8); /* every grip and handle */
+  /* text sizes, in rem so the browser's text size enlarges them */
+  --font-small: 0.75rem; --font-control: 0.8125rem; --font-body: 0.875rem; --font-row: 0.9375rem; --font-field: 1rem;
+  --font-title: 1.0625rem; --font-number: 1.1875rem; --font-numeral: 1.375rem; --font-glance: 2.125rem;
+  --weight-regular: 400; --weight-name: 600; --weight-strong: 700;
+  --radius-small: 6px; --radius-control: 10px; --radius-sheet: 20px; --radius-pill: 999px; --radius-round: 50%; /* --radius (14px): cards, panels, tiles */
+  --shadow-marker: 0 1px 4px rgba(0, 0, 0, 0.35); /* the same in both themes: it's on the map */
+  --shadow-sheet: 0 -6px 28px rgba(16, 24, 20, 0.2);
+  --shadow-dialog: 0 24px 60px rgba(0, 0, 0, 0.35); /* the same in both themes */
+  --t-press: 120ms; --t-open: 180ms; --t-sheet: 260ms; /* closing takes the next shorter one */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px; --space-12: 12px; --space-16: 16px; --space-24: 24px;
+  /* sizes by context: a target 36 px with a mouse and 44 px by touch (#380), a row, a card's mark */
+  --target: 36px; --row-h: 50px; --mark: 34px;
+  /* The colour scales (the plan's §2), read by the JavaScript through js/palette.js. Each step keeps the colour
+     it had; a scale's words and keys are in its table in js/config.js, js/chart.js or js/weather.js. */
+  --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce; --diff-s6: #4c1d95;
+  --grade-20: #6d28d9; --grade-15: #dc2626; --grade-10: #f97316; --grade-6: #facc15; --grade-3: #a3d977;
+  --grade-flat: #8fb996; --grade-down: #7cb7f2; --grade-steep-down: #3b82f6;
+  --surf-paved: #64748b; --surf-stones: #94a3b8; --surf-compacted: #d4a017; --surf-fine-gravel: #e0b84a; --surf-gravel: #c58b2b;
+  --surf-unpaved: #b07d3a; --surf-dirt: #8b5e34; --surf-grass: #65a30d; --surf-sand: #eab308; --surf-rock: #57534e;
+  --surf-wood: #a16207; --surf-water: #0ea5e9; --surf-unknown: #cbd5e1;
+  --sport-mtb: #c2410c; --sport-gravel: #a16207; --sport-road: #b91c1c; --sport-hike: #15803d;
+  --sport-trailrun: #4d7c0f; --sport-run: #0f766e; --sport-paddle: #0369a1; --sport-swim: #6d28d9;
+  --way-path: #7c2d12; --way-footway: #b45309; --way-steps: #dc2626; --way-track: #a16207; --way-cycleway: #2563eb; --way-minor-road: #64748b;
+  --way-main-road: #f59e0b; --way-water: #0ea5e9; --way-portage: #ea580c; --way-straight: var(--route-line); --way-other: #94a3b8;
+  --trail-width-road: #94a3b8; --trail-width-none: #d6dde3; --trail-width-narrowest: #c2410c; --trail-width-narrow: #f59e0b; --trail-width-wide: #65a30d; --trail-width-widest: #15803d;
+  --trail-vis-road: #94a3b8; --trail-vis-none: #d6dde3; --trail-vis-clear: #16a34a; --trail-vis-faint: #eab308; --trail-vis-hard: #f97316; --trail-vis-barely: #dc2626;
+  --temp-frost: #6d28d9; --temp-cold: #3b82f6; --temp-cool: #7dd3fc; --temp-mild: #86efac; --temp-warm: #fde047; --temp-warmer: #fdba74; --temp-hot: #f97316; --temp-hotter: #dc2626;
+  --rain-dry: #a3acb9; --rain-drizzle: #93c5fd; --rain-rain: #3b82f6; --rain-heavy: #1e3a8a; --rain-snow: #a78bfa;
+  --wind-strong-head: #b91c1c; --wind-head: #f87171; --wind-cross: #f59e0b; --wind-tail: #4ade80; --wind-strong-tail: #15803d; --wind-calm: #a3acb9;
   color-scheme: light;
 }
+@media (pointer: coarse) { :root { --target: 44px; } }
+/* a desktop's card at the point is one step smaller (Revision 5 of #363) */
+.card-float { --row-h: 36px; --mark: 28px; --font-title: 0.9375rem; --font-number: 1.0625rem; --font-row: 0.875rem; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --accent: #3fb07a;
@@ -41,6 +87,14 @@
     --chart-grid: rgba(154, 166, 159, 0.18);
     --you: #4c9bff;
     --you-soft: rgba(76, 155, 255, 0.16);
+    --bad: #f87171; /* red words: #dc2626 is 3.6:1 on the dark surface, this 6.2:1 (#370) */
+    --danger: #ff8a8a; --danger-soft: rgba(255, 138, 138, 0.14);
+    --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12);
+    --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13);
+    --focus: #6fd3a2;
+    --good-text: #4ade80; --ok-text: #facc15; --warn-text: #fb923c; --bad-text: #f87171;
+    --grip: rgba(232, 236, 233, 0.45);
+    --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
   }
 }
@@ -51,6 +105,14 @@
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
   --chart-ink: #e8ece9; --chart-grid: rgba(154, 166, 159, 0.18);
   --you: #4c9bff; --you-soft: rgba(76, 155, 255, 0.16);
+  --bad: #f87171;
+  --danger: #ff8a8a; --danger-soft: rgba(255, 138, 138, 0.14);
+  --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12);
+  --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13);
+  --focus: #6fd3a2;
+  --good-text: #4ade80; --ok-text: #facc15; --warn-text: #fb923c; --bad-text: #f87171;
+  --grip: rgba(232, 236, 233, 0.45);
+  --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -64,7 +126,7 @@ html { touch-action: none; }
 body {
   font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
-  background: #dfe6e0;
+  background: var(--page);
   -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; }
@@ -467,7 +529,6 @@ body:not(.ready) .map-ctrls { display: none; }
    button, its bottom level with the button's (--qd-bottom, js/main.js placeQuick()), growing
    from it; on phones a sheet from the bottom (below). Steps slide 28 px and fade. */
 .qd {
-  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   position: absolute; z-index: 7; right: 84px; bottom: var(--qd-bottom, 76px); width: 384px;
   max-height: calc(100% - 64px - var(--qd-bottom, 76px));
   display: flex; flex-direction: column; padding: 2px 14px 14px;

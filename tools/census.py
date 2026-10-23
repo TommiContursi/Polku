@@ -74,9 +74,6 @@ def screenshot(self, path):
     return _shot(self, path)
 
 
-cdp.Page.screenshot = screenshot
-
-
 def summarise(out):
     """Sum the census across scenes: distinct values, contrast failures, small targets."""
     import collections
@@ -136,6 +133,7 @@ def main():
         return
     out, names = sys.argv[1], sys.argv[2:]
     os.makedirs(out, exist_ok=True)
+    cdp.Page.screenshot = screenshot
     chrome = cdp.Chrome()
     try:
         for n in names:
