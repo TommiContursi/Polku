@@ -1,10 +1,12 @@
 {
-  "about": "The smoke suite's groups and sizes in parallel jobs (.github/workflows/smoke.yml), each about 10 minutes on GitHub's runner by the times of run 39119782351. `button3d` (#226) has a job of its own, as it takes about as long as one. Every group and size is in exactly one job: .github/smoke_plan.py fails the run otherwise.",
+  "about": "The smoke suite's groups and sizes in parallel jobs (.github/workflows/smoke.yml), each about 10 minutes on GitHub's runner by the times of run 39361708206 and, for the groups it didn't have, run 39895192515. `button3d` (#226) has a job of its own, as it takes longer than one (16 minutes in run 39361708206). Every group and size is in exactly one job: .github/smoke_plan.py fails the run otherwise.",
   "shards": [
     ["changelog", "trails", "lipas", "backtostart", "shortcut", "sports", "colours", "toolbox", "390x844"],
-    ["layers", "header", "routebits", "detour", "winterroute", "previews", "quick", "contrast", "values", "sportmenu", "1440x900"],
+    ["layers", "header", "routebits", "detour", "winterroute", "previews", "quick", "contrast", "sportmenu", "1440x900"],
     ["water", "editing", "routemenu", "avoid", "flow", "winter", "sweep", "drawer", "heading", "panels", "column"],
     ["radar", "weather", "pacing", "multi", "terrain", "stops", "access", "otherways", "loops", "fit", "marks", "runner", "1024x768", "360x740"],
-    ["button3d"]
+    ["button3d"],
+    ["routeview", "pointcard"],
+    ["values", "start", "nextleg"]
   ]
 }
