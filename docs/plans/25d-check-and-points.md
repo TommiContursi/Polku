@@ -30,14 +30,16 @@ The one list of what's decided, what waits for the user and what's next. The oth
 - *2026-10-22, C and D (#366):* Revision 5 for the list, Check, the row and their cards. In Check, Read before you go's items are the red warning box, and Worth a look's and Not checked's are rows: the box marks what can stop you everywhere it shows (the peek, a section, a card, Check).
 - *2026-10-22, in 1a (#352):* a point's stretch row says **Next stretch, to …** with the next point's name, and its line is "Its sport, how it's drawn and its style". Picking Paddle in Sport from here keeps the card open at its crafts (Sea kayak · Canoe · SUP), one setting for the whole route. In the route's view, a stop, a night and the start's leaving time still change on the card.
 - *2026-10-22, the order:* the rest of 25d in three PRs, one a journey, after the design system's values and controls (#382), so each card, list and colour is written once, against the final controls. The order is under **Next**, and why under "The order, and why".
+- *2026-10-23, the planner's tabs (#424):* what goes in Route, Check and Go, and How you go redesigned, are built in Journey D with the list in sections, so the Route tab is rebuilt once.
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
 - **When the design system starts** (#382, parked with its Hand-over). 25d's next PR waits for its values and controls (step 3 below).
-- **Before Journey D, three choices,** drawn first as a Revision 6 in the map cards' mock-up, earlier versions kept, so Journey D touches the cards once:
+- **Before Journey D, four choices,** drawn first as mock-ups (earlier versions kept), so Journey D touches the cards and the Route tab once:
   - #364 (the user, 2026-10-21): any time for leaving and for going on after a night, not a few fixed hours; where Avoid this spot belongs; On the profile on the route's and a point's card.
   - #90: whether the route's card gets the whole route's actions (Export GPX, Share, Save offline, Clear route with Undo), or the ⋯ menu keeps them and #90 closes.
   - #334: whether a tap on the start closes the route back to it, or the start's card offers Back to start.
+  - #424, in the planner's mock-up: the tabs' contents as they are and as proposed. Route holds drawing and how you go, with the strip of Hardest climb, Speed and Style; Check holds what's on the way; Go holds setting off. How you go is redesigned as a whole.
 
 **Next**
 1. Done: 1a, a point's card (#352, merged 2026-10-22).
@@ -49,7 +51,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
    - The controls that the cards, Check and the list use: #356 (one row, the chips, the switches, the headings and titles, the stepper as one box) and #376 (the warning and difficulty colours, Check's count), with #373 (labels that wrap).
    - The map's colours read from the CSS (its step 3), since part 3 adds map layers.
 4. **Journey C, one PR:** part 2 (Check in three groups) and part 3 (the warning on the route).
-5. **Journey D, one PR,** after the three choices above: 1b (the route's card, a stretch's card, Edit this stretch, What's here's groups) and part 4 (the list in sections, Reorder), with End everywhere (#353) and what's chosen for #364, #90 and #334.
+5. **Journey D, one PR,** after the three choices above: 1b (the route's card, a stretch's card, Edit this stretch, What's here's groups) and part 4 (the list in sections, Reorder), with End everywhere (#353), the planner's tabs and How you go (#424), and what's chosen for #364, #90 and #334.
 6. **The map's cards, one PR:** parts 5 and 6. Holds and keys, the spot's and a place's cards, What's here in levels, Share a spot, Weather here, and the map's own cards on `CardHost`. It fixes #233 and #345.
 7. **Then** the rest of Phase 25's issues where "Where the other issues go" puts them, the design system's later steps (#382: the route on the map, outdoor contrast), and its second audit (#379).
 8. **Before the milestone closes:** #365, the finished planner used in the browser as a newcomer and as an expert, with everything it finds fixed; then the retro.
@@ -95,6 +97,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
 | #208, #235 | The design system's controls (#382), before #365 | The whole app's pressed states and targets |
 | #353 | Journey D (part 4) | The list's rows and the route's title are rebuilt there |
 | #364, #90, #334 | Journey D, after the user's choices | The same cards |
+| #424 | Journey D, after its mock-up is chosen (the user, 2026-10-23) | The Route tab's list is rebuilt there, so the strip and How you go move once |
 | #242, #243, #257, #301, #375, #227, #126 | Fix PRs between the PRs, after the values | Outside the cards: the summary, the timeline, Settings, the search box, the tilt box, the map |
 | #338, #303, #304 | After the map's cards | The sheet, the toolbox and the tooltips, once every card is built |
 | #131 | After the map's cards | The track's card sits beside the map's own cards |
@@ -482,6 +485,7 @@ From the calmer planner's §10, for every part: drawing (add, drag a point, drag
 - Long names wrap; numbers stay whole (360 × 740, Finnish) [jd-fi].
 - A followed LIPAS route is one section on its own line [jd-lipas].
 - **End, not Finish** (#353): the last point's label, the list's rows and the route's title in the route's view say End, as the cards do.
+- **The planner's tabs** (#424), as its mock-up is chosen: Hardest climb, Speed and Style in Route; How you go redesigned; each tab holding its own job. Journey C leaves the strip above Check's groups until then.
 
 **Files:**
 - Modify: `js/planner.js`: `renderWaypoints()` draws `sections()`; `dragRow()` takes a touch hold; the list's keys; `els.pointsFoot` loses All leg settings; `label()` says End (#353).
