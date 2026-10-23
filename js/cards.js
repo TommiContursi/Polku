@@ -280,7 +280,8 @@ function itemBody(pl, card, body) {
   const { main, more } = pl.itemActions(it);
   if (main && pl.inView() && main.edits) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
   else if (main) {
-    // Retry says it's asking, and if the source still didn't answer (its card stays), says so (the terrain's has its own)
+    // Retry says it's asking, and if the source still didn't answer (its card stays), says so (the terrain's has its own);
+    // a card built again while it's asked says so too (a.asking: notChecked())
     const b = mainButton(main.label, main.icon, async () => {
       if (b.disabled) return;
       b.disabled = true;
@@ -291,8 +292,9 @@ function itemBody(pl, card, body) {
         b.removeAttribute('aria-busy');
         b.querySelector('span').textContent = main.label;
       }
-      if (g === 'not' && w.key !== 'terrain' && w.key !== 'water' && pl.itemByKey(card.itemKey)) toast(`${w.by} still didn’t answer: try again later`, { ms: 5000 });
+      if (g === 'not' && w.key !== 'terrain' && w.key !== 'water' && pl.itemByKey(card.itemKey)) toast(`${w.who || w.by} still didn’t answer: try again later`, { ms: 5000 });
     });
+    if (g === 'not' && a && a.asking && a.asking.has(w.key)) { b.disabled = true; b.setAttribute('aria-busy', 'true'); b.querySelector('span').textContent = 'Asking…'; }
     body.append(b);
   }
   // Got it: marked read, and on a phone the next unread along the route; once read, it says so and can be undone

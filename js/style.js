@@ -543,9 +543,10 @@ export function buildStyle(s, ctx) {
   const sevImg = ['match', ['get', 'sev'], 3, warnMarkId('read'), 2, warnMarkId('not'), warnMarkId('look')];
   add({ id: 'heads-icon', type: 'symbol', source: 'heads', layout: { 'icon-image': ['coalesce', ['get', 'img'], sevImg], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'sev'] } });
   add({ id: 'heads-count', type: 'symbol', source: 'heads', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': FONT_B, 'text-size': 12.5, 'text-offset': [1.2, -1], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': WARN_COLORS.ink, 'text-halo-color': WARN_COLORS.surface, 'text-halo-width': 2.5 } });
+  // (the route's hover point above the markers, under the open one: a tap on it leaves no dot on its sign)
+  add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
   add({ id: 'heads-ring', type: 'circle', source: 'headsOn', filter: ['==', ['get', 'kind'], 'item'], paint: { 'circle-radius': 21, 'circle-color': WARN_COLORS.surface, 'circle-stroke-color': WARN_COLORS.ink, 'circle-stroke-width': 3 } });
   add({ id: 'heads-on-icon', type: 'symbol', source: 'headsOn', layout: { 'icon-image': ['get', 'img'], 'icon-size': ['case', ['==', ['get', 'kind'], 'item'], 1.25, 1], 'icon-anchor': ['case', ['==', ['get', 'kind'], 'obstacle'], 'bottom', 'center'], 'icon-offset': ['case', ['==', ['get', 'kind'], 'obstacle'], ['literal', [0, -22]], ['literal', [0, 0]]], 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
-  add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
 
   const style = {
     version: 8,

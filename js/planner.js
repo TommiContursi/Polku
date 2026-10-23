@@ -292,6 +292,7 @@ export class Planner {
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
     if (s.styles) this.styles = { ...s.styles };
+    if (s.read) this.readKeys = new Set(s.read);
     this.matchMode();
     this.update();
   }
@@ -473,8 +474,9 @@ export class Planner {
     const el = this.markers[i] && this.markers[i].getElement();
     if (el) { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
   }
-  undo() { if (this.past.length) { const s = this.past.pop(); this.future.push(this.snapshot({ sports: s.sports })); this.restoreSnap(s); } }
-  redo() { if (this.future.length) { const s = this.future.pop(); this.past.push(this.snapshot({ sports: s.sports })); this.restoreSnap(s); } }
+  // (across another route put in place: each comes back with what was read on it, freshRead())
+  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.future.push(t); this.restoreSnap(s); } }
+  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.past.push(t); this.restoreSnap(s); } }
 
   addPoint(ll) {
     this.commit();
@@ -704,7 +706,7 @@ export class Planner {
 
   loadTrack(coords, name) {
     this.commit();
-    this.readKeys = new Set(); // another route: nothing read on it yet (the review of #416)
+    this.freshRead();
     const c = simplify(coords, 2);
     this.points = [c[0], c[c.length - 1]];
     this.legs = [{ mode: 'fixed', status: 'ok', result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } }];
@@ -805,7 +807,7 @@ export class Planner {
     } else {
       this.points = pts;
       this.legs = legs;
-      this.readKeys = new Set(); // (another route)
+      this.freshRead();
       this.routeName = p.name;
       // a loop on one leg gets two via points, so it can be dragged and has a finish of its own
       if (ride.loop && this.legs.length === 1) {
@@ -1626,7 +1628,7 @@ export class Planner {
     if (r.legs) { // on the water: its legs as they were routed, start → via points → start
       this.commit();
       this.points = r.o.points.map((p) => p.slice());
-      this.readKeys = new Set(); // (another route)
+      this.freshRead();
       this.legs = r.legs.map((res) => ({ mode: 'water', status: 'ok', result: res }));
       // a leg routed without a source that was slow then is routed again (its answer is in the cache by now)
       this.legs.forEach((l, i) => { l.key = l.result.water && l.result.water.missing && l.result.water.missing.length ? null : this.legKey(i).key; });
@@ -1650,7 +1652,7 @@ export class Planner {
     cuts.push(c.length - 1);
     pts.push(start.slice());
     this.commit();
-    this.readKeys = new Set(); // (another route)
+    this.freshRead();
     this.points = pts;
     this.legs = cuts.slice(1).map((b, i) => ({ mode: 'auto', status: 'ok', result: { coords: c.slice(cuts[i], b + 1), tags: tags.slice(cuts[i], b), portage: [], provider: r.line.provider } }));
     this.legs.forEach((l, i) => { l.key = this.legKey(i).key; });
@@ -2042,8 +2044,7 @@ export class Planner {
     if (this.focusLit && !(this.cards.current && this.cards.current.kind === 'item')) this.unfocusRange(); // (another route: an open item lights its own again)
     // sources that answered for this route: the terrain, and the water's on every water leg
     if (!a.terrain) this.answered('terrain');
-    const lost = new Set(this.legs.flatMap((l) => (l.mode === 'water' && l.result && l.result.water && l.result.water.missing) || []));
-    for (const k of [...this.readKeys]) if (k.startsWith('not|water|') && !lost.has(k.slice(10))) this.readKeys.delete(k);
+    this.answered('water', new Set(this.legs.flatMap((l) => (l.mode === 'water' && l.result && l.result.water && l.result.water.missing) || [])));
     this.watchTerrain(a);
     this.renderAnalysis();
     this.loadWind(a);
@@ -2289,7 +2290,8 @@ export class Planner {
   // Positions along the whole route. (A source that didn't answer: notChecked().)
   waterWarnings() {
     const out = [];
-    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' };
+    // (shipping lanes are Väylävirasto's fairway areas; harbours and rocks OpenStreetMap's too)
+    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, LANES = { kind: 'map', by: 'Väylävirasto' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' };
     this.legs.forEach((leg, i) => {
       const wr = leg.mode === 'water' && leg.status === 'ok' && leg.result && leg.result.water;
       if (!wr) return;
@@ -2298,8 +2300,8 @@ export class Planner {
         const at = base + e.at, len = e.len;
         if (e.kind === 'ship') {
           out.push(len > 600
-            ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn`, tier: 'read', src: MAP }
-            : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn', tier: 'read', src: MAP });
+            ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn`, tier: 'read', src: LANES }
+            : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn', tier: 'read', src: LANES });
         } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going', tier: 'look', src: MAP });
         else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap', tier: 'look', src: MAP });
         else if (e.kind === 'rough') {
@@ -2321,10 +2323,11 @@ export class Planner {
   async loadTrail(a) {
     const opt = () => ({ activity: this.mainSport(), wet: this.wetFor(this.styleOf(this.mainSport())) });
     a.trailWarn = trailWarnings(a, opt());
+    const land = !this.routeSports().every(isWater);
+    a.trailAsking = land; // (What Polku looked at: being asked)
     this.renderWarnings();
-    if (this.routeSports().every(isWater)) return;
+    if (!land) return;
     let more = false, failed = false;
-    a.trailAsking = true; // (What Polku looked at: being asked)
     try { more = await detailsAlong(a); } catch { failed = true; } // the router's tags still stand
     a.trailAsking = false;
     if (this.analysis !== a) return;
@@ -3610,8 +3613,10 @@ export class Planner {
   }
 
   restoreSnapshot(s) {
+    const had = this.points.length > 0;
+    if (had) this.commit(); // (Undo brings back the route you had)
     this.points = s.points;
-    this.readKeys = new Set(); // (another route: a saved area's)
+    this.freshRead(had);
     this.nameAll(s.names);
     this.changeAll(s.changes);
     this.stopAll(s.stops);
@@ -5628,6 +5633,12 @@ export class Planner {
   notChecked(a) {
     const out = [], end = a.along[a.along.length - 1];
     const place = (ranges) => (ranges && ranges.length ? { ranges, at: ranges[0][0], len: ranges[0][1] } : { ranges: null });
+    // Retry: asked again at once, its card saying "Asking…" until it's answered, a card built again meanwhile too
+    const ask = (key, fn) => async () => {
+      (a.asking || (a.asking = new Set())).add(key);
+      this.renderWarnings();
+      try { return await fn(); } finally { a.asking.delete(key); if (this.analysis === a) this.renderWarnings(); }
+    };
     const ter = a.terrain;
     if (ter) {
       const onWater = (i) => (a.attr[i] || {}).mode === 'water' && !((a.attr[i] || {}).tags || {}).portage;
@@ -5648,15 +5659,15 @@ export class Planner {
       const whole = ranges.length === 1 && ranges[0][0] < 1 && ranges[0][0] + ranges[0][1] >= end - 1; // (every leg: the whole route, no place)
       out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(whole ? null : ranges), retry: () => this.retryWater() });
     }
-    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: () => this.loadHazards(a) });
+    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
     if (a.trailError) {
       const sum = a.trailError.reduce((t, [, len]) => t + len, 0), whole = sum >= end - 20;
-      out.push({ key: 'trail', by: 'OpenStreetMap, through Overpass', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
+      out.push({ key: 'trail', by: 'OpenStreetMap, through Overpass', who: 'Overpass (OpenStreetMap)', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
         note: 'Overpass didn’t answer: fallen trees, fords, gates and how wide or wet the way is aren’t known there.', ...place(whole ? null : a.trailError),
-        retry: () => { forgetTrailFailures(); return this.loadTrail(a); } });
+        retry: ask('trail', () => { forgetTrailFailures(); return this.loadTrail(a); }) });
     }
-    if (a.winterError) out.push({ key: 'winter', by: 'OpenStreetMap, through Overpass', text: 'Winter ways didn’t load', note: 'Overpass didn’t answer: ski tracks, and ways closed or not ploughed in winter, aren’t known.', ranges: null, retry: () => { forgetWinterFailures(); return this.loadWinterAlong(a); } });
-    if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: () => this.loadWind(a) });
+    if (a.winterError) out.push({ key: 'winter', by: 'OpenStreetMap, through Overpass', who: 'Overpass (OpenStreetMap)', text: 'Winter ways didn’t load', note: 'Overpass didn’t answer: ski tracks, and ways closed or not ploughed in winter, aren’t known.', ranges: null, retry: ask('winter', () => { forgetWinterFailures(); return this.loadWinterAlong(a); }) });
+    if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: ask('weather', () => this.loadWind(a)) });
     const at = (x) => (x.ranges ? x.at : Infinity);
     return out.sort((x, y) => (at(x) === at(y) ? 0 : at(x) < at(y) ? -1 : 1));
   }
@@ -5703,7 +5714,14 @@ export class Planner {
     const box = this.els.warnings;
     box.replaceChildren();
     const H = this.heads = this.headsUp(a);
-    this.headsList = this.itemsAlong(H);
+    // an open card's item, waiting while its sources are asked again (itemKept()): in its place along the route
+    // meanwhile, so ‹ ›, its ring and Got it find it
+    const L = this.itemsAlong(H), c = this.cards.current, w0 = c && c.kind === 'item' && c.last;
+    if (w0 && !L.some((x) => itemKey(x) === c.itemKey) && this.itemKept(w0)) {
+      const placed = (x) => x.g !== 'not' || x.w.ranges, i = placed(w0) ? L.findIndex((x) => !placed(x) || x.w.at > w0.w.at) : -1;
+      L.splice(i < 0 ? L.length : i, 0, w0);
+    }
+    this.headsList = L;
     this.renderBadge(H);
     this.renderOnRoute();
     if (!a) return;
@@ -5847,17 +5865,21 @@ export class Planner {
     if (!el) return;
     const R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
     el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight();
+    // narrow (200 %, a small phone): the count alone, beside the numbers above Done, so it takes none of the map (the
+    // review of #416); its name says the rest, a tap shows the first, and Check's All read marks them all
+    const narrow = this.narrowMQ.matches, row = this.els.row;
+    if (narrow !== (el.parentNode === row)) { if (narrow) this.els.sum.after(el); else row.before(el); }
+    row.classList.toggle('with-count', narrow && !el.hidden);
     if (el.hidden) return;
     const first = n1 ? R1[0] : R3[0], n = n1 || n3;
-    // narrow (200 %, a small phone): one short line, "2 to read" and ✕, so it takes no more of the map than a row (the
-    // review of #416); its name says the rest, and a tap shows the first
-    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}${this.narrowMQ.matches ? ' compact' : ''}`;
+    const go = (...kids) => h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}. Show it on the route`, onclick: () => this.openFromRow() },
+      h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }), ...kids);
+    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}${narrow ? ' compact' : ''}`;
+    if (narrow) { el.replaceChildren(go(h('b', { 'aria-hidden': 'true' }, String(n)))); return; }
     el.replaceChildren(
-      h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}. Show it on the route`, onclick: () => this.openFromRow() },
-        h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }),
-        h('span', {}, h('b', {}, h('span', { class: 'pl-readrow-long' }, `${n} ${n1 ? 'to read before you go' : 'not checked'}`), h('span', { class: 'pl-readrow-short', 'aria-hidden': 'true' }, `${n} ${n1 ? 'to read' : 'not checked'}`)),
-          h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
-        h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })),
+      go(h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`),
+        h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
+      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })),
       h('button', { type: 'button', class: 'tool pl-readrow-x', title: 'Mark all read: they stay in Check and on the map', 'aria-label': `Mark all ${n1 + n3} read`, onclick: () => this.markRead([...R1, ...R3], { note: true }), html: icon('close', 20) }));
   }
   // the row: the first unread one's card; on a desktop in Check, beside its box, the two together [jc-desk-sel]
@@ -5882,9 +5904,14 @@ export class Planner {
   }
   isRead(it) { return this.readKeys.has(this.readKey(it)); }
   // a source answered: what was read of it not answering goes, so a later failure is new again (the review of #416)
-  answered(key, by = null) {
-    for (const k of this.readKeys) if (k.startsWith(`not|${key}|`) && (by == null || k === `not|${key}|${by}`)) this.readKeys.delete(k);
+  answered(key, keep = null) {
+    let gone = false;
+    for (const k of this.readKeys) if (k.startsWith(`not|${key}|`) && !(keep && keep.has(k.slice(key.length + 5)))) { this.readKeys.delete(k); gone = true; }
+    if (gone) this.save(); // (the saved route too: after a reload, its next failure is new)
   }
+  // another route put in place of this one (an import, a round trip, a LIPAS route, a saved area): nothing read on it
+  // yet; the step Undo goes back to (`committed` just now) keeps what was read on the one before (undo())
+  freshRead(committed = true) { const s = committed && this.past[this.past.length - 1]; if (s) s.read = [...this.readKeys]; this.readKeys = new Set(); }
   unread(H, g) { return H ? (H[g] || []).map((w) => ({ g, w })).filter((it) => !this.isRead(it)) : []; }
   // `note`: say how many, with Undo (the row's ✕, All read)
   markRead(list, { note = false, read = true } = {}) {
@@ -6019,8 +6046,8 @@ export class Planner {
     // …and a way to check or correct where it comes from, so every card ends alike (an idea from testing, 2026-10-23)
     const by = (w.src && w.src.by) || '', go = (sec) => () => { this.cards.close({ restore: false }); this.reveal(sec); };
     if (g === 'not' || more.some((m) => m.icon === 'external')) { /* (its own: the OpenStreetMap note, Fix the map) */ }
-    else if (/Fintraffic/.test(by)) more.push({ icon: 'external', label: 'See it at Fintraffic', line: 'Fintraffic’s traffic situation, live', fn: () => open('https://liikennetilanne.fintraffic.fi/', '_blank', 'noopener') });
-    else if (w.src && w.src.kind === 'map' && this.itemPlace(w)) more.push({ icon: 'external', label: 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(this.itemPlace(w)), '_blank', 'noopener') });
+    else if (/^Fintraffic($|’s road weather)/.test(by)) more.push({ icon: 'external', label: 'See it at Fintraffic', line: 'Fintraffic’s traffic situation, live', fn: () => open('https://liikennetilanne.fintraffic.fi/', '_blank', 'noopener') });
+    else if (w.src && w.src.kind === 'map' && /OpenStreetMap/.test(by) && this.itemPlace(w)) more.push({ icon: 'external', label: 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(this.itemPlace(w)), '_blank', 'noopener') });
     else if (/forecast/.test(by)) more.push({ icon: 'cloudSun', label: 'The weather on the way', line: 'In Go: the forecast along the route, for when you leave', fn: go('depart') });
     else if (by === 'the terrain model') more.push({ icon: 'mountain', label: 'The climbs', line: 'In Check: how steep each one is, from the terrain model', fn: go('climbs') });
     else if (/sun/.test(by)) more.push({ icon: 'sun', label: 'Sunrise and sunset', line: 'In Go, with the weather on the way', fn: go('depart') });

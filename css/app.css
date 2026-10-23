@@ -1396,13 +1396,16 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .pl-readrow-x { flex: none; align-self: stretch; height: auto; border-left: 1px solid color-mix(in srgb, var(--text) 14%, transparent); border-radius: 0 11px 11px 0; color: var(--muted); }
 .pl-readrow-go:focus-visible, .pl-readrow-x:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (max-height: 520px) { .pl-readrow-go { min-height: var(--target); padding-block: 6px; } .pl-readrow small { display: none; } }
-/* narrow (200 %, a small phone): one short line, "2 to read" and ✕, no more of the map than a row takes (its box's colour
-   and its words say what it is) */
-.pl-readrow-short { display: none; }
-.pl-readrow.compact { margin: 0 0 6px; }
-.pl-readrow.compact .pl-readrow-go { min-height: var(--target); padding: 0 8px 0 12px; }
-.pl-readrow.compact .pl-readrow-go > span:first-child, .pl-readrow.compact :is(small, .way-chev, .pl-readrow-long) { display: none; }
-.pl-readrow.compact .pl-readrow-short { display: inline; white-space: nowrap; }
+/* narrow (200 %, a small phone): the count alone, beside the numbers above Done, so it takes none of the map (the review
+   of #416); its sign and its name say what it is, and Check's All read marks them all */
+/* (beside the distance and the time: the climb's line, the widest, keeps the room to its right) */
+.sheet-row.with-count { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr; gap: 4px 8px; align-items: start; }
+.sheet-row.with-count > .sheet-sum { grid-row: 1 / span 3; }
+.sheet-row.with-count > :not(.sheet-sum) { grid-column: 2; }
+.sheet-row.with-count > .pl-readrow { margin: 0; }
+/* (40 px high, so it and Done end above the climb's line) */
+.pl-readrow.compact .pl-readrow-go { min-height: 40px; gap: 4px; padding: 0 10px 0 8px; border-radius: 11px; }
+.pl-readrow.compact b { font-size: 18px; font-variant-numeric: tabular-nums; }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }
