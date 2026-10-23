@@ -1114,7 +1114,9 @@ export class Planner {
   // point. The short cut through a way marked private (#104) is one more, where Heads-up has
   // it for the leg.
   offerAltsSoon(li) {
-    const leg = this.legs[li], key = leg && leg.key;
+    const leg = this.legs[li];
+    if (!leg) return; // gone before it was in: Undo or Clear right after its point (#351)
+    const key = leg.key;
     const same = () => this.legs[li] === leg && leg.key === key;
     const own = routerHeadroom() === Infinity, calm = this.altCalm;
     clearTimeout(this.altTimer);
