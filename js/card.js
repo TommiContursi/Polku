@@ -330,6 +330,18 @@ export class CardHost {
     if (!fresh) return;
     const pt = this.map.project(at), R = this.map.getCanvas().getBoundingClientRect(), x = R.left + pt.x, y = R.top + pt.y;
     const w = box.offsetWidth, ht = box.offsetHeight;
+    // a narrow screen (a phone with the planner put away): above its spot, moved sideways to stay whole on the screen
+    // [jc-closed]; the map moves to make room above it (keep())
+    if (innerWidth < 520) {
+      const dx = Math.max(8 - (x - w / 2), Math.min(0, innerWidth - 8 - (x + w / 2)));
+      this.popup.options.anchor = 'bottom';
+      this.popup.setOffset({ bottom: [Math.round(dx), -OFFSET] });
+      this.popup.setLngLat(at);
+      // (room above it under the top bar: the map moves down, never sideways, which would take it off the screen)
+      const top = this.popup.getElement().getBoundingClientRect().top, bar = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 8;
+      if (top < bar) this.map.panBy([0, top - bar], { duration: 0 });
+      return;
+    }
     const right = innerWidth - x - (innerWidth < 720 ? 64 : 84), below = innerHeight - 8 - (this.pad().bottom || 0) - y;
     const anchor = `${below < ht + OFFSET && y - 120 > below ? 'bottom' : 'top'}-${right < w + OFFSET && x - (this.pad().left || 0) > right ? 'right' : 'left'}`;
     if (anchor !== this.popup.options.anchor) { this.popup.options.anchor = anchor; this.popup.setLngLat(at); }

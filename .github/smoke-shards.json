@@ -6,7 +6,7 @@
     ["water", "editing", "routemenu", "avoid", "flow", "winter", "sweep", "drawer", "heading", "panels", "column", "tilefail", "controls"],
     ["radar", "weather", "pacing", "multi", "terrain", "stops", "access", "otherways", "loops", "fit", "marks", "runner", "1024x768", "360x740"],
     ["button3d"],
-    ["routeview", "pointcard", "heads", "onroute"],
+    ["routeview", "pointcard", "heads", "onroute", "warnfix"],
     ["values", "start", "nextleg"]
   ]
 }

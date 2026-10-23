@@ -1396,6 +1396,13 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .pl-readrow-x { flex: none; align-self: stretch; height: auto; border-left: 1px solid color-mix(in srgb, var(--text) 14%, transparent); border-radius: 0 11px 11px 0; color: var(--muted); }
 .pl-readrow-go:focus-visible, .pl-readrow-x:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (max-height: 520px) { .pl-readrow-go { min-height: var(--target); padding-block: 6px; } .pl-readrow small { display: none; } }
+/* narrow (200 %, a small phone): one short line, "2 to read" and ✕, no more of the map than a row takes (its box's colour
+   and its words say what it is) */
+.pl-readrow-short { display: none; }
+.pl-readrow.compact { margin: 0 0 6px; }
+.pl-readrow.compact .pl-readrow-go { min-height: var(--target); padding: 0 8px 0 12px; }
+.pl-readrow.compact .pl-readrow-go > span:first-child, .pl-readrow.compact :is(small, .way-chev, .pl-readrow-long) { display: none; }
+.pl-readrow.compact .pl-readrow-short { display: inline; white-space: nowrap; }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }
@@ -1406,6 +1413,8 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .heads-src > span:first-child { flex: none; display: grid; }
 .heads-src a { color: inherit; }
 .heads-step { display: flex; align-items: center; gap: 4px; margin: 0 -8px; }
+/* ‹ › in sight at the card's foot while the rest scrolls (360 × 740, a card with rows) */
+.card-peek .heads-step { position: sticky; bottom: -6px; z-index: 1; padding: 2px 8px 6px; background: var(--surface-solid); box-shadow: 0 -1px 0 var(--line); }
 .heads-step > span { font-size: var(--font-body); font-weight: var(--weight-name); color: var(--muted); font-variant-numeric: tabular-nums; }
 .heads-all { margin-left: auto; }
 .heads-got { width: 100%; justify-content: center; }

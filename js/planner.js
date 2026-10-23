@@ -168,6 +168,8 @@ export class Planner {
     this.points = [];
     this.legs = [];
     this.readKeys = new Set(); // Check's items marked read (25d part 3): with the saved route on this device, not in links
+    this.narrowMQ = matchMedia('(max-width: 300px)'); // (the peek's row in one short line: 200 %, a small phone)
+    this.narrowMQ.addEventListener('change', () => this.renderReadRow());
     this.mode = ACTIVITIES[app.activity()].mode;
     this.craft = store.get('craft', 'kayak');
     this.past = [];
@@ -229,6 +231,7 @@ export class Planner {
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
     map.on('touchstart', 'route-casing', (e) => this.onLinePress(e));
     map.on('zoom', () => this.fitGhosts());
+    map.on('zoomend', () => this.drawHeads()); // (Check's markers kept clear of the points and the legs' handles)
     // a source the water router waited for in vain has answered: route those legs again
     onWaterData(() => this.retryWater({ ask: false }));
     // back online: the terrain that didn't load, now
@@ -701,6 +704,7 @@ export class Planner {
 
   loadTrack(coords, name) {
     this.commit();
+    this.readKeys = new Set(); // another route: nothing read on it yet (the review of #416)
     const c = simplify(coords, 2);
     this.points = [c[0], c[c.length - 1]];
     this.legs = [{ mode: 'fixed', status: 'ok', result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } }];
@@ -801,6 +805,7 @@ export class Planner {
     } else {
       this.points = pts;
       this.legs = legs;
+      this.readKeys = new Set(); // (another route)
       this.routeName = p.name;
       // a loop on one leg gets two via points, so it can be dragged and has a finish of its own
       if (ride.loop && this.legs.length === 1) {
@@ -1621,6 +1626,7 @@ export class Planner {
     if (r.legs) { // on the water: its legs as they were routed, start → via points → start
       this.commit();
       this.points = r.o.points.map((p) => p.slice());
+      this.readKeys = new Set(); // (another route)
       this.legs = r.legs.map((res) => ({ mode: 'water', status: 'ok', result: res }));
       // a leg routed without a source that was slow then is routed again (its answer is in the cache by now)
       this.legs.forEach((l, i) => { l.key = l.result.water && l.result.water.missing && l.result.water.missing.length ? null : this.legKey(i).key; });
@@ -1644,6 +1650,7 @@ export class Planner {
     cuts.push(c.length - 1);
     pts.push(start.slice());
     this.commit();
+    this.readKeys = new Set(); // (another route)
     this.points = pts;
     this.legs = cuts.slice(1).map((b, i) => ({ mode: 'auto', status: 'ok', result: { coords: c.slice(cuts[i], b + 1), tags: tags.slice(cuts[i], b), portage: [], provider: r.line.provider } }));
     this.legs.forEach((l, i) => { l.key = this.legKey(i).key; });
@@ -2033,6 +2040,10 @@ export class Planner {
     }
     this.app.setData('accessCut', EMPTY);
     if (this.focusLit && !(this.cards.current && this.cards.current.kind === 'item')) this.unfocusRange(); // (another route: an open item lights its own again)
+    // sources that answered for this route: the terrain, and the water's on every water leg
+    if (!a.terrain) this.answered('terrain');
+    const lost = new Set(this.legs.flatMap((l) => (l.mode === 'water' && l.result && l.result.water && l.result.water.missing) || []));
+    for (const k of [...this.readKeys]) if (k.startsWith('not|water|') && !lost.has(k.slice(10))) this.readKeys.delete(k);
     this.watchTerrain(a);
     this.renderAnalysis();
     this.loadWind(a);
@@ -2313,10 +2324,14 @@ export class Planner {
     this.renderWarnings();
     if (this.routeSports().every(isWater)) return;
     let more = false, failed = false;
+    a.trailAsking = true; // (What Polku looked at: being asked)
     try { more = await detailsAlong(a); } catch { failed = true; } // the router's tags still stand
+    a.trailAsking = false;
     if (this.analysis !== a) return;
+    a.trailLong = !failed && !more && !a.tdLost; // too long a route to ask (or no tile to ask): the router's tags only
     // where the tiles didn't answer: Not checked, until they do (25d part 2)
     a.trailError = failed ? [[0, a.along[a.along.length - 1]]] : a.tdLost || null;
+    if (!a.trailError && more) this.answered('trail');
     if (!more) { this.renderWarnings(); return; }
     a.trailWarn = trailWarnings(a, opt());
     a.trailMore = true; // width and points from OSM are in
@@ -2349,6 +2364,7 @@ export class Planner {
     try { cls = await winterAlong(a); } catch { failed = true; } // without: by surface only
     if (this.analysis !== a) return;
     a.winterError = failed || (cls && cls.lost > 0); // Not checked until they answer (25d part 2)
+    if (cls && !a.winterError) this.answered('winter');
     if (!cls || !a.wind) { this.renderWarnings(); return; }
     a.winterCls = cls;
     const snow = this.snowOf(a, a.wind);
@@ -2558,6 +2574,7 @@ export class Planner {
       if (this.analysis !== a) return;
       a.wind = { ...w, startSec };
       a.windError = false; // (a failure stays until the forecast answers: 25d part 2)
+      this.answered('weather');
       a.timeWind = t.total;
       a.tAtWind = t.tAt;
       a.waits = t.waits; // nights timed with the wind's arrival times
@@ -2582,6 +2599,7 @@ export class Planner {
       a.hazards = hz;
       a.hazardsAt = hz.answeredAt || Date.now();
       a.hazardsError = false;
+      this.answered('hazards');
     } catch {
       if (this.analysis !== a) return;
       a.hazardsError = this.fintrafficHere(a); // (the items it gave before, if any, stay)
@@ -3123,6 +3141,7 @@ export class Planner {
     // Marker presses bubble through the map too: their own drag must be the
     // only edit, even when the marker sits directly over the route.
     if (e.originalEvent.target?.closest?.('.maplibregl-marker, .maplibregl-popup')) return;
+    if (this.headAt(e.point, this.isTouch() ? 18 : 10)) return; // a marker of Check's over the line: the press is its
     const f = (e.features || []).find((x) => x.properties.kind === 'leg');
     if (!f || f.properties.loading) return;
     const touch = e.type === 'touchstart';
@@ -3592,6 +3611,7 @@ export class Planner {
 
   restoreSnapshot(s) {
     this.points = s.points;
+    this.readKeys = new Set(); // (another route: a saved area's)
     this.nameAll(s.names);
     this.changeAll(s.changes);
     this.stopAll(s.stops);
@@ -3710,7 +3730,7 @@ export class Planner {
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });
     // the peek's row: what to read before you go, and what wasn't checked (25d part 3)
-    this.els.readRow = h('button', { type: 'button', class: 'warn-row pl-readrow', hidden: true, onclick: () => this.openFromRow() });
+    this.els.readRow = h('div', { class: 'warn-row pl-readrow', hidden: true });
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.readRow, this.els.row, this.els.way), this.els.said);
     // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, at
     // its spot elsewhere (js/card.js, 25d)
@@ -5625,7 +5645,8 @@ export class Planner {
     for (const [m, legs] of lost) {
       const [text, note] = WATER_LOST[m] || [`${m} didn’t answer on the water`, 'Routed without it.'];
       const ranges = legs.reduce((r, [at, len]) => { const p = r[r.length - 1]; if (p && at - (p[0] + p[1]) < 1) p[1] = at + len - p[0]; else r.push([at, len]); return r; }, []);
-      out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(ranges), retry: () => this.retryWater() });
+      const whole = ranges.length === 1 && ranges[0][0] < 1 && ranges[0][0] + ranges[0][1] >= end - 1; // (every leg: the whole route, no place)
+      out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(whole ? null : ranges), retry: () => this.retryWater() });
     }
     if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: () => this.loadHazards(a) });
     if (a.trailError) {
@@ -5650,7 +5671,8 @@ export class Planner {
     const end = a.along[a.along.length - 1];
     if (land) {
       const te = a.trailError, gap = te ? te.reduce((t, [, len]) => t + len, 0) : 0;
-      row('Trail details along the route', te ? (gap >= end - 20 ? 'didn’t load' : `missing for ${fmtDist(gap)}`) : 'OpenStreetMap', te ? 'bad' : 'ok');
+      row('Trail details along the route', te ? (gap >= end - 20 ? 'didn’t load' : `missing for ${fmtDist(gap)}`) : a.trailAsking ? 'asking OpenStreetMap…' : a.trailLong ? 'the route’s own tags only: too long to ask for more' : a.trailMore ? 'OpenStreetMap' : 'asking OpenStreetMap…',
+        te ? 'bad' : a.trailAsking || (!a.trailLong && !a.trailMore) ? 'wait' : a.trailLong ? 'na' : 'ok');
       const ter = a.terrain;
       row('Heights and climbs', ter ? (ter.all ? (ter.retry ? 'didn’t load' : 'none here') : `missing for ${fmtDist(ter.missing)}`) : 'the terrain model', ter ? 'bad' : 'ok');
       if (this.fintrafficHere(a)) row('Road works and incidents', a.hazardsError ? 'Fintraffic didn’t answer' : a.hazards ? `Fintraffic, ${clock(a.hazardsAt)}` : 'asking Fintraffic…', a.hazardsError ? 'bad' : a.hazards ? 'ok' : 'wait');
@@ -5752,9 +5774,20 @@ export class Planner {
     const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
     const looks = !!open || this.checkInSight();
     const SEV = { read: 3, not: 2, look: 1 }, pt = (c, properties) => ({ type: 'Feature', properties, geometry: { type: 'Point', coordinates: c } });
+    // clear of the points and the legs' handles, which sit over the map and would hide a marker and take its tap: along
+    // the route to the nearest spot 22 px from them, at this zoom (again at the next: zoomend)
+    const dom = this.active && !this.panel.hidden ? [...this.points, ...this.ghosts.map((g) => g.getLngLat().toArray())].map((c) => this.map.project(c)) : [];
+    const clear = (c) => { const q = this.map.project(c); return dom.every((d) => Math.hypot(d.x - q.x, d.y - q.y) >= 22); };
+    const spot = (w) => {
+      const at = this.itemPlace(w);
+      if (!at || !dom.length || clear(at)) return at;
+      const i0 = this.itemSpan(w)[0];
+      for (let d = 1; d < 400; d++) for (const i of [i0 + d, i0 - d]) if (a.pts[i] && clear(a.pts[i])) return a.pts[i];
+      return at;
+    };
     const marks = [], on = [];
     for (const it of this.headsList || []) {
-      const at = this.itemPlace(it.w), k = itemKey(it);
+      const at = spot(it.w), k = itemKey(it);
       if (!at || (it.g === 'look' && !looks)) continue;
       const props = { key: k, g: it.g, sev: SEV[it.g], img: warnMarkId(it.g), text: it.w.text };
       if (k !== open) { marks.push(pt(at, props)); continue; }
@@ -5816,11 +5849,14 @@ export class Planner {
     el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight();
     if (el.hidden) return;
     const first = n1 ? R1[0] : R3[0], n = n1 || n3;
-    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}`;
+    // narrow (200 %, a small phone): one short line, "2 to read" and ✕, so it takes no more of the map than a row (the
+    // review of #416); its name says the rest, and a tap shows the first
+    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}${this.narrowMQ.matches ? ' compact' : ''}`;
     el.replaceChildren(
       h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}. Show it on the route`, onclick: () => this.openFromRow() },
         h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }),
-        h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`), h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
+        h('span', {}, h('b', {}, h('span', { class: 'pl-readrow-long' }, `${n} ${n1 ? 'to read before you go' : 'not checked'}`), h('span', { class: 'pl-readrow-short', 'aria-hidden': 'true' }, `${n} ${n1 ? 'to read' : 'not checked'}`)),
+          h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
         h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })),
       h('button', { type: 'button', class: 'tool pl-readrow-x', title: 'Mark all read: they stay in Check and on the map', 'aria-label': `Mark all ${n1 + n3} read`, onclick: () => this.markRead([...R1, ...R3], { note: true }), html: icon('close', 20) }));
   }
@@ -5832,7 +5868,7 @@ export class Planner {
     this.setTab('check', { user: true });
     requestAnimationFrame(() => {
       const el = this.els.warnings.querySelector(`[data-key="${CSS.escape(itemKey(first))}"]`);
-      if (el) el.scrollIntoView({ block: 'nearest' });
+      if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus({ preventScroll: true }); } // (Escape and ✕ bring the focus back to it: the row is gone)
       this.openItemCard(first, { from: 'row', el });
     });
   }
@@ -5845,6 +5881,10 @@ export class Planner {
     return `${g}|${w.text}|${ll ? `${ll[0].toFixed(4)},${ll[1].toFixed(4)}` : Math.round((w.at || 0) / 100)}`;
   }
   isRead(it) { return this.readKeys.has(this.readKey(it)); }
+  // a source answered: what was read of it not answering goes, so a later failure is new again (the review of #416)
+  answered(key, by = null) {
+    for (const k of this.readKeys) if (k.startsWith(`not|${key}|`) && (by == null || k === `not|${key}|${by}`)) this.readKeys.delete(k);
+  }
   unread(H, g) { return H ? (H[g] || []).map((w) => ({ g, w })).filter((it) => !this.isRead(it)) : []; }
   // `note`: say how many, with Undo (the row's ✕, All read)
   markRead(list, { note = false, read = true } = {}) {
@@ -5887,6 +5927,13 @@ export class Planner {
     return [...placed.sort((x, y) => x.w.at - y.w.at), ...H.not.filter((w) => !w.ranges).map((w) => ({ g: 'not', w }))];
   }
   itemByKey(k) { return (this.headsList || this.itemsAlong()).find((it) => itemKey(it) === k) || null; }
+  // the sources being asked again for this analysis (a new one of the same route: the terrain came, Undo): an item
+  // missing meanwhile may come back, so its card waits rather than closes, unless its kind was hidden
+  itemKept(x) {
+    const a = this.analysis, kind = x.g !== 'not' && hideKind(x.w);
+    if (kind && hiddenKinds()[kind.key]) return false;
+    return !!a && ((!a.wind && !a.windError) || (this.fintrafficHere(a) && !a.hazards && !a.hazardsError) || !!a.trailAsking);
+  }
   itemIndex(k) { const L = this.headsList || this.itemsAlong(); return [L.findIndex((it) => itemKey(it) === k), L.length]; }
 
   // where an item is, in words: "at 300 m · 60 m", "at km 1.4, 2.0", "The whole route"
@@ -5918,7 +5965,8 @@ export class Planner {
     const panel = this.panel.getBoundingClientRect(), beside = side && (el || !at) ? { right: panel.right + 4, top: el ? el.getBoundingClientRect().top : panel.top + 60 } : null;
     this.cards.open(itemCard(this, itemKey(it), from), { at, beside, from });
     // its stretch lit, once the card has its place (the peek is smaller than the sheet was)
-    requestAnimationFrame(() => { if (this.cards.current && this.cards.current.itemKey === itemKey(it)) this.lightItem(it.w); });
+    // (with the planner put away its marker was tapped where it is: lit, not framed, so its card stays where it opened)
+    requestAnimationFrame(() => { if (this.cards.current && this.cards.current.itemKey === itemKey(it)) this.lightItem(it.w, { frame: this.active }); });
     if (step) requestAnimationFrame(() => { const b = this.cards.box && [...this.cards.box.querySelectorAll('.heads-step .tool')]; if (b) (b[step > 0 ? 1 : 0].disabled ? b[step > 0 ? 0 : 1] : b[step > 0 ? 1 : 0]).focus({ preventScroll: true }); });
   }
   // ‹ ›: the item before or after along the route
@@ -5968,6 +6016,15 @@ export class Planner {
     if (w.osm && w.osm.id) more.push({ icon: 'external', label: 'Gone? Fix the map', line: 'OpenStreetMap’s editor, at this way', fn: () => open(`https://www.openstreetmap.org/edit?${w.osm.type}=${w.osm.id}`, '_blank', 'noopener') });
     if (w.osm && w.lngLat) more.push({ icon: 'external', label: w.fix || 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') });
     if (w.fixUrl) more.push({ icon: 'external', label: 'Fix the map', line: 'What Valhalla routes on comes from OpenStreetMap', fn: () => open(w.fixUrl, '_blank', 'noopener') });
+    // …and a way to check or correct where it comes from, so every card ends alike (an idea from testing, 2026-10-23)
+    const by = (w.src && w.src.by) || '', go = (sec) => () => { this.cards.close({ restore: false }); this.reveal(sec); };
+    if (g === 'not' || more.some((m) => m.icon === 'external')) { /* (its own: the OpenStreetMap note, Fix the map) */ }
+    else if (/Fintraffic/.test(by)) more.push({ icon: 'external', label: 'See it at Fintraffic', line: 'Fintraffic’s traffic situation, live', fn: () => open('https://liikennetilanne.fintraffic.fi/', '_blank', 'noopener') });
+    else if (w.src && w.src.kind === 'map' && this.itemPlace(w)) more.push({ icon: 'external', label: 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(this.itemPlace(w)), '_blank', 'noopener') });
+    else if (/forecast/.test(by)) more.push({ icon: 'cloudSun', label: 'The weather on the way', line: 'In Go: the forecast along the route, for when you leave', fn: go('depart') });
+    else if (by === 'the terrain model') more.push({ icon: 'mountain', label: 'The climbs', line: 'In Check: how steep each one is, from the terrain model', fn: go('climbs') });
+    else if (/sun/.test(by)) more.push({ icon: 'sun', label: 'Sunrise and sunset', line: 'In Go, with the weather on the way', fn: go('depart') });
+    else if (/stops/.test(by)) more.push({ icon: 'pause', label: 'Your stops', line: 'In Route: each stop and night in the list', fn: go('points') });
     return { main, more };
   }
 

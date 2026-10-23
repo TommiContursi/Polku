@@ -663,7 +663,8 @@ WATER = """(async () => {
       if (!/OpenStreetMap/.test(`${x.text} ${x.by}`) || !x.note) errs.push(`Not checked on the water: ${x.text} (${x.by}) · ${x.note}`);
       if (typeof x.retry !== 'function') errs.push('Not checked on the water has no Retry');
       const end = p.analysis.along[p.analysis.along.length - 1];
-      if (!x.ranges || !x.ranges.length || x.ranges[0][0] > 1 || x.ranges[0][0] + x.ranges[0][1] < end - 1) errs.push(`Not checked on the water covers ${JSON.stringify(x.ranges)} of the ${Math.round(end)} m leg`);
+      // the route's only leg: the whole route (null), not a stretch from 0 m (#416's review)
+      if (x.ranges !== null) errs.push(`Not checked on the water covers ${JSON.stringify(x.ranges)} of the ${Math.round(end)} m route, not the whole route`);
       if ([...p.headsUp().read, ...p.headsUp().look].some((w) => /^Not checked/.test(w.text))) errs.push('a source that didn\\'t answer is an item of Read or Worth a look too');
       if (!rocks() || rocks().state !== 'bad') errs.push(`What Polku looked at, rocks and shoals: ${rocks() ? `${rocks().state} · ${rocks().by}` : 'no row'}, not bad`);
       if (p.lookedAt(p.analysis).some((r) => /Fintraffic/.test(r.by))) errs.push('What Polku looked at names Fintraffic for a route on the water');
@@ -2333,10 +2334,11 @@ def onroute(chrome):
           const errs = [];
         """ + CHECK_ROUTE + """
           const row = () => { const r = p.els.readRow; return r && !r.hidden && r.offsetParent ? r : null; };
+          const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
           p.setTab('route'); p.setSheetState('peek');
           await wait(500);
           if (!row()) return ['no row in the peek with something to read'];
-          if (!row().classList.contains('danger') || !/^2 to read before you go\\s*Road works: Teiskontie and 1 more · 1 not checked$/.test(row().textContent.trim())) errs.push(`the row: ${row().className} "${row().textContent}"`);
+          if (!row().classList.contains('danger') || !/^2 to read before you go\\s*Road works: Teiskontie and 1 more · 1 not checked$/.test(said(row()))) errs.push(`the row: ${row().className} "${said(row())}"`);
           const sum = p.els.row.getBoundingClientRect(), rr = row().getBoundingClientRect();
           if (rr.bottom > sum.top + 1) errs.push('the row isn\\'t above the numbers');
           p.reveal('warnings');
@@ -2364,7 +2366,8 @@ def onroute(chrome):
           p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
           p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
           p.renderWarnings();
-          if (!p.els.readRow.classList.contains('unk') || !/^1 not checked\\s*The forecast didn.t answer$/.test(p.els.readRow.textContent.trim())) errs.push(`the row with only Not checked: ${p.els.readRow.className} "${p.els.readRow.textContent}"`);
+          const said = (el) => { const c = el.cloneNode(true); c.querySelectorAll('[aria-hidden=true]').forEach((x) => x.remove()); return c.textContent.trim(); };
+          if (!p.els.readRow.classList.contains('unk') || !/^1 not checked\\s*The forecast didn.t answer$/.test(said(p.els.readRow))) errs.push(`the row with only Not checked: ${p.els.readRow.className} "${said(p.els.readRow)}"`);
           p.hideWarnKind({ key: 'roadwork' }, false);
           // nothing to read and all checked: no row
           window.wx501 = false;
@@ -2563,7 +2566,8 @@ def onroute(chrome):
               const wx = document.getElementById('wx-bar'), wr = wx && wx.offsetParent ? wx.getBoundingClientRect() : null;
               if (!wr) errs.push('(the test) no timeline open');
               else if (beside && r.bottom > wr.top + 1 && r.right > wr.left && r.left < wr.right) errs.push(`the card runs under the timeline: its bottom at ${Math.round(r.bottom)}, the timeline's top at ${Math.round(wr.top)}`);
-              else if (r.left < pr.right || r.left > pr.right + 24 || Math.abs(r.top - er.top) > 40) errs.push(`the card at ${Math.round(r.left)},${Math.round(r.top)}, not beside the panel at its box (${Math.round(pr.right)},${Math.round(er.top)})`);
+              // at its box's height, or moved up just enough to stay above the timeline
+              else if (r.left < pr.right || r.left > pr.right + 24 || r.top > er.top + 4 || (r.top < er.top - 4 && r.bottom < wr.top - 24)) errs.push(`the card at ${Math.round(r.left)},${Math.round(r.top)}, ${Math.round(r.height)} px high, not beside the panel at its box (${Math.round(pr.right)},${Math.round(er.top)}) above the timeline (${Math.round(wr.top)})`);
               return errs;
             })()""")
             fails += card(pg, 'Road works: Teiskontie', 0, {'group': 'Read before you go', 'src': 'Live · Fintraffic', 'main': None})
@@ -2605,6 +2609,214 @@ def onroute(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the warning on the route" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The review of #416 (2026-10-23), each finding as a person meets it, on Check's own route (CHECK_ROUTE). A phone:
+# the row is no button in a button (9); what's read starts afresh on another route (2) and a source read is unread
+# again when it fails after it answered (4); a card stays open while the same route is worked out again (5); markers
+# are clear of the points (6); What Polku looked at says the trail details are being asked (8); a water source missing
+# on every leg is the whole route (10); Retry says it's asking and that the source still didn't answer (12); every card
+# ends with Hide and a way to its source (the user's idea). Then a press on a marker (7) and the put-away card on screen
+# (1), by touch; ‹ › in sight at 360 × 740 (13); the row at 200 % (3); a desktop's Escape (11).
+WARNFIX = """(async () => {
+  const errs = [];
+""" + CHECK_ROUTE + """
+  const T2 = await import(location.origin + '/js/trails.js');
+  p.setTab('route'); p.setSheetState('peek');
+  await wait(400);
+  // (9) the row: a box with two buttons, its words opening the first item once
+  const row = p.els.readRow;
+  if (row.tagName === 'BUTTON') errs.push('the row is a <button> holding buttons');
+  let opened = 0;
+  const real = p.openFromRow.bind(p);
+  p.openFromRow = () => { opened++; return real(); };
+  row.querySelector('.pl-readrow-go')?.click();
+  await wait(400);
+  if (opened !== 1) errs.push(`a tap on the row's words opened ${opened} times`);
+  p.openFromRow = real;
+  p.cards.close();
+  await wait(300);
+  // (12) Retry on a source still not answering: Asking…, then that it still didn't answer
+  const weather = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'weather');
+  p.openItemCard(weather, { from: 'check' });
+  await wait(500);
+  const retry = p.cards.box && p.cards.box.querySelector('.btn.primary.big');
+  if (!retry) errs.push('no Retry on the forecast\\'s card');
+  else {
+    retry.click();
+    const asking = retry.textContent.trim(); // (said at once: it may answer within a frame)
+    const said = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
+    for (let k = 0; k < 50 && !/still didn.t answer/.test(said()); k++) await wait(100);
+    const note = said();
+    if (asking !== 'Asking…') errs.push(`Retry while it asks says "${asking}"`);
+    if (!/Open-Meteo still didn.t answer/.test(note)) errs.push(`Retry with no answer again: the note says "${note}"`);
+  }
+  p.cards.close();
+  await wait(300);
+  // (4) a source read, then answering, then failing again: unread (Fintraffic, which the check answers for)
+  const hz0 = p.app.hazards, fails = async () => { throw new Error('Fintraffic didn’t answer'); };
+  p.app.hazards = fails; await p.loadHazards(p.analysis);
+  const f1 = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'hazards');
+  if (f1) p.markRead([f1]);
+  p.app.hazards = hz0; await p.loadHazards(p.analysis);
+  p.app.hazards = fails; await p.loadHazards(p.analysis);
+  const f2 = p.itemsAlong().find((x) => x.g === 'not' && x.w.key === 'hazards');
+  if (!f1 || !f2) errs.push('(the test) Fintraffic didn\\'t fail twice');
+  else if (p.isRead(f2)) errs.push('Fintraffic failing again after it answered is still read');
+  p.app.hazards = hz0; await p.loadHazards(p.analysis);
+  p.analysis.darkWarn = [...window.mine];
+  p.renderWarnings();
+  // the user's idea: every card ends with Hide and a way to its source (Road works: Fintraffic)
+  p.openItemCard(p.itemsAlong().find((x) => /^Road works/.test(x.w.text)), { from: 'check' });
+  await wait(500);
+  const rows = p.cards.box ? [...p.cards.box.querySelectorAll('.rows .row')].map((r) => r.querySelector('b').textContent) : [];
+  if (!rows.some((t) => /^Hide/.test(t)) || !rows.some((t) => /Fintraffic/.test(t))) errs.push(`Road works' card ends with ${rows.join(' / ') || 'nothing'}, not Hide and a way to Fintraffic`);
+  // (5) the same route worked out again, Fintraffic answering late: the card stays
+  const hz = p.app.hazards;
+  p.app.hazards = (a) => new Promise((ok) => setTimeout(() => ok(window.works(a)), 1500));
+  const run = p.runAnalysis(p.gen);
+  await run;
+  await wait(200);
+  const stays = () => p.cards.current && p.cards.box && /^Road works/.test(p.cards.box.querySelector('.way-hint b').textContent);
+  if (!stays()) errs.push('Road works\\' card closed while the route was worked out again');
+  await wait(2500);
+  if (!stays()) errs.push('Road works\\' card closed once Fintraffic answered again');
+  p.app.hazards = hz;
+  p.cards.close();
+  await wait(300);
+  p.analysis.darkWarn = [...window.mine];
+  p.renderWarnings();
+  // (6) items at the start and at Via 1: their markers clear of the points
+  p.analysis.darkWarn = [...window.mine, { ...window.mine[2], at: 0, text: 'At the start', lngLat: p.points[0] }, { ...window.mine[2], at: p.lengthTo(1), text: 'At Via 1', lngLat: p.points[1] }];
+  p.renderWarnings();
+  p.fitRoute({ animate: false });
+  await new Promise((ok) => polku.map.once('idle', ok));
+  p.drawHeads();
+  const m = polku.map, near = (t) => (m.getSource('heads').serialize().data.features || []).find((f) => f.properties.text === t);
+  for (const [t, i] of [['At the start', 0], ['At Via 1', 1]]) {
+    const f = near(t), q = f && m.project(f.geometry.coordinates), d = m.project(p.points[i]);
+    if (!f || Math.hypot(q.x - d.x, q.y - d.y) < 20) errs.push(`${t}: its marker ${f ? Math.round(Math.hypot(q.x - d.x, q.y - d.y)) : 'missing'} px from the point, under it`);
+  }
+  // (8) What Polku looked at: the trail details being asked aren't ticked
+  p.analysis.trailAsking = true;
+  const td = () => p.lookedAt(p.analysis).find((r) => /^Trail details/.test(r.what));
+  if (td().state === 'ok') errs.push(`the trail details while being asked: ${td().state} · ${td().by}`);
+  p.analysis.trailAsking = false;
+  // and on a route too long to ask (over 40 tiles): the router's tags only, not ticked
+  const more0 = p.analysis.trailMore;
+  p.analysis.trailMore = false; p.analysis.trailLong = true;
+  if (td().state === 'ok') errs.push(`the trail details on a route too long to ask: ${td().state} · ${td().by}`);
+  p.analysis.trailMore = more0; p.analysis.trailLong = false;
+  // (10) a water source missing on every leg: the whole route
+  const nc = p.notChecked.call({ legs: [{ mode: 'water', result: { water: { missing: ['OpenStreetMap'] } } }], lengthTo: (i) => i * 1000, loadHazards() {}, loadTrail() {}, loadWinterAlong() {}, loadWind() {}, retryWater() {} },
+    { along: Float32Array.from({ length: 101 }, (_, i) => i * 10), attr: [], ways: [], terrain: null });
+  const wa = nc.find((x) => x.key === 'water');
+  if (!wa || wa.ranges !== null) errs.push(`a source missing on every water leg: ${JSON.stringify(wa && wa.ranges)}, not the whole route`);
+  // (2) what's read starts afresh on another route (an imported track)
+  p.markRead(p.itemsAlong());
+  p.loadTrack([[26.70, 63.30], [26.71, 63.301], [26.72, 63.30]], 'Imported');
+  if (p.readKeys.size) errs.push(`an imported track starts with ${p.readKeys.size} read`);
+  return errs;
+})()"""
+# (7) and (1): a press on a marker over the line; the put-away card on a phone's screen
+WARNFIX_AT = """((ll) => { const m = polku.map, q = m.project(ll), r = m.getCanvas().getBoundingClientRect(); return [r.left + q.x, r.top + q.y]; })"""
+
+
+def warnfix(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        fails += pg.js(WARNFIX, timeout=150000)
+        # (7) a 450 ms press on the road works' triangle over the line: its card, no point added
+        pg.js("(async () => { const p = polku.planner; p.clear(); return true; })()")
+        pg.js(f"(async () => {{ const errs = []; {CHECK_ROUTE} p.setTab('route'); p.setSheetState('peek'); polku.map.jumpTo({{ center: p.analysis.pts[30], zoom: 15, padding: p.viewPadding() }}); await new Promise((ok) => polku.map.once('idle', ok)); return true; }})()", timeout=90000)
+        at = pg.js(f"(() => {{ const p = polku.planner, f = (polku.map.getSource('heads').serialize().data.features || []).find((x) => /^Road works/.test(x.properties.text)); return f ? {WARNFIX_AT}(f.geometry.coordinates) : null; }})()")
+        n0 = pg.js("polku.planner.points.length")
+        if at:
+            pg.touch('start', *at)
+            time.sleep(0.45)
+            pg.touch('end')
+            time.sleep(1.0)
+            r = pg.js("({ n: polku.planner.points.length, card: polku.planner.cards.current && polku.planner.cards.current.kind })")
+            if r['n'] != n0 or r['card'] != 'item':
+                fails.append(f"a 450 ms press on a marker over the line: {r['n'] - n0} points added, card {r['card']}")
+        else:
+            fails.append("(the test) no road works marker")
+        # (1) the planner put away: the triangle's card whole on the screen, wherever the triangle is
+        pg.js("(async () => { const p = polku.planner; p.cards.close(); p.setActive(false); await new Promise((r) => setTimeout(r, 500)); return true; })()")
+        for x in (80, 300):
+            at = pg.js(f"""(async () => {{ const p = polku.planner, m = polku.map; m.jumpTo({{ center: p.analysis.pts[30], zoom: 15 }});
+                const q = m.project(p.analysis.pts[30]); m.jumpTo({{ center: m.unproject([q.x + (m.getCanvas().clientWidth / 2 - {x}), q.y]) }});
+                await new Promise((ok) => m.once('idle', ok)); return {WARNFIX_AT}(p.analysis.pts[30]); }})()""")
+            pg.tap(*at)
+            time.sleep(1.2)
+            r = pg.js("(() => { const b = polku.planner.cards.box; if (!b) return null; const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), innerWidth]; })()")
+            if not r:
+                fails.append(f'the planner put away, a triangle at x {x}: no card')
+            elif r[0] < 0 or r[1] > r[2]:
+                fails.append(f'the planner put away, a triangle at x {x}: its card at {r[0]}–{r[1]} on a {r[2]} px screen')
+            pg.js("(() => { polku.planner.cards.close(); return true; })()")
+            time.sleep(0.4)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # (13) 360 × 740: ‹ › in sight on a card with rows
+    pg = chrome.page(360, 740, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
+          // (an item with three rows under Got it: hide it, fix the map, a note)
+          p.analysis.darkWarn = [...window.mine, { at: 500, len: 40, kind: 'test2', text: 'Technical trail S3', osm: { type: 'way', id: 1 }, lngLat: p.analysis.pts[50], tier: 'look', src: { kind: 'map', by: 'OpenStreetMap' } }];
+          p.renderWarnings();
+          p.reveal('warnings'); await wait(500);
+          p.openItemCard(p.itemsAlong().find((x) => x.w.text === 'Technical trail S3'), { from: 'check' });
+          await wait(800);
+          const card = p.cards.box, step = card && card.querySelector('.heads-step');
+          if (!step) return ['no ‹ › on the card'];
+          const c = card.getBoundingClientRect(), s = step.getBoundingClientRect();
+          if (s.bottom > c.bottom + 1 || s.top < c.top) errs.push(`‹ › at ${Math.round(s.top)}–${Math.round(s.bottom)}, the card shows ${Math.round(c.top)}–${Math.round(c.bottom)}`);
+          return errs; })()""", timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # (3) 200 %: the row one line, the map keeps its room
+    pg = chrome.page(195, 422, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
+          p.setTab('route'); p.setSheetState('peek'); await wait(400); await """ + SETTLED + """;
+          const row = p.els.readRow, b = row && !row.hidden && row.querySelector('b');
+          if (!b) return ['no row at 200 %'];
+          const room = () => p.panel.getBoundingClientRect().top - document.querySelector('.topbar').getBoundingClientRect().bottom;
+          const lh = parseFloat(getComputedStyle(b).lineHeight) || 20, withRow = room();
+          if (b.getBoundingClientRect().height > lh * 1.5) errs.push(`the row's words take ${Math.round(b.getBoundingClientRect().height / lh)} lines at 200 %`);
+          row.hidden = true; await """ + SETTLED + """;
+          const without = room();
+          row.hidden = false; await """ + SETTLED + """;
+          if (withRow < without - 56) errs.push(`the row takes ${Math.round(without - withRow)} px of the map at 200 %, more than a row (${Math.round(withRow)} px left, ${Math.round(without)} without it)`);
+          return errs; })()""", timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # (11) a desktop: from the row, Escape brings the focus back to its box in Check
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
+        fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
+          p.setTab('route'); await wait(300);
+          p.els.readRow.querySelector('.pl-readrow-go').click();
+          await wait(700);
+          document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          await wait(500);
+          const a = document.activeElement;
+          if (!a || a === document.body || !a.closest('[data-sec=warnings]')) errs.push(`Escape left the focus on ${a ? (a.className || a.tagName) : 'nothing'}, not the box in Check`);
+          return errs; })()""", timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the review of #416: Check's cards, row and markers" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -9273,6 +9485,7 @@ GROUPS = [
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
     ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network); Not checked with Retry; the groups, What Polku looked at and the badge'),
+    ('warnfix', [warnfix], 'the review of #416: the row, read marks across routes and answers, a card through a new analysis, markers clear of points and presses, Retry, 360 × 740, 200 %, Escape'),
     ('onroute', [onroute], 'the warning on the route (25d part 3): the item\'s card from Check, ‹ › along the route, Back, Retry, a tap on the map (mocked sources, straight legs)'),
     ('detour', [detour], 'a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)'),
     ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),

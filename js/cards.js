@@ -246,7 +246,8 @@ const sentence = (t) => { t = String(t || '').trim(); return t ? `${/^[a-zäöå
 export function itemCard(pl, key, from) {
   const card = {
     kind: 'item', itemKey: key, from,
-    get it() { return pl.itemByKey(card.itemKey); },
+    // (found again in each analysis; while its source is asked again for a new one, the last seen stands)
+    get it() { const x = pl.itemByKey(card.itemKey); if (x) card.last = x; return x || (card.last && pl.itemKept(card.last) ? card.last : null); },
     get title() { return card.it ? card.it.w.text : ''; },
     get sub() { return card.it ? GROUP[card.it.g][0] : ''; },
     mark: () => (card.it.g === 'not' ? h('span', { class: 'heads-mark not' }, '?') : h('span', { class: `heads-mark ${card.it.g}`, html: icon(GROUP[card.it.g][1], 18) })),
@@ -278,7 +279,22 @@ function itemBody(pl, card, body) {
   // the one main action; in the route's view only what doesn't change the route
   const { main, more } = pl.itemActions(it);
   if (main && pl.inView() && main.edits) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
-  else if (main) body.append(mainButton(main.label, main.icon, () => main.fn()));
+  else if (main) {
+    // Retry says it's asking, and if the source still didn't answer (its card stays), says so (the terrain's has its own)
+    const b = mainButton(main.label, main.icon, async () => {
+      if (b.disabled) return;
+      b.disabled = true;
+      b.setAttribute('aria-busy', 'true');
+      b.querySelector('span').textContent = main.label === 'Retry' ? 'Asking…' : main.label;
+      try { await main.fn(); } finally {
+        b.disabled = false;
+        b.removeAttribute('aria-busy');
+        b.querySelector('span').textContent = main.label;
+      }
+      if (g === 'not' && w.key !== 'terrain' && w.key !== 'water' && pl.itemByKey(card.itemKey)) toast(`${w.by} still didn’t answer: try again later`, { ms: 5000 });
+    });
+    body.append(b);
+  }
   // Got it: marked read, and on a phone the next unread along the route; once read, it says so and can be undone
   const read = pl.isRead(it);
   body.append(h('button', { type: 'button', class: `btn heads-got${read ? ' on' : ''}`, 'aria-pressed': String(read), onclick: () => pl.gotIt(card), html: icon('check', 20) }, h('span', {}, read ? 'Read · Mark unread' : 'Got it')));
