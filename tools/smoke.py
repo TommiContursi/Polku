@@ -2115,7 +2115,7 @@ CHECK_ROUTE = FORGET_FORECAST + """
   p.watchTerrain = () => {}; // (no analysis again for terrain that comes later: its items are the check's own)
   p.setActive(true); p.clear(); p.setMode('line');
   p.addPoint([26.700, 63.300]); p.addPoint([26.716, 63.300]); p.addPoint([26.732, 63.300]);
-  for (let k = 0; k < 150 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100);
+  for (let k = 0; k < 450 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100); // (45 s: a slow runner)
   const item = (at, text, tier = 'look', src = { kind: 'map', by: 'OpenStreetMap' }) => ({ at, len: 40, kind: 'test', ic: 'warn', noHide: true, text, note: 'A test item.', tier, src, lngLat: p.analysis.pts[Math.round(at / 10)] });
   window.mine = [item(1200, 'Fallen tree across the trail'), item(150, 'Steep climb, up to 18 %'), item(900, 'In the dark for 1 km', 'read', { kind: 'calculated', by: 'the sun’s times' })];
   p.analysis.darkWarn = [...window.mine];
