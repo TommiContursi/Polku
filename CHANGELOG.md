@@ -20,6 +20,10 @@ Polku keeps its look, but a control that does the same job now looks the same wh
 - In the layer drawer, a layer that's on keeps its green border, icon and tick, and its name is black.
 - Buttons, chips, tiles and switches shrink a little while you press them, so you know the press counted. With reduced motion, they don't.
 
+### Fixed: Polku finishes opening when a map tile fails to load ([#393](https://github.com/TommiContursi/Polku/issues/393))
+
+When the last map tile Polku waited for failed to load, for example a water depth tile while Traficom's service had trouble, Polku didn't finish opening until you moved the map. Until then your saved route, a shared route and the planner you left open didn't come back. Now Polku opens once the map has every tile it could get, and a tile that failed only leaves its piece of the map empty.
+
 ## 2026-10-22
 
 ### Fixed: red words are easier to read in dark mode ([#370](https://github.com/TommiContursi/Polku/issues/370))

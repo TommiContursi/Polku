@@ -1659,6 +1659,10 @@ renderSettingsPanel();
 if (state.weather.wind || state.weather.temp || state.weather.rain) weather.set(state.weather);
 if (state.timeline) setTimeline(true);
 requestAnimationFrame(() => { syncWxH(); document.body.classList.add('ready'); });
+// MapLibre fires `load` (and `idle`) at the end of a frame it draws once every tile is in or has failed, but a tile
+// that fails with anything but a 404 asks for no frame. When it was the last one, the load step below waited until
+// the map was moved (#393): one more frame. (The quick drawer's "No data now" comes from the same errors.)
+map.on('error', (e) => { if (e.tile) map.triggerRepaint(); });
 map.on('load', () => {
   // Start with the attribution collapsed to its (i) button on small screens (and it stays so: above).
   if (window.innerWidth < 720) $('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show');
