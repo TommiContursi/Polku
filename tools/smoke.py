@@ -6291,6 +6291,85 @@ def panels(chrome):
     return not fails
 
 
+# #257: on a desktop with the planner at the bottom, Settings and all layers (L, then More) at its every size, by mouse
+# and keys: the panel's top below the top bar, its heading and ✕ on the screen with nothing over them, its body
+# scrolling under the wheel, its ✕ closing it, and the planner as it was. Raised too high to leave them room
+# (under 320 px), they open over it.
+def panels_desktop(chrome):
+    fails = []
+    for w, h_ in ((1440, 900), (1024, 768)):
+        pg = chrome.page(w, h_, False)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"bottom"'})
+        pg.js(PLAN_TWO)
+        mouse = lambda kind, x, y, **more: pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, **more}, pg.s)
+
+        def click(x, y):
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                mouse(kind, x, y, button='none' if kind == 'mouseMoved' else 'left', buttons=1 if kind == 'mousePressed' else 0, clickCount=1)
+                time.sleep(0.05)
+            time.sleep(0.4)
+        centre = lambda s: pg.js(f"(() => {{ const r = document.querySelector({json.dumps(s)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+        if pg.js("polku.planner.layout()") != 'sheet':
+            fails.append(f'{w}x{h_}: the planner isn’t at the bottom (the check proves nothing)')
+        for st in ('peek', 'profile', 'half', 'full'):
+            pg.js(f"polku.planner.setSheetState({json.dumps(st)}); true")
+            pg.js(SETTLED)
+            before = pg.js(SHEET_STATE)
+            for pid, label in (('#settings-panel', 'Settings'), ('#layers-panel', 'all layers')):
+                name = f'{w}x{h_}, the planner at the bottom at {st}: {label}'
+                if pid == '#settings-panel':
+                    click(*centre('#btn-settings'))
+                else:
+                    # Layers in the map's column, or L where the planner hides it; More once the drawer is open
+                    if pg.js("!!document.getElementById('btn-layers').offsetParent && getComputedStyle(document.getElementById('map-ctrls')).visibility !== 'hidden'"):
+                        click(*centre('#btn-layers'))
+                    else:
+                        for event in ('rawKeyDown', 'char', 'keyUp'):
+                            pg.c.send('Input.dispatchKeyEvent', {'type': event, 'key': 'l', 'code': 'KeyL', 'windowsVirtualKeyCode': 76, **({'text': 'l'} if event == 'char' else {})}, pg.s)
+                    if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const q = document.querySelector('#quick-layers .qt-more'); q && q.offsetParent && document.querySelector('#quick-layers').classList.contains('open') ? requestAnimationFrame(() => requestAnimationFrame(() => ok(true))) : Date.now() - t0 > 5000 ? ok(false) : setTimeout(go, 100); }; go(); })"):
+                        fails.append(f'{name}: the layer drawer did not open')
+                        continue
+                    pg.js(SETTLED)
+                    pg.js("document.querySelector('#quick-layers .qt-more').scrollIntoView({ block: 'nearest' }), true")  # (below the drawer's fold over a raised planner)
+                    time.sleep(0.2)
+                    click(*centre('#quick-layers .qt-more'))
+                r = pg.js(PANEL_BOX + f"({json.dumps(pid)})")
+                if not r['open']:
+                    fails.append(f'{name} did not open')
+                    continue
+                if r['top'] < r['bar'] - 0.5:
+                    fails.append(f"{name}: its top at {r['top']:.0f} px, above the top bar’s bottom ({r['bar']:.0f} px)")
+                if r['bottom'] > h_ + 0.5 or r['bottom'] - r['top'] < 120:
+                    fails.append(f"{name}: at y {r['top']:.0f}–{r['bottom']:.0f} px on a {h_} px screen")
+                if not r['xin']:
+                    fails.append(f"{name}: its ✕ off the screen, at {r['x'][1]:.0f} px")
+                elif not r['xfree']:
+                    fails.append(f'{name}: something lies over its ✕')
+                if not r['hfree']:
+                    fails.append(f'{name}: its heading is off the screen or under something')
+                x, top, bottom = r['body']
+                if r['more'] > 1 and bottom - top > 60:
+                    mouse('mouseWheel', x, (top + bottom) / 2, deltaX=0, deltaY=400)
+                    time.sleep(0.4)
+                    if pg.js(f"document.querySelector('{pid} .panel-body').scrollTop") < 20:
+                        fails.append(f'{name}: the wheel over its body did not scroll it')
+                if r['xin'] and r['xfree']:
+                    click(*r['x'])
+                    if pg.js(f"!document.querySelector('{pid}').hidden"):
+                        fails.append(f'{name}: a click on its ✕ did not close it')
+                pg.js(f"document.querySelector('{pid}').hidden || document.querySelector('{pid} .panel-close').click(), true")
+                time.sleep(0.2)
+                pg.js(SETTLED)
+                after = pg.js(SHEET_STATE)
+                if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
+                    fails.append(f"{name}: the planner {after['st']} {after['h']:.0f} px after it closed, not {before['st']} {before['h']:.0f} px")
+        fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Settings and all layers over a desktop's bottom planner (#257)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # The sport pill's menu (#245): a mouse that hovers then clicks, a second click, Escape, a click outside; touch; the keyboard
 ACTS = """(() => { const b = document.querySelector('#activity-bar .act-current'), r = b.getBoundingClientRect();
   return { open: !document.querySelector('#activity-bar .act-menu').hidden, expanded: b.getAttribute('aria-expanded'),
@@ -9572,7 +9651,7 @@ GROUPS = [
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), words at 4.5:1 (#376), Plan in green, a press that answers'),
-    ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
+    ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),

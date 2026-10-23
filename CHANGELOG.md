@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))
+
+On a desktop with the planner at the bottom and pulled up high, **Settings** opened with no height, only its **✕** showing, and **More** in the layer drawer did the same to all layers, under the planner. Now, when the planner leaves them less than a small panel's room above it, they open over the planner at their full height, as they do on phones.
+
 ### Check says how serious and how sure, and shows each warning on the route ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 Heads-up is now Check's three groups, and each warning is marked where it is on the route.

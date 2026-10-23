@@ -522,7 +522,7 @@ $('#planner').addEventListener('sheetrest', syncPlannerPadding);
 // covers the sheet instead (#240). The sheet keeps its size either way.
 function placePanels() {
   const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
-  document.body.classList.toggle('panels-over', phoneMQ.matches && sheet > 0 && innerHeight - sheet - 12 - 64 < 320);
+  document.body.classList.toggle('panels-over', sheet > 0 && innerHeight - sheet - 12 - 64 < 320); // (a phone's sheet, a desktop's bottom planner: #257)
 }
 
 const DANGER_TYPES = Object.entries(LIPAS_TYPES).filter(([, t]) => t.danger).map(([k]) => +k);
