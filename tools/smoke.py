@@ -443,6 +443,8 @@ def trails(chrome):
 # (a 390 phone's 195 × 422) it stays on the screen less 8 px each side and under the top bar, with nothing over it (the
 # map's buttons step aside; the scale and the credits are under it), its words in it, and every button in it reachable
 # by scrolling the card; ✕ closes it and the buttons are back. At 390 × 844 it sits beside the buttons, which stay.
+# CARD_FIT(sel, acts) measures the card that sel finds (the element that scrolls) once it's open and still; `warnfix`
+# measures a warning's card with it too.
 CARD_TAP = """(() => {
   const m = polku.map, W = innerWidth, H = innerHeight, top = document.querySelector('.topbar').getBoundingClientRect().bottom;
   for (const f of m.queryRenderedFeatures({ layers: ['path-osm-ground'] }))
@@ -452,20 +454,20 @@ CARD_TAP = """(() => {
     }
   return null;
 })()"""
-CARD_FIT = """(async () => {
+CARD_FIT = """(async (sel, acts) => {
   const errs = [], frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const card = () => document.querySelector('.polku-popup .insp');
+  const card = () => document.querySelector(sel);
   // open and still: the same box twice in a row, two frames apart, the map still (the card moves the map into view)
   let a = null, same = 0;
   for (let k = 0; k < 60 && same < 2; k++) {
     await frames();
-    const b = card() && card().parentElement.getBoundingClientRect();
+    const b = card() && card().closest('.maplibregl-popup-content').getBoundingClientRect();
     same = a && b && Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.height - b.height) < 1 && !polku.map.isMoving() ? same + 1 : 0;
     a = b;
   }
   const c = card();
   if (!c) return { errs: ['no card opened'] };
-  const pop = c.closest('.maplibregl-popup'), R = c.parentElement.getBoundingClientRect(), W = innerWidth, H = innerHeight; // (the card, not its tip)
+  const pop = c.closest('.maplibregl-popup'), R = c.closest('.maplibregl-popup-content').getBoundingClientRect(), W = innerWidth, H = innerHeight; // (the card, not its tip)
   const box = (r) => `x ${Math.round(r.left)}–${Math.round(r.right)}, y ${Math.round(r.top)}–${Math.round(r.bottom)}`;
   if (R.left < 7.5 || R.right > W - 7.5 || R.top < document.querySelector('.topbar').getBoundingClientRect().bottom || R.bottom > H - 7.5)
     errs.push(`the card at ${box(R)} on a ${W} × ${H} screen`);
@@ -482,16 +484,19 @@ CARD_FIT = """(async () => {
   }
   // each button and link, scrolled to as a person scrolls the card (the card only)
   for (const b of c.querySelectorAll('button, a')) {
+    if (!b.getClientRects().length) continue; // (not shown)
     const r0 = b.getBoundingClientRect(), r1 = c.getBoundingClientRect();
     if (r0.bottom > r1.bottom) c.scrollTop += r0.bottom - r1.bottom + 4; else if (r0.top < r1.top) c.scrollTop -= r1.top - r0.top + 4;
     await frames();
     const r = b.getBoundingClientRect(), o = over((r.left + r.right) / 2, (r.top + r.bottom) / 2);
     if (o || r.left < R.left || r.right > R.right) errs.push(`${b.textContent.trim().slice(0, 40)}: ${o ? `${o} over it` : `out of the card at ${box(r)}`}`);
   }
-  if (!c.querySelector('.insp-actions button')) errs.push('no Route from here, Add to route or Avoid');
-  const x = pop.querySelector('.maplibregl-popup-close-button').getBoundingClientRect();
+  if (acts && !c.querySelector('.insp-actions button')) errs.push('no Route from here, Add to route or Avoid');
+  c.scrollTop = 0; // (a card's ✕ scrolls with it)
+  await frames();
+  const x = [...pop.querySelectorAll('.maplibregl-popup-close-button, .way-x')].find((e) => e.getClientRects().length).getBoundingClientRect();
   return { errs, shown, close: [(x.left + x.right) / 2, (x.top + x.bottom) / 2] };
-})()"""
+})"""
 
 
 def trail_card(chrome):
@@ -507,7 +512,7 @@ def trail_card(chrome):
             fails.append(f'{name}: no trail from the recorded tile on the screen')
         else:
             pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
-            r = pg.js(CARD_FIT)
+            r = pg.js(f"({CARD_FIT})('.polku-popup .insp', true)")
             fails += [f'{name}: {e}' for e in r['errs']]
             if w == 390 and not r.get('shown'):
                 fails.append(f"{name}: the map's buttons hidden for a card that fits beside them")
@@ -2905,6 +2910,26 @@ def warnfix(chrome):
             pg.js("(() => { polku.planner.cards.close(); return true; })()")
             time.sleep(0.4)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # (#435) at 200 % (a 390 phone's 195 × 422), the planner put away: the triangle's card on the screen less 8 px each
+    # side with nothing over it (the map's buttons step aside while it's open, CARD_FIT), and they're back after its ✕
+    pg = chrome.page(195, 422, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        pg.js(f"(async () => {{ const errs = []; {CHECK_ROUTE} return true; }})()", timeout=150000)
+        pg.js("(async () => { const p = polku.planner; p.cards.close(); p.setActive(false); await new Promise((r) => setTimeout(r, 500)); return true; })()")
+        at = pg.js(f"""(async () => {{ const p = polku.planner, m = polku.map; m.jumpTo({{ center: p.analysis.pts[30], zoom: 15 }});
+            const q = m.project(p.analysis.pts[30]); m.jumpTo({{ center: m.unproject([q.x + (m.getCanvas().clientWidth / 2 - 58), q.y]) }});
+            await new Promise((ok) => m.once('idle', ok)); return {WARNFIX_AT}(p.analysis.pts[30]); }})()""")
+        pg.quick_tap(*at)
+        r = pg.js(f"({CARD_FIT})('.card-float .pl-way.card', false)")
+        fails += [f"195x422 (200 %), the planner put away, the triangle's card: {e}" for e in r['errs']]
+        if r.get('close'):
+            pg.quick_tap(*r['close'])
+            if not pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!polku.planner.cards.box && getComputedStyle(document.querySelector('.map-ctrls')).visibility !== 'hidden'))))"):
+                fails.append("195x422 (200 %), the planner put away: after the triangle's card's ✕, the card still open or the map's buttons not back")
+        fails += [f'195x422 (200 %) console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
     # (13) 360 × 740: ‹ › in sight on a card with rows
@@ -9633,7 +9658,7 @@ GROUPS = [
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
     ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network); Not checked with Retry; the groups, What Polku looked at and the badge'),
-    ('warnfix', [warnfix], 'the review of #416: the row, read marks across routes and answers, a card through a new analysis, markers clear of points and presses, Retry, 360 × 740, 200 %, Escape'),
+    ('warnfix', [warnfix], 'the review of #416: the row, read marks across routes and answers, a card through a new analysis, markers clear of points and presses, Retry, 360 × 740, 200 %, Escape, and the triangle\'s card at 200 % with the planner put away, clear of the map\'s buttons (#435)'),
     ('onroute', [onroute], 'the warning on the route (25d part 3): the item\'s card from Check, ‹ › along the route, Back, Retry, a tap on the map (mocked sources, straight legs)'),
     ('detour', [detour], 'a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)'),
     ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),

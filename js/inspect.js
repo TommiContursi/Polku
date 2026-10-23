@@ -217,7 +217,7 @@ const INSP_LEAST = 258;
 
 // the popups open over the map's column; it hides while there's one
 const overIt = new Set();
-function overColumn(popup, on) {
+export function overColumn(popup, on) {
   if (on && !overIt.has(popup)) popup.once('close', () => overColumn(popup, false));
   overIt[on ? 'add' : 'delete'](popup);
   document.body.classList.toggle('card-over', overIt.size > 0);
