@@ -2530,10 +2530,10 @@ def onroute(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # a desktop, by mouse: beside the panel at its box, no ‹ ›, Escape closes it
+    # a desktop, by mouse: beside the panel at its box, above the timeline, no ‹ ›, Escape closes it
     pg = chrome.page(1440, 900, False)
     try:
-        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
+        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
         errs, at = pg.js(f"{ONROUTE_OPEN}('.tier-read .warn-row', 'Road works')", timeout=90000)
         fails += errs
         if at:
@@ -2545,6 +2545,9 @@ def onroute(chrome):
               if (el.getAttribute('aria-current') !== 'true') errs.push('the box isn\\'t lit while its card is open');
               const beside = document.querySelector('.card-beside .card'), r = beside && beside.getBoundingClientRect(), pr = p.panel.getBoundingClientRect(), er = el.getBoundingClientRect();
               if (!beside) errs.push('the card isn\\'t beside the panel');
+              const wx = document.getElementById('wx-bar'), wr = wx && wx.offsetParent ? wx.getBoundingClientRect() : null;
+              if (!wr) errs.push('(the test) no timeline open');
+              else if (beside && r.bottom > wr.top + 1 && r.right > wr.left && r.left < wr.right) errs.push(`the card runs under the timeline: its bottom at ${Math.round(r.bottom)}, the timeline's top at ${Math.round(wr.top)}`);
               else if (r.left < pr.right || r.left > pr.right + 24 || Math.abs(r.top - er.top) > 40) errs.push(`the card at ${Math.round(r.left)},${Math.round(r.top)}, not beside the panel at its box (${Math.round(pr.right)},${Math.round(er.top)})`);
               return errs;
             })()""")
