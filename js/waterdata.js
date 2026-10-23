@@ -44,6 +44,7 @@ const lateArrived = () => { lateCount++; for (const fn of late) fn(); };
 // areas), one Overpass query per z11 tile (about 10 × 10 km), kept a week.
 const HZ = 11;
 const hazTiles = new Map(); // "x/y" -> Promise<{ points, areas }>
+const failedHaz = new Set(); // the ones that didn't answer, asked again in a couple of minutes (or on Retry)
 function hazTile(x, y) {
   const id = `${x}/${y}`;
   if (hazTiles.has(id)) return hazTiles.get(id);
@@ -65,9 +66,15 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
     }
     return { points, areas };
   }, { race: true });
-  p.catch(() => setTimeout(() => hazTiles.delete(id), 120e3)); // ask again in a couple of minutes
+  p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) hazTiles.delete(id); failedHaz.delete(id); }, 120e3); }); // ask again in a couple of minutes
   hazTiles.set(id, p);
   return p;
+}
+/** Retry: ask again now for what didn't answer, and wait for it as long as the first time. */
+export function forgetWaterFailures() {
+  for (const id of failedHaz) hazTiles.delete(id);
+  failedHaz.clear();
+  for (const k of Object.keys(slowUntil)) delete slowUntil[k];
 }
 function hazTilesIn([w, s, e, n], max) {
   const [x0, y0] = lonLatToTile(w, n, HZ).map(Math.floor);

@@ -129,8 +129,8 @@ export class SafetyLayers {
     this.timer = setTimeout(() => this.update(), delay);
   }
 
-  inFinland([lng, lat] = this.map.getCenter().toArray()) {
-    return lng > 19 && lng < 32 && lat > 59.4 && lat < 70.3;
+  inFinland(ll = this.map.getCenter().toArray()) {
+    return inFinland(ll);
   }
 
   update() {
@@ -529,9 +529,13 @@ export class SafetyLayers {
       }
       flush(a.pts.length - 1);
     }
+    out.answeredAt = live.at; // when Fintraffic answered (What Polku looked at says so)
     return out.sort((x, y) => x.at - y.at);
   }
 }
+
+/** Fintraffic's data covers Finland (roughly: the box around it). */
+export const inFinland = ([lng, lat]) => lng > 19 && lng < 32 && lat > 59.4 && lat < 70.3;
 
 const shortTitle = (t) => (t || '').replace(/\.\s*$/, '').replace(/\s+/g, ' ').slice(0, 90);
 export const fmtAadt = (v) => (Math.round(v / 100) * 100).toLocaleString('fi-FI');

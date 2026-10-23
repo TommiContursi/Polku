@@ -6,15 +6,15 @@ import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } f
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
 import { retryFailed as retryTerrainTiles } from './dem.js';
-import { detailsAlong } from './trails.js';
+import { detailsAlong, forgetFailures as forgetTrailFailures } from './trails.js';
 import { iconUrl } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
-import { onWaterData, prefetchWater } from './waterdata.js';
+import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
-import { winterAlong, windChill, WINTER_TEXT } from './winter.js';
+import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
@@ -27,6 +27,7 @@ import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
 import { swipeSheet, SWIPE, dvh } from './sheet.js';
+import { inFinland } from './safety.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
@@ -228,11 +229,7 @@ export class Planner {
     map.on('touchstart', 'route-casing', (e) => this.onLinePress(e));
     map.on('zoom', () => this.fitGhosts());
     // a source the water router waited for in vain has answered: route those legs again
-    onWaterData(() => {
-      let again = false;
-      for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; again = true; }
-      if (again) this.routeAll();
-    });
+    onWaterData(() => this.retryWater({ ask: false }));
     // back online: the terrain that didn't load, now
     addEventListener('online', () => { if (this.analysis && this.analysis.terrain && this.analysis.terrain.retry) this.retryTerrain(this.analysis, 0, true); });
     // names of roads come with the tiles: when new ones arrive, the list may know more
@@ -1981,6 +1978,15 @@ export class Planner {
     if (n) this.routeAll();
   }
 
+  // Legs on the water routed without a source that didn't answer: route them again. Retry asks the
+  // sources again now; a late answer (`ask: false`) has come in already.
+  retryWater({ ask = true } = {}) {
+    if (ask) forgetWaterFailures();
+    let n = 0;
+    for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; n++; }
+    if (n) this.routeAll();
+  }
+
   mergedLine() {
     const coords = [];
     const attrs = [];
@@ -2263,16 +2269,14 @@ export class Planner {
   departLabel() { return (this.departChoices()[this.startOffsetH] || { label: 'Now' }).label; }
 
   // Heads-up from the water router (water.js events): shipping lanes and
-  // harbours on the way, keep-clear zones it had to pass, rough water, and any
-  // source that didn't answer. Positions along the whole route.
+  // harbours on the way, keep-clear zones it had to pass, rough water.
+  // Positions along the whole route. (A source that didn't answer: notChecked().)
   waterWarnings() {
     const out = [];
-    const missing = new Set();
     const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' };
     this.legs.forEach((leg, i) => {
       const wr = leg.mode === 'water' && leg.status === 'ok' && leg.result && leg.result.water;
       if (!wr) return;
-      for (const m of wr.missing || []) missing.add(m);
       const base = this.lengthTo(i);
       for (const e of wr.events || []) {
         const at = base + e.at, len = e.len;
@@ -2288,7 +2292,6 @@ export class Planner {
         }
       }
     });
-    if (missing.size) out.push({ at: 0, len: 0, kind: 'water', noHide: true, noAvoid: true, text: `Not checked on the water: ${[...missing].join(', ')} didn’t answer`, note: 'routed without it; Retry by moving a point' });
     return out;
   }
 
@@ -2303,13 +2306,16 @@ export class Planner {
     a.trailWarn = trailWarnings(a, opt());
     this.renderWarnings();
     if (this.routeSports().every(isWater)) return;
-    try {
-      if (!(await detailsAlong(a)) || this.analysis !== a) return;
-      a.trailWarn = trailWarnings(a, opt());
-      a.trailMore = true; // width and points from OSM are in
-      if (this.colorMode === 'width' || this.colorMode === 'vis') this.renderAnalysis();
-      else { this.renderWarnings(); this.renderBreakdown(); }
-    } catch { /* the router's tags still stand */ }
+    let more = false, failed = false;
+    try { more = await detailsAlong(a); } catch { failed = true; } // the router's tags still stand
+    if (this.analysis !== a) return;
+    // where the tiles didn't answer: Not checked, until they do (25d part 2)
+    a.trailError = failed ? [[0, a.along[a.along.length - 1]]] : a.tdLost || null;
+    if (!more) { this.renderWarnings(); return; }
+    a.trailWarn = trailWarnings(a, opt());
+    a.trailMore = true; // width and points from OSM are in
+    if (this.colorMode === 'width' || this.colorMode === 'vis') this.renderAnalysis();
+    else { this.renderWarnings(); this.renderBreakdown(); }
   }
 
   // ---------------------------------------------------------------- winter on the route (15b)
@@ -2333,9 +2339,11 @@ export class Planner {
   // and Heads-up again with them
   async loadWinterAlong(a) {
     a.winterLoading = true;
-    let cls = null;
-    try { cls = await winterAlong(a); } catch { /* without: by surface only */ }
-    if (this.analysis !== a || !cls || !a.wind) return;
+    let cls = null, failed = false;
+    try { cls = await winterAlong(a); } catch { failed = true; } // without: by surface only
+    if (this.analysis !== a) return;
+    a.winterError = failed || (cls && cls.lost > 0); // Not checked until they answer (25d part 2)
+    if (!cls || !a.wind) { this.renderWarnings(); return; }
     a.winterCls = cls;
     const snow = this.snowOf(a, a.wind);
     const t = this.timed(a, a.wind.head, snow);
@@ -2534,7 +2542,6 @@ export class Planner {
   async loadWind(a) {
     const opt = this.timeOpt();
     const startSec = this.startSec();
-    a.windError = false;
     a.darkWarn = this.darkWarnings(a); // the departure may have moved (without the wind's times, these do)
     try {
       let w = await windAlong(a.pts, a.along, a.tAt, startSec);
@@ -2544,6 +2551,7 @@ export class Planner {
       t = this.timed(a, w.head, snow);
       if (this.analysis !== a) return;
       a.wind = { ...w, startSec };
+      a.windError = false; // (a failure stays until the forecast answers: 25d part 2)
       a.timeWind = t.total;
       a.tAtWind = t.tAt;
       a.waits = t.waits; // nights timed with the wind's arrival times
@@ -2558,15 +2566,25 @@ export class Planner {
     this.loadHazards(a);
   }
 
-  // Road works, incidents, slippery roads and busy roads along the route.
+  // Road works, incidents, slippery roads and busy roads along the route. No answer: Not checked, until
+  // Fintraffic answers (25d part 2), where it counts: a route on land in Finland.
   async loadHazards(a) {
     if (!this.app.hazards) return;
     try {
       const hz = await this.app.hazards(a, { activity: this.mainSport(), startSec: this.startSec() }); // each leg's own sport (#71)
       if (this.analysis !== a) return;
       a.hazards = hz;
-      this.renderWarnings();
-    } catch { /* keep the static warnings */ }
+      a.hazardsAt = hz.answeredAt || Date.now();
+      a.hazardsError = false;
+    } catch {
+      if (this.analysis !== a) return;
+      a.hazardsError = this.fintrafficHere(a); // (the items it gave before, if any, stay)
+    }
+    this.renderWarnings();
+  }
+  // whether Fintraffic's road works and incidents count for this route: some of it on land in Finland
+  fintrafficHere(a) {
+    return !!this.app.hazards && a.pts.some((q, i) => inFinland(q) && !isWater((a.attr[i] && a.attr[i].sport) || a.activity));
   }
 
   // ---------------------------------------------------------------- map interaction
@@ -5507,60 +5525,154 @@ export class Planner {
     });
   }
 
+  // ---------------------------------------------------------------- Check's groups (25d part 2)
+  // Every Heads-up item in Check's groups: Read before you go and Worth a look, each item's own (set where it's made;
+  // one without goes to Read, so a forgotten one looks more serious, never less), in order along the route; Not
+  // checked, the sources that didn't answer (notChecked()); and how many of each kind you've hidden.
+  headsUp(a = this.analysis) {
+    const out = { read: [], look: [], not: [], hidden: new Map() };
+    if (!a) return out;
+    // a stand-in for a leg not routed yet is its own item, not a Straight line too
+    const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.iceWarnings(a), ...this.routerWarnings()].sort((x, y) => x.at - y.at);
+    const hidden = hiddenKinds();
+    for (const w of all) {
+      const k = hideKind(w);
+      if (k && hidden[k.key]) { out.hidden.set(k.key, (out.hidden.get(k.key) || 0) + 1); continue; }
+      if (w.tier !== 'read' && w.tier !== 'look') console.error(`Heads-up item without a group: ${w.text}`);
+      (w.tier === 'look' ? out.look : out.read).push(w);
+    }
+    out.not = this.notChecked(a);
+    return out;
+  }
+
+  // The router's own items: legs not routed yet (drawn as straight lines meanwhile), and legs Valhalla stood in for.
+  routerWarnings() {
+    const out = [];
+    const span = (pred) => {
+      const i0 = this.legs.findIndex(pred), i1 = this.legs.findLastIndex(pred);
+      return { at: this.lengthTo(i0), len: this.lengthTo(i1 + 1) - this.lengthTo(i0) };
+    };
+    const unrouted = (l) => l.status === 'error' || l.status === 'waiting';
+    const n = this.legs.filter(unrouted).length;
+    if (n) {
+      const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
+      const waiting = w && (w.reason === 'limit'
+        ? `The routing service asked for a short pause; ${n === 1 ? 'it follows' : 'they follow'} on their own`
+        : `${w.own ? 'Your routing server' : 'The routing service'} isn’t answering — trying again at ${clock(w.until)}${w.own ? ' (Settings → Routing server)' : ''}`);
+      out.push({ ...span(unrouted), kind: 'router', noHide: true, noAvoid: true, text: `${n === 1 ? 'One leg isn’t' : `${n} legs aren’t`} routed yet`, note: waiting || `Drawn as straight line${n === 1 ? '' : 's'}`,
+        tier: 'read', src: { kind: 'router', by: 'the routing service' }, retry: () => this.retryFailed() });
+    }
+    const valhalla = (l) => l.status === 'ok' && l.result && l.result.provider === 'valhalla';
+    const v = this.legs.filter(valhalla).length;
+    if (v) {
+      out.push({ ...span(valhalla), kind: 'router', noHide: true, noAvoid: true, text: `${v === 1 ? 'One leg' : `${v} legs`} routed by Valhalla`,
+        note: 'brouter.de asked for a pause, so the OpenStreetMap routing service stood in. It may take ways marked private, and doesn’t say which: Heads-up lists those found on the map.',
+        tier: 'look', src: { kind: 'router', by: 'Valhalla, on FOSSGIS servers', url: 'https://valhalla.github.io/valhalla/' }, fixUrl: FIX_THE_MAP, useBrouter: () => this.rerouteWithBrouter() });
+    }
+    return out;
+  }
+
+  // Not checked: each source that didn't answer for this route ({ key, by, text, note, retry }), and where it left
+  // a gap when that's known (`ranges` of [at, len], the first as `at` and `len`; null: the whole route). Each stays
+  // on the analysis until its source answers, so a late note can't replace it (#265); places first, along the route.
+  notChecked(a) {
+    const out = [], end = a.along[a.along.length - 1];
+    const place = (ranges) => (ranges && ranges.length ? { ranges, at: ranges[0][0], len: ranges[0][1] } : { ranges: null });
+    const ter = a.terrain;
+    if (ter) {
+      const onWater = (i) => (a.attr[i] || {}).mode === 'water' && !((a.attr[i] || {}).tags || {}).portage;
+      out.push({ key: 'terrain', by: 'the terrain model', text: terrainTitle(ter),
+        note: `${ter.all ? `${a.ways.some(([k]) => k === 'water') ? 'On land the time' : 'The time'} is by distance only, and the climbing isn’t known` : 'The climbing and the time there are estimates'}.${ter.retry && ter.next ? ` Trying again at ${clock(ter.next)}.` : ''}`,
+        ...place(!ter.all && a.eleGap ? runsAlong(a.along, (i) => a.eleGap[i] && !onWater(i)) : null),
+        retry: ter.retry ? async () => { await this.retryTerrain(a, 0, true); if (this.analysis === a) toast('The terrain still didn’t load: Polku keeps trying'); } : null });
+    }
+    // the water router's sources: the legs routed without each
+    const lost = new Map();
+    this.legs.forEach((l, i) => {
+      const wr = l.mode === 'water' && l.result && l.result.water; // (being routed again: until the new answer)
+      for (const m of (wr && wr.missing) || []) { if (!lost.has(m)) lost.set(m, []); lost.get(m).push([this.lengthTo(i), this.lengthTo(i + 1) - this.lengthTo(i)]); }
+    });
+    for (const [m, legs] of lost) {
+      const [text, note] = WATER_LOST[m] || [`${m} didn’t answer on the water`, 'Routed without it.'];
+      const ranges = legs.reduce((r, [at, len]) => { const p = r[r.length - 1]; if (p && at - (p[0] + p[1]) < 1) p[1] = at + len - p[0]; else r.push([at, len]); return r; }, []);
+      out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(ranges), retry: () => this.retryWater() });
+    }
+    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: () => this.loadHazards(a) });
+    if (a.trailError) {
+      const sum = a.trailError.reduce((t, [, len]) => t + len, 0), whole = sum >= end - 20;
+      out.push({ key: 'trail', by: 'OpenStreetMap, through Overpass', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
+        note: 'Overpass didn’t answer: fallen trees, fords, gates and how wide or wet the way is aren’t known there.', ...place(whole ? null : a.trailError),
+        retry: () => { forgetTrailFailures(); return this.loadTrail(a); } });
+    }
+    if (a.winterError) out.push({ key: 'winter', by: 'OpenStreetMap, through Overpass', text: 'Winter ways didn’t load', note: 'Overpass didn’t answer: ski tracks, and ways closed or not ploughed in winter, aren’t known.', ranges: null, retry: () => { forgetWinterFailures(); return this.loadWinterAlong(a); } });
+    if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: () => this.loadWind(a) });
+    const at = (x) => (x.ranges ? x.at : Infinity);
+    return out.sort((x, y) => (at(x) === at(y) ? 0 : at(x) < at(y) ? -1 : 1));
+  }
+
+  // What Polku looked at for this route, at Check's end: each source and whether it answered ('ok', with its name and
+  // time), didn't ('bad', what's missing), is still being asked ('wait') or doesn't apply here ('na').
+  lookedAt(a = this.analysis) {
+    if (!a) return [];
+    const rows = [], row = (what, by, state) => rows.push({ what, by, state });
+    const onWater = (l, i) => l.mode === 'water' || isWater(this.legSport(i));
+    const water = this.legs.some(onWater), land = !this.legs.length || this.legs.some((l, i) => !onWater(l, i));
+    const end = a.along[a.along.length - 1];
+    if (land) {
+      const te = a.trailError, gap = te ? te.reduce((t, [, len]) => t + len, 0) : 0;
+      row('Trail details along the route', te ? (gap >= end - 20 ? 'didn’t load' : `missing for ${fmtDist(gap)}`) : 'OpenStreetMap', te ? 'bad' : 'ok');
+      const ter = a.terrain;
+      row('Heights and climbs', ter ? (ter.all ? (ter.retry ? 'didn’t load' : 'none here') : `missing for ${fmtDist(ter.missing)}`) : 'the terrain model', ter ? 'bad' : 'ok');
+      if (this.fintrafficHere(a)) row('Road works and incidents', a.hazardsError ? 'Fintraffic didn’t answer' : a.hazards ? `Fintraffic, ${clock(a.hazardsAt)}` : 'asking Fintraffic…', a.hazardsError ? 'bad' : a.hazards ? 'ok' : 'wait');
+      if (a.snow) row('Winter ways', a.winterError ? 'didn’t load' : a.winterCls ? 'OpenStreetMap' : 'loading…', a.winterError ? 'bad' : a.winterCls ? 'ok' : 'wait');
+    }
+    const wr = this.legs.filter((l) => l.mode === 'water' && l.result && l.result.water).map((l) => l.result.water);
+    const asked = (k) => wr.some((w) => (w.checked || {})[k]), missing = (m) => wr.some((w) => (w.missing || []).includes(m));
+    const source = (what, k, name) => row(what, !asked(k) ? 'not used for this route' : missing(name) ? `${name} didn’t answer` : name, !asked(k) ? 'na' : missing(name) ? 'bad' : 'ok');
+    if (water) {
+      source('Rocks and shoals', 'hazards', 'OpenStreetMap');
+      source('Fairways and marks', 'fairways', 'Väylävirasto');
+    }
+    // the forecast: the weather on the way, and on the water the wind for the waves
+    const windLost = a.windError || missing('the wind forecast'), startSec = a.wind ? a.wind.startSec : this.startSec();
+    row(land ? 'Weather on the way' : 'Wind and waves', windLost ? 'Open-Meteo didn’t answer' : a.wind ? `Open-Meteo, ${clock(startSec * 1000)}` : 'loading…', windLost ? 'bad' : a.wind ? 'ok' : 'wait');
+    const sun = sunTimes(startSec, this.points[0] || a.pts[0]);
+    row('Daylight', sun.set ? `sunset ${clock(sun.set * 1000)}` : sun.day === 'polar-day' ? 'the sun doesn’t set' : 'the sun doesn’t rise', 'ok');
+    if (water) row('Depths', 'shown on the map, never used for routes', 'na');
+    else row('Water hazards', 'no water on this route', 'na');
+    return rows;
+  }
+
   renderWarnings() {
     const a = this.analysis;
     const box = this.els.warnings;
     box.innerHTML = '';
     if (!a) return;
-    const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.iceWarnings(a)].sort((x, y) => x.at - y.at);
-    // the kinds you've hidden stay out (and are listed at the end, to bring back)
-    const hidden = hiddenKinds(), hiddenHere = new Map();
-    const shown = all.filter((w) => {
-      const k = hideKind(w);
-      if (!k || !hidden[k.key]) return true;
-      hiddenHere.set(k.key, (hiddenHere.get(k.key) || 0) + 1);
-      return false;
-    });
-    const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
-    const ter = a.terrain;
-    const count = shown.length + (unrouted ? 1 : 0) + (ter ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
-    const nHidden = all.length - shown.length;
-    this.setSection('warnings', { count: count || '', empty: !count && !nHidden, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed`
-      : ter ? terrainTitle(ter) + (shown.length ? ` · +${shown.length} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '')
-        : shown.length ? shown[0].text + (shown.length > 1 ? ` · +${shown.length - 1} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '') : nHidden ? `${nHidden} hidden` : '' });
-    if (unrouted) {
-      const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
-      const waiting = w && (w.reason === 'limit'
-        ? `The routing service asked for a short pause; ${unrouted === 1 ? 'it follows' : 'they follow'} on their own`
-        : `${w.own ? 'Your routing server' : 'The routing service'} isn’t answering — trying again at ${new Date(w.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${w.own ? ' (Settings → Routing server)' : ''}`);
+    // (until Check's groups are drawn: today's list, from headsUp())
+    const H = this.headsUp(a), hidden = hiddenKinds(), hiddenHere = H.hidden;
+    const shown = [...H.read, ...H.look].sort((x, y) => x.at - y.at);
+    const nHidden = [...hiddenHere.values()].reduce((t, n) => t + n, 0);
+    const count = shown.length + H.not.length;
+    const first = shown.find((w) => w.kind === 'router' && w.retry) || H.not[0] || shown[0];
+    this.setSection('warnings', { count: count || '', empty: !count && !nHidden, summary: first ? first.text + (count > 1 ? ` · +${count - 1} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '') : nHidden ? `${nHidden} hidden` : '' });
+    for (const x of H.not) {
       box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${unrouted === 1 ? 'One leg isn’t' : `${unrouted} legs aren’t`} routed yet</b><span>${waiting || `Drawn as straight line${unrouted === 1 ? '' : 's'}`}</span></span>` }),
-        h('button', { type: 'button', class: 'btn', title: 'Ask the router again', onclick: () => this.retryFailed() }, 'Retry')));
+        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${escapeHtml(x.text)}</b><span>${escapeHtml(x.note)}</span></span>` }),
+        x.retry ? h('button', { type: 'button', class: 'btn', title: `Ask ${x.by} again`, onclick: () => x.retry() }, 'Retry') : null));
     }
-    if (ter) {
-      const next = ter.retry && ter.next ? ` · trying again at ${new Date(ter.next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
-      box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${terrainTitle(ter)}</b><span>${ter.all ? `${a.ways.some(([k]) => k === 'water') ? 'On land the time' : 'The time'} is by distance only, and the climbing isn’t known` : 'The climbing and the time there are estimates'}${next}</span></span>` }),
-        ter.retry ? h('button', {
-          type: 'button', class: 'btn', title: 'Load the terrain again',
-          onclick: async () => {
-            await this.retryTerrain(a, 0, true);
-            if (this.analysis === a) toast('The terrain still didn’t load: Polku keeps trying');
-          },
-        }, 'Retry') : null));
-    }
-    const byValhalla = this.legs.filter((l) => l.status === 'ok' && l.result && l.result.provider === 'valhalla').length;
-    if (byValhalla) {
-      box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('info', 16)}<span class="li-main"><b>${byValhalla === 1 ? 'One leg' : `${byValhalla} legs`} routed by Valhalla</b><span>brouter.de asked for a pause, so the OpenStreetMap routing service stood in. It may take ways marked private, and doesn’t say which: Heads-up lists those found on the map. Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> on FOSSGIS servers · <a href="${FIX_THE_MAP}" target="_blank" rel="noopener">fix the map</a></span></span>` }),
-        h('button', { type: 'button', class: 'btn', title: 'Route these legs with BRouter (its trail profiles) once it’s free', onclick: () => this.rerouteWithBrouter() }, 'Use BRouter')));
-    }
-    if (!all.length) return;
+    if (!shown.length && !hiddenHere.size) return;
     const KIND_ICON = { roadwork: 'warn', incident: 'warn', roadcond: 'warn', busy: 'warn', dark: 'moon' };
     // where along: in metres on a short route ("at 40 m"), else "at km 12.3"
     const atKm = (m) => (m < 10 ? 'the start' : a.along[a.along.length - 1] < 2000 ? `${Math.round(m / 10) * 10} m` : `km ${(m / 1000).toFixed(1)}`);
     for (const w of shown.slice(0, 40)) {
+      if (w.kind === 'router') { // the router's own: Retry, or Use BRouter
+        box.append(h('div', { class: 'li-row kind-route' },
+          h('div', { class: 'li', html: `${icon(w.retry ? 'warn' : 'info', 16)}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${escapeHtml(w.note)}${w.src.url ? ` Routing: <a href="${w.src.url}" target="_blank" rel="noopener">Valhalla</a> on FOSSGIS servers · <a href="${w.fixUrl}" target="_blank" rel="noopener">fix the map</a>` : ''}</span></span>` }),
+          w.retry ? h('button', { type: 'button', class: 'btn', title: 'Ask the router again', onclick: () => w.retry() }, 'Retry')
+            : h('button', { type: 'button', class: 'btn', title: 'Route these legs with BRouter (its trail profiles) once it’s free', onclick: () => w.useBrouter() }, 'Use BRouter')));
+        continue;
+      }
       const i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
       let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len, 30));
       if (i1 < 0) i1 = a.along.length - 1;
@@ -5752,6 +5864,23 @@ function sampleEle(a, coords) {
 
 // what's missing of the terrain (analysis.js), for Heads-up and the summary
 const terrainTitle = (t) => (t.all ? (t.retry ? 'Terrain didn’t load' : 'No terrain here') : `Terrain missing for ${fmtDist(t.missing)}`);
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// the stretches [at, len] (metres along the route) where on(i) holds for the samples i of `along`
+function runsAlong(along, on) {
+  const out = [];
+  let s = -1;
+  for (let i = 1; i < along.length; i++) {
+    if (on(i)) { if (s < 0) s = i - 1; } else if (s >= 0) { out.push([along[s], along[i - 1] - along[s]]); s = -1; }
+  }
+  if (s >= 0) out.push([along[s], along[along.length - 1] - along[s]]);
+  return out;
+}
+// Not checked's what and why, for each of the water router's sources that didn't answer (waterdata.js)
+const WATER_LOST = {
+  OpenStreetMap: ['Rocks and shoals from OpenStreetMap didn’t answer', 'Routed without them: the line may pass close to a rock the map knows.'],
+  Väylävirasto: ['Fairways and marks from Väylävirasto didn’t answer', 'Routed without them: the line may cross a shipping lane or pass a danger mark without saying so.'],
+  'the wind forecast': ['The wind forecast didn’t answer on the water', 'Routed without the wind: how rough the water gets isn’t known.'],
+};
 
 // "2 h 13" or "54 min": a duration where there's little room
 const shortDuration = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };

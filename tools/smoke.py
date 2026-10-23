@@ -644,6 +644,34 @@ WATER = """(async () => {
   p.reveal('warnings');
   await wait(300);
   if (!/Crosses/.test(document.querySelector('[data-sec=warnings]')?.textContent || '')) errs.push('the crossing is not in Heads-up');
+  // a source that didn't answer (25d part 2): Not checked, on the legs routed without it, with Retry, until it answers;
+  // What Polku looked at says so, and names no Fintraffic for a route on the water
+  if (typeof p.headsUp !== 'function') errs.push('no headsUp() on the planner');
+  else {
+    const water = () => p.headsUp().not.filter((x) => x.key === 'water');
+    const rocks = () => p.lookedAt(p.analysis).find((r) => /^Rocks and shoals/.test(r.what));
+    D.seedWater((box, want) => ({ fairways: want.fairways ? fc(fx.fairways) : fc([]), hazards: fc([]), wind: want.wind ? { speed: 10, gust: 14, dir: 180 } : null, missing: want.hazards ? ['OpenStreetMap'] : [] }));
+    p.clear();
+    p.addPoint(from);
+    p.addPoint([to[0], to[1] + 0.0001]); // a leg of its own: a whole one is kept, and comes back as it was
+    for (let k = 0; k < 60 && !water().length; k++) await wait(250);
+    const x = water()[0];
+    if (!x) errs.push(`OpenStreetMap didn't answer: nothing on the water in Not checked (${p.headsUp().not.map((y) => y.key).join(', ') || 'nothing'})`);
+    else {
+      if (!/OpenStreetMap/.test(`${x.text} ${x.by}`) || !x.note) errs.push(`Not checked on the water: ${x.text} (${x.by}) · ${x.note}`);
+      if (typeof x.retry !== 'function') errs.push('Not checked on the water has no Retry');
+      const end = p.analysis.along[p.analysis.along.length - 1];
+      if (!x.ranges || !x.ranges.length || x.ranges[0][0] > 1 || x.ranges[0][0] + x.ranges[0][1] < end - 1) errs.push(`Not checked on the water covers ${JSON.stringify(x.ranges)} of the ${Math.round(end)} m leg`);
+      if ([...p.headsUp().read, ...p.headsUp().look].some((w) => /^Not checked/.test(w.text))) errs.push('a source that didn\\'t answer is an item of Read or Worth a look too');
+      if (!rocks() || rocks().state !== 'bad') errs.push(`What Polku looked at, rocks and shoals: ${rocks() ? `${rocks().state} · ${rocks().by}` : 'no row'}, not bad`);
+      if (p.lookedAt(p.analysis).some((r) => /Fintraffic/.test(r.by))) errs.push('What Polku looked at names Fintraffic for a route on the water');
+      D.seedWater((box, want) => ({ fairways: want.fairways ? fc(fx.fairways) : fc([]), hazards: want.hazards ? fc(fx.marks.map((f) => ({ ...f, properties: { ...f.properties, src: 'mark' } }))) : fc([]), wind: want.wind ? { speed: 10, gust: 14, dir: 180 } : null, missing: [] }));
+      x.retry();
+      for (let k = 0; k < 60 && (water().length || p.legs[0].status !== 'ok'); k++) await wait(250);
+      if (water().length) errs.push('OpenStreetMap answered after Retry, and the water is still in Not checked');
+      else if (!rocks() || rocks().state !== 'ok') errs.push(`What Polku looked at, rocks and shoals once answered: ${rocks() ? `${rocks().state} · ${rocks().by}` : 'no row'}`);
+    }
+  }
   if (n.usage().some((u) => /^brouter|^valhalla/.test(u.id) && u.session)) errs.push('a routing request (water legs need none)');
   p.clear();
   D.seedWater(null);
@@ -730,7 +758,7 @@ WATER_LATE = """(async () => {
   const p = polku.planner;
   const leg = () => p.legs[0];
   const done = () => leg() && leg().status === 'ok' && leg().result && leg().result.water;
-  const warned = () => ((p.analysis && p.analysis.waterWarn) || []).some((w) => /^Not checked on the water: .*OpenStreetMap/.test(w.text));
+  const warned = () => !!p.analysis && p.headsUp().not.some((x) => x.key === 'water' && /OpenStreetMap/.test(`${x.text} ${x.by}`)); // (25d part 2: Not checked)
   try {
     await forget();
     // the second leg's rocks asked for now, so they're held by the time it's routed
@@ -1933,6 +1961,115 @@ HEADS = """(async () => {
   return errs;
 })()"""
 
+# The planner's side (25d part 2): headsUp() puts every item made for a route in Read before you go or Worth a look by
+# its own group, once each and in order along the route, and one without a group in Read (with a console error). A
+# source that didn't answer is in Not checked with Retry until it answers: Fintraffic (mocked), the trail details
+# (Overpass held back, failing), the winter ways, the forecast (501: no back-off, at a place no other check asks about).
+# An answer for the route before changes nothing. A hidden kind is counted, not shown. lookedAt() says what was looked
+# at, Fintraffic only for a route on land in Finland.
+HEADS_UP = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner;
+  const T = await import(location.origin + '/js/trails.js'), WI = await import(location.origin + '/js/winter.js');
+  if (typeof p.headsUp !== 'function' || typeof p.lookedAt !== 'function') return ['no headsUp() or lookedAt() on the planner'];
+  const realHazards = p.app.hazards, realFetch = window.fetch;
+  const works = (a) => [{ kind: 'roadwork', at: 300, len: 60, lngLat: a.pts[30], text: 'Road works: Teiskontie', avoid: { ll: a.pts[30], r: 40 }, tier: 'read', src: { kind: 'live', by: 'Fintraffic', at: Date.now() - 60000 } }];
+  let hz = async () => { throw new Error('Fintraffic didn’t answer'); };
+  p.app.hazards = (a, opt) => hz(a, opt);
+  let wx = 501;
+  window.fetch = (input, init) => (wx && /open-meteo\\.com/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response('{}', { status: wx })) : realFetch(input, init));
+  T.holdFetches(true, true);
+  const box = [26.69, 63.29, 26.75, 63.31];
+  // no forecast kept from a run before for this place (the browser's profile keeps it)
+  const WX = await import(location.origin + '/js/weather.js');
+  const cellKeys = [...new Set(Array.from({ length: 13 }, (_, k) => WX.cellAt([box[0] + k * 0.005, 63.3], 0)).flatMap((c) => ['p', 'q'].map((x) => `${x}/${c.i}/${c.j}`)))];
+  await new Promise((ok) => { const r = indexedDB.open('polku'); r.onerror = () => ok(); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('weather')) { db.close(); ok(); return; } const t = db.transaction('weather', 'readwrite'); for (const k of cellKeys) t.objectStore('weather').delete(k); t.oncomplete = t.onerror = () => { db.close(); ok(); }; }; });
+  const not = (k) => p.headsUp().not.find((x) => x.key === k);
+  const keys = () => p.headsUp().not.map((x) => x.key).join(', ') || 'nothing';
+  const looked = (re) => p.lookedAt(p.analysis).find((r) => re.test(r.what));
+  try {
+    p.setActive(true); p.clear(); p.setMode('line');
+    p.addPoint([26.700, 63.300]); p.addPoint([26.716, 63.300]);
+    for (let k = 0; k < 150 && !(p.analysis && p.analysis.windError && p.analysis.hazardsError && p.analysis.trailError); k++) await wait(100);
+    const a = p.analysis;
+    if (!a) return ['no route drawn'];
+    // each source that didn't answer: in Not checked, with Retry, and What Polku looked at says so
+    for (const [k, re, what] of [['hazards', /Fintraffic/, /^Road works/], ['trail', /[Tt]rail details/, /^Trail details/], ['weather', /forecast/i, /^Weather/]]) {
+      const x = not(k), row = looked(what);
+      if (!x) errs.push(`no ${k} in Not checked (${keys()})`);
+      else {
+        if (!re.test(`${x.text} ${x.by}`)) errs.push(`${k} in Not checked: ${x.text} (${x.by})`);
+        if (!x.note) errs.push(`${k} in Not checked has no note`);
+        if (typeof x.retry !== 'function') errs.push(`${k} in Not checked has no Retry`);
+      }
+      if (!row || row.state !== 'bad') errs.push(`What Polku looked at, ${what}: ${row ? `${row.state} · ${row.by}` : 'no row'}, not bad`);
+    }
+    for (const r of p.lookedAt(a)) if (!r.what || !r.by || !['ok', 'bad', 'na', 'wait'].includes(r.state)) errs.push(`What Polku looked at: ${JSON.stringify(r)}`);
+    // Retry, and each answers: gone from Not checked, and its items in their groups
+    hz = async (b) => works(b);
+    if (not('hazards')) await not('hazards').retry();
+    if (not('hazards')) errs.push('Fintraffic answered after Retry and is still in Not checked');
+    if (!p.headsUp().read.some((w) => /^Road works/.test(w.text))) errs.push(`Road works not in Read before you go: ${p.headsUp().read.map((w) => w.text).join(' / ') || 'nothing'}`);
+    const fin = looked(/^Road works/);
+    if (!fin || fin.state !== 'ok' || !/Fintraffic, \\d\\d[:.]\\d\\d/.test(fin.by)) errs.push(`What Polku looked at, Fintraffic answered: ${fin ? `${fin.state} · ${fin.by}` : 'no row'}`);
+    T.holdFetches(true);
+    for (const [x, y] of T.tilesIn(box)) T.seedTile(x, y, { v: 1, w: [], n: [] });
+    if (not('trail')) await not('trail').retry();
+    if (not('trail')) errs.push('the trail details loaded after Retry and are still in Not checked');
+    wx = 0;
+    if (not('weather')) await not('weather').retry();
+    for (let k = 0; k < 50 && !(p.analysis.wind || p.analysis.windError); k++) await wait(100);
+    if (not('weather')) errs.push(`the forecast answered after Retry and is still in Not checked (${not('weather').text})`);
+    // the winter ways, the same
+    WI.holdWinterFetches(true, true);
+    await p.loadWinterAlong(p.analysis);
+    if (!not('winter') || typeof not('winter').retry !== 'function') errs.push(`the winter ways didn't answer: not in Not checked with Retry (${keys()})`);
+    WI.holdWinterFetches(true);
+    for (const [x, y] of WI.winterTilesIn(box)) WI.seedWinterTile(x, y, { v: 1, w: [] });
+    if (not('winter')) await not('winter').retry();
+    if (not('winter')) errs.push('the winter ways answered after Retry and are still in Not checked');
+    // an item without a group: in Read before you go (and a console error, which the check expects)
+    const b = p.analysis;
+    b.darkWarn = [...(b.darkWarn || []), { at: 10, len: 0, kind: 'test', noAvoid: true, noHide: true, text: 'An item with no group' }];
+    if (!p.headsUp().read.some((w) => w.text === 'An item with no group')) errs.push('an item with no group is not in Read before you go');
+    b.darkWarn = b.darkWarn.filter((w) => w.text !== 'An item with no group');
+    // nothing lost: every item made is in one group, once, each group in order along the route
+    const H = p.headsUp(), got = [...H.read, ...H.look];
+    const made = [...b.warnings, ...(b.hazards || []), ...(b.darkWarn || []), ...(b.accessWarn || []), ...(b.waterWarn || [])];
+    for (const w of made) if (got.filter((x) => x === w).length !== 1) errs.push(`${w.text}: ${got.filter((x) => x === w).length} times in Check`);
+    const n = made.length + p.stopWarnings(b).length + p.winterWarnings(b).length + p.iceWarnings(b).length + (b.trailWarn || []).length;
+    if (got.length !== n) errs.push(`${got.length} items in Read and Worth a look, for ${n} made: ${got.map((w) => w.text).join(' / ')}`);
+    for (const [g, L] of [['Read before you go', H.read], ['Worth a look', H.look]]) if (L.some((w, i) => i && w.at < L[i - 1].at)) errs.push(`${g} is not in order along the route`);
+    for (const w of got) if (!w.src || !w.src.by) errs.push(`${w.text} has no source`);
+    // a hidden kind: counted at the end, not shown
+    p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
+    const Hh = p.headsUp();
+    if ([...Hh.read, ...Hh.look].some((w) => /^Road works/.test(w.text)) || Hh.hidden.get('roadwork') !== 1) errs.push(`Road works hidden: still shown, or counted ${Hh.hidden.get('roadwork')}`);
+    p.hideWarnKind({ key: 'roadwork' }, false);
+    // an answer for the route before changes nothing
+    let fail;
+    hz = () => new Promise((ok, no) => { fail = no; });
+    const late = p.loadHazards(b);
+    hz = async (c) => works(c);
+    p.addPoint([26.732, 63.300]);
+    for (let k = 0; k < 100 && !(p.analysis !== b && p.analysis.hazards); k++) await wait(100);
+    fail(new Error('Fintraffic didn’t answer'));
+    await late;
+    await wait(100);
+    if (p.analysis === b) errs.push('(the test) the route was not analysed again');
+    else if (not('hazards')) errs.push('a late failure for the route before put Fintraffic in Not checked');
+    // Fintraffic is looked at only for a route on land in Finland
+    if (!looked(/^Road works/)) errs.push('What Polku looked at has no Fintraffic for a route on land in Finland');
+    p.clear();
+    p.addPoint([18.000, 59.330]); p.addPoint([18.016, 59.330]);
+    for (let k = 0; k < 100 && !(p.analysis && p.analysis.pts[0][0] < 19); k++) await wait(100);
+    if (looked(/^Road works/)) errs.push('What Polku looked at names Fintraffic for a route in Sweden');
+    return errs;
+  } finally {
+    p.app.hazards = realHazards; window.fetch = realFetch; T.holdFetches(false); WI.holdWinterFetches(false);
+    p.clear();
+  }
+})()"""
+
 
 def heads(chrome):
     pg = chrome.page(1440, 900, False)
@@ -1940,6 +2077,18 @@ def heads(chrome):
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/61.50/23.81')
         fails = pg.js(HEADS, timeout=60000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/61.50/23.81')
+        fails += pg.js(HEADS_UP, timeout=90000)
+        # the one console error the check asks for: an item without a group
+        errs = pg.errors()
+        nogroup = [e for e in errs if 'An item with no group' in e]
+        if len(nogroup) != 1:
+            fails.append(f'{len(nogroup)} console errors for an item without a group, not 1')
+        fails += [f'console: {e[:160]}' for e in errs if 'An item with no group' not in e]
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} Check's groups and sources" + ''.join(f'\n     - {f}' for f in fails), flush=True)

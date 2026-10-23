@@ -63,9 +63,12 @@ export function slimTile(json) {
 const tiles = new Map(); // "x/y" -> { promise, data }
 const failed = new Map(); // "x/y" -> retry after (ms)
 const listeners = new Set();
-let fetching = true;
-/** Tests and screenshots: never ask Overpass (tiles come from seedTile; asking for any other fails quietly). */
-export function holdFetches(on = true) { fetching = !on; }
+let fetching = true, failing = false;
+/** Tests and screenshots: never ask Overpass (tiles come from seedTile; asking for any other fails quietly, or
+ * with `fail`, as if Overpass didn't answer). */
+export function holdFetches(on = true, fail = false) { fetching = !on; failing = on && fail; }
+/** Retry: ask again now for the tiles that failed, not in a couple of minutes. */
+export function forgetFailures() { failed.clear(); }
 const arrived = (key) => { for (const fn of listeners) fn(key); };
 export const onTile = (fn) => listeners.add(fn);
 
@@ -75,7 +78,7 @@ export function trailTile(x, y) {
   const have = tiles.get(key);
   if (have) return have.promise;
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
-  if (!fetching) return Promise.reject(Object.assign(new Error('held'), { held: true }));
+  if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true }));
   const entry = { data: null };
   entry.promise = cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { timeoutMs: 30000 })
     .then((data) => { entry.data = data; arrived(key); return data; })
@@ -301,7 +304,8 @@ const CELL = 0.0005; // degrees: about 55 × 25 m here
  * has no `obstacle`), and visibility, overgrown and wet stretches where the
  * router said nothing (a Valhalla leg, a route saved before). From the same
  * z13 tiles the map draws; fills `a.td` (js/analysis.js) in place. False when
- * the route crosses too many tiles or none would load.
+ * the route crosses too many tiles or none would load. `a.tdLost`: where along
+ * the route the tiles that didn't answer lie, as [at, len] stretches, or null.
  */
 export async function detailsAlong(a, { maxTiles = 40 } = {}) {
   const { pts, along, td } = a;
@@ -312,7 +316,20 @@ export async function detailsAlong(a, { maxTiles = 40 } = {}) {
     want.set(`${x}/${y}`, [x, y]);
   }
   if (want.size > maxTiles) return false;
-  const loaded = (await Promise.allSettled([...want.values()].map(([x, y]) => trailTile(x, y)))).filter((r) => r.status === 'fulfilled').map((r) => r.value);
+  const got = await Promise.allSettled([...want.values()].map(([x, y]) => trailTile(x, y)));
+  const loaded = got.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+  // the tiles that didn't answer (a test's held ones aren't asked): where they lie along the route
+  const keys = [...want.keys()], lost = new Set(keys.filter((k, j) => got[j].status === 'rejected' && !(got[j].reason || {}).held));
+  a.tdLost = null;
+  if (lost.size) {
+    a.tdLost = [];
+    let s0 = -1;
+    for (let i = 0; i < pts.length; i++) {
+      const [x, y] = lonLatToTile(pts[i][0], pts[i][1], TILE_Z).map(Math.floor);
+      if (lost.has(`${x}/${y}`)) { if (s0 < 0) s0 = Math.max(0, i - 1); } else if (s0 >= 0) { a.tdLost.push([along[s0], along[i] - along[s0]]); s0 = -1; }
+    }
+    if (s0 >= 0) a.tdLost.push([along[s0], along[pts.length - 1] - along[s0]]);
+  }
   if (!loaded.length) return false;
 
   // the tiles' ways as segments in a grid, and their obstacle nodes
