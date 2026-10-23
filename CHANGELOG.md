@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-24
+
+### Fixed: the elevation chart is whole with warnings to read ([#444](https://github.com/TommiContursi/Polku/issues/444))
+
+With the planner at the size that shows the elevation chart, the row of warnings to read before you go took the chart's room on a small phone, and the chart's bottom ran off the screen. At that size the row now folds away, as the route's stats do, and comes back at the peek. The warnings stay on the map and in Check.
+
 ## 2026-10-23
 
 ### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))
