@@ -53,7 +53,7 @@ The draft and `design-system-notes.md` are folded in here; the notes file is gon
 **Next**
 1. ~~This plan, for the user's review (a Docs PR)~~: merged (#389).
 2. ~~The values PR (names by role, in `rem`)~~: built (§8).
-3. ~~The controls PR~~: built (§8), waiting for the user's look at its screenshots.
+3. ~~The controls PR~~: built (§8); the user approved its screenshots on 2026-10-23.
 4. Then 25d's Journey C.
 
 ## How it fits with 25d and the planner
