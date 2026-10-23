@@ -950,7 +950,7 @@ button.warnr span { flex: 1; font-weight: 600; }
     <div class="cv-frames">
       <figure class="fr phone" id="r6-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c"}'><figcaption><b>C · The start's card</b>Leave · Now ›: a tap opens the phone's own date and time.</figcaption></figure>
       <figure class="fr phone" id="r6-leave-c-set" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Set to tomorrow</b>The row says the day and the time; Now under it goes back to leaving now.</figcaption></figure>
-      <figure class="fr phone" id="r6-leave-c-far" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-28T07:30"}'><figcaption><b>C · Four weeks ahead</b>No forecast yet; sunset and the dark still count (#159).</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-c-far" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-28T07:30"}'><figcaption><b>C · Four weeks ahead</b>Past the forecast's 10 days: No forecast yet; sunset and the dark still count (#159).</figcaption></figure>
       <figure class="fr phone" id="r6-leave-c-passed" data-st='{"card":"point","pt":0,"v":"r6","times":"c","passedDT":"2026-10-24T07:30"}'><figcaption><b>C · A date that has passed</b>A saved route or a link opens at Now, saying when it was planned for.</figcaption></figure>
       <figure class="fr phone" id="r6-whole-c-share" data-st='{"card":"whole","kind":"route","at":[218,745],"v":"r6","times":"c","leaveDT":"2026-10-31T16:45"}'><figcaption><b>C · Share with the date</b>Share link says it includes when you leave. Set Now first to share without it.</figcaption></figure>
       <figure class="fr phone" id="r6-night-c" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c"}'><figcaption><b>C · A night</b>Stay · 1 night with the stepper; Go on at · 07:00 › opens the phone's clock.</figcaption></figure>
@@ -1244,8 +1244,10 @@ const CARDS = { route: routeCard, stretch: stretchCard, under: underCard, edit: 
 // ------------------------------------------------ Revision 6's own words and helpers, outside a card
 // what a time starts at once a day is picked (the mock-up's now is 10:00), and a time moved by minutes within its day
 const LEAVE6 = { today: '10:30', tomorrow: '08:00' };
-// C: the start has a date; the mock-up's now is Sat 31 Oct 2026, 10:00. Open-Meteo forecasts about 16 days ahead.
-const NOW_C6 = new Date(2026, 9, 31, 10, 0), FAR_C6 = 15;
+// C: the start has a date; the mock-up's now is Sat 31 Oct 2026, 10:00. Polku asks Open-Meteo for 240 hours (LONG_HOURS
+// in js/weather.js): a start 10 days or more ahead has no forecast yet.
+const NOW_C6 = new Date(2026, 9, 31, 10, 0), FAR_C6 = 240;
+const pastC6 = (d) => (d - NOW_C6) / 36e5 >= FAR_C6;
 const p2C6 = (n) => String(n).padStart(2, '0');
 const isoC6 = (d) => `${d.getFullYear()}-${p2C6(d.getMonth() + 1)}-${p2C6(d.getDate())}T${p2C6(d.getHours())}:${p2C6(d.getMinutes())}`;
 const DAY_C6 = { en: { d: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], m: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], today: 'Today', tomorrow: 'Tomorrow' },
@@ -1454,7 +1456,7 @@ const leaveOf = (f, st) => {
 // counts from it. Now, once a time is set, goes back to leaving now; past the forecast's reach the weather says so.
 const pickRow6 = (act, icon, label, sub, val, kind, inAttr, value, aria) => `<div class="c2-list c6-pick">${item(act, icon, label, sub, { val, chev: true })}<input type="${kind}" step="900" data-in="${inAttr}" data-pick="1" value="${esc(value)}"${kind === 'datetime-local' ? ` min="${isoC6(NOW_C6)}"` : ''} aria-label="${esc(aria)}" aria-hidden="true" tabindex="-1"></div>`;
 const leaveRowC6 = (f, st) => {
-  const u = U(f), set = !!st.leaveDT, d = set ? new Date(st.leaveDT) : null, far = set && aheadC6(d) > FAR_C6;
+  const u = U(f), set = !!st.leaveDT, d = set ? new Date(st.leaveDT) : null, far = set && pastC6(d);
   const row = pickRow6('leavepickc', 'clock', u.leaveC, u.leaveSub, set ? labelC6(f.lang, st.leaveDT) : u.nowC, 'datetime-local', 'ldt', st.leaveDT || isoC6(new Date(2026, 9, 31, 10, 0)), u.pickAriaC);
   const passed = !set && st.passedDT ? `<p class="c6-nofc c6-info">${ic('info', 16)}<span>${esc(u.passedC(`${dayC6(f.lang, new Date(st.passedDT))}, ${st.passedDT.slice(11, 16)}`))}</span></p>` : '';
   return `<div class="c6-leave">${row}${set ? `<button type="button" class="c6-now" data-act="leavenowc" aria-label="${esc(u.leaveNowAriaC)}">${esc(u.nowC)}</button>` : ''}</div>${far ? `<p class="c6-nofc">${ic('weather', 16)}<span>${esc(u.noFcC(dayC6(f.lang, d)))}</span></p>` : ''}${passed}`;
