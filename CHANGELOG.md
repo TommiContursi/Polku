@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Fixed: the timeline says where its reading is from, whole ([#243](https://github.com/TommiContursi/Polku/issues/243))
 
-On a phone, the weather timeline's reading beside the strip said where it was read cut short, as "map c". Now "map centre" shows whole, on two short lines beside the temperature where there's no room for one, and the reading is no taller than before.
+On a phone, the weather timeline's reading beside the strip said where it was read cut short, as "map c". Now "map centre" shows whole, on two short lines beside the temperature where there's no room for one, and the reading is no taller than before. A note there, such as "Weather paused…", shows up to three lines instead of one cut short, and the whole note is in its tooltip.
 
 ### Check says how serious and how sure, and shows each warning on the route ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
