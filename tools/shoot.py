@@ -221,14 +221,14 @@ QUICK_EDIT = QUICK("document.querySelector('#quick-layers .qd-edit-btn').click()
 QUICK_ALL = QUICK("document.querySelector('#quick-layers .qt-more').click();")
 # Finnish-length labels on every tile, and a dozen more layers on (the strings carry soft hyphens, as phase 18's will)
 QUICK_WORST = QUICK("for (const [id, l] of [['trailColors', 'Polkujen vaikeus\\u00advärit'], ['trailDetails', 'Polkujen yksityis\\u00adkohdat'], ['lipasRoutes', 'Viralliset reitit'], ['terrain3d', 'Kolmi\\u00adulotteinen maasto'], ['wx:rain', 'Sade\\u00adtutka']]) { const t = document.querySelector(`#quick-layers .qt-tog[data-tile=\"${id}\"] .qt-l`); if (t) t.firstChild.textContent = l; }")
-# the bug sweep: Heads-up with the map's Trail details off (the log comes all the same) and a
-# row's ⋯ (hide its kind, correct OpenStreetMap), then the kind hidden; the route menu in a
-# short window; phones: the credits opened over the timeline, the summary at 360 px
+# the bug sweep: Check with the map's Trail details off (the log comes all the same) and the
+# log's card (hide its kind, correct OpenStreetMap: 25d part 3), then the kind hidden; the route
+# menu in a short window; phones: the credits opened over the timeline, the summary at 360 px
 NO_DETAILS = {'polku:settings': json.dumps({'activity': 'mtb', 'timeline': False, 'trailsByActivity': {'mtb': {'trailDetails': False}}}), 'polku:plannerDock': '"left"'}
 ROW_MENU = TRAIL_ROUTE('warnings').replace(" await wait(400); return true; })()",
-                                           " await wait(400); const r = [...document.querySelectorAll('[data-sec=warnings] .li-row')].find((x) => /Log across/.test(x.textContent));"
-                                           " if (r) { r.scrollIntoView({ block: 'center' }); await wait(200); const m = r.querySelector('.li-more'); if (m) m.click(); } await wait(300); return true; })()")
-ROW_HIDDEN = ROW_MENU.replace(" await wait(300); return true; })()", " await wait(300); const h = document.querySelector('.menu-pop .menu-item'); if (h) h.click(); await wait(400);"
+                                           " await wait(400); const r = [...document.querySelectorAll('[data-sec=warnings] .tier .row')].find((x) => /Log across/.test(x.textContent));"
+                                           " if (r) { r.scrollIntoView({ block: 'center' }); await wait(200); r.click(); } await wait(300); return true; })()")
+ROW_HIDDEN = ROW_MENU.replace(" await wait(300); return true; })()", " await wait(300); const h = [...document.querySelectorAll('.card .row')].find((x) => /^Hide/.test(x.textContent)); if (h) h.click(); await wait(400);"
                               " const c = document.querySelector('.hidden-kinds'); if (c) c.scrollIntoView({ block: 'center' }); await wait(300); return true; })()")
 OPEN_MENU = ("(async () => { polku.planner.els.more.click(); await new Promise((r) => setTimeout(r, 400));"
              " const m = document.querySelector('.menu-pop'); if (m) m.scrollTop = m.scrollHeight; return true; })()")  # scrolled to its end, where it scrolls

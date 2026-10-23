@@ -407,7 +407,9 @@ ROUTE_TRAILS = """(async () => {
   if (![...a.td.width].some((w) => w >= 0)) errs.push('no width along the route (from the tile)');
   p.reveal('warnings');
   await wait(300);
-  if (!document.querySelector('[data-sec=warnings] .li-ico')) errs.push('trail heads-up rows have no icon');
+  // (25d part 2: in Worth a look, each row with its group's icon; the obstacle's own icon shows on the map, #85)
+  const logRow = [...document.querySelectorAll('[data-sec=warnings] .tier-look .row')].find((r) => /^Log across/.test(r.textContent));
+  if (!logRow || !logRow.querySelector('svg')) errs.push('the log isn\\'t a row of Worth a look, with its icon');
   const widthBar = p.els.breakdown.querySelector('[data-colour=width]');
   if (!widthBar || widthBar.hidden || !/Under 0\\.6 m/.test(widthBar.textContent)) errs.push('late width data did not update Check with Gradient selected');
   p.showMode('width');
@@ -933,7 +935,7 @@ STOPS = """(async () => {
   p.setLegSport(1, 'paddle'); // mtb → paddle → mtb: the bike stays at point 1
   const ready = (k) => p.analysis && p.analysis.waits && p.analysis.waits.length === k;
   for (let k = 0; k < 40 && !ready(2); k++) await wait(200);
-  const warns = () => [...document.querySelectorAll('.warnings .li-main b')].map((x) => x.textContent);
+  const warns = () => [...document.querySelectorAll('[data-sec=warnings] .tier :is(.row, .warn-row) b')].map((x) => x.textContent); // (Check's rows, 25d part 2)
   if (!warns().some((t) => /^Your bike is still at/.test(t))) errs.push(`no gear warning: ${warns().join(' / ')}`);
   p.setCarry(1, true);
   await wait(200);
@@ -1149,6 +1151,23 @@ def avoid_link(chrome):
     return not fails
 
 
+# Check's rows (25d part 2), and an item's card opened from its row, where its note and its actions are now: rows()
+# their words, said() each row's with its card's note, cardOf(re) the card of the first row matching.
+CHECK_ROWS = """
+  const checkRows = () => [...document.querySelectorAll('[data-sec=warnings] .tier :is(.row, .warn-row)')];
+  const rows = () => checkRows().map((r) => r.textContent);
+  const cardOf = async (re) => {
+    const r = checkRows().find((x) => re.test(x.textContent));
+    if (!r) return null;
+    r.click();
+    await new Promise((ok) => setTimeout(ok, 400));
+    return polku.planner.cards.current && polku.planner.cards.current.kind === 'item' ? polku.planner.cards.box : null;
+  };
+  const closeCard = async () => { polku.planner.cards.close(); await new Promise((ok) => setTimeout(ok, 200)); };
+  const said = async () => { const out = []; for (let k = 0; k < checkRows().length; k++) { const r = checkRows()[k], t = r.textContent; r.click(); await new Promise((ok) => setTimeout(ok, 300)); out.push(`${t} ${polku.planner.cards.box?.querySelector('.heads-note')?.textContent || ''}`); await closeCard(); } return out; };
+"""
+
+
 # Ways marked private or closed (#105), from a mocked BRouter and a mocked Valhalla: a Run
 # leg over a delivery road marked foot=private gets a Heads-up row, a footway marked
 # access=no with foot=yes doesn't (the sport's own tag wins), and a row hidden under the old
@@ -1185,11 +1204,10 @@ ACCESS_ROUTER = """(() => {
   };
 })()"""
 ACCESS = """(async () => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], p = polku.planner, m = polku.map;""" + CHECK_ROWS + """
   p.checkWet = async () => {}; // dry ground whatever the weather, so no leg is routed twice
   p.wet = { on: false, mm: 0, at: Date.now() };
   const routed = async (by) => { for (let k = 0; k < 100 && !(p.legs.length === 1 && p.legs[0].status === 'ok' && p.analysis && (p.legs[0].result.provider || 'brouter') === by); k++) await wait(200); return p.legs.length === 1 && p.legs[0].status === 'ok'; };
-  const rows = () => [...document.querySelectorAll('.warnings .li-row')].map((r) => r.textContent);
   p.setActive(true);
   p.setMode('auto');
   const A = [24.930, 60.170], B = [24.940, 60.170];
@@ -1198,20 +1216,17 @@ ACCESS = """(async () => {
   if (!(await routed('brouter'))) return [`the BRouter leg: ${p.legs.map((l) => l.status).join(', ')}`];
   p.reveal('warnings');
   await wait(300);
-  const priv = rows().filter((t) => /Marked private in OpenStreetMap/.test(t));
-  if (priv.length !== 1 || !/foot=private/.test(priv[0] || '')) errs.push(`foot=private on a Run leg: ${rows().join(' / ') || 'no rows'}`);
-  if (rows().some((t) => /access=no|Private or no access/.test(t))) errs.push(`a footway open to walkers (access=no + foot=yes) got a row: ${rows().join(' / ')}`);
+  const all = await said();
+  const priv = all.filter((t) => /Marked private in OpenStreetMap/.test(t));
+  if (priv.length !== 1 || !/foot=private/.test(priv[0] || '')) errs.push(`foot=private on a Run leg: ${all.join(' / ') || 'no rows'}`);
+  if (all.some((t) => /access=no|Private or no access/.test(t))) errs.push(`a footway open to walkers (access=no + foot=yes) got a row: ${all.join(' / ')}`);
   const w = (p.analysis.warnings || []).find((x) => /^Marked private/.test(x.text));
   if (!w || Math.abs(w.len - 185) > 25) errs.push(`the private stretch: ${w ? Math.round(w.len) : 'none'} m, not about 185 m`);
-  // its ⋯ offers to correct the tag
-  const more = [...document.querySelectorAll('.warnings .li-row')].find((r) => /Marked private/.test(r.textContent))?.querySelector('.li-more');
-  if (!more) errs.push('no ⋯ on the private row');
-  else {
-    more.click();
-    await wait(200);
-    if (!/Tagged wrong/.test(document.body.textContent)) errs.push('the ⋯ menu has no "Tagged wrong?"');
-    more.click();
-  }
+  // its card offers to correct the tag (25d part 3: what its ⋯ offered)
+  const privCard = await cardOf(/Marked private/);
+  if (!privCard) errs.push('no card for the private row');
+  else if (![...privCard.querySelectorAll('.row')].some((r) => /Tagged wrong/.test(r.textContent))) errs.push('the private item\\'s card has no "Tagged wrong?"');
+  await closeCard();
   // hidden before this fix, under the row's old text: still hidden
   localStorage.setItem('polku:hideWarn', JSON.stringify({ 'Private or no access': 'Private or no access' }));
   p.renderWarnings();
@@ -1231,7 +1246,7 @@ ACCESS = """(async () => {
   await wait(300);
   const vh = rows().filter((t) => /Marked private or no access/.test(t));
   if (vh.length !== 1) errs.push(`Valhalla over a way the tiles mark access=no: ${rows().join(' / ') || 'no rows'}`);
-  if (!rows().some((t) => /routed by Valhalla/.test(t) && /marked private/.test(t))) errs.push('the Valhalla row doesn\\'t say it may take ways marked private');
+  if (!(await said()).some((t) => /routed by Valhalla/.test(t) && /marked private/.test(t))) errs.push('the Valhalla row doesn\\'t say it may take ways marked private');
   m.querySourceFeatures = realQuery;
   p.clear();
   return errs;
@@ -1266,8 +1281,7 @@ DETOUR = """(async () => {
   m.querySourceFeatures = (src, o) => (src === 'ofm' && o && /access/.test(JSON.stringify(o.filter || ''))
     ? (closed ? [{ type: 'Feature', properties: { class: 'path', subclass: 'footway', access: 'no' }, geometry: { type: 'LineString', coordinates: [A, B] } }] : [])
     : realQuery(src, o));
-  const routed = async () => { for (let k = 0; k < 100 && !(p.legs.length === 1 && p.legs[0].status === 'ok' && p.analysis); k++) await wait(200); return p.legs.length === 1 && p.legs[0].status === 'ok'; };
-  const rows = () => [...document.querySelectorAll('.warnings .li-row')].map((r) => r.textContent);
+  const routed = async () => { for (let k = 0; k < 100 && !(p.legs.length === 1 && p.legs[0].status === 'ok' && p.analysis); k++) await wait(200); return p.legs.length === 1 && p.legs[0].status === 'ok'; };""" + CHECK_ROWS + """
   p.setActive(true);
   p.setMode('auto');
   p.addPoint(A.slice());
@@ -1276,18 +1290,19 @@ DETOUR = """(async () => {
   await wait(300);
   p.reveal('warnings');
   await wait(300);
-  const round = rows().filter((t) => /Goes round a way marked private/.test(t));
-  if (round.length !== 1) errs.push(`goes round: ${rows().join(' / ') || 'no rows'}`);
+  const all = await said();
+  const round = all.filter((t) => /Goes round a way marked private/.test(t));
+  if (round.length !== 1) errs.push(`goes round: ${all.join(' / ') || 'no rows'}`);
   else {
     if (!/save about 3[23]0 m/.test(round[0])) errs.push(`the short cut's saving: ${round[0]}`);
     if (!/start was moved 5\\d m and the finish 5\\d m off it/.test(round[0])) errs.push(`the moved points: ${round[0]}`);
   }
-  if (rows().some((t) => /moved .* off a way marked private/.test(t))) errs.push('a moved-point row as well as the short cut');
-  // the row draws the short cut
-  [...document.querySelectorAll('.warnings .li-row')].find((r) => /Goes round/.test(r.textContent))?.querySelector('.li').click();
-  await wait(400);
+  if (all.some((t) => /moved .* off a way marked private/.test(t))) errs.push('a moved-point row as well as the short cut');
+  // its card draws the short cut
+  await cardOf(/Goes round/);
   const src = m.getSource('accessCut'), cut = src ? await src.getData() : { features: [] };
   if (!cut.features.length || cut.features[0].geometry.coordinates.length < 2) errs.push('the short cut isn\\'t drawn');
+  await closeCard();
   // the spots outlast Undo and a reload (the saved route)
   const spots = () => JSON.stringify(p.points.map((q) => (p.pspot && p.pspot.get(q)) || null));
   const want = JSON.stringify([A, B]);
@@ -1375,7 +1390,7 @@ SHORTCUT = """(async () => {
     ? [{ type: 'Feature', properties: { class: 'path', subclass: 'footway', access: 'no' }, geometry: { type: 'LineString', coordinates: [A, B] } }] : realQuery(src, o)); };
   const routed = async () => { for (let k = 0; k < 100; k++) { if (p.legs.length && p.legs.every((l) => l.status === 'ok') && p.analysis) return true; await wait(200); } return false; };
   const settle = async () => { await wait(900); return routed(); };
-  const rows = () => [...document.querySelectorAll('.warnings .li-row')].map((r) => r.textContent);
+""" + CHECK_ROWS + """
   const toastSays = () => { const t = document.querySelector('#toast'); return t && !t.hidden ? t.textContent : ''; };
   const calls = (re) => window.routerCalls.filter((u) => re.test(u));
   p.setActive(true);
@@ -1394,7 +1409,7 @@ SHORTCUT = """(async () => {
   p.setStyle({ p: 'balanced', v: {}, wet: 'auto' });
   p.clear();
   await wait(300);
-  // Short cut from Heads-up
+  // Short cut from Check (25d part 3: on the item's card, its one action)
   const A = [24.930, 60.175], B = [24.934, 60.175];
   stub(A, B);
   p.addPoint(A.slice());
@@ -1402,8 +1417,8 @@ SHORTCUT = """(async () => {
   await settle();
   p.reveal('warnings');
   await wait(300);
-  const btn = [...document.querySelectorAll('.warnings .li-row')].find((r) => /Goes round/.test(r.textContent))?.querySelector('button.btn:not(.avoid)');
-  if (!btn || btn.textContent !== 'Short cut') return [...errs, `no Short cut on the row: ${rows().join(' / ')}`];
+  const btn = (await cardOf(/Goes round/))?.querySelector('.btn.primary.big');
+  if (!btn || btn.textContent.trim() !== 'Short cut') return [...errs, `no Short cut on the card: ${rows().join(' / ')}`];
   const before = JSON.stringify(p.points);
   window.routerCalls.length = 0;
   btn.click();
@@ -1416,7 +1431,8 @@ SHORTCUT = """(async () => {
   if (!S.shortCuts('run', p.legs[0].style)) errs.push(`the leg's style: ${JSON.stringify(p.legs[0].style)}`);
   p.reveal('warnings');
   await wait(300);
-  if (!rows().some((t) => /Marked private in OpenStreetMap/.test(t) && /you allowed short cuts on this leg/.test(t))) errs.push(`Heads-up on the short cut: ${rows().join(' / ')}`);
+  const all = await said();
+  if (!all.some((t) => /Marked private in OpenStreetMap/.test(t) && /you allowed short cuts on this leg/.test(t))) errs.push(`Check on the short cut: ${all.join(' / ')}`);
   if (rows().some((t) => /Goes round/.test(t))) errs.push('still "Goes round" with short cuts allowed');
   // the share link carries it; an old link without it keeps off
   const q = new URL(p.shareUrl()).searchParams;
@@ -1961,6 +1977,16 @@ HEADS = """(async () => {
   return errs;
 })()"""
 
+# No forecast kept from a run before for Check's checks' place, 63.30 N 26.69–26.75 E (the browser's profile keeps it
+# between runs, and an earlier check there may have had an answer): its cells are taken out of IndexedDB.
+FORGET_FORECAST = """
+  await (async () => {
+    const WX = await import(location.origin + '/js/weather.js');
+    const keys = [...new Set(Array.from({ length: 13 }, (_, k) => WX.cellAt([26.69 + k * 0.005, 63.3], 0)).flatMap((c) => ['p', 'q'].map((x) => `${x}/${c.i}/${c.j}`)))];
+    await new Promise((ok) => { const r = indexedDB.open('polku'); r.onerror = () => ok(); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('weather')) { db.close(); ok(); return; } const t = db.transaction('weather', 'readwrite'); for (const k of keys) t.objectStore('weather').delete(k); t.oncomplete = t.onerror = () => { db.close(); ok(); }; }; });
+  })();
+"""
+
 # The planner's side (25d part 2): headsUp() puts every item made for a route in Read before you go or Worth a look by
 # its own group, once each and in order along the route, and one without a group in Read (with a console error). A
 # source that didn't answer is in Not checked with Retry until it answers: Fintraffic (mocked), the trail details
@@ -1979,10 +2005,7 @@ HEADS_UP = """(async () => {
   window.fetch = (input, init) => (wx && /open-meteo\\.com/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response('{}', { status: wx })) : realFetch(input, init));
   T.holdFetches(true, true);
   const box = [26.69, 63.29, 26.75, 63.31];
-  // no forecast kept from a run before for this place (the browser's profile keeps it)
-  const WX = await import(location.origin + '/js/weather.js');
-  const cellKeys = [...new Set(Array.from({ length: 13 }, (_, k) => WX.cellAt([box[0] + k * 0.005, 63.3], 0)).flatMap((c) => ['p', 'q'].map((x) => `${x}/${c.i}/${c.j}`)))];
-  await new Promise((ok) => { const r = indexedDB.open('polku'); r.onerror = () => ok(); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('weather')) { db.close(); ok(); return; } const t = db.transaction('weather', 'readwrite'); for (const k of cellKeys) t.objectStore('weather').delete(k); t.oncomplete = t.onerror = () => { db.close(); ok(); }; }; });
+  """ + FORGET_FORECAST + """
   const not = (k) => p.headsUp().not.find((x) => x.key === k);
   const keys = () => p.headsUp().not.map((x) => x.key).join(', ') || 'nothing';
   const looked = (re) => p.lookedAt(p.analysis).find((r) => re.test(r.what));
@@ -2071,6 +2094,66 @@ HEADS_UP = """(async () => {
 })()"""
 
 
+# A route for Check's own checks (25d parts 2 and 3): straight legs, 1.6 km, at a place no other check uses. Fintraffic
+# mocked with road works at 300 m; the trail details held back; the forecast answering 501 (so Not checked has the
+# weather, for the whole route); and three items of its own: two to look at, one to read. Done once all are in.
+CHECK_ROUTE = FORGET_FORECAST + """
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner;
+  const T = await import(location.origin + '/js/trails.js');
+  T.holdFetches(true);
+  window.works = (a) => [{ kind: 'roadwork', at: 300, len: 60, lngLat: a.pts[30], text: 'Road works: Teiskontie', avoid: { ll: a.pts[30], r: 40 }, tier: 'read', src: { kind: 'live', by: 'Fintraffic', at: Date.now() - 60000 } }];
+  p.app.hazards = async (a) => window.works(a);
+  window.wx501 = true;
+  window.fetch = ((real) => (input, init) => (window.wx501 && /open-meteo\\.com/.test(String(input && input.url ? input.url : input)) ? Promise.resolve(new Response('{}', { status: 501 })) : real(input, init)))(window.fetch);
+  p.setActive(true); p.clear(); p.setMode('line');
+  p.addPoint([26.700, 63.300]); p.addPoint([26.716, 63.300]); p.addPoint([26.732, 63.300]);
+  for (let k = 0; k < 150 && !(p.legs.length === 2 && p.analysisFits() && p.analysis.hazards && (p.analysis.windError || p.analysis.wind)); k++) await wait(100);
+  const item = (at, text, tier = 'look', src = { kind: 'map', by: 'OpenStreetMap' }) => ({ at, len: 40, kind: 'test', ic: 'warn', noHide: true, text, note: 'A test item.', tier, src, lngLat: p.analysis.pts[Math.round(at / 10)] });
+  window.mine = [item(1200, 'Fallen tree across the trail'), item(150, 'Steep climb, up to 18 %'), item(900, 'In the dark for 1 km', 'read', { kind: 'calculated', by: 'the sun’s times' })];
+  p.analysis.darkWarn = [...window.mine];
+  p.renderWarnings();
+"""
+
+# Check in three groups (25d part 2), on a desktop: Read before you go, Not checked, Worth a look, in that order, with
+# no Heads-up header above them; Read's items the red warning box, the rest rows with their group's icon; What Polku
+# looked at, and that nothing listed doesn't mean open; the tab's badge: Read's count in the warning colour, else a
+# neutral count, and "?" when something wasn't checked; the hidden kinds at the end.
+HEADS_CHECK = """(async () => {
+  const errs = [];
+""" + CHECK_ROUTE + """
+  p.setTab('check');
+  await wait(200);
+  const sec = document.querySelector('[data-sec=warnings]');
+  if (!sec) return ['no Check groups ([data-sec=warnings])'];
+  if (sec.querySelector('.sec-head')) errs.push('a Heads-up header above Check\\'s groups');
+  const groups = () => [...sec.querySelectorAll('.tier')].map((g) => g.querySelector('.tier-h').textContent.trim());
+  if (!/^Read before you go\\s*2$/.test(groups()[0] || '') || !/^Not checked\\s*1$/.test(groups()[1] || '') || !/^Worth a look\\s*3$/.test(groups()[2] || '')) errs.push(`Check's groups: ${groups().join(' / ')}`);
+  const boxes = [...sec.querySelectorAll('.tier-read .warn-row.danger')], rowsOf = (g) => [...sec.querySelectorAll(`.tier-${g} .row`)];
+  if (boxes.length !== 2 || boxes.some((b) => b.tagName !== 'BUTTON')) errs.push(`Read before you go: ${boxes.length} red warning boxes`);
+  if (!/Road works: Teiskontie/.test(boxes[0]?.textContent || '') || !/at 300 m · 60 m/.test(boxes[0]?.textContent || '')) errs.push(`Read's first box: ${boxes[0]?.textContent}`);
+  if (rowsOf('look').map((r) => r.querySelector('b').textContent).join(' / ') !== 'Straight line — not following paths / Steep climb, up to 18 % / Fallen tree across the trail') errs.push(`Worth a look: ${rowsOf('look').map((r) => r.textContent).join(' / ')}`);
+  if (!/The forecast didn.t answer/.test(rowsOf('not')[0]?.textContent || '') || !/whole route/i.test(rowsOf('not')[0]?.textContent || '')) errs.push(`Not checked: ${rowsOf('not').map((r) => r.textContent).join(' / ')}`);
+  const looked = sec.querySelector('.looked');
+  if (!looked || !/What Polku looked at/.test(looked.textContent) || !/Road works and incidents\\s*Fintraffic, \\d\\d[:.]\\d\\d/.test(looked.textContent) || !/Weather on the way\\s*Open-Meteo didn.t answer/.test(looked.textContent) || !/Nothing listed doesn.t mean a way is open, safe or allowed/.test(looked.textContent)) errs.push(`What Polku looked at: ${looked ? looked.textContent : 'none'}`);
+  // the badge
+  const tab = p.els.tabBtn.check, n = () => tab.querySelector('.pl-tab-n'), unk = () => tab.querySelector('.pl-tab-unk');
+  if (n().textContent !== '2' || !n().classList.contains('read') || !n().querySelector('svg')) errs.push(`badge with 2 to read: "${n().textContent}" ${n().className}`);
+  if (!unk() || unk().hidden || unk().textContent.trim() !== '?') errs.push('no "?" beside the badge with something not checked');
+  if (!/^Check: 2 to read before you go, 1 not checked, 3 worth a look$/.test(tab.getAttribute('aria-label') || '')) errs.push(`the tab's name: ${tab.getAttribute('aria-label')}`);
+  // only Worth a look (and Not checked): a neutral count; the hidden kind listed at the end
+  p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
+  p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
+  if (n().textContent !== '3' || n().classList.contains('read')) errs.push(`badge with only Worth a look: "${n().textContent}" ${n().className}`);
+  if (sec.querySelector('.tier-read')) errs.push('Read before you go shown with nothing in it');
+  const chips = sec.querySelector('.hidden-kinds');
+  if (!chips || !/Road works/.test(chips.textContent) || chips.compareDocumentPosition(sec.querySelector('.looked')) & Node.DOCUMENT_POSITION_FOLLOWING) errs.push(`the hidden kinds, at Check's end: ${chips ? chips.textContent : 'none'}`);
+  p.hideWarnKind({ key: 'roadwork' }, false);
+  p.analysis.darkWarn = [...window.mine];
+  p.renderWarnings();
+  return errs;
+})()"""
+
+
 def heads(chrome):
     pg = chrome.page(1440, 900, False)
     try:
@@ -2091,7 +2174,173 @@ def heads(chrome):
         fails += [f'console: {e[:160]}' for e in errs if 'An item with no group' not in e]
     finally:
         pg.close()
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
+        fails += pg.js(HEADS_CHECK, timeout=90000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} Check's groups and sources" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# The warning on the route (25d part 3), from Check. On a phone: a tap on Worth a look's row shows the item's card in
+# the peek, ✕ only, its group in words, where it comes from, "2 of 6" with ‹ › along the route (whole-route items last),
+# no All in Check (it was opened from Check at half), its stretch lit on the map and in the profile; ‹ › step in order;
+# ✕ brings Check back at half; a late item updates the count; Not checked's item has Retry, and Retry with an answer
+# closes it; a tap on the map closes the card and adds no point. On a desktop: the card beside the panel at its box,
+# the box lit, no ‹ ›, Escape closes it and unlights the stretch.
+ONROUTE_OPEN = """(async (sel, text) => {
+  const errs = [];
+""" + CHECK_ROUTE + """
+  if (typeof p.itemsAlong !== 'function') return [['no itemsAlong() on the planner'], null];
+  p.reveal('warnings');
+  for (let k = 0; k < 30 && p.panel.dataset.state === 'peek'; k++) await wait(100);
+  await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  const el = [...document.querySelectorAll(`[data-sec=warnings] ${sel}`)].find((r) => r.textContent.includes(text));
+  if (!el) return [[`no ${sel} with "${text}" in Check: ${document.querySelector('[data-sec=warnings]')?.textContent}`], null];
+  el.scrollIntoView({ block: 'center' });
+  await wait(400);
+  const r = el.getBoundingClientRect();
+  return [errs, [r.left + r.width / 2, r.top + r.height / 2]];
+})"""
+ONROUTE_CARD = """((title, of, opts = {}) => {
+  const errs = [], p = polku.planner, c = p.cards.current, box = p.cards.box;
+  if (!c || c.kind !== 'item' || !box) return [`no item card for ${title} (${c ? c.kind : 'none'})`];
+  const t = box.querySelector('.way-hint').textContent.replace(/\\s+/g, ' ').trim();
+  if (!t.startsWith(title)) errs.push(`the card says "${t}", not ${title}`);
+  if (opts.group && !t.endsWith(opts.group)) errs.push(`the card's group: "${t}", not ${opts.group}`);
+  const live = box.querySelector('.heads-step [aria-live]'), L = p.itemsAlong();
+  if (of && (!live || live.textContent.trim() !== `${of} of ${L.length}`)) errs.push(`the stepper says "${live ? live.textContent : 'nothing'}", not ${of} of ${L.length}`);
+  if (!of && box.querySelector('.heads-step')) errs.push('‹ › on a desktop\\'s card');
+  if (box.querySelector('.way-back')) errs.push('Back in words on the item\\'s card (✕ only)');
+  if (opts.all === false && box.querySelector('.heads-all')) errs.push('All in Check on a card opened from Check at half');
+  if (opts.src && !box.querySelector('.heads-src')?.textContent.includes(opts.src)) errs.push(`the source line: ${box.querySelector('.heads-src')?.textContent || 'none'}, not ${opts.src}`);
+  if (opts.main !== undefined && (box.querySelector('.btn.primary.big')?.textContent.trim() || null) !== opts.main) errs.push(`the main button: ${box.querySelector('.btn.primary.big')?.textContent || 'none'}, not ${opts.main}`);
+  // its stretch lit, on the map and in the profile (#84)
+  const w = L.find((x) => x.w.text === title), lit = polku.map.getSource('routeLit').serialize().data;
+  if (w && w.w.ranges !== null) {
+    const f = (lit.features || [])[0], a = p.analysis;
+    if (!f || Math.hypot(f.geometry.coordinates[0][0] - a.pts[Math.round(w.w.at / 10)][0], f.geometry.coordinates[0][1] - a.pts[Math.round(w.w.at / 10)][1]) > 0.0005) errs.push(`its stretch isn't lit on the map: ${JSON.stringify(f && f.geometry.coordinates[0])}`);
+    if (!p.chart.highlight || Math.abs(p.chart.highlight[0] - w.w.at) > 15) errs.push(`its stretch isn't lit in the profile: ${JSON.stringify(p.chart.highlight)}`);
+  }
+  return errs;
+})"""
+
+
+def onroute(chrome):
+    fails = []
+    card = lambda pg, *a: pg.js(f"{ONROUTE_CARD}(...{json.dumps(list(a))})")
+    # a phone, by touch
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        errs, at = pg.js(f"{ONROUTE_OPEN}('.tier-look .row', 'Steep climb')", timeout=90000)
+        fails += errs
+        if at:
+            pg.tap(*at)
+            time.sleep(1.0)
+            fails += card(pg, 'Steep climb, up to 18 %', 2, {'group': 'Worth a look', 'all': False, 'src': 'From the map · OpenStreetMap', 'main': None})
+            if pg.js("polku.planner.panel.dataset.state") != 'peek':
+                fails.append(f"the sheet at {pg.js('polku.planner.panel.dataset.state')} with the card, not the peek")
+            # ‹ › along the route
+            fails += pg.js("""(async () => {
+              const errs = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+              const press = async (k) => { p.cards.box.querySelector(`.heads-step [aria-label="${k}"]`).click(); await wait(300); };
+              const title = () => p.cards.box.querySelector('.way-hint b').textContent;
+              await press('Next');
+              if (title() !== 'Road works: Teiskontie') errs.push(`› went to ${title()}, not Road works`);
+              await press('Previous'); await press('Previous');
+              if (title() !== 'Straight line — not following paths') errs.push(`‹ ‹ went to ${title()}, not the first item along`);
+              if (!p.cards.box.querySelector('.heads-step [aria-label="Previous"]').disabled) errs.push('‹ not disabled at the first item');
+              for (let k = 0; k < 8; k++) if (!p.cards.box.querySelector('.heads-step [aria-label="Next"]').disabled) await press('Next');
+              if (title() !== 'The forecast didn’t answer') errs.push(`the last along the route is ${title()}, not the whole route's Not checked`);
+              if (!/The whole route/.test(p.cards.box.textContent)) errs.push('a whole-route item doesn\\'t say "The whole route"');
+              if (p.cards.box.querySelector('.btn.primary.big')?.textContent.trim() !== 'Retry') errs.push(`Not checked's main button: ${p.cards.box.querySelector('.btn.primary.big')?.textContent || 'none'}`);
+              // a late item: the count follows
+              p.analysis.darkWarn = [...p.analysis.darkWarn, { at: 50, len: 20, kind: 'test', ic: 'warn', noHide: true, text: 'A late item', tier: 'look', src: { kind: 'map', by: 'OpenStreetMap' } }];
+              p.renderWarnings();
+              await wait(200);
+              const live = p.cards.box.querySelector('.heads-step [aria-live]').textContent.trim();
+              if (live !== `${p.itemsAlong().length} of ${p.itemsAlong().length}` || p.itemsAlong().length !== 7) errs.push(`a late item: the stepper says ${live}, of ${p.itemsAlong().length}`);
+              return errs;
+            })()""")
+            # ✕: Check at half again
+            fails += pg.js("""(async () => {
+              const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+              p.cards.box.querySelector('.way-x').click();
+              await wait(800);
+              const errs = [];
+              if (p.cards.current) errs.push('✕ left the card open');
+              if (p.panel.dataset.state !== 'half' || p.tab !== 'check') errs.push(`✕ brought back ${p.panel.dataset.state} at ${p.tab}, not Check at half`);
+              if ((polku.map.getSource('routeLit').serialize().data.features || []).length) errs.push('the stretch stayed lit after ✕');
+              return errs;
+            })()""")
+        # Not checked's Retry, with an answer: gone
+        errs, at = pg.js("(async () => { const el = document.querySelector('[data-sec=warnings] .tier-not .row'); if (!el) return [[], null]; el.scrollIntoView({ block: 'center' }); await new Promise((ok) => setTimeout(ok, 400)); const r = el.getBoundingClientRect(); return [[], [r.left + r.width / 2, r.top + r.height / 2]]; })()")
+        if at:
+            pg.tap(*at)
+            time.sleep(1.0)
+            fails += card(pg, 'The forecast didn’t answer', 7, {'group': 'Not checked', 'main': 'Retry'})
+            fails += pg.js("""(async () => {
+              if (!polku.planner.cards.box) return ['(no card to press Retry on)'];
+              const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+              window.wx501 = false; // Open-Meteo answers now
+              p.cards.box.querySelector('.btn.primary.big').click();
+              for (let k = 0; k < 100 && p.cards.current; k++) await wait(100);
+              return p.cards.current ? ['the card of a source that has answered stays open'] : p.headsUp().not.some((x) => x.key === 'weather') ? ['the forecast answered, and is still in Not checked'] : [];
+            })()""")
+        else:
+            fails.append('no Not checked row to tap')
+        # a tap on the map with a card open: it closes, and no point is added
+        errs, at = pg.js(f"{ONROUTE_OPEN}('.tier-look .row', 'Fallen tree')", timeout=90000)
+        fails += errs
+        if at:
+            pg.tap(*at)
+            time.sleep(1.0)
+            n0 = pg.js("polku.planner.points.length")
+            pg.tap(195, 200)
+            time.sleep(1.0)
+            if pg.js("!!polku.planner.cards.current"):
+                fails.append('a tap on the map left the item card open')
+            if pg.js("polku.planner.points.length") != n0:
+                fails.append('a tap on the map to close the item card added a point')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # a desktop, by mouse: beside the panel at its box, no ‹ ›, Escape closes it
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
+        errs, at = pg.js(f"{ONROUTE_OPEN}('.tier-read .warn-row', 'Road works')", timeout=90000)
+        fails += errs
+        if at:
+            fails += pg.js("""(async () => {
+              const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+              const el = [...document.querySelectorAll('[data-sec=warnings] .tier-read .warn-row')].find((r) => /Road works/.test(r.textContent));
+              el.click();
+              await wait(500);
+              if (el.getAttribute('aria-current') !== 'true') errs.push('the box isn\\'t lit while its card is open');
+              const beside = document.querySelector('.card-beside .card'), r = beside && beside.getBoundingClientRect(), pr = p.panel.getBoundingClientRect(), er = el.getBoundingClientRect();
+              if (!beside) errs.push('the card isn\\'t beside the panel');
+              else if (r.left < pr.right || r.left > pr.right + 24 || Math.abs(r.top - er.top) > 40) errs.push(`the card at ${Math.round(r.left)},${Math.round(r.top)}, not beside the panel at its box (${Math.round(pr.right)},${Math.round(er.top)})`);
+              return errs;
+            })()""")
+            fails += card(pg, 'Road works: Teiskontie', 0, {'group': 'Read before you go', 'src': 'Live · Fintraffic', 'main': None})
+            fails += pg.js("""(async () => {
+              const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+              document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+              await wait(500);
+              if (p.cards.current) errs.push('Escape left the card open');
+              if (document.querySelector('[data-sec=warnings] [aria-current="true"]')) errs.push('the box stayed lit');
+              if ((polku.map.getSource('routeLit').serialize().data.features || []).length) errs.push('the stretch stayed lit');
+              return errs;
+            })()""")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the warning on the route" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -2758,23 +3007,23 @@ SWEEP = """(async () => {
   p.reveal('warnings');
   await wait(300);
   const box = p.els.warnings;
-  const row = () => [...box.querySelectorAll('.li-row')].find((r) => /Log across/.test(r.textContent));
-  const more = row() && row().querySelector('.li-more');
-  if (!more) errs.push('the log row has no ⋯');
+  const row = () => [...box.querySelectorAll('.tier .row, .tier .warn-row')].find((r) => /Log across/.test(r.textContent));
+  // what its ⋯ offered is on its card (25d part 3)
+  const n0 = p.els.tabBtn.check.getAttribute('aria-label') || '';
+  const logCard = row() ? (row().click(), await wait(300), p.cards.current && p.cards.current.kind === 'item' ? p.cards.box : null) : null;
+  if (!logCard) errs.push('the log row opens no card');
   else {
-    more.click();
-    await wait(100);
-    const menu = document.querySelector('.menu-pop');
-    const items = menu ? [...menu.querySelectorAll('.menu-item')].map((b) => b.textContent) : [];
-    if (!items.some((t) => /^Hide “Fallen trees and logs”/.test(t))) errs.push(`row menu: ${items.join(' / ') || 'none'}`);
-    if (!items.some((t) => /Fix the map/.test(t)) || !items.some((t) => /Leave a note/.test(t))) errs.push(`row menu has no OpenStreetMap links: ${items.join(' / ')}`);
-    [...(menu ? menu.querySelectorAll('.menu-item') : [])].find((b) => /^Hide/.test(b.textContent))?.click();
+    const items = [...logCard.querySelectorAll('.row')].map((b) => b.textContent);
+    if (!items.some((t) => /^Hide “Fallen trees and logs”/.test(t))) errs.push(`the log's card: ${items.join(' / ') || 'nothing'}`);
+    if (!items.some((t) => /Fix the map/.test(t)) || !items.some((t) => /Leave a note/.test(t))) errs.push(`the log's card has no OpenStreetMap links: ${items.join(' / ')}`);
+    [...logCard.querySelectorAll('.row')].find((b) => /^Hide/.test(b.textContent))?.click();
     await wait(150);
     if (row()) errs.push('the log row still shows after Hide');
+    if (p.cards.current) errs.push('the log\\'s card stays open after Hide');
     const chip = box.querySelector('.hidden-kinds .on-chip');
     if (!chip || !/Fallen trees and logs/.test(chip.textContent)) errs.push(`hidden kinds: ${box.querySelector('.hidden-kinds')?.textContent || 'none'}`);
     if (!(JSON.parse(localStorage.getItem('polku:hideWarn') || '{}').tree)) errs.push('Hide wasn’t kept');
-    if (!/hidden/.test(p.sec.warnings.sum.textContent)) errs.push(`Heads-up summary: ${p.sec.warnings.sum.textContent}`);
+    if ((p.els.tabBtn.check.getAttribute('aria-label') || '') === n0) errs.push(`Check's count with the log hidden: ${n0}`);
     chip?.click();
     await wait(150);
     if (!row()) errs.push('the log row didn’t come back from the hidden list');
@@ -3392,9 +3641,11 @@ TERRAIN = """(async () => {
     garbled('no terrain');
     // 2. some of it, after Retry: a bad file in the middle, no coarser tile to stand in
     mode = 'some';
-    const row = [...document.querySelectorAll('[data-sec=warnings] .li-row')].find((r) => /Terrain didn.t load/.test(r.textContent));
-    const retry = row && [...row.querySelectorAll('button')].find((b) => b.textContent === 'Retry');
-    if (!retry) return [...errs, 'no Retry for the terrain in Heads-up'];
+    // (25d part 2: in Not checked; its Retry on its card)
+    const row = [...document.querySelectorAll('[data-sec=warnings] .tier-not .row')].find((r) => /Terrain didn.t load/.test(r.textContent));
+    if (row) { row.click(); await new Promise((ok) => setTimeout(ok, 300)); }
+    const retry = row && p.cards.box && [...p.cards.box.querySelectorAll('.btn.primary.big')].find((b) => b.textContent.trim() === 'Retry');
+    if (!retry) return [...errs, 'no Retry for the terrain in Check'];
     retry.click();
     const a2 = await next(a1, 15000);
     if (!a2) return [...errs, 'Retry: the route was not analysed again with the terrain that loaded'];
@@ -8756,7 +9007,8 @@ GROUPS = [
     ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
-    ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network)'),
+    ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network); Not checked with Retry; the groups, What Polku looked at and the badge'),
+    ('onroute', [onroute], 'the warning on the route (25d part 3): the item\'s card from Check, ‹ › along the route, Back, Retry, a tap on the map (mocked sources, straight legs)'),
     ('detour', [detour], 'a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)'),
     ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),
     ('otherways', [otherways], 'other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo, a point taken back at once (#351) (mocked BRouter)'),

@@ -765,7 +765,11 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-tabs .sheet-dock { align-self: center; color: var(--muted); }
 .pl-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .pl-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: 6px; }
-.pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--warn-text); color: var(--surface-solid); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+/* Check's badge (25d part 2): Read before you go's count with a triangle in the warning colour, else a neutral count;
+   "?" beside it while something wasn't checked */
+.pl-tab-n:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; gap: 2px; border-radius: 9px; background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.pl-tab-n.read:not(:empty) { background: var(--danger); color: var(--surface-solid); box-shadow: none; }
+.pl-tab-unk { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center; color: var(--unk); box-shadow: inset 0 0 0 1.5px var(--unk); font-size: 11px; font-weight: 800; }
 .pl-tab-t { font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pl-pane[hidden] { display: none !important; }
 .pl-empty { margin: 14px 0; }
@@ -1077,17 +1081,10 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 }
 .li:hover, .li.sel { background: var(--surface-2); }
 .li .ic { color: var(--warn); }
-.li-ico { width: 18px; height: 18px; flex: none; }
-.li-row { display: flex; align-items: center; gap: 4px; }
-.li-row .li { flex: 1; min-width: 0; }
 .btn.avoid { min-height: 26px; padding-block: 2px; padding-inline: 9px; font-size: 12px; color: var(--bad); border-color: rgba(220,38,38,.35); }
 .btn.avoid:hover { background: rgba(220,38,38,.08); }
-.li-more { flex: none; color: var(--muted); }
 .hidden-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 2px 2px; font-size: 12px; color: var(--muted); }
 .hidden-kinds .on-chip { background: var(--surface-2); color: var(--muted); }
-.kind-incident .li .ic, .kind-roadwork .li .ic { color: var(--bad); }
-.kind-busy .li .ic { color: #b45309; }
-.kind-roadcond .li .ic { color: #7e22ce; }
 .li-main { display: flex; flex-direction: column; min-width: 0; }
 .li-main span { color: var(--muted); font-size: 12px; }
 .badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
@@ -1355,6 +1352,48 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .warn-row.look > span:first-child, .warn-row.look em { color: var(--look); }
 .warn-row.unk { background: var(--unk-soft); border: 1.5px dashed var(--unk); }
 .warn-row.unk > span:first-child, .warn-row.unk em { color: var(--unk); }
+/* ---------------------------------------------------------------- Check's groups (25d part 2, #366)
+   Read before you go, Not checked and Worth a look lead the Check tab, with no header of their own: Read's items the
+   red warning box (warn-row danger), the others rows (row) with their group's icon in its colour, each lit while its
+   card is open (aria-current). Then What Polku looked at, and the kinds hidden, to bring back. */
+.tier + .tier { margin-top: 8px; }
+.tier-h { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0; font-size: var(--font-row); font-weight: var(--weight-strong); }
+.tier-h > span:first-child { flex: none; display: grid; }
+.tier-n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); font-size: var(--font-small); font-weight: var(--weight-strong); }
+.tier-sub { margin: -6px 0 6px 28px; font-size: var(--font-small); color: var(--muted); }
+.tier-read .tier-h > span:first-child { color: var(--danger); }
+.tier-look .tier-h > span:first-child, .tier-look .row > span:first-child { color: var(--look); }
+.tier-not .tier-h > span:first-child, .tier-not .row > span:first-child { color: var(--unk); }
+.tier-boxes { display: grid; gap: 8px; margin-bottom: 4px; }
+button.warn-row { width: 100%; min-height: var(--row-h); align-items: center; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+button.warn-row > span:nth-child(2) { flex: 1; min-width: 0; }
+button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
+@media (hover: hover) { button.warn-row.danger:hover { background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); } }
+.tier .warn-row[aria-current="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tier .row[aria-current="true"] { background: var(--accent-soft); }
+.looked { margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: var(--font-control); }
+.looked-h { margin: 0 0 8px; font-size: var(--font-control); font-weight: var(--weight-strong); }
+.looked ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.looked li { display: flex; align-items: baseline; gap: 8px; }
+.looked li > span:first-child { flex: none; display: grid; align-self: center; color: var(--muted); }
+.looked li.ok > span:first-child { color: var(--accent); }
+.looked li.bad > span:first-child { color: var(--unk); }
+.looked li small { margin-left: auto; color: var(--muted); text-align: right; }
+.looked p { margin: 10px 0 0; }
+.checks .hidden-kinds { padding-top: 10px; }
+/* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
+.heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
+.heads-mark.read { color: var(--danger); background: var(--danger-soft); }
+.heads-mark.look { color: var(--look); background: var(--look-soft); }
+.heads-mark.not { color: var(--unk); background: var(--unk-soft); border-style: dashed; }
+.heads-where, .heads-note { margin: 0; }
+.heads-src { display: flex; align-items: center; gap: 6px; margin: -4px 0 0; font-size: var(--font-small); color: var(--muted); }
+.heads-src > span:first-child { flex: none; display: grid; }
+.heads-src a { color: inherit; }
+.heads-step { display: flex; align-items: center; gap: 4px; margin: 0 -8px; }
+.heads-step > span { font-size: var(--font-body); font-weight: var(--weight-name); color: var(--muted); font-variant-numeric: tabular-nums; }
+.heads-all { margin-left: auto; }
+@container card (max-width: 290px) { .heads-step { flex-wrap: wrap; } .heads-all { flex-basis: 100%; margin-left: 0; } }
 /* the name typed where it's shown, with Save */
 .name-field { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: 0 12px; border: 2px solid var(--accent); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 17px; font-weight: 600; }
 .name-field:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }

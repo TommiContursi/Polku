@@ -240,7 +240,8 @@ export class CardHost {
     }
     if (this.box && this.box.classList.contains('card-banner')) { this.box.remove(); this.box = null; }
     const prev = this.stack[this.stack.length - 2];
-    const back = prev ? prev.card.title : { list: 'Route', check: 'Check', row: 'Back', section: 'Route' }[entry.from] || null;
+    // (an item's card from Check, the peek's row or a marker: ✕ only, as from the map; Back and Escape still go back)
+    const back = prev ? prev.card.title : { list: 'Route', section: 'Route' }[entry.from] || null;
     // built again (not opened): the focus and the scroll stay where they were (WCAG 2.4.3)
     const was = !fresh && this.box && !this.box.classList.contains('card-banner') ? this.box : null;
     const focused = was && was.contains(document.activeElement) ? keyOf(document.activeElement) : null, scroll = was ? was.scrollTop : 0;

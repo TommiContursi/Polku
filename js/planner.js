@@ -20,9 +20,9 @@ import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView } from './inspect.js';
-import { CardHost } from './card.js';
+import { CardHost, item, rows } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard } from './cards.js';
+import { pointCard, itemCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -1341,7 +1341,7 @@ export class Planner {
       leg.key = null;
     } else {
       leg.status = 'error';
-      toast(`Couldn't route this leg (${e.message}) — drawn as a straight line. Heads-up has a Retry.`, { tone: 'warn', ms: 6000 });
+      toast(`Couldn't route this leg (${e.message}) — drawn as a straight line. Check has a Retry.`, { tone: 'warn', ms: 6000 });
     }
   }
 
@@ -2028,6 +2028,7 @@ export class Planner {
       if (li >= 0 && shortCuts(this.legSport(li), this.legStyle(li))) w.note += ' · you allowed short cuts on this leg: only where you may go';
     }
     this.app.setData('accessCut', EMPTY);
+    if (this.focusLit && !(this.cards.current && this.cards.current.kind === 'item')) this.unfocusRange(); // (another route: an open item lights its own again)
     this.watchTerrain(a);
     this.renderAnalysis();
     this.loadWind(a);
@@ -3712,6 +3713,10 @@ export class Planner {
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
         // …and its row in the list lit, where the card leaves it in sight (desktops)
         for (const r of this.els.points.querySelectorAll('.wpl-row')) { if (this.points[+r.dataset.i] === ringed) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+        // an item's card (25d part 3): its row or box in Check lit; closed, its stretch on the route unlit
+        const key = card && card.kind === 'item' ? card.itemKey : null;
+        for (const r of this.els.warnings.querySelectorAll('[data-key]')) { if (r.dataset.key === key) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+        if (!key && this.itemLit) this.unlightItem();
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.measureSheet?.();
       },
@@ -3772,7 +3777,7 @@ export class Planner {
     ...TABS.map((t) => (this.els.tabBtn[t.id] = h('button', {
       type: 'button', role: 'tab', class: 'pl-tab', id: `pl-tab-${t.id}`, 'aria-controls': `pl-pane-${t.id}`, title: t.title,
       onclick: () => this.setTab(t.id, { user: true }),
-    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-t' })))));
+    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-unk', hidden: true, 'aria-hidden': 'true' }, '?'), h('span', { class: 'pl-tab-t' })))));
     const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
@@ -3790,7 +3795,7 @@ export class Planner {
         this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: heads-up, climbs, the ground.'),
         this.els.stats,
         // the two short lists share a column in a wide panel
-        h('div', { class: 'sec-stack' }, this.section('warnings', 'Heads-up', this.els.warnings), this.section('climbs', 'Climbs', this.els.climbs)),
+        h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
         this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown),
         this.section('onmap', 'On the map', this.els.onMap = h('div', { class: 'onmap' }))),
       go: pane('go',
@@ -3820,6 +3825,13 @@ export class Planner {
     this.renderModeChips();
     this.bindSheet();
     this.bindResize();
+  }
+
+  // Check's groups (25d part 2): they lead the Check tab, with no header of their own and no fold
+  checksSection() {
+    const el = h('section', { class: 'sec checks', 'data-sec': 'warnings', 'aria-label': 'What’s on the way' }, this.els.warnings);
+    this.sec.warnings = { el, head: null, titleEl: h('span'), count: h('span'), sum: h('span') };
+    return el;
   }
 
   // A collapsible section; its open state is remembered across visits.
@@ -3853,7 +3865,6 @@ export class Planner {
     s.count.textContent = count === '' ? '' : String(count);
     s.sum.textContent = summary;
     s.el.hidden = empty;
-    if (id === 'warnings' && this.els.tabBtn) this.els.tabBtn.check.querySelector('.pl-tab-n').textContent = empty || !count ? '' : String(count);
   }
 
   // ---------------------------------------------------------------- the tabs (22a)
@@ -3920,7 +3931,8 @@ export class Planner {
   litLeg(i) {
     const leg = i == null ? null : this.legs[i];
     if (!leg) {
-      this.app.setData('routeLit', EMPTY);
+      // (what was picked stays lit: a climb, an item of Check)
+      this.app.setData('routeLit', this.focusLit ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.focusLit } }] } : EMPTY);
       if (this.chart) this.chart.setHighlight(this.focusHl || null);
       return;
     }
@@ -5567,7 +5579,7 @@ export class Planner {
     const v = this.legs.filter(valhalla).length;
     if (v) {
       out.push({ ...span(valhalla), kind: 'router', noHide: true, noAvoid: true, text: `${v === 1 ? 'One leg' : `${v} legs`} routed by Valhalla`,
-        note: 'brouter.de asked for a pause, so the OpenStreetMap routing service stood in. It may take ways marked private, and doesn’t say which: Heads-up lists those found on the map.',
+        note: 'brouter.de asked for a pause, so the OpenStreetMap routing service stood in. It may take ways marked private, and doesn’t say which: Check lists those found on the map.',
         tier: 'look', src: { kind: 'router', by: 'Valhalla, on FOSSGIS servers', url: 'https://valhalla.github.io/valhalla/' }, fixUrl: FIX_THE_MAP, useBrouter: () => this.rerouteWithBrouter() });
     }
     return out;
@@ -5644,78 +5656,172 @@ export class Planner {
     return rows;
   }
 
+  // Check's groups (25d part 2) [jc-check, chk-phone, chk-desk]: Read before you go (the red warning box), Not checked
+  // and Worth a look (rows, each with its group's icon), each in order along the route and lit while its card is open;
+  // then What Polku looked at, and the kinds you've hidden, to bring back. A tap shows the item on the route (its card).
   renderWarnings() {
     const a = this.analysis;
     const box = this.els.warnings;
-    box.innerHTML = '';
+    box.replaceChildren();
+    const H = this.headsUp(a);
+    this.headsList = this.itemsAlong(H);
+    this.renderBadge(H);
     if (!a) return;
-    // (until Check's groups are drawn: today's list, from headsUp())
-    const H = this.headsUp(a), hidden = hiddenKinds(), hiddenHere = H.hidden;
-    const shown = [...H.read, ...H.look].sort((x, y) => x.at - y.at);
-    const nHidden = [...hiddenHere.values()].reduce((t, n) => t + n, 0);
-    const count = shown.length + H.not.length;
-    const first = shown.find((w) => w.kind === 'router' && w.retry) || H.not[0] || shown[0];
-    this.setSection('warnings', { count: count || '', empty: !count && !nHidden, summary: first ? first.text + (count > 1 ? ` · +${count - 1} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '') : nHidden ? `${nHidden} hidden` : '' });
-    for (const x of H.not) {
-      box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${escapeHtml(x.text)}</b><span>${escapeHtml(x.note)}</span></span>` }),
-        x.retry ? h('button', { type: 'button', class: 'btn', title: `Ask ${x.by} again`, onclick: () => x.retry() }, 'Retry') : null));
-    }
-    if (!shown.length && !hiddenHere.size) return;
-    const KIND_ICON = { roadwork: 'warn', incident: 'warn', roadcond: 'warn', busy: 'warn', dark: 'moon' };
-    // where along: in metres on a short route ("at 40 m"), else "at km 12.3"
-    const atKm = (m) => (m < 10 ? 'the start' : a.along[a.along.length - 1] < 2000 ? `${Math.round(m / 10) * 10} m` : `km ${(m / 1000).toFixed(1)}`);
-    for (const w of shown.slice(0, 40)) {
-      if (w.kind === 'router') { // the router's own: Retry, or Use BRouter
-        box.append(h('div', { class: 'li-row kind-route' },
-          h('div', { class: 'li', html: `${icon(w.retry ? 'warn' : 'info', 16)}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${escapeHtml(w.note)}${w.src.url ? ` Routing: <a href="${w.src.url}" target="_blank" rel="noopener">Valhalla</a> on FOSSGIS servers · <a href="${w.fixUrl}" target="_blank" rel="noopener">fix the map</a>` : ''}</span></span>` }),
-          w.retry ? h('button', { type: 'button', class: 'btn', title: 'Ask the router again', onclick: () => w.retry() }, 'Retry')
-            : h('button', { type: 'button', class: 'btn', title: 'Route these legs with BRouter (its trail profiles) once it’s free', onclick: () => w.useBrouter() }, 'Use BRouter')));
-        continue;
-      }
-      const i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
-      let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len, 30));
-      if (i1 < 0) i1 = a.along.length - 1;
-      // anything with a place can be avoided: a circle over the hazard (each of them, for a group)
-      const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
-        : w.avoid ? [{ ...w.avoid, label: w.text }]
-          : w.noAvoid || /^(Straight line|Carry)/.test(w.text) ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
-      const where = w.items ? `at ${w.items.map((p) => atKm(p.at)).join(', ')}` : `at ${atKm(w.at)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
-      const ico = w.icon ? `<img class="li-ico" src="${iconUrl(w.icon)}" alt="">` : icon(w.ic || KIND_ICON[w.kind] || 'warn', 16);
-      const kind = hideKind(w);
-      const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
-        h('button', { type: 'button', class: 'li', html: `${ico}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${where}${w.note ? ` · ${escapeHtml(w.note)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
-        avoid && this.legs.some((l) => l.mode === 'auto' || l.mode === 'water') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null,
-        w.cutLeg != null ? h('button', { type: 'button', class: 'btn', title: 'Let this leg take the short cut (Route style: Ways marked private → Short cuts ok). Only where you may go.', onclick: () => this.useShortCut(w.cutLeg, w.picks) }, 'Short cut') : null,
-        kind || (w.osm && w.lngLat) ? h('button', {
-          type: 'button', class: 'tool small li-more', title: 'More: hide this kind, or correct the map', 'aria-label': `More for “${w.text}”`, 'aria-haspopup': 'menu', html: icon('more', 16),
-          onclick: (e) => {
-            const at = e.currentTarget, open1 = this.rowMenu;
-            if (open1) { open1.close(); if (open1.at === at) return; } // its own ⋯ again: just closed
-            this.rowMenu = popMenu(at, [
-              kind ? { icon: 'eyeOff', label: `Hide “${escapeHtml(kind.label)}” in Heads-up`, fn: () => this.hideWarnKind(kind) } : null,
-              w.osm && w.osm.id ? { icon: 'external', label: 'Gone? Fix the map (OpenStreetMap)', fn: () => open(`https://www.openstreetmap.org/edit?${w.osm.type}=${w.osm.id}`, '_blank', 'noopener') } : null,
-              w.osm && w.lngLat ? { icon: 'external', label: w.fix || 'Not right? Leave a note on OpenStreetMap', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') } : null,
-            ], { label: w.text, onClose: () => { this.rowMenu = null; } });
-            this.rowMenu.at = at;
-          },
-        }) : null);
-      box.append(row);
-    }
-    if (hiddenHere.size) {
+    this.setSection('warnings', { count: H.read.length + H.look.length + H.not.length });
+    const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
+    const row = (it) => {
+      const k = itemKey(it), where = this.whereOf(it.w), go = (e) => this.openItemCard(it, { from: 'check', el: e.currentTarget });
+      const el = it.g === 'read'
+        ? h('button', { type: 'button', class: 'warn-row danger', onclick: go },
+          h('span', { 'aria-hidden': 'true', html: icon('warnf', 20) }), h('span', {}, h('b', {}, it.w.text), h('small', {}, where)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }))
+        : item({ icon: it.g === 'not' ? 'unk' : 'eye', label: it.w.text, line: where, chev: true, onclick: go });
+      el.dataset.key = k;
+      if (k === open) el.setAttribute('aria-current', 'true');
+      return el;
+    };
+    const MAX = 40; // (‹ › on a card steps through the rest)
+    const tier = (g, ic, title, sub, list) => {
+      if (!list.length) return null;
+      const els = list.slice(0, MAX).map((w) => row({ g, w }));
+      return h('section', { class: `tier tier-${g}`, 'aria-labelledby': `tier-${g}` },
+        h('h3', { class: 'tier-h', id: `tier-${g}` }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, title), h('span', { class: 'tier-n' }, String(list.length))),
+        h('p', { class: 'tier-sub' }, sub),
+        g === 'read' ? h('div', { class: 'tier-boxes' }, ...els) : rows(...els),
+        list.length > MAX ? h('p', { class: 'tier-sub' }, `And ${list.length - MAX} more along the route: ‹ › on a card steps through them`) : null);
+    };
+    box.append(...[
+      tier('read', 'warnf', 'Read before you go', 'What can stop you, turn you back or hurt', H.read),
+      tier('not', 'unk', 'Not checked', 'A source didn’t answer: the route may miss something', H.not),
+      tier('look', 'eye', 'Worth a look', 'Sections to know about', H.look),
+    ].filter(Boolean));
+    // what was looked at, from where, and what that doesn't mean
+    const SAY = { ok: ['check', 'Checked'], bad: ['unk', 'Not checked'], wait: ['clock', 'Being asked'], na: ['minus', 'Not used'] };
+    box.append(h('div', { class: 'looked' },
+      h('h4', { class: 'looked-h' }, 'What Polku looked at'),
+      h('ul', {}, ...this.lookedAt(a).map((r) => h('li', { class: r.state },
+        h('span', { 'aria-hidden': 'true', html: icon(SAY[r.state][0], 16) }), h('span', {}, h('span', { class: 'sr-only' }, `${SAY[r.state][1]}: `), r.what), h('small', {}, r.by)))),
+      h('p', {}, 'Nothing listed doesn’t mean a way is open, safe or allowed. Polku checks only what its sources know; signs on the ground win.')));
+    if (H.hidden.size) {
+      const hidden = hiddenKinds();
       box.append(h('div', { class: 'hidden-kinds' },
         h('span', {}, 'Hidden:'),
-        ...[...hiddenHere].map(([k, n]) => h('button', { type: 'button', class: 'on-chip', title: 'Show these in Heads-up again', 'aria-label': `Show “${hidden[k]}” in Heads-up again`, html: `<span>${escapeHtml(hidden[k])}${n > 1 ? ` ×${n}` : ''}</span>${icon('close', 12)}`, onclick: () => this.hideWarnKind({ key: k }, false) }))));
+        ...[...H.hidden].map(([k, n]) => h('button', { type: 'button', class: 'on-chip', title: 'Show these in Check again', 'aria-label': `Show “${hidden[k]}” in Check again`, html: `<span>${escapeHtml(hidden[k])}${n > 1 ? ` ×${n}` : ''}</span>${icon('close', 12)}`, onclick: () => this.hideWarnKind({ key: k }, false) }))));
     }
+    if (open) this.cards.refresh(); // (its "2 of 5", or closed when it's gone)
   }
 
-  // Hide a kind of heads-up everywhere (it's yours: kept on this device), or show it again
+  // The Check tab's badge [chk-phone]: Read before you go's count with a triangle in the warning colour, else Worth a
+  // look's count, neutral; "?" beside it while something wasn't checked. Its name says all three.
+  renderBadge(H) {
+    const tab = this.els.tabBtn && this.els.tabBtn.check;
+    if (!tab) return;
+    const n = tab.querySelector('.pl-tab-n'), unk = tab.querySelector('.pl-tab-unk');
+    const r = H.read.length, l = H.look.length, q = H.not.length;
+    n.classList.toggle('read', !!r);
+    n.innerHTML = r ? `${icon('warnf', 11)}${r}` : l ? String(l) : '';
+    unk.hidden = !q;
+    const say = [r && `${r} to read before you go`, q && `${q} not checked`, l && `${l} worth a look`].filter(Boolean).join(', ');
+    if (say) tab.setAttribute('aria-label', `Check: ${say}`); else tab.removeAttribute('aria-label');
+  }
+
+  // Every item along the route, for ‹ › on its card and the markers (25d part 3): [{ g: 'read' | 'look' | 'not', w }],
+  // in order along the route; Not checked for the whole route last
+  itemsAlong(H = this.headsUp()) {
+    const placed = [...H.read.map((w) => ({ g: 'read', w })), ...H.look.map((w) => ({ g: 'look', w })), ...H.not.filter((w) => w.ranges).map((w) => ({ g: 'not', w }))];
+    return [...placed.sort((x, y) => x.w.at - y.w.at), ...H.not.filter((w) => !w.ranges).map((w) => ({ g: 'not', w }))];
+  }
+  itemByKey(k) { return (this.headsList || this.itemsAlong()).find((it) => itemKey(it) === k) || null; }
+  itemIndex(k) { const L = this.headsList || this.itemsAlong(); return [L.findIndex((it) => itemKey(it) === k), L.length]; }
+
+  // where an item is, in words: "at 300 m · 60 m", "at km 1.4, 2.0", "The whole route"
+  whereOf(w) {
+    const a = this.analysis;
+    if (w.ranges === null) return 'The whole route';
+    const atKm = (m) => (m < 10 ? 'the start' : a.along[a.along.length - 1] < 2000 ? `${Math.round(m / 10) * 10} m` : `km ${(m / 1000).toFixed(1)}`);
+    return w.items ? `at ${w.items.map((p) => atKm(p.at)).join(', ')}` : `at ${atKm(w.at)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
+  }
+  // the samples [i0, i1] of an item's stretch (at least 30 m), and its place on the route (null: the whole route)
+  itemSpan(w) {
+    const a = this.analysis, i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
+    let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len || 0, 30));
+    if (i1 < 0) i1 = a.along.length - 1;
+    return [i0, i1];
+  }
+  itemPlace(w) { return !this.analysis || w.ranges === null || w.at == null ? null : this.analysis.pts[this.itemSpan(w)[0]]; }
+
+  // An item's card [r-item, jc-step, jc-desk-sel]: in the peek on a phone, beside the panel at its row on a desktop
+  // (from Check), else at its place on the route. `x`: an entry of itemsAlong() or the item itself. `from`: 'check',
+  // 'row' (the peek's), 'marker' or 'section'; Back, Escape and ✕ go back to where it was opened.
+  openItemCard(x, { from = 'check', el = null, step = 0 } = {}) {
+    const L = this.headsList || this.itemsAlong(), it = x.w ? x : L.find((y) => y.w === x) || L.find((y) => itemKey(y) === itemKey({ g: x.tier === 'look' ? 'look' : 'read', w: x }));
+    if (!it || !this.analysis) return;
+    if (this.menu) this.menu.remove();
+    const at = this.itemPlace(it.w);
+    const side = this.cards.where() === 'float' && this.layout() === 'side' && this.active;
+    // (beside the panel's edge, level with its row; with no row and no place, at the panel's top)
+    const panel = this.panel.getBoundingClientRect(), beside = side && (el || !at) ? { right: panel.right + 4, top: el ? el.getBoundingClientRect().top : panel.top + 60 } : null;
+    this.cards.open(itemCard(this, itemKey(it), from), { at, beside, from });
+    // its stretch lit, once the card has its place (the peek is smaller than the sheet was)
+    requestAnimationFrame(() => { if (this.cards.current && this.cards.current.itemKey === itemKey(it)) this.lightItem(it.w); });
+    if (step) requestAnimationFrame(() => { const b = this.cards.box && [...this.cards.box.querySelectorAll('.heads-step .tool')]; if (b) (b[step > 0 ? 1 : 0].disabled ? b[step > 0 ? 0 : 1] : b[step > 0 ? 1 : 0]).focus({ preventScroll: true }); });
+  }
+  // ‹ ›: the item before or after along the route
+  stepItem(d) {
+    const c = this.cards.current;
+    if (!c || c.kind !== 'item') return;
+    const L = this.headsList || this.itemsAlong(), k = L.findIndex((it) => itemKey(it) === c.itemKey);
+    if (k >= 0 && L[k + d]) this.openItemCard(L[k + d], { from: c.from, step: d });
+  }
+  // All in Check ›: Check at half, the item's row in sight
+  allInCheck(c) {
+    this.cards.close({ restore: false });
+    this.reveal('warnings');
+    requestAnimationFrame(() => { const r = this.els.warnings.querySelector(`[data-key="${CSS.escape(c.itemKey)}"]`); if (r) { r.scrollIntoView({ block: 'center' }); this.flash(r); } });
+  }
+  // an item in view: its stretch lit (#84) and in sight, no closer than the map was (the route around it stays in view),
+  // unless the card is only built again
+  lightItem(w, { frame = true } = {}) {
+    if (!this.analysis || w.ranges === null || w.at == null) { this.unlightItem(); return; }
+    const [i0, i1] = this.itemSpan(w);
+    this.itemLit = true;
+    this.focusRange(i0, i1, w, { frame, maxZoom: Math.min(16, Math.max(12, this.map.getZoom())) });
+  }
+  unlightItem() {
+    this.itemLit = false;
+    this.unfocusRange();
+  }
+
+  // What an item's card offers: its one main action (Avoid it, Short cut, Use BRouter or Retry; `edits` when it changes
+  // the route), and the rest of what its ⋯ offered (hide this kind, correct the map)
+  itemActions({ g, w }) {
+    const a = this.analysis;
+    let main = null;
+    if (w.retry) main = { label: 'Retry', icon: 'retry', fn: () => w.retry(), edits: g !== 'not' };
+    else if (w.useBrouter) main = { label: 'Use BRouter', icon: 'route', fn: () => w.useBrouter(), edits: true };
+    else if (w.cutLeg != null) main = { label: 'Short cut', icon: 'straight', fn: () => this.useShortCut(w.cutLeg, w.picks), edits: true, line: 'Lets this leg take the short cut: only where you may go' };
+    else if (this.legs.some((l) => l.mode === 'auto' || l.mode === 'water')) {
+      // anything with a place can be avoided: a circle over it (each of them, for a group)
+      const [i0, i1] = this.itemSpan(w);
+      const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
+        : w.avoid ? [{ ...w.avoid, label: w.text }]
+          : w.noAvoid || /^(Straight line|Carry)/.test(w.text) || w.ranges === null ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
+      if (avoid) main = { label: avoid.length > 1 ? `Avoid all ${avoid.length}` : 'Avoid it', icon: 'avoid', fn: () => this.addNogos(avoid), edits: true };
+    }
+    const kind = g === 'not' ? null : hideKind(w), more = [];
+    if (kind) more.push({ icon: 'eyeOff', label: `Hide “${kind.label}” in Check`, line: 'Listed at the end of Check, to show again', fn: () => this.hideWarnKind(kind) });
+    if (w.osm && w.osm.id) more.push({ icon: 'external', label: 'Gone? Fix the map', line: 'OpenStreetMap’s editor, at this way', fn: () => open(`https://www.openstreetmap.org/edit?${w.osm.type}=${w.osm.id}`, '_blank', 'noopener') });
+    if (w.osm && w.lngLat) more.push({ icon: 'external', label: w.fix || 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') });
+    if (w.fixUrl) more.push({ icon: 'external', label: 'Fix the map', line: 'What Valhalla routes on comes from OpenStreetMap', fn: () => open(w.fixUrl, '_blank', 'noopener') });
+    return { main, more };
+  }
+
+  // Hide a kind of item everywhere (it's yours: kept on this device), or show it again
   hideWarnKind(kind, hide = true) {
     const all = { ...hiddenKinds() };
     if (hide) all[kind.key] = kind.label; else delete all[kind.key];
     store.set('hideWarn', all);
     this.renderWarnings();
-    if (hide) toast(`“${kind.label}” hidden in Heads-up: it’s listed at the end to show again`, { ms: 5000, action: { label: 'Undo', fn: () => this.hideWarnKind(kind, false) } });
+    if (hide) toast(`“${kind.label}” hidden in Check: it’s listed at the end to show again`, { ms: 5000, action: { label: 'Undo', fn: () => this.hideWarnKind(kind, false) } });
   }
 
   // the route's extent: its points and routed lines
@@ -5744,15 +5850,27 @@ export class Planner {
     return !(b[2] < v.getWest() || b[0] > v.getEast() || b[3] < v.getSouth() || b[1] > v.getNorth());
   }
 
-  focusRange(i0, i1, sel) {
+  // A stretch of the route picked (a climb, an item of Check): lit in the profile and on the map (#84), and framed
+  // unless `frame` is false (an item's card built again); `maxZoom`: no closer than this
+  focusRange(i0, i1, sel, { frame = true, maxZoom = 16 } = {}) {
     const a = this.analysis;
     this.selected = sel;
     this.focusHl = [a.along[i0], a.along[i1]];
     this.chart.setHighlight(this.focusHl);
+    this.focusLit = a.pts.slice(i0, i1 + 1);
+    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.focusLit.length > 1 ? this.focusLit : [a.pts[i0], a.pts[i0]] } }] });
     // a short cut the route didn't take (#104): drawn while its row is the one picked
     const cut = sel && sel.cut;
     this.app.setData('accessCut', cut ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cut } }] } : EMPTY);
-    this.frame(bbox([...a.pts.slice(i0, i1 + 1), ...(cut || [])]), { duration: 700 });
+    if (frame) this.frame(bbox([...a.pts.slice(i0, i1 + 1), ...(cut || [])]), { duration: 700, maxZoom });
+  }
+  // nothing picked: the profile and the route unlit (an open leg stays lit)
+  unfocusRange() {
+    this.selected = null;
+    this.focusHl = null;
+    this.focusLit = null;
+    this.app.setData('accessCut', EMPTY);
+    this.unlitLeg();
   }
 
   renderWind() {
@@ -5875,6 +5993,8 @@ function runsAlong(along, on) {
   if (s >= 0) out.push([along[s], along[along.length - 1] - along[s]]);
   return out;
 }
+// who an item of Check is, through a new analysis (its objects are made again): its group, its words and its place
+const itemKey = ({ g, w }) => (g === 'not' ? `not|${w.key}|${w.by}` : `${g}|${w.text}|${Math.round(w.at)}`);
 // Not checked's what and why, for each of the water router's sources that didn't answer (waterdata.js)
 const WATER_LOST = {
   OpenStreetMap: ['Rocks and shoals from OpenStreetMap didn’t answer', 'Routed without them: the line may pass close to a rock the map knows.'],

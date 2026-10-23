@@ -1062,7 +1062,7 @@ function renderLayersPanel() {
 
   for (const g of LAYER_GROUPS) {
     const kids = g.ids.map(overlayToggle);
-    if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up under Heads-up, each with an Avoid button.'));
+    if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up in Check, each with Avoid it on its card.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
     p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));
   }
