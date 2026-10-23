@@ -81,8 +81,11 @@ export function initInspector(map, app) {
   // the card for a feature (a click, or a pick in search)
   async function show(f, ll, feats = []) {
     if (popup) popup.remove();
-    const body = h('div', { class: 'insp' });
-    popup = new maplibregl.Popup({ maxWidth: '320px', className: 'polku-popup', offset: 8 }).setLngLat(ll).setDOMContent(body).addTo(map);
+    // as wide as the room beside the map's buttons, or over them where it's too narrow (a phone at 200 %); a tall
+    // card scrolls inside the room there is, under the top bar, less its padding and its tip (#435)
+    const beside = window.innerWidth - columnWidth() - 8;
+    const body = h('div', { class: 'insp', style: `max-height: ${Math.max(220, window.innerHeight - 8 - 120 - 24 - 10)}px` });
+    popup = new maplibregl.Popup({ maxWidth: `${beside >= INSP_LEAST ? Math.min(320, beside) : window.innerWidth - 16}px`, className: 'polku-popup', offset: 8 }).setLngLat(ll).setDOMContent(body).addTo(map);
     keepInView(map, popup);
     const pop = popup;
     const actions = h('div', { class: 'insp-actions' },
@@ -175,14 +178,17 @@ export function initInspector(map, app) {
 
 // Pan so the popup clears the floating buttons on the right and the top bar.
 // Pan so the popup clears the top bar and the control column; `pad` also keeps
-// it off a panel ({left, bottom} in px from the window's edges).
+// it off a panel ({left, bottom} in px from the window's edges). A popup too wide to sit beside the
+// column (a phone at 200 %) goes over it, and the map's buttons step aside while it's open (#435).
 export function keepInView(map, popup, pad = {}) {
   const check = () => {
     const el = popup.getElement();
     if (!el || !popup.isOpen()) return; // closed already
     const r = el.getBoundingClientRect();
-    const right = window.innerWidth - (window.innerWidth < 720 ? 64 : 84);
     const left = Math.max(8, pad.left || 0), bottom = window.innerHeight - Math.max(8, pad.bottom || 0);
+    const over = r.width > window.innerWidth - columnWidth() - left;
+    overColumn(popup, over);
+    const right = window.innerWidth - (over ? 8 : columnWidth());
     const dx = r.right > right ? r.right - right : r.left < left ? r.left - left : 0;
     const dy = r.top < 120 ? r.top - 120 : r.bottom > bottom ? Math.min(r.bottom - bottom, r.top - 120) : 0;
     if (dx || dy) map.panBy([dx, dy], { duration: 250 });
@@ -202,6 +208,19 @@ export function keepInView(map, popup, pad = {}) {
   ro.observe(el);
   el.polkuKeep = ro;
   popup.once('close', () => { ro.disconnect(); clearTimeout(timer); });
+}
+
+// what the map's column of buttons takes at the right, its margins included
+const columnWidth = () => (window.innerWidth < 720 ? 64 : 84);
+// the map's card at its narrowest: .insp's min-width and the popup's padding (css/app.css)
+const INSP_LEAST = 258;
+
+// the popups open over the map's column; it hides while there's one
+const overIt = new Set();
+function overColumn(popup, on) {
+  if (on && !overIt.has(popup)) popup.once('close', () => overColumn(popup, false));
+  overIt[on ? 'add' : 'delete'](popup);
+  document.body.classList.toggle('card-over', overIt.size > 0);
 }
 
 function row(label, value, html = false) {

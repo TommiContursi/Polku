@@ -434,8 +434,90 @@ def trails(chrome):
     fails += [f'route: {e}' for e in pg.js(ROUTE_TRAILS)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} trail details" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    fails += trail_card(chrome)
+    print(f"{'ok  ' if not fails else 'FAIL'} trail details, a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
+
+# A trail's card on a phone, the planner put away (#435), opened by a real tap on a trail of the recorded tile. At 200 %
+# (a 390 phone's 195 × 422) it stays on the screen less 8 px each side and under the top bar, with nothing over it (the
+# map's buttons step aside; the scale and the credits are under it), its words in it, and every button in it reachable
+# by scrolling the card; ✕ closes it and the buttons are back. At 390 × 844 it sits beside the buttons, which stay.
+CARD_TAP = """(() => {
+  const m = polku.map, W = innerWidth, H = innerHeight, top = document.querySelector('.topbar').getBoundingClientRect().bottom;
+  for (const f of m.queryRenderedFeatures({ layers: ['path-osm-ground'] }))
+    for (const c of f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates.flat()) {
+      const p = m.project(c);
+      if (p.x > 16 && p.x < W - 90 && p.y > top + 40 && p.y < H - 60) return [p.x, p.y];
+    }
+  return null;
+})()"""
+CARD_FIT = """(async () => {
+  const errs = [], frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const card = () => document.querySelector('.polku-popup .insp');
+  // open and still: the same box twice in a row, two frames apart, the map still (the card moves the map into view)
+  let a = null, same = 0;
+  for (let k = 0; k < 60 && same < 2; k++) {
+    await frames();
+    const b = card() && card().parentElement.getBoundingClientRect();
+    same = a && b && Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.height - b.height) < 1 && !polku.map.isMoving() ? same + 1 : 0;
+    a = b;
+  }
+  const c = card();
+  if (!c) return { errs: ['no card opened'] };
+  const pop = c.closest('.maplibregl-popup'), R = c.parentElement.getBoundingClientRect(), W = innerWidth, H = innerHeight; // (the card, not its tip)
+  const box = (r) => `x ${Math.round(r.left)}–${Math.round(r.right)}, y ${Math.round(r.top)}–${Math.round(r.bottom)}`;
+  if (R.left < 7.5 || R.right > W - 7.5 || R.top < document.querySelector('.topbar').getBoundingClientRect().bottom || R.bottom > H - 7.5)
+    errs.push(`the card at ${box(R)} on a ${W} × ${H} screen`);
+  if (c.scrollWidth > c.clientWidth + 1) errs.push(`its words run ${c.scrollWidth - c.clientWidth} px out of it`);
+  const over = (x, y) => { const e = document.elementFromPoint(x, y); return !e || pop.contains(e) ? '' : e.closest('[id]')?.id || String(e.className.baseVal ?? e.className) || e.tagName; };
+  for (const [x, y] of [[R.left + 8, R.top + 8], [R.right - 8, R.top + 8], [R.left + 8, R.bottom - 8], [R.right - 8, R.bottom - 8], [(R.left + R.right) / 2, (R.top + R.bottom) / 2]]) {
+    const o = over(x, y);
+    if (o) errs.push(`${o} over the card at ${Math.round(x)}, ${Math.round(y)}`);
+  }
+  const ctrls = document.querySelector('.map-ctrls'), shown = getComputedStyle(ctrls).visibility !== 'hidden';
+  for (const e of shown ? ctrls.querySelectorAll('.ctrl-btn, .fab, .ctrl-compass') : []) {
+    const r = e.getBoundingClientRect();
+    if (e.getClientRects().length && r.left < R.right && r.right > R.left && r.top < R.bottom && r.bottom > R.top) errs.push(`${e.id || e.className} (${box(r)}) over the card at ${box(R)}`);
+  }
+  // each button and link, scrolled to as a person scrolls the card (the card only)
+  for (const b of c.querySelectorAll('button, a')) {
+    const r0 = b.getBoundingClientRect(), r1 = c.getBoundingClientRect();
+    if (r0.bottom > r1.bottom) c.scrollTop += r0.bottom - r1.bottom + 4; else if (r0.top < r1.top) c.scrollTop -= r1.top - r0.top + 4;
+    await frames();
+    const r = b.getBoundingClientRect(), o = over((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+    if (o || r.left < R.left || r.right > R.right) errs.push(`${b.textContent.trim().slice(0, 40)}: ${o ? `${o} over it` : `out of the card at ${box(r)}`}`);
+  }
+  if (!c.querySelector('.insp-actions button')) errs.push('no Route from here, Add to route or Avoid');
+  const x = pop.querySelector('.maplibregl-popup-close-button').getBoundingClientRect();
+  return { errs, shown, close: [(x.left + x.right) / 2, (x.top + x.bottom) / 2] };
+})()"""
+
+
+def trail_card(chrome):
+    fails = []
+    for w, h_ in ((195, 422), (390, 844)):
+        name = f'{w}x{h_}' + (' (200 %)' if w == 195 else '')
+        pg = chrome.page(w, h_, True)
+        pg.open_app({'activity': 'mtb'}, hash_='#12/62.2289/25.7652')
+        pg.js(SEED_TRAILS)
+        pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16 }); true")
+        at = pg.js(f"new Promise((ok) => {{ const t0 = Date.now(), go = () => {{ const p = {CARD_TAP}; p || Date.now() - t0 > 20000 ? ok(p) : setTimeout(go, 250); }}; go(); }})")
+        if not at:
+            fails.append(f'{name}: no trail from the recorded tile on the screen')
+        else:
+            pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
+            r = pg.js(CARD_FIT)
+            fails += [f'{name}: {e}' for e in r['errs']]
+            if w == 390 and not r.get('shown'):
+                fails.append(f"{name}: the map's buttons hidden for a card that fits beside them")
+            if r.get('close'):
+                pg.quick_tap(*r['close'])
+                if not pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!document.querySelector('.polku-popup .insp') && getComputedStyle(document.querySelector('.map-ctrls')).visibility !== 'hidden'))))"):
+                    fails.append(f"{name}: after ✕, the card still open or the map's buttons not back")
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    return fails
 
 
 # Before the page loads: the terrain tiles fail (window.__dem.mode = 'ok' makes
@@ -9537,7 +9619,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
     ('layers', [layers], 'the Layers panel in every sport'),
-    ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), and the uphill colours when the terrain comes late (mocked)'),
+    ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
     ('water', [water, water_late], 'the paddling router\'s costs (recorded fairways, a fixed wind), and OSM\'s rocks coming late (mocked)'),
