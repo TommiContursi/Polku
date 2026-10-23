@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: the timeline says where its reading is from, whole ([#243](https://github.com/TommiContursi/Polku/issues/243))
+
+On a phone, the weather timeline's reading beside the strip said where it was read cut short, as "map c". Now "map centre" shows whole, on two short lines beside the temperature where there's no room for one, and the reading is no taller than before. A note there, such as "Weather paused…", shows up to three lines instead of one cut short, and the whole note is in its tooltip.
+
 ### Fixed: the search works on a phone zoomed to 200 % ([#375](https://github.com/TommiContursi/Polku/issues/375))
 
 On a phone zoomed to 200 %, the search box was squeezed to a few pixels between the logo and the sport, so you couldn't see or tap into it, and **Settings** ran off the screen. Now, in a window that narrow, the search is its magnifier, and a tap on it opens the field across the top bar, with its results under it. **Escape**, a result or a tap elsewhere folds it back. On the narrowest screens the logo steps aside, so the search, the sport and **Settings** all fit.

@@ -7386,6 +7386,65 @@ def weather_requests(chrome):
     return not fails
 
 
+# Before the page loads: Open-Meteo's forecast answers at once with the same weather everywhere (__wx.temp, −12 °C:
+# the widest reading), so a check of the timeline doesn't wait for the service or depend on its weather.
+WX_FIXED = """(() => {
+  const real = window.fetch.bind(window), W = window.__wx = { temp: -12, asked: 0 };
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/api\\.open-meteo\\.com\\/v1\\/forecast\\?.*temperature_2m/.test(url)) return real(input, init);
+    W.asked++;
+    const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
+    const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
+    const hourly = () => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
+      temperature_2m: fill(W.temp), precipitation: fill(0.4), cloud_cover: fill(60), snow_depth: fill(0), snowfall: fill(0) });
+    return Promise.resolve(new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly() }))), { headers: { 'Content-Type': 'application/json' } }));
+  };
+})();"""
+
+# The timeline's reading on phones (#243): opened with a tap on Weather, the forecast answering (WX_FIXED), its first
+# line (the sky's icon, the temperature, "map centre") is whole inside its box. (The wind's and the rain's lines can
+# still be longer than the box: #457.)
+TL_READING = """new Promise((done) => {
+  const t0 = Date.now(), go = () => {
+    const box = document.querySelector('#wx-bar .tl-now'), main = box && box.querySelector('.tl-now-main');
+    if (!main) { if (Date.now() - t0 < 20000) { setTimeout(go, 200); return; } done({ out: [`no reading after 20 s: ${box ? box.textContent : 'no timeline'}`] }); return; }
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const out = [], b = box.getBoundingClientRect();
+      for (const e of [main, ...main.children]) {
+        const r = e.getBoundingClientRect(), t = e.textContent.trim() || e.tagName;
+        if (r.right > b.right + 0.5 || r.left < b.left - 0.5 || r.bottom > b.bottom + 0.5) out.push(`“${t}” at x ${Math.round(r.left)}–${Math.round(r.right)}, out of its box (x ${Math.round(b.left)}–${Math.round(b.right)})`);
+        else if (e.scrollWidth > e.clientWidth + 1 && e.clientWidth) out.push(`“${t}” cut (${e.scrollWidth} px in ${e.clientWidth})`);
+      }
+      const label = main.querySelector('small')?.textContent;
+      if (label !== 'map centre') out.push(`it says “${label}” where it's read, not “map centre”`);
+      done({ out, text: box.textContent });
+    }));
+  };
+  go();
+})"""
+
+
+def timeline_reading(chrome):
+    fails = []
+    for w, h_ in ((390, 844), (360, 740)):
+        name = f'{w}x{h_}'
+        pg = chrome.page(w, h_, True)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED}, pg.s)
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#12/62.2289/25.7652')
+            pg.js("(async () => { const { idb } = await import(location.origin + '/js/idb.js'); await idb('weather').prune(() => false); return true; })()")
+            b = pg.js("(() => { const r = document.getElementById('btn-time').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+            pg.quick_tap(*b)
+            r = pg.js(TL_READING)
+            fails += [f"{name}: the timeline's reading: {f}" for f in r['out']]
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline's reading on phones: its first line whole in its box (#243)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Every group: its name, its checks in the order they run, and its line for --list.
 # No arguments runs them all in this order, then the layout at every size in VIEWPORTS.
 # 25a, the toolbox and the header (#233). Phones: the toolbox floats beside the map's buttons or docks into
@@ -9727,7 +9786,7 @@ def controls(chrome):
 
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
-    ('weather', [weather_requests], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298)'),
+    ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing], 'calls made together go out paced and counted (mocked services, a fake clock)'),
     ('layers', [layers], 'the Layers panel in every sport'),
