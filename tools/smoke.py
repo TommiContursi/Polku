@@ -5033,6 +5033,88 @@ def column_early(chrome):
     return not fails
 
 
+# Before the page loads: Traficom's map tiles as sessionStorage's polku-test-depths says. Unset, they answer at once,
+# empty. 'error' and 'drop': each is held until every other source's tiles are in, then fails with a server error
+# (500) or as a dropped connection, so a failure is the map's last load (#393). Its other calls fail as if blocked.
+# polku.map.__loads counts MapLibre's load events.
+DEPTHS_FAIL_LAST = """(() => {
+  const real = window.fetch.bind(window), mode = sessionStorage.getItem('polku-test-depths') || '';
+  const traficom = (url) => /^https:\\/\\/[^/]*traficom\\.fi\\//.test(url);
+  const othersIn = () => new Promise((ok) => {
+    const t0 = Date.now(), go = () => {
+      const m = window.polku && polku.map, st = m && m.style;
+      const done = st && st._loaded && Object.entries(st.tileManagers).every(([id, tm]) => traficom(String((m.getSource(id) || {}).tiles || '')) || tm.loaded());
+      if (done || Date.now() - t0 > 20000) setTimeout(ok, 300); else setTimeout(go, 50);
+    };
+    go();
+  });
+  window.__depthsFailed = 0;
+  let empty = null;
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!traficom(url)) return real(input, init);
+    if (!/request=GetMap/i.test(url)) return Promise.reject(new TypeError('Failed to fetch'));
+    if (mode) return othersIn().then(() => { window.__depthsFailed++; return mode === 'drop' ? Promise.reject(new TypeError('Failed to fetch')) : new Response('', { status: 500, statusText: 'Internal Server Error' }); });
+    empty ||= (() => { const c = new OffscreenCanvas(256, 256); c.getContext('2d'); return c.convertToBlob({ type: 'image/png' }); })();
+    return empty.then((png) => new Response(png, { headers: { 'Content-Type': 'image/png' } }));
+  };
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!window.maplibregl) return;  // (open_app's first page)
+    const fire = maplibregl.Map.prototype.fire;
+    maplibregl.Map.prototype.fire = function (e) { if ((e && e.type || e) === 'load') this.__loads = (this.__loads || 0) + 1; return fire.apply(this, arguments); };
+  });
+})();"""
+
+
+def tile_fails(chrome):
+    """#393: Paddle with a saved route and the planner left open, Traficom's depth tiles failing last (a server error,
+    a dropped connection). After a reload, Polku opens without the map being moved: the route and the planner are
+    back, MapLibre's load event came once, and Depths says it has no data. A share link's route is drawn the same way."""
+    fails = []
+    # the load step's wait, shorter than LOAD_STEP's 45 s
+    opened = ("new Promise((ok) => { const t0 = Date.now(), go = () => polku.map._loaded && polku.planner.points.length"
+              " || Date.now() - t0 > 15000 ? setTimeout(() => ok(true), 300) : setTimeout(go, 100); go(); })")
+    looks = """({ loads: polku.map.__loads || 0, failed: window.__depthsFailed, points: polku.planner.points.length,
+      view: polku.planner.active && polku.planner.inView(), shared: /[?&]r=/.test(location.search) })"""
+    for w, h_, phone in ((390, 844, True), (1440, 900, False)):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': DEPTHS_FAIL_LAST}, pg.s)
+        # zoomed in enough for all three depth layers (soundings from 14)
+        pg.open_app({'activity': 'paddle'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#14.2/61.5155/23.8220')
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("polku.planner.setEditing(false); true")
+        url = pg.js("polku.planner.shareUrl()")
+        for mode, how in (('error', 'a server error'), ('drop', 'a dropped connection'), ('error', 'a share link, a server error')):
+            name = f'{w}x{h_}, the depth tiles failing last with {how}'
+            pg.js(f"sessionStorage.setItem('polku-test-depths', '{mode}'); true")
+            if how.startswith('a share link'):
+                pg.js("localStorage.removeItem('polku:route'); true")  # so the route comes from the link
+                pg.goto(url)
+            else:
+                pg.c.send('Page.reload', {}, pg.s)
+                pg.c.wait_event('Page.loadEventFired', pg.s, 60)
+            pg.js("new Promise((ok) => { const go = () => window.polku ? ok() : setTimeout(go, 100); go(); })")
+            pg.js(opened, timeout=30000)
+            s = pg.js(looks)
+            if not s['failed']:
+                fails.append(f'{name}: no depth tile was asked for (the check proves nothing)')
+            if s['loads'] != 1 or s['points'] != len(TB_PTS) or not s['view'] or s['shared']:
+                fails.append(f"{name}: MapLibre's load event came {s['loads']} times; {s['points']} points, the route's view "
+                             f"{'open' if s['view'] else 'not open'}{', the link still in the address' if s['shared'] else ''}")
+            if mode == 'drop':
+                # a failed source still says so: Depths in the quick drawer
+                small = pg.js("""(async () => { document.querySelector('#btn-layers').click(); await new Promise((r) => setTimeout(r, 600));
+                  const s = document.querySelector('#quick-layers .qt[data-id="depths"] .qt-l small');
+                  const t = s ? `${s.textContent}${s.classList.contains('warn') ? ' (warn)' : ''}` : 'no Depths tile';
+                  document.querySelector('#btn-layers').click(); return t; })()""")
+                if not small.startswith('No data now') or '(warn)' not in small:
+                    fails.append(f'{name}: Depths in the quick drawer says “{small}”')
+        fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the map's last tiles failing: Polku still opens the saved route and a share link (#393)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def panels(chrome):
     fails = []
     for w, h_, sport in [(390, 844, 'mtb'), (390, 844, 'paddle'), (375, 667, 'mtb'), (360, 740, 'hike'), (667, 375, 'gravel')]:
@@ -7981,6 +8063,7 @@ GROUPS = [
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
+    ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
