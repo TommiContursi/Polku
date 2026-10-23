@@ -567,7 +567,7 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
   }
   const tWind = Math.round(performance.now() - t0);
   const key = JSON.stringify([from, to, allowPortage, shore, carry, fairways, hazards, wind, craft, windKey, nogos.map((n) => [n.ll, n.r])]);
-  if (memo.has(key)) return memo.get(key);
+  if (memo.has(key)) { const m = memo.get(key); m.water.at = want.wind ? at : null; return m; } // (the same route, for this departure's wind)
   const route = async () => {
     let best = await attempt(from, to, 0.35, allowPortage, style, inputsOf);
     best.times.tries = 1;
@@ -593,7 +593,8 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
   const note = best.portageM > 30 ? `Includes ${Math.round(best.portageM)} m of carrying` : '';
   const out = {
     coords: best.coords, tags: best.tags, portage: best.portage, note,
-    water: { events: best.events, wind: want.wind ? best.wind : null, craft, missing: best.missing, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
+    // (at: the departure its wind is for)
+    water: { events: best.events, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
   };
   if (!best.missing.length) memo.set(key, out); // a leg routed without a source is routed again when it answers
   if (memo.size > 60) memo.delete(memo.keys().next().value);

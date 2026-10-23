@@ -882,6 +882,18 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 /* Check's items, the list's points and its stretches: the cards' rows, a hairline between them, lit while open */
 .r5 .tier .c2-list { margin: 0 -10px 4px; }
 .c5-boxes { display: grid; gap: 8px; margin: 2px 0 8px; }
+/* marking read (2026-10-23, to choose): the row's ✕ beside its words, Got it on a card, All read on Read's heading */
+.c2-warn.rr { padding: 0 0 0 0; gap: 0; }
+.c2-warn.rr .rr-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 8px 4px 8px 12px; border: 0; border-radius: 12px 0 0 12px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.c2-warn.rr .rr-go > .ic:first-child { color: var(--danger); }
+.c2-warn.rr.unk .rr-go > .ic:first-child { color: var(--unk); }
+.c2-warn.rr .rr-go span { flex: 1; min-width: 0; display: grid; }
+.c2-warn.rr .rr-x { flex: none; align-self: stretch; width: 48px; min-height: 44px; border: 0; border-left: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 0 12px 12px 0; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.fr.desk .c2-warn.rr .rr-x { width: 40px; min-height: 36px; }
+.rr-got { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 650; cursor: pointer; }
+.rr-got.on { color: var(--muted); border-style: dashed; }
+.fr.desk .rr-got { min-height: 36px; font-size: 13.5px; }
+.tier h3 .rr-all { margin-left: auto; font-size: 13px; }
 .c2-warn.c5-lit { outline: 2px solid var(--accent); outline-offset: 2px; }
 .r5 .tier .c2-list > .c2-item { min-height: 52px; }
 .r5 .c5-w.t1 > .ic:first-child { color: var(--danger); }
@@ -1095,6 +1107,16 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr desk" id="jc-desk" data-st='{"stage":"route"}'><figcaption><b>Desktop</b>The row above the numbers; markers on the route, with their names on hover.</figcaption></figure>
       <figure class="fr desk" id="jc-desk-sel" data-st='{"stage":"route","tab":"check","step":4}'><figcaption><b>Desktop: one selected</b>In Check and on the map together; ‹ › aren't needed with the list beside it.</figcaption></figure>
     </div>
+    <p><b>Marking read, to choose (2026-10-23):</b> the row takes room you need once you've read it. With <b>Marking read: On</b> at the bottom, ✕ on the row marks everything in it read at once (Read before you go and Not checked, however many), with Undo in the note; <b>Got it</b> on an item's card marks one (in every group: chosen with the rest on 2026-10-23, so it works the same everywhere); <b>All read</b> on each group's heading in Check marks that group. Then there's no row until a new or changed warning comes. Read items stay in Check, saying so in their line, and on the map; the badge still counts. It lasts with the route on this device (a reload, the saved route), not in share links. <b>Off</b> shows the row as approved.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="jr-peek" data-st='{"stage":"route","sport":"paddle"}'><figcaption><b>The row's ✕</b>Marks everything in the row read at once, however many; a tap on its words still shows the first one.</figcaption></figure>
+      <figure class="fr phone" id="jr-after" data-st='{"stage":"route","sport":"paddle","readAll":true,"toast":"markread","sayText":"3 marked read: they stay in Check and on the map"}'><figcaption><b>After ✕</b>No row until a new or changed warning comes; Undo in the note; the markers stay, and the badge still counts.</figcaption></figure>
+      <figure class="fr phone" id="jr-card" data-st='{"stage":"route","sport":"paddle","step":1}'><figcaption><b>One by one: Got it</b>Marks this one read and steps to the next unread along the route; the row counts down.</figcaption></figure>
+      <figure class="fr phone" id="jr-check" data-st='{"stage":"route","sport":"paddle","sheet":"half","tab":"check","read":["t1:0"]}'><figcaption><b>In Check</b>A read item says so in its line, in its place; All read on Read before you go's heading marks the rest.</figcaption></figure>
+      <figure class="fr phone" id="jr-worst" data-st='{"stage":"route","worst":true}'><figcaption><b>Many items</b>Tens on a long route: one tap on ✕.</figcaption></figure>
+      <figure class="fr phone" id="jr-fi" data-st='{"stage":"route","worst":true,"lang":"fi","w":360,"h":740}'><figcaption><b>360 × 740, Finnish</b>The row's words wrap beside its ✕; the ✕ stays a thumb's size.</figcaption></figure>
+      <figure class="fr desk" id="jr-desk" data-st='{"stage":"route","sport":"paddle","tab":"check","step":1,"read":["t1:1"]}'><figcaption><b>Desktop</b>Got it on the card beside the panel; a read item in Check says so; All read on the heading.</figcaption></figure>
+    </div>
   </section>
 
 
@@ -1261,6 +1283,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask (decided)</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
   <div role="group" aria-label="Cards and lists in C and D"><span>Cards and lists</span><button type="button" data-o="look" data-v="v1">As approved</button><button type="button" data-o="look" data-v="r5">Revision 5 (chosen)</button></div>
   <div role="group" aria-label="Check's items, in Revision 5"><span>Check’s items</span><button type="button" data-o="check" data-v="a">A: rows</button><button type="button" data-o="check" data-v="c">C: Read as boxes (chosen)</button></div>
+  <div role="group" aria-label="Marking warnings read"><span>Marking read</span><button type="button" data-o="read" data-v="off">Off (as approved)</button><button type="button" data-o="read" data-v="on">On (to choose)</button></div>
   <div role="group" aria-label="Points and legs"><span>Points</span><button type="button" data-o="wv" data-v="v1">V1: card (chosen)</button><button type="button" data-o="wv" data-v="v2">V2: in the list</button><button type="button" data-o="wv" data-v="v3">V3: on the map</button></div>
   </div>
 </nav>
@@ -1291,6 +1314,9 @@ const OPT = {
   look: Q.get('look') === 'v1' ? 'v1' : 'r5',
   // 2026-10-22, chosen: in Revision 5's Check, Read before you go's items are red boxes, the rest rows (c); a, rows for all, to compare
   check: Q.get('check') === 'a' ? 'a' : 'c',
+  // 2026-10-23, for the user's choice: marking warnings read (✕ on the row marks all, Got it on a card, All read in Check);
+  // off: the row as approved
+  read: Q.get('read') === 'off' ? 'off' : 'on',
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
 
@@ -1316,6 +1342,7 @@ const STR = {
     points: 'Points', find: 'Find a point', all: 'All', key: 'Key points', remove: 'Remove', stop: 'Stop', moveTo: 'Move to…', earlier: 'Earlier', later: 'Later',
     nextLegRow: 'Next leg', depart: 'Depart', now: 'now', viewing: 'You’re not editing: the list and the map stay as they are.', closed: 'Planner closed · your route stays', open: 'Open',
     cleared: 'Route cleared', undoBtn: 'Undo', start: 'Start', finish: 'Finish', via: 'Via', checked: 'What Polku looked at',
+    markAll: 'Mark all read', gotIt: 'Got it', isRead: 'Read', allRead: 'All read', markedRead: '{n} marked read: they stay in Check and on the map', unread: 'Mark unread',
     nothingMeans: 'Nothing listed doesn’t mean a way is open, safe or allowed. Polku checks only what its sources know; signs on the ground win.',
     retry: 'Retry', avoid: 'Avoid', showMap: 'Show', pos: 'Position', ofN: 'of', move: 'Move', select: 'Select', mapTap: 'A tap on the map shows what’s there while you’re not editing.',
     yourRoutes: 'Your routes', later157: 'Later (#157)', name: 'Name',
@@ -1382,6 +1409,7 @@ const STR = {
     points: 'Pisteet', find: 'Etsi piste', all: 'Kaikki', key: 'Tärkeät pisteet', remove: 'Poista', stop: 'Tauko', moveTo: 'Siirrä kohtaan…', earlier: 'Aiemmaksi', later: 'Myöhemmäksi',
     nextLegRow: 'Seuraava osuus', depart: 'Lähtö', now: 'nyt', viewing: 'Et muokkaa: lista ja kartta pysyvät ennallaan.', closed: 'Suunnittelija suljettu · reitti säilyy', open: 'Avaa',
     cleared: 'Reitti tyhjennetty', undoBtn: 'Kumoa', start: 'Lähtö', finish: 'Maali', via: 'Välipiste', checked: 'Mitä Polku tarkisti',
+    markAll: 'Merkitse kaikki luetuiksi', gotIt: 'Selvä', isRead: 'Luettu', allRead: 'Kaikki luettu', markedRead: '{n} merkitty luetuksi: ne pysyvät Tarkista-välilehdellä ja kartalla', unread: 'Merkitse lukemattomaksi',
     nothingMeans: 'Se, ettei mitään ole listattu, ei tarkoita, että reitti on avoin, turvallinen tai sallittu. Polku tietää vain sen, minkä sen lähteet tietävät; maastossa olevat merkit ratkaisevat.',
     retry: 'Yritä uudelleen', avoid: 'Kierrä', showMap: 'Näytä', pos: 'Kohta', ofN: '/', move: 'Siirrä', select: 'Valitse', mapTap: 'Kun et muokkaa, karttaa napauttamalla näet, mitä siinä on.',
     yourRoutes: 'Reittisi', later157: 'Myöhemmin (#157)', name: 'Nimi',
@@ -1446,6 +1474,7 @@ const STR = {
     points: 'Punkter', find: 'Hitta en punkt', all: 'Alla', key: 'Viktiga punkter', remove: 'Ta bort', stop: 'Paus', moveTo: 'Flytta till…', earlier: 'Tidigare', later: 'Senare',
     nextLegRow: 'Nästa etapp', depart: 'Avresa', now: 'nu', viewing: 'Du redigerar inte: listan och kartan förblir som de är.', closed: 'Planeraren stängd · rutten finns kvar', open: 'Öppna',
     cleared: 'Rutten rensad', undoBtn: 'Ångra', start: 'Start', finish: 'Mål', via: 'Via', checked: 'Vad Polku tittade på',
+    markAll: 'Markera alla som lästa', gotIt: 'Uppfattat', isRead: 'Läst', allRead: 'Alla lästa', markedRead: '{n} markerade som lästa: de finns kvar i Kolla och på kartan', unread: 'Markera som oläst',
     nothingMeans: 'Att inget står här betyder inte att en väg är öppen, säker eller tillåten. Polku vet bara vad källorna vet; skyltarna på plats gäller.',
     retry: 'Försök igen', avoid: 'Undvik', showMap: 'Visa', pos: 'Plats', ofN: 'av', move: 'Flytta', select: 'Välj', mapTap: 'När du inte redigerar visar ett tryck på kartan vad som finns där.',
     yourRoutes: 'Dina rutter', later157: 'Senare (#157)', name: 'Namn',
@@ -1657,7 +1686,7 @@ function fresh(base) {
   return st;
 }
 const opt = (st, k) => (touched || st[k] == null ? OPT[k] : st[k]);
-const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look, check: OPT.check });
+const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look, check: OPT.check, read: OPT.read });
 
 // ------------------------------------------------ building blocks
 // the pill is the map's sport (st.map); its menu says what a change does (2026-10-20)
@@ -1935,7 +1964,9 @@ function checkBody(st, v) {
   const rows = (list, cls) => (v.look !== 'r5' ? list.map((w, i) => item(w, cls, i)).join('')
     : v.check === 'c' && cls === 't1' ? `<div class="c5-boxes">${list.map((w, i) => checkBox5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>`
       : `<div class="c2-list">${list.map((w, i) => checkRow5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>`);
-  const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span></h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
+  // (every group, chosen 2026-10-23: one way to mark read, everywhere)
+  const allRead = (cls, list) => (v.read === 'on' && list.some((w, i) => !isRead(st, v, { g: cls, i })) ? `<button type="button" class="btn small quiet rr-all" data-act="rallread" data-v="${cls}">${ic('check', 16)}${t('allRead')}</button>` : '');
+  const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span>${allRead(cls, list)}</h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
   const sum = '';
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
   return `${sum}${tier('t1', 'warnf', t('t1'), W.t1, 'What can stop you, turn you back or hurt')}${tier('t3', 'unk', t('t3'), W.t3, 'A source didn’t answer: the route may miss something')}${tier('t2', 'eye', t('t2'), W.t2, 'Sections to know about')}${cov}
@@ -2425,6 +2456,9 @@ function itemCard5(st, v, desk) {
   h += `${it.g === 't3' ? '' : `<span class="c2-src">${w.s}</span>`}${w.n ? `<p class="c2-note">${esc(w.n)}</p>` : ''}`; // (Not checked says its source in its group's name)
   const avoid = w.a[0] === 'Avoid';
   if (st.mode !== 'view' && w.a.length) h += `<button type="button" class="c2-main" data-act="say" data-v="${avoid ? 'avoidit' : 'retry'}">${ic(avoid ? 'avoid' : 'retry', 20)}${esc(avoid ? u.avoidIt : u.retry)}</button>`;
+  // marking read: Got it (on a phone, then the next unread along the route); once read, it says so and can be undone
+  if (v.read === 'on') h += isRead(st, v, it) ? `<button type="button" class="rr-got on" data-act="rone" aria-pressed="true">${ic('check', 20)}${esc(t('isRead'))} · ${esc(t('unread'))}</button>`
+    : `<button type="button" class="rr-got" data-act="rone" aria-pressed="false">${ic('check', 20)}${esc(t('gotIt'))}</button>`;
   if (desk) return h;
   const fromCheck = st.stepFrom && st.stepFrom.tab === 'check' && st.stepFrom.sheet !== 'peek';
   return h + `<div class="c2-stepper"><button type="button" data-act="wprev" aria-label="${esc(u.prev)}"${st.step === 0 ? ' disabled' : ''}>${ic('left', 20)}</button><span aria-live="polite">${esc(u.ofN(st.step + 1, L.length))}</span><button type="button" data-act="wnext" aria-label="${esc(u.next)}"${st.step === L.length - 1 ? ' disabled' : ''}>${ic('right', 20)}</button><span class="grow"></span>${fromCheck ? '' : `<button type="button" data-act="tocheck">${esc(u.allCheck)} ${ic('right', 16)}</button>`}</div>`;
@@ -2452,18 +2486,31 @@ function place5(scr, W, H) {
   c.style.left = `${Math.min(p.x + p.w + 12, W - c.offsetWidth - 8)}px`;
   c.style.top = `${Math.max(64, Math.min(y, H - c.offsetHeight - 12))}px`;
 }
-// the peek's row: what to read before you go and what wasn't checked, in the cards' warning box
+// Marking read (2026-10-23, for the user's choice): which items of the row's groups (Read before you go, Not checked) are
+// read, by their place in alongList ("t1:0"); a frame may start with some read ("read": [...]) or all ("readAll")
+const rkey = (x) => `${x.g}:${x.i}`;
+function readOf(st, v) {
+  if (!(st.read instanceof Set)) st.read = new Set(st.readAll ? alongList(st, v).filter((x) => x.g !== 't2').map(rkey) : st.read || []);
+  return st.read;
+}
+const isRead = (st, v, x) => v.read === 'on' && readOf(st, v).has(rkey(x));
+// the peek's row: what to read before you go and what wasn't checked, in the cards' warning box; with marking read on, only
+// what's still unread, and ✕ marks it all read
 function warnRow5(st, v, desk) {
-  const W = warnsOf(st, v), n1 = W.t1.length, n3 = W.t3.length, u = U5();
+  const W = warnsOf(st, v), u = U5(), un = (g) => W[g].filter((w, i) => !isRead(st, v, { g, i }));
+  const R1 = v.read === 'on' ? un('t1') : W.t1, R3 = v.read === 'on' ? un('t3') : W.t3, n1 = R1.length, n3 = R3.length;
   if ((!n1 && !n3) || (st.tab === 'check' && (desk || st.sheet !== 'peek')) || (st.step != null && !desk && st.sheet === 'peek')) return '';
-  const first = n1 ? W.t1[0] : W.t3[0], n = n1 || n3;
+  const first = n1 ? R1[0] : R3[0], n = n1 || n3;
   const line = `${first.b}${n > 1 ? u.more(n - 1) : ''}${n1 && n3 ? ` · ${u.notChecked(n3)}` : ''}`;
-  return `<button type="button" class="c2-warn c5-row${n1 ? ' read' : ' unk'}" data-act="wstep">${ic(n1 ? 'warnf' : 'unk', 22)}<span><b>${n} ${t(n1 ? 't1s' : 't3s')}</b><small>${esc(line)}</small></span>${ic('right', 18)}</button>`;
+  const go = `${ic(n1 ? 'warnf' : 'unk', 22)}<span><b>${n} ${t(n1 ? 't1s' : 't3s')}</b><small>${esc(line)}</small></span>${ic('right', 18)}`;
+  if (v.read !== 'on') return `<button type="button" class="c2-warn c5-row${n1 ? ' read' : ' unk'}" data-act="wstep">${go}</button>`;
+  return `<div class="c2-warn c5-row rr${n1 ? ' read' : ' unk'}"><button type="button" class="rr-go" data-act="wstep">${go}</button><button type="button" class="rr-x" data-act="rall" aria-label="${esc(t('markAll'))}: ${n1 + n3}" title="${esc(t('markAll'))}">${ic('close', 20)}</button></div>`;
 }
 // Check's items: the cards' rows, in their group's shape and colour; › shows the item on the route (lit while it's open)
-const checkRow5 = (st, w, g, idx) => item5('wpick', w.ic, w.b, w.w, { v: idx, chev: true, cls: `c5-w ${g}${st.step === idx ? ' c5-lit' : ''}` });
+const readLine = (st, w, g, idx) => (isRead(st, view(st), alongList(st, view(st))[idx]) ? `${w.w} · ✓ ${t('isRead')}` : w.w);
+const checkRow5 = (st, w, g, idx) => item5('wpick', w.ic, w.b, readLine(st, w, g, idx), { v: idx, chev: true, cls: `c5-w ${g}${st.step === idx ? ' c5-lit' : ''}` });
 // (C, chosen 2026-10-22) what can stop you is the red warning box, as in the peek, a section and on the cards
-const checkBox5 = (st, w, g, idx) => `<button type="button" class="c2-warn read${st.step === idx ? ' c5-lit' : ''}" data-act="wpick" data-v="${idx}"${st.step === idx ? ' aria-current="true"' : ''}>${ic(w.ic, 20)}<span><b>${esc(w.b)}</b><small>${esc(w.w)}</small></span>${ic('right', 18)}</button>`;
+const checkBox5 = (st, w, g, idx) => `<button type="button" class="c2-warn read${st.step === idx ? ' c5-lit' : ''}" data-act="wpick" data-v="${idx}"${st.step === idx ? ' aria-current="true"' : ''}>${ic(w.ic, 20)}<span><b>${esc(w.b)}</b><small>${esc(readLine(st, w, g, idx))}</small></span>${ic('right', 18)}</button>`;
 // the list: sections as approved, with the cards' rows for the points and the stretches, and a section's warnings in the box
 function sectionsV1r5(st, v, desk) {
   const u = U5(), P = ucPoints(st), V = visibleIdx(st), sel = st.psel, S0 = st.str;
@@ -2770,7 +2817,8 @@ function render(f) {
       onwater: [t('onWater'), tf('paddleHere', { C: CRAFTS[0][1].toLowerCase() }), 'paddlehere', tf('keepS', { R: sL(nextOf(st)) }), 'keepsport'],
       spnowater: [tf('nowNoWater', { R: sL(st.sport), V: SW().verb[st.map], S: sL(st.map) }), '', ''],
       mron: ['Marked routes are on in Layers', t('undoBtn'), 'mroff'],
-      say: [st.sayText || '', st.sayUndo ? t('undoBtn') : '', 'sayundo'] }[st.toast];
+      say: [st.sayText || '', st.sayUndo ? t('undoBtn') : '', 'sayundo'],
+      markread: [st.sayText || '', t('undoBtn'), 'rundo'] }[st.toast];
     if (T) {
       const pl3 = scr.querySelector('.pl'), fl3 = scr.querySelector('.float'), c3 = scr.querySelector('.cols:not([hidden])');
       const bottom = desk ? 24 : (fl3 ? H - fl3.offsetTop + 10 : pl3 ? H - pl3.offsetTop + 10 : 20);
@@ -2877,6 +2925,15 @@ function act(f, a, val, ev) {
     // where Back comes back to: the peek, or Check at half
     case 'wpick': if (st.step == null || st.sheet !== 'peek') st.stepFrom = { sheet: st.sheet, tab: st.tab }; st.step = +val; if (desk && st.mode !== 'closed') st.tab = 'check'; else if (st.mode !== 'closed') st.sheet = 'peek'; close(); break;
     case 'wprev': st.step = Math.max(0, st.step - 1); break;
+    // marking read (2026-10-23): ✕ on the row, All read in Check, Got it on a card, Undo
+    case 'rall': case 'rallread': { const v2 = view(st), R = readOf(st, v2), was = new Set(R); const L = alongList(st, v2).filter((x) => (a === 'rall' ? x.g !== 't2' : x.g === val) && !R.has(rkey(x)));
+      L.forEach((x) => R.add(rkey(x))); st.readWas = was; st.sayText = tf('markedRead', { n: L.length }); st.sayUndo = true; toast('markread'); break; }
+    case 'rundo': if (st.readWas) st.read = st.readWas; st.readWas = null; st.toast = null; break;
+    case 'rone': { const v2 = view(st), R = readOf(st, v2), L = alongList(st, v2), x = L[st.step]; if (!x) break;
+      if (R.has(rkey(x))) { R.delete(rkey(x)); break; }
+      R.add(rkey(x));
+      if (!desk) { const k = L.findIndex((y, j) => j > st.step && !R.has(rkey(y))); if (k >= 0) st.step = k; }
+      break; }
     case 'wnext': st.step = Math.min(alongList(st, view(st)).length - 1, st.step + 1); break;
     case 'wclose': st.step = null; if (st.stepFrom) { st.sheet = st.stepFrom.sheet; st.tab = st.stepFrom.tab; } break;
     case 'wopen': st.mode = 'view'; st.toast = null; if (!desk) st.sheet = 'peek'; else st.tab = 'check'; break;

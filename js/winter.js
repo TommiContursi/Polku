@@ -152,17 +152,19 @@ export const WINTER_TEXT = {
 const tiles = new Map(); // "x/y" -> { promise, data }
 const failed = new Map();
 const listeners = new Set();
-let fetching = true;
-/** Tests and screenshots: never ask Overpass (seed tiles instead). */
-export function holdWinterFetches(on = true) { fetching = !on; }
+let fetching = true, failing = false;
+/** Tests and screenshots: never ask Overpass (seed tiles instead; with `fail`, as if it didn't answer). */
+export function holdWinterFetches(on = true, fail = false) { fetching = !on; failing = on && fail; }
+/** Retry: ask again now for the tiles that failed. */
+export function forgetWinterFailures() { failed.clear(); }
 export const onWinterTile = (fn) => listeners.add(fn);
 
 export function winterTile(x, y) {
   const key = `${x}/${y}`;
   const have = tiles.get(key);
-  if (have) return have.promise;
+  if (have && (have.data || fetching)) return have.promise; // (held, one on its way counts as held)
+  if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
-  if (!fetching) return Promise.reject(Object.assign(new Error('held'), { held: true }));
   const entry = { data: null };
   entry.promise = cachedOverpass(`winter1/${WINTER_Z}/${key}`, winterQuery(x, y), slimWinter, { timeoutMs: 30000 })
     .then((data) => { entry.data = data; for (const fn of listeners) fn(key); return data; })
@@ -262,14 +264,15 @@ export function seaIceProtocol(maplibre) {
 /**
  * The winter class at each sample of a route (analysis `a`), from the winter tiles
  * along it: the nearest classed way within 8 m, else null. Loads what's missing
- * (Overpass, cached a week); null when the route spans too many tiles.
+ * (Overpass, cached a week); null when the route spans too many tiles. `lost`
+ * on it: how many tiles didn't answer (a test's held ones aren't asked).
  */
 export async function winterAlong(a, { maxTiles = 24 } = {}) {
   let w = 180, s = 90, e = -180, n = -90;
   for (const [x, y] of a.pts) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); }
   const list = winterTilesIn([w, s, e, n]);
   if (list.length > maxTiles) return null;
-  await Promise.allSettled(list.map(([x, y]) => winterTile(x, y)));
+  const got = await Promise.allSettled(list.map(([x, y]) => winterTile(x, y)));
   // segments of the classed ways, in a coarse grid
   const CELL = 0.0006, grid = new Map(), key = (x, y) => `${Math.floor(x / CELL)},${Math.floor(y / (CELL / 2))}`;
   for (const [x, y] of list) {
@@ -298,6 +301,7 @@ export async function winterAlong(a, { maxTiles = 24 } = {}) {
     }
     out[i] = cls;
   });
+  out.lost = got.filter((r) => r.status === 'rejected' && !(r.reason || {}).held).length;
   return out;
 }
 function pointSegmentM(p, a, b) {

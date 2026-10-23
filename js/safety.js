@@ -104,6 +104,7 @@ export class SafetyLayers {
     this.on = {};
     this.aadtTiles = new Map(); // z11 tile -> features | Promise
     this.roadworkTiles = new Map(); // z8 tile -> features | Promise
+    this.roadworkTime = new Map(); // z8 tile -> when it answered (ms)
     this.incidents = null;
     this.roadcond = null;
     this.ships = [];
@@ -128,8 +129,8 @@ export class SafetyLayers {
     this.timer = setTimeout(() => this.update(), delay);
   }
 
-  inFinland([lng, lat] = this.map.getCenter().toArray()) {
-    return lng > 19 && lng < 32 && lat > 59.4 && lat < 70.3;
+  inFinland(ll = this.map.getCenter().toArray()) {
+    return inFinland(ll);
   }
 
   update() {
@@ -192,9 +193,10 @@ export class SafetyLayers {
     } catch { /* keep old */ }
   }
 
+  // false when a tile of the box didn't answer
   async loadRoadworks(box, { publish = true } = {}) {
     const tiles = this.tilesFor(box, 8, 6) || [];
-    await Promise.all(tiles.map(async ([x, y]) => {
+    const got = await Promise.all(tiles.map(async ([x, y]) => {
       const key = `${x}/${y}`;
       if (this.roadworkTiles.has(key)) return this.roadworkTiles.get(key);
       const [w, s, e, n] = tileBounds(x, y, 8);
@@ -202,13 +204,19 @@ export class SafetyLayers {
         .then((gj) => {
           const feats = (gj.features || []).filter((f) => f.geometry).map((f) => ({ type: 'Feature', properties: messageProps(f, 'roadwork'), geometry: f.geometry }));
           this.roadworkTiles.set(key, feats);
+          this.roadworkTime.set(key, Date.now());
           return feats;
         })
-        .catch(() => { this.roadworkTiles.delete(key); return []; });
+        .catch(() => { this.roadworkTiles.delete(key); return null; });
       this.roadworkTiles.set(key, p);
       return p;
     }));
     if (publish) this.publish();
+    return !got.includes(null);
+  }
+  // when the box's road works were fetched (ms), one a tile
+  roadworkAt(box) {
+    return (this.tilesFor(box, 8, 6) || []).map(([x, y]) => this.roadworkTime.get(`${x}/${y}`)).filter(Boolean);
   }
 
   // ---------------------------------------------------------------- road conditions
@@ -452,12 +460,16 @@ export class SafetyLayers {
     for (const p of a.pts) { box[0] = Math.min(box[0], p[0]); box[1] = Math.min(box[1], p[1]); box[2] = Math.max(box[2], p[0]); box[3] = Math.max(box[3], p[1]); }
     const landAt = (i) => !isWater((a.attr[i] && a.attr[i].sport) || activity);
     const onWheelsOrFeet = a.pts.some((_, i) => landAt(i));
-    await Promise.all([
+    const [, worksIn] = await Promise.all([
       this.loadIncidents(),
       this.loadRoadworks(box, { publish: false }),
       this.loadRoadcond(),
       onWheelsOrFeet ? this.loadAadt(box, { max: 24, publish: false }) : null,
     ]);
+    // no answer about road works or incidents: not checked (25d part 2), never "nothing found"
+    if (!this.incidents || worksIn === false) throw new Error('Fintraffic didn’t answer');
+    // where each comes from: live with the time Fintraffic answered, or an estimate (25d part 2)
+    const live = { kind: 'live', by: 'Fintraffic', at: Math.min(this.incidents.t, ...this.roadworkAt(box)) };
     const tAt = a.tAtWind || a.tAt;
     const out = [];
     const index = (feats) => new LineIndex(feats);
@@ -485,18 +497,18 @@ export class SafetyLayers {
     const works = this.allRoadworks().filter((f) => activeAt(f.properties, startSec + (tAt[a.pts.length - 1] || 0) / 2));
     for (const h of near(index(works), 30)) {
       const p = h.f.properties;
-      out.push({ kind: 'roadwork', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `Road works: ${shortTitle(p.title)}${p.details ? ` — ${p.details}` : ''}`, avoid: avoidAt(h) });
+      out.push({ kind: 'roadwork', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `Road works: ${shortTitle(p.title)}${p.details ? ` — ${p.details}` : ''}`, avoid: avoidAt(h), tier: 'read', src: live });
     }
     for (const h of near(index(this.incidents ? this.incidents.feats : []), 50)) {
       const p = h.f.properties;
-      out.push({ kind: 'incident', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `Traffic incident: ${shortTitle(p.title)}`, avoid: avoidAt(h) });
+      out.push({ kind: 'incident', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `Traffic incident: ${shortTitle(p.title)}`, avoid: avoidAt(h), tier: 'read', src: live });
     }
     // road conditions at arrival time (main roads only)
     if (this.roadcond && onWheelsOrFeet) {
       const t = startSec + (tAt[Math.floor(a.pts.length / 2)] || 0);
       for (const h of near(index(this.roadcondFeatures(t)), 25, roadsOnly)) {
         const p = h.f.properties;
-        out.push({ kind: 'roadcond', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `${p.label}${p.reasons ? ` (${p.reasons})` : ''}, road ${Math.round(p.roadTemp)} °C`, avoid: avoidAt(h) });
+        out.push({ kind: 'roadcond', at: a.along[h.i0], len: a.along[h.i1] - a.along[h.i0], lngLat: a.pts[h.i0], text: `${p.label}${p.reasons ? ` (${p.reasons})` : ''}, road ${Math.round(p.roadTemp)} °C`, avoid: avoidAt(h), tier: 'read', src: { kind: 'estimate', by: 'Fintraffic’s road weather' } });
       }
     }
     // busy roads: stretches on roads with lots of cars
@@ -505,7 +517,7 @@ export class SafetyLayers {
       let s = -1, peak = 0;
       const flush = (e) => {
         if (s >= 0 && a.along[e] - a.along[s] >= 150) {
-          out.push({ kind: 'busy', at: a.along[s], len: a.along[e] - a.along[s], lngLat: a.pts[s], text: `Busy road, about ${fmtAadt(peak)} vehicles a day`, avoid: avoidAt({ i0: s, i1: e }) });
+          out.push({ kind: 'busy', at: a.along[s], len: a.along[e] - a.along[s], lngLat: a.pts[s], text: `Busy road, about ${fmtAadt(peak)} vehicles a day`, avoid: avoidAt({ i0: s, i1: e }), tier: 'look', src: { kind: 'estimate', by: 'Fintraffic’s yearly counts' } });
         }
         s = -1; peak = 0;
       };
@@ -517,9 +529,13 @@ export class SafetyLayers {
       }
       flush(a.pts.length - 1);
     }
+    out.answeredAt = live.at; // when Fintraffic answered (What Polku looked at says so)
     return out.sort((x, y) => x.at - y.at);
   }
 }
+
+/** Fintraffic's data covers Finland (roughly: the box around it). */
+export const inFinland = ([lng, lat]) => lng > 19 && lng < 32 && lat > 59.4 && lat < 70.3;
 
 const shortTitle = (t) => (t || '').replace(/\.\s*$/, '').replace(/\s+/g, ' ').slice(0, 90);
 export const fmtAadt = (v) => (Math.round(v / 100) * 100).toLocaleString('fi-FI');

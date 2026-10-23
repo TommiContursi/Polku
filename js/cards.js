@@ -2,7 +2,7 @@
 // the planner keeps the actions. A card shows only what can be done now: in the route's view, what works there and
 // the planner's note with Edit.
 import { h, icon, toast } from './ui.js';
-import { nums, group, rows, acts, item, lockNote, segIcons } from './card.js';
+import { nums, group, rows, acts, item, lockNote, segIcons, mainButton } from './card.js';
 import { pointNums } from './facts.js';
 import { ACTIVITIES, CRAFTS } from './config.js';
 import { fmtDist } from './geo.js';
@@ -232,3 +232,87 @@ function staysCard(pl, point) {
   look();
   return card;
 }
+
+// ------------------------------------------------------------------ an item of Check (25d part 3)
+const GROUP = { read: ['Read before you go', 'warnf'], look: ['Worth a look', 'eye'], not: ['Not checked', 'unk'] };
+// where an item comes from, in words: "Live · Fintraffic, 18:40", "From the map · OpenStreetMap", "An estimate · …"
+const SRC = { live: ['Live', 'live'], map: ['From the map', 'mapsrc'], estimate: ['An estimate', 'est'], calculated: ['Calculated', 'check'], router: ['Routing', 'route'] };
+// a note as a sentence: its first letter up, unless it begins with a tag (foot=private) or a name; a full stop
+const sentence = (t) => { t = String(t || '').trim(); return t ? `${/^[a-zäöå]+(?![=:_\w])/.test(t) ? t[0].toUpperCase() + t.slice(1) : t}${/[.!?:]$/.test(t) ? '' : '.'}` : ''; };
+
+// An item's card [r-item, jc-step, jc-desk-sel]: its group's mark and name, where it is and how long, where it comes from,
+// its note, its one main action, the rest of its actions as rows; on a phone ‹ › along the route and All in Check ›.
+// `key`: itemKey(), which finds it again in a new analysis; closed when it's gone.
+export function itemCard(pl, key, from) {
+  const card = {
+    kind: 'item', itemKey: key, from,
+    // (found again in each analysis; while its source is asked again for a new one, the last seen stands)
+    get it() { const x = pl.itemByKey(card.itemKey); if (x) card.last = x; return x || (card.last && pl.itemKept(card.last) ? card.last : null); },
+    get title() { return card.it ? card.it.w.text : ''; },
+    get sub() { return card.it ? GROUP[card.it.g][0] : ''; },
+    mark: () => (card.it.g === 'not' ? h('span', { class: 'heads-mark not' }, '?') : h('span', { class: `heads-mark ${card.it.g}`, html: icon(GROUP[card.it.g][1], 18) })),
+    at: () => (card.it ? pl.itemPlace(card.it.w) : null),
+    alive: () => !!card.it,
+    build: (body) => itemBody(pl, card, body),
+  };
+  return card;
+}
+
+function itemBody(pl, card, body) {
+  const it = card.it, { g, w } = it, a = pl.analysis;
+  // where: how far from the start and how long (and how steep, for the terrain's), or the whole route
+  if (w.ranges === null) body.append(h('p', { class: 'heads-where' }, h('b', {}, 'The whole route')));
+  else {
+    const [i0, i1] = pl.itemSpan(w);
+    let steep = 0;
+    if (w.src && w.src.by === 'the terrain model') for (let i = i0; i <= i1; i++) steep = Math.max(steep, Math.abs(a.grade[i] || 0));
+    body.append(nums([{ value: fmtDist(w.at), label: 'from the start' }, w.len > 5 ? { value: fmtDist(w.len), label: 'long' } : null, steep ? { value: `${Math.round(steep)} %`, label: 'steepest' } : null]));
+    if (w.items) body.append(h('p', { class: 'heads-where' }, pl.whereOf(w)));
+  }
+  // where it comes from (Not checked says it in its group's name)
+  if (g !== 'not' && w.src) {
+    const [say, ic] = SRC[w.src.kind] || SRC.map, by = `${w.src.by}${w.src.kind === 'live' && w.src.at ? `, ${new Date(w.src.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}`;
+    body.append(h('p', { class: 'heads-src' }, h('span', { 'aria-hidden': 'true', html: icon(ic, 14) }),
+      h('span', {}, `${say} · `, w.src.url ? h('a', { href: w.src.url, target: '_blank', rel: 'noopener' }, by) : by)));
+  }
+  if (w.note) body.append(h('p', { class: 'heads-note' }, sentence(w.note)));
+  // the one main action; in the route's view only what doesn't change the route
+  const { main, more } = pl.itemActions(it);
+  if (main && pl.inView() && main.edits) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
+  else if (main) {
+    // Retry says it's asking, and if the source still didn't answer (its card stays), says so (the terrain's has its own);
+    // a card built again while it's asked says so too (a.asking: notChecked())
+    const b = mainButton(main.label, main.icon, async () => {
+      if (b.disabled) return;
+      b.disabled = true;
+      b.setAttribute('aria-busy', 'true');
+      b.querySelector('span').textContent = main.label === 'Retry' ? 'Asking…' : main.label;
+      try { await main.fn(); } finally {
+        b.disabled = false;
+        b.removeAttribute('aria-busy');
+        b.querySelector('span').textContent = main.label;
+      }
+      if (g === 'not' && w.key !== 'terrain' && w.key !== 'water' && pl.itemByKey(card.itemKey)) toast(`${w.who || w.by} still didn’t answer: try again later`, { ms: 5000 });
+    });
+    if (g === 'not' && a && a.asking && a.asking.has(w.key)) { b.disabled = true; b.setAttribute('aria-busy', 'true'); b.querySelector('span').textContent = 'Asking…'; }
+    body.append(b);
+  }
+  // Got it: marked read, and on a phone the next unread along the route; once read, it says so and can be undone
+  const read = pl.isRead(it);
+  body.append(h('button', { type: 'button', class: `btn heads-got${read ? ' on' : ''}`, 'aria-pressed': String(read), onclick: () => pl.gotIt(card), html: icon('check', 20) }, h('span', {}, read ? 'Read · Mark unread' : 'Got it')));
+  if (more.length) body.append(rows(...more.map((m) => item({ icon: m.icon, label: m.label, line: m.line, onclick: () => m.fn() }))));
+  // the planner put away: the way to it, at this item [jc-closed]
+  if (!pl.active) body.append(rows(item({ icon: 'route', label: 'Open the planner at it', line: 'Check and the route, at this item', chev: true, onclick: () => pl.openPlannerAt(card) })));
+  // on a phone: ‹ › along the route, and All in Check › unless it was opened from Check at half
+  if (pl.cards.where() !== 'peek') return;
+  const [k, n] = pl.itemIndex(card.itemKey), saved = pl.cards.saved;
+  const fromCheck = card.from === 'check' && !(saved && saved.sheet === 'peek');
+  body.append(h('div', { class: 'heads-step' },
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'Previous', title: 'The one before, along the route', disabled: k <= 0, onclick: () => pl.stepItem(-1), html: icon('chevronLeft', 20) }),
+    h('span', { 'aria-live': 'polite' }, `${k + 1} of ${n}`),
+    h('button', { type: 'button', class: 'tool', 'aria-label': 'Next', title: 'The next one along the route', disabled: k >= n - 1, onclick: () => pl.stepItem(1), html: icon('chevronRight', 20) }),
+    fromCheck ? null : h('button', { type: 'button', class: 'btn quiet heads-all', onclick: () => pl.allInCheck(card) }, h('span', {}, 'All in Check'), h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 16) }))));
+  // its stretch lit again for a new analysis (its samples move)
+  if (pl.itemLit) pl.lightItem(w, { frame: false });
+}
+

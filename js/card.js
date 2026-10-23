@@ -240,7 +240,8 @@ export class CardHost {
     }
     if (this.box && this.box.classList.contains('card-banner')) { this.box.remove(); this.box = null; }
     const prev = this.stack[this.stack.length - 2];
-    const back = prev ? prev.card.title : { list: 'Route', check: 'Check', row: 'Back', section: 'Route' }[entry.from] || null;
+    // (an item's card from Check, the peek's row or a marker: ✕ only, as from the map; Back and Escape still go back)
+    const back = prev ? prev.card.title : { list: 'Route', section: 'Route' }[entry.from] || null;
     // built again (not opened): the focus and the scroll stay where they were (WCAG 2.4.3)
     const was = !fresh && this.box && !this.box.classList.contains('card-banner') ? this.box : null;
     const focused = was && was.contains(document.activeElement) ? keyOf(document.activeElement) : null, scroll = was ? was.scrollTop : 0;
@@ -329,6 +330,18 @@ export class CardHost {
     if (!fresh) return;
     const pt = this.map.project(at), R = this.map.getCanvas().getBoundingClientRect(), x = R.left + pt.x, y = R.top + pt.y;
     const w = box.offsetWidth, ht = box.offsetHeight;
+    // a narrow screen (a phone with the planner put away): above its spot, moved sideways to stay whole on the screen
+    // [jc-closed]; the map moves to make room above it (keep())
+    if (innerWidth < 520) {
+      const dx = Math.max(8 - (x - w / 2), Math.min(0, innerWidth - 8 - (x + w / 2)));
+      this.popup.options.anchor = 'bottom';
+      this.popup.setOffset({ bottom: [Math.round(dx), -OFFSET] });
+      this.popup.setLngLat(at);
+      // (room above it under the top bar: the map moves down, never sideways, which would take it off the screen)
+      const top = this.popup.getElement().getBoundingClientRect().top, bar = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 8;
+      if (top < bar) this.map.panBy([0, top - bar], { duration: 0 });
+      return;
+    }
     const right = innerWidth - x - (innerWidth < 720 ? 64 : 84), below = innerHeight - 8 - (this.pad().bottom || 0) - y;
     const anchor = `${below < ht + OFFSET && y - 120 > below ? 'bottom' : 'top'}-${right < w + OFFSET && x - (this.pad().left || 0) > right ? 'right' : 'left'}`;
     if (anchor !== this.popup.options.anchor) { this.popup.options.anchor = anchor; this.popup.setLngLat(at); }
@@ -347,7 +360,12 @@ export class CardHost {
     el.replaceChildren(box);
     if (rect) {
       el.style.left = `${Math.round(rect.right + 8)}px`;
-      el.style.top = `${Math.round(Math.max(72, Math.min(rect.top, innerHeight - el.offsetHeight - 8)))}px`;
+      // above the timeline where it's open under the card (a desktop's), scrolling inside when it's taller than the room
+      const wx = document.getElementById('wx-bar'), w = wx && !wx.hidden && wx.offsetParent ? wx.getBoundingClientRect() : null;
+      const bottom = (w && w.left < rect.right + 8 + el.offsetWidth && w.right > rect.right + 8 ? w.top : innerHeight) - 8;
+      const top = Math.max(72, Math.min(rect.top, bottom - el.offsetHeight));
+      el.style.top = `${Math.round(top)}px`;
+      box.style.maxHeight = `${Math.max(160, Math.round(bottom - top - 20))}px`;
     }
   }
 

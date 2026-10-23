@@ -4,29 +4,30 @@
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS, ROUTE_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
-import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow } from './analysis.js';
+import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
 import { retryFailed as retryTerrainTiles } from './dem.js';
-import { detailsAlong } from './trails.js';
-import { iconUrl } from './icons.js';
+import { detailsAlong, forgetFailures as forgetTrailFailures } from './trails.js';
+import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
 import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
-import { onWaterData, prefetchWater } from './waterdata.js';
+import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness } from './sun.js';
-import { winterAlong, windChill, WINTER_TEXT } from './winter.js';
+import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView } from './inspect.js';
-import { CardHost } from './card.js';
+import { CardHost, item, rows } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard } from './cards.js';
+import { pointCard, itemCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
 import { swipeSheet, SWIPE, dvh } from './sheet.js';
+import { inFinland } from './safety.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Straight line', water: 'Over water' };
@@ -133,7 +134,7 @@ function groupTrail(list) {
   const out = list.filter((w) => !w.group || by.get(w.group).length < 3);
   for (const [g, items] of by) {
     if (items.length < 3) continue;
-    out.push({ at: items[0].at, len: 0, text: `${GROUP_TEXT[g] || items[0].text} ×${items.length}`, note: items[0].note, kind: 'trail', icon: items[0].icon, lngLat: items[0].lngLat, items, osm: items[0].osm });
+    out.push({ at: items[0].at, len: 0, text: `${GROUP_TEXT[g] || items[0].text} ×${items.length}`, note: items[0].note, kind: 'trail', icon: items[0].icon, lngLat: items[0].lngLat, items, osm: items[0].osm, tier: items[0].tier, src: items[0].src });
   }
   return out;
 }
@@ -166,6 +167,9 @@ export class Planner {
     this.app = app; // { activity(), setData(id, fc), onActiveChange(bool) }
     this.points = [];
     this.legs = [];
+    this.readKeys = new Set(); // Check's items marked read (25d part 3): with the saved route on this device, not in links
+    this.narrowMQ = matchMedia('(max-width: 300px)'); // (the peek's row in one short line: 200 %, a small phone)
+    this.narrowMQ.addEventListener('change', () => this.renderReadRow());
     this.mode = ACTIVITIES[app.activity()].mode;
     this.craft = store.get('craft', 'kayak');
     this.past = [];
@@ -227,12 +231,9 @@ export class Planner {
     map.on('mousedown', 'route-casing', (e) => this.onLinePress(e));
     map.on('touchstart', 'route-casing', (e) => this.onLinePress(e));
     map.on('zoom', () => this.fitGhosts());
+    map.on('zoomend', () => this.drawHeads()); // (Check's markers kept clear of the points and the legs' handles)
     // a source the water router waited for in vain has answered: route those legs again
-    onWaterData(() => {
-      let again = false;
-      for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; again = true; }
-      if (again) this.routeAll();
-    });
+    onWaterData(() => this.retryWater({ ask: false }));
     // back online: the terrain that didn't load, now
     addEventListener('online', () => { if (this.analysis && this.analysis.terrain && this.analysis.terrain.retry) this.retryTerrain(this.analysis, 0, true); });
     // names of roads come with the tiles: when new ones arrive, the list may know more
@@ -291,6 +292,7 @@ export class Planner {
     this.nogos = s.nogos || [];
     this.routeName = s.routeName || '';
     if (s.styles) this.styles = { ...s.styles };
+    if (s.read) this.readKeys = new Set(s.read);
     this.matchMode();
     this.update();
   }
@@ -472,11 +474,13 @@ export class Planner {
     const el = this.markers[i] && this.markers[i].getElement();
     if (el) { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
   }
-  undo() { if (this.past.length) { const s = this.past.pop(); this.future.push(this.snapshot({ sports: s.sports })); this.restoreSnap(s); } }
-  redo() { if (this.future.length) { const s = this.future.pop(); this.past.push(this.snapshot({ sports: s.sports })); this.restoreSnap(s); } }
+  // (across another route put in place: each comes back with what was read on it, freshRead())
+  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.future.push(t); this.restoreSnap(s); } }
+  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.past.push(t); this.restoreSnap(s); } }
 
   addPoint(ll) {
     this.commit();
+    if (!this.points.length) this.readKeys = new Set(); // a new route: nothing read yet
     this.points.push(ll);
     const since = Date.now() - (this.lastAddAt || 0);
     this.lastAddAt = Date.now();
@@ -702,6 +706,7 @@ export class Planner {
 
   loadTrack(coords, name) {
     this.commit();
+    this.freshRead();
     const c = simplify(coords, 2);
     this.points = [c[0], c[c.length - 1]];
     this.legs = [{ mode: 'fixed', status: 'ok', result: { coords: c, tags: c.slice(1).map(() => ({})), portage: [] } }];
@@ -714,6 +719,7 @@ export class Planner {
   restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry, nogos, nogosLost, alts, ice }) {
     const sport = this.app.activity();
     this.points = points;
+    this.readKeys = new Set(); // (what's been read isn't in links)
     // the link's places to avoid (none in links from before av=)
     this.nogos = (nogos || []).map((n) => ({ ...n }));
     if (nogosLost) toast('Some places to avoid in this link couldn’t be read, so the route may go through them', { tone: 'warn', ms: 8000 });
@@ -801,6 +807,7 @@ export class Planner {
     } else {
       this.points = pts;
       this.legs = legs;
+      this.freshRead();
       this.routeName = p.name;
       // a loop on one leg gets two via points, so it can be dragged and has a finish of its own
       if (ride.loop && this.legs.length === 1) {
@@ -959,6 +966,7 @@ export class Planner {
     if (on) this.setSheetState(!this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()], { remember: false });
     document.body.classList.toggle('planning', on);
     for (const m of this.markers) m.getElement().hidden = !on;
+    this.drawHeads(); // (put away: what to read before you go stays marked on the route)
     this.renderState();
     this.app.onActiveChange(on);
     if (on && !this.analysis) this.renderAnalysis(); // the empty planner's first words (and its round-trip button)
@@ -1344,7 +1352,7 @@ export class Planner {
       leg.key = null;
     } else {
       leg.status = 'error';
-      toast(`Couldn't route this leg (${e.message}) — drawn as a straight line. Heads-up has a Retry.`, { tone: 'warn', ms: 6000 });
+      toast(`Couldn't route this leg (${e.message}) — drawn as a straight line. Check has a Retry.`, { tone: 'warn', ms: 6000 });
     }
   }
 
@@ -1620,6 +1628,7 @@ export class Planner {
     if (r.legs) { // on the water: its legs as they were routed, start → via points → start
       this.commit();
       this.points = r.o.points.map((p) => p.slice());
+      this.freshRead();
       this.legs = r.legs.map((res) => ({ mode: 'water', status: 'ok', result: res }));
       // a leg routed without a source that was slow then is routed again (its answer is in the cache by now)
       this.legs.forEach((l, i) => { l.key = l.result.water && l.result.water.missing && l.result.water.missing.length ? null : this.legKey(i).key; });
@@ -1643,6 +1652,7 @@ export class Planner {
     cuts.push(c.length - 1);
     pts.push(start.slice());
     this.commit();
+    this.freshRead();
     this.points = pts;
     this.legs = cuts.slice(1).map((b, i) => ({ mode: 'auto', status: 'ok', result: { coords: c.slice(cuts[i], b + 1), tags: tags.slice(cuts[i], b), portage: [], provider: r.line.provider } }));
     this.legs.forEach((l, i) => { l.key = this.legKey(i).key; });
@@ -1981,6 +1991,15 @@ export class Planner {
     if (n) this.routeAll();
   }
 
+  // Legs on the water routed without a source that didn't answer: route them again. Retry asks the
+  // sources again now; a late answer (`ask: false`) has come in already.
+  retryWater({ ask = true } = {}) {
+    if (ask) forgetWaterFailures();
+    let n = 0;
+    for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; n++; }
+    if (n) this.routeAll();
+  }
+
   mergedLine() {
     const coords = [];
     const attrs = [];
@@ -2022,6 +2041,10 @@ export class Planner {
       if (li >= 0 && shortCuts(this.legSport(li), this.legStyle(li))) w.note += ' · you allowed short cuts on this leg: only where you may go';
     }
     this.app.setData('accessCut', EMPTY);
+    if (this.focusLit && !(this.cards.current && this.cards.current.kind === 'item')) this.unfocusRange(); // (another route: an open item lights its own again)
+    // sources that answered for this route: the terrain, and the water's on every water leg
+    if (!a.terrain) this.answered('terrain');
+    this.answered('water', new Set(this.legs.flatMap((l) => (l.mode === 'water' && l.result && l.result.water && l.result.water.missing) || [])));
     this.watchTerrain(a);
     this.renderAnalysis();
     this.loadWind(a);
@@ -2084,7 +2107,7 @@ export class Planner {
   // access); a short cut joined to the leg by open paths isn't seen.
   detourWarnings(a) {
     const out = [];
-    const row = (o) => ({ len: 0, kind: 'access', ic: 'warn', noAvoid: true, osm: true, fix: 'Tagged wrong? Leave a note on OpenStreetMap', hide: 'Goes round', ...o });
+    const row = (o) => ({ len: 0, kind: 'access', ic: 'warn', noAvoid: true, osm: true, fix: 'Tagged wrong? Leave a note on OpenStreetMap', hide: 'Goes round', tier: 'look', src: OSM, ...o });
     const said = new Set(); // points whose move a short cut's row explains
     this.legs.forEach((leg, li) => {
       const sport = this.legSport(li);
@@ -2201,7 +2224,7 @@ export class Planner {
     const ll = this.points[0];
     const fmt = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const water = this.routeSports().some(isWater);
-    const out = [];
+    const out = [], src = { kind: 'calculated', by: 'the sun’s times' };
     for (const x of darkness(start, start + tAt[n - 1], ll)) {
       let i = 0;
       while (i < n - 1 && start + tAt[i] < x.from) i++;
@@ -2217,8 +2240,8 @@ export class Planner {
       for (let k = i + 1; k <= j; k++) if (((a.attr[k] || {}).tags || {}).lit === 'yes') litM += a.along[k] - a.along[k - 1];
       const lit = x.kind === 'dark' ? (litM >= 50 ? ` · ${fmtDist(litM)} of it lit` : ' · none of it lit, as far as OpenStreetMap says') : '';
       out.push(x.kind === 'twilight'
-        ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light' }
-        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${lit}${water ? ' · on the water a light is required after dark' : ' · take a light'}` });
+        ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light', tier: 'look', src }
+        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${lit}${water ? ' · on the water a light is required after dark' : ' · take a light'}`, tier: 'read', src });
     }
     return out;
   }
@@ -2263,31 +2286,31 @@ export class Planner {
   departLabel() { return (this.departChoices()[this.startOffsetH] || { label: 'Now' }).label; }
 
   // Heads-up from the water router (water.js events): shipping lanes and
-  // harbours on the way, keep-clear zones it had to pass, rough water, and any
-  // source that didn't answer. Positions along the whole route.
+  // harbours on the way, keep-clear zones it had to pass, rough water.
+  // Positions along the whole route. (A source that didn't answer: notChecked().)
   waterWarnings() {
     const out = [];
-    const missing = new Set();
+    // (shipping lanes are Väylävirasto's fairway areas; harbours and rocks OpenStreetMap's too)
+    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, LANES = { kind: 'map', by: 'Väylävirasto' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' };
     this.legs.forEach((leg, i) => {
       const wr = leg.mode === 'water' && leg.status === 'ok' && leg.result && leg.result.water;
       if (!wr) return;
-      for (const m of wr.missing || []) missing.add(m);
       const base = this.lengthTo(i);
       for (const e of wr.events || []) {
         const at = base + e.at, len = e.len;
         if (e.kind === 'ship') {
           out.push(len > 600
-            ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn` }
-            : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn' });
-        } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going' });
-        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap' });
+            ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn`, tier: 'read', src: LANES }
+            : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn', tier: 'read', src: LANES });
+        } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going', tier: 'look', src: MAP });
+        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap', tier: 'look', src: MAP });
         else if (e.kind === 'rough') {
-          const w = wr.wind;
-          out.push({ at, len, kind: 'water', hide: 'Rough water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast` : 'an estimate from the forecast' });
+          // for the departure the timeline shows (moving it routes the leg again) [jc-paddle-step]
+          const w = wr.wind, when = wr.at ? ` for ${clock(wr.at * 1000)}` : '';
+          out.push({ at, len, kind: 'water', hide: 'Rough water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}${wr.at ? `, at ${clock(wr.at * 1000)}` : ''}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast${when}` : `an estimate from the forecast${when}`, tier: 'read', src: when ? { ...WAVES, by: `${WAVES.by}${when}` } : WAVES });
         }
       }
     });
-    if (missing.size) out.push({ at: 0, len: 0, kind: 'water', noHide: true, noAvoid: true, text: `Not checked on the water: ${[...missing].join(', ')} didn’t answer`, note: 'routed without it; Retry by moving a point' });
     return out;
   }
 
@@ -2300,15 +2323,23 @@ export class Planner {
   async loadTrail(a) {
     const opt = () => ({ activity: this.mainSport(), wet: this.wetFor(this.styleOf(this.mainSport())) });
     a.trailWarn = trailWarnings(a, opt());
+    const land = !this.routeSports().every(isWater);
+    a.trailAsking = land; // (What Polku looked at: being asked)
     this.renderWarnings();
-    if (this.routeSports().every(isWater)) return;
-    try {
-      if (!(await detailsAlong(a)) || this.analysis !== a) return;
-      a.trailWarn = trailWarnings(a, opt());
-      a.trailMore = true; // width and points from OSM are in
-      if (this.colorMode === 'width' || this.colorMode === 'vis') this.renderAnalysis();
-      else { this.renderWarnings(); this.renderBreakdown(); }
-    } catch { /* the router's tags still stand */ }
+    if (!land) return;
+    let more = false, failed = false;
+    try { more = await detailsAlong(a); } catch { failed = true; } // the router's tags still stand
+    a.trailAsking = false;
+    if (this.analysis !== a) return;
+    a.trailLong = !failed && !more && !a.tdLost; // too long a route to ask (or no tile to ask): the router's tags only
+    // where the tiles didn't answer: Not checked, until they do (25d part 2)
+    a.trailError = failed ? [[0, a.along[a.along.length - 1]]] : a.tdLost || null;
+    if (!a.trailError && more) this.answered('trail');
+    if (!more) { this.renderWarnings(); return; }
+    a.trailWarn = trailWarnings(a, opt());
+    a.trailMore = true; // width and points from OSM are in
+    if (this.colorMode === 'width' || this.colorMode === 'vis') this.renderAnalysis();
+    else { this.renderWarnings(); this.renderBreakdown(); }
   }
 
   // ---------------------------------------------------------------- winter on the route (15b)
@@ -2332,9 +2363,12 @@ export class Planner {
   // and Heads-up again with them
   async loadWinterAlong(a) {
     a.winterLoading = true;
-    let cls = null;
-    try { cls = await winterAlong(a); } catch { /* without: by surface only */ }
-    if (this.analysis !== a || !cls || !a.wind) return;
+    let cls = null, failed = false;
+    try { cls = await winterAlong(a); } catch { failed = true; } // without: by surface only
+    if (this.analysis !== a) return;
+    a.winterError = failed || (cls && cls.lost > 0); // Not checked until they answer (25d part 2)
+    if (cls && !a.winterError) this.answered('winter');
+    if (!cls || !a.wind) { this.renderWarnings(); return; }
     a.winterCls = cls;
     const snow = this.snowOf(a, a.wind);
     const t = this.timed(a, a.wind.head, snow);
@@ -2367,23 +2401,25 @@ export class Planner {
     };
     const sum = (list) => list.reduce((t, x) => t + x.len, 0);
     const bikeAt = (i) => groupOf((a.attr[i] && a.attr[i].sport) || a.activity) === 'bike';
+    const FORECAST = { kind: 'estimate', by: 'the forecast' }, TAGS = { kind: 'map', by: 'winter tags' };
+    const read = { tier: 'read', src: FORECAST }, look = { tier: 'look', src: FORECAST }, readTags = { tier: 'read', src: TAGS }, lookTags = { tier: 'look', src: TAGS };
     if (winter && a.snow) {
       let lo = Infinity, hi = 0;
       for (let i = 1; i < n; i++) if (!water(i) && Number.isFinite(a.snow.cm[i])) { lo = Math.min(lo, a.snow.cm[i]); hi = Math.max(hi, a.snow.cm[i]); }
       if (hi >= 3) {
         const range = Math.round(lo) === Math.round(hi) ? `${Math.round(hi)} cm` : `${Math.round(Math.max(0, lo))}–${Math.round(hi)} cm`;
-        out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snow on the way: ${range}`, note: `the forecast's depth${a.snowSec >= 60 ? ` · slower going: about ${fmtDuration(a.snowSec)} more, in the time` : ''}${a.winterCls ? '' : ' · ploughed ways not known yet'}` });
+        out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snow on the way: ${range}`, note: `the forecast's depth${a.snowSec >= 60 ? ` · slower going: about ${fmtDuration(a.snowSec)} more, in the time` : ''}${a.winterCls ? '' : ' · ploughed ways not known yet'}`, ...look });
       }
     }
     // snowing while you're out
     if (winter && w.snowfall) {
       let cm = 0;
       for (let i = 1; i < n; i++) if (Number.isFinite(w.snowfall[i])) cm += (w.snowfall[i] * (tAt[i] - tAt[i - 1])) / 3600;
-      if (cm >= 2) out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snowing on the way: about ${Math.round(cm)} cm while you’re out`, note: 'tracks fill in and trails close up as it falls' });
+      if (cm >= 2) out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snowing on the way: about ${Math.round(cm)} cm while you’re out`, note: 'tracks fill in and trails close up as it falls', ...look });
     }
     // slippery: rain or sleet around freezing, on land
     const slip = stretches((i) => !water(i) && w.temp[i] >= -2 && w.temp[i] <= 1.5 && w.precip[i] >= 0.1);
-    if (sum(slip) >= 100) out.push({ at: a.along[slip[0].i0], len: sum(slip), kind: 'winter', ic: 'warn', noAvoid: true, text: `Slippery: rain or sleet around 0 °C for ${fmtDist(sum(slip))}`, note: 'water on ice is the worst: care on bridges, boardwalks and slopes; studded tyres if you have them' });
+    if (sum(slip) >= 100) out.push({ at: a.along[slip[0].i0], len: sum(slip), kind: 'winter', ic: 'warn', noAvoid: true, text: `Slippery: rain or sleet around 0 °C for ${fmtDist(sum(slip))}`, note: 'water on ice is the worst: care on bridges, boardwalks and slopes; studded tyres if you have them', ...read });
     // the cold, as it feels at your own speed (on land)
     let wc = Infinity, wcAt = 0;
     for (let i = 1; i < n; i++) {
@@ -2392,26 +2428,26 @@ export class Planner {
       const f = windChill(w.temp[i], w.speed[i], Math.min(40, kmh));
       if (f < wc) { wc = f; wcAt = i; }
     }
-    if (wc <= -27) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Frostbite risk: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · bare skin can freeze within half an hour: cover face and fingers' });
-    else if (wc <= -15) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Very cold: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · cover up, and keep a dry layer for stops' });
+    if (wc <= -27) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Frostbite risk: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · bare skin can freeze within half an hour: cover face and fingers', ...read });
+    else if (wc <= -15) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Very cold: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · cover up, and keep a dry layer for stops', ...read });
     // the ways in winter (OSM's winter tags along the route)
     if (winter && a.winterCls) {
       const c = a.winterCls, cls = (k) => (i) => c[i] === k && !water(i);
       const closed = stretches(cls('closed'));
-      for (const x of closed.slice(0, 3)) if (x.len >= 20) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', osm: true, lngLat: a.pts[x.i0], text: `No access in winter: ${fmtDist(x.len)}`, note: 'marked closed to walking or cycling in winter (usually a ski track): Avoid routes round it' });
+      for (const x of closed.slice(0, 3)) if (x.len >= 20) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', osm: true, lngLat: a.pts[x.i0], text: `No access in winter: ${fmtDist(x.len)}`, note: 'marked closed to walking or cycling in winter (usually a ski track): Avoid routes round it', ...readTags });
       const groomed = stretches(cls('groomed'));
-      if (sum(groomed) >= 100) out.push({ at: a.along[groomed[0].i0], len: sum(groomed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[groomed[0].i0], text: `Beside a ski track for ${fmtDist(sum(groomed))}`, note: 'walking and cycling allowed: keep off the groomed track itself' });
+      if (sum(groomed) >= 100) out.push({ at: a.along[groomed[0].i0], len: sum(groomed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[groomed[0].i0], text: `Beside a ski track for ${fmtDist(sum(groomed))}`, note: 'walking and cycling allowed: keep off the groomed track itself', ...lookTags });
       const unploughed = stretches((i) => c[i] === 'unploughed' && bikeAt(i));
-      if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[unploughed[0].i0], text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike' });
+      if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[unploughed[0].i0], text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike', ...lookTags });
       const slowOpen = stretches((i) => c[i] === 'open3' && bikeAt(i) && a.snow && a.snow.cm[i] >= 5);
-      if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[slowOpen[0].i0], text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet' });
+      if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[slowOpen[0].i0], text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet', ...lookTags });
     }
     // on the water in the ice season
     const wet = stretches(water);
     if (sum(wet) > 0) {
       let cold = Infinity;
       for (let i = 1; i < n; i++) if (water(i)) cold = Math.min(cold, w.temp[i]);
-      if (set.on || cold <= 0.5) out.push({ at: a.along[wet[0].i0], len: sum(wet), kind: 'water', ic: 'warn', noAvoid: true, text: 'Ice season: the water may be frozen or partly frozen', note: 'Polku can’t see the ice: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked' });
+      if (set.on || cold <= 0.5) out.push({ at: a.along[wet[0].i0], len: sum(wet), kind: 'water', ic: 'warn', noAvoid: true, text: 'Ice season: the water may be frozen or partly frozen', note: 'Polku can’t see the ice: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked', ...read });
     }
     return out;
   }
@@ -2531,7 +2567,6 @@ export class Planner {
   async loadWind(a) {
     const opt = this.timeOpt();
     const startSec = this.startSec();
-    a.windError = false;
     a.darkWarn = this.darkWarnings(a); // the departure may have moved (without the wind's times, these do)
     try {
       let w = await windAlong(a.pts, a.along, a.tAt, startSec);
@@ -2541,6 +2576,8 @@ export class Planner {
       t = this.timed(a, w.head, snow);
       if (this.analysis !== a) return;
       a.wind = { ...w, startSec };
+      a.windError = false; // (a failure stays until the forecast answers: 25d part 2)
+      this.answered('weather');
       a.timeWind = t.total;
       a.tAtWind = t.tAt;
       a.waits = t.waits; // nights timed with the wind's arrival times
@@ -2555,15 +2592,26 @@ export class Planner {
     this.loadHazards(a);
   }
 
-  // Road works, incidents, slippery roads and busy roads along the route.
+  // Road works, incidents, slippery roads and busy roads along the route. No answer: Not checked, until
+  // Fintraffic answers (25d part 2), where it counts: a route on land in Finland.
   async loadHazards(a) {
     if (!this.app.hazards) return;
     try {
       const hz = await this.app.hazards(a, { activity: this.mainSport(), startSec: this.startSec() }); // each leg's own sport (#71)
       if (this.analysis !== a) return;
       a.hazards = hz;
-      this.renderWarnings();
-    } catch { /* keep the static warnings */ }
+      a.hazardsAt = hz.answeredAt || Date.now();
+      a.hazardsError = false;
+      this.answered('hazards');
+    } catch {
+      if (this.analysis !== a) return;
+      a.hazardsError = this.fintrafficHere(a); // (the items it gave before, if any, stay)
+    }
+    this.renderWarnings();
+  }
+  // whether Fintraffic's road works and incidents count for this route: some of it on land in Finland
+  fintrafficHere(a) {
+    return !!this.app.hazards && a.pts.some((q, i) => inFinland(q) && !isWater((a.attr[i] && a.attr[i].sport) || a.activity));
   }
 
   // ---------------------------------------------------------------- map interaction
@@ -2591,6 +2639,9 @@ export class Planner {
     }
     // …and in Marked routes it picks the route under it
     if (this.startView() === 'find') { this.pickMarkedAt(e.point, r); return; }
+    // a marker of Check's (25d part 3): its card (in the route's view too: the map's card doesn't open as well)
+    const head = this.headAt(e.point, r + 6);
+    if (head) { if (this.inView()) this.tookClick = e.originalEvent; this.openHead(head); return; }
     // a way on offer for a leg (#95): a tap takes it
     const alt = this.alts && this.map.getLayer('route-alts-line') && this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-alts-line', 'route-alts-casing', 'route-alts-glow', 'route-alts-label'] }).find((f) => !f.properties.route);
     const ng = !alt && this.map.getLayer('nogo-fill') && this.map.queryRenderedFeatures(e.point, { layers: ['nogo-fill'] })[0];
@@ -2670,7 +2721,7 @@ export class Planner {
   iceWarnings(a) {
     let i0 = -1, len = 0;
     for (let i = 1; i < a.along.length; i++) if ((a.attr[i] || {}).ice) { if (i0 < 0) i0 = i - 1; len += a.along[i] - a.along[i - 1]; }
-    return i0 < 0 ? [] : [{ at: a.along[i0], len, kind: 'water', ic: 'warn', noAvoid: true, text: 'On the ice: Polku can’t see whether it holds', note: 'check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked' }];
+    return i0 < 0 ? [] : [{ at: a.along[i0], len, kind: 'water', ic: 'warn', noAvoid: true, text: 'On the ice: Polku can’t see whether it holds', note: 'check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked', tier: 'read', src: { kind: 'calculated', by: 'your route over the ice' } }];
   }
 
   // A new leg that is mostly water in a land sport (shore to shore across a lake), or
@@ -3093,6 +3144,7 @@ export class Planner {
     // Marker presses bubble through the map too: their own drag must be the
     // only edit, even when the marker sits directly over the route.
     if (e.originalEvent.target?.closest?.('.maplibregl-marker, .maplibregl-popup')) return;
+    if (this.headAt(e.point, this.isTouch() ? 18 : 10)) return; // a marker of Check's over the line: the press is its
     const f = (e.features || []).find((x) => x.properties.kind === 'leg');
     if (!f || f.properties.loading) return;
     const touch = e.type === 'touchstart';
@@ -3421,16 +3473,16 @@ export class Planner {
 
   // Heads-up from the stops: gear left behind, and a night too short to sleep
   stopWarnings(a) {
-    const out = [];
+    const out = [], src = { kind: 'calculated', by: 'your stops and times' };
     const sports = this.legs.map((_, i) => this.legSport(i));
     if (new Set(sports).size > 1) {
       for (const w of gearChecks({ sports, points: this.points, carry: (i) => this.carryAt(i), along: (i) => this.lengthTo(i), name: (i) => this.nameOf(i), label: (g) => this.gearLabel(g) })) {
-        out.push({ at: w.at, len: 0, kind: 'gear', ic: w.gear === 'bike' ? 'bike' : 'paddle', noAvoid: true, text: w.text, note: w.note });
+        out.push({ at: w.at, len: 0, kind: 'gear', ic: w.gear === 'bike' ? 'bike' : 'paddle', noAvoid: true, text: w.text, note: w.note, tier: 'look', src });
       }
     }
     for (const w of a.waits || []) {
       if (!isNight(w.stop) || w.rest >= 5 * 3600) continue;
-      out.push({ at: w.at, len: 0, kind: 'dark', hide: 'Short night', ic: 'moon', noAvoid: true, text: `A short night at ${this.nameOf(w.i)}: ${fmtDuration(w.rest)}`, note: `you’d get there ${this.clockOf(w.arrive)} and go on at ${hhmm(w.stop.on)}` });
+      out.push({ at: w.at, len: 0, kind: 'dark', hide: 'Short night', ic: 'moon', noAvoid: true, text: `A short night at ${this.nameOf(w.i)}: ${fmtDuration(w.rest)}`, note: `you’d get there ${this.clockOf(w.arrive)} and go on at ${hhmm(w.stop.on)}`, tier: 'look', src });
     }
     return out;
   }
@@ -3489,6 +3541,7 @@ export class Planner {
       routed: this.legs.map((l) => (l.mode !== 'fixed' && l.status === 'ok' && l.key && l.result
         ? { key: l.key, line: encodePolyline(l.result.coords), tags: l.result.tags.map(tagId), portage: l.result.portage || [], provider: l.result.provider, water: l.result.water ? { ...l.result.water, times: undefined } : undefined } : null)),
       tags: table,
+      read: [...this.readKeys], // Check's items marked read: on this device only, not in share links; none in older saved routes
     });
   }
 
@@ -3497,6 +3550,7 @@ export class Planner {
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
+    this.readKeys = new Set(r.read || []);
     this.nameAll(r.names);
     this.changeAll(r.changes);
     this.stopAll(r.stops);
@@ -3559,7 +3613,10 @@ export class Planner {
   }
 
   restoreSnapshot(s) {
+    const had = this.points.length > 0;
+    if (had) this.commit(); // (Undo brings back the route you had)
     this.points = s.points;
+    this.freshRead(had);
     this.nameAll(s.names);
     this.changeAll(s.changes);
     this.stopAll(s.stops);
@@ -3677,7 +3734,9 @@ export class Planner {
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.row, this.els.way), this.els.said);
+    // the peek's row: what to read before you go, and what wasn't checked (25d part 3)
+    this.els.readRow = h('div', { class: 'warn-row pl-readrow', hidden: true });
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.readRow, this.els.row, this.els.way), this.els.said);
     // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, at
     // its spot elsewhere (js/card.js, 25d)
     this.cards = new CardHost(this.map, {
@@ -3691,6 +3750,11 @@ export class Planner {
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
         // …and its row in the list lit, where the card leaves it in sight (desktops)
         for (const r of this.els.points.querySelectorAll('.wpl-row')) { if (this.points[+r.dataset.i] === ringed) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+        // an item's card (25d part 3): its row or box in Check lit; closed, its stretch on the route unlit
+        const key = card && card.kind === 'item' ? card.itemKey : null;
+        for (const r of this.els.warnings.querySelectorAll('[data-key]')) { if (r.dataset.key === key) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+        if (!key && this.itemLit) this.unlightItem();
+        if (key !== this.headsOpen) { this.headsOpen = key; this.drawHeads(); } // (the open one ringed, Worth a look's shown)
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.measureSheet?.();
       },
@@ -3751,7 +3815,7 @@ export class Planner {
     ...TABS.map((t) => (this.els.tabBtn[t.id] = h('button', {
       type: 'button', role: 'tab', class: 'pl-tab', id: `pl-tab-${t.id}`, 'aria-controls': `pl-pane-${t.id}`, title: t.title,
       onclick: () => this.setTab(t.id, { user: true }),
-    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-t' })))));
+    }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-unk', hidden: true, 'aria-hidden': 'true' }, '?'), h('span', { class: 'pl-tab-t' })))));
     const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
@@ -3769,7 +3833,7 @@ export class Planner {
         this.els.checkEmpty = h('p', { class: 'note pl-empty' }, 'Draw a route to see what’s on the way: heads-up, climbs, the ground.'),
         this.els.stats,
         // the two short lists share a column in a wide panel
-        h('div', { class: 'sec-stack' }, this.section('warnings', 'Heads-up', this.els.warnings), this.section('climbs', 'Climbs', this.els.climbs)),
+        h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
         this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown),
         this.section('onmap', 'On the map', this.els.onMap = h('div', { class: 'onmap' }))),
       go: pane('go',
@@ -3799,6 +3863,13 @@ export class Planner {
     this.renderModeChips();
     this.bindSheet();
     this.bindResize();
+  }
+
+  // Check's groups (25d part 2): they lead the Check tab, with no header of their own and no fold
+  checksSection() {
+    const el = h('section', { class: 'sec checks', 'data-sec': 'warnings', 'aria-label': 'What’s on the way' }, this.els.warnings);
+    this.sec.warnings = { el, head: null, titleEl: h('span'), count: h('span'), sum: h('span') };
+    return el;
   }
 
   // A collapsible section; its open state is remembered across visits.
@@ -3832,7 +3903,6 @@ export class Planner {
     s.count.textContent = count === '' ? '' : String(count);
     s.sum.textContent = summary;
     s.el.hidden = empty;
-    if (id === 'warnings' && this.els.tabBtn) this.els.tabBtn.check.querySelector('.pl-tab-n').textContent = empty || !count ? '' : String(count);
   }
 
   // ---------------------------------------------------------------- the tabs (22a)
@@ -3855,6 +3925,7 @@ export class Planner {
       if (this.layout() === 'sheet' && (st === 'peek' || st === 'profile')) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'min') this.setSheetState('open');
     }
+    this.renderOnRoute(); // (the row gone while Check is in sight; Worth a look's markers with it)
   }
 
   // The profile at its size, or smaller (yours, kept)
@@ -3899,7 +3970,8 @@ export class Planner {
   litLeg(i) {
     const leg = i == null ? null : this.legs[i];
     if (!leg) {
-      this.app.setData('routeLit', EMPTY);
+      // (what was picked stays lit: a climb, an item of Check)
+      this.app.setData('routeLit', this.focusLit ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.focusLit } }] } : EMPTY);
       if (this.chart) this.chart.setHighlight(this.focusHl || null);
       return;
     }
@@ -4319,6 +4391,7 @@ export class Planner {
     this.els.min.title = folded ? 'Show the details' : lay === 'side' ? 'Minimise' : 'Fold down to the summary';
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { peek: 'Show more', profile: 'Drag up for the details, down for the map', half: 'Drag up for everything, down for the profile', full: 'Drag down for the map' }[st] || '';
+    this.renderOnRoute(); // (the row gone while Check is in sight; Worth a look's markers with it)
     if (st !== 'peek' && st !== 'min') requestAnimationFrame(() => this.chart.draw());
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
   }
@@ -4373,10 +4446,11 @@ export class Planner {
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
-      // the route's numbers came in just after it was framed and wrap onto a second line (#242): the
-      // peek is taller now, so frame it once more, unless the map has been moved since
+      // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
+      // to read came once a source didn't answer (25d part 3, which can take a while): the peek is taller now, so
+      // frame it once more, unless the map has been moved or framed on something else since, or a card is open
       const f = this.fitAt;
-      if (f && f.peek !== peek && this.panel.dataset.state === 'peek' && Date.now() - f.t < 5000) { this.fitAt = null; requestAnimationFrame(() => this.fitRoute({ animate: false })); }
+      if (f && f.peek !== peek && this.panel.dataset.state === 'peek' && !this.cards.current && Date.now() - f.t < 60000) { this.fitAt = null; requestAnimationFrame(() => this.fitRoute({ animate: false })); }
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
     };
     this.measureSheet = sizes;
@@ -4509,6 +4583,7 @@ export class Planner {
   /** Frame bounds [w, s, e, n] in the map the planner leaves free. A full sheet leaves no map
    *  to frame in, so it comes down to half first (not remembered), unless `lower` is false. */
   frame(b, { lower = true, ...opts } = {}) {
+    this.fitAt = null; // (framed on something: fitRoute() says again when it's the whole route)
     if (lower && this.active && this.layout() === 'sheet' && this.panel.dataset.state === 'full') this.setSheetState('half', { remember: false });
     this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, ...opts });
   }
@@ -5504,103 +5579,489 @@ export class Planner {
     });
   }
 
+  // ---------------------------------------------------------------- Check's groups (25d part 2)
+  // Every Heads-up item in Check's groups: Read before you go and Worth a look, each item's own (set where it's made;
+  // one without goes to Read, so a forgotten one looks more serious, never less), in order along the route; Not
+  // checked, the sources that didn't answer (notChecked()); and how many of each kind you've hidden.
+  headsUp(a = this.analysis) {
+    const out = { read: [], look: [], not: [], hidden: new Map() };
+    if (!a) return out;
+    // a stand-in for a leg not routed yet is its own item, not a Straight line too
+    const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
+    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.iceWarnings(a), ...this.routerWarnings()].sort((x, y) => x.at - y.at);
+    const hidden = hiddenKinds();
+    for (const w of all) {
+      const k = hideKind(w);
+      if (k && hidden[k.key]) { out.hidden.set(k.key, (out.hidden.get(k.key) || 0) + 1); continue; }
+      if (w.tier !== 'read' && w.tier !== 'look') console.error(`Heads-up item without a group: ${w.text}`);
+      (w.tier === 'look' ? out.look : out.read).push(w);
+    }
+    out.not = this.notChecked(a);
+    return out;
+  }
+
+  // The router's own items: legs not routed yet (drawn as straight lines meanwhile), and legs Valhalla stood in for.
+  routerWarnings() {
+    const out = [];
+    const span = (pred) => {
+      const i0 = this.legs.findIndex(pred), i1 = this.legs.findLastIndex(pred);
+      return { at: this.lengthTo(i0), len: this.lengthTo(i1 + 1) - this.lengthTo(i0) };
+    };
+    const unrouted = (l) => l.status === 'error' || l.status === 'waiting';
+    const n = this.legs.filter(unrouted).length;
+    if (n) {
+      const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
+      const waiting = w && (w.reason === 'limit'
+        ? `The routing service asked for a short pause; ${n === 1 ? 'it follows' : 'they follow'} on their own`
+        : `${w.own ? 'Your routing server' : 'The routing service'} isn’t answering — trying again at ${clock(w.until)}${w.own ? ' (Settings → Routing server)' : ''}`);
+      out.push({ ...span(unrouted), kind: 'router', noHide: true, noAvoid: true, text: `${n === 1 ? 'One leg isn’t' : `${n} legs aren’t`} routed yet`, note: waiting || `Drawn as straight line${n === 1 ? '' : 's'}`,
+        tier: 'read', src: { kind: 'router', by: 'the routing service' }, retry: () => this.retryFailed() });
+    }
+    const valhalla = (l) => l.status === 'ok' && l.result && l.result.provider === 'valhalla';
+    const v = this.legs.filter(valhalla).length;
+    if (v) {
+      out.push({ ...span(valhalla), kind: 'router', noHide: true, noAvoid: true, text: `${v === 1 ? 'One leg' : `${v} legs`} routed by Valhalla`,
+        note: 'brouter.de asked for a pause, so the OpenStreetMap routing service stood in. It may take ways marked private, and doesn’t say which: Check lists those found on the map.',
+        tier: 'look', src: { kind: 'router', by: 'Valhalla, on FOSSGIS servers', url: 'https://valhalla.github.io/valhalla/' }, fixUrl: FIX_THE_MAP, useBrouter: () => this.rerouteWithBrouter() });
+    }
+    return out;
+  }
+
+  // Not checked: each source that didn't answer for this route ({ key, by, text, note, retry }), and where it left
+  // a gap when that's known (`ranges` of [at, len], the first as `at` and `len`; null: the whole route). Each stays
+  // on the analysis until its source answers, so a late note can't replace it (#265); places first, along the route.
+  notChecked(a) {
+    const out = [], end = a.along[a.along.length - 1];
+    const place = (ranges) => (ranges && ranges.length ? { ranges, at: ranges[0][0], len: ranges[0][1] } : { ranges: null });
+    // Retry: asked again at once, its card saying "Asking…" until it's answered, a card built again meanwhile too
+    const ask = (key, fn) => async () => {
+      (a.asking || (a.asking = new Set())).add(key);
+      this.renderWarnings();
+      try { return await fn(); } finally { a.asking.delete(key); if (this.analysis === a) this.renderWarnings(); }
+    };
+    const ter = a.terrain;
+    if (ter) {
+      const onWater = (i) => (a.attr[i] || {}).mode === 'water' && !((a.attr[i] || {}).tags || {}).portage;
+      out.push({ key: 'terrain', by: 'the terrain model', text: terrainTitle(ter),
+        note: `${ter.all ? `${a.ways.some(([k]) => k === 'water') ? 'On land the time' : 'The time'} is by distance only, and the climbing isn’t known` : 'The climbing and the time there are estimates'}.${ter.retry && ter.next ? ` Trying again at ${clock(ter.next)}.` : ''}`,
+        ...place(!ter.all && a.eleGap ? runsAlong(a.along, (i) => a.eleGap[i] && !onWater(i)) : null),
+        retry: ter.retry ? async () => { await this.retryTerrain(a, 0, true); if (this.analysis === a) toast('The terrain still didn’t load: Polku keeps trying'); } : null });
+    }
+    // the water router's sources: the legs routed without each
+    const lost = new Map();
+    this.legs.forEach((l, i) => {
+      const wr = l.mode === 'water' && l.result && l.result.water; // (being routed again: until the new answer)
+      for (const m of (wr && wr.missing) || []) { if (!lost.has(m)) lost.set(m, []); lost.get(m).push([this.lengthTo(i), this.lengthTo(i + 1) - this.lengthTo(i)]); }
+    });
+    for (const [m, legs] of lost) {
+      const [text, note] = WATER_LOST[m] || [`${m} didn’t answer on the water`, 'Routed without it.'];
+      const ranges = legs.reduce((r, [at, len]) => { const p = r[r.length - 1]; if (p && at - (p[0] + p[1]) < 1) p[1] = at + len - p[0]; else r.push([at, len]); return r; }, []);
+      const whole = ranges.length === 1 && ranges[0][0] < 1 && ranges[0][0] + ranges[0][1] >= end - 1; // (every leg: the whole route, no place)
+      out.push({ key: 'water', by: m, text, note: `${note} Polku tries again on its own.`, ...place(whole ? null : ranges), retry: () => this.retryWater() });
+    }
+    if (a.hazardsError) out.push({ key: 'hazards', by: 'Fintraffic', text: 'Road works and incidents: Fintraffic didn’t answer', note: 'Road works, traffic incidents and road conditions on the way aren’t known.', ranges: null, retry: ask('hazards', () => this.loadHazards(a)) });
+    if (a.trailError) {
+      const sum = a.trailError.reduce((t, [, len]) => t + len, 0), whole = sum >= end - 20;
+      out.push({ key: 'trail', by: 'OpenStreetMap, through Overpass', who: 'Overpass (OpenStreetMap)', text: whole ? 'Trail details didn’t load' : `Trail details didn’t load for ${fmtDist(sum)}`,
+        note: 'Overpass didn’t answer: fallen trees, fords, gates and how wide or wet the way is aren’t known there.', ...place(whole ? null : a.trailError),
+        retry: ask('trail', () => { forgetTrailFailures(); return this.loadTrail(a); }) });
+    }
+    if (a.winterError) out.push({ key: 'winter', by: 'OpenStreetMap, through Overpass', who: 'Overpass (OpenStreetMap)', text: 'Winter ways didn’t load', note: 'Overpass didn’t answer: ski tracks, and ways closed or not ploughed in winter, aren’t known.', ranges: null, retry: ask('winter', () => { forgetWinterFailures(); return this.loadWinterAlong(a); }) });
+    if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: ask('weather', () => this.loadWind(a)) });
+    const at = (x) => (x.ranges ? x.at : Infinity);
+    return out.sort((x, y) => (at(x) === at(y) ? 0 : at(x) < at(y) ? -1 : 1));
+  }
+
+  // What Polku looked at for this route, at Check's end: each source and whether it answered ('ok', with its name and
+  // time), didn't ('bad', what's missing), is still being asked ('wait') or doesn't apply here ('na').
+  lookedAt(a = this.analysis) {
+    if (!a) return [];
+    const rows = [], row = (what, by, state) => rows.push({ what, by, state });
+    const onWater = (l, i) => l.mode === 'water' || isWater(this.legSport(i));
+    const water = this.legs.some(onWater), land = !this.legs.length || this.legs.some((l, i) => !onWater(l, i));
+    const end = a.along[a.along.length - 1];
+    if (land) {
+      const te = a.trailError, gap = te ? te.reduce((t, [, len]) => t + len, 0) : 0;
+      row('Trail details along the route', te ? (gap >= end - 20 ? 'didn’t load' : `missing for ${fmtDist(gap)}`) : a.trailAsking ? 'asking OpenStreetMap…' : a.trailLong ? 'the route’s own tags only: too long to ask for more' : a.trailMore ? 'OpenStreetMap' : 'asking OpenStreetMap…',
+        te ? 'bad' : a.trailAsking || (!a.trailLong && !a.trailMore) ? 'wait' : a.trailLong ? 'na' : 'ok');
+      const ter = a.terrain;
+      row('Heights and climbs', ter ? (ter.all ? (ter.retry ? 'didn’t load' : 'none here') : `missing for ${fmtDist(ter.missing)}`) : 'the terrain model', ter ? 'bad' : 'ok');
+      if (this.fintrafficHere(a)) row('Road works and incidents', a.hazardsError ? 'Fintraffic didn’t answer' : a.hazards ? `Fintraffic, ${clock(a.hazardsAt)}` : 'asking Fintraffic…', a.hazardsError ? 'bad' : a.hazards ? 'ok' : 'wait');
+      if (a.snow) row('Winter ways', a.winterError ? 'didn’t load' : a.winterCls ? 'OpenStreetMap' : 'loading…', a.winterError ? 'bad' : a.winterCls ? 'ok' : 'wait');
+    }
+    const wr = this.legs.filter((l) => l.mode === 'water' && l.result && l.result.water).map((l) => l.result.water);
+    const asked = (k) => wr.some((w) => (w.checked || {})[k]), missing = (m) => wr.some((w) => (w.missing || []).includes(m));
+    const source = (what, k, name) => row(what, !asked(k) ? 'not used for this route' : missing(name) ? `${name} didn’t answer` : name, !asked(k) ? 'na' : missing(name) ? 'bad' : 'ok');
+    if (water) {
+      source('Rocks and shoals', 'hazards', 'OpenStreetMap');
+      source('Fairways and marks', 'fairways', 'Väylävirasto');
+    }
+    // the forecast: the weather on the way, and on the water the wind for the waves
+    const windLost = a.windError || missing('the wind forecast'), startSec = a.wind ? a.wind.startSec : this.startSec();
+    row(land ? 'Weather on the way' : 'Wind and waves', windLost ? 'Open-Meteo didn’t answer' : a.wind ? `Open-Meteo, ${clock(startSec * 1000)}` : 'loading…', windLost ? 'bad' : a.wind ? 'ok' : 'wait');
+    const sun = sunTimes(startSec, this.points[0] || a.pts[0]);
+    row('Daylight', sun.set ? `sunset ${clock(sun.set * 1000)}` : sun.day === 'polar-day' ? 'the sun doesn’t set' : 'the sun doesn’t rise', 'ok');
+    if (water) row('Depths', 'shown on the map, never used for routes', 'na');
+    else row('Water hazards', 'no water on this route', 'na');
+    return rows;
+  }
+
+  // Check's groups (25d part 2) [jc-check, chk-phone, chk-desk]: Read before you go (the red warning box), Not checked
+  // and Worth a look (rows, each with its group's icon), each in order along the route and lit while its card is open;
+  // then What Polku looked at, and the kinds you've hidden, to bring back. A tap shows the item on the route (its card).
   renderWarnings() {
     const a = this.analysis;
     const box = this.els.warnings;
-    box.innerHTML = '';
+    box.replaceChildren();
+    const H = this.heads = this.headsUp(a);
+    // an open card's item, waiting while its sources are asked again (itemKept()): in its place along the route
+    // meanwhile, so ‹ ›, its ring and Got it find it
+    const L = this.itemsAlong(H), c = this.cards.current, w0 = c && c.kind === 'item' && c.last;
+    if (w0 && !L.some((x) => itemKey(x) === c.itemKey) && this.itemKept(w0)) {
+      const placed = (x) => x.g !== 'not' || x.w.ranges, i = placed(w0) ? L.findIndex((x) => !placed(x) || x.w.at > w0.w.at) : -1;
+      L.splice(i < 0 ? L.length : i, 0, w0);
+    }
+    this.headsList = L;
+    this.renderBadge(H);
+    this.renderOnRoute();
     if (!a) return;
-    const standIn = this.legs.map((l, i) => (l.status === 'error' || l.status === 'waiting' ? [this.lengthTo(i) - 5, this.lengthTo(i + 1) + 5] : null)).filter(Boolean);
-    const all = [...a.warnings.filter((w) => !(/^Straight line/.test(w.text) && standIn.some(([s0, s1]) => w.at >= s0 && w.at + w.len <= s1))), ...(a.hazards || []), ...groupTrail(a.trailWarn || []), ...(a.waterWarn || []), ...(a.darkWarn || []), ...(a.accessWarn || []), ...this.stopWarnings(a), ...this.winterWarnings(a), ...this.iceWarnings(a)].sort((x, y) => x.at - y.at);
-    // the kinds you've hidden stay out (and are listed at the end, to bring back)
-    const hidden = hiddenKinds(), hiddenHere = new Map();
-    const shown = all.filter((w) => {
-      const k = hideKind(w);
-      if (!k || !hidden[k.key]) return true;
-      hiddenHere.set(k.key, (hiddenHere.get(k.key) || 0) + 1);
-      return false;
-    });
-    const unrouted = this.legs.filter((l) => l.status === 'error' || l.status === 'waiting').length;
-    const ter = a.terrain;
-    const count = shown.length + (unrouted ? 1 : 0) + (ter ? 1 : 0) + (this.legs.some((l) => l.result && l.result.provider === 'valhalla' && l.status === 'ok') ? 1 : 0);
-    const nHidden = all.length - shown.length;
-    this.setSection('warnings', { count: count || '', empty: !count && !nHidden, summary: unrouted ? `${unrouted} leg${unrouted > 1 ? 's' : ''} not routed`
-      : ter ? terrainTitle(ter) + (shown.length ? ` · +${shown.length} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '')
-        : shown.length ? shown[0].text + (shown.length > 1 ? ` · +${shown.length - 1} more` : '') + (nHidden ? ` · ${nHidden} hidden` : '') : nHidden ? `${nHidden} hidden` : '' });
-    if (unrouted) {
-      const w = (this.legs.find((l) => l.status === 'waiting') || {}).wait;
-      const waiting = w && (w.reason === 'limit'
-        ? `The routing service asked for a short pause; ${unrouted === 1 ? 'it follows' : 'they follow'} on their own`
-        : `${w.own ? 'Your routing server' : 'The routing service'} isn’t answering — trying again at ${new Date(w.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${w.own ? ' (Settings → Routing server)' : ''}`);
-      box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${unrouted === 1 ? 'One leg isn’t' : `${unrouted} legs aren’t`} routed yet</b><span>${waiting || `Drawn as straight line${unrouted === 1 ? '' : 's'}`}</span></span>` }),
-        h('button', { type: 'button', class: 'btn', title: 'Ask the router again', onclick: () => this.retryFailed() }, 'Retry')));
-    }
-    if (ter) {
-      const next = ter.retry && ter.next ? ` · trying again at ${new Date(ter.next).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
-      box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('warn', 16)}<span class="li-main"><b>${terrainTitle(ter)}</b><span>${ter.all ? `${a.ways.some(([k]) => k === 'water') ? 'On land the time' : 'The time'} is by distance only, and the climbing isn’t known` : 'The climbing and the time there are estimates'}${next}</span></span>` }),
-        ter.retry ? h('button', {
-          type: 'button', class: 'btn', title: 'Load the terrain again',
-          onclick: async () => {
-            await this.retryTerrain(a, 0, true);
-            if (this.analysis === a) toast('The terrain still didn’t load: Polku keeps trying');
-          },
-        }, 'Retry') : null));
-    }
-    const byValhalla = this.legs.filter((l) => l.status === 'ok' && l.result && l.result.provider === 'valhalla').length;
-    if (byValhalla) {
-      box.append(h('div', { class: 'li-row kind-route' },
-        h('div', { class: 'li', html: `${icon('info', 16)}<span class="li-main"><b>${byValhalla === 1 ? 'One leg' : `${byValhalla} legs`} routed by Valhalla</b><span>brouter.de asked for a pause, so the OpenStreetMap routing service stood in. It may take ways marked private, and doesn’t say which: Heads-up lists those found on the map. Routing: <a href="https://valhalla.github.io/valhalla/" target="_blank" rel="noopener">Valhalla</a> on FOSSGIS servers · <a href="${FIX_THE_MAP}" target="_blank" rel="noopener">fix the map</a></span></span>` }),
-        h('button', { type: 'button', class: 'btn', title: 'Route these legs with BRouter (its trail profiles) once it’s free', onclick: () => this.rerouteWithBrouter() }, 'Use BRouter')));
-    }
-    if (!all.length) return;
-    const KIND_ICON = { roadwork: 'warn', incident: 'warn', roadcond: 'warn', busy: 'warn', dark: 'moon' };
-    // where along: in metres on a short route ("at 40 m"), else "at km 12.3"
-    const atKm = (m) => (m < 10 ? 'the start' : a.along[a.along.length - 1] < 2000 ? `${Math.round(m / 10) * 10} m` : `km ${(m / 1000).toFixed(1)}`);
-    for (const w of shown.slice(0, 40)) {
-      const i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
-      let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len, 30));
-      if (i1 < 0) i1 = a.along.length - 1;
-      // anything with a place can be avoided: a circle over the hazard (each of them, for a group)
-      const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
-        : w.avoid ? [{ ...w.avoid, label: w.text }]
-          : w.noAvoid || /^(Straight line|Carry)/.test(w.text) ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
-      const where = w.items ? `at ${w.items.map((p) => atKm(p.at)).join(', ')}` : `at ${atKm(w.at)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
-      const ico = w.icon ? `<img class="li-ico" src="${iconUrl(w.icon)}" alt="">` : icon(w.ic || KIND_ICON[w.kind] || 'warn', 16);
-      const kind = hideKind(w);
-      const row = h('div', { class: `li-row kind-${w.kind || 'route'}` },
-        h('button', { type: 'button', class: 'li', html: `${ico}<span class="li-main"><b>${escapeHtml(w.text)}</b><span>${where}${w.note ? ` · ${escapeHtml(w.note)}` : ''}</span></span>`, onclick: () => this.focusRange(i0, i1, w) }),
-        avoid && this.legs.some((l) => l.mode === 'auto' || l.mode === 'water') ? h('button', { type: 'button', class: 'btn avoid', title: avoid.length > 1 ? `Route around all ${avoid.length}` : 'Route around this place', onclick: () => this.addNogos(avoid) }, 'Avoid') : null,
-        w.cutLeg != null ? h('button', { type: 'button', class: 'btn', title: 'Let this leg take the short cut (Route style: Ways marked private → Short cuts ok). Only where you may go.', onclick: () => this.useShortCut(w.cutLeg, w.picks) }, 'Short cut') : null,
-        kind || (w.osm && w.lngLat) ? h('button', {
-          type: 'button', class: 'tool small li-more', title: 'More: hide this kind, or correct the map', 'aria-label': `More for “${w.text}”`, 'aria-haspopup': 'menu', html: icon('more', 16),
-          onclick: (e) => {
-            const at = e.currentTarget, open1 = this.rowMenu;
-            if (open1) { open1.close(); if (open1.at === at) return; } // its own ⋯ again: just closed
-            this.rowMenu = popMenu(at, [
-              kind ? { icon: 'eyeOff', label: `Hide “${escapeHtml(kind.label)}” in Heads-up`, fn: () => this.hideWarnKind(kind) } : null,
-              w.osm && w.osm.id ? { icon: 'external', label: 'Gone? Fix the map (OpenStreetMap)', fn: () => open(`https://www.openstreetmap.org/edit?${w.osm.type}=${w.osm.id}`, '_blank', 'noopener') } : null,
-              w.osm && w.lngLat ? { icon: 'external', label: w.fix || 'Not right? Leave a note on OpenStreetMap', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') } : null,
-            ], { label: w.text, onClose: () => { this.rowMenu = null; } });
-            this.rowMenu.at = at;
-          },
-        }) : null);
-      box.append(row);
-    }
-    if (hiddenHere.size) {
+    this.setSection('warnings', { count: H.read.length + H.look.length + H.not.length });
+    const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
+    const row = (it) => {
+      const k = itemKey(it), where = `${this.whereOf(it.w)}${this.isRead(it) ? ' · ✓ Read' : ''}`, go = (e) => this.openItemCard(it, { from: 'check', el: e.currentTarget });
+      const el = it.g === 'read'
+        ? h('button', { type: 'button', class: 'warn-row danger', onclick: go },
+          h('span', { 'aria-hidden': 'true', html: icon('warnf', 20) }), h('span', {}, h('b', {}, it.w.text), h('small', {}, where)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }))
+        : item({ icon: it.g === 'not' ? 'unk' : 'eye', label: it.w.text, line: where, chev: true, onclick: go });
+      el.dataset.key = k;
+      if (k === open) el.setAttribute('aria-current', 'true');
+      return el;
+    };
+    const MAX = 40; // (‹ › on a card steps through the rest)
+    const tier = (g, ic, title, sub, list) => {
+      if (!list.length) return null;
+      const els = list.slice(0, MAX).map((w) => row({ g, w })), unread = list.map((w) => ({ g, w })).filter((it) => !this.isRead(it));
+      return h('section', { class: `tier tier-${g}`, 'aria-labelledby': `tier-${g}` },
+        h('div', { class: 'tier-top' },
+          h('h3', { class: 'tier-h', id: `tier-${g}` }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, title), h('span', { class: 'tier-n' }, String(list.length))),
+          unread.length ? h('button', { type: 'button', class: 'btn small quiet tier-all', 'aria-label': `All read: ${title}`, onclick: () => this.markRead(unread, { note: true }), html: icon('check', 16) }, h('span', {}, 'All read')) : null),
+        h('p', { class: 'tier-sub' }, sub),
+        g === 'read' ? h('div', { class: 'tier-boxes' }, ...els) : rows(...els),
+        list.length > MAX ? h('p', { class: 'tier-sub' }, `And ${list.length - MAX} more along the route: ‹ › on a card steps through them`) : null);
+    };
+    box.append(...[
+      tier('read', 'warnf', 'Read before you go', 'What can stop you, turn you back or hurt', H.read),
+      tier('not', 'unk', 'Not checked', 'A source didn’t answer: the route may miss something', H.not),
+      tier('look', 'eye', 'Worth a look', 'Sections to know about', H.look),
+    ].filter(Boolean));
+    // what was looked at, from where, and what that doesn't mean
+    const SAY = { ok: ['check', 'Checked'], bad: ['unk', 'Not checked'], wait: ['clock', 'Being asked'], na: ['minus', 'Not used'] };
+    box.append(h('div', { class: 'looked' },
+      h('h4', { class: 'looked-h' }, 'What Polku looked at'),
+      h('ul', {}, ...this.lookedAt(a).map((r) => h('li', { class: r.state },
+        h('span', { 'aria-hidden': 'true', html: icon(SAY[r.state][0], 16) }), h('span', {}, h('span', { class: 'sr-only' }, `${SAY[r.state][1]}: `), r.what), h('small', {}, r.by)))),
+      h('p', {}, 'Nothing listed doesn’t mean a way is open, safe or allowed. Polku checks only what its sources know; signs on the ground win.')));
+    if (H.hidden.size) {
+      const hidden = hiddenKinds();
       box.append(h('div', { class: 'hidden-kinds' },
         h('span', {}, 'Hidden:'),
-        ...[...hiddenHere].map(([k, n]) => h('button', { type: 'button', class: 'on-chip', title: 'Show these in Heads-up again', 'aria-label': `Show “${hidden[k]}” in Heads-up again`, html: `<span>${escapeHtml(hidden[k])}${n > 1 ? ` ×${n}` : ''}</span>${icon('close', 12)}`, onclick: () => this.hideWarnKind({ key: k }, false) }))));
+        ...[...H.hidden].map(([k, n]) => h('button', { type: 'button', class: 'on-chip', title: 'Show these in Check again', 'aria-label': `Show “${hidden[k]}” in Check again`, html: `<span>${escapeHtml(hidden[k])}${n > 1 ? ` ×${n}` : ''}</span>${icon('close', 12)}`, onclick: () => this.hideWarnKind({ key: k }, false) }))));
     }
+    if (open) this.cards.refresh(); // (its "2 of 5", or closed when it's gone)
   }
 
-  // Hide a kind of heads-up everywhere (it's yours: kept on this device), or show it again
+  // What shows Check's items outside Check: the peek's row and the markers on the route (25d part 3)
+  renderOnRoute() {
+    this.renderReadRow();
+    this.drawHeads();
+  }
+  // whether Check is in sight: a desktop's Check tab, a phone's with the sheet above its peek
+  checkInSight() {
+    return this.active && this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || this.panel.dataset.state !== 'peek');
+  }
+
+  // Check's items on the map [jc-peek, jc-check, jc-worst, jc-step]: Read before you go and Not checked with a place
+  // always (with the planner put away too), Worth a look while Check or an item is in view; the open one apart and
+  // ringed, with its obstacle's own icon (#85); the stretches a source didn't cover, dashed (a source missing for the
+  // whole route says so in words, with no marker)
+  drawHeads() {
+    // (only what changed is set: the map rebuilds a source's tiles each time, and Check is drawn again often)
+    const a = this.analysis, H = this.heads, shown = this.headsShown || (this.headsShown = {});
+    const set = (id, features) => { const j = JSON.stringify(features); if (shown[id] === j) return; shown[id] = j; this.app.setData(id, { type: 'FeatureCollection', features }); };
+    if (!a || !H || this.points.length < 2) { set('heads', []); set('headsOn', []); set('headsGaps', []); return; }
+    const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
+    const looks = !!open || this.checkInSight();
+    const SEV = { read: 3, not: 2, look: 1 }, pt = (c, properties) => ({ type: 'Feature', properties, geometry: { type: 'Point', coordinates: c } });
+    // clear of the points and the legs' handles, which sit over the map and would hide a marker and take its tap: along
+    // the route to the nearest spot 22 px from them, at this zoom (again at the next: zoomend)
+    const dom = this.active && !this.panel.hidden ? [...this.points, ...this.ghosts.map((g) => g.getLngLat().toArray())].map((c) => this.map.project(c)) : [];
+    const clear = (c) => { const q = this.map.project(c); return dom.every((d) => Math.hypot(d.x - q.x, d.y - q.y) >= 22); };
+    const spot = (w) => {
+      const at = this.itemPlace(w);
+      if (!at || !dom.length || clear(at)) return at;
+      const i0 = this.itemSpan(w)[0];
+      for (let d = 1; d < 400; d++) for (const i of [i0 + d, i0 - d]) if (a.pts[i] && clear(a.pts[i])) return a.pts[i];
+      return at;
+    };
+    const marks = [], on = [];
+    for (const it of this.headsList || []) {
+      const at = spot(it.w), k = itemKey(it);
+      if (!at || (it.g === 'look' && !looks)) continue;
+      const props = { key: k, g: it.g, sev: SEV[it.g], img: warnMarkId(it.g), text: it.w.text };
+      if (k !== open) { marks.push(pt(at, props)); continue; }
+      on.push(pt(at, { ...props, kind: 'item' }));
+      for (const o of it.w.items || [it.w]) if (o.icon && o.lngLat) on.push(pt(o.lngLat, { kind: 'obstacle', img: o.icon })); // (a group: each of them)
+    }
+    set('heads', marks);
+    set('headsOn', on);
+    const at = (m) => Math.max(0, a.along.findIndex((d) => d >= m)), gaps = [];
+    for (const x of H.not) for (const [m, len] of x.ranges || []) {
+      let i1 = at(m + len);
+      if (i1 <= 0) i1 = a.along.length - 1;
+      const c = a.pts.slice(at(m), i1 + 1);
+      if (c.length > 1) gaps.push({ type: 'Feature', properties: { key: x.key }, geometry: { type: 'LineString', coordinates: c } });
+    }
+    set('headsGaps', gaps);
+  }
+  // a marker under a tap or a click (r: px around it), the most serious first; and its card (merged ones: the most
+  // serious of them, the first along the route)
+  headAt(point, r = 8) {
+    if (!this.map.getLayer('heads-icon')) return null;
+    let hits;
+    try { hits = this.map.queryRenderedFeatures([[point.x - r, point.y - r], [point.x + r, point.y + r]], { layers: ['heads-on-icon', 'heads-icon'] }); } catch { return null; } // (its tiles being rebuilt)
+    hits = hits.filter((f) => f.properties.key || f.properties.cluster_id != null);
+    return hits.sort((x, y) => (y.properties.sev || 0) - (x.properties.sev || 0))[0] || null;
+  }
+  async openHead(f) {
+    let key = f.properties.key;
+    if (!key && f.properties.cluster_id != null) {
+      const leaves = await this.map.getSource('heads').getClusterLeaves(f.properties.cluster_id, 100, 0);
+      const L = this.headsList || [], pos = (k) => L.findIndex((it) => itemKey(it) === k);
+      key = leaves.map((l) => l.properties).sort((x, y) => y.sev - x.sev || pos(x.key) - pos(y.key))[0]?.key;
+    }
+    const it = key && this.itemByKey(key);
+    if (it) this.openItemCard(it, { from: 'marker' });
+  }
+  // the card with the planner put away: Open the planner at it [jc-closed]
+  openPlannerAt(card) {
+    const k = card.itemKey;
+    this.cards.close({ restore: false });
+    if (!this.active) this.setActive(true);
+    this.setTab('check');
+    if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
+    setTimeout(() => {
+      const it = this.itemByKey(k), el = this.els.warnings.querySelector(`[data-key="${CSS.escape(k)}"]`);
+      if (el) el.scrollIntoView({ block: 'nearest' });
+      if (it) this.openItemCard(it, { from: 'check', el });
+    }, 120);
+  }
+
+  // The peek's row [jc-peek, jc-desk]: what to read before you go, else what wasn't checked, in words, in the warning
+  // box; a tap shows the first of them on the route. Not while Check is in sight (a phone's sheet above its peek, a
+  // desktop's Check tab); an item's card in the peek takes the head (.carded).
+  // Only what's still unread: ✕ marks it all read, with Undo, and the row goes until something new or changed comes.
+  renderReadRow() {
+    const el = this.els.readRow, H = this.heads;
+    if (!el) return;
+    const R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
+    el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight();
+    // narrow (200 %, a small phone): the count alone, beside the numbers above Done, so it takes none of the map (the
+    // review of #416); its name says the rest, a tap shows the first, and Check's All read marks them all
+    const narrow = this.narrowMQ.matches, row = this.els.row;
+    if (narrow !== (el.parentNode === row)) { if (narrow) this.els.sum.after(el); else row.before(el); }
+    row.classList.toggle('with-count', narrow && !el.hidden);
+    if (el.hidden) return;
+    const first = n1 ? R1[0] : R3[0], n = n1 || n3;
+    const go = (...kids) => h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}. Show it on the route`, onclick: () => this.openFromRow() },
+      h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }), ...kids);
+    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}${narrow ? ' compact' : ''}`;
+    if (narrow) { el.replaceChildren(go(h('b', { 'aria-hidden': 'true' }, String(n)))); return; }
+    el.replaceChildren(
+      go(h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`),
+        h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
+      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })),
+      h('button', { type: 'button', class: 'tool pl-readrow-x', title: 'Mark all read: they stay in Check and on the map', 'aria-label': `Mark all ${n1 + n3} read`, onclick: () => this.markRead([...R1, ...R3], { note: true }), html: icon('close', 20) }));
+  }
+  // the row: the first unread one's card; on a desktop in Check, beside its box, the two together [jc-desk-sel]
+  openFromRow() {
+    const H = this.heads, first = this.unread(H, 'read')[0] || this.unread(H, 'not')[0];
+    if (!first) return;
+    if (this.cards.where() === 'peek') { this.openItemCard(first, { from: 'row' }); return; }
+    this.setTab('check', { user: true });
+    requestAnimationFrame(() => {
+      const el = this.els.warnings.querySelector(`[data-key="${CSS.escape(itemKey(first))}"]`);
+      if (el) { el.scrollIntoView({ block: 'nearest' }); el.focus({ preventScroll: true }); } // (Escape and ✕ bring the focus back to it: the row is gone)
+      this.openItemCard(first, { from: 'row', el });
+    });
+  }
+
+  // Marking read (chosen 2026-10-23): an item is read by its group, its words and its place, so it stays read while it's
+  // the same through an edit of the route, and a new or changed one (a new road work, a later time) is unread.
+  readKey({ g, w }) {
+    if (g === 'not') return `not|${w.key}|${w.by}`;
+    const ll = w.lngLat || this.itemPlace(w);
+    return `${g}|${w.text}|${ll ? `${ll[0].toFixed(4)},${ll[1].toFixed(4)}` : Math.round((w.at || 0) / 100)}`;
+  }
+  isRead(it) { return this.readKeys.has(this.readKey(it)); }
+  // a source answered: what was read of it not answering goes, so a later failure is new again (the review of #416)
+  answered(key, keep = null) {
+    let gone = false;
+    for (const k of this.readKeys) if (k.startsWith(`not|${key}|`) && !(keep && keep.has(k.slice(key.length + 5)))) { this.readKeys.delete(k); gone = true; }
+    if (gone) this.save(); // (the saved route too: after a reload, its next failure is new)
+  }
+  // another route put in place of this one (an import, a round trip, a LIPAS route, a saved area): nothing read on it
+  // yet; the step Undo goes back to (`committed` just now) keeps what was read on the one before (undo())
+  freshRead(committed = true) { const s = committed && this.past[this.past.length - 1]; if (s) s.read = [...this.readKeys]; this.readKeys = new Set(); }
+  unread(H, g) { return H ? (H[g] || []).map((w) => ({ g, w })).filter((it) => !this.isRead(it)) : []; }
+  // `note`: say how many, with Undo (the row's ✕, All read)
+  markRead(list, { note = false, read = true } = {}) {
+    const was = new Set(this.readKeys);
+    for (const it of list) { if (read) this.readKeys.add(this.readKey(it)); else this.readKeys.delete(this.readKey(it)); }
+    this.save();
+    this.renderWarnings();
+    if (note && list.length) toast(`${list.length} marked read: they stay in Check and on the map`, { ms: 6000, action: { label: 'Undo', fn: () => { this.readKeys = was; this.save(); this.renderWarnings(); } } });
+  }
+  // Got it on an item's card: read, and on a phone the next unread one along the route
+  gotIt(c) {
+    const it = this.itemByKey(c.itemKey);
+    if (!it) return;
+    const read = !this.isRead(it);
+    this.markRead([it], { read });
+    if (!read || this.cards.where() !== 'peek') return;
+    const L = this.headsList || [], k = L.findIndex((x) => itemKey(x) === c.itemKey);
+    const next = L.slice(k + 1).find((x) => !this.isRead(x)) || L.slice(0, k).find((x) => !this.isRead(x));
+    if (next) this.openItemCard(next, { from: c.from });
+  }
+
+  // The Check tab's badge [chk-phone]: Read before you go's count with a triangle in the warning colour, else Worth a
+  // look's count, neutral; "?" beside it while something wasn't checked. Its name says all three.
+  renderBadge(H) {
+    const tab = this.els.tabBtn && this.els.tabBtn.check;
+    if (!tab) return;
+    const n = tab.querySelector('.pl-tab-n'), unk = tab.querySelector('.pl-tab-unk');
+    const r = H.read.length, l = H.look.length, q = H.not.length;
+    n.classList.toggle('read', !!r);
+    n.innerHTML = r ? `${icon('warnf', 11)}${r}` : l ? String(l) : '';
+    unk.hidden = !q;
+    const say = [r && `${r} to read before you go`, q && `${q} not checked`, l && `${l} worth a look`].filter(Boolean).join(', ');
+    if (say) tab.setAttribute('aria-label', `Check: ${say}`); else tab.removeAttribute('aria-label');
+  }
+
+  // Every item along the route, for ‹ › on its card and the markers (25d part 3): [{ g: 'read' | 'look' | 'not', w }],
+  // in order along the route; Not checked for the whole route last
+  itemsAlong(H = this.headsUp()) {
+    const placed = [...H.read.map((w) => ({ g: 'read', w })), ...H.look.map((w) => ({ g: 'look', w })), ...H.not.filter((w) => w.ranges).map((w) => ({ g: 'not', w }))];
+    return [...placed.sort((x, y) => x.w.at - y.w.at), ...H.not.filter((w) => !w.ranges).map((w) => ({ g: 'not', w }))];
+  }
+  itemByKey(k) { return (this.headsList || this.itemsAlong()).find((it) => itemKey(it) === k) || null; }
+  // the sources being asked again for this analysis (a new one of the same route: the terrain came, Undo): an item
+  // missing meanwhile may come back, so its card waits rather than closes, unless its kind was hidden
+  itemKept(x) {
+    const a = this.analysis, kind = x.g !== 'not' && hideKind(x.w);
+    if (kind && hiddenKinds()[kind.key]) return false;
+    return !!a && ((!a.wind && !a.windError) || (this.fintrafficHere(a) && !a.hazards && !a.hazardsError) || !!a.trailAsking);
+  }
+  itemIndex(k) { const L = this.headsList || this.itemsAlong(); return [L.findIndex((it) => itemKey(it) === k), L.length]; }
+
+  // where an item is, in words: "at 300 m · 60 m", "at km 1.4, 2.0", "The whole route"
+  whereOf(w) {
+    const a = this.analysis;
+    if (w.ranges === null) return 'The whole route';
+    const atKm = (m) => (m < 10 ? 'the start' : a.along[a.along.length - 1] < 2000 ? `${Math.round(m / 10) * 10} m` : `km ${(m / 1000).toFixed(1)}`);
+    return w.items ? `at ${w.items.map((p) => atKm(p.at)).join(', ')}` : `at ${atKm(w.at)}${w.len > 5 ? ` · ${fmtDist(w.len)}` : ''}`;
+  }
+  // the samples [i0, i1] of an item's stretch (at least 30 m), and its place on the route (null: the whole route)
+  itemSpan(w) {
+    const a = this.analysis, i0 = Math.max(0, a.along.findIndex((d) => d >= w.at));
+    let i1 = a.along.findIndex((d) => d >= w.at + Math.max(w.len || 0, 30));
+    if (i1 < 0) i1 = a.along.length - 1;
+    return [i0, i1];
+  }
+  itemPlace(w) { return !this.analysis || w.ranges === null || w.at == null ? null : this.analysis.pts[this.itemSpan(w)[0]]; }
+
+  // An item's card [r-item, jc-step, jc-desk-sel]: in the peek on a phone, beside the panel at its row on a desktop
+  // (from Check), else at its place on the route. `x`: an entry of itemsAlong() or the item itself. `from`: 'check',
+  // 'row' (the peek's), 'marker' or 'section'; Back, Escape and ✕ go back to where it was opened.
+  openItemCard(x, { from = 'check', el = null, step = 0 } = {}) {
+    const L = this.headsList || this.itemsAlong(), it = x.w ? x : L.find((y) => y.w === x) || L.find((y) => itemKey(y) === itemKey({ g: x.tier === 'look' ? 'look' : 'read', w: x }));
+    if (!it || !this.analysis) return;
+    if (this.menu) this.menu.remove();
+    const at = this.itemPlace(it.w);
+    const side = this.cards.where() === 'float' && this.layout() === 'side' && this.active;
+    // (beside the panel's edge, level with its row; with no row and no place, at the panel's top)
+    const panel = this.panel.getBoundingClientRect(), beside = side && (el || !at) ? { right: panel.right + 4, top: el ? el.getBoundingClientRect().top : panel.top + 60 } : null;
+    this.cards.open(itemCard(this, itemKey(it), from), { at, beside, from });
+    // its stretch lit, once the card has its place (the peek is smaller than the sheet was)
+    // (with the planner put away its marker was tapped where it is: lit, not framed, so its card stays where it opened)
+    requestAnimationFrame(() => { if (this.cards.current && this.cards.current.itemKey === itemKey(it)) this.lightItem(it.w, { frame: this.active }); });
+    if (step) requestAnimationFrame(() => { const b = this.cards.box && [...this.cards.box.querySelectorAll('.heads-step .tool')]; if (b) (b[step > 0 ? 1 : 0].disabled ? b[step > 0 ? 0 : 1] : b[step > 0 ? 1 : 0]).focus({ preventScroll: true }); });
+  }
+  // ‹ ›: the item before or after along the route
+  stepItem(d) {
+    const c = this.cards.current;
+    if (!c || c.kind !== 'item') return;
+    const L = this.headsList || this.itemsAlong(), k = L.findIndex((it) => itemKey(it) === c.itemKey);
+    if (k >= 0 && L[k + d]) this.openItemCard(L[k + d], { from: c.from, step: d });
+  }
+  // All in Check ›: Check at half, the item's row in sight
+  allInCheck(c) {
+    this.cards.close({ restore: false });
+    this.reveal('warnings');
+    requestAnimationFrame(() => { const r = this.els.warnings.querySelector(`[data-key="${CSS.escape(c.itemKey)}"]`); if (r) { r.scrollIntoView({ block: 'center' }); this.flash(r); } });
+  }
+  // an item in view: its stretch lit (#84) and in sight, no closer than the map was (the route around it stays in view),
+  // unless the card is only built again
+  lightItem(w, { frame = true } = {}) {
+    if (!this.analysis || w.ranges === null || w.at == null) { this.unlightItem(); return; }
+    const [i0, i1] = this.itemSpan(w);
+    this.itemLit = true;
+    this.focusRange(i0, i1, w, { frame, maxZoom: Math.min(16, Math.max(12, this.map.getZoom())) });
+  }
+  unlightItem() {
+    this.itemLit = false;
+    this.unfocusRange();
+  }
+
+  // What an item's card offers: its one main action (Avoid it, Short cut, Use BRouter or Retry; `edits` when it changes
+  // the route), and the rest of what its ⋯ offered (hide this kind, correct the map)
+  itemActions({ g, w }) {
+    const a = this.analysis;
+    let main = null;
+    if (w.retry) main = { label: 'Retry', icon: 'retry', fn: () => w.retry(), edits: g !== 'not' };
+    else if (w.useBrouter) main = { label: 'Use BRouter', icon: 'route', fn: () => w.useBrouter(), edits: true };
+    else if (w.cutLeg != null) main = { label: 'Short cut', icon: 'straight', fn: () => this.useShortCut(w.cutLeg, w.picks), edits: true, line: 'Lets this leg take the short cut: only where you may go' };
+    else if (this.legs.some((l) => l.mode === 'auto' || l.mode === 'water')) {
+      // anything with a place can be avoided: a circle over it (each of them, for a group)
+      const [i0, i1] = this.itemSpan(w);
+      const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
+        : w.avoid ? [{ ...w.avoid, label: w.text }]
+          : w.noAvoid || /^(Straight line|Carry)/.test(w.text) || w.ranges === null ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
+      if (avoid) main = { label: avoid.length > 1 ? `Avoid all ${avoid.length}` : 'Avoid it', icon: 'avoid', fn: () => this.addNogos(avoid), edits: true };
+    }
+    const kind = g === 'not' ? null : hideKind(w), more = [];
+    if (kind) more.push({ icon: 'eyeOff', label: `Hide “${kind.label}” in Check`, line: 'Listed at the end of Check, to show again', fn: () => this.hideWarnKind(kind) });
+    if (w.osm && w.osm.id) more.push({ icon: 'external', label: 'Gone? Fix the map', line: 'OpenStreetMap’s editor, at this way', fn: () => open(`https://www.openstreetmap.org/edit?${w.osm.type}=${w.osm.id}`, '_blank', 'noopener') });
+    if (w.osm && w.lngLat) more.push({ icon: 'external', label: w.fix || 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(w.lngLat), '_blank', 'noopener') });
+    if (w.fixUrl) more.push({ icon: 'external', label: 'Fix the map', line: 'What Valhalla routes on comes from OpenStreetMap', fn: () => open(w.fixUrl, '_blank', 'noopener') });
+    // …and a way to check or correct where it comes from, so every card ends alike (an idea from testing, 2026-10-23)
+    const by = (w.src && w.src.by) || '', go = (sec) => () => { this.cards.close({ restore: false }); this.reveal(sec); };
+    if (g === 'not' || more.some((m) => m.icon === 'external')) { /* (its own: the OpenStreetMap note, Fix the map) */ }
+    else if (/^Fintraffic($|’s road weather)/.test(by)) more.push({ icon: 'external', label: 'See it at Fintraffic', line: 'Fintraffic’s traffic situation, live', fn: () => open('https://liikennetilanne.fintraffic.fi/', '_blank', 'noopener') });
+    else if (w.src && w.src.kind === 'map' && /OpenStreetMap/.test(by) && this.itemPlace(w)) more.push({ icon: 'external', label: 'Not right? Leave a note on OpenStreetMap', line: 'Its mappers can fix what you tell them', fn: () => open(osmNote(this.itemPlace(w)), '_blank', 'noopener') });
+    else if (/forecast/.test(by)) more.push({ icon: 'cloudSun', label: 'The weather on the way', line: 'In Go: the forecast along the route, for when you leave', fn: go('depart') });
+    else if (by === 'the terrain model') more.push({ icon: 'mountain', label: 'The climbs', line: 'In Check: how steep each one is, from the terrain model', fn: go('climbs') });
+    else if (/sun/.test(by)) more.push({ icon: 'sun', label: 'Sunrise and sunset', line: 'In Go, with the weather on the way', fn: go('depart') });
+    else if (/stops/.test(by)) more.push({ icon: 'pause', label: 'Your stops', line: 'In Route: each stop and night in the list', fn: go('points') });
+    return { main, more };
+  }
+
+  // Hide a kind of item everywhere (it's yours: kept on this device), or show it again
   hideWarnKind(kind, hide = true) {
     const all = { ...hiddenKinds() };
     if (hide) all[kind.key] = kind.label; else delete all[kind.key];
     store.set('hideWarn', all);
     this.renderWarnings();
-    if (hide) toast(`“${kind.label}” hidden in Heads-up: it’s listed at the end to show again`, { ms: 5000, action: { label: 'Undo', fn: () => this.hideWarnKind(kind, false) } });
+    if (hide) toast(`“${kind.label}” hidden in Check: it’s listed at the end to show again`, { ms: 5000, action: { label: 'Undo', fn: () => this.hideWarnKind(kind, false) } });
   }
 
   // the route's extent: its points and routed lines
@@ -5629,15 +6090,27 @@ export class Planner {
     return !(b[2] < v.getWest() || b[0] > v.getEast() || b[3] < v.getSouth() || b[1] > v.getNorth());
   }
 
-  focusRange(i0, i1, sel) {
+  // A stretch of the route picked (a climb, an item of Check): lit in the profile and on the map (#84), and framed
+  // unless `frame` is false (an item's card built again); `maxZoom`: no closer than this
+  focusRange(i0, i1, sel, { frame = true, maxZoom = 16 } = {}) {
     const a = this.analysis;
     this.selected = sel;
     this.focusHl = [a.along[i0], a.along[i1]];
     this.chart.setHighlight(this.focusHl);
+    this.focusLit = a.pts.slice(i0, i1 + 1);
+    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.focusLit.length > 1 ? this.focusLit : [a.pts[i0], a.pts[i0]] } }] });
     // a short cut the route didn't take (#104): drawn while its row is the one picked
     const cut = sel && sel.cut;
     this.app.setData('accessCut', cut ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: cut } }] } : EMPTY);
-    this.frame(bbox([...a.pts.slice(i0, i1 + 1), ...(cut || [])]), { duration: 700 });
+    if (frame) this.frame(bbox([...a.pts.slice(i0, i1 + 1), ...(cut || [])]), { duration: 700, maxZoom });
+  }
+  // nothing picked: the profile and the route unlit (an open leg stays lit)
+  unfocusRange() {
+    this.selected = null;
+    this.focusHl = null;
+    this.focusLit = null;
+    this.app.setData('accessCut', EMPTY);
+    this.unlitLeg();
   }
 
   renderWind() {
@@ -5749,6 +6222,25 @@ function sampleEle(a, coords) {
 
 // what's missing of the terrain (analysis.js), for Heads-up and the summary
 const terrainTitle = (t) => (t.all ? (t.retry ? 'Terrain didn’t load' : 'No terrain here') : `Terrain missing for ${fmtDist(t.missing)}`);
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// the stretches [at, len] (metres along the route) where on(i) holds for the samples i of `along`
+function runsAlong(along, on) {
+  const out = [];
+  let s = -1;
+  for (let i = 1; i < along.length; i++) {
+    if (on(i)) { if (s < 0) s = i - 1; } else if (s >= 0) { out.push([along[s], along[i - 1] - along[s]]); s = -1; }
+  }
+  if (s >= 0) out.push([along[s], along[along.length - 1] - along[s]]);
+  return out;
+}
+// who an item of Check is, through a new analysis (its objects are made again): its group, its words and its place
+const itemKey = ({ g, w }) => (g === 'not' ? `not|${w.key}|${w.by}` : `${g}|${w.text}|${Math.round(w.at)}`);
+// Not checked's what and why, for each of the water router's sources that didn't answer (waterdata.js)
+const WATER_LOST = {
+  OpenStreetMap: ['Rocks and shoals from OpenStreetMap didn’t answer', 'Routed without them: the line may pass close to a rock the map knows.'],
+  Väylävirasto: ['Fairways and marks from Väylävirasto didn’t answer', 'Routed without them: the line may cross a shipping lane or pass a danger mark without saying so.'],
+  'the wind forecast': ['The wind forecast didn’t answer on the water', 'Routed without the wind: how rough the water gets isn’t known.'],
+};
 
 // "2 h 13" or "54 min": a duration where there's little room
 const shortDuration = (sec) => { const hr = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return hr ? `${hr} h ${String(m).padStart(2, '0')}` : `${m} min`; };

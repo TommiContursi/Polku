@@ -5,8 +5,9 @@
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
   DIFF_COLORS, ROUTE_COLORS, RASTER_OVERLAYS, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
-  isWater, isLipasRoute,
+  isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
+import { warnMarkId } from './icons.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const FONT = ['Noto Sans Regular'];
@@ -92,6 +93,12 @@ export function buildStyle(s, ctx) {
     routeColor: { type: 'geojson', data: ctx.data.routeColor || EMPTY },
     routePreview: { type: 'geojson', data: ctx.data.routePreview || EMPTY }, // a breakdown category, while hovered or keyboard-previewed
     routeLit: { type: 'geojson', data: ctx.data.routeLit || EMPTY }, // the leg you open or point at in the waypoint list
+    // Check's items on the route (25d part 3): close ones merged, keeping the most serious one's sign (sev: 3 read before
+    // you go, 2 not checked, 1 worth a look); the open one apart, with its obstacle's own icon (#85); the stretches a
+    // source didn't cover
+    heads: { type: 'geojson', data: ctx.data.heads || EMPTY, cluster: true, clusterRadius: 24, clusterMaxZoom: 17, clusterProperties: { sev: ['max', ['get', 'sev']] } },
+    headsOn: { type: 'geojson', data: ctx.data.headsOn || EMPTY },
+    headsGaps: { type: 'geojson', data: ctx.data.headsGaps || EMPTY },
     accessCut: { type: 'geojson', data: ctx.data.accessCut || EMPTY }, // a short cut through a way marked private, the one picked in Heads-up (#104)
     loops: { type: 'geojson', data: ctx.data.loops || EMPTY }, // round-trip candidates
     routeAlts: { type: 'geojson', data: ctx.data.routeAlts || EMPTY, promoteId: 'i' }, // other ways for a leg, where they differ (#95); i: the way (hover)
@@ -498,6 +505,8 @@ export function buildStyle(s, ctx) {
   });
   add({ id: 'route-color', type: 'line', source: 'routeColor', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 3, 16, 6.5) } });
   add({ id: 'route-portage', type: 'line', source: 'route', filter: ['==', ['get', 'kind'], 'portage'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ea580c', 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [0.1, 1.8] } });
+  // a stretch a source didn't cover (25d part 3): dashed over the line in Not checked's colour
+  add({ id: 'route-unchecked', type: 'line', source: 'headsGaps', layout: { 'line-cap': 'butt' }, paint: { 'line-color': WARN_COLORS.unk, 'line-width': zi(8, 3, 16, 6.5), 'line-dasharray': [1.2, 1.2] } });
   add({ id: 'route-preview-casing', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': aerialBase || s.base === 'night' ? '#ffffff' : '#111827', 'line-width': zi(8, 9, 16, 15) } });
   add({ id: 'route-preview', type: 'line', source: 'routePreview', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': zi(8, 5, 16, 9) } });
   // static arrows: hidden while the moving chevrons show the way instead (js/routeflow.js, ctx.flowMoving)
@@ -529,7 +538,15 @@ export function buildStyle(s, ctx) {
   add({ id: 'route-alts-label', type: 'symbol', source: 'routeAlts', filter: ['all', ['==', ['get', 'kind'], 'label'], ['!', ['boolean', ['get', 'route'], false]]],
     layout: { ...altLabel, 'text-offset': [0, -1.6], 'text-allow-overlap': true },
     paint: altLabelPaint });
+  // Check's markers (25d part 3) [jc-peek, jc-worst, jc-step]: above the route and its glow (#198), so the glow never washes
+  // them out; merged ones with their count; the open one ringed, its obstacle's icon above it whatever Layers says (#85)
+  const sevImg = ['match', ['get', 'sev'], 3, warnMarkId('read'), 2, warnMarkId('not'), warnMarkId('look')];
+  add({ id: 'heads-icon', type: 'symbol', source: 'heads', layout: { 'icon-image': ['coalesce', ['get', 'img'], sevImg], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'sev'] } });
+  add({ id: 'heads-count', type: 'symbol', source: 'heads', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': FONT_B, 'text-size': 12.5, 'text-offset': [1.2, -1], 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': WARN_COLORS.ink, 'text-halo-color': WARN_COLORS.surface, 'text-halo-width': 2.5 } });
+  // (the route's hover point above the markers, under the open one: a tap on it leaves no dot on its sign)
   add({ id: 'route-hover', type: 'circle', source: 'routeHover', paint: { 'circle-radius': 7, 'circle-color': '#111827', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
+  add({ id: 'heads-ring', type: 'circle', source: 'headsOn', filter: ['==', ['get', 'kind'], 'item'], paint: { 'circle-radius': 21, 'circle-color': WARN_COLORS.surface, 'circle-stroke-color': WARN_COLORS.ink, 'circle-stroke-width': 3 } });
+  add({ id: 'heads-on-icon', type: 'symbol', source: 'headsOn', layout: { 'icon-image': ['get', 'img'], 'icon-size': ['case', ['==', ['get', 'kind'], 'item'], 1.25, 1], 'icon-anchor': ['case', ['==', ['get', 'kind'], 'obstacle'], 'bottom', 'center'], 'icon-offset': ['case', ['==', ['get', 'kind'], 'obstacle'], ['literal', [0, -22]], ['literal', [0, 0]]], 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
 
   const style = {
     version: 8,

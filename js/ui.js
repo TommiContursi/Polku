@@ -87,6 +87,15 @@ const P = {
   zone: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3 2.4"/><path d="m8 8 8 8"/>',
   num: '<path d="M4 20c4-1 6-6 9-8s5-4 7-8" opacity=".5"/><rect x="11" y="4" width="10" height="7" rx="2"/><path d="M14 7.5h4"/>',
   contours: '<path d="M4 17c2-4 5-6 8-6s6 2 8 6"/><path d="M7.5 17c1.4-2.6 2.9-3.6 4.5-3.6s3.1 1 4.5 3.6" opacity=".7"/><path d="M3 20.5h18"/>',
+  // Check's groups (25d part 2): a filled triangle (the "!" cut out of it), an eye, a dashed "?"; where an item comes from
+  warnf: '<path d="M12 2.5 1.5 20.5h21L12 2.5ZM11 9.2v5.6h2V9.2h-2Zm0 7.4v2h2v-2h-2Z" fill="currentColor" fill-rule="evenodd" stroke="none"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  unk: '<circle cx="12" cy="12" r="9" stroke-dasharray="3 2.4"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.4"/>',
+  live: '<circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M7.5 7.5a6.5 6.5 0 0 0 0 9M16.5 7.5a6.5 6.5 0 0 1 0 9"/>',
+  mapsrc: '<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z"/><path d="M9 4v14M15 6v14"/>',
+  est: '<path d="M4 9c2.7-2 5.3 2 8 0s5.3-2 8 0M4 15c2.7-2 5.3 2 8 0s5.3-2 8 0"/>',
+  avoid: '<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>',
+  retry: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.8h-4.8"/>',
   eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1Q11.3 5 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-2.7 3.8M6.6 6.6C4.3 8 2.7 10.2 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 };
 

@@ -145,6 +145,9 @@ export function initInspector(map, app) {
     if (touch && openAtPress) { openAtPress = false; if (popup) popup.remove(); return; }
     const box = hitBox(e.point, touch);
     const ll = [e.lngLat.lng, e.lngLat.lat];
+    // a marker of Check's on your route (25d part 3): its card
+    const head = app.headAt && app.headAt(e.point, touch);
+    if (head) { if (popup) popup.remove(); app.openHead(head); return; }
     // your route, with the planner closed: open it there
     const leg = map.getLayer('route-casing') && map.queryRenderedFeatures(box, { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     if (leg && app.openRoute) { if (popup) popup.remove(); app.openRoute(leg.properties.leg, e.lngLat); return; }
