@@ -5267,6 +5267,33 @@ NO_SNOW = """(() => {
     return /^https:\\/\\/opendata\\.fmi\\.fi\\/wfs\\?.*parameters=snow_aws/.test(url) ? Promise.resolve(new Response(xml)) : real(input, init);
   };
 })();"""
+# Before the page loads, for a late snow answer (#392): FMI's measured snow is held until window.letSnow(cm), then
+# answers with that much at a station by the map's middle. window.snowAsked counts the requests held.
+HELD_SNOW = """(() => {
+  const real = window.fetch.bind(window);
+  const xml = (cm) => '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:BsWfs="http://xml.fmi.fi/schema/wfs/2.0" xmlns:gml="http://www.opengis.net/gml/3.2">'
+    + '<wfs:member><BsWfs:BsWfsElement><BsWfs:Location><gml:Point><gml:pos>61.5135 23.8170 </gml:pos></gml:Point></BsWfs:Location>'
+    + `<BsWfs:Time>2026-10-22T09:00:00Z</BsWfs:Time><BsWfs:ParameterName>snow_aws</BsWfs:ParameterName><BsWfs:ParameterValue>${cm}</BsWfs:ParameterValue>`
+    + '</BsWfs:BsWfsElement></wfs:member></wfs:FeatureCollection>';
+  let answer;
+  const held = new Promise((ok) => { answer = ok; });
+  window.snowAsked = 0;
+  window.letSnow = (cm) => { answer(cm); return true; };
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/opendata\\.fmi\\.fi\\/wfs\\?.*parameters=snow_aws/.test(url)) return real(input, init);
+    window.snowAsked++;
+    return held.then((cm) => new Response(xml(cm)));
+  };
+})();"""
+SNOW_ASKED = "new Promise((ok) => { const t0 = Date.now(), go = () => window.snowAsked ? ok(true) : Date.now() - t0 > 30000 ? ok(false) : setTimeout(go, 100); go(); })"
+# the pill's menu just before and after the snow comes in: the element with the focus (the same one), the sport and
+# the craft chosen, the pill's snow badge
+MENU_WAS = "(() => { window.focusWas = document.activeElement; return [...document.querySelectorAll('#activity-bar [aria-selected=true], #activity-bar [aria-pressed=true]')].map((b) => b.dataset.k || b.dataset.craft).join(); })()"
+MENU_NOW = """(() => { const what = (e) => (e === document.body ? 'the page' : String(e.dataset.k || e.className)); return {
+  focus: document.activeElement === window.focusWas && window.focusWas.isConnected, was: what(window.focusWas), is: what(document.activeElement), snow: polku.state.winterSnow,
+  chosen: [...document.querySelectorAll('#activity-bar [aria-selected=true], #activity-bar [aria-pressed=true]')].map((b) => b.dataset.k || b.dataset.craft).join(),
+  badge: !!document.querySelector('#activity-bar .act-current .act-winter') }; })()"""
 
 
 def sport_menu(chrome):
@@ -5411,6 +5438,84 @@ def sport_menu(chrome):
     if state(pg, '390x844 paddle, MTB tapped', False)['sport'] != 'mtb':
         fails.append('390x844: a tap on MTB did not pick it')
     fails += [f'390x844 console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # a late snow answer (#392): it closed a menu opened by a click, the keyboard or a tap, and dropped the focus.
+    # The answer is held until the menu is open. Winter on Auto: 25 cm turns it on, and the pill gets its snow.
+    def late(w, h_, phone, sport, winter, name):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': HELD_SNOW}, pg.s)
+        pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': json.dumps(winter)})
+        if not pg.js(SNOW_ASKED):
+            fails.append(f'{name}: the snow was never asked for, so the check proves nothing')
+        return pg
+
+    def snow_in(pg, name, badge):
+        was = pg.js(MENU_WAS)
+        pg.js('letSnow(25)')
+        pg.js(SNOW_IN)
+        time.sleep(0.3)
+        a = state(pg, f'{name}, then the snow came in', True)
+        m = pg.js(MENU_NOW)
+        if not m['snow'] or m['snow']['cm'] != 25:
+            fails.append(f"{name}: the held snow never came in ({m['snow']}), so the check proves nothing")
+        if not m['focus']:
+            fails.append(f"{name}: the snow moved the focus from {m['was']} to {m['is']}")
+        if m['chosen'] != was:
+            fails.append(f"{name}: the snow changed what's chosen in the menu from {was} to {m['chosen']}")
+        if m['badge'] != badge:
+            fails.append(f"{name}: the pill {'has no' if badge else 'has a'} snow badge")
+        return a['open']
+
+    # the mouse (the loop's mouse(), move() and click(), on this page): over the pill, a click, the snow, then Hike
+    name = '1440x900 a late snow answer, the mouse'
+    pg = late(1440, 900, False, 'mtb', 'auto', name)
+    x, y = pg.js(ACTS)['pill']
+    mouse('mouseMoved', map_)
+    time.sleep(0.4)
+    move((x, y))
+    time.sleep(0.3)
+    click((x, y))
+    if state(pg, name, True)['open'] and snow_in(pg, name, True):
+        o = pg.js("(() => { const r = document.querySelector('#activity-bar .act[data-k=hike]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        mouse('mouseMoved', o)
+        time.sleep(0.1)
+        click(o)
+        if state(pg, f'{name}, Hike clicked', False)['sport'] != 'hike':
+            fails.append(f'{name}: a click on Hike did not pick it')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # the keyboard, Winter off: Enter, the arrows to Gravel, the snow, then Enter on Gravel
+    name = '1440x900 a late snow answer, the keyboard'
+    pg = late(1440, 900, False, 'mtb', 'off', name)
+    pg.js("document.querySelector('#activity-bar .act-current').focus(), true")
+    key(pg, 'Enter', 'Enter', 13, '\r')
+    key(pg, 'ArrowDown', 'ArrowDown', 40)
+    key(pg, 'ArrowDown', 'ArrowDown', 40)
+    if pg.js("document.activeElement.dataset.k") != 'gravel':
+        fails.append(f'{name}: the arrows did not move to Gravel')
+    elif snow_in(pg, name, False):
+        key(pg, 'Enter', 'Enter', 13, '\r')
+        if state(pg, f'{name}, Enter on Gravel', False)['sport'] != 'gravel':
+            fails.append(f'{name}: Enter on Gravel did not pick it')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+
+    # touch, Paddle: a tap, the snow, then a tap on Canoe (the menu stays open at the craft)
+    name = '390x844 a late snow answer, a tap'
+    pg = late(390, 844, True, 'paddle', 'auto', name)
+    pg.tap(*pg.js(ACTS)['pill'])
+    time.sleep(0.3)
+    if state(pg, name, True)['open'] and snow_in(pg, name, True):
+        c = pg.js("(() => { const r = document.querySelector('#activity-bar .act-chip[data-craft=canoe]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        pg.tap(*c)
+        time.sleep(0.3)
+        state(pg, f'{name}, Canoe tapped', True)
+        if pg.js("document.querySelector('#activity-bar .act-chip[data-craft=canoe]').getAttribute('aria-pressed')") != 'true':
+            fails.append(f'{name}: a tap on Canoe did not pick it')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the sport pill's menu: mouse, keyboard and touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
@@ -8421,7 +8526,7 @@ GROUPS = [
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
-    ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245)'),
+    ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),

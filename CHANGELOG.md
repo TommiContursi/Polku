@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: the sport menu stays open when the snow answers ([#392](https://github.com/TommiContursi/Polku/issues/392))
+
+Polku looks up the snow where you are when it opens, and again after you move the map 8 km or more. When that answer came in just after you had opened the sport menu, it closed the menu, so your next tap opened it again, and a keyboard's focus left the menu. Now the menu stays open, with the focus and your choices where they were. Where the snow turns winter on, the sport pill still gets its snow badge.
+
 ### Fixed: the sport menu ends at Swim ([#374](https://github.com/TommiContursi/Polku/issues/374))
 
 The sport menu, under the green sport pill, no longer shows the word "null" under **Swim**. It was there for every sport but Paddle. With Paddle, the menu still ends with your craft.
