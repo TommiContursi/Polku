@@ -1404,6 +1404,8 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .pl-readrow.danger .pl-readrow-go > span:first-child { color: var(--danger); }
 .pl-readrow.unk .pl-readrow-go > span:first-child { color: var(--unk); }
 .pl-readrow-x { flex: none; align-self: stretch; height: auto; border-left: 1px solid color-mix(in srgb, var(--text) 14%, transparent); border-radius: 0 11px 11px 0; color: var(--muted); }
+/* (narrow screens make a .tool 30 × 32: the ✕ stays a finger's size, as high as the row, #443) */
+.pl-readrow .pl-readrow-x { width: var(--target); height: auto; }
 .pl-readrow-go:focus-visible, .pl-readrow-x:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (max-height: 520px) { .pl-readrow-go { min-height: var(--target); padding-block: 6px; } .pl-readrow small { display: none; } }
 /* narrow (200 %, a small phone): the count alone, beside the numbers above Done, so it takes none of the map (the review

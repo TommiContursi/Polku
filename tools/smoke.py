@@ -2744,6 +2744,9 @@ WARNFIX = """(async () => {
   // (9) the row: a box with two buttons, its words opening the first item once
   const row = p.els.readRow;
   if (row.tagName === 'BUTTON') errs.push('the row is a <button> holding buttons');
+  // …its ✕ as big to touch as the header's other buttons (#443)
+  const rx = row.querySelector('.pl-readrow-x');
+  if (!rx || rx.offsetWidth < 44 || rx.offsetHeight < 44) errs.push(`the row's ✕ is ${rx ? `${rx.offsetWidth} × ${rx.offsetHeight}` : 'missing'}, under 44 px to touch`);
   let opened = 0;
   const real = p.openFromRow.bind(p);
   p.openFromRow = () => { opened++; return real(); };
