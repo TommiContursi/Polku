@@ -5757,7 +5757,7 @@ export class Planner {
       const props = { key: k, g: it.g, sev: SEV[it.g], img: warnMarkId(it.g), text: it.w.text };
       if (k !== open) { marks.push(pt(at, props)); continue; }
       on.push(pt(at, { ...props, kind: 'item' }));
-      if (it.w.icon && it.w.lngLat) on.push(pt(it.w.lngLat, { kind: 'obstacle', img: it.w.icon }));
+      for (const o of it.w.items || [it.w]) if (o.icon && o.lngLat) on.push(pt(o.lngLat, { kind: 'obstacle', img: o.icon })); // (a group: each of them)
     }
     set('heads', marks);
     set('headsOn', on);

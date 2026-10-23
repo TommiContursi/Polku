@@ -2404,7 +2404,14 @@ def onroute(chrome):
           const on = src('headsOn');
           if (!on || !on.some((f) => f.properties.kind === 'item' && f.properties.g === 'look')) errs.push(`the open item isn't ringed: ${JSON.stringify(on && on.map((f) => f.properties))}`);
           if (!on || !on.some((f) => f.properties.kind === 'obstacle' && f.properties.img === 'td-tree')) errs.push('the open item\\'s obstacle icon isn\\'t on the map');
-          if (src('heads').some((f) => /Fallen tree: the test/.test(f.properties.text || ''))) errs.push('the open item is in the merging markers too');
+          if (src('heads').some((f) => /Fallen tree: the test/.test(f.properties.text || ''))) errs.push(`the open item is in the merging markers too (${JSON.stringify(src('heads').filter((f) => /the test/.test(f.properties.text || '')).map((f) => f.properties.key))}, open ${p.cards.current && p.cards.current.itemKey})`);
+          // a group of them ("Fallen trees ×3"): each one's icon (#85)
+          const tree = (i) => ({ at: 1000 + i * 30, len: 0, kind: 'trail', icon: 'td-tree', lngLat: p.analysis.pts[100 + i * 3], text: 'Fallen tree', tier: 'look', src: { kind: 'map', by: 'OpenStreetMap' } });
+          p.analysis.darkWarn = [...p.analysis.darkWarn, { ...tree(0), text: 'Fallen trees ×3', items: [tree(0), tree(1), tree(2)] }];
+          p.renderWarnings();
+          p.openItemCard(p.itemsAlong().find((x) => x.w.text === 'Fallen trees ×3'), { from: 'check' });
+          await wait(600);
+          if ((src('headsOn') || []).filter((f) => f.properties.kind === 'obstacle').length !== 3) errs.push(`a group of three fallen trees: ${(src('headsOn') || []).filter((f) => f.properties.kind === 'obstacle').length} icons on the map`);
           p.cards.close();
           await wait(300);
           if ((src('headsOn') || []).length) errs.push('a ring after the card closed');
