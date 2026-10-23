@@ -454,6 +454,18 @@ button.warnr span { flex: 1; font-weight: 600; }
 .c6-at small { flex: 1 1 120px; font-size: 13px; color: var(--muted); }
 .r5 .pop .c6-step input { min-height: 34px; font-size: 14px; }
 .r5 .pop .c6-at { padding: 0 8px 6px 36px; }
+/* C (#364): the row's own picker over it (the phone's date and time, or its clock); Now under it once a time is set */
+.c6-pick { position: relative; }
+.c6-pick > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; border: 0; cursor: pointer; }
+.c6-leave { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.c6-leave > .c2-list { align-self: stretch; }
+.c6-now { min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 650; }
+.r5 .pop .c6-now { min-height: 36px; font-size: 13.5px; }
+.c6-nofc { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 12px; background: #eaf0f6; color: var(--text); font-size: 13.5px; line-height: 1.35; }
+.fr.dark .c6-nofc { background: rgba(156,192,228,.13); }
+.c6-nofc .ic { flex: none; color: #47607a; margin-top: 1px; }
+.fr.dark .c6-nofc .ic { color: #9cc0e4; }
+.c2-step button:disabled { color: var(--muted); opacity: .45; }
 /* desktops: 36 px with a mouse, as decided on 2026-10-22 (#380) and built in 1a; Revision 5 drew 34 */
 .r6 .pop .c2-item { min-height: 36px; }
 .r6 .pop .c2-step button { width: 36px; height: 36px; }
@@ -466,6 +478,8 @@ button.warnr span { flex: 1; font-weight: 600; }
   .c6-step { display: grid; grid-template-columns: 1fr 1fr; flex: 1 1 100%; }
   .c6-step input { grid-column: 1 / -1; width: auto; border-bottom: 1px solid var(--line); border-radius: 0; }
   .c6-step button { grid-row: 2; width: auto; }
+  /* the one stepper takes the row, its number between − and + (Stay · 2 nights at 360 px and 200 %) */
+  .r6 .c2-detail .c2-step { flex: 1 1 100%; } .r6 .c2-detail .c2-step b { flex: 1; min-width: 0; }
   /* a long name in Back takes the row, its words wrapping; undo, redo and ✕ go under it */
   .r6 .c2-top .c2-back-words { flex: 1 1 6em; max-width: none; }
 }
@@ -716,6 +730,7 @@ button.warnr span { flex: 1; font-weight: 600; }
   </section>
   <section class="cv-q">
     <h2>Revision 6 (2026-10-23): four choices before Journey D</h2>
+    <p><b>Chosen on 2026-10-24:</b> Avoid this spot B, On the profile B, The whole route B, the start A. <b>Redrawn to choose:</b> when you leave, with a new option C (below and in section 7a).</p>
     <p><b>Cards: Revision 6</b> is Revision 5 with the choices that 25d's Journey D waits for, each drawn with its options. Its switches at the bottom right start at the recommended option and change every frame shown in Revision 6. In <a href="#s7">section 7</a> each frame fixes its own option, so the options sit side by side. Revision 5 and the earlier ones stay as they were. Nothing is decided until you choose.</p>
     <ul>
       <li><b>When you leave, and when you go on after a night (#364).</b> A: a few fixed hours, as Revision 5. <b>B, recommended:</b> Now, today or tomorrow, then the phone's own clock inside the app's one stepper, − and + in quarter hours. Someone leaving at 07:30 can say so, and going on after a night is set on the card itself.</li>
@@ -929,6 +944,18 @@ button.warnr span { flex: 1; font-weight: 600; }
     <h2>7 · Revision 6: the four choices before Journey D</h2>
     <p>Each frame here shows Revision 6 with one option fixed, so the options sit side by side. The other choices follow the switches, which start at the recommended options. Every control does what it says, or says in a note what the app would do.</p>
     <h3 class="cv-sub">7a · When you leave, and when you go on after a night (#364)</h3>
+    <p><b>C, redrawn from your notes (2026-10-24, recommended):</b> one row, <b>Leave · Now ›</b>, opens the phone's own date and time picker, for any day ahead (#159). Only the start has a date; the rest counts from it. A night is <b>Stay · 1 night</b> with the app's stepper, then <b>Go on at · 07:00 ›</b>, the phone's clock. Past the forecast's reach, No forecast yet. A and B are as they were.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="r6-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c"}'><figcaption><b>C · The start's card</b>Leave · Now ›: a tap opens the phone's own date and time.</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-c-set" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Set to tomorrow</b>The row says the day and the time; Now under it goes back to leaving now.</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-c-far" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-28T07:30"}'><figcaption><b>C · Four weeks ahead</b>No forecast yet; sunset and the dark still count (#159).</figcaption></figure>
+      <figure class="fr phone" id="r6-night-c" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c"}'><figcaption><b>C · A night</b>Stay · 1 night with the stepper; Go on at · 07:00 › opens the phone's clock.</figcaption></figure>
+      <figure class="fr phone" id="r6-night-c2" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c","nights":2,"leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Two nights</b>Going on counts from the start: Tue 3 Nov, after 2 nights.</figcaption></figure>
+      <figure class="fr desk" id="r6-leave-c-desk" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Desktop</b>A click on the row opens the browser's date and time picker.</figcaption></figure>
+      <figure class="fr phone" id="r6-fi-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>C · 360 px, Finnish</b></figcaption></figure>
+      <figure class="fr phone" id="r6-200-night-c" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c","nights":2,"z":2}'><figcaption><b>C · 200 %: a night</b></figcaption></figure>
+      <figure class="fr phone" id="r6-dark-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c","theme":"dark","leaveDT":"2026-11-28T07:30"}'><figcaption><b>C · Dark, four weeks ahead</b></figcaption></figure>
+    </div>
     <div class="cv-frames">
       <figure class="fr phone" id="r6-leave-a" data-st='{"card":"leave","pt":0,"v":"r6","times":"hours"}'><figcaption><b>A · Fixed hours</b>As Revision 5: Now, then 11:00, 12:00, 13:00 and tomorrow at 08:00. Leaving at 07:30 can't be said.</figcaption></figure>
       <figure class="fr phone" id="r6-leave-b" data-st='{"card":"leave","pt":0,"v":"r6","times":"any","leaveDay":"tomorrow","leaveAt":"07:30"}'><figcaption><b>B · Any time (recommended)</b>Now, today or tomorrow. Under the day, the phone's own clock in the app's one stepper: − and + move it by 15 minutes.</figcaption></figure>
@@ -975,11 +1002,11 @@ button.warnr span { flex: 1; font-weight: 600; }
 <div class="picker" data-open="true">
   <div class="pk-groups" role="group" aria-label="Mock-up switches">
     <div><span>Cards</span><button type="button" data-pk="cards" data-v="v1" aria-pressed="false">As approved</button><button type="button" data-pk="cards" data-v="r1" aria-pressed="false">Revision 1</button><button type="button" data-pk="cards" data-v="v2" aria-pressed="false">Revision 2</button><button type="button" data-pk="cards" data-v="r3" aria-pressed="false">Revision 3</button><button type="button" data-pk="cards" data-v="r4" aria-pressed="false">Revision 4</button><button type="button" data-pk="cards" data-v="r5" aria-pressed="true">Revision 5</button><button type="button" data-pk="cards" data-v="r6" aria-pressed="false">Revision 6 (to choose)</button></div>
-    <div><span>Rev. 6 · Leaving (#364)</span><button type="button" data-pk="times" data-v="hours" aria-pressed="false">A: fixed hours</button><button type="button" data-pk="times" data-v="any" aria-pressed="true">B: any time (recommended)</button></div>
-    <div><span>Rev. 6 · Avoid this spot (#364)</span><button type="button" data-pk="avoid" data-v="r5" aria-pressed="false">A: as Rev. 5</button><button type="button" data-pk="avoid" data-v="line" aria-pressed="true">B: on the line (recommended)</button><button type="button" data-pk="avoid" data-v="all" aria-pressed="false">C: a point's too</button></div>
-    <div><span>Rev. 6 · On the profile (#364)</span><button type="button" data-pk="prof" data-v="r5" aria-pressed="false">A: as Rev. 5</button><button type="button" data-pk="prof" data-v="route" aria-pressed="true">B: the route's card too (recommended)</button><button type="button" data-pk="prof" data-v="all" aria-pressed="false">C: a point's too</button></div>
-    <div><span>Rev. 6 · The whole route (#90)</span><button type="button" data-pk="whole" data-v="none" aria-pressed="false">A: ⋯ only</button><button type="button" data-pk="whole" data-v="row" aria-pressed="true">B: one row (recommended)</button><button type="button" data-pk="whole" data-v="four" aria-pressed="false">C: four rows</button></div>
-    <div><span>Rev. 6 · The start (#334)</span><button type="button" data-pk="start" data-v="card" aria-pressed="true">A: Back to start first (recommended)</button><button type="button" data-pk="start" data-v="tap" aria-pressed="false">B: a tap closes the loop</button></div>
+    <div><span>Rev. 6 · Leaving (#364)</span><button type="button" data-pk="times" data-v="hours" aria-pressed="false">A: fixed hours</button><button type="button" data-pk="times" data-v="any" aria-pressed="false">B: today or tomorrow</button><button type="button" data-pk="times" data-v="c" aria-pressed="true">C: one row, any day (recommended)</button></div>
+    <div><span>Rev. 6 · Avoid this spot (#364)</span><button type="button" data-pk="avoid" data-v="r5" aria-pressed="false">A: as Rev. 5</button><button type="button" data-pk="avoid" data-v="line" aria-pressed="true">B: on the line (chosen)</button><button type="button" data-pk="avoid" data-v="all" aria-pressed="false">C: a point's too</button></div>
+    <div><span>Rev. 6 · On the profile (#364)</span><button type="button" data-pk="prof" data-v="r5" aria-pressed="false">A: as Rev. 5</button><button type="button" data-pk="prof" data-v="route" aria-pressed="true">B: the route's card too (chosen)</button><button type="button" data-pk="prof" data-v="all" aria-pressed="false">C: a point's too</button></div>
+    <div><span>Rev. 6 · The whole route (#90)</span><button type="button" data-pk="whole" data-v="none" aria-pressed="false">A: ⋯ only</button><button type="button" data-pk="whole" data-v="row" aria-pressed="true">B: one row (chosen)</button><button type="button" data-pk="whole" data-v="four" aria-pressed="false">C: four rows</button></div>
+    <div><span>Rev. 6 · The start (#334)</span><button type="button" data-pk="start" data-v="card" aria-pressed="true">A: Back to start first (chosen)</button><button type="button" data-pk="start" data-v="tap" aria-pressed="false">B: a tap closes the loop</button></div>
     <div><span>Size</span><button type="button" data-pk="size" data-v="390" aria-pressed="true">390</button><button type="button" data-pk="size" data-v="360" aria-pressed="false">360</button><button type="button" data-pk="size" data-v="200" aria-pressed="false">200 %</button></div>
     <div><span>Sport</span><button type="button" data-pk="sport" data-v="mtb" aria-pressed="true">MTB</button><button type="button" data-pk="sport" data-v="hike" aria-pressed="false">Hike</button></div>
     <div><span>Words</span><button type="button" data-pk="lang" data-v="en" aria-pressed="true">English</button><button type="button" data-pk="lang" data-v="fi" aria-pressed="false">Suomi</button></div>
@@ -1062,11 +1089,11 @@ const OSM_TAGS = { way: ['highway=path', 'surface=dirt', 'mtb:scale=1', 'mtb:sca
 
 let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb', cards: ['v1', 'r1', 'v2', 'r3', 'r4', 'r6'].includes(Q.get('cards')) ? Q.get('cards') : 'r5',
   // Revision 6's choices (2026-10-23), each switch starting at the recommended option; a frame can fix its own
-  times: Q.get('times') === 'hours' ? 'hours' : 'any', avoid: ['r5', 'all'].includes(Q.get('avoid')) ? Q.get('avoid') : 'line', prof: ['r5', 'all'].includes(Q.get('prof')) ? Q.get('prof') : 'route',
+  times: ['hours', 'any'].includes(Q.get('times')) ? Q.get('times') : 'c', avoid: ['r5', 'all'].includes(Q.get('avoid')) ? Q.get('avoid') : 'line', prof: ['r5', 'all'].includes(Q.get('prof')) ? Q.get('prof') : 'route',
   whole: ['none', 'four'].includes(Q.get('whole')) ? Q.get('whole') : 'row', start: Q.get('start') === 'tap' ? 'tap' : 'card' };
 // what a frame keeps when a card closes or another opens: its switches, its words and the route as drawn
 const keepOf = (st) => ({ added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z, v: st.v, view: st.view, noRoute: st.noRoute,
-  times: st.times, avoid: st.avoid, prof: st.prof, whole: st.whole, start: st.start, looped: st.looped, leaveDay: st.leaveDay, leaveAt: st.leaveAt });
+  times: st.times, avoid: st.avoid, prof: st.prof, whole: st.whole, start: st.start, looped: st.looped, leaveDay: st.leaveDay, leaveAt: st.leaveAt, leaveDT: st.leaveDT });
 const ic = (id, s = 20) => `<svg class="ic" width="${s}" height="${s}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -1213,10 +1240,19 @@ const CARDS = { route: routeCard, stretch: stretchCard, under: underCard, edit: 
 // ------------------------------------------------ Revision 6's own words and helpers, outside a card
 // what a time starts at once a day is picked (the mock-up's now is 10:00), and a time moved by minutes within its day
 const LEAVE6 = { today: '10:30', tomorrow: '08:00' };
+// C: the start has a date; the mock-up's now is Sat 31 Oct 2026, 10:00. Open-Meteo forecasts about 16 days ahead.
+const NOW_C6 = new Date(2026, 9, 31, 10, 0), FAR_C6 = 15;
+const p2C6 = (n) => String(n).padStart(2, '0');
+const isoC6 = (d) => `${d.getFullYear()}-${p2C6(d.getMonth() + 1)}-${p2C6(d.getDate())}T${p2C6(d.getHours())}:${p2C6(d.getMinutes())}`;
+const DAY_C6 = { en: { d: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], m: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], today: 'Today', tomorrow: 'Tomorrow' },
+  fi: { d: ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'], today: 'Tänään', tomorrow: 'Huomenna' } };
+const dayC6 = (lang, d) => (lang === 'fi' ? `${DAY_C6.fi.d[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.` : `${DAY_C6.en.d[d.getDay()]} ${d.getDate()} ${DAY_C6.en.m[d.getMonth()]}`);
+const aheadC6 = (d) => Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(NOW_C6.getFullYear(), NOW_C6.getMonth(), NOW_C6.getDate())) / 864e5);
+const labelC6 = (lang, v) => { const d = new Date(v), n = aheadC6(d), L = DAY_C6[lang] || DAY_C6.en; return `${n === 0 ? `${L.today}, ` : n === 1 ? `${L.tomorrow}, ` : ''}${dayC6(lang, d)}, ${p2C6(d.getHours())}:${p2C6(d.getMinutes())}`; };
 const addMin6 = (t, m, lo = 0, hi = 1425) => { const [a, b] = t.split(':').map(Number), x = Math.max(lo, Math.min(hi, a * 60 + b + m)); return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
 const T6 = {
-  en: { looped: 'Back to the start: the route is a loop now', cleared: 'Route cleared: Undo brings it back' },
-  fi: { looped: 'Takaisin lähtöön: reitti on nyt kierros', cleared: 'Reitti tyhjennetty: Kumoa tuo sen takaisin' },
+  en: { looped: 'Back to the start: the route is a loop now', cleared: 'Route cleared: Undo brings it back', leavepickc: 'Your phone’s own date and time picker opens', goonpickc: 'Your phone’s clock opens' },
+  fi: { looped: 'Takaisin lähtöön: reitti on nyt kierros', cleared: 'Reitti tyhjennetty: Kumoa tuo sen takaisin', leavepickc: 'Puhelimen oma päivä- ja aikavalitsin aukeaa', goonpickc: 'Puhelimen kello aukeaa' },
 };
 // what a control does where the mock-up can't show it (as SAY5, which it adds to)
 const SAY6 = {
@@ -1288,6 +1324,11 @@ const T2 = {
     roundStart6: 'Round trip from the start', roundStartSub6: 'Loops of the length you choose, from the start', import6: 'Import GPX or KML…', importSub6: 'Shows a file’s track, to plan on',
     clearRoute6: 'Clear route', clearSub6: 'Undo brings it back',
     avoidPointSub6: 'Removes this point, and the route goes around its spot', profilePointSub6: 'Zooms the profile to this point',
+    // Revision 6, C (2026-10-24)
+    leaveC: 'Leave', nowC: 'Now', leaveNowAriaC: 'Leave now', pickAriaC: 'Leave at: pick a day and a time',
+    noFcC: (d) => `No forecast yet for ${d}. Sunset and the dark still count.`,
+    stayC: 'Stay', nightsC: (n) => `${n} night${n > 1 ? 's' : ''}`, fewerC: 'One night less', moreC: 'One night more',
+    goOnC: 'Go on at', goOnSubC: (d, n) => `${d}, ${n === 1 ? 'the next morning' : `after ${n} nights`}`, goOnAriaC: 'Go on at: pick a time',
   },
   fi: {
     start: 'Lähtö', end: 'Loppu', via: 'Välipiste', back: 'Takaisin', close: 'Sulje',
@@ -1347,6 +1388,11 @@ const T2 = {
     roundStart6: 'Kierros lähdöstä', roundStartSub6: 'Valitsemasi pituisia kierroksia lähdöstä', import6: 'Tuo GPX tai KML…', importSub6: 'Näyttää tiedoston jäljen suunnittelun pohjaksi',
     clearRoute6: 'Tyhjennä reitti', clearSub6: 'Kumoa tuo sen takaisin',
     avoidPointSub6: 'Poistaa pisteen, ja reitti kiertää sen kohdan', profilePointSub6: 'Zoomaa profiilin tähän pisteeseen',
+    // Revision 6, C (2026-10-24)
+    leaveC: 'Lähtö', nowC: 'Nyt', leaveNowAriaC: 'Lähde nyt', pickAriaC: 'Lähtöaika: valitse päivä ja kellonaika',
+    noFcC: (d) => `Ei vielä sääennustetta päivälle ${d}. Auringonlasku ja pimeä lasketaan silti.`,
+    stayC: 'Yövy', nightsC: (n) => `${n} yö${n > 1 ? 'tä' : ''}`, fewerC: 'Yksi yö vähemmän', moreC: 'Yksi yö enemmän',
+    goOnC: 'Jatka klo', goOnSubC: (d, n) => `${d}, ${n === 1 ? 'seuraavana aamuna' : `${n} yön jälkeen`}`, goOnAriaC: 'Jatka klo: valitse kellonaika',
   },
 };
 const U = (f) => T2[f.lang];
@@ -1393,9 +1439,18 @@ const kindOf = (f, w) => U(f).kinds[w[1]] || (f.lang === 'fi' ? w[2] : w[1]);
 // #364: when you leave. A, fixed hours (Revision 5's st.leave); B, now, or today or tomorrow at a time (st.leaveDay, st.leaveAt)
 const leaveOf = (f, st) => {
   const u = U(f);
+  if (f.o.times === 'c') return st.leaveDT ? { day: 'dt', label: labelC6(f.lang, st.leaveDT), clock: st.leaveDT.slice(11, 16) } : { day: 'now', label: u.leaveVal, clock: clock(0, f.sport) };
   if (f.o.times !== 'any') { const v = st.leave || u.leaveVal; return { label: v, clock: /\d/.test(v) ? v.split(' ').pop() : clock(0, f.sport) }; }
   const day = st.leaveDay || 'now', at = st.leaveAt || LEAVE6[day];
   return day === 'now' ? { day, label: u.leaveVal, clock: clock(0, f.sport) } : { day, label: day === 'today' ? at : `${u.tomorrow6} ${at}`, clock: at };
+};
+// #364, C: one row, Leave ›, with the phone's own date and time picker over it; only the start has a date, and the rest
+// counts from it. Now, once a time is set, goes back to leaving now; past the forecast's reach the weather says so.
+const pickRow6 = (act, icon, label, sub, val, kind, inAttr, value, aria) => `<div class="c2-list c6-pick">${item(act, icon, label, sub, { val, chev: true })}<input type="${kind}" step="900" data-in="${inAttr}" data-pick="1" value="${esc(value)}"${kind === 'datetime-local' ? ` min="${isoC6(NOW_C6)}"` : ''} aria-label="${esc(aria)}" aria-hidden="true" tabindex="-1"></div>`;
+const leaveRowC6 = (f, st) => {
+  const u = U(f), set = !!st.leaveDT, d = set ? new Date(st.leaveDT) : null, far = set && aheadC6(d) > FAR_C6;
+  const row = pickRow6('leavepickc', 'clock', u.leaveC, u.leaveSub, set ? labelC6(f.lang, st.leaveDT) : u.nowC, 'datetime-local', 'ldt', st.leaveDT || isoC6(new Date(2026, 9, 31, 10, 0)), u.pickAriaC);
+  return `<div class="c6-leave">${row}${set ? `<button type="button" class="c6-now" data-act="leavenowc" aria-label="${esc(u.leaveNowAriaC)}">${esc(u.nowC)}</button>` : ''}</div>${far ? `<p class="c6-nofc">${ic('weather', 16)}<span>${esc(u.noFcC(dayC6(f.lang, d)))}</span></p>` : ''}`;
 };
 // a time to pick (#364, B): the one stepper, − and + in quarter hours, around the phone's own time field
 const timeStep = (f, k, val, label) => { const u = U(f); return `<span class="c2-step c6-step"><button type="button" data-act="${k}-" aria-label="${esc(u.earlier15)}">${ic('minus', 20)}</button><input type="time" step="900" value="${esc(val)}" data-in="${k}" aria-label="${esc(label)}"><button type="button" data-act="${k}+" aria-label="${esc(u.later15)}">${ic('plus', 20)}</button></span>`; };
@@ -1414,9 +1469,13 @@ function pointCard2(f, st) {
     const arr = clock(q.km, f.sport), m = st.min || 30;
     if (here === 'stop') { const [hh, mm] = arr.split(':').map(Number), t = hh * 60 + mm + m; h += `<div class="c2-detail"><span class="c2-step"><button type="button" data-act="min-" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${m} ${u.min}</b><button type="button" data-act="min+" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span><small>${esc(u.getHere(arr, `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`))}</small></div>`; }
     // #364: going on after a night at any time (B, the phone's own clock in the stepper, on the card itself), or a few fixed hours (A)
-    if (here === 'night') h += `<div class="c2-detail">${o.times === 'any' ? `<span>${esc(u.goOnNext6)}</span>${timeStep(f, 'gt', st.goon || '07:00', u.goonAria6)}` : `<span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="goon">${st.goon || '07:00'} ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span>`}</div>${list([item('stays', 'tent', u.sleep, u.sleepSub, { chev: true })])}`;
+    if (here === 'night' && o.times === 'c') {
+      const n = st.nights || 1, base = st.leaveDT ? new Date(st.leaveDT) : new Date(2026, 9, 31, 10, 0), on = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n), go = st.goon || '07:00';
+      h += `<div class="c2-detail"><span>${esc(u.stayC)}</span><span class="c2-step"><button type="button" data-act="nights-" aria-label="${esc(u.fewerC)}"${n <= 1 ? ' disabled' : ''}>${ic('minus', 20)}</button><b>${esc(u.nightsC(n))}</b><button type="button" data-act="nights+" aria-label="${esc(u.moreC)}">${ic('plus', 20)}</button></span></div>`
+        + pickRow6('goonpickc', 'clock', u.goOnC, u.goOnSubC(dayC6(f.lang, on), n), go, 'time', 'gtc', go, u.goOnAriaC) + list([item('stays', 'tent', u.sleep, u.sleepSub, { chev: true })]);
+    } else if (here === 'night') h += `<div class="c2-detail">${o.times === 'any' ? `<span>${esc(u.goOnNext6)}</span>${timeStep(f, 'gt', st.goon || '07:00', u.goonAria6)}` : `<span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="goon">${st.goon || '07:00'} ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span>`}</div>${list([item('stays', 'tent', u.sleep, u.sleepSub, { chev: true })])}`;
   }
-  if (first) h += list([item('leave', 'clock', u.leave, u.leaveSub, { val: leaveOf(f, st).label, chev: true })]);
+  if (first) h += o.times === 'c' ? leaveRowC6(f, st) : list([item('leave', 'clock', u.leave, u.leaveSub, { val: leaveOf(f, st).label, chev: true })]);
   // Next stretch, to …: where it goes, in its name, so a desktop says it too (the user's answer in 1a, 2026-10-22)
   const afterRow = !last ? item('after', 'route', u.afterTo(pn(f, i + 1)), u.afterSub, { chev: true }) : '';
   // #364, C: On the profile on a point's card too
@@ -2989,6 +3048,10 @@ function act(fr, a) {
   // Revision 6: Back to start draws the loop and closes the card; Clear route says so, with Undo (the picture keeps its route)
   if (r6 && a === 'backstart') { fr.st = { ...keep, looped: true, undoLoop: true, toast: 'looped' }; render(fr); return; }
   if (r6 && a === 'clearroute') { fr.st = { ...keep, toast: 'cleared' }; render(fr); return; }
+  // C (#364): the rows open the phone's own pickers (here, where the browser can't, a note says so); Now; the nights
+  if (a === 'leavepickc' || a === 'goonpickc') { const x = fr.el.querySelector(`.screen input[data-in="${a === 'leavepickc' ? 'ldt' : 'gtc'}"]`); try { x.showPicker(); return; } catch { st.toast = 'msg'; st.msg = T6[lang][a]; st.undoable = false; render(fr); return; } }
+  if (a === 'leavenowc') { st.leaveDT = null; render(fr); return; }
+  if (a === 'nights-' || a === 'nights+') { st.nights = Math.max(1, Math.min(14, (st.nights || 1) + (a === 'nights+' ? 1 : -1))); render(fr); return; }
   const say = (r6 && (SAY6[lang] || SAY6.en)[a]) || (SAY5[lang] || SAY5.en)[a];
   if (say) { st.toast = 'msg'; st.msg = say[0]; st.undoable = say[1]; render(fr); return; }
   if (a.startsWith('stay-')) { const u5 = T2[st.lang || PK.lang]; st.card = 'point'; st.toast = 'msg'; st.msg = (st.lang || PK.lang) === 'fi' ? `Yö siirtyi: ${['Kaupin laavu', 'Tapatoran kota', 'Camping Härmälä'][+a.slice(5)]}` : `The night moved to ${['Kaupin laavu', 'Tapatoran kota', 'Camping Härmälä'][+a.slice(5)]}`; st.undoable = true; render(fr); return; }
@@ -3052,13 +3115,16 @@ function bind(fr) {
   let down = null;
   const local = (e) => { const r = scr.getBoundingClientRect(), z = r.width / fr.f.W; return [(e.clientX - r.left) / z, (e.clientY - r.top) / z]; };
   scr.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) { e.stopPropagation(); act(fr, b.dataset.act); } });
+  // C (#364): a tap or a click on a row's own picker opens the phone's, or the browser's where it has showPicker()
+  scr.addEventListener('click', (e) => { const x = e.target.closest('input[data-pick]'); if (x) try { x.showPicker(); } catch { /* the phone opens its own */ } }, true);
   // Revision 6 (#364): a time typed or picked in the phone's own field; today's past goes to tomorrow
   scr.addEventListener('change', (e) => {
     const x = e.target.closest('input[data-in]'), st = fr.st;
+    if (x && x.dataset.in === 'ldt' && /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(x.value)) { st.leaveDT = x.value.slice(0, 16); render(fr); return; }
     if (!x || !/^\d\d:\d\d/.test(x.value)) return;
     const t = x.value.slice(0, 5);
     if (x.dataset.in === 'lt') { if ((st.leaveDay || 'today') === 'today' && t < '10:15') st.leaveDay = 'tomorrow'; st.leaveAt = t; }
-    if (x.dataset.in === 'gt') st.goon = t;
+    if (x.dataset.in === 'gt' || x.dataset.in === 'gtc') st.goon = t;
     render(fr);
   });
   scr.addEventListener('pointerdown', (e) => {
