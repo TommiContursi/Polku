@@ -10,7 +10,7 @@
 // card-mark (the thing's own mark), row (a plain row in a list of rows), seg icons (a switch with icons), sum-item
 // miss (a number the map doesn't have) and card-pill (the action at the spot, on a phone).
 import { icon, h } from './ui.js';
-import { keepInView } from './inspect.js';
+import { keepInView, overColumn } from './inspect.js';
 
 // ------------------------------------------------------------------ the parts
 
@@ -333,13 +333,17 @@ export class CardHost {
     // a narrow screen (a phone with the planner put away): above its spot, moved sideways to stay whole on the screen
     // [jc-closed]; the map moves to make room above it (keep())
     if (innerWidth < 520) {
-      const dx = Math.max(8 - (x - w / 2), Math.min(0, innerWidth - 8 - (x + w / 2)));
+      const pw = this.popup.getElement().offsetWidth; // (the card with its padding)
+      const dx = Math.max(8 - (x - pw / 2), Math.min(0, innerWidth - 8 - (x + pw / 2)));
       this.popup.options.anchor = 'bottom';
       this.popup.setOffset({ bottom: [Math.round(dx), -OFFSET] });
       this.popup.setLngLat(at);
       // (room above it under the top bar: the map moves down, never sideways, which would take it off the screen)
       const top = this.popup.getElement().getBoundingClientRect().top, bar = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 8;
       if (top < bar) this.map.panBy([0, top - bar], { duration: 0 });
+      // over the map's buttons where it meets them (a phone at 200 %): they step aside while it's open (#435)
+      const b = this.popup.getElement().getBoundingClientRect(), col = document.getElementById('map-ctrls').getBoundingClientRect();
+      overColumn(this.popup, b.left < col.right && b.right > col.left && b.top < col.bottom && b.bottom > col.top);
       return;
     }
     const right = innerWidth - x - (innerWidth < 720 ? 64 : 84), below = innerHeight - 8 - (this.pad().bottom || 0) - y;
