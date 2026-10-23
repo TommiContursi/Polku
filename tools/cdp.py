@@ -35,7 +35,7 @@ LOAD_STEP = ("new Promise((ok) => { const t0 = Date.now(), go = () => polku.map.
 # the 90 s the old wait had, which button3d's 3D scene needed on GitHub's runner (#422). A request
 # that never answered kept this waiting until Chrome's own 90 s ran out, which ended the whole group without saying what
 # it had waited for (#409). false when it didn't load.
-MAP_LOADED = ("new Promise((ok) => { const t0 = Date.now(), go = () => window.polku && polku.map.loaded() ? ok(true)"
+MAP_LOADED = ("new Promise((ok) => { const t0 = Date.now(), go = () => window.polku && polku.map.loaded() ? ok(Date.now() - t0 + 1)"
               " : Date.now() - t0 > 150000 ? ok(false) : setTimeout(go, 200); go(); })")
 # the map's sources still loading, with their tiles' host and how many tiles are on their way
 MAP_WAITING = """(() => {
@@ -232,8 +232,11 @@ class Page:
 
     def map_loaded(self):
         """Polku there and its map loaded, 150 s at most; a RuntimeError saying what it waited for otherwise (#409)."""
-        if not self.js(MAP_LOADED, timeout=155000):
+        ms = self.js(MAP_LOADED, timeout=155000)
+        if not ms:
             raise RuntimeError(f'the map didn’t load in 150 s, still waiting for {self.waiting()}')
+        if ms > 20000:  # (a slow load, said in the log: which checks wait long for the map, and how long, #422)
+            print(f'      the map took {ms / 1000:.0f} s to load', flush=True)
 
     def waiting(self):
         """What a page that hasn't loaded waits for: its requests sent and neither finished nor failed (as this page's
