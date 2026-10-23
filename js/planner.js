@@ -610,6 +610,7 @@ export class Planner {
   clear() {
     if (!this.points.length) return;
     this.commit();
+    this.freshRead(); // (Undo brings it back with what was read on it, #439)
     this.points = [];
     this.legs = [];
     this.next = null; // a new route starts in the map's sport
