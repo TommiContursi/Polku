@@ -5074,17 +5074,19 @@ def quick_desktop(chrome):
         pg = chrome.page(w, h_, False)
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': json.dumps(dock), 'polku:winter': '"off"'})
         pg.js("(() => { const p = polku.planner; p.setActive(true); p.setSheetState(p.layout() === 'side' ? 'open' : 'half'); return true; })()")
-        time.sleep(0.5)
-        r = pg.js("""(async () => {
+        placed(pg)
+        pg.js("document.querySelector('#btn-layers').click(), true")
+        # (where they are once the planner has settled: on GitHub's runner its height still changed after the click, and the
+        # card, read 0.4 s later while it moved, ran 6 px into it; once settled, the card had followed it, #410)
+        late = pg.js(SETTLED)
+        r = pg.js("""(() => {
           const box = (s) => document.querySelector(s).getBoundingClientRect().toJSON();
-          const moving = () => document.getAnimations().filter((a) => a instanceof CSSTransition && a.playState === 'running').map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`).join(', ') || 'nothing moving';
-          const at = { top: box('#planner').top, moving: moving() };
-          document.querySelector('#btn-layers').click();
-          await new Promise((r) => setTimeout(r, 400));
-          return { q: box('#quick-layers'), b: box('#btn-layers'), p: box('#planner'), tail: document.querySelector('#quick-layers').classList.contains('tail'), H: innerHeight, at, moving: moving() };
+          return { q: box('#quick-layers'), b: box('#btn-layers'), p: box('#planner'), tail: document.querySelector('#quick-layers').classList.contains('tail'), H: innerHeight };
         })()""")
         q, b, p = r['q'], r['b'], r['p']
         name = f'{w}x{h_} {dock}'
+        if late:
+            fails.append(f'{name}: {late}')
         if q['right'] > b['left'] or q['top'] < 60 or q['bottom'] > r['H'] - 4:
             fails.append(f'{name}: the card at {q["left"]:.0f}–{q["right"]:.0f} × {q["top"]:.0f}–{q["bottom"]:.0f}, not beside the button within the map')
         if dock == 'left' and q['left'] < p['right']:
@@ -5092,9 +5094,7 @@ def quick_desktop(chrome):
         if dock == 'left' and abs(q['bottom'] - b['bottom']) > 1:
             fails.append(f'{name}: the card’s bottom at {q["bottom"]:.0f}, the button’s at {b["bottom"]:.0f}')
         if dock == 'bottom' and q['bottom'] > p['top']:
-            later = pg.js(SETTLED + ".then(() => ({ q: document.querySelector('#quick-layers').getBoundingClientRect().bottom, p: document.querySelector('#planner').getBoundingClientRect().top }))")
-            fails.append(f"{name}: the card runs into the bottom planner: its bottom at {q['bottom']:.0f}, the planner's top at {p['top']:.0f}"
-                         f" (at the click {r['at']['top']:.0f}, {r['at']['moving']}; at the read {r['moving']}; DIAG (#410) once settled: the card's bottom {later['q']:.0f}, the planner's top {later['p']:.0f})")
+            fails.append(f"{name}: the card runs into the bottom planner: its bottom at {q['bottom']:.0f}, the planner's top at {p['top']:.0f}")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     return fails
