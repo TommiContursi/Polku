@@ -4,6 +4,23 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Check says how serious and how sure, and shows each warning on the route ([#233](https://github.com/TommiContursi/Polku/issues/233))
+
+Heads-up is now Check's three groups, and each warning is marked where it is on the route.
+
+- Check opens with **Read before you go**, for what can stop you, turn you back or hurt, in a red box. **Not checked** lists a source that didn't answer, with **Retry**, and **Worth a look** lists sections to know about. Each group is in order along the route.
+- Each warning says where it comes from: live from Fintraffic with the time, from the map, an estimate, calculated, or the routing service.
+- A source that doesn't answer stays in Not checked until it answers, so a missing check never looks like nothing on the way. That covers the terrain, the water's sources, Fintraffic, trail details, winter ways and the forecast. **What Polku looked at**, under the groups, lists each source and what it said.
+- Check's tab shows how many to read before you go, in red, and a "?" while something wasn't checked.
+- A tap on a warning shows its card: how serious, where and how long, where it comes from, and its one action (**Avoid it**, **Short cut**, **Use BRouter** or **Retry**). Hiding its kind and correcting the map are on the card too. On a phone **‹ ›** step along the route, and **All in Check** goes back to the list. Its stretch glows on the map and in the profile, and a climb's does too when you tap it.
+- With the planner at its peek, a row above the numbers says how many to read before you go and how many weren't checked. A tap on it shows the first.
+- The row's **✕** marks them all read, with **Undo**, and the row stays away until a warning is new or changes. **Got it** on a card marks one read, and **All read** marks a whole group in Check. Read warnings keep their place in Check and on the map. What you've read stays with the route on this device; share links don't carry it.
+- Markers on the route show what to read before you go (a red triangle) and what wasn't checked there (a dashed "?"). While Check is open they show what's worth a look too (an eye). Close ones merge with their count, and a tap shows the most serious first.
+- A stretch a source didn't cover is dashed on the route. With the planner closed the triangles stay, and a tap on one opens its card with **Open the planner at it**.
+- Rough water says which departure its forecast is for.
+
+**Safety note:** Polku checks only what its sources know. Nothing listed doesn't mean a way is open, safe or allowed, a warning you've marked read is still true, and signs on the ground win.
+
 ### Fixed: the sport menu stays open when the snow answers ([#392](https://github.com/TommiContursi/Polku/issues/392))
 
 Polku looks up the snow where you are when it opens, and again after you move the map 8 km or more. When that answer came in just after you had opened the sport menu, it closed the menu, so your next tap opened it again, and a keyboard's focus left the menu. Now the menu stays open, with the focus and your choices where they were. Where the snow turns winter on, the sport pill still gets its snow badge.
