@@ -455,12 +455,16 @@ export class ProfileChart {
       }
     } else {
       // climb markers: a tag with an arrow ("↑1"), coloured by the climb, so they don't look like
-      // the route's numbered points (those are round, below)
+      // the route's numbered points (those are round, below); the biggest climbs first, and a tag that would cover
+      // one already drawn is left out (many climbs, a narrow profile: #242)
       ctx.font = '700 10px system-ui, sans-serif';
-      a.climbs.forEach((cl, k) => {
-        const x = X((cl.from + cl.to) / 2);
-        const y = Y(a.ele[cl.end]) - 9;
+      const tags = [];
+      a.climbs.map((cl, k) => [cl, k]).sort(([p], [q]) => q.gain - p.gain).forEach(([cl, k]) => {
         const label = `↑${k + 1}`, w = ctx.measureText(label).width + 8;
+        const x = Math.min(Math.max(X((cl.from + cl.to) / 2), g.x0 + w / 2), g.x1 - w / 2); // (whole, inside the plot)
+        const y = Y(a.ele[cl.end]) - 9;
+        if (tags.some((t) => Math.abs(t.x - x) < (t.w + w) / 2 + 2 && Math.abs(t.y - y) < 16)) return;
+        tags.push({ x, y, w });
         ctx.fillStyle = OFFROAD_BIKE.has(a.activity) ? DIFF_COLORS[cl.cls] : gradeColor(cl.avg);
         roundRect(ctx, x - w / 2, y - 7, w, 14, 4); ctx.fill();
         ctx.fillStyle = '#fff';

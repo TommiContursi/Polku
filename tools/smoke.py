@@ -7299,14 +7299,14 @@ TB_ROUTE = """(async (pts) => {
 TB_PTS = [[23.81, 61.512], [23.82, 61.515], [23.835, 61.52]]
 # #242: the profile of a long route with many points, at the sheet's full size: Colour by, its choice, On map and the
 # size apart, and the choice wide enough for its words; the distance labels apart and on the profile; the points'
-# marks apart (a mark is 14 px across), as the profile draws them
+# marks apart (a mark is 14 px across), and the climbs' tags (↑1) not over each other, as the profile draws them
 TB_PROF_PTS = [[23.0 + 0.1 * i, 61.0 + 0.04 * (i % 3)] for i in range(30)]
 TB_PROFILE = """(() => {
   const p = polku.planner, cv = document.getElementById('profile-canvas'), ctx = cv.getContext('2d'), W = cv.getBoundingClientRect().width, out = [], drawn = [];
   const text = ctx.fillText, arc = ctx.arc, rr = ctx.roundRect;
   ctx.fillText = function (t, x, y, ...r) { drawn.push({ k: 'text', t: String(t), x, w: this.measureText(String(t)).width, a: this.textAlign }); return text.call(this, t, x, y, ...r); };
   ctx.arc = function (x, y, rad, ...r) { if (rad >= 6) drawn.push({ k: 'mark', x }); return arc.call(this, x, y, rad, ...r); };
-  ctx.roundRect = function (x, y, w, h, ...r) { if (w === 12 && h === 12) drawn.push({ k: 'mark', x: x + 6 }); return rr.call(this, x, y, w, h, ...r); };
+  ctx.roundRect = function (x, y, w, h, ...r) { if (w === 12 && h === 12) drawn.push({ k: 'mark', x: x + 6 }); else if (h === 14) drawn.push({ k: 'tag', x, y, w }); return rr.call(this, x, y, w, h, ...r); };
   try { p.chart.draw(); } finally { delete ctx.fillText; delete ctx.arc; delete ctx.roundRect; }
   const labels = drawn.filter((d) => d.k === 'text' && /^[\\d.]+ k?m$/.test(d.t)).map((d) => ({ t: d.t, l: d.a === 'center' ? d.x - d.w / 2 : d.x, r: d.a === 'center' ? d.x + d.w / 2 : d.x + d.w })).sort((a, b) => a.l - b.l);
   labels.forEach((a, i) => { const b = labels[i + 1];
@@ -7316,6 +7316,11 @@ TB_PROFILE = """(() => {
   const marks = drawn.filter((d) => d.k === 'mark').map((d) => d.x).sort((a, b) => a - b), near = marks.filter((x, i) => i && x - marks[i - 1] < 14).length;
   if (near) out.push(`${near} of the points' ${marks.length} marks less than a mark from the one before`);
   if (marks.length < 2) out.push(`${marks.length} marks: the start and the end not both drawn`);
+  const tags = drawn.filter((d) => d.k === 'tag'), over = tags.filter((a, i) => tags.slice(i + 1).some((b) => a.x < b.x + b.w && b.x < a.x + a.w && Math.abs(a.y - b.y) < 14)).length;
+  if (over) out.push(`${over} of the climbs' ${tags.length} tags over another`);
+  const cut = tags.filter((t) => t.x < -0.5 || t.x + t.w > W + 0.5).length;
+  if (cut) out.push(`${cut} of the climbs' tags off the profile`);
+  if (!tags.length) out.push('no climbs’ tags drawn');
   const top = p.els.profZone.querySelector('.profile-top'), sel = top.querySelector('select');
   if (!sel.getClientRects().length) return { out: [...out, `its controls not shown (the sheet at ${p.panel.dataset.state})`], km: p.analysis && Math.round(p.analysis.total / 1000) };
   const parts = [top.querySelector('.mode-select-label'), sel, top.querySelector('.tg-inline'), top.querySelector('.prof-size')].filter((e) => e && e.getClientRects().length);
