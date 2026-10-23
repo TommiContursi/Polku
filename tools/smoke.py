@@ -5077,10 +5077,12 @@ def quick_desktop(chrome):
         pg.js("(() => { const p = polku.planner; p.setActive(true); p.setSheetState(p.layout() === 'side' ? 'open' : 'half'); return true; })()")
         time.sleep(0.5)
         r = pg.js("""(async () => {
+          const box = (s) => document.querySelector(s).getBoundingClientRect().toJSON();
+          const moving = () => document.getAnimations().filter((a) => a instanceof CSSTransition && a.playState === 'running').map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`).join(', ') || 'nothing moving';
+          const at = { top: box('#planner').top, moving: moving() };
           document.querySelector('#btn-layers').click();
           await new Promise((r) => setTimeout(r, 400));
-          const box = (s) => document.querySelector(s).getBoundingClientRect().toJSON();
-          return { q: box('#quick-layers'), b: box('#btn-layers'), p: box('#planner'), tail: document.querySelector('#quick-layers').classList.contains('tail'), H: innerHeight };
+          return { q: box('#quick-layers'), b: box('#btn-layers'), p: box('#planner'), tail: document.querySelector('#quick-layers').classList.contains('tail'), H: innerHeight, at, moving: moving() };
         })()""")
         q, b, p = r['q'], r['b'], r['p']
         name = f'{w}x{h_} {dock}'
@@ -5091,7 +5093,9 @@ def quick_desktop(chrome):
         if dock == 'left' and abs(q['bottom'] - b['bottom']) > 1:
             fails.append(f'{name}: the card’s bottom at {q["bottom"]:.0f}, the button’s at {b["bottom"]:.0f}')
         if dock == 'bottom' and q['bottom'] > p['top']:
-            fails.append(f'{name}: the card runs into the bottom planner')
+            later = pg.js(SETTLED + ".then(() => ({ q: document.querySelector('#quick-layers').getBoundingClientRect().bottom, p: document.querySelector('#planner').getBoundingClientRect().top }))")
+            fails.append(f"{name}: the card runs into the bottom planner: its bottom at {q['bottom']:.0f}, the planner's top at {p['top']:.0f}"
+                         f" (at the click {r['at']['top']:.0f}, {r['at']['moving']}; at the read {r['moving']}; DIAG (#410) once settled: the card's bottom {later['q']:.0f}, the planner's top {later['p']:.0f})")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     return fails
@@ -6855,11 +6859,14 @@ def sport_menu(chrome):
 NL = """(() => {
   const T = window.nlT = { errs: [] };
   const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)], p = polku.planner, m = polku.map;
-  T.at = (sel) => { const el = typeof sel === 'string' ? $(sel) : sel; if (!el || !el.offsetParent) return null;
+  // a control's middle once the sheet has come to its size and the toolbox is placed for it (a frame later): on a busy
+  // page the sheet was still on its way up, or the toolbox still moving, when a fixed wait read it (#406)
+  const settled = () => """ + SETTLED + """.then(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+  T.at = async (sel) => { await settled(); const el = typeof sel === 'string' ? $(sel) : typeof sel === 'function' ? sel() : sel; if (!el || !el.offsetParent) return null;
     const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y);
     return { x, y, clear: !!top && (el === top || el.contains(top)), over: top ? String(top.id || top.className) : 'nothing' }; };
-  T.item = (label) => T.at($$('.menu-pop .menu-item').find((x) => x.textContent.trim().startsWith(label)));
-  T.toastBtn = (label) => T.at($$('#toast .toast-act').find((x) => x.textContent.trim() === label));
+  T.item = (label) => T.at(() => $$('.menu-pop .menu-item').find((x) => x.textContent.trim().startsWith(label)));
+  T.toastBtn = (label) => T.at(() => $$('#toast .toast-act').find((x) => x.textContent.trim() === label));
   T.water = (ll) => m.queryRenderedFeatures(m.project(ll), { layers: ['water'] }).length > 0;
   T.spot = (ll) => { const q = m.project(ll); return { x: q.x, y: q.y, clear: true }; };
   // a spot on the water a few pixels from the shore: from a point on a lake towards land, the last water before it
@@ -6928,7 +6935,7 @@ def nextleg(chrome):
     pg = page(390, 844, True, 'hike')
     S = lambda: pg.js('nlT.state()')
     pg.js('polku.planner.setActive(true), true')
-    time.sleep(0.5)
+    placed(pg)
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', True)
     along = pg.js("document.querySelector('.pl-way .way-line')?.textContent || ''")
     if along != 'Polku follows the paths, and the sport can change on the way.':
@@ -7054,7 +7061,7 @@ def nextleg(chrome):
     name = '390x844 start'
     pg = page(390, 844, True, 'mtb')
     pg.js('polku.planner.setActive(true), true')
-    time.sleep(0.5)
+    placed(pg)
     # the sport: a row of its own under the top row, in the ways to begin and in Draw it, over its route style (2026-10-21)
     if not pg.js("!!document.querySelector('.pl-way .way-top + .sport-row')"):
         fails.append(f'{name}: the ways to begin have no sport row under their top row')
@@ -7120,7 +7127,7 @@ def nextleg(chrome):
     name = '1440x900'
     pg = page(1440, 900, False, 'mtb')
     pg.js('polku.planner.setActive(true), true')
-    time.sleep(0.5)
+    placed(pg)
     # the panel's place can change from the start too (its header waits while the start shows)
     press(pg, pg.js("nlT.at('.pl-way .way-dock')"), f'{name}: the start’s Move the planner', False)
     time.sleep(0.5)
@@ -8084,7 +8091,12 @@ START_LIB = """(() => {
   T.whole = (what) => {
     if (p.layout() !== 'sheet') return;
     const w = way(), room = innerHeight - 76 - 2;
-    if (w.scrollHeight > w.clientHeight + 1 && p.panel.getBoundingClientRect().height < room) err(`${what}: the view is cut by ${w.scrollHeight - w.clientHeight} px though the sheet has room`);
+    if (w.scrollHeight > w.clientHeight + 1 && p.panel.getBoundingClientRect().height < room) err(`${what}: the view is cut by ${w.scrollHeight - w.clientHeight} px though the sheet has room (${T.sheetNow()})`);
+  };
+  // where the sheet is, for a FAIL line: its size, the peek it was given, the view in it, and what's still moving
+  T.sheetNow = () => {
+    const w = way(), moving = document.getAnimations().filter((a) => a instanceof CSSTransition && a.playState === 'running').map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`);
+    return `the sheet ${p.panel.dataset.state} ${Math.round(p.panel.getBoundingClientRect().height)} px, --peek-h ${p.panel.style.getPropertyValue('--peek-h') || 'unset'}, the view ${w.clientHeight} of ${w.scrollHeight} px, ${moving.join(', ') || 'nothing moving'}`;
   };
   // in a round trip nothing is drawn: only undo and redo, no mode, More or Done (#311)
   T.loopTools = (what) => { const on = shown().join('|'); if (on !== 'Undo|Redo') err(`${what}: the toolbox has ${on || 'nothing'}, not only undo and redo (#311)`); };
@@ -8385,14 +8397,16 @@ START_LIB = """(() => {
     const f = free();
     for (const c of r.parts) for (let i = 0; i < c.length; i += 3) {
       const q = map.project(c[i]);
-      if (q.x > f.left + 20 && q.x < f.right - 20 && q.y > f.top + 20 && q.y < f.bottom - 20 && onMap(q.x, q.y) && map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], { layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key)) return { x: q.x, y: q.y };
+      if (q.x > f.left + 20 && q.x < f.right - 20 && q.y > f.top + 20 && q.y < f.bottom - 20 && onMap(q.x, q.y) && map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], { layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key)) { T.spotAt = { q, ll: c[i] }; return { x: q.x, y: q.y }; }
     }
     err('no spot on the other marked route in view');
     return null;
   };
   T.markedTapped = async () => {
     await until(() => M().list[M().on]?.key === T.other, 3000);
-    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key}`);
+    // (and how far the spot had moved by then: the map moving after it was read would put the tap beside the line)
+    const moved = () => { const a = T.spotAt, q = a && map.project(a.ll); return q ? `${Math.round(Math.hypot(q.x - a.q.x, q.y - a.q.y))} px` : '?'; };
+    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key} (the spot moved ${moved()} since it was read, ${T.sheetNow()})`);
     if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
     return T.errs.splice(0);
   };
@@ -8459,6 +8473,7 @@ START_LIB = """(() => {
     if (!/From your first point/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
     T.loopTools('the round trip’s form');
     T.whole('the round trip’s form');
+    if (T.errs.some((e) => / is cut by /.test(e))) { await settled(); await wait(1000); err(`DIAG (#407) once settled and 1 s later: ${T.sheetNow()}`); }
     window.holdRoutes();
     return T.at('.pl-way .rt-make');
   };
@@ -8718,8 +8733,8 @@ def route_view(chrome):
             return False
         if not at.get('clear', True):
             fails.append(f'{name}: something is over it')
-        if touch:
-            pg.tap(at['x'], at['y'])
+        if touch:  # (a finger up after 50 ms by its own times: pg.tap's touchend waits for the page, a hold on a busy one, #405)
+            pg.quick_tap(at['x'], at['y'])
         else:
             for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
                 pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
@@ -9094,8 +9109,8 @@ def point_card(chrome):
         if not at:
             fails.append(f'{name}: not on screen')
             return False
-        if touch:
-            pg.tap(at['x'], at['y'])
+        if touch:  # (a finger up after 50 ms by its own times, as in routeview, #405)
+            pg.quick_tap(at['x'], at['y'])
         else:
             for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
                 pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
