@@ -21,6 +21,10 @@ Heads-up is now Check's three groups, and each warning is marked where it is on 
 
 **Safety note:** Polku checks only what its sources know. Nothing listed doesn't mean a way is open, safe or allowed, a warning you've marked read is still true, and signs on the ground win.
 
+### Fixed: Undo after Clear route brings back what you'd read ([#439](https://github.com/TommiContursi/Polku/issues/439))
+
+When you cleared the route, drew a new one and marked a warning read there, then undid back to the old route, the old route came back with the new route's read marks, so a warning on it could start out read. Now each route comes back with what you'd read on it.
+
 ### Fixed: the sport menu stays open when the snow answers ([#392](https://github.com/TommiContursi/Polku/issues/392))
 
 Polku looks up the snow where you are when it opens, and again after you move the map 8 km or more. When that answer came in just after you had opened the sport menu, it closed the menu, so your next tap opened it again, and a keyboard's focus left the menu. Now the menu stays open, with the focus and your choices where they were. Where the snow turns winter on, the sport pill still gets its snow badge.

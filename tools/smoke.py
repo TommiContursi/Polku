@@ -2772,6 +2772,14 @@ WARNFIX = """(async () => {
   if ([...p.readKeys].sort().join(' / ') !== readA) errs.push(`Undo across the import: read ${[...p.readKeys].join(' / ') || 'nothing'}, not what was read on the route before`);
   p.redo();
   if ([...p.readKeys].sort().join(' / ') !== readB) errs.push(`Redo of the import: read ${[...p.readKeys].join(' / ') || 'nothing'}, not the import's`);
+  // (#439) Clear, a new route with something read on it, Undo back: the route before comes back with its own
+  const at0 = JSON.stringify(p.points);
+  p.clear();
+  p.addPoint([26.700, 63.310]); p.addPoint([26.716, 63.310]);
+  p.markRead([{ g: 'not', w: { key: 'weather', by: 'Open-Meteo' } }]);
+  for (let k = 0; k < 5 && JSON.stringify(p.points) !== at0; k++) p.undo();
+  if (JSON.stringify(p.points) !== at0) errs.push('(the test) Undo didn\\'t bring back the route before Clear');
+  if ([...p.readKeys].sort().join(' / ') !== readB) errs.push(`Undo back across Clear: read ${[...p.readKeys].join(' / ') || 'nothing'}, not ${readB}, what was read on the route before`);
   return errs;
 })()"""
 # (7) and (1): a press on a marker over the line; the put-away card on a phone's screen
