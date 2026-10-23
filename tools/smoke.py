@@ -5392,6 +5392,11 @@ NL = """(() => {
 })()"""
 
 
+# once the page's timers set before now have run (a timer set later runs after them): on a busy page the check's own
+# reads can come first, and a note read then could still be hidden a moment later (#381)
+NL_TIMERS = "new Promise((ok) => setTimeout(() => ok(true), 300))"
+
+
 def nextleg(chrome):
     fails = []
 
@@ -5508,6 +5513,7 @@ def nextleg(chrome):
     past = st['past']
     press(pg, pg.js("nlT.toastBtn('Swim')"), f'{name}: Swim', True)
     time.sleep(0.6)
+    pg.js(NL_TIMERS)
     st = S()
     # the note Swim shows stays, with its Undo (the tap on Swim hid it at once, #381)
     want(f'{name}, Swim', st, sports='hike,swim', next='swim', map='swim', past=past, toast=lambda v: bool(v) and v.startswith('Swim to this point, and on from here.') and v.endswith('Undo'))
@@ -5537,6 +5543,7 @@ def nextleg(chrome):
     press(pg, pg.js(f'nlT.spot({lake})'), f'{name}: a point on the lake in winter', True)
     press(pg, pg.js("nlT.toastBtn('Walk on the ice')"), f'{name}: Walk on the ice', True)
     time.sleep(0.6)
+    pg.js(NL_TIMERS)
     want(f'{name}, Walk on the ice', S(), toast=lambda v: bool(v) and v.startswith('On the ice: straight lines from here on.') and 'never go on ice you haven’t checked' in v)
     ice = pg.js("""(async () => { const p = polku.planner, P = await import(location.origin + '/js/planner.js'); for (let k = 0; k < 30 && !(p.analysis && p.legs.length && p.legs.at(-1).ice && p.legs.at(-1).result); k++) await new Promise((r) => setTimeout(r, 100));
       const w = p.analysis ? p.iceWarnings(p.analysis).map((x) => x.text) : [], url = p.shareUrl(), back = P.parseShared(new URL(url).searchParams) || {};
