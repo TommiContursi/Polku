@@ -9563,6 +9563,29 @@ CT_POINTS = "(async () => { const p = polku.planner; p.setActive(true); p.clear(
 CT_RING = """((sel) => { const e = document.activeElement, c = getComputedStyle(e), probe = document.body.appendChild(document.createElement('i'));
   probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--focus'); const want = getComputedStyle(probe).color; probe.remove();
   return { at: e.matches(sel), el: (e.className && e.className.baseVal === undefined ? e.className : e.tagName).slice(0, 40), ring: `${c.outlineStyle} ${c.outlineWidth} ${c.outlineColor}`, want: `solid 2px ${want}`, offset: c.outlineOffset }; })"""
+# #375: the top bar on a phone at 200 %: its logo, search, sport and Settings on the screen and apart, the search at
+# least a target wide; a tap on the search opens its field across the bar, wide enough to type in with nothing over
+# it, and Escape folds it back. (Nothing is typed: no requests to the search's services.)
+CT_TOPBAR = """(() => {
+  const out = [], W = innerWidth, items = [['the logo', '.topbar .brand'], ['the search', '.topbar .search'], ['the sport', '#activity-bar .act-current'], ['Settings', '#btn-settings']];
+  const shown = items.map(([n, s]) => [n, document.querySelector(s)]).filter(([, e]) => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden').map(([n, e]) => [n, e.getBoundingClientRect()]);
+  const box = (r) => `x ${Math.round(r.left)}–${Math.round(r.right)}`;
+  for (const [n, r] of shown) if (r.left < -0.5 || r.right > W + 0.5) out.push(`${n} at ${box(r)} on a ${W} px screen`);
+  shown.forEach(([n, a], i) => shown.slice(i + 1).forEach(([m, b]) => { if (a.left < b.right - 0.5 && b.left < a.right - 0.5) out.push(`${n} (${box(a)}) and ${m} (${box(b)}) over each other`); }));
+  const se = shown.find(([n]) => n === 'the search'), target = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--target'));
+  if (!se) out.push('no search'); else if (se[1].width < target - 0.5) out.push(`the search ${Math.round(se[1].width)} px wide, under ${target} px`);
+  const s = document.querySelector('.topbar .search').getBoundingClientRect();
+  return { out, at: [s.left + Math.min(s.width / 2, 22), s.top + s.height / 2] };
+})()"""
+CT_TOPBAR_OPEN = """new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+  const out = [], i = document.getElementById('search-input'), r = i.getBoundingClientRect(), W = innerWidth;
+  if (document.activeElement !== i) { ok([`a tap on the search: the focus on ${document.activeElement?.id || document.activeElement?.tagName}, not its field`]); return; }
+  if (getComputedStyle(i).opacity !== '1' || r.width < 100) out.push(`its field ${Math.round(r.width)} px wide${getComputedStyle(i).opacity !== '1' ? ', not shown' : ''}`);
+  if (r.left < -0.5 || r.right > W + 0.5) out.push(`its field at x ${Math.round(r.left)}–${Math.round(r.right)} on a ${W} px screen`);
+  const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+  if (top !== i && !i.contains(top)) out.push(`${top?.id || top?.className || 'nothing'} over its field`);
+  ok(out);
+})))"""
 # a button's label in Finnish at 200 %: it wraps inside its button, which stays in its card (the top bar at 200 % is #375's)
 CT_WRAP = r"""(async () => {""" + CT_HELP + r"""
   const p = polku.planner;
@@ -9671,9 +9694,25 @@ def controls(chrome):
         finally:
             pg.close()
 
+    # #375: the top bar at 200 % (CT_TOPBAR), on a 390 and a 360 phone
+    def topbar(pg, name):
+        r = pg.js(CT_TOPBAR)
+        fails.extend(f'{name}, the top bar: {f}' for f in r['out'])
+        pg.quick_tap(*r['at'])
+        fails.extend(f'{name}, the top bar: {f}' for f in pg.js(CT_TOPBAR_OPEN))
+        key(pg, 'Escape', 'Escape', 27)
+        fails.extend(f'{name}, the top bar after Escape: {f}' for f in pg.js(CT_TOPBAR)['out'])
+
+    pg = page(180, 370, True)
+    try:
+        topbar(pg, '360x740 at 200 %')
+        fails += [f'360x740 at 200 % console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     # 200 % on a phone: a button's label in Finnish (#373), a point's long Finnish name and a row with a value (#384)
     pg = page(195, 422, True)
     try:
+        topbar(pg, '390x844 at 200 %')
         fails += [f'390x844 at 200 %: {f}' for f in pg.js(CT_WRAP)]
         if not pg.js(PC_ROUTE, timeout=30000):
             fails.append('390x844 at 200 %: no route')
@@ -9726,7 +9765,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
-    ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), words at 4.5:1 (#376), Plan in green, a press that answers'),
+    ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),

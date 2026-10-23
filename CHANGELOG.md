@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: the search works on a phone zoomed to 200 % ([#375](https://github.com/TommiContursi/Polku/issues/375))
+
+On a phone zoomed to 200 %, the search box was squeezed to a few pixels between the logo and the sport, so you couldn't see or tap into it, and **Settings** ran off the screen. Now, in a window that narrow, the search is its magnifier, and a tap on it opens the field across the top bar, with its results under it. **Escape**, a result or a tap elsewhere folds it back. On the narrowest screens the logo steps aside, so the search, the sport and **Settings** all fit.
+
 ### Fixed: the profile stays readable when it's narrow or the route has many points ([#242](https://github.com/TommiContursi/Polku/issues/242))
 
 On a phone zoomed to 200 %, the profile's **Colour by** and **On map** were printed over each other, and its distance labels ran together. Now **Colour by** and its choice take rows of their own, with **On map** under them, and a distance label that would touch the one before it is left out. On a long route, the profile's marks no longer pile up on top of each other. A point too near the mark before it to tell apart is left out there, and the start and the end always show. A climb's tag (**↑1**) that would cover another is left out, the biggest climbs first, and every tag stays whole on the profile.
