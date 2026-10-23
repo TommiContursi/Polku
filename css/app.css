@@ -1693,6 +1693,18 @@ body.dropping .drop-hint { display: flex; }
   .stat-value { font-size: 17px; }
   #profile-canvas { height: 120px; }
 }
+/* a narrow window (a phone at 150 % or 200 %): the search is its icon, a target wide, and a tap on it opens the field
+   across the top bar, its results under it, until it closes (Escape, a result, a tap elsewhere); narrower still, the
+   logo steps aside, as the search, the sport and Settings take all the room (#375) */
+@media (max-width: 314px) {
+  .search:not(:focus-within):not(:has(> #search-results:not([hidden]))) { flex: none; width: var(--target); padding: 0; justify-content: center; margin-right: auto; } /* (the sport and Settings at the right, as on every phone) */
+  .search:not(:focus-within):not(:has(> #search-results:not([hidden]))) input { position: absolute; inset: 0; width: 100%; opacity: 0; }
+  .search:is(:focus-within, :has(> #search-results:not([hidden]))) { position: absolute; inset: 0 0 auto; z-index: 1; }
+}
+@media (max-width: 234px) {
+  .topbar { gap: var(--space-4); }
+  .topbar .brand { display: none; }
+}
 
 /* the quick layer drawer on phones: a sheet from the bottom over the planner's peek, clear of the home
    indicator, never taller than the room below the top bar; it slides up in 260 ms and down in 180 ms

@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: the search works on a phone zoomed to 200 % ([#375](https://github.com/TommiContursi/Polku/issues/375))
+
+On a phone zoomed to 200 %, the search box was squeezed to a few pixels between the logo and the sport, so you couldn't see or tap into it, and **Settings** ran off the screen. Now, in a window that narrow, the search is its magnifier, and a tap on it opens the field across the top bar, with its results under it. **Escape**, a result or a tap elsewhere folds it back. On the narrowest screens the logo steps aside, so the search, the sport and **Settings** all fit.
+
 ### Check says how serious and how sure, and shows each warning on the route ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 Heads-up is now Check's three groups, and each warning is marked where it is on the route.
