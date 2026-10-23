@@ -8404,7 +8404,7 @@ START_LIB = """(() => {
     const f = free();
     for (const c of r.parts) for (let i = 0; i < c.length; i += 3) {
       const q = map.project(c[i]);
-      if (q.x > f.left + 20 && q.x < f.right - 20 && q.y > f.top + 20 && q.y < f.bottom - 20 && onMap(q.x, q.y) && map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], { layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key)) { T.spotAt = { q, ll: c[i] }; return { x: q.x, y: q.y }; }
+      if (q.x > f.left + 20 && q.x < f.right - 20 && q.y > f.top + 20 && q.y < f.bottom - 20 && onMap(q.x, q.y) && map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], { layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key)) { T.spotAt = { q, ll: c[i], list: M().state, gen: M().gen }; return { x: q.x, y: q.y }; }
     }
     err('no spot on the other marked route in view');
     return null;
@@ -8414,7 +8414,9 @@ START_LIB = """(() => {
     // (and how far the spot had moved by then: the map moving after it was read would put the tap beside the line)
     const moved = () => { const a = T.spotAt, q = a && map.project(a.ll); return q ? `${Math.round(Math.hypot(q.x - a.q.x, q.y - a.q.y))} px` : '?'; };
     const opened = $('.maplibregl-popup') ? 'a map card' : $('.menu-pop') ? `a menu (${txt($('.menu-pop')).slice(0, 40)})` : 'no card or menu';
-    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key} (the spot moved ${moved()} since it was read, ${opened}, ${T.sheetNow()})`);
+    // (a list loading at the tap puts the earlier pick back when it comes in: #427)
+    const list = !T.spotAt ? '?' : T.spotAt.list === 'loading' ? 'the list still loading when the spot was read' : T.spotAt.gen !== M().gen ? 'the list asked again after the spot was read' : 'the list in';
+    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key} (${list}, #427; the spot moved ${moved()}, ${opened}, ${T.sheetNow()})`);
     if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
     return T.errs.splice(0);
   };
