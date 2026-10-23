@@ -32,19 +32,15 @@ The one list of what's decided, what waits for the user and what's next. The oth
 - *2026-10-22, the order:* the rest of 25d in three PRs, one a journey, after the design system's values and controls (#382), so each card, list and colour is written once, against the final controls. The order is under **Next**, and why under "The order, and why".
 - *2026-10-23, the planner's tabs (#424):* what goes in Route, Check and Go, and How you go redesigned, are built in Journey D with the list in sections, so the Route tab is rebuilt once.
 - *2026-10-23, in Journey C (#416):* warnings can be marked read: ✕ on the peek's row (all it counts, with Undo), Got it on every item's card, All read on each group's heading in Check; kept with the route on this device, not in share links; read items stay in Check and on the map.
+- *2026-10-24, three of Journey D's choices (#437, the map cards' Revision 6):* **Avoid this spot** on every card with a spot on the line, the route's card too (#364, B); **On the profile** on the route's card too (#364, B); **The whole route ›**, one row on the route's card opening what ⋯ has (#90, B); **Back to start** first on the start's card while drawing (#334, A).
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
 - **When the design system starts** (#382, parked with its Hand-over). 25d's next PR waits for its values and controls (step 3 below).
-- **Before Journey D, four choices, drawn and waiting for the user** (2026-10-23), so Journey D touches the cards and the Route tab once. Each is drawn with its options, the recommended one marked, earlier versions kept:
-  - #364, #90 and #334 in the map cards' mock-up, **Cards: Revision 6** (Revision 5 with five switches) and its [section 7](mockups/issue-345-map-cards.html#s7), each option side by side:
-    - When you leave and go on after a night: A, a few fixed hours (Revision 5); **B, recommended:** Now, today or tomorrow, then the phone's own time field inside the app's one stepper, − and + in quarter hours [r6-leave-a, r6-leave-b, r6-night-a, r6-night-b].
-    - Avoid this spot: A, as Revision 5; **B, recommended:** on every card with a spot on the line, the route's card too; C, a point's card too [r6-route-a, r6-route-b, r6-point-c].
-    - On the profile: A, as Revision 5; **B, recommended:** the route's card too, zooming the profile to the stretch as today; C, a point's card too [the same frames].
-    - The whole route (#90): A, ⋯ only, and #90 closes; **B, recommended:** one row, The whole route ›, opening what ⋯ has; C, #90's four rows [r6-whole-a, r6-whole-b, r6-whole-menu, r6-whole-c].
-    - The start while drawing (#334): **A, recommended:** Back to start first on the start's card; B, a tap on the start closes the loop, with Undo [r6-start-a, r6-start-tap].
-  - #424 in the planner's mock-up, [section E](mockups/phase-24-planner.html#se) and its **Tabs** switch: A, the tabs as they are; **B, recommended:** the strip of Hardest climb, Speed and Style at Route's top, How you go a step of its own (the route style, your speed, and where the time goes, from Go), Check for what's on the way, Go for setting off (On the map's marks move there from Check) [tabs-route-a and -b, tabs-check-a and -b, tabs-go-a and -b, tabs-how-a and -b].
-  - Why each is recommended, with links to the frames, is in the PR that drew them.
+- **Before Journey D, two choices, redrawn and waiting for the user** (2026-10-24), so Journey D touches the cards and the Route tab once. Each keeps A and B as drawn on 2026-10-23, with a new C from the user's notes (#437):
+  - When you leave and go on after a night (#364, #159), in the map cards' mock-up, **Cards: Revision 6**, [section 7a](mockups/issue-345-map-cards.html#s7): A, a few fixed hours (Revision 5); B, Now, today or tomorrow, with the stepper; **C, recommended:** one row, **Leave · Now ›**, opening the phone's own date and time picker for any day; only the start has a date and the rest counts from it; a night is **Stay · 1 night** with the stepper, then **Go on at · 07:00 ›**; No forecast yet past its reach [r6-leave-c, r6-leave-c-set, r6-leave-c-far, r6-night-c, r6-night-c2].
+  - The planner's tabs (#424), in the planner's mock-up, [section E](mockups/phase-24-planner.html#se), **Tabs** switch: A, as they are; B, the strip at Route's top; **C, recommended:** no strip; **How you go ›** and **Your speed ›** at Route's top, each a step of its own; Check and Go with every section the app has, the hardest climb marked in Climbs, Go opening with **Leave ›**, There at and where the time goes; the marks on the map in a Layers group for the route [tabs-c-route, tabs-c-how, tabs-c-speed, tabs-c-check, tabs-c-climbs, tabs-c-go, tabs-c-go-wx, tabs-c-layers].
+  - Why each is recommended, with links to the frames, is in #437.
 
 **Next**
 1. Done: 1a, a point's card (#352, merged 2026-10-22).
@@ -56,7 +52,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
    - The controls that the cards, Check and the list use: #356 (one row, the chips, the switches, the headings and titles, the stepper as one box) and #376 (the warning and difficulty colours, Check's count), with #373 (labels that wrap).
    - The map's colours read from the CSS (its step 3), since part 3 adds map layers.
 4. **Journey C, one PR:** part 2 (Check in three groups) and part 3 (the warning on the route).
-5. **Journey D, one PR,** after the four choices above: 1b (the route's card, a stretch's card, Edit this stretch, What's here's groups) and part 4 (the list in sections, Reorder), with End everywhere (#353), the planner's tabs and How you go (#424), and what's chosen for #364, #90 and #334.
+5. **Journey D, one PR,** after the two choices above: 1b (the route's card, a stretch's card, Edit this stretch, What's here's groups) and part 4 (the list in sections, Reorder), with End everywhere (#353), the planner's tabs and How you go (#424), and what's chosen for #364, #90 and #334.
 6. **The map's cards, one PR:** parts 5 and 6. Holds and keys, the spot's and a place's cards, What's here in levels, Share a spot, Weather here, and the map's own cards on `CardHost`. It fixes #233 and #345.
 7. **Then** the rest of Phase 25's issues where "Where the other issues go" puts them, the design system's later steps (#382: the route on the map, outdoor contrast), and its second audit (#379).
 8. **Before the milestone closes:** #365, the finished planner used in the browser as a newcomer and as an expert, with everything it finds fixed; then the retro.
