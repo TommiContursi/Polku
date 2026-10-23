@@ -1049,6 +1049,7 @@ export class WeatherOverlay {
       this.infoEl.hidden = !this.legendKey;
       const ll = this.pointerLL || this.map.getCenter().toArray();
       const s = this.sample(ll);
+      this.nowEl.style.setProperty('--tl-lines', this.on.snow ? 4 : 3); // (its room from the start: css/app.css, #301)
       if (!s) {
         this.nowEl.innerHTML = `<small>${this.loading ? 'Loading forecast…' : this.status || 'No forecast here'}</small>`;
         this.nowEl.title = this.nowEl.textContent; // (a long note shows three lines)

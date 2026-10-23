@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-24
+
+### Fixed: the timeline keeps its height when its forecast comes in ([#301](https://github.com/TommiContursi/Polku/issues/301))
+
+On a phone with the weather timeline open, the timeline grew a little when its forecast came in, or came in again after you moved the map, and the map's buttons above it moved up with it: 3 px, or 20 px with **Snow depth** on. Now the timeline keeps the room its reading needs from the start, so the buttons stay where your finger expects them.
+
 ## 2026-10-23
 
 ### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))
