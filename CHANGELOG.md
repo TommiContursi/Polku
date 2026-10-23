@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-23
+
+### Fixed: Polku finishes opening when a map tile fails to load ([#393](https://github.com/TommiContursi/Polku/issues/393))
+
+When the last map tile Polku waited for failed to load, for example a water depth tile while Traficom's service had trouble, Polku didn't finish opening until you moved the map. Until then your saved route, a shared route and the planner you left open didn't come back. Now Polku opens once the map has every tile it could get, and a tile that failed only leaves its piece of the map empty.
+
 ## 2026-10-22
 
 ### Fixed: red words are easier to read in dark mode ([#370](https://github.com/TommiContursi/Polku/issues/370))
