@@ -588,7 +588,7 @@ function sportList(menu) {
     h('p', { class: 'act-lead' }, CRAFT_NOTE));
   menu.replaceChildren(h('div', { class: 'act-head', 'aria-hidden': 'true' }, 'Sport'),
     h('p', { class: 'act-lead', id: 'act-lead' }, route.length ? `Your route: ${planner.sportsLabel()}, ${planner.legs.length} ${planner.legs.length === 1 ? 'leg' : 'legs'}` : SPORT_LEAD),
-    list, craft);
+    list, ...(craft ? [craft] : [])); // (a null would be the word "null", #374)
 }
 // one tap with no route or for the route's own sport; otherwise the menu asks: The whole route, or Only the legs
 // you draw next. Keep, ‹ Sports and a tap outside change nothing.

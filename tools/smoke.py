@@ -5325,6 +5325,12 @@ def sport_menu(chrome):
         move((x, y))
         time.sleep(0.3)
         state(pg, f'{name}, the mouse over the pill', True)
+        # no word "null" under Swim (#374), and Paddle's crafts under it
+        m = pg.js("(() => { const m = document.querySelector('#activity-bar .act-menu'); return { text: m.textContent, crafts: m.querySelectorAll('.act-craft .act-chip').length }; })()")
+        if 'null' in m['text']:
+            fails.append(f'{name}: the menu says "null": …{m["text"][-60:]}')
+        if m['crafts'] != (3 if sport == 'paddle' else 0):
+            fails.append(f"{name}: the menu has {m['crafts']} crafts")
         click((x, y))
         state(pg, f'{name}, a click after the hover', True)
         click((x, y))
