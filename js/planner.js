@@ -4421,10 +4421,11 @@ export class Planner {
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
-      // the route's numbers came in just after it was framed and wrap onto a second line (#242): the
-      // peek is taller now, so frame it once more, unless the map has been moved since
+      // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
+      // to read came once a source didn't answer (25d part 3, which can take a while): the peek is taller now, so
+      // frame it once more, unless the map has been moved or framed on something else since, or a card is open
       const f = this.fitAt;
-      if (f && f.peek !== peek && this.panel.dataset.state === 'peek' && Date.now() - f.t < 5000) { this.fitAt = null; requestAnimationFrame(() => this.fitRoute({ animate: false })); }
+      if (f && f.peek !== peek && this.panel.dataset.state === 'peek' && !this.cards.current && Date.now() - f.t < 60000) { this.fitAt = null; requestAnimationFrame(() => this.fitRoute({ animate: false })); }
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
     };
     this.measureSheet = sizes;
@@ -4557,6 +4558,7 @@ export class Planner {
   /** Frame bounds [w, s, e, n] in the map the planner leaves free. A full sheet leaves no map
    *  to frame in, so it comes down to half first (not remembered), unless `lower` is false. */
   frame(b, { lower = true, ...opts } = {}) {
+    this.fitAt = null; // (framed on something: fitRoute() says again when it's the whole route)
     if (lower && this.active && this.layout() === 'sheet' && this.panel.dataset.state === 'full') this.setSheetState('half', { remember: false });
     this.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: this.viewPadding(), maxZoom: 16, ...opts });
   }

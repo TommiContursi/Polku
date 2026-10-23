@@ -1160,7 +1160,8 @@ CHECK_ROWS = """
     const r = checkRows().find((x) => re.test(x.textContent));
     if (!r) return null;
     r.click();
-    await new Promise((ok) => setTimeout(ok, 400));
+    for (let k = 0; k < 50 && !(polku.planner.cards.current && polku.planner.cards.current.kind === 'item'); k++) await new Promise((ok) => setTimeout(ok, 100));
+    await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(ok, 200)))); // (its stretch lit in the frame after)
     return polku.planner.cards.current && polku.planner.cards.current.kind === 'item' ? polku.planner.cards.box : null;
   };
   const closeCard = async () => { polku.planner.cards.close(); await new Promise((ok) => setTimeout(ok, 200)); };
@@ -1300,6 +1301,7 @@ DETOUR = """(async () => {
   if (all.some((t) => /moved .* off a way marked private/.test(t))) errs.push('a moved-point row as well as the short cut');
   // its card draws the short cut
   await cardOf(/Goes round/);
+  for (let k = 0; k < 30 && !((m.getSource('accessCut') && (await m.getSource('accessCut').getData()).features.length)); k++) await wait(100);
   const src = m.getSource('accessCut'), cut = src ? await src.getData() : { features: [] };
   if (!cut.features.length || cut.features[0].geometry.coordinates.length < 2) errs.push('the short cut isn\\'t drawn');
   await closeCard();
@@ -2211,8 +2213,13 @@ ONROUTE_OPEN = """(async (sel, text) => {
   const r = el.getBoundingClientRect();
   return [errs, [r.left + r.width / 2, r.top + r.height / 2]];
 })"""
-ONROUTE_CARD = """((title, of, opts = {}) => {
-  const errs = [], p = polku.planner, c = p.cards.current, box = p.cards.box;
+ONROUTE_CARD = """(async (title, of, opts = {}) => {
+  const errs = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // (the card, and its stretch lit in the next frame: late on a slow machine, so waited for)
+  const shown = () => p.cards.current && p.cards.current.kind === 'item' && p.cards.box && p.cards.box.querySelector('.way-hint b')?.textContent.startsWith(title);
+  for (let k = 0; k < 60 && !shown(); k++) await wait(100);
+  for (let k = 0; k < 30 && !(polku.map.getSource('routeLit').serialize().data.features || []).length; k++) await wait(100);
+  const c = p.cards.current, box = p.cards.box;
   if (!c || c.kind !== 'item' || !box) return [`no item card for ${title} (${c ? c.kind : 'none'})`];
   const t = box.querySelector('.way-hint').textContent.replace(/\\s+/g, ' ').trim();
   if (!t.startsWith(title)) errs.push(`the card says "${t}", not ${title}`);
@@ -2304,10 +2311,10 @@ def onroute(chrome):
         fails += errs
         if at:
             pg.tap(*at)
-            time.sleep(1.0)
+            pg.js("(async () => { for (let k = 0; k < 60 && !polku.planner.cards.current; k++) await new Promise((r) => setTimeout(r, 100)); return true; })()")
             n0 = pg.js("polku.planner.points.length")
             pg.tap(195, 200)
-            time.sleep(1.0)
+            pg.js("(async () => { for (let k = 0; k < 30 && polku.planner.cards.current; k++) await new Promise((r) => setTimeout(r, 100)); return true; })()")
             if pg.js("!!polku.planner.cards.current"):
                 fails.append('a tap on the map left the item card open')
             if pg.js("polku.planner.points.length") != n0:
@@ -7972,7 +7979,8 @@ RV_LINE = """(() => {
   const map = polku.map, p = polku.planner, c = p.legs[0].result.coords, R = map.getCanvas().getBoundingClientRect();
   for (const t of [0.5, 0.4, 0.6, 0.3, 0.7]) {
     const q = map.project([c[0][0] + (c[1][0] - c[0][0]) * t, c[0][1] + (c[1][1] - c[0][1]) * t]), x = R.left + q.x, y = R.top + q.y;
-    if (document.elementFromPoint(x, y) === map.getCanvas()) return { x, y };
+    // (clear of a marker of Check's, drawn on the map: a tap there is the marker's, 25d part 3)
+    if (document.elementFromPoint(x, y) === map.getCanvas() && !(p.headAt && p.headAt(q, 24))) return { x, y };
   }
   return null; })()"""
 # what's on screen in the route's view, and whether it's what the plan says
