@@ -4,7 +4,7 @@
 import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, SURFACE_COLORS, GRADE_BANDS, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, SPORT_COLORS, ROUTE_COLORS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
-import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow } from './analysis.js';
+import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
 import { retryFailed as retryTerrainTiles } from './dem.js';
 import { detailsAlong } from './trails.js';
 import { iconUrl } from './icons.js';
@@ -133,7 +133,7 @@ function groupTrail(list) {
   const out = list.filter((w) => !w.group || by.get(w.group).length < 3);
   for (const [g, items] of by) {
     if (items.length < 3) continue;
-    out.push({ at: items[0].at, len: 0, text: `${GROUP_TEXT[g] || items[0].text} ×${items.length}`, note: items[0].note, kind: 'trail', icon: items[0].icon, lngLat: items[0].lngLat, items, osm: items[0].osm });
+    out.push({ at: items[0].at, len: 0, text: `${GROUP_TEXT[g] || items[0].text} ×${items.length}`, note: items[0].note, kind: 'trail', icon: items[0].icon, lngLat: items[0].lngLat, items, osm: items[0].osm, tier: items[0].tier, src: items[0].src });
   }
   return out;
 }
@@ -2084,7 +2084,7 @@ export class Planner {
   // access); a short cut joined to the leg by open paths isn't seen.
   detourWarnings(a) {
     const out = [];
-    const row = (o) => ({ len: 0, kind: 'access', ic: 'warn', noAvoid: true, osm: true, fix: 'Tagged wrong? Leave a note on OpenStreetMap', hide: 'Goes round', ...o });
+    const row = (o) => ({ len: 0, kind: 'access', ic: 'warn', noAvoid: true, osm: true, fix: 'Tagged wrong? Leave a note on OpenStreetMap', hide: 'Goes round', tier: 'look', src: OSM, ...o });
     const said = new Set(); // points whose move a short cut's row explains
     this.legs.forEach((leg, li) => {
       const sport = this.legSport(li);
@@ -2201,7 +2201,7 @@ export class Planner {
     const ll = this.points[0];
     const fmt = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const water = this.routeSports().some(isWater);
-    const out = [];
+    const out = [], src = { kind: 'calculated', by: 'the sun’s times' };
     for (const x of darkness(start, start + tAt[n - 1], ll)) {
       let i = 0;
       while (i < n - 1 && start + tAt[i] < x.from) i++;
@@ -2217,8 +2217,8 @@ export class Planner {
       for (let k = i + 1; k <= j; k++) if (((a.attr[k] || {}).tags || {}).lit === 'yes') litM += a.along[k] - a.along[k - 1];
       const lit = x.kind === 'dark' ? (litM >= 50 ? ` · ${fmtDist(litM)} of it lit` : ' · none of it lit, as far as OpenStreetMap says') : '';
       out.push(x.kind === 'twilight'
-        ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light' }
-        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${lit}${water ? ' · on the water a light is required after dark' : ' · take a light'}` });
+        ? { at: a.along[i], len, kind: 'dark', noAvoid: true, text: evening ? `After sunset (${fmt(x.sunFrom)}) for ${fmtDist(len)}` : `Before sunrise (${fmt(x.sunTo)}) for ${fmtDist(len)}`, note: evening ? 'twilight: light fading' : 'twilight: getting light', tier: 'look', src }
+        : { at: a.along[i], len, kind: 'dark', noAvoid: true, text: `In the dark for ${fmtDist(len)}`, note: `${evening ? `${already ? 'dark since' : 'dark from'} ${fmt(x.sunFrom)}` : `light from ${fmt(x.sunTo)}`}${lit}${water ? ' · on the water a light is required after dark' : ' · take a light'}`, tier: 'read', src });
     }
     return out;
   }
@@ -2268,6 +2268,7 @@ export class Planner {
   waterWarnings() {
     const out = [];
     const missing = new Set();
+    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' };
     this.legs.forEach((leg, i) => {
       const wr = leg.mode === 'water' && leg.status === 'ok' && leg.result && leg.result.water;
       if (!wr) return;
@@ -2277,13 +2278,13 @@ export class Planner {
         const at = base + e.at, len = e.len;
         if (e.kind === 'ship') {
           out.push(len > 600
-            ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn` }
-            : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn' });
-        } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going' });
-        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap' });
+            ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn`, tier: 'read', src: MAP }
+            : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn', tier: 'read', src: MAP });
+        } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going', tier: 'look', src: MAP });
+        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap', tier: 'look', src: MAP });
         else if (e.kind === 'rough') {
           const w = wr.wind;
-          out.push({ at, len, kind: 'water', hide: 'Rough water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast` : 'an estimate from the forecast' });
+          out.push({ at, len, kind: 'water', hide: 'Rough water', noAvoid: true, text: `Rough for a ${(CRAFT[wr.craft] || CRAFT.kayak).label.toLowerCase()}: waves up to about ${e.max.toFixed(1)} m`, note: w ? `${Math.round(w.speed)} m/s from the ${compass(w.dir)} over open water · an estimate from the forecast` : 'an estimate from the forecast', tier: 'read', src: WAVES });
         }
       }
     });
@@ -2367,23 +2368,25 @@ export class Planner {
     };
     const sum = (list) => list.reduce((t, x) => t + x.len, 0);
     const bikeAt = (i) => groupOf((a.attr[i] && a.attr[i].sport) || a.activity) === 'bike';
+    const FORECAST = { kind: 'estimate', by: 'the forecast' }, TAGS = { kind: 'map', by: 'winter tags' };
+    const read = { tier: 'read', src: FORECAST }, look = { tier: 'look', src: FORECAST }, readTags = { tier: 'read', src: TAGS }, lookTags = { tier: 'look', src: TAGS };
     if (winter && a.snow) {
       let lo = Infinity, hi = 0;
       for (let i = 1; i < n; i++) if (!water(i) && Number.isFinite(a.snow.cm[i])) { lo = Math.min(lo, a.snow.cm[i]); hi = Math.max(hi, a.snow.cm[i]); }
       if (hi >= 3) {
         const range = Math.round(lo) === Math.round(hi) ? `${Math.round(hi)} cm` : `${Math.round(Math.max(0, lo))}–${Math.round(hi)} cm`;
-        out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snow on the way: ${range}`, note: `the forecast's depth${a.snowSec >= 60 ? ` · slower going: about ${fmtDuration(a.snowSec)} more, in the time` : ''}${a.winterCls ? '' : ' · ploughed ways not known yet'}` });
+        out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snow on the way: ${range}`, note: `the forecast's depth${a.snowSec >= 60 ? ` · slower going: about ${fmtDuration(a.snowSec)} more, in the time` : ''}${a.winterCls ? '' : ' · ploughed ways not known yet'}`, ...look });
       }
     }
     // snowing while you're out
     if (winter && w.snowfall) {
       let cm = 0;
       for (let i = 1; i < n; i++) if (Number.isFinite(w.snowfall[i])) cm += (w.snowfall[i] * (tAt[i] - tAt[i - 1])) / 3600;
-      if (cm >= 2) out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snowing on the way: about ${Math.round(cm)} cm while you’re out`, note: 'tracks fill in and trails close up as it falls' });
+      if (cm >= 2) out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snowing on the way: about ${Math.round(cm)} cm while you’re out`, note: 'tracks fill in and trails close up as it falls', ...look });
     }
     // slippery: rain or sleet around freezing, on land
     const slip = stretches((i) => !water(i) && w.temp[i] >= -2 && w.temp[i] <= 1.5 && w.precip[i] >= 0.1);
-    if (sum(slip) >= 100) out.push({ at: a.along[slip[0].i0], len: sum(slip), kind: 'winter', ic: 'warn', noAvoid: true, text: `Slippery: rain or sleet around 0 °C for ${fmtDist(sum(slip))}`, note: 'water on ice is the worst: care on bridges, boardwalks and slopes; studded tyres if you have them' });
+    if (sum(slip) >= 100) out.push({ at: a.along[slip[0].i0], len: sum(slip), kind: 'winter', ic: 'warn', noAvoid: true, text: `Slippery: rain or sleet around 0 °C for ${fmtDist(sum(slip))}`, note: 'water on ice is the worst: care on bridges, boardwalks and slopes; studded tyres if you have them', ...read });
     // the cold, as it feels at your own speed (on land)
     let wc = Infinity, wcAt = 0;
     for (let i = 1; i < n; i++) {
@@ -2392,26 +2395,26 @@ export class Planner {
       const f = windChill(w.temp[i], w.speed[i], Math.min(40, kmh));
       if (f < wc) { wc = f; wcAt = i; }
     }
-    if (wc <= -27) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Frostbite risk: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · bare skin can freeze within half an hour: cover face and fingers' });
-    else if (wc <= -15) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Very cold: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · cover up, and keep a dry layer for stops' });
+    if (wc <= -27) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Frostbite risk: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · bare skin can freeze within half an hour: cover face and fingers', ...read });
+    else if (wc <= -15) out.push({ at: a.along[wcAt], len: 0, kind: 'cold', ic: 'temp', noAvoid: true, text: `Very cold: feels like ${Math.round(wc)} °C`, note: 'with the wind and your own speed · cover up, and keep a dry layer for stops', ...read });
     // the ways in winter (OSM's winter tags along the route)
     if (winter && a.winterCls) {
       const c = a.winterCls, cls = (k) => (i) => c[i] === k && !water(i);
       const closed = stretches(cls('closed'));
-      for (const x of closed.slice(0, 3)) if (x.len >= 20) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', osm: true, lngLat: a.pts[x.i0], text: `No access in winter: ${fmtDist(x.len)}`, note: 'marked closed to walking or cycling in winter (usually a ski track): Avoid routes round it' });
+      for (const x of closed.slice(0, 3)) if (x.len >= 20) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', osm: true, lngLat: a.pts[x.i0], text: `No access in winter: ${fmtDist(x.len)}`, note: 'marked closed to walking or cycling in winter (usually a ski track): Avoid routes round it', ...readTags });
       const groomed = stretches(cls('groomed'));
-      if (sum(groomed) >= 100) out.push({ at: a.along[groomed[0].i0], len: sum(groomed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[groomed[0].i0], text: `Beside a ski track for ${fmtDist(sum(groomed))}`, note: 'walking and cycling allowed: keep off the groomed track itself' });
+      if (sum(groomed) >= 100) out.push({ at: a.along[groomed[0].i0], len: sum(groomed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[groomed[0].i0], text: `Beside a ski track for ${fmtDist(sum(groomed))}`, note: 'walking and cycling allowed: keep off the groomed track itself', ...lookTags });
       const unploughed = stretches((i) => c[i] === 'unploughed' && bikeAt(i));
-      if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[unploughed[0].i0], text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike' });
+      if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[unploughed[0].i0], text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike', ...lookTags });
       const slowOpen = stretches((i) => c[i] === 'open3' && bikeAt(i) && a.snow && a.snow.cm[i] >= 5);
-      if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[slowOpen[0].i0], text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet' });
+      if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[slowOpen[0].i0], text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet', ...lookTags });
     }
     // on the water in the ice season
     const wet = stretches(water);
     if (sum(wet) > 0) {
       let cold = Infinity;
       for (let i = 1; i < n; i++) if (water(i)) cold = Math.min(cold, w.temp[i]);
-      if (set.on || cold <= 0.5) out.push({ at: a.along[wet[0].i0], len: sum(wet), kind: 'water', ic: 'warn', noAvoid: true, text: 'Ice season: the water may be frozen or partly frozen', note: 'Polku can’t see the ice: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked' });
+      if (set.on || cold <= 0.5) out.push({ at: a.along[wet[0].i0], len: sum(wet), kind: 'water', ic: 'warn', noAvoid: true, text: 'Ice season: the water may be frozen or partly frozen', note: 'Polku can’t see the ice: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked', ...read });
     }
     return out;
   }
@@ -2670,7 +2673,7 @@ export class Planner {
   iceWarnings(a) {
     let i0 = -1, len = 0;
     for (let i = 1; i < a.along.length; i++) if ((a.attr[i] || {}).ice) { if (i0 < 0) i0 = i - 1; len += a.along[i] - a.along[i - 1]; }
-    return i0 < 0 ? [] : [{ at: a.along[i0], len, kind: 'water', ic: 'warn', noAvoid: true, text: 'On the ice: Polku can’t see whether it holds', note: 'check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked' }];
+    return i0 < 0 ? [] : [{ at: a.along[i0], len, kind: 'water', ic: 'warn', noAvoid: true, text: 'On the ice: Polku can’t see whether it holds', note: 'check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked', tier: 'read', src: { kind: 'calculated', by: 'your route over the ice' } }];
   }
 
   // A new leg that is mostly water in a land sport (shore to shore across a lake), or
@@ -3421,16 +3424,16 @@ export class Planner {
 
   // Heads-up from the stops: gear left behind, and a night too short to sleep
   stopWarnings(a) {
-    const out = [];
+    const out = [], src = { kind: 'calculated', by: 'your stops and times' };
     const sports = this.legs.map((_, i) => this.legSport(i));
     if (new Set(sports).size > 1) {
       for (const w of gearChecks({ sports, points: this.points, carry: (i) => this.carryAt(i), along: (i) => this.lengthTo(i), name: (i) => this.nameOf(i), label: (g) => this.gearLabel(g) })) {
-        out.push({ at: w.at, len: 0, kind: 'gear', ic: w.gear === 'bike' ? 'bike' : 'paddle', noAvoid: true, text: w.text, note: w.note });
+        out.push({ at: w.at, len: 0, kind: 'gear', ic: w.gear === 'bike' ? 'bike' : 'paddle', noAvoid: true, text: w.text, note: w.note, tier: 'look', src });
       }
     }
     for (const w of a.waits || []) {
       if (!isNight(w.stop) || w.rest >= 5 * 3600) continue;
-      out.push({ at: w.at, len: 0, kind: 'dark', hide: 'Short night', ic: 'moon', noAvoid: true, text: `A short night at ${this.nameOf(w.i)}: ${fmtDuration(w.rest)}`, note: `you’d get there ${this.clockOf(w.arrive)} and go on at ${hhmm(w.stop.on)}` });
+      out.push({ at: w.at, len: 0, kind: 'dark', hide: 'Short night', ic: 'moon', noAvoid: true, text: `A short night at ${this.nameOf(w.i)}: ${fmtDuration(w.rest)}`, note: `you’d get there ${this.clockOf(w.arrive)} and go on at ${hhmm(w.stop.on)}`, tier: 'look', src });
     }
     return out;
   }

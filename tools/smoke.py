@@ -1843,6 +1843,109 @@ def access(chrome):
     return not fails
 
 
+# Check in three groups (25d part 2, #233): every Heads-up item says how serious it is (tier: 'read', Read before you
+# go, or 'look', Worth a look) and where it comes from (src: live, from the map, an estimate, calculated, the router),
+# set where it's made. Each maker of the plan's table is fed the smallest input that makes its items, without the
+# network: analysis.js's runs and access rows, the trail details, Fintraffic's road works, incidents, road weather and
+# counts (seeded, and its failure), the dark, the water's events, winter, the ice and the stops (each with a stand-in
+# planner of its own).
+HEADS = """(async () => {
+  const errs = [], A = await import(location.origin + '/js/analysis.js'), SUN = await import(location.origin + '/js/sun.js');
+  const p = polku.planner, n = 60, along = Float32Array.from({ length: n }, (_, i) => i * 10);
+  const pts = Array.from({ length: n }, (_, i) => [23.80 + i * 0.00019, 61.50]);
+  // one stretch of samples [i0, i1) with these tags (and mode), the rest plain
+  const attrs = (sport, runs) => Array.from({ length: n }, (_, i) => { const r = runs.find(([i0, i1]) => i >= i0 && i < i1); return { sport, tags: r ? r[2] : { highway: 'track' }, ...(r && r[3] ? { mode: r[3] } : {}) }; });
+  const flat = new Float32Array(n);
+  // expect: [text's start, tier, src.kind, src.by] for each item a maker made
+  const expect = (what, items, want) => {
+    for (const [re, tier, kind, by] of want) {
+      const w = items.find((x) => re.test(x.text));
+      if (!w) { errs.push(`${what}: no item ${re} in ${items.map((x) => x.text).join(' / ')}`); continue; }
+      if (w.tier !== tier || !w.src || w.src.kind !== kind || w.src.by !== by) errs.push(`${what}: ${w.text}: ${w.tier}, ${JSON.stringify(w.src)}, not ${tier}, ${kind} · ${by}`);
+    }
+    for (const w of items) if (!(w.tier === 'read' || w.tier === 'look') || !w.src || !w.src.by) errs.push(`${what}: ${w.text} has no group or source`);
+  };
+  // analysis.js: bike runs, then foot runs, then the rest
+  const bike = A.findWarnings(along, flat, attrs('mtb', [[0, 6, { highway: 'steps' }], [10, 16, { highway: 'path', bicycle: 'no' }], [20, 26, { highway: 'path', 'mtb:scale': '3' }], [30, 50, { highway: 'track', portage: 'yes' }], [50, 56, { route: 'ferry' }]]), pts, 'mtb');
+  expect('findWarnings, MTB', bike, [[/^Steps/, 'look', 'map', 'OpenStreetMap'], [/^Cycling not allowed/, 'read', 'map', 'OpenStreetMap'], [/^Technical trail S3/, 'look', 'map', 'OpenStreetMap'], [/^Carry/, 'look', 'map', 'OpenStreetMap'], [/^Ferry/, 'look', 'map', 'OpenStreetMap']]);
+  const steep = Float32Array.from({ length: n }, (_, i) => (i < 20 ? 20 : i < 40 ? -25 : 0));
+  expect('findWarnings, steep', A.findWarnings(along, steep, attrs('mtb', []), pts, 'mtb'), [[/^Steep climb/, 'look', 'estimate', 'the terrain model'], [/^Steep descent/, 'look', 'estimate', 'the terrain model']]);
+  expect('findWarnings, hike', A.findWarnings(along, Float32Array.from({ length: n }, (_, i) => (i < 20 ? 30 : 0)), attrs('hike', [[30, 40, { highway: 'path', sac_scale: 'alpine_hiking' }], [40, 60, { highway: 'path', access: 'no' }]]), pts, 'hike'),
+    [[/^Very steep/, 'look', 'estimate', 'the terrain model'], [/^Alpine terrain/, 'read', 'map', 'OpenStreetMap'], [/^Marked no access/, 'read', 'map', 'OpenStreetMap']]);
+  expect('findWarnings, road', A.findWarnings(along, flat, attrs('road', [[0, 20, { highway: 'track', surface: 'gravel' }], [20, 40, { highway: 'path', foot: 'no', access: 'private' }], [40, 60, {}, 'line']]), pts, 'road'),
+    [[/^Unpaved/, 'look', 'map', 'OpenStreetMap'], [/^Marked private/, 'look', 'map', 'OpenStreetMap'], [/^Straight line/, 'look', 'calculated', 'how you drew it']]);
+  expect('findWarnings, on foot', A.findWarnings(along, flat, attrs('hike', [[0, 20, { highway: 'path', foot: 'no' }]]), pts, 'hike'), [[/^Marked no walking/, 'read', 'map', 'OpenStreetMap']]);
+  // the trail details (from the router's tags here)
+  const td = { trail: new Uint8Array(n).fill(1), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: new Uint8Array(n), mud: new Uint8Array(n), tree: new Uint8Array(n), ford: new Uint8Array(n), boardwalk: new Uint8Array(n), points: [{ i: 50, at: 500, ll: pts[50], kind: 'barrier', barrier: 'fence' }] };
+  for (let i = 0; i < 12; i++) { td.vis[i] = 2; td.veg[i + 12] = 1; td.mud[i + 24] = 1; }
+  td.tree[40] = 1; td.ford[45] = 1;
+  expect('trailWarnings', A.trailWarnings({ along, pts, td, attr: attrs('mtb', []) }, { activity: 'mtb' }),
+    [[/^Hard to follow/, 'look', 'map', 'OpenStreetMap'], [/^Overgrown/, 'look', 'map', 'OpenStreetMap'], [/^Wet or muddy/, 'look', 'map', 'OpenStreetMap'], [/^Fallen trees/, 'look', 'map', 'OpenStreetMap'], [/^Ford/, 'look', 'map', 'OpenStreetMap']]);
+  // Fintraffic: its caches seeded for the route's box, so nothing is fetched
+  const S = polku.safety, road = { highway: 'primary' }, line = (c) => ({ type: 'LineString', coordinates: c });
+  const ra = { pts, along, attr: pts.map(() => ({ sport: 'mtb', tags: road })), tAt: new Float32Array(n), activity: 'mtb' };
+  const box = [pts[0][0], 61.5, pts[n - 1][0], 61.5], now = Date.now();
+  const mid = [pts[10], pts[20]], end = [pts[30], pts[40]];
+  S.incidents = { t: now - 60000, feats: [{ type: 'Feature', properties: { kind: 'incident', id: 'i1', title: 'Accident on the road' }, geometry: line(mid) }] };
+  for (const [x, y] of S.tilesFor(box, 8, 6)) { S.roadworkTiles.set(`${x}/${y}`, [{ type: 'Feature', properties: { kind: 'roadwork', id: 'w1', title: 'Teiskontie', details: '', start: '', end: '', phases: '[]' }, geometry: line(end) }]); S.roadworkTime.set(`${x}/${y}`, now - 120000); }
+  for (const [x, y] of S.tilesFor(box, 11, 24)) S.aadtTiles.set(`${x}/${y}`, [{ type: 'Feature', properties: { kind: 'aadt', aadt: 9000 }, geometry: line([pts[0], pts[n - 1]]) }]);
+  S.roadcond = { t: now };
+  const cond = S.roadcondFeatures;
+  S.roadcondFeatures = () => [{ type: 'Feature', properties: { id: 'c1', label: 'Slippery', reasons: 'ice', roadTemp: -2 }, geometry: line(mid) }];
+  try {
+    const hz = await S.hazardsAlong(ra, { activity: 'mtb', startSec: now / 1000 });
+    expect('hazardsAlong', hz, [[/^Road works/, 'read', 'live', 'Fintraffic'], [/^Traffic incident/, 'read', 'live', 'Fintraffic'], [/^Slippery/, 'read', 'estimate', 'Fintraffic’s road weather'], [/^Busy road/, 'look', 'estimate', 'Fintraffic’s yearly counts']]);
+    const w = hz.find((x) => /^Road works/.test(x.text));
+    if (w && w.src.at !== now - 120000) errs.push(`road works' time: ${w.src.at}, not when its tile answered (${now - 120000})`);
+    // no answer: not checked, never an empty list
+    const inc = S.loadIncidents;
+    S.incidents = null; S.loadIncidents = async () => {};
+    let threw = null;
+    try { await S.hazardsAlong(ra, { activity: 'mtb', startSec: now / 1000 }); } catch (e) { threw = e.message; }
+    if (!threw) errs.push('hazardsAlong with no answer from Fintraffic gave a list, as if nothing were there');
+    S.loadIncidents = inc;
+  } finally { S.roadcondFeatures = cond; S.incidents = null; S.roadcond = null; S.roadworkTiles.clear(); S.aadtTiles.clear(); }
+  // the dark: a ride from half an hour before sunset into the dark, with a planner of its own
+  const ll = [23.8, 61.5], sun = SUN.sunTimes(now / 1000, ll), tAt = Float32Array.from({ length: n }, (_, i) => i * 180);
+  const dk = p.darkWarnings.call({ startSec: () => sun.set - 1800, points: [ll], routeSports: () => ['mtb'] }, { tAt, along, attr: attrs('mtb', []) });
+  expect('darkWarnings', dk, [[/^After sunset/, 'look', 'calculated', 'the sun’s times'], [/^In the dark/, 'read', 'calculated', 'the sun’s times']]);
+  // the water: its events, along one leg
+  const events = [{ kind: 'ship', at: 100, len: 50, name: 'Näsijärvi fairway' }, { kind: 'ship', at: 200, len: 900 }, { kind: 'harbour', at: 300, len: 100 }, { kind: 'hazard', at: 350, len: 20 }, { kind: 'rough', at: 400, len: 100, max: 0.6 }];
+  const ww = p.waterWarnings.call({ legs: [{ mode: 'water', status: 'ok', result: { water: { events, missing: [], craft: 'kayak', wind: { speed: 7, dir: 225 } } } }], lengthTo: () => 0 });
+  const MAP = ['map', 'Väylävirasto and OpenStreetMap'];
+  expect('waterWarnings', ww, [[/^Crosses the Näsijärvi/, 'read', ...MAP], [/^Along a shipping lane/, 'read', ...MAP], [/^Through a harbour/, 'look', ...MAP], [/^Close to a marked rock/, 'look', ...MAP], [/^Rough for a (sea )?kayak/, 'read', 'estimate', 'the waves, from the forecast']]);
+  // winter: snow, snowing, the cold, slippery, the ways' winter tags, the ice season
+  const fill = (v) => new Float32Array(n).fill(v), F = ['estimate', 'the forecast'], T = ['map', 'winter tags'];
+  const cls = Array.from({ length: n }, (_, i) => ['closed', 'groomed', 'unploughed', 'open3'][Math.floor(i / 15)]);
+  const wa = { along, pts, tAt, activity: 'mtb', attr: attrs('mtb', []), snow: { cm: fill(15) }, winterCls: cls, snowSec: 0,
+    wind: { temp: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0 : -30)), precip: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0.5 : 0)), speed: fill(10), snowfall: fill(5), snow: fill(15) } };
+  const wt = { app: { winter: () => ({ on: true, setting: 'on' }) } };
+  expect('winterWarnings', p.winterWarnings.call(wt, wa), [[/^Snow on the way/, 'look', ...F], [/^Snowing on the way/, 'look', ...F], [/^Slippery/, 'read', ...F], [/^Frostbite risk/, 'read', ...F],
+    [/^No access in winter/, 'read', ...T], [/^Beside a ski track/, 'look', ...T], [/^Not ploughed/, 'look', ...T], [/^Opens slowly/, 'look', ...T]]);
+  expect('winterWarnings, very cold', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, wind: { ...wa.wind, temp: fill(-14), precip: fill(0), snowfall: fill(0), speed: fill(4) } }), [[/^Very cold/, 'read', ...F]]);
+  expect('winterWarnings, on the water', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, attr: attrs('paddle', [[0, 60, {}, 'water']]), wind: { ...wa.wind, temp: fill(0), precip: fill(0), snowfall: fill(0) } }), [[/^Ice season/, 'read', ...F]]);
+  expect('iceWarnings', p.iceWarnings({ along, attr: Array.from(along, () => ({ ice: true })) }), [[/^On the ice/, 'read', 'calculated', 'your route over the ice']]);
+  // the stops: the bike left behind, and a short night
+  const sp = ['mtb', 'hike', 'mtb'], four = [[23.80, 61.5], [23.81, 61.5], [23.83, 61.5], [23.84, 61.5]];
+  const st = p.stopWarnings.call({ legs: [{}, {}, {}], legSport: (i) => sp[i], points: four, carryAt: () => false, lengthTo: (i) => i * 1000, nameOf: (i) => `P${i}`, gearLabel: () => 'The bike', clockOf: () => '23:00' },
+    { waits: [{ i: 1, at: 1000, stop: { on: 420 }, rest: 3600, arrive: 0 }] });
+  expect('stopWarnings', st, [[/is still at/, 'look', 'calculated', 'your stops and times'], [/^A short night/, 'look', 'calculated', 'your stops and times']]);
+  return errs;
+})()"""
+
+
+def heads(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/61.50/23.81')
+        fails = pg.js(HEADS, timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Check's groups and sources" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Round trips on the water (phase 14): paddling loops off Kaivopuisto with the recorded
 # fairways and a fixed wind, no routing calls. They start from the water nearest the click,
 # come out near the length, carry little; "More loops" adds three in other directions; a
@@ -8504,6 +8607,7 @@ GROUPS = [
     ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
     ('access', [access], 'ways marked private or closed in Heads-up, from BRouter\'s tags and, when Valhalla stands in, the map\'s (mocked)'),
+    ('heads', [heads], 'Check in three groups (25d part 2): every Heads-up item\'s group and source, set where it\'s made (each maker fed its smallest input, no network)'),
     ('detour', [detour], 'a route that goes round a way marked private: Heads-up, the short cut, the moved points (mocked BRouter and tiles)'),
     ('shortcut', [shortcut], 'Short cuts ok: Polku\'s profile, Short cut from Heads-up, Undo, share links, a failed upload (mocked BRouter and tiles)'),
     ('otherways', [otherways], 'other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo, a point taken back at once (#351) (mocked BRouter)'),
