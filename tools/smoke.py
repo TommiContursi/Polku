@@ -8413,7 +8413,8 @@ START_LIB = """(() => {
     await until(() => M().list[M().on]?.key === T.other, 3000);
     // (and how far the spot had moved by then: the map moving after it was read would put the tap beside the line)
     const moved = () => { const a = T.spotAt, q = a && map.project(a.ll); return q ? `${Math.round(Math.hypot(q.x - a.q.x, q.y - a.q.y))} px` : '?'; };
-    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key} (the spot moved ${moved()} since it was read, ${T.sheetNow()})`);
+    const opened = $('.maplibregl-popup') ? 'a map card' : $('.menu-pop') ? `a menu (${txt($('.menu-pop')).slice(0, 40)})` : 'no card or menu';
+    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key} (the spot moved ${moved()} since it was read, ${opened}, ${T.sheetNow()})`);
     if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
     return T.errs.splice(0);
   };
@@ -8479,8 +8480,10 @@ START_LIB = """(() => {
     if ((await routed()) !== T.r0) err('a length opened the form with routing calls');
     if (!/From your first point/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
     T.loopTools('the round trip’s form');
+    // (once the sheet has grown to the form: as the view turns, the sheet is still the first point's, and a busy page
+    // measured it there, cut by the whole difference every time, #407)
+    await settled();
     T.whole('the round trip’s form');
-    if (T.errs.some((e) => / is cut by /.test(e))) { await settled(); await wait(1000); err(`DIAG (#407) once settled and 1 s later: ${T.sheetNow()}`); }
     window.holdRoutes();
     return T.at('.pl-way .rt-make');
   };
