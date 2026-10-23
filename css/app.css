@@ -879,10 +879,11 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .rt-dir-chev { display: inline-flex; flex: none; color: var(--muted); }
 .rt-dir:focus-within { outline: 2px solid var(--focus); outline-offset: 1px; }
 .rt-step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; } /* (wraps rather than running off at 200 %) */
-.rt-len { display: inline-flex; align-items: center; height: var(--target); border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--muted); font-size: 15px; }
-.rt-len .tool { width: var(--target); height: 100%; border-radius: 11px; color: var(--accent); }
-.rt-len input { width: 3.2em; height: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-numeral); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
-.rt-len input + span { margin: 0 6px; }
+.rt-len { display: inline-flex; align-items: center; max-width: 100%; height: var(--target); border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--muted); font-size: 15px; }
+.rt-len .tool { flex: none; width: var(--target); height: 100%; border-radius: 11px; color: var(--accent); }
+.rt-len input { flex: 0 1 3.2em; min-width: 0; width: 3.2em; height: 100%; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--font-numeral); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.rt-len input + span { flex: none; margin: 0 6px; }
+@container (max-width: 290px) { .rt-len input { font-size: var(--font-number); } } /* (a narrow card or sheet, 200 %: the box stays in it) */
 .rt-len input:focus { outline: none; }
 .rt-len:has(input:focus) { outline: 2px solid var(--focus); outline-offset: 1px; }
 .rt-start { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; }
