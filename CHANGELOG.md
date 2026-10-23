@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-24
+
+### Fixed: the map stays put under your finger when the warnings come in ([#446](https://github.com/TommiContursi/Polku/issues/446))
+
+Just after the route was shown whole, the map could frame it again when the row of warnings came in, even while you were pressing the route to add a point or dragging a leg's handle. The press then missed the route, or the drag moved the map. Now a press on the map, or any change to the route, keeps the map where it is.
+
 ## 2026-10-23
 
 ### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))
