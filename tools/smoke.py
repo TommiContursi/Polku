@@ -2309,6 +2309,61 @@ def onroute(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
+    # the peek's row (part 3) [jc-peek]: in words, the red box while something is to read, the dashed one while only
+    # something wasn't checked; gone while Check is in sight; a tap shows the first item's card in the peek, with All in
+    # Check, and ✕ brings the peek back as it was
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        fails += pg.js("""(async () => {
+          const errs = [];
+        """ + CHECK_ROUTE + """
+          const row = () => { const r = p.els.readRow; return r && !r.hidden && r.offsetParent ? r : null; };
+          p.setTab('route'); p.setSheetState('peek');
+          await wait(500);
+          if (!row()) return ['no row in the peek with something to read'];
+          if (!row().classList.contains('danger') || !/^2 to read before you go\\s*Road works: Teiskontie and 1 more · 1 not checked$/.test(row().textContent.trim())) errs.push(`the row: ${row().className} "${row().textContent}"`);
+          const sum = p.els.row.getBoundingClientRect(), rr = row().getBoundingClientRect();
+          if (rr.bottom > sum.top + 1) errs.push('the row isn\\'t above the numbers');
+          p.reveal('warnings');
+          await wait(600);
+          if (row()) errs.push('the row shows with Check in sight');
+          p.setSheetState('peek');
+          await wait(500);
+          if (!row()) errs.push('the row didn\\'t come back at the peek');
+          p.setTab('route');
+          return errs;
+        })()""", timeout=90000)
+        at = pg.js("(() => { const r = polku.planner.els.readRow.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        pg.tap(*at)
+        time.sleep(1.0)
+        fails += card(pg, 'Road works: Teiskontie', 3, {'group': 'Read before you go', 'src': 'Live · Fintraffic'})
+        fails += pg.js("""(async () => {
+          const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+          if (!p.cards.box) return ['(no card)'];
+          if (!p.cards.box.querySelector('.heads-all')) errs.push('no All in Check on a card from the row');
+          p.cards.box.querySelector('.way-x').click();
+          await wait(800);
+          if (p.panel.dataset.state !== 'peek' || p.tab !== 'route') errs.push(`✕ brought back ${p.panel.dataset.state} at ${p.tab}, not the peek as it was`);
+          if (!p.els.readRow || p.els.readRow.hidden) errs.push('the row didn\\'t come back after ✕');
+          // only something not checked: the dashed box
+          p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
+          p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
+          p.renderWarnings();
+          if (!p.els.readRow.classList.contains('unk') || !/^1 not checked\\s*The forecast didn.t answer$/.test(p.els.readRow.textContent.trim())) errs.push(`the row with only Not checked: ${p.els.readRow.className} "${p.els.readRow.textContent}"`);
+          p.hideWarnKind({ key: 'roadwork' }, false);
+          // nothing to read and all checked: no row
+          window.wx501 = false;
+          await p.loadWind(p.analysis);
+          p.analysis.darkWarn = window.mine.filter((w) => w.tier === 'look');
+          p.hideWarnKind({ key: 'roadwork', label: 'Road works' });
+          if (!p.els.readRow.hidden && !p.headsUp().read.length && !p.headsUp().not.length) errs.push(`a row with nothing to read and all checked: "${p.els.readRow.textContent}"`);
+          p.hideWarnKind({ key: 'roadwork' }, false);
+          return errs;
+        })()""", timeout=60000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
     # a desktop, by mouse: beside the panel at its box, no ‹ ›, Escape closes it
     pg = chrome.page(1440, 900, False)
     try:
@@ -2335,6 +2390,18 @@ def onroute(chrome):
               if (p.cards.current) errs.push('Escape left the card open');
               if (document.querySelector('[data-sec=warnings] [aria-current="true"]')) errs.push('the box stayed lit');
               if ((polku.map.getSource('routeLit').serialize().data.features || []).length) errs.push('the stretch stayed lit');
+              // the row at the panel's top, from the Route tab: Check and the card together [jc-desk, jc-desk-sel]
+              p.setTab('route');
+              await wait(200);
+              const row = p.els.readRow;
+              if (!row || row.hidden || !row.offsetParent) return [...errs, 'no row at the top of the panel'];
+              row.click();
+              await wait(600);
+              const box = [...document.querySelectorAll('[data-sec=warnings] .tier-read .warn-row')].find((r) => /Road works/.test(r.textContent));
+              if (p.tab !== 'check' || !box || box.getAttribute('aria-current') !== 'true') errs.push(`the row: ${p.tab}, its box ${box ? box.getAttribute('aria-current') : 'none'}, not Check with the box lit`);
+              if (!document.querySelector('.card-beside .card')) errs.push('the row\\'s card isn\\'t beside the panel');
+              if (!row.hidden && row.offsetParent) errs.push('the row shows with Check in sight');
+              p.cards.close();
               return errs;
             })()""")
         fails += [f'console: {e[:160]}' for e in pg.errors()]

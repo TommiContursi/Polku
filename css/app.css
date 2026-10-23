@@ -1381,6 +1381,9 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .looked li small { margin-left: auto; color: var(--muted); text-align: right; }
 .looked p { margin: 10px 0 0; }
 .checks .hidden-kinds { padding-top: 10px; }
+/* the peek's row (25d part 3) [jc-peek, jc-desk]: above the numbers, in the warning box */
+.pl-readrow { margin: 2px 0 8px; }
+.pl-readrow > span:first-child { align-self: center; }
 /* an item's card (25d part 3) [r-item]: its group's mark, where it comes from, its note, ‹ › along the route */
 .heads-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid; font-size: 16px; font-weight: 800; }
 .heads-mark.read { color: var(--danger); background: var(--danger-soft); }

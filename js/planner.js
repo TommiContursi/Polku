@@ -3699,7 +3699,9 @@ export class Planner {
     this.els.said = h('span', { class: 'sr-only', role: 'status' }); // Done and Edit, said
     this.els.way = this.els.loopBox = h('div', { class: 'pl-way', role: 'region', 'aria-label': 'Start a route', hidden: true });
     this.els.card = h('div', { class: 'card-peek', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.row, this.els.way), this.els.said);
+    // the peek's row: what to read before you go, and what wasn't checked (25d part 3)
+    this.els.readRow = h('button', { type: 'button', class: 'warn-row pl-readrow', hidden: true, onclick: () => this.openFromRow() });
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.readRow, this.els.row, this.els.way), this.els.said);
     // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, at
     // its spot elsewhere (js/card.js, 25d)
     this.cards = new CardHost(this.map, {
@@ -3887,6 +3889,7 @@ export class Planner {
       if (this.layout() === 'sheet' && (st === 'peek' || st === 'profile')) this.setSheetState('half');
       else if (this.layout() === 'side' && st === 'min') this.setSheetState('open');
     }
+    this.renderReadRow(); // (gone while Check is in sight)
   }
 
   // The profile at its size, or smaller (yours, kept)
@@ -4352,6 +4355,7 @@ export class Planner {
     this.els.min.title = folded ? 'Show the details' : lay === 'side' ? 'Minimise' : 'Fold down to the summary';
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { peek: 'Show more', profile: 'Drag up for the details, down for the map', half: 'Drag up for everything, down for the profile', full: 'Drag down for the map' }[st] || '';
+    this.renderReadRow(); // (gone while Check is in sight)
     if (st !== 'peek' && st !== 'min') requestAnimationFrame(() => this.chart.draw());
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
   }
@@ -5663,9 +5667,10 @@ export class Planner {
     const a = this.analysis;
     const box = this.els.warnings;
     box.replaceChildren();
-    const H = this.headsUp(a);
+    const H = this.heads = this.headsUp(a);
     this.headsList = this.itemsAlong(H);
     this.renderBadge(H);
+    this.renderReadRow();
     if (!a) return;
     this.setSection('warnings', { count: H.read.length + H.look.length + H.not.length });
     const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
@@ -5708,6 +5713,36 @@ export class Planner {
         ...[...H.hidden].map(([k, n]) => h('button', { type: 'button', class: 'on-chip', title: 'Show these in Check again', 'aria-label': `Show “${hidden[k]}” in Check again`, html: `<span>${escapeHtml(hidden[k])}${n > 1 ? ` ×${n}` : ''}</span>${icon('close', 12)}`, onclick: () => this.hideWarnKind({ key: k }, false) }))));
     }
     if (open) this.cards.refresh(); // (its "2 of 5", or closed when it's gone)
+  }
+
+  // The peek's row [jc-peek, jc-desk]: what to read before you go, else what wasn't checked, in words, in the warning
+  // box; a tap shows the first of them on the route. Not while Check is in sight (a phone's sheet above its peek, a
+  // desktop's Check tab); an item's card in the peek takes the head (.carded).
+  renderReadRow() {
+    const el = this.els.readRow, H = this.heads;
+    if (!el) return;
+    const n1 = H ? H.read.length : 0, n3 = H ? H.not.length : 0;
+    const inSight = this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || this.panel.dataset.state !== 'peek');
+    el.hidden = !this.analysis || (!n1 && !n3) || inSight;
+    if (el.hidden) return;
+    const first = n1 ? H.read[0] : H.not[0], n = n1 || n3;
+    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}`;
+    el.setAttribute('aria-label', `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.text}. Show it on the route`);
+    el.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }),
+      h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`), h('small', {}, `${first.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
+      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+  }
+  // the row: the first one's card; on a desktop in Check, beside its box, the two together [jc-desk-sel]
+  openFromRow() {
+    const H = this.heads, first = H && (H.read[0] ? { g: 'read', w: H.read[0] } : H.not[0] ? { g: 'not', w: H.not[0] } : null);
+    if (!first) return;
+    if (this.cards.where() === 'peek') { this.openItemCard(first, { from: 'row' }); return; }
+    this.setTab('check', { user: true });
+    requestAnimationFrame(() => {
+      const el = this.els.warnings.querySelector(`[data-key="${CSS.escape(itemKey(first))}"]`);
+      if (el) el.scrollIntoView({ block: 'nearest' });
+      this.openItemCard(first, { from: 'row', el });
+    });
   }
 
   // The Check tab's badge [chk-phone]: Read before you go's count with a triangle in the warning colour, else Worth a
