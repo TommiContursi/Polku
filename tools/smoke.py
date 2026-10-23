@@ -2202,11 +2202,12 @@ ONROUTE_OPEN = """(async (sel, text) => {
   if (typeof p.itemsAlong !== 'function') return [['no itemsAlong() on the planner'], null];
   p.reveal('warnings');
   for (let k = 0; k < 30 && p.panel.dataset.state === 'peek'; k++) await wait(100);
-  await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  await """ + SETTLED + """;
   const el = [...document.querySelectorAll(`[data-sec=warnings] ${sel}`)].find((r) => r.textContent.includes(text));
   if (!el) return [[`no ${sel} with "${text}" in Check: ${document.querySelector('[data-sec=warnings]')?.textContent}`], null];
   el.scrollIntoView({ block: 'center' });
   await wait(400);
+  await """ + SETTLED + """;
   const r = el.getBoundingClientRect();
   return [errs, [r.left + r.width / 2, r.top + r.height / 2]];
 })"""
@@ -2339,7 +2340,7 @@ def onroute(chrome):
           p.setTab('route');
           return errs;
         })()""", timeout=90000)
-        at = pg.js("(() => { const r = polku.planner.els.readRow.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+        at = pg.js("(() => { const r = polku.planner.els.readRow.querySelector('.pl-readrow-go').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
         pg.tap(*at)
         time.sleep(1.0)
         fails += card(pg, 'Road works: Teiskontie', 3, {'group': 'Read before you go', 'src': 'Live · Fintraffic'})
@@ -2411,6 +2412,7 @@ def onroute(chrome):
           p.renderWarnings();
           p.reveal('warnings'); // (Worth a look's markers show while Check is in sight)
           await wait(600);
+          await """ + SETTLED + """; // (the map's room for the sheet set, so it doesn't move after it's framed)
           m.jumpTo({ center: p.analysis.pts[60], zoom: 13, padding: p.viewPadding() });
           await new Promise((ok) => m.once('idle', ok));
           const q = m.project(p.analysis.pts[60]);
@@ -2454,6 +2456,77 @@ def onroute(chrome):
               if (!p.active || p.tab !== 'check' || !p.cards.current || p.cards.current.kind !== 'item' || !/Road works/.test(p.cards.box.textContent)) errs.push(`Open the planner at it: ${p.active ? 'open' : 'closed'}, ${p.tab}, ${p.cards.current ? p.cards.current.kind : 'no card'}`);
               return errs;
             })()""")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # marking read (chosen 2026-10-23) [jr-peek, jr-after, jr-card, jr-check]: ✕ on the row marks all it counts read, with
+    # Undo, and the row goes; read items stay in Check, saying so, and on the map; Got it on a card marks one and steps to the
+    # next unread; All read on a group's heading; kept with the saved route, not in a new route; a changed item is unread
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+        fails += pg.js("""(async () => {
+          const errs = [];
+        """ + CHECK_ROUTE + """
+          if (typeof p.markRead !== 'function') return ['no marking read'];
+          const row = () => (p.els.readRow.hidden ? null : p.els.readRow), x = () => row() && row().querySelector('.pl-readrow-x');
+          const marks = () => (polku.map.getSource('heads').serialize().data.features || []).map((f) => f.properties.g).sort().join(',');
+          const note = () => [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' / ');
+          p.setTab('route'); p.setSheetState('peek');
+          await wait(300);
+          if (!x()) return ['no ✕ on the row'];
+          x().click();
+          await wait(300);
+          if (row()) errs.push(`the row after ✕: "${row().textContent}"`);
+          if (!/^3 marked read: they stay in Check and on the map/.test(note())) errs.push(`the note after ✕: ${note()}`);
+          if (marks() !== 'read,read') errs.push(`markers after ✕: ${marks()}, not the two to read still`);
+          const lines = () => [...document.querySelectorAll('[data-sec=warnings] .tier :is(.row, .warn-row)')].map((r) => r.textContent);
+          if (lines().filter((t) => /✓ Read/.test(t)).length !== 3) errs.push(`Check after ✕: ${lines().join(' / ')}`);
+          [...document.querySelectorAll('.toast button')].find((b) => /Undo/.test(b.textContent))?.click();
+          await wait(300);
+          if (!row()) errs.push('Undo didn\\'t bring the row back');
+          // Got it, one by one: read, and the next unread along the route (a phone)
+          p.reveal('warnings');
+          await wait(500);
+          [...document.querySelectorAll('[data-sec=warnings] .tier-read .warn-row')][0].click();
+          await wait(600);
+          const got = () => p.cards.box && p.cards.box.querySelector('.heads-got');
+          if (!got() || got().textContent.trim() !== 'Got it') return [...errs, `no Got it on the card: ${got() ? got().textContent : 'none'}`];
+          got().click();
+          await wait(500);
+          const title = p.cards.box && p.cards.box.querySelector('.way-hint b').textContent;
+          if (title !== 'In the dark for 1 km') errs.push(`after Got it on Road works the card shows ${title}, not the next unread`);
+          if (!p.isRead({ g: 'read', w: p.heads.read[0] })) errs.push('Got it didn\\'t mark Road works read');
+          p.cards.close();
+          await wait(300);
+          // All read on a group's heading: Worth a look, everywhere the same
+          p.reveal('warnings');
+          await wait(400);
+          const all = document.querySelector('[data-sec=warnings] .tier-look .tier-all');
+          if (!all) errs.push('no All read on Worth a look\\'s heading');
+          else {
+            all.click();
+            await wait(300);
+            if ([...document.querySelectorAll('[data-sec=warnings] .tier-look .row')].some((r) => !/✓ Read/.test(r.textContent))) errs.push('All read left a row of Worth a look unread');
+            if (document.querySelector('[data-sec=warnings] .tier-look .tier-all')) errs.push('All read still on a group with all read');
+          }
+          // kept with the saved route; a changed item is unread; a new route starts with nothing read
+          const n = p.readKeys.size;
+          p.save();
+          p.readKeys = new Set();
+          p.loadSaved();
+          if (p.readKeys.size !== n) errs.push(`the saved route brought back ${p.readKeys.size} read, not ${n}`);
+          for (let k = 0; k < 50 && !(p.analysis && p.analysis.hazards); k++) await wait(100);
+          p.analysis.darkWarn = [...window.mine];
+          window.works = (a) => [{ kind: 'roadwork', at: 300, len: 60, lngLat: a.pts[30], text: 'Road works: Teiskontie, until 18:00', avoid: { ll: a.pts[30], r: 40 }, tier: 'read', src: { kind: 'live', by: 'Fintraffic', at: Date.now() } }];
+          await p.loadHazards(p.analysis);
+          if (p.isRead({ g: 'read', w: p.heads.read.find((w) => /^Road works/.test(w.text)) })) errs.push('a changed road work is still read');
+          p.clear();
+          p.addPoint([26.700, 63.300]);
+          if (p.readKeys.size) errs.push(`a new route starts with ${p.readKeys.size} read`);
+          if (new URL(p.shareUrl ? 'http://x/?' + (p.shareUrl().split('?')[1] || '') : 'http://x/').search.includes('read')) errs.push('what\\'s read went into the share link');
+          return errs;
+        })()""", timeout=120000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -2501,7 +2574,7 @@ def onroute(chrome):
               await wait(200);
               const row = p.els.readRow;
               if (!row || row.hidden || !row.offsetParent) return [...errs, 'no row at the top of the panel'];
-              row.click();
+              row.querySelector('.pl-readrow-go').click();
               await wait(600);
               const box = [...document.querySelectorAll('[data-sec=warnings] .tier-read .warn-row')].find((r) => /Road works/.test(r.textContent));
               if (p.tab !== 'check' || !box || box.getAttribute('aria-current') !== 'true') errs.push(`the row: ${p.tab}, its box ${box ? box.getAttribute('aria-current') : 'none'}, not Check with the box lit`);

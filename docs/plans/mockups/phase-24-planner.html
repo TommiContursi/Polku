@@ -1107,7 +1107,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr desk" id="jc-desk" data-st='{"stage":"route"}'><figcaption><b>Desktop</b>The row above the numbers; markers on the route, with their names on hover.</figcaption></figure>
       <figure class="fr desk" id="jc-desk-sel" data-st='{"stage":"route","tab":"check","step":4}'><figcaption><b>Desktop: one selected</b>In Check and on the map together; ‹ › aren't needed with the list beside it.</figcaption></figure>
     </div>
-    <p><b>Marking read, to choose (2026-10-23):</b> the row takes room you need once you've read it. With <b>Marking read: On</b> at the bottom, ✕ on the row marks everything in it read at once (Read before you go and Not checked, however many), with Undo in the note; <b>Got it</b> on an item's card marks one; <b>All read</b> on Read before you go's heading in Check marks the rest. Then there's no row until a new or changed warning comes. Read items stay in Check, saying so in their line, and on the map; the badge still counts. It lasts with the route on this device (a reload, the saved route), not in share links. <b>Off</b> shows the row as approved.</p>
+    <p><b>Marking read, to choose (2026-10-23):</b> the row takes room you need once you've read it. With <b>Marking read: On</b> at the bottom, ✕ on the row marks everything in it read at once (Read before you go and Not checked, however many), with Undo in the note; <b>Got it</b> on an item's card marks one (in every group: chosen with the rest on 2026-10-23, so it works the same everywhere); <b>All read</b> on each group's heading in Check marks that group. Then there's no row until a new or changed warning comes. Read items stay in Check, saying so in their line, and on the map; the badge still counts. It lasts with the route on this device (a reload, the saved route), not in share links. <b>Off</b> shows the row as approved.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jr-peek" data-st='{"stage":"route","sport":"paddle"}'><figcaption><b>The row's ✕</b>Marks everything in the row read at once, however many; a tap on its words still shows the first one.</figcaption></figure>
       <figure class="fr phone" id="jr-after" data-st='{"stage":"route","sport":"paddle","readAll":true,"toast":"markread","sayText":"3 marked read: they stay in Check and on the map"}'><figcaption><b>After ✕</b>No row until a new or changed warning comes; Undo in the note; the markers stay, and the badge still counts.</figcaption></figure>
@@ -1964,7 +1964,8 @@ function checkBody(st, v) {
   const rows = (list, cls) => (v.look !== 'r5' ? list.map((w, i) => item(w, cls, i)).join('')
     : v.check === 'c' && cls === 't1' ? `<div class="c5-boxes">${list.map((w, i) => checkBox5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>`
       : `<div class="c2-list">${list.map((w, i) => checkRow5(st, w, cls, L.findIndex((x) => x.g === cls && x.i === i))).join('')}</div>`);
-  const allRead = (cls, list) => (v.read === 'on' && cls === 't1' && list.some((w, i) => !isRead(st, v, { g: cls, i })) ? `<button type="button" class="btn small quiet rr-all" data-act="rallread">${ic('check', 16)}${t('allRead')}</button>` : '');
+  // (every group, chosen 2026-10-23: one way to mark read, everywhere)
+  const allRead = (cls, list) => (v.read === 'on' && list.some((w, i) => !isRead(st, v, { g: cls, i })) ? `<button type="button" class="btn small quiet rr-all" data-act="rallread" data-v="${cls}">${ic('check', 16)}${t('allRead')}</button>` : '');
   const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span>${allRead(cls, list)}</h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
   const sum = '';
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
@@ -2456,7 +2457,7 @@ function itemCard5(st, v, desk) {
   const avoid = w.a[0] === 'Avoid';
   if (st.mode !== 'view' && w.a.length) h += `<button type="button" class="c2-main" data-act="say" data-v="${avoid ? 'avoidit' : 'retry'}">${ic(avoid ? 'avoid' : 'retry', 20)}${esc(avoid ? u.avoidIt : u.retry)}</button>`;
   // marking read: Got it (on a phone, then the next unread along the route); once read, it says so and can be undone
-  if (v.read === 'on' && it.g !== 't2') h += isRead(st, v, it) ? `<button type="button" class="rr-got on" data-act="rone" aria-pressed="true">${ic('check', 20)}${esc(t('isRead'))} · ${esc(t('unread'))}</button>`
+  if (v.read === 'on') h += isRead(st, v, it) ? `<button type="button" class="rr-got on" data-act="rone" aria-pressed="true">${ic('check', 20)}${esc(t('isRead'))} · ${esc(t('unread'))}</button>`
     : `<button type="button" class="rr-got" data-act="rone" aria-pressed="false">${ic('check', 20)}${esc(t('gotIt'))}</button>`;
   if (desk) return h;
   const fromCheck = st.stepFrom && st.stepFrom.tab === 'check' && st.stepFrom.sheet !== 'peek';
@@ -2506,7 +2507,7 @@ function warnRow5(st, v, desk) {
   return `<div class="c2-warn c5-row rr${n1 ? ' read' : ' unk'}"><button type="button" class="rr-go" data-act="wstep">${go}</button><button type="button" class="rr-x" data-act="rall" aria-label="${esc(t('markAll'))}: ${n1 + n3}" title="${esc(t('markAll'))}">${ic('close', 20)}</button></div>`;
 }
 // Check's items: the cards' rows, in their group's shape and colour; › shows the item on the route (lit while it's open)
-const readLine = (st, w, g, idx) => (g !== 't2' && isRead(st, view(st), alongList(st, view(st))[idx]) ? `${w.w} · ✓ ${t('isRead')}` : w.w);
+const readLine = (st, w, g, idx) => (isRead(st, view(st), alongList(st, view(st))[idx]) ? `${w.w} · ✓ ${t('isRead')}` : w.w);
 const checkRow5 = (st, w, g, idx) => item5('wpick', w.ic, w.b, readLine(st, w, g, idx), { v: idx, chev: true, cls: `c5-w ${g}${st.step === idx ? ' c5-lit' : ''}` });
 // (C, chosen 2026-10-22) what can stop you is the red warning box, as in the peek, a section and on the cards
 const checkBox5 = (st, w, g, idx) => `<button type="button" class="c2-warn read${st.step === idx ? ' c5-lit' : ''}" data-act="wpick" data-v="${idx}"${st.step === idx ? ' aria-current="true"' : ''}>${ic(w.ic, 20)}<span><b>${esc(w.b)}</b><small>${esc(readLine(st, w, g, idx))}</small></span>${ic('right', 18)}</button>`;
@@ -2925,13 +2926,13 @@ function act(f, a, val, ev) {
     case 'wpick': if (st.step == null || st.sheet !== 'peek') st.stepFrom = { sheet: st.sheet, tab: st.tab }; st.step = +val; if (desk && st.mode !== 'closed') st.tab = 'check'; else if (st.mode !== 'closed') st.sheet = 'peek'; close(); break;
     case 'wprev': st.step = Math.max(0, st.step - 1); break;
     // marking read (2026-10-23): ✕ on the row, All read in Check, Got it on a card, Undo
-    case 'rall': case 'rallread': { const v2 = view(st), R = readOf(st, v2), was = new Set(R); const L = alongList(st, v2).filter((x) => (a === 'rall' ? x.g !== 't2' : x.g === 't1') && !R.has(rkey(x)));
+    case 'rall': case 'rallread': { const v2 = view(st), R = readOf(st, v2), was = new Set(R); const L = alongList(st, v2).filter((x) => (a === 'rall' ? x.g !== 't2' : x.g === val) && !R.has(rkey(x)));
       L.forEach((x) => R.add(rkey(x))); st.readWas = was; st.sayText = tf('markedRead', { n: L.length }); st.sayUndo = true; toast('markread'); break; }
     case 'rundo': if (st.readWas) st.read = st.readWas; st.readWas = null; st.toast = null; break;
     case 'rone': { const v2 = view(st), R = readOf(st, v2), L = alongList(st, v2), x = L[st.step]; if (!x) break;
       if (R.has(rkey(x))) { R.delete(rkey(x)); break; }
       R.add(rkey(x));
-      if (!desk) { const k = L.findIndex((y, j) => j > st.step && y.g !== 't2' && !R.has(rkey(y))); if (k >= 0) st.step = k; }
+      if (!desk) { const k = L.findIndex((y, j) => j > st.step && !R.has(rkey(y))); if (k >= 0) st.step = k; }
       break; }
     case 'wnext': st.step = Math.min(alongList(st, view(st)).length - 1, st.step + 1); break;
     case 'wclose': st.step = null; if (st.stepFrom) { st.sheet = st.stepFrom.sheet; st.tab = st.stepFrom.tab; } break;

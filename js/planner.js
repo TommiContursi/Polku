@@ -167,6 +167,7 @@ export class Planner {
     this.app = app; // { activity(), setData(id, fc), onActiveChange(bool) }
     this.points = [];
     this.legs = [];
+    this.readKeys = new Set(); // Check's items marked read (25d part 3): with the saved route on this device, not in links
     this.mode = ACTIVITIES[app.activity()].mode;
     this.craft = store.get('craft', 'kayak');
     this.past = [];
@@ -474,6 +475,7 @@ export class Planner {
 
   addPoint(ll) {
     this.commit();
+    if (!this.points.length) this.readKeys = new Set(); // a new route: nothing read yet
     this.points.push(ll);
     const since = Date.now() - (this.lastAddAt || 0);
     this.lastAddAt = Date.now();
@@ -711,6 +713,7 @@ export class Planner {
   restore({ points, modes, style, legStyles, lipas, sports, changes, stops, carry, nogos, nogosLost, alts, ice }) {
     const sport = this.app.activity();
     this.points = points;
+    this.readKeys = new Set(); // (what's been read isn't in links)
     // the link's places to avoid (none in links from before av=)
     this.nogos = (nogos || []).map((n) => ({ ...n }));
     if (nogosLost) toast('Some places to avoid in this link couldn’t be read, so the route may go through them', { tone: 'warn', ms: 8000 });
@@ -3516,6 +3519,7 @@ export class Planner {
       routed: this.legs.map((l) => (l.mode !== 'fixed' && l.status === 'ok' && l.key && l.result
         ? { key: l.key, line: encodePolyline(l.result.coords), tags: l.result.tags.map(tagId), portage: l.result.portage || [], provider: l.result.provider, water: l.result.water ? { ...l.result.water, times: undefined } : undefined } : null)),
       tags: table,
+      read: [...this.readKeys], // Check's items marked read: on this device only, not in share links; none in older saved routes
     });
   }
 
@@ -3524,6 +3528,7 @@ export class Planner {
     if (r && r.nogos) { this.nogos = r.nogos; this.drawNogos(); }
     if (!r || !r.points || !r.points.length) return false;
     this.points = r.points;
+    this.readKeys = new Set(r.read || []);
     this.nameAll(r.names);
     this.changeAll(r.changes);
     this.stopAll(r.stops);
@@ -5681,7 +5686,7 @@ export class Planner {
     this.setSection('warnings', { count: H.read.length + H.look.length + H.not.length });
     const open = this.cards.current && this.cards.current.kind === 'item' ? this.cards.current.itemKey : null;
     const row = (it) => {
-      const k = itemKey(it), where = this.whereOf(it.w), go = (e) => this.openItemCard(it, { from: 'check', el: e.currentTarget });
+      const k = itemKey(it), where = `${this.whereOf(it.w)}${this.isRead(it) ? ' · ✓ Read' : ''}`, go = (e) => this.openItemCard(it, { from: 'check', el: e.currentTarget });
       const el = it.g === 'read'
         ? h('button', { type: 'button', class: 'warn-row danger', onclick: go },
           h('span', { 'aria-hidden': 'true', html: icon('warnf', 20) }), h('span', {}, h('b', {}, it.w.text), h('small', {}, where)), h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }))
@@ -5693,9 +5698,11 @@ export class Planner {
     const MAX = 40; // (‹ › on a card steps through the rest)
     const tier = (g, ic, title, sub, list) => {
       if (!list.length) return null;
-      const els = list.slice(0, MAX).map((w) => row({ g, w }));
+      const els = list.slice(0, MAX).map((w) => row({ g, w })), unread = list.map((w) => ({ g, w })).filter((it) => !this.isRead(it));
       return h('section', { class: `tier tier-${g}`, 'aria-labelledby': `tier-${g}` },
-        h('h3', { class: 'tier-h', id: `tier-${g}` }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, title), h('span', { class: 'tier-n' }, String(list.length))),
+        h('div', { class: 'tier-top' },
+          h('h3', { class: 'tier-h', id: `tier-${g}` }, h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, title), h('span', { class: 'tier-n' }, String(list.length))),
+          unread.length ? h('button', { type: 'button', class: 'btn small quiet tier-all', 'aria-label': `All read: ${title}`, onclick: () => this.markRead(unread, { note: true }), html: icon('check', 16) }, h('span', {}, 'All read')) : null),
         h('p', { class: 'tier-sub' }, sub),
         g === 'read' ? h('div', { class: 'tier-boxes' }, ...els) : rows(...els),
         list.length > MAX ? h('p', { class: 'tier-sub' }, `And ${list.length - MAX} more along the route: ‹ › on a card steps through them`) : null);
@@ -5795,22 +5802,25 @@ export class Planner {
   // The peek's row [jc-peek, jc-desk]: what to read before you go, else what wasn't checked, in words, in the warning
   // box; a tap shows the first of them on the route. Not while Check is in sight (a phone's sheet above its peek, a
   // desktop's Check tab); an item's card in the peek takes the head (.carded).
+  // Only what's still unread: ✕ marks it all read, with Undo, and the row goes until something new or changed comes.
   renderReadRow() {
     const el = this.els.readRow, H = this.heads;
     if (!el) return;
-    const n1 = H ? H.read.length : 0, n3 = H ? H.not.length : 0;
+    const R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
     el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight();
     if (el.hidden) return;
-    const first = n1 ? H.read[0] : H.not[0], n = n1 || n3;
+    const first = n1 ? R1[0] : R3[0], n = n1 || n3;
     el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}`;
-    el.setAttribute('aria-label', `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.text}. Show it on the route`);
-    el.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }),
-      h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`), h('small', {}, `${first.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
-      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+    el.replaceChildren(
+      h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}. Show it on the route`, onclick: () => this.openFromRow() },
+        h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }),
+        h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`), h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),
+        h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) })),
+      h('button', { type: 'button', class: 'tool pl-readrow-x', title: 'Mark all read: they stay in Check and on the map', 'aria-label': `Mark all ${n1 + n3} read`, onclick: () => this.markRead([...R1, ...R3], { note: true }), html: icon('close', 20) }));
   }
-  // the row: the first one's card; on a desktop in Check, beside its box, the two together [jc-desk-sel]
+  // the row: the first unread one's card; on a desktop in Check, beside its box, the two together [jc-desk-sel]
   openFromRow() {
-    const H = this.heads, first = H && (H.read[0] ? { g: 'read', w: H.read[0] } : H.not[0] ? { g: 'not', w: H.not[0] } : null);
+    const H = this.heads, first = this.unread(H, 'read')[0] || this.unread(H, 'not')[0];
     if (!first) return;
     if (this.cards.where() === 'peek') { this.openItemCard(first, { from: 'row' }); return; }
     this.setTab('check', { user: true });
@@ -5819,6 +5829,35 @@ export class Planner {
       if (el) el.scrollIntoView({ block: 'nearest' });
       this.openItemCard(first, { from: 'row', el });
     });
+  }
+
+  // Marking read (chosen 2026-10-23): an item is read by its group, its words and its place, so it stays read while it's
+  // the same through an edit of the route, and a new or changed one (a new road work, a later time) is unread.
+  readKey({ g, w }) {
+    if (g === 'not') return `not|${w.key}|${w.by}`;
+    const ll = w.lngLat || this.itemPlace(w);
+    return `${g}|${w.text}|${ll ? `${ll[0].toFixed(4)},${ll[1].toFixed(4)}` : Math.round((w.at || 0) / 100)}`;
+  }
+  isRead(it) { return this.readKeys.has(this.readKey(it)); }
+  unread(H, g) { return H ? (H[g] || []).map((w) => ({ g, w })).filter((it) => !this.isRead(it)) : []; }
+  // `note`: say how many, with Undo (the row's ✕, All read)
+  markRead(list, { note = false, read = true } = {}) {
+    const was = new Set(this.readKeys);
+    for (const it of list) { if (read) this.readKeys.add(this.readKey(it)); else this.readKeys.delete(this.readKey(it)); }
+    this.save();
+    this.renderWarnings();
+    if (note && list.length) toast(`${list.length} marked read: they stay in Check and on the map`, { ms: 6000, action: { label: 'Undo', fn: () => { this.readKeys = was; this.save(); this.renderWarnings(); } } });
+  }
+  // Got it on an item's card: read, and on a phone the next unread one along the route
+  gotIt(c) {
+    const it = this.itemByKey(c.itemKey);
+    if (!it) return;
+    const read = !this.isRead(it);
+    this.markRead([it], { read });
+    if (!read || this.cards.where() !== 'peek') return;
+    const L = this.headsList || [], k = L.findIndex((x) => itemKey(x) === c.itemKey);
+    const next = L.slice(k + 1).find((x) => !this.isRead(x)) || L.slice(0, k).find((x) => !this.isRead(x));
+    if (next) this.openItemCard(next, { from: c.from });
   }
 
   // The Check tab's badge [chk-phone]: Read before you go's count with a triangle in the warning colour, else Worth a

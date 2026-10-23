@@ -279,6 +279,9 @@ function itemBody(pl, card, body) {
   const { main, more } = pl.itemActions(it);
   if (main && pl.inView() && main.edits) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
   else if (main) body.append(mainButton(main.label, main.icon, () => main.fn()));
+  // Got it: marked read, and on a phone the next unread along the route; once read, it says so and can be undone
+  const read = pl.isRead(it);
+  body.append(h('button', { type: 'button', class: `btn heads-got${read ? ' on' : ''}`, 'aria-pressed': String(read), onclick: () => pl.gotIt(card), html: icon('check', 20) }, h('span', {}, read ? 'Read · Mark unread' : 'Got it')));
   if (more.length) body.append(rows(...more.map((m) => item({ icon: m.icon, label: m.label, line: m.line, onclick: () => m.fn() }))));
   // the planner put away: the way to it, at this item [jc-closed]
   if (!pl.active) body.append(rows(item({ icon: 'route', label: 'Open the planner at it', line: 'Check and the route, at this item', chev: true, onclick: () => pl.openPlannerAt(card) })));
