@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: a note and its Undo stay on screen ([#381](https://github.com/TommiContursi/Polku/issues/381))
+
+A note that came just as the one before it went away, such as "Via 1 removed" or "Route cleared", could vanish at once, and its **Undo** with it. So could the note that follows your answer to "This point is on the water": the one with **Undo** after **Paddle** or **Swim**, and the safety note after **Walk on the ice**. Now each note stays for its own time, unless a newer note takes its place.
+
 ### The same controls look the same, and read clearly ([#382](https://github.com/TommiContursi/Polku/issues/382))
 
 Polku keeps its look, but a control that does the same job now looks the same wherever it is, and every word reads clearly in both themes.

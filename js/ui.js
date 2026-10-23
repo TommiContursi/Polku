@@ -257,7 +257,9 @@ function hideTip(ms = 120) {
   }, ms);
 }
 
-let toastTimer = 0;
+let toastTimer = 0, toastGone = 0;
+// a note fades out, then is hidden once it has (250 ms); a newer note stops that, so it stays its own time (#381)
+function toastOut(t) { t.classList.remove('show'); clearTimeout(toastGone); toastGone = setTimeout(() => { t.hidden = true; }, 250); }
 export function toast(msg, { tone = 'info', ms = 3500, action = null } = {}) {
   const t = $('#toast');
   t.textContent = msg;
@@ -268,14 +270,15 @@ export function toast(msg, { tone = 'info', ms = 3500, action = null } = {}) {
     b.type = 'button';
     b.className = 'toast-act';
     b.textContent = act.label;
-    b.addEventListener('click', () => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); act.fn(); });
+    b.addEventListener('click', () => { toastOut(t); act.fn(); }); // (a note act.fn() shows stays)
     t.append(' ', b);
   }
   t.dataset.tone = tone;
   t.hidden = false;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.classList.remove('show'); setTimeout(() => { t.hidden = true; }, 250); }, ms);
+  clearTimeout(toastGone);
+  toastTimer = setTimeout(() => toastOut(t), ms);
 }
 
 export const store = {

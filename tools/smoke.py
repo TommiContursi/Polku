@@ -5509,7 +5509,8 @@ def nextleg(chrome):
     press(pg, pg.js("nlT.toastBtn('Swim')"), f'{name}: Swim', True)
     time.sleep(0.6)
     st = S()
-    want(f'{name}, Swim', st, sports='hike,swim', next='swim', map='swim', past=past)
+    # the note Swim shows stays, with its Undo (the tap on Swim hid it at once, #381)
+    want(f'{name}, Swim', st, sports='hike,swim', next='swim', map='swim', past=past, toast=lambda v: bool(v) and v.startswith('Swim to this point, and on from here.') and v.endswith('Undo'))
     off = pg.js(f"(() => {{ const q = polku.planner.points[2]; return q ? Math.hypot((q[0] - {lake[0]}) * 53500, (q[1] - {lake[1]}) * 111200) : -1; }})()")
     if off < 0 or off > 1:
         fails.append(f'{name}: the point on the lake ' + ('is gone' if off < 0 else f'moved {off:.0f} m from where it was tapped'))
@@ -5536,6 +5537,7 @@ def nextleg(chrome):
     press(pg, pg.js(f'nlT.spot({lake})'), f'{name}: a point on the lake in winter', True)
     press(pg, pg.js("nlT.toastBtn('Walk on the ice')"), f'{name}: Walk on the ice', True)
     time.sleep(0.6)
+    want(f'{name}, Walk on the ice', S(), toast=lambda v: bool(v) and v.startswith('On the ice: straight lines from here on.') and 'never go on ice you haven’t checked' in v)
     ice = pg.js("""(async () => { const p = polku.planner, P = await import(location.origin + '/js/planner.js'); for (let k = 0; k < 30 && !(p.analysis && p.legs.length && p.legs.at(-1).ice && p.legs.at(-1).result); k++) await new Promise((r) => setTimeout(r, 100));
       const w = p.analysis ? p.iceWarnings(p.analysis).map((x) => x.text) : [], url = p.shareUrl(), back = P.parseShared(new URL(url).searchParams) || {};
       const i = p.legs.length - 1, l = p.legs[i];
@@ -7790,8 +7792,7 @@ def point_card(chrome):
         time.sleep(0.4)
         if st(pg)['kind']:
             fails.append(f'{name}: Undo of a point’s adding left its card open')
-        # Remove, then the note's Undo (once the notes before it have gone: one that ends as it comes takes it with it, #381)
-        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.getElementById('toast').hidden || Date.now() - t0 > 9000 ? ok(true) : setTimeout(go, 100); go(); })")
+        # Remove, then the note's Undo
         tap_marker(pg, 1, name, touch)
         tap_row(pg, 'Remove', name, touch)
         pg.js(SETTLED)  # (the note goes in 7 s: its Undo is measured once the sheet has settled, and tapped at once)
@@ -7799,6 +7800,25 @@ def point_card(chrome):
         press(pg, pg.js(f"({PC_AT})('#toast .toast-act')"), f'{name}: Undo in the note', touch)
         if n1 != 3 or st(pg)['n'] != 4 or 'removed' not in note:
             fails.append(f"{name}: Remove: {n1} points, the note “{note}”, its Undo: {st(pg)['n']}")
+        # Remove just as the note before runs out: Remove's note stays, with its Undo (the note before's end hid it, #381).
+        # A tap can't land in the same turn as that end, so Remove is a click on the row there.
+        tap_marker(pg, 1, name, touch)
+        note = pg.js(f"""(async () => {{ const {{ toast }} = await import(location.origin + '/js/ui.js'), t = document.getElementById('toast'), r = {row('Remove')};
+          if (!r) return 'no Remove in the card';
+          toast('A note before', {{ ms: 300 }});
+          const ended = await new Promise((ok) => {{ const o = new MutationObserver(() => {{ if (!t.classList.contains('show')) {{ o.disconnect(); r.click(); ok(true); }} }});
+            o.observe(t, {{ attributes: true, attributeFilter: ['class'] }}); setTimeout(() => {{ o.disconnect(); ok(false); }}, 5000); }});
+          if (!ended) return 'the note before didn’t end';
+          await new Promise((ok) => setTimeout(ok, 400)); // (past the note before's 250 ms to fade: a timer set after it runs after it)
+          return t.hidden || !t.classList.contains('show') ? 'hidden' : t.textContent; }})()""")
+        n1 = st(pg)['n']
+        pg.js(SETTLED)
+        pressed = 'removed' in note and press(pg, pg.js(f"({PC_AT})('#toast .toast-act')"), f'{name}: Undo in the note that came as the one before ended', touch)
+        if n1 != 3 or not pressed or st(pg)['n'] != 4:
+            fails.append(f"{name}: Remove as the note before ended: {n1} points, the note {note}, its Undo: {st(pg)['n']} points")
+            if st(pg)['n'] != 4:
+                pg.js("polku.planner.undo(); true")  # (the route as the next steps want it)
+                time.sleep(0.3)
         # #352's review, 1: a place to sleep (a stand-in list; LIPAS and OpenStreetMap held) moves the night there and
         # Back is the point's card, in Polku: no step back past it
         href = pg.js("location.href.split('#')[0]")
