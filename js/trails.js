@@ -76,9 +76,9 @@ export const onTile = (fn) => listeners.add(fn);
 export function trailTile(x, y) {
   const key = `${x}/${y}`;
   const have = tiles.get(key);
-  if (have) return have.promise;
+  if (have && (have.data || fetching)) return have.promise; // (held, one on its way counts as held)
+  if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
-  if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true }));
   const entry = { data: null };
   entry.promise = cachedOverpass(`trails2/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { timeoutMs: 30000 })
     .then((data) => { entry.data = data; arrived(key); return data; })
