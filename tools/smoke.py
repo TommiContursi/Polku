@@ -67,6 +67,29 @@ SETTLED = """new Promise((done) => {
 })"""
 
 
+def placed(pg):
+    """The sheet at its size, then the toolbox shown and placed for it: in a frame after a change, late on a busy
+    machine. A check that read the toolbox or measured near it after a fixed wait looked too early (#367, #390)."""
+    pg.js(SETTLED)
+    pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))")
+
+
+# Before the page loads, for checks that need none of Traficom's depths: its map tiles answer at once, empty, and
+# its other calls fail as if blocked. (Slow to answer at times, they kept the map from loading; blocked, a tile that
+# failed last kept MapLibre's load event and Polku's load step from coming at all: #393, #378, #361.)
+EMPTY_DEPTHS = """(() => {
+  const real = window.fetch.bind(window);
+  let empty = null;
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/[^/]*traficom\\.fi\\//.test(url)) return real(input, init);
+    if (!/request=GetMap/i.test(url)) return Promise.reject(new TypeError('Failed to fetch'));
+    empty ||= (() => { const c = new OffscreenCanvas(256, 256); c.getContext('2d'); return c.convertToBlob({ type: 'image/png' }); })();
+    return empty.then((png) => new Response(png, { headers: { 'Content-Type': 'image/png' } }));
+  };
+})();"""
+
+
 # Drag the middle of the first leg (straight-line legs: no routing requests):
 # with the mouse on desktop, hold-then-drag on touch. Expect one new point under
 # the pointer, one undo step, an unmoved map and map panning back on.
@@ -4816,7 +4839,7 @@ def column_early(chrome):
     for sport, wx in (('mtb', {}), ('paddle', {}), ('paddle', {'temp': True})):
         name = f"390x844 {sport}, the timeline on{', the temperature too' if wx else ''}"
         pg = chrome.page(390, 844, True)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': COLUMN_HOLD}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True, **({'weather': {'wind': False, 'rain': False, **wx}} if wx else {})},
                     {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'})
@@ -4852,6 +4875,7 @@ def panels(chrome):
     fails = []
     for w, h_, sport in [(390, 844, 'mtb'), (390, 844, 'paddle'), (375, 667, 'mtb'), (360, 740, 'hike'), (667, 375, 'gravel')]:
         pg = chrome.page(w, h_, True)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)  # (a slow answer kept the map from loading: #286)
         pg.open_app({'activity': sport}, {'polku:winter': '"off"'})
         pg.js(PLAN_TWO)
         centre = lambda s: pg.js(f"(() => {{ const r = document.querySelector({json.dumps(s)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
@@ -4933,6 +4957,22 @@ ACTS = """(() => { const b = document.querySelector('#activity-bar .act-current'
   return { open: !document.querySelector('#activity-bar .act-menu').hidden, expanded: b.getAttribute('aria-expanded'),
     pill: [r.left + r.width / 2, r.top + r.height / 2], focus: document.activeElement === b, sport: polku.state.activity,
     hover: matchMedia('(hover: hover) and (pointer: fine)').matches }; })()"""
+# The load step's snow check (FMI, else the forecast) draws the pill again when it answers, and that closes a menu
+# open then and drops its focus (#392). A check of the menu waits for the answer first: 30 s at most.
+SNOW_IN = "new Promise((ok) => { const t0 = Date.now(), go = () => polku.state.winterSnow || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })"
+# Before the page loads, for checks that need no snow: FMI's measured snow answers at once, none at a station by the
+# map's middle (a busy FMI or forecast answered after SNOW_IN had given up)
+NO_SNOW = """(() => {
+  const real = window.fetch.bind(window);
+  const xml = '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" xmlns:BsWfs="http://xml.fmi.fi/schema/wfs/2.0" xmlns:gml="http://www.opengis.net/gml/3.2">'
+    + '<wfs:member><BsWfs:BsWfsElement><BsWfs:Location><gml:Point><gml:pos>61.5135 23.8170 </gml:pos></gml:Point></BsWfs:Location>'
+    + '<BsWfs:Time>2026-10-22T09:00:00Z</BsWfs:Time><BsWfs:ParameterName>snow_aws</BsWfs:ParameterName><BsWfs:ParameterValue>-1.0</BsWfs:ParameterValue>'
+    + '</BsWfs:BsWfsElement></wfs:member></wfs:FeatureCollection>';
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    return /^https:\\/\\/opendata\\.fmi\\.fi\\/wfs\\?.*parameters=snow_aws/.test(url) ? Promise.resolve(new Response(xml)) : real(input, init);
+  };
+})();"""
 
 
 def sport_menu(chrome):
@@ -4946,9 +4986,11 @@ def sport_menu(chrome):
 
     def page(w, h_, phone, sport):
         pg = chrome.page(w, h_, phone)
-        # Traficom's depths, slow to answer at times, keep the map from loading; the menu needs none of them
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        # the menu needs none of Traficom's depths, nor the snow
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': NO_SNOW}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"'})
+        pg.js(SNOW_IN)  # (a late answer closed the menu a tap had just opened, and every tap after it was one behind: #371)
         return pg
 
     def key(pg, k, code, vk, char=None):
@@ -5111,7 +5153,7 @@ def nextleg(chrome):
 
     def page(w, h_, phone, sport):
         pg = chrome.page(w, h_, phone)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:speeds': '{}'}, '#15/61.4975/23.738')
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         pg.js(NL)
@@ -5455,12 +5497,12 @@ def button3d(chrome):
 
     def page(w, h_, phone, sport, settings=None):
         pg = chrome.page(w, h_, phone)
-        # Traficom's depths, slow to answer at times, keep the map from loading; the button needs none of them
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        # the button needs none of Traficom's depths
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True, **(settings or {})}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"', 'polku:seen3dHint2': 'true'})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-        # open_app() returns once the map has loaded, which can be a frame before MapLibre's load event runs Polku's
-        # load step: that opens the timeline, and on a phone the column then moves up above it (#292)
+        # Polku's load step opens the timeline, and on a phone the column then moves up above it (#292): open_app()
+        # waits for the step, 45 s at most, and this says so if the timeline still isn't open
         if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden ? ok(true)"
                      " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 100); go(); })"):
             fails.append(f'{w}x{h_} {sport}: the timeline did not open in 45 s (Polku’s load step)')
@@ -5808,13 +5850,16 @@ TB_AT = """((sel) => { const el = typeof sel === 'string' ? document.querySelect
 TB_PHONE = """(async () => {
   const p = polku.planner, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms)), txt = (e) => e.textContent.trim();
   const fit = document.getElementById('btn-fit');
+  // (the toolbox is shown and placed in a frame after a change, which comes late on a busy machine: #367)
+  const placed = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   // #241: the start, before anything is drawn: undo and redo can't do anything, nor can Show the whole route
-  p.setActive(true); await wait(300);
+  p.setActive(true); await wait(300); await placed();
   for (const k of ['undo', 'redo']) if (p.els[k].offsetParent && !p.els[k].disabled) errs.push(`${k} looks ready at the start`);
   if (!p.els.fit.disabled) errs.push('Show the whole route looks ready at the start');
   if (!fit.hidden) errs.push('Show the whole route is in the map’s column with no route');
   // a route: undo is ready, redo isn't; Show the whole route is in the map's column
   if (!(await (""" + TB_ROUTE + """)(""" + json.dumps(TB_PTS) + """))) return ['no route'];
+  await placed();
   if (p.els.undo.disabled || !p.els.undo.offsetParent || !p.els.redo.disabled) errs.push(`with a route: undo ${p.els.undo.disabled ? 'disabled' : 'ready'}, redo ${p.els.redo.disabled ? 'disabled' : 'ready'}`);
   if (fit.hidden || !fit.offsetParent) errs.push('no Show the whole route in the map’s column with a route');
   const col = document.getElementById('map-ctrls').children, order = [...col].filter((c) => c.offsetParent).map((c) => c.id || c.className);
@@ -5828,13 +5873,17 @@ def toolbox(chrome):
 
     def page(w, h_, phone, sport='mtb', dock='left'):
         pg = chrome.page(w, h_, phone)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport, 'timeline': True}, {'polku:winter': '"off"', 'polku:plannerDock': json.dumps(dock)})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.state.timeline || !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })")
         return pg
 
-    def at(pg, sel):
+    # (where it is once the sheet has come to its size: a tap measured while the sheet changed after Clear route
+    # landed on the map, not on the note's Undo, and added a point; settle=False for a note that goes in 7 s)
+    def at(pg, sel, settle=True):
+        if settle:
+            pg.js(SETTLED)
         return pg.js(f"({TB_AT})({json.dumps(sel)})")
 
     def click(pg, sel, name):
@@ -5851,8 +5900,8 @@ def toolbox(chrome):
         time.sleep(0.4)
         return True
 
-    def tap(pg, sel, name):
-        b = at(pg, sel)
+    def tap(pg, sel, name, settle=True):
+        b = at(pg, sel, settle)
         if not b:
             fails.append(f'{name}: not on screen')
             return False
@@ -5949,10 +5998,11 @@ def toolbox(chrome):
             dupes(pg, name)
             n0 = pg.js("polku.planner.points.length")
             if act(pg, 'Clear route', name, tap):
+                pg.js(SETTLED)  # (the sheet changes after Clear route: its note's Undo is measured once, then tapped while the note shows)
                 c = pg.js("({ n: polku.planner.points.length, toast: document.querySelector('#toast').textContent, undo: !polku.planner.els.undo.disabled, fit: document.getElementById('btn-fit').hidden })")
                 if c['n'] or 'Route cleared' not in c['toast'] or not c['undo'] or not c['fit']:
                     fails.append(f'{name}: Clear route: {c}')
-                tap(pg, '#toast .toast-act', f'{name}: the note’s Undo')
+                tap(pg, '#toast .toast-act', f'{name}: the note’s Undo', settle=False)
                 if pg.js("polku.planner.points.length") != n0:
                     fails.append(f'{name}: Undo after Clear brought back {pg.js("polku.planner.points.length")} of {n0} points')
                 if pg.js("polku.planner.els.redo.disabled"):
@@ -5974,9 +6024,10 @@ def toolbox(chrome):
                 fails.append(f'{name}: a touch tap on the time folded the sheet (#251)')
             # a reload: the route is back, undo and redo can't do anything yet (#241)
             pg.reload()
-            pg.js("new Promise((ok) => { const go = () => polku.planner.points.length ? ok(true) : setTimeout(go, 100); go(); })")
+            if not pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => polku.planner.points.length || Date.now() - t0 > 20000 ? ok(polku.planner.points.length) : setTimeout(go, 100); go(); })"):
+                fails.append(f'{name}: a reload: no route back in 20 s')
             pg.js("polku.planner.setActive(true); true")
-            time.sleep(0.4)
+            placed(pg)
             r = pg.js("({ undo: polku.planner.els.undo.disabled, redo: polku.planner.els.redo.disabled, shown: !!polku.planner.els.undo.offsetParent })")
             if not (r['undo'] and r['redo'] and r['shown']):
                 fails.append(f'{name}: after a reload, undo and redo: {r} (#241)')
@@ -6038,12 +6089,12 @@ def toolbox(chrome):
     for label, js in (('the side panel', 'true'), ('the side panel, wide', "polku.planner.panel.style.setProperty('--pl-w', '640px'), true"),
                       ('the panel at the bottom', "polku.planner.panel.style.removeProperty('--pl-w'), polku.planner.setDock('bottom'), true")):
         pg.js(js)
-        time.sleep(0.5)
+        placed(pg)
         e = pg.js(ON_EDGE)
         if not (e['edge'] and e['clear'] and e['below'] and e['active']) or (label == 'the side panel' and e['folds']):
             fails.append(f'{name} {label}: the toolbar {e}')
     pg.js("polku.planner.setDock('left'); true")
-    time.sleep(0.5)
+    placed(pg)
     # the keys: P, S, W pick the mode; nothing else changes
     for k, code, vk, mode in (('s', 'KeyS', 83, 'line'), ('w', 'KeyW', 87, 'water'), ('p', 'KeyP', 80, 'auto')):
         key(pg, k, code, vk)
@@ -6102,7 +6153,7 @@ def toolbox(chrome):
     # a narrow desktop: the toolbar folds before the map's buttons, and the mode in use keeps its name
     pg = page(1024, 768, False)
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
-    time.sleep(0.6)
+    placed(pg)
     e = pg.js(ON_EDGE)
     if not (e['edge'] and e['clear'] and e['active']):
         fails.append(f'1024x768: the toolbar {e}')
@@ -6280,6 +6331,8 @@ START_LIB = """(() => {
   // ---------------------------------------------------------------- a tap from the ways, then four points in four taps (#232)
   T.tapAdded = async (n) => {
     await until(() => p.points.length >= n, 3000);
+    // (the toolbox is shown, placed and faded in a frame after the point: late on a busy machine, #367)
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     if (p.points.length !== n) err(`after ${n} tap${n > 1 ? 's' : ''}: ${p.points.length} points`);
     if ($('.maplibregl-popup')) err(`a card on the map after tap ${n} (#232): ${txt($('.maplibregl-popup'))}`);
     if (n === 1) {
@@ -6714,7 +6767,7 @@ def start(chrome):
         fails = []
         pg = chrome.page(w, h_, phone)
         try:
-            pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0.002, 0)}, pg.s)
             pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': START_LIPAS}, pg.s)
             pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"', **LOCAL_BROUTER}, '#13/61.50/23.80')
@@ -6800,7 +6853,7 @@ def route_view(chrome):
 
     def page(w, h_, phone, sport='mtb'):
         pg = chrome.page(w, h_, phone)
-        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
         pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'})
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         return pg
@@ -6839,7 +6892,9 @@ def route_view(chrome):
             chrome.send('Input.dispatchKeyEvent', fields, pg.s)
         time.sleep(0.3)
 
-    at = lambda pg, sel: pg.js(f"({TB_AT})({sel})")
+    # (where it is once the sheet has come to its size: ✕ measured while the planner came back after the note's Open had
+    # something over it; settle=False for the note, which goes in 6 s)
+    at = lambda pg, sel, settle=True: (settle and pg.js(SETTLED), pg.js(f"({TB_AT})({sel})"))[1]
     state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: !!document.querySelector('.maplibregl-popup .insp'), menu: document.querySelector('.maplibregl-popup .pt-menu .btn.primary')?.textContent.trim() || '' }; })()")
     shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); return true; })()")
 
@@ -6853,6 +6908,7 @@ def route_view(chrome):
         return True
 
     def view_ok(pg, name):
+        placed(pg)  # (the route's view's toolbox, a frame after Done)
         v = pg.js(RV_VIEW)
         if v['out'] or v['small']:
             fails.append(f"{name}: {', '.join(v['out'] + [f'under 44 px: {s}' for s in v['small']])}")
@@ -6907,6 +6963,7 @@ def route_view(chrome):
             fails.append(f'{name}: the point’s card’s ✕ left it open')
         # Edit: the drawing tools are back, with undo as it was; a tap adds a point again
         press(pg, at(pg, "polku.planner.els.edit"), f'{name}: Edit', touch)
+        placed(pg)  # (the drawing tools are back in the toolbox a frame later)
         e = pg.js("(() => { const p = polku.planner; return { view: p.inView(), mode: !!p.els.modeBtn.offsetParent, undo: !p.els.undo.disabled && !!p.els.undo.offsetParent, past: p.past.length, done: !!p.els.done.offsetParent, ghosts: p.ghosts.length }; })()")
         if e['view'] or not e['mode'] or not e['undo'] or e['past'] != s0['past'] or not e['done'] or not e['ghosts']:
             fails.append(f'{name}: after Edit: {e} (undo steps before Done: {s0["past"]})')
@@ -6919,6 +6976,7 @@ def route_view(chrome):
         # ✕ puts it away with a note; the route stays on the map; Open brings it back as it was
         press(pg, at(pg, "polku.planner.els.done"), f'{name}: Done again', touch)
         press(pg, at(pg, "polku.planner.els.title.querySelector('.way-x')"), f'{name}: ✕', touch)
+        pg.js(SETTLED)  # (the planner put away: its note's Open is measured once, then tapped while the note shows)
         c = pg.js("""(() => { const p = polku.planner, t = document.getElementById('toast'), b = t.querySelector('.toast-act'), col = document.getElementById('map-ctrls').getBoundingClientRect();
           return { active: p.active, legs: p.legs.length, drawn: polku.map.queryRenderedFeatures({ layers: ['route-casing'] }).length > 0, text: t.hidden ? '' : t.firstChild.textContent.trim(), open: b && b.textContent,
             h: b ? b.offsetHeight : 0, clear: t.getBoundingClientRect().right <= col.left - 4, plan: !!document.getElementById('btn-plan').offsetParent, fit: !document.getElementById('btn-fit').hidden }; })()""")
@@ -6926,7 +6984,7 @@ def route_view(chrome):
             fails.append(f'{name}: after ✕: {c}')
         if c['h'] < 44 or not c['clear']:
             fails.append(f"{name}: the note’s Open {c['h']} px tall, {'clear of' if c['clear'] else 'over'} the map’s buttons")
-        press(pg, at(pg, "document.querySelector('#toast .toast-act')"), f'{name}: the note’s Open', touch)
+        press(pg, at(pg, "document.querySelector('#toast .toast-act')", False), f'{name}: the note’s Open', touch)
         s = state(pg)
         if not s['active'] or not s['view'] or s['sheet'] != s0['sheet']:
             fails.append(f"{name}: Open: {s} (it was the route’s view at {s0['sheet']})")
@@ -7061,6 +7119,19 @@ PC_AT = """((x) => {
   const c = el.closest && el.closest('.pl-way.card');
   if (c) { const a = el.getBoundingClientRect(), r = c.getBoundingClientRect(); if (a.bottom > r.bottom) c.scrollTop += a.bottom - r.bottom + 4; else if (a.top < r.top) c.scrollTop -= r.top - a.top + 4; }
   const b = el.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })"""
+# PC_AT once the thing has stayed put: the same place twice in a row, two frames apart, the map still. A card that
+# changes size moves the map to keep itself in view a frame or two later, and a press measured before that missed.
+PC_STILL = """(async (get) => {
+  const at = """ + PC_AT + """, frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  let a = at(get()), same = 0;
+  for (let k = 0; k < 30 && same < 2; k++) {
+    await frames();
+    const b = at(get());
+    same = a && b && Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1 && !polku.map.isMoving() ? same + 1 : 0;
+    a = b;
+  }
+  return a;
+})"""
 # the card as it is: what it says, its place, its boxes
 # what's over the open card's point on the screen ('' when it's in sight)
 PC_OVER = """(() => { const p = polku.planner, k = p.cards.current && p.points.indexOf(p.cards.current.key), m = k >= 0 && p.markers[k];
@@ -7188,8 +7259,10 @@ def point_card(chrome):
             chrome.send('Input.dispatchKeyEvent', fields, pg.s)
         time.sleep(0.3)
 
-    # (where it is once the sheet has come to its size: a tap measured while it grows lands where the thing was)
-    at = lambda pg, x: (pg.js(SETTLED), pg.js(f"({PC_AT})({x})"))[1]
+    # (where it is once the route's numbers are in, the sheet has come to its size and the thing has stayed put: the card
+    # is built again when the numbers come, and a click that went down on the old card and up on the new one was lost;
+    # a tap measured while the sheet grew, or before the map moved to keep the card in view, landed where it had been)
+    at = lambda pg, x: (pg.js("Promise.resolve(polku.planner.analysing).then(() => true, () => true)"), pg.js(SETTLED), pg.js(f"({PC_STILL})(() => ({x}))"))[2]
     st = lambda pg: pg.js(PC_STATE)
     # a row by its name, a switch's choice by its word, a button by its words or label
     row = lambda label: f"[...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b').textContent === {json.dumps(label)})"
@@ -7213,6 +7286,8 @@ def point_card(chrome):
 
     def tap_marker(pg, i, name, touch):
         # where the point is under the toolbox, a button, a note or the card, the map moves to it first, as a person moves it
+        # (looked at once the sheet and the toolbox are in place, as at() does)
+        placed(pg)
         cov = pg.js(f"""(async () => {{ const p = polku.planner, m = p.markers[{i}]; if (!m) return false; const el = m.getElement().querySelector('.wp');
           const clear = () => {{ const b = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }};
           if (clear()) return true;
@@ -7234,7 +7309,9 @@ def point_card(chrome):
           const x = Math.round(R.left + q.x + {dx}), y = Math.round(R.top + q.y + {dy}), el = document.elementFromPoint(x, y);
           const top = document.querySelector('.topbar').getBoundingClientRect().bottom + 30, bottom = (p.layout() === 'side' ? innerHeight : Math.min(p.panel.getBoundingClientRect().top, innerHeight)) - 30;
           return el === polku.map.getCanvas() && x >= 40 && x <= innerWidth - 80 && y >= top && y <= bottom ? {{ x, y }} : null; }})()""")
-    spot_near = lambda pg, i: next((x for x in (free_spot(pg, i, dx, dy) for dx, dy in ((-120, -160), (120, -160), (0, -200), (160, 120), (-160, 120), (200, 0), (-200, 0), (-60, -90), (60, -90))) if x), None)
+    def spot_near(pg, i):
+        placed(pg)  # (the toolbox drawn again after Move covered a spot, #390)
+        return next((x for x in (free_spot(pg, i, dx, dy) for dx, dy in ((-120, -160), (120, -160), (0, -200), (160, 120), (-160, 120), (200, 0), (-200, 0), (-60, -90), (60, -90))) if x), None)
 
     def one_size(pg, w, h_, phone, name, touch):
         nonlocal fails
@@ -7473,9 +7550,9 @@ def point_card(chrome):
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.getElementById('toast').hidden || Date.now() - t0 > 9000 ? ok(true) : setTimeout(go, 100); go(); })")
         tap_marker(pg, 1, name, touch)
         tap_row(pg, 'Remove', name, touch)
-        time.sleep(0.3)
+        pg.js(SETTLED)  # (the note goes in 7 s: its Undo is measured once the sheet has settled, and tapped at once)
         n1, note = st(pg)['n'], pg.js("document.getElementById('toast').textContent")
-        press(pg, at(pg, "'#toast .toast-act'"), f'{name}: Undo in the note', touch)
+        press(pg, pg.js(f"({PC_AT})('#toast .toast-act')"), f'{name}: Undo in the note', touch)
         if n1 != 3 or st(pg)['n'] != 4 or 'removed' not in note:
             fails.append(f"{name}: Remove: {n1} points, the note “{note}”, its Undo: {st(pg)['n']}")
         # #352's review, 1: a place to sleep (a stand-in list; LIPAS and OpenStreetMap held) moves the night there and
@@ -7663,8 +7740,11 @@ def point_card(chrome):
     for w, h_, narrow, label in ((195, 422, True, '390x844 at 200 %'), (180, 370, True, '360x740 at 200 %, Finnish'), (180, 370, True, '360x740 at 200 %, Finnish, from the list'), (360, 740, False, '360x740, Finnish')):
         pg = page(w, h_, True)
         pg.js(f"(() => {{ const p = polku.planner; p.setName(1, {json.dumps(LONG)}); p.setName(0, 'Lielahden kartanon uimaranta'); p.setStop(1, {{ min: 30 }}); return true; }})()")
+        opened = time.time()
         pg.js(f"(() => {{ const p = polku.planner; p.openPointCard(p.points[1], {{ from: {json.dumps('list' if 'list' in label else 'map')} }}); return true; }})()")
-        time.sleep(1.2)
+        # the sheet at the card's size, and the card's own last look for its point (inSight(), 900 ms after it opens)
+        pg.js(SETTLED)
+        time.sleep(max(0, opened + 1.2 - time.time()))
         s = st(pg)
         if s['kind'] != 'point':
             fails.append(f'{label}: no card')
