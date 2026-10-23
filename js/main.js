@@ -270,7 +270,7 @@ function setWinter(on) {
   const changed = on !== state.winterOn;
   state.winterOn = on;
   if (changed) { applyStyle(); configureLayers(); }
-  renderActivityBar();
+  $('#activity-bar .act-current').innerHTML = pillFace(); // in place: a menu open now stays open, with its focus (#392)
   if (layersOpen()) renderLayersPanel();
 }
 // "Winter: 12 cm of snow (FMI, 14 km away)" and the like
@@ -546,6 +546,10 @@ function configureLayers() {
 // Only the active sport shows, beside the search. Hover (mouse) or tap opens the
 // others; picking one, Escape or leaving closes it.
 const hoverPointer = matchMedia('(hover: hover) and (pointer: fine)');
+// the pill's face: the sport, and the snow where it's winter
+function pillFace() {
+  return `${icon(ACT_ICONS[state.activity], 20)}<span>${ACTIVITIES[state.activity].label}</span>${state.winterOn ? `<span class="act-winter" title="${escapeAttr(winterNote())}">${icon('snow', 14)}</span>` : ''}${icon('chevronDown', 16)}`;
+}
 function renderActivityBar() {
   const box = $('#activity-bar');
   box.innerHTML = '';
@@ -555,7 +559,7 @@ function renderActivityBar() {
     type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', title: `Activity: ${cur.label}`,
     // a click just after the hover opened the menu keeps it open (#245); a click on a menu it opened closes it
     onclick: () => { if (menu.hidden) openActs(); else if (actHovered) actHovered = false; else closeActs(); },
-    html: `${icon(ACT_ICONS[state.activity], 20)}<span>${cur.label}</span>${state.winterOn ? `<span class="act-winter" title="${escapeAttr(winterNote())}">${icon('snow', 14)}</span>` : ''}${icon('chevronDown', 16)}`,
+    html: pillFace(),
   });
   box.append(btn, menu);
   sportList(menu);
