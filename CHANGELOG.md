@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: Clear route takes the warning's stretch and short cut with it ([#126](https://github.com/TommiContursi/Polku/issues/126))
+
+With a warning's card open, **Clear route** left the warning's stretch glowing on the map and in the profile, with the dashed short cut through a way marked private, and the card stayed open for a route that was gone. **Undo** back to one point did the same. Now they go with the route and the card closes. **Undo** brings the route back without them, until you tap the warning again.
+
 ### Check says how serious and how sure, and shows each warning on the route ([#233](https://github.com/TommiContursi/Polku/issues/233))
 
 Heads-up is now Check's three groups, and each warning is marked where it is on the route.

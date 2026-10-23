@@ -1320,6 +1320,35 @@ DETOUR = """(async () => {
   p.loadSaved();
   await wait(300);
   if (spots() !== want) errs.push(`after a reload: ${spots()}`);
+  // the row's card open, Clear route takes the short cut, the stretch lit, its band in the profile and the card with
+  // the route, and so does Undo back to one point (it stays while a card is open); Undo or Redo brings the route back
+  // without them (#126). Clicked as a mouse would, so an error in the app is the console's (pg.errors()).
+  const left = async (when) => {
+    await wait(300);
+    const n = async (s) => (await m.getSource(s).getData()).features.length, s = { cut: await n('accessCut'), lit: await n('routeLit'), band: !!p.focusHl, card: p.cards.current ? p.cards.current.kind : null };
+    if (s.cut || s.lit || s.band || s.card) errs.push(`${when}: ${JSON.stringify(s)}`);
+  };
+  const clearBtn = async () => { // (on the toolbar, or in More)
+    if (p.els.clearTool.offsetParent) return p.els.clearTool;
+    p.els.more.click();
+    await wait(300);
+    return [...document.querySelectorAll('.menu-pop .menu-item')].find((b) => /^Clear route/.test(b.textContent.trim()));
+  };
+  for (const [how, press, back] of [['Clear route', clearBtn, p.els.undo], ['Undo back to one point', async () => p.els.undo, p.els.redo]]) {
+    if (how !== 'Clear route') try { p.cards.close(); p.clear(); p.addPoint(A.slice()); p.addPoint(B.slice()); } catch (e) { errs.push(`before ${how}: ${e.message}`); break; }
+    if (!(await routed())) { errs.push(`before ${how}: the leg`); break; }
+    p.reveal('warnings');
+    await wait(300);
+    if (!(await cardOf(/Goes round/)) || !(await m.getSource('accessCut').getData()).features.length) { errs.push(`before ${how}: no card drawing the short cut`); break; }
+    const b = await press();
+    if (!b || !b.offsetParent || b.disabled) { errs.push(`no ${how} to press`); break; }
+    b.click();
+    await left(`after ${how} (${p.points.length} points)`);
+    back.click();
+    if (!(await routed())) { errs.push(`${back === p.els.undo ? 'Undo' : 'Redo'} after ${how}: the leg`); break; }
+    await left(`${back === p.els.undo ? 'Undo' : 'Redo'} after ${how}`);
+  }
+  p.cards.close(); // (one left open by a failure above would be built again, with its item gone, by the steps below)
   // nothing marked in the tiles: nothing said (another leg, so the router asks again)
   closed = false;
   p.clear();
