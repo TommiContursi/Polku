@@ -1840,6 +1840,13 @@ LOOPS = """(async () => {
   if (!added.length) errs.push(`More loops added none (${L.note})`);
   if (added.some((r) => before.some((b) => Math.abs(R.angleDiff(b, r.o.bearing)) < 10))) errs.push('More loops repeated a direction');
   if (L.results.map((r) => r.letter).join('') !== 'ABCDEFGHI'.slice(0, L.results.length)) errs.push(`letters ${L.results.map((r) => r.letter).join('')}`);
+  // each loop's letter reads on its colour, 4.5:1 (#376)
+  const rgb = (s) => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
+  const lum = (c) => c.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  for (const d of document.querySelectorAll('.loop-dot')) {
+    const [x, y] = [lum(rgb(getComputedStyle(d).color)), lum(rgb(getComputedStyle(d).backgroundColor))].sort((a, b) => b - a), cr = (x + 0.05) / (y + 0.05);
+    if (cr < 4.5) errs.push(`loop ${d.textContent}'s letter ${cr.toFixed(2)}:1 on ${getComputedStyle(d).backgroundColor}`);
+  }
   // picked: a route of water legs, not routed again
   const pick = L.results[0], m0 = pick.m;
   p.pickLoop(0);
@@ -4897,14 +4904,7 @@ CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-p
 # What still fails, by the issue that fixes it. The sweep fails on anything else, and on an entry here that passes now,
 # so the list only ever shrinks: (theme, the element and its parent as census.py names them, the start of its text or
 # None for any text)
-CONTRAST_KNOWN = {
-    '#376': [  # for the controls PR: the status colours' text versions, Plan in green
-        ('light', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None), ('dark', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None),
-        ('light', 'button.li > span.badge', None), ('dark', 'button.li > span.badge', None),
-        ('dark', 'button#btn-plan-search.search-plan > span', 'Plan'), ('dark', 'button#btn-plan.plan-btn > span', 'Plan route'),
-        ('dark', 'button.qt-tog > span.qt-l', None), ('dark', 'span.qt-l > small', None),
-    ],
-}
+CONTRAST_KNOWN = {}  # (#376's, the last ones, went with the controls PR)
 
 # CSS transitions finished (a theme change fades some colours), seen on two frames in a row
 STILL = """new Promise((done) => {
@@ -8024,6 +8024,280 @@ def point_card(chrome):
     print(f"{'ok  ' if not fails else 'FAIL'} a point's card (25d 1a): the map and the list, phones and desktops, every action, Back as it was, 200 %" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
+
+# The design system's controls (#382, docs/plans/design-system.md §4), measured where the app draws them: one look for
+# each job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), names that break at 200 % (#384),
+# words at 4.5:1 and a switch's edge at 3:1 (#376), Plan in green, and a press that answers.
+CT_HELP = r"""
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), cs = (e, x) => getComputedStyle(e, x || null), out = [];
+  const css = cs(document.documentElement), val = (n) => css.getPropertyValue(n).trim();
+  const probe = document.body.appendChild(document.createElement('i'));
+  const col = (v) => { probe.style.color = ''; probe.style.color = v; return cs(probe).color; };
+  const rgb = (s) => (s.match(/[\d.]+/g) || []).slice(0, 4).map(Number);
+  const lum = (c) => c.slice(0, 3).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  // a colour with its alpha (and an opacity) over a solid one
+  const over = (c, bg, o = 1) => { const a = (c.length > 3 ? c[3] : 1) * o; return c.slice(0, 3).map((v, i) => v * a + bg[i] * (1 - a)); };
+  const solid = rgb(col(val('--surface-solid')));
+  const inside = (a, b) => { const x = a.getBoundingClientRect(), y = b.getBoundingClientRect(); return x.left >= y.left - 1 && x.right <= y.right + 1 && x.top >= y.top - 1 && x.bottom <= y.bottom + 1; };
+"""
+# One look for each job (#356), at a phone's size or a desktop's: the start's sport, Draw it's Fine-tune and Settings'
+# speeds are rows, as a card's; every chosen chip is the round trip's; a switch is --target tall, the chosen one white
+# with black words and a green icon; a switch's off track has an edge; small headings are one size; the map's card's
+# title is a step's; the round trip's stepper is one box; Plan is green
+CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
+  const p = polku.planner, C = await import(location.origin + '/js/card.js'), U = await import(location.origin + '/js/ui.js'), desk = p.sideMQ.matches;
+  for (const id of ['#btn-plan', '#btn-plan-search']) {
+    const b = document.querySelector(id);
+    if (b && b.getClientRects().length && cs(b).backgroundColor !== col(val('--accent-bg'))) out.push(`Plan (${id}) is ${cs(b).backgroundColor}, not green`);
+  }
+  // a row, built as the cards build theirs (card.js item()), beside the one measured, so both have its place
+  const look = (el) => { const b = el.querySelector('b'), s = el.querySelector('small'), ic = el.querySelector('.ic'), c = cs(el);
+    return { height: c.minHeight, padding: `${c.paddingTop} ${c.paddingRight} ${c.paddingBottom} ${c.paddingLeft}`, border: c.borderTopWidth, gap: c.columnGap,
+      name: b && `${cs(b).fontSize} ${cs(b).fontWeight}`, line: s && cs(s).fontSize, icon: ic && cs(ic).color }; };
+  const sameRow = (el, what) => {
+    if (!el) return out.push(`${what}: not there`);
+    const ref = C.item({ icon: 'route', label: 'A row', line: 'its line', chev: true });
+    el.after(ref);
+    const a = look(el), b = look(ref);
+    ref.remove();
+    for (const k in b) if (a[k] != null && a[k] !== b[k]) out.push(`${what}: ${k} ${a[k]}, a row's ${b[k]}`); // (a row with no line has none to measure)
+    if (a.icon !== col(val('--text'))) out.push(`${what}: its icon ${a.icon}, not black`);
+  };
+  p.setActive(true); p.clear(); await wait(600);
+  sameRow(document.querySelector('.pl-way .sport-row'), 'the start’s sport');
+  if (desk) { p.openWay('draw'); await wait(600); sameRow(document.querySelector('.pl-way .way-srow'), 'Draw it’s Fine-tune'); }
+  document.querySelector('#btn-settings').click(); await wait(600);
+  sameRow(document.querySelector('#settings-body .speed-sport-row'), 'Settings’ speeds');
+  document.querySelector('#btn-settings').click(); await wait(400);
+  // the chosen chip: green with a 2 px border everywhere, as the round trip's lengths have it
+  p.openLoop(polku.map.getCenter().toArray()); await wait(800);
+  const way = document.querySelector('.pl-way'), box = way.appendChild(document.createElement('div'));
+  const chip = (e) => { const c = cs(e); return `${c.backgroundColor} ${c.borderTopWidth} ${c.borderTopColor} ${c.color}`; };
+  const ref = way.querySelector('.rt-chips .chip[aria-pressed=true]');
+  box.innerHTML = `<div class="chips"><button class="chip" aria-pressed="true">Grade</button></div><div class="chips tl-layers"><button class="chip" aria-pressed="true">Wind</button></div>
+    <div class="style-presets"><span class="chip chip-on">Custom</span></div><div class="act-chips"><button class="act-chip" aria-pressed="true">Canoe</button></div>
+    <div class="menu-chips"><button class="menu-item chip" aria-checked="true"><span>Flowy</span></button></div>`;
+  if (!ref) out.push('no chosen length in the round trip');
+  else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.tl-layers .chip', 'the timeline’s chip'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
+    if (chip(box.querySelector(sel)) !== chip(ref)) out.push(`${what}, chosen: ${chip(box.querySelector(sel))}, not the round trip's ${chip(ref)}`);
+  // switches: one height in a place, --target; the chosen one white, with black words and a green icon
+  box.innerHTML = `<div class="seg"><button aria-pressed="true">${U.icon('route', 16)}<span>Distance</span></button><button aria-pressed="false">${U.icon('roundtrip', 16)}<span>Time</span></button></div>
+    <div class="seg small"><button aria-pressed="true">Small</button></div>`;
+  const target = parseFloat(val('--target'));
+  for (const b of [...box.querySelectorAll('.seg button'), ...way.querySelectorAll('.rt-unit button')]) {
+    const t = Math.round(b.getBoundingClientRect().height);
+    if (t !== target) out.push(`a switch's ${b.textContent.trim()} ${t} px tall, not ${target}`);
+  }
+  for (const b of [box.querySelector('.seg button'), way.querySelector('.rt-unit button[aria-pressed=true]')]) {
+    const ic = b && b.querySelector('.ic');
+    if (!b) out.push('no chosen switch in the round trip');
+    else if (cs(b).backgroundColor !== col(val('--surface-solid')) || cs(b).color !== col(val('--text')) || !ic || cs(ic).color !== col(val('--accent')))
+      out.push(`a chosen switch: ${cs(b).backgroundColor}, words ${cs(b).color}, icon ${ic && cs(ic).color}`);
+  }
+  // a switch's off track: its edge at 3:1 on the card (#376)
+  box.innerHTML = `<label class="tg"><span class="tg-text">Avoid main roads</span><input type="checkbox"><span class="tg-ui"></span></label>`;
+  const ui = box.querySelector('.tg-ui'), edge = (cs(ui).boxShadow.match(/rgba?\([^)]*\)/) || [cs(ui).backgroundColor])[0], er = ratio(over(rgb(edge), solid), solid);
+  if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
+  // small headings: 12 px capitals in grey, .06em, bold (a desktop's card too)
+  box.innerHTML = `<div class="menu-h">A</div><div class="lp-sec"><h3>A</h3></div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
+    <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div><div class="speed-route"><h4>A</h4></div>
+    <div class="wind-title">A</div><span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
+  const want = `12px 700 0.72px uppercase ${col(val('--muted'))}`;
+  for (const e of box.querySelectorAll('.menu-h, h3, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
+    const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
+    if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
+  }
+  // titles: the map's card's as a step's (17 px); on a desktop as a card's at the point (15 px)
+  box.innerHTML = `<div class="card-float"><div class="pl-way card"><div class="way-hint"><b>A</b></div></div></div>`;
+  const pop = document.body.appendChild(document.createElement('div'));
+  pop.className = 'maplibregl-popup polku-popup';
+  pop.innerHTML = '<div class="maplibregl-popup-content"><div class="insp"><div class="insp-title">A trail</div></div></div>';
+  const step = way.querySelector('.way-hint b'), title = cs(pop.querySelector('.insp-title')).fontSize, tw = desk ? cs(box.querySelector('b')).fontSize : step && cs(step).fontSize;
+  if (title !== tw) out.push(`the map's card's title ${title}, not ${tw}`);
+  pop.remove(); box.remove();
+  // one stepper: − 30 min + in one box, the number typable
+  way.querySelector('.rt-chips [data-k=len-other]').click(); await wait(500);
+  const st = document.querySelector('.pl-way .rt-step'), len = st && st.querySelector('.rt-len'), parts = st ? [st.querySelector('[data-k=dec]'), st.querySelector('input'), st.querySelector('[data-k=inc]')] : [];
+  if (!len || parts.some((e) => !e)) out.push('no stepper after Other…');
+  else if (parts.some((e) => !inside(e, len))) out.push('the stepper’s − and + aren’t in its box');
+  probe.remove();
+  return out;
+})()"""
+# Words at 4.5:1 (#376), in light or dark: every climb's badge, the status pills, Check's count, the round trip's cost
+# on Make 3 loops, the active weather layers' chips, the warning box in each of Check's groups; and the drop hint's
+# words on a card of their own, not on the map (large: 3:1)
+CT_WORDS = r"""(async () => {""" + CT_HELP + r"""
+  const p = polku.planner, K = await import(location.origin + '/js/config.js'), a = p.analysis;
+  if (!a || !a.climbs) return ['no route to draw climbs on'];
+  const keep = a.climbs, main = p.mainSport, low = [];
+  const fake = (cls, avg) => ({ cls, avg, max: avg, gain: 20, len: 200, from: 0, to: 200, start: 0, end: 1 });
+  const badges = () => p.els.climbs.querySelectorAll('.badge').forEach((e) => { const r = ratio(rgb(cs(e).color), rgb(cs(e).backgroundColor)); if (r < 4.5) low.push(`${e.textContent} ${r.toFixed(2)}:1`); });
+  a.climbs = K.DIFF_COLORS.map((_, k) => fake(k, 5)); p.renderClimbs(); badges();
+  p.mainSport = () => 'hike'; a.climbs = [22, 17, 12, 8, 4, 1, -3, -12].map((g) => fake(0, g)); p.renderClimbs(); badges();
+  delete p.mainSport; a.climbs = keep; p.renderClimbs();
+  if (p.mainSport !== main) out.push('the planner’s mainSport() not put back');
+  if (low.length) out.push(`climbs' badges under 4.5:1: ${low.join(', ')}`);
+  const box = document.body.appendChild(document.createElement('div'));
+  box.style.cssText = 'position: fixed; left: 0; top: 0; width: 320px; z-index: 50; background: var(--surface-solid)';
+  box.innerHTML = `${['good', 'ok', 'warn', 'bad'].map((k) => `<span class="pill ${k}">A ${k} pill</span>`).join('')}<span class="pl-tab-n">5</span>
+    <button class="btn primary big rt-make"><span class="rt-make-t"><span>Make 3 loops</span><small>3 routing calls, up to 6</small></span></button>
+    <div class="on-chips"><button class="on-chip wx"><span>Rain radar</span></button><button class="on-chip"><span>Trails</span></button></div>
+    ${['danger', 'look', 'unk'].map((k) => `<div class="warn-row ${k}"><span><svg class="ic" width="20" height="20"></svg></span><span><em>Its group</em><b>The ferry doesn't run</b><small>Leg 2</small></span></div>`).join('')}`;
+  const words = (e, what) => {
+    let bg = solid;
+    for (const x of [...function* () { for (let y = e; y && y !== box.parentElement; y = y.parentElement) yield y; }()].reverse()) bg = over(rgb(cs(x).backgroundColor), bg);
+    const r = ratio(over(rgb(cs(e).color), bg, +cs(e).opacity), bg);
+    if (r < 4.5) out.push(`${what} ${r.toFixed(2)}:1`);
+  };
+  box.querySelectorAll('.pill').forEach((e) => words(e, `the pill “${e.textContent}”`));
+  words(box.querySelector('.pl-tab-n'), 'Check’s count');
+  words(box.querySelector('.rt-make small'), 'the round trip’s cost on Make 3 loops');
+  box.querySelectorAll('.on-chip').forEach((e) => words(e.firstChild, `the active layer “${e.textContent}”`));
+  for (const k of ['danger', 'look', 'unk']) {
+    const w = box.querySelector(`.warn-row.${k}`), c = col(val(`--${k}`));
+    words(w.querySelector('b'), `the ${k} box's words`); words(w.querySelector('em'), `the ${k} box's group`);
+    if (cs(w.querySelector('.ic')).color !== c) out.push(`the ${k} box's icon ${cs(w.querySelector('.ic')).color}, not ${c}`);
+    if (cs(w).borderTopStyle !== (k === 'unk' ? 'dashed' : 'solid')) out.push(`the ${k} box's edge ${cs(w).borderTopStyle}`);
+  }
+  box.remove();
+  document.body.classList.add('dropping');
+  const hint = document.querySelector('.drop-hint'), say = hint.firstElementChild || hint, hb = rgb(cs(say).backgroundColor);
+  if (hb.length > 3 && hb[3] < 1) out.push('the drop hint’s words lie on the map');
+  else if (ratio(rgb(cs(say).color), hb) < 3) out.push(`the drop hint’s words ${ratio(rgb(cs(say).color), hb).toFixed(2)}:1`);
+  document.body.classList.remove('dropping');
+  probe.remove();
+  return out;
+})()"""
+# A press answers: a chip, a button and a switch shrink a little while held (motion allowed)
+CT_PRESSED = """((sel) => { const e = document.querySelector(sel), m = getComputedStyle(e).transform.match(/matrix\\(([\\d.]+)/); return m ? +m[1] : 1; })"""
+CT_POINTS = "(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); for (const q of [[23.80, 61.512], [23.815, 61.5155], [23.83, 61.513]]) p.addPoint(q); await new Promise((r) => setTimeout(r, 800)); return true; })()"
+CT_RING = """((sel) => { const e = document.activeElement, c = getComputedStyle(e), probe = document.body.appendChild(document.createElement('i'));
+  probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--focus'); const want = getComputedStyle(probe).color; probe.remove();
+  return { at: e.matches(sel), el: (e.className && e.className.baseVal === undefined ? e.className : e.tagName).slice(0, 40), ring: `${c.outlineStyle} ${c.outlineWidth} ${c.outlineColor}`, want: `solid 2px ${want}`, offset: c.outlineOffset }; })"""
+# a button's label in Finnish at 200 %: it wraps inside its button, which stays in its card (the top bar at 200 % is #375's)
+CT_WRAP = r"""(async () => {""" + CT_HELP + r"""
+  const p = polku.planner;
+  p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await wait(800);
+  const make = document.querySelector('.pl-way .rt-make'), t = make && make.querySelector('.rt-make-t > span');
+  if (!t) return ['no Make 3 loops'];
+  t.textContent = 'Muodosta kolme kiertoreittiä';
+  const box = document.querySelector('.pl-way').appendChild(document.createElement('div'));
+  box.style.width = '120px';
+  box.innerHTML = '<button class="btn">Tallenna offline-käyttöön</button>';
+  await wait(100);
+  for (const [b, what] of [[make, 'Make 3 loops'], [box.firstChild, 'a button']])
+    for (const e of [b, ...b.querySelectorAll('*')]) if (e.getClientRects().length && (!inside(e, b) || e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1)) { out.push(`${what}'s words run out of it, in Finnish at 200 %`); break; }
+  const mr = make.getBoundingClientRect(), wr = document.querySelector('.pl-way').getBoundingClientRect(); // (the card scrolls: across only)
+  if (mr.left < wr.left - 1 || mr.right > wr.right + 1) out.push(`Make 3 loops runs out of its card (${Math.round(mr.left)}–${Math.round(mr.right)} px in ${Math.round(wr.left)}–${Math.round(wr.right)} px)`);
+  box.remove(); probe.remove();
+  return out;
+})()"""
+# a point's card at 200 % with a long Finnish name: the name breaks inside the card; a row with a value gives its name room
+CT_NAME = r"""(async () => {""" + CT_HELP + r"""
+  const p = polku.planner;
+  p.setName(1, 'Pohjois-Pohjanmaan virkistysalueyhdistyksen Ylikiiminginjoen laavu');
+  p.openPointCard(p.points[1], { from: 'map' }); await wait(1200);
+  const c = document.querySelector('.pl-way.card'), name = c && c.querySelector('.way-hint b');
+  if (!name) return ['no card'];
+  if (!inside(name, c)) out.push(`the name runs off the card (${Math.round(name.getBoundingClientRect().right)} px, the card's edge ${Math.round(c.getBoundingClientRect().right)} px)`);
+  const rows = [...c.querySelectorAll('.row')].filter((r) => r.querySelector('.val'));
+  if (!rows.length) out.push('no row with a value');
+  for (const r of rows) {
+    const n = r.querySelector('span:nth-child(2)').getBoundingClientRect(), v = r.querySelector('.val').getBoundingClientRect();
+    if (v.top < n.bottom - 1 && n.width < 0.5 * r.getBoundingClientRect().width) out.push(`“${r.querySelector('b').textContent}” squeezed to ${Math.round(n.width)} px beside its value`);
+  }
+  probe.remove();
+  return out;
+})()"""
+
+
+def controls(chrome):
+    fails = []
+
+    def key(pg, k, code, vk, char=None):
+        for event in ['rawKeyDown'] + (['char'] if char is not None else []) + ['keyUp']:
+            fields = {'type': event, 'key': k, 'code': code, 'windowsVirtualKeyCode': vk}
+            if char is not None and event == 'char':
+                fields['text'] = char
+            chrome.send('Input.dispatchKeyEvent', fields, pg.s)
+        time.sleep(0.3)
+
+    def ring(pg, what, inside, sel):
+        r = pg.js(f'({CT_RING})({json.dumps(sel)})')
+        if not r['at']:
+            fails.append(f"{what}: the focus is on {r['el']}, not {sel}")
+        elif r['ring'] != r['want'] or (inside and not r['offset'].startswith('-')):
+            fails.append(f"{what}: focus on {r['el']} draws {r['ring']} offset {r['offset']}, not {r['want']}{' inside' if inside else ''}")
+
+    def page(w, h_, phone):
+        pg = chrome.page(w, h_, phone)
+        pg.c.send('Network.setBlockedURLs', {'urls': ['*traficom.fi*']}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        return pg
+
+    for w, h_, phone in ((390, 844, True), (1440, 900, False)):
+        name = f'{w}x{h_}'
+        pg = page(w, h_, phone)
+        try:
+            fails += [f'{name}: {f}' for f in pg.js(CT_LOOK)]
+            if phone:
+                # the ⋯ menu's items draw the focus ring inside (#385)
+                pg.js(CT_POINTS)
+                pg.js("document.querySelector('#pl-tools [aria-haspopup=menu][aria-label^=More]').click(), true")  # (it focuses its first item)
+                key(pg, 'ArrowDown', 'ArrowDown', 40)
+                ring(pg, f'{name}: the ⋯ menu', True, '.menu-pop .menu-item')
+                key(pg, 'Escape', 'Escape', 27)
+            else:
+                # a press answers (motion allowed): the round trip's chip, Make 3 loops, its switch
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+                pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await new Promise((r) => setTimeout(r, 800)); return true; })()")
+                for sel, what in (('.pl-way .rt-chips .chip:not([aria-pressed=true])', 'a chip'), ('.pl-way .rt-make', 'Make 3 loops'), ('.pl-way .rt-unit button:not([aria-pressed=true])', 'a switch')):
+                    x, y = pg.js(f"(() => {{ const r = document.querySelector({json.dumps(sel)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none'}, pg.s)
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': x, 'y': y, 'button': 'left', 'buttons': 1, 'clickCount': 1}, pg.s)
+                    time.sleep(0.3)
+                    s = pg.js(f"({CT_PRESSED})({json.dumps(sel)})")
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 450, 'button': 'left', 'buttons': 1}, pg.s)
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': 900, 'y': 450, 'button': 'left', 'buttons': 0, 'clickCount': 1}, pg.s)
+                    if not 0.95 < s < 0.99:
+                        fails.append(f'{name}: {what} held down is at scale {s}, not 0.97')
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+                # one focus ring (#385): the sport menu's sports and the ⋯ menu's items draw it inside, a button outside
+                pg.js("polku.planner.close(); document.querySelector('#activity-bar .act-current').focus(), true")
+                key(pg, 'Enter', 'Enter', 13, '\r')
+                key(pg, 'ArrowDown', 'ArrowDown', 40)
+                ring(pg, f'{name}: the sport menu', True, '#activity-bar .act')
+                key(pg, 'Escape', 'Escape', 27)
+                pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await new Promise((r) => setTimeout(r, 800)); document.querySelector('.pl-way .rt-make').focus(); return true; })()")
+                ring(pg, f'{name}: Make 3 loops', False, '.pl-way .rt-make')
+                pg.js(CT_POINTS)
+                # words at 4.5:1 (#376), with the route's climbs drawn, in light and dark
+                for theme in ('light', 'dark'):
+                    scheme(pg, theme)
+                    pg.js(STILL)
+                    fails += [f'{name} {theme}: {f}' for f in pg.js(CT_WORDS)]
+                scheme(pg, 'light')
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+
+    # 200 % on a phone: a button's label in Finnish (#373), a point's long Finnish name and a row with a value (#384)
+    pg = page(195, 422, True)
+    try:
+        fails += [f'390x844 at 200 %: {f}' for f in pg.js(CT_WRAP)]
+        if not pg.js(PC_ROUTE, timeout=30000):
+            fails.append('390x844 at 200 %: no route')
+        pg.js(SETTLED)
+        fails += [f'390x844 at 200 %, a point’s card: {f}' for f in pg.js(CT_NAME)]
+        fails += [f'390x844 at 200 % console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the design system's controls (#382): one look per job, the focus ring, labels that wrap, 200 %, words at 4.5:1, press" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298)'),
@@ -8061,6 +8335,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
+    ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('panels', [panels], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240)'),
     ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),

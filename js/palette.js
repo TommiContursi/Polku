@@ -32,6 +32,14 @@ export function fromCss(table) {
 
 export const onTheme = (fn) => listeners.push(fn);
 
+// Black words (--ink), not white, on a colour of the map's or a scale's (a climb's badge, a loop's letter): past this
+// luminance black reads better than white, and the better of the two is always 4.58:1 or more (#376)
+export function darkWords(hex) {
+  const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) > 0.179;
+}
+
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   read(slots);
   for (const fn of listeners) fn();

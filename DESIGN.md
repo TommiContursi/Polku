@@ -37,6 +37,8 @@ colors:
   look-soft: "#fbf4e2"
   unk: "#47607a"
   unk-soft: "#eaf0f6"
+  ink: "#000000"
+  wx-text: "#1d4ed8"
   dark-accent: "#3fb07a"
   dark-accent-2: "#56c48f"
   dark-accent-soft: "rgba(63, 176, 122, 0.16)"
@@ -64,6 +66,7 @@ colors:
   dark-look-soft: "rgba(242, 196, 90, 0.12)"
   dark-unk: "#9cc0e4"
   dark-unk-soft: "rgba(156, 192, 228, 0.13)"
+  dark-wx-text: "#93c5fd"
 typography:
   glance:
     fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
@@ -155,13 +158,13 @@ This file holds the tokens: colours, type, shapes, spacing, depth and motion. **
 A quiet, cool green-grey interface with one forest-green accent, so that the map and the route line hold the colour. The names below are the CSS variables in `css/app.css` (`--accent`, `--route`…); dark mode redefines the same variables, listed in the frontmatter with a `dark-` prefix.
 
 ### Primary
-- **Accent (forest green)**: links, the chosen tab and switch, ticks, focus rings and the active state of map buttons. In dark mode a lighter green, so it still reads on dark surfaces.
-- **Focus (green)**: the focus ring's own value, the accent's green in light mode and a lighter one in dark. Today the controls still draw their ring in the accent; the controls PR moves them onto it (#385).
-- **Accent-bg (forest green)**: the background behind white text and icons, such as the main action (`btn primary`), the sport pill and pressed buttons. Light mode uses the accent itself; dark mode a darker green, because white on the lighter dark-mode accent is only 2.7:1, and on this one 5.3:1 (#239).
+- **Accent (forest green)**: links, the chosen chip's border, the chosen switch's icon, ticks and the active state of map buttons. In dark mode a lighter green, so it still reads on dark surfaces.
+- **Focus (green)**: the focus ring, on every control: the accent's green in light mode and a lighter one in dark.
+- **Accent-bg (forest green)**: the background behind white text and icons, such as the main action (`btn primary`), **Plan**, the sport pill and pressed buttons. Light mode uses the accent itself; dark mode a darker green, because white on the lighter dark-mode accent is only 2.7:1, and on this one 5.3:1 (#239).
 - **Accent-2 (lighter green)** and **Accent-soft (pale green tint)**: hover and the soft fill behind a chosen item.
 
 ### Secondary
-- **Route (red)**: the route line on the map, its glow, and the Plan button. It is the one strong colour on the screen and is kept for the route.
+- **Route (red)**: the route line on the map and its glow. It is the one strong colour on the screen and is kept for the route.
 - **The route's legs**: over water deep blue (`--route-water`), with the same glow, and the map's key says so ("Over water"); a straight line darker red and dashed (`--route-line`); a leg being routed grey and dotted (`--route-loading`). They sit on the map, so they're the same in both themes.
 - **Colour by** in the planner can recolour the route line on the map (with its **On map** switch) by grade, uphill difficulty, surface, kind of way, trail width, wind, temperature or rain; with any of them the plain red is replaced along the whole line. Each scale's colours are values too (`--diff-s0` … `--diff-s6`, `--grade-…`, `--surf-…`, `--sport-…`, `--way-…`, `--trail-width-…`, `--trail-vis-…`, `--temp-…`, `--rain-…`, `--wind-…`), while its words and order stay in its table in `js/config.js`, `js/chart.js` or `js/weather.js`. The weather map's own colours are still in `js/wxmap.js`. How the scales read, for colour blindness too, is in the design-system plan's §2.
 - **In the JavaScript**, the route's colours, the warning colours and the scales come from the CSS: `fromCss()` in `js/palette.js` reads them at start and again when the theme changes, and the map and the planner draw with them again.
@@ -169,7 +172,9 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 
 ### Tertiary
 - **Good (green), Ok (amber), Warn (orange), Bad (red)**: states and warnings, such as Heads-up rows, difficulty and conditions, as lines, bars, dots and icons. Never the only way something is said: each comes with words or an icon. In dark mode Bad is a lighter red, so red words such as Remove and Delete read at 6.2:1 (#370).
-- **Good-text, Ok-text, Warn-text, Bad-text**: the same four for words and pills, at least 6.2:1 in both themes. Today the pills still use the plain four (#376); the controls PR moves them.
+- **Good-text, Ok-text, Warn-text, Bad-text**: the same four for words and pills, at least 6.2:1 in both themes: the condition pills, a warning on a layer's tile, and Check's count (warn-text behind it, the surface's colour on it, so it reads in both themes).
+- **Ink (black)**: words on one of the map's or a scale's colours, where white doesn't read on it: a climb's badge, a loop's letter. `darkWords()` in `js/palette.js` picks black or white, whichever reads, at 4.58:1 or more. The same in both themes, since it sits on the colour.
+- **Wx-text (blue)**: the weather's blue, for words: an active weather layer's chip in Layers. Lighter in dark mode.
 - **Danger (red), Look (amber), Unk (blue-grey)**, each with a soft version for the box behind it: Check's three groups (25d), Read before you go, Worth a look and Not checked. Each has its shape too: a triangle, an eye, a dashed "?". At least 5.4:1 on its box and on the page, in both themes. 25d's Journey C is the first to use them.
 
 ### Neutral
@@ -184,7 +189,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - The map's own colours (land, water, parks, labels) are in `js/style.js`, one palette per map style. The sports' own line colours are `--sport-…` (`SPORT_COLORS` in `js/config.js`).
 
 ### Named Rules
-**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Red belongs to the route, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. Today two things break it, both decided on 2026-10-22 (#382): the **Plan** button is red, and turns green in the controls PR; **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
+**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Red belongs to the route, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
 
 **The Never by Colour Alone Rule.** Every colour that means something (a warning, a difficulty, a chosen state) is also said in words, a tick, an icon or a shape (PRODUCT.md, WCAG 2.2 AA).
 
@@ -201,20 +206,20 @@ These are the nine sizes, values on `:root` named by what they're for (`--font-g
 - **Glance** (700, 34 px, `--font-glance`, tabular figures): a number read while moving, in `--text` on `--surface-solid`, never on frosted glass. Phase 23 is the first to use it.
 - **Numeral** (700, 22 px, `--font-numeral`, line-height 1, tabular figures): the big numbers, such as the time in the timeline and the round trip's length.
 - **Number** (700, 19 px, `--font-number`, tabular figures): a card's numbers.
-- **Title** (700, 17 px, `--font-title`): a step's title, such as the route's name and "Round trip from your start", and the main action's words (`btn primary big`).
+- **Title** (700, 17 px, `--font-title`): a step's title, such as "Round trip from your start", a card's name and the map's cards' titles (`insp-title`), and the main action's words (`btn primary big`). On a desktop's card at its spot it's 15 px.
 - **Field** (400, 16 px, `--font-field`): what you type, on phones, so iOS doesn't zoom the page. A panel's or drawer's heading is 16 px too today.
-- **Row** (600, 15 px, `--font-row`): the words of a row you tap, such as Back, a way to begin or a sport. Some rows still use 650, which the system fonts draw as 600 or 700.
+- **Row** (600, 15 px, `--font-row`): the words of a row you tap, such as a sport, a point's action or a way to begin. Some other controls still use 650, which the system fonts draw as 600 or 700.
 - **Body** (400, 14 px, `--font-body`, line-height 1.4): the page's base size.
 - **Control** (600, 13 px, `--font-control`): button labels on a desktop, and a row's second line.
 - **Small** (600, 12 px, `--font-small`): hints, values and lists; the most used size in the panels. Reading text is never smaller (the Small on Purpose Rule below); today some still is (#235).
-- **Label** (700, 11 px, letter-spacing 0.04–0.08em, uppercase): section labels in muted text, such as a layer group or a search result group. The controls PR makes small headings 12 px capitals.
+- **Small heading** (700, 12 px, `--font-small`, letter-spacing 0.06em, uppercase, in `--muted`): every section label, such as a menu's group, a layer group, a planner section or a search result group. One rule in `css/app.css` gives them all their look.
 
 The weights are `--weight-regular` (400), `--weight-name` (600) and `--weight-strong` (700). On a desktop's card at the point (`.card-float`) the title, the numbers and the rows are one step smaller (15, 17 and 14 px), set once on the card.
 
 ### Named Rules
 **The Tabular Numbers Rule.** Numbers that change or line up (times, distances, the timeline) use tabular figures, so they don't jump as they update.
 
-**The Room for Finnish Rule.** Names, headings and labels wrap rather than run out of their box (`overflow-wrap: anywhere`), because Finnish and Swedish are coming (phase 18) and their words are long. Today a card's title still uses `break-word` and can run off at 200 % (#384).
+**The Room for Finnish Rule.** Names, headings and labels wrap rather than run out of their box (`overflow-wrap: anywhere`), because Finnish and Swedish are coming (phase 18) and their words are long. A button's words wrap inside it: buttons have a least height, never a fixed one (#373). On a narrow card (under about 220 px, as at 200 %), a row's value goes under its name (#384).
 
 **The Small on Purpose Rule.** Polku is a map, and some text is small so the map has the room: the scale bar, the credits, the map's own labels, chart axes, units beside a number, a word under an icon, a number inside a mark. Those may go down to 10 px. Text you read to decide or act (names, values, actions, warnings, a row's line) is 12 px or more. Small or not, text passes 4.5:1 and grows with the browser's text size.
 
@@ -254,9 +259,10 @@ Gently rounded, never sharp. The corners are values: `--radius-small` (6 px) for
 The controls, with their classes and where each comes from, are in **[docs/DEVELOPING.md, "Shared controls"](docs/DEVELOPING.md#shared-controls)**. That table is the one list: this file doesn't repeat it. A new screen uses those controls for the same jobs, a mock-up copies their CSS from `css/app.css`, and a new control is proposed to the user first and then joins that table.
 
 What every control shares:
-- **Focus:** a 2 px outline in the accent, 2 px out (the route colour on route controls), inside a row of a list. Today `btn`, `tool`, `chip`, `way-tile` and `way-back` still show the browser's own ring (#382), and the sport menu and ⋯ menus show none (#385).
+- **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
 - **Hover:** `--surface-2` behind, only with a mouse. Today 38 of 57 hover rules also apply on touch screens, where they stay after a tap (#208), and the hover looks vary (`--surface-2`, `--surface-solid`, `--accent-soft`, `--accent-bg`).
-- **Pressed or chosen:** the accent, plus a tick or `aria-pressed`, never colour alone. Today "chosen" has several looks; #356 settles them on a green border for chips and white with a green icon for switches.
+- **Pressed:** buttons, chips, tiles and switches shrink to 97 % for `--t-press` while held, with no grey flash; rows keep their grey (`--surface-2`). With reduced motion, nothing moves.
+- **Chosen:** never colour alone (#356). A chip: a green tint, a 2 px green border, black words. A switch: white, black words, a green icon or tick. A tile: a green border, icon and tick, black words. A row: a green tint and a tick. A switch that's off has a `--muted` edge, at least 3:1.
 - **Motion:** short and quiet. The timings are values: `--t-press` (120 ms) for a press and hover, `--t-open` (180 ms) for cards and menus and `--t-sheet` (260 ms) for the sheet and the panel; closing takes the next shorter one. They ease out on `--ease-out` (`cubic-bezier(0.23, 1, 0.32, 1)`), and the sheet on `--ease-drawer` (`cubic-bezier(0.32, 0.72, 0, 1)`). Today hover and press take 120 to 150 ms in places, typed in place. With reduced motion asked for, they fade in place instead of sliding, and pulses stop.
 
 ## Do's and Don'ts

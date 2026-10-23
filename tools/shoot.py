@@ -4,6 +4,8 @@
   python3 tools/shoot.py OUTDIR LABEL [scene ...]     # e.g. shots before   (on main)
   python3 tools/shoot.py OUTDIR LABEL --list          #      shots after    (on the branch)
 
+A scene's name with "@dark" after it is the same scene in dark mode (phone-start@dark).
+
 Needs the dev server (python3 serve.py) and Google Chrome. Routes come from
 tools/fixtures, so no routing requests are made (paddle scenes use Polku's own
 water router, which needs only map tiles). Writes OUTDIR/LABEL-SCENE.png.
@@ -734,7 +736,8 @@ SCENES.update({
 
 def scene(chrome, name):
     """A page with the scene set up, to look at (shoot()) or measure (the smoke suite's contrast sweep); the caller closes it."""
-    sc = SCENES[name]
+    base, _, mode = name.partition('@')
+    sc = {**SCENES[base], **({'dark': True} if mode == 'dark' else {})}
     pg = chrome.page(sc['w'], sc['h'], sc['phone'])
     if sc.get('dark') or sc.get('motion'):
         motion = 'no-preference' if sc.get('motion') else 'reduce'  # motion: what moves (#198's chevrons) moves
@@ -758,6 +761,10 @@ def scene(chrome, name):
         pg.idle()
     if sc.get('js'):
         pg.js(sc['js'])
+    for key, code, vk in sc.get('keys', []):  # pressed as a keyboard does, so the focus ring shows (:focus-visible)
+        for kind in ('rawKeyDown', 'keyUp'):
+            chrome.send('Input.dispatchKeyEvent', {'type': kind, 'key': key, 'code': code, 'windowsVirtualKeyCode': vk}, pg.s)
+        time.sleep(0.2)
     if sc.get('settle') is not None:
         time.sleep(sc['settle'])  # a moment that doesn't wait
     else:
@@ -834,9 +841,23 @@ SCENES['phone-peek-360-fi'] = dict(PHONE, w=360, h=740, timeline=True, route='ro
 SCENES['phone-peek-200'] = dict(PHONE, w=195, h=422, timeline=True, route='route-kauppi-mtb.json', state='peek', js=SUM_JS(), settle=0.3)
 SCENES['phone-peek-200-fi'] = dict(PHONE, w=195, h=422, timeline=True, route='route-kauppi-mtb.json', state='peek', js=SUM_JS(SUM_FI), settle=0.3)
 
+# #382's controls: the round trip's own length (the stepper), a stop's minutes on a point's card, the ⋯ menu, and the
+# focus ring by keyboard: ↓ in the sport menu and in the ⋯ menu
+RT_OTHER = RT_TAPPED.replace(" return true; })()", " const o = document.querySelector('.pl-way [data-k=len-other]'); if (o) o.click(); await new Promise((r) => setTimeout(r, 700)); return true; })()")
+STOP_CARD = POINT_CARD().replace("return true; })()", "p.setStop(1, { min: 30 }); await new Promise((r) => setTimeout(r, 900)); return true; })()")
+KEY_RING = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('#activity-bar .act-current').click(); await wait(500);"
+            " const a = document.querySelector('#activity-bar .act'); if (a) a.focus(); await wait(200); return true; })()")
+DOWN = [('ArrowDown', 'ArrowDown', 40)]
+for size, viewport in [('desk', DESK), ('phone', PHONE)]:
+    SCENES[f'{size}-rt-other'] = dict(viewport, timeline=False, hash='#14/61.4975/23.7605', storage=SIDE, js=RT_OTHER)
+    SCENES[f'{size}-point-card-stop'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='peek', js=STOP_CARD)
+    SCENES[f'{size}-more'] = dict(viewport, timeline=True, route='route-kauppi-mtb.json', state='peek', storage=SIDE, js=OPEN_MENU.replace(" if (m) m.scrollTop = m.scrollHeight;", ""), keys=DOWN, settle=0.4)
+    SCENES[f'{size}-acts-ring'] = dict(viewport, timeline=False, js=KEY_RING, keys=DOWN, settle=0.4)
+SCENES['phone-point-card-200-long'] = dict(PHONE, w=195, h=422, timeline=False, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD('Pohjois-Pohjanmaan virkistysalueyhdistyksen Ylikiiminginjoen laavu'))
+
 
 def main():
-    if '--list' in sys.argv:
+    if '--list' in sys.argv:  # (and each with "@dark")
         print('\n'.join(SCENES))
         return
     if len(sys.argv) < 3:

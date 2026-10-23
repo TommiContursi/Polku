@@ -4,6 +4,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### The same controls look the same, and read clearly ([#382](https://github.com/TommiContursi/Polku/issues/382))
+
+Polku keeps its look, but a control that does the same job now looks the same wherever it is, and every word reads clearly in both themes.
+
+- **Plan** is green now, like every other main action. Red is kept for your route and for danger.
+- A chosen chip looks the same everywhere: a green tint with a green border and black words, in Layers, the weather timeline and the menus as in the round trip.
+- A switch is one height in each place, 44 px to touch on a phone and 36 px with a mouse. The chosen choice is white, with black words and its icon in green. A switch that's off has a grey edge, so you can see it in sunlight.
+- The round trip's own length, and a stop's or a changeover's minutes, are one box now: **−**, the number and **+**. You can still type the number.
+- The start's sport, **Fine-tune in How you go** and Settings' **Your speeds** are plain rows, like those on a point's card, with black icons.
+- Small headings are one size, 12 px capitals, and the titles of the map's cards match the planner's.
+- With a keyboard, every control shows the same green ring where the focus is, and the sport menu and the **⋯** menus show it too.
+- A button's words wrap inside it rather than running out of it, with large text or long words. On a point's card with large text, a long name wraps on the card, and a row's value goes under its name when the card is narrow.
+- Climbs' badges, the letters of round-trip loops, the condition pills, Check's count and the weather layers' chips in Layers are easier to read, in both themes. The hint for dropping a GPX or KML file is on a card of its own, not on the map.
+- In the layer drawer, a layer that's on keeps its green border, icon and tick, and its name is black.
+- Buttons, chips, tiles and switches shrink a little while you press them, so you know the press counted. With reduced motion, they don't.
+
 ### Fixed: Polku finishes opening when a map tile fails to load ([#393](https://github.com/TommiContursi/Polku/issues/393))
 
 When the last map tile Polku waited for failed to load, for example a water depth tile while Traficom's service had trouble, Polku didn't finish opening until you moved the map. Until then your saved route, a shared route and the planner you left open didn't come back. Now Polku opens once the map has every tile it could get, and a tile that failed only leaves its piece of the map empty.

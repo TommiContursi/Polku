@@ -21,6 +21,7 @@ import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, R
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView } from './inspect.js';
 import { CardHost } from './card.js';
+import { darkWords } from './palette.js';
 import { pointCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
@@ -1704,12 +1705,12 @@ export class Planner {
     })), h('button', { type: 'button', class: 'chip rt-other', 'data-k': 'len-other', 'aria-pressed': String(own), 'aria-expanded': String(own),
       onclick: () => { L.other = true; this.refocus = 'len'; this.renderStart(); }, html: `${own ? icon('check', 15) : ''}<span>Other…</span>` }));
     const unit = min ? 'min' : 'km';
-    const stepper = !own ? null : h('div', { class: 'rt-step' },
-      h('button', { type: 'button', class: 'tool ring', 'data-k': 'dec', 'aria-label': min ? '15 minutes shorter' : `${step} km shorter`, disabled: val <= 1, onclick: () => set(val - step), html: icon('minus', 20) }),
-      h('label', { class: 'rt-len' }, h('input', { type: 'text', inputmode: 'numeric', enterkeyhint: 'done', value: String(val), 'data-k': 'len', 'aria-label': min ? 'Length in minutes' : 'Length in kilometres',
+    const stepper = !own ? null : h('div', { class: 'rt-step' }, h('div', { class: 'rt-len' },
+      h('button', { type: 'button', class: 'tool', 'data-k': 'dec', 'aria-label': min ? '15 minutes shorter' : `${step} km shorter`, disabled: val <= 1, onclick: () => set(val - step), html: icon('minus', 20) }),
+      h('input', { type: 'text', inputmode: 'numeric', enterkeyhint: 'done', value: String(val), 'data-k': 'len', 'aria-label': min ? 'Length in minutes' : 'Length in kilometres',
         onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
-        onchange: (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (Number.isFinite(v) && v > 0) set(v); else e.target.value = String(val); } }), h('span', {}, unit)),
-      h('button', { type: 'button', class: 'tool ring', 'data-k': 'inc', 'aria-label': min ? '15 minutes longer' : `${step} km longer`, onclick: () => set(val + step), html: icon('plus', 20) }));
+        onchange: (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (Number.isFinite(v) && v > 0) set(v); else e.target.value = String(val); } }), h('span', {}, unit),
+      h('button', { type: 'button', class: 'tool', 'data-k': 'inc', 'aria-label': min ? '15 minutes longer' : `${step} km longer`, onclick: () => set(val + step), html: icon('plus', 20) })));
     // where it starts: with no point of yours yet, a tap on the map or Where I am (which says that it sends your
     // position, #281), until the start is your position
     const here = !this.points.length && L.startLabel !== 'your position';
@@ -1791,7 +1792,7 @@ export class Planner {
       list.append(h('div', { class: `loop-card${on ? ' on' : ''}`, role: 'listitem', onclick: (e) => { if (!e.target.closest('.loop-use')) this.showLoop(i, { frame: true }); } },
         h('button', { type: 'button', class: 'loop-pick', 'data-k': `loop-${i}`, 'aria-pressed': String(on), 'aria-label': `Loop ${r.letter}: ${fmtDist(a.total)}, ${line1}, ${line2}`,
           onmouseenter: () => this.showLoop(i) },
-        h('span', { class: 'loop-card-head' }, h('span', { class: 'loop-dot', style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === best ? h('span', { class: 'loop-best' }, 'Closest match') : null),
+        h('span', { class: 'loop-card-head' }, h('span', { class: `loop-dot${darkWords(r.color) ? ' ink' : ''}`, style: `background:${r.color}` }, r.letter), h('b', {}, fmtDist(a.total)), i === best ? h('span', { class: 'loop-best' }, 'Closest match') : null),
         h('span', { class: 'loop-card-line' }, line1),
         h('span', { class: 'loop-card-line muted' }, line2)),
         h('button', { type: 'button', class: 'btn primary loop-use', 'data-k': `use-${i}`, onclick: () => this.pickLoop(i) }, `Use loop ${r.letter}`)));
@@ -3953,8 +3954,8 @@ export class Planner {
   sportRow() {
     const sp = this.app.activity(), label = ACTIVITIES[sp].label;
     const line = sp === 'paddle' ? `${(CRAFT[this.craft] || CRAFT.kayak).label} · ${ACTIVITIES[sp].line}` : ACTIVITIES[sp].line;
-    const b = h('button', { type: 'button', class: 'sport-chip sport-row', 'data-k': 'sport', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Sport: ${label}. ${line}`,
-      html: `${icon(this.sportIcon(sp), 22)}<span><b>${escapeHtml(label)}</b><small>${escapeHtml(line)}</small></span>${icon('chevronDown', 16)}` });
+    const b = h('button', { type: 'button', class: 'row sport-chip sport-row', 'data-k': 'sport', 'aria-haspopup': 'menu', 'aria-expanded': 'false', 'aria-label': `Sport: ${label}. ${line}`,
+      html: `<span>${icon(this.sportIcon(sp), 20)}</span><span><b>${escapeHtml(label)}</b><small>${escapeHtml(line)}</small></span><span class="way-chev">${icon('chevronDown', 16)}</span>` });
     b.onclick = () => this.app.sportMenu && this.app.sportMenu(b);
     return b;
   }
@@ -4027,8 +4028,8 @@ export class Planner {
       h('div', { class: 'style-presets way-chips', role: 'group', 'aria-label': 'Route style' }, ...cat.presets.map(([k, label]) => h('button', {
         type: 'button', class: 'chip', 'data-k': `style-${k}`, 'aria-pressed': String(!custom && st.p === k), onclick: () => pick(k), html: `${!custom && st.p === k ? icon('check', 15) : ''}<span>${escapeHtml(label)}</span>`,
       })), custom ? h('span', { class: 'chip chip-on', 'aria-hidden': 'true' }, 'Custom') : null),
-      h('button', { type: 'button', class: 'way-srow way-tune', 'data-k': 'tune', 'aria-expanded': String(!!this.wayTune), onclick: () => { this.wayTune = !this.wayTune; this.renderStart(); },
-        html: `${icon('sliders', 18)}<span><b>Fine-tune in How you go</b></span>${icon(this.wayTune ? 'chevronUp' : 'chevronDown', 16)}` }));
+      h('button', { type: 'button', class: 'row way-srow way-tune', 'data-k': 'tune', 'aria-expanded': String(!!this.wayTune), onclick: () => { this.wayTune = !this.wayTune; this.renderStart(); },
+        html: `<span>${icon('sliders', 20)}</span><span><b>Fine-tune in How you go</b></span><span class="way-chev">${icon(this.wayTune ? 'chevronUp' : 'chevronDown', 16)}</span>` }));
     if (this.wayTune) {
       const box = h('div', { class: 'way-how' });
       out.append(box);
@@ -5487,9 +5488,8 @@ export class Planner {
     if (!a.climbs.length) return;
     a.climbs.forEach((c, k) => {
       // Bikes get the uphill difficulty grade; on foot the average gradient says more.
-      const badge = bike
-        ? h('span', { class: 'badge', style: `background:${DIFF_COLORS[c.cls]}` }, `↑S${c.cls}`)
-        : h('span', { class: 'badge', style: `background:${gradeColor(c.avg)}` }, `${Math.round(c.avg)}%`);
+      const bg = bike ? DIFF_COLORS[c.cls] : gradeColor(c.avg);
+      const badge = h('span', { class: `badge${darkWords(bg) ? ' ink' : ''}`, style: `background:${bg}` }, bike ? `↑S${c.cls}` : `${Math.round(c.avg)}%`);
       const item = h('button', { type: 'button', class: `li${this.selected === c ? ' sel' : ''}` },
         badge,
         h('span', { class: 'li-main' },

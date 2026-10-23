@@ -1396,12 +1396,12 @@ function renderSettingsPanel() {
   // sport is (#87). The sport itself is the pill's (and the next leg's, the planner's drawing menu): Settings holds
   // settings, not the map's choices (#321).
   const inRoute = planner.points.length > 1 ? planner.routeSports() : [];
-  const speeds = h('div', { class: 'speed-list' });
+  const speeds = h('div', { class: 'speed-list rows' });
   for (const [k, a] of Object.entries(ACTIVITIES)) {
     const open = speedOpen === k;
-    const row = h('button', { type: 'button', class: 'speed-sport-row', 'data-k': k, 'aria-expanded': String(open),
+    const row = h('button', { type: 'button', class: 'row speed-sport-row', 'data-k': k, 'aria-expanded': String(open),
       onclick: () => { speedOpen = open ? null : k; renderSettingsPanel(); $(`#settings-body .speed-sport-row[data-k="${k}"]`)?.focus(); },
-      html: `${icon(ACT_ICONS[k], 18)}<span><b>${a.label}${inRoute.includes(k) ? ' <span class="cur">your route</span>' : ''}</b><small>${escapeAttr(planner.speedLine(k))}</small></span>${icon(open ? 'chevronUp' : 'chevronDown', 16)}` });
+      html: `<span>${icon(ACT_ICONS[k], 20)}</span><span><b>${a.label}${inRoute.includes(k) ? ' <span class="cur">your route</span>' : ''}</b><small>${escapeAttr(planner.speedLine(k))}</small></span><span class="way-chev">${icon(open ? 'chevronUp' : 'chevronDown', 16)}</span>` });
     speeds.append(row);
     if (!open) continue;
     const box = h('div', { class: 'speed-box' });

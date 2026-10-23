@@ -26,11 +26,12 @@ function choices(label, items) {
 function stepper({ value, unit, step, min = 0, max = 1440, label, set, line = null, lead = null }) {
   const put = (v) => { v = Math.max(min, Math.min(max, Math.round(v))); if (v !== value) set(v); };
   return h('div', { class: 'rt-step' }, lead ? h('span', {}, lead) : null,
-    h('button', { type: 'button', class: 'tool ring', 'aria-label': `${step} minutes less`, disabled: value <= min, onclick: () => put(value - step), html: icon('minus', 20) }),
-    h('label', { class: 'rt-len' }, h('input', { type: 'text', inputmode: 'numeric', enterkeyhint: 'done', value: String(value), 'aria-label': label,
-      onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
-      onchange: (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (Number.isFinite(v)) put(v); else e.target.value = String(value); } }), h('span', {}, unit)),
-    h('button', { type: 'button', class: 'tool ring', 'aria-label': `${step} minutes more`, disabled: value >= max, onclick: () => put(value + step), html: icon('plus', 20) }),
+    h('div', { class: 'rt-len' },
+      h('button', { type: 'button', class: 'tool', 'aria-label': `${step} minutes less`, disabled: value <= min, onclick: () => put(value - step), html: icon('minus', 20) }),
+      h('input', { type: 'text', inputmode: 'numeric', enterkeyhint: 'done', value: String(value), 'aria-label': label,
+        onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
+        onchange: (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (Number.isFinite(v)) put(v); else e.target.value = String(value); } }), h('span', {}, unit),
+      h('button', { type: 'button', class: 'tool', 'aria-label': `${step} minutes more`, disabled: value >= max, onclick: () => put(value + step), html: icon('plus', 20) })),
     line ? h('small', {}, line) : null);
 }
 
