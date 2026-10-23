@@ -4904,14 +4904,7 @@ CONTRAST_SCENES = ['desk-sport-start', 'desk-planner', 'desk-tab-check', 'desk-p
 # What still fails, by the issue that fixes it. The sweep fails on anything else, and on an entry here that passes now,
 # so the list only ever shrinks: (theme, the element and its parent as census.py names them, the start of its text or
 # None for any text)
-CONTRAST_KNOWN = {
-    '#376': [  # for the controls PR: the status colours' text versions, Plan in green
-        ('light', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None), ('dark', 'button#pl-tab-check.pl-tab > span.pl-tab-n', None),
-        ('light', 'button.li > span.badge', None), ('dark', 'button.li > span.badge', None),
-        ('dark', 'button#btn-plan-search.search-plan > span', 'Plan'), ('dark', 'button#btn-plan.plan-btn > span', 'Plan route'),
-        ('dark', 'button.qt-tog > span.qt-l', None), ('dark', 'span.qt-l > small', None),
-    ],
-}
+CONTRAST_KNOWN = {}  # (#376's, the last ones, went with the controls PR)
 
 # CSS transitions finished (a theme change fades some colours), seen on two frames in a row
 STILL = """new Promise((done) => {
@@ -7986,7 +7979,7 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
     el.after(ref);
     const a = look(el), b = look(ref);
     ref.remove();
-    for (const k in b) if (a[k] !== b[k]) out.push(`${what}: ${k} ${a[k]}, a row's ${b[k]}`);
+    for (const k in b) if (a[k] != null && a[k] !== b[k]) out.push(`${what}: ${k} ${a[k]}, a row's ${b[k]}`); // (a row with no line has none to measure)
     if (a.icon !== col(val('--text'))) out.push(`${what}: its icon ${a.icon}, not black`);
   };
   p.setActive(true); p.clear(); await wait(600);
@@ -8100,7 +8093,7 @@ CT_POINTS = "(async () => { const p = polku.planner; p.setActive(true); p.clear(
 CT_RING = """((sel) => { const e = document.activeElement, c = getComputedStyle(e), probe = document.body.appendChild(document.createElement('i'));
   probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--focus'); const want = getComputedStyle(probe).color; probe.remove();
   return { at: e.matches(sel), el: (e.className && e.className.baseVal === undefined ? e.className : e.tagName).slice(0, 40), ring: `${c.outlineStyle} ${c.outlineWidth} ${c.outlineColor}`, want: `solid 2px ${want}`, offset: c.outlineOffset }; })"""
-# a button's label in Finnish at 200 %: it wraps inside its button, and nothing goes sideways
+# a button's label in Finnish at 200 %: it wraps inside its button, which stays in its card (the top bar at 200 % is #375's)
 CT_WRAP = r"""(async () => {""" + CT_HELP + r"""
   const p = polku.planner;
   p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await wait(800);
@@ -8113,7 +8106,8 @@ CT_WRAP = r"""(async () => {""" + CT_HELP + r"""
   await wait(100);
   for (const [b, what] of [[make, 'Make 3 loops'], [box.firstChild, 'a button']])
     for (const e of [b, ...b.querySelectorAll('*')]) if (e.getClientRects().length && (!inside(e, b) || e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1)) { out.push(`${what}'s words run out of it, in Finnish at 200 %`); break; }
-  if (document.scrollingElement.scrollWidth > innerWidth + 1 || document.querySelector('.pl-way').scrollWidth > document.querySelector('.pl-way').clientWidth + 1) out.push('the page goes sideways');
+  const mr = make.getBoundingClientRect(), wr = document.querySelector('.pl-way').getBoundingClientRect(); // (the card scrolls: across only)
+  if (mr.left < wr.left - 1 || mr.right > wr.right + 1) out.push(`Make 3 loops runs out of its card (${Math.round(mr.left)}–${Math.round(mr.right)} px in ${Math.round(wr.left)}–${Math.round(wr.right)} px)`);
   box.remove(); probe.remove();
   return out;
 })()"""
