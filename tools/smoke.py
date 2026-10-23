@@ -9926,10 +9926,17 @@ def controls(chrome):
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
                 pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await new Promise((r) => setTimeout(r, 800)); return true; })()")
                 for sel, what in (('.pl-way .rt-chips .chip:not([aria-pressed=true])', 'a chip'), ('.pl-way .rt-make', 'Make 3 loops'), ('.pl-way .rt-unit button:not([aria-pressed=true])', 'a switch')):
-                    x, y = pg.js(f"(() => {{ const r = document.querySelector({json.dumps(sel)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+                    # (and what a press there lands on, for the FAIL line)
+                    x, y, on = pg.js(f"(() => {{ const e = document.querySelector({json.dumps(sel)}), r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, t = document.elementFromPoint(x, y);"
+                                     " return [x, y, !t || e.contains(t) ? '' : t.id || String(t.className) || t.tagName]; })()")
+                    if on:
+                        fails.append(f'{name}: {what} is under {on}')
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none'}, pg.s)
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': x, 'y': y, 'button': 'left', 'buttons': 1, 'clickCount': 1}, pg.s)
-                    time.sleep(0.3)
+                    # held until the page has had the press and its scale has moved, 5 s at most: in software a frame can take
+                    # a second or more, and the 0.12 s scale waited that long to start, so 0.3 s after the press it was still at 1 (#423)
+                    pg.js(f"(async (e) => {{ const t0 = Date.now(); while ((!e.matches(':active') || e.getAnimations().some((a) => a.playState === 'running')) && Date.now() - t0 < 5000)"
+                          f" await new Promise((r) => setTimeout(r, 50)); return true; }})(document.querySelector({json.dumps(sel)}))")
                     s = pg.js(f"({CT_PRESSED})({json.dumps(sel)})")
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 450, 'button': 'left', 'buttons': 1}, pg.s)
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': 900, 'y': 450, 'button': 'left', 'buttons': 0, 'clickCount': 1}, pg.s)
