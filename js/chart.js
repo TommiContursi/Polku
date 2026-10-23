@@ -358,8 +358,13 @@ export class ProfileChart {
     const span = v1 - v0;
     const xs = niceStep(span / 1000, 6) * 1000;
     ctx.textAlign = 'center';
+    // a label that would touch the one before it, or run off the profile, is left out (a narrow profile, #242)
+    let after = -Infinity;
     for (let d = Math.ceil(v0 / xs) * xs; d <= v1 + 1; d += xs) {
-      ctx.fillText(d >= 1000 || xs >= 1000 ? `${(d / 1000).toFixed(xs < 1000 ? 1 : 0)} km` : `${d} m`, X(d), g.h - 5);
+      const t = d >= 1000 || xs >= 1000 ? `${(d / 1000).toFixed(xs < 1000 ? 1 : 0)} km` : `${d} m`, x = X(d), half = ctx.measureText(t).width / 2;
+      if (x - half < after + 6 || x + half > g.w) continue;
+      ctx.fillText(t, x, g.h - 5);
+      after = x + half;
     }
 
     ctx.save();
@@ -490,8 +495,14 @@ export class ProfileChart {
     ctx.restore();
 
     // the route's points where they are along it: a faint line, and the point as on the map
-    // (the start green, the vias numbered, the finish a dark square) on the baseline
-    const pts = (this.points || []).filter((p) => p.d >= v0 - 1 && p.d <= v1 + 1);
+    // (the start green, the vias numbered, the finish a dark square) on the baseline; a via too near the mark before
+    // it or the finish to tell them apart (a mark is 14 px across) is left out, the start and the finish never (#242)
+    const shown = (this.points || []).filter((p) => p.d >= v0 - 1 && p.d <= v1 + 1), end = shown.find((p) => p.kind === 'end'), pts = [];
+    for (const p of shown) {
+      const x = X(p.d), prev = pts[pts.length - 1];
+      if (p.kind === 'via' && ((prev && x - X(prev.d) < 16) || (end && X(end.d) - x < 16))) continue;
+      pts.push(p);
+    }
     if (pts.length) {
       ctx.save();
       ctx.font = '700 9.5px system-ui, sans-serif';

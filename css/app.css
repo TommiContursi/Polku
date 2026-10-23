@@ -758,6 +758,12 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-profile .mode-select { flex: 0 1 auto; }
 .pl-profile .tg-inline { flex: none; }
 .pl-profile .prof-size { flex: none; color: var(--muted); }
+/* a narrow profile (a phone at 200 %): Colour by and its choice on rows of their own, On map and the size under them (#242) */
+@container (max-width: 280px) {
+  .pl-profile .profile-top { flex-wrap: wrap; }
+  .pl-profile .mode-select { flex: 1 1 100%; flex-wrap: wrap; gap: var(--space-4); }
+  .pl-profile .mode-select-box, .pl-profile .mode-select select { flex: 1 1 100%; width: 100%; }
+}
 .pl-profile.compact #profile-canvas { height: 72px; }
 .pl-tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .pl-tab { height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }

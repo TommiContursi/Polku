@@ -7297,6 +7297,37 @@ TB_ROUTE = """(async (pts) => {
   return !!p.analysis;
 })"""
 TB_PTS = [[23.81, 61.512], [23.82, 61.515], [23.835, 61.52]]
+# #242: the profile of a long route with many points, at the sheet's full size: Colour by, its choice, On map and the
+# size apart, and the choice wide enough for its words; the distance labels apart and on the profile; the points'
+# marks apart (a mark is 14 px across), as the profile draws them
+TB_PROF_PTS = [[23.0 + 0.1 * i, 61.0 + 0.04 * (i % 3)] for i in range(30)]
+TB_PROFILE = """(() => {
+  const p = polku.planner, cv = document.getElementById('profile-canvas'), ctx = cv.getContext('2d'), W = cv.getBoundingClientRect().width, out = [], drawn = [];
+  const text = ctx.fillText, arc = ctx.arc, rr = ctx.roundRect;
+  ctx.fillText = function (t, x, y, ...r) { drawn.push({ k: 'text', t: String(t), x, w: this.measureText(String(t)).width, a: this.textAlign }); return text.call(this, t, x, y, ...r); };
+  ctx.arc = function (x, y, rad, ...r) { if (rad >= 6) drawn.push({ k: 'mark', x }); return arc.call(this, x, y, rad, ...r); };
+  ctx.roundRect = function (x, y, w, h, ...r) { if (w === 12 && h === 12) drawn.push({ k: 'mark', x: x + 6 }); return rr.call(this, x, y, w, h, ...r); };
+  try { p.chart.draw(); } finally { delete ctx.fillText; delete ctx.arc; delete ctx.roundRect; }
+  const labels = drawn.filter((d) => d.k === 'text' && /^[\\d.]+ k?m$/.test(d.t)).map((d) => ({ t: d.t, l: d.a === 'center' ? d.x - d.w / 2 : d.x, r: d.a === 'center' ? d.x + d.w / 2 : d.x + d.w })).sort((a, b) => a.l - b.l);
+  labels.forEach((a, i) => { const b = labels[i + 1];
+    if (a.l < -0.5 || a.r > W + 0.5) out.push(`“${a.t}” off the profile (x ${Math.round(a.l)}–${Math.round(a.r)} of ${Math.round(W)})`);
+    if (b && b.l - a.r < 4) out.push(`“${a.t}” and “${b.t}” ${Math.round(b.l - a.r)} px apart`); });
+  if (labels.length < 2) out.push(`${labels.length} distance labels`);
+  const marks = drawn.filter((d) => d.k === 'mark').map((d) => d.x).sort((a, b) => a - b), near = marks.filter((x, i) => i && x - marks[i - 1] < 14).length;
+  if (near) out.push(`${near} of the points' ${marks.length} marks less than a mark from the one before`);
+  if (marks.length < 2) out.push(`${marks.length} marks: the start and the end not both drawn`);
+  const top = p.els.profZone.querySelector('.profile-top'), sel = top.querySelector('select');
+  if (!sel.getClientRects().length) return { out: [...out, `its controls not shown (the sheet at ${p.panel.dataset.state})`], km: p.analysis && Math.round(p.analysis.total / 1000) };
+  const parts = [top.querySelector('.mode-select-label'), sel, top.querySelector('.tg-inline'), top.querySelector('.prof-size')].filter((e) => e && e.getClientRects().length);
+  const rs = parts.map((e) => e.getBoundingClientRect()), name = (e) => e.tagName === 'SELECT' ? 'the choice' : e.textContent.trim() || e.className;
+  rs.forEach((a, i) => rs.slice(i + 1).forEach((b, j) => { if (a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5) out.push(`${name(parts[i])} and ${name(parts[i + j + 1])} over each other`); }));
+  const m = document.createElement('canvas').getContext('2d'), cs = getComputedStyle(sel);
+  m.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const need = m.measureText(sel.selectedOptions[0]?.textContent || '').width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  if (sel.clientWidth + 1 < need) out.push(`the choice ${sel.clientWidth} px wide for “${sel.selectedOptions[0]?.textContent}” (${Math.ceil(need)} px)`);
+  if (p.chart.points.length !== 30) out.push(`${p.chart.points.length} points on the profile, not the route's 30`);
+  return { out, km: p.analysis && Math.round(p.analysis.total / 1000) };
+})()"""
 TB_DUPES = """(async () => { const p = polku.planner; p.toggleMore(); await new Promise((r) => setTimeout(r, 80));
   const name = (t) => t.trim().replace(/…$/, '');
   const bar = [...p.tools.querySelectorAll('button')].filter((b) => !b.hidden && b.offsetParent).map((b) => name(b.getAttribute('aria-label') || b.textContent));
@@ -7532,6 +7563,18 @@ def toolbox(chrome):
               return { out, text: items.map((it) => it.querySelector('small').textContent).join(' | ') }; })()""")
             if r['out']:
                 fails.append(f"{name}, {lang} labels ({r['text']}): {', '.join(r['out'])} (#356)")
+        # #242: a long route of 30 points, its profile at the sheet's full size (TB_PROFILE)
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PROF_PTS)})", timeout=90000)
+        # (TB_ROUTE is back once there's an analysis: the route before's, still there, too)
+        pg.js("new Promise((ok) => { const p = polku.planner, t0 = Date.now(), go = () => (p.analysisFits() && p.chart.points.length === 30) || Date.now() - t0 > 30000 ? ok(true) : setTimeout(go, 100); go(); })")
+        for _ in range(3):  # (the new route's framing brings a full sheet down to half once)
+            pg.js("polku.planner.setSheetState('full'); true")
+            pg.js(SETTLED)
+            if pg.js("polku.planner.panel.dataset.state === 'full'"):
+                break
+        r = pg.js(TB_PROFILE)
+        if r['out']:
+            fails.append(f"{name}: a {r['km']} km route of 30 points, its profile: {', '.join(r['out'])} (#242)")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
