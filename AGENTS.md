@@ -60,12 +60,12 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   into a phase; ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
-- **One session, one issue** (or one part of a phase). Start a new session
-  (or Codex thread) from the Hand-over at a checkpoint: the PR is ready, a
-  part is done, or the next issue begins. Past about 300k tokens, or after a
-  break of more than an hour, make that the next checkpoint, unless the
-  session holds what a Hand-over can't carry: a design iteration with the
-  user's feedback, or an investigation half done.
+- **One session, one issue** (or one PR of a phase). A session carries its
+  PR through to ready, across as many checkpoints as it takes: it doesn't
+  stop at a token count. Start a new session (or Codex thread) from the
+  Hand-over when the next issue begins, when the session reaches its usage
+  limit, or when its context has been compacted and it starts losing track
+  (repeating work, forgetting a decision). Write the Hand-over first.
 - **One coding session at a time,** unless the user starts more: Claude A,
   Claude B and Codex take turns as each reaches its usage limit, from the
   last Hand-over. No "status" session, and no subagents to verify or run the
