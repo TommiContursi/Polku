@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-23
 
+### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))
+
+On a desktop with the planner at the bottom and pulled up high, **Settings** opened with no height, only its **✕** showing, and **More** in the layer drawer did the same to all layers, under the planner. Now, when the planner leaves them less than a small panel's room above it, they open over the planner at their full height, as they do on phones.
+
 ### Fixed: Clear route takes the warning's stretch and short cut with it ([#126](https://github.com/TommiContursi/Polku/issues/126))
 
 With a warning's card open, **Clear route** left the warning's stretch glowing on the map and in the profile, with the dashed short cut through a way marked private, and the card stayed open for a route that was gone. **Undo** back to one point did the same. Now they go with the route and the card closes. **Undo** brings the route back without them, until you tap the warning again.

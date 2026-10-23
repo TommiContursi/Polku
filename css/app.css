@@ -450,6 +450,10 @@ body:not(.ready) .map-ctrls { display: none; }
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px);
 }
 .panel-settings { top: 64px; right: 12px; bottom: auto; max-height: calc(100% - 76px - var(--sheet-h)); }
+/* a bottom planner raised too high to leave them room above it (under 320 px): over it, at their full height, as on
+   phones (placePanels(), #240, #257) */
+body.panels-over .panel { bottom: var(--space-12); max-height: calc(100% - 64px - 2 * var(--space-12)); z-index: 7; }
+body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - var(--space-12)); }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 10px 6px 16px; }
 .panel-head h2 { margin: 0; font-size: 16px; }
 .panel-body { overflow: auto; padding: 0 16px 16px; }
