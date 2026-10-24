@@ -215,7 +215,8 @@ not models, mid-session: a new model sends the whole conversation again
   has usage left) gets only the PR and issue links, tries to break the
   change, and comments on the PR; the author answers each finding with
   evidence. It runs when the user starts it, and never holds a PR in draft.
-- **Drafts until verified.**
+- **Drafts until verified.** When one leaves draft, comment `@codex review`
+  on it, so the automatic review sees the finished change.
 - **Never push to `main` or merge** unless the user says so. The user merges:
   say which PRs are ready (the ones not in draft, in their "after #N" order),
   and which wait and why.
