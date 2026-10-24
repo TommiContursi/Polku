@@ -1202,7 +1202,6 @@ AVOID_BAD = """(async () => {
   if (new URL(p.shareUrl()).searchParams.has('av')) errs.push('a route without circles shares av=');
   return errs;
 })()"""
-LOADED = "new Promise((ok) => { const go = () => window.polku && polku.map.loaded() ? ok() : setTimeout(go, 200); go(); })"
 
 
 def avoid_link(chrome):
@@ -1224,13 +1223,13 @@ def avoid_link(chrome):
         pg.goto(BASE + 'sw.js')
         pg.js('localStorage.clear(); true')
         pg.goto(shared['url'])
-        pg.js(LOADED)
+        pg.map_loaded()
         sent = json.dumps(shared['sent'])
         fails += pg.js((AVOID_OPENED % json.dumps(shared['url'])) + f'({sent})', timeout=60000)
         pg.reload()
         fails += pg.js(AVOID_RELOADED + f'({sent})')
         pg.goto(shared['bad'])
-        pg.js(LOADED)
+        pg.map_loaded()
         fails += pg.js(AVOID_BAD, timeout=60000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
@@ -3437,7 +3436,7 @@ def fit_phone(chrome):
                 pg.js("localStorage.clear(); localStorage.setItem('polku:settings', '{\"activity\":\"mtb\"}'); localStorage.setItem('polku:plannerDock', '\"left\"');"
                       f" localStorage.setItem('polku:sheetState', {json.dumps(json.dumps({'sheet': st}))}); true")
                 pg.goto(url)
-                pg.js(LOADED)
+                pg.map_loaded()
                 pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
                 pg.js(FIT_LIB)
                 fails += pg.js(FIT_SHARE % json.dumps(st), timeout=60000)
@@ -5075,15 +5074,19 @@ def quick_desktop(chrome):
         pg = chrome.page(w, h_, False)
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': json.dumps(dock), 'polku:winter': '"off"'})
         pg.js("(() => { const p = polku.planner; p.setActive(true); p.setSheetState(p.layout() === 'side' ? 'open' : 'half'); return true; })()")
-        time.sleep(0.5)
-        r = pg.js("""(async () => {
-          document.querySelector('#btn-layers').click();
-          await new Promise((r) => setTimeout(r, 400));
+        placed(pg)
+        pg.js("document.querySelector('#btn-layers').click(), true")
+        # (where they are once the planner has settled: on GitHub's runner its height still changed after the click, and the
+        # card, read 0.4 s later while it moved, ran 6 px into it; once settled, the card had followed it, #410)
+        late = pg.js(SETTLED)
+        r = pg.js("""(() => {
           const box = (s) => document.querySelector(s).getBoundingClientRect().toJSON();
           return { q: box('#quick-layers'), b: box('#btn-layers'), p: box('#planner'), tail: document.querySelector('#quick-layers').classList.contains('tail'), H: innerHeight };
         })()""")
         q, b, p = r['q'], r['b'], r['p']
         name = f'{w}x{h_} {dock}'
+        if late:
+            fails.append(f'{name}: {late}')
         if q['right'] > b['left'] or q['top'] < 60 or q['bottom'] > r['H'] - 4:
             fails.append(f'{name}: the card at {q["left"]:.0f}–{q["right"]:.0f} × {q["top"]:.0f}–{q["bottom"]:.0f}, not beside the button within the map')
         if dock == 'left' and q['left'] < p['right']:
@@ -5091,7 +5094,7 @@ def quick_desktop(chrome):
         if dock == 'left' and abs(q['bottom'] - b['bottom']) > 1:
             fails.append(f'{name}: the card’s bottom at {q["bottom"]:.0f}, the button’s at {b["bottom"]:.0f}')
         if dock == 'bottom' and q['bottom'] > p['top']:
-            fails.append(f'{name}: the card runs into the bottom planner')
+            fails.append(f"{name}: the card runs into the bottom planner: its bottom at {q['bottom']:.0f}, the planner's top at {p['top']:.0f}")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     return fails
@@ -6855,11 +6858,14 @@ def sport_menu(chrome):
 NL = """(() => {
   const T = window.nlT = { errs: [] };
   const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)], p = polku.planner, m = polku.map;
-  T.at = (sel) => { const el = typeof sel === 'string' ? $(sel) : sel; if (!el || !el.offsetParent) return null;
+  // a control's middle once the sheet has come to its size and the toolbox is placed for it (a frame later): on a busy
+  // page the sheet was still on its way up, or the toolbox still moving, when a fixed wait read it (#406)
+  const settled = () => """ + SETTLED + """.then(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
+  T.at = async (sel) => { await settled(); const el = typeof sel === 'string' ? $(sel) : typeof sel === 'function' ? sel() : sel; if (!el || !el.offsetParent) return null;
     const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y);
     return { x, y, clear: !!top && (el === top || el.contains(top)), over: top ? String(top.id || top.className) : 'nothing' }; };
-  T.item = (label) => T.at($$('.menu-pop .menu-item').find((x) => x.textContent.trim().startsWith(label)));
-  T.toastBtn = (label) => T.at($$('#toast .toast-act').find((x) => x.textContent.trim() === label));
+  T.item = (label) => T.at(() => $$('.menu-pop .menu-item').find((x) => x.textContent.trim().startsWith(label)));
+  T.toastBtn = (label) => T.at(() => $$('#toast .toast-act').find((x) => x.textContent.trim() === label));
   T.water = (ll) => m.queryRenderedFeatures(m.project(ll), { layers: ['water'] }).length > 0;
   T.spot = (ll) => { const q = m.project(ll); return { x: q.x, y: q.y, clear: true }; };
   // a spot on the water a few pixels from the shore: from a point on a lake towards land, the last water before it
@@ -6876,6 +6882,10 @@ NL = """(() => {
   T.state = () => ({ n: p.points.length, sports: p.legs.map((_, i) => p.legSport(i)).join(','), modes: p.legs.map((l) => l.mode).join(','), next: p.nextSport(), real: p.nextLegSport(), map: polku.state.activity, mode: p.mode,
     label: p.els.modeBtn.getAttribute('aria-label'), sport: p.els.sportBtn.textContent.trim(), past: p.past.length, menu: !!$('.menu-pop'), toast: $('#toast').hidden ? '' : $('#toast').innerText.replace(/\\s+/g, ' ').trim(),
     time: p.analysis ? Math.round(p.analysis.time) : null, waits: p.analysis && p.analysis.waits ? p.analysis.waits.length : 0 });
+  // the notes shown and hidden, for a FAIL line about a note: one hidden at once is #381's
+  T.notes = [];
+  new MutationObserver(() => { const t = $('#toast'), now = `${t.hidden ? 'hidden' : 'shown'} “${t.innerText.replace(/\\s+/g, ' ').trim().slice(0, 40)}”`;
+    if (T.notes[T.notes.length - 1]?.[0] !== now) T.notes.push([now, Math.round(performance.now())]); }).observe($('#toast'), { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true });
   T.settle = async (n) => { for (let k = 0; k < 60 && !(p.analysis && p.analysis.pts && p.legs.length === n - 1 && p.legs.every((l) => l.result)); k++) await new Promise((r) => setTimeout(r, 100)); await new Promise((r) => setTimeout(r, 300)); return T.state(); };
   return true;
 })()"""
@@ -6920,6 +6930,8 @@ def nextleg(chrome):
 
     def want(name, got, **kw):
         bad = {k: got.get(k) for k, v in kw.items() if not (v(got.get(k)) if callable(v) else got.get(k) == v)}
+        if 'toast' in bad:  # (the last notes, with their times in ms)
+            bad['notes'] = pg.js("nlT.notes.slice(-4).map(([n, t]) => `${n} at ${t}`).join(', ')")
         if bad:
             fails.append(f'{name}: {bad}')
 
@@ -6928,7 +6940,7 @@ def nextleg(chrome):
     pg = page(390, 844, True, 'hike')
     S = lambda: pg.js('nlT.state()')
     pg.js('polku.planner.setActive(true), true')
-    time.sleep(0.5)
+    placed(pg)
     press(pg, pg.js("nlT.at('.pl-way [data-way=draw]')"), f'{name}: Draw it', True)
     along = pg.js("document.querySelector('.pl-way .way-line')?.textContent || ''")
     if along != 'Polku follows the paths, and the sport can change on the way.':
@@ -7054,7 +7066,7 @@ def nextleg(chrome):
     name = '390x844 start'
     pg = page(390, 844, True, 'mtb')
     pg.js('polku.planner.setActive(true), true')
-    time.sleep(0.5)
+    placed(pg)
     # the sport: a row of its own under the top row, in the ways to begin and in Draw it, over its route style (2026-10-21)
     if not pg.js("!!document.querySelector('.pl-way .way-top + .sport-row')"):
         fails.append(f'{name}: the ways to begin have no sport row under their top row')
@@ -7120,7 +7132,7 @@ def nextleg(chrome):
     name = '1440x900'
     pg = page(1440, 900, False, 'mtb')
     pg.js('polku.planner.setActive(true), true')
-    time.sleep(0.5)
+    placed(pg)
     # the panel's place can change from the start too (its header waits while the start shows)
     press(pg, pg.js("nlT.at('.pl-way .way-dock')"), f'{name}: the start’s Move the planner', False)
     time.sleep(0.5)
@@ -7234,7 +7246,9 @@ B3D_WANT = {
 }
 
 
-def button3d(chrome):
+# The 3D button (#226): on desktops by mouse and keys, or (phones) by touch on phones and at 200 %. Two groups, each with a
+# job of its own on GitHub's runner, where the one group took 16–27 minutes (#411).
+def button3d(chrome, phones=False):
     fails = []
 
     def page(w, h_, phone, sport, settings=None):
@@ -7290,152 +7304,158 @@ def button3d(chrome):
             fails.append(f"{name}: the button {'has' if b['mark'] else 'has no'} mark besides its colour while 3D is {'on' if on else 'off'}")
         return b
 
-    # a mouse at 1440 x 900, in MTB and paddle, with a route drawn and the timeline open
-    for sport in ('mtb', 'paddle'):
-        name = f'1440x900 {sport}'
-        pg = page(1440, 900, False, sport)
-        pg.js(PLAN_TWO)
-        b = expect(pg, f'{name}, at the start', False)
-        if b.get('missing'):
-            pg.close()
-            continue
-        if b['name'] != '3D terrain':
-            fails.append(f"{name}: the button is named “{b['name']}”")
-        if b['prev'] != 'ctrl-zoom' or b['next'] != 'btn-time' or not (b['zoom'] and b['zoom']['b'] <= b['top'] and b['bottom'] <= b['weather']['t']):
-            fails.append(f"{name}: the button is not under zoom and above Weather (after {b['prev']}, before {b['next']})")
-        if b['w'] < 40 or b['h'] < 40:
-            fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px")
-        mouse_click(pg, aim(pg, f'{name}, a click'))
-        pg.idle()  # the terrain in, as a person looks at it (turned off while it loads: MapLibre’s own error, #288)
-        b = expect(pg, f'{name}, a click', True)
-        if b['color'] != 'rgb(255, 255, 255)' or b['bg'] == pg.js("getComputedStyle(document.querySelector('#btn-locate')).backgroundColor"):
-            fails.append(f"{name}: pressed, the button is {b['color']} on {b['bg']}, not white on the accent")
-        mouse_click(pg, aim(pg, f'{name}, a second click'))
-        expect(pg, f'{name}, a second click', False)
-        # Layers' switch turns the same 3D, and the button follows it; both kept after a reload
-        at = pg.js(B3D_SWITCH)
-        if not at:
-            fails.append(f'{name}: no 3D switch in the full Layers panel')
-        else:
-            mouse_click(pg, at)
-            pg.idle()
-            expect(pg, f"{name}, Layers' switch on", True)
-            pg.reload()
-            expect(pg, f"{name}, after a reload with Layers' switch on", True)
-            pg.idle()
-            mouse_click(pg, aim(pg, f'{name}, a click after the reload'))
-            expect(pg, f'{name}, the button off after the reload', False)
+    if not phones:
+        # a mouse at 1440 x 900, in MTB and paddle, with a route drawn and the timeline open
+        for sport in ('mtb', 'paddle'):
+            name = f'1440x900 {sport}'
+            pg = page(1440, 900, False, sport)
+            pg.js(PLAN_TWO)
+            b = expect(pg, f'{name}, at the start', False)
+            if b.get('missing'):
+                pg.close()
+                continue
+            if b['name'] != '3D terrain':
+                fails.append(f"{name}: the button is named “{b['name']}”")
+            if b['prev'] != 'ctrl-zoom' or b['next'] != 'btn-time' or not (b['zoom'] and b['zoom']['b'] <= b['top'] and b['bottom'] <= b['weather']['t']):
+                fails.append(f"{name}: the button is not under zoom and above Weather (after {b['prev']}, before {b['next']})")
+            if b['w'] < 40 or b['h'] < 40:
+                fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px")
+            mouse_click(pg, aim(pg, f'{name}, a click'))
+            pg.idle()  # the terrain in, as a person looks at it (turned off while it loads: MapLibre’s own error, #288)
+            b = expect(pg, f'{name}, a click', True)
+            if b['color'] != 'rgb(255, 255, 255)' or b['bg'] == pg.js("getComputedStyle(document.querySelector('#btn-locate')).backgroundColor"):
+                fails.append(f"{name}: pressed, the button is {b['color']} on {b['bg']}, not white on the accent")
+            mouse_click(pg, aim(pg, f'{name}, a second click'))
+            expect(pg, f'{name}, a second click', False)
+            # Layers' switch turns the same 3D, and the button follows it; both kept after a reload
             at = pg.js(B3D_SWITCH)
-            mouse_click(pg, at)
-            pg.idle()
-            mouse_click(pg, at)
-            expect(pg, f"{name}, Layers' switch on and off", False)
-            mouse_click(pg, aim(pg, f'{name}, a click before the reload'))
-            pg.reload()
-            expect(pg, f'{name}, after a reload with the button on', True)
-        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
-        pg.close()
-
-    # the keyboard: Tab from zoom out reaches it and goes on to Weather; Enter and Space turn it
-    pg = page(1440, 900, False, 'mtb')
-    pg.js("document.querySelector('#btn-zoom-out').focus(), true")
-    key(pg, 'Tab', 'Tab', 9)
-    if pg.js(B3D)['focus'] != 'btn-3d':
-        fails.append(f"1440x900 keyboard: Tab from zoom out went to {pg.js(B3D)['focus']}, not 3D")
-    elif not pg.js("document.querySelector('#btn-3d').matches(':focus-visible') && getComputedStyle(document.querySelector('#btn-3d')).outlineStyle !== 'none'"):
-        fails.append('1440x900 keyboard: no focus ring on the 3D button')
-    key(pg, 'Enter', 'Enter', 13, '\r')
-    pg.idle()
-    expect(pg, '1440x900 keyboard, Enter', True)
-    key(pg, ' ', 'Space', 32)
-    expect(pg, '1440x900 keyboard, Space', False)
-    key(pg, 'Tab', 'Tab', 9)
-    if pg.js(B3D)['focus'] != 'btn-time':
-        fails.append(f"1440x900 keyboard: Tab from 3D went to {pg.js(B3D)['focus']}, not Weather")
-    fails += [f'1440x900 keyboard console: {e[:160]}' for e in pg.errors()]
-    pg.close()
-
-    # touch phones, no zoom buttons: under locate, 44 px, a tap turns it; the column clear of the top bar
-    for w, h_, sport in ((390, 844, 'paddle'), (390, 844, 'mtb'), (360, 740, 'mtb'), (375, 667, 'paddle')):
-        name = f'{w}x{h_} {sport}'
-        pg = page(w, h_, True, sport)
-        b = expect(pg, f'{name}, at the start', False)
-        if b.get('missing'):
+            if not at:
+                fails.append(f'{name}: no 3D switch in the full Layers panel')
+            else:
+                mouse_click(pg, at)
+                pg.idle()
+                expect(pg, f"{name}, Layers' switch on", True)
+                pg.reload()
+                expect(pg, f"{name}, after a reload with Layers' switch on", True)
+                pg.idle()
+                mouse_click(pg, aim(pg, f'{name}, a click after the reload'))
+                expect(pg, f'{name}, the button off after the reload', False)
+                at = pg.js(B3D_SWITCH)
+                mouse_click(pg, at)
+                pg.idle()
+                mouse_click(pg, at)
+                expect(pg, f"{name}, Layers' switch on and off", False)
+                mouse_click(pg, aim(pg, f'{name}, a click before the reload'))
+                pg.reload()
+                expect(pg, f'{name}, after a reload with the button on', True)
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
             pg.close()
-            continue
-        if b['zoom'] or not (b['locate'] and b['locate']['b'] <= b['top'] and b['bottom'] <= b['weather']['t']):
-            fails.append(f'{name}: the button is not right under locate, above Weather (zoom buttons {"shown" if b["zoom"] else "hidden"})')
-        if b['w'] < 44 or b['h'] < 44:
-            fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px, under 44")
-        pg.tap(*aim(pg, f'{name}, a tap'))
+
+        # the keyboard: Tab from zoom out reaches it and goes on to Weather; Enter and Space turn it
+        pg = page(1440, 900, False, 'mtb')
+        pg.js("document.querySelector('#btn-zoom-out').focus(), true")
+        key(pg, 'Tab', 'Tab', 9)
+        if pg.js(B3D)['focus'] != 'btn-3d':
+            fails.append(f"1440x900 keyboard: Tab from zoom out went to {pg.js(B3D)['focus']}, not 3D")
+        elif not pg.js("document.querySelector('#btn-3d').matches(':focus-visible') && getComputedStyle(document.querySelector('#btn-3d')).outlineStyle !== 'none'"):
+            fails.append('1440x900 keyboard: no focus ring on the 3D button')
+        key(pg, 'Enter', 'Enter', 13, '\r')
         pg.idle()
-        expect(pg, f'{name}, a tap', True)
-        pg.tap(*aim(pg, f'{name}, a second tap'))
-        time.sleep(0.6)
-        expect(pg, f'{name}, a second tap', False)
-        fails += [f'{name} closed: {o}' for o in overlaps(pg.js(BOXES))]
-        pg.js(PLAN_TWO)
-        for st in ('peek', 'profile', 'half'):
-            pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
-            late = pg.js(SETTLED)
-            if late:
-                fails.append(f'{name} planning/{st}: {late}')
-            fails += [f'{name} planning/{st}: {o}' for o in overlaps(pg.js(BOXES))]
-            # (on a short phone a raised sheet leaves no room for 3D in the column: 25a leaves it out, in Layers still)
-            if st == 'half' and pg.js("document.querySelector('#map-ctrls').classList.contains('no-3d')"):
-                if pg.js("getComputedStyle(document.querySelector('#btn-3d')).display") != 'none':
-                    fails.append(f'{name}: the column has no room for 3D at half, but it shows')
-            elif st == 'half':
-                pg.tap(*aim(pg, f'{name}, a tap with the sheet at half'))
-                time.sleep(0.6)
-                expect(pg, f'{name}, a tap with the sheet at half', True)
-                if pg.js("polku.planner.panel.dataset.state") != 'half':
-                    fails.append(f'{name}: a tap on 3D moved the sheet from half')
-        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        expect(pg, '1440x900 keyboard, Enter', True)
+        key(pg, ' ', 'Space', 32)
+        expect(pg, '1440x900 keyboard, Space', False)
+        key(pg, 'Tab', 'Tab', 9)
+        if pg.js(B3D)['focus'] != 'btn-time':
+            fails.append(f"1440x900 keyboard: Tab from 3D went to {pg.js(B3D)['focus']}, not Weather")
+        fails += [f'1440x900 keyboard console: {e[:160]}' for e in pg.errors()]
         pg.close()
 
-    # 200 % zoom on a 390 x 844 phone: no room for 3D in the column, which stays clear of the top bar; 3D still in Layers.
-    # (With the timeline open or the planner, the column reaches the top bar on main too: #73, and 25a's rule for short phones.)
-    pg = page(195, 422, True, 'paddle', {'timeline': False})
-    if pg.js("(() => { const b = document.querySelector('#btn-3d'); return b ? getComputedStyle(b).display : 'none'; })()") != 'none':
-        fails.append('195x422 (200 %): the 3D button shows, with no room for it in the column')
-    top = ('.topbar', '#activity-bar', '#btn-settings', '#zoom-hint')
-    fails += [f'195x422 (200 %) closed: {o}' for o in overlaps(pg.js(BOXES)) if '.map-ctrls' in o and any(t in o for t in top)]
-    if not pg.js(B3D_SWITCH):
-        fails.append("195x422 (200 %): no 3D switch in Layers")
-    pg.close()
+        # the quick drawer: no 3D tile in any sport, MTB's in its place is Waymarked MTB; Edit doesn't offer 3D
+        pg = page(1440, 900, False, 'mtb')
+        got = pg.js(B3D_TILES)
+        for k, want in B3D_WANT.items():
+            if got[k] != want:
+                fails.append(f'the quick drawer in {k}: {got[k]}, not {want}')
+        if 'terrain3d' in got['edit'].split(','):
+            fails.append('Edit offers a 3D terrain tile')
+        pg.close()
+        # your own tiles saved with the old 3D tile: the drawer opens with the others, room for one more in Edit
+        pg = page(1440, 900, False, 'mtb', {'quickTiles': {'mtb': ['trailColors', 'trailDetails', 'lipasRoutes', 'terrain3d', 'wx:rain']}})
+        got = pg.js("""(async () => {
+          const wait = (ms) => new Promise((r) => setTimeout(r, ms)), qd = document.querySelector('#quick-layers');
+          document.querySelector('#btn-layers').click(); await wait(300);
+          const tiles = [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile).join();
+          qd.querySelector('.qd-edit-btn').click(); await wait(300);
+          const edit = { on: qd.querySelectorAll('.qt-rm').length, slots: qd.querySelectorAll('.qd-slot').length, chips: qd.querySelectorAll('.qd-chip:not(:disabled)').length };
+          qd.querySelector('.qd-chip[data-add="wmtMtb"]').click(); await wait(100);
+          qd.querySelector('.qd-done').click(); await wait(300);
+          return { tiles, edit, after: [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile).join() };
+        })()""")
+        if got['tiles'] != 'trailColors,trailDetails,lipasRoutes,wx:rain':
+            fails.append(f"saved tiles with the old 3D tile: the drawer shows {got['tiles']}")
+        if got['edit']['on'] != 4 or got['edit']['slots'] != 1 or not got['edit']['chips']:
+            fails.append(f"saved tiles with the old 3D tile: Edit shows {got['edit']}")
+        if got['after'] != 'trailColors,trailDetails,lipasRoutes,wx:rain,wmtMtb':
+            fails.append(f"saved tiles with the old 3D tile, Waymarked MTB added: {got['after']}")
+        fails += [f'old tiles console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    else:
+        # touch phones, no zoom buttons: under locate, 44 px, a tap turns it; the column clear of the top bar
+        for w, h_, sport in ((390, 844, 'paddle'), (390, 844, 'mtb'), (360, 740, 'mtb'), (375, 667, 'paddle')):
+            name = f'{w}x{h_} {sport}'
+            pg = page(w, h_, True, sport)
+            b = expect(pg, f'{name}, at the start', False)
+            if b.get('missing'):
+                pg.close()
+                continue
+            if b['zoom'] or not (b['locate'] and b['locate']['b'] <= b['top'] and b['bottom'] <= b['weather']['t']):
+                fails.append(f'{name}: the button is not right under locate, above Weather (zoom buttons {"shown" if b["zoom"] else "hidden"})')
+            if b['w'] < 44 or b['h'] < 44:
+                fails.append(f"{name}: the button is {b['w']:.0f} × {b['h']:.0f} px, under 44")
+            pg.tap(*aim(pg, f'{name}, a tap'))
+            pg.idle()
+            expect(pg, f'{name}, a tap', True)
+            pg.tap(*aim(pg, f'{name}, a second tap'))
+            time.sleep(0.6)
+            expect(pg, f'{name}, a second tap', False)
+            fails += [f'{name} closed: {o}' for o in overlaps(pg.js(BOXES))]
+            pg.js(PLAN_TWO)
+            for st in ('peek', 'profile', 'half'):
+                pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
+                late = pg.js(SETTLED)
+                if late:
+                    fails.append(f'{name} planning/{st}: {late}')
+                fails += [f'{name} planning/{st}: {o}' for o in overlaps(pg.js(BOXES))]
+                # (on a short phone a raised sheet leaves no room for 3D in the column: 25a leaves it out, in Layers still)
+                if st == 'half' and pg.js("document.querySelector('#map-ctrls').classList.contains('no-3d')"):
+                    if pg.js("getComputedStyle(document.querySelector('#btn-3d')).display") != 'none':
+                        fails.append(f'{name}: the column has no room for 3D at half, but it shows')
+                elif st == 'half':
+                    pg.tap(*aim(pg, f'{name}, a tap with the sheet at half'))
+                    time.sleep(0.6)
+                    expect(pg, f'{name}, a tap with the sheet at half', True)
+                    if pg.js("polku.planner.panel.dataset.state") != 'half':
+                        fails.append(f'{name}: a tap on 3D moved the sheet from half')
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+            pg.close()
 
-    # the quick drawer: no 3D tile in any sport, MTB's in its place is Waymarked MTB; Edit doesn't offer 3D
-    pg = page(1440, 900, False, 'mtb')
-    got = pg.js(B3D_TILES)
-    for k, want in B3D_WANT.items():
-        if got[k] != want:
-            fails.append(f'the quick drawer in {k}: {got[k]}, not {want}')
-    if 'terrain3d' in got['edit'].split(','):
-        fails.append('Edit offers a 3D terrain tile')
-    pg.close()
-    # your own tiles saved with the old 3D tile: the drawer opens with the others, room for one more in Edit
-    pg = page(1440, 900, False, 'mtb', {'quickTiles': {'mtb': ['trailColors', 'trailDetails', 'lipasRoutes', 'terrain3d', 'wx:rain']}})
-    got = pg.js("""(async () => {
-      const wait = (ms) => new Promise((r) => setTimeout(r, ms)), qd = document.querySelector('#quick-layers');
-      document.querySelector('#btn-layers').click(); await wait(300);
-      const tiles = [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile).join();
-      qd.querySelector('.qd-edit-btn').click(); await wait(300);
-      const edit = { on: qd.querySelectorAll('.qt-rm').length, slots: qd.querySelectorAll('.qd-slot').length, chips: qd.querySelectorAll('.qd-chip:not(:disabled)').length };
-      qd.querySelector('.qd-chip[data-add="wmtMtb"]').click(); await wait(100);
-      qd.querySelector('.qd-done').click(); await wait(300);
-      return { tiles, edit, after: [...qd.querySelectorAll('.qt-tog')].map((b) => b.dataset.tile).join() };
-    })()""")
-    if got['tiles'] != 'trailColors,trailDetails,lipasRoutes,wx:rain':
-        fails.append(f"saved tiles with the old 3D tile: the drawer shows {got['tiles']}")
-    if got['edit']['on'] != 4 or got['edit']['slots'] != 1 or not got['edit']['chips']:
-        fails.append(f"saved tiles with the old 3D tile: Edit shows {got['edit']}")
-    if got['after'] != 'trailColors,trailDetails,lipasRoutes,wx:rain,wmtMtb':
-        fails.append(f"saved tiles with the old 3D tile, Waymarked MTB added: {got['after']}")
-    fails += [f'old tiles console: {e[:160]}' for e in pg.errors()]
-    pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the 3D button: mouse, keyboard, touch, reload, the column on phones, the quick drawer's tiles" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+        # 200 % zoom on a 390 x 844 phone: no room for 3D in the column, which stays clear of the top bar; 3D still in Layers.
+        # (With the timeline open or the planner, the column reaches the top bar on main too: #73, and 25a's rule for short phones.)
+        pg = page(195, 422, True, 'paddle', {'timeline': False})
+        if pg.js("(() => { const b = document.querySelector('#btn-3d'); return b ? getComputedStyle(b).display : 'none'; })()") != 'none':
+            fails.append('195x422 (200 %): the 3D button shows, with no room for it in the column')
+        top = ('.topbar', '#activity-bar', '#btn-settings', '#zoom-hint')
+        fails += [f'195x422 (200 %) closed: {o}' for o in overlaps(pg.js(BOXES)) if '.map-ctrls' in o and any(t in o for t in top)]
+        if not pg.js(B3D_SWITCH):
+            fails.append("195x422 (200 %): no 3D switch in Layers")
+        pg.close()
+    what = 'by touch on phones, the column at every sheet size and at 200 %' if phones else 'mouse, keyboard, reload, Layers\' switch, the quick drawer\'s tiles'
+    print(f"{'ok  ' if not fails else 'FAIL'} the 3D button: {what}" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
+
+def button3d_phones(chrome):
+    return button3d(chrome, phones=True)
 
 
 # The runner itself (#262, #263, #254), in a Chrome of its own beside the one the run holds
@@ -8084,7 +8104,12 @@ START_LIB = """(() => {
   T.whole = (what) => {
     if (p.layout() !== 'sheet') return;
     const w = way(), room = innerHeight - 76 - 2;
-    if (w.scrollHeight > w.clientHeight + 1 && p.panel.getBoundingClientRect().height < room) err(`${what}: the view is cut by ${w.scrollHeight - w.clientHeight} px though the sheet has room`);
+    if (w.scrollHeight > w.clientHeight + 1 && p.panel.getBoundingClientRect().height < room) err(`${what}: the view is cut by ${w.scrollHeight - w.clientHeight} px though the sheet has room (${T.sheetNow()})`);
+  };
+  // where the sheet is, for a FAIL line: its size, the peek it was given, the view in it, and what's still moving
+  T.sheetNow = () => {
+    const w = way(), moving = document.getAnimations().filter((a) => a instanceof CSSTransition && a.playState === 'running').map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`);
+    return `the sheet ${p.panel.dataset.state} ${Math.round(p.panel.getBoundingClientRect().height)} px, --peek-h ${p.panel.style.getPropertyValue('--peek-h') || 'unset'}, the view ${w.clientHeight} of ${w.scrollHeight} px, ${moving.join(', ') || 'nothing moving'}`;
   };
   // in a round trip nothing is drawn: only undo and redo, no mode, More or Done (#311)
   T.loopTools = (what) => { const on = shown().join('|'); if (on !== 'Undo|Redo') err(`${what}: the toolbox has ${on || 'nothing'}, not only undo and redo (#311)`); };
@@ -8385,14 +8410,19 @@ START_LIB = """(() => {
     const f = free();
     for (const c of r.parts) for (let i = 0; i < c.length; i += 3) {
       const q = map.project(c[i]);
-      if (q.x > f.left + 20 && q.x < f.right - 20 && q.y > f.top + 20 && q.y < f.bottom - 20 && onMap(q.x, q.y) && map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], { layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key)) return { x: q.x, y: q.y };
+      if (q.x > f.left + 20 && q.x < f.right - 20 && q.y > f.top + 20 && q.y < f.bottom - 20 && onMap(q.x, q.y) && map.queryRenderedFeatures([[q.x - 3, q.y - 3], [q.x + 3, q.y + 3]], { layers: ['lipas-route'] }).some((x) => `${x.properties.type}/${x.properties.lipasId}` === r.key)) { T.spotAt = { q, ll: c[i], list: M().state, gen: M().gen }; return { x: q.x, y: q.y }; }
     }
     err('no spot on the other marked route in view');
     return null;
   };
   T.markedTapped = async () => {
     await until(() => M().list[M().on]?.key === T.other, 3000);
-    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key}`);
+    // (and how far the spot had moved by then: the map moving after it was read would put the tap beside the line)
+    const moved = () => { const a = T.spotAt, q = a && map.project(a.ll); return q ? `${Math.round(Math.hypot(q.x - a.q.x, q.y - a.q.y))} px` : '?'; };
+    const opened = $('.maplibregl-popup') ? 'a map card' : $('.menu-pop') ? `a menu (${txt($('.menu-pop')).slice(0, 40)})` : 'no card or menu';
+    // (a list loading at the tap puts the earlier pick back when it comes in: #427)
+    const list = !T.spotAt ? '?' : T.spotAt.list === 'loading' ? 'the list still loading when the spot was read' : T.spotAt.gen !== M().gen ? 'the list asked again after the spot was read' : 'the list in';
+    if (M().list[M().on]?.key !== T.other) err(`a tap on the other route picked ${M().list[M().on]?.key} (${list}, #427; the spot moved ${moved()}, ${opened}, ${T.sheetNow()})`);
     if (p.points.length) err(`a tap in Marked routes added ${p.points.length} points`);
     return T.errs.splice(0);
   };
@@ -8458,6 +8488,9 @@ START_LIB = """(() => {
     if ((await routed()) !== T.r0) err('a length opened the form with routing calls');
     if (!/From your first point/.test(txt(way()))) err(`the start line: ${txt($('.pl-way .rt-start'))}`);
     T.loopTools('the round trip’s form');
+    // (once the sheet has grown to the form: as the view turns, the sheet is still the first point's, and a busy page
+    // measured it there, cut by the whole difference every time, #407)
+    await settled();
     T.whole('the round trip’s form');
     window.holdRoutes();
     return T.at('.pl-way .rt-make');
@@ -8718,8 +8751,8 @@ def route_view(chrome):
             return False
         if not at.get('clear', True):
             fails.append(f'{name}: something is over it')
-        if touch:
-            pg.tap(at['x'], at['y'])
+        if touch:  # (a finger up after 50 ms by its own times: pg.tap's touchend waits for the page, a hold on a busy one, #405)
+            pg.quick_tap(at['x'], at['y'])
         else:
             for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
                 pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
@@ -9094,8 +9127,8 @@ def point_card(chrome):
         if not at:
             fails.append(f'{name}: not on screen')
             return False
-        if touch:
-            pg.tap(at['x'], at['y'])
+        if touch:  # (a finger up after 50 ms by its own times, as in routeview, #405)
+            pg.quick_tap(at['x'], at['y'])
         else:
             for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
                 pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
@@ -9904,10 +9937,17 @@ def controls(chrome):
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
                 pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await new Promise((r) => setTimeout(r, 800)); return true; })()")
                 for sel, what in (('.pl-way .rt-chips .chip:not([aria-pressed=true])', 'a chip'), ('.pl-way .rt-make', 'Make 3 loops'), ('.pl-way .rt-unit button:not([aria-pressed=true])', 'a switch')):
-                    x, y = pg.js(f"(() => {{ const r = document.querySelector({json.dumps(sel)}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }})()")
+                    # (and what a press there lands on, for the FAIL line)
+                    x, y, on = pg.js(f"(() => {{ const e = document.querySelector({json.dumps(sel)}), r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, t = document.elementFromPoint(x, y);"
+                                     " return [x, y, !t || e.contains(t) ? '' : t.id || String(t.className) || t.tagName]; })()")
+                    if on:
+                        fails.append(f'{name}: {what} is under {on}')
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none'}, pg.s)
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': x, 'y': y, 'button': 'left', 'buttons': 1, 'clickCount': 1}, pg.s)
-                    time.sleep(0.3)
+                    # held until the page has had the press and its scale has moved, 5 s at most: in software a frame can take
+                    # a second or more, and the 0.12 s scale waited that long to start, so 0.3 s after the press it was still at 1 (#423)
+                    pg.js(f"(async (e) => {{ const t0 = Date.now(); while ((!e.matches(':active') || e.getAnimations().some((a) => a.playState === 'running')) && Date.now() - t0 < 5000)"
+                          f" await new Promise((r) => setTimeout(r, 50)); return true; }})(document.querySelector({json.dumps(sel)}))")
                     s = pg.js(f"({CT_PRESSED})({json.dumps(sel)})")
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 450, 'button': 'left', 'buttons': 1}, pg.s)
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': 900, 'y': 450, 'button': 'left', 'buttons': 0, 'clickCount': 1}, pg.s)
@@ -10013,7 +10053,8 @@ GROUPS = [
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
-    ('button3d', [button3d], 'the 3D button in the map\'s column (#226): mouse, keyboard, touch, reload, Layers\' switch in step, the column on phones, the quick drawer\'s tiles per sport'),
+    ('button3d', [button3d], 'the 3D button in the map\'s column on desktops (#226): mouse, keyboard, reload, Layers\' switch in step, the quick drawer\'s tiles per sport'),
+    ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap opens it in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
