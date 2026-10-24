@@ -61,9 +61,10 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
 - **The user decides** a larger investigation and any change of scope or
   order.
 - **One session, one issue** (or one PR of a phase). A session carries its
-  PR through to ready, across as many checkpoints as it takes: it doesn't
-  stop at a token count. Start a new session (or Codex thread) from the
-  Hand-over when the next issue begins, when the session reaches its usage
+  PR through to ready, across as many checkpoints as it takes: a token
+  count never stops it mid-part. Start a new session (or Codex thread) from
+  the Hand-over when the next issue begins, when a part is done and the
+  context is past about 300k tokens, when the session reaches its usage
   limit, or when its context has been compacted and it starts losing track
   (repeating work, forgetting a decision). Write the Hand-over first.
 - **One coding session at a time,** unless the user starts more: Claude A,
