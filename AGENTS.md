@@ -237,10 +237,9 @@ not models, mid-session: a new model sends the whole conversation again
   failed for no clear reason, an idea) is one line in your Hand-over's
   noticed lines: what, where, the commit. An idea the user wants kept is a
   one-line `idea` issue.
-- **The weekly sweep,** on Mondays, when the user starts it: a fresh session
-  reads the noticed lines since the last sweep, reviews what merged into
-  `main` since then and tries to break it, and asks the user which few are
-  worth an issue. It comments on the "Weekly sweep" issue (the first sweep
+- **The weekly sweep,** a routine on Mondays: a fresh session reads the
+  noticed lines since the last sweep and asks the user which few are worth
+  an issue. It comments on the "Weekly sweep" issue (the first sweep
   opens it): the commits it covered, what it found, what the user kept.
 - **The issue is the one place for its status,** so nothing to do is listed in
   the docs. "Fixes #n" closes it when the PR merges; anything closed without a
