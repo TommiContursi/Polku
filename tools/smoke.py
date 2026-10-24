@@ -7709,8 +7709,9 @@ def toolbox(chrome):
             chrome.send('Input.dispatchKeyEvent', fields, pg.s)
         time.sleep(0.25)
 
+    # (scrolled into view, as a person would: a taller peek, the warnings' row in the evening, leaves a menu less room, #448)
     def item(pg, label):
-        return pg.js(f"(() => {{ const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith({json.dumps(label)})); if (b) b.dataset.tbPick = '1'; return !!b; }})()")
+        return pg.js(f"(() => {{ const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith({json.dumps(label)})); if (b) {{ b.dataset.tbPick = '1'; b.scrollIntoView({{ block: 'nearest' }}); }} return !!b; }})()")
 
     # a route action: on the toolbar where it fits there, else in More
     def act(pg, label, name, press):
