@@ -168,8 +168,10 @@ export class Planner {
     this.points = [];
     this.legs = [];
     this.readKeys = new Set(); // Check's items marked read (25d part 3): with the saved route on this device, not in links
-    this.narrowMQ = matchMedia('(max-width: 300px)'); // (the peek's row in one short line: 200 %, a small phone)
-    this.narrowMQ.addEventListener('change', () => this.renderReadRow());
+    // (the peek's row as a count beside the numbers: narrow, 200 % on a phone; short, a phone on its side at 150 or 200 %)
+    this.narrowMQ = matchMedia('(max-width: 300px)');
+    this.shortMQ = matchMedia('(max-height: 300px)');
+    for (const mq of [this.narrowMQ, this.shortMQ]) mq.addEventListener('change', () => this.renderReadRow());
     this.mode = ACTIVITIES[app.activity()].mode;
     this.craft = store.get('craft', 'kayak');
     this.past = [];
@@ -220,6 +222,8 @@ export class Planner {
     };
     map.on('click', (e) => this.onMapClick(e));
     map.on('movestart', (e) => { if (e.originalEvent) { this.refit = false; this.fitAt = null; } }); // you moved the map
+    // …or pressed it, the route or a marker on it: no framing the route again under your finger later either (#446)
+    for (const t of ['mousedown', 'touchstart']) map.getContainer().addEventListener(t, () => { this.fitAt = null; }, { capture: true, passive: true });
     // Marked routes list the view: again after you move the map (not after framing a picked one)
     map.on('moveend', () => { if (this.startView() !== 'find') return; if (this.marked.framed) this.marked.framed = false; else this.listMarkedSoon(); });
     map.on('mousemove', (e) => this.onMapMove(e));
@@ -266,6 +270,7 @@ export class Planner {
   }
   commit(opts) {
     this.refit = false; // you've changed the route: no framing it later
+    this.fitAt = null; // (nor again when the peek grows, #446)
     this.past.push(this.snapshot(opts));
     if (this.past.length > 100) this.past.shift();
     this.future = [];
@@ -5870,17 +5875,19 @@ export class Planner {
     if (!el) return;
     const R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
     el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight();
-    // narrow (200 %, a small phone): the count alone, beside the numbers above Done, so it takes none of the map (the
-    // review of #416); its name says the rest, a tap shows the first, and Check's All read marks them all
-    const narrow = this.narrowMQ.matches, row = this.els.row;
-    if (narrow !== (el.parentNode === row)) { if (narrow) this.els.sum.after(el); else row.before(el); }
+    // narrow (200 %, a small phone): the count alone, beside the numbers above Done; short (a phone on its side at 150 or
+    // 200 %, #438): before Done, in the numbers' line. Either way it takes none of the map (the review of #416); its name
+    // says the rest, a tap shows the first, and Check's All read marks them all
+    const narrow = this.narrowMQ.matches, inline = narrow || this.shortMQ.matches, row = this.els.row;
+    if (inline !== (el.parentNode === row)) { if (inline) this.els.sum.after(el); else row.before(el); }
     row.classList.toggle('with-count', narrow && !el.hidden);
+    row.classList.toggle('count-inline', inline && !narrow && !el.hidden);
     if (el.hidden) return;
     const first = n1 ? R1[0] : R3[0], n = n1 || n3;
     const go = (...kids) => h('button', { type: 'button', class: 'pl-readrow-go', 'aria-label': `${[n1 && `${n1} to read before you go`, n3 && `${n3} not checked`].filter(Boolean).join(', ')}: ${first.w.text}. Show it on the route`, onclick: () => this.openFromRow() },
       h('span', { 'aria-hidden': 'true', html: icon(n1 ? 'warnf' : 'unk', 22) }), ...kids);
-    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}${narrow ? ' compact' : ''}`;
-    if (narrow) { el.replaceChildren(go(h('b', { 'aria-hidden': 'true' }, String(n)))); return; }
+    el.className = `warn-row pl-readrow ${n1 ? 'danger' : 'unk'}${inline ? ' compact' : ''}`;
+    if (inline) { el.replaceChildren(go(h('b', { 'aria-hidden': 'true' }, String(n)))); return; }
     el.replaceChildren(
       go(h('span', {}, h('b', {}, `${n} ${n1 ? 'to read before you go' : 'not checked'}`),
         h('small', {}, `${first.w.text}${n > 1 ? ` and ${n - 1} more` : ''}${n1 && n3 ? ` · ${n3} not checked` : ''}`)),

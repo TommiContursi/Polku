@@ -2741,9 +2741,22 @@ WARNFIX = """(async () => {
   const T2 = await import(location.origin + '/js/trails.js');
   p.setTab('route'); p.setSheetState('peek');
   await wait(400);
+  // (#446) framed, then a press on the map: the row coming late (the peek growing) doesn't frame the route again under it
+  p.fitRoute({ animate: false });
+  await new Promise((ok) => polku.map.once('idle', ok));
+  const c446 = polku.map.getCenter();
+  polku.map.getContainer().dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  p.els.readRow.hidden = true; await wait(300);
+  for (let k = 0; k < 3; k++) await new Promise((ok) => requestAnimationFrame(ok)); // (the refit is a frame after the resize)
+  const c446b = polku.map.getCenter();
+  if (c446b.lng !== c446.lng || c446b.lat !== c446.lat) errs.push('pressed on the map, then the peek changed: the route was framed again under the press');
+  p.renderReadRow(); await wait(500);
   // (9) the row: a box with two buttons, its words opening the first item once
   const row = p.els.readRow;
   if (row.tagName === 'BUTTON') errs.push('the row is a <button> holding buttons');
+  // …its ✕ as big to touch as the header's other buttons (#443)
+  const rx = row.querySelector('.pl-readrow-x');
+  if (!rx || rx.offsetWidth < 44 || rx.offsetHeight < 44) errs.push(`the row's ✕ is ${rx ? `${rx.offsetWidth} × ${rx.offsetHeight}` : 'missing'}, under 44 px to touch`);
   let opened = 0;
   const real = p.openFromRow.bind(p);
   p.openFromRow = () => { opened++; return real(); };
@@ -2976,13 +2989,21 @@ def warnfix(chrome):
           if (!step) return ['no ‹ › on the card'];
           const c = card.getBoundingClientRect(), s = step.getBoundingClientRect();
           if (s.bottom > c.bottom + 1 || s.top < c.top) errs.push(`‹ › at ${Math.round(s.top)}–${Math.round(s.bottom)}, the card shows ${Math.round(c.top)}–${Math.round(c.bottom)}`);
+          // (#444) the profile size with the row there: the whole chart, and back at the peek the row and the numbers in sight
+          p.cards.close(); p.setTab('route'); p.setSheetState('profile'); await wait(400); await """ + SETTLED + """;
+          const cv = document.getElementById('profile-canvas').getBoundingClientRect(), sb = p.panel.getBoundingClientRect().bottom;
+          if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`the profile size with the row: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
+          p.setSheetState('peek'); await wait(400); await """ + SETTLED + """;
+          const rr = p.els.readRow.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
+          if (p.els.readRow.hidden || !rr.height) errs.push('back at the peek, no row');
+          else if (nr.bottom > pr.bottom + 1 || rr.top < pr.top) errs.push(`back at the peek, the row and the numbers ${Math.round(rr.top)}–${Math.round(nr.bottom)} in a sheet of ${Math.round(pr.top)}–${Math.round(pr.bottom)}`);
           return errs; })()""", timeout=90000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # (3) 200 % on a 390 and a 360 px phone: the count beside the numbers, taking none of the map, the peek below the
-    # top bar (the recheck: 360 × 740 ran under it)
-    for w, h in ((195, 422), (180, 370)):
+    # (3) 200 % on a 390 and a 360 px phone, and on its side (#438): the count beside the numbers, taking none of the map,
+    # the peek below the top bar (the recheck: 360 × 740 ran under it)
+    for w, h in ((195, 422), (180, 370), (422, 195)):
         pg = chrome.page(w, h, True)
         try:
             pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
@@ -7738,8 +7759,9 @@ def toolbox(chrome):
             chrome.send('Input.dispatchKeyEvent', fields, pg.s)
         time.sleep(0.25)
 
+    # (scrolled into view, as a person would: a taller peek, the warnings' row in the evening, leaves a menu less room, #448)
     def item(pg, label):
-        return pg.js(f"(() => {{ const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith({json.dumps(label)})); if (b) b.dataset.tbPick = '1'; return !!b; }})()")
+        return pg.js(f"(() => {{ const b = [...document.querySelectorAll('.menu-pop .menu-item')].find((x) => x.textContent.trim().startsWith({json.dumps(label)})); if (b) {{ b.dataset.tbPick = '1'; b.scrollIntoView({{ block: 'nearest' }}); }} return !!b; }})()")
 
     # a route action: on the toolbar where it fits there, else in More
     def act(pg, label, name, press):

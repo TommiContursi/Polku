@@ -8,6 +8,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 On a phone with the weather timeline open, the timeline grew a little when its forecast came in, or came in again after you moved the map, and the map's buttons above it moved up with it: 3 px, or 20 px with **Snow depth** on. Now the timeline keeps the room its reading needs from the start, so the buttons stay where your finger expects them.
 
+### Fixed: the map stays put under your finger when the warnings come in ([#446](https://github.com/TommiContursi/Polku/issues/446))
+
+Just after the route was shown whole, the map could frame it again when the row of warnings came in, even while you were pressing the route to add a point or dragging a leg's handle. The press then missed the route, or the drag moved the map. Now a press on the map, or any change to the route, keeps the map where it is.
+
+### Fixed: the elevation chart is whole with warnings to read ([#444](https://github.com/TommiContursi/Polku/issues/444))
+
+With the planner at the size that shows the elevation chart, the row of warnings to read before you go took the chart's room on a small phone, and the chart's bottom ran off the screen. At that size the row now folds away, as the route's stats do, and comes back at the peek. The warnings stay on the map and in Check.
+
+### Fixed: the warnings' ✕ is as easy to tap as the planner's other buttons ([#443](https://github.com/TommiContursi/Polku/issues/443))
+
+On a phone, the ✕ that marks all the warnings read, at the end of their row at the planner's peek, was narrower than the planner's other buttons. Now it's as wide as they are, 44 px.
+
+### Fixed: the warnings' count leaves the map its room on a phone on its side ([#438](https://github.com/TommiContursi/Polku/issues/438))
+
+With large text on a phone turned on its side, the row of warnings to read before you go pushed the top of the planner under the top bar. Now, in a window that short, the count sits in the line of the route's numbers, before **Done**, as it does on a small phone, and **All read** in Check marks them all.
+
 ## 2026-10-23
 
 ### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))
