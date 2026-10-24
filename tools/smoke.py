@@ -2741,6 +2741,16 @@ WARNFIX = """(async () => {
   const T2 = await import(location.origin + '/js/trails.js');
   p.setTab('route'); p.setSheetState('peek');
   await wait(400);
+  // (#446) framed, then a press on the map: the row coming late (the peek growing) doesn't frame the route again under it
+  p.fitRoute({ animate: false });
+  await new Promise((ok) => polku.map.once('idle', ok));
+  const c446 = polku.map.getCenter();
+  polku.map.getContainer().dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  p.els.readRow.hidden = true; await wait(300);
+  for (let k = 0; k < 3; k++) await new Promise((ok) => requestAnimationFrame(ok)); // (the refit is a frame after the resize)
+  const c446b = polku.map.getCenter();
+  if (c446b.lng !== c446.lng || c446b.lat !== c446.lat) errs.push('pressed on the map, then the peek changed: the route was framed again under the press');
+  p.renderReadRow(); await wait(500);
   // (9) the row: a box with two buttons, its words opening the first item once
   const row = p.els.readRow;
   if (row.tagName === 'BUTTON') errs.push('the row is a <button> holding buttons');

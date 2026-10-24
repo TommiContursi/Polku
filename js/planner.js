@@ -222,6 +222,8 @@ export class Planner {
     };
     map.on('click', (e) => this.onMapClick(e));
     map.on('movestart', (e) => { if (e.originalEvent) { this.refit = false; this.fitAt = null; } }); // you moved the map
+    // …or pressed it, the route or a marker on it: no framing the route again under your finger later either (#446)
+    for (const t of ['mousedown', 'touchstart']) map.getContainer().addEventListener(t, () => { this.fitAt = null; }, { capture: true, passive: true });
     // Marked routes list the view: again after you move the map (not after framing a picked one)
     map.on('moveend', () => { if (this.startView() !== 'find') return; if (this.marked.framed) this.marked.framed = false; else this.listMarkedSoon(); });
     map.on('mousemove', (e) => this.onMapMove(e));
@@ -268,6 +270,7 @@ export class Planner {
   }
   commit(opts) {
     this.refit = false; // you've changed the route: no framing it later
+    this.fitAt = null; // (nor again when the peek grows, #446)
     this.past.push(this.snapshot(opts));
     if (this.past.length > 100) this.past.shift();
     this.future = [];
