@@ -107,13 +107,14 @@ export const climbWords = (c, sport) => `${OFFROAD_BIKE.has(sport) ? `↑S${c.cl
 // taken as calm. Each: { k, html, aria, stand, usual, miss }; html has <b> for its number.
 export const STANDS = { rainMm: 0.5, rainM: 1000, headMin: 15, headShare: 0.1, unpavedM: 1000 };
 export function keyFacts(a, { sport, days = [], noWeather = null }) {
-  const out = [], w = noWeather ? null : a.wind, km = (m) => fmtDist(m);
-  const water = waterWind(a, w, (sp) => isWater(sp));
-  if (water) out.push(water.none ? { k: 'wind', miss: true, stand: true, html: `Wind: <b>${noWeather || 'not known yet'}</b>`, aria: `Wind: ${noWeather || 'not known yet'}` }
-    : { k: 'wind', stand: true, html: `Wind up to <b>${water.sp} m/s</b>, gusts ${water.g} · headwind <b>${water.head} %</b>`, aria: `Wind up to ${water.sp} m/s, gusts ${water.g}, headwind ${water.head} % of the way: the weather along the route` });
+  const out = [], w = noWeather ? null : a.wind, km = (m) => fmtDist(m), reach = forecastReach(a, w);
+  const water = waterWind(a, w, (sp) => isWater(sp)), why = noWeather || (w ? 'no forecast yet' : 'not known yet');
+  const past = water && water.past ? ` · no forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}` : '';
+  if (water) out.push(water.none ? { k: 'wind', miss: true, stand: true, html: `Wind: <b>${why}</b>`, aria: `Wind: ${why}` }
+    : { k: 'wind', stand: true, html: `Wind up to <b>${water.sp} m/s</b>, gusts ${water.g} · headwind <b>${water.head} %</b>${past}`, aria: `Wind up to ${water.sp} m/s, gusts ${water.g}, headwind ${water.head} % of the way${past}: the weather along the route` });
   if (w && w.precip) {
     let wet = 0;
-    for (let i = 1; i < a.along.length; i++) if (w.precip[i] >= STANDS.rainMm) wet += a.along[i] - a.along[i - 1];
+    for (let i = 1; i < reach; i++) if (w.precip[i] >= STANDS.rainMm) wet += a.along[i] - a.along[i - 1];
     if (wet >= STANDS.rainM) out.push({ k: 'rain', stand: true, v: { m: wet }, html: `Rain on <b>${km(wet)}</b> of the way`, aria: `Rain on ${km(wet)} of the way: the weather along the route` });
   }
   const add = a.timeWind && !water ? (a.timeWind - a.time) / 60 : 0;
@@ -150,25 +151,31 @@ export function sportFacts(a, { noWeather = null }) {
     by.set(sp, v);
   }
   return [...by.values()].map(({ sport, m, up }) => {
-    const label = ACTIVITIES[sport].label, wind = isWater(sport) ? waterWind(a, w, (sp) => sp === sport) : null;
-    const fact = wind ? (wind.none ? [`wind: <b>${noWeather || 'not known yet'}</b>`, `wind: ${noWeather || 'not known yet'}`] : [`wind up to <b>${wind.sp} m/s</b>, gusts ${wind.g}`, `wind up to ${wind.sp} m/s, gusts ${wind.g}`])
+    const label = ACTIVITIES[sport].label, wind = isWater(sport) ? waterWind(a, w, (sp) => sp === sport) : null, why = noWeather || (w ? 'no forecast yet' : 'not known yet');
+    const fact = wind ? (wind.none ? [`wind: <b>${why}</b>`, `wind: ${why}`] : [`wind up to <b>${wind.sp} m/s</b>, gusts ${wind.g}`, `wind up to ${wind.sp} m/s, gusts ${wind.g}`])
       : [`<b>↑${Math.round(up)} m</b>`, `↑${Math.round(up)} m`];
     return { k: `sport:${sport}`, sport, miss: !!wind && wind.none, html: `${label} <span class="kf-d">${fmtDist(m)}</span> · ${fact[0]}`, aria: `${label}, ${fmtDist(m)}, ${fact[1]}: show this part in the list` };
   });
 }
 
-// the wind over a route's water (its samples in a water sport): strongest, gusts, and how much of it is into the wind;
-// none: there is water but no wind for it
+// the samples the forecast reaches (past them its values are its last hour's, #465)
+const forecastReach = (a, w) => (w && w.beyond >= 0 ? w.beyond : a.along.length);
+
+// the wind over a route's water (its samples in a water sport), as far as the forecast reaches: strongest, gusts, and
+// how much of it is into the wind; none: there is water but no wind for it; past: water past the forecast's reach
 function waterWind(a, w, wet) {
-  let n = 0, sp = 0, g = 0, head = 0, m = 0;
+  let n = 0, known = 0, sp = 0, g = 0, head = 0, m = 0, past = false;
+  const reach = forecastReach(a, w);
   for (let i = 1; i < a.along.length; i++) {
     if (!wet((a.attr[i] && a.attr[i].sport) || a.activity)) continue;
-    const d = a.along[i] - a.along[i - 1];
-    n++; m += d;
+    n++;
     if (!w) continue;
+    if (i >= reach) { past = true; continue; }
+    const d = a.along[i] - a.along[i - 1];
+    known++; m += d;
     sp = Math.max(sp, w.speed[i]); g = Math.max(g, w.gust[i]);
     if (w.head[i] > 1) head += d;
   }
   if (!n) return null;
-  return w ? { sp: Math.round(sp), g: Math.round(g), head: Math.round((head / m) * 100) } : { none: true };
+  return known ? { sp: Math.round(sp), g: Math.round(g), head: Math.round((head / m) * 100), past } : { none: true };
 }

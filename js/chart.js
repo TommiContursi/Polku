@@ -53,9 +53,14 @@ export const TRAIL_SCALES = fromCss({
 // where the terrain is missing (analysis.js): no height or grade to give there
 export const noTerrain = (a, i) => !!(a.eleGap && a.eleGap[i]);
 export const NO_TERRAIN = '#d6dde3';
+// past the forecast's last hour (#465): its values are that hour's, so the weather's colours go grey there
+export const NO_FORECAST = NO_TERRAIN;
+const WEATHER_MODES = new Set(['wind', 'temp', 'rain']);
+const pastForecast = (a, i) => !!a.wind && a.wind.beyond >= 0 && i >= a.wind.beyond;
 
 export function colorAt(a, i, mode) {
   if ((mode === 'grade' || mode === 'uphill') && noTerrain(a, i)) return NO_TERRAIN; // no grade to colour by
+  if (WEATHER_MODES.has(mode) && pastForecast(a, i)) return NO_FORECAST;
   switch (mode) {
     case 'width': case 'vis': return a.td ? TRAIL_SCALES[mode].colors[a.td[mode][i] + 2] : '#d6dde3';
     case 'uphill': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : '#d6dde3';
@@ -311,6 +316,7 @@ export class ProfileChart {
 
   draw() {
     const c = this.canvas;
+    if (this.noFc) this.noFc.hidden = true; // (shown again below, where there's a cut to show)
     const dpr = window.devicePixelRatio || 1;
     const g = this.geom();
     if (!g.w || !g.h) return;
@@ -533,6 +539,17 @@ export class ProfileChart {
         }
       }
       ctx.restore();
+    }
+    // where the forecast runs out, in the weather's colours or the conditions: a dashed line, No forecast yet over it
+    const cut = (cond || WEATHER_MODES.has(this.mode)) && a.wind && a.wind.beyond >= 0 ? X(a.along[a.wind.beyond]) : null;
+    if (!this.noFc) { this.noFc = document.createElement('span'); this.noFc.className = 'nofc'; this.noFc.textContent = 'No forecast yet'; c.after(this.noFc); }
+    this.noFc.hidden = cut == null || cut > g.x1;
+    if (cut != null && cut <= g.x1) {
+      ctx.strokeStyle = ink; ctx.globalAlpha = 0.6; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(Math.round(cut) + 0.5, g.y0); ctx.lineTo(Math.round(cut) + 0.5, g.y1); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      this.noFc.style.left = `${Math.round(cut)}px`;
+      this.noFc.style.transform = cut > (g.x0 + g.x1) / 2 ? 'translateX(calc(-100% - 4px))' : 'translateX(4px)'; // (beside the line, inside the chart)
     }
   }
 

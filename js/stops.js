@@ -105,16 +105,20 @@ export function tripDays(a, tAt, start, waits) {
   return days;
 }
 
-/** The weather of one day from the route's wind samples (null without them). */
+/**
+ * The weather of one day from the route's wind samples, as far as the forecast reaches (null without them; `none`
+ * when the whole day is past it: its values there are the forecast's last hour's, #465).
+ */
 export function dayWeather(w, a, i0, i1) {
   if (!w) return null;
   let tMin = Infinity, tMax = -Infinity, wind = 0, gust = 0, wetM = 0, peak = 0;
-  for (let i = Math.max(1, i0); i <= i1; i++) {
+  const end = w.beyond >= 0 ? Math.min(i1, w.beyond - 1) : i1;
+  for (let i = Math.max(1, i0); i <= end; i++) {
     tMin = Math.min(tMin, w.temp[i]); tMax = Math.max(tMax, w.temp[i]);
     wind = Math.max(wind, w.speed[i]); gust = Math.max(gust, w.gust[i]);
     if (w.precip[i] >= 0.1) { wetM += a.along[i] - a.along[i - 1]; peak = Math.max(peak, w.precip[i]); }
   }
-  if (!Number.isFinite(tMin)) return null;
+  if (!Number.isFinite(tMin)) return w.beyond >= 0 && w.beyond <= i1 ? { none: true, beyond: true } : null;
   return { tMin, tMax, wind, gust, wetM, peak, beyond: w.beyond >= 0 && w.beyond <= i1, unsure: w.unsure >= 0 && w.unsure <= i1 };
 }
 

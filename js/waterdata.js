@@ -106,9 +106,13 @@ export function prefetchWater(view) {
   waterwaysIn(view, 8).catch(() => {});
 }
 
+// the wind at `at`: from the 10-day forecast more than two days ahead; past its last hour none, so no wave is judged
+// by that hour's wind repeated (#465: Not checked says the waves aren't checked from there)
 async function windAt(mid, at) {
-  const [s] = await pointForecasts([mid]);
-  const v = sampleAt(s, at || Date.now() / 1000);
+  const t = at || Date.now() / 1000;
+  const [s] = await pointForecasts([mid], { long: t > Date.now() / 1000 + 46 * 3600 });
+  if (t > s.time[s.time.length - 1]) return null;
+  const v = sampleAt(s, t);
   return { speed: v.speed, gust: v.gust, dir: v.dir };
 }
 

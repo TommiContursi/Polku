@@ -11322,6 +11322,90 @@ def tabs(chrome):
     return not fails
 
 
+# Past the forecast (25d, #465 [tabs-c-days, tabs-c-days-go, tabs-c-days-check, tabs-c-far-check]): where Open-Meteo's
+# hours run out, the time leaves the wind out, the profile goes grey in the weather's colours with No forecast yet at the
+# cut, Check's Not checked says from where, the wind-, rain- and cold-based checks look only at the forecast's part, a
+# section past it says so, and the water router asks the 10-day forecast and judges no rough water past it (Open-Meteo
+# answered in the page with four hours, at a place no other check asks about; set values on a straight route)
+PF_JS = """(async () => {
+  const errs = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const W = await import(location.origin + '/js/weather.js'), C = await import(location.origin + '/js/chart.js'), D = await import(location.origin + '/js/waterdata.js');
+  // Open-Meteo, answered: four hours from the last whole hour, the wind 8 m/s from the east; the hours asked for kept
+  const real = window.fetch, asked = [], H = 4, t0 = Math.floor(Date.now() / 3600000) * 3600 - 3600;
+  window.fetch = (input, init) => {
+    const u = String(input && input.url ? input.url : input);
+    if (!/open-meteo\\.com/.test(u)) return real(input, init);
+    const q = new URL(u).searchParams, lat = q.get('latitude').split(','), lon = q.get('longitude').split(','), fill = (v) => Array(H).fill(v);
+    asked.push(+q.get('forecast_hours'));
+    const hourly = { time: Array.from({ length: H }, (_, k) => t0 + k * 3600), wind_speed_10m: fill(8), wind_direction_10m: fill(90), wind_gusts_10m: fill(12), temperature_2m: fill(5), precipitation: fill(2), cloud_cover: fill(50), snow_depth: fill(0), snowfall: fill(0) };
+    return Promise.resolve(new Response(JSON.stringify(lat.map((la, i) => ({ latitude: +la, longitude: +lon[i], hourly }))), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+  };
+  const place = [27.70, 64.20], keys = [];
+  try {
+    // windAlong: ten hours east along, the forecast four: past its last hour, no wind in the time
+    const pts = Array.from({ length: 11 }, (_, i) => [place[0] + i * 0.01, place[1]]), along = pts.map((_, i) => i * 500), tAt = pts.map((_, i) => i * 3600);
+    const w = await W.windAlong(pts, along, tAt, Date.now() / 1000);
+    if (!(w.beyond > 0 && w.beyond < 6) || w.head.slice(w.beyond).some((x) => x !== 0) || !(w.head[0] > 7)) errs.push(`windAlong past its last hour: beyond ${w.beyond}, head ${Array.from(w.head).map((x) => x.toFixed(0)).join(' ')}`);
+    // the water router's wind: the next hour's, and none (not missing) five days ahead, asked of the 10-day forecast
+    const box = [place[0], place[1], place[0] + 0.01, place[1] + 0.01];
+    const soon = await D.waterInputs(box, { wind: true }, Date.now() / 1000 + 1800), far = await D.waterInputs(box, { wind: true }, Date.now() / 1000 + 5 * 86400);
+    if (!soon.wind || soon.wind.speed !== 8 || far.wind || far.missing.length || !asked.includes(240)) errs.push(`the water router's wind: soon ${JSON.stringify(soon.wind)}, five days ahead ${JSON.stringify(far.wind)}, missing ${JSON.stringify(far.missing)}, asked for ${asked.join(', ')} hours`);
+    for (const c of [...pts.map((q) => W.cellAt(q, 0)), W.cellAt([place[0] + 0.005, place[1] + 0.005], 0)]) for (const x of ['p', 'q']) keys.push(`${x}/${c.i}/${c.j}`);
+  } finally {
+    window.fetch = real;
+    // (what was answered here is forgotten, so no other check meets it)
+    await new Promise((ok) => { const r = indexedDB.open('polku'); r.onerror = () => ok(); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('weather')) { db.close(); ok(); return; } const t = db.transaction('weather', 'readwrite'); for (const k of new Set(keys)) t.objectStore('weather').delete(k); t.oncomplete = t.onerror = () => { db.close(); ok(); }; }; });
+  }
+  // the planner: a forecast that ends at a third of the route
+  const a = p.analysis, n = a.along.length, k = Math.round(n / 3), fill = (v) => new Float32Array(n).fill(v);
+  p.app.winter = () => ({ on: false, setting: 'auto' });
+  const set = (temp) => {
+    a.wind = { ...(a.wind || {}), start: { speed: 5, gust: 7, dir: 90, temp: 5, precip: 0 }, startSec: p.startSec(), head: fill(3), speed: fill(8), gust: fill(12), dir: fill(90), cross: fill(0), temp, precip: fill(0), beyond: k, beyondSec: p.startSec() + 3 * 3600, unsure: -1 };
+    a.windError = false; p.renderAnalysis();
+  };
+  const cold = (from, to) => Float32Array.from({ length: n }, (_, i) => (i >= from && i < to ? -30 : 5));
+  set(cold(k + 1, n));
+  const grey = [C.colorAt(a, k - 1, 'wind'), C.colorAt(a, k, 'wind'), C.colorAt(a, n - 1, 'temp'), C.colorAt(a, n - 1, 'rain')];
+  if (grey[0] === C.NO_FORECAST || grey.slice(1).some((c) => c !== C.NO_FORECAST)) errs.push(`the weather's colours at the cut: ${grey.join(' ')}`);
+  const km = (a.along[k] / 1000).toFixed(1), not = p.headsUp().not.find((x) => x.key === 'beyond'), all = [...p.headsUp().read, ...p.headsUp().look].map((x) => x.text);
+  if (!not || not.text !== `No forecast yet from km ${km}, ${p.clockOf(a.wind.beyondSec)}` || not.note !== 'Wind, rain and waves aren’t checked from there.') errs.push(`Not checked: ${JSON.stringify(not)}`);
+  if (all.some((t) => /cold|Frostbite/.test(t))) errs.push(`cold past the forecast is a warning: ${all.join(' / ')}`);
+  set(cold(1, k));
+  if (!p.headsUp().read.some((x) => /Frostbite|Very cold/.test(x.text))) errs.push('cold within the forecast is no warning');
+  p.setSheetState('profile'); await wait(500); // (the profile in sight, as a person raises it)
+  p.showMode('wind'); await wait(300);
+  const tag = document.querySelector('.pl-profile .nofc');
+  if (!tag || !tag.getClientRects().length || tag.textContent !== 'No forecast yet') errs.push(`the profile's cut: ${tag ? tag.textContent : 'none'}`);
+  p.showMode('grade');
+  p.reveal('points'); await wait(300);
+  const chip = document.querySelector('.wpl .sec2-wx');
+  if (!chip || !/^No forecast yet$/.test(chip.textContent.trim())) errs.push(`the section's weather past the forecast: ${chip ? chip.textContent : 'none'}`);
+  // paddling: its wind as far as it reaches, and from where it isn't known
+  a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
+  const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
+  if (line.length !== 1 || !line[0].startsWith('Wind up to 8 m/s, gusts 12 · headwind ') || !line[0].endsWith(` · no forecast yet from km ${km}`)) errs.push(`paddling's key fact: ${line.join(' / ')}`);
+  // a start past the forecast: none anywhere, said once for the trip
+  a.wind.beyond = 0; p.renderAnalysis();
+  const far = p.headsUp().not.find((x) => x.key === 'beyond');
+  if (!far || far.text !== 'No forecast yet for this trip' || C.colorAt(a, 1, 'wind') !== C.NO_FORECAST) errs.push(`a start past the forecast: ${JSON.stringify(far)}`);
+  return errs;
+})()"""
+
+
+def pastforecast(chrome):
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = [] if pg.js(PC_ROUTE, timeout=30000) else ['no route']
+    if not fails:
+        pg.js("(async () => { const p = polku.planner; for (let k = 0; k < 150 && !(p.analysis.wind || p.analysis.windError); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()")
+        fails = pg.js(PF_JS, timeout=60000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} past the forecast" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
@@ -11379,6 +11463,7 @@ GROUPS = [
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
+    ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))

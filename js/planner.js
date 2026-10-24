@@ -2388,12 +2388,13 @@ export class Planner {
       return list;
     };
     const sum = (list) => list.reduce((t, x) => t + x.len, 0);
+    const known = (i) => !(w.beyond >= 0 && i >= w.beyond); // (past the forecast its values are its last hour's: #465)
     const bikeAt = (i) => groupOf((a.attr[i] && a.attr[i].sport) || a.activity) === 'bike';
     const FORECAST = { kind: 'estimate', by: 'the forecast' }, TAGS = { kind: 'map', by: 'winter tags' };
     const read = { tier: 'read', src: FORECAST }, look = { tier: 'look', src: FORECAST }, readTags = { tier: 'read', src: TAGS }, lookTags = { tier: 'look', src: TAGS };
     if (winter && a.snow) {
       let lo = Infinity, hi = 0;
-      for (let i = 1; i < n; i++) if (!water(i) && Number.isFinite(a.snow.cm[i])) { lo = Math.min(lo, a.snow.cm[i]); hi = Math.max(hi, a.snow.cm[i]); }
+      for (let i = 1; i < n; i++) if (!water(i) && known(i) && Number.isFinite(a.snow.cm[i])) { lo = Math.min(lo, a.snow.cm[i]); hi = Math.max(hi, a.snow.cm[i]); }
       if (hi >= 3) {
         const range = Math.round(lo) === Math.round(hi) ? `${Math.round(hi)} cm` : `${Math.round(Math.max(0, lo))}–${Math.round(hi)} cm`;
         out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snow on the way: ${range}`, note: `the forecast's depth${a.snowSec >= 60 ? ` · slower going: about ${fmtDuration(a.snowSec)} more, in the time` : ''}${a.winterCls ? '' : ' · ploughed ways not known yet'}`, ...look });
@@ -2402,16 +2403,16 @@ export class Planner {
     // snowing while you're out
     if (winter && w.snowfall) {
       let cm = 0;
-      for (let i = 1; i < n; i++) if (Number.isFinite(w.snowfall[i])) cm += (w.snowfall[i] * (tAt[i] - tAt[i - 1])) / 3600;
+      for (let i = 1; i < n; i++) if (known(i) && Number.isFinite(w.snowfall[i])) cm += (w.snowfall[i] * (tAt[i] - tAt[i - 1])) / 3600;
       if (cm >= 2) out.push({ at: 0, len: 0, kind: 'winter', ic: 'snow', noAvoid: true, text: `Snowing on the way: about ${Math.round(cm)} cm while you’re out`, note: 'tracks fill in and trails close up as it falls', ...look });
     }
     // slippery: rain or sleet around freezing, on land
-    const slip = stretches((i) => !water(i) && w.temp[i] >= -2 && w.temp[i] <= 1.5 && w.precip[i] >= 0.1);
+    const slip = stretches((i) => known(i) && !water(i) && w.temp[i] >= -2 && w.temp[i] <= 1.5 && w.precip[i] >= 0.1);
     if (sum(slip) >= 100) out.push({ at: a.along[slip[0].i0], len: sum(slip), kind: 'winter', ic: 'warn', noAvoid: true, text: `Slippery: rain or sleet around 0 °C for ${fmtDist(sum(slip))}`, note: 'water on ice is the worst: care on bridges, boardwalks and slopes; studded tyres if you have them', ...read });
     // the cold, as it feels at your own speed (on land)
     let wc = Infinity, wcAt = 0;
     for (let i = 1; i < n; i++) {
-      if (water(i)) continue;
+      if (water(i) || !known(i)) continue;
       const kmh = ((a.along[i] - a.along[i - 1]) / Math.max(1, tAt[i] - tAt[i - 1])) * 3.6;
       const f = windChill(w.temp[i], w.speed[i], Math.min(40, kmh));
       if (f < wc) { wc = f; wcAt = i; }
@@ -2434,7 +2435,7 @@ export class Planner {
     const wet = stretches(water);
     if (sum(wet) > 0) {
       let cold = Infinity;
-      for (let i = 1; i < n; i++) if (water(i)) cold = Math.min(cold, w.temp[i]);
+      for (let i = 1; i < n; i++) if (water(i) && known(i)) cold = Math.min(cold, w.temp[i]);
       if (set.on || cold <= 0.5) out.push({ at: a.along[wet[0].i0], len: sum(wet), kind: 'water', ic: 'warn', noAvoid: true, text: 'Ice season: the water may be frozen or partly frozen', note: 'Polku can’t see the ice: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never trust ice you haven’t checked', ...read });
     }
     return out;
@@ -2894,12 +2895,14 @@ export class Planner {
       if (sec.ends === 'night') day += this.stopAt(sec.to).n || 1;
       // a short forecast for its end; a tap says the rest under it [kf2-multi-tap]
       const w = fits && a.wind && a.wind.temp ? this.sampleAtM(this.lengthTo(sec.to)) : -1, id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id);
-      const wx = w >= 0 ? h('button', { type: 'button', class: 'btn small quiet sec2-wx', 'aria-expanded': String(open), 'aria-label': `The weather at its end: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s`,
+      // (past the forecast's reach: none yet, never its last hour's, #465) [tabs-c-days]
+      const nofc = w >= 0 && a.wind.beyond >= 0 && w >= a.wind.beyond;
+      const wx = nofc ? h('span', { class: 'btn small quiet sec2-wx', html: icon('cloudSun', 15) }, 'No forecast yet') : w >= 0 ? h('button', { type: 'button', class: 'btn small quiet sec2-wx', 'aria-expanded': String(open), 'aria-label': `The weather at its end: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s`,
         onclick: () => { if (open) this.wxOpen.delete(id); else this.wxOpen.add(id); this.renderWaypoints(); }, html: icon('cloudSun', 15) }, `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`) : null;
       const at = open && w >= 0 ? this.atSample(w) : null;
       const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 20) }), h('b', {}, title));
       const line = h('div', { class: 'sec2-nums' }, h('span', {}, nums(sec)), wx);
-      const more = open && w >= 0 ? h('p', { class: 'sec2-wx-at' }, `At its end${at ? `, ${this.clockOf(at)}` : ''}: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s from the ${compass(a.wind.dir ? a.wind.dir[w] : 0)}`) : null;
+      const more = open && w >= 0 && !nofc ? h('p', { class: 'sec2-wx-at' }, `At its end${at ? `, ${this.clockOf(at)}` : ''}: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s from the ${compass(a.wind.dir ? a.wind.dir[w] : 0)}`) : null;
       const rows = h('div', { class: 'rows', role: 'group', 'aria-label': title });
       if (k === 0) rows.append(this.pointRow(sec.from, ro));
       for (const s of sec.stretches) {
@@ -3697,7 +3700,7 @@ export class Planner {
     return h('div', { class: 'days' }, ...days.map((d, k) => {
       const wx = dayWeather(a.wind, a, d.i0, d.i1);
       const t = wx && (Math.round(wx.tMin) === Math.round(wx.tMax) ? `${Math.round(wx.tMin)} °C` : `${Math.round(wx.tMin)}…${Math.round(wx.tMax)} °C`);
-      const weather = wx ? [t, `wind up to ${Math.round(wx.wind)} m/s`, wx.wetM > 0 ? `rain on ${fmtDist(wx.wetM)}` : 'dry', wx.beyond ? 'past the forecast' : wx.unsure ? 'less certain' : ''].filter(Boolean).join(' · ') : '';
+      const weather = wx && wx.none ? 'no forecast yet' : wx ? [t, `wind up to ${Math.round(wx.wind)} m/s`, wx.wetM > 0 ? `rain on ${fmtDist(wx.wetM)}` : 'dry', wx.beyond ? 'past the forecast' : wx.unsure ? 'less certain' : ''].filter(Boolean).join(' · ') : '';
       const night = nights[k];
       return h('button', { type: 'button', class: 'day', title: 'Show this day on the profile and the map', onclick: () => this.focusRange(d.i0, d.i1, null) },
         h('b', {}, `Day ${d.n}`), h('span', { class: 'day-when' }, `${date(d.t0)} · ${time(d.t0)}–${time(d.t1)}`),
@@ -5270,7 +5273,7 @@ export class Planner {
 
   // why the weather isn't known, for the key facts (null: it is, or it's on its way)
   noWeather(a) {
-    if (this.leaveAt != null && this.leaveAt - Date.now() / 1000 >= LONG_HOURS * 3600) return 'no forecast yet';
+    if ((this.leaveAt != null && this.leaveAt - Date.now() / 1000 >= LONG_HOURS * 3600) || (a.wind && a.wind.beyond === 0)) return 'no forecast yet';
     return a.windError ? 'couldn’t be loaded' : null;
   }
   keyFacts(a) {
@@ -5997,6 +6000,10 @@ export class Planner {
     }
     if (a.winterError) out.push({ key: 'winter', by: 'OpenStreetMap, through Overpass', who: 'Overpass (OpenStreetMap)', text: 'Winter ways didn’t load', note: 'Overpass didn’t answer: ski tracks, and ways closed or not ploughed in winter, aren’t known.', ranges: null, retry: ask('winter', () => { forgetWinterFailures(); return this.loadWinterAlong(a); }) });
     if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: ask('weather', () => this.loadWind(a)) });
+    // past the forecast's reach (10 days, #465): its last hour isn't used, so wind, rain and waves aren't known there
+    const w = a.wind;
+    if (w && w.beyond === 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: 'No forecast yet for this trip', note: 'Wind, rain and waves aren’t checked: the forecast reaches 10 days ahead. Sunset and the dark still count.', ranges: null });
+    else if (w && w.beyond > 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: `No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}`, note: 'Wind, rain and waves aren’t checked from there.', ...place([[a.along[w.beyond], end - a.along[w.beyond]]]) });
     const at = (x) => (x.ranges ? x.at : Infinity);
     return out.sort((x, y) => (at(x) === at(y) ? 0 : at(x) < at(y) ? -1 : 1));
   }
@@ -6471,22 +6478,30 @@ export class Planner {
       return;
     }
     const w = a.wind;
+    // a start past the forecast's reach: nothing of it to show (#465) [tabs-c-far-check]
+    if (w.beyond === 0) {
+      box.append(h('p', { class: 'wind-body note' }, `No forecast yet for ${this.dayOf(this.startSec())}. Sunset and the dark still count; the forecast reaches 10 days ahead.`));
+      this.setSection('depart', { summary: `${when} · no forecast yet` });
+      return;
+    }
+    // (as far as the forecast reaches: past it the values are its last hour's)
+    const reach = w.beyond > 0 ? w.beyond : a.pts.length;
     const s0 = w.start;
     const r = windRating(s0.speed, s0.gust, act);
     // distance share per class, and the strongest headwind stretch
     const share = { head: 0, cross: 0, tail: 0, calm: 0 };
     let worst = null;
-    for (let i = 1; i < a.pts.length; i++) {
+    for (let i = 1; i < reach; i++) {
       const d = a.along[i] - a.along[i - 1];
       const c = windClass(w.head[i], w.speed[i]).key;
       share[c === 'strongHead' ? 'head' : c === 'strongTail' ? 'tail' : c] += d;
       if (!worst || w.head[i] > worst.v) worst = { v: w.head[i], i };
     }
-    const tot = a.along[a.along.length - 1] || 1;
+    const tot = a.along[reach - 1] || 1;
     // temperature range and where / how much it rains, at arrival times
     let tMin = Infinity, tMax = -Infinity, wetM = 0, peak = 0, mm = 0, firstWet = -1, lastWet = -1, snowM = 0;
     const tAt = a.tAtWind || a.tAt;
-    for (let i = 1; i < a.pts.length; i++) {
+    for (let i = 1; i < reach; i++) {
       tMin = Math.min(tMin, w.temp[i]); tMax = Math.max(tMax, w.temp[i]);
       if (w.precip[i] >= 0.1) {
         const d = a.along[i] - a.along[i - 1];
@@ -6518,8 +6533,8 @@ export class Planner {
         const i0 = Math.max(0, worst.i - 20), i1 = Math.min(a.pts.length - 1, worst.i + 20);
         this.focusRange(i0, i1, null);
       } }, `Strongest headwind ${worst.v.toFixed(1)} m/s at km ${(a.along[worst.i] / 1000).toFixed(1)} →`) : null,
-      w.beyond >= 0 ? h('p', { class: 'note' }, `The forecast reaches ${this.clockOf(w.beyondSec)} (km ${(a.along[w.beyond] / 1000).toFixed(0)}); after that the weather shown is its last hour.`)
-        : w.unsure >= 0 ? h('p', { class: 'note' }, `From km ${(a.along[w.unsure] / 1000).toFixed(0)} (${this.clockOf(w.startSec + (a.tAtWind || a.tAt)[w.unsure])}) it’s more than three days ahead: the forecast is less certain.`) : null,
+      w.beyond > 0 ? h('p', { class: 'note' }, `No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}: the weather here is up to there, and the time leaves the wind out after it.`) : null,
+      w.unsure >= 0 && (w.beyond < 0 || w.unsure < w.beyond) ? h('p', { class: 'note' }, `From km ${(a.along[w.unsure] / 1000).toFixed(0)} (${this.clockOf(w.startSec + (a.tAtWind || a.tAt)[w.unsure])}) it’s more than three days ahead: the forecast is less certain.`) : null,
       h('div', { class: 'hours' }, ...hourStrip(w.hourly, w.startSec)),
       h('div', { class: 'wx-links' },
         ...[['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain']].map(([k, l]) => h('button', { type: 'button', class: 'link', onclick: () => this.showMode(k, { reveal: true }) }, `${l} along the route ↑`))),

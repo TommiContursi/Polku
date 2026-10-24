@@ -230,11 +230,13 @@ export async function windAlong(pts, along, tAt, startSec) {
     temp[i] = w.temp; precip[i] = w.precip;
     if (w.snow != null) snow[i] = w.snow;
     if (w.snowfall != null) snowfall[i] = w.snowfall;
-    head[i] = w.speed * Math.cos(d); // >0 wind against you
-    cross[i] = w.speed * Math.sin(d);
+    // past the forecast's last hour its values are that hour's: shown grey, and the time leaves the wind out (#465)
+    const known = startSec + (tAt[i] || 0) <= last;
+    head[i] = known ? w.speed * Math.cos(d) : 0; // >0 wind against you
+    cross[i] = known ? w.speed * Math.sin(d) : 0;
   }
   const first = sampleAt(series[0], startSec);
-  // where the forecast runs out (the values there are its last hour's), and where
+  // where the forecast runs out (the values there are its last hour's: none of the checks read them), and where
   // it's more than three days ahead (less certain): sample indexes, or -1
   const at = (t) => { for (let i = 0; i < n; i++) if (startSec + (tAt[i] || 0) > t) return i; return -1; };
   return {
