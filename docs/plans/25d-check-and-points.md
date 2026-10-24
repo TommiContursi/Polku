@@ -741,3 +741,11 @@ Built piece by piece in one PR, each with its checks; this list grows with them.
   - What's here groups the route's own tags as For MTB, For cycling (gravel and road) and For hiking, your sport's first; In winter and Last checked only where OpenStreetMap has them; All OpenStreetMap details asks Overpass once, as the way's card's Show all OSM tags does (part 6 brings the levels).
   - Every card in the stack finds its own again when the route changes: after Undo, Back named the card before by its old points (a stretch's, and 1a's point under its Sport from here) and threw.
 - **Checks:** new group `routecard` (a phone by touch, a desktop by mouse, Hike); `routemenu`, the quick taps, `otherways`, `routeview` and `pointcard` updated to the route's card.
+- **Part 4, Route's list in sections, and Reorder** (`js/planner.js`: `sections()`, `sectionRows()`, `sectionWarn()`, `pointRow()`, `stretchRow()`, `reorderRows()`, `holdRow()`, `dragRow()`, `listKeys()`, `besideRow()`, `listInSight()`, `lightStretchHover()`; `unfolded`, `reordering`, `wxOpen`). The list's inline controls (the name field, the stop's select, the departure, a leg's settings and All leg settings) are gone: the point's and the stretch's cards do them.
+- **Decided while building part 4:**
+  - The rows are the cards' own rows, Revision 5's look; a section's title has its sport's icon, and its weather at the end says the rest under it on a tap, as kf2-multi-tap draws it, rather than opening Go.
+  - A stop inside a day of a trip with nights is a section of its own in that day, both "Day 1 · …".
+  - The change of sport's row says "Paddle from here · changeover 15 min", as jd-multi does (this plan's check said "Change to Paddle").
+  - The 52-point check compares the list with the same route's points you see alone, in the same run: `main`'s list can't run in the branch's page.
+  - The peek's row steps aside while Route's list (open, above the peek) shows a section's warning, so the same warning isn't said twice at once.
+- **Checks:** new group `sections`; `multi`, `stops`, `drawer`, `marks`, the quick swipe and the layout's waypoints check updated to the list.

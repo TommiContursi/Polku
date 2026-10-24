@@ -229,7 +229,7 @@ WAYPOINTS = """(async () => {
   if (key() !== k0) errs.push('undo did not undo the reverse');
   top('Done').click();
   await wait(200);
-  document.querySelector('.wpl-point[data-i="1"]').click();
+  document.querySelector('.wpl-point[data-i="0"]').click(); // (the start: its vias only shape the line, so they fold)
   await wait(900);
   p.cards.close();
   const pad = polku.map.getPadding();
@@ -9259,8 +9259,9 @@ def point_card(chrome):
                 fails.append(f"{name}: the card {s['place']}, its nearest corner {round(corner)} px from the point")
         fails += [f'{name}: {o}' for o in pg.js(f"({PC_LOOK})({json.dumps(phone)})")]
         if not phone:
-            lit = pg.js("[...document.querySelectorAll('.wpl-row[aria-current=true]')].map((r) => r.dataset.i)")
-            if lit != ['1']:
+            # (via 1 only shapes the line: the row it folds into, its stretch's, is lit; 25d's part 4)
+            lit = pg.js("[...document.querySelectorAll('.wpl [aria-current=true]')].map((r) => r.dataset.i ?? `s${r.dataset.from}-${r.dataset.to}`)")
+            if lit != ['s0-3']:
                 fails.append(f'{name}: the rows lit in the list while via 1’s card is open: {lit}')
         # a tap on the card's words, not a row: the card stays, and so does the sheet's size
         if phone:
@@ -10139,7 +10140,7 @@ SE_STATE = """(() => {
   return { secs, reorder: L.classList.contains('reorder'), grips: L.querySelectorAll('.wpl-grip').length, top: [...document.querySelectorAll('.wpl-top .btn')].filter(vis).map((b) => b.textContent.trim()),
     rows: [...L.querySelectorAll('.wpl-row')].map((x) => x.dataset.i), shapes: [...L.querySelectorAll('.wpl-point.shape')].filter(vis).length,
     kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length, past: p.past.length, scroll: p.els.body.scrollTop,
-    short: [...L.querySelectorAll('button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
+    short: [...L.querySelectorAll('button'), ...document.querySelectorAll('.wpl-top button')].filter(vis).filter((b) => r(b).height < 44).map((b) => b.textContent.trim().slice(0, 24) || b.getAttribute('aria-label')),
     readRow: !p.els.readRow.hidden, text: L.textContent };
 })()"""
 
@@ -10166,8 +10167,13 @@ def sections_list(chrome):
             pg.c.send('Input.dispatchKeyEvent', {'type': event, 'key': k, 'code': code, 'windowsVirtualKeyCode': vk, 'modifiers': mods}, pg.s)
         time.sleep(0.4)
 
-    # where a list's row is once it's scrolled into view (the sheet's body only), the sheet settled
-    at = lambda pg, sel: (pg.js(SETTLED), pg.js(f"(() => {{ const e = {sel}; if (!e) return null; e.scrollIntoView({{ block: 'center' }}); const b = e.getBoundingClientRect(); return b.height ? {{ x: Math.round(b.left + Math.min(60, b.width / 2)), y: Math.round(b.top + b.height / 2) }} : null; }})()"))[1]
+    # where a list's row is once it's scrolled into view, as a finger scrolls it: the sheet's body (or a card) only, never
+    # the page, which the app puts back at once; the sheet settled
+    at = lambda pg, sel: (pg.js(SETTLED), pg.js(f"""(async () => {{ const e = {sel}; if (!e) return null; const box = e.closest('.pl-way.card') || polku.planner.els.body;
+      let b = e.getBoundingClientRect(); const r = box.getBoundingClientRect();
+      if (b.top < r.top + 8 || b.bottom > r.bottom - 8) box.scrollTop += b.top + b.height / 2 - (r.top + r.height / 2);
+      await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+      b = e.getBoundingClientRect(); return b.height ? {{ x: Math.round(b.left + Math.min(60, b.width / 2)), y: Math.round(b.top + b.height / 2) }} : null; }})()"""))[1]
     st = lambda pg: pg.js(SE_STATE)
     point = lambda i: f"polku.planner.els.points.querySelector('.wpl-point[data-i=\"{i}\"]')"
     stretch = lambda i: f"polku.planner.els.points.querySelector('.wpl-stretch[data-from=\"{i}\"]')"
@@ -10323,7 +10329,7 @@ def sections_list(chrome):
             pg.js("polku.planner.cards.close(); true")
         # a mouse drags a row by its grip: via 2 to place 4 (Reorder)
         pg.js("window.rcTags = 'highway=path surface=dirt mtb:scale=1'; true")
-        route(pg, name, {'pts': PTS})
+        route(pg, name, {'pts': PTS, 'names': [[1, 'Kaupintie'], [2, 'Sorila'], [3, 'Lielahti']]})  # (named: points you see, with rows)
         press(pg, at(pg, top('Reorder')), f'{name}: Reorder', touch)
         before = json.loads(pg.js("JSON.stringify(polku.planner.points)"))
         g = at(pg, "polku.planner.els.points.querySelector('.wpl-row[data-i=\"2\"] .wpl-grip')")

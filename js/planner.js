@@ -2861,11 +2861,21 @@ export class Planner {
       const again = [...box.querySelectorAll('button')].find((b) => (b.dataset.i != null ? `i${b.dataset.i}` : b.dataset.from != null ? `s${b.dataset.from}${b.classList.contains('wpl-unfold') ? 'u' : ''}` : b.textContent.trim()) === wasKey);
       if (again) again.focus({ preventScroll: true });
     }
-    // the open card's point lit in the list
-    const cur = this.cards.current && this.cards.current.key;
-    for (const r of box.querySelectorAll('.wpl-point')) { if (this.points[+r.dataset.i] === cur) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+    this.litRows();
     // an open leg stays lit (on a phone that's how a leg shows itself); otherwise nothing is
     if (!box.matches(':hover')) this.unlitLeg();
+  }
+
+  // The open card's row in Route's list, lit: a point's own row, or the stretch's it folds into; a stretch's cards
+  // light the stretch's row
+  litRows() {
+    const box = this.els.points, c = this.cards.current;
+    const i = c && c.key && this.points.includes(c.key) ? this.points.indexOf(c.key) : -1, s = c && c.kind !== 'item' ? c.stretch || c.s || null : null;
+    const own = i >= 0 && box.querySelector(`.wpl-point[data-i="${i}"]`);
+    for (const r of box.querySelectorAll('.wpl-point, .wpl-stretch')) {
+      const on = own ? r === own : r.classList.contains('wpl-stretch') && (i >= 0 ? +r.dataset.from < i && i < +r.dataset.to : !!s && +r.dataset.from === s.from);
+      if (on) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current');
+    }
   }
 
   // The sections: where they start and end, their sport, why they end, and their stretches (point indices)
@@ -2891,7 +2901,7 @@ export class Planner {
       const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label} · ${this.nameOf(sec.from)} → ${this.nameOf(sec.to)}`;
       if (sec.ends === 'night') day++;
       // a short forecast for its end; a tap says the rest under it [kf2-multi-tap]
-      const w = fits && a.wind ? this.sampleAtM(this.lengthTo(sec.to)) : -1, id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id);
+      const w = fits && a.wind && a.wind.temp ? this.sampleAtM(this.lengthTo(sec.to)) : -1, id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id);
       const wx = w >= 0 ? h('button', { type: 'button', class: 'btn small quiet sec2-wx', 'aria-expanded': String(open), 'aria-label': `The weather at its end: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s`,
         onclick: () => { if (open) this.wxOpen.delete(id); else this.wxOpen.add(id); this.renderWaypoints(); }, html: icon('cloudSun', 15) }, `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`) : null;
       const at = open && w >= 0 ? this.atSample(w) : null;
@@ -3939,7 +3949,7 @@ export class Planner {
         const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
         // …and its row in the list lit, where the card leaves it in sight (desktops)
-        for (const r of this.els.points.querySelectorAll('.wpl-point')) { if (this.points[+r.dataset.i] === ringed) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+        this.litRows();
         // an item's card (25d part 3): its row or box in Check lit; closed, its stretch on the route unlit
         const key = card && card.kind === 'item' ? card.itemKey : null;
         for (const r of this.els.warnings.querySelectorAll('[data-key]')) { if (r.dataset.key === key) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
