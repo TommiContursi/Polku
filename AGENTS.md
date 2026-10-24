@@ -54,10 +54,10 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   it's old: continue from its last Hand-over and pushed branch, and say so
   on the issue.
 - **What you notice but don't do now** goes in your Hand-over (see "Bugs
-  and findings"), and the work goes on: only a blocker or a serious problem for people using
-  Polku (safety, reliability, accessibility) interrupts it. Small fixes go
-  into the open Fixes milestone, each in a Fix PR of its own, never mixed
-  into a phase; ideas wait in Someday.
+  and findings"), and the work goes on: only a blocker or a serious problem
+  for people using Polku (safety, reliability, accessibility) interrupts it.
+  Small fixes go into the open Fixes milestone, each in a Fix PR of its own,
+  never mixed into a phase; ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
 - **One session, one issue** (or one PR of a phase). A session carries its
@@ -172,9 +172,10 @@ not models, mid-session: a new model sends the whole conversation again
   PRODUCT.md are the same: a docs-only commit, or a rebase onto one (the
   app reads `CHANGELOG.md`: run `changelog`).
 - **A check that fails only sometimes,** or only in a whole run, goes in
-  the Hand-over's noticed lines (or a comment on its issue): the commit, the command, the browser,
-  what was cached and what else ran, what failed, and whether it passes
-  alone. Never rerun until it's green, nor weaken or skip a check to pass.
+  the Hand-over's noticed lines (or a comment on its issue): the commit, the
+  command, the browser, what was cached and what else ran, what failed, and
+  whether it passes alone. Never rerun until it's green, nor weaken or skip a
+  check to pass.
 - **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
   the sports it touches (MTB and paddle when unsure), with a route drawn and
   the timeline open. Where your tool has a browser the user can watch (Claude
