@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Polku planner</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="A clickable mock-up of Polku's calmer route planner (#233). Revised on 2026-10-20 with three journeys to choose from: start or find a route, the sport and what it changes, a warning found on the route. As decided on 2026-10-17: the drawing toolbox with More, the desktop toolbar, round trips in the peek, Done and the route's view, Check by how serious and how sure, and long waypoint lists. Phone and desktop, light and dark, worst cases. Not wired to the app.">
+<meta name="description" content="A clickable mock-up of Polku's calmer route planner (#233). It opens on where each topic stands: what's chosen, whether it's built, and its frames. Each topic's current design follows, and earlier versions and the options not chosen are at the end. Phone and desktop, light and dark, worst cases. Not wired to the app.">
 <!--
   The calmer planner (#233), second iteration, 2026-10-17. The design, its reasons and the plan to
   build it are in docs/plans/issue-233-calmer-planner.md; the review it builds on is
@@ -13,10 +13,14 @@
   behind each frame is a screenshot of Polku with its controls hidden (evidence/mockup_bg.py and
   mockup_bg2.py), on the pr-screenshots branch; "Today" shows the real planner.
 
+  The page (2026-10-24): an overview of each topic (what's chosen, whether it's built, its frames),
+  then each topic's band and its current sections, then earlier versions and the options not chosen,
+  kept to compare. Sections keep their letters (A to E) and numbers (0 to 8), and every frame its id.
+
   Every frame can be tapped: each keeps its own state (Reset under it starts it again).
   The switches at the bottom apply to every frame: data (normal or the worst case), language
   (English; rough Finnish and Swedish, only to test the room words take), theme, and the
-  decisions (all made on 2026-10-17).
+  options, each starting on what's chosen.
 
   ?frame=<id>            one frame alone at full size (screenshots, evidence/mockup_probe2.py)
   &w=&h=                 its screen size; &z=2 renders it as at 200 % zoom
@@ -45,9 +49,9 @@
   --danger: #ff8a8a; --grab: rgba(164, 176, 169, 0.45); --focus: #6fd3a2;
   color-scheme: dark;
 }
-:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #ffffff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #ffffff; --switch-fg: #2b322e; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; } }
-:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #ffffff; --page-cap: #33403a; --page-link: #1f6f4a; --page-line: rgba(28, 36, 32, 0.16); --page-ok: #1f6f4a; --page-ok-bg: #e3f1e9; --switch-bg: #d4d8d5; --switch-on: #ffffff; --switch-fg: #2b322e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --page-line: rgba(232, 236, 233, 0.16); --page-ok: #7fd8ac; --page-ok-bg: rgba(86, 196, 143, 0.16); --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --page-line: rgba(232, 236, 233, 0.16); --page-ok: #7fd8ac; --page-ok-bg: rgba(86, 196, 143, 0.16); --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
 * { box-sizing: border-box; }
 body {
   margin: 0; padding-block: 28px 140px;
@@ -64,17 +68,43 @@ button, input, select { font: inherit; color: inherit; }
 .cv-head h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -.01em; text-wrap: balance; }
 .cv-head p { margin: 0 0 8px; max-width: 940px; opacity: .88; }
 .cv-q { margin: 18px 0 8px; padding: 14px 18px; border-radius: 14px; background: var(--page-card); max-width: 1000px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
-.cv-q h2 { margin: 0 0 6px; font-size: 15px; }
+.cv-q :is(h2, h3) { margin: 0 0 6px; font-size: 15px; }
 .cv-q ul, .cv-q ol { margin: 0; padding-left: 20px; }
 .cv-q li { margin: 4px 0; }
 .cv-row { margin-top: 44px; }
-.cv-row > h2 { margin: 0 0 4px; font-size: 19px; }
+.cv-row > h3 { margin: 0 0 4px; font-size: 19px; }
+/* 2026-10-24: the page opens on where each topic stands; each topic's band, then its sections; earlier versions at the end */
+.cv-ov { margin: 22px 0 8px; padding: 16px 20px 14px; border-radius: 14px; background: var(--page-card); max-width: 1180px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.cv-ov > h2 { margin: 0 0 2px; font-size: 19px; }
+.ov-lead { margin: 0; max-width: 75ch; color: var(--page-cap); }
+.ov-more { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--page-line); }
+.ov-more p { margin: 0 0 8px; max-width: 75ch; }
+.cv-ov time, .band time, .cv-ov code, .band code { white-space: nowrap; }
+.ov { list-style: none; margin: 10px 0 0; padding: 0; }
+.ov > li { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr) minmax(0, 15rem); grid-template-areas: "name text st" "name fr st"; gap: 4px 24px; padding: 12px 0; border-top: 1px solid var(--page-line); }
+.ov h3 { grid-area: name; margin: 0; font-size: 15px; line-height: 1.3; }
+.ov h3 a { color: inherit; text-underline-offset: 3px; }
+.ov-ref { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 400; color: var(--page-cap); }
+.ov-ch { grid-area: text; margin: 0; max-width: 75ch; }
+.ov-fr { grid-area: fr; margin: 0; font-size: 13px; }
+.ov .st { grid-area: st; align-self: start; }
+.st { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; font-size: 13px; color: var(--page-cap); }
+.st > b { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border: 1px solid var(--page-line); border-radius: 999px; font-weight: 650; color: var(--page-fg); }
+.st-built > b { padding-left: 7px; border-color: transparent; background: var(--page-ok-bg); color: var(--page-ok); }
+.st-part > b { border-color: var(--page-ok); color: var(--page-ok); }
+.band { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; max-width: 1180px; margin: 76px 0 0; padding-top: 16px; border-top: 2px solid var(--page-line); }
+.band > h2 { margin: 0; font-size: 23px; letter-spacing: -.01em; text-wrap: balance; }
+.band > p:not(.st) { margin: 6px 0 0; max-width: 75ch; color: var(--page-cap); }
+.band + .cv-row { margin-top: 18px; }
+.band-earlier { display: block; padding: 16px 20px; border: 0; border-radius: 14px; background: var(--page-card); box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.cv-ov, .band, .cv-row, .cv-sub, .fr { scroll-margin-top: 16px; }
+@media (max-width: 800px) { .cv-ov { padding: 14px 14px 12px; } .ov > li { grid-template-columns: minmax(0, 1fr); grid-template-areas: "name" "st" "text" "fr"; gap: 6px; } .band { margin-top: 56px; } .band > h2 { font-size: 21px; } }
 .tbl424 { overflow-x: auto; max-width: 1100px; margin: 0 0 8px; border-radius: 14px; background: var(--page-card); box-shadow: 0 1px 3px rgba(16,24,20,.1); }
 .tbl424 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .tbl424 th, .tbl424 td { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid rgba(128,128,128,.25); }
 .tbl424 th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
 .tbl424 tr:last-child td { border-bottom: 0; }
-.cv-row > h3.cv-sub { margin: 22px 0 10px; font-size: 15.5px; }
+.cv-row > h4.cv-sub { margin: 22px 0 10px; font-size: 15.5px; }
 .cv-row > p, .cv-row > ul { margin: 0 0 14px; max-width: 940px; opacity: .88; }
 .cv-row > ul { padding-left: 20px; }
 .cv-t { border-collapse: collapse; margin: 0 0 18px; max-width: 1100px; font-size: 13px; background: var(--page-card); border-radius: 12px; overflow: hidden; display: block; overflow-x: auto; }
@@ -1224,39 +1254,76 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 <main class="cv">
   <header class="cv-head">
     <h1>A calmer route planner (#233)</h1>
-    <p><b>Updated 2026-10-21 to what's built.</b> The start, the round trip, the first point's peek and the route's view look as #335, #339 and #342 built them. Frames that later decisions replaced are marked Replaced.</p>
-    <p><b>Revised 2026-10-20:</b> sections A to C, below the decisions, follow three journeys (start or find a route, the sport and what it changes, a warning found on the route). What a sport change does (section B) was decided the same day: option A, ask. The rest are proposals for the user to choose; the plan's “Revised journeys” section says why and what each closes.</p>
-    <p>2026-10-17. Builds on phase 24's review and the choices made from its first mock-up (B: the tools float, a one-row peek, only the selected waypoint's buttons). The reasons, the plan to build it and what Done means are in <code>docs/plans/issue-233-calmer-planner.md</code>. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden.</p>
-    <p><b>Every frame can be tapped</b> and keeps its own state; <b>Reset</b> starts it again. Tap the map to add points, try the toolbox, the round trip, Done and Edit, More, Check and the waypoint list. The switches at the bottom apply to every frame: the worst case (long Finnish names, 52 points, long numbers, many warnings), language (rough Finnish and Swedish, only to test the room words take) and theme.</p>
-    <p><b>Final, 2026-10-17:</b> the layout and the interactions here are decided. <b>What's drawn simply on purpose</b> (the profile, Climbs, On the route, On the map, Go's time and the weather along the route, and parts of the leg editor) stays exactly as Polku has it today: the mock-up shows where things go, not everything in them. The plan lists what changes, what moves and what stays as it is.</p>
+    <p>The clickable mock-up of Phase 25's planner. It opens on <a href="#ov-h">where each topic stands</a>; each topic's current design follows, and <a href="#t-earlier">earlier versions and the options not chosen</a> are at the end, to compare. <b>What to build</b> is in 25d's plan, <a href="https://github.com/TommiContursi/Polku/blob/main/docs/plans/25d-check-and-points.md#where-25d-stands">Where 25d stands</a>: where it and this page differ, the plan wins.</p>
   </header>
 
-  <section class="cv-q" aria-labelledby="rules-h">
-    <h2 id="rules-h">What's decided</h2>
-    <ol>
-      <li><b>Drawing and routing told apart.</b> The toolbox holds how the <i>next leg</i> is drawn (Follow paths, Straight line, Over water), undo, redo and More. The route style (Balanced, Flowy trails…) is a setting of the <i>whole route</i>: it shows under Follow paths, because it's what Follow paths prefers, and has its own labelled group of chips. Phones: one drop-down. Desktops: a labelled toolbar on the panel's edge, with tooltips and keys, and the route's actions at its end: Reverse, Back to start, Show the whole route, More, Done.</li>
-      <li><b>Round trips in the peek</b> after the first point: presets one tap away, any distance or time, then a green <b>Make 3 loops</b>. Nothing on the map; a tap on the map still adds the next point.</li>
-      <li><b>More (⋯)</b> for the whole route, at the end of the toolbox and the toolbar: take it along, change the whole route, and Clear apart. The route's summary shows the route.</li>
-      <li><b>Done means done editing.</b> The route stays open to read, check and take along (the route's view); Edit goes back, in the same place. ✕ puts it away; nothing is lost either way. Phones: Done at the summary's right, at the thumb; desktops: at the toolbar's end.</li>
-      <li><b>Show the whole route</b> is always there while a route is on the map: in the map's column under Locate on phones, in the toolbar on desktops (and F).</li>
-      <li><b>Check by how serious and how sure:</b> Read before you go, Worth a look, Not checked, and where each comes from.</li>
-      <li><b>Waypoints:</b> only the selected one has buttons, no Remove on the others; finding, stepping, moving and undoing in lists of 50 and more. <i>Replaced on 2026-10-20 by D (points and legs, V1 refined).</i></li>
+  <section class="cv-ov" aria-labelledby="ov-h">
+    <h2 id="ov-h">Where each topic stands</h2>
+    <p class="ov-lead">Built means merged into <code>main</code>, checked on <time datetime="2026-10-24">2026-10-24</time>. The links under each topic go to its frames on this page.</p>
+    <ol class="ov">
+      <li>
+        <h3><a href="#t-start">The start and round trips</a><span class="ov-ref">Sections A and 2</span></h3>
+        <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in <a href="https://github.com/TommiContursi/Polku/pull/309">#309</a>, <a href="https://github.com/TommiContursi/Polku/pull/310">#310</a>, <a href="https://github.com/TommiContursi/Polku/pull/313">#313</a> and <a href="https://github.com/TommiContursi/Polku/pull/339">#339</a></span></p>
+        <p class="ov-ch">The planner opens on four ways to begin: Draw it, Round trip, Marked routes and A file. A round trip asks for its start first, then how long, and makes three loops to pick from. Chosen on <time datetime="2026-10-20">2026-10-20</time>.</p>
+        <p class="ov-fr"><a href="#ja-start">The ways to begin</a> · <a href="#ja-find">Marked routes</a> · <a href="#ja-rt-tapped">How long</a> · <a href="#rt-results">Three loops</a> · <a href="#ja-desk">Desktop</a></p>
+      </li>
+      <li>
+        <h3><a href="#t-draw">Drawing, More and Done</a><span class="ov-ref">Sections 1, 3 and 4</span></h3>
+        <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in <a href="https://github.com/TommiContursi/Polku/pull/302">#302</a> and <a href="https://github.com/TommiContursi/Polku/pull/342">#342</a></span></p>
+        <p class="ov-ch">The toolbox holds how the next leg is drawn: one menu on phones, a labelled toolbar on desktops, growing with the route. More (⋯) holds the whole route's actions. Done keeps the route open to read, check and take along, and Edit goes back. Chosen on <time datetime="2026-10-17">2026-10-17</time> and <time datetime="2026-10-20">2026-10-20</time>.</p>
+        <p class="ov-fr"><a href="#tb-phone">The toolbox</a> · <a href="#tb-phone-menu">Its menu</a> · <a href="#tb-desk">The desktop toolbar</a> · <a href="#trip-phone">More</a> · <a href="#fin-view">The route's view</a></p>
+      </li>
+      <li>
+        <h3><a href="#t-sport">The sport, and what it changes</a><span class="ov-ref">Section B</span></h3>
+        <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in <a href="https://github.com/TommiContursi/Polku/pull/335">#335</a></span></p>
+        <p class="ov-ch">With a route drawn, a new sport asks whether it's for the whole route or only the legs you draw next (option A). The drawing menu holds the next leg's sport and speed. Chosen on <time datetime="2026-10-20">2026-10-20</time>.</p>
+        <p class="ov-fr"><a href="#jb-empty">No route: one tap</a> · <a href="#jb-ask">What it's for</a> · <a href="#jb-nl-menu">The drawing menu</a> · <a href="#jb-nl-desk">Desktop</a></p>
+      </li>
+      <li>
+        <h3><a href="#t-warn">Warnings and Check</a><span class="ov-ref">Sections C and 5</span></h3>
+        <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in <a href="https://github.com/TommiContursi/Polku/pull/416">#416</a>, Journey C</span></p>
+        <p class="ov-ch">A row in the peek and a marker on the route for what to read before you go; a tap shows it on the route, with ‹ › and ✕ to come back (<time datetime="2026-10-20">2026-10-20</time>). Check in three groups, by how serious and how sure, with Revision 5's boxes and rows (<time datetime="2026-10-22">2026-10-22</time>). Warnings can be marked read (<time datetime="2026-10-23">2026-10-23</time>).</p>
+        <p class="ov-fr"><a href="#jc-peek">The row</a> · <a href="#jc-step">On the route</a> · <a href="#jc-check">From Check</a> · <a href="#jr-peek">Marking read</a> · <a href="#chk-paddle">Check, paddle</a> · <a href="#jc-desk-sel">Desktop</a></p>
+      </li>
+      <li>
+        <h3><a href="#t-points">Points and legs</a><span class="ov-ref">Section D</span></h3>
+        <p class="st st-part"><b>Partly built</b><span>a point's card in <a href="https://github.com/TommiContursi/Polku/pull/352">#352</a>; the list and a stretch's card in Journey D</span></p>
+        <p class="ov-ch">V1, a card (<time datetime="2026-10-20">2026-10-20</time>), in Revision 5 (<time datetime="2026-10-22">2026-10-22</time>): the list in sections, a new one where the sport changes, at a stop and at a night, and a card for a point or a stretch. The cards are drawn in full in #345's mock-up, whose Revision 6 (<time datetime="2026-10-24">2026-10-24</time>) wins where they differ.</p>
+        <p class="ov-fr"><a href="#jd-multi">Multisport</a> · <a href="#jd-day">A point's card</a> · <a href="#jd-leg">A stretch</a> · <a href="#jd-reorder">Reorder</a> · <a href="#jd-days">Three days</a> · <a href="#jd-desk">Desktop</a></p>
+      </li>
+      <li>
+        <h3><a href="#t-tabs">The tabs and How you go</a><span class="ov-ref">Section E, #424</span></h3>
+        <p class="st st-not"><b>Not built yet</b><span>Journey D</span></p>
+        <p class="ov-ch">C: no strip. Route opens with How you go › and Your speed ›, each a step of its own. Check and Go keep every section the app has, and Go opens with Leave ›. The marks on the map move to Layers. Chosen on <time datetime="2026-10-24">2026-10-24</time>.</p>
+        <p class="ov-fr"><a href="#tabs-c-route">Route</a> · <a href="#tabs-c-how">How you go</a> · <a href="#tabs-c-go">Go</a> · <a href="#tabs-c-days">Past the forecast</a> · <a href="#tabs-c-layers">Layers</a> · <a href="#tabs-c-desk-route">Desktop</a></p>
+      </li>
+      <li>
+        <h3><a href="#t-facts">Each sport's key facts</a><span class="ov-ref">Section E, #471</span></h3>
+        <p class="st st-not"><b>Not built yet</b><span>Journey D</span></p>
+        <p class="ov-ch">A2: one line under the route's numbers says what stands out on this route, else the sport's usual fact. A route of two sports has a row for each, a trip of several days names its hardest day, and Check's top keeps every fact. Chosen on <time datetime="2026-10-24">2026-10-24</time>.</p>
+        <p class="ov-fr"><a href="#kf2-gravel">A gravel ride</a> · <a href="#kf2-gravel-calm">Nothing stands out</a> · <a href="#kf2-multi">Two sports</a> · <a href="#kf2-days">Three days</a> · <a href="#kf2-gravel-check">Check</a> · <a href="#kf2-desk">Desktop</a></p>
+      </li>
+      <li>
+        <h3><a href="#t-worst">The worst cases</a><span class="ov-ref">Section 7, and each topic's own</span></h3>
+        <p class="st"><b>With each part</b><span>each PR checks its own</span></p>
+        <p class="ov-ch">Long Finnish and Swedish words, 52 points, many warnings, a 360 px phone, 200 % zoom and dark. Each topic has worst-case frames of its own, and the switches at the bottom put any frame in the worst case.</p>
+        <p class="ov-fr"><a href="#st-360">360 px, Finnish</a> · <a href="#st-200-half">200 %, Check</a> · <a href="#st-dark">Dark</a> · <a href="#st-sv-rt">Swedish</a> · <a href="#st-desk-fi">Desktop, Finnish</a></p>
+      </li>
     </ol>
+    <div class="ov-more">
+      <p><b>Every frame can be tapped</b> and keeps its own state; <b>Reset</b> starts it again. Tap the map to add points, try the toolbox, the round trip, Done and Edit, More, Check and the waypoint list. The switches at the bottom apply to every frame: the worst case (long Finnish names, 52 points, long numbers, many warnings), language (rough Finnish and Swedish, only to test the room words take) and theme.</p>
+      <p>Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden. The cards themselves are drawn in full in <a href="issue-345-map-cards.html">#345's mock-up</a>. The switches start on what's chosen, and <code>?frame=&lt;id&gt;</code> shows one frame alone.</p>
+      <p><a href="#s0">Try it the whole way through</a>, on a phone and a desktop, from an empty map. <a href="#t-earlier">Earlier versions and options not chosen</a>: the tabs' A and B, the first round of key facts, the points' V2 and V3, the frames later decisions replaced, today's planner, and the notes as they were written.</p>
+    </div>
   </section>
 
-  <section class="cv-q" aria-labelledby="rev-h">
-    <h2 id="rev-h">Revised 2026-10-20: three journeys, for the user to choose</h2>
-    <p>After 25a (#302), a review of the whole interface asked that everyday tasks explain themselves, without a tour. Sections A to C below follow three journeys through it, with the map, Layers, Settings and the timeline where they matter. All were <b>decided on 2026-10-20</b> (B: option A; C: the item on the route; D: V1, refined), and A was built with 25b (#309); where they differ from sections 0 to 8, they replace them, and those frames are marked <b>Replaced</b>. Sections 0 to 8 are the design approved on 2026-10-18, kept as they were (25a built 1 and part of 3, with the route's actions on the toolbar by width and the timeline over the map while planning).</p>
-    <ol>
-      <li><b>A · Start or find a route:</b> the four ways Polku has today (draw it, a round trip, a marked route from LIPAS, a file) in the peek, not only after raising the sheet; marked routes in view as cards, like the loops'.</li>
-      <li><b>B · The sport, and what it changes:</b> the menu says what each sport shows; with a route drawn, it asks whether the whole route changes or only the legs drawn next. The toolbox keeps saying which sport the next leg is. <b>Decided 2026-10-20: option A</b> (ask); the switch at the bottom still shows the options not taken (B: next legs only; C: the whole route).</li>
-      <li><b>C · A warning: notice it, find it, come back:</b> a row in the peek for what to read before you go and what wasn't checked; a marker on the route for each; a tap shows it on the route with ‹ › along it and <b>Back</b> to where you were. <b>Decided 2026-10-20</b>: this replaces "the row opens Check" of section 5.</li>
-    </ol>
-    <p><b>Added 2026-10-23, to choose (#424):</b> <a href="#se">section E</a> lists what goes in Route, Check and Go, as the app has it and as proposed, and draws How you go as a step of its own. The <b>Tabs</b> switch at the bottom shows A, today; B, the strip moved to Route; or C, redrawn from the user's notes and chosen on 2026-10-24 (the default here); nothing earlier is changed.</p>
-  </section>
+  <div class="band" id="t-start">
+    <h2>The start and round trips</h2>
+    <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in #309, #310, #313 and #339</span></p>
+  </div>
 
   <section class="cv-row" id="sa">
-    <h2>A · Start or find a route</h2>
+    <h3>A · Start or find a route</h3>
     <p><b>As built in 25b and B.</b> The planner opens on four ways to begin: Draw it, Round trip, Marked routes and A file. A tap on the map starts drawing at once. The sport has a row of its own under the top row, in the ways and in every step. ✕ at the top right closes the planner.</p>
     <p>Each step has Ways to begin at the top left. The round trip asks for its start first, then how long. Marked routes lists LIPAS's routes in view as cards. The plan's section A says why.</p>
     <div class="cv-frames">
@@ -1284,9 +1351,87 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
     </div>
   </section>
 
+  <section class="cv-row" id="s2">
+    <h3>2 · Round trips, in the peek</h3>
+    <p><b>As built in 25b and #339.</b> After the first point, the peek says to tap the map for the next point. Under it, a round trip from here offers three lengths and Other…. A length opens the form with that length picked, and nothing is routed yet. Make 3 loops says what it costs. While the loops are made, the map waits and the form folds.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="rt-first" data-st='{"stage":"first"}'><figcaption><b>Right after the first point</b>The next point comes first, with a round trip from here under it. ✕ closes the planner.</figcaption></figure>
+      <figure class="fr phone" id="rt-form" data-st='{"stage":"first","rt":{"open":true,"val":20}}'><figcaption><b>A length picked</b>The form opens with 20 km chosen. Make 3 loops says what it costs.</figcaption></figure>
+      <figure class="fr phone" id="rt-other" data-st='{"stage":"first","rt":{"open":true,"val":25,"other":true}}'><figcaption><b>Another length</b>Other… opens a field with − and +.</figcaption></figure>
+      <figure class="fr phone" id="rt-time" data-st='{"stage":"first","rt":{"open":true,"unit":"time","val":90}}'><figcaption><b>By time</b>Time shows the lengths in hours and minutes.</figcaption></figure>
+      <figure class="fr phone" id="rt-making" data-st='{"stage":"first","rt":{"open":true,"val":20,"making":2}}'><figcaption><b>Making the loops</b>The map waits, and the form folds to what's being made.</figcaption></figure>
+      <figure class="fr phone" id="rt-results" data-st='{"stage":"loops","rt":{"open":true,"val":10,"results":true,"pick":0}}'><figcaption><b>Three loops</b>Cards side by side, the next one peeking in. A tap on a card or its line picks it.</figcaption></figure>
+      <figure class="fr desk" id="rt-desk" data-st='{"stage":"first","rt":{"open":true,"val":20}}'><figcaption><b>Desktop</b>The same form in the panel, with four lengths.</figcaption></figure>
+    </div>
+  </section>
+
+  <div class="band" id="t-draw">
+    <h2>Drawing, More and Done</h2>
+    <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in #302 and #342</span></p>
+  </div>
+
+  <section class="cv-row" id="s1">
+    <h3>1 · The toolbox: how the next leg is drawn</h3>
+    <p><b>Decided: one drop-down on phones; the labelled toolbar with tooltips on desktops.</b> <b>Two different ideas, two places.</b> The drawing mode is a tool: it decides how the <i>next</i> leg you draw is made, and leaves the drawn legs alone (a leg's own mode is changed by tapping it on the map, as today). The route style is a setting: it decides which ways Follow paths prefers, for the <i>whole</i> route, and changing it routes the route again. So the mode is the button, and the style is its second line, shown only for the modes it applies to; in the menu the modes are a list with what each does, and the styles a set of chips under "Route style · the whole route".</p>
+    <ul>
+      <li><b>Phones:</b> one button with the mode's icon and name (never an icon alone), undo, redo and More (⋯), floating at the bottom left above the sheet. Where it can't clear the map's buttons (narrow phones, long words, 200 % zoom) or with the sheet raised high, it docks into the sheet as its first row instead. In the route's view only More stays.</li>
+      <li><b>Desktops:</b> the toolbar hangs off the panel's edge, one surface with it, so it reads as part of planning, not another floating panel. The three modes with their names, the style as its own labelled control, undo and redo; then the route's actions: Reverse, Back to start and Show the whole route as icons with tooltips; then More and Done. Tooltips give the key and one sentence; keyboard focus shows them too. With less room, Reverse and Back to start fold into More (they're there anyway), then the style's label goes. In the route's view the toolbar keeps Show the whole route, More and Edit.</li>
+      <li><b>States:</b> the mode in use is filled and ticked, not only coloured; undo and redo show from the first change and are disabled (not hidden) when there's nothing to undo or redo. <s>At the start there's nothing to show but the mode.</s> <b>Changed <time datetime="2026-10-20">2026-10-20</time>: the toolbox grows with the route.</b> No toolbox before the first point (only undo and redo, while there's something to undo or redo); the first point brings the mode and More; the first leg the route's actions, where there's room. The frames here follow that.</li>
+    </ul>
+    <div class="cv-frames">
+      <figure class="fr phone" id="tb-phone" data-st='{"stage":"route"}'><figcaption><b>Phone: drawing</b>The mode with its style, undo, redo. Tap the mode.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-calm" data-st='{"stage":"route","calm":true}'><figcaption><b>Nothing to read before you go</b>The peek is one row: about 91 % of the map in view, as in the first B. The row above the numbers comes only with something to read.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-menu" data-st='{"stage":"route","pop":"modes"}'><figcaption><b>The mode's menu</b>"Draw the next leg": each mode with what it does. Under it, apart, the route style for the whole route, as chips. A mode is two taps (one today); a style is two, as today.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-style" data-st='{"stage":"route","style":"flowy","toast":"style"}'><figcaption><b>A style picked</b>Flowy trails: the whole route is routed again, with Undo in a note; the mode's second line says the style.</figcaption></figure>
+      <figure class="fr phone" id="tb-phone-200" data-st='{"stage":"route","z":2}'><figcaption><b>At 200 % zoom</b>(a 390 phone is 195 px wide): the toolbox docks into the sheet, the numbers wrap, nothing is cut. The map's own buttons don't fit at this zoom: that's #73's to solve.</figcaption></figure>
+      <figure class="fr desk" id="tb-desk" data-st='{"stage":"route","tip":"line"}'><figcaption><b>Desktop: the toolbar on the panel's edge</b>Shown with Straight line's tooltip. Drawing on the left; Reverse, Back to start, Show the whole route; More and Done at the end. Clear stays in More. When the panel docks right or at the bottom (22b), the toolbar hangs off its inner edge the same way.</figcaption></figure>
+      <figure class="fr desk" id="tb-desk-tip" data-st='{"stage":"route","tip":"fit"}'><figcaption><b>Show the whole route's tooltip</b>F does the same. On phones it's in the map's column, under Locate, whenever a route is on the map.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s3">
+    <h3>3 · More (⋯), for the whole route</h3>
+    <p><b>Decided: More (⋯),</b> familiar, compact, and not tied to one kind of action. It's the last button of the toolbox on phones (beside the drawing tools, not in the route's summary) and of the toolbar on desktops; in the route's view it stays there, the drawing tools gone. Grouped by what it's for: <b>take it along</b> (a share link, a GPX file, the map saved for no signal), <b>the whole route</b> (a round trip from the start, reverse, back to start, a file to plan on), and <b>Clear route</b> apart, in red, after a gap, with Undo. Its head says the route is kept on this device. What's also somewhere else, on purpose: Take it along in Go, Reverse and Back to start in Route's tools (and the desktop toolbar), Import at the start. Moving the panel stays with the panel (22b).</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="trip-phone" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Phone</b>⋯ at the toolbox's end; the menu opens upward from it, clear of the map's buttons.</figcaption></figure>
+      <figure class="fr phone" id="trip-clear" data-st='{"stage":"start","toast":"cleared","hist":1}'><figcaption><b>After Clear route</b>The start again, with Undo in a note and in the toolbox. Nothing asks first: Undo is the safety.</figcaption></figure>
+      <figure class="fr desk" id="trip-desk" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Desktop</b>⋯ at the toolbar's end, beside Done; the menu opens under it.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="s4">
+    <h3>4 · Done, the route's view, and coming back</h3>
+    <p><b>As built in 25c.</b> Done ends editing. The route stays open to read, check and take along: this is the route's view. A tap on the map shows what's there instead of adding a point. Edit, where Done was, goes back to drawing. ✕ puts the planner away, and Plan opens it again as it was left. Nothing is lost: the route is kept on this device, and undo outlives Done.</p>
+    <table class="cv-t">
+      <thead><tr><th>Someone wants to…</th><th>Today</th><th>In this design</th></tr></thead>
+      <tbody>
+        <tr><td>stop drawing and look at the map</td><td>Done (the planner closes)</td><td>Done: the route's view; map taps inspect the map</td></tr>
+        <tr><td>save the route</td><td>nothing to do (the last route is kept), but nothing says so</td><td>the same, and More and the view say "kept on this device"; Save offline is for no signal</td></tr>
+        <tr><td>get ready to go</td><td>Go: departure, weather, Take it along</td><td>the same Go, from the view as from editing; later (23b) Start in Go and in the view</td></tr>
+        <tr><td>change their mind</td><td>Plan, then edit</td><td>Edit (one tap, where Done was)</td></tr>
+        <tr><td>close by accident</td><td>Plan reopens it; after a reload the planner is closed (#238)</td><td>a note with Open; Plan reopens it as it was left, after a reload too (#238)</td></tr>
+        <tr><td>come back to an earlier route</td><td>the last one is back; others only through an offline area, a link or a GPX</td><td>the same now; later, Your routes (#157) at the start and in More</td></tr>
+      </tbody>
+    </table>
+    <div class="cv-frames">
+      <figure class="fr phone" id="fin-edit" data-st='{"stage":"route"}'><figcaption><b>Editing</b>Done sits at the right of the route's numbers, where the thumb is.</figcaption></figure>
+      <figure class="fr phone view" id="fin-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>After Done: the route's view</b>The route's name, its sports and Kept on this device sit above the numbers, with ✕. Edit is where Done was, and only More stays in the toolbox.</figcaption></figure>
+      <figure class="fr phone view" id="fin-view-go" data-st='{"stage":"route","mode":"view","sheet":"half","tab":"go"}'><figcaption><b>The view, getting ready</b>Go works as it does while editing.</figcaption></figure>
+      <figure class="fr phone closed" id="fin-closed" data-st='{"stage":"route","mode":"closed","toast":"closed"}'><figcaption><b>Put away</b>✕ leaves the route on the map, with a note and Open. Plan opens the planner as it was left.</figcaption></figure>
+      <figure class="fr phone" id="fin-later" data-st='{"stage":"start","later":true}'><figcaption><b>Later: your routes</b>When #157 is built, the start lists the routes kept on this device.</figcaption></figure>
+      <figure class="fr desk view" id="fin-desk-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>Desktop: the route's view</b>The toolbar keeps Show the whole route, More and Edit. Plan in the map's column stays pressed while the planner is open.</figcaption></figure>
+      <figure class="fr desk closed" id="fin-desk-closed" data-st='{"stage":"route","mode":"closed","toast":"closed"}'><figcaption><b>Desktop: put away</b>The note sits at the bottom of the map. Plan in the column is no longer pressed.</figcaption></figure>
+    </div>
+  </section>
+
+  <div class="band" id="t-sport">
+    <h2>The sport, and what it changes</h2>
+    <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in #335</span></p>
+  </div>
+
   <section class="cv-row" id="sb">
-    <h2>B · The sport, and what it changes</h2>
-    <p>Today the pill changes the map's sport. With a route drawn, its legs keep their sport, a note offers "Route it as…" for nine seconds, and then nothing on screen says which sport the route or the next leg is in. Checked on <code>main</code> at 256ce13: after MTB → Paddle the toolbox says Over water while the next leg is drawn as MTB on paths, a leg's sport picker calls Paddle "the route's", and a shared route's own style is replaced (#71). Here the menu names every sport with a line on what the map shows for it. <b>With no route, picking is one tap.</b> With a route drawn and a sport other than the route's, the menu asks <b>what it's for</b>: the whole route (its legs in the route's sport are routed again, with the cost in routing calls and Undo; legs in another sport and fixed lines keep theirs), or only the legs you draw next (the drawn legs stay; the toolbox's second line says the next leg's sport, so it stays visible after the note). Between land and water, the whole route isn't offered: a ride can't be paddled on the same line. Settings has the same choice with names on phones (#237), and its speeds follow the sport picked above them (#87). <b>Decided 2026-10-20: this is option A.</b> The "Sport change" switch at the bottom shows the two options not taken on these frames.</p>
+    <h3>B · The sport, and what it changes</h3>
+    <p>Today the pill changes the map's sport. With a route drawn, its legs keep their sport, a note offers "Route it as…" for nine seconds, and then nothing on screen says which sport the route or the next leg is in. Checked on <code>main</code> at 256ce13: after MTB → Paddle the toolbox says Over water while the next leg is drawn as MTB on paths, a leg's sport picker calls Paddle "the route's", and a shared route's own style is replaced (#71). Here the menu names every sport with a line on what the map shows for it. <b>With no route, picking is one tap.</b> With a route drawn and a sport other than the route's, the menu asks <b>what it's for</b>: the whole route (its legs in the route's sport are routed again, with the cost in routing calls and Undo; legs in another sport and fixed lines keep theirs), or only the legs you draw next (the drawn legs stay; the toolbox's second line says the next leg's sport, so it stays visible after the note). Between land and water, the whole route isn't offered: a ride can't be paddled on the same line. Settings has the same choice with names on phones (#237), and its speeds follow the sport picked above them (#87). <b>Decided <time datetime="2026-10-20">2026-10-20</time>: this is option A.</b> The "Sport change" switch at the bottom shows the two options not taken on these frames.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jb-empty" data-st='{"stage":"start","pop":"sport","sp":"list"}'><figcaption><b>No route: one tap</b>Each sport with its name and what the map shows for it.</figcaption></figure>
       <figure class="fr phone" id="jb-list" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"list"}'><figcaption><b>A route drawn</b>The menu says the route's sport. Pick Hike.</figcaption></figure>
@@ -1295,11 +1440,10 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="jb-water" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"paddle"}'><figcaption><b>From land to water</b>The whole route isn't offered, and says why.</figcaption></figure>
       <figure class="fr phone" id="jb-next" data-st='{"stage":"route","calm":true,"map":"hike","next":"hike","toast":"spnext"}'><figcaption><b>Only the next legs</b>The pill is Hike; the toolbox says the next leg is Hike; the drawn legs stay MTB. Tap the map to draw one.</figcaption></figure>
       <figure class="fr phone" id="jb-all" data-st='{"stage":"route","calm":true,"sport":"hike","map":"hike","toast":"spall"}'><figcaption><b>The whole route</b>Routed again as Hike, with new times and checks; Undo brings the MTB route back.</figcaption></figure>
-      <figure class="fr phone" id="jb-settings" data-replaced="by Settings without a sport, #321 (2026-10-20)" data-st='{"stage":"route","calm":true,"settings":true,"map":"hike","next":"hike"}'><figcaption><b>Settings</b>The sports with their names (#237); the speeds for the sport picked above them (#87), and when the route's time follows them.</figcaption></figure>
       <figure class="fr phone" id="jb-fi" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"trailrun","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish</b>The question in long words.</figcaption></figure>
       <figure class="fr desk" id="jb-desk" data-st='{"stage":"route","calm":true,"pop":"sport","sp":"scope","spPick":"hike"}'><figcaption><b>Desktop</b>The same menu under the pill; the toolbar's mode says the next leg's sport when it differs.</figcaption></figure>
     </div>
-    <h3 id="sb-multi">Multisport, easy to find (B's addition, approved 2026-10-20)</h3>
+    <h4 class="cv-sub" id="sb-multi">Multisport, easy to find (B's addition, approved <time datetime="2026-10-20">2026-10-20</time>)</h4>
     <p>The sport of the next leg, and how fast it goes, at the top of the drawing menu: the same sports, names and icons as the sport menu (one component), and picking one is its <b>Only the legs you draw next</b>: what's drawn stays, the map follows, Paddle and Swim switch to Over water. A speed line under it, from Your speed (<code>speedsFor()</code>; paddling by its craft, <code>CRAFT</code>), opens Your speed's own editor in place, and a change re-times the route. Everything the menu has today stays, with today's words. The drawing button says the next leg's sport from the first point ("Hike · Balanced"): the sport stays whole, the style shortens. Draw it says that the sport can change along the way; Go › Time says what the time is based on. A point on the water while the next leg is a land sport offers Paddle from here. Desktops: a sport button at the toolbar's start. The words, speeds, icons and chips here are the app's; this is layout.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jb-nl-menu" data-st='{"stage":"route","calm":true,"pop":"modes"}'><figcaption><b>The drawing menu</b>How the next leg is drawn comes first, then the next leg's sport and speed, then the route style.</figcaption></figure>
@@ -1310,17 +1454,21 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="jb-nl-first" data-st='{"stage":"first"}'><figcaption><b>From the first point</b>The button says the next leg's sport, not only when the route mixes sports.</figcaption></figure>
       <figure class="fr phone" id="jb-nl-draw" data-st='{"stage":"start","drawing":true}'><figcaption><b>Draw it</b>Its line says the sport can change on the way.</figcaption></figure>
       <figure class="fr phone" id="jb-nl-go" data-st='{"stage":"route","calm":true,"sheet":"half","tab":"go"}'><figcaption><b>Go › Time</b>What the time is based on, and Change: the same editor.</figcaption></figure>
-      <figure class="fr phone" id="jb-nl-water" data-replaced="by the note that asks how you get there (B, 2026-10-20)" data-st='{"stage":"route","calm":true,"map":"hike","next":"hike","toast":"onwater"}'><figcaption><b>A point on the water, the next leg Hike</b>"On the water? Paddle from here (sea kayak) · Keep Hike". Not on bridges, ferries or a tap on the shoreline.</figcaption></figure>
       <figure class="fr phone" id="jb-nl-360" data-st='{"stage":"route","calm":true,"w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish</b>"Maastopyöräily" whole; the style shortens.</figcaption></figure>
       <figure class="fr phone" id="jb-nl-200" data-st='{"stage":"route","calm":true,"z":2,"pop":"modes"}'><figcaption><b>200 % zoom</b>The menu as a sheet of its own; it scrolls.</figcaption></figure>
       <figure class="fr desk" id="jb-nl-desk" data-st='{"stage":"route","calm":true,"pop":"nl"}'><figcaption><b>Desktop</b>The sport button sits just before the route style. It opens the next leg's sports and speed.</figcaption></figure>
     </div>
   </section>
 
+  <div class="band" id="t-warn">
+    <h2>Warnings and Check</h2>
+    <p class="st st-built"><b><svg class="ic" width="15" height="15" aria-hidden="true"><use href="#i-check"/></svg>Built</b><span>in #416, Journey C</span></p>
+  </div>
+
   <section class="cv-row" id="sc">
-    <h2>C · A warning: notice it, find it on the route, come back</h2>
-    <p>Today, with the sheet at its peek, nothing says there's anything to read before you go: Check's count is on its tab, under the fold, and a row in Check frames the map without marking the place (#84, #85). Here the peek has a row while there's something to read before you go or something wasn't checked, in words. Each located item has a marker on the route, in its group's shape and icon (a filled triangle, a dashed "?", an eye for "worth a look", which shows while Check or an item is in view); close ones merge into one with a count. A tap on the row, a marker or an item in Check shows it on the route: the stretch glows, the marker is ringed, and the peek holds the item (what, where, how sure, Avoid or Retry) with ‹ › along the route. <b>✕ comes back</b> to where you were (the peek, or Check at half). A stretch that wasn't checked is dashed on the route; a source missing for the whole route says so in words, with no invented place. The approved row opened Check at half; this keeps the map in view. <b>Decided 2026-10-20: the row shows the item on the route.</b></p>
-    <p><b>Revision 5, chosen on 2026-10-22:</b> with <b>Cards and lists: Revision 5</b> at the bottom (the default), these frames use the map cards' own parts from <a href="issue-345-map-cards.html">#345's mock-up</a>. The row is the cards' warning box. In Check, what can stop you (Read before you go) is the same red box, and Worth a look and Not checked are the cards' rows, each in its group's shape and colour. The open item is lit. (<b>Check's items: A</b> shows rows for every item, to compare.) The item's card is Revision 5's: its group in words and shape, where it is, its source, its one action, then ‹ › and All in Check. On a desktop it opens beside the panel at its row. <b>As approved</b> shows the frames as they were.</p>
+    <h3>C · A warning: notice it, find it on the route, come back</h3>
+    <p>Today, with the sheet at its peek, nothing says there's anything to read before you go: Check's count is on its tab, under the fold, and a row in Check frames the map without marking the place (#84, #85). Here the peek has a row while there's something to read before you go or something wasn't checked, in words. Each located item has a marker on the route, in its group's shape and icon (a filled triangle, a dashed "?", an eye for "worth a look", which shows while Check or an item is in view); close ones merge into one with a count. A tap on the row, a marker or an item in Check shows it on the route: the stretch glows, the marker is ringed, and the peek holds the item (what, where, how sure, Avoid or Retry) with ‹ › along the route. <b>✕ comes back</b> to where you were (the peek, or Check at half). A stretch that wasn't checked is dashed on the route; a source missing for the whole route says so in words, with no invented place. The approved row opened Check at half; this keeps the map in view. <b>Decided <time datetime="2026-10-20">2026-10-20</time>: the row shows the item on the route.</b></p>
+    <p><b>Revision 5, chosen on <time datetime="2026-10-22">2026-10-22</time>:</b> with <b>Cards and lists: Revision 5</b> at the bottom (the default), these frames use the map cards' own parts from <a href="issue-345-map-cards.html">#345's mock-up</a>. The row is the cards' warning box. In Check, what can stop you (Read before you go) is the same red box, and Worth a look and Not checked are the cards' rows, each in its group's shape and colour. The open item is lit. (<b>Check's items: A</b> shows rows for every item, to compare.) The item's card is Revision 5's: its group in words and shape, where it is, its source, its one action, then ‹ › and All in Check. On a desktop it opens beside the panel at its row. <b>As approved</b> shows the frames as they were.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jc-peek" data-st='{"stage":"route"}'><figcaption><b>Noticed at a glance</b>The row in the peek; the road works' marker on the route. Tap either.</figcaption></figure>
       <figure class="fr phone" id="jc-step" data-st='{"stage":"route","step":4}'><figcaption><b>Found on the route</b>Its stretch glows and its marker is ringed; ‹ › go along the route; ✕ back.</figcaption></figure>
@@ -1334,7 +1482,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr desk" id="jc-desk" data-st='{"stage":"route"}'><figcaption><b>Desktop</b>The row above the numbers; markers on the route, with their names on hover.</figcaption></figure>
       <figure class="fr desk" id="jc-desk-sel" data-st='{"stage":"route","tab":"check","step":4}'><figcaption><b>Desktop: one selected</b>In Check and on the map together; ‹ › aren't needed with the list beside it.</figcaption></figure>
     </div>
-    <p><b>Marking read, to choose (2026-10-23):</b> the row takes room you need once you've read it. With <b>Marking read: On</b> at the bottom, ✕ on the row marks everything in it read at once (Read before you go and Not checked, however many), with Undo in the note; <b>Got it</b> on an item's card marks one (in every group: chosen with the rest on 2026-10-23, so it works the same everywhere); <b>All read</b> on each group's heading in Check marks that group. Then there's no row until a new or changed warning comes. Read items stay in Check, saying so in their line, and on the map; the badge still counts. It lasts with the route on this device (a reload, the saved route), not in share links. <b>Off</b> shows the row as approved.</p>
+    <p><b>Marking read, chosen on <time datetime="2026-10-23">2026-10-23</time> and built in #416:</b> the row takes room you need once you've read it. With <b>Marking read: On</b> at the bottom, ✕ on the row marks everything in it read at once (Read before you go and Not checked, however many), with Undo in the note; <b>Got it</b> on an item's card marks one (in every group: chosen with the rest on <time datetime="2026-10-23">2026-10-23</time>, so it works the same everywhere); <b>All read</b> on each group's heading in Check marks that group. Then there's no row until a new or changed warning comes. Read items stay in Check, saying so in their line, and on the map; the badge still counts. It lasts with the route on this device (a reload, the saved route), not in share links. <b>Off</b> shows the row as approved.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="jr-peek" data-st='{"stage":"route","sport":"paddle"}'><figcaption><b>The row's ✕</b>Marks everything in the row read at once, however many; a tap on its words still shows the first one.</figcaption></figure>
       <figure class="fr phone" id="jr-after" data-st='{"stage":"route","sport":"paddle","readAll":true,"toast":"markread","sayText":"3 marked read: they stay in Check and on the map"}'><figcaption><b>After ✕</b>No row until a new or changed warning comes; Undo in the note; the markers stay, and the badge still counts.</figcaption></figure>
@@ -1346,15 +1494,27 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
     </div>
   </section>
 
+  <section class="cv-row" id="s5">
+    <h3>5 · Check: how serious, and how sure</h3>
+    <p>A count alone doesn't say whether to worry. Check sorts what's already found into three groups, each with its own icon, word and shape (never colour alone): <b>Read before you go</b> (what can hurt, stop you or turn you back: shipping lanes, rough water, ice, the dark, road works, no access), <b>Worth a look</b> (sections to know about: steep, technical, carries, steps, ways marked private, trail details), and <b>Not checked</b> (a source that didn't answer, an estimate standing in). Each item says where it comes from: <i>live</i>, <i>from the map</i> (may be wrong), an <i>estimate</i>, or <i>calculated</i>. The end of Check says what was looked at, and that nothing listed doesn't mean open, safe or allowed. The tab's badge and a row in the peek follow the most serious group. Nothing new is checked: these are today's Heads-up items, sorted.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="chk-phone" data-st='{"stage":"route","sheet":"half","tab":"check"}'><figcaption><b>Check, MTB</b>One to read before you go (road works, live), four worth a look; a way marked private says what that means in Finland.</figcaption></figure>
+      <figure class="fr phone" id="chk-paddle" data-st='{"stage":"route","sport":"paddle","sheet":"half","tab":"check"}'><figcaption><b>Check, paddle</b>A shipping lane and rough water first; rocks from OpenStreetMap didn't answer, so the route says it wasn't checked for them.</figcaption></figure>
+      <figure class="fr desk" id="chk-desk" data-st='{"stage":"route","tab":"check"}'><figcaption><b>Desktop</b>The same groups in the panel.</figcaption></figure>
+    </div>
+  </section>
+
+  <div class="band" id="t-points">
+    <h2>Points and legs</h2>
+    <p class="st st-part"><b>Partly built</b><span>a point's card in #352; the list and a stretch's card in Journey D</span></p>
+  </div>
 
   <section class="cv-row" id="sd">
-    <h2>D · Points and legs: three ways to keep them (iteration 2)</h2>
-    <p>From the user's feedback on section 6: a selected waypoint took much of the screen, some of its settings were hard to read, and the list may not show what's needed. In every option below the list is made of <b>sections</b>: a new one starts where the sport changes, at a stop and at a night, and each says what Check says about that part (its distance, time and climb, the weather when you get to its end, its warnings, which open the item on the route). Points that only shape the line fold inside, so a leg of 30 m never gets a forecast of its own. The list stays because it's the only way to manage points without the map (keyboard, screen readers) and to see their order and names at once. The options differ in where a point is changed. <b>Chosen on 2026-10-20: V1, refined</b> (stretches between the points you see, with both ends named and their scope in words; the everyday actions by name; Reorder). Five kinds of route: a day ride, a multisport trip, three days with nights, 52 points, and a marked route followed. <b>Use the "Points" switch at the bottom</b> to see any frame in V1, V2 or V3.</p>
-    <p><b>Revision 5, chosen on 2026-10-22:</b> with <b>Cards and lists: Revision 5</b> (the default), V1's list keeps its sections and gets the cards' rows. A point's row has its mark, its name, what happens there, and a line. A stretch's row has its numbers and how it's drawn. A section's warnings are in the warning box. The point's and the stretch's cards are Revision 5's, with At this point and Edit this stretch, so the paddle stretch's frame opens Edit this stretch. On a desktop the card opens beside the panel at its row, which stays lit. Reorder, V2 and V3 stay as they were.</p>
+    <h3>D · Points and legs: V1, a card (chosen)</h3>
+    <p>From the user's feedback on section 6: a selected waypoint took much of the screen, some of its settings were hard to read, and the list may not show what's needed. In every option below the list is made of <b>sections</b>: a new one starts where the sport changes, at a stop and at a night, and each says what Check says about that part (its distance, time and climb, the weather when you get to its end, its warnings, which open the item on the route). Points that only shape the line fold inside, so a leg of 30 m never gets a forecast of its own. The list stays because it's the only way to manage points without the map (keyboard, screen readers) and to see their order and names at once. The options differ in where a point is changed. <b>Chosen on <time datetime="2026-10-20">2026-10-20</time>: V1, refined</b> (stretches between the points you see, with both ends named and their scope in words; the everyday actions by name; Reorder). Five kinds of route: a day ride, a multisport trip, three days with nights, 52 points, and a marked route followed. <b>Use the "Points" switch at the bottom</b> to see any frame in V1, V2 or V3.</p>
+    <p><b>Revision 5, chosen on <time datetime="2026-10-22">2026-10-22</time>:</b> with <b>Cards and lists: Revision 5</b> (the default), V1's list keeps its sections and gets the cards' rows. A point's row has its mark, its name, what happens there, and a line. A stretch's row has its numbers and how it's drawn. A section's warnings are in the warning box. The point's and the stretch's cards are Revision 5's, with At this point and Edit this stretch, so the paddle stretch's frame opens Edit this stretch. On a desktop the card opens beside the panel at its row, which stays lit. Reorder, V2 and V3 stay as they were.</p>
     <ul>
       <li><b>V1, a card (chosen, then refined):</b> a tap on a point selects it on the map and opens its card in the peek, the same card as a tap on the point on the map: what it is, its stop, change or night, the leg after it, and its place. The leg is one tap further, in words (sport, how it's drawn, style). Back returns to the list as it was.</li>
-      <li><b>V2, in the list:</b> the point's controls open under it in its section, as in the approved section 6.</li>
-      <li><b>V3, on the map:</b> the list only reads; Edit points turns it into reordering, renaming and removing; stops, sports and legs are changed from the map.</li>
     </ul>
     <div class="cv-frames">
       <figure class="fr phone" id="jd-multi" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>Multisport: MTB, then paddling</b>Two sections, each with its numbers, a short forecast for its end (tap it for the rest) and its warnings; the change of sport on its point; a row for each stretch between the points you see. Tap a point, a stretch, or the arrow that unfolds its shaping points.</figcaption></figure>
@@ -1367,17 +1527,19 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="jd-days" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>Three days with nights</b>A section a day, each night with the morning's start.</figcaption></figure>
       <figure class="fr phone" id="jd-long" data-st='{"stage":"route","uc":"long","sheet":"full","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>52 points</b>Two breaks make three sections; the points that only shape the line fold away.</figcaption></figure>
       <figure class="fr phone" id="jd-lipas" data-st='{"stage":"route","uc":"lipas","followed":0,"sheet":"half","tab":"route","calm":true,"wv":"v1"}'><figcaption><b>A marked route followed</b>One section on its own line; little to change.</figcaption></figure>
-      <figure class="fr phone" id="jd-v2" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v2","psel":4}'><figcaption><b>V2: in the list</b>The point's controls open in its section; the leg's in place of them.</figcaption></figure>
-      <figure class="fr phone" id="jd-v3" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v3"}'><figcaption><b>V3: the list reads</b>Changes are made on the map; Edit points for order and names.</figcaption></figure>
-      <figure class="fr phone" id="jd-v3e" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v3","pedit":true}'><figcaption><b>V3: Edit points</b>Drag, rename, remove; every point shows.</figcaption></figure>
       <figure class="fr phone" id="jd-fi" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"route","calm":true,"wv":"v1","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish</b>Long names wrap; the numbers stay whole.</figcaption></figure>
       <figure class="fr desk" id="jd-desk" data-st='{"stage":"route","uc":"multi","tab":"route","calm":true,"wv":"v1","psel":7,"pcard":"point"}'><figcaption><b>Desktop: V1</b>The sections in the panel; the point's card beside it, as on the map.</figcaption></figure>
     </div>
   </section>
 
+  <div class="band" id="t-tabs">
+    <h2>The tabs and How you go</h2>
+    <p class="st st-not"><b>Not built yet</b><span>Journey D</span></p>
+  </div>
+
   <section class="cv-row" id="se">
-    <h2>E · The tabs: Route, Check and Go, and How you go (#424, to choose)</h2>
-    <p>Each tab has one job: <b>Route</b> for drawing and how you go, <b>Check</b> for what's on the way, <b>Go</b> for setting off. Today the strip of Hardest climb, Speed and Style opens Check, though Speed and Style are how you go. How you go is a fold under the list, and your speed is set in two places. The <b>Tabs</b> switch at the bottom shows <b>A</b>, the app as it is; <b>B</b>, the strip moved to Route (2026-10-23); or <b>C</b>, redrawn from the user's notes and chosen on 2026-10-24 (the default here). Route's list is Journey D's, chosen on 2026-10-22, in both. Each frame below fixes its own option, so A and B sit side by side. The switch changes every frame; Reset brings a frame back.</p>
+    <h3>E · The tabs: Route, Check and Go, and How you go (#424, C chosen on <time datetime="2026-10-24">2026-10-24</time>)</h3>
+    <p>Each tab has one job: <b>Route</b> for drawing and how you go, <b>Check</b> for what's on the way, <b>Go</b> for setting off. Today the strip of Hardest climb, Speed and Style opens Check, though Speed and Style are how you go. How you go is a fold under the list, and your speed is set in two places. The <b>Tabs</b> switch at the bottom shows <b>A</b>, the app as it is; <b>B</b>, the strip moved to Route (<time datetime="2026-10-23">2026-10-23</time>); or <b>C</b>, redrawn from the user's notes and chosen on <time datetime="2026-10-24">2026-10-24</time> (the default here). Route's list is Journey D's, chosen on <time datetime="2026-10-22">2026-10-22</time>, in both. Each frame fixes its own option: C's are here, and A's and B's are under <a href="#se-ab">earlier versions</a>, at the end. The switch changes every frame; Reset brings a frame back.</p>
     <div class="tbl424"><table>
       <thead><tr><th>What</th><th>A · Today</th><th>B · The strip</th><th>C · Two rows (chosen)</th><th>Why</th></tr></thead>
       <tbody>
@@ -1396,7 +1558,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
         <tr><td>The weather on the way</td><td>Go</td><td>Go</td><td>Go, all of it; No forecast yet past its reach</td><td>Setting off</td></tr>
         <tr><td>Take it along</td><td>Go (and ⋯)</td><td>Go (and ⋯)</td><td>Go (and ⋯, and The whole route ›)</td><td>Setting off</td></tr>
       </tbody></table></div>
-    <h3 class="cv-sub">C · Redrawn from your notes (chosen on 2026-10-24)</h3>
+    <h4 class="cv-sub">C · Redrawn from your notes (chosen on <time datetime="2026-10-24">2026-10-24</time>)</h4>
     <p>No strip. Route opens with two rows, <b>How you go · Balanced ›</b> and <b>Your speed · Normal ›</b>, each a step of its own. Check and Go keep every section the app has, with their content, and the hardest climb is marked in Climbs. Go opens with <b>Leave ›</b>, There at and where the time goes. The marks on the map move to Layers. Every row with a value and › is the cards' row, as <b>Sport from here · MTB ›</b>. The badge is red ⚠ 1 on every tab, as in the app.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="tabs-c-route" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","wv":"v1","tabs":"c"}'><figcaption><b>C · Route</b>Two rows, then the list, the tools and the hint, as the app has them.</figcaption></figure>
@@ -1426,8 +1588,16 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone dark" id="tabs-c-dark-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","theme":"dark","scrollC":".csec"}'><figcaption><b>C · Dark: the weather</b></figcaption></figure>
       <figure class="fr phone dark" id="tabs-c-dark-layers" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","layersC":true,"theme":"dark"}'><figcaption><b>C · Dark: Layers</b></figcaption></figure>
     </div>
-    <h3 class="cv-sub">Each sport's key facts (A2, chosen 2026-10-24)</h3>
-    <p>The strip that C removes held each sport's own facts, not only the hardest climb. For paddling it shows Headwind and Strongest wind, and Carry ascent; for MTB, gravel and road the hardest climb; for walking and running the high point. C gave a new place only to Speed, Style and the hardest climb. The <b>Key facts</b> switch at the bottom shows where the rest could go. <b>A2, chosen 2026-10-24:</b> one line under the route's numbers, always in sight, even at the peek, showing what stands out on this route, else the sport's usual fact. A tap opens where it's told in full, and Check's top keeps them all. <b>A:</b> the same line with one fact chosen by the sport alone (the first round). <b>B:</b> at the top of Check, as the strip is today, without Speed and Style. <b>C:</b> a fourth number beside the route's own.</p>
+  </section>
+
+  <div class="band" id="t-facts">
+    <h2>Each sport's key facts</h2>
+    <p class="st st-not"><b>Not built yet</b><span>Journey D</span></p>
+  </div>
+
+  <section class="cv-row" id="se-facts">
+    <h3>E · Each sport's key facts (A2, chosen <time datetime="2026-10-24">2026-10-24</time>)</h3>
+    <p>The strip that C removes held each sport's own facts, not only the hardest climb. For paddling it shows Headwind and Strongest wind, and Carry ascent; for MTB, gravel and road the hardest climb; for walking and running the high point. C gave a new place only to Speed, Style and the hardest climb. The <b>Key facts</b> switch at the bottom shows where the rest could go; the first round's frames are under <a href="#se-kf1">earlier versions</a>. <b>A2, chosen <time datetime="2026-10-24">2026-10-24</time>:</b> one line under the route's numbers, always in sight, even at the peek, showing what stands out on this route, else the sport's usual fact. A tap opens where it's told in full, and Check's top keeps them all. <b>A:</b> the same line with one fact chosen by the sport alone (the first round). <b>B:</b> at the top of Check, as the strip is today, without Speed and Style. <b>C:</b> a fourth number beside the route's own.</p>
     <p><b>What stands out (A2).</b> The three numbers already say how hard the route is: the time counts the climbs, the surface, a bike's headwind and your speed. So the line says why, or what could make the day differ from the numbers. It shows the first of these that stands out: what can change whether you go (a water leg's wind, always; rain on the way), then what changes how long (a headwind that adds 15 min or a tenth of the time), then the hardest bit (unpaved on a road bike, a trail grade above the route's style, a climb steep enough to walk). When nothing does, it shows the sport's usual fact: the hardest climb on a bike, the high point on foot. The thresholds are proposals. Weather that can't be judged yet is said beside it, never taken as nothing standing out. <b>A route of two sports</b> gets a row for each, since its totals mix them: the sport, its distance and its own fact (its climbing, or a water leg's wind); a sport with two legs shows them together, and the list has each leg. A tap opens that part in the list. <b>A trip of several days</b> names its hardest day.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="kf2-gravel" data-st='{"stage":"route","uc":"gravel","sport":"gravel","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · A long gravel ride (chosen)</b>118 km. The headwind from Orivesi adds 25 min to the time, so it stands out; a tap opens the weather along the route.</figcaption></figure>
@@ -1448,7 +1618,79 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="kf2-200" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand","z":2}'><figcaption><b>A2 · 200 %</b></figcaption></figure>
       <figure class="fr phone dark" id="kf2-dark" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand","theme":"dark"}'><figcaption><b>A2 · Dark</b></figcaption></figure>
     </div>
-    <h3 class="cv-sub">Key facts, the first round: A, B and C</h3>
+  </section>
+
+  <div class="band" id="t-worst">
+    <h2>The worst cases</h2>
+    <p class="st"><b>With each part</b><span>each PR checks its own</span></p>
+  </div>
+
+  <section class="cv-row" id="s7">
+    <h3>7 · The worst cases</h3>
+    <p>The same frames with the worst case on: long Finnish and Swedish words, a 123 km route of 52 points with seven hours of time, many warnings, a narrow phone, 200 % zoom, dark. Use the switches at the bottom on any frame too.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="st-360" data-st='{"stage":"route","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish, worst case</b>The numbers wrap onto their own line; the toolbox still clears the map's buttons.</figcaption></figure>
+      <figure class="fr phone" id="st-360-menu" data-st='{"stage":"route","w":360,"h":740,"lang":"fi","worst":true,"pop":"modes"}'><figcaption><b>The mode's menu in Finnish at 360</b>Long words wrap; nothing is cut off.</figcaption></figure>
+      <figure class="fr phone" id="st-200-half" data-st='{"stage":"route","z":2,"sheet":"half","tab":"check","worst":true}'><figcaption><b>200 % zoom, Check</b>Everything stacks; the sheet scrolls.</figcaption></figure>
+      <figure class="fr phone dark" id="st-dark" data-st='{"stage":"route","sheet":"half","tab":"check","worst":true,"theme":"dark"}'><figcaption><b>Dark, worst case</b>The groups keep their shapes and icons.</figcaption></figure>
+      <figure class="fr phone" id="st-sv-rt" data-st='{"stage":"first","rt":{"open":true,"val":20},"lang":"sv","w":360,"h":740}'><figcaption><b>Swedish, the round trip at 360</b></figcaption></figure>
+      <figure class="fr desk" id="st-desk-fi" data-st='{"stage":"route","lang":"fi","worst":true,"tab":"check"}'><figcaption><b>Desktop, Finnish, worst case</b>With less room, Reverse and Back to start fold into More first, then the style's caption goes; the modes keep their names.</figcaption></figure>
+    </div>
+  </section>
+
+  <div class="band" id="t-try">
+    <h2>Try it</h2>
+  </div>
+
+  <section class="cv-row" id="s0">
+    <h3>0 · The whole way through</h3>
+    <p>The whole way through, on a phone and a desktop: tap the map for a first point, try a round trip or tap again for a route, change the drawing mode, press Done, open More, swipe… (here: press the handle) for the sheet's sizes, and look at Check.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="play-phone" data-st='{"stage":"start"}'><figcaption><b>Phone, 390 × 844</b>From an empty map. The handle steps the sheet through its sizes (in Polku it's the one swipe of #96).</figcaption></figure>
+      <figure class="fr desk" id="play-desk" data-st='{"stage":"start"}'><figcaption><b>Desktop, 1440 × 900</b>The same, with the toolbar on the panel's edge. Keys: P, S and W pick the drawing mode, Ctrl+Z and Ctrl+Shift+Z undo and redo, E is Done or Edit, F shows the whole route. Hover the toolbar for its tooltips.</figcaption></figure>
+    </div>
+  </section>
+
+  <div class="band band-earlier" id="t-earlier">
+    <h2>Earlier versions and options not chosen</h2>
+    <p>Kept to compare: build from the topics above, not from here. Each frame keeps its id, so links with <code>?frame=</code> still open it.</p>
+  </div>
+
+  <section class="cv-row" id="se-ab">
+    <h3>E · The tabs: A, today, and B, the strip (not chosen)</h3>
+    <p>C was chosen on 2026-10-24. Each frame here fixes A or B for itself; <a href="#se">section E's table</a> compares all three.</p>
+    <h4 class="cv-sub">The tabs, A and B</h4>
+    <div class="cv-frames">
+      <figure class="fr phone" id="tabs-route-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"today"}'><figcaption><b>A · Route today</b>The list, the tools, then How you go folded at the end.</figcaption></figure>
+      <figure class="fr phone" id="tabs-route-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new"}'><figcaption><b>B · Route proposed</b>The strip first: Speed and Style open How you go, Hardest climb lights its climb.</figcaption></figure>
+      <figure class="fr phone" id="tabs-check-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"today"}'><figcaption><b>A · Check today</b>The strip above the groups, as Journey C left it.</figcaption></figure>
+      <figure class="fr phone" id="tabs-check-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"new"}'><figcaption><b>B · Check proposed</b>What's on the way only: the groups first, as approved, then Climbs and On the route.</figcaption></figure>
+      <figure class="fr phone" id="tabs-go-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"today"}'><figcaption><b>A · Go today</b>Depart in hours, the time by surface, your speed again behind Change.</figcaption></figure>
+      <figure class="fr phone" id="tabs-go-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"new","lday424":"tomorrow","lat424":"07:30"}'><figcaption><b>B · Go proposed</b>When you leave and when you're there, the weather, the marks on the map, Take it along.</figcaption></figure>
+    </div>
+    <h4 class="cv-sub">How you go, A and B</h4>
+    <div class="cv-frames">
+      <figure class="fr phone" id="tabs-how-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"today","howOpen":true,"howTo":"fold"}'><figcaption><b>A · Today</b>The fold opened under the list: the style's controls, then your speed.</figcaption></figure>
+      <figure class="fr phone" id="tabs-how-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style"}'><figcaption><b>B · A step of its own</b>From Style in the strip. Route style says that a change routes again.</figcaption></figure>
+      <figure class="fr phone" id="tabs-how-b-speed" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed"}'><figcaption><b>B · Your speed</b>From Speed in the strip: a change times the route again, and where the time goes is under it.</figcaption></figure>
+      <figure class="fr phone" id="tabs-how-multi" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed"}'><figcaption><b>B · MTB and paddling</b>Each sport's speed, the craft with Paddle; a stretch with its own style is a row to it.</figcaption></figure>
+    </div>
+    <h4 class="cv-sub">Desktops, and the worst cases (B)</h4>
+    <div class="cv-frames">
+      <figure class="fr desk" id="tabs-desk-a" data-st='{"stage":"route","uc":"day","tab":"check","wv":"v1","tabs":"today"}'><figcaption><b>A · Desktop, Check today</b>The strip above the groups.</figcaption></figure>
+      <figure class="fr desk" id="tabs-desk-b" data-st='{"stage":"route","uc":"day","tab":"route","calm":true,"wv":"v1","tabs":"new"}'><figcaption><b>B · Desktop, Route</b>The strip at Route's top, in the panel.</figcaption></figure>
+      <figure class="fr desk" id="tabs-desk-how" data-st='{"stage":"route","uc":"day","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style"}'><figcaption><b>B · Desktop, How you go</b>The same step in the panel, 36 px rows with a mouse.</figcaption></figure>
+      <figure class="fr phone" id="tabs-fi" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish</b>The strip's words wrap in their thirds; nothing is cut.</figcaption></figure>
+      <figure class="fr phone" id="tabs-fi-how" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish: How you go</b>The switches' words wrap inside them.</figcaption></figure>
+      <figure class="fr phone" id="tabs-200" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","z":2,"bodyTop":true}'><figcaption><b>200 %</b>The strip one to a row.</figcaption></figure>
+      <figure class="fr phone" id="tabs-200-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"new","z":2,"lday424":"today","lat424":"16:45","bodyTop":true}'><figcaption><b>200 %: Go</b>The time on two rows: the time across, − and + under it.</figcaption></figure>
+      <figure class="fr phone dark" id="tabs-dark-how" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed","theme":"dark"}'><figcaption><b>Dark: Your speed</b></figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="se-kf1">
+    <h3>E · Key facts, the first round: A, B and C (not chosen)</h3>
+    <p>A2 was chosen on 2026-10-24. <a href="#se-facts">Section E's key facts</a> say what A, B and C are.</p>
     <div class="cv-frames">
       <figure class="fr phone" id="kf-paddle" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · Paddling</b>Wind up to 10 m/s, gusts 14, headwind 49 %, under the numbers at the peek; a tap opens the weather along the route.</figcaption></figure>
       <figure class="fr phone" id="kf-mtb" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · MTB</b>The hardest climb; a tap shows it in Climbs.</figcaption></figure>
@@ -1465,125 +1707,34 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="kf-200" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line","z":2}'><figcaption><b>A · 200 %</b></figcaption></figure>
       <figure class="fr phone dark" id="kf-dark" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line","theme":"dark"}'><figcaption><b>A · Dark</b></figcaption></figure>
     </div>
-    <h3 class="cv-sub">The tabs, A and B</h3>
-    <div class="cv-frames">
-      <figure class="fr phone" id="tabs-route-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"today"}'><figcaption><b>A · Route today</b>The list, the tools, then How you go folded at the end.</figcaption></figure>
-      <figure class="fr phone" id="tabs-route-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new"}'><figcaption><b>B · Route proposed</b>The strip first: Speed and Style open How you go, Hardest climb lights its climb.</figcaption></figure>
-      <figure class="fr phone" id="tabs-check-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"today"}'><figcaption><b>A · Check today</b>The strip above the groups, as Journey C left it.</figcaption></figure>
-      <figure class="fr phone" id="tabs-check-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"new"}'><figcaption><b>B · Check proposed</b>What's on the way only: the groups first, as approved, then Climbs and On the route.</figcaption></figure>
-      <figure class="fr phone" id="tabs-go-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"today"}'><figcaption><b>A · Go today</b>Depart in hours, the time by surface, your speed again behind Change.</figcaption></figure>
-      <figure class="fr phone" id="tabs-go-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"new","lday424":"tomorrow","lat424":"07:30"}'><figcaption><b>B · Go proposed</b>When you leave and when you're there, the weather, the marks on the map, Take it along.</figcaption></figure>
-    </div>
-    <h3 class="cv-sub">How you go, A and B</h3>
-    <div class="cv-frames">
-      <figure class="fr phone" id="tabs-how-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"today","howOpen":true,"howTo":"fold"}'><figcaption><b>A · Today</b>The fold opened under the list: the style's controls, then your speed.</figcaption></figure>
-      <figure class="fr phone" id="tabs-how-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style"}'><figcaption><b>B · A step of its own</b>From Style in the strip. Route style says that a change routes again.</figcaption></figure>
-      <figure class="fr phone" id="tabs-how-b-speed" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed"}'><figcaption><b>B · Your speed</b>From Speed in the strip: a change times the route again, and where the time goes is under it.</figcaption></figure>
-      <figure class="fr phone" id="tabs-how-multi" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed"}'><figcaption><b>B · MTB and paddling</b>Each sport's speed, the craft with Paddle; a stretch with its own style is a row to it.</figcaption></figure>
-    </div>
-    <h3 class="cv-sub">Desktops, and the worst cases (B)</h3>
-    <div class="cv-frames">
-      <figure class="fr desk" id="tabs-desk-a" data-st='{"stage":"route","uc":"day","tab":"check","wv":"v1","tabs":"today"}'><figcaption><b>A · Desktop, Check today</b>The strip above the groups.</figcaption></figure>
-      <figure class="fr desk" id="tabs-desk-b" data-st='{"stage":"route","uc":"day","tab":"route","calm":true,"wv":"v1","tabs":"new"}'><figcaption><b>B · Desktop, Route</b>The strip at Route's top, in the panel.</figcaption></figure>
-      <figure class="fr desk" id="tabs-desk-how" data-st='{"stage":"route","uc":"day","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style"}'><figcaption><b>B · Desktop, How you go</b>The same step in the panel, 36 px rows with a mouse.</figcaption></figure>
-      <figure class="fr phone" id="tabs-fi" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish</b>The strip's words wrap in their thirds; nothing is cut.</figcaption></figure>
-      <figure class="fr phone" id="tabs-fi-how" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish: How you go</b>The switches' words wrap inside them.</figcaption></figure>
-      <figure class="fr phone" id="tabs-200" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","z":2,"bodyTop":true}'><figcaption><b>200 %</b>The strip one to a row.</figcaption></figure>
-      <figure class="fr phone" id="tabs-200-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"new","z":2,"lday424":"today","lat424":"16:45","bodyTop":true}'><figcaption><b>200 %: Go</b>The time on two rows: the time across, − and + under it.</figcaption></figure>
-      <figure class="fr phone dark" id="tabs-dark-how" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed","theme":"dark"}'><figcaption><b>Dark: Your speed</b></figcaption></figure>
-    </div>
   </section>
 
-  <section class="cv-row" id="s0">
-    <h2>0 · Try it</h2>
-    <p>The whole way through, on a phone and a desktop: tap the map for a first point, try a round trip or tap again for a route, change the drawing mode, press Done, open More, swipe… (here: press the handle) for the sheet's sizes, and look at Check.</p>
-    <div class="cv-frames">
-      <figure class="fr phone" id="play-phone" data-st='{"stage":"start"}'><figcaption><b>Phone, 390 × 844</b>From an empty map. The handle steps the sheet through its sizes (in Polku it's the one swipe of #96).</figcaption></figure>
-      <figure class="fr desk" id="play-desk" data-st='{"stage":"start"}'><figcaption><b>Desktop, 1440 × 900</b>The same, with the toolbar on the panel's edge. Keys: P, S and W pick the drawing mode, Ctrl+Z and Ctrl+Shift+Z undo and redo, E is Done or Edit, F shows the whole route. Hover the toolbar for its tooltips.</figcaption></figure>
-    </div>
-  </section>
-
-  <section class="cv-row" id="s1">
-    <h2>1 · The toolbox: how the next leg is drawn</h2>
-    <p><b>Decided: one drop-down on phones; the labelled toolbar with tooltips on desktops.</b> <b>Two different ideas, two places.</b> The drawing mode is a tool: it decides how the <i>next</i> leg you draw is made, and leaves the drawn legs alone (a leg's own mode is changed by tapping it on the map, as today). The route style is a setting: it decides which ways Follow paths prefers, for the <i>whole</i> route, and changing it routes the route again. So the mode is the button, and the style is its second line, shown only for the modes it applies to; in the menu the modes are a list with what each does, and the styles a set of chips under "Route style · the whole route".</p>
+  <section class="cv-row" id="sd-v23">
+    <h3>D · Points and legs: V2 and V3 (not chosen)</h3>
+    <p>V1 was chosen on 2026-10-20. The <b>Points</b> switch at the bottom shows any frame in V2 or V3.</p>
     <ul>
-      <li><b>Phones:</b> one button with the mode's icon and name (never an icon alone), undo, redo and More (⋯), floating at the bottom left above the sheet. Where it can't clear the map's buttons (narrow phones, long words, 200 % zoom) or with the sheet raised high, it docks into the sheet as its first row instead. In the route's view only More stays.</li>
-      <li><b>Desktops:</b> the toolbar hangs off the panel's edge, one surface with it, so it reads as part of planning, not another floating panel. The three modes with their names, the style as its own labelled control, undo and redo; then the route's actions: Reverse, Back to start and Show the whole route as icons with tooltips; then More and Done. Tooltips give the key and one sentence; keyboard focus shows them too. With less room, Reverse and Back to start fold into More (they're there anyway), then the style's label goes. In the route's view the toolbar keeps Show the whole route, More and Edit.</li>
-      <li><b>States:</b> the mode in use is filled and ticked, not only coloured; undo and redo show from the first change and are disabled (not hidden) when there's nothing to undo or redo. <s>At the start there's nothing to show but the mode.</s> <b>Changed 2026-10-20: the toolbox grows with the route.</b> No toolbox before the first point (only undo and redo, while there's something to undo or redo); the first point brings the mode and More; the first leg the route's actions, where there's room. The frames here follow that.</li>
+      <li><b>V2, in the list:</b> the point's controls open under it in its section, as in the approved section 6.</li>
+      <li><b>V3, on the map:</b> the list only reads; Edit points turns it into reordering, renaming and removing; stops, sports and legs are changed from the map.</li>
     </ul>
     <div class="cv-frames">
-      <figure class="fr phone" id="tb-phone" data-st='{"stage":"route"}'><figcaption><b>Phone: drawing</b>The mode with its style, undo, redo. Tap the mode.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-calm" data-st='{"stage":"route","calm":true}'><figcaption><b>Nothing to read before you go</b>The peek is one row: about 91 % of the map in view, as in the first B. The row above the numbers comes only with something to read.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-menu" data-st='{"stage":"route","pop":"modes"}'><figcaption><b>The mode's menu</b>"Draw the next leg": each mode with what it does. Under it, apart, the route style for the whole route, as chips. A mode is two taps (one today); a style is two, as today.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-style" data-st='{"stage":"route","style":"flowy","toast":"style"}'><figcaption><b>A style picked</b>Flowy trails: the whole route is routed again, with Undo in a note; the mode's second line says the style.</figcaption></figure>
-      <figure class="fr phone" id="tb-phone-200" data-st='{"stage":"route","z":2}'><figcaption><b>At 200 % zoom</b>(a 390 phone is 195 px wide): the toolbox docks into the sheet, the numbers wrap, nothing is cut. The map's own buttons don't fit at this zoom: that's #73's to solve.</figcaption></figure>
-      <figure class="fr desk" id="tb-desk" data-st='{"stage":"route","tip":"line"}'><figcaption><b>Desktop: the toolbar on the panel's edge</b>Shown with Straight line's tooltip. Drawing on the left; Reverse, Back to start, Show the whole route; More and Done at the end. Clear stays in More. When the panel docks right or at the bottom (22b), the toolbar hangs off its inner edge the same way.</figcaption></figure>
-      <figure class="fr desk" id="tb-desk-tip" data-st='{"stage":"route","tip":"fit"}'><figcaption><b>Show the whole route's tooltip</b>F does the same. On phones it's in the map's column, under Locate, whenever a route is on the map.</figcaption></figure>
+      <figure class="fr phone" id="jd-v2" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v2","psel":4}'><figcaption><b>V2: in the list</b>The point's controls open in its section; the leg's in place of them.</figcaption></figure>
+      <figure class="fr phone" id="jd-v3" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v3"}'><figcaption><b>V3: the list reads</b>Changes are made on the map; Edit points for order and names.</figcaption></figure>
+      <figure class="fr phone" id="jd-v3e" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v3","pedit":true}'><figcaption><b>V3: Edit points</b>Drag, rename, remove; every point shows.</figcaption></figure>
     </div>
   </section>
 
-  <section class="cv-row" id="s2">
-    <h2>2 · Round trips, in the peek</h2>
-    <p><b>As built in 25b and #339.</b> After the first point, the peek says to tap the map for the next point. Under it, a round trip from here offers three lengths and Other…. A length opens the form with that length picked, and nothing is routed yet. Make 3 loops says what it costs. While the loops are made, the map waits and the form folds.</p>
+  <section class="cv-row" id="s-replaced">
+    <h3>Frames from B and 5 that later decisions replaced</h3>
+    <p>Drawn as they were approved, greyed, with what replaced them above each caption.</p>
     <div class="cv-frames">
-      <figure class="fr phone" id="rt-first" data-st='{"stage":"first"}'><figcaption><b>Right after the first point</b>The next point comes first, with a round trip from here under it. ✕ closes the planner.</figcaption></figure>
-      <figure class="fr phone" id="rt-form" data-st='{"stage":"first","rt":{"open":true,"val":20}}'><figcaption><b>A length picked</b>The form opens with 20 km chosen. Make 3 loops says what it costs.</figcaption></figure>
-      <figure class="fr phone" id="rt-other" data-st='{"stage":"first","rt":{"open":true,"val":25,"other":true}}'><figcaption><b>Another length</b>Other… opens a field with − and +.</figcaption></figure>
-      <figure class="fr phone" id="rt-time" data-st='{"stage":"first","rt":{"open":true,"unit":"time","val":90}}'><figcaption><b>By time</b>Time shows the lengths in hours and minutes.</figcaption></figure>
-      <figure class="fr phone" id="rt-making" data-st='{"stage":"first","rt":{"open":true,"val":20,"making":2}}'><figcaption><b>Making the loops</b>The map waits, and the form folds to what's being made.</figcaption></figure>
-      <figure class="fr phone" id="rt-results" data-st='{"stage":"loops","rt":{"open":true,"val":10,"results":true,"pick":0}}'><figcaption><b>Three loops</b>Cards side by side, the next one peeking in. A tap on a card or its line picks it.</figcaption></figure>
-      <figure class="fr desk" id="rt-desk" data-st='{"stage":"first","rt":{"open":true,"val":20}}'><figcaption><b>Desktop</b>The same form in the panel, with four lengths.</figcaption></figure>
-    </div>
-  </section>
-
-  <section class="cv-row" id="s3">
-    <h2>3 · More (⋯), for the whole route</h2>
-    <p><b>Decided: More (⋯),</b> familiar, compact, and not tied to one kind of action. It's the last button of the toolbox on phones (beside the drawing tools, not in the route's summary) and of the toolbar on desktops; in the route's view it stays there, the drawing tools gone. Grouped by what it's for: <b>take it along</b> (a share link, a GPX file, the map saved for no signal), <b>the whole route</b> (a round trip from the start, reverse, back to start, a file to plan on), and <b>Clear route</b> apart, in red, after a gap, with Undo. Its head says the route is kept on this device. What's also somewhere else, on purpose: Take it along in Go, Reverse and Back to start in Route's tools (and the desktop toolbar), Import at the start. Moving the panel stays with the panel (22b).</p>
-    <div class="cv-frames">
-      <figure class="fr phone" id="trip-phone" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Phone</b>⋯ at the toolbox's end; the menu opens upward from it, clear of the map's buttons.</figcaption></figure>
-      <figure class="fr phone" id="trip-clear" data-st='{"stage":"start","toast":"cleared","hist":1}'><figcaption><b>After Clear route</b>The start again, with Undo in a note and in the toolbox. Nothing asks first: Undo is the safety.</figcaption></figure>
-      <figure class="fr desk" id="trip-desk" data-st='{"stage":"route","pop":"trip"}'><figcaption><b>Desktop</b>⋯ at the toolbar's end, beside Done; the menu opens under it.</figcaption></figure>
-    </div>
-  </section>
-
-  <section class="cv-row" id="s4">
-    <h2>4 · Done, the route's view, and coming back</h2>
-    <p><b>As built in 25c.</b> Done ends editing. The route stays open to read, check and take along: this is the route's view. A tap on the map shows what's there instead of adding a point. Edit, where Done was, goes back to drawing. ✕ puts the planner away, and Plan opens it again as it was left. Nothing is lost: the route is kept on this device, and undo outlives Done.</p>
-    <table class="cv-t">
-      <thead><tr><th>Someone wants to…</th><th>Today</th><th>In this design</th></tr></thead>
-      <tbody>
-        <tr><td>stop drawing and look at the map</td><td>Done (the planner closes)</td><td>Done: the route's view; map taps inspect the map</td></tr>
-        <tr><td>save the route</td><td>nothing to do (the last route is kept), but nothing says so</td><td>the same, and More and the view say "kept on this device"; Save offline is for no signal</td></tr>
-        <tr><td>get ready to go</td><td>Go: departure, weather, Take it along</td><td>the same Go, from the view as from editing; later (23b) Start in Go and in the view</td></tr>
-        <tr><td>change their mind</td><td>Plan, then edit</td><td>Edit (one tap, where Done was)</td></tr>
-        <tr><td>close by accident</td><td>Plan reopens it; after a reload the planner is closed (#238)</td><td>a note with Open; Plan reopens it as it was left, after a reload too (#238)</td></tr>
-        <tr><td>come back to an earlier route</td><td>the last one is back; others only through an offline area, a link or a GPX</td><td>the same now; later, Your routes (#157) at the start and in More</td></tr>
-      </tbody>
-    </table>
-    <div class="cv-frames">
-      <figure class="fr phone" id="fin-edit" data-st='{"stage":"route"}'><figcaption><b>Editing</b>Done sits at the right of the route's numbers, where the thumb is.</figcaption></figure>
-      <figure class="fr phone view" id="fin-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>After Done: the route's view</b>The route's name, its sports and Kept on this device sit above the numbers, with ✕. Edit is where Done was, and only More stays in the toolbox.</figcaption></figure>
-      <figure class="fr phone view" id="fin-view-go" data-st='{"stage":"route","mode":"view","sheet":"half","tab":"go"}'><figcaption><b>The view, getting ready</b>Go works as it does while editing.</figcaption></figure>
-      <figure class="fr phone closed" id="fin-closed" data-st='{"stage":"route","mode":"closed","toast":"closed"}'><figcaption><b>Put away</b>✕ leaves the route on the map, with a note and Open. Plan opens the planner as it was left.</figcaption></figure>
-      <figure class="fr phone" id="fin-later" data-st='{"stage":"start","later":true}'><figcaption><b>Later: your routes</b>When #157 is built, the start lists the routes kept on this device.</figcaption></figure>
-      <figure class="fr desk view" id="fin-desk-view" data-st='{"stage":"route","mode":"view"}'><figcaption><b>Desktop: the route's view</b>The toolbar keeps Show the whole route, More and Edit. Plan in the map's column stays pressed while the planner is open.</figcaption></figure>
-      <figure class="fr desk closed" id="fin-desk-closed" data-st='{"stage":"route","mode":"closed","toast":"closed"}'><figcaption><b>Desktop: put away</b>The note sits at the bottom of the map. Plan in the column is no longer pressed.</figcaption></figure>
-    </div>
-  </section>
-
-  <section class="cv-row" id="s5">
-    <h2>5 · Check: how serious, and how sure</h2>
-    <p>A count alone doesn't say whether to worry. Check sorts what's already found into three groups, each with its own icon, word and shape (never colour alone): <b>Read before you go</b> (what can hurt, stop you or turn you back: shipping lanes, rough water, ice, the dark, road works, no access), <b>Worth a look</b> (sections to know about: steep, technical, carries, steps, ways marked private, trail details), and <b>Not checked</b> (a source that didn't answer, an estimate standing in). Each item says where it comes from: <i>live</i>, <i>from the map</i> (may be wrong), an <i>estimate</i>, or <i>calculated</i>. The end of Check says what was looked at, and that nothing listed doesn't mean open, safe or allowed. The tab's badge and a row in the peek follow the most serious group. Nothing new is checked: these are today's Heads-up items, sorted.</p>
-    <div class="cv-frames">
-      <figure class="fr phone" id="chk-phone" data-st='{"stage":"route","sheet":"half","tab":"check"}'><figcaption><b>Check, MTB</b>One to read before you go (road works, live), four worth a look; a way marked private says what that means in Finland.</figcaption></figure>
-      <figure class="fr phone" id="chk-paddle" data-st='{"stage":"route","sport":"paddle","sheet":"half","tab":"check"}'><figcaption><b>Check, paddle</b>A shipping lane and rough water first; rocks from OpenStreetMap didn't answer, so the route says it wasn't checked for them.</figcaption></figure>
+      <figure class="fr phone" id="jb-settings" data-replaced="by Settings without a sport, #321 (2026-10-20)" data-st='{"stage":"route","calm":true,"settings":true,"map":"hike","next":"hike"}'><figcaption><b>Settings</b>The sports with their names (#237); the speeds for the sport picked above them (#87), and when the route's time follows them.</figcaption></figure>
+      <figure class="fr phone" id="jb-nl-water" data-replaced="by the note that asks how you get there (B, 2026-10-20)" data-st='{"stage":"route","calm":true,"map":"hike","next":"hike","toast":"onwater"}'><figcaption><b>A point on the water, the next leg Hike</b>"On the water? Paddle from here (sea kayak) · Keep Hike". Not on bridges, ferries or a tap on the shoreline.</figcaption></figure>
       <figure class="fr phone" id="chk-peek" data-replaced="by C, the warning on the route (2026-10-20)" data-st='{"stage":"route","sport":"paddle"}'><figcaption><b>The peek, paddle</b>A row says there's something to read before you go, in words, and opens Check. It's there only then. (Since C, the row shows the item on the route instead, with ‹ › and Back, and it's there for what wasn't checked too: section C.)</figcaption></figure>
-      <figure class="fr desk" id="chk-desk" data-st='{"stage":"route","tab":"check"}'><figcaption><b>Desktop</b>The same groups in the panel.</figcaption></figure>
     </div>
   </section>
 
   <section class="cv-row" id="s6">
-    <h2>6 · Waypoints, and long routes</h2>
+    <h3>6 · Waypoints, and long routes</h3>
     <p class="replaced-note"><b>Replaced on 2026-10-20 by D</b> (points and legs, V1 refined): the list as sections, a card for a point or a stretch, Reorder. The selected row with its controls below is the design of 2026-10-18, kept for the record: build 25d's waypoints from section D, not from here.</p>
     <p>Only the selected point has buttons: its name, its stop, the leg after it (today's leg editor: its sport, how it's drawn and its style, each the route's unless set here), move earlier or later or to a number, and Remove, last and apart. The buttons are small to look at and 44 px to touch. The other rows are one button each: tap to select. There's no Remove on them, so a tap meant for a row never deletes. For long routes: a search, Key points (start, finish, stops, changes of sport, named points, legs of their own) or All, a bar that keeps the selected point in sight with previous and next, and Undo for every change. The map and the list select together: a tap on a marker selects its row.</p>
     <div class="cv-frames">
@@ -1595,21 +1746,8 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
     </div>
   </section>
 
-  <section class="cv-row" id="s7">
-    <h2>7 · The worst cases</h2>
-    <p>The same frames with the worst case on: long Finnish and Swedish words, a 123 km route of 52 points with seven hours of time, many warnings, a narrow phone, 200 % zoom, dark. Use the switches at the bottom on any frame too.</p>
-    <div class="cv-frames">
-      <figure class="fr phone" id="st-360" data-st='{"stage":"route","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish, worst case</b>The numbers wrap onto their own line; the toolbox still clears the map's buttons.</figcaption></figure>
-      <figure class="fr phone" id="st-360-menu" data-st='{"stage":"route","w":360,"h":740,"lang":"fi","worst":true,"pop":"modes"}'><figcaption><b>The mode's menu in Finnish at 360</b>Long words wrap; nothing is cut off.</figcaption></figure>
-      <figure class="fr phone" id="st-200-half" data-st='{"stage":"route","z":2,"sheet":"half","tab":"check","worst":true}'><figcaption><b>200 % zoom, Check</b>Everything stacks; the sheet scrolls.</figcaption></figure>
-      <figure class="fr phone dark" id="st-dark" data-st='{"stage":"route","sheet":"half","tab":"check","worst":true,"theme":"dark"}'><figcaption><b>Dark, worst case</b>The groups keep their shapes and icons.</figcaption></figure>
-      <figure class="fr phone" id="st-sv-rt" data-st='{"stage":"first","rt":{"open":true,"val":20},"lang":"sv","w":360,"h":740}'><figcaption><b>Swedish, the round trip at 360</b></figcaption></figure>
-      <figure class="fr desk" id="st-desk-fi" data-st='{"stage":"route","lang":"fi","worst":true,"tab":"check"}'><figcaption><b>Desktop, Finnish, worst case</b>With less room, Reverse and Back to start fold into More first, then the style's caption goes; the modes keep their names.</figcaption></figure>
-    </div>
-  </section>
-
   <section class="cv-row" id="s8">
-    <h2>8 · Today, for comparison</h2>
+    <h3>8 · Today, for comparison</h3>
     <p>The real planner (screenshots at 20f0310; the peek is the same on main at 82e276d, since #249 changed only how the sheet moves).</p>
     <div class="cv-frames">
       <figure class="fr phone" id="today-peek" data-fixed="phone-mtb-peek"><figcaption><b>Today: peek</b>Three rows, 12–13 controls at 28–37 px.</figcaption></figure>
@@ -1618,18 +1756,50 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr desk" id="today-desk" data-fixed="desk-mtb"><figcaption><b>Today: desktop</b>Three ways to close the planner; the colour, the sport, Round trip and the style twice.</figcaption></figure>
     </div>
   </section>
+
+  <section class="cv-q" aria-labelledby="notes-h">
+    <h3 id="notes-h">The page's notes, as they were written</h3>
+    <p><b>Updated 2026-10-21 to what's built.</b> The start, the round trip, the first point's peek and the route's view look as #335, #339 and #342 built them. Frames that later decisions replaced are marked Replaced.</p>
+    <p><b>Revised 2026-10-20:</b> sections A to C, below the decisions, follow three journeys (start or find a route, the sport and what it changes, a warning found on the route). What a sport change does (section B) was decided the same day: option A, ask. The rest are proposals for the user to choose; the plan's “Revised journeys” section says why and what each closes.</p>
+    <p>2026-10-17. Builds on phase 24's review and the choices made from its first mock-up (B: the tools float, a one-row peek, only the selected waypoint's buttons). The reasons, the plan to build it and what Done means are in <code>docs/plans/issue-233-calmer-planner.md</code>. Not wired to the app: the map behind each frame is a screenshot of Polku with its controls hidden.</p>
+    <p><b>Final, 2026-10-17:</b> the layout and the interactions here are decided. <b>What's drawn simply on purpose</b> (the profile, Climbs, On the route, On the map, Go's time and the weather along the route, and parts of the leg editor) stays exactly as Polku has it today: the mock-up shows where things go, not everything in them. The plan lists what changes, what moves and what stays as it is.</p>
+  </section>
+
+  <section class="cv-q" aria-labelledby="rules-h">
+    <h3 id="rules-h">What's decided</h3>
+    <ol>
+      <li><b>Drawing and routing told apart.</b> The toolbox holds how the <i>next leg</i> is drawn (Follow paths, Straight line, Over water), undo, redo and More. The route style (Balanced, Flowy trails…) is a setting of the <i>whole route</i>: it shows under Follow paths, because it's what Follow paths prefers, and has its own labelled group of chips. Phones: one drop-down. Desktops: a labelled toolbar on the panel's edge, with tooltips and keys, and the route's actions at its end: Reverse, Back to start, Show the whole route, More, Done.</li>
+      <li><b>Round trips in the peek</b> after the first point: presets one tap away, any distance or time, then a green <b>Make 3 loops</b>. Nothing on the map; a tap on the map still adds the next point.</li>
+      <li><b>More (⋯)</b> for the whole route, at the end of the toolbox and the toolbar: take it along, change the whole route, and Clear apart. The route's summary shows the route.</li>
+      <li><b>Done means done editing.</b> The route stays open to read, check and take along (the route's view); Edit goes back, in the same place. ✕ puts it away; nothing is lost either way. Phones: Done at the summary's right, at the thumb; desktops: at the toolbar's end.</li>
+      <li><b>Show the whole route</b> is always there while a route is on the map: in the map's column under Locate on phones, in the toolbar on desktops (and F).</li>
+      <li><b>Check by how serious and how sure:</b> Read before you go, Worth a look, Not checked, and where each comes from.</li>
+      <li><b>Waypoints:</b> only the selected one has buttons, no Remove on the others; finding, stepping, moving and undoing in lists of 50 and more. <i>Replaced on 2026-10-20 by D (points and legs, V1 refined).</i></li>
+    </ol>
+  </section>
+
+  <section class="cv-q" aria-labelledby="rev-h">
+    <h3 id="rev-h">Revised 2026-10-20: three journeys, for the user to choose</h3>
+    <p>After 25a (#302), a review of the whole interface asked that everyday tasks explain themselves, without a tour. Sections A to C below follow three journeys through it, with the map, Layers, Settings and the timeline where they matter. All were <b>decided on 2026-10-20</b> (B: option A; C: the item on the route; D: V1, refined), and A was built with 25b (#309); where they differ from sections 0 to 8, they replace them, and those frames are marked <b>Replaced</b>. Sections 0 to 8 are the design approved on 2026-10-18, kept as they were (25a built 1 and part of 3, with the route's actions on the toolbar by width and the timeline over the map while planning).</p>
+    <ol>
+      <li><b>A · Start or find a route:</b> the four ways Polku has today (draw it, a round trip, a marked route from LIPAS, a file) in the peek, not only after raising the sheet; marked routes in view as cards, like the loops'.</li>
+      <li><b>B · The sport, and what it changes:</b> the menu says what each sport shows; with a route drawn, it asks whether the whole route changes or only the legs drawn next. The toolbox keeps saying which sport the next leg is. <b>Decided 2026-10-20: option A</b> (ask); the switch at the bottom still shows the options not taken (B: next legs only; C: the whole route).</li>
+      <li><b>C · A warning: notice it, find it, come back:</b> a row in the peek for what to read before you go and what wasn't checked; a marker on the route for each; a tap shows it on the route with ‹ › along it and <b>Back</b> to where you were. <b>Decided 2026-10-20</b>: this replaces "the row opens Check" of section 5.</li>
+    </ol>
+    <p><b>Added 2026-10-23, to choose (#424):</b> <a href="#se">section E</a> lists what goes in Route, Check and Go, as the app has it and as proposed, and draws How you go as a step of its own. The <b>Tabs</b> switch at the bottom shows A, today; B, the strip moved to Route; or C, redrawn from the user's notes and chosen on 2026-10-24 (the default here); nothing earlier is changed.</p>
+  </section>
 </main>
 
 <nav class="picker" aria-label="Mock-up switches" data-open="false">
-  <button type="button" class="pk-toggle" aria-expanded="false" aria-controls="pk-groups">Switches: cards and lists, worst case, words, theme</button>
+  <button type="button" class="pk-toggle" aria-expanded="false" aria-controls="pk-groups">Switches: each starts on what's chosen</button>
   <div class="pk-groups" id="pk-groups">
   <div role="group" aria-label="Data"><span>Data</span><button type="button" data-o="worst" data-v="0">Normal</button><button type="button" data-o="worst" data-v="1">Worst case</button></div>
   <div role="group" aria-label="Language"><span>Words</span><button type="button" data-o="lang" data-v="en">EN</button><button type="button" data-o="lang" data-v="fi">FI</button><button type="button" data-o="lang" data-v="sv">SV</button></div>
   <div role="group" aria-label="Theme"><span>Theme</span><button type="button" data-o="theme" data-v="light">Light</button><button type="button" data-o="theme" data-v="dark">Dark</button></div>
-  <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask (decided)</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
-  <div role="group" aria-label="Cards and lists in C and D"><span>Cards and lists</span><button type="button" data-o="look" data-v="v1">As approved</button><button type="button" data-o="look" data-v="r5">Revision 5 (chosen)</button></div>
+  <div role="group" aria-label="A sport change, with a route drawn"><span>Sport change</span><button type="button" data-o="sport" data-v="ask">A: ask (chosen)</button><button type="button" data-o="sport" data-v="next">B: next legs</button><button type="button" data-o="sport" data-v="all">C: whole route</button></div>
+  <div role="group" aria-label="Cards and lists in C and D"><span>Cards and lists</span><button type="button" data-o="look" data-v="v1">As first approved</button><button type="button" data-o="look" data-v="r5">Revision 5 (chosen)</button></div>
   <div role="group" aria-label="Check's items, in Revision 5"><span>Check’s items</span><button type="button" data-o="check" data-v="a">A: rows</button><button type="button" data-o="check" data-v="c">C: Read as boxes (chosen)</button></div>
-  <div role="group" aria-label="Marking warnings read"><span>Marking read</span><button type="button" data-o="read" data-v="off">Off (as approved)</button><button type="button" data-o="read" data-v="on">On (to choose)</button></div>
+  <div role="group" aria-label="Marking warnings read"><span>Marking read</span><button type="button" data-o="read" data-v="off">Off (as first approved)</button><button type="button" data-o="read" data-v="on">On (chosen)</button></div>
   <div role="group" aria-label="The tabs' contents and How you go (#424)"><span>Tabs (#424)</span><button type="button" data-o="tabs" data-v="today">A: today</button><button type="button" data-o="tabs" data-v="new">B: the strip</button><button type="button" data-o="tabs" data-v="c">C: two rows, every section (chosen)</button></div>
   <div role="group" aria-label="Each sport's key facts, in the tabs' C"><span>Key facts</span><button type="button" data-o="facts" data-v="none">Nowhere (C's tabs alone)</button><button type="button" data-o="facts" data-v="stand">A2: a line, what stands out (chosen)</button><button type="button" data-o="facts" data-v="line">A: a line, one fact by sport</button><button type="button" data-o="facts" data-v="check">B: Check's top</button><button type="button" data-o="facts" data-v="num">C: a fourth number</button></div>
   <div role="group" aria-label="Points and legs"><span>Points</span><button type="button" data-o="wv" data-v="v1">V1: card (chosen)</button><button type="button" data-o="wv" data-v="v2">V2: in the list</button><button type="button" data-o="wv" data-v="v3">V3: on the map</button></div>
@@ -1658,12 +1828,12 @@ const OPT = {
   sport: ['ask', 'next', 'all'].includes(Q.get('sport')) ? Q.get('sport') : 'ask',
   // iteration 2: how points and legs are kept (V1 sections and a card, V2 sections editing in place, V3 read here, edit on the map)
   wv: ['v1', 'v2', 'v3'].includes(Q.get('pts')) ? Q.get('pts') : 'v1',
-  // 2026-10-22: C and D as approved (v1), or with the map cards' Revision 5 parts (r5, for the user's choice)
+  // 2026-10-22: C and D as approved (v1), or with the map cards' Revision 5 parts (r5, chosen on 2026-10-22)
   look: Q.get('look') === 'v1' ? 'v1' : 'r5',
   // 2026-10-22, chosen: in Revision 5's Check, Read before you go's items are red boxes, the rest rows (c); a, rows for all, to compare
   check: Q.get('check') === 'a' ? 'a' : 'c',
-  // 2026-10-23, for the user's choice: marking warnings read (✕ on the row marks all, Got it on a card, All read in Check);
-  // off: the row as approved
+  // 2026-10-23, chosen and built in #416: marking warnings read (✕ on the row marks all, Got it on a card, All read in Check);
+  // off: the row as first approved
   read: Q.get('read') === 'off' ? 'off' : 'on',
   // 2026-10-23, for the user's choice (#424): the tabs as they are (today) or as proposed (new), and How you go
   tabs: ['today', 'new'].includes(Q.get('tabs')) ? Q.get('tabs') : 'c', // (2026-10-24: C, redrawn from the user's notes, chosen)
@@ -3961,8 +4131,8 @@ function renderAll() {
   for (const f of FR.values()) render(f);
 }
 const PK = document.querySelector('.picker'), PKT = PK.querySelector('.pk-toggle');
-const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: cards and lists, worst case, words, theme, sport change'; };
-pkOpen(innerWidth >= 1100);
+const pkOpen = (on) => { PK.dataset.open = String(on); PKT.setAttribute('aria-expanded', String(on)); PKT.textContent = on ? 'Hide the switches' : 'Switches: each starts on what\'s chosen'; };
+pkOpen(false); // folded, so the overview at the top is whole (2026-10-24)
 PKT.addEventListener('click', () => pkOpen(PK.dataset.open !== 'true'));
 document.querySelector('.picker').addEventListener('click', (e) => {
   const b = e.target.closest('[data-o]');
@@ -3979,6 +4149,8 @@ document.querySelector('.picker').addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') for (const f of FR.values()) if (f.st.pop) { f.st.pop = null; f.st.sp = null; f.st.spPick = null; render(f); } });
 renderAll();
+// a long list opens at its selected point, which scrolls the page too: the page opens at its top, or at what its link names
+if (!only) { const t = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1))); if (t) t.scrollIntoView(); else scrollTo(0, 0); }
 </script>
 </body>
 </html>
