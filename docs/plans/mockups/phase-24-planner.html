@@ -1132,6 +1132,15 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .kfcheck { margin-top: 6px; }
 /* C: a fourth number, beside the route's own (it wraps where there's no room, as the numbers do) */
 .stats .kfnum b { font-size: 18px; }
+/* A2 (2026-10-24, second round): the same line, showing what stands out on this route, else the sport's usual fact. A route
+   of two sports gets a row for each, a small list under the numbers: the sport's icon, its name, distance and own fact */
+.kf424.legs { flex-direction: column; align-items: stretch; gap: 0; margin: -6px 0 2px; }
+.kf424.legs .kfb { margin: 0; }
+.kf424.legs .kfb > span { flex: 1 1 auto; min-width: 0; }
+.kf424.legs .kfb > .ic:first-child { color: var(--accent); }
+.kf424.legs .kfb .kfd { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* a part of the list the line opened: lit, as a climb's row is */
+.sec2.lit { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 </style>
 </head>
 <body>
@@ -1418,9 +1427,30 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone dark" id="tabs-c-dark-layers" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","layersC":true,"theme":"dark"}'><figcaption><b>C · Dark: Layers</b></figcaption></figure>
     </div>
     <h3 class="cv-sub">Each sport's key facts (2026-10-24, to choose)</h3>
-    <p>The strip that C removes held each sport's own facts, not only the hardest climb. For paddling it shows Headwind and Strongest wind, and Carry ascent; for MTB, gravel and road the hardest climb; for walking and running the high point. C gave a new place only to Speed, Style and the hardest climb. The <b>Key facts</b> switch at the bottom shows where the rest could go. <b>A, recommended:</b> one line of words under the route's numbers, always in sight, even at the peek. It holds one fact, the one this route can't do without: a water leg's wind, else the hardest climb on a bike or the high point on foot. A tap opens where it's told in full, and Check's top keeps them all. <b>B:</b> at the top of Check, as the strip is today, without Speed and Style. <b>C:</b> a fourth number beside the route's own.</p>
+    <p>The strip that C removes held each sport's own facts, not only the hardest climb. For paddling it shows Headwind and Strongest wind, and Carry ascent; for MTB, gravel and road the hardest climb; for walking and running the high point. C gave a new place only to Speed, Style and the hardest climb. The <b>Key facts</b> switch at the bottom shows where the rest could go. <b>A2, recommended:</b> one line under the route's numbers, always in sight, even at the peek, showing what stands out on this route, else the sport's usual fact. A tap opens where it's told in full, and Check's top keeps them all. <b>A:</b> the same line with one fact chosen by the sport alone (the first round). <b>B:</b> at the top of Check, as the strip is today, without Speed and Style. <b>C:</b> a fourth number beside the route's own.</p>
+    <p><b>What stands out (A2).</b> The three numbers already say how hard the route is: the time counts the climbs, the surface, a bike's headwind and your speed. So the line says why, or what could make the day differ from the numbers. It shows the first of these that stands out: what can change whether you go (a water leg's wind, always; rain on the way), then what changes how long (a headwind that adds 15 min or a tenth of the time), then the hardest bit (unpaved on a road bike, a trail grade above the route's style, a climb steep enough to walk). When nothing does, it shows the sport's usual fact: the hardest climb on a bike, the high point on foot. The thresholds are proposals. Weather that can't be judged yet is said beside it, never taken as nothing standing out. <b>A route of two sports</b> gets a row for each, since its totals mix them: the sport, its distance and its own fact (its climbing, or a water leg's wind); a sport with two legs shows them together, and the list has each leg. A tap opens that part in the list. <b>A trip of several days</b> names its hardest day.</p>
     <div class="cv-frames">
-      <figure class="fr phone" id="kf-paddle" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · Paddling (recommended)</b>Wind up to 10 m/s, gusts 14, headwind 49 %, under the numbers at the peek; a tap opens the weather along the route.</figcaption></figure>
+      <figure class="fr phone" id="kf2-gravel" data-st='{"stage":"route","uc":"gravel","sport":"gravel","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · A long gravel ride (recommended)</b>118 km. The headwind from Orivesi adds 25 min to the time, so it stands out; a tap opens the weather along the route.</figcaption></figure>
+      <figure class="fr phone" id="kf2-gravel-calm" data-st='{"stage":"route","uc":"gravel","sport":"gravel","wv":"v1","tabs":"c","facts":"stand","calm2":true}'><figcaption><b>A2 · Nothing stands out</b>A light wind adds 3 min: the line shows the usual fact, the hardest climb.</figcaption></figure>
+      <figure class="fr phone" id="kf2-gravel-nofc" data-st='{"stage":"route","uc":"gravel","sport":"gravel","wv":"v1","tabs":"c","facts":"stand","leaveC":"2026-11-28T07:30"}'><figcaption><b>A2 · Past the forecast</b>The usual fact, and the weather said to be missing, so the line never looks calm by default.</figcaption></figure>
+      <figure class="fr phone" id="kf2-gravel-check" data-st='{"stage":"route","uc":"gravel","sport":"gravel","wv":"v1","tabs":"c","facts":"stand","sheet":"half","tab":"check"}'><figcaption><b>A2 · Check keeps them all</b>Headwind +25 min, Unpaved 74 km and the hardest climb at its top.</figcaption></figure>
+      <figure class="fr phone" id="kf2-multi" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · MTB and paddling, a row each</b>The totals mix the two, so each sport gets its distance and its own fact: the ride's climbing, the paddle's wind.</figcaption></figure>
+      <figure class="fr phone" id="kf2-multi-tap" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand","sheet":"half","tab":"route","kfSec":1,"wxOpen":{"1":true},"scrollC":"section.sec2:nth-of-type(2)"}'><figcaption><b>A2 · After a tap on Paddle</b>Its part of the list, lit, with its weather open.</figcaption></figure>
+      <figure class="fr phone" id="kf2-multi-nofc" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand","leaveC":"2026-11-28T07:30"}'><figcaption><b>A2 · Two sports, past the forecast</b>The paddle's row says the wind isn't known yet.</figcaption></figure>
+      <figure class="fr phone" id="kf2-days" data-st='{"stage":"route","uc":"days","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · Three days on foot</b>The hardest day: day 2, 21.5 km, ↑510 m.</figcaption></figure>
+      <figure class="fr phone" id="kf2-days-tap" data-st='{"stage":"route","uc":"days","wv":"v1","tabs":"c","facts":"stand","sheet":"half","tab":"route","kfSec":1,"scrollC":"section.sec2:nth-of-type(2)"}'><figcaption><b>A2 · After the tap</b>Day 2 in the list, lit.</figcaption></figure>
+      <figure class="fr phone" id="kf2-paddle" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · Paddling</b>On the water the wind always stands out: as A.</figcaption></figure>
+      <figure class="fr phone" id="kf2-mtb" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · A short MTB ride</b>Nothing stands out: the hardest climb, as A.</figcaption></figure>
+      <figure class="fr desk" id="kf2-desk" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · Desktop, two sports</b>The rows under the numbers in the panel.</figcaption></figure>
+      <figure class="fr desk" id="kf2-desk-gravel" data-st='{"stage":"route","uc":"gravel","sport":"gravel","wv":"v1","tabs":"c","facts":"stand"}'><figcaption><b>A2 · Desktop, the gravel ride</b></figcaption></figure>
+      <figure class="fr phone" id="kf2-multi-fi" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>A2 · 360 × 740, Finnish</b>Long sport names; the facts wrap in their rows.</figcaption></figure>
+      <figure class="fr phone" id="kf2-gravel-fi" data-st='{"stage":"route","uc":"gravel","sport":"gravel","wv":"v1","tabs":"c","facts":"stand","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>A2 · The gravel ride in Finnish at 360</b></figcaption></figure>
+      <figure class="fr phone" id="kf2-200" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand","z":2}'><figcaption><b>A2 · 200 %</b></figcaption></figure>
+      <figure class="fr phone dark" id="kf2-dark" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"stand","theme":"dark"}'><figcaption><b>A2 · Dark</b></figcaption></figure>
+    </div>
+    <h3 class="cv-sub">Key facts, the first round: A, B and C</h3>
+    <div class="cv-frames">
+      <figure class="fr phone" id="kf-paddle" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · Paddling</b>Wind up to 10 m/s, gusts 14, headwind 49 %, under the numbers at the peek; a tap opens the weather along the route.</figcaption></figure>
       <figure class="fr phone" id="kf-mtb" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · MTB</b>The hardest climb; a tap shows it in Climbs.</figcaption></figure>
       <figure class="fr phone" id="kf-multi" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · MTB and paddling</b>The water's wind comes first; the ride's hardest climb is in Climbs.</figcaption></figure>
       <figure class="fr phone" id="kf-hike" data-st='{"stage":"route","uc":"days","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · Three days on foot</b>The high point.</figcaption></figure>
@@ -1601,7 +1631,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <div role="group" aria-label="Check's items, in Revision 5"><span>Check’s items</span><button type="button" data-o="check" data-v="a">A: rows</button><button type="button" data-o="check" data-v="c">C: Read as boxes (chosen)</button></div>
   <div role="group" aria-label="Marking warnings read"><span>Marking read</span><button type="button" data-o="read" data-v="off">Off (as approved)</button><button type="button" data-o="read" data-v="on">On (to choose)</button></div>
   <div role="group" aria-label="The tabs' contents and How you go (#424)"><span>Tabs (#424)</span><button type="button" data-o="tabs" data-v="today">A: today</button><button type="button" data-o="tabs" data-v="new">B: the strip</button><button type="button" data-o="tabs" data-v="c">C: two rows, every section (chosen)</button></div>
-  <div role="group" aria-label="Each sport's key facts, in the tabs' C"><span>Key facts</span><button type="button" data-o="facts" data-v="none">As chosen: nowhere</button><button type="button" data-o="facts" data-v="line">A: a line under the numbers (recommended)</button><button type="button" data-o="facts" data-v="check">B: Check's top</button><button type="button" data-o="facts" data-v="num">C: a fourth number</button></div>
+  <div role="group" aria-label="Each sport's key facts, in the tabs' C"><span>Key facts</span><button type="button" data-o="facts" data-v="none">As chosen: nowhere</button><button type="button" data-o="facts" data-v="stand">A2: a line, what stands out (recommended)</button><button type="button" data-o="facts" data-v="line">A: a line, one fact by sport</button><button type="button" data-o="facts" data-v="check">B: Check's top</button><button type="button" data-o="facts" data-v="num">C: a fourth number</button></div>
   <div role="group" aria-label="Points and legs"><span>Points</span><button type="button" data-o="wv" data-v="v1">V1: card (chosen)</button><button type="button" data-o="wv" data-v="v2">V2: in the list</button><button type="button" data-o="wv" data-v="v3">V3: on the map</button></div>
   </div>
 </nav>
@@ -1637,8 +1667,9 @@ const OPT = {
   read: Q.get('read') === 'off' ? 'off' : 'on',
   // 2026-10-23, for the user's choice (#424): the tabs as they are (today) or as proposed (new), and How you go
   tabs: ['today', 'new'].includes(Q.get('tabs')) ? Q.get('tabs') : 'c', // (2026-10-24: C, redrawn from the user's notes, chosen)
-  // 2026-10-24, to choose: where each sport's key facts go in C (A a line under the numbers, B Check's top, C a fourth number)
-  facts: ['check', 'num', 'none'].includes(Q.get('facts')) ? Q.get('facts') : 'line',
+  // 2026-10-24, to choose: where each sport's key facts go in C (A2 a line of what stands out, recommended; A a line, one
+  // fact by sport; B Check's top; C a fourth number)
+  facts: ['line', 'check', 'num', 'none'].includes(Q.get('facts')) ? Q.get('facts') : 'stand',
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
 
@@ -2296,10 +2327,10 @@ function checkBody(st, v) {
   // (every group, chosen 2026-10-23: one way to mark read, everywhere)
   const allRead = (cls, list) => (v.read === 'on' && list.some((w, i) => !isRead(st, v, { g: cls, i })) ? `<button type="button" class="btn small quiet rr-all" data-act="rallread" data-v="${cls}">${ic('check', 16)}${t('allRead')}</button>` : '');
   const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span>${allRead(cls, list)}</h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
-  const sum = v.tabs === 'c' ? (v.facts === 'check' || v.facts === 'line' ? factsCheck424(st) : '') : v.tabs === 'new' ? '' : strip424(st, v, false); // (#424: today the strip opens Check; proposed, it's Route's)
+  const sum = v.tabs === 'c' ? (v.facts === 'check' || v.facts === 'line' ? factsCheck424(st) : v.facts === 'stand' ? factsCheck424(st, facts2(st)) : '') : v.tabs === 'new' ? '' : strip424(st, v, false); // (#424: today the strip opens Check; proposed, it's Route's)
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
   return `${sum}${tier('t1', 'warnf', t('t1'), W.t1, 'What can stop you, turn you back or hurt')}${tier('t3', 'unk', t('t3'), W.t3, 'A source didn’t answer: the route may miss something')}${tier('t2', 'eye', t('t2'), W.t2, 'Sections to know about')}${cov}
-    ${v.tabs === 'c' ? climbsC(st) + onRouteC() : `<div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div>${v.tabs === 'new' ? '' : '<div class="sec-h">On the map</div>'}`}`;
+    ${v.tabs === 'c' ? climbsC(st) + onRouteC(st) : `<div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div>${v.tabs === 'new' ? '' : '<div class="sec-h">On the map</div>'}`}`;
 }
 function goBody(st) {
   return `<div class="gosec"><h4>Time</h4><div class="row"><span class="btn quiet">${ic('clock', 18)}${t('depart')} ${t('now')} ${ic('down', 12)}</span><span style="color:var(--muted)">arrive 07:46</span></div>
@@ -2429,6 +2460,11 @@ UC.long = (() => {
   }
   return { stats: { d: '12.6 km', t: '1 h 02 min', up: '↑176 m', down: '↓176 m' }, sections: secs };
 })();
+// #424's key facts, second round: a long gravel ride in a day, a loop through Teisko, Orivesi and Kangasala
+UC.gravel = { stats: { d: '118 km', t: '6 h 50 min', up: '↑1 090 m', down: '↓1 090 m' }, sections: [
+  { sp: 'gravel', from: 'Kaupin urheilupuisto', to: 'Kaupin urheilupuisto', d: '118 km', t: '6 h 50 min', up: '↑1 090 m', wx: '14:50 · 11°, wind 6 m/s SW, dry', w1: 0, w3: 0,
+    pts: [UCP('start', 'Kaupin urheilupuisto', 0, '08:00'), ...shp(['Teiskontie', 'Kämmenniemi'], 0, 33.5, ''), UCP('via', 'Teiskon kirkko', 33.5, '09:55'), ...shp(['Terälahti', 'Eräjärvi'], 33.5, 58.2, ''),
+      UCP('via', 'Orivesi station', 58.2, '11:20'), ...shp(['Längelmäentie', 'Kuhmalahti'], 58.2, 92, ''), UCP('via', 'Kangasala harbour', 92, '13:30'), ...shp(['Vehoniemi', 'Messukylä'], 92, 118, ''), UCP('end', 'Kaupin urheilupuisto', 118, '14:50')] }] };
 // the points in order, each with its section, its number and the next key point
 function ucPoints(st) {
   const out = [];
@@ -2469,7 +2505,7 @@ function sectionsHtml(st, v, desk) {
     flush();
     const ttl = `${sec.day ? `${esc(tf('dayN', { n: sec.day }))} · ` : ''}${esc(sL(sec.sp))} · ${esc(sec.from)} → ${esc(sec.to)}`;
     const badges = `${sec.w1 ? `<button type="button" class="badge b1 sb" data-act="wstep" aria-label="${sec.w1} ${t('t1s')} in this part">${ic('warnf', 13)}${sec.w1}</button>` : ''}${sec.w3 ? `<span class="badge b3" aria-label="${sec.w3} ${t('t3s')}">?</span>` : ''}`;
-    return `<section class="sec2" aria-label="${ttl}"><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b>${badges}</div>
+    return `<section class="sec2${st.kfSec === si ? ' lit' : ''}" aria-label="${ttl}"${st.kfSec === si ? ' aria-current="true"' : ''}><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b>${badges}</div>
       <div class="sec2-n">${esc(sec.d)} · ${esc(sec.t)} · ${esc(sec.up)}</div>
       <div class="sec2-w">${ic('weather', 15)}${esc(tf('arriveWx', { w: sec.wx }))}</div>${sec.fixed ? `<div class="sec2-w">${ic('sign', 15)}${esc(tf('fixedLine', { N: sec.fixed }))}</div>` : ''}
       <ol class="wpl">${items.join('')}</ol></section>`;
@@ -2555,7 +2591,7 @@ function sectionsV1(st, v, desk) {
     const ttl = `${sec.day ? `${esc(tf('dayN', { n: sec.day }))} · ` : ''}${esc(sL(sec.sp))} · ${esc(sec.from)} → ${esc(sec.to)}`;
     const badges = `${sec.w1 ? `<button type="button" class="badge b1 sb" data-act="wstep" aria-label="${sec.w1} ${t('t1s')} in this part">${ic('warnf', 13)}${sec.w1}</button>` : ''}${sec.w3 ? `<span class="badge b3" aria-label="${sec.w3} ${t('t3s')}">?</span>` : ''}`;
     const tmp = (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
-    return `<section class="sec2" aria-label="${ttl}"><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b>${badges}</div>
+    return `<section class="sec2${st.kfSec === si ? ' lit' : ''}" aria-label="${ttl}"${st.kfSec === si ? ' aria-current="true"' : ''}><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b>${badges}</div>
       <div class="sec2-n">${esc(sec.d)} · ${esc(sec.t)} · ${esc(sec.up)}<button type="button" class="wxc" data-act="wxmore" data-v="${si}" aria-expanded="${!!wxOpen}" aria-label="${esc(tf('arriveWx', { w: sec.wx }))}">${ic('weather', 15)}${esc([tmp, wind].filter(Boolean).join(' · '))}</button></div>
       ${wxOpen ? `<div class="sec2-w">${ic('weather', 15)}${esc(tf('arriveWx', { w: sec.wx }))}</div>` : ''}${sec.fixed ? `<div class="sec2-w">${ic('sign', 15)}${esc(tf('fixedLine', { N: sec.fixed }))}</div>` : ''}
       <ol class="wpl">${items.join('')}</ol></section>`;
@@ -2872,7 +2908,7 @@ function sectionsV1r5(st, v, desk) {
     if (st.shOpen && st.shOpen[si]) items.push(`<button type="button" class="shfold" data-act="shfold" data-v="${si}">${ic('up', 14)}${t('foldShaping')}</button>`);
     const ttl = `${sec.day ? `${esc(tf('dayN', { n: sec.day }))} · ` : ''}${esc(sL(sec.sp))} · ${esc(sec.from)} → ${esc(sec.to)}`;
     const nofc = v.tabs === 'c' && st.noFc && si >= st.noFc.si, tmp = nofc ? wc('noFcSec') : (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = nofc ? null : (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
-    return `<section class="sec2" aria-label="${ttl}"><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b></div>
+    return `<section class="sec2${st.kfSec === si ? ' lit' : ''}" aria-label="${ttl}"${st.kfSec === si ? ' aria-current="true"' : ''}><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b></div>
       <div class="sec2-n">${esc(sec.d)} · ${esc(sec.t)} · ${esc(sec.up)}<button type="button" class="wxc" data-act="wxmore" data-v="${si}" aria-expanded="${!!wxOpen}" aria-label="${esc(tf('arriveWx', { w: sec.wx }))}">${ic('weather', 15)}${esc([tmp, wind].filter(Boolean).join(' · '))}</button></div>
       ${wxOpen ? `<div class="sec2-w">${ic('weather', 15)}${esc(tf('arriveWx', { w: sec.wx }))}</div>` : ''}${sec.fixed ? `<div class="sec2-w">${ic('sign', 15)}${esc(tf('fixedLine', { N: sec.fixed }))}</div>` : ''}${secWarn(sec)}
       <div class="c5-list">${items.join('')}</div></section>`;
@@ -3175,10 +3211,10 @@ function climbsC(st = {}) {
   const rows = wc('climbRows').map(([cls, bg, b, t, s, hard]) => `<button type="button" class="li cli${hard && st.kfLit ? ' sel' : ''}" data-act="say424c" data-v="climb"${hard && st.kfLit ? ' aria-current="true"' : ''}><span class="cbadges"><span class="badge${cls === 1 ? ' ink' : ''}" style="background:${bg}">${esc(b)}</span>${hard ? `<em class="ctag">${esc(wc('hardestTag'))}</em>` : ''}</span><span class="li-main"><b>${esc(t)}</b><span>${esc(s)}</span></span></button>`).join('');
   return `<section class="csec" aria-label="${esc(wc('climbs'))}"><div class="sec-h">${esc(wc('climbs'))} <span class="badge b2">3</span><span class="csum">${esc(wc('climbsSum'))}</span></div><div class="clist">${rows}</div></section>`;
 }
-function onRouteC() {
+function onRouteC(st = {}) { // (A2: Unpaved opens it with Surface's colours on)
   const bd = (WC[LANG] && WC[LANG].bd) || WC.en.bd;
-  const kind = ([name, sel, items]) => `<div class="bd-kind"><button type="button" class="bd-title" aria-pressed="${sel}" data-act="say424c" data-v="bd"><span class="bd-heading"><span>${esc(name)}</span><span class="bd-active">${esc(sel ? wc('selected') : wc('useColours'))}</span></span><span class="bd-bar">${items.map(([c, , d]) => `<span style="background:${c};flex:${parseFloat(d) * (/km/.test(d) ? 1000 : 1)}"></span>`).join('')}</span></button><div class="bd-legend">${items.map(([c, l, d]) => `<div class="bd-item"><i style="background:${c}"></i><span>${esc(l)}</span><b>${esc(d)}</b></div>`).join('')}</div></div>`;
-  return `<section class="csec" aria-label="${esc(wc('onRoute'))}"><div class="sec-h">${esc(wc('onRoute'))} <span class="badge b2">7</span></div><div class="breakdown">${bd.map(([g, kinds]) => `<div class="bd-group"><div class="bd-gh">${esc(g)}</div>${kinds.map(kind).join('')}</div>`).join('')}</div></section>`;
+  const kind = ([name, sel0, items], gi, ki) => { const sel = st.kfBd ? gi === 1 && ki === 1 : sel0; return `<div class="bd-kind"><button type="button" class="bd-title" aria-pressed="${sel}" data-act="say424c" data-v="bd"><span class="bd-heading"><span>${esc(name)}</span><span class="bd-active">${esc(sel ? wc('selected') : wc('useColours'))}</span></span><span class="bd-bar">${items.map(([c, , d]) => `<span style="background:${c};flex:${parseFloat(d) * (/km/.test(d) ? 1000 : 1)}"></span>`).join('')}</span></button><div class="bd-legend">${items.map(([c, l, d]) => `<div class="bd-item"><i style="background:${c}"></i><span>${esc(l)}</span><b>${esc(d)}</b></div>`).join('')}</div></div>`; };
+  return `<section class="csec" aria-label="${esc(wc('onRoute'))}"><div class="sec-h">${esc(wc('onRoute'))} <span class="badge b2">7</span></div><div class="breakdown">${bd.map(([g, kinds], gi) => `<div class="bd-group"><div class="bd-gh">${esc(g)}</div>${kinds.map((k, ki) => kind(k, gi, ki)).join('')}</div>`).join('')}</div></section>`;
 }
 // Go: setting off. Leave ›, There at, where the time goes (open), Your speed ›; Departure & weather and Take it along whole
 function goC(st, desk) {
@@ -3232,8 +3268,9 @@ function profileWind424(st) {
 // ------------------------------------------------ #424, the sport's key facts (2026-10-24, to choose). The strip that C removes
 // carried each sport's own facts, not only the hardest climb: Headwind and Strongest wind for paddling (and Carry ascent),
 // the hardest climb for MTB, gravel and road, the high point for walking and running (js/planner.js, the stats). Where they
-// go: A, a line under the route's numbers (recommended); B, at the top of Check, as today without Speed and Style; C, a
-// fourth number. One or two facts, chosen by the sport and the kind of route; on a route over water and land the wind first.
+// go: A2, a line under the route's numbers of what stands out on this route (recommended, the second round); A, the same
+// line with one fact by sport; B, at the top of Check, as today without Speed and Style; C, a fourth number.
+// A's one fact is chosen by the sport and the kind of route; on a route over water and land, the wind first.
 const KF424 = {
   en: {
     wind: (sp, g) => `Wind up to <b>${sp}&nbsp;m/s</b>, gusts&nbsp;${g}`, head: (p) => ` · headwind <b>${p}&nbsp;%</b>`, windOn: (sport, sp, g) => `${sport}: wind up to <b>${sp}&nbsp;m/s</b>, gusts&nbsp;${g}`, windA: (sp, g, p) => `Wind up to ${sp} m/s, gusts ${g}, headwind ${p} % of the way: the weather along the route`,
@@ -3243,6 +3280,14 @@ const KF424 = {
     strip: { head: ['Headwind', 'of the distance'], wind: ['Strongest wind', (g) => `gusts ${g}`], carry: ['Carry ascent', ''], climb: ['Hardest climb', (h, a) => `${h} m at ${a} %`], high: ['High point', ''] },
     numWind: 'wind, gusts', numClimb: 'hardest climb', numHigh: 'high point',
     say: { high: ['The high point is marked on the profile', false], carry: ['The carries are lit on the profile', false] },
+    // A2
+    gFrom: 'Orivesi', bwind: (from, sp, add) => `Headwind from ${from} adds <b>${add}&nbsp;min</b>`, bwindA: (from, sp, add) => `Headwind from ${from}, up to ${sp} m/s, adds ${add} min to the time: the weather along the route`,
+    unpaved: (km, p) => `Unpaved <b>${km}&nbsp;km</b>, ${p}&nbsp;% of the way`, unpavedA: (km, p) => `Unpaved ${km} km, ${p} % of the way: show it in On the route`,
+    wxNone: 'Weather: <b>no forecast yet</b>', wxNoneA: 'Weather: no forecast yet',
+    day: (n, d, up) => `Day ${n} is the hardest: <b>${d}</b>, <b>${up}</b>`, dayA: (n, d, up, tm) => `Day ${n} is the hardest: ${d}, ${up}, ${tm}: show it in the list`,
+    windLeg: (sp, g) => `wind up to <b>${sp}&nbsp;m/s</b>, gusts&nbsp;${g}`, windLegA: (sp, g) => `wind up to ${sp} m/s, gusts ${g}`, windNoneL: 'wind: <b>no forecast yet</b>', windNoneLA: 'wind: no forecast yet',
+    legA: (s, d, x) => `${s}, ${d}, ${x}: show this part in the list`, legsA: 'By sport',
+    strip2: { bwind: ['Headwind', (sp, from) => `up to ${sp} m/s, from ${from}`], unpaved: ['Unpaved', (p) => `${p} % of the way`], day: ['Hardest day', (n) => `Day ${n}`], wx: ['Weather', 'no forecast yet'] },
   },
   fi: {
     wind: (sp, g) => `Tuulta enintään <b>${sp}&nbsp;m/s</b>, puuskissa&nbsp;${g}`, head: (p) => ` · vastatuulta <b>${p}&nbsp;%</b>`, windOn: (sport, sp, g) => `${sport}: tuulta enintään <b>${sp}&nbsp;m/s</b>, puuskissa&nbsp;${g}`, windA: (sp, g, p) => `Tuulta enintään ${sp} m/s, puuskissa ${g}, vastatuulta ${p} % matkasta: sää reitillä`,
@@ -3252,23 +3297,65 @@ const KF424 = {
     strip: { head: ['Vastatuuli', 'matkasta'], wind: ['Kovin tuuli', (g) => `puuskissa ${g}`], carry: ['Kantamisten nousu', ''], climb: ['Jyrkin nousu', (h, a) => `${h} m, ${a} %`], high: ['Korkein kohta', ''] },
     numWind: 'tuuli, puuskat', numClimb: 'jyrkin nousu', numHigh: 'korkein kohta',
     say: { high: ['Korkein kohta näkyy profiilissa', false], carry: ['Kantamiset näkyvät profiilissa', false] },
+    gFrom: 'Orivedeltä', bwind: (from, sp, add) => `Vastatuuli ${from} lisää <b>${add}&nbsp;min</b>`, bwindA: (from, sp, add) => `Vastatuuli ${from}, enintään ${sp} m/s, lisää aikaan ${add} min: sää reitillä`,
+    unpaved: (km, p) => `Päällystämätöntä <b>${km}&nbsp;km</b>, ${p}&nbsp;% matkasta`, unpavedA: (km, p) => `Päällystämätöntä ${km} km, ${p} % matkasta: näytä reitin erittelyssä`,
+    wxNone: 'Sää: <b>ei vielä ennustetta</b>', wxNoneA: 'Sää: ei vielä ennustetta',
+    day: (n, d, up) => `Päivä ${n} on raskain: <b>${d}</b>, <b>${up}</b>`, dayA: (n, d, up, tm) => `Päivä ${n} on raskain: ${d}, ${up}, ${tm}: näytä listassa`,
+    windLeg: (sp, g) => `tuulta enintään <b>${sp}&nbsp;m/s</b>, puuskissa&nbsp;${g}`, windLegA: (sp, g) => `tuulta enintään ${sp} m/s, puuskissa ${g}`, windNoneL: 'tuuli: <b>ei vielä ennustetta</b>', windNoneLA: 'tuuli: ei vielä ennustetta',
+    legA: (s, d, x) => `${s}, ${d}, ${x}: näytä tämä osa listassa`, legsA: 'Lajeittain',
+    strip2: { bwind: ['Vastatuuli', (sp, from) => `enintään ${sp} m/s, ${from}`], unpaved: ['Päällystämätön', (p) => `${p} % matkasta`], day: ['Raskain päivä', (n) => `Päivä ${n}`], wx: ['Sää', 'ei vielä ennustetta'] },
   },
 };
 const kf = (k) => { const L = KF424[LANG] || KF424.en; return L[k] ?? KF424.en[k]; };
 // the facts this route shows, most important first: a water leg's wind, then the land sport's own (illustrative values)
 function keyFacts424(st) {
   const water = st.uc === 'multi' ? { sp: 7, g: 11, p: 30 } : st.uc ? null : isWaterS(st.sport) ? { sp: 10, g: 14, p: 49 } : null;
-  const land = st.uc === 'multi' || st.uc === 'day' || (!st.uc && st.sport === 'mtb') ? 'climb' : st.uc === 'days' ? 'high' : null;
+  const land = st.uc === 'multi' || st.uc === 'day' || st.uc === 'gravel' || (!st.uc && st.sport === 'mtb') ? 'climb' : st.uc === 'days' ? 'high' : null;
   const out = [], none = st.leaveC && typeof pastC === 'function' && pastC(new Date(st.leaveC)), multi = st.uc === 'multi';
   const pre = (k) => (multi ? `${esc(sL(k))}: ` : '');
   if (water) out.push(none ? { k: 'wind', html: pre('paddle') + kf('windNone'), aria: kf('windNoneA'), miss: true }
     : { k: 'wind', html: (multi ? kf('windOn')(esc(sL('paddle')), water.sp, water.g) : kf('wind')(water.sp, water.g) + kf('head')(water.p)) + (st.noFc ? kf('windPart')(st.noFc.km) : ''), aria: kf('windA')(water.sp, water.g, water.p), v: water });
   if (!st.uc && isWaterS(st.sport)) out.push({ k: 'carry', html: kf('carry')(12), aria: kf('carryA')(12) });
-  if (land === 'climb') out.push({ k: 'climb', html: pre('mtb') + kf('climb')('↑S2', 21, 12), aria: kf('climbA')('↑S2', 21, 12) });
+  const c = st.uc === 'gravel' ? ['↑S1', 64, 9] : ['↑S2', 21, 12];
+  if (land === 'climb') out.push({ k: 'climb', c, html: pre('mtb') + kf('climb')(...c), aria: kf('climbA')(...c) });
   if (land === 'high') out.push({ k: 'high', html: kf('high')(215), aria: kf('highA')(215) });
   return out;
 }
-const kfIcon = { wind: 'wind', carry: 'mountain', climb: 'mountain', high: 'mountain' };
+const kfIcon = { wind: 'wind', carry: 'mountain', climb: 'mountain', high: 'mountain', bwind: 'wind', unpaved: 'path', day: 'tent', wx: 'weather' };
+// A2 (2026-10-24, second round): every fact the route has, in the order the line picks them, each marked when it stands
+// out (illustrative values; the thresholds are proposals). The numbers already say how hard the route is (the time counts
+// the climbs, the surface, a bike's headwind and the person's speed), so the line says why, or what could make the day
+// differ: first what can change whether you go (a water leg's wind, always; rain on the way), then what changes how long
+// (a headwind that adds 15 min or a tenth of the time), then the hardest bit (unpaved on a road bike, a trail grade above
+// the style's, a climb steep enough to walk); else the sport's usual fact. Weather that can't be judged yet is said.
+function facts2(st) {
+  const none = st.leaveC && typeof pastC === 'function' && pastC(new Date(st.leaveC));
+  if (st.uc === 'gravel') {
+    const w = st.calm2 ? { sp: 2, add: 3 } : { sp: 6, add: 25 }, c = ['↑S1', 64, 9];
+    return [none ? { k: 'wx', miss: true, html: kf('wxNone'), aria: kf('wxNoneA') } : { k: 'bwind', stand: w.add >= 15, v: w, html: kf('bwind')(kf('gFrom'), w.sp, w.add), aria: kf('bwindA')(kf('gFrom'), w.sp, w.add) },
+      { k: 'unpaved', v: { km: 74, p: 63 }, html: kf('unpaved')(74, 63), aria: kf('unpavedA')(74, 63) },
+      { k: 'climb', usual: true, c, html: kf('climb')(...c), aria: kf('climbA')(...c) }];
+  }
+  if (st.uc === 'days') return [{ k: 'day', usual: true, v: { n: 2, d: '21.5 km', up: '↑510 m' }, html: kf('day')(2, '21.5 km', '↑510 m', '6 h 05 min'), aria: kf('dayA')(2, '21.5 km', '↑510 m', '6 h 05 min') }, ...keyFacts424(st)];
+  return keyFacts424(st).map((x, i) => ({ ...x, usual: i === 0 })); // on the water the wind always stands out: it's the usual fact
+}
+// A2, a route of two sports: its totals mix them, so a row for each sport (its legs together; the list has each leg)
+function legs2(st) {
+  const none = st.leaveC && typeof pastC === 'function' && pastC(new Date(st.leaveC)), by = new Map();
+  UC[st.uc].sections.forEach((sec, si) => { if (!by.has(sec.sp)) by.set(sec.sp, { sec, si }); });
+  return [...by.values()].map(({ sec, si }) => {
+    const water = isWaterS(sec.sp), x = water ? (none ? [kf('windNoneL'), kf('windNoneLA')] : [kf('windLeg')(7, 11), kf('windLegA')(7, 11)]) : [`<b>${esc(sec.up)}</b>`, sec.up];
+    return { k: `leg:${si}`, sp: sec.sp, miss: water && none, html: `${esc(sL(sec.sp))} <span class="kfd">${esc(sec.d)}</span> · ${x[0]}`, aria: kf('legA')(sL(sec.sp), sec.d, x[1]) };
+  });
+}
+function factsStand424(st, v) {
+  if (v.tabs !== 'c' || v.facts !== 'stand' || st.stage !== 'route') return '';
+  const btn = (x, icn) => `<button type="button" class="kfb${x.miss ? ' miss' : ''}" data-act="kf424" data-v="${x.k}" aria-label="${esc(x.aria)}">${ic(icn, 16)}<span>${x.html}</span>${ic('right', 14)}</button>`;
+  if (st.uc === 'multi') return `<div class="kf424 legs" role="group" aria-label="${esc(kf('legsA'))}">${legs2(st).map((x) => btn(x, SPORT_ICON[x.sp])).join('')}</div>`;
+  const F = facts2(st), pick = F.find((x) => x.stand) || F.find((x) => x.usual), miss = F.find((x) => x.miss && x !== pick);
+  const L = [pick, miss].filter(Boolean); // missing weather is said beside the usual fact, never taken as nothing standing out
+  return L.length ? `<div class="kf424" role="group" aria-label="Key facts">${L.map((x) => btn(x, kfIcon[x.k])).join('')}</div>` : '';
+}
 // A: one line of words under the route's numbers, always in sight; each fact opens where it's told in full
 function factsLine424(st, v) {
   if (v.tabs !== 'c' || v.facts !== 'line' || st.stage !== 'route') return '';
@@ -3276,14 +3363,18 @@ function factsLine424(st, v) {
   return F.length ? `<div class="kf424" role="group" aria-label="Key facts">${F.map((x) => `<button type="button" class="kfb${x.miss ? ' miss' : ''}" data-act="kf424" data-v="${x.k}" aria-label="${esc(x.aria)}">${ic(kfIcon[x.k], 16)}<span>${x.html}</span>${ic('right', 14)}</button>`).join('')}</div>` : '';
 }
 // B: at the top of Check, as the strip is today, without Speed and Style (Route's rows in C)
-function factsCheck424(st) {
-  const L = kf('strip'), F = keyFacts424(st), items = [];
+function factsCheck424(st, F = keyFacts424(st)) {
+  const L = kf('strip'), L2 = kf('strip2'), items = [];
   for (const x of F) {
     if (x.k === 'wind' && x.miss) items.push([L.wind[0], '?', kf('windNoneA'), 'wind']);
     else if (x.k === 'wind') { items.push([L.head[0], `${x.v.p} %`, L.head[1], 'wind']); items.push([L.wind[0], `${x.v.sp} m/s`, L.wind[1](x.v.g), 'wind']); }
     if (x.k === 'carry') items.push([L.carry[0], '12 m', L.carry[1], 'carry']);
-    if (x.k === 'climb') items.push([L.climb[0], `<i class="dot" style="background:#f59e0b"></i>↑S2`, L.climb[1](21, 12), 'climb']);
+    if (x.k === 'climb') items.push([L.climb[0], `<i class="dot" style="background:${x.c[0] === '↑S1' ? '#c7c100' : '#f59e0b'}"></i>${x.c[0]}`, L.climb[1](x.c[1], x.c[2]), 'climb']);
     if (x.k === 'high') items.push([L.high[0], '215 m', L.high[1], 'high']);
+    if (x.k === 'wx') items.push([L2.wx[0], '?', L2.wx[1], 'wx']);
+    if (x.k === 'bwind') items.push([L2.bwind[0], `+${x.v.add} min`, L2.bwind[1](x.v.sp, kf('gFrom')), 'bwind']);
+    if (x.k === 'unpaved') items.push([L2.unpaved[0], `${x.v.km} km`, L2.unpaved[1](x.v.p), 'unpaved']);
+    if (x.k === 'day') items.push([L2.day[0], L2.day[1](x.v.n), `${x.v.d}, ${x.v.up}`, 'day']);
   }
   return items.length ? `<div class="st424 new kfcheck" role="group" aria-label="Key facts">${items.map(([l, val, sub, k]) => `<button type="button" class="stat stat-btn" data-act="kf424" data-v="${k}"><span class="stat-label">${esc(l)}</span><span class="stat-value">${val}${ic('right', 16)}</span><span class="stat-sub">${esc(sub)}</span></button>`).join('')}</div>` : '';
 }
@@ -3292,7 +3383,7 @@ function factsNum424(st, v) {
   if (v.tabs !== 'c' || v.facts !== 'num' || st.stage !== 'route') return '';
   const x = keyFacts424(st)[0];
   if (!x) return '';
-  const [b, sm] = x.k === 'wind' ? (x.miss ? ['?', kf('windNoneA')] : [`${x.v.sp} m/s`, `${kf('numWind')} ${x.v.g}`]) : x.k === 'climb' ? ['↑S2', kf('numClimb')] : ['215 m', kf('numHigh')];
+  const [b, sm] = x.k === 'wind' ? (x.miss ? ['?', kf('windNoneA')] : [`${x.v.sp} m/s`, `${kf('numWind')} ${x.v.g}`]) : x.k === 'climb' ? [x.c[0], kf('numClimb')] : ['215 m', kf('numHigh')];
   return `<button type="button" class="tlink kfnum" data-act="kf424" data-v="${x.k}" aria-label="${esc(x.aria)}"><b>${b}</b><small>${esc(sm)}</small></button>`;
 }
 // the sheet (phone) and the panel (desktop)
@@ -3387,8 +3478,8 @@ function plannerHtml(st, v, desk, docked) {
   const pcarding = st.uc && (st.psel != null || st.str) && st.pcard && !desk && st.sheet === 'peek' && v.wv === 'v1';
   const head = stepping ? wcard(st, v) : pcarding ? pointCard(st, v, false) : viewing
     ? `<div class="titlerow"><span class="ttl"><b>${esc(routeTitle(st, v))}</b><small>${esc(routeSports(st))} · ${ic('check', 13)}${t('kept')}</small></span><button type="button" class="tbtn" data-act="close" aria-label="Put the route away">${ic('close', 20)}</button></div>${warnRow(st, v, desk)}
-       <div class="row wrap">${stats(st, v)}${fin}</div>${factsLine424(st, v)}`
-    : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>${factsLine424(st, v)}`;
+       <div class="row wrap">${stats(st, v)}${fin}</div>${factsLine424(st, v)}${factsStand424(st, v)}`
+    : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>${factsLine424(st, v)}${factsStand424(st, v)}`;
   const big = desk || (st.sheet !== 'peek' && !stepping && !pcarding);
   const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
   // (#424: the Route and Go tabs as they are, or as proposed; goBody() is the approved design of 2026-10-18, kept for the frames before C)
@@ -3469,7 +3560,7 @@ function render(f) {
   const mapPic = st.stage === 'start' || st.followed != null || (st.stage === 'first' && st.rt.nostart); // (a round trip from the ways has no start until it's tapped)
   const bg = mapPic ? (desk ? 'desk-start1.jpg' : 'phone-empty.jpg')
     : st.stage === 'first' ? (st.rt.results ? (desk ? 'desk-loops.jpg' : 'phone-loops.jpg') : (desk ? 'desk-start1.jpg' : 'phone-start1.jpg'))
-      : st.long || st.uc === 'days' || st.uc === 'long' ? (desk ? 'desk-long.jpg' : 'phone-long.jpg') : st.loop ? (desk ? 'desk-mtb-calm.jpg' : 'phone-loop1.jpg') : isWaterS(st.sport) ? (desk ? 'desk-mtb-calm.jpg' : 'phone-paddle-calm.jpg') : (desk ? 'desk-mtb-calm.jpg' : 'phone-mtb-calm.jpg');
+      : st.long || st.uc === 'days' || st.uc === 'long' || st.uc === 'gravel' ? (desk ? 'desk-long.jpg' : 'phone-long.jpg') : st.loop ? (desk ? 'desk-mtb-calm.jpg' : 'phone-loop1.jpg') : isWaterS(st.sport) ? (desk ? 'desk-mtb-calm.jpg' : 'phone-paddle-calm.jpg') : (desk ? 'desk-mtb-calm.jpg' : 'phone-mtb-calm.jpg');
   scr.style.backgroundImage = `url(${PIC(bg)})`;
   const editing = st.mode === 'edit';
   let html = topbar(desk, st);
@@ -3717,8 +3808,16 @@ function act(f, a, val, ev) {
     case 'layersx': st.layersC = false; break;
     // #424, the key facts: each opens where it's told in full (the wind: Go's weather; the hardest climb: Climbs)
     case 'kf424':
-      if (val === 'wind') { st.tab = 'go'; if (st.sheet === 'peek') st.sheet = 'half'; st.scrollC = '.csec'; st.how = null; break; }
-      if (val === 'climb') { st.tab = 'check'; if (st.sheet === 'peek') st.sheet = 'half'; st.scrollC = '.csec'; st.how = null; st.kfLit = true; break; } // (lit, as a climb's row lights it on the profile)
+      if (val === 'wind' || val === 'bwind' || val === 'wx') { st.tab = 'go'; if (st.sheet === 'peek') st.sheet = 'half'; st.scrollC = '.csec'; st.how = null; break; }
+      if (val === 'climb') { st.tab = 'check'; if (st.sheet === 'peek') st.sheet = 'half'; st.scrollC = '.csec'; st.how = null; st.kfLit = true; break; }
+      if (val === 'unpaved') { st.tab = 'check'; if (st.sheet === 'peek') st.sheet = 'half'; st.scrollC = '.csec + .csec'; st.how = null; st.kfBd = true; break; }
+      // A2: the hardest day, or a sport's row, opens its part of the list, lit (a water leg with its weather open)
+      if (val === 'day' || /^leg:\d+$/.test(val)) {
+        const si = val === 'day' ? 1 : +val.slice(4);
+        st.tab = 'route'; if (st.sheet === 'peek') st.sheet = 'half'; st.how = null; st.kfSec = si; st.scrollC = `section.sec2:nth-of-type(${si + 1})`;
+        if (val !== 'day' && isWaterS(UC[st.uc].sections[si].sp)) st.wxOpen = { ...(st.wxOpen || {}), [si]: true };
+        break;
+      } // (lit, as a climb's row lights it on the profile)
       { const s5 = kf('say')[val] || [String(val), false]; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); } break;
     case 'say424c': { const s5 = wc('say')[val] || [String(val), false]; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); break; }
     case 'mark424': { const m = st.marks424 || { km: true }; st.marks424 = { ...m, [val]: !m[val] }; break; }

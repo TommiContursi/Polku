@@ -44,7 +44,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
 - *Its own issue, not 25d:* hover information over the map on desktops, like the route's tooltip (#358).
 
 **Waiting for the user**
-- One choice for Journey D's tabs (2026-10-24): where each sport's key facts go now that C has no strip. The strip held more than the hardest climb: a water leg's headwind, strongest wind and carry ascent, and a walk's high point. Its options are section E's **Key facts** in the planner's mock-up (A, one line under the route's numbers, is recommended). The design system's values and controls are merged (#396, #402), so is Journey C (#416), and the other choices are made: Journey D can start on the rest.
+- One choice for Journey D's tabs (2026-10-24): where each sport's key facts go now that C has no strip. The strip held more than the hardest climb: a water leg's headwind, strongest wind and carry ascent, and a walk's high point. Its options are section E's **Key facts** in the planner's mock-up. A2 is recommended: one line under the route's numbers saying what stands out on this route (else the sport's usual fact), a row for each sport on a multisport route, and the hardest day on a trip of several days. The design system's values and controls are merged (#396, #402), so is Journey C (#416), and the other choices are made: Journey D can start on the rest.
 
 **Next**
 1. Done: 1a, a point's card (#352, merged 2026-10-22).
