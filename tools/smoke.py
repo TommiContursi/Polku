@@ -6275,13 +6275,60 @@ def column_early(chrome):
             first, last = held[0], s[-1]
             for k, label in (('locate', 'Locate'), ('d3', '3D')):
                 moves = sorted({x[k] for x in s if x[k] is not None})
-                # up to 4 px: the timeline grows 3 px when its forecast comes in, at any time (#301)
-                if first[k] is None or last[k] is None or moves[-1] - moves[0] > 4:
+                # exact: the timeline keeps its height when its forecast comes in (#301)
+                if first[k] is None or last[k] is None or moves[-1] - moves[0] > 0:
                     fails.append(f"{name}: {label}'s top went from y {first[k]} (at {first['t']} ms) to y {last[k]} after the map's load"
                                  f" (tops seen: {', '.join(map(str, moves[:6]))})")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the map's column on phones in its place before the map has loaded (#292)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #301: on a phone with the timeline open, its height and the map's buttons above it stay put when its forecast comes
+# in (held, then released: WX_FIXED), with three lines in its reading and, with the snow layer, four. The forecasts
+# kept on the device are forgotten first (TL_FORGET), so the timeline really waits for it.
+TL_FORGET = """new Promise((ok) => { const r = indexedDB.open('polku'); r.onerror = () => ok(true); r.onsuccess = () => { const db = r.result;
+  if (!db.objectStoreNames.contains('weather')) { db.close(); ok(true); return; }
+  const t = db.transaction('weather', 'readwrite'); t.objectStore('weather').clear(); t.oncomplete = t.onerror = () => { db.close(); ok(true); }; }; })"""
+TL_HELD = """new Promise((ok) => { const t0 = Date.now(), go = () => { const b = document.getElementById('wx-bar');
+  (b && !b.hidden && __wx.held.length) || Date.now() - t0 > 20000 ? ok(!!__wx.held.length) : setTimeout(go, 100); }; go(); })"""
+TL_SIZES = """(() => { const r = (id) => document.getElementById(id)?.getBoundingClientRect();
+  return { bar: r('wx-bar').height, now: document.querySelector('#wx-bar .tl-now').getBoundingClientRect().height, locate: r('btn-locate').top,
+    lines: document.querySelectorAll('#wx-bar .tl-now > div').length, text: document.querySelector('#wx-bar .tl-now').textContent.slice(0, 60) }; })()"""
+
+
+def timeline_height(chrome):
+    fails = []
+    for snow in (False, True):
+        name = f"390x844, the timeline{' and the snow layer' if snow else ''}"
+        pg = chrome.page(390, 844, True)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + WX_FIXED + 'window.__wx.hold = true;'}, pg.s)
+            pg.goto(BASE + 'sw.js')
+            pg.js(TL_FORGET)
+            pg.open_app({'activity': 'hike', 'timeline': True, 'weather': {'wind': True, 'rain': True, 'snow': snow}},
+                        {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#11/68.9/27.0')
+            if not pg.js(TL_HELD):
+                fails.append(f'{name}: the forecast wasn’t asked for, or came from a cache (the check proves nothing)')
+                continue
+            pg.js(SETTLED)
+            a = pg.js(TL_SIZES)
+            pg.js('__wx.release()')
+            pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('#wx-bar .tl-now-main') || Date.now() - t0 > 20000 ? ok(true) : setTimeout(go, 100); go(); })")
+            pg.js(SETTLED)
+            pg.js('new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(true))))')
+            b = pg.js(TL_SIZES)
+            want = 4 if snow else 3
+            if b['lines'] != want:
+                fails.append(f"{name}: {b['lines']} lines in its reading once the forecast is in, not {want} ({b['text']})")
+            for k, what in (('bar', 'the timeline'), ('now', 'its reading'), ('locate', "Locate's top")):
+                if abs(a[k] - b[k]) > 0.25:
+                    fails.append(f'{name}: {what} {a[k]:.1f} px while the forecast loaded, {b[k]:.1f} px once it was in')
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the timeline on phones keeps its height when its forecast comes in (#301)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -7516,9 +7563,11 @@ def weather_requests(chrome):
 
 
 # Before the page loads: Open-Meteo's forecast answers at once with the same weather everywhere (__wx.temp, −12 °C:
-# the widest reading), so a check of the timeline doesn't wait for the service or depend on its weather.
+# the widest reading), so a check of the timeline doesn't wait for the service or depend on its weather. With
+# __wx.hold set, the answers wait until __wx.release().
 WX_FIXED = """(() => {
-  const real = window.fetch.bind(window), W = window.__wx = { temp: -12, asked: 0 };
+  const real = window.fetch.bind(window), W = window.__wx = { temp: -12, asked: 0, hold: false, held: [] };
+  W.release = () => { W.hold = false; W.held.splice(0).forEach((go) => go()); return true; };
   window.fetch = (input, init) => {
     const url = String(input && input.url ? input.url : input);
     if (!/^https:\\/\\/api\\.open-meteo\\.com\\/v1\\/forecast\\?.*temperature_2m/.test(url)) return real(input, init);
@@ -7526,8 +7575,9 @@ WX_FIXED = """(() => {
     const q = new URL(url).searchParams, lats = q.get('latitude').split(',').map(Number), lons = q.get('longitude').split(',').map(Number);
     const n = 52, t0 = Math.floor(Date.now() / 3600e3) * 3600 - 3600, fill = (v) => Array.from({ length: n }, () => v);
     const hourly = () => ({ time: Array.from({ length: n }, (_, i) => t0 + i * 3600), wind_speed_10m: fill(4), wind_direction_10m: fill(220), wind_gusts_10m: fill(9),
-      temperature_2m: fill(W.temp), precipitation: fill(0.4), cloud_cover: fill(60), snow_depth: fill(0), snowfall: fill(0) });
-    return Promise.resolve(new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly() }))), { headers: { 'Content-Type': 'application/json' } }));
+      temperature_2m: fill(W.temp), precipitation: fill(0.4), cloud_cover: fill(60), snow_depth: fill(0.1), snowfall: fill(0) });
+    const answer = () => new Response(JSON.stringify(lats.map((lat, i) => ({ latitude: lat, longitude: lons[i], hourly: hourly() }))), { headers: { 'Content-Type': 'application/json' } });
+    return W.hold ? new Promise((ok) => W.held.push(() => ok(answer()))) : Promise.resolve(answer());
   };
 })();"""
 
@@ -9956,7 +10006,7 @@ GROUPS = [
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),
-    ('column', [column_early], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292)'),
+    ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356'),

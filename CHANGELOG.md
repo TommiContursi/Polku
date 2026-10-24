@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-24
 
+### Fixed: the timeline keeps its height when its forecast comes in ([#301](https://github.com/TommiContursi/Polku/issues/301))
+
+On a phone with the weather timeline open, the timeline grew a little when its forecast came in, or came in again after you moved the map, and the map's buttons above it moved up with it: 3 px, or 20 px with **Snow depth** on. Now the timeline keeps the room its reading needs from the start, so the buttons stay where your finger expects them.
+
 ### Fixed: the map stays put under your finger when the warnings come in ([#446](https://github.com/TommiContursi/Polku/issues/446))
 
 Just after the route was shown whole, the map could frame it again when the row of warnings came in, even while you were pressing the route to add a point or dragging a leg's handle. The press then missed the route, or the drag moved the map. Now a press on the map, or any change to the route, keeps the map where it is.
