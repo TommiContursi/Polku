@@ -2979,6 +2979,14 @@ def warnfix(chrome):
           if (!step) return ['no ‹ › on the card'];
           const c = card.getBoundingClientRect(), s = step.getBoundingClientRect();
           if (s.bottom > c.bottom + 1 || s.top < c.top) errs.push(`‹ › at ${Math.round(s.top)}–${Math.round(s.bottom)}, the card shows ${Math.round(c.top)}–${Math.round(c.bottom)}`);
+          // (#444) the profile size with the row there: the whole chart, and back at the peek the row and the numbers in sight
+          p.cards.close(); p.setTab('route'); p.setSheetState('profile'); await wait(400); await """ + SETTLED + """;
+          const cv = document.getElementById('profile-canvas').getBoundingClientRect(), sb = p.panel.getBoundingClientRect().bottom;
+          if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`the profile size with the row: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
+          p.setSheetState('peek'); await wait(400); await """ + SETTLED + """;
+          const rr = p.els.readRow.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
+          if (p.els.readRow.hidden || !rr.height) errs.push('back at the peek, no row');
+          else if (nr.bottom > pr.bottom + 1 || rr.top < pr.top) errs.push(`back at the peek, the row and the numbers ${Math.round(rr.top)}–${Math.round(nr.bottom)} in a sheet of ${Math.round(pr.top)}–${Math.round(pr.bottom)}`);
           return errs; })()""", timeout=90000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:

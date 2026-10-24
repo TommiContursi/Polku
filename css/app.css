@@ -685,6 +685,9 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 /* in between: the summary and the elevation profile (the stats row folds away) */
 .sheet[data-state="profile"] { height: var(--profile-h, 300px); }
 .sheet[data-state="profile"] .stats { display: none; }
+/* …and so does the row of what to read (the count beside the numbers stays): the chart keeps its room (#444); the warnings
+   stay on the map and in Check, and the row comes back at the peek */
+.sheet[data-state="profile"] .sheet-head-in > .pl-readrow { display: none; }
 .sheet[data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); }
 @media (min-width: 721px) { .sheet[data-layout="sheet"][data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); } }
 .sheet.dragging { transition: none; user-select: none; }
