@@ -31,12 +31,12 @@ IDLE = ("new Promise((ok) => { const m = polku.map; const t = setTimeout(ok, 200
 # holds the event back, as column does, finds the flag set and goes on.)
 LOAD_STEP = ("new Promise((ok) => { const t0 = Date.now(), go = () => polku.map._loaded ? setTimeout(() => ok(true))"
              " : Date.now() - t0 > 45000 ? ok(false) : setTimeout(go, 50); go(); })")
-# Polku there and its map loaded (MapLibre's loaded(): the style, and every tile in or failed), 150 s at most: longer than
-# the 90 s the old wait had, which button3d's 3D scene needed on GitHub's runner (#422). A request
-# that never answered kept this waiting until Chrome's own 90 s ran out, which ended the whole group without saying what
-# it had waited for (#409). false when it didn't load.
+# Polku there and its map loaded (MapLibre's loaded(): the style, and every tile in or failed), 300 s at most. The old wait
+# had no limit of its own while Chrome kept sending events, and button3d's reloads in 3D took up to 205 s on GitHub's runner
+# (run 40034818690, #422). A request that never answered kept it waiting until Chrome's own 90 s ran out, which ended the
+# whole group without saying what it had waited for (#409). false when it didn't load; else how long it took, in ms.
 MAP_LOADED = ("new Promise((ok) => { const t0 = Date.now(), go = () => window.polku && polku.map.loaded() ? ok(Date.now() - t0 + 1)"
-              " : Date.now() - t0 > 150000 ? ok(false) : setTimeout(go, 200); go(); })")
+              " : Date.now() - t0 > 300000 ? ok(false) : setTimeout(go, 200); go(); })")
 # the map's sources still loading, with their tiles' host and how many tiles are on their way
 MAP_WAITING = """(() => {
   if (!window.polku) return ['Polku itself (no window.polku)'];
@@ -231,10 +231,10 @@ class Page:
             raise RuntimeError(f'{e}: the page didn’t load, still waiting for {self.waiting()}') from None
 
     def map_loaded(self):
-        """Polku there and its map loaded, 150 s at most; a RuntimeError saying what it waited for otherwise (#409)."""
-        ms = self.js(MAP_LOADED, timeout=155000)
+        """Polku there and its map loaded, 300 s at most; a RuntimeError saying what it waited for otherwise (#409)."""
+        ms = self.js(MAP_LOADED, timeout=305000)
         if not ms:
-            raise RuntimeError(f'the map didn’t load in 150 s, still waiting for {self.waiting()}')
+            raise RuntimeError(f'the map didn’t load in 300 s, still waiting for {self.waiting()}')
         if ms > 20000:  # (a slow load, said in the log: which checks wait long for the map, and how long, #422)
             print(f'      the map took {ms / 1000:.0f} s to load', flush=True)
 
