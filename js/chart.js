@@ -215,7 +215,13 @@ export class ProfileChart {
   setMode(mode) { this.mode = mode; this.draw(); }
   // the route's points along it (metres), drawn as on the map: the start, the numbered vias, the finish
   setPoints(list) { this.points = list || []; }
-  setHighlight(range) { this.highlight = range; this.draw(); }
+  // (drawn again only when it changes: the list asks for it each time it's drawn)
+  setHighlight(range) {
+    const was = this.highlight;
+    if ((range == null && was == null) || (range && was && range[0] === was[0] && range[1] === was[1])) return;
+    this.highlight = range;
+    this.draw();
+  }
 
   domain() { return this.view || [0, this.a ? this.a.total : 1]; }
 
