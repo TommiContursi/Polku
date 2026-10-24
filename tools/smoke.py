@@ -3596,7 +3596,7 @@ DRAWER = """(async () => {
   for (const [k, what] of [['fit', 'show all'], ['undo', 'undo'], ['redo', 'redo'], ['more', 'More']]) if (!p.els[k] || !p.tools.contains(p.els[k])) errs.push(`the toolbox lacks ${what}`);
   if (p.tools.querySelectorAll('.tb-modes [role=radio]').length !== 3 || !p.tools.contains(p.els.modeBtn)) errs.push('the toolbox lacks the modes');
   // every section in its tab, and a jump to it opens that tab
-  const where = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', onmap: 'check', speed: 'go', depart: 'go', take: 'go' };
+  const where = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', speed: 'go', depart: 'go', take: 'go' }; // (the marks are in Layers: #424's C, the tabs group)
   for (const [id, tab] of Object.entries(where)) {
     const el = document.querySelector(`[data-sec=${id}]`);
     if (!el || el.closest('.pl-pane')?.dataset.tab !== tab) { errs.push(`${id} is not in ${tab}`); continue; }
@@ -3605,6 +3605,7 @@ DRAWER = """(async () => {
     await wait(80);
     if (p.tab !== tab || el.closest('.pl-pane').hidden) errs.push(`reveal(${id}) didn’t open ${tab}`);
   }
+  p.openStep(null); // (reveal(style) opened How you go's step)
   // the profile: under the header, out of the tabs; at the profile size, not at peek
   const cv = document.querySelector('#profile-canvas');
   if (!cv || !cv.closest('.pl-profile') || cv.closest('.pl-pane')) errs.push('the profile isn’t under the header');
@@ -3619,7 +3620,7 @@ DRAWER = """(async () => {
   p.setProfileCompact(!p.profCompact); await wait(200);
   if (p.layout() === 'side' && cv.offsetHeight === h0) errs.push('the profile’s size button changed nothing');
   p.setProfileCompact(!p.profCompact); await wait(100);
-  // Route: the tools out of ⋯, How you go with the style and the speeds
+  // Route: the tools out of ⋯, How you go with the style and the speeds (its two steps, #424's C)
   p.setTab('route'); await wait(100);
   const foot = [...p.els.pointsFoot.querySelectorAll('button')].map(txt);
   for (const b of ['Round trip', 'Reverse', 'Back to start', 'Import']) if (!foot.includes(b)) errs.push(`Route lacks ${b}: ${foot.join(', ')}`);
@@ -3635,21 +3636,24 @@ DRAWER = """(async () => {
     if (inMore === inBar) errs.push(`${want} is ${inMore ? 'both on the toolbar and in More' : 'neither on the toolbar nor in More'}`);
   }
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  // Check: at a glance, the marks' switches (once in ⋯)
+  // Check: at a glance, the facts; the marks' switches (once in ⋯, now Layers' Your route: #424's C)
   p.setTab('check'); await wait(100);
   if (p.els.stats.hidden || !p.els.stats.children.length) errs.push('Check lacks the stats');
-  const marks = [...document.querySelectorAll('.onmap input')];
-  if (marks.length !== 3) errs.push(`On the map has ${marks.length} switches`);
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
+  await wait(300);
+  const marks = [...document.querySelectorAll('#layers-body .onmap input')];
+  if (marks.length !== 3) errs.push(`Layers' Your route has ${marks.length} switches`);
   else {
     const was = p.marks.km;
     marks[0].click(); await wait(100);
     if (p.marks.km === was) errs.push('Distance marks switch did nothing');
     p.setMarks({ km: was });
   }
+  document.querySelector('#layers-panel [aria-label=Close]')?.click(); await wait(300);
   // Go: the time first, and taking it along
   p.setTab('go'); await wait(100);
   const head = document.querySelector('.time-head');
-  if (!head || !/→/.test(txt(head))) errs.push(`Time doesn't open with the total: ${txt(head)}`);
+  if (!head || !/^(There|Back) at /.test(txt(head))) errs.push(`Time doesn't open with There at: ${txt(head)}`);
   if ([...document.querySelectorAll('.take-along button')].map(txt).join('|') !== 'Export GPX|Copy share link|Save offline…') errs.push('Take it along');
   if (!document.querySelector('#pl-tab-go .pl-tab-t').textContent) errs.push('Go’s tab shows no time');
   // the route's points on the profile where they are along it (a loop's finish at the end)
@@ -3764,8 +3768,8 @@ SWEEP = """(async () => {
   await wait(600);
   if (p.isMulti()) errs.push('an MTB route counts as multisport with the map on Paddle');
   const sum = speedSummary('mtb', p.craft);
-  // the speeds (Route › How you go, and Check's glance) are MTB's, not the paddler's
-  if (!p.els.stats.textContent.includes(sum.name) || /Sea kayak|Canoe|SUP/.test(p.els.speedBox.textContent)) errs.push(`speeds: ${p.els.stats.textContent.slice(0, 80)} / ${p.els.speedBox.textContent.slice(0, 80)} (MTB: ${sum.name})`);
+  // the speeds (Route's Your speed ›, #424's C) are MTB's, not the paddler's
+  if (!p.els.howRows.textContent.includes(sum.name) || /Sea kayak|Canoe|SUP/.test(p.els.speedBox.textContent)) errs.push(`speeds: ${p.els.stats.textContent.slice(0, 80)} / ${p.els.speedBox.textContent.slice(0, 80)} (MTB: ${sum.name})`);
   if (p.panel.classList.contains('is-paddle')) errs.push('the planner looks like paddling for an MTB route');
   if (!p.modeApplies('grade')) errs.push('the gradient colours went with the map’s sport');
   polku.set({ activity: 'mtb' });
@@ -5700,8 +5704,11 @@ MARKS = r"""(async () => {
   const arrival = p.clockOf(p.startSec() + 4000);
   if (!label().includes(`1 km · ${arrival}`)) errs.push(`departure did not move the mark immediately: ${label()}`);
   a.wind = null; a.tAtWind = null; a.tAt = original;
-  p.renderAnalysis(); p.reveal('onmap');
-  const switches = () => [...p.els.onMap.querySelectorAll('input')];
+  p.renderAnalysis();
+  // (the marks' switches: Layers' Your route group, #424's C; open, as a person opens it)
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
+  await wait(300);
+  const switches = () => [...document.querySelectorAll('#layers-body .onmap input')];
   if (switches().length !== 3 || switches().some((x) => !x.checked)) errs.push('not three enabled mark controls');
   else {
     switches()[1].click();
@@ -5714,6 +5721,7 @@ MARKS = r"""(async () => {
     if (data().length || !switches()[1].disabled || !switches()[2].disabled) errs.push('distance off: marks remain or dependent options enabled');
     switches()[0].click(); switches()[2].click();
   }
+  document.querySelector('#layers-panel .panel-x, #layers-panel [aria-label=Close]')?.click(); await wait(300);
   // Follow the estimate from Check, even when Go’s Time section and the sheet are folded.
   p.toggleSection('speed', false);
   if (p.layout() === 'sheet') p.setSheetState('peek', { remember: false });
@@ -5732,7 +5740,7 @@ MARKS = r"""(async () => {
     if (r.height < 44 || parseFloat(getComputedStyle(input).fontSize) < 16) errs.push('Go’s Leave is too small, or its field zooms a phone');
     // (Route's list says it on the start's row, 25d's part 4; the start's card and Go set it)
     const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.textContent || '';
-    if (!waypoint().includes(`Leave ${p.leaveWords()}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec()))) errs.push('Go departure did not update the start’s row or the schedule immediately');
+    if (!waypoint().includes(`Leave ${p.leaveWords()}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec() + (p.analysis.timeWind || p.analysis.time)))) errs.push('Go departure did not update the start’s row or There at immediately');
     p.setLeave(hour(6), { fromMap: true });
     if (leave.querySelector('.val').textContent !== p.timeOf(hour(6)) || !waypoint().includes(`Leave ${p.leaveWords()}`)) errs.push('timeline departure did not update Go’s Leave and the start’s row');
     input.focus(); p.renderAnalysis();
@@ -6886,8 +6894,17 @@ NL = """(() => {
   // page the sheet was still on its way up, or the toolbox still moving, when a fixed wait read it (#406)
   const settled = () => """ + SETTLED + """.then(() => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))));
   T.at = async (sel) => { await settled(); const el = typeof sel === 'string' ? $(sel) : typeof sel === 'function' ? sel() : sel; if (!el || !el.offsetParent) return null;
+    // (in a menu that scrolls inside the room it has, scrolled to, as a person scrolls it; never the page)
+    for (let n = el.parentElement, box = el.closest('.menu-pop'); box && n && box.contains(n); n = n.parentElement) {
+      if (n.scrollHeight <= n.clientHeight + 1) continue;
+      const r = el.getBoundingClientRect(), s = n.getBoundingClientRect();
+      if (r.bottom > s.bottom) n.scrollTop += r.bottom - s.bottom + 8; else if (r.top < s.top) n.scrollTop -= s.top - r.top + 8;
+      await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+      break;
+    }
     const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y);
-    return { x, y, clear: !!top && (el === top || el.contains(top)), over: top ? String(top.id || top.className) : 'nothing' }; };
+    const menu = el.closest('.menu-pop')?.getBoundingClientRect();
+    return { x, y, clear: !!top && (el === top || el.contains(top)), over: `${top ? String(top.id || top.className) : 'nothing'} at ${Math.round(y)}${menu ? `, the menu ${Math.round(menu.top)}–${Math.round(menu.bottom)}` : ''}` }; };
   T.item = (label) => T.at(() => $$('.menu-pop .menu-item').find((x) => x.textContent.trim().startsWith(label)));
   T.toastBtn = (label) => T.at(() => $$('#toast .toast-act').find((x) => x.textContent.trim() === label));
   T.water = (ll) => m.queryRenderedFeatures(m.project(ll), { layers: ['water'] }).length > 0;
@@ -7184,15 +7201,16 @@ def nextleg(chrome):
     want(f'{name}, Hike for the next leg', pg.js('nlT.state()'), next='hike', map='hike', sport='Hike', sports='mtb,mtb',
          toast=lambda v: 'The map and the legs you draw next are Hike now. Your route stays MTB.' in (v or ''))
     escape(pg)
-    # Go › Time: what the time is based on, and Change opens the editor in place
+    # Go › Time: what the time is based on, Your speed ›, which opens its step in Route (#424's C)
     pg.js("(() => { const p = polku.planner; p.setTab('go'); p.reveal('speed'); return true; })()")
     time.sleep(0.6)
-    at = pg.js("(document.querySelector('.speed-at') || { textContent: '' }).textContent")
-    if not at.startswith('Timed at your speed: Normal · 20 / 16 / 11 km/h · 600 m/h up'):
+    at = pg.js("(document.querySelector('#pl-pane-go .row[data-k=speed]') || { textContent: '' }).textContent")
+    if not at.startswith('Your speed20 / 16 / 11 km/h · 600 m/h upNormal'):
         fails.append(f'{name}: Go › Time says “{at[:80]}”')
-    press(pg, pg.js("nlT.at('.speed-at .btn')"), f'{name}: Change', False)
-    if not pg.js("!!document.querySelector('.speed-go .speed-presets')"):
-        fails.append(f'{name}: Change in Go › Time opened no editor')
+    press(pg, pg.js("nlT.at('#pl-pane-go .row[data-k=speed]')"), f'{name}: Your speed', False)
+    if not pg.js("polku.planner.tab === 'route' && document.querySelector('#pl-pane-route').dataset.step === 'speed' && !!document.querySelector('#pl-pane-route .speed-box .speed-presets')"):
+        fails.append(f'{name}: Your speed in Go › Time opened no editor')
+    pg.js("polku.planner.openStep(null); true")
     # Settings: no sport of its own (#321); every sport's speeds, the route's marked; MTB's Fast re-times the MTB route while the map is Hike
     press(pg, pg.js("nlT.at('#btn-settings')"), f'{name}: Settings', False)
     st = pg.js("(() => { const b = document.querySelector('#settings-body'); return { seg: !!b.querySelector('.sport-seg, select[aria-label^=Sport]'), rows: [...b.querySelectorAll('.speed-sport-row')].map((r) => r.dataset.k + (r.querySelector('.cur') ? '*' : '')).join(',') }; })()")
@@ -8111,7 +8129,8 @@ START_LIB = """(() => {
   };
   const onMap = (x, y) => document.elementFromPoint(x, y) === map.getCanvas();
   // a spot of the map you can see, a share of the way across and down it
-  T.spot = async (fx, fy) => { await settled(); const f = free(), x = f.left + (f.right - f.left) * fx, y = f.top + (f.bottom - f.top) * fy; return onMap(x, y) ? { x, y } : null; };
+  // (a note over it goes in a few seconds, and a person waits for it)
+  T.spot = async (fx, fy) => { await settled(); const f = free(), x = f.left + (f.right - f.left) * fx, y = f.top + (f.bottom - f.top) * fy; await until(() => onMap(x, y) || !document.elementFromPoint(x, y)?.closest('#toast'), 8000); if (onMap(x, y)) return { x, y }; const t = document.elementFromPoint(x, y); err(`the map at ${Math.round(x)}, ${Math.round(y)} is under ${t ? t.id || String(t.className.baseVal ?? t.className) : 'nothing'} (the free map ${Math.round(f.top)}–${Math.round(f.bottom)})`); return null; };
   T.fresh = async () => { p.setActive(false); p.clear(); p.past = []; p.future = []; p.setActive(true); await wait(200); return view(); };
   // The toolbox grows with the route (2026-10-20): what's on it, and what's in More
   const shown = () => (p.tools.hidden ? [] : [...p.tools.querySelectorAll('button')].filter((b) => b.offsetParent && !b.closest('[role=radiogroup]')).map((b) => b.getAttribute('aria-label') || txt(b)));
@@ -11185,6 +11204,124 @@ def keyfacts(chrome):
     return not fails
 
 
+# The planner's tabs, C (25d, #424 [tabs-c-route, tabs-c-how, tabs-c-speed, tabs-c-check, tabs-c-go, tabs-c-layers]): Route
+# opens with How you go › and Your speed ›, each a step of its own with Back to Route; Check's top keeps the facts, without
+# Speed and Style; Go opens with Leave, There at, where the time goes, then Your speed ›; the map's marks are a Your route
+# group in Layers while a route is drawn (straight legs)
+TB_JS = """(() => { const vis = (e) => !!e && e.getClientRects().length > 0; window.TB = {
+  pane: () => document.getElementById('pl-pane-route'),
+  route() {
+    const pane = TB.pane(), first = [...pane.children].find(vis), rows = first ? [...first.querySelectorAll(':scope > .row')] : [];
+    return { first: rows.map((r) => `${r.querySelector('b').textContent} · ${r.querySelector('.val')?.textContent || ''}`), list: vis(pane.querySelector('[data-sec=points]')), step: pane.dataset.step || '' };
+  },
+  step() {
+    const pane = TB.pane(), back = pane.querySelector('.step-head .way-back');
+    return { step: pane.dataset.step || '', back: vis(back) ? back.textContent.trim() : '', title: pane.querySelector('.step-head h3')?.textContent || '', list: vis(pane.querySelector('[data-sec=points]')),
+      presets: vis(pane.querySelector('.style-box .style-presets, .style-box .chip')), speeds: vis(pane.querySelector('.speed-box')) && pane.querySelector('.speed-box').children.length > 0, sectionHead: vis(pane.querySelector('[data-sec=style] > .sec-head')) };
+  },
+  at(el) { if (!el) return null; el.scrollIntoView({ block: 'nearest' }); const r = el.getBoundingClientRect(); return { x: r.left + Math.min(60, r.width / 3), y: r.top + r.height / 2 }; },
+  row: (pane, label) => [...document.querySelectorAll(`#pl-pane-${pane} .row`)].find((r) => vis(r) && r.querySelector('b')?.textContent === label),
+}; return true; })()"""
+
+
+def tabs(chrome):
+    fails = []
+
+    def press(pg, at, name, touch):
+        if not at:
+            fails.append(f'{name}: not on screen')
+            return False
+        if touch:
+            pg.quick_tap(at['x'], at['y'])
+        else:
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                      'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.6)
+        return True
+
+    # (the sheet's body scrolled to it, as a person scrolls; never the page)
+    at = lambda pg, expr: (pg.js(SETTLED), pg.js(f"""(async () => {{ const el = {expr}; if (!el) return null; const b = polku.planner.els.body, r = el.getBoundingClientRect(), s = b.getBoundingClientRect();
+      if (r.bottom > s.bottom) b.scrollTop += r.bottom - s.bottom + 8; else if (r.top < s.top) b.scrollTop -= s.top - r.top + 8;
+      await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok))); const q = el.getBoundingClientRect(); return {{ x: q.left + Math.min(60, q.width / 3), y: q.top + q.height / 2 }}; }})()"""))[1]
+
+    def one(w, h_, phone):
+        name, touch = f'{w}x{h_}', phone
+        pg = chrome.page(w, h_, phone)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        if not pg.js(PC_ROUTE, timeout=30000):
+            fails.append(f'{name}: no route')
+            pg.close()
+            return
+        pg.js(TB_JS)
+        pg.js("polku.planner.setTab('route'); polku.planner.setSheetState(polku.planner.layout() === 'side' ? 'open' : 'full'); true")
+        r = pg.js("TB.route()")
+        if r['first'] != ['How you go · Balanced', 'Your speed · Normal'] or not r['list'] or r['step']:
+            fails.append(f"{name}: Route opens with {r}")
+            pg.close()
+            return
+        # How you go ›: the route style alone, with Back to Route; a preset there changes the row's value
+        press(pg, at(pg, "TB.row('route', 'How you go')"), f'{name}: How you go', touch)
+        s = pg.js("TB.step()")
+        if s != {'step': 'how', 'back': 'Route', 'title': 'How you go', 'list': False, 'presets': True, 'speeds': False, 'sectionHead': False}:
+            fails.append(f"{name}: How you go's step: {s}")
+        press(pg, at(pg, "[...document.querySelectorAll('#pl-pane-route .style-box .chip')].find((c) => c.getAttribute('aria-pressed') !== 'true')"), f'{name}: another style', touch)
+        style = pg.js("polku.planner.styleOf('mtb').p")
+        press(pg, at(pg, "document.querySelector('#pl-pane-route .step-head .way-back')"), f'{name}: Back', touch)
+        r = pg.js("TB.route()")
+        if r['step'] or not r['list'] or style == 'balanced' or r['first'][0] == 'How you go · Balanced':
+            fails.append(f"{name}: Back from How you go after a style ({style}): {r}")
+        # Your speed ›: the speeds alone
+        press(pg, at(pg, "TB.row('route', 'Your speed')"), f'{name}: Your speed', touch)
+        s = pg.js("TB.step()")
+        if s != {'step': 'speed', 'back': 'Route', 'title': 'Your speed', 'list': False, 'presets': False, 'speeds': True, 'sectionHead': False}:
+            fails.append(f"{name}: Your speed's step: {s}")
+        pg.js("polku.planner.openStep(null); true")
+        # Check's top: the facts, without Speed and Style
+        r = pg.js("(() => { const p = polku.planner; p.setTab('check'); return [...p.els.stats.querySelectorAll('.stat-label')].map((x) => x.textContent); })()")
+        if 'Speed' in r or 'Style' in r or not r:
+            fails.append(f"{name}: Check's top: {r}")
+        # Go: Leave, There at, where the time goes, then Your speed ›, which opens its step in Route
+        r = pg.js("""(() => { const p = polku.planner; p.setTab('go'); p.toggleSection('speed', true); const b = p.sec.speed.el.querySelector('.sec-body');
+          const order = [...b.querySelectorAll('.pick-leave, .time-head, .speed-table, .row')].filter((e) => e.getClientRects().length).map((e) => e.matches('.pick-leave') ? 'Leave' : e.matches('.time-head') ? e.querySelector('b').textContent.split(' at ')[0] + ' at' : e.matches('.speed-table') ? 'table' : e.querySelector('b')?.textContent);
+          return order.filter((x, i) => order.indexOf(x) === i); })()""")
+        if r[:4] != ['Leave', 'There at', 'table', 'Your speed']:
+            fails.append(f"{name}: Go's Time: {r}")
+        press(pg, at(pg, "TB.row('go', 'Your speed')"), f"{name}: Go's Your speed", touch)
+        r = pg.js("({ tab: polku.planner.tab, step: TB.pane().dataset.step || '' })")
+        if r != {'tab': 'route', 'step': 'speed'}:
+            fails.append(f"{name}: Go's Your speed opened {r}")
+        pg.js("polku.planner.openStep(null); true")
+        # the marks on the map: in Layers, a Your route group while a route is drawn; none in Check
+        r = pg.js("""(async () => { const p = polku.planner, vis = (e) => !!e && e.getClientRects().length > 0; p.setTab('check');
+          const inCheck = vis(document.querySelector('#pl-pane-check [data-sec=onmap]')) || vis(document.querySelector('#pl-pane-check .onmap'));
+          if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
+          await new Promise((ok) => setTimeout(ok, 500));
+          const g = [...document.querySelectorAll('#layers-body .lg-group')].find((x) => x.querySelector('.lg-title')?.textContent === 'Your route');
+          const sw = g ? [...g.querySelectorAll('.tg')].map((t) => t.querySelector('.tg-text').firstChild.textContent.trim()) : [];
+          const km = g && g.querySelector('input'); if (km) km.click();
+          const off = p.marks.km;
+          if (km) g.querySelector('input').click(); // (drawn again by the first: found afresh)
+          return { inCheck, sw, toggled: off === false && p.marks.km === true }; })()""")
+        if r['inCheck'] or r['sw'][:3] != ['Distance marks', 'Arrival times at marks', 'Elapsed time at marks'] or not r['toggled']:
+            fails.append(f"{name}: the marks in Layers: {r}")
+        r = pg.js("""(async () => { const p = polku.planner; document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await new Promise((ok) => setTimeout(ok, 300));
+          p.clear(); await new Promise((ok) => setTimeout(ok, 300));
+          if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
+          await new Promise((ok) => setTimeout(ok, 500));
+          return [...document.querySelectorAll('#layers-body .lg-group')].some((x) => x.querySelector('.lg-title')?.textContent === 'Your route'); })()""")
+        if r:
+            fails.append(f"{name}: Your route in Layers with no route")
+        fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+        pg.close()
+
+    one(390, 844, True)
+    one(1440, 900, False)
+    print(f"{'ok  ' if not fails else 'FAIL'} the planner's tabs, C" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading on phones whole in its box (#243)'),
@@ -11241,6 +11378,7 @@ GROUPS = [
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
+    ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))

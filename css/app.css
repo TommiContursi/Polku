@@ -944,6 +944,17 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .time-head span { font-size: 12.5px; color: var(--muted); }
 .wpl-foot .btn { white-space: nowrap; }
 .onmap .tg { max-width: 360px; }
+/* Route's two rows, and their steps (#424's C): a step shows How you go's style or your speeds alone, with Back to Route */
+.how-rows { grid-column: 1 / -1; margin-bottom: 6px; }
+.step-head { grid-column: 1 / -1; display: grid; justify-items: start; gap: 4px; }
+.step-head h3 { margin: 6px 0 0; font-size: var(--font-title); }
+.step-head p { margin: 0 0 6px; color: var(--muted); font-size: var(--font-body); }
+.pl-pane[data-tab="route"]:not([data-step]) > :is(.step-head, [data-sec=style]) { display: none; }
+.pl-pane[data-tab="route"][data-step] > :not(.step-head, [data-sec=style]) { display: none; }
+.pl-pane[data-tab="route"][data-step] [data-sec=style] { grid-column: 1 / -1; }
+.pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-head, .pl-pane[data-tab="route"][data-step] [data-sec=style] :is(.sec-body > .how-h, .speed-wrap > .how-h) { display: none; }
+.pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-body { display: block; }
+.pl-pane[data-step="how"] .speed-wrap, .pl-pane[data-step="speed"] [data-sec=style] .style-box { display: none; }
 .onmap .tg.off { opacity: .5; }
 .take-along { display: flex; flex-wrap: wrap; gap: 8px; }
 .take-share > span { display: grid; text-align: left; }

@@ -97,7 +97,7 @@ const TABS = [
   { id: 'check', label: 'Check', icon: 'warn', title: 'What’s on the way: heads-up, climbs, the ground' },
   { id: 'go', label: 'Go', icon: 'clock', title: 'When and how long, the weather, taking it along' },
 ];
-const TAB_OF = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', onmap: 'check', speed: 'go', depart: 'go', take: 'go' };
+const TAB_OF = { points: 'route', style: 'route', warnings: 'check', climbs: 'check', colours: 'check', speed: 'go', depart: 'go', take: 'go' };
 // "wet ground: auto" turns on after this much rain in the last 24 hours (mm)
 const WET_MM = 3;
 const MODE_CODE = { auto: 'a', line: 'l', water: 'w', fixed: 'a' };
@@ -1879,6 +1879,7 @@ export class Planner {
     const set = (next) => this.setStyle(next, leg);
     const ownCount = this.legs.filter((l) => l.style).length;
     this.setSection('style', { summary: `${styleName(route, rs)}${ownCount ? ` · ${ownCount} leg${ownCount > 1 ? 's' : ''} with their own` : ''}` });
+    this.renderHow();
     box.innerHTML = '';
     if (leg != null) {
       box.append(h('div', { class: 'seg small full style-scope', role: 'group', 'aria-label': 'What the style is for' },
@@ -4049,9 +4050,15 @@ export class Planner {
       onclick: () => this.setTab(t.id, { user: true }),
     }, h('span', { html: icon(t.icon, 15), 'aria-hidden': 'true' }), t.label, h('span', { class: 'pl-tab-n' }), h('span', { class: 'pl-tab-unk', hidden: true, 'aria-hidden': 'true' }, '?'), h('span', { class: 'pl-tab-t' })))));
     const pane = (id, ...kids) => h('div', { class: 'pl-pane sheet-cols', role: 'tabpanel', id: `pl-pane-${id}`, 'aria-labelledby': `pl-tab-${id}`, 'data-tab': id }, ...kids);
+    // the marks on the map: Layers' Your route group shows them while a route is drawn (#424's C) [tabs-c-layers]
+    this.els.onMap = h('div', { class: 'onmap' });
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
       route: pane('route',
+        // How you go › and Your speed ›, each a step of its own with Back to Route (#424's C) [tabs-c-route, tabs-c-how, tabs-c-speed]
+        this.els.howRows = h('div', { class: 'rows how-rows' }),
+        this.els.stepHead = h('div', { class: 'step-head' }, h('button', { type: 'button', class: 'btn small quiet way-back', onclick: () => this.openStep(null), html: icon('chevronLeft', 18) }, h('span', {}, 'Route')),
+          this.els.stepTitle = h('h3', {}), this.els.stepLine = h('p', {})),
         // the route's view (25c): the list and the map stay as they are, until Edit
         this.els.viewNote = h('div', { class: 'pl-viewnote', hidden: true },
           h('span', { html: icon('info', 18), 'aria-hidden': 'true' }), h('span', {}, 'You’re not editing: the list and the map stay as they are.'),
@@ -4067,8 +4074,7 @@ export class Planner {
         this.els.stats,
         // the two short lists share a column in a wide panel
         h('div', { class: 'sec-stack' }, this.checksSection(), this.section('climbs', 'Climbs', this.els.climbs)),
-        this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown),
-        this.section('onmap', 'On the map', this.els.onMap = h('div', { class: 'onmap' }))),
+        this.section('colours', 'On the route', this.els.colourPreviewStatus = h('span', { class: 'sr-only', id: 'colour-preview-status', role: 'status' }), this.els.breakdown)),
       go: pane('go',
         this.section('speed', 'Time',
           (this.els.leave = leaveBlock(this)).el,
@@ -4180,13 +4186,12 @@ export class Planner {
   renderOnMap() {
     const box = this.els.onMap;
     if (!box) return;
-    const sw = (label, on, fn, disabled = false, title = '') => h('label', { class: `tg${disabled ? ' off' : ''}`, title },
-      h('span', { class: 'tg-text' }, label), h('input', { type: 'checkbox', role: 'switch', checked: on, disabled, onchange: (e) => fn(e.target.checked) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
+    const sw = (label, on, fn, disabled = false, line = '') => h('label', { class: `tg${disabled ? ' off' : ''}` },
+      h('span', { class: 'tg-text' }, label, h('small', {}, line)), h('input', { type: 'checkbox', role: 'switch', checked: on, disabled, onchange: (e) => fn(e.target.checked) }), h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
     box.replaceChildren(
       sw('Distance marks', !!this.marks.km, (v) => this.setMarks({ km: v }), false, 'Every 1, 5, 10 or 25 km along the route, by its length'),
-      sw('Arrival times at marks', !!this.marks.time, (v) => this.setMarks({ time: v }), !this.marks.km, 'The clock time you’d reach each distance mark'),
+      sw('Arrival times at marks', !!this.marks.time, (v) => this.setMarks({ time: v }), !this.marks.km, 'The clock time you reach each mark'),
       sw('Elapsed time at marks', !!this.marks.duration, (v) => this.setMarks({ duration: v }), !this.marks.km, 'Hours, minutes and seconds from departure, including stops and changeovers'));
-    this.setSection('onmap', { summary: [this.marks.km ? 'distance marks' : '', this.marks.km && this.marks.time ? 'arrival times' : '', this.marks.km && this.marks.duration ? 'elapsed time' : ''].filter(Boolean).join(' · ') || 'the line only', empty: !this.analysis });
   }
 
   // Go › Take it along: the route as a file, a link, or the map saved for offline
@@ -5226,6 +5231,7 @@ export class Planner {
     const act = this.mainSport();
     // your speeds: in Route › How you go, beside the route style (there before there's a route too)
     this.speedEditors(this.els.speedBox);
+    this.renderHow();
     // Go › Time: how long, and where the time goes
     const total = a ? a.timeWind || a.time : 0;
     this.setSection('speed', { summary: a ? `${fmtDuration(total)} · arrive ${this.clockOf(this.startSec() + total)}` : '', empty: !a });
@@ -5249,8 +5255,8 @@ export class Planner {
     const rows = ['paved', 'unpaved', 'trail', 'water', 'carry'].filter((k) => cats[k] && cats[k].d > 20);
     // the total first: how long, and from when to when
     const t0 = this.startSec();
-    box.append(h('div', { class: 'time-head' }, h('b', {}, fmtDuration(total)),
-      h('span', {}, `${this.leaveAt != null ? `depart ${this.leaveWords()}` : 'from now'} → ${this.isLoop() ? 'back' : 'there'} ${this.clockOf(t0 + total)}`)),
+    // There at, under Leave (#424's C) [tabs-c-go]
+    box.append(h('div', { class: 'time-head' }, h('b', {}, `${this.isLoop() ? 'Back' : 'There'} at ${this.clockOf(t0 + total)}`), h('span', {}, `${fmtDuration(total)} on the way`)),
       h('div', { class: 'speed-table' },
         ...rows.map((k) => h('div', { class: 'speed-row' }, h('span', {}, LABEL[k]), h('b', {}, fmtDist(cats[k].d)), h('b', {}, fmtDuration(cats[k].t)), h('small', {}, speedTxt(cats[k].d, cats[k].t)))),
         up > 30 && !isWater(act) ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which uphill (over 3 %)'), h('b', {}, ''), h('b', {}, fmtDuration(up)), h('small', {}, '')) : null,
@@ -5258,11 +5264,8 @@ export class Planner {
         a.snowSec >= 60 ? h('div', { class: 'speed-row sub' }, h('span', {}, 'of which the snow'), h('b', {}, ''), h('b', {}, `+${fmtDuration(a.snowSec)}`), h('small', {}, `${Math.round(a.snow.max)} cm at most (forecast)`)) : null,
         ...this.sportRows(a, tAt, speedTxt),
         h('div', { class: 'speed-row total' }, h('span', {}, waitSec ? 'Total time' : 'Moving time'), h('b', {}, fmtDist(a.total)), h('b', {}, fmtDuration(a.timeWind || a.time)), h('small', {}, speedTxt(a.total, (a.timeWind || a.time) - waitSec)))));
-    // what the time is based on, and Change: your speeds' editor, here in place (B of #233)
-    const go = h('div', { class: 'speed-go', hidden: !this.goSpeed });
-    if (this.goSpeed) this.speedEditors(go);
-    box.append(h('div', { class: 'speed-at' }, h('span', { class: 'note' }, `Timed at your speed: ${this.isMulti() ? [act, ...this.routeSports().filter((x) => x !== act)].map((sp) => `${ACTIVITIES[sp].label}: ${this.speedLine(sp)}`).join('; ') : this.speedLine(act)}`),
-      h('button', { type: 'button', class: 'btn small', 'aria-expanded': String(!!this.goSpeed), onclick: () => { this.goSpeed = !this.goSpeed; this.renderSpeed(); this.els.speedRoute.querySelector('.speed-at .btn')?.focus(); } }, 'Change')), go);
+    // what the time is based on: Your speed ›, its step in Route (#424's C)
+    box.append(h('div', { class: 'rows' }, this.speedRow()));
   }
 
   // why the weather isn't known, for the key facts (null: it is, or it's on its way)
@@ -5425,6 +5428,7 @@ export class Planner {
 
   // Open a section and bring it into view (expanding a peeking sheet).
   reveal(id) {
+    if (id === 'style') { this.openStep('how'); return; }
     if (TAB_OF[id] && TAB_OF[id] !== this.tab) this.setTab(TAB_OF[id]);
     this.toggleSection(id, true);
     const st = this.panel.dataset.state;
@@ -5433,6 +5437,40 @@ export class Planner {
     else if (this.layout() === 'side' && this.panel.dataset.state === 'min') this.setSheetState('open');
     // and show where: the section lights up for a moment (the Weather button, Speed, Style, a link…)
     requestAnimationFrame(() => this.flash(this.sec[id].el));
+  }
+
+  // Route's two rows, the route's style and your speed, each opening its step (#424's C)
+  renderHow() {
+    const box = this.els.howRows;
+    if (!box) return;
+    const sport = this.mainSport();
+    box.replaceChildren(
+      item({ icon: 'sliders', label: 'How you go', line: `The ways Polku picks for ${ACTIVITIES[sport].label}`, val: styleName(sport, this.styleOf(sport)), chev: true, k: 'how', onclick: () => { this.styleLeg = null; this.renderStyle(); this.openStep('how'); } }),
+      this.speedRow());
+  }
+  speedRow() {
+    const act = this.mainSport(), sp = speedSummary(act, this.craft);
+    const line = this.isMulti() ? [act, ...this.routeSports().filter((x) => x !== act)].map((x) => `${ACTIVITIES[x].label}: ${this.speedLine(x)}`).join('; ') : sp.txt;
+    return item({ icon: 'gauge', label: 'Your speed', line, val: sp.name, chev: true, k: 'speed', onclick: () => this.openStep('speed') });
+  }
+  // A step of Route's (null: back to Route): How you go's style alone, or your speeds alone [tabs-c-how, tabs-c-speed]
+  openStep(k) {
+    const pane = this.els.panes.route, was = pane.dataset.step;
+    if (k) {
+      const sport = this.mainSport();
+      this.els.stepTitle.textContent = k === 'how' ? 'How you go' : 'Your speed';
+      this.els.stepLine.textContent = k === 'how' ? `${ACTIVITIES[sport].label}, for the whole route. A change routes the route again.` : 'How fast the times are counted. A change only times the route again; the route stays.';
+      if (k === 'speed') this.renderSpeed();
+      pane.dataset.step = k;
+      if (this.tab !== 'route') this.setTab('route');
+      if (this.layout() === 'sheet' && ['peek', 'profile'].includes(this.panel.dataset.state)) this.setSheetState('half');
+      else if (this.layout() === 'side' && this.panel.dataset.state === 'min') this.setSheetState('open');
+      this.els.body.scrollTop = 0;
+      requestAnimationFrame(() => this.els.stepHead.querySelector('.way-back').focus({ preventScroll: true }));
+    } else {
+      delete pane.dataset.step;
+      if (was) requestAnimationFrame(() => this.els.howRows.querySelector(`[data-k="${was}"]`)?.focus({ preventScroll: true }));
+    }
   }
 
   // The summary's estimate opens Go at Leave.
@@ -5598,15 +5636,7 @@ export class Planner {
       if (x.k === 'day') stat('Hardest day', `Day ${x.v.n}`, `${fmtDist(x.v.to - x.v.from)}, ↑${Math.round(x.v.up)} m`);
       if (x.k === 'wx' || (x.k === 'wind' && x.miss)) stat(x.k === 'wx' ? 'Weather' : 'Wind', '?', this.noWeather(a));
     }
-    // what the time assumes, one tap from changing it
-    const sp = speedSummary(act, this.craft);
-    st.append(h('button', { type: 'button', class: 'stat stat-btn', title: 'Your speeds for this sport — tap to see or change them', onclick: () => { this.reveal('style'); requestAnimationFrame(() => requestAnimationFrame(() => this.flash(this.els.speedWrap))); } },
-      h('span', { class: 'stat-label' }, 'Speed'), h('span', { class: 'stat-value' }, sp.name), h('span', { class: 'stat-sub' }, sp.txt)));
-    // and how the route is chosen
-    const ownStyles = this.legs.filter((l) => l.style).length;
-    st.append(h('button', { type: 'button', class: 'stat stat-btn', title: 'How the route is chosen for this sport — tap to see or change it', onclick: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } },
-      h('span', { class: 'stat-label' }, 'Style'), h('span', { class: 'stat-value' }, styleName(act, this.styleOf(act))),
-      h('span', { class: 'stat-sub' }, [ownStyles ? `${ownStyles} leg${ownStyles > 1 ? 's' : ''} with their own` : '', hasWet(act) && this.wetFor(this.styleOf(act)) ? 'wet ground' : ''].filter(Boolean).join(' · ') || 'tap to change')));
+    st.hidden = !st.children.length; // (Speed and Style are Route's own rows now, #424's C)
     // after a style change: what it did, compared with the route before
     if (this.styleBefore && this.styleBefore.a !== a) {
       const b = this.styleBefore.stats, n = this.styleStats();

@@ -50,6 +50,7 @@ const P = {
   temp: '<path d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z"/><path d="M12 10v6"/>',
   rain: '<path d="M7 16a5 5 0 1 1 1.6-9.7A6 6 0 0 1 20 10a4 4 0 0 1-2 6"/><path d="m9 19-1 2M13 19l-1 2M17 19l-1 2"/>',
   play: '<path d="M7 4v16l13-8Z" fill="currentColor"/>',
+  gauge: '<path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"/><path d="m12 15 3.5-4.5"/><circle cx="12" cy="15" r="1"/>',
   clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   pencil: '<path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/>',
