@@ -94,7 +94,7 @@ not models, mid-session: a new model sends the whole conversation again
 - **Intermittent failures count.** Record conditions, isolate variables, and investigate proportionately. Don't invent a fix or rerun tests until they happen to pass.
 - **Keep one clear implementation.** Reuse existing mechanisms. Avoid parallel code paths, unnecessary abstractions, defensive layers, and special cases without demonstrated value.
 - **Fail clearly; recover appropriately.** Surface programming errors. Handle expected service failures without hiding missing data or losing the user's work.
-- **Preserve user-facing compatibility.** Simplify internal code, but keep saved routes, share links, and established behavior working unless the user approves a change.
+- **Clarity over compatibility.** Clear code beats backward compatibility. Prefer one clear implementation over compatibility layers for superseded behavior or formats.
 - **Prefer less complexity.** A new dependency, fallback, abstraction, or persistent state must justify its maintenance cost.
 - **Stay focused.** Make surgical changes. Don't refactor unrelated code, build speculative infrastructure, or expand the task without a concrete reason.
 
@@ -121,8 +121,9 @@ not models, mid-session: a new model sends the whole conversation again
   terrain, trail details or hazards fail, the route says so. Check what
   happens when a source fails, answers late, answers out of order, or comes
   back, not only the first good answer.
-- **Saved routes, settings and share links keep working,** old ones too. When
-  you change what's stored or linked, read the old format as well.
+- **Saved routes, settings and share links:** update the current readers,
+  writers and tests together when formats change; don't retain old formats
+  solely for backward compatibility.
 - **Don't break:** weather along the route, Heads-up and Avoid, water routing
   and carries, round trips, offline save and preview, GPX/KML import and GPX
   export, share links, 3D and hover.
