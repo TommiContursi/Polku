@@ -223,6 +223,27 @@ not models, mid-session: a new model sends the whole conversation again
   what cost time, what to keep and what changes in AGENTS.md, with the PRs
   and issues as evidence. Then the milestone is closed.
 
+## Code Review Rules
+
+The automatic review on each PR (Codex) checks the diff against this file as
+it is on the PR's branch. One comment, findings only, most serious first,
+each with its file and line and the rule it breaks. Look hardest for:
+
+- **Bloat:** code the task didn't need, a helper or abstraction with one
+  caller, a defensive check or fallback nothing has shown is needed, a second
+  way of doing what a module already does, old formats kept for compatibility,
+  tidying of unrelated code.
+- **Drift from this file:** network calls outside `request()`, a new
+  dependency, build step or backend, a position leaving the device, Traficom
+  data used for routing, missing data that looks complete, a control that
+  isn't one of DEVELOPING's shared controls.
+- **The PR itself:** a bug fix without its check in `tools/smoke.py`, a
+  missing CHANGELOG, README, USING or DEVELOPING update, a title or closing
+  word that breaks "Pull requests".
+
+No praise, no summary of the change, no style nits. Nothing found: say so in
+one line.
+
 ## Bugs and findings
 
 - **File what someone else can act on,** with its kind and size, once you've
