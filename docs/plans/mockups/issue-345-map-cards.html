@@ -60,6 +60,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .cv-row { margin-top: 44px; }
 .cv-row > h2 { margin: 0 0 4px; font-size: 19px; }
 .cv-row > p { margin: 0 0 14px; max-width: 940px; opacity: .9; }
+.cv-row > h3.cv-sub { margin: 26px 0 10px; font-size: 15.5px; }
 .cv-frames { display: flex; flex-wrap: wrap; gap: 28px 30px; align-items: flex-start; }
 .fr { margin: 0; display: flex; flex-direction: column; gap: 8px; color: var(--text); }
 .fr figcaption { max-width: var(--cap, 260px); font-size: 13px; color: var(--page-cap); }
@@ -438,6 +439,57 @@ button.warnr span { flex: 1; font-weight: 600; }
 .r5 .panel .wp.wp-lit { margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 10px; border-bottom-color: transparent; background: var(--accent-soft); }
 .r5 .panel .wp.wp-lit i { border-color: var(--accent-bg); box-shadow: 0 0 0 3px var(--surface-solid), 0 0 0 5px var(--accent-bg); }
 
+/* ================================================================ Revision 6 (2026-10-23): the four choices before Journey D
+   Revision 5's look and parts throughout; only these are new. */
+/* a time to pick (#364, B): the one stepper (− and + in quarter hours) around the phone's own time field, which opens the
+   phone's clock; its words are the phone's (24 h or am/pm). 16 px, so iOS doesn't zoom the page into it (the design
+   system's Field size) */
+.c6-step input { width: 5.4em; min-width: 0; min-height: 44px; margin: 0; padding: 0 2px; border: 0; border-radius: 8px; background: none; color: var(--text); font: 700 16px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-variant-numeric: tabular-nums; text-align: center; }
+.c6-step input::-webkit-calendar-picker-indicator { display: none; }
+.c6-step input::-webkit-datetime-edit { display: flex; justify-content: center; }
+.c6-step input:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) { .c6-step input:hover { background: var(--surface-2); } }
+/* under the chosen day, as Paddle's crafts sit under Paddle: the time, and when you get to the end */
+.c6-at { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 0 10px 8px 42px; }
+.c6-at small { flex: 1 1 120px; font-size: 13px; color: var(--muted); }
+.r5 .pop .c6-step input { min-height: 34px; font-size: 14px; }
+.r5 .pop .c6-at { padding: 0 8px 6px 36px; }
+/* C (#364): the row's own picker over it (the phone's date and time, or its clock); Now under it once a time is set */
+.c6-pick { position: relative; }
+.c6-pick > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; border: 0; cursor: pointer; }
+.c6-leave { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.c6-leave > .c2-list { align-self: stretch; }
+.c6-now { min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 650; }
+.r5 .pop .c6-now { min-height: 36px; font-size: 13.5px; }
+.c6-nofc { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 12px; background: #eaf0f6; color: var(--text); font-size: 13.5px; line-height: 1.35; }
+.fr.dark .c6-nofc { background: rgba(156,192,228,.13); }
+.c6-nofc.c6-info { background: var(--surface-2); }
+.c6-nofc.c6-info .ic { color: var(--muted); }
+.c6-nofc .ic { flex: none; color: #47607a; margin-top: 1px; }
+.fr.dark .c6-nofc .ic { color: #9cc0e4; }
+.c2-step button:disabled { color: var(--muted); opacity: .45; }
+/* desktops: 36 px with a mouse, as decided on 2026-10-22 (#380) and built in 1a; Revision 5 drew 34 */
+.r6 .pop .c2-item { min-height: 36px; }
+.r6 .pop .c2-step button { width: 36px; height: 36px; }
+.r6 .pop .c6-step input, .r6 .pop .c2-time, .r6 .pop .c2-foot button { min-height: 36px; }
+/* Back in words wraps a long name instead of running past the card (Revision 5's ran past at 360 px in Finnish) */
+.r6 .c2-top .c2-back-words { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 54px); }
+/* narrow (200 %): still one box, on two rows: the time across, then − and + side by side, so nothing is squeezed */
+@container (max-width: 290px) {
+  .c6-at { padding-left: 10px; }
+  .c6-step { display: grid; grid-template-columns: 1fr 1fr; flex: 1 1 100%; }
+  .c6-step input { grid-column: 1 / -1; width: auto; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .c6-step button { grid-row: 2; width: auto; }
+  /* the one stepper takes the row, its number between − and + (Stay · 2 nights at 360 px and 200 %) */
+  .r6 .c2-detail .c2-step { flex: 1 1 100%; } .r6 .c2-detail .c2-step b { flex: 1; min-width: 0; }
+  /* a long name in Back takes the row, its words wrapping; undo, redo and ✕ go under it */
+  .r6 .c2-top .c2-back-words { flex: 1 1 6em; max-width: none; }
+}
+/* the pill's words wrap rather than run off a 180 px screen (360 px at 200 %) */
+.r6 .pill { white-space: normal; width: max-content; max-width: calc(100% - 16px); text-align: left; }
+/* at 180 px (360 px at 200 %) ✕'s own margin reached 2 px past the peek, which then moved sideways under a thumb */
+.r6 .sheet { overflow-x: hidden; }
+
 /* ================================================================ The app's own controls
    Copied from css/app.css at 615d2d7, with the same class names, so what is approved here is what gets built.
    Don't change them here: change css/app.css, then copy again. Scoped under .app, since the mock-up's own chrome
@@ -656,6 +708,9 @@ button.warnr span { flex: 1; font-weight: 600; }
   <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol>
   <symbol id="i-avoid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/></symbol>
   <symbol id="i-finish" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
+  <symbol id="i-gpx" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8l-5-5Z"/><path d="M14 3v5h5"/><path d="M12 11v6M9.5 14.5 12 17l2.5-2.5"/></symbol>
+  <symbol id="i-offline" viewBox="0 0 24 24"><path d="M7 18.5a4.5 4.5 0 1 1 1-8.9 6 6 0 0 1 11.3 1.9 3.8 3.8 0 0 1-1.3 7"/><path d="M12 11v9M8.8 16.8 12 20l3.2-3.2"/></symbol>
 </svg>
 <main class="cv">
   <header class="cv-head">
@@ -673,6 +728,18 @@ button.warnr span { flex: 1; font-weight: 600; }
       <li><b>What's here ›</b> on every card, for the map's details.</li>
       <li><b>Only what can be done now:</b> no route, only Start a route here and Round trip; a spot by the line, Add a point here; the route's view, the planner's "You're not editing" note with Edit.</li>
       <li>Undo and redo stay while a card is open. The switch at the bottom right shows the cards as approved.</li>
+    </ul>
+  </section>
+  <section class="cv-q">
+    <h2>Revision 6 (2026-10-23): four choices before Journey D</h2>
+    <p><b>Chosen on 2026-10-24:</b> when you leave C, Avoid this spot B, On the profile B, The whole route B, the start A. Journey D builds Revision 6 with these; the other options stay to compare.</p>
+    <p><b>Cards: Revision 6</b> is Revision 5 with the choices that 25d's Journey D waits for, each drawn with its options. Its switches at the bottom right start at the chosen option and change every frame shown in Revision 6. In <a href="#s7">section 7</a> each frame fixes its own option, so the options sit side by side. Revision 5 and the earlier ones stay as they were. Nothing is decided until you choose.</p>
+    <ul>
+      <li><b>When you leave, and when you go on after a night (#364).</b> A: a few fixed hours, as Revision 5. B: Now, today or tomorrow, then the phone's own clock inside the app's one stepper, − and + in quarter hours. Someone leaving at 07:30 can say so, and going on after a night is set on the card itself. <b>C, chosen on 2026-10-24:</b> one row, Leave ›, opening the phone's own date and time picker (section 7a).</li>
+      <li><b>Avoid this spot (#364).</b> A: as Revision 5, on the spot's card and in Edit this stretch. <b>B, chosen:</b> on every card with a spot on the line too: the route's card (and a warning's card, as Avoid it). C: a point's card too. A point is a place you go through, so on its card Move or Remove says it better.</li>
+      <li><b>On the profile (#364).</b> A: as Revision 5, on a stretch's card and in Edit this stretch. <b>B, chosen:</b> the route's card too. It zooms the profile to the stretch, as today: the planner rises to half. C: a point's card too, though a point has no length to zoom to.</li>
+      <li><b>The whole route on the route's card (#90).</b> A: not there, ⋯ keeps it, and #90 closes. <b>B, chosen:</b> one row, <b>The whole route ›</b>, opening what ⋯ has, in its groups and order. The card stays about its spot, Clear route keeps its Undo, and nothing is listed twice. C: #90's four rows, as filed.</li>
+      <li><b>The start while drawing (#334).</b> <b>A, chosen:</b> Back to start comes first on the start's card. B: a tap on the start closes the loop, with Undo. A tap on any other point opens its card, so the start would behave differently, and a loop by mistake would be easy.</li>
     </ul>
   </section>
   <section class="cv-q">
@@ -874,11 +941,76 @@ button.warnr span { flex: 1; font-weight: 600; }
       <figure class="fr phone" id="w-dark" data-st='{"card":"spot","kind":"spot","at":[470,820],"theme":"dark"}'><figcaption><b>Dark</b>The long-press card at night.</figcaption></figure>
     </div>
   </section>
+
+  <section class="cv-row" id="s7">
+    <h2>7 · Revision 6: the four choices before Journey D</h2>
+    <p>Each frame here shows Revision 6 with one option fixed, so the options sit side by side. The other choices follow the switches, which start at the chosen options. Every control does what it says, or says in a note what the app would do.</p>
+    <h3 class="cv-sub">7a · When you leave, and when you go on after a night (#364)</h3>
+    <p><b>C, redrawn from your notes (chosen on 2026-10-24):</b> one row, <b>Leave · Now ›</b>, opens the phone's own date and time picker, for any day ahead (#159). Only the start has a date; the rest counts from it. A night is <b>Stay · 1 night</b> with the app's stepper, then <b>Go on at · 07:00 ›</b>, the phone's clock. Past the forecast's reach, No forecast yet. A and B are as they were.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="r6-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c"}'><figcaption><b>C · The start's card</b>Leave · Now ›: a tap opens the phone's own date and time.</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-c-set" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Set to tomorrow</b>The row says the day and the time; Now under it goes back to leaving now.</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-c-far" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-28T07:30"}'><figcaption><b>C · Four weeks ahead</b>Past the forecast's 10 days: No forecast yet; sunset and the dark still count (#159).</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-c-passed" data-st='{"card":"point","pt":0,"v":"r6","times":"c","passedDT":"2026-10-24T07:30"}'><figcaption><b>C · A date that has passed</b>A saved route or a link opens at Now, saying when it was planned for.</figcaption></figure>
+      <figure class="fr phone" id="r6-whole-c-share" data-st='{"card":"whole","kind":"route","at":[218,745],"v":"r6","times":"c","leaveDT":"2026-10-31T16:45"}'><figcaption><b>C · Share with the date</b>Share link says it includes when you leave. Set Now first to share without it.</figcaption></figure>
+      <figure class="fr phone" id="r6-night-c" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c"}'><figcaption><b>C · A night</b>Stay · 1 night with the stepper; Go on at · 07:00 › opens the phone's clock.</figcaption></figure>
+      <figure class="fr phone" id="r6-night-c2" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c","nights":2,"leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Two nights</b>Going on counts from the start: Tue 3 Nov, after 2 nights.</figcaption></figure>
+      <figure class="fr desk" id="r6-leave-c-desk" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30"}'><figcaption><b>C · Desktop</b>A click on the row opens the browser's date and time picker.</figcaption></figure>
+      <figure class="fr phone" id="r6-fi-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c","leaveDT":"2026-11-01T07:30","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>C · 360 px, Finnish</b></figcaption></figure>
+      <figure class="fr phone" id="r6-200-night-c" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"c","nights":2,"z":2}'><figcaption><b>C · 200 %: a night</b></figcaption></figure>
+      <figure class="fr phone" id="r6-dark-leave-c" data-st='{"card":"point","pt":0,"v":"r6","times":"c","theme":"dark","leaveDT":"2026-11-28T07:30"}'><figcaption><b>C · Dark, four weeks ahead</b></figcaption></figure>
+    </div>
+    <div class="cv-frames">
+      <figure class="fr phone" id="r6-leave-a" data-st='{"card":"leave","pt":0,"v":"r6","times":"hours"}'><figcaption><b>A · Fixed hours</b>As Revision 5: Now, then 11:00, 12:00, 13:00 and tomorrow at 08:00. Leaving at 07:30 can't be said.</figcaption></figure>
+      <figure class="fr phone" id="r6-leave-b" data-st='{"card":"leave","pt":0,"v":"r6","times":"any","leaveDay":"tomorrow","leaveAt":"07:30"}'><figcaption><b>B · Today or tomorrow</b>Now, today or tomorrow. Under the day, the phone's own clock in the app's one stepper: − and + move it by 15 minutes.</figcaption></figure>
+      <figure class="fr phone" id="r6-start-b" data-st='{"card":"point","pt":0,"v":"r6","times":"any","leaveDay":"tomorrow","leaveAt":"07:30"}'><figcaption><b>B · Back on the start's card</b>Leave at says Tomorrow 07:30, and you leave at 07:30.</figcaption></figure>
+      <figure class="fr phone" id="r6-night-a" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"hours"}'><figcaption><b>A · Go on at, fixed hours</b>As Revision 5: 07:00 opens a card of four hours.</figcaption></figure>
+      <figure class="fr phone" id="r6-night-b" data-st='{"card":"point","pt":1,"here":"night","v":"r6","times":"any"}'><figcaption><b>B · Go on at, the stepper</b>The same stepper, on the card itself: tap the time for the phone's clock.</figcaption></figure>
+      <figure class="fr desk" id="r6-leave-desk" data-st='{"card":"leave","pt":0,"v":"r6","times":"any","leaveDay":"today","leaveAt":"16:45"}'><figcaption><b>B · Desktop</b>The same card at the start. The time can be typed, and the arrow keys step it.</figcaption></figure>
+    </div>
+    <h3 class="cv-sub">7b · Avoid this spot and On the profile: on which cards (#364)</h3>
+    <div class="cv-frames">
+      <figure class="fr phone" id="r6-route-a" data-st='{"card":"route","kind":"route","at":[218,745],"v":"r6","avoid":"r5","prof":"r5"}'><figcaption><b>A · As Revision 5</b>The route's card has neither. Avoid this spot is on a held spot's card and in Edit this stretch; On the profile is on a stretch's card and in Edit this stretch.</figcaption></figure>
+      <figure class="fr phone" id="r6-route-b" data-st='{"card":"route","kind":"route","at":[218,745],"v":"r6","avoid":"line","prof":"route"}'><figcaption><b>B · On the route's card too (chosen)</b>Every card with a spot on the line has Avoid this spot (a warning's card says Avoid it). On the profile zooms the profile to this stretch.</figcaption></figure>
+      <figure class="fr phone" id="r6-stretch" data-st='{"card":"stretch","kind":"route","at":[458,653],"v":"r6"}'><figcaption><b>B · A stretch's card</b>On the profile, as in Revision 5. No Avoid: a stretch has no one spot.</figcaption></figure>
+      <figure class="fr phone" id="r6-point-c" data-st='{"card":"point","pt":1,"v":"r6","avoid":"all","prof":"all"}'><figcaption><b>C · A point's card too</b>Avoid this spot would remove the point you placed; On the profile has no stretch to zoom to.</figcaption></figure>
+      <figure class="fr desk" id="r6-route-desk" data-st='{"card":"route","kind":"route","at":[640,490],"v":"r6"}'><figcaption><b>B · Desktop</b>On the profile and Avoid this spot as two buttons; The whole route › below them.</figcaption></figure>
+    </div>
+    <h3 class="cv-sub">7c · The whole route on the route's card (#90)</h3>
+    <div class="cv-frames">
+      <figure class="fr phone" id="r6-whole-a" data-st='{"card":"route","kind":"route","at":[218,745],"v":"r6","whole":"none"}'><figcaption><b>A · ⋯ only</b>The card is about its spot. Share, export and Clear stay in ⋯, and #90 closes.</figcaption></figure>
+      <figure class="fr phone" id="r6-whole-b" data-st='{"card":"route","kind":"route","at":[218,745],"v":"r6","whole":"row"}'><figcaption><b>B · One row (chosen)</b>The whole route › at the end, apart from the spot's rows.</figcaption></figure>
+      <figure class="fr phone" id="r6-whole-menu" data-st='{"card":"whole","kind":"route","at":[218,745],"v":"r6","whole":"row"}'><figcaption><b>B · The whole route ›</b>What ⋯ has, in its groups and order. Clear route apart, with Undo in its note.</figcaption></figure>
+      <figure class="fr phone" id="r6-whole-c" data-st='{"card":"route","kind":"route","at":[218,745],"v":"r6","whole":"four"}'><figcaption><b>C · Four rows, as #90 asked</b>Export GPX, Copy share link, Save offline and Clear route on the card itself.</figcaption></figure>
+      <figure class="fr desk" id="r6-whole-desk" data-st='{"card":"whole","kind":"route","at":[640,490],"v":"r6","whole":"row"}'><figcaption><b>B · Desktop</b>The whole route › as buttons, two a row; Clear route in red on its own row.</figcaption></figure>
+    </div>
+    <h3 class="cv-sub">7d · The start while drawing (#334)</h3>
+    <div class="cv-frames">
+      <figure class="fr phone" id="r6-start-a" data-st='{"card":"point","pt":0,"v":"r6","start":"card"}'><figcaption><b>A · Back to start first (chosen)</b>A tap on the start opens its card, as on every point; Back to start is its first row, one more tap.</figcaption></figure>
+      <figure class="fr phone" id="r6-start-tap" data-st='{"v":"r6","start":"tap"}'><figcaption><b>B · A tap closes the loop</b>Tap the green start: the leg back to it is added at once, with Undo. Hold the start for its card.</figcaption></figure>
+      <figure class="fr phone" id="r6-start-looped" data-st='{"v":"r6","start":"tap","looped":true,"undoLoop":true,"toast":"looped"}'><figcaption><b>B · After the tap</b>The loop, routed; the note with Undo.</figcaption></figure>
+      <figure class="fr desk" id="r6-start-desk" data-st='{"card":"point","pt":0,"v":"r6","start":"card"}'><figcaption><b>A · Desktop</b>Back to start as the card's first button.</figcaption></figure>
+    </div>
+    <h3 class="cv-sub">7e · The worst cases, with the options recommended on 2026-10-23</h3>
+    <div class="cv-frames">
+      <figure class="fr phone" id="r6-fi" data-st='{"card":"route","kind":"route","at":[458,653],"v":"r6","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 px, Finnish, long names</b>The route's card with its warning, its two actions and the whole route.</figcaption></figure>
+      <figure class="fr phone" id="r6-fi-leave" data-st='{"card":"leave","pt":0,"v":"r6","w":360,"h":740,"lang":"fi","worst":true,"leaveDay":"today","leaveAt":"16:45"}'><figcaption><b>360 px, Finnish: Leave at</b>The day and the time fit, nothing is cut.</figcaption></figure>
+      <figure class="fr phone" id="r6-200-night" data-st='{"card":"point","pt":1,"here":"night","v":"r6","z":2}'><figcaption><b>200 %: a night</b>The stepper takes a row of its own; − and + stay a finger's size.</figcaption></figure>
+      <figure class="fr phone" id="r6-200-whole" data-st='{"card":"whole","kind":"route","at":[218,745],"v":"r6","z":2}'><figcaption><b>200 %: the whole route</b>The card scrolls inside; the route stays in sight above it.</figcaption></figure>
+      <figure class="fr phone" id="r6-dark" data-st='{"card":"leave","pt":0,"v":"r6","theme":"dark","leaveDay":"today","leaveAt":"16:45"}'><figcaption><b>Dark: Leave at</b>The phone's clock follows the dark theme.</figcaption></figure>
+      <figure class="fr phone" id="r6-dark-route" data-st='{"card":"route","kind":"route","at":[458,653],"v":"r6","theme":"dark"}'><figcaption><b>Dark: the route's card</b>With its warning, its actions and the whole route.</figcaption></figure>
+    </div>
+  </section>
 </main>
 
 <div class="picker" data-open="true">
   <div class="pk-groups" role="group" aria-label="Mock-up switches">
-    <div><span>Cards</span><button type="button" data-pk="cards" data-v="v1" aria-pressed="false">As approved</button><button type="button" data-pk="cards" data-v="r1" aria-pressed="false">Revision 1</button><button type="button" data-pk="cards" data-v="v2" aria-pressed="false">Revision 2</button><button type="button" data-pk="cards" data-v="r3" aria-pressed="false">Revision 3</button><button type="button" data-pk="cards" data-v="r4" aria-pressed="false">Revision 4</button><button type="button" data-pk="cards" data-v="r5" aria-pressed="true">Revision 5</button></div>
+    <div><span>Cards</span><button type="button" data-pk="cards" data-v="v1" aria-pressed="false">As approved</button><button type="button" data-pk="cards" data-v="r1" aria-pressed="false">Revision 1</button><button type="button" data-pk="cards" data-v="v2" aria-pressed="false">Revision 2</button><button type="button" data-pk="cards" data-v="r3" aria-pressed="false">Revision 3</button><button type="button" data-pk="cards" data-v="r4" aria-pressed="false">Revision 4</button><button type="button" data-pk="cards" data-v="r5" aria-pressed="true">Revision 5</button><button type="button" data-pk="cards" data-v="r6" aria-pressed="false">Revision 6 (to choose)</button></div>
+    <div><span>Rev. 6 · Leaving (#364)</span><button type="button" data-pk="times" data-v="hours" aria-pressed="false">A: fixed hours</button><button type="button" data-pk="times" data-v="any" aria-pressed="false">B: today or tomorrow</button><button type="button" data-pk="times" data-v="c" aria-pressed="true">C: one row, any day (chosen)</button></div>
+    <div><span>Rev. 6 · Avoid this spot (#364)</span><button type="button" data-pk="avoid" data-v="r5" aria-pressed="false">A: as Rev. 5</button><button type="button" data-pk="avoid" data-v="line" aria-pressed="true">B: on the line (chosen)</button><button type="button" data-pk="avoid" data-v="all" aria-pressed="false">C: a point's too</button></div>
+    <div><span>Rev. 6 · On the profile (#364)</span><button type="button" data-pk="prof" data-v="r5" aria-pressed="false">A: as Rev. 5</button><button type="button" data-pk="prof" data-v="route" aria-pressed="true">B: the route's card too (chosen)</button><button type="button" data-pk="prof" data-v="all" aria-pressed="false">C: a point's too</button></div>
+    <div><span>Rev. 6 · The whole route (#90)</span><button type="button" data-pk="whole" data-v="none" aria-pressed="false">A: ⋯ only</button><button type="button" data-pk="whole" data-v="row" aria-pressed="true">B: one row (chosen)</button><button type="button" data-pk="whole" data-v="four" aria-pressed="false">C: four rows</button></div>
+    <div><span>Rev. 6 · The start (#334)</span><button type="button" data-pk="start" data-v="card" aria-pressed="true">A: Back to start first (chosen)</button><button type="button" data-pk="start" data-v="tap" aria-pressed="false">B: a tap closes the loop</button></div>
     <div><span>Size</span><button type="button" data-pk="size" data-v="390" aria-pressed="true">390</button><button type="button" data-pk="size" data-v="360" aria-pressed="false">360</button><button type="button" data-pk="size" data-v="200" aria-pressed="false">200 %</button></div>
     <div><span>Sport</span><button type="button" data-pk="sport" data-v="mtb" aria-pressed="true">MTB</button><button type="button" data-pk="sport" data-v="hike" aria-pressed="false">Hike</button></div>
     <div><span>Words</span><button type="button" data-pk="lang" data-v="en" aria-pressed="true">English</button><button type="button" data-pk="lang" data-v="fi" aria-pressed="false">Suomi</button></div>
@@ -959,7 +1091,13 @@ const WAYS = [[0.7, 'Gravel path', 'Sorapolku', 'Kaupin ulkoilureitti', 'S0', 'T
 const OSM_TAGS = { way: ['highway=path', 'surface=dirt', 'mtb:scale=1', 'mtb:scale:uphill=1', 'sac_scale=hiking', 'trail_visibility=excellent', 'width=1', 'check_date=2024-06-12', 'way 123456789'],
   place: ['amenity=toilets', 'toilets:disposal=pitlatrine', 'fee=no', 'wheelchair=no', 'leisure=firepit', 'check_date=2023-08-02', 'node 987654321'] };
 
-let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb', cards: ['v1', 'r1', 'v2', 'r3', 'r4'].includes(Q.get('cards')) ? Q.get('cards') : 'r5' };
+let PK = { size: Q.get('z') === '2' ? '200' : Q.get('w') === '360' ? '360' : '390', lang: Q.get('lang') || 'en', worst: Q.get('worst') === '1' ? '1' : '0', theme: Q.get('theme') || 'light', sport: Q.get('sport') || 'mtb', cards: ['v1', 'r1', 'v2', 'r3', 'r4', 'r6'].includes(Q.get('cards')) ? Q.get('cards') : 'r5',
+  // Revision 6's choices (2026-10-23), each switch starting at the chosen option (2026-10-24); a frame can fix its own
+  times: ['hours', 'any'].includes(Q.get('times')) ? Q.get('times') : 'c', avoid: ['r5', 'all'].includes(Q.get('avoid')) ? Q.get('avoid') : 'line', prof: ['r5', 'all'].includes(Q.get('prof')) ? Q.get('prof') : 'route',
+  whole: ['none', 'four'].includes(Q.get('whole')) ? Q.get('whole') : 'row', start: Q.get('start') === 'tap' ? 'tap' : 'card' };
+// what a frame keeps when a card closes or another opens: its switches, its words and the route as drawn
+const keepOf = (st) => ({ added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z, v: st.v, view: st.view, noRoute: st.noRoute,
+  times: st.times, avoid: st.avoid, prof: st.prof, whole: st.whole, start: st.start, looped: st.looped, leaveDay: st.leaveDay, leaveAt: st.leaveAt, leaveDT: st.leaveDT, passedDT: st.passedDT });
 const ic = (id, s = 20) => `<svg class="ic" width="${s}" height="${s}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -1102,6 +1240,406 @@ function pointCard(f, st) {
     <div class="rows">${rowBtn('noop', t.after, `${ptName(f, i)} → ${ptName(f, i + 1)}`)}</div>`;
 }
 const CARDS = { route: routeCard, stretch: stretchCard, under: underCard, edit: editCard, spot: spotCard, more: moreCard, osm: osmCard, notright: notRightCard, place: placeCard, placemore: placeMoreCard, point: pointCard };
+
+// ------------------------------------------------ Revision 6's own words and helpers, outside a card
+// what a time starts at once a day is picked (the mock-up's now is 10:00), and a time moved by minutes within its day
+const LEAVE6 = { today: '10:30', tomorrow: '08:00' };
+// C: the start has a date; the mock-up's now is Sat 31 Oct 2026, 10:00. Polku asks Open-Meteo for 240 hours (LONG_HOURS
+// in js/weather.js): a start 10 days or more ahead has no forecast yet.
+const NOW_C6 = new Date(2026, 9, 31, 10, 0), FAR_C6 = 240;
+const pastC6 = (d) => (d - NOW_C6) / 36e5 >= FAR_C6;
+const p2C6 = (n) => String(n).padStart(2, '0');
+const isoC6 = (d) => `${d.getFullYear()}-${p2C6(d.getMonth() + 1)}-${p2C6(d.getDate())}T${p2C6(d.getHours())}:${p2C6(d.getMinutes())}`;
+const DAY_C6 = { en: { d: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], m: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], today: 'Today', tomorrow: 'Tomorrow' },
+  fi: { d: ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'], today: 'Tänään', tomorrow: 'Huomenna' } };
+const dayC6 = (lang, d) => (lang === 'fi' ? `${DAY_C6.fi.d[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.` : `${DAY_C6.en.d[d.getDay()]} ${d.getDate()} ${DAY_C6.en.m[d.getMonth()]}`);
+const aheadC6 = (d) => Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(NOW_C6.getFullYear(), NOW_C6.getMonth(), NOW_C6.getDate())) / 864e5);
+const labelC6 = (lang, v) => { const d = new Date(v), n = aheadC6(d), L = DAY_C6[lang] || DAY_C6.en; return `${n === 0 ? `${L.today}, ` : n === 1 ? `${L.tomorrow}, ` : ''}${dayC6(lang, d)}, ${p2C6(d.getHours())}:${p2C6(d.getMinutes())}`; };
+const addMin6 = (t, m, lo = 0, hi = 1425) => { const [a, b] = t.split(':').map(Number), x = Math.max(lo, Math.min(hi, a * 60 + b + m)); return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
+const T6 = {
+  en: { looped: 'Back to the start: the route is a loop now', cleared: 'Route cleared: Undo brings it back', leavepickc: 'Your phone’s own date and time picker opens', goonpickc: 'Your phone’s clock opens' },
+  fi: { looped: 'Takaisin lähtöön: reitti on nyt kierros', cleared: 'Reitti tyhjennetty: Kumoa tuo sen takaisin', leavepickc: 'Puhelimen oma päivä- ja aikavalitsin aukeaa', goonpickc: 'Puhelimen kello aukeaa' },
+};
+// what a control does where the mock-up can't show it (as SAY5, which it adds to)
+const SAY6 = {
+  en: { profile: ['The planner rises to half, its profile zoomed to this stretch', false], profilept: ['The planner rises to half, its profile zoomed to this point', false], avoidpt: ['Point removed: the route goes around its spot, 40 m', true], sharelink: ['A link to this route is copied', false], copylink: ['A link to this route is copied', false], gpx: ['The route is saved as a GPX file', false], offline: ['Save offline opens: this route’s map and terrain, for no signal', false], importf: ['Your files open: pick a GPX or KML file', false], roundstart: ['Round trip from the start: pick how long', false] },
+  fi: { profile: ['Suunnittelija nousee puoliväliin, profiili zoomattuna tähän osuuteen', false], profilept: ['Suunnittelija nousee puoliväliin, profiili zoomattuna tähän pisteeseen', false], avoidpt: ['Piste poistettu: reitti kiertää sen kohdan, 40 m', true], sharelink: ['Linkki tähän reittiin kopioitu', false], copylink: ['Linkki tähän reittiin kopioitu', false], gpx: ['Reitti tallennettu GPX-tiedostoksi', false], offline: ['Offline-tallennus aukeaa: reitin kartta ja maasto, kun verkkoa ei ole', false], importf: ['Tiedostot aukeavat: valitse GPX- tai KML-tiedosto', false], roundstart: ['Kierros lähdöstä: valitse pituus', false] },
+};
+
+// ------------------------------------------------ Revision 6 (2026-10-23): Revision 5 with the four choices made before Journey D,
+// each option behind a switch (f.o): when you leave and go on after a night, where Avoid this spot and On the profile go
+// (#364), the whole route on the route's card (#90), and Back to start on the start's card (#334). Revision 5 stays as it is.
+const CARDS_R6 = (() => {
+// ------------------------------------------------ the revised cards (2026-10-21): their words
+const T2 = {
+  en: {
+    start: 'Start', end: 'End', via: 'Via', back: 'Back', close: 'Close',
+    there: 'there at', youLeave: 'you leave', fromStart: 'from the start', height: 'height', uphill: 'uphill', downhill: 'downhill',
+    diff: 'difficulty', upDiff: 'uphill difficulty', trailGrade: 'trail grade', notMapped: 'not mapped', fromRoute: 'from your route',
+    grades: { S0: 'easy', S1: 'fairly easy', S2: 'medium', S3: 'hard', S4: 'very hard', S5: 'extreme', T1: 'easy', T2: 'medium', T3: 'hard', T4: 'alpine' },
+    atPoint: 'At this point', pass: 'Pass by', stop: 'Stop', night: 'Night',
+    getHere: (a, b) => `You get here at ${a} and go on at ${b}`, goOnAt: 'Go on at', nextMorning: 'the next morning',
+    less: '5 minutes less', more5: '5 minutes more',
+    sleep: 'Places to sleep nearby', sleepSub: 'Lean-tos, huts and campsites within 3 km',
+    leave: 'Leave at', leaveVal: 'Now', leaveSub: 'Sets the times and the weather along the route',
+    fromHere: 'From here', sportFrom: 'Sport from here', sportFromSub: 'To the next change of sport, or the end',
+    changeover: 'Changeover', bikeAlong: 'Take the bike along', bikeAlongSub: 'Off: it stays here, and Check makes sure you come back for it',
+    after: 'The stretch after it', afterTo: (n) => `Next stretch, to ${n}`, afterSub: 'Its sport, how it’s drawn and its style', editPoint: 'Edit this point', move: 'Move', moveSub: 'Tap where it goes', rename: 'Rename', renameSub: 'Give it a name of your own',
+    startHere: 'Start here', startSub: 'The part before it is removed, Undo brings it back', endHere: 'End here', endSub: 'The part after it is removed, Undo brings it back',
+    loopStart: 'Start here', loopStartSub: 'The same loop, starting from this point',
+    remove: 'Remove', removeSub: 'Undo brings it back',
+    theRoute: 'The route', backStart: 'Back to start', backStartSub: 'Adds a leg back to the start',
+    renameLabel: 'The point’s name', save: 'Save',
+    sportsTitle: 'Sport from here', sportsSub: (a) => `From ${a} to the next change of sport, or the end`, yourRoute: 'your route',
+    sports: [['mtb', 'MTB', 'bike'], ['gravel', 'Gravel', 'bike'], ['road', 'Road cycling', 'bike'], ['hike', 'Hike', 'walk'], ['trailrun', 'Trail running', 'walk'], ['run', 'Running', 'walk'], ['paddle', 'Paddle', 'water'], ['swim', 'Swim', 'water']],
+    sportNames: { mtb: 'MTB', hike: 'Hike', paddle: 'Paddle' },
+    sportLines: { mtb: 'Trails by MTB difficulty', gravel: 'Gravel roads and easy paths', road: 'Paved roads', hike: 'Paths and trails by trail grade', trailrun: 'Paths and trails, at a run', run: 'Paths and light traffic roads', paddle: 'Over water, carries flagged', swim: 'Short crossings over water' },
+    osmSub: 'The map\u2019s own data, as tags', lipasSub: 'LIPAS\u2019s page for this place', webSub: 'The place\u2019s own page',
+    stays5: 'Places to sleep nearby', staysNote5: 'From LIPAS and OpenStreetMap. Tap one to move the night there.', staysList5: [['Kaupin laavu', 'Lean-to', '0.8 km'], ['Tapatoran kota', 'Hut', '1.4 km'], ['Camping Härmälä', 'Campsite', '2.6 km']],
+    stayMoved5: (n) => `The night moved to ${n}`, leaveTimes5: ['Now', '11:00', '12:00', '13:00', 'Tomorrow 08:00'], goonTimes5: ['06:00', '07:00', '08:00', '09:00'],
+    crafts5: [['kayak', 'Sea kayak'], ['canoe', 'Canoe'], ['sup', 'SUP']], craftNote5: 'For all your paddle legs. Polku keeps a canoe or a SUP to calmer water than a sea kayak, and times the route at its speed.',
+    sport5: 'Sport for this stretch', styles5: { mtb: ['Balanced', 'Flowy trails', 'Technical', 'Smooth & easy', 'Roads to the trail'], hike: ['Balanced', 'Nature paths', 'Easy paths', 'Mountain'] },
+    reverse5: 'Reverse', reverseSub5: 'The route runs the other way, from the end to the start',
+    look2: 'Loose gravel', lookWhere2: '2.6 km', lookSrc2: 'From the map: OpenStreetMap', lookNote2: 'Loose gravel on the shore path. Slow down on the descent.',
+    stretch: 'This stretch', here: 'What’s here', hereSub: 'The trail, as the map knows it', hereSpotSub: 'Everything Polku knows here',
+    edit: 'Edit this stretch', editSub: 'Sport, how it’s drawn, style', editNote: 'Changes apply to this stretch: its 3 legs',
+    howYouGo: 'How you go', sport: 'Sport', sportSame: 'Like the rest of the route', drawn: 'How it’s drawn', follow: 'Follow paths', straight: 'Straight line',
+    style: 'Route style', styleSub: (sp) => `${sp}’s style, the same as the route`, balanced: 'Balanced',
+    onStretch: 'On this stretch', other: 'Other ways', otherSub: 'Up to two, on the map', stopHere: 'Stop here', stopHereSub: 'A break or a night at this spot',
+    avoid: 'Avoid this spot', avoidSub: 'The route goes around it, 40 m', profile: 'On the profile', profileSub: 'Zooms the profile to this stretch',
+    lookOut: 'Look out for', distance: 'distance', time: 'time', climb: 'climb', min: 'min',
+    yourRouteH: 'Your route', startSpot: 'Start here', startSpotSub: 'Adds a new start point', endSpot: 'End here', endSpotSub: 'Adds a new end point',
+    round: 'Round trip from here', roundSub: 'Loops of the length you choose, from here',
+    share: 'Share', weather: 'Weather here', notRight: 'Not right?',
+    locked: 'You’re not editing: the route stays as it is.', editBtn: 'Edit',
+    look: 'Steep descent', lookLine: 'Worth a look', lookWhere: '2.3 km', long: 'long', steepest: 'steepest', lookSrc: 'An estimate from the terrain model',
+    lookNote: 'Downhill for 80 m. Walk it if it’s wet.', avoidIt: 'Avoid it', allCheck: 'All in Check', ofN: (i, n) => `${i} of ${n}`, prev: 'Previous', next: 'Next',
+    removed: (n) => `${n} removed`, startsHere: 'The route starts here now', endsHere: 'The route ends here now', undo: 'Undo',
+    firstLine: 'Tap the map where you go next.', hint: 'Hold the map to see what’s there.',
+    fromOsm: 'From OpenStreetMap', fromLipas: 'From LIPAS', groups: { mtb: 'For MTB', hike: 'For hiking', winter: 'In winter', spot: 'The spot', checked: 'Last checked', site: 'At the site', thereG: 'Getting there', when: 'When' },
+    kv: { diffK: 'Difficulty', upK: 'Uphill difficulty', surface: 'Surface', width: 'Width', sac: 'Trail grade', vis: 'Visibility', clear: 'Clear', dirt: 'Dirt', ploughed: 'Not ploughed', coords: 'Coordinates', copy: 'Copy', partOf: 'Part of' },
+    osm: 'All OpenStreetMap details', spots: { forest: ['Forest path', { mtb: 'Easy to ride, on dirt', hike: 'Easy to walk, on dirt' }], lake: ['Näsijärvi', 'Lake: depths shown, not for navigation'], town: ['Kaupintie', 'Residential street, asphalt'] },
+    kinds: { 'Gravel path': 'Gravel path', 'Forest path': 'Forest path', 'Shore path': 'Shore path', 'Gravel road': 'Gravel road' },
+    placeFacts: ['Free toilet', 'Firewood in summer', 'Lean-to nearby'],
+    // Revision 6
+    today6: 'Today', tomorrow6: 'Tomorrow', earlier15: '15 minutes earlier', later15: '15 minutes later',
+    leaveAria6: (d) => `Leave at, ${d.toLowerCase()}`, goonAria6: 'Go on at, the next morning', goOnNext6: 'Go on the next morning at', endAt6: (t) => `You get to the end at ${t}`,
+    wholeRoute6: 'The whole route', wholeSub6: 'Share, export, save offline, reverse or clear it', kept6: 'Kept on this device', takeAlong6: 'Take it along',
+    shareLink6: 'Share link', shareLinkSub6: 'Copies a link to this route', gpx6: 'Export GPX', gpxSub6: 'For a GPS watch or another app',
+    offline6: 'Save offline…', offlineSub6: 'The map and terrain, for no signal', copyLink6: 'Copy share link', copyLinkSub6: 'A link that opens this route in Polku',
+    roundStart6: 'Round trip from the start', roundStartSub6: 'Loops of the length you choose, from the start', import6: 'Import GPX or KML…', importSub6: 'Shows a file’s track, to plan on',
+    clearRoute6: 'Clear route', clearSub6: 'Undo brings it back',
+    avoidPointSub6: 'Removes this point, and the route goes around its spot', profilePointSub6: 'Zooms the profile to this point',
+    // Revision 6, C (2026-10-24)
+    leaveC: 'Leave', nowC: 'Now', leaveNowAriaC: 'Leave now', pickAriaC: 'Leave at: pick a day and a time',
+    noFcC: (d) => `No forecast yet for ${d}. Sunset and the dark still count.`,
+    stayC: 'Stay', nightsC: (n) => `${n} night${n > 1 ? 's' : ''}`, fewerC: 'One night less', moreC: 'One night more',
+    goOnC: 'Go on at', goOnSubC: (d, n) => `${d}, ${n === 1 ? 'the next morning' : `after ${n} nights`}`, goOnAriaC: 'Go on at: pick a time',
+    shareInclC: (d) => `Includes when you leave: ${d}`, passedC: (d) => `Planned for ${d}. That’s passed, so it leaves now: pick a new time above.`,
+  },
+  fi: {
+    start: 'Lähtö', end: 'Loppu', via: 'Välipiste', back: 'Takaisin', close: 'Sulje',
+    there: 'perillä', youLeave: 'lähdet', fromStart: 'lähdöstä', height: 'korkeus', uphill: 'ylämäkeä', downhill: 'alamäkeä',
+    diff: 'vaativuus', upDiff: 'ylämäen vaativuus', trailGrade: 'polun luokka', notMapped: 'ei kartalla', fromRoute: 'reitiltäsi',
+    grades: { S0: 'helppo', S1: 'melko helppo', S2: 'keskivaikea', S3: 'vaikea', S4: 'hyvin vaikea', S5: 'äärimmäinen', T1: 'helppo', T2: 'keskivaikea', T3: 'vaikea', T4: 'alppimaasto' },
+    atPoint: 'Tässä pisteessä', pass: 'Ohitse', stop: 'Tauko', night: 'Yöpyminen',
+    getHere: (a, b) => `Olet täällä ${a} ja jatkat ${b}`, goOnAt: 'Jatka klo', nextMorning: 'seuraavana aamuna',
+    less: '5 minuuttia vähemmän', more5: '5 minuuttia enemmän',
+    sleep: 'Yöpaikat lähellä', sleepSub: 'Laavut, kodat ja leirintäalueet 3 km:n sisällä',
+    leave: 'Lähtöaika', leaveVal: 'Nyt', leaveSub: 'Ajat ja sää reitin varrella lasketaan tästä',
+    fromHere: 'Tästä eteenpäin', sportFrom: 'Laji tästä eteenpäin', sportFromSub: 'Seuraavaan lajinvaihtoon tai loppuun',
+    changeover: 'Vaihtoaika', bikeAlong: 'Pyörä mukaan', bikeAlongSub: 'Pois: se jää tähän, ja Tarkista varmistaa, että palaat hakemaan sen',
+    after: 'Seuraava osuus', afterTo: (n) => `Seuraava osuus: ${n}`, afterSub: 'Laji, miten se piirretään ja tyyli', editPoint: 'Muokkaa pistettä', move: 'Siirrä', moveSub: 'Napauta, minne se menee', rename: 'Nimeä', renameSub: 'Anna oma nimi',
+    startHere: 'Aloita tästä', startSub: 'Osa ennen tätä poistetaan, Kumoa tuo sen takaisin', endHere: 'Lopeta tähän', endSub: 'Osa tämän jälkeen poistetaan, Kumoa tuo sen takaisin',
+    loopStart: 'Aloita tästä', loopStartSub: 'Sama kierros, alkaen tästä pisteestä',
+    remove: 'Poista', removeSub: 'Kumoa tuo sen takaisin',
+    theRoute: 'Reitti', backStart: 'Takaisin lähtöön', backStartSub: 'Lisää osuuden takaisin lähtöön',
+    renameLabel: 'Pisteen nimi', save: 'Tallenna',
+    sportsTitle: 'Laji tästä eteenpäin', sportsSub: (a) => `Pisteestä ${a} seuraavaan lajinvaihtoon tai loppuun`, yourRoute: 'reittisi',
+    sports: [['mtb', 'Maastopyöräily', 'bike'], ['gravel', 'Gravel', 'bike'], ['road', 'Maantiepyöräily', 'bike'], ['hike', 'Retkeily', 'walk'], ['trailrun', 'Polkujuoksu', 'walk'], ['run', 'Juoksu', 'walk'], ['paddle', 'Melonta', 'water'], ['swim', 'Uinti', 'water']],
+    sportNames: { mtb: 'Maastopyöräily', hike: 'Retkeily', paddle: 'Melonta' },
+    sportLines: { mtb: 'Polut vaativuuden mukaan', gravel: 'Soratiet ja helpot polut', road: 'Päällystetyt tiet', hike: 'Polut luokan mukaan', trailrun: 'Polut, juosten', run: 'Polut ja hiljaiset tiet', paddle: 'Vesitse, kantamiset merkitty', swim: 'Lyhyet ylitykset' },
+    osmSub: 'Kartan omat tiedot tageina', lipasSub: 'LIPASin sivu tästä paikasta', webSub: 'Paikan oma sivu',
+    stays5: 'Yöpaikat lähellä', staysNote5: 'LIPASista ja OpenStreetMapista. Napauta, niin yö siirtyy sinne.', staysList5: [['Kaupin laavu', 'Laavu', '0,8 km'], ['Tapatoran kota', 'Kota', '1,4 km'], ['Camping Härmälä', 'Leirintäalue', '2,6 km']],
+    stayMoved5: (n) => `Yö siirtyi: ${n}`, leaveTimes5: ['Nyt', '11:00', '12:00', '13:00', 'Huomenna 08:00'], goonTimes5: ['06:00', '07:00', '08:00', '09:00'],
+    crafts5: [['kayak', 'Merikajakki'], ['canoe', 'Kanootti'], ['sup', 'SUP']], craftNote5: 'Kaikille melontaosuuksillesi. Polku pitää kanootin tai SUPin tyynemmillä vesillä kuin merikajakin ja laskee ajan sen nopeudella.',
+    sport5: 'Laji tällä osuudella', styles5: { mtb: ['Tasapainoinen', 'Virtaavat polut', 'Tekninen', 'Tasainen ja helppo', 'Teitä polulle'], hike: ['Tasapainoinen', 'Luontopolut', 'Helpot polut', 'Vuoristo'] },
+    reverse5: 'Käännä', reverseSub5: 'Reitti kulkee toiseen suuntaan, lopusta lähtöön',
+    look2: 'Irtosoraa', lookWhere2: '2,6 km', lookSrc2: 'Kartalta: OpenStreetMap', lookNote2: 'Irtosoraa rantapolulla. Hidasta alamäessä.',
+    stretch: 'Tämä osuus', here: 'Mitä tässä on', hereSub: 'Polku sellaisena kuin kartta sen tuntee', hereSpotSub: 'Kaikki, mitä Polku tästä tietää',
+    edit: 'Muokkaa tätä osuutta', editSub: 'Laji, miten se piirretään, tyyli', editNote: 'Muutokset koskevat tätä osuutta: sen 3 osaa',
+    howYouGo: 'Miten kuljet', sport: 'Laji', sportSame: 'Kuten muu reitti', drawn: 'Miten se piirretään', follow: 'Seuraa polkuja', straight: 'Suora viiva',
+    style: 'Reitin tyyli', styleSub: (sp) => `Lajin ${sp} tyyli, sama kuin reitillä`, balanced: 'Tasapainoinen',
+    onStretch: 'Tällä osuudella', other: 'Muita reittejä', otherSub: 'Enintään kaksi, kartalla', stopHere: 'Pysähdy tähän', stopHereSub: 'Tauko tai yö tässä kohdassa',
+    avoid: 'Vältä tätä kohtaa', avoidSub: 'Reitti kiertää sen, 40 m', profile: 'Profiilissa', profileSub: 'Zoomaa profiilin tähän osuuteen',
+    lookOut: 'Huomaa', distance: 'matka', time: 'aika', climb: 'nousu', min: 'min',
+    yourRouteH: 'Reittisi', startSpot: 'Aloita tästä', startSpotSub: 'Lisää uuden lähtöpisteen', endSpot: 'Lopeta tähän', endSpotSub: 'Lisää uuden loppupisteen',
+    round: 'Kierros tästä', roundSub: 'Valitsemasi pituisia kierroksia tästä',
+    share: 'Jaa', weather: 'Sää tässä', notRight: 'Eikö pidä paikkaansa?',
+    locked: 'Et muokkaa: reitti pysyy sellaisenaan.', editBtn: 'Muokkaa',
+    look: 'Jyrkkä lasku', lookLine: 'Katso tarkemmin', lookWhere: '2,3 km', long: 'pitkä', steepest: 'jyrkimmillään', lookSrc: 'Arvio maastomallista',
+    lookNote: 'Alamäkeä 80 m. Taluta, jos on märkää.', avoidIt: 'Vältä', allCheck: 'Kaikki Tarkista-välilehdellä', ofN: (i, n) => `${i}/${n}`, prev: 'Edellinen', next: 'Seuraava',
+    removed: (n) => `${n} poistettu`, startsHere: 'Reitti alkaa nyt tästä', endsHere: 'Reitti loppuu nyt tähän', undo: 'Kumoa',
+    firstLine: 'Napauta karttaa, minne menet seuraavaksi.', hint: 'Pidä karttaa painettuna nähdäksesi, mitä siinä on.',
+    fromOsm: 'OpenStreetMapista', fromLipas: 'LIPASista', groups: { mtb: 'Maastopyöräilyyn', hike: 'Retkeilyyn', winter: 'Talvella', spot: 'Paikka', checked: 'Tarkistettu viimeksi', site: 'Paikalla', thereG: 'Perille', when: 'Milloin' },
+    kv: { diffK: 'Vaativuus', upK: 'Ylämäen vaativuus', surface: 'Pinta', width: 'Leveys', sac: 'Polun luokka', vis: 'Näkyvyys', clear: 'Selvä', dirt: 'Maapohja', ploughed: 'Ei aurata', coords: 'Koordinaatit', copy: 'Kopioi', partOf: 'Osa reittiä' },
+    osm: 'Kaikki OpenStreetMapin tiedot', spots: { forest: ['Metsäpolku', { mtb: 'Helppo ajaa, maapohja', hike: 'Helppo kävellä, maapohja' }], lake: ['Näsijärvi', 'Järvi: syvyydet vain näytetään, ei navigointiin'], town: ['Kaupintie', 'Asuinkatu, asfaltti'] },
+    kinds: { 'Gravel path': 'Sorapolku', 'Forest path': 'Metsäpolku', 'Shore path': 'Rantapolku', 'Gravel road': 'Soratie' },
+    placeFacts: ['Ilmainen WC', 'Polttopuita kesällä', 'Laavu lähellä'],
+    // Revision 6
+    today6: 'Tänään', tomorrow6: 'Huomenna', earlier15: '15 minuuttia aiemmin', later15: '15 minuuttia myöhemmin',
+    leaveAria6: (d) => `Lähtöaika, ${d.toLowerCase()}`, goonAria6: 'Jatka klo, seuraavana aamuna', goOnNext6: 'Jatka seuraavana aamuna klo', endAt6: (t) => `Olet lopussa klo ${t}`,
+    wholeRoute6: 'Koko reitti', wholeSub6: 'Jaa, vie, tallenna offline-käyttöön, käännä tai tyhjennä', kept6: 'Tallessa tällä laitteella', takeAlong6: 'Ota mukaan',
+    shareLink6: 'Jakolinkki', shareLinkSub6: 'Kopioi linkin tähän reittiin', gpx6: 'Vie GPX', gpxSub6: 'GPS-kelloon tai toiseen sovellukseen',
+    offline6: 'Tallenna offline-käyttöön…', offlineSub6: 'Kartta ja maasto, kun verkkoa ei ole', copyLink6: 'Kopioi jakolinkki', copyLinkSub6: 'Linkki, joka avaa tämän reitin Polussa',
+    roundStart6: 'Kierros lähdöstä', roundStartSub6: 'Valitsemasi pituisia kierroksia lähdöstä', import6: 'Tuo GPX tai KML…', importSub6: 'Näyttää tiedoston jäljen suunnittelun pohjaksi',
+    clearRoute6: 'Tyhjennä reitti', clearSub6: 'Kumoa tuo sen takaisin',
+    avoidPointSub6: 'Poistaa pisteen, ja reitti kiertää sen kohdan', profilePointSub6: 'Zoomaa profiilin tähän pisteeseen',
+    // Revision 6, C (2026-10-24)
+    leaveC: 'Lähtö', nowC: 'Nyt', leaveNowAriaC: 'Lähde nyt', pickAriaC: 'Lähtöaika: valitse päivä ja kellonaika',
+    noFcC: (d) => `Ei vielä sääennustetta päivälle ${d}. Auringonlasku ja pimeä lasketaan silti.`,
+    stayC: 'Yövy', nightsC: (n) => `${n} yö${n > 1 ? 'tä' : ''}`, fewerC: 'Yksi yö vähemmän', moreC: 'Yksi yö enemmän',
+    goOnC: 'Jatka klo', goOnSubC: (d, n) => `${d}, ${n === 1 ? 'seuraavana aamuna' : `${n} yön jälkeen`}`, goOnAriaC: 'Jatka klo: valitse kellonaika',
+    shareInclC: (d) => `Sisältää lähtöajan: ${d}`, passedC: (d) => `Suunniteltu ajalle ${d}. Se on mennyt, joten lähtö on nyt: valitse uusi aika yllä.`,
+  },
+};
+const U = (f) => T2[f.lang];
+// the thing's own mark, as the map draws it: a point's marker, the stretch between two, a spot's pin, a place's icon
+const G2 = {
+  via: (n) => `<span class="c2-g" aria-hidden="true"><span class="mk2 c2-g" style="width:28px;height:28px">${n}</span></span>`,
+  start: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#2e9e5b" stroke="#fff" stroke-width="2.5"/><path d="M12 9.8v10.4l8.4-5.2z" fill="#fff"/></svg></span>',
+  end: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#111" stroke="#fff" stroke-width="2.5"/><rect x="10" y="10" width="10" height="10" rx="1.5" fill="#fff"/></svg></span>',
+  stretch: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+  way: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M2 23C13 23 19 7 32 7" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="16.5" cy="15" r="5.5" fill="#1f6f4a" stroke="#fff" stroke-width="2.6"/></svg></span>',
+  pin: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="8" fill="#1f6f4a" stroke="#fff" stroke-width="3"/><circle cx="15" cy="15" r="11.5" fill="none" stroke="#1f6f4a" stroke-width="2"/></svg></span>',
+  place: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12.5" fill="#d93a2f" stroke="#fff" stroke-width="2.5"/><path d="M15 8.5c2.6 3 4.4 5 4.4 7.7a4.4 4.4 0 0 1-8.8 0c0-1.6.8-2.7 1.9-3.8.2 1.3.8 2 1.6 2.3-.5-2.2.1-4.2.9-6.2Z" fill="#fff"/></svg></span>',
+  look: '<span class="c2-g" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="13" fill="#fbf4e2" stroke="#8a5a00" stroke-width="1.5"/><path d="M6.5 15s3.2-5.2 8.5-5.2 8.5 5.2 8.5 5.2-3.2 5.2-8.5 5.2S6.5 15 6.5 15Z" fill="none" stroke="#8a5a00" stroke-width="1.8"/><circle cx="15" cy="15" r="2.4" fill="#8a5a00"/></svg></span>',
+  edit: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#1f6f4a" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/><circle cx="27" cy="8" r="4.6" fill="#fff" stroke="#111" stroke-width="2.6"/></svg></span>',
+  route: '<span class="c2-g" aria-hidden="true"><svg width="34" height="30" viewBox="0 0 34 30"><path d="M7 22C15 22 18 8 27 8" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round"/><circle cx="7" cy="22" r="5.2" fill="#2e9e5b" stroke="#fff" stroke-width="2.2"/><circle cx="27" cy="8" r="5.2" fill="#111" stroke="#fff" stroke-width="2.2"/></svg></span>',
+};
+const pn = (f, i) => { const u = U(f), n = (f.worst ? NAMES.worst : NAMES.en)[i]; return n || [u.start, `${u.via} 1`, u.end][i]; };
+const ptSub = (f, i) => { const u = U(f); return i === 0 ? u.start : i === POINTS.length - 1 ? u.end : `${u.via} ${i}`; };
+// the parts
+function head2(f, glyph, title, sub, backTo, { raw = false, save = false } = {}) {
+  const u = U(f);
+  const dock = f.z >= 2 && !f.view ? `<span class="c2-dock"><button type="button" data-act="tbundo" aria-label="Undo">${ic('undo', 22)}</button><button type="button" data-act="tbredo" aria-label="Redo">${ic('redo', 22)}</button></span>` : '';
+  return `<div class="c2-top">${backTo ? `<button type="button" class="c2-back" data-act="${backTo}" aria-label="${esc(u.back)}">${ic('left', 22)}</button>` : ''}${dock}<button type="button" class="c2-x" data-act="close" aria-label="${esc(u.close)}">${ic('close', 22)}</button><span class="c2-br"></span>${glyph || ''}<span class="c2-ttl">${raw ? title : `<b>${esc(title)}</b>`}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${save ? `<button type="button" class="c2-save" data-act="renamed">${esc(u.save)}</button>` : ''}</div>`;
+}
+// numbers as the route's summary has them: [value, label, missing, word]
+const nums2 = (list) => `<div class="c2-nums">${list.map(([v, l, miss, word]) => `<span class="c2-num${miss ? ' miss' : ''}"><b>${esc(v)}</b>${word ? `<em>${esc(word)}</em>` : ''}<small>${esc(l)}</small></span>`).join('')}</div>`;
+const grp = (t) => `<h4 class="c2-h">${esc(t)}</h4>`;
+// an item, as the ⋯ menu has them: its icon, its name, one line on what it does; a value and › when it opens a choice
+const item = (act, icon, label, sub, { val = null, chev = false, cls = '', role = '', checked = null } = {}) =>
+  `<button type="button" class="c2-item ${cls}" data-act="${act}"${role ? ` role="${role}"` : ''}${checked != null ? ` aria-checked="${checked}"` : ''}>${icon ? ic(icon, 20) : ''}<span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${val ? `<span class="val">${esc(val)}</span>` : ''}${chev ? `<span class="chev">${ic('right', 18)}</span>` : ''}${checked ? `<span class="tick">${ic('check', 20)}</span>` : ''}</button>`;
+const list = (items) => `<div class="c2-list">${items.filter(Boolean).join('')}</div>`;
+const lock = (f) => { const u = U(f); return `<div class="c2-lock" role="note">${ic('info', 18)}<span>${esc(u.locked)}</span><button type="button" data-act="edit-on">${ic('pencil', 16)}${esc(u.editBtn)}</button></div>`; };
+const foot2 = (f, { share = true } = {}) => { const u = U(f); return `<div class="c2-foot">${share ? `<button type="button" data-act="share">${ic('share', 18)}${esc(u.share)}</button><button type="button" data-act="weather">${ic('weather', 18)}${esc(u.weather)} ›</button>` : ''}<span class="grow"></span><button type="button" class="nr" data-act="notright">${esc(u.notRight)}</button></div>`; };
+const gradeNum = (f, w) => {
+  const u = U(f), g = f.sport === 'hike' ? w[5] : w[4], label = f.sport === 'hike' ? u.trailGrade : u.diff;
+  return g ? [g, label, false, u.grades[g]] : ['?', `${label} ${u.notMapped}`, true];
+};
+function routeNums2(f, km) {
+  const u = U(f), w = wayAt(km), g = grade(km);
+  return nums2([[clock(km, f.sport), u.there], [`${g >= 0 ? '+' : '−'}${Math.abs(g).toFixed(0)} %`, g >= 0 ? u.uphill : u.downhill], gradeNum(f, w)]);
+}
+const kindOf = (f, w) => U(f).kinds[w[1]] || (f.lang === 'fi' ? w[2] : w[1]);
+
+// #364: when you leave. A, fixed hours (Revision 5's st.leave); B, now, or today or tomorrow at a time (st.leaveDay, st.leaveAt)
+const leaveOf = (f, st) => {
+  const u = U(f);
+  if (f.o.times === 'c') return st.leaveDT ? { day: 'dt', label: labelC6(f.lang, st.leaveDT), clock: st.leaveDT.slice(11, 16) } : { day: 'now', label: u.leaveVal, clock: clock(0, f.sport) };
+  if (f.o.times !== 'any') { const v = st.leave || u.leaveVal; return { label: v, clock: /\d/.test(v) ? v.split(' ').pop() : clock(0, f.sport) }; }
+  const day = st.leaveDay || 'now', at = st.leaveAt || LEAVE6[day];
+  return day === 'now' ? { day, label: u.leaveVal, clock: clock(0, f.sport) } : { day, label: day === 'today' ? at : `${u.tomorrow6} ${at}`, clock: at };
+};
+// #364, C: one row, Leave ›, with the phone's own date and time picker over it; only the start has a date, and the rest
+// counts from it. Now, once a time is set, goes back to leaving now; past the forecast's reach the weather says so.
+const pickRow6 = (act, icon, label, sub, val, kind, inAttr, value, aria) => `<div class="c2-list c6-pick">${item(act, icon, label, sub, { val, chev: true })}<input type="${kind}" step="900" data-in="${inAttr}" data-pick="1" value="${esc(value)}"${kind === 'datetime-local' ? ` min="${isoC6(NOW_C6)}"` : ''} aria-label="${esc(aria)}" aria-hidden="true" tabindex="-1"></div>`;
+const leaveRowC6 = (f, st) => {
+  const u = U(f), set = !!st.leaveDT, d = set ? new Date(st.leaveDT) : null, far = set && pastC6(d);
+  const row = pickRow6('leavepickc', 'clock', u.leaveC, u.leaveSub, set ? labelC6(f.lang, st.leaveDT) : u.nowC, 'datetime-local', 'ldt', st.leaveDT || isoC6(new Date(2026, 9, 31, 10, 0)), u.pickAriaC);
+  const passed = !set && st.passedDT ? `<p class="c6-nofc c6-info">${ic('info', 16)}<span>${esc(u.passedC(`${dayC6(f.lang, new Date(st.passedDT))}, ${st.passedDT.slice(11, 16)}`))}</span></p>` : '';
+  return `<div class="c6-leave">${row}${set ? `<button type="button" class="c6-now" data-act="leavenowc" aria-label="${esc(u.leaveNowAriaC)}">${esc(u.nowC)}</button>` : ''}</div>${far ? `<p class="c6-nofc">${ic('weather', 16)}<span>${esc(u.noFcC(dayC6(f.lang, d)))}</span></p>` : ''}${passed}`;
+};
+// with a date set (C), a share link carries it, and says so (2026-10-24); to share without it, set Now first
+const shareSubC6 = (f, st, plain) => (f.o.times === 'c' && st.leaveDT ? U(f).shareInclC(`${dayC6(f.lang, new Date(st.leaveDT))}, ${st.leaveDT.slice(11, 16)}`) : plain);
+// a time to pick (#364, B): the one stepper, − and + in quarter hours, around the phone's own time field
+const timeStep = (f, k, val, label) => { const u = U(f); return `<span class="c2-step c6-step"><button type="button" data-act="${k}-" aria-label="${esc(u.earlier15)}">${ic('minus', 20)}</button><input type="time" step="900" value="${esc(val)}" data-in="${k}" aria-label="${esc(label)}"><button type="button" data-act="${k}+" aria-label="${esc(u.later15)}">${ic('plus', 20)}</button></span>`; };
+
+// ------------------------------------------------ the revised cards
+function pointCard2(f, st) {
+  const u = U(f), o = f.o, i = st.pt, q = POINTS[i], first = i === 0, last = i === POINTS.length - 1, here = st.here || 'pass', view = st.view;
+  const glyph = first ? G2.start : last ? G2.end : G2.via(i);
+  const title = st.renaming ? `<input class="c2-in" aria-label="${esc(u.renameLabel)}" value="${esc(pn(f, i))}">` : pn(f, i);
+  let h = head2(f, glyph, title, ptSub(f, i), st.from || null, { raw: !!st.renaming, save: !!st.renaming });
+  h += nums2(first ? [[leaveOf(f, st).clock, u.youLeave], [`${ele(0)} m`, u.height]] : [[clock(q.km, f.sport), u.there], [fmtKm(q.km), u.fromStart], [`${ele(q.km)} m`, u.height]]);
+  // #334, A: while drawing, the start's card offers Back to start first (a route of two points or more, not a loop yet)
+  if (first && !view && o.start === 'card' && !st.looped) h += list([item('backstart', 'loop', u.backStart, u.backStartSub)]);
+  if (!first && !last) {
+    h += grp(u.atPoint) + `<div class="c2-seg" role="radiogroup" aria-label="${esc(u.atPoint)}">${[['pass', 'pass', u.pass], ['stop', 'pause', u.stop], ['night', 'moon', u.night]].map(([k, icn, l]) => `<button type="button" role="radio" aria-checked="${here === k}" data-act="here-${k}">${ic(icn, 20)}<span>${esc(l)}</span></button>`).join('')}</div>`;
+    const arr = clock(q.km, f.sport), m = st.min || 30;
+    if (here === 'stop') { const [hh, mm] = arr.split(':').map(Number), t = hh * 60 + mm + m; h += `<div class="c2-detail"><span class="c2-step"><button type="button" data-act="min-" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${m} ${u.min}</b><button type="button" data-act="min+" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span><small>${esc(u.getHere(arr, `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`))}</small></div>`; }
+    // #364: going on after a night at any time (B, the phone's own clock in the stepper, on the card itself), or a few fixed hours (A)
+    if (here === 'night' && o.times === 'c') {
+      const n = st.nights || 1, base = st.leaveDT ? new Date(st.leaveDT) : new Date(2026, 9, 31, 10, 0), on = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n), go = st.goon || '07:00';
+      h += `<div class="c2-detail"><span>${esc(u.stayC)}</span><span class="c2-step"><button type="button" data-act="nights-" aria-label="${esc(u.fewerC)}"${n <= 1 ? ' disabled' : ''}>${ic('minus', 20)}</button><b>${esc(u.nightsC(n))}</b><button type="button" data-act="nights+" aria-label="${esc(u.moreC)}">${ic('plus', 20)}</button></span></div>`
+        + pickRow6('goonpickc', 'clock', u.goOnC, u.goOnSubC(dayC6(f.lang, on), n), go, 'time', 'gtc', go, u.goOnAriaC) + list([item('stays', 'tent', u.sleep, u.sleepSub, { chev: true })]);
+    } else if (here === 'night') h += `<div class="c2-detail">${o.times === 'any' ? `<span>${esc(u.goOnNext6)}</span>${timeStep(f, 'gt', st.goon || '07:00', u.goonAria6)}` : `<span>${esc(u.goOnAt)}</span><button type="button" class="c2-time" data-act="goon">${st.goon || '07:00'} ${ic('down', 14)}</button><span>${esc(u.nextMorning)}</span>`}</div>${list([item('stays', 'tent', u.sleep, u.sleepSub, { chev: true })])}`;
+  }
+  if (first) h += o.times === 'c' ? leaveRowC6(f, st) : list([item('leave', 'clock', u.leave, u.leaveSub, { val: leaveOf(f, st).label, chev: true })]);
+  // Next stretch, to …: where it goes, in its name, so a desktop says it too (the user's answer in 1a, 2026-10-22)
+  const afterRow = !last ? item('after', 'route', u.afterTo(pn(f, i + 1)), u.afterSub, { chev: true }) : '';
+  // #364, C: On the profile on a point's card too
+  const profRow = o.prof === 'all' ? list([item('profilept', 'mountain', u.profile, u.profilePointSub6)]) : '';
+  if (view) return h + list([afterRow]) + profRow + lock(f);
+  if (!last) {
+    const ch = st.change;
+    h += list([item('sport', ch ? 'water' : 'bike', u.sportFrom, u.sportFromSub, { val: ch ? u.sportNames.paddle : (u.sportNames[f.sport] || f.sport), chev: true })]);
+    if (ch) h += `<div class="c2-detail"><span>${esc(u.changeover)}</span><span class="c2-step"><button type="button" data-act="co-" aria-label="${esc(u.less)}">${ic('minus', 20)}</button><b>${st.co ?? 10} ${u.min}</b><button type="button" data-act="co+" aria-label="${esc(u.more5)}">${ic('plus', 20)}</button></span></div><label class="c2-item c2-tg" data-act="bike" role="switch" aria-checked="${!!st.bike}" tabindex="0" style="margin:0 -10px;width:auto"><span><b>${esc(u.bikeAlong)}</b><small>${esc(u.bikeAlongSub)}</small></span><i class="${st.bike ? 'on' : ''}" aria-hidden="true"></i></label>`;
+    h += list([afterRow]) + profRow;
+  } else h += profRow + grp(u.theRoute) + list([st.looped ? '' : item('backstart', 'loop', u.backStart, u.backStartSub), item('reverse', 'reverse', u.reverse5, u.reverseSub5)]);
+  if (first) h += grp(u.theRoute) + list([item('reverse', 'reverse', u.reverse5, u.reverseSub5)]);
+  // #364, C: Avoid this spot on a point's card too: the point goes, and the route goes around its spot
+  const avoidPt = o.avoid === 'all';
+  if (f.g === GEO.desk) {
+    // desktops: the edits as buttons with their names, in rows; each line is its tooltip; Remove on a row of its own, in red
+    const b5 = (act, icn, label, tip) => `<button type="button" class="c5-btn" data-act="${act}" title="${esc(tip)}">${ic(icn, 18)}<span>${esc(label)}</span></button>`;
+    h += grp(u.editPoint) + `<div class="c5-btns">${!first && !last ? b5('startat', 'flag', u.startHere, u.startSub) + b5('endat', 'flagend', u.endHere, u.endSub) : ''}${b5('move', 'move', u.move, u.moveSub)}${b5('rename', 'pencil', u.rename, u.renameSub)}${avoidPt ? b5('avoidpt', 'avoid', u.avoid, u.avoidPointSub6) : ''}</div>`;
+    return h + `<button type="button" class="c5-remove" data-act="remove" title="${esc(u.removeSub)}">${ic('trash', 18)}<span>${esc(u.remove)}</span></button>`;
+  }
+  h += grp(u.editPoint) + list([item('move', 'move', u.move, u.moveSub), item('rename', 'pencil', u.rename, u.renameSub), !first && !last ? item('startat', 'flag', u.startHere, u.startSub) : '', !first && !last ? item('endat', 'flagend', u.endHere, u.endSub) : '', avoidPt ? item('avoidpt', 'avoid', u.avoid, u.avoidPointSub6) : '']);
+  return h + `<div class="c2-hr"></div>` + list([item('remove', 'trash', u.remove, u.removeSub, { cls: 'danger' })]);
+}
+function sportCard2(f, st) {
+  const u = U(f), cur = st.change ? 'paddle' : f.sport;
+  // Paddle, once picked, has its crafts under it and the card stays open at them: the craft is the whole route's
+  // (the user's answer in 1a, 2026-10-22; the app's own chips, `way-chips chip`)
+  const craft = st.craft || 'kayak', crafts = `<div class="app c5-crafts"><div class="way-chips" role="group" aria-label="${esc(u.sportNames.paddle)}: the craft">${u.crafts5.map(([k, l]) => `<button type="button" class="chip" data-act="craft-${k}" aria-pressed="${k === craft}">${k === craft ? ic('check', 15) : ''}<span>${esc(l)}</span></button>`).join('')}</div><p class="c2-note">${esc(u.craftNote5)}</p></div>`;
+  return head2(f, G2.via(st.pt), u.sportsTitle, u.sportsSub(pn(f, st.pt)), 'point') + list(u.sports.flatMap(([k, l, icn]) => [item(`pick-${k}`, icn, l, u.sportLines[k], { role: 'menuitemradio', checked: k === cur, val: k === f.sport ? u.yourRoute : null }), k === 'paddle' && cur === 'paddle' ? crafts : '']));
+}
+function routeCard2(f, st) {
+  const u = U(f), o = f.o, km = st.km, w = wayAt(km), s = stretchOf(km);
+  let h = head2(f, G2.way, w[3], `${kindOf(f, w)}, ${fmtKm(km)} ${u.fromStart}`) + routeNums2(f, km);
+  if (s) h += `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
+  h += list([item('stretch', 'route', u.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, { chev: true }), item('here', 'info', u.here, u.hereSub, { chev: true }), st.view ? '' : item('edit', 'pencil', u.edit, u.editSub, { chev: true })]);
+  // #364, B and C: On the profile and Avoid this spot, at this spot on the line (A is Revision 5's card, without them)
+  const acts = [o.prof !== 'r5' ? item('profile', 'mountain', u.profile, u.profileSub) : '', o.avoid !== 'r5' && !st.view ? item('avoid', 'avoid', u.avoid, u.avoidSub) : ''].filter(Boolean);
+  if (acts.length) h += list(acts);
+  // #90, B: one row for the whole route, opening what ⋯ has; C: #90's four rows as filed; A: neither, and ⋯ keeps them
+  if (o.whole === 'row') h += `<div class="c2-hr"></div>` + list([item('whole', 'more', u.wholeRoute6, u.wholeSub6, { chev: true })]);
+  if (o.whole === 'four') h += grp(u.wholeRoute6) + list([item('gpx', 'gpx', u.gpx6, u.gpxSub6), item('copylink', 'link', u.copyLink6, shareSubC6(f, st, u.copyLinkSub6)), item('offline', 'offline', u.offline6, u.offlineSub6)])
+    + (st.view ? '' : `<div class="c2-hr"></div>` + list([item('clearroute', 'trash', u.clearRoute6, u.clearSub6, { cls: 'danger' })]));
+  return st.view ? h + lock(f) : h;
+}
+function stretchCard2(f, st) {
+  const u = U(f), s = stretchOf(st.km), len = POINTS[s + 1].km - POINTS[s].km;
+  let h = head2(f, G2.stretch, `${pn(f, s)} → ${pn(f, s + 1)}`, u.stretch, st.backPt ? 'point' : 'route') + nums2([[fmtKm(len), u.distance], [`${Math.round(len * PACE[f.sport])} ${u.min}`, u.time], [`↑${s ? 14 : 28} m`, u.climb]]);
+  if (s) h += grp(u.lookOut) + `<button type="button" class="c2-warn" data-act="item">${ic('eye', 20)}<span><b>${esc(u.look)}</b><small>${esc(u.lookLine)}</small></span>${ic('right', 18)}</button>`;
+  h += st.view ? lock(f) : `<button type="button" class="c2-main" data-act="edit">${ic('pencil', 20)}${esc(u.edit)}</button>`;
+  return h + list([item('profile', 'mountain', u.profile, u.profileSub)]);
+}
+function editCard2(f, st) {
+  const u = U(f), s = stretchOf(st.km), sp = u.sportNames[f.sport] || f.sport;
+  return head2(f, G2.edit, u.edit, `${pn(f, s)} → ${pn(f, s + 1)}`, st.held ? null : 'route') + `<p class="c2-note">${esc(u.editNote)}</p>`
+    + grp(u.howYouGo) + list([item('esport', (st.esport || f.sport) === 'hike' ? 'walk' : (st.esport || f.sport) === 'paddle' ? 'water' : 'bike', u.sport, u.sportSame, { val: st.esport ? (u.sports.find((x) => x[0] === st.esport) || [0, sp])[1] : sp, chev: true })])
+    + `<div class="c2-seg two" role="radiogroup" aria-label="${esc(u.drawn)}"><button type="button" role="radio" aria-checked="${st.drawn !== 'line'}" data-act="drawn-auto">${ic('auto', 18)}<span>${esc(u.follow)}</span></button><button type="button" role="radio" aria-checked="${st.drawn === 'line'}" data-act="drawn-line">${ic('line', 18)}<span>${esc(u.straight)}</span></button></div>`
+    + list([item('estyle', 'style', u.style, u.styleSub(sp), { val: st.estyle || u.balanced, chev: true })])
+    + grp(u.onStretch) + list([item('other', 'route', u.other, u.otherSub), item('stophere', 'pause', u.stopHere, u.stopHereSub), item('avoid', 'avoid', u.avoid, u.avoidSub), item('profile', 'mountain', u.profile, u.profileSub)]);
+}
+const spotOf2 = (f, p) => { const u = U(f), g = f.g; if (p[1] < g.water) return u.spots.lake; if (p[1] > g.town) return u.spots.town; return [u.spots.forest[0], u.spots.forest[1][f.sport]]; };
+function spotCard2(f, st) {
+  const u = U(f), [name, line] = spotOf2(f, st.at), d = Math.round(nearest(f.g, st.at).d * 2.9 / 10) * 10, w = { 4: 'S0', 5: 'T1' };
+  const third = st.at[1] < f.g.water ? ['?', `${f.sport === 'hike' ? u.trailGrade : u.diff} ${u.notMapped}`, true] : gradeNum(f, ['', '', '', '', 'S0', 'T1']);
+  let h = head2(f, G2.pin, name, line) + nums2([...(st.noRoute ? [] : [[`${d} m`, u.fromRoute]]), [`${ele(1.2)} m`, u.height], third]);
+  h += list([item('here', 'info', u.here, u.hereSpotSub, { chev: true })]);
+  if (st.view) return h + lock(f) + foot2(f);
+  h += grp(u.yourRouteH) + list(st.noRoute ? [item('round', 'roundtrip', u.round, u.roundSub)] : [item('startspot', 'flag', u.startSpot, u.startSpotSub), item('endspot', 'flagend', u.endSpot, u.endSpotSub), item('round', 'roundtrip', u.round, u.roundSub), item('avoid', 'avoid', u.avoid, u.avoidSub)]);
+  return h + foot2(f);
+}
+function placeCard2(f, st) {
+  const u = U(f), t = T[f.lang];
+  let h = head2(f, G2.place, t.place, t.placeSub) + `<span class="c2-src">${esc(u.fromLipas)}</span>` + `<ul class="c2-facts">${u.placeFacts.map((c) => `<li>${ic('check', 20)}${esc(c)}</li>`).join('')}</ul>`;
+  h += list([item('placemore', 'info', u.here, u.hereSpotSub, { chev: true })]);
+  if (st.view) return h + lock(f) + foot2(f);
+  h += grp(u.yourRouteH) + list([item('startspot', 'flag', u.startSpot, u.startSpotSub), item('endspot', 'flagend', u.endSpot, u.endSpotSub), item('round', 'roundtrip', u.round, u.roundSub)]);
+  return h + foot2(f);
+}
+const kv2 = (rows) => `<dl class="c2-kv">${rows.map(([k, v, extra = '']) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}${extra}</dd></div>`).join('')}</dl>`;
+function hereCard2(f, st) {
+  const u = U(f), k = u.kv, onRoute = st.kind === 'route', w = onRoute ? wayAt(st.km) : ['', 'Forest path', 'Metsäpolku', u.spots.forest[0], 'S0', 'T1', '1 m', 'dirt'];
+  const [name, line] = onRoute ? [w[3], kindOf(f, w)] : spotOf2(f, st.at);
+  const g = (x) => (x ? `${x}, ${u.grades[x]}` : u.notMapped);
+  const G = { mtb: kv2([[k.diffK, g(w[4])], [k.upK, g(w[4])], [k.surface, k.dirt], [k.width, w[6]]]), hike: kv2([[k.sac, g(w[5])], [k.vis, k.clear]]) };
+  const other = f.sport === 'hike' ? 'mtb' : 'hike';
+  let h = head2(f, onRoute ? G2.way : G2.pin, name, line, onRoute ? 'route' : 'spot') + `<span class="c2-src">${esc(u.fromOsm)}</span>`;
+  h += grp(u.groups[f.sport]) + G[f.sport] + grp(u.groups[other]) + G[other] + grp(u.groups.winter) + kv2([[k.surface, k.ploughed]]);
+  if (!onRoute) h += grp(u.groups.spot) + kv2([[u.height[0].toUpperCase() + u.height.slice(1), `${ele(1.2)} m`], [k.coords, coords(f, st.at), ` <button type="button" data-act="copied">${ic('copy', 15)}${esc(k.copy)}</button>`]]);
+  h += grp(u.groups.checked) + kv2([['OpenStreetMap', f.lang === 'fi' ? 'kesäkuu 2024' : 'June 2024']]);
+  return h + list([item('osm', 'tags', u.osm, u.osmSub, { chev: true })]) + foot2(f, { share: false });
+}
+function placeMoreCard2(f, st) {
+  const u = U(f), t = T[f.lang], by = (g) => t.placeRows.filter((r) => r[0] === g).map((r) => [r[1], r[2]]);
+  return head2(f, G2.place, t.place, t.placeSub, 'place') + `<span class="c2-src">${esc(u.fromLipas)}</span>` + [['site', 'site'], ['there', 'thereG'], ['when', 'when'], ['checked', 'checked']].map(([g, n]) => grp(u.groups[n]) + kv2(by(g))).join('')
+    + list([item('lipas', 'map', t.lipasLink.replace(' ›', ''), u.lipasSub, { chev: true }), item('website', 'link', t.website.replace(' ›', ''), u.webSub, { chev: true }), item('osm', 'tags', u.osm, u.osmSub, { chev: true })]) + foot2(f, { share: false });
+}
+function itemCard2(f, st) {
+  const u = U(f);
+  const two = !!st.item2;
+  let h = head2(f, G2.look, two ? u.look2 : u.look, u.lookLine, 'route') + nums2(two ? [[u.lookWhere2, u.fromStart], ['400 m', u.long], ['S1', u.diff]] : [[u.lookWhere, u.fromStart], ['80 m', u.long], ['14 %', u.steepest]]) + `<span class="c2-src">${esc(two ? u.lookSrc2 : u.lookSrc)}</span><p class="c2-note">${esc(two ? u.lookNote2 : u.lookNote)}</p>`;
+  if (!st.view) h += `<button type="button" class="c2-main" data-act="avoidit">${ic('avoid', 20)}${esc(u.avoidIt)}</button>`;
+  return h + `<div class="c2-stepper"><button type="button" data-act="item-step" aria-label="${esc(u.prev)}">${ic('left', 20)}</button><span>${esc(u.ofN(two ? 2 : 1, 2))}</span><button type="button" data-act="item-step" aria-label="${esc(u.next)}">${ic('right', 20)}</button><span class="grow"></span><button type="button" data-act="allcheck">${esc(u.allCheck)} ${ic('right', 16)}</button></div>`;
+}
+function osmCard2(f, st) {
+  const u = U(f), t = T[f.lang], tags = OSM_TAGS[st.place ? 'place' : 'way'];
+  return head2(f, null, u.osm, st.place ? t.place : spotOf2(f, st.at)[0], st.from || 'more') + `<ul class="tags">${tags.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` + foot2(f, { share: false });
+}
+function notRightCard2(f, st) {
+  const t = T[f.lang], u = U(f);
+  return head2(f, null, u.notRight, null, st.from || 'spot') + `<p class="c2-note">${esc(t.nrText.replace('fix what you tell them', 'can fix what you tell them').replace('korjaavat', 'voivat korjata'))}</p>`
+    + list([item('osmnote', 'note', t.nrNote, t.nrNoteSub, { chev: true }), item('osmedit', 'map', t.nrEdit, t.nrEditSub, { chev: true }), st.place ? item('lipas', 'map', t.nrLipas, t.nrLipasSub, { chev: true }) : '']);
+}
+const CARDS2 = { route: routeCard2, stretch: stretchCard2, under: hereCard2, here: hereCard2, more: hereCard2, edit: editCard2, spot: spotCard2, osm: osmCard2, notright: notRightCard2, place: placeCard2, placemore: placeMoreCard2, point: pointCard2, sport: sportCard2, item: itemCard2 };
+// the steps behind a row: places to sleep, when you leave, when you go on, a stretch's sport and style
+function staysCard5(f, st) { const u = U(f); return head2(f, G2.via(st.pt), u.stays5, pn(f, st.pt), 'point') + list(u.staysList5.map(([n, kind, d], i) => item(`stay-${i}`, 'tent', n, `${kind}, ${d}`, { chev: true }))) + `<p class="c2-note">${esc(u.staysNote5)}</p>`; }
+// #364, A: Revision 5's hours; B: now, or a day with the phone's own clock under it, as Paddle's crafts sit under Paddle
+function leaveCard6(f, st) {
+  const u = U(f);
+  if (f.o.times !== 'any') { const cur = st.leave || u.leaveTimes5[0]; return head2(f, G2.start, u.leave, u.leaveSub, 'point') + list(u.leaveTimes5.map((v) => item(`leave-${v}`, 'clock', v, null, { role: 'menuitemradio', checked: v === cur }))); }
+  const lv = leaveOf(f, st), end = addMin6(lv.clock, Math.round(POINTS[POINTS.length - 1].km * PACE[f.sport]));
+  const at = lv.day === 'now' ? '' : `<div class="c6-at">${timeStep(f, 'lt', lv.clock, u.leaveAria6(lv.day === 'today' ? u.today6 : u.tomorrow6))}<small>${esc(u.endAt6(end))}</small></div>`;
+  return head2(f, G2.start, u.leave, u.leaveSub, 'point') + list([['now', u.leaveVal], ['today', u.today6], ['tomorrow', u.tomorrow6]].flatMap(([k, l]) => [item(`lday-${k}`, 'clock', l, null, { role: 'menuitemradio', checked: k === lv.day }), k === lv.day ? at : ''])); // (the time is in the stepper under it)
+}
+function goonCard5(f, st) { const u = U(f), cur = st.goon || '07:00'; return head2(f, G2.via(st.pt), u.goOnAt, u.nextMorning, 'point') + list(u.goonTimes5.map((v) => item(`goon-${v}`, 'clock', v, null, { role: 'menuitemradio', checked: v === cur }))); }
+function esportCard5(f, st) { const u = U(f), s = stretchOf(st.km), cur = st.esport || f.sport; return head2(f, G2.edit, u.sport5, `${pn(f, s)} → ${pn(f, s + 1)}`, 'edit') + list(u.sports.map(([k, l, icn]) => item(`esp-${k}`, icn, l, u.sportLines[k], { role: 'menuitemradio', checked: k === cur, val: k === f.sport ? u.yourRoute : null }))); }
+function estyleCard5(f, st) { const u = U(f), sp = u.sportNames[f.sport] || f.sport, cur = st.estyle || u.balanced; return head2(f, G2.edit, u.style, u.styleSub(sp), 'edit') + list(u.styles5[f.sport === 'hike' ? 'hike' : 'mtb'].map((l) => item(`est-${l}`, 'style', l, null, { role: 'menuitemradio', checked: l === cur }))); }
+// #90, B: The whole route ›: what the ⋯ menu has, in the same groups and order, as a card's rows (Back to the route's card)
+function wholeCard6(f, st) {
+  const u = U(f);
+  return head2(f, G2.route, `${pn(f, 0)} → ${pn(f, POINTS.length - 1)}`, u.kept6, 'route')
+    + grp(u.takeAlong6) + list([item('sharelink', 'link', u.shareLink6, shareSubC6(f, st, u.shareLinkSub6)), item('gpx', 'gpx', u.gpx6, u.gpxSub6), item('offline', 'offline', u.offline6, u.offlineSub6)])
+    + grp(u.wholeRoute6) + list([item('roundstart', 'roundtrip', u.roundStart6, u.roundStartSub6), item('reverse', 'reverse', u.reverse5, u.reverseSub5), st.looped ? '' : item('backstart', 'loop', u.backStart, u.backStartSub), item('importf', 'upload', u.import6, u.importSub6)])
+    + `<div class="c2-hr"></div>` + list([item('clearroute', 'trash', u.clearRoute6, u.clearSub6, { cls: 'danger' })]);
+}
+Object.assign(CARDS2, { stays: staysCard5, leave: leaveCard6, goon: goonCard5, esport: esportCard5, estyle: estyleCard5, whole: wholeCard6 });
+const backTo = (f, st, act) => { const u = U(f); return { route: () => wayAt(st.km)[3], point: () => pn(f, st.pt), spot: () => spotOf2(f, st.at)[0], place: () => T[f.lang].place, more: () => u.here, under: () => u.here, placemore: () => u.here, edit: () => u.edit, whole: () => u.wholeRoute6 }[act]?.() || u.back; };
+const words = (html, f, st) => html
+  .replace(/<button type="button" class="c2-back" data-act="([a-z]+)" aria-label="[^"]*">(<svg[\s\S]*?<\/svg>)<\/button>/, (m, act, svg) => `<button type="button" class="c2-back c2-back-words" data-act="${act}">${svg}<span>${esc(backTo(f, st, act))}</span></button>`)
+  .replace(/<button type="button" class="c2-item([^"]*)"([^>]*)>([\s\S]*?)<\/button>/g, (m, cls, attrs, inner) => {
+    const s = inner.match(/<small>([\s\S]*?)<\/small>/);
+    return s ? `<button type="button" class="c2-item${cls}"${attrs} title="${s[1]}">${inner}</button>` : m;
+  });
+const buttons = (html) => html.replace(/<div class="c2-list">([\s\S]*?)<\/div>/g, (m, inner) => {
+  if (/class="chev"|role="menuitemradio"/.test(inner)) return m;
+  const btns = [...inner.matchAll(/<button type="button" class="c2-item([^"]*)" data-act="([^"]+)"[^>]*>(<svg[\s\S]*?<\/svg>)?<span><b>([\s\S]*?)<\/b>(?:<small>([\s\S]*?)<\/small>)?<\/span>[\s\S]*?<\/button>/g)];
+  if (!btns.length) return m;
+  const one = (c) => `<button type="button" class="${/danger/.test(c[1]) ? 'c5-remove' : 'c5-btn'}" data-act="${c[2]}"${c[5] ? ` title="${c[5]}"` : ''}>${c[3] || ''}<span>${c[4]}</span></button>`;
+  const danger = btns.filter((c) => /danger/.test(c[1])), rest = btns.filter((c) => !/danger/.test(c[1]));
+  return (rest.length ? `<div class="c5-btns">${rest.map(one).join('')}</div>` : '') + danger.map(one).join('');
+});
+const out = {};
+for (const [k, fn] of Object.entries(CARDS2)) out[k] = (f, st) => { const h = words(fn(f, st), f, st); return f.g === GEO.desk ? buttons(h) : h; };
+return out;
+})();
 
 // ------------------------------------------------ Revision 5: Revision 4 with compact cards on desktops, the point's edits as
 // buttons in rows there, End here with a flag, the point's row lit in the list, and every control doing what it says
@@ -2393,12 +2931,17 @@ function render(fr) {
   f.z = desk ? 1 : v.z; f.view = !!st.view;
   el.classList.toggle('dark', v.theme === 'dark');
   const scr = el.querySelector('.screen'), t = T[f.lang];
-  const rev = st.v || PK.cards, v2 = rev !== 'v1', r5 = rev === 'r5', r4 = rev === 'r4' || r5, r3 = rev === 'r3' || r4, r1 = rev === 'r1' || r3, u = T2[f.lang];
+  const rev = st.v || PK.cards, v2 = rev !== 'v1', r6 = rev === 'r6', r5 = rev === 'r5' || r6, r4 = rev === 'r4' || r5, r3 = rev === 'r3' || r4, r1 = rev === 'r1' || r3, u = T2[f.lang];
   scr.classList.toggle('v2', v2);
   scr.classList.toggle('r1', r1);
   scr.classList.toggle('r3', r3);
   scr.classList.toggle('r4', r4);
   scr.classList.toggle('r5', r5);
+  scr.classList.toggle('r6', r6);
+  // Revision 6's options: the frame's own, or the switches'
+  f.o = { times: st.times || PK.times, avoid: st.avoid || PK.avoid, prof: st.prof || PK.prof, whole: st.whole || PK.whole, start: st.start || PK.start };
+  // the cards that belong to a point, at the point (Revision 6 adds its steps, so a desktop shows them too)
+  const PT = r6 ? ['point', 'sport', 'leave', 'goon', 'stays'] : ['point', 'sport'];
   scr.style.width = `${f.W}px`; scr.style.height = `${f.H}px`; scr.style.setProperty('--k', String(desk ? 1 : v.z));
   scr.classList.toggle('bigtext', v.z >= 2);
   scr.style.backgroundImage = `url(${BG}${f.g.pic})`;
@@ -2413,19 +2956,24 @@ function render(fr) {
     const a2 = off(a, [sx, sy], 30 * k), b2 = b && off(b, [sx, sy], 30 * k);
     html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><path d="M${a2[0]},${a2[1]} L${sx},${sy}${b2 ? ` L${b2[0]},${b2[1]}` : ''}" fill="none" stroke="#e11d48" stroke-width="5" stroke-dasharray="8 6" stroke-linecap="round"/></svg><span class="mk" style="left:${sx}px;top:${sy}px">+</span>`;
   }
+  // Revision 6 (#334): the leg back to the start once the route is a loop, dashed while it's routed
+  if (st.looped) {
+    const a = toScr(f, along(f.g, POINTS[POINTS.length - 1].km)), b = toScr(f, along(f.g, 0));
+    html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><path d="M${a[0]},${a[1]} L${b[0]},${b[1]}" fill="none" stroke="#e11d48" stroke-width="5" stroke-dasharray="8 6" stroke-linecap="round"/></svg>`;
+  }
   if (desk) {
     html += `<div class="panel" aria-label="Route planner"><div class="row"><span class="nums"><span><b>3.05 km</b><small>${esc(t.nums[0])}</small></span><span><b>16 min</b><small>${esc(t.nums[1])}</small></span><span><b>↑42 ↓62 m</b><small>${esc(t.nums[2])}</small></span></span></div>
       ${[0, 1, 2].map((i) => `<div class="wp${r5 && ['point', 'sport', 'stays', 'leave', 'goon'].includes(card) && st.pt === i ? ' wp-lit' : ''}"><i>${i === 1 ? '1' : ''}</i><span style="overflow-wrap:anywhere"><b>${esc(ptName(f, i))}</b><br><small style="color:var(--muted)">${fmtKm(POINTS[i].km)} · ${clock(POINTS[i].km, f.sport)}</small></span></div>`).join('')}</div>
       <div class="dtool" aria-label="Drawing tools"><button type="button" class="btn small" data-act="noop">${ic('auto', 18)}Follow paths</button><button class="tbtn" type="button" data-act="noop" aria-label="Undo">${ic('undo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="Redo">${ic('redo')}</button><button class="tbtn" type="button" data-act="noop" aria-label="More">${ic('more')}</button><button type="button" class="btn small" data-act="noop">${esc(t.done)}</button></div>`;
   }
   // the stretch a route card is about, lit on the map (D)
-  if (card && onRoute && st.km != null) {
+  if (card && onRoute && st.km != null && card !== 'whole') {
     const s = stretchOf(st.km), a = POINTS[s].km, b = POINTS[s + 1].km;
     const P = [along(f.g, a), ...f.g.pts.filter((q) => q[2] > a && q[2] < b), along(f.g, b)].map((q) => toScr(f, q).map((n) => n.toFixed(1)).join(',')).join(' ');
     html += `<svg style="position:absolute;inset:0;z-index:2;pointer-events:none" width="${f.W}" height="${f.H}" aria-hidden="true"><polyline points="${P}" fill="none" stroke="#fff" stroke-width="${desk ? 13 : 11}" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><polyline points="${P}" fill="none" stroke="var(--accent-bg)" stroke-width="${desk ? 7 : 6}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
   scr.innerHTML = html;
-  const CC = !v2 ? CARDS : r5 ? CARDS_R5 : r4 ? CARDS_R4 : r3 ? CARDS_R3 : r1 ? CARDS_R1 : CARDS2;
+  const CC = !v2 ? CARDS : r6 ? CARDS_R6 : r5 ? CARDS_R5 : r4 ? CARDS_R4 : r3 ? CARDS_R3 : r1 ? CARDS_R1 : CARDS2;
   const inner = card && CC[card] ? (v2 && !r1 ? `<div class="app pl-way card">${CC[card](f, st)}</div>` : `<div class="card">${CC[card](f, st)}</div>`) : '';
   // a spot within reach of the line goes onto it: Add a point here, not Add to my route (revised)
   const near = v2 && st.kind === 'spot' && !st.place && st.at && !st.noRoute && nearest(f.g, st.at).d < 14;
@@ -2442,7 +2990,7 @@ function render(fr) {
     if (sheetTop - 76 > 44 * 2 + 52 * 2 + 8 * 4) scr.insertAdjacentHTML('beforeend', `<div class="cols" style="bottom:${f.H - sheetTop + 12}px"><span class="cb">${ic('locate')}</span><span class="cb">${ic('fit')}</span><span class="fab">${ic('weather', 22)}Weather</span><span class="fab">${ic('layers', 22)}Layers</span></div>`);
   }
   // the spot: a pin and the pill (phones), or the card at the pointer with its action first (desktops)
-  if (st.at && card && card !== 'point' && card !== 'move' && !(v2 && (st.view || card === 'item' || card === 'sport'))) {
+  if (st.at && card && card !== 'point' && card !== 'move' && !(v2 && (st.view || card === 'item' || card === 'sport' || card === 'whole'))) {
     const [x, y] = toScr(f, onRoute ? along(f.g, st.km) : st.at);
     const label = onRoute || near ? t.add : st.noRoute ? t.startHere : t.addRoute, action = onRoute ? 'addpt' : 'addspot';
     const pin = `<span class="pin${st.place ? ' around' : ''}" style="left:${x}px;top:${y}px"></span>`;
@@ -2460,9 +3008,9 @@ function render(fr) {
       pill.style.left = `${Math.max(8 + pw / 2, Math.min(f.W - 8 - pw / 2, x))}px`;
     }
   }
-  if (desk && v2 && inner && st.at && (st.view || card === 'item')) { const [x, y] = toScr(f, onRoute ? along(f.g, st.km) : st.at); scr.insertAdjacentHTML('beforeend', `<div class="pop" style="left:${x + 12}px;top:${Math.max(8, Math.min(y + 12, f.H - 560))}px">${inner}</div>`); }
-  if (desk && (card === 'point' || card === 'sport') && inner) scr.insertAdjacentHTML('beforeend', `<div class="pop" style="left:${toScr(f, along(f.g, POINTS[st.pt].km))[0] + 12}px;top:${toScr(f, along(f.g, POINTS[st.pt].km))[1] + 12}px">${inner}</div>`);
-  if (card === 'point' || card === 'move' || card === 'sport') {
+  if (desk && v2 && inner && st.at && (st.view || card === 'item' || card === 'whole')) { const [x, y] = toScr(f, onRoute ? along(f.g, st.km) : st.at); scr.insertAdjacentHTML('beforeend', `<div class="pop" style="left:${x + 12}px;top:${Math.max(8, Math.min(y + 12, f.H - 560))}px">${inner}</div>`); }
+  if (desk && PT.includes(card) && inner) scr.insertAdjacentHTML('beforeend', `<div class="pop" style="left:${toScr(f, along(f.g, POINTS[st.pt].km))[0] + 12}px;top:${toScr(f, along(f.g, POINTS[st.pt].km))[1] + 12}px">${inner}</div>`);
+  if (card === 'move' || PT.includes(card)) {
     const [x, y] = toScr(f, along(f.g, POINTS[st.pt].km));
     const own = st.pt === 0 || st.pt === POINTS.length - 1;
     scr.insertAdjacentHTML('beforeend', `<span class="mk ring2${own ? ' ring-only' : ''}" style="left:${x}px;top:${y}px">${own ? '' : st.pt}</span>`);
@@ -2482,8 +3030,9 @@ function render(fr) {
     if (st.toast === 'starts') msg = u.startsHere;
     if (st.toast === 'ends') msg = u.endsHere;
     if (st.toast === 'msg') msg = st.msg;
+    if (st.toast === 'looped' || st.toast === 'cleared') msg = T6[f.lang][st.toast];
     const tb = scr.querySelector('.tbox'), above = tb ? f.H - tb.offsetTop + 10 : f.H - sheetTop + 12;
-    scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${desk ? 24 : above}px"><span>${esc(msg)}</span>${['added', 'tap', 'removed', 'starts', 'ends'].includes(st.toast) || (st.toast === 'msg' && st.undoable) ? `<button type="button" data-act="undo">${esc(t.undo)}</button>` : ''}</div>`);
+    scr.insertAdjacentHTML('beforeend', `<div class="toast" role="status" style="bottom:${desk ? 24 : above}px"><span>${esc(msg)}</span>${['added', 'tap', 'removed', 'starts', 'ends', 'looped', 'cleared'].includes(st.toast) || (st.toast === 'msg' && st.undoable) ? `<button type="button" data-act="undo">${esc(t.undo)}</button>` : ''}</div>`);
   }
 }
 
@@ -2498,7 +3047,7 @@ function hit(fr, x, y) {
 }
 // what a press opens: a tap (right = false) or a long press and a right-click (right = true)
 function opened(st, h, right) {
-  const keep = { added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z, v: st.v, view: st.view, noRoute: st.noRoute };
+  const keep = keepOf(st);
   if (h.kind === 'point') return { ...keep, card: 'point', pt: h.i };
   if (h.kind === 'place') return { ...keep, card: 'place', kind: 'spot', place: true, at: h.p };
   if (h.kind === 'route') return { ...keep, card: right ? 'edit' : 'route', kind: 'route', held: right, at: h.p, km: h.km };
@@ -2506,12 +3055,24 @@ function opened(st, h, right) {
   return { ...keep, added: [...(st.added || []), [...h.p, POINTS.length - 1]], toast: 'tap' };
 }
 function act(fr, a) {
-  const st = fr.st, keep = { added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z, v: st.v, view: st.view, noRoute: st.noRoute };
-  const say = (SAY5[st.lang || PK.lang] || SAY5.en)[a];
+  const st = fr.st, keep = keepOf(st), lang = st.lang || PK.lang, r6 = (st.v || PK.cards) === 'r6';
+  // Revision 6: Back to start draws the loop and closes the card; Clear route says so, with Undo (the picture keeps its route)
+  if (r6 && a === 'backstart') { fr.st = { ...keep, looped: true, undoLoop: true, toast: 'looped' }; render(fr); return; }
+  if (r6 && a === 'clearroute') { fr.st = { ...keep, toast: 'cleared' }; render(fr); return; }
+  // C (#364): the rows open the phone's own pickers (here, where the browser can't, a note says so); Now; the nights
+  if (a === 'leavepickc' || a === 'goonpickc') { const x = fr.el.querySelector(`.screen input[data-in="${a === 'leavepickc' ? 'ldt' : 'gtc'}"]`); try { x.showPicker(); return; } catch { st.toast = 'msg'; st.msg = T6[lang][a]; st.undoable = false; render(fr); return; } }
+  if (a === 'leavenowc') { st.leaveDT = null; render(fr); return; }
+  if (a === 'nights-' || a === 'nights+') { st.nights = Math.max(1, Math.min(14, (st.nights || 1) + (a === 'nights+' ? 1 : -1))); render(fr); return; }
+  const say = (r6 && (SAY6[lang] || SAY6.en)[a]) || (SAY5[lang] || SAY5.en)[a];
   if (say) { st.toast = 'msg'; st.msg = say[0]; st.undoable = say[1]; render(fr); return; }
   if (a.startsWith('stay-')) { const u5 = T2[st.lang || PK.lang]; st.card = 'point'; st.toast = 'msg'; st.msg = (st.lang || PK.lang) === 'fi' ? `Yö siirtyi: ${['Kaupin laavu', 'Tapatoran kota', 'Camping Härmälä'][+a.slice(5)]}` : `The night moved to ${['Kaupin laavu', 'Tapatoran kota', 'Camping Härmälä'][+a.slice(5)]}`; st.undoable = true; render(fr); return; }
   if (a.startsWith('leave-')) { st.leave = a.slice(6); st.card = 'point'; render(fr); return; }
   if (a.startsWith('goon-')) { st.goon = a.slice(5); st.card = 'point'; render(fr); return; }
+  // Revision 6 (#364, B): the day to leave (Now goes back to the start's card; a day stays, at its time), and the times'
+  // steppers in quarter hours: today not before the mock-up's now (10:00), every time within its day
+  if (a.startsWith('lday-')) { st.leaveDay = a.slice(5); if (st.leaveDay === 'now') st.card = 'point'; render(fr); return; }
+  if (a === 'lt-' || a === 'lt+') { const d = st.leaveDay || 'today'; st.leaveAt = addMin6(st.leaveAt || LEAVE6[d], a === 'lt+' ? 15 : -15, d === 'today' ? 615 : 0); render(fr); return; }
+  if (a === 'gt-' || a === 'gt+') { st.goon = addMin6(st.goon || '07:00', a === 'gt+' ? 15 : -15); render(fr); return; }
   if (a.startsWith('esp-')) { st.esport = a.slice(4); st.card = 'edit'; render(fr); return; }
   if (a.startsWith('est-')) { st.estyle = a.slice(4); st.card = 'edit'; render(fr); return; }
   if (a === 'after') { st.backPt = true; st.card = 'stretch'; st.kind = 'route'; st.km = (POINTS[st.pt].km + POINTS[st.pt + 1].km) / 2; st.at = along(fr.f.g, st.km); st.toast = null; render(fr); return; }
@@ -2519,7 +3080,7 @@ function act(fr, a) {
   if (a === 'co-' || a === 'co+') { st.co = Math.max(0, (st.co ?? 10) + (a === 'co+' ? 5 : -5)); render(fr); return; }
   if (a === 'item-step') { st.item2 = !st.item2; render(fr); return; }
   if (a.startsWith('here-')) { st.here = a.slice(5); render(fr); return; }
-  if (a.startsWith('pick-')) { st.change = a.slice(5) !== (st.sport || PK.sport); if ((st.v || PK.cards) !== 'r5' || a !== 'pick-paddle') st.card = 'point'; render(fr); return; } // (Revision 5: Paddle stays, at its crafts)
+  if (a.startsWith('pick-')) { st.change = a.slice(5) !== (st.sport || PK.sport); if (!['r5', 'r6'].includes(st.v || PK.cards) || a !== 'pick-paddle') st.card = 'point'; render(fr); return; } // (Revision 5: Paddle stays, at its crafts)
   if (a.startsWith('craft-')) { st.craft = a.slice(6); render(fr); return; }
   if (a.startsWith('drawn-')) { st.drawn = a.slice(6); render(fr); return; }
   if (/^min-\d+$/.test(a)) { st.min = +a.slice(4); render(fr); return; }
@@ -2536,23 +3097,28 @@ function act(fr, a) {
     case 'startat': case 'startspot': fr.st = { ...keep, toast: 'starts' }; break;
     case 'endat': case 'endspot': fr.st = { ...keep, toast: 'ends' }; break;
     case 'edit-on': st.view = false; break;
-    case 'route': case 'stretch': case 'under': case 'spot': case 'more': case 'place': case 'placemore': case 'point': case 'move': st.card = a; st.toast = null; break;
+    case 'route': case 'stretch': case 'under': case 'spot': case 'more': case 'place': case 'placemore': case 'point': case 'move': case 'whole': st.card = a; st.toast = null; break;
     case 'edit': st.card = 'edit'; st.held = false; break;
     case 'osm': case 'notright': st.from = st.card; st.card = a; break;
     case 'share': st.toast = 'shared'; break;
     case 'copied': st.toast = 'copied'; break;
     case 'addpt': fr.st = { ...keep, added: [...(st.added || []), [...along(fr.f.g, st.km), stretchOf(st.km)]], toast: 'added' }; break;
     case 'addspot': if (st.noRoute) { fr.st = { ...keep, added: [] }; break; } fr.st = { ...keep, added: [...(st.added || []), [...st.at, placeFor(fr.f.g, st.at)]], toast: 'added' }; break;
-    case 'undo': fr.st = { ...keep, added: (st.added || []).slice(0, -1) }; break;
+    case 'undo': fr.st = st.undoLoop ? { ...keep, looped: false } : { ...keep, added: (st.added || []).slice(0, -1) }; break;
     default: return;
   }
   render(fr);
 }
 function tapAt(fr, x, y, right) {
-  const st = fr.st, keep = { added: st.added, sport: st.sport, lang: st.lang, worst: st.worst, theme: st.theme, w: st.w, h: st.h, z: st.z, v: st.v, view: st.view, noRoute: st.noRoute };
+  const st = fr.st, keep = keepOf(st);
   if (st.card === 'move') { fr.st = keep; render(fr); return; } // (the point moved there: drawn as done)
   if (st.card && !right) { fr.st = keep; render(fr); return; } // a tap beside a card closes it, and adds nothing
-  fr.st = opened(st, hit(fr, x, y), right);
+  const h = hit(fr, x, y);
+  // Revision 6, #334 B: a tap on the start while drawing closes the route back to it, with Undo in the note (a hold opens its card)
+  if (!right && (st.v || PK.cards) === 'r6' && (st.start || PK.start) === 'tap' && h.kind === 'point' && h.i === 0 && !st.view && !st.looped && !st.noRoute) {
+    fr.st = { ...keep, looped: true, undoLoop: true, toast: 'looped' }; render(fr); return;
+  }
+  fr.st = opened(st, h, right);
   render(fr);
 }
 function bind(fr) {
@@ -2560,6 +3126,18 @@ function bind(fr) {
   let down = null;
   const local = (e) => { const r = scr.getBoundingClientRect(), z = r.width / fr.f.W; return [(e.clientX - r.left) / z, (e.clientY - r.top) / z]; };
   scr.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (b) { e.stopPropagation(); act(fr, b.dataset.act); } });
+  // C (#364): a tap or a click on a row's own picker opens the phone's, or the browser's where it has showPicker()
+  scr.addEventListener('click', (e) => { const x = e.target.closest('input[data-pick]'); if (x) try { x.showPicker(); } catch { /* the phone opens its own */ } }, true);
+  // Revision 6 (#364): a time typed or picked in the phone's own field; today's past goes to tomorrow
+  scr.addEventListener('change', (e) => {
+    const x = e.target.closest('input[data-in]'), st = fr.st;
+    if (x && x.dataset.in === 'ldt' && /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(x.value)) { st.leaveDT = x.value.slice(0, 16); render(fr); return; }
+    if (!x || !/^\d\d:\d\d/.test(x.value)) return;
+    const t = x.value.slice(0, 5);
+    if (x.dataset.in === 'lt') { if ((st.leaveDay || 'today') === 'today' && t < '10:15') st.leaveDay = 'tomorrow'; st.leaveAt = t; }
+    if (x.dataset.in === 'gt' || x.dataset.in === 'gtc') st.goon = t;
+    render(fr);
+  });
   scr.addEventListener('pointerdown', (e) => {
     if (e.target.closest('button, [data-act], input, label') || e.button !== 0) return;
     const [x, y] = local(e);

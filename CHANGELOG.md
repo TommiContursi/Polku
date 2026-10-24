@@ -8,6 +8,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 With the planner at the size that shows the elevation chart, the row of warnings to read before you go took the chart's room on a small phone, and the chart's bottom ran off the screen. At that size the row now folds away, as the route's stats do, and comes back at the peek. The warnings stay on the map and in Check.
 
+### Fixed: the warnings' ✕ is as easy to tap as the planner's other buttons ([#443](https://github.com/TommiContursi/Polku/issues/443))
+
+On a phone, the ✕ that marks all the warnings read, at the end of their row at the planner's peek, was narrower than the planner's other buttons. Now it's as wide as they are, 44 px.
+
+### Fixed: the warnings' count leaves the map its room on a phone on its side ([#438](https://github.com/TommiContursi/Polku/issues/438))
+
+With large text on a phone turned on its side, the row of warnings to read before you go pushed the top of the planner under the top bar. Now, in a window that short, the count sits in the line of the route's numbers, before **Done**, as it does on a small phone, and **All read** in Check marks them all.
+
 ## 2026-10-23
 
 ### Fixed: Settings and all layers open whole over a raised planner on a desktop ([#257](https://github.com/TommiContursi/Polku/issues/257))

@@ -1407,15 +1407,21 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .pl-readrow.danger .pl-readrow-go > span:first-child { color: var(--danger); }
 .pl-readrow.unk .pl-readrow-go > span:first-child { color: var(--unk); }
 .pl-readrow-x { flex: none; align-self: stretch; height: auto; border-left: 1px solid color-mix(in srgb, var(--text) 14%, transparent); border-radius: 0 11px 11px 0; color: var(--muted); }
+/* (narrow screens make a .tool 30 × 32: the ✕ stays a finger's size, as high as the row, #443) */
+.pl-readrow .pl-readrow-x { width: var(--target); height: auto; }
 .pl-readrow-go:focus-visible, .pl-readrow-x:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (max-height: 520px) { .pl-readrow-go { min-height: var(--target); padding-block: 6px; } .pl-readrow small { display: none; } }
-/* narrow (200 %, a small phone): the count alone, beside the numbers above Done, so it takes none of the map (the review
-   of #416); its sign and its name say what it is, and Check's All read marks them all */
+/* narrow (200 %, a small phone): the count alone, beside the numbers above Done; short (a phone on its side at 150 or
+   200 %, #438): before Done, in the numbers' line. Either way it takes none of the map (the review of #416); its sign and
+   its name say what it is, and Check's All read marks them all */
 /* (beside the distance and the time: the climb's line, the widest, keeps the room to its right) */
 .sheet-row.with-count { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto 1fr; gap: 4px 8px; align-items: start; }
 .sheet-row.with-count > .sheet-sum { grid-row: 1 / span 3; }
 .sheet-row.with-count > :not(.sheet-sum) { grid-column: 2; }
-.sheet-row.with-count > .pl-readrow { margin: 0; }
+.sheet-row > .pl-readrow { flex: none; margin: 0; }
+/* (in the numbers' line, they close up as on a 360 px phone, so the line holds them and the count) */
+.sheet-row.count-inline .sheet-sum { column-gap: 12px; }
+.sheet-row.count-inline .sum-item b { font-size: 16.5px; }
 /* (40 px high, so it and Done end above the climb's line) */
 .pl-readrow.compact .pl-readrow-go { min-height: 40px; gap: 4px; padding: 0 10px 0 8px; border-radius: 11px; }
 .pl-readrow.compact b { font-size: 18px; font-variant-numeric: tabular-nums; }
