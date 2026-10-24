@@ -66,7 +66,7 @@ What Polku does that its neighbours don't do together:
 - **Missing, late or partial data never looks complete.** When weather, terrain, trail details or hazards fail, the route says so.
 - **Water routes are for planning, not navigation.** Traficom's depths are shown, never routed on.
 - **Nothing Polku does is removed to make it simpler,** and nothing used today takes more taps, more scrolling or a new hidden view (phase 24's rules, [docs/plans/24-design-review.md](docs/plans/24-design-review.md)).
-- Saved routes, settings and share links keep working, old ones too.
+- **Saved routes, settings and share links use one current format.** When it changes, its readers, writers and tests change together, and old formats aren't kept only for compatibility (AGENTS.md). A route or link Polku can't read any more says so, and never opens as something else.
 - **Languages:** English now; Finnish and Swedish planned (phase 18), so words must translate and leave room for longer ones.
 
 **How it's built today.** These are decisions that serve the commitments above, a starting point rather than permanent requirements. Each is looked at again when a better way gives people enough to justify its cost:
