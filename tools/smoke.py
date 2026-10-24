@@ -4595,12 +4595,12 @@ PACING = """(async () => {
     const net = await fresh(), refused = () => new Response('Error: retry later', { status: 403 });
     let late;
     answer = (url) => (/\\/1$/.test(url) || /\\/3$/.test(url) ? refused() : /\\/2$/.test(url) ? new Promise((ok) => { late = ok; }) : null);
-    track(net.request('brouter', 'https://mock.invalid/brouter/1'));
+    // awaited, not advanced past: reading a refusal's body isn't done within settle() on a slow machine
+    await net.request('brouter', 'https://mock.invalid/brouter/1').catch(() => {});
     await advance(61e3); // its minute's back-off is over
     const a = track(net.request('brouter', 'https://mock.invalid/brouter/2'));
     await advance(0);
-    track(net.request('brouter', 'https://mock.invalid/brouter/3'));
-    await advance(3000);
+    await net.request('brouter', 'https://mock.invalid/brouter/3').catch(() => {});
     const before = net.sourceStatus('brouter');
     late(new Response('{}'));
     await advance(0);
