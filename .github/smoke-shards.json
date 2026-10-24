@@ -7,7 +7,7 @@
     ["radar", "weather", "pacing", "multi", "terrain", "stops", "access", "otherways", "loops", "fit", "marks", "runner", "1024x768", "360x740"],
     ["button3d"],
     ["button3dphone"],
-    ["routeview", "pointcard", "heads", "onroute", "warnfix"],
-    ["values", "start", "nextleg"]
+    ["routeview", "pointcard", "heads", "onroute", "warnfix", "sections"],
+    ["values", "start", "nextleg", "routecard"]
   ]
 }

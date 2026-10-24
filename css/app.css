@@ -1316,6 +1316,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
 .sum-item.miss b { color: var(--muted); }
 .sum-item.wait b { color: var(--muted); } /* (being worked out: a "–" at its size, so the card stays still) */
+.sum-item em { font-style: normal; font-size: var(--font-small); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; } /* a grade's one word, under it (1b) */
 .card .sheet-sum { flex: none; align-items: flex-start; column-gap: 20px; }
 .card .sheet-sum .sum-item b { font-size: var(--font-number); } /* (the header's 360 px size isn't the card's) */
 @media (max-width: 720px) { .card .sheet-sum .sum-item b { font-size: 18px; } }
@@ -1528,7 +1529,9 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-banner { position: fixed; z-index: 7; left: 12px; right: 12px; top: 64px; max-width: 440px; margin: 0 auto; background: var(--surface-solid); box-shadow: var(--shadow); font-weight: 600; }
 .card-banner [role="status"]:focus { outline: none; }
 .wp-hit[data-card] .wp { box-shadow: 0 0 0 4px var(--accent-bg), 0 0 0 7px #fff; }
-/* the card's action at the spot, on a phone: just above it, clear of the finger */
+/* the spot a card is about, on a phone: a pin, and the card's action just above it, clear of the finger (1b) */
+body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
+.card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
 .card-pill { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
 @media (pointer: coarse) {
   .card .btn, .card .tool { min-height: 44px; min-width: 44px; }
