@@ -164,9 +164,12 @@ not models, mid-session: a new model sends the whole conversation again
   proves nothing.
 - **Every bug fix has a check in `tools/smoke.py`** that fails before the fix
   and passes after it: an existing one if it shows the bug, else a new one.
-- **App changes pass `python3 tools/smoke.py`:** while working, the groups
-  you touch (`python3 tools/smoke.py water loops`); before the PR leaves
-  draft, the whole suite once, on its last commit that changes the app. A
+- **App changes pass `python3 tools/smoke.py`,** not all of it after every
+  change: while working and between review rounds, the groups you touch
+  (`python3 tools/smoke.py water loops`) and a fix's own check; before the
+  user merges, the whole suite once, on the PR's last commit that changes
+  the app, on GitHub's runner rather than the user's computer (DEVELOPING,
+  "Running it"). A
   check stays good for the commit it ran on, whoever ran it, and for any
   later commit whose files outside `docs/`, AGENTS.md, README.md and
   PRODUCT.md are the same: a docs-only commit, or a rebase onto one (the
