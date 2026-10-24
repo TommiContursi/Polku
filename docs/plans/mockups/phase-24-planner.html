@@ -69,6 +69,12 @@ button, input, select { font: inherit; color: inherit; }
 .cv-q li { margin: 4px 0; }
 .cv-row { margin-top: 44px; }
 .cv-row > h2 { margin: 0 0 4px; font-size: 19px; }
+.tbl424 { overflow-x: auto; max-width: 1100px; margin: 0 0 8px; border-radius: 14px; background: var(--page-card); box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.tbl424 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl424 th, .tbl424 td { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid rgba(128,128,128,.25); }
+.tbl424 th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
+.tbl424 tr:last-child td { border-bottom: 0; }
+.cv-row > h3.cv-sub { margin: 22px 0 10px; font-size: 15.5px; }
 .cv-row > p, .cv-row > ul { margin: 0 0 14px; max-width: 940px; opacity: .88; }
 .cv-row > ul { padding-left: 20px; }
 .cv-t { border-collapse: collapse; margin: 0 0 18px; max-width: 1100px; font-size: 13px; background: var(--page-card); border-radius: 12px; overflow: hidden; display: block; overflow-x: auto; }
@@ -917,6 +923,198 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .c5-lit > .mk { box-shadow: 0 0 0 3px var(--surface-solid), 0 0 0 5px var(--accent-bg); }
 @media (hover: hover) { .r5 .c5-list .c2-item:not(.c5-lit):hover { background: var(--surface-2); } }
 .r5 .c5-list .shfold { border-top: 0; min-height: 44px; }
+/* ================================================================ #424 (2026-10-23, to choose): the tabs' contents, and How you go
+   The strip, the time table, the speeds' fields and today's How you go are the app's (.stats .stat, .speed-table,
+   .speed-fields, .how-h, .style-ctl and .style-help in css/app.css), copied under a name of their own where this mock-up
+   already uses the app's name for something else (its .stats are the peek's numbers). Proposed: the strip's lines at 12.5 px
+   (the floor for words you read), 44 px to tap, › on the two that open How you go; How you go in the cards' parts. */
+.pl .body { container-type: inline-size; }
+.st424 { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 6px 0 10px; }
+.st424 .stat { display: flex; flex-direction: column; min-width: 72px; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+.st424 .stat-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.st424 .stat-value { display: flex; align-items: center; gap: 6px; font-size: 20px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.st424 .stat-sub { font-size: 11px; color: var(--muted); }
+.st424 .stat-btn .stat-value { text-decoration: underline dotted; text-underline-offset: 4px; text-decoration-thickness: 1.5px; }
+.st424 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.st424.new { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 4px -8px 6px; padding: 0; }
+.st424.new .stat { min-width: 0; min-height: 44px; padding: 6px 8px; border-radius: 12px; gap: 1px; }
+.st424.new .stat + .stat { box-shadow: inset 1px 0 0 var(--line); }
+.st424.new .stat-label, .st424.new .stat-sub { overflow-wrap: anywhere; }
+.st424.new .stat-sub { font-size: 12.5px; line-height: 1.3; }
+.st424.new .stat-btn .stat-value { text-decoration: none; }
+.st424.new .stat-value .ic { color: var(--muted); }
+.st424.new .stat-btn { cursor: pointer; transition: transform 100ms ease-out; }
+.st424.new .stat-btn:active { background: var(--surface-2); transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) { .st424.new .stat-btn:hover { background: var(--surface-2); } }
+.fr.desk .st424.new .stat { min-height: 36px; }
+/* today's How you go, a fold at the end of Route (renderStyle(), renderSpeedEditor()) */
+.today424 { display: grid; gap: 6px; padding: 2px 0 10px; }
+.how-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px; margin: 2px 0 6px; font-size: 12px; font-weight: 700; }
+.how-h small { font-weight: 500; color: var(--muted); }
+.today424 .stylechips { padding: 0 0 4px; }
+.style-ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.style-label { width: 112px; flex: none; font-size: 12px; font-weight: 700; }
+.style-ctl .seg, .today424 .seg { flex-wrap: wrap; } /* (the app's seg full) */
+.fr.phone .today424 .seg button { height: auto; min-height: 44px; } /* the app's switch is --target tall: 44 px by touch (#402) */
+.style-help { margin: -2px 0 2px 122px; font-size: 11px; color: var(--muted); line-height: 1.35; }
+.today424 .speed-wrap { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); display: grid; gap: 10px; }
+.note424 { margin: 4px 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.speed-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.speed-field { display: grid; gap: 3px; font-size: 11px; font-weight: 600; color: var(--muted); }
+.speed-field input { width: 100%; height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-solid); color: var(--text); font: inherit; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.speed-field small { font-weight: 500; }
+.speed-table { display: grid; font-size: 12.5px; }
+.speed-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 70px; gap: 12px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.speed-row b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.speed-row small { color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.speed-row.sub span { padding-left: 12px; color: var(--muted); }
+.speed-row.total { border-bottom: 0; }
+.speed-row.total span, .speed-row.total b { font-weight: 700; }
+.time-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 8px; }
+.time-head b { font-size: 22px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.time-head span { font-size: 12.5px; color: var(--muted); }
+/* proposed: How you go as a step of its own, in the cards' parts (headings, rows, switches with a tick, the app's chips) */
+.how424 { display: grid; gap: 10px; padding: 2px 0 12px; }
+.how424 section { display: grid; gap: 10px; }
+.how424 .backbar { margin-bottom: -4px; }
+.fr.phone .how424 .backbar .back { min-height: 44px; } /* Back in words, a finger's size, as the app's way-back */
+.cap424 { margin: -6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.35; }
+.how424 .stylechips { padding: 0; }
+.ctl424 { display: grid; gap: 6px; }
+.ctl424 > span { display: grid; gap: 1px; }
+.ctl424 b { font-size: 14.5px; font-weight: 650; }
+.ctl424 small { font-size: 13px; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
+.how424 .seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.how424 .seg.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.how424 .seg.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.how424 .seg.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* four choices two by two, never three and one */
+.how424 .seg button { flex: 1 1 auto; justify-content: center; height: auto; min-height: 44px; white-space: normal; text-align: center; overflow-wrap: anywhere; }
+.how424 .seg button .ic { color: var(--accent); }
+.fr.desk .how424 .seg button { min-height: 36px; }
+.how424 .speed-field, .go424 .speed-field { font-size: 12px; }
+.how424 .speed-field input { height: 44px; font-size: 16px; } /* 16 px: no zoom into it on iOS */
+.fr.desk .how424 .speed-field input { height: 36px; font-size: 15px; }
+.speed-row.head { border-bottom: 0; padding-bottom: 0; }
+.sub424 { display: grid; gap: 8px; padding: 8px 0 0; border-top: 1px dashed var(--line); }
+.sub424 > b { display: flex; align-items: center; gap: 6px; font-size: 14.5px; }
+.go424 { display: grid; gap: 8px; padding: 6px 0 10px; border-top: 1px solid var(--line); }
+.go424:first-child { border-top: 0; }
+.go424 .time-head { margin: 0; }
+/* a time to pick, as the map cards' Revision 6 draws it (#364): the one stepper around the phone's own time field */
+.c6-step input { width: 5.4em; min-width: 0; min-height: 44px; margin: 0; padding: 0 2px; border: 0; border-radius: 8px; background: none; color: var(--text); font: 700 16px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-variant-numeric: tabular-nums; text-align: center; }
+.c6-step input::-webkit-calendar-picker-indicator { display: none; }
+.c6-step input::-webkit-datetime-edit { display: flex; justify-content: center; }
+.c6-step input:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.c6-at { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 0 10px 8px 42px; }
+.fr.desk .c6-step button { width: 36px; height: 36px; }
+.fr.desk .c6-step input { min-height: 36px; font-size: 15px; }
+/* narrow (200 %, 360 px in Finnish): the strip one a row; the time table's speed under its numbers; the stepper on two rows */
+@container (max-width: 300px) {
+  .st424.new { grid-template-columns: 1fr; }
+  .st424.new .stat + .stat { box-shadow: inset 0 1px 0 var(--line); }
+  .speed-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .speed-row > small { grid-column: 1 / -1; text-align: left; }
+  .speed-row.head { display: none; }
+  .style-help { margin-left: 0; }
+  .c6-at { padding-left: 10px; }
+  .c6-step { display: grid; grid-template-columns: 1fr 1fr; flex: 1 1 100%; }
+  .c6-step input { grid-column: 1 / -1; width: auto; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .c6-step button { grid-row: 2; width: auto; }
+}
+/* ================================================================ #424, C (2026-10-24, to choose): redrawn from the user's notes
+   The rows are the cards' row with a value and › (c2-item); Climbs and On the route are the app's lists (.li, .badge,
+   .breakdown, .bd-*), Departure & weather the app's (.sun-line, .wind-*, .wx-sum, .exposure, .hours), copied here. */
+.crows { margin: 4px 0 6px; }
+.crows .c2-list { margin: 0 -10px; }
+.chint { margin: 12px 0 4px; font-size: 12.5px; color: var(--muted); text-align: center; line-height: 1.4; }
+.cstep .hint { margin-bottom: 4px; }
+.cstep .hint small { margin-top: 4px; line-height: 1.35; }
+.cwet { display: block; font-size: 13px; color: var(--muted); }
+.csec { padding: 4px 0 8px; }
+.csec > .sec-h { margin-top: 8px; gap: 8px; flex-wrap: wrap; }
+.csum { flex: 1 1 100%; margin-top: -10px; font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text); }
+.csub { margin: 2px 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+/* Climbs: the app's rows; the hardest says so in a word, and Climbs' heading names it */
+.clist { display: grid; gap: 2px; }
+.li { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 7px 8px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
+.li-main { display: flex; flex-direction: column; min-width: 0; }
+.li-main b { font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.li-main span { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.li .badge { flex: none; min-width: 34px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
+.li .badge.ink { color: #000; text-shadow: none; }
+.cbadges { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.ctag { flex: none; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-style: normal; font-size: 12px; font-weight: 700; white-space: nowrap; }
+@media (hover: hover) and (pointer: fine) { .li:hover { background: var(--surface-2); } }
+/* On the route: the app's breakdowns, a group each, every kind with its bar and its rows */
+.breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin-top: 2px; align-items: start; }
+.bd-group { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 10px; }
+.bd-gh { padding: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.bd-kind + .bd-kind { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; }
+.bd-title { display: grid; gap: 6px; width: 100%; min-width: 0; min-height: 44px; border: 0; border-radius: 6px; padding: 6px; text-align: left; font: inherit; font-size: 13px; font-weight: 600; color: var(--text); background: transparent; cursor: pointer; }
+.bd-title[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.bd-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 8px; min-width: 0; }
+.bd-active { flex: none; color: var(--accent); font-size: 12px; font-weight: 600; }
+.bd-bar { display: flex; width: 100%; height: 8px; overflow: hidden; border-radius: 999px; }
+.bd-bar span { display: block; height: 8px; }
+.bd-legend { display: grid; gap: 3px 20px; padding: 4px 6px 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.bd-item { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: baseline; gap: 6px; }
+.bd-item i { width: 9px; height: 9px; border-radius: 3px; align-self: center; }
+.bd-item b { color: var(--text); font-weight: 600; white-space: nowrap; }
+/* Go: Leave as the shared row, the phone's own picker over it; Now beside it once a time is set */
+.cpick { position: relative; }
+.cpick > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; opacity: 0; border: 0; cursor: pointer; }
+.cleave { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; margin: 0 -10px; }
+.cleave > .c2-list { align-self: stretch; margin: 0; }
+.cnow { flex: none; min-height: 44px; margin-right: 10px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 650; }
+.fr.desk .cnow { min-height: 36px; }
+.cnofc { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; padding: 8px 10px; border-radius: 12px; background: var(--unk-soft); color: var(--text); font-size: 13.5px; line-height: 1.35; }
+.cnofc .ic { flex: none; color: var(--unk); margin-top: 1px; }
+.cnofc.cinfo { background: var(--surface-2); }
+.cnofc.cinfo .ic { color: var(--muted); }
+.take-along .btn.ctwo { height: auto; min-height: 44px; padding-block: 6px; text-align: left; }
+.take-along .btn.ctwo > span { display: grid; gap: 1px; }
+.take-along .btn.ctwo small { font-size: 12px; font-weight: 500; color: var(--muted); }
+.pwrap { position: relative; }
+.pnofc { position: absolute; top: 2px; right: 2px; padding: 1px 6px; border-radius: 6px; background: var(--surface-solid); color: var(--muted); font-size: 12px; font-weight: 650; white-space: nowrap; } /* (past the forecast is the route's end part: its words over the grey) */
+.cthere { margin: 8px 0 6px; }
+.sun-line { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.wind-body { font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.wind-now { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wind-arrow { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; background: var(--surface-2); font-size: 16px; font-weight: 700; flex: none; }
+.pill { padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill.ok { background: rgba(202,138,4,.14); color: #854d0e; }
+.fr.dark .pill.ok { color: #facc15; }
+.wx-sum { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.link { border: 0; background: none; padding: 0; min-height: 44px; color: var(--accent); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.wx-sum .link { font-weight: 500; color: var(--text); text-decoration: underline dotted; text-underline-offset: 3px; min-height: 0; padding: 12px 0; }
+.wx-links { display: flex; gap: 0 12px; flex-wrap: wrap; }
+.exposure { display: grid; gap: 4px; margin: 4px 0; width: 100%; }
+.ex-item { display: grid; grid-template-columns: 110px 1fr; align-items: center; font-size: 12px; color: var(--muted); }
+.ex-item i { grid-column: 2; grid-row: 1; height: 7px; border-radius: 999px; display: block; }
+.hours { display: flex; gap: 4px; overflow-x: auto; max-width: 100%; }
+.hour { display: flex; flex-direction: column; align-items: center; min-width: 40px; padding: 4px; border-radius: 8px; background: var(--surface-2); font-size: 12px; }
+.hour small { color: var(--muted); font-size: 10px; }
+.take-along { display: flex; flex-wrap: wrap; gap: 8px; }
+.take-along .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-solid); color: var(--text); font: inherit; font-weight: 600; font-size: 13.5px; }
+.fr.desk .take-along .btn { min-height: 36px; }
+/* Check's badge as the app has it: a Read count in red, with its triangle */
+.tabs.c424 .badge.b1 { background: var(--danger); color: var(--surface-solid); }
+/* Layers' full panel, with the route's group */
+.lay424 .body { padding-top: 4px; }
+.lmapfor { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); }
+.lmapfor > .ic { color: var(--accent); flex: none; }
+.lmapfor span { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 13.5px; }
+.lmapfor small { color: var(--muted); font-size: 12.5px; }
+.fr.phone .lmapfor .btn { min-height: 44px; }
+.lg { border-top: 1px solid var(--line); padding: 2px 0 6px; }
+.lg summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; font-size: 12px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.lg summary::-webkit-details-marker { display: none; }
+.lg summary em { font-style: normal; color: var(--accent); letter-spacing: 0; text-transform: none; }
+.lg summary .lnew { padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); }
+.lg .c2-list { margin: 0 -10px; }
+.on-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.on-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 600; }
+@container (max-width: 300px) { .ex-item { grid-template-columns: 1fr; } .ex-item i { grid-row: 2; grid-column: 1; } }
 </style>
 </head>
 <body>
@@ -993,6 +1191,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <symbol id="i-me" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.5"/></symbol>
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></symbol>
   <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 13.5h18"/></symbol>
+  <symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.5" fill="currentColor" stroke="none"/></symbol>
 </svg>
 
 <main class="cv">
@@ -1026,6 +1225,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <li><b>B · The sport, and what it changes:</b> the menu says what each sport shows; with a route drawn, it asks whether the whole route changes or only the legs drawn next. The toolbox keeps saying which sport the next leg is. <b>Decided 2026-10-20: option A</b> (ask); the switch at the bottom still shows the options not taken (B: next legs only; C: the whole route).</li>
       <li><b>C · A warning: notice it, find it, come back:</b> a row in the peek for what to read before you go and what wasn't checked; a marker on the route for each; a tap shows it on the route with ‹ › along it and <b>Back</b> to where you were. <b>Decided 2026-10-20</b>: this replaces "the row opens Check" of section 5.</li>
     </ol>
+    <p><b>Added 2026-10-23, to choose (#424):</b> <a href="#se">section E</a> lists what goes in Route, Check and Go, as the app has it and as proposed, and draws How you go as a step of its own. The <b>Tabs</b> switch at the bottom shows A, today; B, the strip moved to Route; or C, redrawn from the user's notes and chosen on 2026-10-24 (the default here); nothing earlier is changed.</p>
   </section>
 
   <section class="cv-row" id="sa">
@@ -1145,6 +1345,86 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone" id="jd-v3e" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v3","pedit":true}'><figcaption><b>V3: Edit points</b>Drag, rename, remove; every point shows.</figcaption></figure>
       <figure class="fr phone" id="jd-fi" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"route","calm":true,"wv":"v1","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish</b>Long names wrap; the numbers stay whole.</figcaption></figure>
       <figure class="fr desk" id="jd-desk" data-st='{"stage":"route","uc":"multi","tab":"route","calm":true,"wv":"v1","psel":7,"pcard":"point"}'><figcaption><b>Desktop: V1</b>The sections in the panel; the point's card beside it, as on the map.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="cv-row" id="se">
+    <h2>E · The tabs: Route, Check and Go, and How you go (#424, to choose)</h2>
+    <p>Each tab has one job: <b>Route</b> for drawing and how you go, <b>Check</b> for what's on the way, <b>Go</b> for setting off. Today the strip of Hardest climb, Speed and Style opens Check, though Speed and Style are how you go. How you go is a fold under the list, and your speed is set in two places. The <b>Tabs</b> switch at the bottom shows <b>A</b>, the app as it is; <b>B</b>, the strip moved to Route (2026-10-23); or <b>C</b>, redrawn from the user's notes and chosen on 2026-10-24 (the default here). Route's list is Journey D's, chosen on 2026-10-22, in both. Each frame below fixes its own option, so A and B sit side by side. The switch changes every frame; Reset brings a frame back.</p>
+    <div class="tbl424"><table>
+      <thead><tr><th>What</th><th>A · Today</th><th>B · The strip</th><th>C · Two rows (chosen)</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>The points and stretches, Reorder</td><td>Route</td><td>Route</td><td>Route</td><td>Drawing</td></tr>
+        <tr><td>Round trip, Reverse, Back to start, Import</td><td>Route</td><td>Route</td><td>Route</td><td>Changing the route</td></tr>
+        <tr><td>The strip: Hardest climb, Speed, Style</td><td>Check, at its top</td><td><b>Route, at its top</b></td><td><b>Gone:</b> two rows at Route's top, How you go › and Your speed ›; the hardest climb marked in Climbs</td><td>Speed and style are how you go; a row says what it opens</td></tr>
+        <tr><td>How you go: the route style</td><td>Route, a fold under the list</td><td><b>Route, a step of its own</b>, opened from the strip, or Fine-tune in the mode's menu</td><td><b>Route › How you go ›</b>, a step of its own, with every control the app has</td><td>Found where it's named, never under a long list</td></tr>
+        <tr><td>Your speed</td><td>Route's fold, and Go › Time's Change</td><td><b>How you go only</b></td><td><b>Route › Your speed ›</b>, its own step; Go has the same row</td><td>One place to change it; a change only times the route again</td></tr>
+        <tr><td>Where the time goes, by surface</td><td>Go › Time</td><td><b>How you go, under Your speed</b></td><td>Go, open, under There at</td><td>How long, where you set off</td></tr>
+        <tr><td>Read before you go, Not checked, Worth a look, What Polku looked at</td><td>Check</td><td>Check</td><td>Check</td><td>What's on the way</td></tr>
+        <tr><td>Climbs, On the route</td><td>Check</td><td>Check</td><td>Check, the hardest climb marked</td><td>What's on the way</td></tr>
+        <tr><td>On the map: distance marks, arrival and elapsed times</td><td>Check</td><td><b>Go</b></td><td><b>Layers, a group for your route</b></td><td>What the map shows is set in Layers</td></tr>
+        <tr><td>When you leave</td><td>Go, hours from now</td><td>Go, with #364's B (today or tomorrow)</td><td>Go, <b>Leave ›</b>: the phone's own date and time (#364's C)</td><td>Setting off; the same row as the start's card</td></tr>
+        <tr><td>How long, and when you're there</td><td>Go</td><td>Go</td><td>Go</td><td>Setting off</td></tr>
+        <tr><td>Timed at your speed</td><td>Go, with Change</td><td>Go, a row to How you go</td><td>Go, <b>Your speed ›</b></td><td>It says what the time assumes; the speed is changed in one place</td></tr>
+        <tr><td>The weather on the way</td><td>Go</td><td>Go</td><td>Go, all of it; No forecast yet past its reach</td><td>Setting off</td></tr>
+        <tr><td>Take it along</td><td>Go (and ⋯)</td><td>Go (and ⋯)</td><td>Go (and ⋯, and The whole route ›)</td><td>Setting off</td></tr>
+      </tbody></table></div>
+    <h3 class="cv-sub">C · Redrawn from your notes (chosen on 2026-10-24)</h3>
+    <p>No strip. Route opens with two rows, <b>How you go · Balanced ›</b> and <b>Your speed · Normal ›</b>, each a step of its own. Check and Go keep every section the app has, with their content, and the hardest climb is marked in Climbs. Go opens with <b>Leave ›</b>, There at and where the time goes. The marks on the map move to Layers. Every row with a value and › is the cards' row, as <b>Sport from here · MTB ›</b>. The badge is red ⚠ 1 on every tab, as in the app.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="tabs-c-route" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","wv":"v1","tabs":"c"}'><figcaption><b>C · Route</b>Two rows, then the list, the tools and the hint, as the app has them.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-how" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","wv":"v1","tabs":"c","how":"style"}'><figcaption><b>C · How you go ›</b>The route style alone: every control the app has, with Wet ground's own note.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-speed" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","wv":"v1","tabs":"c","how":"speed"}'><figcaption><b>C · Your speed ›</b>The presets and your speeds; a change only times the route again.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-multi" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","wv":"v1","tabs":"c","how":"speed"}'><figcaption><b>C · Your speed, MTB and paddling</b>Each sport's, the craft with Paddle.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-check" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"c"}'><figcaption><b>C · Check</b>What's on the way: the groups first, then What Polku looked at.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-climbs" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"c","scrollC":".csec"}'><figcaption><b>C · Climbs and On the route</b>The hardest climb says so in its row, and Climbs' heading names it; a tap lights it on the profile. Then every breakdown, as the app's.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c"}'><figcaption><b>C · Go</b>Leave ›, There at, where the time goes (open), then Your speed ›.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-go-wx" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","scrollC":".csec"}'><figcaption><b>C · Departure & weather, Take it along</b>Everything the app shows: the sun, the wind now, temperature, rain, head and crosswind, the hours, the colours along the route.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-go-set" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","leaveC":"2026-11-01T07:30"}'><figcaption><b>C · Leave tomorrow</b>The row says the day and the time; Now beside it goes back to leaving now.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-go-far" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","leaveC":"2026-11-28T07:30","scrollC":".csec"}'><figcaption><b>C · Four weeks ahead</b>Past the forecast's 10 days: No forecast yet; sunset and the dark still count (#159).</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-share" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","leaveC":"2026-10-31T07:30","scrollC":".csec + .csec"}'><figcaption><b>C · Share with the date</b>Copy share link says what it carries: "Includes when you leave". To share without it, set Now first.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-passed" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","passedC":"2026-10-24T07:30"}'><figcaption><b>C · A date that has passed</b>A saved route or a link opens at Now, saying when it was planned for.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-days" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"route","wv":"v1","tabs":"c","nowC":"2026-10-29T06:00","leaveC":"2026-11-06T10:30","colourWind":true,"noFc":{"km":"39.7","at":"Sun 09:00","si":2,"frac":0.768},"scrollC":".sec2:nth-of-type(3)"}'><figcaption><b>C · Three days, the last past the forecast</b>Leaving Fri 6 Nov, 8 days ahead: the forecast's 10 days end before day 3. The profile, coloured by the wind, goes grey there; day 3's section says No forecast yet.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-days-go" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"go","wv":"v1","tabs":"c","nowC":"2026-10-29T06:00","leaveC":"2026-11-06T10:30","colourWind":true,"noFc":{"km":"39.7","at":"Sun 09:00","si":2,"frac":0.768},"scrollC":".csec"}'><figcaption><b>C · Go: the forecast as far as it reaches</b>No forecast yet from km 39.7, Sun 09:00; more than three days ahead, less certain.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-days-check" data-st='{"stage":"route","uc":"days","sheet":"full","tab":"check","wv":"v1","tabs":"c","nowC":"2026-10-29T06:00","leaveC":"2026-11-06T10:30","colourWind":true,"noFc":{"km":"39.7","at":"Sun 09:00","si":2,"frac":0.768}}'><figcaption><b>C · Check: Not checked</b>Wind, rain and waves past the forecast are under Not checked, never quietly calm.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-far-check" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"c","leaveC":"2026-11-28T07:30"}'><figcaption><b>C · A start past the forecast: Check</b>No forecast yet for this trip, in Not checked.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-layers" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","layersC":true}'><figcaption><b>C · Layers: Your route</b>The marks on the map, in a group of their own while a route is drawn.</figcaption></figure>
+      <figure class="fr desk" id="tabs-c-desk-route" data-st='{"stage":"route","uc":"day","tab":"route","wv":"v1","tabs":"c"}'><figcaption><b>C · Desktop, Route</b>The two rows at the top of the panel.</figcaption></figure>
+      <figure class="fr desk" id="tabs-c-desk-check" data-st='{"stage":"route","uc":"day","tab":"check","wv":"v1","tabs":"c","scrollC":".csec"}'><figcaption><b>C · Desktop, Check</b>Climbs and On the route in the panel.</figcaption></figure>
+      <figure class="fr desk" id="tabs-c-desk-go" data-st='{"stage":"route","uc":"day","tab":"go","wv":"v1","tabs":"c"}'><figcaption><b>C · Desktop, Go</b></figcaption></figure>
+      <figure class="fr phone" id="tabs-c-fi" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","wv":"v1","tabs":"c","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>C · 360 × 740, Finnish</b>The rows' values wrap; nothing is cut.</figcaption></figure>
+      <figure class="fr phone" id="tabs-c-fi-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","w":360,"h":740,"lang":"fi","worst":true,"leaveC":"2026-11-01T07:30"}'><figcaption><b>C · 360 × 740, Finnish: Go</b></figcaption></figure>
+      <figure class="fr phone" id="tabs-c-200" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","wv":"v1","tabs":"c","z":2,"bodyTop":true}'><figcaption><b>C · 200 %: Route</b></figcaption></figure>
+      <figure class="fr phone" id="tabs-c-200-check" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"c","z":2,"bodyTop":true}'><figcaption><b>C · 200 %: Check</b></figcaption></figure>
+      <figure class="fr phone dark" id="tabs-c-dark-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","theme":"dark","scrollC":".csec"}'><figcaption><b>C · Dark: the weather</b></figcaption></figure>
+      <figure class="fr phone dark" id="tabs-c-dark-layers" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","layersC":true,"theme":"dark"}'><figcaption><b>C · Dark: Layers</b></figcaption></figure>
+    </div>
+    <h3 class="cv-sub">The tabs, A and B</h3>
+    <div class="cv-frames">
+      <figure class="fr phone" id="tabs-route-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"today"}'><figcaption><b>A · Route today</b>The list, the tools, then How you go folded at the end.</figcaption></figure>
+      <figure class="fr phone" id="tabs-route-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new"}'><figcaption><b>B · Route proposed</b>The strip first: Speed and Style open How you go, Hardest climb lights its climb.</figcaption></figure>
+      <figure class="fr phone" id="tabs-check-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"today"}'><figcaption><b>A · Check today</b>The strip above the groups, as Journey C left it.</figcaption></figure>
+      <figure class="fr phone" id="tabs-check-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"check","wv":"v1","tabs":"new"}'><figcaption><b>B · Check proposed</b>What's on the way only: the groups first, as approved, then Climbs and On the route.</figcaption></figure>
+      <figure class="fr phone" id="tabs-go-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"today"}'><figcaption><b>A · Go today</b>Depart in hours, the time by surface, your speed again behind Change.</figcaption></figure>
+      <figure class="fr phone" id="tabs-go-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"new","lday424":"tomorrow","lat424":"07:30"}'><figcaption><b>B · Go proposed</b>When you leave and when you're there, the weather, the marks on the map, Take it along.</figcaption></figure>
+    </div>
+    <h3 class="cv-sub">How you go, A and B</h3>
+    <div class="cv-frames">
+      <figure class="fr phone" id="tabs-how-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"today","howOpen":true,"howTo":"fold"}'><figcaption><b>A · Today</b>The fold opened under the list: the style's controls, then your speed.</figcaption></figure>
+      <figure class="fr phone" id="tabs-how-b" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style"}'><figcaption><b>B · A step of its own</b>From Style in the strip. Route style says that a change routes again.</figcaption></figure>
+      <figure class="fr phone" id="tabs-how-b-speed" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed"}'><figcaption><b>B · Your speed</b>From Speed in the strip: a change times the route again, and where the time goes is under it.</figcaption></figure>
+      <figure class="fr phone" id="tabs-how-multi" data-st='{"stage":"route","uc":"multi","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed"}'><figcaption><b>B · MTB and paddling</b>Each sport's speed, the craft with Paddle; a stretch with its own style is a row to it.</figcaption></figure>
+    </div>
+    <h3 class="cv-sub">Desktops, and the worst cases (B)</h3>
+    <div class="cv-frames">
+      <figure class="fr desk" id="tabs-desk-a" data-st='{"stage":"route","uc":"day","tab":"check","wv":"v1","tabs":"today"}'><figcaption><b>A · Desktop, Check today</b>The strip above the groups.</figcaption></figure>
+      <figure class="fr desk" id="tabs-desk-b" data-st='{"stage":"route","uc":"day","tab":"route","calm":true,"wv":"v1","tabs":"new"}'><figcaption><b>B · Desktop, Route</b>The strip at Route's top, in the panel.</figcaption></figure>
+      <figure class="fr desk" id="tabs-desk-how" data-st='{"stage":"route","uc":"day","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style"}'><figcaption><b>B · Desktop, How you go</b>The same step in the panel, 36 px rows with a mouse.</figcaption></figure>
+      <figure class="fr phone" id="tabs-fi" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>360 × 740, Finnish</b>The strip's words wrap in their thirds; nothing is cut.</figcaption></figure>
+      <figure class="fr phone" id="tabs-fi-how" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"style","w":360,"h":740,"lang":"fi"}'><figcaption><b>360 × 740, Finnish: How you go</b>The switches' words wrap inside them.</figcaption></figure>
+      <figure class="fr phone" id="tabs-200" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","z":2,"bodyTop":true}'><figcaption><b>200 %</b>The strip one to a row.</figcaption></figure>
+      <figure class="fr phone" id="tabs-200-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","calm":true,"wv":"v1","tabs":"new","z":2,"lday424":"today","lat424":"16:45","bodyTop":true}'><figcaption><b>200 %: Go</b>The time on two rows: the time across, − and + under it.</figcaption></figure>
+      <figure class="fr phone dark" id="tabs-dark-how" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"new","how":"speed","howTo":"speed","theme":"dark"}'><figcaption><b>Dark: Your speed</b></figcaption></figure>
     </div>
   </section>
 
@@ -1284,6 +1564,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <div role="group" aria-label="Cards and lists in C and D"><span>Cards and lists</span><button type="button" data-o="look" data-v="v1">As approved</button><button type="button" data-o="look" data-v="r5">Revision 5 (chosen)</button></div>
   <div role="group" aria-label="Check's items, in Revision 5"><span>Check’s items</span><button type="button" data-o="check" data-v="a">A: rows</button><button type="button" data-o="check" data-v="c">C: Read as boxes (chosen)</button></div>
   <div role="group" aria-label="Marking warnings read"><span>Marking read</span><button type="button" data-o="read" data-v="off">Off (as approved)</button><button type="button" data-o="read" data-v="on">On (to choose)</button></div>
+  <div role="group" aria-label="The tabs' contents and How you go (#424)"><span>Tabs (#424)</span><button type="button" data-o="tabs" data-v="today">A: today</button><button type="button" data-o="tabs" data-v="new">B: the strip</button><button type="button" data-o="tabs" data-v="c">C: two rows, every section (chosen)</button></div>
   <div role="group" aria-label="Points and legs"><span>Points</span><button type="button" data-o="wv" data-v="v1">V1: card (chosen)</button><button type="button" data-o="wv" data-v="v2">V2: in the list</button><button type="button" data-o="wv" data-v="v3">V3: on the map</button></div>
   </div>
 </nav>
@@ -1317,6 +1598,8 @@ const OPT = {
   // 2026-10-23, for the user's choice: marking warnings read (✕ on the row marks all, Got it on a card, All read in Check);
   // off: the row as approved
   read: Q.get('read') === 'off' ? 'off' : 'on',
+  // 2026-10-23, for the user's choice (#424): the tabs as they are (today) or as proposed (new), and How you go
+  tabs: ['today', 'new'].includes(Q.get('tabs')) ? Q.get('tabs') : 'c', // (2026-10-24: C, redrawn from the user's notes, chosen)
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
 
@@ -1686,7 +1969,7 @@ function fresh(base) {
   return st;
 }
 const opt = (st, k) => (touched || st[k] == null ? OPT[k] : st[k]);
-const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look, check: OPT.check, read: OPT.read });
+const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look, check: OPT.check, read: OPT.read, tabs: st.tabs || OPT.tabs });
 
 // ------------------------------------------------ building blocks
 // the pill is the map's sport (st.map); its menu says what a change does (2026-10-20)
@@ -1777,7 +2060,13 @@ const stats = (st, v) => {
   const climb = st.sport === 'paddle' && !v.worst ? `<span><b>${s.up}</b><small>carry</small></span>` : `<span><b>${s.up}</b><small><span class="sr">descent </span>${s.down}</small></span>`;
   return `<div class="stats"><span><b>${s.d}</b><small>${t('dist')}</small></span><button type="button" class="tlink" data-act="depart" aria-label="${s.t} ${t('fromNow')}: change the departure, in Go"><b>${s.t}</b><small>${t('fromNow')}</small></button>${climb}</div>`;
 };
-const warnsOf = (st, v) => { const W = WARN[warnKey(st.sport)]; return v.worst ? WARN_WORST : st.calm ? { ...W, t1: [] } : W; };
+const warnsOf = (st, v) => { const W = WARN[warnKey(st.sport)]; return noFcItem424(st, v, v.worst ? WARN_WORST : st.calm ? { ...W, t1: [] } : W); };
+// #424, C (2026-10-24): past the forecast, the weather's checks for those parts are in Not checked, never quietly calm
+function noFcItem424(st, v, W) {
+  if (v.tabs !== 'c' || !(st.noFc || (st.leaveC && typeof aheadC === 'function' && pastC(new Date(st.leaveC))))) return W;
+  const it = st.noFc ? { ic: 'unk', b: wc('ncFrom')(st.noFc.km, st.noFc.at), w: wc('ncFromSub'), s: SRC.est('Open-Meteo, the forecast'), a: [] } : { ic: 'unk', b: wc('ncAll'), w: wc('ncAllSub'), s: SRC.est('Open-Meteo, the forecast'), a: [] };
+  return { ...W, t3: [...W.t3, it] };
+}
 // every item, in order along the route (route-wide ones last): what ‹ › step through, and what a marker selects
 function alongList(st, v) {
   const W = warnsOf(st, v), out = [];
@@ -1938,7 +2227,8 @@ function tripMenu(st, v) {
     ${mi('roundtrip', t('rtStart'), '', 'rtstart')}${mi('reverse', t('reverse'), '', 'noop')}${mi('loop', t('backStart'), '', 'noop')}${mi('upload', t('importFile') + '…', t('importD'), 'noop')}
     <hr class="gap">${mi('trash', t('clear'), t('clearD'), 'clear', 'danger')}</div>`;
 }
-function profile(desk) {
+function profile(desk, st = {}) {
+  if (st.colourWind) return profileWind424(st);
   const pts = [100, 104, 112, 118, 116, 124, 132, 128, 136, 141, 138, 130, 118, 104, 101, 103, 102, 104, 108, 106, 103];
   const W = 340, H = 80, step = W / (pts.length - 1), y = (q) => H - (q - 96) / 50 * H;
   const bars = pts.slice(1).map((q, i) => { const g = q - pts[i]; const c = g > 6 ? '#ef4444' : g > 2 ? '#f59e0b' : g < -6 ? '#2563eb' : g < -2 ? '#60a5fa' : '#22c55e';
@@ -1953,7 +2243,7 @@ function tabs(st, v) {
   const unk = W.t3.length ? '<span class="badge b3">?</span>' : '';
   const lab = [W.t1.length ? `${W.t1.length} ${t('t1s')}` : '', W.t2.length ? `${W.t2.length} ${t('t2s')}` : '', W.t3.length ? `${W.t3.length} ${t('t3s')}` : ''].filter(Boolean).join(', ');
   const tb = (id, icn, label, extra = '', aria = '') => `<button type="button" role="tab" aria-selected="${st.tab === id}" data-act="tab" data-v="${id}"${aria ? ` aria-label="${aria}"` : ''}>${ic(icn, 18)}${label}${extra}</button>`;
-  return `<div class="tabs" role="tablist" aria-label="Planner">${tb('route', 'route', t('route'))}${tb('check', 'warn', t('check'), badge + unk, `${t('check')}${lab ? `: ${lab}` : ''}`)}${tb('go', 'clock', `${t('go')} 07:46`)}</div>`;
+  return `<div class="tabs${v.tabs === 'c' ? ' c424' : ''}" role="tablist" aria-label="Planner">${tb('route', 'route', t('route'))}${tb('check', 'warn', t('check'), badge + unk, `${t('check')}${lab ? `: ${lab}` : ''}`)}${tb('go', 'clock', `${t('go')} 07:46`)}</div>`;
 }
 function checkBody(st, v) {
   const W = warnsOf(st, v), L = alongList(st, v);
@@ -1967,10 +2257,10 @@ function checkBody(st, v) {
   // (every group, chosen 2026-10-23: one way to mark read, everywhere)
   const allRead = (cls, list) => (v.read === 'on' && list.some((w, i) => !isRead(st, v, { g: cls, i })) ? `<button type="button" class="btn small quiet rr-all" data-act="rallread" data-v="${cls}">${ic('check', 16)}${t('allRead')}</button>` : '');
   const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span>${allRead(cls, list)}</h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
-  const sum = '';
+  const sum = v.tabs === 'new' || v.tabs === 'c' ? '' : strip424(st, v, false); // (#424: today the strip opens Check; proposed, it's Route's)
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
   return `${sum}${tier('t1', 'warnf', t('t1'), W.t1, 'What can stop you, turn you back or hurt')}${tier('t3', 'unk', t('t3'), W.t3, 'A source didn’t answer: the route may miss something')}${tier('t2', 'eye', t('t2'), W.t2, 'Sections to know about')}${cov}
-    <div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div><div class="sec-h">On the map</div>`;
+    ${v.tabs === 'c' ? climbsC() + onRouteC() : `<div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div>${v.tabs === 'new' ? '' : '<div class="sec-h">On the map</div>'}`}`;
 }
 function goBody(st) {
   return `<div class="gosec"><h4>Time</h4><div class="row"><span class="btn quiet">${ic('clock', 18)}${t('depart')} ${t('now')} ${ic('down', 12)}</span><span style="color:var(--muted)">arrive 07:46</span></div>
@@ -2021,7 +2311,7 @@ function wpList(st, v) {
       <button type="button" class="tbtn ring" data-act="prev" aria-label="Previous point"${st.sel === 0 ? ' disabled' : ''}>${ic('left', 18)}</button><button type="button" class="tbtn ring" data-act="next" aria-label="Next point"${st.sel === L.length - 1 ? ' disabled' : ''}>${ic('right', 18)}</button><button type="button" class="btn small quiet" data-act="showsel">${t('showMap')}</button></div>` : '';
   const viewing = editing ? '' : `<div class="banner">${ic('info', 18)}<span>${t('viewing')}</span><button type="button" class="btn small" data-act="edit">${ic('pencil', 16)}${t('edit')}</button></div>`;
   const tools = editing ? `<div class="tools2">${v.sport === 'next' ? `<button type="button" class="chip">${ic(SPORT_ICON[st.sport], 18)}${t('routeSport')}: ${esc(sL(st.sport))}</button>` : ''}<button type="button" class="chip">${ic('roundtrip', 18)}${t('roundTrip')}</button><button type="button" class="chip">${ic('reverse', 18)}${t('reverse')}</button><button type="button" class="chip">${ic('loop', 18)}${t('backStart')}</button><button type="button" class="chip">${ic('upload', 18)}${t('importFile')}</button><button type="button" class="chip">${ic('route', 18)}All leg settings</button></div>
-      <div class="howgo"><button type="button" class="sec-h" aria-expanded="false">How you go · ${esc(styleName(st))} · Normal speed<span class="spacer"></span>${ic('down', 16)}</button></div>` : '';
+      ${v.tabs === 'new' || v.tabs === 'c' ? '' : howToday424(st)}` : '';
   return `${viewing}${head}<div class="sec-h">${t('points')} ${L.length}${L.length > 1 ? ` · ${esc(L[0].name)} → ${esc(L[L.length - 1].name)}` : ''}</div>${bar}<ol class="wpl" aria-label="${t('points')}, in order">${idx.map(row).join('')}</ol>${tools}`;
 }
 
@@ -2542,7 +2832,7 @@ function sectionsV1r5(st, v, desk) {
     V.forEach((i, k) => { if (P[i].si !== si) return; if (k > 0) items.push(strRow(V[k - 1], i)); items.push(row(i)); });
     if (st.shOpen && st.shOpen[si]) items.push(`<button type="button" class="shfold" data-act="shfold" data-v="${si}">${ic('up', 14)}${t('foldShaping')}</button>`);
     const ttl = `${sec.day ? `${esc(tf('dayN', { n: sec.day }))} · ` : ''}${esc(sL(sec.sp))} · ${esc(sec.from)} → ${esc(sec.to)}`;
-    const tmp = (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
+    const nofc = v.tabs === 'c' && st.noFc && si >= st.noFc.si, tmp = nofc ? wc('noFcSec') : (/(-?\d+°)/.exec(sec.wx) || [])[1], wind = nofc ? null : (/(\d+ m\/s)/.exec(sec.wx) || [])[1], wxOpen = st.wxOpen && st.wxOpen[si];
     return `<section class="sec2" aria-label="${ttl}"><div class="sec2-h">${ic(SPORT_ICON[sec.sp], 20)}<b>${ttl}</b></div>
       <div class="sec2-n">${esc(sec.d)} · ${esc(sec.t)} · ${esc(sec.up)}<button type="button" class="wxc" data-act="wxmore" data-v="${si}" aria-expanded="${!!wxOpen}" aria-label="${esc(tf('arriveWx', { w: sec.wx }))}">${ic('weather', 15)}${esc([tmp, wind].filter(Boolean).join(' · '))}</button></div>
       ${wxOpen ? `<div class="sec2-w">${ic('weather', 15)}${esc(tf('arriveWx', { w: sec.wx }))}</div>` : ''}${sec.fixed ? `<div class="sec2-w">${ic('sign', 15)}${esc(tf('fixedLine', { N: sec.fixed }))}</div>` : ''}${secWarn(sec)}
@@ -2551,8 +2841,358 @@ function sectionsV1r5(st, v, desk) {
   return `<div class="wptools"><span class="cap" style="flex:1">${esc(t('listNote'))}</span><button type="button" class="btn small" data-act="reorder">${t('reorder')}</button></div>${secs}`;
 }
 
+// ------------------------------------------------ #424 (2026-10-23, to choose): what goes in Route, Check and Go, and How you go
+// Tabs: A, today (the app after Journey C, with Journey D's list in Route); B, proposed: Route for drawing and how you go,
+// with the strip of Hardest climb, Speed and Style at its top and How you go a step of its own; Check for what's on the
+// way; Go for setting off. The words are English and Finnish; Swedish shows the English ones.
+const W424 = {
+  en: {
+    climb: 'Hardest climb', climbV: '↑S2', climbS: '45 m at 9 %', head: 'Headwind', headV: '40 %', headS: 'of the distance',
+    speed: 'Speed', speedV: 'Normal', style: 'Style', styleS: 'tap to change', styleAll: 'the whole route', styleOwn: '1 stretch its own',
+    speedS: { mtb: '20 / 16 / 11 km/h · 600 m/h up', hike: '5 km/h on the flat', paddle: 'Sea kayak · 6.5 km/h' },
+    climbAria: 'Hardest climb: show it on the map and the profile', openHow: (k) => `${k}: open How you go`,
+    // today
+    howFold: 'How you go', normalSpeed: 'Normal speed', styleTodayH: 'Route style', styleTodayS: 'which ways the router prefers', speedTodayH: 'Your speed', speedTodayS: 'how fast the time is counted',
+    noteToday: '“Balanced” is the routing service’s own profile for the sport. A change re-routes the route, usually in one call. To give one leg a different style, open a point’s menu.',
+    timeH: 'Time', depart: 'Depart', fromNow: 'from now', thereAt: (t) => `there ${t}`, timedToday: (s) => `Timed at your speed: ${s}`, change: 'Change',
+    depWxH: 'Departure & weather', wxTitle: 'Weather on the route', tools: ['Round trip', 'Reverse', 'Back to start', 'Import'],
+    // proposed
+    howT: 'How you go', howS: (s) => `${s}, for the whole route`, routeTab: 'Route',
+    styleH: 'Route style', styleL: 'Which ways Polku picks. A change routes the route again.',
+    ctls: [['t', 'Terrain', 'How much trails are worth over roads and cycleways', ['Roads ok', 'Balanced', 'More trails', 'Trails first'], 1],
+      ['x', 'Technical trails', 'Avoid: S2 and harder cost much more, S4 and harder are never used', ['Avoid', 'Fine'], 0],
+      ['c', 'Climbs', 'Fewer counts climbs steeper than 3 % extra', ['Don’t mind', 'Fewer'], 0],
+      ['m', 'Main roads', 'Main roads without a bike lane or path', ['If needed', 'Avoid'], 0],
+      ['w', 'Wet ground', 'Auto: wet after 3 mm of rain in a day, from the forecast', ['Auto', 'Wet', 'Dry'], 0]],
+    ownH: 'Stretches with their own style', own1: 'Lielahti → Siilinkari', own1S: 'Paddle: calm water first',
+    speedH: 'Your speed', speedL: 'How fast the times are counted. A change times the route again; the route stays.',
+    presets: ['Easy', 'Normal', 'Fast', 'Custom'], fields: [['Paved', '20', 'km/h'], ['Gravel', '16', 'km/h'], ['Trail', '11', 'km/h'], ['Climbing', '600', 'm/h']],
+    paddleH: 'Paddle', crafts: ['Sea kayak', 'Canoe', 'SUP'], paddleField: ['Sea kayak', '6.5', 'km/h'],
+    whereH: 'Where the time goes on this route', ttHead: ['', 'distance', 'time', 'speed'],
+    tt: { day: [['Paved', '0.4 km', '1 min', '24 km/h'], ['Gravel and unpaved', '1.2 km', '5 min', '15 km/h'], ['Trails', '1.45 km', '10 min', '8.7 km/h'], ['of which uphill', '', '4 min', '', 'sub'], ['Moving time', '3.05 km', '16 min', '11.4 km/h', 'total']],
+      multi: [['Paved', '2.1 km', '5 min', '25 km/h'], ['Gravel and unpaved', '4.6 km', '17 min', '16 km/h'], ['Trails', '5.7 km', '43 min', '8 km/h'], ['On the water', '5.5 km', '56 min', '5.9 km/h'], ['Changeover', '', '10 min', '', 'sub'], ['Total time', '17.9 km', '2 h 21 min', '', 'total']] },
+    countH: 'How the time is counted', countS: 'Surfaces, climbs and your speeds',
+    countText: 'Riding speed on the flat depends on the surface: paved, gravel or trail. Smooth trails roll faster, S2 and harder slower. Climbs go at your climbing rate unless that’s faster than the flat speed. Breaks aren’t included.',
+    whenH: 'When', leave: 'Leave at', now: 'Now', today: 'Today', tomorrow: 'Tomorrow', earlier: '15 minutes earlier', later: '15 minutes later', leaveAria: (d) => `Leave at, ${d.toLowerCase()}`,
+    thereAtNew: (t) => `There at ${t}`, onWay: (d) => `${d} on the way`, timed: 'Timed at your speed', timedS: 'Normal: changed in Route › How you go',
+    wxH: 'The weather on the way', wx: 'Dry, 7–9 °C, wind 4 m/s from the west; sunset 18:31.',
+    mapH: 'On the map', marks: [['km', 'Distance marks', 'Every 1, 5, 10 or 25 km, by the route’s length'], ['time', 'Arrival times at marks', 'The clock time you reach each mark'], ['dur', 'Elapsed time at marks', 'From when you leave, with stops and changeovers']],
+    takeH: 'Take it along', take: [['gpx', 'gpx', 'Export GPX'], ['link', 'link', 'Copy share link'], ['offline', 'offline', 'Save offline…']],
+    say: { climb: ['The hardest climb is lit on the map and on the profile', false], ctl: ['Routed again with this style; stretches with their own keep theirs', true], spd: ['Timed again at this speed: the route stays', true],
+      own: ['Edit this stretch opens, for Lielahti → Siilinkari', false], gpx: ['The route is saved as a GPX file', false], link: ['A link to this route is copied', false], offline: ['Save offline opens: this route’s map and terrain', false],
+      field: ['Custom: timed again at your own speeds', true], tool: ['As today', false] },
+  },
+  fi: {
+    climb: 'Jyrkin nousu', climbV: '↑S2', climbS: '45 m, 9 %', head: 'Vastatuuli', headV: '40 %', headS: 'matkasta',
+    speed: 'Nopeus', speedV: 'Normaali', style: 'Tyyli', styleS: 'napauta vaihtaaksesi', styleAll: 'koko reitti', styleOwn: '1 osuudella oma',
+    speedS: { mtb: '20 / 16 / 11 km/h · 600 m/h ylös', hike: '5 km/h tasaisella', paddle: 'Merikajakki · 6,5 km/h' },
+    climbAria: 'Jyrkin nousu: näytä kartalla ja profiilissa', openHow: (k) => `${k}: avaa Miten kuljet`,
+    howFold: 'Miten kuljet', normalSpeed: 'Normaali nopeus', styleTodayH: 'Reitin tyyli', styleTodayS: 'mitä teitä reititin suosii', speedTodayH: 'Nopeutesi', speedTodayS: 'millä nopeudella aika lasketaan',
+    noteToday: '”Tasapainoinen” on reitityspalvelun oma profiili lajille. Muutos reitittää reitin uudelleen, yleensä yhdellä kutsulla. Anna osuudelle oma tyyli pisteen valikosta.',
+    timeH: 'Aika', depart: 'Lähtö', fromNow: 'nyt lähtien', thereAt: (t) => `perillä ${t}`, timedToday: (s) => `Aika nopeudellasi: ${s}`, change: 'Muuta',
+    depWxH: 'Lähtö ja sää', wxTitle: 'Sää reitillä', tools: ['Kierros', 'Käännä', 'Takaisin lähtöön', 'Tuo'],
+    howT: 'Miten kuljet', howS: (s) => `${s}, koko reitille`, routeTab: 'Reitti',
+    styleH: 'Reitin tyyli', styleL: 'Mitä teitä Polku valitsee. Muutos reitittää reitin uudelleen.',
+    ctls: [['t', 'Maasto', 'Kuinka paljon polut painavat teihin ja pyöräteihin nähden', ['Tiet käyvät', 'Tasapainoinen', 'Enemmän polkuja', 'Polut ensin'], 1],
+      ['x', 'Tekniset polut', 'Vältä: S2 ja vaikeammat maksavat paljon, S4:ää ja vaikeampia ei käytetä', ['Vältä', 'Käy'], 0],
+      ['c', 'Nousut', 'Vähemmän: yli 3 %:n nousut lasketaan raskaammiksi', ['Ei haittaa', 'Vähemmän'], 0],
+      ['m', 'Päätiet', 'Päätiet ilman pyörätietä', ['Tarvittaessa', 'Vältä'], 0],
+      ['w', 'Märkä maa', 'Automaattinen: märkä, kun vuorokaudessa sataa yli 3 mm, ennusteen mukaan', ['Automaattinen', 'Märkä', 'Kuiva'], 0]],
+    ownH: 'Osuudet, joilla on oma tyyli', own1: 'Lielahti → Siilinkari', own1S: 'Melonta: tyyni vesi ensin',
+    speedH: 'Nopeutesi', speedL: 'Millä nopeudella ajat lasketaan. Muutos laskee ajat uudelleen; reitti pysyy.',
+    presets: ['Rauhallinen', 'Normaali', 'Nopea', 'Oma'], fields: [['Päällystetty', '20', 'km/h'], ['Sora', '16', 'km/h'], ['Polku', '11', 'km/h'], ['Nousu', '600', 'm/h']],
+    paddleH: 'Melonta', crafts: ['Merikajakki', 'Kanootti', 'SUP'], paddleField: ['Merikajakki', '6,5', 'km/h'],
+    whereH: 'Mihin aika kuluu tällä reitillä', ttHead: ['', 'matka', 'aika', 'nopeus'],
+    tt: { day: [['Päällystetty', '0,4 km', '1 min', '24 km/h'], ['Sora ja päällystämätön', '1,2 km', '5 min', '15 km/h'], ['Polut', '1,45 km', '10 min', '8,7 km/h'], ['josta ylämäkeä', '', '4 min', '', 'sub'], ['Liikkumisaika', '3,05 km', '16 min', '11,4 km/h', 'total']],
+      multi: [['Päällystetty', '2,1 km', '5 min', '25 km/h'], ['Sora ja päällystämätön', '4,6 km', '17 min', '16 km/h'], ['Polut', '5,7 km', '43 min', '8 km/h'], ['Vesillä', '5,5 km', '56 min', '5,9 km/h'], ['Vaihto', '', '10 min', '', 'sub'], ['Kokonaisaika', '17,9 km', '2 h 21 min', '', 'total']] },
+    countH: 'Miten aika lasketaan', countS: 'Pinnat, nousut ja nopeutesi',
+    countText: 'Ajonopeus tasaisella riippuu pinnasta: päällystetty, sora tai polku. Sileät polut rullaavat nopeammin, S2 ja vaikeammat hitaammin. Nousut menevät nousunopeudellasi, ellei se ole tasaista nopeampi. Taukoja ei lasketa.',
+    whenH: 'Milloin', leave: 'Lähtöaika', now: 'Nyt', today: 'Tänään', tomorrow: 'Huomenna', earlier: '15 minuuttia aiemmin', later: '15 minuuttia myöhemmin', leaveAria: (d) => `Lähtöaika, ${d.toLowerCase()}`,
+    thereAtNew: (t) => `Perillä klo ${t}`, onWay: (d) => `${d} matkalla`, timed: 'Aika nopeudellasi', timedS: 'Normaali: muutetaan kohdassa Reitti › Miten kuljet',
+    wxH: 'Sää matkalla', wx: 'Poutaa, 7–9 °C, tuuli 4 m/s lännestä; aurinko laskee 18.31.',
+    mapH: 'Kartalla', marks: [['km', 'Matkamerkit', '1, 5, 10 tai 25 km välein, reitin pituuden mukaan'], ['time', 'Saapumisajat merkeillä', 'Kellonaika, jolloin olet kunkin merkin kohdalla'], ['dur', 'Kulunut aika merkeillä', 'Lähdöstä, taukoineen ja vaihtoineen']],
+    takeH: 'Ota mukaan', take: [['gpx', 'gpx', 'Vie GPX'], ['link', 'link', 'Kopioi jakolinkki'], ['offline', 'offline', 'Tallenna offline-käyttöön…']],
+    say: { climb: ['Jyrkin nousu näkyy kartalla ja profiilissa', false], ctl: ['Reititetty uudelleen tällä tyylillä; osuudet, joilla on oma tyyli, pitävät sen', true], spd: ['Ajat laskettu uudelleen tällä nopeudella: reitti pysyy', true],
+      own: ['Muokkaa tätä osuutta aukeaa: Lielahti → Siilinkari', false], gpx: ['Reitti tallennettu GPX-tiedostoksi', false], link: ['Linkki tähän reittiin kopioitu', false], offline: ['Offline-tallennus aukeaa: reitin kartta ja maasto', false],
+      field: ['Oma: ajat laskettu omilla nopeuksillasi', true], tool: ['Kuten nyt', false] },
+  },
+};
+const w4 = (k) => ((W424[LANG] || W424.en)[k] ?? W424.en[k]);
+const sport424 = (st) => (st.uc ? mainSportOf(st) : st.sport);
+// a route's style and its chips, in its sport's words (the mock-up has MTB's and Paddle's; a hike shows MTB's chips)
+const style424 = (st, sp) => (SPORTS[sp] ? styleName({ ...st, sport: sp }) : SPORTS.mtb.styles[0][1]);
+const chips424 = (st, sp) => styleChips({ ...st, sport: SPORTS[sp] ? sp : 'mtb' });
+// the strip: the app's (a label, the value, a line; Speed and Style as buttons), today in Check; proposed at Route's top,
+// its lines at 12.5 px, › on the two that open How you go, each 44 px to tap
+function strip424(st, v, isNew) {
+  const sp = sport424(st), water = isWaterS(sp);
+  const first = water ? [w4('head'), w4('headV'), w4('headS')] : [w4('climb'), `<i class="dot" style="background:#f59e0b"></i>${w4('climbV')}`, w4('climbS')];
+  const sty = style424(st, sp);
+  const own = st.uc === 'multi';
+  const stat = (label, value, sub, act, aria) => `<${act ? 'button type="button"' : 'div'} class="stat${act ? ' stat-btn' : ''}"${act ? ` data-act="${act}"${aria ? ` aria-label="${esc(aria)}"` : ''}` : ''}><span class="stat-label">${esc(label)}</span><span class="stat-value">${value}${act && isNew && act !== 'climb424' ? ic('right', 16) : ''}</span><span class="stat-sub">${esc(sub)}</span></${act ? 'button' : 'div'}>`;
+  return `<div class="st424${isNew ? ' new' : ''}" role="group" aria-label="${esc(`${first[0]}, ${w4('speed')}, ${w4('style')}`)}">${stat(first[0], first[1], first[2], isNew ? 'climb424' : null, isNew ? w4('climbAria') : null)}${stat(w4('speed'), esc(w4('speedV')), (w4('speedS') || {})[sp] || w4('speedS').mtb, isNew ? 'how424' : 'howtoday424', isNew ? w4('openHow')(w4('speed')) : null).replace('data-act="how424"', 'data-act="how424" data-v="speed"')}${stat(w4('style'), esc(sty), isNew ? (own ? w4('styleOwn') : w4('styleAll')) : w4('styleS'), isNew ? 'how424' : 'howtoday424', isNew ? w4('openHow')(w4('style')) : null).replace('data-act="how424"', 'data-act="how424" data-v="style"')}</div>`;
+}
+const toolsRow424 = () => `<div class="tools2">${w4('tools').map((l, i) => `<button type="button" class="chip" data-act="say424" data-v="tool">${ic(['roundtrip', 'reverse', 'loop', 'upload'][i], 18)}${esc(l)}</button>`).join('')}</div>`;
+// today's How you go: the fold at the end of Route, as the app draws it (renderStyle(), renderSpeedEditor())
+function howToday424(st) {
+  const sp = sport424(st), name = style424(st, sp), open = !!st.howOpen;
+  const head = `<button type="button" class="sec-h" data-act="howfold" aria-expanded="${open}">${esc(w4('howFold'))} · ${esc(name)} · ${esc(w4('normalSpeed'))}<span class="spacer"></span>${ic(open ? 'up' : 'down', 16)}</button>`;
+  if (!open) return `<div class="howgo" id="how-fold">${head}</div>`;
+  const ctl = ([k, label, help, opts, on]) => `<div class="style-ctl"><span class="style-label">${esc(label)}</span><div class="seg small" role="group" aria-label="${esc(label)}">${opts.map((o, i) => `<button type="button" aria-pressed="${i === (st.ctl424 && st.ctl424[k] != null ? st.ctl424[k] : on)}" data-act="ctl424" data-v="${k}:${i}">${esc(o)}</button>`).join('')}</div></div><p class="style-help">${esc(help)}.</p>`;
+  return `<div class="howgo" id="how-fold">${head}<div class="today424">
+    <h4 class="how-h">${esc(w4('styleTodayH'))} <small>${esc(w4('styleTodayS'))}</small></h4>${chips424(st, sp)}${w4('ctls').map(ctl).join('')}<p class="note424">${esc(w4('noteToday'))}</p>
+    <div class="speed-wrap"><h4 class="how-h">${esc(w4('speedTodayH'))} <small>${esc(w4('speedTodayS'))}</small></h4>
+      <div class="seg small" role="group" aria-label="${esc(w4('speedTodayH'))}">${w4('presets').map((p, i) => `<button type="button" aria-pressed="${i === (st.spd424 ?? 1)}" data-act="spd424" data-v="${i}">${esc(p)}</button>`).join('')}</div>
+      <div class="speed-fields">${w4('fields').map(([l, val, u]) => `<label class="speed-field"><span>${esc(l)}</span><input type="text" inputmode="decimal" value="${val}" data-in="spd424" aria-label="${esc(`${l} (${u})`)}"><small>${u}</small></label>`).join('')}</div>
+      <p class="note424">${esc(w4('countText'))}</p></div></div></div>`;
+}
+// proposed: How you go, a step of its own in Route (from the strip's Speed or Style, or Fine-tune in the mode's menu)
+function howNew424(st, v, desk) {
+  const sp = sport424(st), multi = st.uc === 'multi';
+  const ctl = ([k, label, help, opts, on]) => `<div class="ctl424"><span><b>${esc(label)}</b><small>${esc(help)}</small></span><div class="seg n${opts.length}" role="radiogroup" aria-label="${esc(label)}">${opts.map((o, i) => { const c = i === (st.ctl424 && st.ctl424[k] != null ? st.ctl424[k] : on); return `<button type="button" role="radio" aria-checked="${c}" data-act="ctl424" data-v="${k}:${i}">${c ? ic('check', 15) : ''}${esc(o)}</button>`; }).join('')}</div></div>`;
+  const tt = (w4('tt')[multi ? 'multi' : 'day']).map(([a, b, c, d, cls]) => `<div class="speed-row${cls ? ` ${cls}` : ''}"><span>${esc(a)}</span><b>${esc(b)}</b><b>${esc(c)}</b><small>${esc(d)}</small></div>`).join('');
+  const field = ([l, val, u]) => `<label class="speed-field"><span>${esc(l)}</span><input type="text" inputmode="decimal" value="${val}" data-in="spd424" aria-label="${esc(`${l} (${u})`)}"><small>${u}</small></label>`;
+  const presets = `<div class="seg n4" role="radiogroup" aria-label="${esc(w4('speedH'))}">${w4('presets').map((p, i) => { const c = i === (st.spd424 ?? 1); return `<button type="button" role="radio" aria-checked="${c}" data-act="spd424" data-v="${i}">${c ? ic('check', 15) : ''}${esc(p)}</button>`; }).join('')}</div>`;
+  const paddle = multi ? `<div class="sub424"><b>${ic('paddle', 18)}${esc(w4('paddleH'))}</b><div class="chips" role="group" aria-label="${esc(w4('paddleH'))}">${w4('crafts').map((c, i) => `<button type="button" class="chip" aria-pressed="${i === (st.craft424 ?? 0)}" data-act="craft424" data-v="${i}">${i === (st.craft424 ?? 0) ? ic('check', 16) : ''}${esc(c)}</button>`).join('')}</div><div class="speed-fields">${field(w4('paddleField'))}</div></div>` : '';
+  return `<div class="how424"><div class="backbar">${backBtn('howback424', w4('routeTab'))}</div>
+    <div class="hint">${esc(w4('howT'))}<small>${esc(w4('howS')(multi ? `${sL('mtb')} + ${sL('paddle')}` : sL(sp)))}</small></div>
+    <section aria-label="${esc(w4('styleH'))}" id="how-style">${grp5(w4('styleH'))}<p class="cap424">${esc(w4('styleL'))}</p>${chips424(st, sp)}${w4('ctls').map(ctl).join('')}
+      ${multi ? `${grp5(w4('ownH'))}${list5([item5('say424', 'paddle', w4('own1'), w4('own1S'), { v: 'own', chev: true })])}` : ''}</section>
+    <section aria-label="${esc(w4('speedH'))}" id="how-speed">${grp5(w4('speedH'))}<p class="cap424">${esc(w4('speedL'))}</p>${presets}<div class="speed-fields">${w4('fields').map(field).join('')}</div>${paddle}
+      ${grp5(w4('whereH'))}<div class="speed-table" role="table"><div class="speed-row head">${w4('ttHead').map((h) => `<small>${esc(h)}</small>`).join('')}</div>${tt}</div>
+      ${list5([`<button type="button" class="c2-item" data-act="howcount424" aria-expanded="${!!st.howCount}">${ic('info', 20)}<span><b>${esc(w4('countH'))}</b><small>${esc(w4('countS'))}</small></span><span class="chev">${ic(st.howCount ? 'up' : 'down', 18)}</span></button>`])}${st.howCount ? `<p class="note424">${esc(w4('countText'))}</p>` : ''}</section></div>`;
+}
+function routeBody424(st, v, desk) {
+  if (v.tabs === 'c') return routeC(st, v, desk);
+  if (v.tabs === 'new' && st.how) return howNew424(st, v, desk);
+  const list = st.uc ? sectionsHtml(st, v, desk) : wpList(st, v);
+  if (v.tabs !== 'new') return st.uc ? list + toolsRow424() + howToday424(st) : list;
+  return strip424(st, v, true) + list + (st.uc ? toolsRow424() : '');
+}
+// Go, today: the app's Time (Depart's hours, how long, where the time goes, Timed at your speed with Change), Departure &
+// weather, Take it along
+function goToday424(st) {
+  const sp = sport424(st), multi = st.uc === 'multi', S = st.uc ? UC[st.uc].stats : SPORTS[st.sport].stats, end = st.uc ? UC[st.uc].sections.slice(-1)[0].pts.slice(-1)[0].tm : '07:46';
+  const tt = (w4('tt')[multi ? 'multi' : 'day']).map(([a, b, c, d, cls]) => `<div class="speed-row${cls ? ` ${cls}` : ''}"><span>${esc(a)}</span><b>${esc(b)}</b><b>${esc(c)}</b><small>${esc(d)}</small></div>`).join('');
+  return `<div class="gosec"><h4>${esc(w4('timeH'))}</h4><div class="row"><span class="btn quiet">${ic('clock', 18)}${esc(w4('depart'))} ${t('now')} ${ic('down', 12)}</span></div>
+    <div class="time-head"><b>${esc(S.t)}</b><span>${esc(w4('fromNow'))} → ${esc(w4('thereAt')(end))}</span></div><div class="speed-table">${tt}</div>
+    <div class="row wrap"><span class="cap424" style="flex:1 1 200px">${esc(w4('timedToday')(`${w4('speedV')} · ${(w4('speedS') || {})[sp] || w4('speedS').mtb}`))}</span><button type="button" class="btn small" data-act="gospeed" aria-expanded="${!!st.goSpeed}">${esc(w4('change'))}</button></div>${st.goSpeed ? speedEditor(sp) : ''}</div>
+    <div class="gosec"><h4>${esc(w4('depWxH'))}</h4><div style="font-size:13.5px"><b>${esc(w4('wxTitle'))}</b><br>${esc(w4('wx'))}</div></div>
+    <div class="gosec"><h4>${esc(w4('takeH'))}</h4><div class="chips">${w4('take').map(([k, icn, l]) => `<button type="button" class="chip" data-act="say424" data-v="${k}">${ic(icn, 18)}${esc(l)}</button>`).join('')}</div></div>`;
+}
+// Go, proposed: setting off. When (Leave at with #364's control, the same as the start's card), the weather on the way,
+// On the map (from Check: marks for following the route), Take it along
+function goNew424(st) {
+  const S = st.uc ? UC[st.uc].stats : SPORTS[st.sport].stats, end = st.uc ? UC[st.uc].sections.slice(-1)[0].pts.slice(-1)[0].tm : '07:46';
+  const day = st.lday424 || 'now', at = st.lat424 || (day === 'tomorrow' ? '08:00' : '10:30');
+  const step = `<div class="c6-at"><span class="c2-step c6-step"><button type="button" data-act="lt424" data-v="-15" aria-label="${esc(w4('earlier'))}">${ic('minus', 20)}</button><input type="time" step="900" value="${at}" data-in="lt424" aria-label="${esc(w4('leaveAria')(w4(day)))}"><button type="button" data-act="lt424" data-v="15" aria-label="${esc(w4('later'))}">${ic('plus', 20)}</button></span></div>`;
+  const row = (k) => `<button type="button" class="c2-item" role="menuitemradio" aria-checked="${k === day}" data-act="lday424" data-v="${k}">${ic('clock', 20)}<span><b>${esc(w4(k))}</b></span>${k === day ? `<span class="tick">${ic('check', 20)}</span>` : ''}</button>${k === day && k !== 'now' ? step : ''}`;
+  const there = day === 'now' ? end : addMin424(at, durMin424(S.t));
+  const marks = st.marks424 || { km: true };
+  return `<section class="go424" aria-label="${esc(w4('whenH'))}">${grp5(w4('whenH'))}<p class="cap424">${esc(w4('leave'))}</p><div class="c2-list">${['now', 'today', 'tomorrow'].map(row).join('')}</div>
+      <div class="time-head"><b>${esc(w4('thereAtNew')(there))}</b><span>${esc(w4('onWay')(S.t))}</span></div>
+      ${list5([item5('timed424', 'clock', w4('timed'), w4('timedS'), { chev: true })])}</section>
+    <section class="go424" aria-label="${esc(w4('wxH'))}">${grp5(w4('wxH'))}<div style="font-size:14px">${esc(w4('wx'))}</div></section>
+    <section class="go424" aria-label="${esc(w4('mapH'))}">${grp5(w4('mapH'))}<div class="c2-list">${w4('marks').map(([k, l, s]) => `<label class="c2-item c2-tg" data-act="mark424" data-v="${k}" role="switch" aria-checked="${!!marks[k]}" tabindex="0"><span><b>${esc(l)}</b><small>${esc(s)}</small></span><i class="${marks[k] ? 'on' : ''}" aria-hidden="true"></i></label>`).join('')}</div></section>
+    <section class="go424" aria-label="${esc(w4('takeH'))}">${grp5(w4('takeH'))}<div class="chips">${w4('take').map(([k, icn, l]) => `<button type="button" class="chip" data-act="say424" data-v="${k}">${ic(icn, 18)}${esc(l)}</button>`).join('')}</div></section>`;
+}
+const durMin424 = (t) => { const h = /(\d+) h/.exec(t), m = /(\d+) min/.exec(t); return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0); };
+const addMin424 = (t, m, lo = 0, hi = 1425) => { const [a, b] = t.split(':').map(Number), x = Math.max(lo, Math.min(hi, a * 60 + b + m)); return `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`; };
+
+// ------------------------------------------------ #424, C (2026-10-24, to choose): B's idea redrawn from the user's notes, from
+// the live planner (main at 3c9261f): no strip; Route opens with two rows, How you go and Your speed, each a step of its own;
+// Check and Go keep every section the app has, with their content; the marks on the map go to Layers, in a group for the
+// route. Leave ›, Go on at ›, How you go ›, Your speed › and The whole route › are one row element: the card's row with a
+// value and › (item5(), the cards' c2-item), as Sport from here · MTB ›.
+const WC = {
+  en: {
+    how: 'How you go', howSub: (s) => `The ways Polku picks for ${s}`, speed: 'Your speed', speedV: 'Normal',
+    howT: 'How you go', howTsub: (s) => `${s}, for the whole route. A change routes the route again.`,
+    speedT: 'Your speed', speedTsub: 'How fast the times are counted. A change only times the route again; the route stays.',
+    privateCtl: ['p', 'Ways marked private', 'Short cuts ok lets the route through a way marked private where it saves a real distance; ways marked no access stay closed', ['Keep off', 'Short cuts ok'], 0],
+    wetNow: 'Auto: dry enough now (1.6 mm in the last 24 hours)',
+    styleNote: '“Balanced” is the routing service’s own profile for the sport. A change routes the route again, usually in one call. A stretch’s own style is set in Edit this stretch.',
+    hint: 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for its card · hold the map for more',
+    leave: 'Leave', leaveSub: 'Sets the times and the weather along the route', now: 'Now', leaveNowAria: 'Leave now', pickAria: 'Leave at: pick a day and a time',
+    there: (t) => `There at ${t}`, thereDay: (t, d) => `There at ${t}, ${d}`, onWay: (d) => `${d} on the way`,
+    timeRows: [['Paved', '0.4 km', '1 min', '24 km/h'], ['Gravel and unpaved', '1.2 km', '5 min', '15 km/h'], ['Trails', '1.45 km', '10 min', '8.7 km/h'], ['of which uphill (over 3 %)', '', '4 min', '', 'sub'], ['the wind', '', '+1 min', 'included above', 'sub'], ['Moving time', '3.05 km', '16 min', '11.4 km/h', 'total']],
+    depWx: 'Departure & weather', wxRoute: 'Weather on the route', sun: 'Sunrise 08:29 · sunset 17:51 · dark from 18:36', sunFar: 'Sunrise 08:41 · sunset 15:28 · dark from 16:22',
+    windB: '4.3 m/s', windRest: ' gusts 7.8 · from SE · 10 °C · rain 1.0 mm/h', breezy: 'Breezy', temp: 'Temperature 9…10 °C',
+    rain: 'Rain on 3.05 km (100 %, km 0–3), up to 1.0 mm/h · about 0.3 mm on you', head: 'Headwind 50 %', cross: 'Crosswind 50 %', strongest: 'Strongest headwind 3.6 m/s at km 2.4 →',
+    links: ['Wind along the route ↑', 'Temperature along the route ↑', 'Rain along the route ↑'],
+    noFc: (d) => `No forecast yet for ${d}. Polku’s forecast reaches 10 days ahead; until then the times count without the wind.`,
+    darkStill: 'Sunset and the dark still count: Check says where you’d be in the dark.',
+    take: 'Take it along', takeB: [['gpx', 'gpx', 'Export GPX'], ['link', 'link', 'Copy share link'], ['offline', 'offline', 'Save offline…']],
+    climbs: 'Climbs', hardestTag: 'Hardest', climbsSum: 'Hardest: ↑S2, 21 m at 12 %',
+    climbRows: [[1, '#c7c100', '↑S1', '1. +18 m in 260 m', 'km 0.4–0.7 · avg 7 % · max 11 %'], [2, '#f59e0b', '↑S2', '2. +21 m in 180 m', 'km 1.9–2.1 · avg 12 % · max 18 %', true], [0, '#22a447', '↑S0', '3. +5 m in 120 m', 'km 2.6–2.7 · avg 4 % · max 6 %']],
+    onRoute: 'On the route', useColours: 'Use colours', selected: 'Selected',
+    bd: [['Terrain', [['Gradient', true, [['#ef4444', '15–20 %', '10 m'], ['#f59e0b', '10–15 %', '50 m'], ['#eab308', '6–10 %', '40 m'], ['#84cc16', '3–6 %', '130 m'], ['#22c55e', 'Flat', '2.48 km'], ['#60a5fa', 'Down', '290 m'], ['#2563eb', 'Steep down', '50 m']]],
+      ['Uphill difficulty', false, [['#22a447', '↑S0 · under 10 %, good grip', '170 m'], ['#c7c100', '↑S1 · under 15 %, few obstacles', '50 m'], ['#f59e0b', '↑S2 · under 20 %, loose stones or roots', '10 m'], ['#cbd5e1', 'Flat or down', '2.82 km']]],
+      ['Both', false, [['#22a447', 'S0 · easy', '0.7 km'], ['#c7c100', 'S1 · fairly easy', '0.95 km'], ['#f59e0b', '↑S2 climbs', '10 m'], ['#cbd5e1', 'Not graded', '1.4 km']]]]],
+      ['Ground', [['Way type', false, [['#a16207', 'Path', '1.45 km'], ['#d97706', 'Track', '0.7 km'], ['#64748b', 'Road', '0.9 km']]], ['Surface', false, [['#92400e', 'Dirt', '1.25 km'], ['#a8a29e', 'Gravel', '1.2 km'], ['#475569', 'Asphalt', '0.6 km']]]]],
+      ['Weather', [['Wind', false, [['#ef4444', 'Headwind', '1.5 km'], ['#f59e0b', 'Crosswind', '1.55 km']]], ['Temperature', false, [['#fbbf24', '5…10 °C', '3.05 km']]], ['Rain', false, [['#60a5fa', 'Rain 0.5–2 mm/h', '3.05 km']]]]]],
+    layers: 'All layers', mapFor: 'Map for', mapForSub: 'Your sport sets the trail colours and which layers start on.', change: 'Change',
+    onNow: 'On now', on6: '3 on', onChips: ['Difficulty colours', 'Trail details', 'Official routes (LIPAS)'],
+    yourRoute: 'Your route', yourRouteNew: 'new', yourRouteNote: 'On the map while a route is drawn. Moved here from Check.',
+    marks: [['km', 'Distance marks', 'Every 1, 5, 10 or 25 km, by the route’s length'], ['time', 'Arrival times at marks', 'The clock time you reach each mark'], ['dur', 'Elapsed time at marks', 'From when you leave, with stops and changeovers']],
+    groups: ['Base map', 'Terrain', 'Trails & difficulty', 'Winter', 'Marked routes', 'Places', 'Water & nautical', 'Traffic & safety', 'Roads (Digiroad)', 'Weather on the map'],
+    shareIncl: (d) => `Includes when you leave: ${d}`, shareAria: 'Copy share link, with when you leave',
+    passed: (d) => `Planned for ${d}. That’s passed, so it leaves now: pick a new time above.`,
+    noFcFrom: (km, at) => `No forecast yet from km ${km}, ${at}.`, noFcFromMore: 'Wind, rain and waves from there are under Check’s Not checked. Sunset and the dark still count.',
+    lessSure: 'It’s more than three days ahead: the forecast is less certain.', noFcSec: 'No forecast yet', noFcProfile: 'No forecast yet',
+    ncFrom: (km, at) => `No forecast yet from km ${km}, ${at}`, ncFromSub: 'Wind, rain and waves aren’t checked from there', ncAll: 'No forecast yet for this trip', ncAllSub: 'Wind, rain and waves aren’t checked; sunset and the dark are',
+    say: { climb: ['This climb is lit on the map and the profile', false], bd: ['The route is coloured by this on the map', true], wxlink: ['The profile is coloured by it, in sight', false], head: ['The strongest headwind is lit on the route', false], change: ['Your sport’s menu opens', false], pick: ['Your phone’s own date and time picker opens', false] },
+  },
+  fi: {
+    how: 'Miten kuljet', howSub: (s) => `Tiet, jotka Polku valitsee lajille ${s}`, speed: 'Nopeutesi', speedV: 'Normaali',
+    howT: 'Miten kuljet', howTsub: (s) => `${s}, koko reitille. Muutos reitittää reitin uudelleen.`,
+    speedT: 'Nopeutesi', speedTsub: 'Millä nopeudella ajat lasketaan. Muutos laskee vain ajat uudelleen; reitti pysyy.',
+    privateCtl: ['p', 'Yksityiseksi merkityt tiet', 'Oikotiet käyvät: reitti saa kulkea yksityiseksi merkityn tien kautta, kun se säästää matkaa; kielletyt tiet pysyvät suljettuina', ['Vältä', 'Oikotiet käyvät'], 0],
+    wetNow: 'Automaattinen: nyt tarpeeksi kuivaa (1,6 mm viimeisen vuorokauden aikana)',
+    styleNote: '”Tasapainoinen” on reitityspalvelun oma profiili lajille. Muutos reitittää reitin uudelleen, yleensä yhdellä kutsulla. Osuuden oma tyyli asetetaan kohdassa Muokkaa tätä osuutta.',
+    hint: 'Napauta karttaa lisätäksesi pisteitä · vedä pistettä tai pidä viivaa ja vedä · napauta pistettä tai viivaa nähdäksesi sen kortin · pidä karttaa painettuna nähdäksesi lisää',
+    leave: 'Lähtö', leaveSub: 'Ajat ja sää reitin varrella lasketaan tästä', now: 'Nyt', leaveNowAria: 'Lähde nyt', pickAria: 'Lähtöaika: valitse päivä ja kellonaika',
+    there: (t) => `Perillä klo ${t}`, thereDay: (t, d) => `Perillä klo ${t}, ${d}`, onWay: (d) => `${d} matkalla`,
+    timeRows: [['Päällystetty', '0,4 km', '1 min', '24 km/h'], ['Sora ja päällystämätön', '1,2 km', '5 min', '15 km/h'], ['Polut', '1,45 km', '10 min', '8,7 km/h'], ['josta ylämäkeä (yli 3 %)', '', '4 min', '', 'sub'], ['tuuli', '', '+1 min', 'mukana yllä', 'sub'], ['Liikkumisaika', '3,05 km', '16 min', '11,4 km/h', 'total']],
+    depWx: 'Lähtö ja sää', wxRoute: 'Sää reitillä', sun: 'Aurinko nousee 8.29 · laskee 17.51 · pimeää 18.36 alkaen', sunFar: 'Aurinko nousee 8.41 · laskee 15.28 · pimeää 16.22 alkaen',
+    windB: '4,3 m/s', windRest: ', puuskissa 7,8 · kaakosta · 10 °C · sadetta 1,0 mm/h', breezy: 'Tuulista', temp: 'Lämpötila 9…10 °C',
+    rain: 'Sadetta 3,05 km:n matkalla (100 %, km 0–3), enintään 1,0 mm/h · noin 0,3 mm päällesi', head: 'Vastatuuli 50 %', cross: 'Sivutuuli 50 %', strongest: 'Kovin vastatuuli 3,6 m/s km 2,4:n kohdalla →',
+    links: ['Tuuli reitin varrella ↑', 'Lämpötila reitin varrella ↑', 'Sade reitin varrella ↑'],
+    noFc: (d) => `Ei vielä sääennustetta päivälle ${d}. Polun sääennuste ulottuu 10 päivän päähän; siihen asti ajat lasketaan ilman tuulta.`,
+    darkStill: 'Auringonlasku ja pimeä lasketaan silti: Tarkista kertoo, missä olisit pimeällä.',
+    take: 'Ota mukaan', takeB: [['gpx', 'gpx', 'Vie GPX'], ['link', 'link', 'Kopioi jakolinkki'], ['offline', 'offline', 'Tallenna offline-käyttöön…']],
+    climbs: 'Nousut', hardestTag: 'Jyrkin', climbsSum: 'Jyrkin: ↑S2, 21 m, 12 %',
+    climbRows: [[1, '#c7c100', '↑S1', '1. +18 m 260 m:n matkalla', 'km 0,4–0,7 · keskim. 7 % · enint. 11 %'], [2, '#f59e0b', '↑S2', '2. +21 m 180 m:n matkalla', 'km 1,9–2,1 · keskim. 12 % · enint. 18 %', true], [0, '#22a447', '↑S0', '3. +5 m 120 m:n matkalla', 'km 2,6–2,7 · keskim. 4 % · enint. 6 %']],
+    onRoute: 'Reitillä', useColours: 'Väritä', selected: 'Valittu',
+    bd: null, // (the breakdowns' words are the English ones: phase 18 translates)
+    layers: 'Kaikki tasot', mapFor: 'Kartta lajille', mapForSub: 'Laji valitsee polkujen värit ja tasot, jotka ovat aluksi päällä.', change: 'Vaihda',
+    onNow: 'Päällä nyt', on6: '3 päällä', onChips: ['Vaativuusvärit', 'Polkujen tiedot', 'Viralliset reitit (LIPAS)'],
+    yourRoute: 'Reittisi', yourRouteNew: 'uusi', yourRouteNote: 'Kartalla, kun reitti on piirretty. Siirretty tänne Tarkista-välilehdeltä.',
+    marks: [['km', 'Matkamerkit', '1, 5, 10 tai 25 km välein, reitin pituuden mukaan'], ['time', 'Saapumisajat merkeillä', 'Kellonaika, jolloin olet kunkin merkin kohdalla'], ['dur', 'Kulunut aika merkeillä', 'Lähdöstä, taukoineen ja vaihtoineen']],
+    groups: ['Pohjakartta', 'Maasto', 'Polut ja vaativuus', 'Talvi', 'Merkityt reitit', 'Paikat', 'Vesillä', 'Liikenne ja turvallisuus', 'Tiet (Digiroad)', 'Sää kartalla'],
+    shareIncl: (d) => `Sisältää lähtöajan: ${d}`, shareAria: 'Kopioi jakolinkki lähtöaikoineen',
+    passed: (d) => `Suunniteltu ajalle ${d}. Se on mennyt, joten lähtö on nyt: valitse uusi aika yllä.`,
+    noFcFrom: (km, at) => `Ei vielä sääennustetta km ${km}:stä alkaen, ${at}.`, noFcFromMore: 'Tuuli, sade ja aallot sieltä ovat Tarkista-välilehden kohdassa Tarkistamatta. Auringonlasku ja pimeä lasketaan silti.',
+    lessSure: 'Yli kolmen päivän päässä: ennuste on epävarmempi.', noFcSec: 'Ei vielä ennustetta', noFcProfile: 'Ei vielä ennustetta',
+    ncFrom: (km, at) => `Ei vielä sääennustetta km ${km}:stä alkaen, ${at}`, ncFromSub: 'Tuulta, sadetta ja aaltoja ei tarkisteta sieltä', ncAll: 'Ei vielä sääennustetta tälle matkalle', ncAllSub: 'Tuulta, sadetta ja aaltoja ei tarkisteta; auringonlasku ja pimeä tarkistetaan',
+    say: { climb: ['Nousu näkyy kartalla ja profiilissa', false], bd: ['Reitti väritetään tämän mukaan kartalla', true], wxlink: ['Profiili väritetään sen mukaan', false], head: ['Kovin vastatuuli näkyy reitillä', false], change: ['Lajivalikko aukeaa', false], pick: ['Puhelimen oma päivä- ja aikavalitsin aukeaa', false] },
+  },
+};
+const wc = (k) => { const L = WC[LANG] || WC.en; return L[k] ?? WC.en[k]; };
+// the start has a date (Revision 6's C, #364): the mock-up's now is Sat 31 Oct 2026, 06:00 (the route leaves at 07:30 now)
+const NOWC = new Date(2026, 9, 31, 6, 0);
+const p2c = (n) => String(n).padStart(2, '0');
+const isoC = (d) => `${d.getFullYear()}-${p2c(d.getMonth() + 1)}-${p2c(d.getDate())}T${p2c(d.getHours())}:${p2c(d.getMinutes())}`;
+const DAYC = { en: { d: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], m: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], today: 'Today', tomorrow: 'Tomorrow' },
+  fi: { d: ['su', 'ma', 'ti', 'ke', 'to', 'pe', 'la'], today: 'Tänään', tomorrow: 'Huomenna' } };
+const dayC = (d) => (LANG === 'fi' ? `${DAYC.fi.d[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.` : `${DAYC.en.d[d.getDay()]} ${d.getDate()} ${DAYC.en.m[d.getMonth()]}`);
+const aheadC = (d) => Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(NOW_CUR.getFullYear(), NOW_CUR.getMonth(), NOW_CUR.getDate())) / 864e5);
+const labelC = (v) => { const d = new Date(v), n = aheadC(d), L = DAYC[LANG] || DAYC.en; return `${n === 0 ? `${L.today}, ` : n === 1 ? `${L.tomorrow}, ` : ''}${dayC(d)}, ${p2c(d.getHours())}:${p2c(d.getMinutes())}`; };
+// Polku asks Open-Meteo for 240 hours (LONG_HOURS in js/weather.js): a start 10 days or more ahead has no forecast yet
+const FAR_C = 240;
+// a frame can set its own now ("nowC"), so a trip's weekdays match its list (the three days of uc 'days' run Fri to Sun)
+let NOW_CUR = NOWC;
+const pastC = (d) => (d - NOW_CUR) / 36e5 >= FAR_C;
+// the shared row with its own phone picker over it (a date and time, or a time): a tap opens the phone's own; the row stays
+// the keyboard's way in (Enter opens the picker)
+const pickRowC = (act, icon, label, sub, val, kind, inAttr, value, aria) => `<div class="c2-list cpick">${item5(act, icon, label, sub, { val, chev: true })}<input type="${kind}" step="900" data-in="${inAttr}" data-pick="1" value="${esc(value)}"${kind === 'datetime-local' ? ` min="${isoC(NOW_CUR)}"` : ''} aria-label="${esc(aria)}" aria-hidden="true" tabindex="-1"></div>`;
+function leaveRowC(st) {
+  const set = !!st.leaveC, far = set && pastC(new Date(st.leaveC));
+  // a saved route or a link whose date has passed opens at Now, saying when it was planned for (2026-10-24)
+  const passed = !set && st.passedC ? `<p class="cnofc cinfo">${ic('info', 16)}<span>${esc(wc('passed')(`${dayC(new Date(st.passedC))}, ${st.passedC.slice(11, 16)}`))}</span></p>` : '';
+  const row = pickRowC('leavec', 'clock', wc('leave'), wc('leaveSub'), set ? labelC(st.leaveC) : wc('now'), 'datetime-local', 'leavec', st.leaveC || isoC(new Date(2026, 9, 31, 7, 30)), wc('pickAria'));
+  return `<div class="cleave">${row}${set ? `<button type="button" class="cnow" data-act="leavenowc" aria-label="${esc(wc('leaveNowAria'))}">${esc(wc('now'))}</button>` : ''}</div>${far ? `<p class="cnofc">${ic('weather', 16)}<span>${esc(wc('noFc')(dayC(new Date(st.leaveC))))}</span></p>` : ''}${passed}`;
+}
+const styleRowsC = (st, sp) => list5([item5('howc', 'style', wc('how'), wc('howSub')(sL(sp)), { v: 'style', val: style424(st, sp), chev: true }), item5('howc', 'speed', wc('speed'), (w4('speedS') || {})[sp] || w4('speedS').mtb, { v: 'speed', val: wc('speedV'), chev: true })]);
+function routeC(st, v, desk) {
+  const sp = sport424(st);
+  if (st.how === 'style') return howStyleC(st, sp, desk);
+  if (st.how === 'speed') return speedStepC(st, sp, desk);
+  const list = st.uc ? sectionsHtml(st, v, desk) : wpList(st, v);
+  return `<div class="crows">${styleRowsC(st, sp)}</div>${list}${st.uc ? toolsRow424() : ''}<p class="chint">${esc(wc('hint'))}</p>`;
+}
+// How you go: the route style only, every control the app has (Ways marked private and Wet ground's own note too)
+function howStyleC(st, sp, desk) {
+  const multi = st.uc === 'multi';
+  const ctl = ([k, label, help, opts, on], note) => `<div class="ctl424"><span><b>${esc(label)}</b><small>${esc(help)}</small></span><div class="seg n${opts.length}" role="radiogroup" aria-label="${esc(label)}">${opts.map((o, i) => { const c = i === (st.ctl424 && st.ctl424[k] != null ? st.ctl424[k] : on); return `<button type="button" role="radio" aria-checked="${c}" data-act="ctl424" data-v="${k}:${i}">${c ? ic('check', 15) : ''}${esc(o)}</button>`; }).join('')}</div>${note ? `<small class="cwet">${esc(note)}</small>` : ''}</div>`;
+  const ctls = w4('ctls'), wet = ctls[ctls.length - 1];
+  return `<div class="how424 cstep"><div class="backbar">${backBtn('howback424', w4('routeTab'))}</div>
+    <div class="hint">${esc(wc('howT'))}<small>${esc(wc('howTsub')(multi ? `${sL('mtb')} + ${sL('paddle')}` : sL(sp)))}</small></div>
+    ${chips424(st, sp)}${ctls.slice(0, -1).map((c) => ctl(c)).join('')}${ctl(wc('privateCtl'))}${ctl(wet, wc('wetNow'))}<p class="note424">${esc(wc('styleNote'))}</p>
+    ${multi ? `<h4 class="c2-h">${esc(w4('ownH'))}</h4>${list5([item5('say424', 'paddle', w4('own1'), w4('own1S'), { v: 'own', chev: true })])}` : ''}</div>`;
+}
+// Your speed: the presets, the speeds, each sport's (the craft with Paddle), and how the time is counted, whole
+function speedStepC(st, sp, desk) {
+  const multi = st.uc === 'multi';
+  const field = ([l, val, u]) => `<label class="speed-field"><span>${esc(l)}</span><input type="text" inputmode="decimal" value="${val}" data-in="spd424" aria-label="${esc(`${l} (${u})`)}"><small>${u}</small></label>`;
+  const presets = `<div class="seg n4" role="radiogroup" aria-label="${esc(wc('speedT'))}">${w4('presets').map((p, i) => { const c = i === (st.spd424 ?? 1); return `<button type="button" role="radio" aria-checked="${c}" data-act="spd424" data-v="${i}">${c ? ic('check', 15) : ''}${esc(p)}</button>`; }).join('')}</div>`;
+  const paddle = multi ? `<div class="sub424"><b>${ic('paddle', 18)}${esc(w4('paddleH'))}</b><div class="chips" role="group" aria-label="${esc(w4('paddleH'))}">${w4('crafts').map((c, i) => `<button type="button" class="chip" aria-pressed="${i === (st.craft424 ?? 0)}" data-act="craft424" data-v="${i}">${i === (st.craft424 ?? 0) ? ic('check', 16) : ''}${esc(c)}</button>`).join('')}</div><div class="speed-fields">${field(w4('paddleField'))}</div></div>` : '';
+  return `<div class="how424 cstep"><div class="backbar">${backBtn('howback424', w4('routeTab'))}</div>
+    <div class="hint">${esc(wc('speedT'))}<small>${esc(wc('speedTsub'))}</small></div>
+    ${presets}<div class="speed-fields">${w4('fields').map(field).join('')}</div>${paddle}<p class="note424">${esc(w4('countText'))}</p></div>`;
+}
+// Check: what's on the way, every section with its content; the hardest climb marked in Climbs; no strip, no On the map
+function climbsC() {
+  const rows = wc('climbRows').map(([cls, bg, b, t, s, hard]) => `<button type="button" class="li cli" data-act="say424c" data-v="climb"><span class="cbadges"><span class="badge${cls === 1 ? ' ink' : ''}" style="background:${bg}">${esc(b)}</span>${hard ? `<em class="ctag">${esc(wc('hardestTag'))}</em>` : ''}</span><span class="li-main"><b>${esc(t)}</b><span>${esc(s)}</span></span></button>`).join('');
+  return `<section class="csec" aria-label="${esc(wc('climbs'))}"><div class="sec-h">${esc(wc('climbs'))} <span class="badge b2">3</span><span class="csum">${esc(wc('climbsSum'))}</span></div><div class="clist">${rows}</div></section>`;
+}
+function onRouteC() {
+  const bd = (WC[LANG] && WC[LANG].bd) || WC.en.bd;
+  const kind = ([name, sel, items]) => `<div class="bd-kind"><button type="button" class="bd-title" aria-pressed="${sel}" data-act="say424c" data-v="bd"><span class="bd-heading"><span>${esc(name)}</span><span class="bd-active">${esc(sel ? wc('selected') : wc('useColours'))}</span></span><span class="bd-bar">${items.map(([c, , d]) => `<span style="background:${c};flex:${parseFloat(d) * (/km/.test(d) ? 1000 : 1)}"></span>`).join('')}</span></button><div class="bd-legend">${items.map(([c, l, d]) => `<div class="bd-item"><i style="background:${c}"></i><span>${esc(l)}</span><b>${esc(d)}</b></div>`).join('')}</div></div>`;
+  return `<section class="csec" aria-label="${esc(wc('onRoute'))}"><div class="sec-h">${esc(wc('onRoute'))} <span class="badge b2">7</span></div><div class="breakdown">${bd.map(([g, kinds]) => `<div class="bd-group"><div class="bd-gh">${esc(g)}</div>${kinds.map(kind).join('')}</div>`).join('')}</div></section>`;
+}
+// Go: setting off. Leave ›, There at, where the time goes (open), Your speed ›; Departure & weather and Take it along whole
+function goC(st, desk) {
+  const S = st.uc ? UC[st.uc].stats : SPORTS[st.sport].stats, set = !!st.leaveC, d = set ? new Date(st.leaveC) : null, far = set && pastC(d);
+  const days = st.uc && UC[st.uc].sections[0].day ? UC[st.uc].sections.length : 1;
+  const end = set && days === 1 ? (() => { const e = new Date(d.getTime() + durMin424(S.t) * 60000); return `${p2c(e.getHours())}:${p2c(e.getMinutes())}`; })() : (st.uc ? UC[st.uc].sections.slice(-1)[0].pts.slice(-1)[0].tm : '07:46');
+  const endDay = set ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + days - 1) : null;
+  const tt = wc('timeRows').map(([a, b, c, dd, cls]) => `<div class="speed-row${cls ? ` ${cls}` : ''}"><span>${esc(a)}</span><b>${esc(b)}</b><b>${esc(c)}</b><small>${esc(dd)}</small></div>`).join('');
+  const sp = sport424(st);
+  // a trip that runs past the forecast: the forecast as far as it reaches, then said in words; past three days, less certain
+  const part = st.noFc ? `<p class="cnofc">${ic('weather', 16)}<span><b>${esc(wc('noFcFrom')(st.noFc.km, st.noFc.at))}</b> ${esc(wc('noFcFromMore'))}</span></p>` : '';
+  const less = set && aheadC(d) > 3 && !far ? `<p class="note424">${esc(wc('lessSure'))}</p>` : '';
+  const wx = far ? `<p class="sun-line">${ic('weather', 15)} ${esc(wc('sunFar'))}</p><p class="cnofc">${ic('weather', 16)}<span>${esc(wc('noFc')(dayC(d)))}</span></p><p class="note424">${esc(wc('darkStill'))}</p>`
+    : `<p class="sun-line">${ic('weather', 15)} ${esc(wc('sun'))}</p><div class="wind-body"><div class="wind-now"><span class="wind-arrow" style="transform:rotate(135deg)">↑</span><span><b>${esc(wc('windB'))}</b>${esc(wc('windRest'))}</span><span class="pill ok">${esc(wc('breezy'))}</span></div>
+      <div class="wx-sum"><span><b>${esc(wc('temp'))}</b></span><button type="button" class="link" data-act="say424c" data-v="wxlink">${esc(wc('rain'))}</button></div>
+      <div class="exposure"><span class="ex-item"><i style="background:#ef4444;width:50%"></i>${esc(wc('head'))}</span><span class="ex-item"><i style="background:#f59e0b;width:50%"></i>${esc(wc('cross'))}</span></div>
+      <button type="button" class="link" data-act="say424c" data-v="head">${esc(wc('strongest'))}</button>
+      <div class="hours">${[['01:00', 4, 135], ['02:00', 4, 135], ['04:00', 3, 160], ['06:00', 3, 180], ['08:00', 3, 180], ['10:00', 4, 150], ['12:00', 2, 200], ['14:00', 2, 200]].map(([t, s, r]) => `<span class="hour"><i style="display:inline-block;transform:rotate(${r}deg)">↑</i><b>${s}</b><small>${t}</small></span>`).join('')}</div>
+      <div class="wx-links">${wc('links').map((l) => `<button type="button" class="link" data-act="say424c" data-v="wxlink">${esc(l)}</button>`).join('')}</div></div>`;
+  return `${leaveRowC(st)}
+    <div class="time-head cthere"><b>${esc(set && (aheadC(d) > 0 || days > 1) ? wc('thereDay')(end, dayC(endDay)) : wc('there')(end))}</b><span>${esc(wc('onWay')(S.t))}</span></div>
+    <div class="speed-table">${tt}</div>
+    <div class="crows">${list5([item5('speedgo', 'speed', wc('speed'), (w4('speedS') || {})[sp] || w4('speedS').mtb, { val: wc('speedV'), chev: true })])}</div>
+    <section class="csec" aria-label="${esc(wc('depWx'))}"><div class="sec-h">${esc(wc('depWx'))}</div><h4 class="csub">${esc(wc('wxRoute'))}</h4>${part}${less}${wx}</section>
+    <section class="csec" aria-label="${esc(wc('take'))}"><div class="sec-h">${esc(wc('take'))}</div><div class="take-along">${wc('takeB').map(([k, icn, l]) => (k === 'link' && set ? `<button type="button" class="btn ctwo" data-act="say424" data-v="${k}" aria-label="${esc(wc('shareAria'))}">${ic(icn, 16)}<span><span>${esc(l)}</span><small>${esc(wc('shareIncl')(`${dayC(d)}, ${p2c(d.getHours())}:${p2c(d.getMinutes())}`))}</small></span></button>` : `<button type="button" class="btn" data-act="say424" data-v="${k}">${ic(icn, 16)} ${esc(l)}</button>`)).join('')}</div></section>`;
+}
+// Layers' full panel, with the route's group where the marks' settings go (the rest of the groups as they are, folded here)
+function layersC(st, desk) {
+  const marks = st.marks424 || { km: true };
+  return `<div class="pl lay424" role="dialog" aria-label="${esc(wc('layers'))}"${desk ? '' : ' style="height:calc(100% - 72px)"'}>${desk ? '' : '<span class="grab" aria-hidden="true"></span>'}
+    <div class="backbar toprow"><button type="button" class="tbtn" data-act="say424c" data-v="change" aria-label="Back to the quick layers">${ic('left', 20)}</button><b class="wayname">${esc(wc('layers'))}</b><span class="spacer"></span><button type="button" class="tbtn" data-act="layersx" aria-label="Close">${ic('close', 20)}</button></div>
+    <div class="body" data-body>
+      <div class="lmapfor">${ic('bike', 18)}<span><b>${esc(wc('mapFor'))} ${esc(sL('mtb'))}</b><small>${esc(wc('mapForSub'))}</small></span><button type="button" class="btn small quiet" data-act="say424c" data-v="change">${esc(wc('change'))}</button></div>
+      <details class="lg" open><summary><span>${esc(wc('onNow'))}</span><em>${esc(wc('on6'))}</em></summary><div class="on-chips">${wc('onChips').map((c) => `<span class="on-chip">${esc(c)} ×</span>`).join('')}</div></details>
+      <details class="lg lg-new" open><summary><span>${esc(wc('yourRoute'))}</span><em class="lnew">${esc(wc('yourRouteNew'))}</em></summary>
+        <div class="c2-list">${wc('marks').map(([k, l, s]) => `<label class="c2-item c2-tg" data-act="mark424" data-v="${k}" role="switch" aria-checked="${!!marks[k]}" tabindex="0"><span><b>${esc(l)}</b><small>${esc(s)}</small></span><i class="${marks[k] ? 'on' : ''}" aria-hidden="true"></i></label>`).join('')}</div><p class="note424">${esc(wc('yourRouteNote'))}</p></details>
+      ${wc('groups').map((g) => `<details class="lg"><summary><span>${esc(g)}</span></summary><p class="note424">(As the app has it.)</p></details>`).join('')}</div></div>`;
+}
+
+// #424, C: the profile coloured by the wind, its part past the forecast grey and saying so (2026-10-24)
+function profileWind424(st) {
+  const pts = [100, 104, 112, 118, 116, 124, 132, 128, 136, 141, 138, 130, 118, 104, 101, 103, 102, 104, 108, 106, 103];
+  const W = 340, H = 80, step = W / (pts.length - 1), y = (q) => H - (q - 96) / 50 * H, cut = st.noFc ? st.noFc.frac * W : W;
+  const wind = ['#22c55e', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f59e0b', '#ef4444', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#22c55e', '#84cc16', '#eab308', '#eab308', '#84cc16', '#22c55e', '#22c55e', '#84cc16', '#84cc16'];
+  const bars = pts.slice(1).map((q, i) => `<path d="M${i * step} ${H} L${i * step} ${y(pts[i])} L${(i + 1) * step} ${y(q)} L${(i + 1) * step} ${H}Z" fill="${(i + 0.5) * step > cut ? '#b8bfbb' : wind[i]}" opacity=".85"/>`).join('');
+  const label = st.noFc ? `<span class="pnofc">${esc(wc('noFcProfile'))}</span>` : '';
+  return `<div class="prof"><div class="prof-top">Colour by <span class="sel" style="height:36px">Wind ${ic('down', 14)}</span>
+    <label class="sw"><span>On map</span><i role="switch" aria-checked="false" tabindex="0" aria-label="Colour the route on the map"></i></label></div>
+    <div class="pwrap"><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Profile coloured by the wind${st.noFc ? `; no forecast yet from km ${st.noFc.km}` : ''}">${bars}${st.noFc ? `<line x1="${cut}" y1="0" x2="${cut}" y2="${H}" stroke="#56625c" stroke-width="1.5" stroke-dasharray="3 3"/>` : ''}</svg>${label}</div></div>`;
+}
 // the sheet (phone) and the panel (desktop)
 function plannerHtml(st, v, desk, docked) {
+  if (st.layersC && st.stage === 'route') return layersC(st, desk); // (#424, C: Layers' full panel, with the route's group)
   const grab = desk ? '' : `<button type="button" class="grab" data-act="grab" aria-label="Planner size: ${st.sheet}. Press to change"></button>`;
   const dock = docked ? `<div class="dockbox" role="toolbar" aria-label="Drawing tools">${phoneToolbox(st, v)}</div>` : '';
   if (st.stage === 'start') {
@@ -2646,8 +3286,9 @@ function plannerHtml(st, v, desk, docked) {
     : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>`;
   const big = desk || (st.sheet !== 'peek' && !stepping && !pcarding);
   const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
-  const body = st.tab === 'check' ? checkBody(st, v) : st.tab === 'go' ? goBody(st) : st.uc ? sectionsHtml(st, v, desk) : wpList(st, v);
-  return `<div class="pl${desk && !viewing ? ' joined' : ''}${(stepping || pcarding) && v.look === 'r5' ? ' card-in' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
+  // (#424: the Route and Go tabs as they are, or as proposed; goBody() is the approved design of 2026-10-18, kept for the frames before C)
+  const body = st.tab === 'check' ? checkBody(st, v) : st.tab === 'go' ? (v.tabs === 'c' ? goC(st, desk) : v.tabs === 'new' ? goNew424(st) : st.uc ? goToday424(st) : goBody(st)) : routeBody424(st, v, desk);
+  return `<div class="pl${desk && !viewing ? ' joined' : ''}${(stepping || pcarding) && v.look === 'r5' ? ' card-in' : ''}" role="region" aria-label="Route planner${viewing ? ': your route' : ''}" ${style}>${grab}${dock}${head}${big ? `${profile(desk, st)}${tabs(st, v)}<div class="body" data-body>${body}</div>` : ''}</div>`;
 }
 function deskToolbar(st, v, compact = 0) {
   const route = st.stage === 'route', sep = '<span class="sep" aria-hidden="true"></span>';
@@ -2705,6 +3346,7 @@ const tipHtml = (k, x, y) => { const [i, b, kbd, d] = TIPS[k]; return `<div clas
 // ------------------------------------------------ render one frame
 function render(f) {
   const { el, st } = f;
+  NOW_CUR = st.nowC ? new Date(st.nowC) : NOWC; // (#424, C: a frame's own now)
   const v = view(st);
   LANG = v.lang;
   const desk = el.classList.contains('desk');
@@ -2831,6 +3473,11 @@ function render(f) {
   // keep a long list's selected row in view
   const bodyEl = scr.querySelector('[data-body]');
   if (bodyEl && st._scroll != null) bodyEl.scrollTop = st._scroll;
+  if (bodyEl && st.scrollC) { const g = bodyEl.querySelector(st.scrollC), zk = scr.getBoundingClientRect().width / scr.offsetWidth; if (g) bodyEl.scrollTop += (g.getBoundingClientRect().top - bodyEl.getBoundingClientRect().top) / zk - 4; st.scrollC = null; st._scroll = bodyEl.scrollTop; }
+  // #424: at 200 % the whole sheet scrolls; a frame can open at the tab's body
+  if (st.bodyTop && bodyEl) { const pl = scr.querySelector('.pl'), zk = scr.getBoundingClientRect().width / scr.offsetWidth; pl.scrollTop += (bodyEl.getBoundingClientRect().top - pl.getBoundingClientRect().top) / zk - 8; st.bodyTop = false; }
+  // #424: How you go opens at the part that was tapped; today's fold comes into sight when it opens
+  if (bodyEl && st.howTo) { const g = bodyEl.querySelector(st.howTo === 'speed' ? '#how-speed' : st.howTo === 'fold' ? '#how-fold' : '.how424'), zk = scr.getBoundingClientRect().width / scr.offsetWidth; if (g) bodyEl.scrollTop += (g.getBoundingClientRect().top - bodyEl.getBoundingClientRect().top) / zk - 4; st.howTo = null; st._scroll = bodyEl.scrollTop; }
   if (bodyEl && st.long && st._reveal) { const r = bodyEl.querySelector('.wpsel'); if (r) r.scrollIntoView({ block: 'center' }); st._reveal = false; }
 }
 function box(el, scr) {
@@ -2944,6 +3591,27 @@ function act(f, a, val, ev) {
     case 'nlspeed': st.nlSpeed = !st.nlSpeed; st.nlOpen = false; break;
     case 'nlpick': st.nlOpen = false; if (val !== nextOf(st)) { toNext(val); toast('spnext'); } break; // as "Only the legs you draw next"
     case 'gospeed': st.goSpeed = !st.goSpeed; break;
+    // #424 (2026-10-23, to choose): the strip, How you go, and Go's own controls
+    case 'how424': st.how = val; st.howTo = val; break;
+    case 'howback424': st.how = null; st._scroll = 0; break;
+    case 'howtoday424': st.tab = 'route'; st.howOpen = true; st.howTo = 'fold'; if (st.sheet === 'peek') st.sheet = 'half'; break;
+    case 'howfold': st.howOpen = !st.howOpen; if (st.howOpen) st.howTo = 'fold'; break;
+    case 'howcount424': st.howCount = !st.howCount; break;
+    case 'climb424': case 'say424': { const s5 = w4('say')[a === 'climb424' ? 'climb' : val] || [String(val), false]; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); break; }
+    case 'ctl424': { const [k, i] = String(val).split(':'); st.ctl424 = { ...(st.ctl424 || {}), [k]: +i }; const s5 = w4('say').ctl; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); break; }
+    case 'spd424': { st.spd424 = +val; const s5 = w4('say').spd; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); break; }
+    case 'craft424': st.craft424 = +val; break;
+    case 'timed424': st.tab = 'route'; st.how = 'speed'; st.howTo = 'speed'; break;
+    case 'lday424': st.lday424 = val; break;
+    case 'lt424': { const d = st.lday424 || 'today'; st.lat424 = addMin424(st.lat424 || (d === 'tomorrow' ? '08:00' : '10:30'), +val, d === 'today' ? 615 : 0); break; }
+    // #424, C (2026-10-24)
+    case 'howc': st.how = val; st._scroll = 0; break;
+    case 'speedgo': st.tab = 'route'; st.how = 'speed'; st._scroll = 0; break;
+    case 'leavec': { const x = f.el.querySelector('.screen input[data-in="leavec"]'); try { x.showPicker(); return; } catch { const s5 = wc('say').pick; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); } break; }
+    case 'leavenowc': st.leaveC = null; break;
+    case 'layersx': st.layersC = false; break;
+    case 'say424c': { const s5 = wc('say')[val] || [String(val), false]; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); break; }
+    case 'mark424': { const m = st.marks424 || { km: true }; st.marks424 = { ...m, [val]: !m[val] }; break; }
     case 'keepsport': close(); break;
     case 'paddlehere': toNext('paddle'); toast(null); break;
     case 'trip': st.pop = st.pop === 'trip' ? null : 'trip'; break;
@@ -2962,7 +3630,7 @@ function act(f, a, val, ev) {
     case 'close': close(); st.mode = 'closed'; if (st.stage !== 'start') toast('closed'); break; // the note only when there's a point to keep
     case 'reopen': st.mode = st.stage === 'route' ? 'view' : 'edit'; st.toast = null; break;
     case 'grab': st.sheet = { peek: 'half', half: 'full', full: 'peek' }[st.sheet]; close(); break;
-    case 'tab': st.tab = val; if (st.sheet === 'peek') st.sheet = 'half'; break;
+    case 'tab': st.tab = val; st.how = null; if (st.sheet === 'peek') st.sheet = 'half'; break;
     case 'tocheck': st.tab = 'check'; st.sheet = 'half'; break;
     case 'depart': st.tab = 'go'; if (st.sheet === 'peek') st.sheet = 'half'; break;
     case 'clear': close(); change(f, () => { st.stage = 'start'; st.mode = 'edit'; st.sheet = 'peek'; }); toast('cleared', 7000); break;
@@ -3043,6 +3711,15 @@ for (const el of document.querySelectorAll('.fr')) {
     if (k === 'mv') { const n = parseInt(e.target.value, 10); if (n >= 0) f.st.mvTo = Math.min(n, f.st.wps.length - 1); }
   });
   scr.addEventListener('scroll', (e) => { if (e.target.matches && e.target.matches('[data-body]')) f.st._scroll = e.target.scrollTop; }, true);
+  // #424, C: a tap on a row's own picker opens the phone's (and a mouse's click, where the browser has showPicker())
+  scr.addEventListener('click', (e) => { const x = e.target.closest('input[data-pick]'); if (x) try { x.showPicker(); } catch { /* the phone opens its own */ } }, true);
+  // #424: a time picked in the phone's own field; a speed typed makes it Custom
+  scr.addEventListener('change', (e) => {
+    const k = e.target.dataset.in;
+    if (k === 'lt424' && /^\d\d:\d\d/.test(e.target.value)) { const tm = e.target.value.slice(0, 5); if ((f.st.lday424 || 'today') === 'today' && tm < '10:15') f.st.lday424 = 'tomorrow'; f.st.lat424 = tm; render(f); }
+    if (k === 'spd424') { f.st.spd424 = 3; act(f, 'say424', 'field'); }
+    if (k === 'leavec' && /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(e.target.value)) { f.st.leaveC = e.target.value.slice(0, 16); render(f); }
+  });
   // desktop: tooltips after a short wait, then at once for the next one (emil-design-eng); keyboard focus shows them too
   if (el.classList.contains('desk')) {
     let tm = 0, warm = 0;
@@ -3085,6 +3762,7 @@ document.querySelector('.picker').addEventListener('click', (e) => {
   OPT[k] = k === 'worst' ? b.dataset.v === '1' : b.dataset.v;
   if (k === 'worst' || k === 'lang' || k === 'theme') touched = true;
   if (k === 'modes' || k === 'rt') for (const f of FR.values()) { delete f.st.modes; delete f.st.rtui; }
+  if (k === 'tabs') for (const f of FR.values()) { delete f.st.tabs; f.st.how = null; f.st.layersC = false; }
   if (k === 'wv') for (const f of FR.values()) { delete f.st.wv; f.st.pcard = f.st.psel != null ? 'point' : null; f.st.pleg = false; f.st.pedit = false; }
   if (k === 'sport') for (const f of FR.values()) { delete f.st.sportopt; if (f.st.sp === 'scope' && b.dataset.v !== 'ask') { f.st.sp = 'list'; f.st.spPick = null; } }
   renderAll();
