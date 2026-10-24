@@ -26,7 +26,7 @@ export const WAY_NAMES = {
   tertiary: 'Local road', secondary: 'Regional road', primary: 'Main road', trunk: 'Highway', motorway: 'Motorway',
 };
 
-const OSM_KEYS = [
+export const OSM_KEYS = [
   ['name', 'Name'], ['highway', 'Type'], ['surface', 'Surface'], ['smoothness', 'Smoothness'], ['tracktype', 'Track grade'],
   ['mtb:scale', 'MTB difficulty'], ['mtb:scale:uphill', 'MTB uphill'], ['mtb:scale:imba', 'IMBA'], ['sac_scale', 'Hiking (SAC)'],
   ['trail_visibility', 'Trail visibility'], ['width', 'Width'], ['incline', 'Incline'], ['bicycle', 'Bicycle'], ['foot', 'Foot'],
@@ -279,24 +279,14 @@ function renderWay(body, f, feats, ll, mtb, open = null, bike = false) {
       btn.disabled = true;
       btn.textContent = 'Loading OSM details…';
       try {
-        // a trail drawn from OSM knows its way; otherwise the nearest way to the click
-        const q = wp.osm ? `[out:json][timeout:15];way(${wp.osm});out tags geom;` : `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
-        const json = await overpass(q, { race: true });
-        const ways = (json.elements || []).filter((w) => w.geometry);
-        if (!ways.length) { btn.textContent = 'No OSM way found here'; return; }
-        const near = ways.map((w) => {
-          const g = w.geometry.map((c) => [c.lon, c.lat]);
-          let d = Infinity;
-          for (let i = 1; i < g.length; i++) d = Math.min(d, pointSegment(ll, g[i - 1], g[i]).d);
-          return { w, d, len: g.reduce((s, c, i) => (i ? s + dist(g[i - 1], c) : 0), 0) };
-        }).sort((a, b) => a.d - b.d)[0];
+        const near = await wayNear(ll, wp.osm);
+        if (!near) { btn.textContent = 'No OSM way found here'; return; }
         btn.remove();
-        const t = near.w.tags || {};
-        for (const [k, label] of OSM_KEYS) if (t[k]) more.append(row(label, t[k]));
+        for (const [k, label] of OSM_KEYS) if (near.tags[k]) more.append(row(label, near.tags[k]));
         more.append(row('Length', `${Math.round(near.len)} m`));
         more.append(h('div', { class: 'insp-links' },
-          h('a', { href: `https://www.openstreetmap.org/way/${near.w.id}`, target: '_blank', rel: 'noopener', html: `OSM way ${near.w.id} ${icon('external', 13)}` }),
-          h('a', { href: `https://www.openstreetmap.org/edit?way=${near.w.id}`, target: '_blank', rel: 'noopener', html: `Improve it ${icon('external', 13)}` })));
+          h('a', { href: `https://www.openstreetmap.org/way/${near.id}`, target: '_blank', rel: 'noopener', html: `OSM way ${near.id} ${icon('external', 13)}` }),
+          h('a', { href: `https://www.openstreetmap.org/edit?way=${near.id}`, target: '_blank', rel: 'noopener', html: `Improve it ${icon('external', 13)}` })));
       } catch {
         btn.disabled = false;
         btn.textContent = 'Overpass is busy — try again';
@@ -305,6 +295,22 @@ function renderWay(body, f, feats, ll, mtb, open = null, bike = false) {
   }, 'Show all OSM tags (sac_scale, uphill, visibility…)');
   more.append(btn);
   body.append(more);
+}
+
+// OpenStreetMap's way at a spot, asked once (Overpass): the way given (a trail drawn from OSM knows its own), else the
+// nearest one with a highway tag within 12 m. { id, tags, len } or null.
+export async function wayNear(ll, osm = null) {
+  const q = osm ? `[out:json][timeout:15];way(${osm});out tags geom;` : `[out:json][timeout:15];way(around:12,${ll[1]},${ll[0]})[highway];out tags geom;`;
+  const json = await overpass(q, { race: true });
+  const ways = (json.elements || []).filter((w) => w.geometry);
+  if (!ways.length) return null;
+  const near = ways.map((w) => {
+    const g = w.geometry.map((c) => [c.lon, c.lat]);
+    let d = Infinity;
+    for (let i = 1; i < g.length; i++) d = Math.min(d, pointSegment(ll, g[i - 1], g[i]).d);
+    return { id: w.id, tags: w.tags || {}, d, len: g.reduce((s, c, i) => (i ? s + dist(g[i - 1], c) : 0), 0) };
+  }).sort((a, b) => a.d - b.d)[0];
+  return near;
 }
 
 // What trail details know about a trail (js/trails.js), without asking Overpass.
