@@ -391,7 +391,7 @@ const inspector = initInspector(map, {
   // Check's markers on the route with the planner put away: their card first (25d part 3)
   headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10),
   openHead: (f) => planner.openHead(f),
-  openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openLegMenu(leg, lngLat), 60); }, // (the same click mustn't add a point too)
+  openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openRouteCard(leg, lngLat), 60); }, // (the same click mustn't add a point too)
   lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),

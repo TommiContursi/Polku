@@ -19,10 +19,10 @@ import { isNight, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripD
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
-import { keepInView } from './inspect.js';
+import { keepInView, wayNear, OSM_KEYS } from './inspect.js';
 import { CardHost, item, rows } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -50,8 +50,8 @@ const TIPS = {
   sport: { name: 'Sport', text: 'The sport for the legs you draw next, and your speed in it. Legs already drawn keep theirs.' },
   undo: { name: 'Undo', keys: 'Ctrl Z', text: 'Takes back the last change.' },
   redo: { name: 'Redo', keys: 'Ctrl Shift Z', text: 'Does it again.' },
-  reverse: { name: 'Reverse', text: 'The finish becomes the start; each leg keeps its mode and style.' },
-  backToStart: { name: 'Back to start', text: 'A leg from the finish back to where you started.' },
+  reverse: { name: 'Reverse', text: 'The end becomes the start; each leg keeps its mode and style.' },
+  backToStart: { name: 'Back to start', text: 'A leg from the end back to where you started.' },
   fit: { name: 'Show the whole route', keys: 'F', text: 'Frames the whole route on the map, clear of the planner.' },
   share: { name: 'Share link', text: 'Copies a link to this route.' },
   gpx: { name: 'Export GPX', text: 'A file of the route for a GPS watch or another app.' },
@@ -414,7 +414,7 @@ export class Planner {
     return j;
   }
 
-  label(i) { return i === 0 ? 'Start' : i === this.points.length - 1 ? 'Finish' : `Via ${i}`; }
+  label(i) { return i === 0 ? 'Start' : i === this.points.length - 1 ? 'End' : `Via ${i}`; } // (End, not Finish, on every card and note: #353)
 
   // the road or path a point is on: from Valhalla's tags if it routed a leg there, else the map tiles
   autoName(i) {
@@ -423,7 +423,7 @@ export class Planner {
     return t ? t.name : this.roads.nameAt(this.points[i], 30);
   }
 
-  /** What to call point i: your name, else the road it's on, else Start / Via n / Finish. */
+  /** What to call point i: your name, else the road it's on, else Start / Via n / End. */
   nameOf(i) { return this.pname.get(this.points[i]) || this.autoName(i) || this.label(i); }
 
   setName(i, name) {
@@ -2635,7 +2635,7 @@ export class Planner {
     if (this.popupAtPress) { this.popupAtPress = false; this.cards.close(); return; }
     // a quick tap on the line that a busy page took for a hold: that part's menu, though the map
     // may not have redrawn the route without the hold's split yet (#293)
-    if (tl && Date.now() - tl.at < 1000 && this.legs[tl.li]) { this.openLegMenu(tl.li, e.lngLat); this.autoPeek(); return; }
+    if (tl && Date.now() - tl.at < 1000 && this.legs[tl.li]) { this.openRouteCard(tl.li, e.lngLat); return; }
     const touch = this.isTouch();
     const r = touch ? 12 : 6;
     // Map taps inside a way to begin belong to it (A): in the round trip a tap picks a loop or sets the start
@@ -2663,10 +2663,10 @@ export class Planner {
     if (this.inView()) return;
     const hit = this.map.queryRenderedFeatures([[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     const ll = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
-    // the line itself: a click or a tap gets that part's menu, mouse and finger alike (a point
-    // added by mistake is easy, and there's more to do with a part of the route than add one);
-    // "Add a point here" comes first in it, and a drag still reshapes the route
-    if (hit && !hit.properties.loading) this.openLegMenu(hit.properties.leg, e.lngLat);
+    // the line itself: a click or a tap shows the route's card there, mouse and finger alike (a point added by mistake
+    // is easy, and most taps on the route are to check something); "Add a point here" is at the spot, and a drag still
+    // reshapes the route (25d's 1b)
+    if (hit && !hit.properties.loading) { this.openRouteCard(hit.properties.leg, e.lngLat); return; }
     else {
       const wet = this.points.length > 0 && this.onOpenWater(e.point); // (a first point has no leg to get there by)
       this.addPoint(ll); // (the first point's peek offers a round trip from it: #232)
@@ -2839,7 +2839,7 @@ export class Planner {
     const loops = roundTripSports.includes(this.app.activity());
     this.els.pointsFoot.replaceChildren(...[
       loops ? h('button', { type: 'button', class: 'btn', title: 'Loops of the length you choose, from your start', onclick: () => this.openLoop(), html: `${icon('roundtrip', 16)} Round trip` }) : null,
-      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The finish becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
+      n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The end becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.backToStart(), html: `${icon('loop', 16)} Back to start` }) : null,
       h('button', { type: 'button', class: 'btn', title: 'Import a GPX or KML file (or drop it on the map)', onclick: () => $('#file-input').click(), html: `${icon('upload', 16)} Import` }),
       // each leg's routing and style, between its points (folded away by default)
@@ -2853,7 +2853,7 @@ export class Planner {
       const auto = this.autoName(i);
       const input = ro ? h('b', { class: 'wpl-name' }, own || auto || this.label(i)) : h('input', {
         class: 'wpl-name', type: 'text', value: own, placeholder: auto || this.label(i), maxlength: 60, spellcheck: 'false',
-        'aria-label': `Name of ${i === 0 ? 'the start' : last ? 'the finish' : `via point ${i}`}`,
+        'aria-label': `Name of ${i === 0 ? 'the start' : last ? 'the end' : `via point ${i}`}`,
         onclick: (e) => e.stopPropagation(),
         onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); else if (e.key === 'Escape') { e.target.value = own; e.target.blur(); } },
         onblur: (e) => this.setName(i, e.target.value),
@@ -3021,7 +3021,7 @@ export class Planner {
       });
       m.on('drag', () => { const ll = m.getLngLat(); this.editTo([+ll.lng.toFixed(6), +ll.lat.toFixed(6)]); });
       m.on('dragend', () => this.endEdit());
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openLegMenu(li, { lng: mid[0], lat: mid[1] }); });
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); if (Date.now() >= this.noClickUntil) this.openRouteCard(li, mid); });
       this.ghosts.push(m);
     });
     this.fitGhosts();
@@ -3236,45 +3236,168 @@ export class Planner {
     return moved;
   }
 
-  // A part of the route (one leg), clicked, tapped or right-clicked: what you can do
-  // with it there. Adding a point comes first; then the leg's own settings (its sport,
-  // how it's routed, its style), avoiding the spot, and finding it on the profile.
-  openLegMenu(li, lngLat) {
+  // ---------------------------------------------------------------- the route's card and its stretches (25d's 1b)
+  // A tap on the route (25d's 1b, #345): its card, at the spot. `ll` a [lng, lat] or MapLibre's LngLat. It replaces the
+  // leg's menu: every action of it is on the route's card, This stretch, or Edit this stretch.
+  openRouteCard(li, ll, { from = 'map' } = {}) {
+    if (!this.legs[li]) return;
     if (this.menu) this.menu.remove();
-    const leg = this.legs[li];
-    if (!leg) return;
-    const ll = [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)];
-    const sp = this.legSport(li);
-    const from = this.lengthTo(li), len = this.lengthTo(li + 1) - from;
-    const act = (ic, label, title, fn, cls = 'btn') => h('button', { type: 'button', class: cls, title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
-    const body = h('div', { class: 'pt-menu' },
-      h('div', { class: 'pt-head' },
-        h('div', { class: 'pt-title' }, `${this.nameOf(li)} → ${this.nameOf(li + 1)}`),
-        h('div', { class: 'pt-sub' }, `${ACTIVITIES[sp].label} · ${fmtDist(len)} · from km ${(from / 1000).toFixed(1)}`)),
-      act('plus', 'Add a point here', 'A via point at this spot: drag it to change the way', () => { this.setEditing(true); this.insertPoint(li, ll); }, 'btn primary'),
-      h('div', { class: 'pt-label' }, 'This part'),
-      this.legSportPicker(li, () => this.menu.remove()),
-      leg.mode === 'fixed'
-        ? h('div', { class: 'pt-sub' }, leg.src ? 'A LIPAS route: its own line' : 'An imported track: its own line')
-        : h('div', { class: 'seg small' }, ...['auto', 'line', 'water'].map((m) =>
-          h('button', { type: 'button', 'aria-pressed': String(leg.mode === m), title: MODE_LABEL[m], onclick: () => { this.menu.remove(); this.setLegMode(li, m); }, html: `${icon(MODE_ICON[m], 16)}<span>${MODE_SHORT[m]}</span>` }))),
-      leg.mode === 'auto' || leg.mode === 'water' ? this.legStylePicker(li, () => this.menu.remove()) : null,
-      leg.mode === 'auto' && leg.status === 'ok' && leg.result && leg.result.provider !== 'valhalla' ? act('route', 'Other ways', 'Up to two other ways for this part, on the map (up to 2 routing calls)', () => this.offerAlts(li, true)) : null,
-      h('div', { class: 'pt-row' },
-        act('pause', 'Stop here', 'A break or a night at this spot: a point with a stop', () => this.stopHere(li, ll)),
-        act('close', 'Avoid this spot', 'The route goes around it (40 m)', () => this.addNogo(ll, 40, 'Avoided place'))),
-      this.analysis ? act('mountain', 'On the profile', 'Zoom the profile to this part', () => this.showLegOnProfile(li)) : null);
-    this.menu = new maplibregl.Popup({ offset: 10, closeButton: true, maxWidth: '320px', className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
-    this.keepMenuInView();
+    this.stopPicking();
+    const at = Array.isArray(ll) ? ll : [+ll.lng.toFixed(6), +ll.lat.toFixed(6)];
+    this.cards.open(routeCard(this, li, at), { at, from });
+  }
+  // a stretch's card (from a point's Next stretch, the list); `edit`: straight to Edit this stretch
+  openStretchCard(s, { edit = false, at = null, from = 'map' } = {}) {
+    if (!this.legs[s.from]) return;
+    if (this.menu) this.menu.remove();
+    this.stopPicking();
+    this.cards.open(edit ? editCard(this, s, { spot: at }) : stretchCard(this, s, { spot: at }), { at: at || this.stretchMiddle(s), from });
   }
 
-  // the profile zoomed to leg i (the map follows it)
-  showLegOnProfile(li) {
+  // A point you see (D): the start, the end, a stop or a night, a change of sport, a point you named, or where the legs'
+  // settings change (how they're drawn, their style, their sport). The others only shape the line.
+  keyPoint(i) {
+    const n = this.points.length;
+    if (i <= 0 || i >= n - 1) return true;
+    if (this.stopAt(i) || this.changeAt(i) || this.pname.get(this.points[i])) return true;
+    const a = this.legs[i - 1], b = this.legs[i];
+    return !a || !b || a.mode !== b.mode || (a.mode === 'fixed' && a.src !== b.src) || JSON.stringify(a.style || null) !== JSON.stringify(b.style || null) || this.legSport(i - 1) !== this.legSport(i);
+  }
+  // the stretch leg li is on: from the point you see at or before it to the next one after it (point indices)
+  stretchAt(li) {
+    let from = Math.max(0, Math.min(li, this.points.length - 2)), to = from + 1;
+    while (from > 0 && !this.keyPoint(from)) from--;
+    while (to < this.points.length - 1 && !this.keyPoint(to)) to++;
+    return { from, to };
+  }
+  // the leg the route passes a spot on (40 m at most), or null: a card at that spot finds its leg again by it
+  legNear(ll) {
+    let best = null, bd = 40;
+    this.legs.forEach((l, k) => {
+      const c = l.result ? l.result.coords : [this.points[k], this.points[k + 1]];
+      for (let j = 1; j < c.length; j++) { const d = pointSegment(ll, c[j - 1], c[j]).d; if (d < bd) { bd = d; best = k; } }
+    });
+    return best;
+  }
+  // the route at a spot: its analysis sample, how far along, the way and its tags; null while the route is worked out
+  routeSpot(ll) {
+    const a = this.analysis;
+    if (!a || !this.analysisFits()) return null;
+    const m = this.spotMemo;
+    if (m && m.a === a && m.ll === ll) return m.x;
+    const k = Math.cos((ll[1] * Math.PI) / 180);
+    let i = 0, best = Infinity;
+    for (let j = 0; j < a.pts.length; j++) { const d = ((a.pts[j][0] - ll[0]) * k) ** 2 + (a.pts[j][1] - ll[1]) ** 2; if (d < best) { best = d; i = j; } }
+    const kind = a.way[i] === 'portage' ? 'carry' : a.way[i] === 'water' ? 'open water' : a.way[i];
+    const x = { i, along: a.along[i], kind, name: ['straight line', 'water'].includes(a.way[i]) ? '' : this.roadAt(i), tags: (a.attr[i] && a.attr[i].tags) || {} };
+    this.spotMemo = { a, ll, x };
+    return x;
+  }
+  // when you'd be at analysis sample i (epoch seconds), or null
+  atSample(i) {
+    const a = this.analysis, tAt = a && (a.tAtWind || a.tAt);
+    return tAt ? (a.wind ? a.wind.startSec : this.startSec()) + tAt[i] : null;
+  }
+  // a stretch's distance, moving time and climb, from the analysis (null while it's worked out)
+  stretchNums(s) {
+    const a = this.analysis;
+    if (!a || !this.analysisFits()) return null;
+    const m0 = this.lengthTo(s.from), m1 = this.lengthTo(s.to), tAt = a.tAtWind || a.tAt;
+    let k0 = 0;
+    while (k0 < a.along.length - 1 && a.along[k0] < m0 - 1) k0++;
+    let k1 = k0;
+    while (k1 < a.along.length - 1 && a.along[k1] < m1 - 1) k1++;
+    let wait = 0;
+    for (let k = k0 + 1; k <= k1; k++) wait += a.waitAt ? a.waitAt[k] : 0;
+    // the climb as the route's: 2 m before it counts, nothing on open water, unknown where the terrain is
+    let up = 0, ref = a.ele[k0], gap = false;
+    for (let k = k0 + 1; k <= k1; k++) {
+      if (a.eleGap && a.eleGap[k]) gap = true;
+      if (a.surf[k] === 'water') { ref = a.ele[k]; continue; }
+      if (a.ele[k] - ref > 2) { up += a.ele[k] - ref; ref = a.ele[k]; } else if (ref - a.ele[k] > 2) ref = a.ele[k];
+    }
+    return { len: m1 - m0, sec: Math.max(0, tAt[k1] - tAt[k0] - wait), up: gap && !up ? null : up };
+  }
+  // the middle of a stretch along its line, for its card's place when it wasn't opened at a spot
+  stretchMiddle(s) {
+    const c = this.legs.slice(s.from, s.to).flatMap((l, k) => (l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]));
+    let L = 0;
+    for (let j = 1; j < c.length; j++) L += dist(c[j - 1], c[j]);
+    let at = L / 2;
+    for (let j = 1; j < c.length; j++) { const d = dist(c[j - 1], c[j]); if (at <= d) { const f = d ? at / d : 0; return [+(c[j - 1][0] + (c[j][0] - c[j - 1][0]) * f).toFixed(6), +(c[j - 1][1] + (c[j][1] - c[j - 1][1]) * f).toFixed(6)]; } at -= d; }
+    return this.points[s.from];
+  }
+  // what Check has on a stretch, the most serious first, then along the route (a whole route's isn't on one stretch)
+  itemsOn(s) {
+    if (!this.analysis || !s) return [];
+    const a0 = this.lengthTo(s.from), a1 = this.lengthTo(s.to), rank = { read: 0, not: 1, look: 2 };
+    return (this.headsList || this.itemsAlong()).filter((x) => x.w.ranges !== null && x.w.at != null && x.w.at <= a1 && x.w.at + (x.w.len || 0) >= a0)
+      .sort((x, y) => rank[x.g] - rank[y.g] || x.w.at - y.w.at);
+  }
+
+  // Add a point here, on the route's card: a point at the spot, on its line (no routing call), one step of Undo, and a
+  // note saying where (the points' numbers)
+  addOnCard(card) {
+    const li = this.legNear(card.key);
+    if (li == null) return;
+    this.cards.close();
+    this.insertPoint(li, card.key);
+    toast(`Point added after ${li === 0 ? 'the start' : this.label(li)}`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+  }
+  // Every leg of a stretch in a sport, drawn a way, or in a style (null: the route's), in one step of Undo. In a water
+  // sport its legs go over the water, back on land they follow paths again; a fixed line keeps its line.
+  setStretch(s, { sport, mode, style } = {}) {
+    const legs = this.legs.slice(s.from, s.to);
+    if (!legs.length) return;
+    this.commit();
+    for (let k = s.from; k < s.to; k++) {
+      if (sport && this.legSport(k) !== sport) {
+        this.legInSport(k, sport);
+        const l = this.legs[k];
+        if (l.mode !== 'fixed') l.mode = isWater(sport) ? 'water' : l.mode === 'water' ? 'auto' : l.mode;
+      }
+      if (mode && this.legs[k].mode !== 'fixed' && this.legs[k].mode !== mode) this.legs[k] = { mode, style: this.legs[k].style, sport: this.legs[k].sport };
+      if (style !== undefined) this.legs[k].style = style;
+    }
+    this.update();
+  }
+  // the profile zoomed to a stretch (on a phone the card gives the peek back to the profile)
+  showStretchOnProfile(s) {
     if (!this.analysis) return;
+    if (this.cards.where() === 'peek') this.cards.close({ restore: false });
     this.reveal('profile');
     if (this.layout() === 'sheet' && this.panel.dataset.state === 'peek') this.setSheetState('half');
-    requestAnimationFrame(() => this.chart.setView([this.lengthTo(li), this.lengthTo(li + 1)], true));
+    requestAnimationFrame(() => this.chart.setView([this.lengthTo(s.from), this.lengthTo(s.to)], true));
   }
+  // Stop here: a point with a break at the spot on the line (picked on the map when the card has none), and its card
+  async stopOnStretch(card) {
+    const ll = card.spot || await this.pickOnMap(`${this.coarse() ? 'Tap' : 'Click'} where to stop`);
+    const li = ll && this.legNear(ll);
+    if (li == null) return;
+    this.cards.close();
+    this.stopHere(li, ll);
+  }
+  // Avoid this spot, or a spot picked on the map: a place the route goes around
+  async avoidOnStretch(card) {
+    const ll = card.spot || await this.pickOnMap(`${this.coarse() ? 'Tap' : 'Click'} the spot to avoid`);
+    if (!ll) return;
+    this.cards.close();
+    this.addNogo(ll, 40, 'Avoided place');
+  }
+  // What's here's All OpenStreetMap details: the way nearest the spot, asked once (Overpass), its tags as rows
+  async osmOnCard(card, ll) {
+    card.osm = { state: 'Asking OpenStreetMap…' };
+    this.cards.refresh();
+    try {
+      const w = await wayNear(ll);
+      card.osm = w ? { rows: [...OSM_KEYS.filter(([k]) => w.tags[k]).map(([k, label]) => [label, String(w.tags[k])]), ['Length', `${Math.round(w.len)} m`], ['OpenStreetMap', `way ${w.id}`]] } : { state: 'No OpenStreetMap way found here' };
+    } catch { card.osm = { state: 'OpenStreetMap didn’t answer: try again' }; }
+    if (this.cards.current === card) this.cards.refresh();
+  }
+  // Share link's line on the whole route's card: what the link carries beyond the route (#364's C adds the date)
+  shareSub() { return ''; }
+  loopsHere() { return roundTripSports.includes(this.app.activity()); }
+  importFile() { $('#file-input').click(); }
 
   // Long-press (touch) or right-click elsewhere on the map: what you can do at that spot.
   bindSpotMenu() {
@@ -3318,7 +3441,7 @@ export class Planner {
       if (Date.now() - lastTouch < 1000 || onUi(e) || (down && Math.hypot(e.point.x - down.x, e.point.y - down.y) > 4)) return;
       // on the route: that part of it
       const leg = this.active && map.getLayer('route-casing') && map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
-      if (leg && !leg.properties.loading) { this.openLegMenu(leg.properties.leg, e.lngLat); return; }
+      if (leg && !leg.properties.loading) { this.openRouteCard(leg.properties.leg, e.lngLat); return; } // (part 5: Edit this stretch)
       this.openSpotMenu(e.lngLat);
     });
     map.on('rotatestart', () => { if (this.menu && this.menu.spot) this.menu.remove(); });
@@ -3391,16 +3514,6 @@ export class Planner {
   analysisFits() {
     const a = this.analysis;
     return !!a && a.gen === this.gen && this.legs.every((l) => l.status !== 'loading' && l.result);
-  }
-
-  // Next stretch, to … ›: today's leg menu, at the middle of the leg (25d's 1b gives it a card of its own)
-  openLegAfter(i) {
-    const leg = this.legs[i];
-    if (!leg) return;
-    const c = leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]];
-    const at = c.length > 2 ? c[Math.floor(c.length / 2)] : [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
-    this.cards.close();
-    this.openLegMenu(i, { lng: at[0], lat: at[1] });
   }
 
   // Move: the card gives way to "Tap where it goes"; the next tap on the map moves the point there (Cancel, Escape: it stays)
@@ -3764,6 +3877,8 @@ export class Planner {
         const key = card && card.kind === 'item' ? card.itemKey : null;
         for (const r of this.els.warnings.querySelectorAll('[data-key]')) { if (r.dataset.key === key) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
         if (!key && this.itemLit) this.unlightItem();
+        // a stretch's cards (the route's, the stretch's, Edit this stretch and its steps): the stretch lit, end to end (1b)
+        this.lightStretch(card && card.kind !== 'item' ? card.stretch || card.s || null : null);
         if (key !== this.headsOpen) { this.headsOpen = key; this.drawHeads(); } // (the open one ringed, Worth a look's shown)
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.measureSheet?.();
@@ -3980,9 +4095,11 @@ export class Planner {
   litLeg(i) {
     const leg = i == null ? null : this.legs[i];
     if (!leg) {
-      // (what was picked stays lit: a climb, an item of Check)
-      this.app.setData('routeLit', this.focusLit ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.focusLit } }] } : EMPTY);
-      if (this.chart) this.chart.setHighlight(this.focusHl || null);
+      // (what was picked stays lit: a climb, an item of Check, the stretch a card is about)
+      const s = this.stretchLit && this.legs[this.stretchLit.from] ? this.stretchLit : null;
+      const coords = s ? this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]; return k ? c.slice(1) : c; }) : this.focusLit;
+      this.app.setData('routeLit', coords ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] } : EMPTY);
+      if (this.chart) this.chart.setHighlight(s && this.analysis ? [this.lengthTo(s.from), this.lengthTo(s.to)] : this.focusHl || null);
       return;
     }
     const coords = leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]];
@@ -3991,6 +4108,12 @@ export class Planner {
   }
   // back to the open leg (if one is open), else nothing lit
   unlitLeg() { this.litLeg(this.openLegs.size ? [...this.openLegs].pop() : null); }
+  // the stretch a card is about, lit on the map and the profile (null: none, back to what was lit before it)
+  lightStretch(s) {
+    const was = this.stretchLit;
+    this.stretchLit = s ? { from: s.from, to: s.to } : null;
+    if (s || was) this.litLeg(null);
+  }
 
   // ---------------------------------------------------------------- the start (A with 25b, #233)
   // What the header shows before there's a route, and while a round trip is open: 'ways' the ways to begin;
