@@ -286,7 +286,7 @@ let winterTimer = 0;
 map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(() => checkWinter(), 1500); });
 map.once('load', () => checkWinter(true));
 
-const safety = new SafetyLayers(map, { setData, time: () => timeAtHour(planner.startOffsetH) });
+const safety = new SafetyLayers(map, { setData, time: () => planner.startSec() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
 
@@ -319,7 +319,7 @@ const planner = new Planner(map, {
   rideLipas: (props, opts) => rideLipas(props, opts),
   lipasRide: (props) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, {})),
   setData,
-  onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
+  onStartChange: (k) => { if (k != null) weather.setHour(k, { silent: true }); safety.publish(); }, // (a day past the timeline's two: it stays)
   onAnalysis: () => { weather.renderTime(); weather.renderStrip(); },
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
@@ -427,7 +427,7 @@ const weather = new WeatherOverlay(map, {
   },
   dark: () => isAerial(state.base) || state.base === 'night',
   // the timeline and the route's departure time are one clock
-  onHour: (k) => { planner.setStartOffset(k, { fromMap: true }); safety.publish(); },
+  onHour: (k) => { planner.setLeave(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
   onToggle: (patch) => setWeather(patch),
@@ -444,7 +444,7 @@ const weather = new WeatherOverlay(map, {
 function setTimeline(on) {
   state.timeline = on;
   weather.setOpen(on);
-  if (on && planner.startOffsetH) weather.setHour(planner.startOffsetH, { silent: true });
+  if (on && planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
   $('#btn-time').setAttribute('aria-pressed', String(on));
   saveSettings();
 }
@@ -452,7 +452,7 @@ function setTimeline(on) {
 function setWeather(patch) {
   Object.assign(state.weather, patch);
   weather.set(state.weather);
-  if (planner.startOffsetH) weather.setHour(planner.startOffsetH, { silent: true });
+  if (planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
   // weather layers live on the timeline: switching one on opens it
   if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
   applyStyle();

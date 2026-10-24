@@ -2,12 +2,13 @@
 // the planner keeps the actions. A card shows only what can be done now: in the route's view, what works there and
 // the planner's note with Edit.
 import { h, icon, toast } from './ui.js';
-import { nums, group, rows, acts, item, lockNote, segIcons, mainButton } from './card.js';
+import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
 import { pointNums, headline, wayFacts, SPORT_FACTS } from './facts.js';
 import { ACTIVITIES, CRAFTS } from './config.js';
 import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration } from './geo.js';
-import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, hhmm } from './stops.js';
+import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
+import { LONG_HOURS } from './weather.js';
 
 // the point's own marker, as the map draws it
 export function pointMark(pl, i) {
@@ -24,15 +25,15 @@ function choices(label, items) {
 }
 
 // − 30 min + in one box, the number typable (the round trip's Other… field, #356)
-function stepper({ value, unit, step, min = 0, max = 1440, label, set, line = null, lead = null }) {
+function stepper({ value, unit, step, min = 0, max = 1440, label, set, line = null, lead = null, less = `${step} minutes less`, more = `${step} minutes more` }) {
   const put = (v) => { v = Math.max(min, Math.min(max, Math.round(v))); if (v !== value) set(v); };
   return h('div', { class: 'rt-step' }, lead ? h('span', {}, lead) : null,
     h('div', { class: 'rt-len' },
-      h('button', { type: 'button', class: 'tool', 'aria-label': `${step} minutes less`, disabled: value <= min, onclick: () => put(value - step), html: icon('minus', 20) }),
+      h('button', { type: 'button', class: 'tool', 'aria-label': less, disabled: value <= min, onclick: () => put(value - step), html: icon('minus', 20) }),
       h('input', { type: 'text', inputmode: 'numeric', enterkeyhint: 'done', value: String(value), 'aria-label': label,
         onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
         onchange: (e) => { const v = parseFloat(String(e.target.value).replace(',', '.')); if (Number.isFinite(v)) put(v); else e.target.value = String(value); } }), h('span', {}, unit),
-      h('button', { type: 'button', class: 'tool', 'aria-label': `${step} minutes more`, disabled: value >= max, onclick: () => put(value + step), html: icon('plus', 20) })),
+      h('button', { type: 'button', class: 'tool', 'aria-label': more, disabled: value >= max, onclick: () => put(value + step), html: icon('plus', 20) })),
     line ? h('small', {}, line) : null);
 }
 
@@ -101,10 +102,18 @@ function pointBody(pl, card, body) {
         line: arrive ? `You get here at ${pl.clockOf(arrive)}${w ? ` and go on at ${pl.clockOf(arrive + w.sec)}` : ''}` : null }));
     }
     if (night) {
-      // Go on at: the morning's hour, a choice with its value (as Route style), its hours a card of their own [r-goon]
-      body.append(h('div', { class: 'rt-step' }, h('span', {}, 'Go on at'),
-        h('button', { type: 'button', class: 'stylebtn', 'aria-label': `Go on from ${name} at ${hhmm(stop.on)}`, onclick: () => pl.cards.open(goOnCard(pl, card), { at: card.key, from: card }), html: icon('chevronDown', 14) }, h('span', {}, hhmm(stop.on))),
-        h('span', {}, 'the next morning')));
+      // Stay · N nights with the stepper, then Go on at by the phone's own clock, its line the day (#364's C) [r6-night-c, r6-night-c2]
+      const n = stop.n || 1, go = w ? w.arrive + w.sec : null, after = n === 1 ? 'the next morning' : `after ${n} nights`;
+      body.append(stepper({ lead: 'Stay', value: n, unit: n === 1 ? 'night' : 'nights', step: 1, min: 1, max: MAX_NIGHTS, label: `Nights at ${name}`,
+        less: 'One night less', more: 'One night more', set: (k) => set({ on: stop.on, n: k }) }));
+      const goOn = pickRow({ icon: 'clock', label: 'Go on at', type: 'time', set: (v) => {
+        const m = parseHhmm(v), k = card.i;
+        if (m != null && k >= 0) pl.setStop(k, { on: m, n });
+        put();
+      } });
+      const put = () => { const on = hhmm((pl.stopAt(card.i) || stop).on); goOn.put({ line: go ? `${pl.dayOf(go)}, ${after}` : `${after[0].toUpperCase()}${after.slice(1)}`, val: on, value: on, set: true }); };
+      put();
+      body.append(rows(goOn.el));
       if (!view) body.append(rows(item({ icon: 'hut', label: 'Places to sleep nearby', line: 'Lean-tos, huts and campsites within 3 km', chev: true, onclick: () => pl.cards.open(staysCard(pl, card), { at: card.key, from: card }) })));
     }
   }
@@ -113,9 +122,7 @@ function pointBody(pl, card, body) {
     body.append(acts(item({ icon: 'loop', label: 'Back to start', line: 'Adds a leg back to the start', k: 'back', onclick: () => { pl.backToStart(); toast('A leg back to the start is added', { ms: 7000, action: { label: 'Undo', fn: () => pl.undo() } }); } })));
   }
   // the start: when you leave
-  if (i === 0 && n > 1) {
-    body.append(rows(item({ icon: 'clock', label: 'Leave at', line: 'Sets the times and the weather along the route', val: pl.departLabel(), chev: true, onclick: () => pl.cards.open(leaveCard(pl, card), { at: card.key, from: card }) })));
-  }
+  if (i === 0 && n > 1) { const lv = leaveBlock(pl); lv.put(); body.append(lv.el); }
   // Next stretch, to Via 4: where it goes, in its name, so a desktop says it too (its line is a tooltip there; 2026-10-22).
   // A stretch runs to the next point you see (1b): from a point that only shapes the line, the stretch it's on.
   const str = pl.legs[i] ? pl.stretchAt(i) : null;
@@ -152,19 +159,6 @@ function pointBody(pl, card, body) {
   body.append(h('hr'), acts(item({ icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true, k: 'remove', onclick: () => pl.removeOnCard(card) })));
 }
 
-// Go on at ›: the morning's hour of a night [r-goon]
-function goOnCard(pl, point) {
-  const stop = () => pl.stopAt(point.i);
-  return {
-    kind: 'goon', get key() { return point.key; }, pill: null, title: 'Go on at', sub: 'the next morning',
-    mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point) && isNight(stop()),
-    build: (body) => {
-      const on = stop().on, hours = [...new Set([...Array.from({ length: 6 }, (_, k) => (5 + k) * 60), on])].sort((a, b) => a - b); // (05:00 to 10:00, and the hour set now)
-      body.append(choices('Go on at', hours.map((m) => item({ icon: 'clock', label: hhmm(m), role: 'radio', checked: m === on, onclick: () => { const k = point.i; pl.cards.back(); if (k >= 0) pl.setStop(k, { on: m }); } }))));
-    },
-  };
-}
-
 // Sport from here ›: the sports, the one in force ticked, "your route" on the route's own [r-sport]
 // A sport with crafts (Paddle) has them under its row once it's picked, and the card stays open at them, as the pill's
 // menu does: the craft is the whole route's (it decides how calm the water must be, and the time)
@@ -198,15 +192,29 @@ function sportCard(pl, point) {
   return card;
 }
 
-// Leave at ›: now, or an hour of the next two days (as Go's Depart)
-function leaveCard(pl, point) {
-  return {
-    kind: 'leave', get key() { return point.key; }, pill: null, title: 'Leave at', sub: 'Sets the times and the weather along the route',
-    mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point),
-    build: (body) => body.append(choices('Leave at', pl.departChoices().map(({ k, label }) => item({
-      icon: 'clock', label, role: 'radio', checked: k === pl.startOffsetH, onclick: () => { pl.cards.back(); pl.setStartOffset(k); },
-    })))),
+// Leave ›, on the start's card and in Go (#364's C) [r6-leave-c, r6-leave-c-set, r6-leave-c-far, r6-leave-c-passed]: the
+// phone's own date and time for any day ahead. Once set, the date is the row's line, the time its value, and Now on
+// that line (2026-10-24's detail); past the forecast's reach, or a date that had passed, a note under it. Only the start
+// has a date: the rest counts from it.
+export function leaveBlock(pl) {
+  const local = (sec) => { const d = new Date(sec * 1000), z = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
+  const row = pickRow({ icon: 'clock', label: 'Leave', type: 'datetime-local', now: () => pl.setLeave(null), set: (v) => {
+    const sec = v ? new Date(v).getTime() / 1000 : null;
+    if (sec != null && sec <= Date.now() / 1000) toast('That time has passed, so it leaves now');
+    pl.setLeave(sec);
+    put();
+  } });
+  const note = h('p', { class: 'pick-note', hidden: true });
+  const put = () => {
+    const at = pl.leaveAt, now = Date.now() / 1000, passed = at == null && pl.leavePassed, far = at != null && at - now >= LONG_HOURS * 3600;
+    row.put({ line: at == null ? 'Sets the times and the weather along the route' : pl.dayOf(at, true), val: at == null ? 'Now' : pl.timeOf(at),
+      value: local(at ?? Math.ceil(now / 900) * 900), min: local(now), set: at != null });
+    note.hidden = !far && !passed;
+    note.classList.toggle('info', !!passed);
+    note.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(far ? 'cloudSun' : 'info', 16) }),
+      h('span', {}, far ? `No forecast yet for ${pl.dayOf(at)}. Sunset and the dark still count.` : passed ? `Planned for ${pl.dayOf(passed)}, ${pl.timeOf(passed)}. That’s passed, so it leaves now: pick a new time above.` : ''));
   };
+  return { el: h('div', { class: 'pick-leave' }, rows(row.el), note), put };
 }
 
 // Places to sleep nearby ›: lean-tos, huts and campsites within 3 km (LIPAS and OpenStreetMap); a tap moves the night there [r-stays]

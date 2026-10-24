@@ -56,6 +56,32 @@ export function item({ icon: ic, label, line = '', val = null, chev = false, dan
   return b;
 }
 
+// A row the phone's own picker sets (#364's C, the mock-up's pickRow6): its date or time field lies unseen over the
+// row, so a tap opens the phone's picker and a click the browser's; the field is what the keyboard and a screen reader
+// reach. `put()` changes what it says in place, so a picker that's open stays open. `now`: a Now button on its line.
+export function pickRow({ icon: ic, label, type, set, now = null }) {
+  const line = h('span', { class: 'pick-line' }), val = h('span', { class: 'val' });
+  const input = h('input', { type, step: '900', onchange: () => set(input.value) });
+  const open = () => { try { input.showPicker(); } catch { /* the phone opens its own */ } };
+  input.addEventListener('click', open);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  const nowBtn = now && h('button', { type: 'button', class: 'btn small pick-now', 'aria-label': `${label} now`, onclick: now }, 'Now');
+  const el = h('div', { class: 'row pick', 'data-k': label },
+    h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, label), h('small', {}, line, nowBtn)), val,
+    h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }), input);
+  // set: a value of its own is set (its line is then a fact, not what the row does, so desktops show it too)
+  const put = ({ line: l, val: v, value, min = '', set: on = false }) => {
+    line.textContent = l;
+    val.textContent = v;
+    if (document.activeElement !== input) input.value = value; // (not under a finger or a key that's changing it)
+    input.min = min;
+    input.setAttribute('aria-label', `${label}: ${v}${on ? `, ${l}` : ''}. Pick ${type === 'time' ? 'a time' : 'a day and a time'}`);
+    el.classList.toggle('set', on);
+    if (nowBtn) nowBtn.hidden = !on;
+  };
+  return { el, put };
+}
+
 // The card's one main action, as Make 3 loops
 export function mainButton(label, ic, onclick) {
   return h('button', { type: 'button', class: 'btn primary big', onclick, html: icon(ic, 20) }, h('span', {}, label));

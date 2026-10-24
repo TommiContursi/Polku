@@ -925,10 +925,8 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .speed-go { margin-top: 10px; }
 /* Settings' speeds: every sport a row, its speeds in one line; a tap opens the editor under it */
 .speed-list .speed-box { padding: 8px 8px 12px 42px; } /* (under the sport's name) */
-.go-depart { display: grid; grid-column: 1 / -1; padding: 3px; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 0 14px; }
-.go-depart-label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
-.go-depart select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
-  background: var(--surface-solid); color: var(--text); font: inherit; font-size: 16px; }
+.pick-leave { grid-column: 1 / -1; display: grid; gap: 6px; margin: 0 0 14px; scroll-margin: 8px; } /* (scrolled to whole, its ring too) */
+.card .pick-leave { margin: 0; }
 .time-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 8px; }
 .time-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .time-head span { font-size: 12.5px; color: var(--muted); }
@@ -936,6 +934,8 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .onmap .tg { max-width: 360px; }
 .onmap .tg.off { opacity: .5; }
 .take-along { display: flex; flex-wrap: wrap; gap: 8px; }
+.take-share > span { display: grid; text-align: left; }
+.take-share small { font-size: var(--font-small); font-weight: 400; color: var(--muted); }
 
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
@@ -1113,7 +1113,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wind-body { font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
 .start { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 600; }
-.start-select { height: 26px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); font: inherit; font-size: 12px; padding: 0 6px; }
 .wx-sum { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
 .wx-sum .link { font-weight: 500; color: var(--text); text-decoration: underline dotted; text-underline-offset: 3px; }
 .wx-links { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -1343,6 +1342,19 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .row.danger b, .row.danger > span:first-child { color: var(--bad); }
 .row[aria-checked="true"] { background: var(--accent-soft); }
 .row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+/* a row the phone's own picker sets (#364's C): its field unseen over the row, the keyboard's ring on the row; a Now on
+   its line, over the field */
+.row.pick { position: relative; }
+.row.pick > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: var(--font-field); cursor: pointer; } /* (16 px: a focused field under it zooms an iPhone) */
+.row.pick:has(> input:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
+.row.pick small { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.pick-now { position: relative; z-index: 1; min-height: var(--target); }
+.card-float .row.pick.set small { display: flex; } /* (its line is the day, not what the row does: shown on desktops too) */
+/* under Leave: no forecast yet, in the colours of what isn't checked; a planned time that had passed, plain */
+.pick-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--unk-soft); color: var(--text); font-size: 13.5px; line-height: 1.35; }
+.pick-note > span:first-child { flex: none; display: grid; margin-top: 1px; color: var(--unk); }
+.pick-note.info { background: var(--surface-2); }
+.pick-note.info > span:first-child { color: var(--muted); }
 @media (hover: hover) { .row:hover { background: var(--surface-2); } .row:hover .way-chev { transform: translateX(2px); } }
 @media (prefers-reduced-motion: reduce) { .row .way-chev { transition: none; } }
 .card hr { height: 1px; margin: 0; border: 0; background: var(--line); }
