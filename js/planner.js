@@ -17,7 +17,8 @@ import { sunTimes, darkness } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt } from './weather.js';
+import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS } from './weather.js';
+import { keyFacts, factLine, sportFacts, hardestClimb, climbWords } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView, wayNear, OSM_KEYS } from './inspect.js';
 import { CardHost, item, rows } from './card.js';
@@ -2906,7 +2907,7 @@ export class Planner {
         if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, true));
         rows.append(this.pointRow(s.to, ro));
       }
-      box.append(h('li', { class: 'sec2', 'data-from': String(sec.from), 'data-to': String(sec.to) }, head, line, more, this.sectionWarn(sec), rows));
+      box.append(h('li', { class: `sec2${this.secLit === id ? ' lit' : ''}`, 'data-from': String(sec.from), 'data-to': String(sec.to) }, head, line, more, this.sectionWarn(sec), rows));
     });
   }
 
@@ -3963,7 +3964,9 @@ export class Planner {
     this.els.card = h('div', { class: 'card-peek', hidden: true });
     // the peek's row: what to read before you go, and what wasn't checked (25d part 3)
     this.els.readRow = h('div', { class: 'warn-row pl-readrow', hidden: true });
-    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.readRow, this.els.row, this.els.way), this.els.said);
+    // key facts (#471's A2): what stands out on this route, under its numbers
+    this.els.facts = h('div', { class: 'kf', role: 'group', 'aria-label': 'Key facts', hidden: true });
+    this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.readRow, this.els.row, this.els.facts, this.els.way), this.els.said);
     // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, at
     // its spot elsewhere (js/card.js, 25d)
     this.cards = new CardHost(this.map, {
@@ -5262,6 +5265,48 @@ export class Planner {
       h('button', { type: 'button', class: 'btn small', 'aria-expanded': String(!!this.goSpeed), onclick: () => { this.goSpeed = !this.goSpeed; this.renderSpeed(); this.els.speedRoute.querySelector('.speed-at .btn')?.focus(); } }, 'Change')), go);
   }
 
+  // why the weather isn't known, for the key facts (null: it is, or it's on its way)
+  noWeather(a) {
+    if (this.leaveAt != null && this.leaveAt - Date.now() / 1000 >= LONG_HOURS * 3600) return 'no forecast yet';
+    return a.windError ? 'couldn’t be loaded' : null;
+  }
+  keyFacts(a) {
+    const days = a.waits ? tripDays(a, a.tAtWind || a.tAt, a.wind ? a.wind.startSec : this.startSec(), a.waits) : [];
+    return keyFacts(a, { sport: this.mainSport(), days, noWeather: this.noWeather(a) });
+  }
+
+  // Key facts (#471's A2) [kf2-gravel, kf2-multi, kf2-days]: one line under the route's numbers saying what stands out on
+  // this route, else the sport's usual fact; a row a sport on a route of two. A tap opens where it's told in full.
+  renderFacts(a) {
+    const box = this.els.facts, multi = !!a && this.isMulti();
+    box.hidden = !a;
+    box.classList.toggle('legs', multi);
+    if (!a) { box.replaceChildren(); return; }
+    const list = multi ? sportFacts(a, { noWeather: this.noWeather(a) }) : factLine(this.keyFacts(a));
+    const ICON = { wind: 'wind', rain: 'rain', bwind: 'wind', unpaved: 'route', day: 'moon', climb: 'mountain', high: 'mountain', wx: 'cloudSun' };
+    box.replaceChildren(...list.map((x) => h('button', { type: 'button', class: `kf-b${x.miss ? ' miss' : ''}`, 'aria-label': x.aria, onclick: () => this.openFact(x) },
+      h('span', { 'aria-hidden': 'true', html: icon(ICON[x.k] || this.sportIcon(x.sport), 16) }), h('span', { html: x.html }),
+      h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 14) }))));
+  }
+  openFact(x) {
+    const a = this.analysis;
+    if (x.k === 'climb') { this.reveal('climbs'); this.focusRange(x.v.start, x.v.end, x.v); return; }
+    if (x.k === 'unpaved') { this.showMode('surface'); this.reveal('colours'); return; }
+    if (x.k === 'high') { this.reveal('profile'); return; }
+    if (x.k === 'day' || x.sport) {
+      // its part of the list, lit: a day's section, or the first of the sport's (its weather open on the water)
+      const sec = this.sections().find((s) => (x.sport ? s.sport === x.sport : Math.abs(this.lengthTo(s.from) - x.v.from) < 2));
+      if (!sec) return;
+      this.secLit = this.pidOf(this.points[sec.from]);
+      if (x.sport && isWater(x.sport)) this.wxOpen.add(this.secLit);
+      this.renderWaypoints();
+      this.reveal('points');
+      requestAnimationFrame(() => this.flash(this.els.points.querySelector('.sec2.lit')));
+      return;
+    }
+    if (a) this.reveal('depart'); // the wind, the rain, a headwind, the weather not known: the weather along the route
+  }
+
   // Go's tab shows when you'd be back; Check's, the heads-up count (setSection)
   renderTabTimes() {
     const a = this.analysis, t = this.els.tabBtn && this.els.tabBtn.go.querySelector('.pl-tab-t');
@@ -5479,6 +5524,7 @@ export class Planner {
     this.renderOnMap();
     this.renderTake();
     this.renderTabTimes();
+    this.renderFacts(a);
     this.els.leave.put(); // ("Tomorrow" becomes "Today" overnight)
     // the clock stays reachable before there's a route: set the time, then draw
     if (!a) this.setSection('depart', { summary: `Depart ${this.leaveWords()}` });
@@ -5523,11 +5569,11 @@ export class Planner {
       }
     }
     if (OFFROAD_BIKE.has(act)) {
-      const hardest = a.climbs.reduce((m, c) => (c.cls > (m ? m.cls : -1) ? c : m), null);
+      const hardest = hardestClimb(a.climbs, act);
       stat('Hardest climb', hardest ? `<i class="dot" style="background:${DIFF_COLORS[hardest.cls]}"></i>↑S${hardest.cls}` : '—', hardest ? `${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %` : a.terrain && a.terrain.all ? 'no terrain' : '');
     } else if (act === 'road') {
       // road cyclists read climbs by height and average gradient
-      const hardest = a.climbs.reduce((m, c) => (!m || c.gain * c.avg > m.gain * m.avg ? c : m), null);
+      const hardest = hardestClimb(a.climbs, act);
       stat('Hardest climb', hardest ? `<i class="dot" style="background:${gradeColor(hardest.avg)}"></i>${Math.round(hardest.avg)} %` : '—', hardest ? `${Math.round(hardest.gain)} m over ${fmtDist(hardest.len)}` : a.terrain && a.terrain.all ? 'no terrain' : '');
     } else if (paddle) {
       const w = a.wind;
@@ -5543,6 +5589,14 @@ export class Planner {
       if (a.up >= 5) stat('Carry ascent', `${Math.round(a.up)} m`);
     } else {
       stat('High point', Number.isFinite(a.maxE) ? `${Math.round(a.maxE)} m` : '—', Number.isFinite(a.maxE) ? '' : 'no terrain');
+    }
+    // and what the key facts' line can say (#471's A2: Check's top keeps every fact)
+    for (const x of this.keyFacts(a)) {
+      if (x.k === 'rain') stat('Rain', fmtDist(x.v.m), 'of the way');
+      if (x.k === 'bwind') stat('Headwind', `+${x.v.add} min`, 'to the time');
+      if (x.k === 'unpaved') stat('Unpaved', fmtDist(x.v.m), `${x.v.p} % of the way`);
+      if (x.k === 'day') stat('Hardest day', `Day ${x.v.n}`, `${fmtDist(x.v.to - x.v.from)}, ↑${Math.round(x.v.up)} m`);
+      if (x.k === 'wx' || (x.k === 'wind' && x.miss)) stat(x.k === 'wx' ? 'Weather' : 'Wind', '?', this.noWeather(a));
     }
     // what the time assumes, one tap from changing it
     const sp = speedSummary(act, this.craft);
@@ -5802,19 +5856,18 @@ export class Planner {
     const a = this.analysis;
     const box = this.els.climbs;
     box.innerHTML = '';
-    const bike = OFFROAD_BIKE.has(this.mainSport()); // uphill grades; others read the average gradient
-    const hardest = a.climbs.reduce((m, c) => (!m || c.gain > m.gain ? c : m), null);
-    this.setSection('climbs', {
-      count: a.climbs.length || '', empty: !a.climbs.length,
-      summary: hardest ? `biggest +${Math.round(hardest.gain)} m at ${Math.round(hardest.avg)} %${bike ? ` · ↑S${hardest.cls}` : ''}` : '',
-    });
+    const sport = this.mainSport(), bike = OFFROAD_BIKE.has(sport); // uphill grades; others read the average gradient
+    const hardest = hardestClimb(a.climbs, sport);
+    this.setSection('climbs', { count: a.climbs.length || '', empty: !a.climbs.length, summary: hardest ? `Hardest: ${climbWords(hardest, sport)}` : '' });
+    if (hardest) box.append(h('p', { class: 'climbs-hardest' }, `Hardest: ${climbWords(hardest, sport)}`));
     if (!a.climbs.length) return;
     a.climbs.forEach((c, k) => {
       // Bikes get the uphill difficulty grade; on foot the average gradient says more.
       const bg = bike ? DIFF_COLORS[c.cls] : gradeColor(c.avg);
       const badge = h('span', { class: `badge${darkWords(bg) ? ' ink' : ''}`, style: `background:${bg}` }, bike ? `↑S${c.cls}` : `${Math.round(c.avg)}%`);
+      // (a column of one width for the badges, so every climb's words start in line, the Hardest tag under its badge)
       const item = h('button', { type: 'button', class: `li${this.selected === c ? ' sel' : ''}` },
-        badge,
+        h('span', { class: 'li-badge' }, badge, c === hardest ? h('small', { class: 'li-tag' }, 'Hardest') : null),
         h('span', { class: 'li-main' },
           h('b', {}, `${k + 1}. +${Math.round(c.gain)} m in ${fmtDist(c.len)}`),
           h('span', {}, `km ${(c.from / 1000).toFixed(1)}–${(c.to / 1000).toFixed(1)} · avg ${c.avg.toFixed(0)} % · max ${c.max.toFixed(0)} %${c.osm ? ' · OSM-tagged' : ''}`)),

@@ -692,7 +692,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet[data-state="profile"] .stats { display: none; }
 /* …and so does the row of what to read (the count beside the numbers stays): the chart keeps its room (#444); the warnings
    stay on the map and in Check, and the row comes back at the peek */
-.sheet[data-state="profile"] .sheet-head-in > .pl-readrow { display: none; }
+.sheet[data-state="profile"] .sheet-head-in > :is(.pl-readrow, .kf) { display: none; }
 .sheet[data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); }
 @media (min-width: 721px) { .sheet[data-layout="sheet"][data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); } }
 .sheet.dragging { transition: none; user-select: none; }
@@ -701,6 +701,18 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-handle:focus-visible { outline: 2px solid var(--focus); }
 .sheet-head { flex: none; padding: 0 10px 8px 14px; touch-action: none; container-type: inline-size; }
 .sheet-row { display: flex; align-items: center; gap: 8px; }
+/* key facts (#471's A2): a line under the route's numbers, a row a sport on a route of two; each opens where it's told */
+.kf { display: grid; margin: 2px 0 0; }
+.kf-b { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; margin: 0 -6px; padding: 2px 6px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: var(--font-body); text-align: left; cursor: pointer; }
+.kf-b > span:first-child, .kf-b > span:last-child { flex: none; display: grid; color: var(--muted); }
+.kf-b > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.kf-b.miss > span:first-child { color: var(--unk); }
+.kf.legs .kf-b > span:first-child { color: var(--accent); }
+.kf-d { color: var(--muted); font-variant-numeric: tabular-nums; }
+.kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) { .kf-b:hover { background: var(--surface-2); } }
+@media (pointer: coarse) { .kf-b { min-height: 44px; } }
+@media (max-height: 520px) { .kf { display: none; } } /* (200 %, a phone on its side: no room under the top bar; Check's top has them) */
 /* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
 .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }
@@ -1104,6 +1116,10 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .hidden-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 2px 2px; font-size: 12px; color: var(--muted); }
 .hidden-kinds .on-chip { background: var(--surface-2); color: var(--muted); }
 .li-main { display: flex; flex-direction: column; min-width: 0; }
+/* Climbs: the badges in a column of one width, so every climb's words start in line; the hardest has its tag under it */
+.li-badge { flex: none; width: 56px; display: grid; justify-items: center; gap: 3px; }
+.li-tag { padding: 0 6px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--text); font-size: var(--font-small); font-weight: 600; line-height: 1.5; }
+.climbs-hardest { margin: 0 0 4px; font-size: var(--font-body); font-weight: 600; }
 .li-main span { color: var(--muted); font-size: 12px; }
 .badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
 /* black words where white doesn't read on the colour (#376: js/palette.js darkWords()) */
@@ -1179,6 +1195,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
 .wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
 .wpl .sec2 + .sec2 { box-shadow: inset 0 1px 0 var(--line); }
+.wpl .sec2.lit { margin: 0 -8px; padding-inline: 8px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent); } /* (the part a key fact opened) */
 .sec2-head { display: flex; align-items: flex-start; gap: 8px; }
 .sec2-head > span { flex: none; display: grid; margin-top: 1px; }
 .sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }

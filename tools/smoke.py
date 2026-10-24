@@ -3046,7 +3046,7 @@ def warnfix(chrome):
     try:
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/63.30/26.71')
         fails += pg.js("""(async () => { const errs = [];""" + CHECK_ROUTE + """
-          p.setTab('route'); await wait(300);
+          p.setTab('go'); await wait(300); // (on Route the row steps aside while the list shows the warning: part 4)
           p.els.readRow.querySelector('.pl-readrow-go').click();
           await wait(700);
           document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -5342,12 +5342,12 @@ def check(chrome, w, h, phone, bottom=False):
             fails.append(f'planning/{st}: {late}')
         ov = overlaps(pg.js(BOXES))
         fails += [f'planning/{st}: {o}' for o in ov]
-        r = pg.js("(() => { const r = document.querySelector('#planner').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, h: r.height }; })()")
+        r = pg.js("(() => { const r = document.querySelector('#planner').getBoundingClientRect(), kf = document.querySelector('#planner .kf'); return { l: r.left, t: r.top, r: r.right, b: r.bottom, h: r.height, kf: kf ? kf.getBoundingClientRect().height : 0 }; })()")
         if layout == 'side':
             free = (w - r['r']) / w
             if free < 0.55:
                 fails.append(f'side/{st}: only {free:.0%} of the width left for the map')
-        elif st == 'peek' and r['h'] > 0.27 * h:  # the summary, Round trip & Style, and the routing modes
+        elif st == 'peek' and r['h'] > 0.27 * h + r['kf']:  # the summary, Round trip & Style, and the routing modes; the key facts' line on top (#471's A2 puts it in the peek)
             fails.append(f'peek is {r["h"]:.0f} px tall ({r["h"] / h:.0%} of the screen)')
         elif st == 'half' and not (0.4 * h < r['h'] < 0.6 * h):
             fails.append(f'half is {r["h"]:.0f} px tall')
@@ -5726,7 +5726,7 @@ MARKS = r"""(async () => {
   if (input) {
     const hour = (k) => (Math.floor(Date.now() / 3600000) + k) * 3600, iso = (sec) => { const d = new Date(sec * 1000), z = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; };
     input.value = iso(hour(4)); input.dispatchEvent(new Event('change', { bubbles: true }));
-    if (p.startSec() !== hour(4)) errs.push('Leave did not change the departure');
+    if (p.startSec() !== new Date(input.value).getTime() / 1000) errs.push('Leave did not change the departure'); // (what the field says: on the night the clocks go back, an hour is twice)
     const r = leave.querySelector('.row').getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('Go’s Leave is out of view');
     if (r.height < 44 || parseFloat(getComputedStyle(input).fontSize) < 16) errs.push('Go’s Leave is too small, or its field zooms a phone');
@@ -9413,7 +9413,7 @@ def point_card(chrome):
           if (!i) return { field: false };
           i.value = `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`; i.dispatchEvent(new Event('change', { bubbles: true }));
           await new Promise((ok) => setTimeout(ok, 400));
-          return { field: true, off: p.startSec() - at, kind: p.cards.current && p.cards.current.kind }; })()""")
+          return { field: true, off: p.startSec() - new Date(i.value).getTime() / 1000, kind: p.cards.current && p.cards.current.kind }; })()""")  # (what the field says: on the night the clocks go back, 03:30 is twice)
         if not r['field'] or r['off'] != 0 or r['kind'] != 'point':
             fails.append(f"{name}: Leave in three hours: {r}")
         pg.js("polku.planner.setLeave(null); polku.planner.cards.close(); true")
@@ -10944,6 +10944,7 @@ def leave(chrome):
         # the start's card: Leave · Now ›, the picker's field over the row, opened by a tap or a click (and Enter)
         pg.js("polku.planner.openPointCard(polku.planner.points[0]); true")
         time.sleep(0.4)
+        show(pg, 'card')  # (in sight first: at night a box saying so comes before it)
         r = pg.js("LV.read('card')")
         if not r or r['label'] != 'Leave' or r['val'] != 'Now' or r['type'] != 'datetime-local' or r['now'] or not r['over'] or not r['min'] or r['line'] != ('Sets the times and the weather along the route' if phone else ''):
             fails.append(f"{name}: the start's card's Leave row: {r}")
@@ -10970,11 +10971,13 @@ def leave(chrome):
             pg.close()
             return
         r = pg.js("""(async () => { const W = await import(location.origin + '/js/wxmap.js'), p = polku.planner;
+          // (what the field says: on the night the clocks go back, an hour is twice, and its words mean the first)
+          const want = new Date(LV.iso(W.timeAtHour(5))).getTime() / 1000;
           LV.set('go', LV.iso(W.timeAtHour(5))); await new Promise((ok) => setTimeout(ok, 300));
-          const a = { start: p.startSec(), want: W.timeAtHour(5), hour: polku.weather.hour, safety: Math.round(polku.safety.app.time()) };
+          const a = { start: p.startSec(), want, hour: polku.weather.hour, wantHour: Math.floor((want - Math.floor(Date.now() / 3600000) * 3600) / 3600), safety: Math.round(polku.safety.app.time()) };
           polku.weather.setHour(7); await new Promise((ok) => setTimeout(ok, 300));
           return { ...a, then: p.startSec(), want7: W.timeAtHour(7), val: LV.read('go').val, clock: LV.clock(W.timeAtHour(7)) }; })()""")
-        if r['start'] != r['want'] or r['hour'] != 5 or abs(r['safety'] - r['start']) > 60:
+        if r['start'] != r['want'] or r['hour'] != r['wantHour'] or abs(r['safety'] - r['start']) > 60:
             fails.append(f"{name}: Leave in five hours: the timeline at hour {r['hour']}, the safety layers at {r['safety'] - r['want']} s from it, leaves at {r['start'] - r['want']} s")
         if abs(r['then'] - r['want7']) > 1 or r['val'] != r['clock']:
             fails.append(f"{name}: the timeline at hour 7: leaves {r['then'] - r['want7']} s from it, Go says {r['val']}")
@@ -11025,6 +11028,160 @@ def leave(chrome):
     one(390, 844, True)
     one(1440, 900, False)
     print(f"{'ok  ' if not fails else 'FAIL'} when you leave" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Key facts (25d, #471's A2 [kf2-gravel, kf2-gravel-calm, kf2-gravel-check, kf2-multi, kf2-multi-tap, kf2-days, kf2-paddle]) and
+# the hardest climb [tabs-c-climbs]: one line under the route's numbers says what stands out (rain, a headwind that adds
+# time, unpaved on a road bike, a water leg's wind), else the sport's usual fact, with the weather said when it isn't known;
+# a row a sport on a route of two; a trip's hardest day; a tap opens where it's told; Check's top keeps every fact. Climbs:
+# one measure a sport, the Hardest tag in a column of one width, the heading naming it (straight legs, set values)
+KF_JS = """(() => { window.KF = {
+  // the route's numbers as a case needs them, and the line and Check's top as they are then
+  set(o = {}) {
+    const p = polku.planner, a = p.analysis, n = a.along.length, fill = (v) => new Float32Array(n).fill(v);
+    a.activity = o.sport || 'mtb'; p.mainSport = () => a.activity; a.attr.forEach((x) => { if (x) delete x.sport; });
+    a.climbs = [{ cls: 1, gain: 60, avg: 5, max: 7, len: 600, from: 100, to: 700, start: 2, end: 8 }, { cls: 2, gain: 21, avg: 12, max: 15, len: 180, from: 900, to: 1080, start: 10, end: 13 }, { cls: 0, gain: 8, avg: 4, max: 5, len: 200, from: 1500, to: 1700, start: 16, end: 18 }];
+    a.time = o.time || 3600; a.timeWind = a.time + (o.add || 0) * 60; a.windError = o.failed || false;
+    KF.base = KF.base || a.wind || { start: { speed: 5, gust: 7, dir: 180, temp: 8, precip: 0 } }; // (the forecast's other fields, as it came)
+    a.wind = o.failed ? null : { ...KF.base, startSec: p.startSec(), head: fill(o.head || 0), speed: fill(5), gust: fill(7), dir: fill(180), cross: fill(0), temp: fill(8), precip: fill(o.rain || 0) };
+    if (o.surf) a.surf = a.surf.map(() => o.surf);
+    a.waits = o.waits || []; p.renderAnalysis();
+    return KF.read();
+  },
+  read() {
+    const p = polku.planner, f = p.els.facts;
+    return { line: f ? [...f.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : null, h: f ? [...f.querySelectorAll('.kf-b')].map((b) => Math.round(b.getBoundingClientRect().height)) : [],
+      strip: [...p.els.stats.querySelectorAll('.stat')].map((s) => `${s.querySelector('.stat-label').textContent}: ${s.querySelector('.stat-value').textContent}`) };
+  },
+  at(k) { const b = polku.planner.els.facts.querySelectorAll('.kf-b')[k]; if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + Math.min(80, r.width / 3), y: r.top + r.height / 2 }; },
+}; return true; })()"""
+
+KF_CLIMBS = """(() => {
+  const p = polku.planner, box = p.els.climbs, rows = [...box.querySelectorAll('.li')], tags = [...box.querySelectorAll('.li-tag')];
+  const left = rows.map((r) => Math.round(r.querySelector('.li-main').getBoundingClientRect().left));
+  return { head: box.querySelector('.climbs-hardest')?.textContent || '', sum: p.sec.climbs.el.querySelector('.sec-sum')?.textContent || '', tags: tags.map((t) => rows.findIndex((r) => r.contains(t))), left: [...new Set(left)].length, n: rows.length };
+})()"""
+
+
+def keyfacts(chrome):
+    fails = []
+
+    def press(pg, at, name, touch):
+        if not at:
+            fails.append(f'{name}: not on screen')
+            return False
+        if touch:
+            pg.quick_tap(at['x'], at['y'])
+        else:
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'left',
+                                                      'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+        time.sleep(0.6)
+        return True
+
+    def one(w, h_, phone):
+        name, touch = f'{w}x{h_}', phone
+        pg = chrome.page(w, h_, phone)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#13/61.514/23.822')
+        pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+        if not pg.js(PC_ROUTE, timeout=30000):
+            fails.append(f'{name}: no route')
+            pg.close()
+            return
+        # (the forecast in, or failed, before the cases set their own)
+        pg.js("(async () => { const p = polku.planner; for (let k = 0; k < 150 && !(p.analysis.wind || p.analysis.windError); k++) await new Promise((r) => setTimeout(r, 100)); return true; })()")
+        pg.js(KF_JS)
+        # nothing stands out: the usual fact, the hardest climb by the uphill grade; Climbs says it and tags it
+        r = pg.js("KF.set({ add: 3 })")
+        if r['line'] != ['Hardest climb ↑S2, 21 m at 12 %'] or 'Hardest climb: ↑S2' not in r['strip']:
+            fails.append(f"{name}: a calm ride: {r}")
+            pg.close()
+            return
+        if phone and min(r['h']) < 44:
+            fails.append(f"{name}: a key fact {min(r['h'])} px tall")
+        c = pg.js(KF_CLIMBS)
+        if c['head'] != 'Hardest: ↑S2, 21 m at 12 %' or c['sum'] != 'Hardest: ↑S2, 21 m at 12 %' or c['tags'] != [1] or c['left'] != 1 or c['n'] != 3:
+            fails.append(f"{name}: Climbs: {c}")
+        pg.js(SETTLED)
+        press(pg, pg.js("KF.at(0)"), f'{name}: the hardest climb', touch)
+        r = pg.js("({ tab: polku.planner.tab, open: polku.planner.sec.climbs.el.dataset.open, sel: polku.planner.selected && polku.planner.selected.gain })")
+        if r != {'tab': 'check', 'open': 'true', 'sel': 21}:
+            fails.append(f"{name}: a tap on the hardest climb: {r}")
+        # what stands out: a headwind adding 25 min (or a tenth of the time), rain before it; Check's top keeps them
+        r = pg.js("KF.set({ add: 25 })")
+        if r['line'] != ['Headwind adds 25 min'] or 'Headwind: +25 min' not in r['strip'] or 'Hardest climb: ↑S2' not in r['strip']:
+            fails.append(f"{name}: a headwind adding 25 min: {r}")
+        pg.js(SETTLED)
+        press(pg, pg.js("KF.at(0)"), f'{name}: the headwind', touch)
+        r = pg.js("({ tab: polku.planner.tab, open: polku.planner.sec.depart.el.dataset.open })")
+        if r != {'tab': 'go', 'open': 'true'}:
+            fails.append(f"{name}: a tap on the headwind: {r}")
+        r = pg.js("KF.set({ add: 4, time: 1800 })")
+        if r['line'] != ['Headwind adds 4 min']:
+            fails.append(f"{name}: a headwind adding a tenth of the time: {r['line']}")
+        r = pg.js("KF.set({ add: 25, rain: 1 })")
+        if len(r['line']) != 1 or not r['line'][0].startswith('Rain on ') or not any(s.startswith('Rain: ') for s in r['strip']):
+            fails.append(f"{name}: rain on the way: {r}")
+        # the weather not known: said beside the usual fact, and at Check's top
+        r = pg.js("KF.set({ failed: true })")
+        if r['line'] != ['Hardest climb ↑S2, 21 m at 12 %', 'Weather: couldn’t be loaded'] or 'Weather: ?' not in r['strip']:
+            fails.append(f"{name}: no weather: {r}")
+        # a road bike on gravel: unpaved stands out, and opens On the route in Surface's colours; height × gradient
+        r = pg.js("KF.set({ sport: 'road', surf: 'gravel' })")
+        if len(r['line']) != 1 or not r['line'][0].startswith('Unpaved ') or not r['line'][0].endswith(', 100 % of the way'):
+            fails.append(f"{name}: a road bike on gravel: {r}")
+        pg.js(SETTLED)
+        press(pg, pg.js("KF.at(0)"), f'{name}: unpaved', touch)
+        r = pg.js("({ tab: polku.planner.tab, open: polku.planner.sec.colours.el.dataset.open, mode: polku.planner.colorMode, climbs: document.querySelector('.climbs-hardest')?.textContent })")
+        if r != {'tab': 'check', 'open': 'true', 'mode': 'surface', 'climbs': 'Hardest: 60 m at 5 %'}:
+            fails.append(f"{name}: a tap on unpaved: {r}")
+        # paddling: the wind always stands out; not known, said so
+        r = pg.js("KF.set({ sport: 'paddle', head: 3 })")
+        if r['line'] != ['Wind up to 5 m/s, gusts 7 · headwind 100 %']:
+            fails.append(f"{name}: paddling: {r['line']}")
+        r = pg.js("KF.set({ sport: 'paddle', failed: true })")
+        if r['line'] != ['Wind: couldn’t be loaded']:
+            fails.append(f"{name}: paddling without the forecast: {r['line']}")
+        # on foot: the high point
+        r = pg.js("KF.set({ sport: 'hike' })")
+        if len(r['line']) != 1 or not r['line'][0].startswith('High point '):
+            fails.append(f"{name}: on foot: {r['line']}")
+        if phone:
+            # two nights' days: the hardest day, a tap lighting its part of the list
+            r = pg.js("""(async () => { const p = polku.planner; p.setStop(1, { on: 480 });
+              for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await new Promise((r) => setTimeout(r, 200));
+              const a = p.analysis; a.timeWind = null; a.wind = null; a.windError = false; p.renderAnalysis(); return KF.read(); })()""")
+            if len(r['line']) != 1 or not r['line'][0].startswith('Day ') or ' is the hardest: ' not in r['line'][0] or not any(s.startswith('Hardest day: Day ') for s in r['strip']):
+                fails.append(f"{name}: two days: {r}")
+            pg.js(SETTLED)
+            press(pg, pg.js("KF.at(0)"), f'{name}: the hardest day', touch)
+            pg.js(SETTLED)
+            r = pg.js("""(() => { const p = polku.planner, lit = [...document.querySelectorAll('.wpl .sec2.lit')], b = p.els.body.getBoundingClientRect(), r = lit[0] && lit[0].getBoundingClientRect();
+              return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), seen: !!r && r.top < b.bottom - 20 && r.bottom > b.top + 20 }; })()""")
+            want = 'Day ' + pg.js("KF.read().line[0]").split(' ')[1]
+            if r['tab'] != 'route' or r['lit'] != [want] or not r['seen']:
+                fails.append(f"{name}: a tap on the hardest day: {r}, not {want}")
+            # two sports: a row each, its distance and its own fact; a tap lights the paddle's part, its weather open
+            r = pg.js("""(async () => { const p = polku.planner; p.setStop(1, null); p.setLegSport(2, 'paddle');
+              for (let k = 0; k < 60 && !(p.analysis && p.analysis.attr.some((x) => x && x.sport === 'paddle') && p.analysis.wind); k++) await new Promise((r) => setTimeout(r, 200));
+              return KF.read(); })()""")
+            if len(r['line']) != 2 or not r['line'][0].startswith('MTB ') or ' · ↑' not in r['line'][0] or not r['line'][1].startswith('Paddle ') or ' · wind up to ' not in r['line'][1]:
+                fails.append(f"{name}: MTB and paddling: {r}")
+            else:
+                pg.js(SETTLED)
+                press(pg, pg.js("KF.at(1)"), f'{name}: Paddle', touch)
+                pg.js(SETTLED)
+                r = pg.js("""(() => { const p = polku.planner, lit = [...document.querySelectorAll('.wpl .sec2.lit')];
+                  return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), wx: !!lit[0]?.querySelector('.sec2-wx-at') }; })()""")
+                if r != {'tab': 'route', 'lit': ['Paddle'], 'wx': True}:
+                    fails.append(f"{name}: a tap on Paddle: {r}")
+        fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+        pg.close()
+
+    one(390, 844, True)
+    one(1440, 900, False)
+    print(f"{'ok  ' if not fails else 'FAIL'} key facts and the hardest climb" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -11083,6 +11240,7 @@ GROUPS = [
     ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
+    ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))

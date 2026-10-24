@@ -1,6 +1,8 @@
 // The facts a card shows (25d). Pure: read from the route's analysis and what the planner says of a point, so a
 // missing one says so in its place, in the same words on every card. 1b adds the route's, by sport.
-import { fmtDist } from './geo.js';
+import { fmtDist, fmtDuration } from './geo.js';
+import { OFFROAD_BIKE, isWater, ACTIVITIES } from './config.js';
+import { surfaceClass } from './analysis.js';
 
 // ------------------------------------------------------------------ the route's facts, by sport (1b)
 // The three numbers a tap on the route shows, your sport's first: when you'd be there, how steep, and what the sport
@@ -86,4 +88,87 @@ export function pointNums(a, i, { when, along, clock, pending = false }) {
     ele != null ? { value: `${Math.round(ele)} m`, label: 'height' } : pending ? wait('height')
       : { value: '?', label: a && a.ele ? 'no terrain here' : 'height not known yet', missing: true },
   ].filter(Boolean);
+}
+
+// ------------------------------------------------------------------ the hardest climb (Journey D)
+// One measure a sport, everywhere: the uphill grade on an MTB or gravel bike (the bigger climb of the same grade), else
+// height × gradient. How it's said: "↑S2, 21 m at 12 %", "45 m at 9 %".
+export function hardestClimb(climbs, sport) {
+  const grade = OFFROAD_BIKE.has(sport), score = (c) => (grade ? c.cls * 1e6 + c.gain : c.gain * c.avg);
+  return (climbs || []).reduce((m, c) => (!m || score(c) > score(m) ? c : m), null);
+}
+export const climbWords = (c, sport) => `${OFFROAD_BIKE.has(sport) ? `↑S${c.cls}, ` : ''}${Math.round(c.gain)} m at ${Math.round(c.avg)} %`;
+
+// ------------------------------------------------------------------ key facts (#471's A2)
+// What stands out on a route, for the line under its numbers, in the order it picks: what can change whether you go
+// (a water leg's wind, always; rain on the way), what changes how long (a headwind that adds 15 min or a tenth of the
+// time), the hardest bit (unpaved on a road bike); else the sport's usual fact (a trip's hardest day, the hardest climb on
+// a bike, the high point on foot). `noWeather`: why the weather isn't known ("no forecast yet"), said beside it, never
+// taken as calm. Each: { k, html, aria, stand, usual, miss }; html has <b> for its number.
+export const STANDS = { rainMm: 0.5, rainM: 1000, headMin: 15, headShare: 0.1, unpavedM: 1000 };
+export function keyFacts(a, { sport, days = [], noWeather = null }) {
+  const out = [], w = noWeather ? null : a.wind, km = (m) => fmtDist(m);
+  const water = waterWind(a, w, (sp) => isWater(sp));
+  if (water) out.push(water.none ? { k: 'wind', miss: true, stand: true, html: `Wind: <b>${noWeather || 'not known yet'}</b>`, aria: `Wind: ${noWeather || 'not known yet'}` }
+    : { k: 'wind', stand: true, html: `Wind up to <b>${water.sp} m/s</b>, gusts ${water.g} · headwind <b>${water.head} %</b>`, aria: `Wind up to ${water.sp} m/s, gusts ${water.g}, headwind ${water.head} % of the way: the weather along the route` });
+  if (w && w.precip) {
+    let wet = 0;
+    for (let i = 1; i < a.along.length; i++) if (w.precip[i] >= STANDS.rainMm) wet += a.along[i] - a.along[i - 1];
+    if (wet >= STANDS.rainM) out.push({ k: 'rain', stand: true, v: { m: wet }, html: `Rain on <b>${km(wet)}</b> of the way`, aria: `Rain on ${km(wet)} of the way: the weather along the route` });
+  }
+  const add = a.timeWind && !water ? (a.timeWind - a.time) / 60 : 0;
+  if (add >= STANDS.headMin || (add > 1 && add * 60 >= STANDS.headShare * a.time)) out.push({ k: 'bwind', stand: true, v: { add: Math.round(add) }, html: `Headwind adds <b>${Math.round(add)} min</b>`, aria: `Headwind adds ${Math.round(add)} min to the time: the weather along the route` });
+  if (sport === 'road') {
+    let rough = 0;
+    for (let i = 1; i < a.along.length; i++) if (['unpaved', 'trail'].includes(surfaceClass(a, i))) rough += a.along[i] - a.along[i - 1];
+    if (rough >= STANDS.unpavedM) { const p = Math.round((rough / a.total) * 100); out.push({ k: 'unpaved', stand: true, v: { m: rough, p }, html: `Unpaved <b>${km(rough)}</b>, ${p} % of the way`, aria: `Unpaved ${km(rough)}, ${p} % of the way: show it in On the route` }); }
+  }
+  // the usual: a trip's hardest day, then the sport's own
+  const day = days.reduce((m, d) => (!m || d.moving > m.moving ? d : m), null);
+  if (days.length > 1) out.push({ k: 'day', usual: true, v: day, html: `Day ${day.n} is the hardest: <b>${km(day.to - day.from)}</b>, <b>↑${Math.round(day.up)} m</b>`, aria: `Day ${day.n} is the hardest: ${km(day.to - day.from)}, ↑${Math.round(day.up)} m, ${fmtDuration(day.moving)} moving: show it in the list` });
+  const c = hardestClimb(a.climbs, sport);
+  if (['mtb', 'gravel', 'road'].includes(sport) && c) out.push({ k: 'climb', usual: true, v: c, html: `Hardest climb ${OFFROAD_BIKE.has(sport) ? `<b>↑S${c.cls}</b>, ` : ''}${Math.round(c.gain)} m at <b>${Math.round(c.avg)} %</b>`, aria: `Hardest climb ${climbWords(c, sport)}: show it in Climbs` });
+  else if (!isWater(sport) && Number.isFinite(a.maxE)) out.push({ k: 'high', usual: true, html: `High point <b>${Math.round(a.maxE)} m</b>`, aria: `High point ${Math.round(a.maxE)} m: show it on the profile` });
+  if (noWeather && !water) out.push({ k: 'wx', miss: true, html: `Weather: <b>${noWeather}</b>`, aria: `Weather: ${noWeather}` });
+  return out;
+}
+// what the line shows: the first that stands out, else the usual fact, and the missing weather beside either
+export function factLine(facts) {
+  const pick = facts.find((x) => x.stand) || facts.find((x) => x.usual), miss = facts.find((x) => x.miss && x !== pick);
+  return [pick, miss].filter(Boolean);
+}
+
+// a route of two sports: a row for each (its legs together), its distance and its own fact: on the water its wind, on
+// land its climbing
+export function sportFacts(a, { noWeather = null }) {
+  const by = new Map(), w = noWeather ? null : a.wind;
+  for (let i = 1; i < a.along.length; i++) {
+    const sp = (a.attr[i] && a.attr[i].sport) || a.activity, v = by.get(sp) || { sport: sp, m: 0, up: 0 };
+    v.m += a.along[i] - a.along[i - 1];
+    const d = a.ele ? a.ele[i] - a.ele[i - 1] : 0;
+    if (d > 0) v.up += d;
+    by.set(sp, v);
+  }
+  return [...by.values()].map(({ sport, m, up }) => {
+    const label = ACTIVITIES[sport].label, wind = isWater(sport) ? waterWind(a, w, (sp) => sp === sport) : null;
+    const fact = wind ? (wind.none ? [`wind: <b>${noWeather || 'not known yet'}</b>`, `wind: ${noWeather || 'not known yet'}`] : [`wind up to <b>${wind.sp} m/s</b>, gusts ${wind.g}`, `wind up to ${wind.sp} m/s, gusts ${wind.g}`])
+      : [`<b>↑${Math.round(up)} m</b>`, `↑${Math.round(up)} m`];
+    return { k: `sport:${sport}`, sport, miss: !!wind && wind.none, html: `${label} <span class="kf-d">${fmtDist(m)}</span> · ${fact[0]}`, aria: `${label}, ${fmtDist(m)}, ${fact[1]}: show this part in the list` };
+  });
+}
+
+// the wind over a route's water (its samples in a water sport): strongest, gusts, and how much of it is into the wind;
+// none: there is water but no wind for it
+function waterWind(a, w, wet) {
+  let n = 0, sp = 0, g = 0, head = 0, m = 0;
+  for (let i = 1; i < a.along.length; i++) {
+    if (!wet((a.attr[i] && a.attr[i].sport) || a.activity)) continue;
+    const d = a.along[i] - a.along[i - 1];
+    n++; m += d;
+    if (!w) continue;
+    sp = Math.max(sp, w.speed[i]); g = Math.max(g, w.gust[i]);
+    if (w.head[i] > 1) head += d;
+  }
+  if (!n) return null;
+  return w ? { sp: Math.round(sp), g: Math.round(g), head: Math.round((head / m) * 100) } : { none: true };
 }
