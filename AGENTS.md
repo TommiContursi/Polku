@@ -53,8 +53,8 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   claim is released or the user says its session has stopped, never because
   it's old: continue from its last Hand-over and pushed branch, and say so
   on the issue.
-- **What you notice but don't do now** is filed (see "Bugs and findings"),
-  and the work goes on: only a blocker or a serious problem for people using
+- **What you notice but don't do now** goes in your Hand-over (see "Bugs
+  and findings"), and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it. Small fixes go
   into the open Fixes milestone, each in a Fix PR of its own, never mixed
   into a phase; ideas wait in Someday.
@@ -75,7 +75,8 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
   whether the claim is released; branch, commit and PR; done; verified, with
   the exact commands and the commit they ran on; not verified; decisions,
-  with links; next step, from the plan's order; what to watch out for.
+  with links; next step, from the plan's order; what to watch out for;
+  noticed, one line each.
   Write one too before a turn that waits for the user, so the answer can
   start a fresh session. Never end a turn with uncommitted work: #177 lost a
   whole claim.
@@ -170,8 +171,8 @@ not models, mid-session: a new model sends the whole conversation again
   later commit whose files outside `docs/`, AGENTS.md, README.md and
   PRODUCT.md are the same: a docs-only commit, or a rebase onto one (the
   app reads `CHANGELOG.md`: run `changelog`).
-- **A check that fails only sometimes,** or only in a whole run, gets an
-  issue (or a comment on its issue): the commit, the command, the browser,
+- **A check that fails only sometimes,** or only in a whole run, goes in
+  the Hand-over's noticed lines (or a comment on its issue): the commit, the command, the browser,
   what was cached and what else ran, what failed, and whether it passes
   alone. Never rerun until it's green, nor weaken or skip a check to pass.
 - **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
@@ -225,22 +226,21 @@ not models, mid-session: a new model sends the whole conversation again
 
 ## Bugs and findings
 
-- **File what someone else can act on,** with its kind and size, once you've
-  searched: a check failing the same way, or a symptom that may share a
-  cause, goes on the issue that exists.
-  - `bug`: a confirmed bug, small ones too.
-  - `watch`: a suspected bug, a credible risk to safety, reliability,
-    accessibility, privacy or saved data, or a check that failed for no
-    clear reason, with when to look again. One-off failures count: #371 and
-    #378 were the app's bugs #392 and #393.
-  - `enhancement` or `idea`: when it meets a need of people using Polku, or
-    the user asks. Not every passing thought.
-- **File it before your next commit or the end of the turn:** a session can
-  stop at a usage limit without warning. Short is fine: what happens, what
-  should, for whom, where in the code, the commit, what's unknown; the
-  templates list the rest. Check `main` when your branch could be the cause
-  (then fix it there), and link it to the phase when an approved design
-  replaces it.
+- **File an issue only for a bug you reproduced on `main` that hurts people
+  using Polku,** labelled `bug` with its size, once you've searched (a
+  symptom that may share a cause goes on the issue that exists). File it
+  before your next commit or the end of the turn: what happens, what should,
+  for whom, where in the code, the commit. When your branch could be the
+  cause, fix it there instead.
+- **Everything else you notice** (a suspected bug, a risk, a check that
+  failed for no clear reason, an idea) is one line in your Hand-over's
+  noticed lines: what, where, the commit. An idea the user wants kept is a
+  one-line `idea` issue.
+- **The weekly sweep,** on Mondays, when the user starts it: a fresh session
+  reads the noticed lines since the last sweep, reviews what merged into
+  `main` since then and tries to break it, and asks the user which few are
+  worth an issue. It comments on the "Weekly sweep" issue (the first sweep
+  opens it): the commits it covered, what it found, what the user kept.
 - **The issue is the one place for its status,** so nothing to do is listed in
   the docs. "Fixes #n" closes it when the PR merges; anything closed without a
   fix says why (`duplicate`, `wontfix`, or done elsewhere).
