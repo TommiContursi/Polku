@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-24
 
+### Fixed: shared routes aren't put on the ice ([#479](https://github.com/TommiContursi/Polku/issues/479))
+
+A shared route that began with a straight line opened with that leg drawn onto the ice, and Check warned "On the ice" in any season. Sharing it again carried the mistake into the new link. Now only the legs the link puts on the ice are there.
+
 ### Fixed: the timeline keeps its height when its forecast comes in ([#301](https://github.com/TommiContursi/Polku/issues/301))
 
 On a phone with the weather timeline open, the timeline grew a little when its forecast came in, or came in again after you moved the map, and the map's buttons above it moved up with it: 3 px, or 20 px with **Snow depth** on. Now the timeline keeps the room its reading needs from the start, so the buttons stay where your finger expects them.
