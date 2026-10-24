@@ -2,13 +2,13 @@
 
 Polku is a static site with no build step and no backend: `index.html`, plain ES modules, and MapLibre GL JS from a CDN. [polku.si](https://polku.si) is served by GitHub Pages from `main`.
 
-What to do is on GitHub: the [issues](https://github.com/TommiContursi/Polku/issues), the [milestones](https://github.com/TommiContursi/Polku/milestones) and the [board](https://github.com/users/TommiContursi/projects/1). The order of the phases is in [ROADMAP.md](ROADMAP.md), their designs in [plans/](plans/), and what's shipped in the [changelog](../CHANGELOG.md). This file is how Polku works.
+What to do is on GitHub: the [issues](https://github.com/TommiContursi/Polku/issues), the [milestones](https://github.com/TommiContursi/Polku/milestones) and the [board](https://github.com/users/TommiContursi/projects/1). The board holds the order of the phases, [ROADMAP.md](ROADMAP.md) what holds for every phase, [plans/](plans/) their designs, and what's shipped in the [changelog](../CHANGELOG.md). This file is how Polku works.
 
 How to work on it (what to work on, testing, pull requests, bugs and findings, writing) is in [AGENTS.md](../AGENTS.md), for people and coding agents alike.
 
 ## Bugs and reviews
 
-- Every bug, and each improvement, idea and risk worth keeping ([AGENTS.md](../AGENTS.md), "Bugs and findings"), is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status, labelled by kind (`bug`, `enhancement`, `idea`, `watch`) and size (`small`, `medium`, `big`). Each planned phase, and each round of fixes, is a milestone. ROADMAP orders the phases.
+- Every bug, and each improvement, idea and risk worth keeping ([AGENTS.md](../AGENTS.md), "Bugs and findings"), is a [GitHub issue](https://github.com/TommiContursi/Polku/issues), the one place for its status, labelled by kind (`bug`, `enhancement`, `idea`, `watch`) and size (`small`, `medium`, `big`). Each planned phase, and each round of fixes, is a milestone. The board orders the phases.
 - `docs/retros/` keeps a short retro for each finished milestone: what cost time, what to keep, and what changed in AGENTS.md because of it.
 - `docs/reviews/` keeps dated reviews of the code with the evidence they were based on. They aren't updated afterwards: what has happened since is in the issues. The first is the [review of 15 October 2026](reviews/2026-10-15/README.md), listed in [#63](https://github.com/TommiContursi/Polku/issues/63).
 
@@ -234,7 +234,7 @@ js/modal.js, gpx.js, icons.js, geo.js, ui.js
 profiles/           Polku's own BRouter profiles (road cycling; short cuts through ways marked private)
 tools/              dev only: smoke.py, shoot.py, readme_shots.py, probes, cdp.py (headless Chrome), brouter-local.sh, fixtures
 img/base/           base map pictures, 240 × 160 (tools/thumbs.py); Aerial's is Esri's tile, not stored
-docs/               ROADMAP (the order), plans/ (phase designs), retros/, reviews/, this file, screenshots
+docs/               ROADMAP (how phases work), plans/ (phase designs), retros/, reviews/, this file, screenshots
 .agents/skills/     dev only: design skills for coding agents (below); .claude/skills/ links to them
 ```
 
