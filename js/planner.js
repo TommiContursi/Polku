@@ -3000,15 +3000,21 @@ export class Planner {
     });
   }
 
-  // a finger on a row of Reorder: held 0.45 s without moving 10 px it drags the point; a move sooner scrolls the list
+  // a finger on a row of Reorder: held 0.45 s without moving 10 px it drags the point; a move sooner scrolls the list.
+  // The hold is by the touch's own times, as the map's holds are (#293): on a busy page a move can reach the page before
+  // the timer runs, and a move after 0.45 s is the drag all the same; once held, the list doesn't scroll under it.
   holdRow(e, row, i) {
-    const x0 = e.clientX, y0 = e.clientY, id = e.pointerId;
-    const cancel = () => { clearTimeout(t); row.removeEventListener('pointermove', move); row.removeEventListener('pointerup', cancel); row.removeEventListener('pointercancel', cancel); };
-    const move = (ev) => { if (ev.pointerId === id && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 10) cancel(); };
-    const t = setTimeout(() => { cancel(); this.dragRow({ clientY: y0, pointerId: id, preventDefault() {}, stopPropagation() {} }, row, i, { touch: true }); }, 450);
+    const x0 = e.clientX, y0 = e.clientY, id = e.pointerId, t0 = e.timeStamp, HOLD = 450;
+    const held = (ev) => ev.timeStamp - t0 >= HOLD;
+    const still = (ev) => { if (held(ev)) ev.preventDefault(); };
+    const done = () => { clearTimeout(t); row.removeEventListener('pointermove', move); row.removeEventListener('pointerup', done); row.removeEventListener('pointercancel', done); row.removeEventListener('touchmove', still); };
+    const go = () => { done(); this.dragRow({ clientY: y0, pointerId: id, preventDefault() {}, stopPropagation() {} }, row, i, { touch: true }); };
+    const move = (ev) => { if (ev.pointerId !== id) return; if (held(ev)) go(); else if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > 10) done(); };
+    const t = setTimeout(go, HOLD);
     row.addEventListener('pointermove', move);
-    row.addEventListener('pointerup', cancel);
-    row.addEventListener('pointercancel', cancel);
+    row.addEventListener('pointerup', done);
+    row.addEventListener('pointercancel', done);
+    row.addEventListener('touchmove', still, { passive: false });
   }
 
   // Drag a row of Reorder (by its grip, or by a finger held on it); the gap it would drop into is marked, and the drop is

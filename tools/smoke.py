@@ -2720,11 +2720,16 @@ def onroute(chrome):
                 if (!lit || Math.hypot(lit.geometry.coordinates[0][0] - p.analysis.pts[20][0], lit.geometry.coordinates[0][1] - p.analysis.pts[20][1]) > 0.0002) errs.push(`a climb's row didn't light its stretch on the map: ${JSON.stringify(lit && lit.geometry.coordinates[0])}`);
                 p.unfocusRange();
               }
-              // the row at the panel's top, from the Route tab: Check and the card together [jc-desk, jc-desk-sel]
+              // the row at the panel's top, from the Route tab: Check and the card together [jc-desk, jc-desk-sel]. While
+              // Route's list shows the same warning in its section, the row isn't there too (Journey D); folded, it is
               p.setTab('route');
+              p.toggleSection('points', true);
               await wait(200);
               const row = p.els.readRow;
-              if (!row || row.hidden || !row.offsetParent) return [...errs, 'no row at the top of the panel'];
+              if (row && !row.hidden && row.offsetParent && p.els.points.querySelector('.sec2 .warn-row')) errs.push('the row and the list’s section both say the warning');
+              p.toggleSection('points', false);
+              await wait(200);
+              if (!row || row.hidden || !row.offsetParent) return [...errs, 'no row at the top of the panel, with the list folded'];
               row.querySelector('.pl-readrow-go').click();
               await wait(600);
               const box = [...document.querySelectorAll('[data-sec=warnings] .tier-read .warn-row')].find((r) => /Road works/.test(r.textContent));
@@ -9762,7 +9767,8 @@ RC_ON = """(async (li, t) => {
 RC_STATE = """(() => {
   const p = polku.planner, c = document.querySelector('.pl-way.card'), r = (e) => e.getBoundingClientRect(), vis = (e) => !!e && e.getClientRects().length > 0;
   const box = (e) => (e ? (({ left, top, right, bottom, width, height }) => ({ left, top, right, bottom, width, height }))(r(e)) : null);
-  const first = c && [...c.children].find((e) => e.matches('button, .btn'));
+  // the card's action at the pointer (first, or at its foot when it opens upwards); a warning box may come before it
+  const first = c && (c.querySelector(':scope > [data-k=pill]') || [...c.children].find((e) => e.matches('button, .btn')));
   return {
     kind: p.cards.current ? p.cards.current.kind : null, place: p.cards.place, n: p.points.length, past: p.past.length, view: p.inView(), active: p.active,
     calls: (window.routerCalls || []).length, menu: !!document.querySelector('.maplibregl-popup .pt-menu'),
@@ -10278,8 +10284,13 @@ def sections_list(chrome):
         time.sleep(0.5)
         if pg.js("JSON.stringify(polku.planner.points)") != before:
             fails.append(f'{name}: a quick swipe on Reorder’s list moved a point')
-        a = at(pg, "polku.planner.els.points.querySelector('.wpl-row[data-i=\"2\"]')")
-        b = at(pg, "polku.planner.els.points.querySelector('.wpl-row[data-i=\"4\"]')")
+        # (both rows in view at once, measured together: measuring one by scrolling would move the other)
+        pg.js(SETTLED)
+        ab = pg.js("""(async () => { const L = polku.planner.els.points, body = polku.planner.els.body, r = (k) => L.querySelector(`.wpl-row[data-i="${k}"]`).getBoundingClientRect();
+          body.scrollTop += r(2).top - (body.getBoundingClientRect().top + 60);
+          await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+          const c = (b) => ({ x: Math.round(b.left + Math.min(60, b.width / 2)), y: Math.round(b.top + b.height / 2) }); return [c(r(2)), c(r(4))]; })()""")
+        a, b = ab
         t0 = time.time()
         pg.touch('start', a['x'], a['y'], t0)
         time.sleep(0.6)
