@@ -2754,6 +2754,9 @@ WARNFIX = """(async () => {
   // (9) the row: a box with two buttons, its words opening the first item once
   const row = p.els.readRow;
   if (row.tagName === 'BUTTON') errs.push('the row is a <button> holding buttons');
+  // …its ✕ as big to touch as the header's other buttons (#443)
+  const rx = row.querySelector('.pl-readrow-x');
+  if (!rx || rx.offsetWidth < 44 || rx.offsetHeight < 44) errs.push(`the row's ✕ is ${rx ? `${rx.offsetWidth} × ${rx.offsetHeight}` : 'missing'}, under 44 px to touch`);
   let opened = 0;
   const real = p.openFromRow.bind(p);
   p.openFromRow = () => { opened++; return real(); };
@@ -2986,13 +2989,21 @@ def warnfix(chrome):
           if (!step) return ['no ‹ › on the card'];
           const c = card.getBoundingClientRect(), s = step.getBoundingClientRect();
           if (s.bottom > c.bottom + 1 || s.top < c.top) errs.push(`‹ › at ${Math.round(s.top)}–${Math.round(s.bottom)}, the card shows ${Math.round(c.top)}–${Math.round(c.bottom)}`);
+          // (#444) the profile size with the row there: the whole chart, and back at the peek the row and the numbers in sight
+          p.cards.close(); p.setTab('route'); p.setSheetState('profile'); await wait(400); await """ + SETTLED + """;
+          const cv = document.getElementById('profile-canvas').getBoundingClientRect(), sb = p.panel.getBoundingClientRect().bottom;
+          if (cv.height < 60 || cv.bottom > sb + 1) errs.push(`the profile size with the row: the chart ${Math.round(cv.top)}–${Math.round(cv.bottom)}, the sheet ends at ${Math.round(sb)}`);
+          p.setSheetState('peek'); await wait(400); await """ + SETTLED + """;
+          const rr = p.els.readRow.getBoundingClientRect(), nr = p.els.row.getBoundingClientRect(), pr = p.panel.getBoundingClientRect();
+          if (p.els.readRow.hidden || !rr.height) errs.push('back at the peek, no row');
+          else if (nr.bottom > pr.bottom + 1 || rr.top < pr.top) errs.push(`back at the peek, the row and the numbers ${Math.round(rr.top)}–${Math.round(nr.bottom)} in a sheet of ${Math.round(pr.top)}–${Math.round(pr.bottom)}`);
           return errs; })()""", timeout=90000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # (3) 200 % on a 390 and a 360 px phone: the count beside the numbers, taking none of the map, the peek below the
-    # top bar (the recheck: 360 × 740 ran under it)
-    for w, h in ((195, 422), (180, 370)):
+    # (3) 200 % on a 390 and a 360 px phone, and on its side (#438): the count beside the numbers, taking none of the map,
+    # the peek below the top bar (the recheck: 360 × 740 ran under it)
+    for w, h in ((195, 422), (180, 370), (422, 195)):
         pg = chrome.page(w, h, True)
         try:
             pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
