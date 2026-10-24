@@ -1043,6 +1043,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .li .badge { flex: none; min-width: 34px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
 .li .badge.ink { color: #000; text-shadow: none; }
 .cbadges { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.li.sel { background: var(--accent-soft); }
 .ctag { flex: none; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-style: normal; font-size: 12px; font-weight: 700; white-space: nowrap; }
 @media (hover: hover) and (pointer: fine) { .li:hover { background: var(--surface-2); } }
 /* On the route: the app's breakdowns, a group each, every kind with its bar and its rows */
@@ -1115,6 +1116,22 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
 .on-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .on-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 600; }
 @container (max-width: 300px) { .ex-item { grid-template-columns: 1fr; } .ex-item i { grid-row: 2; grid-column: 1; } }
+/* #424, the sport's key facts (2026-10-24, to choose). A: one line of words under the route's numbers, each fact a button
+   (an icon, its words, ›) opening where it's told in full; it looks like a line and answers a tap 44 px tall */
+.kf424 { display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; margin: -8px 0 2px; }
+.kf424 .kfb { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: -6px 0; padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 500; line-height: 1.3; text-align: left; cursor: pointer; }
+.kf424 .kfb b { font-weight: 750; font-variant-numeric: tabular-nums; }
+.kf424 .kfb > .ic { flex: none; color: var(--muted); }
+.kf424 .kfb > .ic:last-child { color: var(--muted); }
+.kf424 .kfb.miss { color: var(--unk); }
+.kf424 .kfb.miss > .ic:first-child { color: var(--unk); }
+.kf424 .kfb:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) { .kf424 .kfb:hover span { text-decoration: underline; text-underline-offset: 3px; } }
+.fr.desk .kf424 { margin-top: -4px; }
+/* B: Check's top, the strip's look without Speed and Style */
+.kfcheck { margin-top: 6px; }
+/* C: a fourth number, beside the route's own (it wraps where there's no room, as the numbers do) */
+.stats .kfnum b { font-size: 18px; }
 </style>
 </head>
 <body>
@@ -1192,6 +1209,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></symbol>
   <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 13.5h18"/></symbol>
   <symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 4-5"/><circle cx="12" cy="13" r="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 8h10.5a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 12h15.5a2.5 2.5 0 1 1-2.5 2.5"/><path d="M3 16h7"/></symbol>
 </svg>
 
 <main class="cv">
@@ -1399,6 +1417,23 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
       <figure class="fr phone dark" id="tabs-c-dark-go" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"go","wv":"v1","tabs":"c","theme":"dark","scrollC":".csec"}'><figcaption><b>C · Dark: the weather</b></figcaption></figure>
       <figure class="fr phone dark" id="tabs-c-dark-layers" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","layersC":true,"theme":"dark"}'><figcaption><b>C · Dark: Layers</b></figcaption></figure>
     </div>
+    <h3 class="cv-sub">Each sport's key facts (2026-10-24, to choose)</h3>
+    <p>The strip that C removes held each sport's own facts, not only the hardest climb. For paddling it shows Headwind and Strongest wind, and Carry ascent; for MTB, gravel and road the hardest climb; for walking and running the high point. C gave a new place only to Speed, Style and the hardest climb. The <b>Key facts</b> switch at the bottom shows where the rest could go. <b>A, recommended:</b> one line of words under the route's numbers, always in sight, even at the peek. It holds one fact, the one this route can't do without: a water leg's wind, else the hardest climb on a bike or the high point on foot. A tap opens where it's told in full, and Check's top keeps them all. <b>B:</b> at the top of Check, as the strip is today, without Speed and Style. <b>C:</b> a fourth number beside the route's own.</p>
+    <div class="cv-frames">
+      <figure class="fr phone" id="kf-paddle" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · Paddling (recommended)</b>Wind up to 10 m/s, gusts 14, headwind 49 %, under the numbers at the peek; a tap opens the weather along the route.</figcaption></figure>
+      <figure class="fr phone" id="kf-mtb" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · MTB</b>The hardest climb; a tap shows it in Climbs.</figcaption></figure>
+      <figure class="fr phone" id="kf-multi" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · MTB and paddling</b>The water's wind comes first; the ride's hardest climb is in Climbs.</figcaption></figure>
+      <figure class="fr phone" id="kf-hike" data-st='{"stage":"route","uc":"days","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · Three days on foot</b>The high point.</figcaption></figure>
+      <figure class="fr phone" id="kf-nofc" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line","leaveC":"2026-11-28T07:30"}'><figcaption><b>A · Past the forecast</b>Wind: no forecast yet, never a calm-looking blank.</figcaption></figure>
+      <figure class="fr phone" id="kf-none" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"none"}'><figcaption><b>As chosen: nowhere</b>C without a place for them: the wind is gone from the peek and from Check.</figcaption></figure>
+      <figure class="fr phone" id="kf-check" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"check","sheet":"half","tab":"check"}'><figcaption><b>B · At Check's top</b>As today, without Speed and Style: one tap from the peek.</figcaption></figure>
+      <figure class="fr phone" id="kf-check-mtb" data-st='{"stage":"route","uc":"day","wv":"v1","tabs":"c","facts":"check","sheet":"half","tab":"check"}'><figcaption><b>B · MTB, at Check's top</b></figcaption></figure>
+      <figure class="fr phone" id="kf-num" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"num"}'><figcaption><b>C · A fourth number</b>Beside the route's own; with Done there's no room, so the numbers wrap.</figcaption></figure>
+      <figure class="fr desk" id="kf-desk" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line"}'><figcaption><b>A · Desktop, paddling</b>The line under the numbers in the panel.</figcaption></figure>
+      <figure class="fr phone" id="kf-fi" data-st='{"stage":"route","uc":"multi","wv":"v1","tabs":"c","facts":"line","w":360,"h":740,"lang":"fi","worst":true}'><figcaption><b>A · 360 × 740, Finnish</b>The facts wrap, each whole.</figcaption></figure>
+      <figure class="fr phone" id="kf-200" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line","z":2}'><figcaption><b>A · 200 %</b></figcaption></figure>
+      <figure class="fr phone dark" id="kf-dark" data-st='{"stage":"route","sport":"paddle","wv":"v1","tabs":"c","facts":"line","theme":"dark"}'><figcaption><b>A · Dark</b></figcaption></figure>
+    </div>
     <h3 class="cv-sub">The tabs, A and B</h3>
     <div class="cv-frames">
       <figure class="fr phone" id="tabs-route-a" data-st='{"stage":"route","uc":"day","sheet":"full","tab":"route","calm":true,"wv":"v1","tabs":"today"}'><figcaption><b>A · Route today</b>The list, the tools, then How you go folded at the end.</figcaption></figure>
@@ -1565,6 +1600,7 @@ body.single .fr.only .screen { zoom: var(--k, 1); border-radius: 0; box-shadow: 
   <div role="group" aria-label="Check's items, in Revision 5"><span>Check’s items</span><button type="button" data-o="check" data-v="a">A: rows</button><button type="button" data-o="check" data-v="c">C: Read as boxes (chosen)</button></div>
   <div role="group" aria-label="Marking warnings read"><span>Marking read</span><button type="button" data-o="read" data-v="off">Off (as approved)</button><button type="button" data-o="read" data-v="on">On (to choose)</button></div>
   <div role="group" aria-label="The tabs' contents and How you go (#424)"><span>Tabs (#424)</span><button type="button" data-o="tabs" data-v="today">A: today</button><button type="button" data-o="tabs" data-v="new">B: the strip</button><button type="button" data-o="tabs" data-v="c">C: two rows, every section (chosen)</button></div>
+  <div role="group" aria-label="Each sport's key facts, in the tabs' C"><span>Key facts</span><button type="button" data-o="facts" data-v="none">As chosen: nowhere</button><button type="button" data-o="facts" data-v="line">A: a line under the numbers (recommended)</button><button type="button" data-o="facts" data-v="check">B: Check's top</button><button type="button" data-o="facts" data-v="num">C: a fourth number</button></div>
   <div role="group" aria-label="Points and legs"><span>Points</span><button type="button" data-o="wv" data-v="v1">V1: card (chosen)</button><button type="button" data-o="wv" data-v="v2">V2: in the list</button><button type="button" data-o="wv" data-v="v3">V3: on the map</button></div>
   </div>
 </nav>
@@ -1600,6 +1636,8 @@ const OPT = {
   read: Q.get('read') === 'off' ? 'off' : 'on',
   // 2026-10-23, for the user's choice (#424): the tabs as they are (today) or as proposed (new), and How you go
   tabs: ['today', 'new'].includes(Q.get('tabs')) ? Q.get('tabs') : 'c', // (2026-10-24: C, redrawn from the user's notes, chosen)
+  // 2026-10-24, to choose: where each sport's key facts go in C (A a line under the numbers, B Check's top, C a fourth number)
+  facts: ['check', 'num', 'none'].includes(Q.get('facts')) ? Q.get('facts') : 'line',
 };
 let touched = false; // a switch pressed: it wins over each frame's own settings
 
@@ -1969,7 +2007,7 @@ function fresh(base) {
   return st;
 }
 const opt = (st, k) => (touched || st[k] == null ? OPT[k] : st[k]);
-const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look, check: OPT.check, read: OPT.read, tabs: st.tabs || OPT.tabs });
+const view = (st) => ({ worst: opt(st, 'worst'), lang: opt(st, 'lang'), theme: st.theme && !touched ? st.theme : OPT.theme, trip: OPT.trip, modes: st.modes || OPT.modes, rtui: st.rtui || OPT.rt, sport: st.sportopt || OPT.sport, wv: st.wv || OPT.wv, look: OPT.look, check: OPT.check, read: OPT.read, tabs: st.tabs || OPT.tabs, facts: st.facts || OPT.facts });
 
 // ------------------------------------------------ building blocks
 // the pill is the map's sport (st.map); its menu says what a change does (2026-10-20)
@@ -2058,7 +2096,7 @@ const stats = (st, v) => {
   const S = SPORTS[st.sport], s = st.uc ? UC[st.uc].stats : v.worst ? WORST : st.loop ? { d: '10.4 km', t: '42 min', up: '↑96 m', down: '↓96 m' } // a loop taken: loop A's numbers
     : fr ? { d: `${fr.km} km`, t: ((m) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`))(Math.round(fr.km * 6.5)), up: `↑${Math.round(fr.km * 21)} m`, down: `↓${Math.round(fr.km * 21)} m` } : S.stats; // a marked route followed
   const climb = st.sport === 'paddle' && !v.worst ? `<span><b>${s.up}</b><small>carry</small></span>` : `<span><b>${s.up}</b><small><span class="sr">descent </span>${s.down}</small></span>`;
-  return `<div class="stats"><span><b>${s.d}</b><small>${t('dist')}</small></span><button type="button" class="tlink" data-act="depart" aria-label="${s.t} ${t('fromNow')}: change the departure, in Go"><b>${s.t}</b><small>${t('fromNow')}</small></button>${climb}</div>`;
+  return `<div class="stats"><span><b>${s.d}</b><small>${t('dist')}</small></span><button type="button" class="tlink" data-act="depart" aria-label="${s.t} ${t('fromNow')}: change the departure, in Go"><b>${s.t}</b><small>${t('fromNow')}</small></button>${climb}${factsNum424(st, v)}</div>`;
 };
 const warnsOf = (st, v) => { const W = WARN[warnKey(st.sport)]; return noFcItem424(st, v, v.worst ? WARN_WORST : st.calm ? { ...W, t1: [] } : W); };
 // #424, C (2026-10-24): past the forecast, the weather's checks for those parts are in Not checked, never quietly calm
@@ -2257,10 +2295,10 @@ function checkBody(st, v) {
   // (every group, chosen 2026-10-23: one way to mark read, everywhere)
   const allRead = (cls, list) => (v.read === 'on' && list.some((w, i) => !isRead(st, v, { g: cls, i })) ? `<button type="button" class="btn small quiet rr-all" data-act="rallread" data-v="${cls}">${ic('check', 16)}${t('allRead')}</button>` : '');
   const tier = (cls, icn, title, list, sub) => (list.length ? `<section class="tier ${cls}"><h3>${ic(icn, 20)}${title}<span class="badge b2">${list.length}</span>${allRead(cls, list)}</h3><p class="tsub">${sub}</p>${rows(list, cls)}</section>` : '');
-  const sum = v.tabs === 'new' || v.tabs === 'c' ? '' : strip424(st, v, false); // (#424: today the strip opens Check; proposed, it's Route's)
+  const sum = v.tabs === 'c' ? (v.facts === 'check' ? factsCheck424(st) : '') : v.tabs === 'new' ? '' : strip424(st, v, false); // (#424: today the strip opens Check; proposed, it's Route's)
   const cov = `<div class="coverage"><p><b>${t('checked')}</b></p><ul>${W.cov.map(([k, a, b]) => `<li>${k === 'ok' ? ic('check', 16, 'ok') : k === 'bad' ? ic('unk', 16, 'bad') : ic('minus', 16)}<span>${esc(a)}</span><small>${esc(b)}</small></li>`).join('')}</ul><p style="margin:10px 0 0">${t('nothingMeans')}</p></div>`;
   return `${sum}${tier('t1', 'warnf', t('t1'), W.t1, 'What can stop you, turn you back or hurt')}${tier('t3', 'unk', t('t3'), W.t3, 'A source didn’t answer: the route may miss something')}${tier('t2', 'eye', t('t2'), W.t2, 'Sections to know about')}${cov}
-    ${v.tabs === 'c' ? climbsC() + onRouteC() : `<div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div>${v.tabs === 'new' ? '' : '<div class="sec-h">On the map</div>'}`}`;
+    ${v.tabs === 'c' ? climbsC(st) + onRouteC() : `<div class="sec-h" style="margin-top:10px">Climbs 2</div><div class="sec-h">On the route</div>${v.tabs === 'new' ? '' : '<div class="sec-h">On the map</div>'}`}`;
 }
 function goBody(st) {
   return `<div class="gosec"><h4>Time</h4><div class="row"><span class="btn quiet">${ic('clock', 18)}${t('depart')} ${t('now')} ${ic('down', 12)}</span><span style="color:var(--muted)">arrive 07:46</span></div>
@@ -3132,8 +3170,8 @@ function speedStepC(st, sp, desk) {
     ${presets}<div class="speed-fields">${w4('fields').map(field).join('')}</div>${paddle}<p class="note424">${esc(w4('countText'))}</p></div>`;
 }
 // Check: what's on the way, every section with its content; the hardest climb marked in Climbs; no strip, no On the map
-function climbsC() {
-  const rows = wc('climbRows').map(([cls, bg, b, t, s, hard]) => `<button type="button" class="li cli" data-act="say424c" data-v="climb"><span class="cbadges"><span class="badge${cls === 1 ? ' ink' : ''}" style="background:${bg}">${esc(b)}</span>${hard ? `<em class="ctag">${esc(wc('hardestTag'))}</em>` : ''}</span><span class="li-main"><b>${esc(t)}</b><span>${esc(s)}</span></span></button>`).join('');
+function climbsC(st = {}) {
+  const rows = wc('climbRows').map(([cls, bg, b, t, s, hard]) => `<button type="button" class="li cli${hard && st.kfLit ? ' sel' : ''}" data-act="say424c" data-v="climb"${hard && st.kfLit ? ' aria-current="true"' : ''}><span class="cbadges"><span class="badge${cls === 1 ? ' ink' : ''}" style="background:${bg}">${esc(b)}</span>${hard ? `<em class="ctag">${esc(wc('hardestTag'))}</em>` : ''}</span><span class="li-main"><b>${esc(t)}</b><span>${esc(s)}</span></span></button>`).join('');
   return `<section class="csec" aria-label="${esc(wc('climbs'))}"><div class="sec-h">${esc(wc('climbs'))} <span class="badge b2">3</span><span class="csum">${esc(wc('climbsSum'))}</span></div><div class="clist">${rows}</div></section>`;
 }
 function onRouteC() {
@@ -3189,6 +3227,72 @@ function profileWind424(st) {
   return `<div class="prof"><div class="prof-top">Colour by <span class="sel" style="height:36px">Wind ${ic('down', 14)}</span>
     <label class="sw"><span>On map</span><i role="switch" aria-checked="false" tabindex="0" aria-label="Colour the route on the map"></i></label></div>
     <div class="pwrap"><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Profile coloured by the wind${st.noFc ? `; no forecast yet from km ${st.noFc.km}` : ''}">${bars}${st.noFc ? `<line x1="${cut}" y1="0" x2="${cut}" y2="${H}" stroke="#56625c" stroke-width="1.5" stroke-dasharray="3 3"/>` : ''}</svg>${label}</div></div>`;
+}
+// ------------------------------------------------ #424, the sport's key facts (2026-10-24, to choose). The strip that C removes
+// carried each sport's own facts, not only the hardest climb: Headwind and Strongest wind for paddling (and Carry ascent),
+// the hardest climb for MTB, gravel and road, the high point for walking and running (js/planner.js, the stats). Where they
+// go: A, a line under the route's numbers (recommended); B, at the top of Check, as today without Speed and Style; C, a
+// fourth number. One or two facts, chosen by the sport and the kind of route; on a route over water and land the wind first.
+const KF424 = {
+  en: {
+    wind: (sp, g) => `Wind up to <b>${sp}&nbsp;m/s</b>, gusts&nbsp;${g}`, head: (p) => ` · headwind <b>${p}&nbsp;%</b>`, windOn: (sport, sp, g) => `${sport}: wind up to <b>${sp}&nbsp;m/s</b>, gusts&nbsp;${g}`, windA: (sp, g, p) => `Wind up to ${sp} m/s, gusts ${g}, headwind ${p} % of the way: the weather along the route`,
+    windPart: (km) => ` · no forecast yet from km ${km}`, windNone: 'Wind: <b>no forecast yet</b>', windNoneA: 'Wind: no forecast yet',
+    climb: (g, h, a) => `Hardest climb <b>${g}</b>, ${h} m at ${a} %`, climbA: (g, h, a) => `Hardest climb ${g}, ${h} m at ${a} %: show it in Climbs`,
+    high: (m) => `High point <b>${m} m</b>`, highA: (m) => `High point ${m} m: show it on the profile`, carry: (m) => `Carries climb <b>${m} m</b>`, carryA: (m) => `Carries climb ${m} m: show them on the profile`,
+    strip: { head: ['Headwind', 'of the distance'], wind: ['Strongest wind', (g) => `gusts ${g}`], carry: ['Carry ascent', ''], climb: ['Hardest climb', (h, a) => `${h} m at ${a} %`], high: ['High point', ''] },
+    numWind: 'wind, gusts', numClimb: 'hardest climb', numHigh: 'high point',
+    say: { high: ['The high point is marked on the profile', false], carry: ['The carries are lit on the profile', false] },
+  },
+  fi: {
+    wind: (sp, g) => `Tuulta enintään <b>${sp}&nbsp;m/s</b>, puuskissa&nbsp;${g}`, head: (p) => ` · vastatuulta <b>${p}&nbsp;%</b>`, windOn: (sport, sp, g) => `${sport}: tuulta enintään <b>${sp}&nbsp;m/s</b>, puuskissa&nbsp;${g}`, windA: (sp, g, p) => `Tuulta enintään ${sp} m/s, puuskissa ${g}, vastatuulta ${p} % matkasta: sää reitillä`,
+    windPart: (km) => ` · ei vielä ennustetta km ${km}:stä`, windNone: 'Tuuli: <b>ei vielä ennustetta</b>', windNoneA: 'Tuuli: ei vielä ennustetta',
+    climb: (g, h, a) => `Jyrkin nousu <b>${g}</b>, ${h} m, ${a} %`, climbA: (g, h, a) => `Jyrkin nousu ${g}, ${h} m, ${a} %: näytä Nousuissa`,
+    high: (m) => `Korkein kohta <b>${m} m</b>`, highA: (m) => `Korkein kohta ${m} m: näytä profiilissa`, carry: (m) => `Kantamisissa nousua <b>${m} m</b>`, carryA: (m) => `Kantamisissa nousua ${m} m: näytä profiilissa`,
+    strip: { head: ['Vastatuuli', 'matkasta'], wind: ['Kovin tuuli', (g) => `puuskissa ${g}`], carry: ['Kantamisten nousu', ''], climb: ['Jyrkin nousu', (h, a) => `${h} m, ${a} %`], high: ['Korkein kohta', ''] },
+    numWind: 'tuuli, puuskat', numClimb: 'jyrkin nousu', numHigh: 'korkein kohta',
+    say: { high: ['Korkein kohta näkyy profiilissa', false], carry: ['Kantamiset näkyvät profiilissa', false] },
+  },
+};
+const kf = (k) => { const L = KF424[LANG] || KF424.en; return L[k] ?? KF424.en[k]; };
+// the facts this route shows, most important first: a water leg's wind, then the land sport's own (illustrative values)
+function keyFacts424(st) {
+  const water = st.uc === 'multi' ? { sp: 7, g: 11, p: 30 } : st.uc ? null : isWaterS(st.sport) ? { sp: 10, g: 14, p: 49 } : null;
+  const land = st.uc === 'multi' || st.uc === 'day' || (!st.uc && st.sport === 'mtb') ? 'climb' : st.uc === 'days' ? 'high' : null;
+  const out = [], none = st.leaveC && typeof pastC === 'function' && pastC(new Date(st.leaveC)), multi = st.uc === 'multi';
+  const pre = (k) => (multi ? `${esc(sL(k))}: ` : '');
+  if (water) out.push(none ? { k: 'wind', html: pre('paddle') + kf('windNone'), aria: kf('windNoneA'), miss: true }
+    : { k: 'wind', html: (multi ? kf('windOn')(esc(sL('paddle')), water.sp, water.g) : kf('wind')(water.sp, water.g) + kf('head')(water.p)) + (st.noFc ? kf('windPart')(st.noFc.km) : ''), aria: kf('windA')(water.sp, water.g, water.p), v: water });
+  if (!st.uc && isWaterS(st.sport)) out.push({ k: 'carry', html: kf('carry')(12), aria: kf('carryA')(12) });
+  if (land === 'climb') out.push({ k: 'climb', html: pre('mtb') + kf('climb')('↑S2', 21, 12), aria: kf('climbA')('↑S2', 21, 12) });
+  if (land === 'high') out.push({ k: 'high', html: kf('high')(215), aria: kf('highA')(215) });
+  return out;
+}
+const kfIcon = { wind: 'wind', carry: 'mountain', climb: 'mountain', high: 'mountain' };
+// A: one line of words under the route's numbers, always in sight; each fact opens where it's told in full
+function factsLine424(st, v) {
+  if (v.tabs !== 'c' || v.facts !== 'line' || st.stage !== 'route') return '';
+  const F = keyFacts424(st).slice(0, 1); // one line, one fact: the one this route can't do without (Check's top keeps them all)
+  return F.length ? `<div class="kf424" role="group" aria-label="Key facts">${F.map((x) => `<button type="button" class="kfb${x.miss ? ' miss' : ''}" data-act="kf424" data-v="${x.k}" aria-label="${esc(x.aria)}">${ic(kfIcon[x.k], 16)}<span>${x.html}</span>${ic('right', 14)}</button>`).join('')}</div>` : '';
+}
+// B: at the top of Check, as the strip is today, without Speed and Style (Route's rows in C)
+function factsCheck424(st) {
+  const L = kf('strip'), F = keyFacts424(st), items = [];
+  for (const x of F) {
+    if (x.k === 'wind' && x.miss) items.push([L.wind[0], '?', kf('windNoneA'), 'wind']);
+    else if (x.k === 'wind') { items.push([L.head[0], `${x.v.p} %`, L.head[1], 'wind']); items.push([L.wind[0], `${x.v.sp} m/s`, L.wind[1](x.v.g), 'wind']); }
+    if (x.k === 'carry') items.push([L.carry[0], '12 m', L.carry[1], 'carry']);
+    if (x.k === 'climb') items.push([L.climb[0], `<i class="dot" style="background:#f59e0b"></i>↑S2`, L.climb[1](21, 12), 'climb']);
+    if (x.k === 'high') items.push([L.high[0], '215 m', L.high[1], 'high']);
+  }
+  return items.length ? `<div class="st424 new kfcheck" role="group" aria-label="Key facts">${items.map(([l, val, sub, k]) => `<button type="button" class="stat stat-btn" data-act="kf424" data-v="${k}"><span class="stat-label">${esc(l)}</span><span class="stat-value">${val}${ic('right', 16)}</span><span class="stat-sub">${esc(sub)}</span></button>`).join('')}</div>` : '';
+}
+// C: a fourth number beside the route's own
+function factsNum424(st, v) {
+  if (v.tabs !== 'c' || v.facts !== 'num' || st.stage !== 'route') return '';
+  const x = keyFacts424(st)[0];
+  if (!x) return '';
+  const [b, sm] = x.k === 'wind' ? (x.miss ? ['?', kf('windNoneA')] : [`${x.v.sp} m/s`, `${kf('numWind')} ${x.v.g}`]) : x.k === 'climb' ? ['↑S2', kf('numClimb')] : ['215 m', kf('numHigh')];
+  return `<button type="button" class="tlink kfnum" data-act="kf424" data-v="${x.k}" aria-label="${esc(x.aria)}"><b>${b}</b><small>${esc(sm)}</small></button>`;
 }
 // the sheet (phone) and the panel (desktop)
 function plannerHtml(st, v, desk, docked) {
@@ -3282,8 +3386,8 @@ function plannerHtml(st, v, desk, docked) {
   const pcarding = st.uc && (st.psel != null || st.str) && st.pcard && !desk && st.sheet === 'peek' && v.wv === 'v1';
   const head = stepping ? wcard(st, v) : pcarding ? pointCard(st, v, false) : viewing
     ? `<div class="titlerow"><span class="ttl"><b>${esc(routeTitle(st, v))}</b><small>${esc(routeSports(st))} · ${ic('check', 13)}${t('kept')}</small></span><button type="button" class="tbtn" data-act="close" aria-label="Put the route away">${ic('close', 20)}</button></div>${warnRow(st, v, desk)}
-       <div class="row wrap">${stats(st, v)}${fin}</div>`
-    : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>`;
+       <div class="row wrap">${stats(st, v)}${fin}</div>${factsLine424(st, v)}`
+    : `${warnRow(st, v, desk)}<div class="row wrap">${stats(st, v)}${fin}</div>${factsLine424(st, v)}`;
   const big = desk || (st.sheet !== 'peek' && !stepping && !pcarding);
   const style = desk ? '' : st.sheet === 'half' ? `style="height:${Math.round(st._h * 0.5)}px"` : st.sheet === 'full' ? `style="height:calc(100% - 72px)"` : '';
   // (#424: the Route and Go tabs as they are, or as proposed; goBody() is the approved design of 2026-10-18, kept for the frames before C)
@@ -3610,6 +3714,11 @@ function act(f, a, val, ev) {
     case 'leavec': { const x = f.el.querySelector('.screen input[data-in="leavec"]'); try { x.showPicker(); return; } catch { const s5 = wc('say').pick; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); } break; }
     case 'leavenowc': st.leaveC = null; break;
     case 'layersx': st.layersC = false; break;
+    // #424, the key facts: each opens where it's told in full (the wind: Go's weather; the hardest climb: Climbs)
+    case 'kf424':
+      if (val === 'wind') { st.tab = 'go'; if (st.sheet === 'peek') st.sheet = 'half'; st.scrollC = '.csec'; st.how = null; break; }
+      if (val === 'climb') { st.tab = 'check'; if (st.sheet === 'peek') st.sheet = 'half'; st.scrollC = '.csec'; st.how = null; st.kfLit = true; break; } // (lit, as a climb's row lights it on the profile)
+      { const s5 = kf('say')[val] || [String(val), false]; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); } break;
     case 'say424c': { const s5 = wc('say')[val] || [String(val), false]; st.sayText = s5[0]; st.sayUndo = s5[1]; toast('say'); break; }
     case 'mark424': { const m = st.marks424 || { km: true }; st.marks424 = { ...m, [val]: !m[val] }; break; }
     case 'keepsport': close(); break;
@@ -3763,6 +3872,7 @@ document.querySelector('.picker').addEventListener('click', (e) => {
   if (k === 'worst' || k === 'lang' || k === 'theme') touched = true;
   if (k === 'modes' || k === 'rt') for (const f of FR.values()) { delete f.st.modes; delete f.st.rtui; }
   if (k === 'tabs') for (const f of FR.values()) { delete f.st.tabs; f.st.how = null; f.st.layersC = false; }
+  if (k === 'facts') for (const f of FR.values()) delete f.st.facts;
   if (k === 'wv') for (const f of FR.values()) { delete f.st.wv; f.st.pcard = f.st.psel != null ? 'point' : null; f.st.pleg = false; f.st.pedit = false; }
   if (k === 'sport') for (const f of FR.values()) { delete f.st.sportopt; if (f.st.sp === 'scope' && b.dataset.v !== 'ask') { f.st.sp = 'list'; f.st.spPick = null; } }
   renderAll();
