@@ -1169,16 +1169,38 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wp-mini.wp-start::after { border-left-width: 6px; border-top-width: 4px; border-bottom-width: 4px; }
 .wp-mini.wp-end::after { width: 6px; height: 6px; }
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.wpl-name { width: 100%; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 2px 5px; margin-left: -6px; }
-.wpl-name::placeholder { color: var(--text); opacity: .85; }
-.wpl-name:hover { border-color: var(--line); }
-.wpl-name:focus { border-color: var(--accent); background: var(--surface-solid); outline: none; }
-.wpl-main small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wpl-tools { display: flex; gap: 0; }
+.wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .wpl-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .wpl-foot:empty { display: none; }
 .tool.small { width: 28px; height: 28px; }
-@media (hover: hover) { .wpl-tools { opacity: .45; transition: opacity .12s; } .wpl-row:hover .wpl-tools, .wpl-row:focus-within .wpl-tools { opacity: 1; } }
+/* Route's list in sections (25d's part 4, Revision 5 [jd-multi]): a section's title, its numbers and the weather at
+   its end, its warnings, then the cards' own rows for its points and stretches */
+.wpl-top { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+.wpl-top:empty { display: none; }
+.wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
+.wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
+.wpl .sec2 + .sec2 { box-shadow: inset 0 1px 0 var(--line); }
+.sec2-head { display: flex; align-items: flex-start; gap: 8px; }
+.sec2-head > span { flex: none; display: grid; margin-top: 1px; }
+.sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }
+.sec2-nums { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 10px; padding-left: 28px; font-size: 13px; color: var(--muted); }
+.sec2-nums .sec2-wx { min-height: 32px; padding: 0 8px; gap: 4px; color: var(--text); font-weight: 600; }
+.sec2-wx-at { margin: 0 0 0 28px; font-size: 13px; color: var(--text); }
+.wpl .sec2 > .warn-row { margin-left: 28px; width: calc(100% - 28px); }
+.wpl .rows { margin: 0 -8px; }
+.wpl-point > span:first-child { width: 22px; place-items: center; }
+.wpl-point.shape b { font-weight: var(--weight-regular); }
+.wpl-tag { display: flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
+.wpl-tag svg { flex: none; }
+.rows > .wpl-strow { display: flex; align-items: center; box-shadow: inset 0 1px 0 var(--line); }
+.rows > .wpl-strow + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
+.wpl-strow > .row { flex: 1; min-width: 0; }
+.wpl-strow > .row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.wpl-unfold { flex: none; min-width: var(--target); min-height: var(--target); }
+@media (pointer: coarse) { .wpl .row { min-height: 44px; } }
+/* Reorder [jd-reorder]: every point with its grip, Earlier and Later; a finger held 0.45 s drags */
+.wpl.reorder .wpl-row { min-height: var(--target); touch-action: pan-y; }
+.wpl.reorder .wpl-row .tool { min-width: var(--target); min-height: var(--target); }
 /* route style */
 .style-box { display: flex; flex-direction: column; gap: 6px; }
 .style-presets, .style-flags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1195,35 +1217,17 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .style-label { width: 100%; }
   .style-help { margin-left: 0; }
 }
-.wpl-leg { display: flex; align-items: center; gap: 6px; padding: 3px 0 3px 30px; font-size: 11px; font-weight: 600; color: var(--accent); cursor: pointer; border-bottom: 1px solid var(--line); }
-.wpl-leg:hover { text-decoration: underline; }
-/* a leg's settings, between its two points */
-.wpl-legset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0 6px 30px; border-bottom: 1px solid var(--line); position: relative; }
-.wpl-legline { position: absolute; left: 13px; top: 0; bottom: 0; width: 2px; background: var(--line); }
-.wpl-legset .seg button span { display: inline; }
-.wpl-legset .pt-style { flex: 1 1 160px; min-width: 0; }
-.wpl-legset .mode-select-label { display: none; }
-.wpl-legnote { font-size: 12px; color: var(--muted); }
-.wpl-tools .tool[aria-pressed="true"] { color: var(--accent); background: var(--surface-2); }
 .wpl-foot .btn[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .pt-style { align-self: stretch; }
 .pt-style .mode-select-box, .pt-style select { width: 100%; }
-/* multisport: a leg's sport, a changeover's minutes */
-.wpl-legset .pt-sport { flex: 0 1 150px; min-width: 0; }
-.wpl-legset .pt-sport .mode-select-label { display: inline-flex; color: var(--muted); }
+/* multisport: a changeover's badge on the map */
 .pt-sport { display: flex; align-items: center; gap: 6px; }
 .pt-sport .mode-select-box { flex: 1; min-width: 0; }
 .pt-sport select { width: 100%; min-width: 0; text-overflow: ellipsis; }
-.wpl-change { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--accent); white-space: nowrap; }
-.wpl-change input { width: 3.6em; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); color: var(--text); font: inherit; text-align: right; }
 .wp-sport { position: absolute; left: calc(50% + 4px); top: calc(50% - 20px); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-bg); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; }
 .wp-sport svg { width: 12px; height: 12px; }
 .speed-sport { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; }
 /* stops and nights: a waypoint's stop, its badge, the menu's stop and places to sleep, the days */
-.wpl-stop { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.wpl-stop.night { color: #6366f1; }
-.wpl-stop select, .wpl-stop input { padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); color: var(--text); font: inherit; }
-.wpl-stop input[type="number"] { width: 3.6em; text-align: right; }
 .act-winter { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: -2px; border-radius: 50%; background: rgba(255,255,255,.22); }
 .act-winter svg { width: 13px; height: 13px; }
 .insp-winter { display: flex; gap: 6px; align-items: flex-start; color: var(--text); }
@@ -1244,8 +1248,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .chart-sport svg { width: 11px; height: 11px; }
 /* the sun at the start; the departure in the start's menu and row */
 .sun-line { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; font-size: 12.5px; color: var(--muted); }
-.wpl-depart { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--accent); }
-.wpl-depart select { font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); padding: 0 2px; }
 .speed-row.sub.head span { padding-left: 0; font-weight: 700; color: var(--text); }
 .speed-row.sub span svg { display: inline-block; vertical-align: -2px; margin-right: 4px; }
 .speed-row.sub span:has(svg) { white-space: nowrap; }
@@ -1521,8 +1523,8 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .rows.acts > [data-k="start"], .card-float .rows.acts > [data-k="end"] { order: -1; } /* (Start here and End here first, Move and Rename under them) */
 @media (hover: hover) { .card-float .rows.acts > .row:hover { background: var(--surface-2); } .card-float .rows.acts > .row.danger:hover { background: color-mix(in srgb, var(--bad) 10%, transparent); } }
 /* the point's row in the planner's list, lit while its card is open */
-.wpl-row[aria-current="true"] { background: var(--accent-soft); border-radius: 10px; }
-.wpl-row[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
+.wpl-point[aria-current="true"] { background: var(--accent-soft); }
+.wpl-point[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
 .card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
 .card-beside .card { max-height: calc(100vh - 88px); }
 /* Move: the card gives way to a note under the top bar, with Cancel; the point stays ringed */

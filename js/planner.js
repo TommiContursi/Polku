@@ -191,7 +191,9 @@ export class Planner {
     this.loop = { open: false, start: null, mode: 'km', km: null, min: null, dir: null, results: [], on: 0, busy: false, spin: 0, gens: [] }; // round trips
     this.way = null; // the way to begin picked, before there's a route: 'draw' or 'find' (renderStart(), A)
     this.marked = { list: [], on: 0, state: 'loading' }; // Marked routes in view (listMarked())
-    this.openLegs = new Set(); // waypoint rows whose leg settings are open (by point index)
+    this.unfolded = new Set(); // Route's list: the stretches whose shaping points are unfolded (their first point's pid), in memory only
+    this.reordering = false; // Route's list in Reorder
+    this.wxOpen = new Set(); // Route's list: the sections whose weather at their end is said in full (their first point's pid)
     this.roads = initNames(map); // road and path names from the loaded tiles
     this.styles = {}; // the route's own style per sport, else yours for it (styleOf()); a leg may have its own (leg.style)
     this.next = null; // the next leg's sport: null is the map's (nextSport())
@@ -2562,7 +2564,7 @@ export class Planner {
     if (sel) sel.value = String(k);
     if (!fromMap && this.app.onStartChange) this.app.onStartChange(k);
     this.drawMarks(); // the clock times move immediately while the new forecast loads
-    if (this.analysis) { this.renderSpeed(); this.renderTabTimes(); }
+    if (this.analysis) { this.renderSpeed(); this.renderTabTimes(); this.renderWaypoints(); } // (the list's times too)
     clearTimeout(this.windTimer);
     // playback moves an hour a second; let it settle a little before re-fetching
     this.windTimer = setTimeout(() => {
@@ -2816,138 +2818,201 @@ export class Planner {
     if (!fromMap) this.mapHover = false;
   }
 
-  // The Waypoints section: every point in order with its name and distance.
-  // Rename in place; reorder by dragging the grip or with ↑/↓ (keyboard and
-  // screen readers); remove; click a row to see the point on the map.
+  // Route's list (25d's part 4, D [jd-multi, jd-days, jd-long]): sections, a new one where the sport changes, at a stop
+  // and at a night (then each is a day, the night with its morning's start); in each, its numbers, a short forecast for
+  // its end and its warnings, then a row for each point you see and each stretch between them, the points that only
+  // shape a stretch folded under it. A tap opens the point's or the stretch's card, and Back finds the list as it was
+  // (the cards keep its scroll; what's unfolded is `unfolded`, in memory). Reorder [jd-reorder] lists every point.
   renderWaypoints() {
     const box = this.els && this.els.points;
     if (!box) return;
     this.cards.refresh(); // an open card follows its point, or closes when it's gone
-    if (box.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return; // don't take a name you're typing
     const n = this.points.length;
     this.shownNames = this.points.map((_, i) => this.autoName(i)).join('|');
     this.setSection('points', { count: n || '', empty: !n, summary: n > 1 ? `${this.nameOf(0)} → ${this.nameOf(n - 1)}` : '' });
-    box.innerHTML = '';
     this.renderTitle(); // (the route's view's title: the names come with the map's tiles)
-    // the route's view (25c): the points without their controls, and Edit; the departure and the stops still work
+    // the route's view (25c): the same sections, without Reorder; a card shows what works there
     const ro = this.inView();
     this.els.viewNote.hidden = !ro;
     this.els.hint.hidden = ro;
-    // the whole list the other way round (the same as Reverse in the tools)
-    const showLegs = n > 1 && !ro && store.get('legSettings', false);
-    for (const k of this.openLegs) if (k >= n - 1) this.openLegs.delete(k); // rows that are gone
+    if (ro || n < 2) this.reordering = false;
     const loops = roundTripSports.includes(this.app.activity());
     this.els.pointsFoot.replaceChildren(...[
       loops ? h('button', { type: 'button', class: 'btn', title: 'Loops of the length you choose, from your start', onclick: () => this.openLoop(), html: `${icon('roundtrip', 16)} Round trip` }) : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'The end becomes the start; each leg keeps its mode', onclick: () => this.reverse(), html: `${icon('reverse', 16)} Reverse` }) : null,
       n > 1 ? h('button', { type: 'button', class: 'btn', title: 'Route back to where you started', disabled: this.isLoop(), onclick: () => this.backToStart(), html: `${icon('loop', 16)} Back to start` }) : null,
       h('button', { type: 'button', class: 'btn', title: 'Import a GPX or KML file (or drop it on the map)', onclick: () => $('#file-input').click(), html: `${icon('upload', 16)} Import` }),
-      // each leg's routing and style, between its points (folded away by default)
-      n > 1 && !ro ? h('button', { type: 'button', class: 'btn', 'aria-pressed': String(showLegs), title: 'Every leg’s routing and style (or open one with the route button on its row)', onclick: () => { store.set('legSettings', !showLegs); this.openLegs.clear(); this.renderWaypoints(); }, html: `${icon('route', 16)} All leg settings` }) : null,
     ].filter(Boolean)); // (replaceChildren would write a null as "null")
-    const loop = this.isLoop();
-    const btn = (ic, label, fn, disabled = false, cls = '') => h('button', { type: 'button', class: `tool small ${cls}`, title: label, 'aria-label': label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 16) });
-    this.points.forEach((p, i) => {
-      const last = i === n - 1 && i > 0;
-      const own = this.pname.get(p) || '';
-      const auto = this.autoName(i);
-      const input = ro ? h('b', { class: 'wpl-name' }, own || auto || this.label(i)) : h('input', {
-        class: 'wpl-name', type: 'text', value: own, placeholder: auto || this.label(i), maxlength: 60, spellcheck: 'false',
-        'aria-label': `Name of ${i === 0 ? 'the start' : last ? 'the end' : `via point ${i}`}`,
-        onclick: (e) => e.stopPropagation(),
-        onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); else if (e.key === 'Escape') { e.target.value = own; e.target.blur(); } },
-        onblur: (e) => this.setName(i, e.target.value),
-      });
-      // the label only when a name stands in its place; the distance always
-      const arrive = i > 0 && this.analysis ? this.arriveAt(i) : null;
-      const sub = [own || auto ? this.label(i) : '', fmtDist(i ? this.lengthTo(i) : 0), arrive ? this.clockOf(arrive) : '', last && loop ? 'back at the start' : '', own && auto ? auto : ''].filter(Boolean).join(' · ');
-      // a changeover: into which sport, and the minutes it takes (yours to change)
-      const ch = this.changeAt(i);
-      const change = ch ? h('span', { class: 'wpl-change', onclick: (e) => e.stopPropagation() },
-        h('span', { html: icon(this.sportIcon(ch.to), 13) }), `${ACTIVITIES[ch.to].label} · `,
-        ro ? `${ch.min}` : h('input', { type: 'number', min: 0, max: 600, step: 1, value: ch.min, 'aria-label': `Minutes to change to ${ACTIVITIES[ch.to].label} at ${this.nameOf(i)}`, onchange: (e) => this.setChangeMin(i, e.target.value) }),
-        ' min to change') : null;
-      const stop = this.stopAt(i);
-      const row = h('li', { class: 'wpl-row', 'data-i': String(i), 'aria-current': this.cards.current && this.cards.current.key === p ? 'true' : null, title: 'Show on the map', onclick: () => this.focusPoint(i) },
-        ro ? null : h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
-        h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
-        h('span', { class: 'wpl-main' }, input, h('small', {}, sub), change, stop ? this.stopChip(i, stop) : null,
-          i === 0 && n > 1 ? h('label', { class: 'wpl-depart', onclick: (e) => e.stopPropagation() }, h('span', { html: icon('clock', 12) }), 'Depart ', this.departSelect()) : null),
-        ro ? null : h('span', { class: 'wpl-tools' },
-          // this one leg's settings, under its point
-          i < n - 1 ? h('button', { type: 'button', class: 'tool small', title: `The leg after ${this.nameOf(i)}: routing and style`, 'aria-label': `Settings of the leg after ${this.nameOf(i)}`, 'aria-pressed': String(showLegs || this.openLegs.has(i)), 'aria-expanded': String(showLegs || this.openLegs.has(i)),
-            onclick: (e) => { e.stopPropagation(); if (showLegs) { store.set('legSettings', false); for (let k = 0; k < n - 1; k++) if (k !== i) this.openLegs.add(k); this.openLegs.delete(i); } else if (this.openLegs.has(i)) this.openLegs.delete(i); else this.openLegs.add(i); this.renderWaypoints(); },
-            html: icon('route', 16) }) : h('span', { class: 'tool small', 'aria-hidden': 'true' }),
-          // a stop here: a break, or the night (the start is the departure, the finish the end)
-          i > 0 && !last ? h('button', { type: 'button', class: 'tool small', title: stop ? `No stop at ${this.nameOf(i)}` : `A stop at ${this.nameOf(i)}: a break or a night`, 'aria-label': stop ? `Remove the stop at ${this.nameOf(i)}` : `Stop at ${this.nameOf(i)}`, 'aria-pressed': String(!!stop),
-            onclick: (e) => { e.stopPropagation(); this.setStop(i, stop ? null : { min: DEFAULT_BREAK }); }, html: icon(isNight(stop) ? 'moon' : 'pause', 16) }) : h('span', { class: 'tool small', 'aria-hidden': 'true' }),
-          btn('chevronUp', `Move ${this.nameOf(i)} earlier`, () => this.movePointTo(i, i - 1), i === 0),
-          btn('chevronDown', `Move ${this.nameOf(i)} later`, () => this.movePointTo(i, i + 1), i === n - 1),
-          btn('trash', `Remove ${this.nameOf(i)}`, () => this.removePoint(i), false, 'danger')));
-      row.querySelector('.wpl-grip')?.addEventListener('pointerdown', (e) => this.dragRow(e, row, i));
-      row.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
-      row.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
-      box.append(row);
-      const leg = this.legs[i];
-      if (!leg) return;
-      if (!ro && (showLegs || this.openLegs.has(i))) {
-        const legRow = this.legSettingsRow(i);
-        legRow.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i); });
-        legRow.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
-        box.append(legRow);
-      } else {
-        // folded: only what differs from the defaults
-        const bits = [];
-        const sp = this.legSport(i), main = this.mainSport(); // differs from the route's sport
-        if (sp !== main) bits.push(ACTIVITIES[sp].label);
-        else if (leg.mode === 'line' || (leg.mode === 'water') !== isWater(main)) bits.push(MODE_LABEL[leg.mode] || 'Imported track');
-        if (leg.mode === 'line' && sp !== main) bits.push(MODE_LABEL.line);
-        if (leg.mode === 'fixed') bits.push(leg.src ? 'LIPAS route' : 'Imported track');
-        if (leg.style) bits.push(`style: ${styleName(sp, leg.style)}`);
-        if (bits.length) {
-          box.append(h('li', { class: 'wpl-leg', title: ro ? 'This leg differs from the rest' : 'This leg differs from the rest — click for its settings', onclick: () => { if (ro) return; this.openLegs.add(i); this.renderWaypoints(); },
-            onpointerenter: (e) => { if (e.pointerType === 'mouse') this.litLeg(i); }, onpointerleave: (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); } },
-            h('span', { html: icon('route', 14) }), [...new Set(bits)].join(' · ')));
-        }
-      }
-    });
+    // what had the focus, found again in the list drawn anew (a row by its point or stretch, a button by its words)
+    const was = box.contains(document.activeElement) ? document.activeElement : null;
+    const wasKey = was && (was.dataset.i != null ? `i${was.dataset.i}` : was.dataset.from != null ? `s${was.dataset.from}${was.classList.contains('wpl-unfold') ? 'u' : ''}` : was.textContent.trim());
+    const top = this.els.pointsTop;
+    top.replaceChildren();
+    box.replaceChildren();
+    box.classList.toggle('reorder', !!this.reordering);
+    if (n >= 2 && !ro) {
+      top.append(h('p', { class: 'wpl-hint' }, this.reordering ? 'Drag a point, or move it earlier or later.' : 'Tap a point or a stretch to change it.'),
+        h('button', { type: 'button', class: 'btn small quiet', 'aria-pressed': String(!!this.reordering), onclick: () => { this.reordering = !this.reordering; this.renderWaypoints(); top.querySelector('.btn')?.focus(); },
+          html: this.reordering ? '' : icon('grip', 16) }, this.reordering ? 'Done' : 'Reorder'));
+    }
+    if (this.reordering) this.reorderRows(box);
+    else this.sectionRows(box, ro);
+    if (wasKey) {
+      const again = [...box.querySelectorAll('button')].find((b) => (b.dataset.i != null ? `i${b.dataset.i}` : b.dataset.from != null ? `s${b.dataset.from}${b.classList.contains('wpl-unfold') ? 'u' : ''}` : b.textContent.trim()) === wasKey);
+      if (again) again.focus({ preventScroll: true });
+    }
+    // the open card's point lit in the list
+    const cur = this.cards.current && this.cards.current.key;
+    for (const r of box.querySelectorAll('.wpl-point')) { if (this.points[+r.dataset.i] === cur) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
     // an open leg stays lit (on a phone that's how a leg shows itself); otherwise nothing is
     if (!box.matches(':hover')) this.unlitLeg();
   }
 
-  // Which sport leg i is in (a native select, with the sport's icon): the route's, or its own.
-  legSportPicker(i, done = () => {}) {
-    const sports = this.app.sports ? this.app.sports() : Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: 'route' }));
-    const cur = this.legSport(i), route = this.mainSport(); // "the route's": the route's sport, not the map's
-    const sel = h('select', { 'aria-label': `Sport of the leg after ${this.nameOf(i)}`, onchange: (e) => { done(); this.setLegSport(i, e.target.value); } },
-      ...sports.map((x) => h('option', { value: x.k }, x.k === route ? `${x.label} (the route’s)` : x.label)));
-    sel.value = cur;
-    const ic = (sports.find((x) => x.k === cur) || {}).icon || 'route';
-    return h('label', { class: 'mode-select pt-sport' }, h('span', { class: 'mode-select-label', html: icon(ic, 14) }),
-      h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
+  // The sections: where they start and end, their sport, why they end, and their stretches (point indices)
+  sections() {
+    const n = this.points.length, out = [];
+    let from = 0;
+    for (let i = 1; i < n; i++) {
+      const stop = i < n - 1 ? this.stopAt(i) : null, ends = i === n - 1 ? 'end' : stop ? (isNight(stop) ? 'night' : 'stop') : this.changeAt(i) ? 'sport' : null;
+      if (!ends) continue;
+      const stretches = [];
+      for (let a = from; a < i;) { const b = Math.min(this.stretchAt(a).to, i); stretches.push({ from: a, to: b }); a = b; }
+      out.push({ from, to: i, sport: this.legSport(from), ends, stretches });
+      from = i;
+    }
+    return out;
   }
 
-  // One leg's settings, between its two points: its sport, how it's routed, and its style.
-  legSettingsRow(i) {
-    const leg = this.legs[i];
-    const modes = leg.mode === 'fixed'
-      ? h('span', { class: 'wpl-legnote' }, leg.src ? 'LIPAS route (its own line)' : 'Imported track')
-      : h('div', { class: 'seg small', role: 'group', 'aria-label': `How the leg after ${this.nameOf(i)} is routed` }, ...['auto', 'line', 'water'].map((m) =>
-        h('button', { type: 'button', 'aria-pressed': String(leg.mode === m), title: MODE_LABEL[m], onclick: () => this.setLegMode(i, m), html: `${icon(MODE_ICON[m], 14)}<span>${MODE_SHORT[m]}</span>` })));
-    return h('li', { class: 'wpl-legset' }, h('span', { class: 'wpl-legline', 'aria-hidden': 'true' }), this.legSportPicker(i), modes,
-      leg.mode === 'auto' || leg.mode === 'water' ? this.legStylePicker(i, () => {}) : null);
+  sectionRows(box, ro) {
+    const secs = this.sections(), days = secs.some((s) => s.ends === 'night'), a = this.analysis, fits = this.analysisFits();
+    const nums = (s) => { const x = this.stretchNums(s); return x ? [fmtDist(x.len), fmtDuration(x.sec), x.up == null ? '' : `↑${Math.round(x.up)} m`].filter(Boolean).join(' · ') : fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from)); };
+    let day = 1;
+    secs.forEach((sec, k) => {
+      const title = `${days ? `Day ${day} · ` : ''}${ACTIVITIES[sec.sport].label} · ${this.nameOf(sec.from)} → ${this.nameOf(sec.to)}`;
+      if (sec.ends === 'night') day++;
+      // a short forecast for its end; a tap says the rest under it [kf2-multi-tap]
+      const w = fits && a.wind ? this.sampleAtM(this.lengthTo(sec.to)) : -1, id = this.pidOf(this.points[sec.from]), open = this.wxOpen.has(id);
+      const wx = w >= 0 ? h('button', { type: 'button', class: 'btn small quiet sec2-wx', 'aria-expanded': String(open), 'aria-label': `The weather at its end: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s`,
+        onclick: () => { if (open) this.wxOpen.delete(id); else this.wxOpen.add(id); this.renderWaypoints(); }, html: icon('cloudSun', 15) }, `${Math.round(a.wind.temp[w])}° · ${Math.round(a.wind.speed[w])} m/s`) : null;
+      const at = open && w >= 0 ? this.atSample(w) : null;
+      const head = h('div', { class: 'sec2-head' }, h('span', { 'aria-hidden': 'true', html: icon(this.sportIcon(sec.sport), 20) }), h('b', {}, title));
+      const line = h('div', { class: 'sec2-nums' }, h('span', {}, nums(sec)), wx);
+      const more = open && w >= 0 ? h('p', { class: 'sec2-wx-at' }, `At its end${at ? `, ${this.clockOf(at)}` : ''}: ${Math.round(a.wind.temp[w])}°, wind ${Math.round(a.wind.speed[w])} m/s from the ${compass(a.wind.dir ? a.wind.dir[w] : 0)}`) : null;
+      const rows = h('div', { class: 'rows', role: 'group', 'aria-label': title });
+      if (k === 0) rows.append(this.pointRow(sec.from, ro));
+      for (const s of sec.stretches) {
+        rows.append(this.stretchRow(s, ro));
+        const pid = this.pidOf(this.points[s.from]);
+        if (this.unfolded.has(pid)) for (let i = s.from + 1; i < s.to; i++) rows.append(this.pointRow(i, ro, true));
+        rows.append(this.pointRow(s.to, ro));
+      }
+      box.append(h('li', { class: 'sec2', 'data-from': String(sec.from), 'data-to': String(sec.to) }, head, line, more, this.sectionWarn(sec), rows));
+    });
   }
 
-  // Drag a row by its grip; the gap it would drop into is marked, and the
-  // drop is one undo step.
-  dragRow(e, row, i) {
+  // the analysis sample at m metres along the route
+  sampleAtM(m) {
+    const a = this.analysis;
+    let i = 0;
+    while (i < a.along.length - 1 && a.along[i] < m - 1) i++;
+    return i;
+  }
+
+  // a section's warnings: what's to read before you go and what wasn't checked there, as the peek's row says it; a tap
+  // shows the first on the route
+  sectionWarn(sec) {
+    const on = this.itemsOn(sec), read = on.filter((x) => x.g === 'read'), not = on.filter((x) => x.g === 'not');
+    if (!read.length && !not.length) return null;
+    const first = read[0] || not[0], k = read.length || not.length;
+    const box = h('button', { type: 'button', class: `warn-row ${read.length ? 'danger' : 'unk'}`, onclick: () => this.openItemCard(first, { from: 'section', el: box }) },
+      h('span', { 'aria-hidden': 'true', html: icon(read.length ? 'warnf' : 'unk', 20) }),
+      h('span', {}, h('b', {}, `${k} ${read.length ? 'to read before you go' : 'not checked'}`), h('small', {}, `${first.w.text}${k > 1 ? ` and ${k - 1} more` : ''}${read.length && not.length ? ` · ${not.length} not checked` : ''}`)),
+      h('span', { 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+    return box;
+  }
+
+  // a point's row: its marker, its name, there at · how far · Via n; a stop, a night or a change of sport under it
+  pointRow(i, ro, shape = false) {
+    const p = this.points[i], n = this.points.length, last = i === n - 1 && i > 0, loop = last && this.isLoop();
+    const name = this.nameOf(i), lab = this.label(i), arrive = i > 0 && this.analysisFits() ? this.arriveAt(i) : null;
+    const sub = shape ? [fmtDist(this.lengthTo(i)), lab] : [i === 0 ? `Leave at ${this.clockOf(this.startSec())}` : arrive ? `there at ${this.clockOf(arrive)}` : '', fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab, loop ? 'back at the start' : ''];
+    const stop = this.stopAt(i), ch = this.changeAt(i);
+    const extra = stop ? (isNight(stop) ? `Night · go on at ${hhmm(stop.on)}` : `Stop · ${stop.min} min`) : ch ? `${ACTIVITIES[ch.to].label} from here · changeover ${ch.min} min` : '';
+    // (a row as the cards' rows: its mark, its name, its lines, ›; Revision 5's list)
+    const b = h('button', { type: 'button', class: `row wpl-point${shape ? ' shape' : ''}`, 'data-i': String(i), onclick: () => this.openPointCard(p, { from: 'list', el: b }) },
+      h('span', { 'aria-hidden': 'true' }, h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${loop ? ' wp-loop' : ''}` }, i === 0 || last ? '' : String(i))),
+      h('span', {}, h('b', { class: 'wpl-name' }, name), extra ? h('small', { class: 'wpl-tag', html: `${icon(stop ? (isNight(stop) ? 'moon' : 'pause') : this.sportIcon(ch.to), 15)}<span>${escapeHtml(extra)}</span>` }) : null, h('small', {}, sub.filter(Boolean).join(' · '))),
+      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }));
+    b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.litLeg(i < n - 1 ? i : i - 1); });
+    b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
+    return b;
+  }
+
+  // a stretch's row: its distance, time and climb, how it's drawn and the points that only shape it, which unfold
+  stretchRow(s, ro) {
+    const legs = this.legs.slice(s.from, s.to), leg = legs[0], shaping = s.to - s.from - 1, x = this.stretchNums(s);
+    const head = x ? [fmtDist(x.len), fmtDuration(x.sec), x.up ? `↑${Math.round(x.up)} m` : ''] : [fmtDist(this.lengthTo(s.to) - this.lengthTo(s.from))];
+    const how = leg.mode === 'fixed' ? `Its own line: ${this.routeName || (leg.src ? 'a LIPAS route' : 'an imported track')}${leg.src ? ' (LIPAS)' : ''}` : MODE_LABEL[leg.mode] || MODE_LABEL.auto;
+    const b = h('button', { type: 'button', class: 'row wpl-stretch', 'data-from': String(s.from), 'data-to': String(s.to), onclick: () => this.openStretchCard(s, { from: 'list', el: b }) },
+      h('span', { 'aria-hidden': 'true', html: icon(leg.mode === 'fixed' ? 'sign' : MODE_ICON[leg.mode] || 'auto', 18) }),
+      h('span', {}, h('b', {}, head.filter(Boolean).join(' · ')), h('small', {}, [how, shaping ? `via ${shaping} shaping point${shaping > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · '))),
+      h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 16) }));
+    b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') this.lightStretchHover(s); });
+    b.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') this.unlitLeg(); });
+    const pid = this.pidOf(this.points[s.from]), open = this.unfolded.has(pid);
+    const fold = shaping ? h('button', { type: 'button', class: 'tool wpl-unfold', 'data-from': String(s.from), 'aria-expanded': String(open), 'aria-label': open ? `Fold the ${shaping} shaping points` : `Show the ${shaping} shaping points`,
+      onclick: () => { if (open) this.unfolded.delete(pid); else this.unfolded.add(pid); this.renderWaypoints(); }, html: icon(open ? 'chevronUp' : 'chevronDown', 18) }) : null;
+    return h('div', { class: 'wpl-strow' }, b, fold);
+  }
+  // a stretch under the mouse in the list: lit on the map, as a leg's row was
+  lightStretchHover(s) {
+    const coords = this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]; return k ? c.slice(1) : c; });
+    this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] });
+    if (this.chart && this.analysis) this.chart.setHighlight([this.lengthTo(s.from), this.lengthTo(s.to)]);
+  }
+
+  // Reorder [jd-reorder]: every point with its grip, Earlier and Later. A mouse drags by the grip; a finger holds the
+  // row 0.45 s first, so a scroll never drags. Each move is one step of Undo.
+  reorderRows(box) {
+    const n = this.points.length, loop = this.isLoop();
+    this.points.forEach((p, i) => {
+      const last = i === n - 1, name = this.nameOf(i), lab = this.label(i);
+      const btn = (ic, label, fn, disabled) => h('button', { type: 'button', class: 'tool', 'aria-label': label, title: label, disabled, onclick: (e) => { e.stopPropagation(); fn(); }, html: icon(ic, 18) });
+      const row = h('li', { class: 'wpl-row', 'data-i': String(i) },
+        h('span', { class: 'wpl-grip', title: 'Drag to reorder', 'aria-hidden': 'true', html: icon('grip', 16) }),
+        h('span', { class: `wp wp-mini ${i === 0 ? 'wp-start' : last ? 'wp-end' : 'wp-via'}${last && loop ? ' wp-loop' : ''}`, 'aria-hidden': 'true' }, i === 0 || last ? '' : String(i)),
+        h('span', { class: 'wpl-main' }, h('b', { class: 'wpl-name' }, name), h('small', {}, [fmtDist(i ? this.lengthTo(i) : 0), name === lab ? '' : lab].filter(Boolean).join(' · '))),
+        btn('chevronUp', `Move ${name} earlier`, () => this.movePointTo(i, i - 1), i === 0),
+        btn('chevronDown', `Move ${name} later`, () => this.movePointTo(i, i + 1), last));
+      row.querySelector('.wpl-grip').addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') this.dragRow(e, row, i); });
+      row.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !e.target.closest('button')) this.holdRow(e, row, i); });
+      box.append(row);
+    });
+  }
+
+  // a finger on a row of Reorder: held 0.45 s without moving 10 px it drags the point; a move sooner scrolls the list
+  holdRow(e, row, i) {
+    const x0 = e.clientX, y0 = e.clientY, id = e.pointerId;
+    const cancel = () => { clearTimeout(t); row.removeEventListener('pointermove', move); row.removeEventListener('pointerup', cancel); row.removeEventListener('pointercancel', cancel); };
+    const move = (ev) => { if (ev.pointerId === id && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 10) cancel(); };
+    const t = setTimeout(() => { cancel(); this.dragRow({ clientY: y0, pointerId: id, preventDefault() {}, stopPropagation() {} }, row, i, { touch: true }); }, 450);
+    row.addEventListener('pointermove', move);
+    row.addEventListener('pointerup', cancel);
+    row.addEventListener('pointercancel', cancel);
+  }
+
+  // Drag a row of Reorder (by its grip, or by a finger held on it); the gap it would drop into is marked, and the drop is
+  // one step of Undo. While a finger drags, the list doesn't scroll under it.
+  dragRow(e, row, i, { touch = false } = {}) {
     e.preventDefault();
     e.stopPropagation();
-    const box = this.els.points, rows = [...box.querySelectorAll('.wpl-row')]; // not the leg-style lines between them
+    const box = this.els.points, rows = [...box.querySelectorAll('.wpl-row')];
     const y0 = e.clientY;
     let to = i;
     row.classList.add('dragging');
-    row.setPointerCapture(e.pointerId);
+    try { row.setPointerCapture(e.pointerId); } catch { /* the finger already up */ }
+    const still = (ev) => ev.preventDefault();
+    if (touch) row.addEventListener('touchmove', still, { passive: false });
     const move = (ev) => {
       row.style.transform = `translateY(${ev.clientY - y0}px)`;
       // its new place: how many of the other rows have their middle above the pointer
@@ -2958,6 +3023,7 @@ export class Planner {
       row.removeEventListener('pointermove', move);
       row.removeEventListener('pointerup', up);
       row.removeEventListener('pointercancel', up);
+      row.removeEventListener('touchmove', still);
       row.classList.remove('dragging');
       row.style.transform = '';
       rows.forEach((r) => r.classList.remove('drop-before', 'drop-after'));
@@ -2966,6 +3032,31 @@ export class Planner {
     row.addEventListener('pointermove', move);
     row.addEventListener('pointerup', up);
     row.addEventListener('pointercancel', up);
+  }
+
+  // The list's keys (desktops): ↑ ↓ between rows, Enter opens (the row is a button), Alt+↑ Alt+↓ move a point, Delete
+  // removes it with Undo in the note
+  listKeys(e) {
+    const t = e.target, box = this.els.points;
+    if (!t.matches('.wpl-point, .wpl-stretch') || this.reordering) return;
+    const all = [...box.querySelectorAll('.wpl-point, .wpl-stretch')], k = all.indexOf(t), i = t.dataset.i != null ? +t.dataset.i : null;
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && e.altKey) {
+      if (i == null) return;
+      e.preventDefault();
+      const j = i + (e.key === 'ArrowDown' ? 1 : -1);
+      if (j < 0 || j >= this.points.length) return;
+      this.movePointTo(i, j);
+      box.querySelector(`.wpl-point[data-i="${j}"]`)?.focus();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      all[Math.max(0, Math.min(all.length - 1, k + (e.key === 'ArrowDown' ? 1 : -1)))]?.focus();
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && i != null) {
+      e.preventDefault();
+      const name = this.nameOf(i);
+      this.removePoint(i);
+      toast(`${name} removed`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+      (box.querySelector(`.wpl-point[data-i="${Math.min(i, this.points.length - 1)}"]`) || box.querySelector('.wpl-point'))?.focus();
+    }
   }
 
   // Points: the visible dot sits in a bigger, invisible touch target (44 px on
@@ -3247,11 +3338,13 @@ export class Planner {
     this.cards.open(routeCard(this, li, at), { at, from });
   }
   // a stretch's card (from a point's Next stretch, the list); `edit`: straight to Edit this stretch
-  openStretchCard(s, { edit = false, at = null, from = 'map' } = {}) {
+  openStretchCard(s, { edit = false, at = null, from = 'map', el = null } = {}) {
     if (!this.legs[s.from]) return;
     if (this.menu) this.menu.remove();
     this.stopPicking();
-    this.cards.open(edit ? editCard(this, s, { spot: at }) : stretchCard(this, s, { spot: at }), { at: at || this.stretchMiddle(s), from });
+    const beside = this.besideRow(el);
+    if (beside) this.frame(bbox(this.legs.slice(s.from, s.to).flatMap((l, k) => (l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]))), { maxZoom: 16, duration: 600 }); // (in sight)
+    this.cards.open(edit ? editCard(this, s, { spot: at }) : stretchCard(this, s, { spot: at }), { at: at || this.stretchMiddle(s), beside, from });
   }
 
   // A point you see (D): the start, the end, a stop or a night, a change of sport, a point you named, or where the legs'
@@ -3465,33 +3558,22 @@ export class Planner {
     this.keepMenuInView();
   }
 
-  // "Style: the route's / a preset / fine-tune…" for the leg after point i
-  legStylePicker(i, done) {
-    const route = this.mainSport(), sport = this.legSport(i);
-    const base = this.styleOf(sport);
-    const cat = STYLES[sport] || STYLES.mtb;
-    const own = this.legs[i].style;
-    const sel = h('select', { 'aria-label': 'Style of the next leg', onchange: (e) => {
-      const v = e.target.value;
-      done();
-      if (v === '~tune') { this.styleLeg = i; this.renderStyle(); this.reveal('style'); return; }
-      this.setStyle(v ? { p: v, v: {}, wet: base.wet || 'auto' } : null, i);
-    } },
-    h('option', { value: '' }, sport === route ? `The route’s (${styleName(sport, base)})` : `The route’s ${ACTIVITIES[sport].label} style (${styleName(sport, base)})`),
-    ...cat.presets.map(([k, label]) => h('option', { value: k }, label)),
-    h('option', { value: '~tune' }, 'Fine-tune…'));
-    if (own && isCustom(sport, own)) { sel.prepend(h('option', { value: '~own', disabled: true }, 'Custom')); sel.value = '~own'; } else sel.value = own ? own.p : '';
-    return h('label', { class: 'mode-select pt-style' }, h('span', { class: 'mode-select-label' }, 'Style'),
-      h('span', { class: 'mode-select-box' }, sel, h('span', { class: 'mode-select-chev', 'aria-hidden': 'true', html: icon('chevronDown', 14) })));
-  }
 
   // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
   // card follows it through a move, Undo and a new order, and closes when it's gone. From the map there's no Back.
-  openPointCard(p, { from = 'map' } = {}) {
+  openPointCard(p, { from = 'map', el = null } = {}) {
     if (!this.points.includes(p)) return;
     if (this.menu) this.menu.remove();
     this.stopPicking();
-    this.cards.open(pointCard(this, p), { at: p, from });
+    const beside = this.besideRow(el);
+    if (beside) this.focusPoint(this.points.indexOf(p)); // (from the list: the point in sight, the card at its row)
+    this.cards.open(pointCard(this, p), { at: p, beside, from });
+  }
+  // a desktop's card from the list (part 4): beside the panel, level with its row; elsewhere null (at its place)
+  besideRow(el) {
+    if (!el || this.cards.where() !== 'float' || this.layout() !== 'side' || !this.active) return null;
+    const panel = this.panel.getBoundingClientRect();
+    return { right: panel.right + 4, top: el.getBoundingClientRect().top };
   }
 
   // who point p is: a number that stays with it through a move (editTo()), Undo and Redo (snapshot(), restoreSnap())
@@ -3551,21 +3633,6 @@ export class Planner {
     const name = this.nameOf(i);
     this.removePoint(i);
     toast(`${name} removed`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
-  }
-
-  // A stop in a waypoint row: Break / Night / no stop, and its minutes or morning hour
-  stopChip(i, stop) {
-    const night = isNight(stop);
-    const kind = h('select', { 'aria-label': `Stop at ${this.nameOf(i)}`, onchange: (e) => this.setStop(i, e.target.value === 'night' ? { on: DEFAULT_ON } : e.target.value === 'break' ? { min: DEFAULT_BREAK } : null) },
-      h('option', { value: 'break' }, 'Break'), h('option', { value: 'night' }, 'Night'), h('option', { value: '' }, 'No stop'));
-    kind.value = night ? 'night' : 'break';
-    const w = this.analysis && (this.analysis.waits || []).find((x) => x.i === i);
-    return h('span', { class: `wpl-stop${night ? ' night' : ''}`, onclick: (e) => e.stopPropagation() },
-      h('span', { html: icon(night ? 'moon' : 'pause', 13) }), kind,
-      night
-        ? h('span', {}, ' on at ', h('input', { type: 'time', step: 900, value: hhmm(stop.on), 'aria-label': `Go on from ${this.nameOf(i)} at`, onchange: (e) => { const on = parseHhmm(e.target.value); if (on != null) this.setStop(i, { on }); } }),
-          w && w.rest ? ` · ${fmtDuration(w.rest)}` : '')
-        : h('span', {}, ' ', h('input', { type: 'number', min: 1, max: 1440, step: 5, value: stop.min, 'aria-label': `Minutes of the break at ${this.nameOf(i)}`, onchange: (e) => this.setStop(i, { min: +e.target.value }) }), ' min'));
   }
 
   // point i moved to a place to sleep, named after it (its legs are routed again)
@@ -3872,7 +3939,7 @@ export class Planner {
         const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
         // …and its row in the list lit, where the card leaves it in sight (desktops)
-        for (const r of this.els.points.querySelectorAll('.wpl-row')) { if (this.points[+r.dataset.i] === ringed) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+        for (const r of this.els.points.querySelectorAll('.wpl-point')) { if (this.points[+r.dataset.i] === ringed) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
         // an item's card (25d part 3): its row or box in Check lit; closed, its stretch on the route unlit
         const key = card && card.kind === 'item' ? card.itemKey : null;
         for (const r of this.els.warnings.querySelectorAll('[data-key]')) { if (r.dataset.key === key) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
@@ -3949,7 +4016,8 @@ export class Planner {
         this.els.viewNote = h('div', { class: 'pl-viewnote', hidden: true },
           h('span', { html: icon('info', 18), 'aria-hidden': 'true' }), h('span', {}, 'You’re not editing: the list and the map stay as they are.'),
           h('button', { type: 'button', class: 'btn small', onclick: () => this.setEditing(true), html: `${icon('pencil', 16)}<span>Edit</span>` })),
-        this.section('points', 'Waypoints', this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order' }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
+        this.section('points', 'Waypoints', this.els.pointsTop = h('div', { class: 'wpl-top' }),
+          this.els.points = h('ol', { class: 'wpl', 'aria-label': 'Waypoints, in order', onkeydown: (e) => this.listKeys(e) }), this.els.pointsFoot = h('div', { class: 'wpl-foot' })),
         // how you go: which ways the router prefers, and how fast the time is counted (shown in a start step's
         // Fine-tune too, the same elements: borrowHow())
         this.section('style', 'How you go', this.els.styleH = h('h4', { class: 'how-h' }, 'Route style', h('small', {}, 'which ways the router prefers')), this.els.styleBox = h('div', { class: 'style-box' }), this.els.speedWrap),
@@ -4016,6 +4084,7 @@ export class Planner {
     open = open ?? s.el.dataset.open !== 'true';
     if (id === 'colours' && !open) this.clearCategoryPreview();
     s.el.dataset.open = String(open);
+    if (id === 'points') this.renderReadRow(); // (the list's warnings in sight or not)
     s.head.setAttribute('aria-expanded', String(open));
     store.set('sections', { ...store.get('sections', {}), [id]: open });
     if (open && id === 'profile') requestAnimationFrame(() => this.chart.draw());
@@ -4107,7 +4176,7 @@ export class Planner {
     if (this.chart && this.analysis) this.chart.setHighlight([this.lengthTo(i), this.lengthTo(i + 1)]);
   }
   // back to the open leg (if one is open), else nothing lit
-  unlitLeg() { this.litLeg(this.openLegs.size ? [...this.openLegs].pop() : null); }
+  unlitLeg() { this.litLeg(null); }
   // the stretch a card is about, lit on the map and the profile (null: none, back to what was lit before it)
   lightStretch(s) {
     const was = this.stretchLit;
@@ -4598,7 +4667,7 @@ export class Planner {
     this.sheetSwipe = swipeSheet(this.panel, {
       enabled: () => this.active && this.layout() === 'sheet',
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows
-      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize, .card')
+      grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize, .card')
         && (type !== 'mouse' || !!t.closest('.sheet-handle, .sheet-head, .pl-tabs')),
       start: () => {
         sizes();
@@ -5856,6 +5925,7 @@ export class Planner {
     }
     this.headsList = L;
     this.renderBadge(H);
+    this.renderWaypoints(); // (each section of Route's list says its own, part 4)
     this.renderOnRoute();
     if (!a) return;
     this.setSection('warnings', { count: H.read.length + H.look.length + H.not.length });
@@ -5907,6 +5977,11 @@ export class Planner {
   renderOnRoute() {
     this.renderReadRow();
     this.drawHeads();
+  }
+  // whether Route's list is in sight with a section's warning in it (then the peek's row doesn't say it again)
+  listInSight() {
+    return this.active && this.tab === 'route' && (this.layout() !== 'sheet' || this.sideMQ.matches || this.panel.dataset.state !== 'peek')
+      && this.sec.points && this.sec.points.el.dataset.open !== 'false' && !!this.els.points.querySelector('.sec2 .warn-row');
   }
   // whether Check is in sight: a desktop's Check tab, a phone's with the sheet above its peek
   checkInSight() {
@@ -5997,7 +6072,7 @@ export class Planner {
     const el = this.els.readRow, H = this.heads;
     if (!el) return;
     const R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
-    el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight();
+    el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight() || this.listInSight();
     // narrow (200 %, a small phone): the count alone, beside the numbers above Done; short (a phone on its side at 150 or
     // 200 %, #438): before Done, in the numbers' line. Either way it takes none of the map (the review of #416); its name
     // says the rest, a tap shows the first, and Check's All read marks them all

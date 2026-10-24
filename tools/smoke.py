@@ -209,6 +209,10 @@ WAYPOINTS = """(async () => {
   p.reveal('points');
   await wait(300);
   const key = () => p.points.map((q) => q.join()).join('|'), k0 = key();
+  // (Reorder lists every point, 25d's part 4)
+  const top = (t) => [...document.querySelectorAll('.wpl-top .btn')].find((b) => b.textContent.trim() === t);
+  top('Reorder').click();
+  await wait(200);
   const rows = () => document.querySelectorAll('.wpl-row');
   if (rows().length !== p.points.length) errs.push(`${rows().length} rows for ${p.points.length} points`);
   rows()[0].querySelector('[aria-label$="later"]').click();
@@ -223,8 +227,11 @@ WAYPOINTS = """(async () => {
   p.undo();
   await wait(200);
   if (key() !== k0) errs.push('undo did not undo the reverse');
-  rows()[1].click();
+  top('Done').click();
+  await wait(200);
+  document.querySelector('.wpl-point[data-i="1"]').click();
   await wait(900);
+  p.cards.close();
   const pad = polku.map.getPadding();
   if (pad.top || pad.bottom || pad.left || pad.right) errs.push(`the map kept padding ${JSON.stringify(pad)}`);
   return errs;
@@ -954,10 +961,11 @@ MULTI = """(async () => {
   if (document.querySelectorAll('.wp-sport').length !== 2) errs.push(`${document.querySelectorAll('.wp-sport').length} changeover badges on the map`);
   p.reveal('points');
   await wait(200);
-  if (document.querySelectorAll('.wpl-change input').length !== 2) errs.push('no changeover minutes in the waypoint list');
-  p.openLegs.add(1); p.renderWaypoints();
-  const sel = document.querySelector('.wpl-legset .pt-sport select');
-  if (!sel || sel.value !== 'paddle') errs.push(`the leg's sport picker shows ${sel && sel.value}`);
+  // Route's list (25d's part 4): a section a sport, each changeover on its point's row with its minutes
+  const tags = [...document.querySelectorAll('.wpl-point .wpl-tag')].map((x) => x.textContent);
+  if (tags.join(' / ') !== 'Paddle from here · changeover 15 min / Run from here · changeover 3 min') errs.push(`changeovers in the list: ${tags.join(' / ') || 'none'}`);
+  const titles = [...document.querySelectorAll('.wpl .sec2-head b')].map((x) => x.textContent.split(' · ')[0]);
+  if (titles.join() !== 'MTB,Paddle,Run') errs.push(`the list's sections: ${titles.join(', ')}`);
   p.reveal('speed');
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
@@ -1050,7 +1058,9 @@ STOPS = """(async () => {
   if (document.querySelectorAll('.wp-stop').length !== 2 || document.querySelectorAll('.wp-stop.night').length !== 1) errs.push(`stop badges: ${document.querySelectorAll('.wp-stop').length}`);
   p.reveal('points');
   await wait(200);
-  if (document.querySelectorAll('.wpl-stop').length !== 2 || !document.querySelector('.wpl-stop.night input[type=time]')) errs.push('stops in the waypoint list');
+  // Route's list (25d's part 4): the stop and the night on their points' rows; the night ends a day
+  const tags = [...document.querySelectorAll('.wpl-point .wpl-tag')].map((x) => x.textContent);
+  if (tags.length !== 2 || !tags.some((t) => /^Stop · \\d+ min$/.test(t)) || !tags.some((t) => /^Night · go on at \\d\\d:\\d\\d$/.test(t)) || !/^Day 1 · /.test(document.querySelector('.wpl .sec2-head b')?.textContent || '')) errs.push(`stops in the waypoint list: ${tags.join(' / ') || 'none'}`);
   p.reveal('speed');
   await wait(200);
   const rows = [...document.querySelectorAll('.speed-row.sub span')].map((x) => x.textContent.trim());
@@ -3607,7 +3617,8 @@ DRAWER = """(async () => {
   // Route: the tools out of ⋯, How you go with the style and the speeds
   p.setTab('route'); await wait(100);
   const foot = [...p.els.pointsFoot.querySelectorAll('button')].map(txt);
-  for (const b of ['Round trip', 'Reverse', 'Back to start', 'Import', 'All leg settings']) if (!foot.includes(b)) errs.push(`Route lacks ${b}: ${foot.join(', ')}`);
+  for (const b of ['Round trip', 'Reverse', 'Back to start', 'Import']) if (!foot.includes(b)) errs.push(`Route lacks ${b}: ${foot.join(', ')}`);
+  if (foot.includes('All leg settings')) errs.push('Route still has All leg settings (25d’s part 4: each stretch has Edit this stretch)');
   const how = document.querySelector('[data-sec=style]');
   if (!how.querySelector('.style-presets') || !how.querySelector('.speed-wrap .speed-box').children.length) errs.push('How you go lacks the style or the speeds');
   // More: the whole route's actions (25a)
@@ -3649,15 +3660,15 @@ DRAWER = """(async () => {
       p.els.dockBtn.click(); await wait(200);
     }
   }
-  // the leg you point at lights up on the map and in the profile
+  // the stretch you point at in Route's list lights up on the map and in the profile (25d's part 4)
   p.setTab('route'); await wait(100);
-  const row = document.querySelector('.wpl-row[data-i="1"]');
+  const row = document.querySelector('.wpl-stretch[data-from="0"]'), s = { from: +row.dataset.from, to: +row.dataset.to };
   row.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }));
   await wait(150);
   const lit = m.getSource('routeLit').serialize().data;
-  if (!(lit.features && lit.features.length === 1)) errs.push('pointing at a waypoint lit nothing on the map');
+  if (!(lit.features && lit.features.length === 1)) errs.push('pointing at a stretch lit nothing on the map');
   const hl = p.chart.highlight;
-  if (!hl || Math.abs(hl[0] - p.lengthTo(1)) > 1 || Math.abs(hl[1] - p.lengthTo(2)) > 1) errs.push(`the profile lit ${JSON.stringify(hl)}`);
+  if (!hl || Math.abs(hl[0] - p.lengthTo(s.from)) > 1 || Math.abs(hl[1] - p.lengthTo(s.to)) > 1) errs.push(`the profile lit ${JSON.stringify(hl)}`);
   row.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
   await wait(150);
   if ((m.getSource('routeLit').serialize().data.features || []).length) errs.push('the leg stayed lit');
@@ -5247,30 +5258,31 @@ def quick_swipe(chrome):
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
     pg.js("polku.planner.els.body.scrollTop = 0; true")
-    # on a waypoint's name, most of its row: a text field that isn't being edited moves the sheet like the rest
-    body = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-name').getBoundingClientRect(); return [b.left + 20, b.top + b.height / 2]; })()")
+    # on a waypoint's row (a button, most of the list): a drag down moves the sheet like the rest
+    body = pg.js("(() => { const b = document.querySelector('#planner .wpl-point').getBoundingClientRect(); return [b.left + 40, b.top + b.height / 2]; })()")
     pg.swipe(body[0], body[1], body[1] + 300, ms=700, hold=0.2)
     pg.js(SETTLED)
     if st()['st'] == 'full':
-        fails.append('planner: a drag down on the body at its top (from a waypoint’s name) did not move the sheet')
-    # and a tap on the name still lets you type in it
+        fails.append('planner: a drag down on the body at its top (from a waypoint’s row) did not move the sheet')
+    # and a tap on the row still opens its point's card (25d's part 4); Back puts the sheet back
     pg.js("polku.planner.setSheetState('full'); true")
     pg.js(SETTLED)
-    name = pg.js("(() => { const b = document.querySelector('#planner .wpl-row .wpl-name').getBoundingClientRect(); return [b.left + 20, b.top + b.height / 2]; })()")
-    pg.tap(name[0], name[1])
-    time.sleep(0.3)
-    if not pg.js("document.activeElement.classList.contains('wpl-name')"):
-        fails.append('planner: a tap on a waypoint’s name did not put the cursor in it')
-    pg.js("document.activeElement.blur(); true")
-    # a waypoint's grip keeps its own drag: the sheet stays
-    pg.js("polku.planner.setSheetState('full'); true")
+    row = pg.js("(() => { const b = document.querySelector('#planner .wpl-point').getBoundingClientRect(); return [b.left + 40, b.top + b.height / 2]; })()")
+    pg.tap(row[0], row[1])
+    time.sleep(0.5)
+    if pg.js("polku.planner.cards.current && polku.planner.cards.current.kind") != 'point':
+        fails.append('planner: a tap on a waypoint’s row did not open its card')
+    pg.js("polku.planner.cards.close(); true")
+    # in Reorder a row keeps its own drag (a finger held 0.45 s): the sheet stays
+    pg.js("(() => { const p = polku.planner; p.reordering = true; p.renderWaypoints(); p.setSheetState('full'); return true; })()")
     pg.js(SETTLED)
     pg.js("polku.planner.els.body.scrollTop = 0; true")
-    grip = pg.js("(() => { const b = document.querySelector('#planner .wpl-grip').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
-    pg.swipe(grip[0], grip[1], grip[1] + 40, ms=400, hold=0.1)
+    grip = pg.js("(() => { const b = document.querySelector('#planner .wpl-row').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
+    pg.swipe(grip[0], grip[1], grip[1] + 40, ms=400, hold=0.6)
     pg.js(SETTLED)
     if st()['st'] != 'full':
-        fails.append(f'planner: a drag on a waypoint’s grip moved the sheet to {st()["st"]}')
+        fails.append(f'planner: a drag on a row of Reorder moved the sheet to {st()["st"]}')
+    pg.js("(() => { const p = polku.planner; p.undo(); p.reordering = false; p.renderWaypoints(); return true; })()")
     # a tap on the handle still folds it
     pg.js("polku.planner.setSheetState('half'); true")
     pg.js(SETTLED)
@@ -5711,12 +5723,11 @@ MARKS = r"""(async () => {
     const r = select.getBoundingClientRect(), body = p.els.body.getBoundingClientRect();
     if (r.top < body.top || r.bottom > body.bottom) errs.push('departure control is out of view');
     if (r.height < 44 || parseFloat(getComputedStyle(select).fontSize) < 16) errs.push('Go departure picker is too small');
-    const waypoint = () => p.els.points.querySelector('.wpl-depart select');
-    if (waypoint()?.value !== '4' || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec()))) errs.push('Go departure did not sync the waypoint or schedule immediately');
-    waypoint().value = '5'; waypoint().dispatchEvent(new Event('change', { bubbles: true }));
-    if (select.value !== '5' || p.startOffsetH !== 5) errs.push('waypoint departure did not sync Go');
+    // (Route's list says it on the start's row, 25d's part 4; the start's card and Go set it)
+    const waypoint = () => p.els.points.querySelector('.wpl-point[data-i="0"]')?.textContent || '';
+    if (!waypoint().includes(`Leave at ${p.clockOf(p.startSec())}`) || !document.querySelector('.time-head').textContent.includes(p.clockOf(p.startSec()))) errs.push('Go departure did not update the start’s row or the schedule immediately');
     p.setStartOffset(6, { fromMap: true });
-    if (select.value !== '6' || waypoint()?.value !== '6') errs.push('timeline departure did not sync both pickers');
+    if (select.value !== '6' || !waypoint().includes(`Leave at ${p.clockOf(p.startSec())}`)) errs.push('timeline departure did not update Go’s picker and the start’s row');
     select.focus(); p.renderAnalysis();
     if (document.activeElement !== select || !select.isConnected) errs.push('an analysis update replaced the focused departure picker');
     // Crossing an hour refreshes options without replacing the select itself.
