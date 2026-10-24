@@ -87,6 +87,17 @@ saved data or share links; medium for docs, rebases and filing issues; never
 not models, mid-session: a new model sends the whole conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
 
+## Engineering judgment
+
+- **Evidence before fixes.** Observe the failure, form a falsifiable hypothesis, and test it before changing code. A plausible explanation is not a proven cause.
+- **Fix causes, not symptoms.** Make the smallest change that addresses the demonstrated cause. Verify the failure before and after the fix.
+- **Intermittent failures count.** Record conditions, isolate variables, and investigate proportionately. Don't invent a fix or rerun tests until they happen to pass.
+- **Keep one clear implementation.** Reuse existing mechanisms. Avoid parallel code paths, unnecessary abstractions, defensive layers, and special cases without demonstrated value.
+- **Fail clearly; recover appropriately.** Surface programming errors. Handle expected service failures without hiding missing data or losing the user's work.
+- **Preserve user-facing compatibility.** Simplify internal code, but keep saved routes, share links, and established behavior working unless the user approves a change.
+- **Prefer less complexity.** A new dependency, fallback, abstraction, or persistent state must justify its maintenance cost.
+- **Stay focused.** Make surgical changes. Don't refactor unrelated code, build speculative infrastructure, or expand the task without a concrete reason.
+
 ## In the code
 
 - **Every network call goes through `request()` in `js/net.js`**, so pacing,
