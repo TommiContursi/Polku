@@ -226,9 +226,8 @@ not models, mid-session: a new model sends the whole conversation again
 
 ## Code Review Rules
 
-The automatic review on each PR (Codex) checks the diff against this file as
-it is on the PR's branch. One comment, findings only, most serious first,
-each with its file and line and the rule it breaks. Look hardest for:
+Codex reviews each PR against this file as it is on the PR's branch. Treat
+each of these as P1, and skip style nits:
 
 - **Bloat:** code the task didn't need, a helper or abstraction with one
   caller, a defensive check or fallback nothing has shown is needed, a second
@@ -241,9 +240,6 @@ each with its file and line and the rule it breaks. Look hardest for:
 - **The PR itself:** a bug fix without its check in `tools/smoke.py`, a
   missing CHANGELOG, README, USING or DEVELOPING update, a title or closing
   word that breaks "Pull requests".
-
-No praise, no summary of the change, no style nits. Nothing found: say so in
-one line.
 
 ## Bugs and findings
 
