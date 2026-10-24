@@ -217,13 +217,31 @@ not models, mid-session: a new model sends the whole conversation again
   has usage left) gets only the PR and issue links, tries to break the
   change, and comments on the PR; the author answers each finding with
   evidence. It runs when the user starts it, and never holds a PR in draft.
-- **Drafts until verified.**
+- **Drafts until verified.** When one leaves draft, comment `@codex review`
+  on it, so the automatic review sees the finished change.
 - **Never push to `main` or merge** unless the user says so. The user merges:
   say which PRs are ready (the ones not in draft, in their "after #N" order),
   and which wait and why.
 - **When a milestone's last issue closes,** a short retro in `docs/retros/`:
   what cost time, what to keep and what changes in AGENTS.md, with the PRs
   and issues as evidence. Then the milestone is closed.
+
+## Code Review Rules
+
+Codex reviews each PR against this file as it is on the PR's branch. Treat
+each of these as P1, and skip style nits:
+
+- **Bloat:** code the task didn't need, a helper or abstraction with one
+  caller, a defensive check or fallback nothing has shown is needed, a second
+  way of doing what a module already does, old formats kept for compatibility,
+  tidying of unrelated code.
+- **Drift from this file:** network calls outside `request()`, a new
+  dependency, build step or backend, a position leaving the device, Traficom
+  data used for routing, missing data that looks complete, a control that
+  isn't one of DEVELOPING's shared controls.
+- **The PR itself:** a bug fix without its check in `tools/smoke.py`, a
+  missing CHANGELOG, README, USING or DEVELOPING update, a title or closing
+  word that breaks "Pull requests".
 
 ## Bugs and findings
 
