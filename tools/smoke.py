@@ -10967,17 +10967,29 @@ LV_NIGHTS = """(async () => {
   if (JSON.stringify(p.stopAt(2)) !== '{"on":420,"n":2}') errs.push(`the saved route's stay: ${JSON.stringify(p.stopAt(2))}`);
   for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await wait(200);
   // GPX: the planned times in words in the waypoints' descriptions, nothing on the track
-  let blob = null;
-  const make = URL.createObjectURL, click = HTMLAnchorElement.prototype.click;
-  URL.createObjectURL = (b) => { blob = b; return make.call(URL, b); };
-  HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
-  p.exportGpx();
-  URL.createObjectURL = make; HTMLAnchorElement.prototype.click = click;
-  const doc = new DOMParser().parseFromString(await blob.text(), 'application/xml'), desc = [...doc.querySelectorAll('wpt')].map((x) => x.querySelector('desc')?.textContent || '');
+  const gpx = async () => {
+    let blob = null;
+    const make = URL.createObjectURL, click = HTMLAnchorElement.prototype.click;
+    URL.createObjectURL = (b) => { blob = b; return make.call(URL, b); };
+    HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
+    try { p.exportGpx(); } finally { URL.createObjectURL = make; HTMLAnchorElement.prototype.click = click; }
+    return new DOMParser().parseFromString(await blob.text(), 'application/xml');
+  };
+  const doc = await gpx(), descs = (d) => [...d.querySelectorAll('wpt')].map((x) => x.querySelector('desc')?.textContent || ''), desc = descs(doc);
   const s0 = p.startSec(), w2 = p.analysis.waits[0];
   const on = `${LV.day(w2.arrive + w2.sec)}, 07:00`;
   if (desc[0] !== `Leave ${LV.day(s0)}, ${LV.clock(s0)}` || !/^There at /.test(desc[1]) || !desc[2].startsWith('There at ') || !desc[2].endsWith(`. 2 nights, go on ${on}`) || !desc[3].startsWith(`There at ${LV.day(w2.arrive + w2.sec)}, `)) errs.push(`GPX's descriptions: ${desc.join(' / ')}`);
   if (doc.querySelectorAll('trkpt').length < 4 || doc.querySelector('trkpt time') || !doc.querySelector('metadata > time')) errs.push(`GPX's times: ${doc.querySelectorAll('trkpt time').length} on the track, ${doc.querySelectorAll('metadata > time').length} in its metadata`);
+  // leaving now, exported ten minutes after the forecast came: Leave is the moment the route is timed from, as There at's
+  // times are, so it never comes after them (#506)
+  p.setLeave(null);
+  for (let k = 0; k < 50 && !(p.analysis && p.analysis.wind && p.analysis.wind.startSec < Date.now() / 1000 + 60 && p.analysis.waits); k++) await wait(200);
+  if (!p.analysis.wind) errs.push('leaving now: no forecast came');
+  const realNow = Date.now;
+  let now;
+  try { Date.now = () => realNow() + 10 * 60000; now = descs(await gpx()); } finally { Date.now = realNow; }
+  const s1 = p.arriveAt(0);
+  if (now[0] !== `Leave ${LV.day(s1)}, ${LV.clock(s1)}` || !now[1].startsWith(`There at ${LV.clock(p.arriveAt(1))}`)) errs.push(`GPX leaving now, timed from ${LV.clock(s1)}: ${now.join(' / ')}`);
   return errs;
 })()"""
 

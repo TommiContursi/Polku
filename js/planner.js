@@ -3946,9 +3946,10 @@ export class Planner {
 
   // Each point's planned times in words, for GPX's waypoints (#364's C): "Leave Sat 31 Oct, 07:30", "There at 09:12",
   // "There at 18:40. Night, go on Sun 1 Nov, 07:00". None go on the track's points: apps such as Strava read a GPX with
-  // times as a recorded activity.
+  // times as a recorded activity. Leave is the moment the route is timed from, as in arriveAt(): leaving now, when the
+  // forecast came, not the export's minute (#506)
   plannedTimes() {
-    const start = this.startSec(), waits = (this.analysis && this.analysis.waits) || [];
+    const a = this.analysis, start = a && a.wind ? a.wind.startSec : this.startSec(), waits = (a && a.waits) || [];
     const at = (sec) => (new Date(sec * 1000).toDateString() === new Date(start * 1000).toDateString() ? this.timeOf(sec) : `${this.dayOf(sec)}, ${this.timeOf(sec)}`);
     return this.points.map((_, i) => {
       if (i === 0) return `Leave ${this.dayOf(start)}, ${this.timeOf(start)}`;
