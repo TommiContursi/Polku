@@ -42,8 +42,10 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
 
 **Names** are plain words: "Calmer planner" for a phase's milestone and
 issue, "Calmer planner: the map's cards" for its PRs, and "#475, the route's
-card" in chat, never codes like 25d. A milestone is only for work being built;
-fixes go in the month's ("Fixes: November 2026").
+card" in chat, never codes like 25d. A milestone's name in chat, Hand-overs
+and PRs is always a link to it, so it never reads as part of a sentence. A
+milestone is only for work being built; fixes go in the month's ("Fixes:
+November 2026").
 
 - **Start from the task the user picked, or the latest Hand-over** on the
   phase issue; otherwise from the Project's Now column, top first (Later and
