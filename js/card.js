@@ -472,8 +472,10 @@ export class CardHost {
         }
         return best;
       };
-      // the scale and credits too where there's room (a tiny screen has none to spare, and then it's as before)
-      for (const ok of [clear(credits ? [...base, credits] : base), clear(base)]) {
+      // the scale and credits too, the whole pill clear of them where there's room; else at least the spot itself (a tiny screen
+      // has none to spare, and then it's as before)
+      const spotClear = credits ? (nx, ny) => clear(base)(nx, ny) && (nx < credits.left - 8 || nx > credits.right + 8 || ny < credits.top - 8 || ny > credits.bottom + 8) : clear(base);
+      for (const ok of [clear(credits ? [...base, credits] : base), spotClear, clear(base)]) {
         if (ok(x - dx, y - ddy)) break;
         const best = nearest(ok);
         if (best) { dx += best.a; ddy += best.c; break; }

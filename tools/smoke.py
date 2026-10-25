@@ -2389,7 +2389,7 @@ def onroute(chrome):
         errs, at = pg.js(f"{ONROUTE_OPEN}('.tier-look .row', 'Steep climb')", timeout=90000)
         fails += errs
         if at:
-            pg.tap(*at)
+            pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
             time.sleep(1.0)
             fails += card(pg, 'Steep climb, up to 18 %', 2, {'group': 'Worth a look', 'all': False, 'src': 'From the map · OpenStreetMap', 'main': None})
             if pg.js("polku.planner.panel.dataset.state") != 'peek':
@@ -2430,7 +2430,7 @@ def onroute(chrome):
         # Not checked's Retry, with an answer: gone
         errs, at = pg.js("(async () => { const el = document.querySelector('[data-sec=warnings] .tier-not .row'); if (!el) return [[], null]; el.scrollIntoView({ block: 'center' }); await new Promise((ok) => setTimeout(ok, 400)); const r = el.getBoundingClientRect(); return [[], [r.left + r.width / 2, r.top + r.height / 2]]; })()")
         if at:
-            pg.tap(*at)
+            pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
             time.sleep(1.0)
             fails += card(pg, 'The forecast didn’t answer', 7, {'group': 'Not checked', 'main': 'Retry'})
             fails += pg.js("""(async () => {
@@ -2447,10 +2447,10 @@ def onroute(chrome):
         errs, at = pg.js(f"{ONROUTE_OPEN}('.tier-look .row', 'Fallen tree')", timeout=90000)
         fails += errs
         if at:
-            pg.tap(*at)
+            pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
             pg.js("(async () => { for (let k = 0; k < 60 && !polku.planner.cards.current; k++) await new Promise((r) => setTimeout(r, 100)); return true; })()")
             n0 = pg.js("polku.planner.points.length")
-            pg.tap(195, 200)
+            pg.quick_tap(195, 200)
             pg.js("(async () => { for (let k = 0; k < 30 && polku.planner.cards.current; k++) await new Promise((r) => setTimeout(r, 100)); return true; })()")
             if pg.js("!!polku.planner.cards.current"):
                 fails.append('a tap on the map left the item card open')
@@ -2486,7 +2486,7 @@ def onroute(chrome):
           return errs;
         })()""", timeout=90000)
         at = pg.js("(() => { const r = polku.planner.els.readRow.querySelector('.pl-readrow-go').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
-        pg.tap(*at)
+        pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
         time.sleep(1.0)
         fails += card(pg, 'Road works: Teiskontie', 3, {'group': 'Read before you go', 'src': 'Live · Fintraffic'})
         fails += pg.js("""(async () => {
@@ -2577,7 +2577,7 @@ def onroute(chrome):
         })()""", timeout=90000)
         at = pg.js("(() => { const r = polku.map.getCanvas().getBoundingClientRect(); return window.clusterAt ? [r.left + window.clusterAt[0], r.top + window.clusterAt[1]] : null; })()")
         if at:
-            pg.tap(*at)
+            pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
             time.sleep(1.2)
             fails += card(pg, 'Close one to read', 5, {'group': 'Read before you go'})  # (fifth along the route, of eight)
             # with the planner put away: the triangle's card, and Open the planner at it
@@ -2596,7 +2596,7 @@ def onroute(chrome):
               return errs;
             })()""")
             at = pg.js("window.closedAt")
-            pg.tap(*at)
+            pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
             time.sleep(1.2)
             fails += pg.js("""(async () => {
               const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
@@ -10478,8 +10478,10 @@ def spot_card(chrome):
         # A, B, C: + Add to my route where it fits, the note naming the point it follows; one step of Undo
         route(pg, name, ROUTE)
         pg.js("polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 12 }); new Promise((r) => setTimeout(r, 800))")  # (all three spots on a 390 px map)
+        cam = "(() => { const v = polku.planner.viewPadding(0); polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 12, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }); })();  polku.planner.cards.close(); document.querySelector('#toast').classList.remove('show'); new Promise((r) => setTimeout(() => r(true), 900))"  # (the camera as the spots below assume it: an earlier card may have moved it)
         for what, lls, want in (('beside the middle of A–B', [[(A[0] + B[0]) / 2 - 0.0033, (A[1] + B[1]) / 2 + 0.0032], [(A[0] + B[0]) / 2 - 0.0028, (A[1] + B[1]) / 2 + 0.0036]], 1),
                                 ('past C', [[C[0] + 0.005, C[1] - 0.001], [C[0] + 0.005, C[1] + 0.001]], 3), ('behind A', [[A[0] - 0.005 + dx, A[1] + dy] for dx in (0, 0.001, -0.001) for dy in (-0.001, 0.001, -0.002, 0.002, 0)], 1)):
+            pg.js(cam)
             s = next((x for x in (pg.js(f'sc.at({json.dumps(q)}, {{ line: 12 }})') for q in lls) if x), None)  # (the first that's clear of the map's places)
             ll = s and s['ll']
             if not s:
