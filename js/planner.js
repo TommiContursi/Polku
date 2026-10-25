@@ -3292,8 +3292,8 @@ export class Planner {
     const move = (ev) => {
       if (!dot) {
         const d = Math.hypot(ev.point.x - p0.x, ev.point.y - p0.y);
+        if (touch && ev.points && ev.points.length > 1) { stop(); return; } // a second finger, held or not: a pinch, the map's
         if (touch && !armed) {
-          if (ev.points && ev.points.length > 1) { stop(); return; } // a pinch: the map's
           // held long enough by the finger's own times, though a busy page hasn't run the hold's timer yet: held after all
           if (ev.originalEvent.timeStamp - t0 >= HOLD) { clearTimeout(hold); arm(); } else { if (d > 10) stop(); return; } // (a swipe: the map's)
         }

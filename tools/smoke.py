@@ -10570,6 +10570,23 @@ def spot_card(chrome):
             fails.append(f"{name}: the line held 0.3 s and moved 30 px: {c['n'] - n} points added, {c['past'] - past} steps in Undo, {c['kind'] or 'no'} card (one point, reshaped)")
         pg.js('polku.planner.undo(); true')
         time.sleep(0.6)
+        # a second finger on the held line: the map's pinch, nothing split, however long the first has held (armed at 0.3 s)
+        t = on_line(pg, 0, 0.3)
+        n, past = st(pg)['n'], st(pg)['past']
+        finger = lambda kind, pts: pg.c.send('Input.dispatchTouchEvent', {'type': kind, 'touchPoints': pts, 'timestamp': time.time()}, pg.s)
+        one = {'x': t['x'], 'y': t['y'], 'id': 1}
+        finger('touchStart', [one])
+        time.sleep(0.4)
+        finger('touchStart', [one, {'x': t['x'] + 90, 'y': t['y'] + 60, 'id': 2}])
+        for k in range(1, 6):
+            time.sleep(0.03)
+            finger('touchMove', [{'x': t['x'] + 12 * k, 'y': t['y'] - 12 * k, 'id': 1}, {'x': t['x'] + 90 - 12 * k, 'y': t['y'] + 60 + 12 * k, 'id': 2}])
+        finger('touchEnd', [])
+        time.sleep(0.8)
+        r = pg.js("({ n: polku.planner.points.length, past: polku.planner.past.length, edit: !!polku.planner.edit, pan: polku.map.dragPan.isEnabled(), kind: polku.planner.cards.current && polku.planner.cards.current.kind })")
+        if r['n'] != n or r['past'] != past or r['edit'] or not r['pan'] or r['kind']:
+            fails.append(f"{name}: a second finger on the held line: {r['n'] - n} points added, {r['past'] - past} steps in Undo, editing {r['edit']}, the map's pan {'on' if r['pan'] else 'off'}, {r['kind'] or 'no'} card")
+        pg.js('polku.planner.cards.close(); true')
         t = on_line(pg, 0, 0.3)
         pg.quick_tap(t['x'], t['y'], ms=200)
         time.sleep(0.6)
@@ -10788,9 +10805,10 @@ FA_HELP = """(() => {
   const asked = [], real = window.fetch.bind(window);
   // Overpass, answered by window.fa.answer (a function of the query: JSON, or a number for an error status), after
   // window.fa.hold when it's a promise
-  window.fa = { asked, answer: () => 503, hold: null };
+  window.fa = { asked, answer: () => 503, hold: null, holdDem: null };
   window.fetch = async (input, init) => {
     const url = String(input && input.url ? input.url : input);
+    if (/mapterhorn/.test(url) && fa.holdDem) await fa.holdDem; // (terrain tiles held back: a height that comes late)
     if (!/overpass/.test(url)) return real(input, init);
     const q = init && init.body ? new URLSearchParams(init.body).get('data') : '';
     if (!asked.includes(q)) asked.push(q);
@@ -10937,6 +10955,43 @@ def facts(chrome):
         f = dict(pg.js('fa.facts()'))
         if f.get('Fee') != 'Free' or f.get('Open') != 'All the time' or f.get('Wheelchair access') != '? not mapped':
             fails.append(f"a toilet's What's here: Fee “{f.get('Fee')}”, Open “{f.get('Open')}”, Wheelchair access “{f.get('Wheelchair access')}”")
+        pg.js('polku.planner.cards.close(); true')
+        # ---- OpenStreetMap's details for the object the card is about: an obstacle's node by its own number, not the nearest
+        # object (two at one spot: the other first)
+        def node(i, name):
+            return {'type': 'node', 'id': i, 'lat': 61.5025, 'lon': 23.76, 'tags': {'amenity': 'toilets', 'name': name}}
+        pg.js(f"fa.answer = (q) => ({{ elements: /node\\(7\\)/.test(q) ? [{json.dumps(node(7, 'Seven'))}] : [{json.dumps(node(8, 'Eight'))}, {json.dumps(node(7, 'Seven'))}] }}); fa.asked.length = 0; true")
+        pg.js("polku.planner.openPlaceCard({ layer: { id: 'td-points' }, properties: { kind: 'tree', barrier: 'log', osm: 7 }, geometry: { type: 'Point', coordinates: [23.76, 61.5025] } }, [23.76, 61.5025]); true")
+        time.sleep(0.5)
+        press('What’s here')
+        press('All OpenStreetMap details')
+        time.sleep(1.5)
+        f = pg.js('fa.facts()')
+        links = pg.js("(() => { const c = polku.planner.cards.current; return c && c.osm && c.osm.w ? [c.osm.w.type, c.osm.w.id, c.osm.w.tags.name] : null; })()")
+        if ['OpenStreetMap', 'node 7'] not in f or links != ['node', 7, 'Seven']:
+            fails.append(f"an obstacle's node 7, with another object nearer: its details are {links}, the rows {[x for x in f if x[0] == 'OpenStreetMap']}")
+        pg.js("[...document.querySelectorAll('.pl-way.card .btn')].find((b) => b.textContent.trim() === 'Not right?')?.click(); true")
+        time.sleep(0.4)
+        edit = pg.js("[...document.querySelectorAll('.pl-way.card a')].map((a) => a.getAttribute('href')).filter((u) => /edit/.test(u))")
+        if edit != ['https://www.openstreetmap.org/edit?node=7']:
+            fails.append(f"Not right? for the obstacle's node 7: {edit}")
+        pg.js('polku.planner.cards.close(); true')
+        # ---- a height that comes late shows in What's here, opened before it came
+        pg.js("fa.holdDem = new Promise((r) => { fa.releaseDem = r; }); true")
+        pg.js("polku.planner.openSpotCard([24.31, 61.21]); true")
+        time.sleep(0.6)
+        press('What’s here')
+        time.sleep(0.3)
+        before = dict(pg.js('fa.facts()')).get('Height')
+        pg.js("fa.releaseDem(); fa.holdDem = null; true")
+        height = before
+        for _ in range(50):
+            time.sleep(0.2)
+            height = dict(pg.js('fa.facts()')).get('Height')
+            if height != '…':
+                break
+        if before != '…' or height == '…':
+            fails.append(f"What's here opened before the height came: Height “{before}”, then “{height}” (… and then its answer)")
         pg.js('polku.planner.cards.close(); true')
         # ---- the planner put away: a path's tap is the card with What's here; a ship still opens its own card
         w = pg.js('faWay(true)')

@@ -190,11 +190,17 @@ export async function wayNear(ll, osm = null) {
   return near;
 }
 
-// OpenStreetMap's own data for a way or a place (25d part 6), asked when you press All OpenStreetMap details: a way at
-// the spot (its own id when the map knows it), or the place nearest it, 40 m at most, with a tag of its kind.
-// { type, id, tags, len } or null when there's none
+// OpenStreetMap's own data for a way or a place (25d part 6), asked when you press All OpenStreetMap details: the object
+// by its own number (a way, a node, a relation) when the map knows it, else a way at the spot, or the place nearest it,
+// 40 m at most, with a tag of its kind. { type, id, tags, len } or null when there's none
 export async function osmDetails({ type = 'way', id = null, ll }) {
   if (type === 'way') { const w = await wayNear(ll, id); return w && { type: 'way', ...w }; }
+  // the object the card is about, by its own number (another may be nearer, or at the same spot)
+  if (id && (type === 'node' || type === 'relation')) {
+    const json = await overpass(`[out:json][timeout:15];${type}(${+id});out tags center;`, { race: true });
+    const x = (json.elements || []).find((e) => e.type === type && e.id === +id);
+    return x ? { type, id: x.id, tags: x.tags || {}, len: 0 } : null;
+  }
   const json = await overpass(`[out:json][timeout:15];nwr(around:40,${ll[1]},${ll[0]})[~"^(amenity|tourism|leisure|natural|barrier|ford|man_made|historic)$"~"."];out tags center;`, { race: true });
   const at = (x) => (x.center ? [x.center.lon, x.center.lat] : [x.lon, x.lat]);
   const near = (json.elements || []).filter((x) => x.tags && Number.isFinite(at(x)[0])).sort((a, b) => dist(at(a), ll) - dist(at(b), ll))[0];

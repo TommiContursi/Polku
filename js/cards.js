@@ -573,7 +573,8 @@ export function spotCard(pl, spot) {
     mark: () => (spot.place ? placeMark(spot) : h('span', { class: 'card-pin' })), at: () => spot.ll,
     build: (body) => spotBody(pl, card, body),
   };
-  elevation(spot.ll).then((e) => { card.ele = Number.isFinite(e) ? e : null; }, () => { card.ele = null; }).then(() => { if (pl.cards.current === card) pl.cards.refresh(); });
+  // (the height can come while What's here, a card of its own above this one, is the open one: it's built again too)
+  elevation(spot.ll).then((e) => { card.ele = Number.isFinite(e) ? e : null; }, () => { card.ele = null; }).then(() => { if (pl.cards.stack.some((x) => x.card === card)) pl.cards.refresh(); });
   return card;
 }
 
@@ -613,7 +614,7 @@ function spotHereCard(pl, spotC) {
         ...(spot.way ? wayFacts(osm ? { ...spot.tags, ...osm.tags } : spot.tags, sport) : []), ...(spot.extra || []),
         ...(spot.place && !spot.lipas ? placeGroups(tags, spot.kind, { known: !!osm }) : []),
         ...(spot.lipas ? lipasFacts(spot.lipas) : []),
-        { group: 'The spot', label: 'Height', value: spotC.ele === undefined ? '…' : spotC.ele == null ? 'not known' : `${Math.round(spotC.ele)} m`, missing: spotC.ele == null },
+        { group: 'The spot', label: 'Height', value: spotC.ele === undefined ? '…' : spotC.ele === null ? 'not known' : `${Math.round(spotC.ele)} m`, missing: spotC.ele === null },
         { group: 'The spot', label: 'Coordinates', value: coords(spot.ll), copy: true }];
       // (In winter and Last checked from the map's own data close the list, as wayFacts() orders them)
       let g = null;
