@@ -67,13 +67,11 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   context is past about 300k tokens, when the session reaches its usage
   limit, or when its context has been compacted and it starts losing track
   (repeating work, forgetting a decision). Write the Hand-over first.
-- **One coding session at a time,** unless the user starts more: more at
-  once ran into the usage limits ([retro](docs/retros/2026-10-15-16.md)), so
-  the agents take turns, and when one reaches its limit the next starts from
-  the last Hand-over. When the user starts more, each has a branch of its own
-  and leaves alone the files another open PR changes. No "status" session. A
-  subagent can do a wide search, but not verify the work or run the suite:
-  those stay with the session.
+- **Sessions side by side,** as many as the user starts: each has a claim
+  and a branch of its own, and leaves alone the files another open PR
+  changes. When one reaches its usage limit, the next continues from its
+  last Hand-over. No "status" session. A subagent can do a wide search, but
+  not verify the work or run the suite: those stay with the session.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
   issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
