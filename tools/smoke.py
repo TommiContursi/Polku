@@ -4154,9 +4154,10 @@ QUICK_TAPS = """(() => {
   // (the spot, or one a little way up the map where something sits over it: the scale moves with the sheet's size)
   const at = (ll) => {
     let under = 'nothing';
-    for (const up of [0, 0.0006, 0.0012, 0.0018]) {
+    const sheet = p.panel.hidden ? innerHeight : p.panel.getBoundingClientRect().top; // (above the planner's sheet, a taller one on a runner with wider fonts)
+    for (const up of [0, 0.0006, 0.0012, 0.0018, 0.003, 0.0045]) {
       const q = m.project([ll[0], ll[1] + up]), el = document.elementFromPoint(q.x, q.y);
-      if (el === m.getCanvas()) return { x: q.x, y: q.y };
+      if (el === m.getCanvas() && q.y < sheet - 40) return { x: q.x, y: q.y };
       under = el ? el.id || el.className || el.tagName : 'nothing';
     }
     return { under };
@@ -4251,8 +4252,10 @@ def quick_taps(chrome):
             if 'under' in s:
                 fails.append(f"{setup}: the spot is under {s['under']}")
                 continue
+            # (what's under the finger as it goes down: a touch that no card or map handler logs wasn't the map's)
+            pg.js(f"window.qtUnder = (() => {{ const e = document.elementFromPoint({s['x']}, {s['y']}); return e ? e.id || String(e.className.baseVal ?? e.className) : 'nothing'; }})(); true")
             pg.quick_tap(s['x'], s['y'], ms=ms, after=hold)
-            fails += pg.js(done)
+            fails += [f"{e} [the finger at {round(s['x'])},{round(s['y'])} on {pg.js('window.qtUnder')}]" for e in pg.js(done)]
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
