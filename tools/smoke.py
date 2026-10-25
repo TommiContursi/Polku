@@ -10629,12 +10629,25 @@ def spot_card(chrome):
         if not pl or 'why' in pl:
             fails.append(f"{name}: no place on the map to tap (OpenFreeMap's tiles): {pl and pl['why']}")
         else:
+            pg.js('sc.still()')
+            again = pg.js('sc.place()')  # (where it is now: the map may have eased since)
+            pl = again if again and 'why' not in again else pl
+            under = pg.js(f"(() => {{ const e = document.elementFromPoint({pl.get('x', 0)}, {pl.get('y', 0)}); return e ? e.id || String(e.className.baseVal ?? e.className) : 'nothing'; }})()")
             press(pg, pl, f'{name}: a place', True)
-            c = st(pg)
+            for _ in range(12):  # (a tap a busy page took for a hold is replayed a moment after)
+                c = st(pg)
+                if c['kind'] == 'place' or c['n']:
+                    break
+                time.sleep(0.25)
             if c['kind'] != 'place' or c['n'] != 0:
-                fails.append(f"{name}: a tap on {pl['name']}: {c['kind'] or 'no'} card, {c['n']} points")
+                fails.append(f"{name}: a tap on {pl['name']}: {c['kind'] or 'no'} card, {c['n']} points (the finger at {pl.get('x')},{pl.get('y')} on {under}; the cards: {pg.js('sc.log()')})")
             pg.js('polku.planner.cards.close(); true')
+            pg.js('sc.still()')
             press(pg, pg.js(f'sc.beside({json.dumps(pl)})'), f'{name}: beside the place', True)
+            for _ in range(12):
+                if st(pg)['n'] == 1:
+                    break
+                time.sleep(0.25)
             if st(pg)['n'] != 1:
                 fails.append(f"{name}: a tap beside {pl['name']}: {st(pg)['n']} points, not 1")
         # a quick tap on a busy page with the planner put away, near the top (#293): a tap, so the card of the tapped spot, though
