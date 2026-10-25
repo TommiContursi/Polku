@@ -10943,6 +10943,43 @@ def share_spot(chrome):
     return not fails
 
 
+def spot_card_foot(chrome):
+    """The spot's and a place's card's last row (25d part 6b): Share, Weather here › and Not right? in one row, last, whole at every
+    size (on one line where there's room, a line each at 200 %), the buttons as big as touch needs, with a long Finnish name."""
+    fails = []
+    name_ = 'Kuusijärvenkierroksen eteläinen taukopaikkarakennus'
+    for w, h_, phone in ((1440, 900, False), (390, 844, True), (360, 740, True), (195, 422, True)):
+        name = f'{w}x{h_}' + (' (200 %)' if w == 195 else '')
+        pg = chrome.page(w, h_, phone)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#15/61.514/23.818')
+            pg.js(RC_ROUTER)
+            pg.js(f"({RC_ROUTE})({json.dumps({'mode': 'line', 'pts': [[23.8, 61.512], [23.815, 61.5155], [23.83, 61.513]]})})", timeout=60000)
+            for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true })"),
+                             ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
+                pg.js(f"{js}; new Promise((r) => setTimeout(() => r(true), 1200))")
+                r = pg.js("""(() => { const c = document.querySelector('.pl-way.card'), f = c && c.querySelector('.card-foot'), box = (e) => e.getBoundingClientRect();
+                  if (!f) return null;
+                  const bs = [...f.querySelectorAll('.btn')], C = box(c);
+                  return { last: c.lastElementChild === f, words: bs.map((b) => b.textContent.trim()), small: bs.filter((b) => box(b).height < (matchMedia('(pointer: coarse)').matches ? 44 : 36)).length,
+                    wide: [f.scrollWidth - f.clientWidth, c.scrollWidth - c.clientWidth], out: bs.filter((b) => box(b).left < C.left - 1 || box(b).right > C.right + 1).length,
+                    lines: new Set(bs.map((b) => Math.round(box(b).top))).size, title: c.querySelector('.way-hint').textContent.length }; })()""")
+                if not r:
+                    fails.append(f'{name}: {what}: no card with a last row')
+                    continue
+                if not r['last'] or r['words'] != ['Share', 'Weather here ›', 'Not right?'] or r['small'] or r['out'] or r['wide'][0] > 0 or r['wide'][1] > 0:
+                    fails.append(f'{name}: {what}: the last row {r}')
+                if (w == 195) != (r['lines'] == 3) or (w != 195 and r['lines'] != 1):
+                    fails.append(f"{name}: {what}: the last row is on {r['lines']} lines (one where there's room, a line each at 200 %)")
+                pg.js('polku.planner.cards.close(); true')
+            fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        except Exception as e:
+            fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the spot's and a place's card's last row: Share, Weather here ›, Not right?, at four sizes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Route's list in sections, and Reorder (25d's part 4, Journey D): a section where the sport changes, at a stop and at a
 # night (a day each); point rows for the points you see, stretch rows between them with their shaping points folded;
 # a tap opens the point's or the stretch's card, and Back finds the list as it was; Reorder with a grip, Earlier and
@@ -12331,7 +12368,7 @@ GROUPS = [
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card], 'a point\'s card (25d): a tap opens it in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
-    ('spotcard', [spot_card], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
+    ('spotcard', [spot_card, spot_card_foot], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'What\'s here in levels and Not right? (25d part 6a): a way\'s facts for your sport first and a missing one said so, All OpenStreetMap details once a card (a failure, a late answer), Copy, Not right?, a place\'s facts, a path\'s card with the planner put away, a ship\'s own card (a recorded tile, mocked Overpass)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
