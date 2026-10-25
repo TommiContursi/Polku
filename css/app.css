@@ -1595,6 +1595,9 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .map-keys div { display: grid; grid-template-columns: 96px auto; align-items: center; gap: 10px; }
 .map-keys dd { margin: 0; }
 .map-keys kbd { font: 600 12px ui-monospace, Menlo, monospace; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+/* What's here (25d part 6): a fact the map doesn't have, said so in its place */
+.card .insp-row.miss b { color: var(--muted); font-weight: 500; }
+.card .insp-row .btn { flex: none; }
 .maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }

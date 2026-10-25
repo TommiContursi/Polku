@@ -118,6 +118,8 @@ const OFFSET = 14; // the float's corner from its spot, so the point stays in si
 // a control, as it's found again in a card built anew: its kind and its key, label or words
 const keyOf = (el) => `${el.tagName}|${el.dataset.k || el.getAttribute('aria-label') || el.textContent.trim().slice(0, 60)}`;
 const NARROW = 290; // px: a card this narrow (200 %, a small phone) has its top row of its own, and undo and redo in it
+// cards that leave the stack: their gone() (search's LIPAS route lit while its card is open)
+const gone = (entries) => { for (const e of entries) if (e.card.gone) e.card.gone(); };
 
 export class CardHost {
   // peek: where a phone's card goes; where(): 'peek' or 'float' now; onChange(card | null) after it changes.
@@ -183,7 +185,7 @@ export class CardHost {
     const entry = { card, at, beside, from };
     // from the card open now: Back goes back to it; else a card of its own, and the ones before it go (their history too)
     if (from && typeof from === 'object' && this.stack.some((e) => e.card === from)) this.stack.push(entry);
-    else this.stack = [entry];
+    else { gone(this.stack); this.stack = [entry]; }
     this.syncHistory();
     this.render({ fresh: true });
   }
@@ -196,7 +198,7 @@ export class CardHost {
   }
   stepBack() {
     if (this.folded) { const f = this.folded; this.folded = null; f.cancel(); }
-    if (this.stack.length > 1) { this.stack.pop(); this.render({ fresh: true }); return; }
+    if (this.stack.length > 1) { gone([this.stack.pop()]); this.render({ fresh: true }); return; }
     this.closeNow();
   }
 
@@ -210,6 +212,7 @@ export class CardHost {
     const f = this.folded, saved = this.saved;
     this.folded = null;
     this.saved = null;
+    gone(this.stack);
     this.stack = [];
     this.remove();
     if (f) f.cancel();

@@ -18,13 +18,13 @@ import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './win
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
-import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
+import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags, wayExtras } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
-import { wayNear, OSM_KEYS, hitBox, inspectLayers, pickFeature } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt } from './inspect.js';
 import { describe } from './hover.js';
 import { CardHost, item, rows } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -3520,15 +3520,19 @@ export class Planner {
     this.cards.close();
     this.addNogo(ll, 40, 'Avoided place');
   }
-  // What's here's All OpenStreetMap details: the way nearest the spot, asked once (Overpass), its tags as rows
-  async osmOnCard(card, ll) {
-    card.osm = { state: 'Asking OpenStreetMap…' };
+  // What's here's All OpenStreetMap details (25d part 6): the way or the place at the spot, asked once a card (Overpass,
+  // osmDetails()); its tags then fill the card's facts too (Last checked, a toilet's fee). `what`: { type, id } or null
+  // for the way nearest the spot. An answer after the card closed changes nothing.
+  async osmOnCard(card, ll, what = null) {
+    if (card.osm && (card.osm.rows || card.osm.asking)) return;
+    card.osm = { state: 'Asking OpenStreetMap…', asking: true };
     this.cards.refresh();
     try {
-      const w = await wayNear(ll);
-      card.osm = w ? { rows: [...OSM_KEYS.filter(([k]) => w.tags[k]).map(([k, label]) => [label, String(w.tags[k])]), ['Length', `${Math.round(w.len)} m`], ['OpenStreetMap', `way ${w.id}`]] } : { state: 'No OpenStreetMap way found here' };
+      const w = await osmDetails({ ll, type: what ? what.type : 'way', id: what ? what.id : null });
+      card.osm = w ? { w, rows: [...OSM_KEYS.filter(([k]) => w.tags[k]).map(([k, label]) => [label, String(w.tags[k])]), ...(w.len ? [['Length', `${Math.round(w.len)} m`]] : []), ['OpenStreetMap', `${w.type} ${w.id}`]] }
+        : { state: `No OpenStreetMap ${what && what.type === 'place' ? 'place' : 'way'} found here` };
     } catch { card.osm = { state: 'OpenStreetMap didn’t answer: try again' }; }
-    if (this.cards.current === card) this.cards.refresh();
+    if (this.cards.stack.some((e) => e.card === card)) this.cards.refresh();
   }
   // Share link's line: what the link carries beyond the route, the date once one is set (#364's C; to share without it,
   // set Now first)
@@ -3620,33 +3624,43 @@ export class Planner {
     return layers.length ? this.map.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]], { layers })[0] || null : null;
   }
 
-  // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there
-  openSpotCard(lngLat, { pt = null, touch = false } = {}) {
+  // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there.
+  // `place`: a place to show (from search, part 6); `from`: the card it's opened from (Back goes back to it)
+  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map' } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
-    const place = this.placeAt(p, touch);
-    if (place) { this.openPlaceCard(place, ll); return; }
+    place = place || this.placeAt(p, touch);
+    if (place) { this.openPlaceCard(place, ll, { from }); return; }
     const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
-    const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id));
-    const d = f && describe(f, feats, { ll, bike: groupOf(this.app.activity()) === 'bike', mtb: this.app.activity() === 'mtb' });
+    const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
+    const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
     const water = !d && this.map.getLayer('water') && this.map.queryRenderedFeatures(p, { layers: ['water'] }).length;
+    const route = feats.find((x) => x.layer.id === 'lipas-route');
     this.openCard(spotCard(this, { ll, title: d ? text(d.title) : water ? 'Water' : 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
-      tags: way ? tileTags(way.properties) : {}, way: !!way }), ll);
+      tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
+      ...wayExtras(way ? way.properties : {}, { winter: winterAt(feats, ll), uphill: feats.find((x) => x.layer.id === 'uphill-line'), bike }),
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null }), ll, from);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
-  openPlaceCard(f, ll) {
+  openPlaceCard(f, ll, { from = 'map' } = {}) {
     const p = f.properties, id = f.layer.id, at = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates.map((x) => +x.toFixed(6)) : ll;
     const kind = id === 'label-peak' ? 'peak' : p.subclass || p.class || '', words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
     const o = /^td-/.test(id) ? obstacleText(p, groupOf(this.app.activity()) === 'bike') : null;
-    const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null }
-      : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}` }
-        : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap' };
-    this.openCard(spotCard(this, { ...spot, ll: at, kind, place: true, tags: p }), at);
+    const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
+      : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
+        : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
+    this.openCard(spotCard(this, { ...spot, ll: at, kind, place: true, tags: p }), at, from);
   }
-  openCard(card, at) {
+  // A LIPAS route's card (part 6): Follow it, add it to your route, the trail under it, What's here
+  openLipasCard(props, ll, { click = null, near = null } = {}) {
+    const at = Array.isArray(ll) ? ll : [ll.lng, ll.lat];
+    const p = this.map.project(at), under = click ? this.map.queryRenderedFeatures(hitBox(p, false), { layers: inspectLayers(this.map) }).some((x) => /^(path|track|cycleway)-|^road-/.test(x.layer.id)) : false;
+    this.openCard(lipasCard(this, props, at, { click, near, under }), at);
+  }
+  openCard(card, at, from = 'map') {
     if (this.menu) this.menu.remove();
     this.stopPicking();
-    this.cards.open(card, { at });
+    this.cards.open(card, { at, from });
   }
 
   // How far a spot is from the route's line, and the leg it's nearest ({ li, d }), or null with no legs

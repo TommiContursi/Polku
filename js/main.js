@@ -319,7 +319,7 @@ const planner = new Planner(map, {
   overlayOn: (id) => !!state.overlays[id],
   setOverlay: (id, on) => setOverlay(id, on),
   rideLipas: (props, opts) => rideLipas(props, opts),
-  lipasRide: (props) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, {})),
+  lipasRide: (props, click = null) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   setData,
   onStartChange: (k) => { if (k != null) weather.setHour(k, { silent: true }); safety.publish(); }, // (a day past the timeline's two: it stays)
   onAnalysis: () => {
@@ -381,9 +381,6 @@ const inspector = initInspector(map, {
   // the map's own cards: with the planner put away, and in the route's view for what the planner doesn't take (25c)
   // (and not the click that ends a hold on the map, whose card is the planner's: 25d part 5)
   isPlanning: (e) => (planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent))) || Date.now() < planner.noClickUntil,
-  activity: () => state.activity,
-  difficulty: showsDifficulty,
-  bike: isBike,
   routeFrom: (ll, mode) => {
     planner.setActive(true, { edit: true });
     if (mode) planner.setMode(mode);
@@ -393,14 +390,16 @@ const inspector = initInspector(map, {
   },
   routeTo: (ll) => { planner.setActive(true, { edit: true }); planner.addPoint(ll); },
   avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
-  rideLipas,
   // a click on your route with the planner closed: open it, with that part's choices
   // (in the route's view too, where the planner leaves map taps to the map: 25c)
   // Check's markers on the route with the planner put away: their card first (25d part 3)
   headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10),
   openHead: (f) => planner.openHead(f),
   openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openRouteCard(leg, lngLat), 60); }, // (the same click mustn't add a point too)
-  lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
+  // a way, a place, a LIPAS route or place: the planner's card, at the spot (25d part 6)
+  openSpot: (f, ll, point, touch) => (f.layer.id === 'lipas-route' ? planner.openLipasCard(f.properties, ll, { click: point ? ll : null, near: f.near }) : planner.openSpotCard(ll, { pt: point, touch, place: point ? null : f })),
+  cardOpen: () => !!planner.cards.current,
+  closeCard: () => planner.cards.close(),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
@@ -413,7 +412,8 @@ initSearch(map, $('#search-input'), $('#search-results'), {
   // the picked route stands out (and shows at any zoom) while its card is open
   openLipas: (props, ll, near, parts) => {
     setData('lipasPick', { type: 'FeatureCollection', features: (parts || []).map((p) => ({ type: 'Feature', properties: { type: props.type }, geometry: { type: 'LineString', coordinates: p.coords } })) });
-    inspector.openLipas(props, ll, near).on('close', () => setData('lipasPick', { type: 'FeatureCollection', features: [] }));
+    inspector.openLipas(props, ll, near);
+    if (planner.cards.current) planner.cards.current.gone = () => setData('lipasPick', { type: 'FeatureCollection', features: [] });
   },
 });
 

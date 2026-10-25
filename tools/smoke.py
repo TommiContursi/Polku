@@ -367,9 +367,9 @@ TRAILS = """(async () => {
     const point = m.project(tree.geometry.coordinates);
     m.fire('click', { point, lngLat: m.unproject(point), originalEvent: new MouseEvent('click') });
     await wait(400);
-    const t = document.querySelector('.polku-popup .insp-title');
+    const t = polku.planner.cards.current && polku.planner.cards.current.kind === 'place' ? document.querySelector('.pl-way.card .way-hint b') : null; // (its place's card, 25d part 5)
     if (!t || !/log|fallen/i.test(t.textContent)) errs.push(`clicking the fallen tree opened ${t ? t.textContent : 'nothing'}`);
-    document.querySelector('.polku-popup .maplibregl-popup-close-button')?.click();
+    polku.planner.cards.close();
   }
   // uphill colours come back after switching them off and on (they're cached, and once stayed blank)
   m.jumpTo({ center: [25.7652, 62.2289], zoom: 15.5 });
@@ -499,7 +499,7 @@ CARD_FIT = """(async (sel, acts) => {
     const r = b.getBoundingClientRect(), o = over((r.left + r.right) / 2, (r.top + r.bottom) / 2);
     if (o || r.left < R.left || r.right > R.right) errs.push(`${b.textContent.trim().slice(0, 40)}: ${o ? `${o} over it` : `out of the card at ${box(r)}`}`);
   }
-  if (acts && !c.querySelector('.insp-actions button')) errs.push('no Route from here, Add to route or Avoid');
+  if (acts && !c.querySelector('.insp-actions button')) errs.push('no buttons at the card’s foot');
   c.scrollTop = 0; // (a card's ✕ scrolls with it)
   await frames();
   const x = [...pop.querySelectorAll('.maplibregl-popup-close-button, .way-x')].find((e) => e.getClientRects().length).getBoundingClientRect();
@@ -520,13 +520,13 @@ def trail_card(chrome):
             fails.append(f'{name}: no trail from the recorded tile on the screen')
         else:
             pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
-            r = pg.js(f"({CARD_FIT})('.polku-popup .insp', true)")
+            r = pg.js(f"({CARD_FIT})('.card-float .pl-way.card', true)")  # (the way's card on the planner's card, 25d part 6)
             fails += [f'{name}: {e}' for e in r['errs']]
             if w == 390 and not r.get('shown'):
                 fails.append(f"{name}: the map's buttons hidden for a card that fits beside them")
             if r.get('close'):
                 pg.quick_tap(*r['close'])
-                if not pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!document.querySelector('.polku-popup .insp') && getComputedStyle(document.querySelector('.map-ctrls')).visibility !== 'hidden'))))"):
+                if not pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!document.querySelector('.pl-way.card') && getComputedStyle(document.querySelector('.map-ctrls')).visibility !== 'hidden'))))"):
                     fails.append(f"{name}: after ✕, the card still open or the map's buttons not back")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
@@ -637,12 +637,13 @@ LIPAS_RIDE = """(async () => {
   if (!item) return [...errs, 'Multamäen MTB-lenkki is not in the results'];
   item.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
   let ride = null;
-  for (let k = 0; k < 40 && !ride; k++) { await wait(200); ride = [...document.querySelectorAll('.polku-popup button')].find((b) => /Follow this route/.test(b.textContent)); }
+  // (its card is the planner's, at the spot: 25d part 6)
+  for (let k = 0; k < 40 && !ride; k++) { await wait(200); ride = [...document.querySelectorAll('.pl-way.card button')].find((b) => /Follow this route/.test(b.textContent)); }
   if (!ride) return [...errs, 'the card has no Follow this route (#306)'];
-  if (/\\bRide\\b/.test(document.querySelector('.polku-popup').textContent)) errs.push('the card says Ride (#306)');
-  const note = () => document.querySelector('.polku-popup .insp-ride')?.textContent || '';
+  if (/\\bRide\\b/.test(document.querySelector('.pl-way.card').textContent)) errs.push('the card says Ride (#306)');
+  const note = () => document.querySelector('.pl-way.card .rt-cost')?.textContent || '';
   for (let k = 0; k < 30 && !/loop|one way/.test(note()); k++) await wait(150);
-  if (!/^18 km · a loop/.test(note())) errs.push(`the card says: ${note() || 'nothing'}`);
+  if (!/^18 km, a loop/.test(note())) errs.push(`the card says: ${note() || 'nothing'}`);
   if (!polku.map.getLayer('lipas-pick') || !polku.map.queryRenderedFeatures({ layers: ['lipas-pick'] }).length) errs.push('the picked route is not highlighted');
   ride.click();
   const p = polku.planner;
@@ -3952,9 +3953,9 @@ WINTER = """(async () => {
       const cc = ski.geometry.type === 'MultiLineString' ? ski.geometry.coordinates[0] : ski.geometry.coordinates, q = polku.map.project(cc[Math.floor(cc.length / 2)]);
       polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') });
       await wait(900);
-      const card = document.querySelector('.maplibregl-popup')?.textContent || '';
-      if (!/In winter/.test(card) || !/ski track/i.test(card)) errs.push(`ski track card: ${card.slice(0, 120)}`);
-      document.querySelector('.maplibregl-popup-close-button')?.click();
+      const card = document.querySelector('.pl-way.card')?.textContent || ''; // (the spot's card, 25d part 6)
+      if (!/Ski track/.test(card) || !/keep off on foot and by bike/i.test(card)) errs.push(`ski track card: ${card.slice(0, 120)}`);
+      polku.planner.cards.close();
       await wait(300);
     }
     if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); } // Layers, then More: the full panel
@@ -8845,7 +8846,7 @@ def route_view(chrome):
     # (where it is once the sheet has come to its size: ✕ measured while the planner came back after the note's Open had
     # something over it; settle=False for the note, which goes in 6 s)
     at = lambda pg, sel, settle=True: (settle and pg.js(SETTLED), pg.js(f"({TB_AT})({sel})"))[1]
-    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: !!document.querySelector('.maplibregl-popup .insp'), card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
+    state = lambda pg: pg.js("(() => { const p = polku.planner; return { active: p.active, view: p.inView(), n: p.points.length, past: p.past.length, sheet: p.panel.dataset.state, popup: !!document.querySelector('.maplibregl-popup .insp') || ['spot', 'place', 'lipas'].includes(p.cards.current && p.cards.current.kind), card: p.cards.current ? p.cards.current.kind : '', pill: !!document.querySelector('.card-pill, .pl-way.card .btn.primary.big') }; })()")
     shut = lambda pg: pg.js("(() => { for (const b of document.querySelectorAll('.maplibregl-popup-close-button')) b.click(); polku.planner.cards.close(); return true; })()")
 
     def ready(pg, name):
