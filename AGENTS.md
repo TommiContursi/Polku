@@ -48,8 +48,8 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   Hand-over. A review, an audit or a proposal decides nothing until the user
   chooses it (#352). When unsure, ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
-  agent you are (Claude A, Claude B or Codex: all post as the user's GitHub
-  account). A phase is claimed on its phase issue. Take over only when a
+  agent you are (Claude or Codex: all post as the user's GitHub account).
+  A phase is claimed on its phase issue. Take over only when a
   claim is released or the user says its session has stopped, never because
   it's old: continue from its last Hand-over and pushed branch, and say so
   on the issue.
@@ -67,10 +67,11 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   context is past about 300k tokens, when the session reaches its usage
   limit, or when its context has been compacted and it starts losing track
   (repeating work, forgetting a decision). Write the Hand-over first.
-- **One coding session at a time,** unless the user starts more: Claude A,
-  Claude B and Codex take turns as each reaches its usage limit, from the
-  last Hand-over. No "status" session, and no subagents to verify or run the
-  suite.
+- **Sessions side by side,** as many as the user starts: each has a claim
+  and a branch of its own, and leaves alone the files another open PR
+  changes. When one reaches its usage limit, the next continues from its
+  last Hand-over. No "status" session. A subagent can do a wide search, but
+  not verify the work or run the suite: those stay with the session.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
   issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
