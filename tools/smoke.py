@@ -10561,6 +10561,104 @@ def spot_card(chrome):
     return not fails
 
 
+# The keyboard's crosshair (25d part 5b): Tab to the map shows a crosshair in its middle and the keys; Enter there does
+# what a tap does (a point while drawing, the route's card on the route), Shift+F10 what a long press does (the spot's
+# card), Escape closes the card with the focus back on the map, and the crosshair goes when the map loses the focus. A
+# touch never shows it. Straight legs.
+CH_STATE = """(() => {
+  const p = polku.planner, c = document.querySelector('.crosshair'), k = document.querySelector('.map-keys'), vis = (e) => !!e && e.getClientRects().length > 0;
+  const r = c && c.getBoundingClientRect(), R = polku.map.getCanvas().getBoundingClientRect();
+  return { cross: vis(c), keys: vis(k) ? [...k.querySelectorAll('dt')].map((e) => e.textContent) : [], mid: r ? Math.hypot(r.left + r.width / 2 - (R.left + R.width / 2), r.top + r.height / 2 - (R.top + R.height / 2)) : null,
+    focus: document.activeElement === polku.map.getCanvas(), kind: p.cards.current ? p.cards.current.kind : null, n: p.points.length };
+})()"""
+
+
+def crosshair(chrome):
+    fails = []
+    st = lambda pg: pg.js(CH_STATE)
+
+    def key(pg, k, code, vk, mods=0):
+        for t in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': t, 'key': k, 'code': code, 'windowsVirtualKeyCode': vk, 'modifiers': mods}, pg.s)
+        time.sleep(0.4)
+
+    def to_map(pg, name):
+        """Tab until the map has the focus, as a person does (60 presses at most)."""
+        for _ in range(60):
+            if pg.js('document.activeElement === polku.map.getCanvas()'):
+                return True
+            key(pg, 'Tab', 'Tab', 9)
+        fails.append(f'{name}: Tab never reached the map')
+        return False
+
+    # a [lng, lat] in the map's middle, the map at zoom 16 there
+    middle = lambda pg, ll: pg.js(f"polku.map.jumpTo({{ center: {json.dumps(ll)}, zoom: 16 }}); new Promise((r) => setTimeout(() => r(polku.map.getCenter().toArray()), 700))")
+
+    name = '1440x900'
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#15/61.514/23.818')
+        pg.js(RC_ROUTER)
+        pg.js("(() => { const p = polku.planner; p.setActive(true, { edit: true }); p.clear(); p.setMode('line'); document.querySelector('#toast').classList.remove('show'); return true; })()")
+        mid = middle(pg, [23.8105, 61.5172])
+        if to_map(pg, name):
+            s = st(pg)
+            if not s['cross'] or s['mid'] is None or s['mid'] > 2 or s['keys'] != ['← ↑ → ↓', 'Enter', 'Shift F10', 'Esc']:
+                fails.append(f"{name}: Tab to the map: the crosshair {'shown' if s['cross'] else 'not shown'} {s['mid']} px from the middle, the keys {s['keys']}")
+            # Enter while drawing: one point at the map's middle
+            key(pg, 'Enter', 'Enter', 13)
+            r = pg.js("polku.planner.points.map((q) => q.slice())")
+            if len(r) != 1 or abs(r[0][0] - mid[0]) > 1e-5 or abs(r[0][1] - mid[1]) > 1e-5:
+                fails.append(f'{name}: Enter while drawing: the points {r}, not one at the middle {mid}')
+            # two more points; the middle on the line: Enter opens the route's card
+            pg.js("(() => { const p = polku.planner; p.addPoint([23.8205, 61.5172]); return true; })()")
+            middle(pg, [23.8135, 61.5172])
+            to_map(pg, name)
+            key(pg, 'Enter', 'Enter', 13)
+            s = st(pg)
+            if s['kind'] != 'route' or s['n'] != 2:
+                fails.append(f"{name}: Enter on the line: {s['kind'] or 'no'} card, {s['n']} points")
+            # Escape: closed, the focus back on the map, the crosshair with it
+            key(pg, 'Escape', 'Escape', 27)
+            s = st(pg)
+            if s['kind'] or not s['focus'] or not s['cross']:
+                fails.append(f"{name}: Escape: {s['kind'] or 'no'} card, the focus {'on' if s['focus'] else 'not on'} the map, the crosshair {'shown' if s['cross'] else 'not shown'}")
+            # Shift+F10 beside the route: the spot's card at the middle; the menu key the same
+            for k, code, vk, mods in (('F10', 'F10', 121, 8), ('ContextMenu', 'ContextMenu', 93, 0)):
+                middle(pg, [23.8155, 61.5195])
+                to_map(pg, name)
+                key(pg, k, code, vk, mods)
+                s = st(pg)
+                at = pg.js("(() => { const c = polku.planner.cards.current; return c && c.key ? c.key : null; })()")
+                if s['kind'] != 'spot' or not at or abs(at[0] - 23.8155) > 1e-4 or abs(at[1] - 61.5195) > 1e-4 or s['n'] != 2:
+                    fails.append(f"{name}: {'Shift+' if mods else ''}{k}: {s['kind'] or 'no'} card at {at}, {s['n']} points")
+                key(pg, 'Escape', 'Escape', 27)
+            # the map loses the focus: no crosshair
+            pg.js("document.querySelector('#search-input').focus(); true")
+            time.sleep(0.3)
+            if st(pg)['cross']:
+                fails.append(f'{name}: the crosshair stays with the focus in the search box')
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    except Exception as e:
+        fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
+    pg.close()
+
+    # a touch never shows it
+    name = '390x844'
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.514/23.818')
+        pg.quick_tap(195, 380)
+        time.sleep(0.5)
+        if st(pg)['cross']:
+            fails.append(f'{name}: a tap on the map shows the crosshair')
+    except Exception as e:
+        fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}")
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the keyboard's crosshair (25d part 5b): Tab to the map, Enter, Shift+F10 and the menu key, Escape, blur, never by touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Route's list in sections, and Reorder (25d's part 4, Journey D): a section where the sport changes, at a stop and at a
 # night (a day each); point rows for the points you see, stretch rows between them with their shaping points folded;
 # a tap opens the point's or the stretch's card, and Back finds the list as it was; Reorder with a grip, Earlier and
@@ -11926,6 +12024,7 @@ GROUPS = [
     ('pointcard', [point_card], 'a point\'s card (25d): a tap opens it in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('spotcard', [spot_card], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
+    ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),

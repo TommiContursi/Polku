@@ -24,7 +24,7 @@ import { initSearch } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
 import { $, $$, h, icon, toast, store, popMenu } from './ui.js';
-import { initGestures } from './gestures.js';
+import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
 import { Heading } from './heading.js';
@@ -137,6 +137,7 @@ const map = new maplibregl.Map({
 });
 installIcons(map);
 initGestures(map, { trackpadTilt: () => state.terrain3d && state.trackpadTilt, trackpadRotate: () => state.trackpadTilt });
+bindCrosshair(map);
 const view3d = initView3d(map, $('#view3d'));
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.

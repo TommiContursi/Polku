@@ -3597,7 +3597,9 @@ export class Planner {
     let down = null;
     map.on('mousedown', (e) => { down = e.originalEvent.button === 2 || e.originalEvent.ctrlKey ? e.point : null; });
     map.on('contextmenu', (e) => {
-      if (Date.now() - lastTouch < 1000 || this.edit || this.picking || onUi(e) || (down && Math.hypot(e.point.x - down.x, e.point.y - down.y) > 4)) return;
+      const d = down;
+      down = null; // (a press of its own each time: the keyboard's has none, 5b)
+      if (Date.now() - lastTouch < 1000 || this.edit || this.picking || onUi(e) || (d && Math.hypot(e.point.x - d.x, e.point.y - d.y) > 4)) return;
       const li = this.active ? this.lineAt(e.point, 6) : null;
       if (li != null) { if (this.drawing()) this.openStretchCard(this.stretchAt(li), { edit: true, at: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)] }); else this.openRouteCard(li, e.lngLat); return; }
       this.openSpotCard(e.lngLat, { pt: e.point });

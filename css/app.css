@@ -1586,6 +1586,15 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 @property --fill { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
 @keyframes hold-fill { to { --fill: 100%; } }
 @media (prefers-reduced-motion: reduce) { .hold-ring { animation: none; --fill: 100%; opacity: .7; } }
+/* the keyboard's crosshair in the map's middle, and its keys (25d part 5b): only while the map has the keyboard's focus */
+.crosshair { position: absolute; z-index: 2; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: none; }
+.crosshair::before, .crosshair::after { content: ''; position: absolute; background: #111; box-shadow: 0 0 0 2px #fff; }
+.crosshair::before { left: 21px; top: 0; width: 2px; height: 44px; }
+.crosshair::after { top: 21px; left: 0; height: 2px; width: 44px; }
+.map-keys { position: absolute; z-index: 2; left: calc(var(--pl-left, 0px) + 12px); bottom: calc(var(--sheet-h, 0px) + 48px); display: grid; gap: 6px; margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); font-size: 13.5px; pointer-events: none; }
+.map-keys div { display: grid; grid-template-columns: 96px auto; align-items: center; gap: 10px; }
+.map-keys dd { margin: 0; }
+.map-keys kbd { font: 600 12px ui-monospace, Menlo, monospace; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
 .maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
