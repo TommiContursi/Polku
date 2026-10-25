@@ -10945,7 +10945,8 @@ LV_NIGHTS = """(async () => {
   // the link and the saved route keep the nights; one night is as before
   const q = new URL(p.shareUrl()).searchParams;
   if (q.get('st') !== '2:n0700x2') errs.push(`st=${q.get('st')}`);
-  if (JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0')) !== '[[2,{"on":480}],[3,{"on":420,"n":2}],[4,{"on":420}]]') errs.push(`st= read: ${JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0'))}`);
+  // (a stay longer than the most in a hand-made link is the most, as a break longer than a day is a day: #506)
+  if (JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0,5:n0700x31,6:2000')) !== '[[2,{"on":480}],[3,{"on":420,"n":2}],[4,{"on":420}],[5,{"on":420,"n":30}],[6,{"min":1440}]]') errs.push(`st= read: ${JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0,5:n0700x31,6:2000'))}`);
   const t = Date.parse('2026-10-14T20:00:00+03:00') / 1000;
   if (S.restSec({ on: 480, n: 2 }, t) - S.restSec({ on: 480 }, t) !== 86400) errs.push(`two nights rest ${S.restSec({ on: 480, n: 2 }, t)} s`);
   p.save();
