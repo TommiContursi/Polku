@@ -14,10 +14,11 @@ import { keepInView, overColumn } from './inspect.js';
 
 // ------------------------------------------------------------------ the parts
 
-// Three numbers, each with what it is under it ("10:09", "there at"); a missing one dashed, saying so
+// Three numbers, each with what it is under it ("10:09", "there at"); a missing one dashed, saying so; a grade with its
+// one word on a line of its own ("S1", "fairly easy", "difficulty")
 export function nums(list) {
-  return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, label, missing, wait }) =>
-    h('span', { class: `sum-item${missing ? ' miss' : wait ? ' wait' : ''}`, 'aria-busy': wait ? 'true' : null }, h('b', {}, value), h('small', {}, label))));
+  return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, word, label, missing, wait }) =>
+    h('span', { class: `sum-item${missing ? ' miss' : wait ? ' wait' : ''}`, 'aria-busy': wait ? 'true' : null }, h('b', {}, value), word ? h('em', {}, word) : null, h('small', {}, label))));
 }
 
 // A group's heading, as the ⋯ menu's (it names the rows under it for screen readers too)
@@ -53,6 +54,32 @@ export function item({ icon: ic, label, line = '', val = null, chev = false, dan
     checked ? h('span', { class: 'menu-tick', 'aria-hidden': 'true', html: icon('check', 20) }) : null,
     chev ? h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }) : null);
   return b;
+}
+
+// A row the phone's own picker sets (#364's C, the mock-up's pickRow6): its date or time field lies unseen over the
+// row, so a tap opens the phone's picker and a click the browser's; the field is what the keyboard and a screen reader
+// reach. `put()` changes what it says in place, so a picker that's open stays open. `now`: a Now button on its line.
+export function pickRow({ icon: ic, label, type, set, now = null }) {
+  const line = h('span', { class: 'pick-line' }), val = h('span', { class: 'val' });
+  const input = h('input', { type, step: '900', onchange: () => set(input.value) });
+  const open = () => { try { input.showPicker(); } catch { /* the phone opens its own */ } };
+  input.addEventListener('click', open);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  const nowBtn = now && h('button', { type: 'button', class: 'btn small pick-now', 'aria-label': `${label} now`, onclick: now }, 'Now');
+  const el = h('div', { class: 'row pick', 'data-k': label },
+    h('span', { 'aria-hidden': 'true', html: icon(ic, 20) }), h('span', {}, h('b', {}, label), h('small', {}, line, nowBtn)), val,
+    h('span', { class: 'way-chev', 'aria-hidden': 'true', html: icon('chevronRight', 18) }), input);
+  // set: a value of its own is set (its line is then a fact, not what the row does, so desktops show it too)
+  const put = ({ line: l, val: v, value, min = '', set: on = false }) => {
+    line.textContent = l;
+    val.textContent = v;
+    if (document.activeElement !== input) input.value = value; // (not under a finger or a key that's changing it)
+    input.min = min;
+    input.setAttribute('aria-label', `${label}: ${v}${on ? `, ${l}` : ''}. Pick ${type === 'time' ? 'a time' : 'a day and a time'}`);
+    el.classList.toggle('set', on);
+    if (nowBtn) nowBtn.hidden = !on;
+  };
+  return { el, put };
 }
 
 // The card's one main action, as Make 3 loops
@@ -193,11 +220,12 @@ export class CardHost {
     if (restore && saved) this.restoreState(saved);
   }
 
-  // the open card built again (its point moved, a number came in); closed when what it shows is gone
+  // the open card built again (its point moved, a number came in); closed when what it shows is gone. Every card under
+  // it finds its own again too (Back names the one before: after Undo its points are new arrays)
   refresh() {
     const card = this.current;
     if (!card) return;
-    if (card.alive && !card.alive()) { this.close(); return; }
+    if (this.stack.some((e) => e.card.alive && !e.card.alive())) { this.close(); return; }
     if (this.folded) return; // (built again when it unfolds)
     // not while you type in it (a name)
     if (this.box && this.box.contains(document.activeElement) && document.activeElement.matches('input:not([type=checkbox]), textarea')) return;
@@ -247,6 +275,13 @@ export class CardHost {
     const focused = was && was.contains(document.activeElement) ? keyOf(document.activeElement) : null, scroll = was ? was.scrollTop : 0;
     const box = this.cardBox(card, back);
     const where = entry.beside ? 'float' : this.where();
+    // the card's one action at the spot, away from a phone's peek: its first button, at the pointer (floatAt() moves it
+    // to the foot of a card that opens upwards, so it stays by the pointer)
+    if (where !== 'peek' && card.pill && at) {
+      const b = mainButton(card.pill.label, card.pill.icon, () => card.pill.fn());
+      b.dataset.k = 'pill';
+      box.prepend(b);
+    }
     if (where === 'peek') {
       if (this.popup) { const p = this.popup; this.popup = null; p.remove(); }
       this.peek.replaceChildren(box);
@@ -255,7 +290,7 @@ export class CardHost {
       this.peek.replaceChildren();
       this.peek.hidden = true;
       if (entry.beside || !at) this.besideAt(box, entry.beside);
-      else this.floatAt(box, at, fresh);
+      else this.floatAt(box, at, fresh, card.pill ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
     }
     this.box = box;
     this.placePill(card, at, where);
@@ -304,30 +339,35 @@ export class CardHost {
       h('button', { type: 'button', class: 'btn small', onclick: () => this.escape() }, 'Cancel'));
   }
 
-  // The pill: the card's one action at the spot. On a phone it sits just above the spot, clear of the finger; on a
-  // desktop it's the card's first button (1b and 5 give cards one).
+  // The pill: the card's one action at the spot. On a phone a pin marks the spot and the pill sits just above it, clear
+  // of the finger; on a desktop it's the card's first button (render(); 1b and 5 give cards one).
   placePill(card, at, where) {
-    if (this.pill) { this.pill.remove(); this.pill = null; }
-    if (!card.pill || !at) return;
+    if (this.pill) { this.pill.remove(); this.pill = null; document.body.classList.remove('card-pill-on'); }
+    if (this.pin) { this.pin.remove(); this.pin = null; }
+    if (!card.pill || !at || where !== 'peek') return;
     const p = card.pill;
-    if (where !== 'peek') {
-      this.box.insertBefore(mainButton(p.label, p.icon, () => p.fn()), this.box.children[2] || null);
-      return;
-    }
+    this.pin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(at).addTo(this.map);
     const el = h('button', { type: 'button', class: 'card-pill', onclick: () => p.fn(), html: icon(p.icon, 20) }, h('span', {}, p.label));
     this.pill = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -22] }).setLngLat(at).addTo(this.map);
+    document.body.classList.add('card-pill-on'); // (the zoom note steps aside meanwhile: the spot and its pill need the map)
+  }
+  // the action by the pointer: the card's first button, or its last when the card opens upwards
+  actAt(box) {
+    const b = box.querySelector(':scope > [data-k=pill]');
+    if (!b || !this.popup || this.popup.besideEl) return;
+    if (String(this.popup.options.anchor).startsWith('bottom')) box.append(b); else box.prepend(b);
   }
 
   // at the spot: the corner at the point, opening to the left or upwards where there's no room
-  floatAt(box, at, fresh) {
+  floatAt(box, at, fresh, off = OFFSET) {
+    const offsets = { 'top-left': [off, off], 'top-right': [-off, off], 'bottom-left': [off, -off], 'bottom-right': [-off, -off] };
     if (!this.popup || this.popup.besideEl) {
       this.remove();
-      this.popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', anchor: 'top-left', className: 'polku-popup card-float',
-        offset: { 'top-left': [OFFSET, OFFSET], 'top-right': [-OFFSET, OFFSET], 'bottom-left': [OFFSET, -OFFSET], 'bottom-right': [-OFFSET, -OFFSET] } });
+      this.popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', anchor: 'top-left', className: 'polku-popup card-float', offset: offsets });
       this.popup.setLngLat(at).setDOMContent(box).addTo(this.map);
       fresh = true;
-    } else this.popup.setLngLat(at).setDOMContent(box);
-    if (!fresh) return;
+    } else { if (fresh) this.popup.setOffset(offsets); this.popup.setLngLat(at).setDOMContent(box); }
+    if (!fresh) { this.actAt(box); return; }
     const pt = this.map.project(at), R = this.map.getCanvas().getBoundingClientRect(), x = R.left + pt.x, y = R.top + pt.y;
     const w = box.offsetWidth, ht = box.offsetHeight;
     // a narrow screen (a phone with the planner put away): above its spot, moved sideways to stay whole on the screen
@@ -338,6 +378,7 @@ export class CardHost {
       this.popup.options.anchor = 'bottom';
       this.popup.setOffset({ bottom: [Math.round(dx), -OFFSET] });
       this.popup.setLngLat(at);
+      this.actAt(box);
       // (room above it under the top bar: the map moves down, never sideways, which would take it off the screen)
       const top = this.popup.getElement().getBoundingClientRect().top, bar = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 8;
       if (top < bar) this.map.panBy([0, top - bar], { duration: 0 });
@@ -349,6 +390,7 @@ export class CardHost {
     const right = innerWidth - x - (innerWidth < 720 ? 64 : 84), below = innerHeight - 8 - (this.pad().bottom || 0) - y;
     const anchor = `${below < ht + OFFSET && y - 120 > below ? 'bottom' : 'top'}-${right < w + OFFSET && x - (this.pad().left || 0) > right ? 'right' : 'left'}`;
     if (anchor !== this.popup.options.anchor) { this.popup.options.anchor = anchor; this.popup.setLngLat(at); }
+    this.actAt(box);
     this.keep();
   }
 
@@ -378,7 +420,12 @@ export class CardHost {
     if (!this.popup || this.popup.besideEl) return;
     const pad = this.pad();
     const el = this.popup.getElement();
-    if (el) el.style.setProperty('--card-max', `${Math.max(220, innerHeight - (pad.bottom || 0) - 8 - 120 - 16)}px`);
+    // as tall as the room it opens into, so it stays on the screen and scrolls inside, grown by a late answer too (a
+    // card at the window's middle height has room for neither its whole height above nor below)
+    const R = this.map.getCanvas().getBoundingClientRect(), y = R.top + this.map.project(this.popup.getLngLat()).y, up = (this.popup.options.anchor || '').startsWith('bottom');
+    const card = el && el.querySelector('.card'), chrome = card ? el.offsetHeight - card.offsetHeight : 0; // (the popup's own padding)
+    const room = (up ? y - 120 - 16 : innerHeight - (pad.bottom || 0) - 8 - y - 16) - chrome;
+    if (el) el.style.setProperty('--card-max', `${Math.max(220, Math.min(innerHeight - (pad.bottom || 0) - 8 - 120 - 16, room))}px`);
     keepInView(this.map, this.popup, { left: (pad.left || 0) + 8, bottom: (pad.bottom || 0) + 8 });
   }
 
@@ -391,7 +438,9 @@ export class CardHost {
     const go = () => {
       if (moved || !this.box || !this.box.isConnected || this.popup || this.folded) return;
       const sheet = this.peek.closest('.sheet') || this.peek, R = this.map.getCanvas().getBoundingClientRect();
-      const top = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 24, wx = document.getElementById('wx-bar');
+      // (with a pill, room for it too: it stands 22 px above the spot)
+      const pill = this.pill && this.pill.getElement(), head = pill ? pill.offsetHeight + 26 : 0;
+      const top = (document.querySelector('.topbar')?.getBoundingClientRect().bottom || 56) + 24 + head, wx = document.getElementById('wx-bar');
       // above the sheet, and above the timeline when it's open over the map
       const bottom = Math.min(sheet.getBoundingClientRect().top, wx && wx.offsetParent && !wx.hidden ? wx.getBoundingClientRect().top : Infinity) - 24;
       const pt = this.map.project(at), x = R.left + pt.x, y = R.top + pt.y;
@@ -399,13 +448,14 @@ export class CardHost {
       let dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;
       // …and clear of what floats over the map there: the toolbox's undo and redo, the zoom note, the map's buttons
       let ddy = dy;
+      const half = pill ? pill.offsetWidth / 2 : 0;
       for (const el of [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')]) {
         const b = el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null, nx = x - dx, ny = y - ddy;
-        if (!b || nx < b.left - 20 || nx > b.right + 20 || ny < b.top - 20 || ny > b.bottom + 20) continue;
-        // beside it, on whichever side keeps the point on the screen; else under it, while that's above the card
-        const side = [b.right + 32, b.left - 32].find((to) => to >= 24 && to <= innerWidth - 72);
+        if (!b || nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20) continue;
+        // beside it, on whichever side keeps the point (and its pill) on the screen; else under it, while that's above the card
+        const side = [b.right + 32 + half, b.left - 32 - half].find((to) => to - half >= 24 && to + half <= innerWidth - 72);
         if (side != null) dx = x - side;
-        else if (b.bottom + 28 <= bottom) ddy = y - (b.bottom + 28);
+        else if (b.bottom + 28 + head <= bottom) ddy = y - (b.bottom + 28 + head);
       }
       if (Math.abs(dx) > 1 || Math.abs(ddy) > 1) this.map.panBy([dx, ddy], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
     };
@@ -416,7 +466,8 @@ export class CardHost {
 
   remove() {
     if (this.popup) { const p = this.popup; this.popup = null; p.remove(); }
-    if (this.pill) { this.pill.remove(); this.pill = null; }
+    if (this.pill) { this.pill.remove(); this.pill = null; document.body.classList.remove('card-pill-on'); }
+    if (this.pin) { this.pin.remove(); this.pin = null; }
     if (this.box && this.peek.contains(this.box)) { this.peek.replaceChildren(); this.peek.hidden = true; }
     if (this.box && this.box.classList.contains('card-banner')) this.box.remove();
     this.box = null;

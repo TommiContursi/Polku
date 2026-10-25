@@ -4,7 +4,7 @@
 
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
-import { windClass, tempBand, rainBand } from './weather.js';
+import { windClass, tempBand, rainBand, forecastKnown } from './weather.js';
 import { escapeHtml, icon } from './ui.js';
 import { fromCss } from './palette.js';
 
@@ -53,9 +53,14 @@ export const TRAIL_SCALES = fromCss({
 // where the terrain is missing (analysis.js): no height or grade to give there
 export const noTerrain = (a, i) => !!(a.eleGap && a.eleGap[i]);
 export const NO_TERRAIN = '#d6dde3';
+// past the forecast's last hour (#465): its values are that hour's, so the weather's colours go grey there
+export const NO_FORECAST = NO_TERRAIN;
+const WEATHER_MODES = new Set(['wind', 'temp', 'rain']);
+const pastForecast = (a, i) => !!a.wind && !forecastKnown(a.wind, i);
 
 export function colorAt(a, i, mode) {
   if ((mode === 'grade' || mode === 'uphill') && noTerrain(a, i)) return NO_TERRAIN; // no grade to colour by
+  if (WEATHER_MODES.has(mode) && pastForecast(a, i)) return NO_FORECAST;
   switch (mode) {
     case 'width': case 'vis': return a.td ? TRAIL_SCALES[mode].colors[a.td[mode][i] + 2] : '#d6dde3';
     case 'uphill': return a.upCls[i] >= 0 ? DIFF_COLORS[a.upCls[i]] : '#d6dde3';
@@ -92,7 +97,8 @@ export function routeReadout(a, i, road = '') {
     if (t.smoothness) trail.push(`smoothness ${escapeHtml(String(t.smoothness).replace(/_/g, ' '))}`);
   }
   const when = [];
-  if (a.wind) {
+  if (pastForecast(a, i)) when.push('No forecast yet');
+  else if (a.wind) {
     const w = a.wind;
     const c = windClass(w.head[i], w.speed[i]);
     when.push(`${dot(c.color)}${c.label}${c.key === 'calm' ? '' : ` ${w.speed[i].toFixed(0)} m/s`}`, `${w.temp[i].toFixed(0)} °C`,
@@ -215,7 +221,13 @@ export class ProfileChart {
   setMode(mode) { this.mode = mode; this.draw(); }
   // the route's points along it (metres), drawn as on the map: the start, the numbered vias, the finish
   setPoints(list) { this.points = list || []; }
-  setHighlight(range) { this.highlight = range; this.draw(); }
+  // (drawn again only when it changes: the list asks for it each time it's drawn)
+  setHighlight(range) {
+    const was = this.highlight;
+    if ((range == null && was == null) || (range && was && range[0] === was[0] && range[1] === was[1])) return;
+    this.highlight = range;
+    this.draw();
+  }
 
   domain() { return this.view || [0, this.a ? this.a.total : 1]; }
 
@@ -290,7 +302,8 @@ export class ProfileChart {
       const road = this.nameAt ? this.nameAt(i) : '';
       rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
     }
-    if (a.wind) {
+    if (pastForecast(a, i)) rows.push('No forecast yet');
+    else if (a.wind) {
       const w = a.wind;
       const c = windClass(w.head[i], w.speed[i]);
       rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
@@ -305,6 +318,7 @@ export class ProfileChart {
 
   draw() {
     const c = this.canvas;
+    if (this.noFc) this.noFc.hidden = true; // (shown again below, where there's a cut to show)
     const dpr = window.devicePixelRatio || 1;
     const g = this.geom();
     if (!g.w || !g.h) return;
@@ -527,6 +541,17 @@ export class ProfileChart {
         }
       }
       ctx.restore();
+    }
+    // where the forecast runs out, in the weather's colours or the conditions: a dashed line, No forecast yet over it
+    const cut = (cond || WEATHER_MODES.has(this.mode)) && a.wind && a.wind.beyond >= 0 ? X(a.along[a.wind.beyond]) : null;
+    if (!this.noFc) { this.noFc = document.createElement('span'); this.noFc.className = 'nofc'; this.noFc.textContent = 'No forecast yet'; c.after(this.noFc); }
+    this.noFc.hidden = cut == null || cut > g.x1;
+    if (cut != null && cut <= g.x1) {
+      ctx.strokeStyle = ink; ctx.globalAlpha = 0.6; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(Math.round(cut) + 0.5, g.y0); ctx.lineTo(Math.round(cut) + 0.5, g.y1); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      this.noFc.style.left = `${Math.round(cut)}px`;
+      this.noFc.style.transform = cut > (g.x0 + g.x1) / 2 ? 'translateX(calc(-100% - 4px))' : 'translateX(4px)'; // (beside the line, inside the chart)
     }
   }
 

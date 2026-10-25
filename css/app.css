@@ -692,7 +692,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet[data-state="profile"] .stats { display: none; }
 /* …and so does the row of what to read (the count beside the numbers stays): the chart keeps its room (#444); the warnings
    stay on the map and in Check, and the row comes back at the peek */
-.sheet[data-state="profile"] .sheet-head-in > .pl-readrow { display: none; }
+.sheet[data-state="profile"] .sheet-head-in > :is(.pl-readrow, .kf) { display: none; }
 .sheet[data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); }
 @media (min-width: 721px) { .sheet[data-layout="sheet"][data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); } }
 .sheet.dragging { transition: none; user-select: none; }
@@ -701,6 +701,19 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-handle:focus-visible { outline: 2px solid var(--focus); }
 .sheet-head { flex: none; padding: 0 10px 8px 14px; touch-action: none; container-type: inline-size; }
 .sheet-row { display: flex; align-items: center; gap: 8px; }
+/* key facts (#471's A2): a line under the route's numbers, a row a sport on a route of two; each opens where it's told */
+.kf { display: grid; margin: 2px 0 0; }
+.kf-b { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; margin: 0 -6px; padding: 2px 6px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: var(--font-body); text-align: left; cursor: pointer; }
+.kf-b > span:first-child, .kf-b > span:last-child { flex: none; display: grid; color: var(--muted); }
+.kf-b > span:nth-child(2) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.kf-b.miss > span:first-child { color: var(--unk); }
+.kf.legs .kf-b > span:first-child { color: var(--accent); }
+.kf-d { color: var(--muted); font-variant-numeric: tabular-nums; }
+.kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) { .kf-b:hover { background: var(--surface-2); } }
+@media (pointer: coarse) { .kf-b { min-height: 44px; } }
+@media (max-height: 520px) { .kf { display: none; } }
+body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the map's buttons need its room: fitColumn() in js/main.js) */ /* (200 %, a phone on its side: no room under the top bar; Check's top has them) */
 /* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
 .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }
@@ -925,17 +938,28 @@ button.way-sh { min-height: 40px; cursor: pointer; }
 .speed-go { margin-top: 10px; }
 /* Settings' speeds: every sport a row, its speeds in one line; a tap opens the editor under it */
 .speed-list .speed-box { padding: 8px 8px 12px 42px; } /* (under the sport's name) */
-.go-depart { display: grid; grid-column: 1 / -1; padding: 3px; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; margin: 0 0 14px; }
-.go-depart-label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
-.go-depart select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px;
-  background: var(--surface-solid); color: var(--text); font: inherit; font-size: 16px; }
+.pick-leave { grid-column: 1 / -1; display: grid; gap: 6px; margin: 0 0 14px; scroll-margin: 8px; } /* (scrolled to whole, its ring too) */
+.card .pick-leave { margin: 0; }
 .time-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin: 0 0 8px; }
 .time-head b { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .time-head span { font-size: 12.5px; color: var(--muted); }
 .wpl-foot .btn { white-space: nowrap; }
 .onmap .tg { max-width: 360px; }
+/* Route's two rows, and their steps (#424's C): a step shows How you go's style or your speeds alone, with Back to Route */
+.how-rows { grid-column: 1 / -1; margin-bottom: 6px; }
+.step-head { grid-column: 1 / -1; display: grid; justify-items: start; gap: 4px; }
+.step-head h3 { margin: 6px 0 0; font-size: var(--font-title); }
+.step-head p { margin: 0 0 6px; color: var(--muted); font-size: var(--font-body); }
+.pl-pane[data-tab="route"]:not([data-step]) > :is(.step-head, [data-sec=style]) { display: none; }
+.pl-pane[data-tab="route"][data-step] > :not(.step-head, [data-sec=style]) { display: none; }
+.pl-pane[data-tab="route"][data-step] [data-sec=style] { grid-column: 1 / -1; }
+.pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-head, .pl-pane[data-tab="route"][data-step] [data-sec=style] :is(.sec-body > .how-h, .speed-wrap > .how-h) { display: none; }
+.pl-pane[data-tab="route"][data-step] [data-sec=style] > .sec-body { display: block; }
+.pl-pane[data-step="how"] .speed-wrap, .pl-pane[data-step="speed"] [data-sec=style] .style-box { display: none; }
 .onmap .tg.off { opacity: .5; }
 .take-along { display: flex; flex-wrap: wrap; gap: 8px; }
+.take-share > span { display: grid; text-align: left; }
+.take-share small { font-size: var(--font-small); font-weight: 400; color: var(--muted); }
 
 /* collapsible sections */
 /* a full-height sheet covers the map chrome: take it out of the way */
@@ -1035,6 +1059,9 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .profile-top .chip-groups { display: flex; }
 }
 .profile-box { position: relative; }
+/* where the forecast runs out (#465): over the profile's dashed line, kept inside the chart */
+.profile-box .nofc { position: absolute; top: 2px; max-width: 50%; padding: 1px 6px; border-radius: var(--radius-small); background: var(--surface-solid); color: var(--muted); font-size: var(--font-small); font-weight: 600; white-space: nowrap; pointer-events: none; }
+.profile-box .nofc[hidden] { display: none; }
 .chart-reset { position: absolute; top: 0; right: 4px; z-index: 1; height: 24px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-solid); color: var(--text); font-size: 11px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .chart-reset:hover { background: var(--surface-2); }
 .dock { margin-bottom: 4px; }
@@ -1104,6 +1131,10 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .hidden-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 2px 2px; font-size: 12px; color: var(--muted); }
 .hidden-kinds .on-chip { background: var(--surface-2); color: var(--muted); }
 .li-main { display: flex; flex-direction: column; min-width: 0; }
+/* Climbs: the badges in a column of one width, so every climb's words start in line; the hardest has its tag under it */
+.li-badge { flex: none; width: 56px; display: grid; justify-items: center; gap: 3px; }
+.li-tag { padding: 0 6px; border-radius: var(--radius-pill); background: var(--accent-soft); color: var(--text); font-size: var(--font-small); font-weight: 600; line-height: 1.5; }
+.climbs-hardest { margin: 0 0 4px; font-size: var(--font-body); font-weight: 600; }
 .li-main span { color: var(--muted); font-size: 12px; }
 .badge { flex: none; min-width: 32px; height: 22px; padding: 0 6px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 12px; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
 /* black words where white doesn't read on the colour (#376: js/palette.js darkWords()) */
@@ -1113,7 +1144,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wind-body { font-size: 13px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 
 .start { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--muted); font-weight: 600; }
-.start-select { height: 26px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); font: inherit; font-size: 12px; padding: 0 6px; }
 .wx-sum { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
 .wx-sum .link { font-weight: 500; color: var(--text); text-decoration: underline dotted; text-underline-offset: 3px; }
 .wx-links { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -1169,16 +1199,40 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .wp-mini.wp-start::after { border-left-width: 6px; border-top-width: 4px; border-bottom-width: 4px; }
 .wp-mini.wp-end::after { width: 6px; height: 6px; }
 .wpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.wpl-name { width: 100%; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; padding: 2px 5px; margin-left: -6px; }
-.wpl-name::placeholder { color: var(--text); opacity: .85; }
-.wpl-name:hover { border-color: var(--line); }
-.wpl-name:focus { border-color: var(--accent); background: var(--surface-solid); outline: none; }
-.wpl-main small { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wpl-tools { display: flex; gap: 0; }
+.wpl-main small { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .wpl-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .wpl-foot:empty { display: none; }
 .tool.small { width: 28px; height: 28px; }
-@media (hover: hover) { .wpl-tools { opacity: .45; transition: opacity .12s; } .wpl-row:hover .wpl-tools, .wpl-row:focus-within .wpl-tools { opacity: 1; } }
+/* Route's list in sections (25d's part 4, Revision 5 [jd-multi]): a section's title, its numbers and the weather at
+   its end, its warnings, then the cards' own rows for its points and stretches */
+.wpl-top { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+.wpl-top:empty { display: none; }
+.wpl-hint { flex: 1; margin: 0; font-size: var(--font-small); color: var(--muted); }
+.wpl .sec2 { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 12px; }
+.wpl .sec2 + .sec2 { box-shadow: inset 0 1px 0 var(--line); }
+.wpl .sec2.lit { margin: 0 -8px; padding-inline: 8px; border-radius: 12px; box-shadow: inset 0 0 0 2px var(--accent); } /* (the part a key fact opened) */
+.sec2-head { display: flex; align-items: flex-start; gap: 8px; }
+.sec2-head > span { flex: none; display: grid; margin-top: 1px; }
+.sec2-head b { font-size: var(--font-row); font-weight: var(--weight-strong); line-height: 1.3; overflow-wrap: anywhere; }
+.sec2-nums { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 10px; padding-left: 28px; font-size: 13px; color: var(--muted); }
+.sec2-nums .sec2-wx { min-height: var(--target); padding: 0 8px; gap: 4px; color: var(--text); font-weight: 600; }
+.wpl-top .btn { min-height: var(--target); }
+.sec2-wx-at { margin: 0 0 0 28px; font-size: 13px; color: var(--text); }
+.wpl .sec2 > .warn-row { margin-left: 28px; width: calc(100% - 28px); }
+.wpl .rows { margin: 0; } /* (inside the list: no room for a hover past its edge, as a card has) */
+.wpl-point > span:first-child { width: 22px; place-items: center; }
+.wpl-point.shape b { font-weight: var(--weight-regular); }
+.wpl-tag { display: flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
+.wpl-tag svg { flex: none; }
+.rows > .wpl-strow { display: flex; align-items: center; box-shadow: inset 0 1px 0 var(--line); }
+.rows > .wpl-strow + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
+.wpl-strow > .row { flex: 1; min-width: 0; }
+.wpl-strow > .row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.wpl-unfold { flex: none; min-width: var(--target); min-height: var(--target); }
+@media (pointer: coarse) { .wpl .row { min-height: 44px; } }
+/* Reorder [jd-reorder]: every point with its grip, Earlier and Later; a finger held 0.45 s drags */
+.wpl.reorder .wpl-row { min-height: var(--target); touch-action: pan-y; }
+.wpl.reorder .wpl-row .tool { min-width: var(--target); min-height: var(--target); }
 /* route style */
 .style-box { display: flex; flex-direction: column; gap: 6px; }
 .style-presets, .style-flags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1195,35 +1249,17 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .style-label { width: 100%; }
   .style-help { margin-left: 0; }
 }
-.wpl-leg { display: flex; align-items: center; gap: 6px; padding: 3px 0 3px 30px; font-size: 11px; font-weight: 600; color: var(--accent); cursor: pointer; border-bottom: 1px solid var(--line); }
-.wpl-leg:hover { text-decoration: underline; }
-/* a leg's settings, between its two points */
-.wpl-legset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 0 6px 30px; border-bottom: 1px solid var(--line); position: relative; }
-.wpl-legline { position: absolute; left: 13px; top: 0; bottom: 0; width: 2px; background: var(--line); }
-.wpl-legset .seg button span { display: inline; }
-.wpl-legset .pt-style { flex: 1 1 160px; min-width: 0; }
-.wpl-legset .mode-select-label { display: none; }
-.wpl-legnote { font-size: 12px; color: var(--muted); }
-.wpl-tools .tool[aria-pressed="true"] { color: var(--accent); background: var(--surface-2); }
 .wpl-foot .btn[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface-solid); }
 .pt-style { align-self: stretch; }
 .pt-style .mode-select-box, .pt-style select { width: 100%; }
-/* multisport: a leg's sport, a changeover's minutes */
-.wpl-legset .pt-sport { flex: 0 1 150px; min-width: 0; }
-.wpl-legset .pt-sport .mode-select-label { display: inline-flex; color: var(--muted); }
+/* multisport: a changeover's badge on the map */
 .pt-sport { display: flex; align-items: center; gap: 6px; }
 .pt-sport .mode-select-box { flex: 1; min-width: 0; }
 .pt-sport select { width: 100%; min-width: 0; text-overflow: ellipsis; }
-.wpl-change { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--accent); white-space: nowrap; }
-.wpl-change input { width: 3.6em; padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); color: var(--text); font: inherit; text-align: right; }
 .wp-sport { position: absolute; left: calc(50% + 4px); top: calc(50% - 20px); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-bg); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); pointer-events: none; }
 .wp-sport svg { width: 12px; height: 12px; }
 .speed-sport { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; }
 /* stops and nights: a waypoint's stop, its badge, the menu's stop and places to sleep, the days */
-.wpl-stop { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.wpl-stop.night { color: #6366f1; }
-.wpl-stop select, .wpl-stop input { padding: 1px 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); color: var(--text); font: inherit; }
-.wpl-stop input[type="number"] { width: 3.6em; text-align: right; }
 .act-winter { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: -2px; border-radius: 50%; background: rgba(255,255,255,.22); }
 .act-winter svg { width: 13px; height: 13px; }
 .insp-winter { display: flex; gap: 6px; align-items: flex-start; color: var(--text); }
@@ -1244,8 +1280,6 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .chart-sport svg { width: 11px; height: 11px; }
 /* the sun at the start; the departure in the start's menu and row */
 .sun-line { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; font-size: 12.5px; color: var(--muted); }
-.wpl-depart { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; font-weight: 600; color: var(--accent); }
-.wpl-depart select { font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-solid); padding: 0 2px; }
 .speed-row.sub.head span { padding-left: 0; font-weight: 700; color: var(--text); }
 .speed-row.sub span svg { display: inline-block; vertical-align: -2px; margin-right: 4px; }
 .speed-row.sub span:has(svg) { white-space: nowrap; }
@@ -1316,6 +1350,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
 .sum-item.miss b { color: var(--muted); }
 .sum-item.wait b { color: var(--muted); } /* (being worked out: a "–" at its size, so the card stays still) */
+.sum-item em { font-style: normal; font-size: var(--font-small); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; } /* a grade's one word, under it (1b) */
 .card .sheet-sum { flex: none; align-items: flex-start; column-gap: 20px; }
 .card .sheet-sum .sum-item b { font-size: var(--font-number); } /* (the header's 360 px size isn't the card's) */
 @media (max-width: 720px) { .card .sheet-sum .sum-item b { font-size: 18px; } }
@@ -1339,6 +1374,19 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .row.danger b, .row.danger > span:first-child { color: var(--bad); }
 .row[aria-checked="true"] { background: var(--accent-soft); }
 .row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+/* a row the phone's own picker sets (#364's C): its field unseen over the row, the keyboard's ring on the row; a Now on
+   its line, over the field */
+.row.pick { position: relative; }
+.row.pick > input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; opacity: 0; font-size: var(--font-field); cursor: pointer; } /* (16 px: a focused field under it zooms an iPhone) */
+.row.pick:has(> input:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
+.row.pick small { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.pick-now { position: relative; z-index: 1; min-height: var(--target); }
+.card-float .row.pick.set small { display: flex; } /* (its line is the day, not what the row does: shown on desktops too) */
+/* under Leave: no forecast yet, in the colours of what isn't checked; a planned time that had passed, plain */
+.pick-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--unk-soft); color: var(--text); font-size: 13.5px; line-height: 1.35; }
+.pick-note > span:first-child { flex: none; display: grid; margin-top: 1px; color: var(--unk); }
+.pick-note.info { background: var(--surface-2); }
+.pick-note.info > span:first-child { color: var(--muted); }
 @media (hover: hover) { .row:hover { background: var(--surface-2); } .row:hover .way-chev { transform: translateX(2px); } }
 @media (prefers-reduced-motion: reduce) { .row .way-chev { transition: none; } }
 .card hr { height: 1px; margin: 0; border: 0; background: var(--line); }
@@ -1520,15 +1568,17 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .rows.acts > [data-k="start"], .card-float .rows.acts > [data-k="end"] { order: -1; } /* (Start here and End here first, Move and Rename under them) */
 @media (hover: hover) { .card-float .rows.acts > .row:hover { background: var(--surface-2); } .card-float .rows.acts > .row.danger:hover { background: color-mix(in srgb, var(--bad) 10%, transparent); } }
 /* the point's row in the planner's list, lit while its card is open */
-.wpl-row[aria-current="true"] { background: var(--accent-soft); border-radius: 10px; }
-.wpl-row[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
+.wpl-point[aria-current="true"], .wpl-stretch[aria-current="true"] { background: var(--accent-soft); }
+.wpl-point[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
 .card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
 .card-beside .card { max-height: calc(100vh - 88px); }
 /* Move: the card gives way to a note under the top bar, with Cancel; the point stays ringed */
 .card-banner { position: fixed; z-index: 7; left: 12px; right: 12px; top: 64px; max-width: 440px; margin: 0 auto; background: var(--surface-solid); box-shadow: var(--shadow); font-weight: 600; }
 .card-banner [role="status"]:focus { outline: none; }
 .wp-hit[data-card] .wp { box-shadow: 0 0 0 4px var(--accent-bg), 0 0 0 7px #fff; }
-/* the card's action at the spot, on a phone: just above it, clear of the finger */
+/* the spot a card is about, on a phone: a pin, and the card's action just above it, clear of the finger (1b) */
+body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
+.card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
 .card-pill { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
 @media (pointer: coarse) {
   .card .btn, .card .tool { min-height: 44px; min-width: 44px; }

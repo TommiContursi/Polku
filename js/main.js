@@ -286,7 +286,8 @@ let winterTimer = 0;
 map.on('moveend', () => { clearTimeout(winterTimer); winterTimer = setTimeout(() => checkWinter(), 1500); });
 map.once('load', () => checkWinter(true));
 
-const safety = new SafetyLayers(map, { setData, time: () => timeAtHour(planner.startOffsetH) });
+let hadRoute = false; // (a route drawn, for All layers' Your route group)
+const safety = new SafetyLayers(map, { setData, time: () => planner.startSec() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
 
@@ -319,8 +320,13 @@ const planner = new Planner(map, {
   rideLipas: (props, opts) => rideLipas(props, opts),
   lipasRide: (props) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, {})),
   setData,
-  onStartChange: (k) => { weather.setHour(k, { silent: true }); safety.publish(); },
-  onAnalysis: () => { weather.renderTime(); weather.renderStrip(); },
+  onStartChange: (k) => { if (k != null) weather.setHour(k, { silent: true }); safety.publish(); }, // (a day past the timeline's two: it stays)
+  onAnalysis: () => {
+    weather.renderTime(); weather.renderStrip();
+    // All layers open as a route comes or goes: its Your route group with it (#424's C)
+    const has = planner.points.length > 1;
+    if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
+  },
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
   saveOffline: () => {
@@ -391,7 +397,7 @@ const inspector = initInspector(map, {
   // Check's markers on the route with the planner put away: their card first (25d part 3)
   headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10),
   openHead: (f) => planner.openHead(f),
-  openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openLegMenu(leg, lngLat), 60); }, // (the same click mustn't add a point too)
+  openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openRouteCard(leg, lngLat), 60); }, // (the same click mustn't add a point too)
   lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
@@ -427,7 +433,7 @@ const weather = new WeatherOverlay(map, {
   },
   dark: () => isAerial(state.base) || state.base === 'night',
   // the timeline and the route's departure time are one clock
-  onHour: (k) => { planner.setStartOffset(k, { fromMap: true }); safety.publish(); },
+  onHour: (k) => { planner.setLeave(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
   hasRoute: () => planner.points.length > 1,
   routeHours: () => (planner.analysis && planner.points.length > 1 ? (planner.analysis.timeWind || planner.analysis.time) / 3600 : 0),
   onToggle: (patch) => setWeather(patch),
@@ -444,7 +450,7 @@ const weather = new WeatherOverlay(map, {
 function setTimeline(on) {
   state.timeline = on;
   weather.setOpen(on);
-  if (on && planner.startOffsetH) weather.setHour(planner.startOffsetH, { silent: true });
+  if (on && planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
   $('#btn-time').setAttribute('aria-pressed', String(on));
   saveSettings();
 }
@@ -452,7 +458,7 @@ function setTimeline(on) {
 function setWeather(patch) {
   Object.assign(state.weather, patch);
   weather.set(state.weather);
-  if (planner.startOffsetH) weather.setHour(planner.startOffsetH, { silent: true });
+  if (planner.leaveHour()) weather.setHour(planner.leaveHour(), { silent: true });
   // weather layers live on the timeline: switching one on opens it
   if (Object.values(patch).some(Boolean) && !state.timeline) setTimeline(true);
   applyStyle();
@@ -503,15 +509,23 @@ function columnFits(extra) {
   const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
   return innerHeight - sheet - extra - 12 - h >= $('.topbar').getBoundingClientRect().bottom + 8;
 }
+// Last, the key facts' line under the route's numbers steps aside (a short phone, #471's A2: Check's top keeps the facts),
+// its height remembered so it comes back only once there's room for it again.
+let factsH = 0;
 function fitColumn() {
-  const col = $('#map-ctrls');
+  const col = $('#map-ctrls'), off = document.body.classList.contains('kf-off');
   col.classList.remove('no-compass', 'no-3d');
-  if (!phoneMQ.matches) return;
+  if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); return; }
+  if (!off) factsH = planner.els.facts.offsetHeight;
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
-  const room = () => innerHeight - css('--sheet-h') - css('--wx-h') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
-  if (room()) return;
+  const back = off ? factsH : 0; // (the room the line would take back)
+  const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
+  const facts = (on) => document.body.classList.toggle('kf-off', !on);
+  if (room()) { facts(true); return; }
   if (Math.abs(map.getBearing()) < 0.5) col.classList.add('no-compass');
-  if (!room()) col.classList.add('no-3d');
+  if (room()) { facts(true); return; }
+  col.classList.add('no-3d');
+  facts(room());
 }
 new ResizeObserver(fitColumn).observe($('#map-ctrls'));
 map.on('rotateend', fitColumn);
@@ -1024,6 +1038,12 @@ function renderLayersPanel() {
       toast(`Layers back to the ${act.label} defaults`);
     } }, `Reset to ${act.label} defaults`) : null));
 
+  // your route's marks on the map, while one is drawn (#424's C: from Check)
+  if (planner.points.length > 1) {
+    planner.renderOnMap();
+    p.append(layerGroup('route', 'Your route', Object.values(planner.marks).filter(Boolean).length, true, planner.els.onMap, h('p', { class: 'note' }, 'On the map while a route is drawn.')));
+  }
+
   // base maps as thumbnails
   p.append(layerGroup('base', 'Base map', 0, true,
     h('div', { class: 'base-grid' }, ...BASES.filter(([k]) => k !== 'mml' || state.mmlKey).map(([k, label]) => h('button', {
@@ -1482,6 +1502,7 @@ function renderSettingsPanel() {
 // instant: no animation (the keyboard); step: More's step in; back: from the full panel to the drawer.
 function openPanel(id, { instant = false, step = false, back = false } = {}) {
   if (id === 'settings-panel') renderSettingsPanel(); // fresh: speeds may have changed in the planner
+  if (id === 'layers-panel') renderLayersPanel(); // fresh: a route drawn or cleared since (its group, #424's C)
   const wasLayers = layersOpen(), focusIn = $$('#quick-layers, #layers-panel').some((el) => el.contains(document.activeElement));
   if (id === 'quick-layers' && wasLayers && !back) id = null;
   lpSwipe.stop();

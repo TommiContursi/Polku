@@ -192,7 +192,7 @@ def MULTI_SPORT_JS(sec='profile', extra=''):
 def STOPS_JS(sec, then=''):
     return ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.setActive(true); p.clear(); p.setMode('auto');"
             " for (const q of [[24.5397, 60.3089], [24.5124, 60.3061], [24.4956, 60.3013], [24.4888, 60.3115], [24.5397, 60.3089]]) p.addPoint(q);"
-            " const hr = new Date().getHours(); let k = (15 - hr + 24) % 24; if (k < 1) k += 24; p.setStartOffset(k);"
+            " const hr = new Date().getHours(); let k = (15 - hr + 24) % 24; if (k < 1) k += 24; if (p.setLeave) p.setLeave((Math.floor(Date.now() / 3600000) + k) * 3600); else p.setStartOffset(k);" # (main before Journey D: the hour offset)
             " let t0 = Date.now(); while (!(p.legs.every((l) => l.status === 'ok') && p.analysis) && Date.now() - t0 < 40000) await wait(300);"
             " if (p.setStop) { p.setStop(1, { min: 45 }); p.setStop(2, { on: 510 }); p.setName(2, 'Holma-Saarijärven laavu'); p.setName(1, 'Mustalampi'); }"
             " t0 = Date.now(); while (!(p.analysis && (p.analysis.wind || p.analysis.windError)) && Date.now() - t0 < 30000) await wait(300);"
@@ -205,7 +205,7 @@ STAY_MENU = ("if (p.markers[2]) { if (p.openPointCard) p.openPointCard(p.points[
              " for (let k = 0; k < 80 && /Looking|Still looking/.test(document.querySelector('.pl-way.card, .stay-list')?.textContent || 'Looking'); k++) await wait(300); } }")
 MARKS_JS = "(async () => { const p = polku.planner; if (p.setMarks) p.setMarks({ km: true, time: true }); await new Promise((r) => setTimeout(r, 600)); return true; })()"
 # the multisport route leaving an hour before sunset: Heads-up says when it gets dark
-SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); try { const S = await import(location.origin + '/js/sun.js'); const s = S.sunTimes(Date.now() / 1000, [23.761, 61.498]); const k = Math.max(0, Math.round((s.set - Date.now() / 1000) / 3600) - 1); p.setStartOffset(k); } catch (e) { /* main */ }")
+SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); try { const S = await import(location.origin + '/js/sun.js'); const s = S.sunTimes(Date.now() / 1000, [23.761, 61.498]); const k = Math.max(0, Math.round((s.set - Date.now() / 1000) / 3600) - 1); if (p.setLeave) p.setLeave(k ? (Math.floor(Date.now() / 3600000) + k) * 3600 : null); else p.setStartOffset(k); } catch (e) { /* main */ }")
 
 
 # a point's card (25d), or before it the point menu; `from` 'list' gives the card Back
@@ -371,6 +371,8 @@ CATEGORY_PREVIEW_VIEW = COLOURS_VIEW[:COLOURS_VIEW.index('  const target =')] + 
 
 MARKS_VIEW = """(async () => {
   const p = polku.planner;
+  // (the marks' switches: Check's On the map before Journey D, all layers' Your route since)
+  if (!p.sec.onmap) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); await new Promise((r) => setTimeout(r, 600)); p.els.onMap.closest('.lg-group')?.scrollIntoView({ block: 'start' }); return true; }
   p.reveal('onmap');
   if (p.layout() === 'sheet') p.setSheetState('half', { remember: false });
   await new Promise((r) => setTimeout(r, 600));
@@ -833,7 +835,7 @@ SCENES['phone-done-360'] = dict(PHONE, w=360, h=740, timeline=True, route='route
 
 # #356: the labels under the route's numbers, with a departure set, at 360 px and at 200 % (a 390 phone's 195 x 422),
 # as the app draws them and Finnish-length (put in once the weather is in, so nothing draws over them)
-SUM = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); p.startOffsetH = 3; p.renderAnalysis(); await wait(3000);"
+SUM = ("(async () => { const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)); if ('leaveAt' in p) p.leaveAt = (Math.floor(Date.now() / 3600000) + 3) * 3600; else p.startOffsetH = 3; p.renderAnalysis(); await wait(3000);"
        " const t = __LABELS__; if (t) p.els.sum.querySelectorAll('.sum-item small').forEach((s, i) => { s.textContent = t[i]; }); await wait(600); return true; })()")
 SUM_JS = lambda labels=None: SUM.replace('__LABELS__', json.dumps(labels))
 SUM_FI = ['kokonaismatka', 'lähtöajasta klo 14.00', 'nousumetrit · laskumetrit']

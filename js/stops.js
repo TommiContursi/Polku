@@ -4,8 +4,9 @@
 // a changeover that the route doesn't come back to.
 //
 // A stop is { min } for a break or { on } for a night, `on` being the minutes
-// after local midnight when you go on again. Nights depend on the clock, so the
-// planner times them as it goes along the route (planner.timed).
+// after local midnight when you go on again, and `n` the nights when you stay
+// more than one (#364). Nights depend on the clock, so the planner times them as
+// it goes along the route (planner.timed).
 
 import { LIPAS_TYPES } from './config.js';
 import { dist } from './geo.js';
@@ -19,10 +20,15 @@ export const DEFAULT_ON = 8 * 60; // 08:00
 export const hhmm = (min) => `${String(Math.floor(min / 60) % 24).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 export const parseHhmm = (s) => { const m = /^(\d{1,2}):?(\d{2})$/.exec(String(s || '').trim()); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
 
-/** A stop made safe: a break of 1–1440 min, or a night with a clock time; anything else is no stop. */
+export const MAX_NIGHTS = 30;
+/** A stop made safe: a break of 1–1440 min, or a night with a clock time and 2–30 nights or one; anything else is no stop. */
 export function cleanStop(s) {
   if (!s || typeof s !== 'object') return null;
-  if (s.on != null) { const on = Math.round(+s.on); return Number.isFinite(on) && on >= 0 && on < 1440 ? { on } : null; }
+  if (s.on != null) {
+    const on = Math.round(+s.on), n = Math.round(+s.n);
+    if (!(Number.isFinite(on) && on >= 0 && on < 1440)) return null;
+    return n > 1 && n <= MAX_NIGHTS ? { on, n } : { on };
+  }
   const min = Math.round(+s.min);
   return Number.isFinite(min) && min > 0 ? { min: Math.min(1440, min) } : null;
 }
@@ -30,7 +36,8 @@ export function cleanStop(s) {
 /**
  * How long you stay (seconds) after arriving at epoch second `arrive`, the
  * changeover there (`changeSec`) not counted: a break's minutes, or for a night
- * the time until you go on, at the next `on` o'clock once the changeover is done.
+ * the time until you go on, at the next `on` o'clock once the changeover is done
+ * (and the mornings after it, for a stay of several nights).
  */
 export function restSec(stop, arrive, changeSec = 0) {
   if (!stop) return 0;
@@ -39,26 +46,30 @@ export function restSec(stop, arrive, changeSec = 0) {
   const go = new Date(ready);
   go.setHours(Math.floor(stop.on / 60), stop.on % 60, 0, 0);
   if (go <= ready) go.setDate(go.getDate() + 1); // the next morning (local time, so summer time is right)
+  go.setDate(go.getDate() + (stop.n || 1) - 1);
   return go.getTime() / 1000 - arrive - changeSec;
 }
 
+// "Night", or "3 nights" for a stay of several
+export const nightsWord = (s) => (s.n > 1 ? `${s.n} nights` : 'Night');
+
 export function stopLabel(s) {
   if (!s) return '';
-  if (isNight(s)) return `Night · on at ${hhmm(s.on)}`;
+  if (isNight(s)) return `${nightsWord(s)} · on at ${hhmm(s.on)}`;
   return `Break · ${s.min < 60 ? `${s.min} min` : `${Math.floor(s.min / 60)} h${s.min % 60 ? ` ${String(s.min % 60).padStart(2, '0')}` : ''}`}`;
 }
 
 // ---------------------------------------------------------------- share links
-// st=3:60,5:n0800 → a 60 min break at point 3, a night at point 5 (on at 08:00)
+// st=3:60,5:n0800,7:n0700x2 → a 60 min break at point 3, a night at point 5 (on at 08:00), two nights at point 7
 export function encodeStops(list) {
-  return list.map((s, i) => (s ? `${i}:${isNight(s) ? `n${hhmm(s.on).replace(':', '')}` : s.min}` : '')).filter(Boolean).join(',');
+  return list.map((s, i) => (s ? `${i}:${isNight(s) ? `n${hhmm(s.on).replace(':', '')}${s.n > 1 ? `x${s.n}` : ''}` : s.min}` : '')).filter(Boolean).join(',');
 }
 export function decodeStops(str) {
   const out = [];
   for (const part of String(str || '').split(',')) {
-    const m = /^(\d+):(?:n(\d{4})|(\d+))$/.exec(part);
+    const m = /^(\d+):(?:n(\d{4})(?:x(\d+))?|(\d+))$/.exec(part);
     if (!m) continue;
-    const s = cleanStop(m[2] ? { on: parseHhmm(m[2]) } : { min: +m[3] });
+    const s = cleanStop(m[2] ? { on: parseHhmm(m[2]), n: m[3] } : { min: +m[4] });
     if (s) out.push([+m[1], s]);
   }
   return out;
@@ -66,7 +77,8 @@ export function decodeStops(str) {
 
 // ---------------------------------------------------------------- days
 /**
- * The days of a trip with nights: [{ n, from, to, i0, i1, t0, t1, moving, rest, up }]
+ * The days of a trip with nights: [{ n, from, to, i0, i1, t0, t1, moving, rest, up }], n the day's number (a stay
+ * of several nights counts each)
  * (metres along, sample indexes, epoch seconds from leaving to arriving, moving
  * seconds, breaks and changeovers in seconds, climbing in metres). `waits` are the
  * planner's timed waits (`arrive`, `sec`, `stop`); `tAt` seconds from `start`.
@@ -77,6 +89,7 @@ export function tripDays(a, tAt, start, waits) {
   const n = a.along.length;
   const idx = (m) => { let i = 0; while (i < n - 1 && a.along[i] < m - 1) i++; return i; };
   const days = [];
+  let day = 1;
   for (let k = 0; k <= nights.length; k++) {
     const from = k ? nights[k - 1].at : 0, to = k < nights.length ? nights[k].at : a.along[n - 1];
     const i0 = idx(from), i1 = k < nights.length ? idx(to) : n - 1;
@@ -86,21 +99,26 @@ export function tripDays(a, tAt, start, waits) {
     const rest = (waits || []).filter((w) => !isNight(w.stop) && w.at > from + 1 && w.at < to - 1).reduce((t, w) => t + w.sec, 0);
     let up = 0;
     for (let i = i0 + 1; i <= i1; i++) { const d = a.ele[i] - a.ele[i - 1]; if (d > 0) up += d; }
-    days.push({ n: k + 1, from, to, i0, i1, t0, t1, moving: Math.max(0, t1 - t0 - rest), rest, up });
+    days.push({ n: day, from, to, i0, i1, t0, t1, moving: Math.max(0, t1 - t0 - rest), rest, up });
+    if (k < nights.length) day += nights[k].stop.n || 1;
   }
   return days;
 }
 
-/** The weather of one day from the route's wind samples (null without them). */
+/**
+ * The weather of one day from the route's wind samples, as far as the forecast reaches (null without them; `none`
+ * when the whole day is past it: its values there are the forecast's last hour's, #465).
+ */
 export function dayWeather(w, a, i0, i1) {
   if (!w) return null;
   let tMin = Infinity, tMax = -Infinity, wind = 0, gust = 0, wetM = 0, peak = 0;
-  for (let i = Math.max(1, i0); i <= i1; i++) {
+  const end = w.beyond >= 0 ? Math.min(i1, w.beyond - 1) : i1;
+  for (let i = Math.max(1, i0); i <= end; i++) {
     tMin = Math.min(tMin, w.temp[i]); tMax = Math.max(tMax, w.temp[i]);
     wind = Math.max(wind, w.speed[i]); gust = Math.max(gust, w.gust[i]);
     if (w.precip[i] >= 0.1) { wetM += a.along[i] - a.along[i - 1]; peak = Math.max(peak, w.precip[i]); }
   }
-  if (!Number.isFinite(tMin)) return null;
+  if (!Number.isFinite(tMin)) return w.beyond >= 0 && w.beyond <= i1 ? { none: true, beyond: true } : null;
   return { tMin, tMax, wind, gust, wetM, peak, beyond: w.beyond >= 0 && w.beyond <= i1, unsure: w.unsure >= 0 && w.unsure <= i1 };
 }
 

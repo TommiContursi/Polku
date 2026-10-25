@@ -4,6 +4,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-25
 
+### The route's card, the list in sections, when you leave, and what stands out ([#233](https://github.com/TommiContursi/Polku/issues/233), [#364](https://github.com/TommiContursi/Polku/issues/364), [#424](https://github.com/TommiContursi/Polku/issues/424), [#471](https://github.com/TommiContursi/Polku/issues/471))
+
+A tap on the route shows a card for it, Route's list is in sections, a route can leave on any day, and a line under the route's numbers says what stands out.
+
+- A tap on the route shows what's there: the way's name, three numbers for your sport (when you'd be there, how steep, the difficulty, the trail grade or the surface; on the water the wind and temperature), and the stretch's most serious warning. A number the map doesn't have says so in its place. **Add a point here** is right at the spot. **This stretch** runs from one point you see to the next, **Edit this stretch** sets its sport, how it's drawn and its style in one step of **Undo**, and **What's here** lists what the map knows of the way. The route's card also has **On the profile**, **Avoid this spot** and **The whole route**.
+- The route's last point is the **End** everywhere, GPX included. The start's card has **Back to start** first while you draw.
+- Route's list is in sections: a new one where the sport changes, at a stop and at a night, then a section a day. Each says its distance, time and climb, the weather at its end and what's to read before you go on it. A row for each point you see and for each stretch between them; the points that only shape a stretch fold under it. **Reorder** moves points with a grip, **Earlier** and **Later**; a finger holds a row first, so scrolling never drags.
+- **Leave** opens your phone's own date and time picker, for any day ahead, on the start's card and in Go. Once set, it says the day and the time, and **Now** on its line leaves now again. More than ten days ahead it says there's no forecast yet; sunset and the dark still count.
+- The date stays with the route on this device, after a reload, and in share links: with one set, **Share link** says it includes when you leave. A route or link whose date has passed opens leaving now, and says when it was planned for.
+- A night can be a stay of several: **Stay** with − and +, then **Go on at** with your phone's clock, its line the day you go on.
+- **Export GPX** writes the planned times in each waypoint's description ("Leave Sat 31 Oct, 07:30", "There at 09:12"), and none on the track, which apps such as Strava would read as a recorded activity.
+- A line under the route's numbers says what stands out: a water leg's wind, rain on the way, a headwind that adds a quarter of an hour, or unpaved on a road bike. Otherwise it shows the sport's usual fact: a trip's hardest day, the hardest climb on a bike, the high point on foot. Weather that isn't known is said beside it. A route of two sports has a row for each. A tap opens where it's told in full, and Check's top keeps them all.
+- **Climbs** marks the hardest with **Hardest**, by one measure a sport (the uphill grade on an MTB or gravel bike, height times gradient otherwise), and names it at its top.
+- Route opens with **How you go** and **Your speed**, each a step of its own with **Back**. Go opens with **Leave**, when you'd be there and where the time goes, then **Your speed**. The marks on the route (distances and times) are under **Your route** in all layers while a route is drawn.
+- Past the forecast's ten days the route says so: the profile goes grey in the weather's colours with **No forecast yet** where it ends, Check's **Not checked** says from where, and the wind, the rain, the cold and the waves aren't judged there by the forecast's last hour, as they were. The time leaves the wind out there. A paddle more than two days ahead is routed by the ten-day forecast's wind.
+
 ### Fixed: Polku waits out BRouter's request to slow down ([#480](https://github.com/TommiContursi/Polku/issues/480))
 
 When brouter.de asked Polku to retry later while another route was still on its way, that route's answer could cancel the wait, and the next legs went straight back to brouter.de. Asking again too soon can block your whole connection to it for minutes. Now Polku keeps waiting as long as it was asked to.
