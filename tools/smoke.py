@@ -10511,7 +10511,7 @@ def spot_card(chrome):
         # a spot 20 m from the line: Add a point here, on the line, no routing call
         mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]
         near = [mid[0] - 0.00012, mid[1] + 0.00016]  # (about 20 m from A–B)
-        pg.js(f"polku.map.jumpTo({{ center: {json.dumps(near)}, zoom: 17 }}); new Promise((r) => setTimeout(r, 800))")
+        pg.js(f"(() => {{ const v = polku.planner.viewPadding(0); polku.map.jumpTo({{ center: {json.dumps(near)}, zoom: 17, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] }}); }})(); polku.planner.cards.close(); document.querySelector('#toast').classList.remove('show'); new Promise((r) => setTimeout(() => r(true), 900))")
         s = pg.js(f'sc.at({json.dumps(near)}, {{ line: 0 }})')
         if not s:
             fails.append(f"{name}: the spot 20 m from the line is not on the free map: {pg.js('sc.why')}")
@@ -10521,12 +10521,14 @@ def spot_card(chrome):
             pill = pg.js("document.querySelector('.card-pill')?.textContent.trim()")
             if pill != 'Add a point here':
                 fails.append(f'{name}: held 20 m from the line, the pill says “{pill}”')
-            press(pg, at(pg, "document.querySelector('.card-pill')"), f'{name}: Add a point here', True)
+            pg.js('sc.calm()')
+            pill_at = at(pg, "document.querySelector('.card-pill')")
+            press(pg, pill_at, f'{name}: Add a point here', True)
             r = pg.js(f"""(() => {{ const p = polku.planner, q = p.points[1], a = {json.dumps(A)}, b = {json.dumps(B)}, k = Math.cos(q[1] * Math.PI / 180) * 111320;
               const x = (u) => [(u[0] - a[0]) * k, (u[1] - a[1]) * 111320], Bq = x(b), Q = x(q), f = Math.max(0, Math.min(1, (Q[0] * Bq[0] + Q[1] * Bq[1]) / (Bq[0] ** 2 + Bq[1] ** 2)));
               return {{ n: p.points.length, past: p.past.length, calls: (window.routerCalls || []).length, line: Math.hypot(Q[0] - f * Bq[0], Q[1] - f * Bq[1]) }}; }})()""")
             if r['n'] != 4 or r['past'] != past + 1 or r['calls'] != calls or r['line'] > 2:
-                fails.append(f'{name}: Add a point here 20 m from the line: {r} (4 points, on the line, no call)')
+                fails.append(f"{name}: Add a point here 20 m from the line: {r} (4 points, on the line, no call); the pill at {pill_at} over {pg.js(PILL_OVER) or 'nothing'}, the cards: {pg.js('sc.log()')}")
             pg.js('polku.planner.undo(); true')
             time.sleep(0.6)
         route(pg, name, ROUTE)
@@ -10929,9 +10931,10 @@ def facts(chrome):
                 fails.append(f"a click on a path with the planner put away: {s['kind'] or 'no'} card, {s['asked']} requests")
             pg.js('polku.planner.cards.close(); true')
         pg.js("polku.set({ activity: 'paddle' }); new Promise((r) => setTimeout(r, 800))")
-        pg.js("""(() => { window.shipOpened = null; polku.safety.openShip = (mmsi) => { window.shipOpened = mmsi; };
-          polku.map.jumpTo({ center: [24.95, 60.15], zoom: 10 });
-          polku.map.getSource('sfShips').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { mmsi: 123456789, name: 'Test', moving: true, sog: 8, group: 'Cargo', age: 1, kind: 'ship' }, geometry: { type: 'Point', coordinates: [24.95, 60.15] } }] });
+        pg.js("""(() => { window.shipOpened = null; const S = polku.safety; S.openShip = (mmsi) => { window.shipOpened = mmsi; };
+          // a ship of our own in the safety layer's list, the network's answer (another list) kept out
+          S.loadShips = async () => {}; S.ships = [{ type: 'Feature', properties: { mmsi: 123456789, sog: 8, cog: 0, moving: true, age: 1 }, geometry: { type: 'Point', coordinates: [24.95, 60.15] } }];
+          S.on = { ...S.on, ships: true }; polku.map.jumpTo({ center: [24.95, 60.15], zoom: 10 }); S.publish();
           return true; })()""")
         r = pg.js("""new Promise(async (done) => { // (the ship drawn: the layer and its icon come a moment after the source, longer on a slow machine)
           const q = polku.map.project([24.95, 60.15]), t0 = Date.now();
