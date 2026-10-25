@@ -10423,6 +10423,7 @@ def spot_card(chrome):
         # thing of Your route, and the pill starts a route
         pg.js('sc.fresh()')
         pg.js('sc.still()')  # (a page drawing on time, so its timers run when they should)
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         hold(pg, s, 0.65)
         c, ring = st(pg), pg.js('sc.ring()')
@@ -10451,6 +10452,7 @@ def spot_card(chrome):
             if r['n'] != 1 or not r['editing'] or r['card'] or r['tip'] != 'Hold the map to see what’s there.':
                 fails.append(f'{name}: Start a route here: {r}')
         # held 0.3 s: a tap, one point, no card; the first point's line goes with the second point
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         hold(pg, s, 0.3)
         r = pg.js("(() => { const p = polku.planner; return { n: p.points.length, card: p.cards.current && p.cards.current.kind, tip: !!document.querySelector('#planner .sum-empty small') }; })()")
@@ -10458,11 +10460,13 @@ def spot_card(chrome):
             fails.append(f'{name}: a finger held 0.3 s: {r} (a second point, no card, no line about holding)')
         # a move of 12 px at 0.2 s: the map's, no card, no point; two fingers: nothing
         pg.js('sc.still()')
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         hold(pg, s, 0.7, moves=[(0.1, 0, 6), (0.2, 0, 12), (0.25, 0, 20), (0.3, 0, 30), (0.35, 0, 40), (0.4, 0, 50)])
         r = pg.js("(() => { const p = polku.planner; return { n: p.points.length, card: p.cards.current && p.cards.current.kind, moved: sc.panned, moves: sc.moves, evs: sc.evs, lag: sc.lag, pan: polku.map.dragPan.isEnabled() }; })()")
         if r['n'] != 2 or r['card'] or not r['moved']:
             fails.append(f"{name}: a finger moved 12 px at 0.2 s: {r['n']} points, {r['card'] or 'no'} card, the map {'moved' if r['moved'] else 'still'} under it ({r['moves']} moves seen, the map's {r['evs']}, the touch seen {r['lag']} ms late, the pan {'on' if r['pan'] else 'off'})")
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         t0 = time.time()
         pg.c.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': s['x'], 'y': s['y'], 'id': 1}, {'x': s['x'] + 60, 'y': s['y'] + 20, 'id': 2}], 'timestamp': t0}, pg.s)
@@ -10473,6 +10477,7 @@ def spot_card(chrome):
         if r['n'] != 2 or r['card']:
             fails.append(f"{name}: two fingers held 0.7 s: {r['n']} points, {r['card'] or 'no'} card")
         # a quick tap that a busy page sees late, after the hold's time (#293): a tap, a point, no card
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         pg.quick_tap(s['x'], s['y'], ms=50, after='sc.untilCard()')
         time.sleep(0.8)
@@ -10539,6 +10544,7 @@ def spot_card(chrome):
         route(pg, name, ROUTE)
         # Start here: a new start, the old one now Via 1, nothing removed; End here: a new end; one step of Undo each
         for label, want in (('Start here', 0), ('End here', 3)):
+            pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
             s = pg.js('sc.spot()')
             past = st(pg)['past']
             hold(pg, s, 0.65)
@@ -10572,6 +10578,7 @@ def spot_card(chrome):
         pg.js('polku.planner.cards.close(); true')
         # the route's view: no pill, only What's here, the planner's note with Edit
         pg.js("polku.planner.setEditing(false); polku.map.jumpTo({ center: [23.815, 61.514], zoom: 14 }); new Promise((r) => setTimeout(r, 800))")
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         hold(pg, s, 0.65)
         c = st(pg)
@@ -10580,6 +10587,7 @@ def spot_card(chrome):
         pg.js('polku.planner.cards.close(); polku.planner.setEditing(true); true')
         # the planner put away: the card at the spot
         pg.js("polku.planner.setActive(false); new Promise((r) => setTimeout(r, 600))")
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         hold(pg, s, 0.65)
         c = st(pg)
@@ -10628,6 +10636,7 @@ def spot_card(chrome):
     pg = page(1440, 900, False)
     try:
         route(pg, name, ROUTE)
+        pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         right(pg, s)
         c = st(pg)
@@ -10718,6 +10727,10 @@ def crosshair(chrome):
             # two more points; the middle on the line: Enter opens the route's card
             pg.js("(() => { const p = polku.planner; p.addPoint([23.8205, 61.5172]); return true; })()")
             middle(pg, [23.8135, 61.5172])
+            # (the line drawn there: on a slow machine a moment after the point)
+            pg.js("""new Promise(async (ok) => { const m = polku.map, t0 = Date.now(), r = m.getCanvas().getBoundingClientRect();
+              while (Date.now() - t0 < 10000 && !m.queryRenderedFeatures([[r.width / 2 - 6, r.height / 2 - 6], [r.width / 2 + 6, r.height / 2 + 6]], { layers: ['route-casing'].filter((id) => m.getLayer(id)) }).length) await new Promise((x) => setTimeout(x, 200));
+              ok(true); })""")
             to_map(pg, name)
             key(pg, 'Enter', 'Enter', 13)
             s = st(pg)
