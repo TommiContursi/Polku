@@ -199,6 +199,7 @@ export class Planner {
     this.styles = {}; // the route's own style per sport, else yours for it (styleOf()); a leg may have its own (leg.style)
     this.next = null; // the next leg's sport: null is the map's (nextSport())
     this.styleLeg = null; // the leg the Route style section edits (null: the whole route)
+    this.styleSport = null; // whose legs' style it edits then (null: the main sport's, howSport())
     this.wet = { mm: null, on: false, at: null }; // rain in the last 24 h at the start, for "wet ground: auto"
     this.edit = null; // a drag in progress (see beginEdit)
     this.noClickUntil = 0;
@@ -1857,6 +1858,8 @@ export class Planner {
   // the style a leg in `sport` is routed with (unless it has its own): the route's for that sport, else yours for it.
   // The route's, whatever the map's sport is (#71).
   styleOf(sport) { return this.styles[sport] || this.savedStyle(sport); }
+  // the sport whose style How you go shows: on a multisport route, the one picked there
+  howSport() { return this.routeSports().includes(this.styleSport) ? this.styleSport : this.mainSport(); }
 
   wetFor(style) { const w = (style && style.wet) || 'auto'; return w === 'yes' || (w === 'auto' && this.wet.on); }
 
@@ -1870,14 +1873,14 @@ export class Planner {
     if (this.styleLeg != null && !this.legs[this.styleLeg]) this.styleLeg = null;
     const leg = this.styleLeg;
     // a leg in another sport is styled in that sport's terms, from your style for it
-    const sport = leg != null ? this.legSport(leg) : route;
+    const sport = leg != null ? this.legSport(leg) : this.howSport();
     const base = this.styleOf(sport);
     const cat = STYLES[sport] || STYLES.mtb;
     const own = leg != null ? this.legs[leg].style : null;
     const st = (leg != null && own) || base;
     const vals = valuesOf(sport, st);
     const custom = isCustom(sport, st);
-    const set = (next) => this.setStyle(next, leg);
+    const set = (next) => this.setStyle(next, leg, sport);
     const ownCount = this.legs.filter((l) => l.style).length;
     this.setSection('style', { summary: `${styleName(route, rs)}${ownCount ? ` · ${ownCount} leg${ownCount > 1 ? 's' : ''} with their own` : ''}` });
     this.renderHow();
@@ -5139,7 +5142,7 @@ export class Planner {
       const styles = { group: 'Route style · the whole route', items: [
         { chips: [...cat.presets.map(([k, label]) => ({ label: escapeHtml(label), radio: true, checked: !custom && rs.p === k, fn: () => pick(k, label) })),
           custom ? { label: 'Custom', radio: true, checked: true, disabled: true, fn: () => {} } : null] },
-        { icon: 'sliders', label: 'Fine-tune in How you go', fn: () => { this.styleLeg = null; this.renderStyle(); this.reveal('style'); } },
+        { icon: 'sliders', label: 'Fine-tune in How you go', fn: () => { this.styleLeg = null; this.openStep('how', ns); } },
       ] };
       // in the order the button reads: how it's drawn, its sport ("Hike · Balanced") and the style
       // three parts, apart: how the next leg is drawn (and its note), its sport and speed, the whole route's style
@@ -5463,13 +5466,13 @@ export class Planner {
     requestAnimationFrame(() => this.flash(this.sec[id].el));
   }
 
-  // Route's two rows, the route's style and your speed, each opening its step (#424's C)
+  // Route's rows, each sport's style and your speed, each opening its step (#424's C)
   renderHow() {
     const box = this.els.howRows;
     if (!box) return;
-    const sport = this.mainSport();
+    const main = this.mainSport();
     box.replaceChildren(
-      item({ icon: 'sliders', label: 'How you go', line: `The ways Polku picks for ${ACTIVITIES[sport].label}`, val: styleName(sport, this.styleOf(sport)), chev: true, k: 'how', onclick: () => { this.styleLeg = null; this.renderStyle(); this.openStep('how'); } }),
+      ...[main, ...this.routeSports().filter((x) => x !== main)].map((sport) => item({ icon: 'sliders', label: 'How you go', line: `The ways Polku picks for ${ACTIVITIES[sport].label}`, val: styleName(sport, this.styleOf(sport)), chev: true, k: `how-${sport}`, onclick: () => { this.styleLeg = null; this.openStep('how', sport); } })),
       this.speedRow());
   }
   speedRow() {
@@ -5478,12 +5481,15 @@ export class Planner {
     return item({ icon: 'gauge', label: 'Your speed', line, val: sp.name, chev: true, k: 'speed', onclick: () => this.openStep('speed') });
   }
   // A step of Route's (null: back to Route): How you go's style alone, or your speeds alone [tabs-c-how, tabs-c-speed]
-  openStep(k) {
-    const pane = this.els.panes.route, was = pane.dataset.step;
+  // `sport`: whose legs How you go styles (null: the main sport's)
+  openStep(k, sport = null) {
+    const pane = this.els.panes.route, was = pane.dataset.step, row = was === 'how' ? `how-${this.howSport()}` : was;
     if (k) {
-      const sport = this.mainSport();
+      if (k === 'how') { this.styleSport = sport; this.renderStyle(); }
+      const label = ACTIVITIES[this.howSport()].label;
       this.els.stepTitle.textContent = k === 'how' ? 'How you go' : 'Your speed';
-      this.els.stepLine.textContent = k === 'how' ? `${ACTIVITIES[sport].label}, for the whole route. A change routes the route again.` : 'How fast the times are counted. A change only times the route again; the route stays.';
+      this.els.stepLine.textContent = k === 'speed' ? 'How fast the times are counted. A change only times the route again; the route stays.'
+        : this.isMulti() ? `${label}, for the route’s ${label} legs. A change routes them again.` : `${label}, for the whole route. A change routes the route again.`;
       if (k === 'speed') this.renderSpeed();
       pane.dataset.step = k;
       if (this.tab !== 'route') this.setTab('route');
@@ -5493,7 +5499,8 @@ export class Planner {
       requestAnimationFrame(() => this.els.stepHead.querySelector('.way-back').focus({ preventScroll: true }));
     } else {
       delete pane.dataset.step;
-      if (was) requestAnimationFrame(() => this.els.howRows.querySelector(`[data-k="${was}"]`)?.focus({ preventScroll: true }));
+      if (this.styleSport) { this.styleSport = null; this.renderStyle(); }
+      if (was) requestAnimationFrame(() => this.els.howRows.querySelector(`[data-k="${row}"]`)?.focus({ preventScroll: true }));
     }
   }
 
