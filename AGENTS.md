@@ -83,10 +83,13 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   whole claim.
 - Docs and tooling PRs stay on their one subject.
 
-**Effort:** xhigh for code, design, plans, and anything touching routing,
-saved data or share links; medium for docs, rebases and filing issues; never
-`max` as a habit. Set it at the start: the default is lower. Change effort,
-not models, mid-session: a new model sends the whole conversation again
+**Model and effort,** picked when the session starts: Sonnet, or Opus at
+medium, for docs, small fixes, rebases, filing issues and the weekly sweep;
+Opus at high for a phase's part, multi-file work and hard bugs, including
+anything touching routing, saved data or share links. Raise it to xhigh
+only when high is stuck on the same problem; never `max` as a habit.
+Mid-session, change effort, not models: a new model sends the whole
+conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
 
 ## Engineering judgment
