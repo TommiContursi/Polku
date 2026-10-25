@@ -3596,11 +3596,16 @@ export class Planner {
         map.jumpTo(cam);
         this.noClickUntil = Date.now() + 1500;
         const at = p0, ev = e.originalEvent;
-        map.once('render', () => {
+        let sent = false;
+        const replay = () => {
+          if (sent) return;
+          sent = true;
           this.noClickUntil = 0;
           map.fire('click', { point: at, lngLat: map.unproject(at), originalEvent: ev });
           this.noClickUntil = Date.now() + 400; // (the browser's own click may still come: on what the tap just put there, the new point's marker)
-        });
+        };
+        map.once('idle', replay); // (its symbols are placed again by then: a marker of Check's is found under the finger)
+        setTimeout(replay, 1000);
       } else if (held) {
         // no click as the finger lifts, however long it was held: it would land on the card, moved under the finger
         e.originalEvent.preventDefault();

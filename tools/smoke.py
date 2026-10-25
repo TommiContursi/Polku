@@ -108,9 +108,11 @@ EDIT = """(async () => {
     const t = [new Touch({ identifier: 1, target: cv, clientX: R.left + x, clientY: R.top + y })];
     cv.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: type === 'touchend' ? [] : t, targetTouches: type === 'touchend' ? [] : t, changedTouches: t }));
   };
+  // held a moment, then moved past 10 px at once (a hold that stays still to 0.5 s is Edit this stretch's: 25d part 5), on
+  // to 40 px
   fire('touchstart', q.x, q.y);
-  if (touch) await wait(400);
-  for (let k = 1; k <= 8; k++) { await wait(30); fire('touchmove', q.x + k * 5, q.y - k * 5); }
+  if (touch) { await wait(330); fire('touchmove', q.x + 12, q.y - 12); }
+  for (let k = touch ? 3 : 1; k <= 8; k++) { await wait(30); fire('touchmove', q.x + k * 5, q.y - k * 5); }
   fire('touchend', q.x + 40, q.y - 40);
   if (!touch) window.dispatchEvent(new MouseEvent('mouseup'));
   await wait(400);
@@ -4149,7 +4151,16 @@ def route_menu(chrome):
 QUICK_TAPS = """(() => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner, m = polku.map;
   const title = () => (p.cards.current ? `the ${p.cards.current.kind}'s card` : '');
-  const at = (ll) => { const q = m.project(ll), el = document.elementFromPoint(q.x, q.y); return el === m.getCanvas() ? { x: q.x, y: q.y } : { under: el ? el.id || el.className || el.tagName : 'nothing' }; };
+  // (the spot, or one a little way up the map where something sits over it: the scale moves with the sheet's size)
+  const at = (ll) => {
+    let under = 'nothing';
+    for (const up of [0, 0.0006, 0.0012, 0.0018]) {
+      const q = m.project([ll[0], ll[1] + up]), el = document.elementFromPoint(q.x, q.y);
+      if (el === m.getCanvas()) return { x: q.x, y: q.y };
+      under = el ? el.id || el.className || el.tagName : 'nothing';
+    }
+    return { under };
+  };
   // nothing open over the map (Clear route's note too: over a taller start it can reach the spot), the sheet low,
   // the map where it started
   const tidy = async () => {
@@ -4166,7 +4177,14 @@ QUICK_TAPS = """(() => {
   // until the hold's timer has run: the spot's card open, or Edit this stretch
   const until = (ok) => new Promise((done) => { const t0 = Date.now(), f = () => (ok() || Date.now() - t0 > 3000 ? done(true) : setTimeout(f, 20)); f(); });
   const A = [23.752, 61.5005], B = [23.768, 61.5045], EMPTY = [23.752, 61.5050];
+  // what the cards and the hold did, for a FAIL line
+  const seen = [], t00 = performance.now(), open = p.cards.open.bind(p.cards), close = p.cards.close.bind(p.cards);
+  const stamp = (what) => seen.push(`${what} ${Math.round(performance.now() - t00)}`);
+  p.cards.open = (c, o) => { stamp(`open ${c.kind}`); return open(c, o); };
+  p.cards.close = (o) => { if (p.cards.current) stamp(`close ${p.cards.current.kind}`); return close(o); };
+  for (const k of ['touchstart', 'touchend']) m.on(k, () => stamp(k));
   window.qt = {
+    seen: () => seen.splice(0).slice(-8).join(', ') || 'nothing',
     heldMenu: () => until(() => title() === "the spot's card"),
     heldLine: () => until(() => title() === "the edit's card"),
     async empty() {
@@ -4210,7 +4228,7 @@ QUICK_TAPS = """(() => {
     async heldDone() {
       await wait(1000);
       const errs = [], l = qt.lift || {};
-      if (l.menu !== "the spot's card" || !l.heldOff) errs.push(`a finger held 0.8 s on the map, as it lifts: ${l.menu || 'no card'}, clicks ${l.heldOff ? '' : 'not '}held off`);
+      if (l.menu !== "the spot's card" || !l.heldOff) errs.push(`a finger held 0.8 s on the map, as it lifts: ${l.menu || 'no card'}, clicks ${l.heldOff ? '' : 'not '}held off (${qt.seen()})`);
       if (p.points.length) errs.push(`a finger held 0.8 s on the map added ${p.points.length} points`);
       p.cards.close();
       return errs;
@@ -10201,11 +10219,13 @@ SC_HELP = """(() => {
   const free = () => { const top = document.querySelector('.topbar').getBoundingClientRect().bottom + 40, bottom = Math.min(p.active && p.layout() === 'sheet' ? p.panel.getBoundingClientRect().top : innerHeight, innerHeight) - 40; return { top, bottom }; };
   // the screen spot of a [lng, lat], if the map itself is there, clear of the route, the points and the places
   const clear = (ll, { line = 40 } = {}) => {
-    const r = R(), q = m.project(ll), x = Math.round(r.left + q.x), y = Math.round(r.top + q.y), f = free();
-    if (x < 40 || x > innerWidth - 90 || y < f.top || y > f.bottom || document.elementFromPoint(x, y) !== m.getCanvas()) return null;
+    const r = R(), q = m.project(ll), x = Math.round(r.left + q.x), y = Math.round(r.top + q.y), f = free(), el = document.elementFromPoint(x, y);
+    const no = (why) => { sc.why = `${why} at ${x},${y} (free ${Math.round(f.top)}–${Math.round(f.bottom)})`; return null; };
+    if (x < 40 || x > innerWidth - 90 || y < f.top || y > f.bottom) return no('off the free map');
+    if (el !== m.getCanvas()) return no(`under ${el && (el.id || String(el.className.baseVal ?? el.className))}`);
     const box = (d) => [[q.x - d, q.y - d], [q.x + d, q.y + d]], layers = (ids) => ids.filter((id) => m.getLayer(id));
-    if (line && layers(['route-casing']).length && m.queryRenderedFeatures(box(line), { layers: ['route-casing'] }).length) return null;
-    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) }).length) return null;
+    if (line && layers(['route-casing']).length && m.queryRenderedFeatures(box(line), { layers: ['route-casing'] }).length) return no('on the route');
+    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) }).length) return no('on a place');
     return { x, y, ll: m.unproject(q).toArray() };
   };
   // (the map's middle as the finger went down and as it lifted: whether the gesture moved it, whatever moves it after)
@@ -10245,6 +10265,8 @@ SC_HELP = """(() => {
       return null;
     },
     at: (ll, opts) => clear(ll, opts),
+    // the map's places hidden (or back), so a hold or a tap on the free map is never on one, whatever the tiles have
+    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
     // the map at a share of its width and height, if it's free there
     spotAt(fx, fy, opts) { const r = R(); return clear(m.unproject([r.width * fx, r.height * fy]).toArray(), opts); },
     // a way under the screen at a share of its height (a tap there shows its card with the planner put away), clear of the places
@@ -10376,6 +10398,7 @@ def spot_card(chrome):
         pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
         pg.js(RC_ROUTER)
         pg.js(SC_HELP)
+        pg.js('sc.places(false)')  # (a hold or a tap is never on a place unless the check says so, whatever the tiles have)
         return pg
 
     def route(pg, name, o):
@@ -10460,7 +10483,7 @@ def spot_card(chrome):
             s = next((x for x in (pg.js(f'sc.at({json.dumps(q)}, {{ line: 12 }})') for q in lls) if x), None)  # (the first that's clear of the map's places)
             ll = s and s['ll']
             if not s:
-                fails.append(f'{name}: the spot {what} is not on the free map')
+                fails.append(f"{name}: the spot {what} is not on the free map: {pg.js('sc.why')}")
                 continue
             past, n = st(pg)['past'], st(pg)['n']
             hold(pg, s, 0.65)
@@ -10489,7 +10512,7 @@ def spot_card(chrome):
         pg.js(f"polku.map.jumpTo({{ center: {json.dumps(near)}, zoom: 17 }}); new Promise((r) => setTimeout(r, 800))")
         s = pg.js(f'sc.at({json.dumps(near)}, {{ line: 0 }})')
         if not s:
-            fails.append(f'{name}: the spot 20 m from the line is not on the free map')
+            fails.append(f"{name}: the spot 20 m from the line is not on the free map: {pg.js('sc.why')}")
         else:
             past, calls = st(pg)['past'], st(pg)['calls']
             hold(pg, s, 0.65)
@@ -10555,6 +10578,7 @@ def spot_card(chrome):
             fails.append(f"{name}: held with the planner put away: {c['kind'] or 'no'} card ({c['place']}; the cards: {pg.js('sc.log()')})")
         pg.js('polku.planner.cards.close(); true')
         # a place's icon while drawing: its card, no point; the way beside it: a point
+        pg.js('sc.places(true)')
         pg.js('sc.fresh([23.8167, 61.5076], 15)')  # (a shelter in OpenFreeMap's tiles, a LIPAS campfire site: a little above the middle, clear of a tall start)
         pl = pg.js('sc.place()')
         if not pl or 'why' in pl:
@@ -10570,6 +10594,7 @@ def spot_card(chrome):
                 fails.append(f"{name}: a tap beside {pl['name']}: {st(pg)['n']} points, not 1")
         # a quick tap on a busy page with the planner put away, near the top (#293): a tap, so the card of the tapped spot, though
         # the hold's timer had opened its card first and moved the map to make room; once, whole on the screen
+        pg.js('sc.places(false)')
         pg.js("polku.planner.cards.close(); polku.planner.setActive(false); polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 15 }); new Promise((r) => setTimeout(() => r(true), 1800))")
         s = pg.js('sc.wayAt(0.2)')
         if not s:
@@ -10906,11 +10931,13 @@ def facts(chrome):
           polku.map.jumpTo({ center: [24.95, 60.15], zoom: 10 });
           polku.map.getSource('sfShips').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { mmsi: 123456789, name: 'Test', moving: true, sog: 8, group: 'Cargo', age: 1, kind: 'ship' }, geometry: { type: 'Point', coordinates: [24.95, 60.15] } }] });
           return true; })()""")
-        time.sleep(1.5)
-        r = pg.js("""(() => { const q = polku.map.project([24.95, 60.15]); const f = polku.map.queryRenderedFeatures([[q.x - 10, q.y - 10], [q.x + 10, q.y + 10]], { layers: ['sf-ships'].filter((id) => polku.map.getLayer(id)) });
-          if (!f.length) return 'no ship drawn';
+        r = pg.js("""new Promise(async (done) => { // (the ship drawn: the layer and its icon come a moment after the source, longer on a slow machine)
+          const q = polku.map.project([24.95, 60.15]), t0 = Date.now();
+          let f = [];
+          while (!f.length && Date.now() - t0 < 15000) { await new Promise((r) => setTimeout(r, 250)); f = polku.map.queryRenderedFeatures([[q.x - 10, q.y - 10], [q.x + 10, q.y + 10]], { layers: ['sf-ships'].filter((id) => polku.map.getLayer(id)) }); }
+          if (!f.length) return done('no ship drawn');
           polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') });
-          return 'clicked'; })()""")
+          done('clicked'); })""", timeout=30000)
         time.sleep(0.6)
         if r == 'clicked' and (pg.js('window.shipOpened') != 123456789 or st()['kind']):
             fails.append(f"a click on a ship: opened {pg.js('window.shipOpened')}, {st()['kind'] or 'no'} card (its own card, not the planner's)")
@@ -11029,7 +11056,9 @@ def spot_card_foot(chrome):
                              ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
                 pg.js(f"{js}; new Promise((r) => setTimeout(() => r(true), 1500))")
                 pg.js('sc.calm()')
-                over = pg.js(PILL_OVER)
+                # (not at 200 %: a 195 px screen has no room for the pill between the map's buttons and the toolbox, and the
+                # spot has to stay above the card)
+                over = pg.js(PILL_OVER) if w > 195 else ''
                 if over:
                     fails.append(f'{name}: {what}: {over} over the pill')
                 r = pg.js("""(() => { const c = document.querySelector('.pl-way.card'), f = c && c.querySelector('.card-foot'), box = (e) => e.getBoundingClientRect();

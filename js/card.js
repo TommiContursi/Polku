@@ -457,17 +457,26 @@ export class CardHost {
       // move than for an upward one, as a map's nicer to nudge sideways)
       let ddy = dy;
       const half = pill ? pill.offsetWidth / 2 : 0;
-      const over = [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls'), document.querySelector('.maplibregl-ctrl-bottom-left')]
-        .map((el) => (el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null)).filter(Boolean);
-      const clear = (nx, ny) => over.every((b) => nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20);
-      if (!clear(x - dx, y - ddy)) {
+      const box = (el) => (el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null);
+      const base = [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')].map(box).filter(Boolean);
+      const credits = box(document.querySelector('.maplibregl-ctrl-bottom-left'));
+      const clear = (list) => (nx, ny) => list.every((b) => nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20);
+      // (with no room under the top bar and above the card, the spot goes where it meets the top bar, as it did)
+      const hi = Math.max(bottom, top + 8);
+      const nearest = (ok) => {
         let best = null;
         for (let a = -320; a <= 320; a += 8) for (let c = -320; c <= 320; c += 8) {
           const nx = x - dx - a, ny = y - ddy - c, cost = Math.abs(a) + 1.2 * Math.abs(c);
-          if (nx < 24 || nx > innerWidth - 72 || ny < top || (bottom > top && ny > bottom) || (best && cost >= best.cost) || !clear(nx, ny)) continue;
+          if (nx < 24 || nx > innerWidth - 72 || ny < top || ny > hi || (best && cost >= best.cost) || !ok(nx, ny)) continue;
           best = { a, c, cost };
         }
-        if (best) { dx += best.a; ddy += best.c; }
+        return best;
+      };
+      // the scale and credits too where there's room (a tiny screen has none to spare, and then it's as before)
+      for (const ok of [clear(credits ? [...base, credits] : base), clear(base)]) {
+        if (ok(x - dx, y - ddy)) break;
+        const best = nearest(ok);
+        if (best) { dx += best.a; ddy += best.c; break; }
       }
       if (Math.abs(dx) > 1 || Math.abs(ddy) > 1) this.map.panBy([dx, ddy], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
     };
