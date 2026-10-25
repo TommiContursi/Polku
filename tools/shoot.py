@@ -479,8 +479,8 @@ SCENES = {
     'phone-profile': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js="polku.planner.reveal('profile'); true"),
     'desk-point-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
     'phone-point-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
-    'desk-spot-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([980, 560])); true"),
-    'phone-spot-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([250, 300])); true"),
+    'desk-spot-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openSpotCard(polku.map.unproject([980, 560])); true"),
+    'phone-spot-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotCard(polku.map.unproject([250, 300])); true"),
     # the waypoint list, one point named
     'desk-waypoints': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WAYPOINTS),
     'phone-waypoints': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=WAYPOINTS),

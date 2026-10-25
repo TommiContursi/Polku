@@ -58,7 +58,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
    - The map's colours read from the CSS (its step 3), since part 3 adds map layers.
 4. Done: **Journey C, one PR** (#416, merged 2026-10-23): part 2 (Check in three groups) and part 3 (the warning on the route).
 5. **Journey D, one PR,** with the choices of 2026-10-24 above (Revision 6 and section E's C): 1b (the route's card, a stretch's card, Edit this stretch, What's here's groups) and part 4 (the list in sections, Reorder), with End everywhere (#353), the planner's tabs and How you go (#424), and what's chosen for #364, #90 and #334.
-6. **The map's cards, one PR:** parts 5 and 6. Holds and keys, the spot's and a place's cards, What's here in levels, Share a spot, Weather here, and the map's own cards on `CardHost`. It fixes #233 and #345.
+6. **The map's cards, one PR (#514):** parts 5 and 6. Holds and keys, the spot's and a place's cards, What's here in levels, Share a spot, Weather here, and the map's own cards on `CardHost`. It fixes #233 and #345.
 7. **Then** the rest of Phase 25's issues where "Where the other issues go" puts them, the design system's later steps (#382: the route on the map, outdoor contrast), and its second audit (#379).
 8. **Before the milestone closes, the bigger check** (planned with the user on 2026-10-24): the design system's second audit (#379) and the test as people (#365) as one pass, on what's on polku.si once 25d's PRs are merged. First an audit of the whole planner with the impeccable skill and `tools/census.py`: one style throughout (the cards' rows, headings and switches, and what's still in an older style), and at each moment (drawing, checking, setting off) the most important information first: when you leave, how long, what to read before you go. Then the newcomer and expert test in the browser pane. Its findings, checked against the approved plans first, become one plan of fixes for the user to choose from; then the retro.
 
@@ -772,3 +772,26 @@ Built piece by piece in one PR, each with its checks; this list grows with them.
 - **Found before building piece 6:** rough water did use the repeated last hour: `windAt()` asked the 49-hour forecast whatever the departure, and `sampleAt()` holds its last hour, so a paddle five days ahead was judged by the wind two days ahead.
 - **Checks:** new group `pastforecast`, Open-Meteo answered in the page with four hours at a place no other check asks about, its answers forgotten after.
 - **The whole suite on GitHub (2026-10-25)** found three of the PR's own: a desktop's card at the window's middle height ran past the bottom (it was fitted only when `keepInView()` happened to pan the map; now `keep()` caps it to the room it opens into, its padding counted); on a 375 × 667 phone the key facts' line pushed the map's buttons into the top bar (it now steps aside last, after the compass and 3D: `fitColumn()`, `body.kf-off`); and the hardest day's section was lit but under the fold while the sheet rose (it's scrolled to again once the sheet has its size). Failing on `main` too or only on the runner: #450, #461, #467; once: #500.
+
+### The map's cards: parts 5 and 6 (2026-10-25, Claude)
+
+Built in one PR (#514), a piece a commit, each with its checks.
+
+- **5a, the hold and the spot's and a place's cards** (`js/planner.js`: `bindHold()`, `lineAt()`, `placeAt()`, `openSpotCard()`, `openPlaceCard()`, `nearLine()`, `bestInsert()`, `addWhereItFits()`, `startRouteAt()`, `startFrom()`, `endAt()`, and `onLinePress()` with its second timer; `js/cards.js`: `spotCard()`; `js/facts.js`: `spotNums()`, `placeFacts()`, `tileTags()`; `js/hover.js`: `describe()` exported for the card's line). `bindSpotMenu()` and `openSpotMenu()` are gone: the old "This spot" menu is the card.
+- **5b, the keyboard** (`bindCrosshair()` in `js/gestures.js`): Enter and Shift+F10 fire the map's own `click` and `contextmenu` at its middle, so every card answers as for a pointer.
+- **6a, What's here in levels** (`spotHereCard()`, `lipasCard()`, `notRightCard()`, `foot()` in `js/cards.js`; `placeGroups()`, `wayExtras()` in `js/facts.js`; `osmDetails()`, `notRight()` in `js/inspect.js`; `osmOnCard()`). `initInspector()` now opens a way, a place or a LIPAS route or place on the planner's card with the planner put away (`app.openSpot()`); ships, cameras, sea marks, road works and the water's depth keep their cards in `js/inspect.js`; `renderWay()`, `renderPoi()`, `renderLipas()`, `renderWinter()`, `renderObstacle()` and `rideActions()` are gone.
+- **6b, Share a spot and Weather here** (`spotUrl()`, `parsePin()`, `shareSpot()`, `weatherHere()` in `js/planner.js`; `holdAt()`, `release()` in `js/wxmap.js`; the pin's opening in `js/main.js`; `card.pinned` in `js/card.js`).
+- **Decided while building:**
+  - A busy page (#293's kind) never decides a hold by its own clock: a lift, a move or a timer that reaches it late is judged by the finger's own times, and a hold's lift sends no click, which would land on the card moved under the finger. The old hold's 550 ms is 500 ms, as this plan says.
+  - The map's own cards (`isPlanning()`) skip the click that ends a hold (`noClickUntil`).
+  - The arrows move the map, as the plan's own words say, not the crosshair; the mock-up's moving crosshair isn't built.
+  - A way's third number is your sport's fact; on open water, with no trail, it says "no trail here" (the wind is Weather here's).
+  - A place's three facts come from what the map has (its tile's properties, LIPAS's); a fact its kind would have and the map doesn't says "not mapped" only once OpenStreetMap's tags are in, since before that nobody knows.
+  - Not right?'s editor link uses the tile's own way id when there is one (the way under the spot), else the one All OpenStreetMap details found.
+  - **Share** names the spot only when the map has a name there, and the link's `pn` is the card's title where the map at the shared spot has none.
+  - **Weather here** closes the card and puts a pin on the spot while the timeline is held; the forecast it reads is the grid's, so no request carries the spot.
+  - In the route's view the card has no pill and no Your route, and ends with the planner's note, after What's here; its foot row stays.
+  - The card keeps its spot clear of the map's scale and credits as well as the toolbox and the buttons (`inSight()`): over the pill they took its tap.
+- **Not built:** the mock-up's wind on the water as the spot's third number, and the pin for a held spot on a desktop (the card's corner is at it).
+- **Checks:** new groups `spotcard`, `crosshair`, `facts` and `sharespot`; `routemenu`'s quick taps, `trails`, `lipas`, `winter` and `routeview` use the card.
+
