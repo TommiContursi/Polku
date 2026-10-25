@@ -3547,7 +3547,7 @@ export class Planner {
   // While drawing, a hold on the line is the line's own (onLinePress()), and a right-click there is Edit this stretch.
   bindHold() {
     const map = this.map, HOLD = 500, RING = 150;
-    let timers = [], p0 = null, lastTouch = 0, t0 = 0, held = null, ring = null, open = null;
+    let timers = [], p0 = null, lastTouch = 0, t0 = 0, held = null, ring = null, open = null, cam = null;
     const cancel = () => { timers.forEach(clearTimeout); timers = []; if (ring) { ring.remove(); ring = null; } };
     const onUi = (e) => { const t = e.originalEvent && e.originalEvent.target; return !!(t && t.closest && t.closest('.maplibregl-marker, .maplibregl-popup')); };
     map.on('touchstart', (e) => {
@@ -3563,6 +3563,7 @@ export class Planner {
         cancel();
         if (navigator.vibrate) navigator.vibrate(10);
         this.noClickUntil = Date.now() + 700;
+        cam = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
         this.openSpotCard(ll, { pt, touch: true });
         held = this.cards.current;
       };
@@ -3589,7 +3590,17 @@ export class Planner {
       // all, so no card, and its click goes through (#293)
       if (held && e.originalEvent.timeStamp - t0 < HOLD) {
         if (this.cards.current === held) this.cards.close();
-        this.noClickUntil = 0;
+        // the card may have moved the map to make room: put it back, and replay the tap once the map has drawn again, since
+        // the click that follows would be judged by what it drew moved, not by what's under the finger (the browser's own
+        // click is held off meanwhile)
+        map.jumpTo(cam);
+        this.noClickUntil = Date.now() + 1500;
+        const at = p0, ev = e.originalEvent;
+        map.once('render', () => {
+          this.noClickUntil = 0;
+          map.fire('click', { point: at, lngLat: map.unproject(at), originalEvent: ev });
+          this.noClickUntil = Date.now() + 400; // (the browser's own click may still come: on what the tap just put there, the new point's marker)
+        });
       } else if (held) {
         // no click as the finger lifts, however long it was held: it would land on the card, moved under the finger
         e.originalEvent.preventDefault();

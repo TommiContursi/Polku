@@ -10220,6 +10220,9 @@ SC_HELP = """(() => {
   const open = p.cards.open.bind(p.cards), close = p.cards.close.bind(p.cards);
   p.cards.open = (c, o) => { log.push(`open ${c.kind}`); return open(c, o); };
   p.cards.close = (o) => { if (p.cards.current) log.push(`close ${p.cards.current.kind} (${(new Error().stack.split('\\n')[2] || '').trim().replace(/^at /, '').replace(/ \\(.*/, '')})`); return close(o); };
+  const panBy = m.panBy.bind(m), jumpTo = m.jumpTo.bind(m);
+  m.panBy = (o, ...a) => { log.push(`pan ${Math.round(o[0])},${Math.round(o[1])}`); return panBy(o, ...a); };
+  m.jumpTo = (o, ...a) => { log.push('jump'); return jumpTo(o, ...a); };
   window.sc = {
     log: () => log.splice(0).slice(-6).join(', ') || 'none',
     // the planner open and drawing, no route, the map at the place and still
@@ -10242,6 +10245,26 @@ SC_HELP = """(() => {
       return null;
     },
     at: (ll, opts) => clear(ll, opts),
+    // the map at a share of its width and height, if it's free there
+    spotAt(fx, fy, opts) { const r = R(); return clear(m.unproject([r.width * fx, r.height * fy]).toArray(), opts); },
+    // a way under the screen at a share of its height (a tap there shows its card with the planner put away), clear of the places
+    wayAt(fy) {
+      const r = R();
+      for (let fx = 0.15; fx < 0.8; fx += 0.03) for (const dy of [0, 0.02, -0.02, 0.04, -0.04]) {
+        const q = [r.width * fx, r.height * (fy + dy)], box = [[q[0] - 14, q[1] - 14], [q[0] + 14, q[1] + 14]];
+        if (!m.queryRenderedFeatures(box, { layers: ['path-ground', 'track-ground', 'cycleway-ground', 'path-osm-ground'].filter((id) => m.getLayer(id)) }).length) continue;
+        const s = clear(m.unproject(q).toArray(), { line: 0 });
+        if (s) return s;
+      }
+      return null;
+    },
+    // the map and the card at rest: the map not moving and the pill (if any) in the same place twice, two frames apart
+    calm: async () => {
+      const at = () => { const b = document.querySelector('.card-pill'); return b ? JSON.stringify(b.getBoundingClientRect()) : ''; };
+      let a = at(), same = 0;
+      for (let k = 0; k < 120 && same < 3; k++) { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); await wait(60); const b = at(); same = b === a && !m.isMoving() ? same + 1 : 0; a = b; }
+      return same >= 3;
+    },
     // the map at rest (a point just added may still ease it), and the page drawing its frames on time again
     still: async () => {
       for (let k = 0; k < 50 && m.isMoving(); k++) await wait(100);
@@ -10251,15 +10274,18 @@ SC_HELP = """(() => {
     },
     // a place's icon drawn on the map, in sight and clear of the planner, once the tiles have it (8 s at most): { x, y, name }
     async place() {
+      let why = [];
       for (let k = 0; k < 40; k++) {
         const r = R(), f = free();
+        why = [];
         for (const x of m.queryRenderedFeatures({ layers: ['poi-outdoor', 'lipas-point', 'poi-minor'].filter((id) => m.getLayer(id)) })) {
-          const q = m.project(x.geometry.coordinates), sx = r.left + q.x, sy = r.top + q.y;
-          if (sx > 40 && sx < innerWidth - 90 && sy > f.top && sy < f.bottom && document.elementFromPoint(sx, sy) === m.getCanvas()) return { x: Math.round(sx), y: Math.round(sy), name: x.properties.name || x.properties.class };
+          const q = m.project(x.geometry.coordinates), sx = r.left + q.x, sy = r.top + q.y, el = document.elementFromPoint(sx, sy);
+          if (sx > 40 && sx < innerWidth - 90 && sy > f.top && sy < f.bottom + 20 && el === m.getCanvas()) return { x: Math.round(sx), y: Math.round(sy), name: x.properties.name || x.properties.class };
+          why.push(`${Math.round(sx)},${Math.round(sy)} in ${Math.round(f.top)}–${Math.round(f.bottom)} under ${el && (el.id || String(el.className.baseVal ?? el.className))}`);
         }
         await wait(200);
       }
-      return null;
+      return { why: why.length ? why.join('; ') : `none drawn at ${m.getCenter().toArray().map((v) => v.toFixed(4))} z${m.getZoom().toFixed(1)}` };
     },
     // a spot beside it, 40 to 70 px away, on a way, with no place near: a tap there adds a point
     beside(pl) {
@@ -10440,6 +10466,7 @@ def spot_card(chrome):
             hold(pg, s, 0.65)
             c = st(pg)
             pill = pg.js("document.querySelector('.card-pill')?.textContent.trim()")
+            pg.js('sc.calm()')
             over = pg.js(PILL_OVER)
             if over:
                 fails.append(f'{name}: held {what}: {over} over the pill')
@@ -10528,10 +10555,10 @@ def spot_card(chrome):
             fails.append(f"{name}: held with the planner put away: {c['kind'] or 'no'} card ({c['place']}; the cards: {pg.js('sc.log()')})")
         pg.js('polku.planner.cards.close(); true')
         # a place's icon while drawing: its card, no point; the way beside it: a point
-        pg.js('sc.fresh([23.8167, 61.5084], 15)')  # (a shelter in OpenFreeMap's tiles, a LIPAS campfire site)
+        pg.js('sc.fresh([23.8167, 61.5076], 15)')  # (a shelter in OpenFreeMap's tiles, a LIPAS campfire site: a little above the middle, clear of a tall start)
         pl = pg.js('sc.place()')
-        if not pl:
-            fails.append(f'{name}: no place on the map to tap (OpenFreeMap’s tiles)')
+        if not pl or 'why' in pl:
+            fails.append(f"{name}: no place on the map to tap (OpenFreeMap's tiles): {pl and pl['why']}")
         else:
             press(pg, pl, f'{name}: a place', True)
             c = st(pg)
@@ -10541,6 +10568,22 @@ def spot_card(chrome):
             press(pg, pg.js(f'sc.beside({json.dumps(pl)})'), f'{name}: beside the place', True)
             if st(pg)['n'] != 1:
                 fails.append(f"{name}: a tap beside {pl['name']}: {st(pg)['n']} points, not 1")
+        # a quick tap on a busy page with the planner put away, near the top (#293): a tap, so the card of the tapped spot, though
+        # the hold's timer had opened its card first and moved the map to make room; once, whole on the screen
+        pg.js("polku.planner.cards.close(); polku.planner.setActive(false); polku.map.jumpTo({ center: [23.8193, 61.5135], zoom: 15 }); new Promise((r) => setTimeout(() => r(true), 1800))")
+        s = pg.js('sc.wayAt(0.2)')
+        if not s:
+            fails.append(f'{name}: no way near the top to tap')
+        else:
+            pg.js("polku.planner.cards.close(); sc.log(); true")
+            pg.quick_tap(s['x'], s['y'], ms=50, after='sc.untilCard()')
+            time.sleep(1.2)
+            pg.js('sc.calm()')
+            r = pg.js("(() => { const c = polku.planner.cards.current, e = polku.planner.cards.box, b = e && e.getBoundingClientRect(); return { kind: c && c.kind, key: c && c.key, box: b && [b.top, b.bottom] }; })()")
+            d = r['key'] and max(abs(r['key'][0] - s['ll'][0]), abs(r['key'][1] - s['ll'][1]))
+            if r['kind'] != 'spot' or d is None or d > 2e-4 or not r['box'] or r['box'][0] < 0 or r['box'][1] > 844:
+                fails.append(f"{name}: a quick tap near the top with the planner put away: {r['kind'] or 'no'} card at {r['key']} (the tap's {s['ll']}), its box {r['box']}; the cards: {pg.js('sc.log()')}")
+            pg.js('polku.planner.cards.close(); true')
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     except Exception as e:
         fails.append(f"{name}: raised {type(e).__name__}: {str(e).splitlines()[0][:120]}, after {' / '.join(trail[-4:])}")
@@ -10980,10 +11023,12 @@ def spot_card_foot(chrome):
         try:
             pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#15/61.514/23.818')
             pg.js(RC_ROUTER)
+            pg.js(SC_HELP)
             pg.js(f"({RC_ROUTE})({json.dumps({'mode': 'line', 'pts': [[23.8, 61.512], [23.815, 61.5155], [23.83, 61.513]]})})", timeout=60000)
             for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true })"),
                              ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
                 pg.js(f"{js}; new Promise((r) => setTimeout(() => r(true), 1500))")
+                pg.js('sc.calm()')
                 over = pg.js(PILL_OVER)
                 if over:
                     fails.append(f'{name}: {what}: {over} over the pill')
