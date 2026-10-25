@@ -204,7 +204,8 @@ conversation again
   is still unknown. "Fixes #65" for each issue it fixes in full, and the
   issues it found; no closing word ("fixes", "closed"…) before any other
   number, since merging closes it (#383 shut #233). A phase's parts refer
-  to the phase issue; the last part fixes it.
+  to the phase issue; the last part fixes it. No attribution lines
+  (`Co-Authored-By`, session links) in commits or PR bodies.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
 - **Screenshots** of a change people see, before and after, on the
