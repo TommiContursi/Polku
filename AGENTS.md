@@ -54,26 +54,36 @@ November 2026").
   user's latest choice and the plan's order on `main`, however recent the
   Hand-over. A review, an audit or a proposal decides nothing until the user
   chooses it (#352). When unsure, ask.
-- **Claim it first:** a comment on the issue with your branch, saying which
-  agent you are (Claude or Codex: all post as the user's GitHub account).
-  A phase is claimed on its phase issue. Take over only when a
+- **Claim the work package first:** comment on its primary issue with the
+  branch, agent (Claude, Codex or another) and all included issue numbers.
+  Add a short pointer on each other included issue, so parallel agents see
+  the claim. A phase is claimed on its phase issue. Take over only when a
   claim is released or the user says its session has stopped, never because
   it's old: continue from its last Hand-over and pushed branch, and say so
-  on the issue.
+  on the primary issue.
 - **What you notice but don't do now** is filed (see "Bugs and findings"),
   and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it.
-  Small fixes go into the month's Fixes milestone, each in a Fix PR of its
-  own, never mixed into a phase; ideas wait in Someday.
+  Small fixes outside a phase go into the month's Fixes milestone. Bundle
+  closely related fixes into one Fix PR when they share a UI surface,
+  behavior or root cause and can be reviewed and verified together. Do not
+  bundle unrelated work just to reduce PRs, or silently expand a phase.
+  Approved fixes within a phase's scope can ship in its PR. Ideas wait in
+  Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
-- **One session, one issue** (or one PR of a phase). A session carries its
-  PR through to ready, across as many checkpoints as it takes: a token
-  count never stops it mid-part. Start a new session (or Codex thread) from
-  the Hand-over when the next issue begins, when a part is done and the
-  context is past about 300k tokens, when the session reaches its usage
-  limit, or when its context has been compacted and it starts losing track
-  (repeating work, forgetting a decision). Write the Hand-over first.
+- **One coherent work package, one PR; not one issue per session.** Within
+  the user's chosen scope, group related issues when solving them together
+  reduces duplicated context, code changes or tests. Before coding, list
+  the included issues, shared outcome and checks on the primary issue or PR.
+  Keep each issue traceable and close it with its own `Fixes #N` only when
+  fully resolved. Use sub-issues for genuine parts of a larger task, not just
+  to batch fixes. Keep unrelated or independently risky changes separate.
+  A session may complete more than one package/PR when context permits, but
+  use a separate branch for each. A PR may span several sessions: start a
+  fresh one from the Hand-over when usage limits or degraded context demand
+  it (for example, after compaction or around 300k tokens), not merely
+  because the next issue in the package begins. Write the Hand-over first.
 - **Sessions side by side,** as many as the user starts: each has a claim
   and a branch of its own, and leaves alone the files another open PR
   changes. When one reaches its usage limit, the next continues from its
@@ -83,7 +93,7 @@ November 2026").
   **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
   sessions or PRs). `needs-owner` labels what waits on the user.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
-  commit, push (a draft PR at the first push), and comment on the claimed
+  commit, push (a draft PR at the first push), and comment on the primary claimed
   issue, headed "Hand-over", in 6–8 short lines after the three above, no
   prose: who you are and whether the claim is released; branch, commit and
   PR; done; verified, with the exact commands and the commit they ran on;
@@ -217,8 +227,10 @@ conversation again
   number, since merging closes it (#383 shut #233). A phase's parts refer
   to the phase issue; the last part fixes it. No attribution lines
   (`Co-Authored-By`, session links) in commits or PR bodies.
-- **Milestone:** the PR goes into its issue's milestone. An issue left open in
-  a phase's milestone is moved on, with a reason, before the milestone closes.
+- **Milestone:** the PR goes into its issue's milestone. Bundled fixes normally
+  belong to the same milestone; ask before combining work across milestones.
+  An issue left open in a phase's milestone is moved on, with a reason,
+  before the milestone closes.
 - **Screenshots** of a change people see, before and after, on the
   `pr-screenshots` branch (DEVELOPING, "Running it"). No images in `main`.
 - **In the same PR:**
