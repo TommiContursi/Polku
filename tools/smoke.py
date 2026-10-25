@@ -14,6 +14,7 @@ Open-Meteo, cached for an hour. Exits 1 if anything fails.
 import json
 import math
 import os
+import re
 import sys
 import time
 
@@ -10660,6 +10661,200 @@ def crosshair(chrome):
     return not fails
 
 
+# What's here in levels, and Not right? (25d part 6a): a spot's and a place's card say a little, What's here the rest, your
+# sport's details of the way first and a missing one said so; All OpenStreetMap details asks Overpass once a card (the
+# answer fills the facts too, a failure leaves the button, an answer after the card closed changes nothing); Copy puts the
+# coordinates on the clipboard; Not right? is OpenStreetMap's note at the spot, or its editor for a way with an id; with
+# the planner put away a path's card is the same card and a ship still opens its own. A recorded tile (Tykkikallio), a
+# mocked Overpass. No routing.
+FA_HELP = """(() => {
+  const p = polku.planner, m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const asked = [], real = window.fetch.bind(window);
+  // Overpass, answered by window.fa.answer (a function of the query: JSON, or a number for an error status), after
+  // window.fa.hold when it's a promise
+  window.fa = { asked, answer: () => 503, hold: null };
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/overpass/.test(url)) return real(input, init);
+    const q = init && init.body ? new URLSearchParams(init.body).get('data') : '';
+    if (!asked.includes(q)) asked.push(q);
+    if (fa.hold) await fa.hold;
+    const a = fa.answer(q);
+    return typeof a === 'number' ? new Response('', { status: a }) : new Response(JSON.stringify(a));
+  };
+  const el = () => document.querySelector('.pl-way.card');
+  const text = () => (el() ? el().textContent : '');
+  const row = (label) => [...(el() || document).querySelectorAll('.row')].find((b) => b.getClientRects().length && b.querySelector('b') && b.querySelector('b').textContent === label);
+  const facts = () => [...(el() || document).querySelectorAll('.insp-row')].map((r) => [r.firstChild.textContent, r.querySelector('b').textContent]);
+  const heads = () => [...(el() || document).querySelectorAll('.menu-h')].map((h) => h.textContent);
+  // a way of the recorded tile at the spot of one of its vertices, where the spot's card finds it as its way: with a
+  // difficulty (mtb_scale) or without
+  const hits = (ll) => { const q = m.project(ll); return m.queryRenderedFeatures([[q.x - 7, q.y - 7], [q.x + 7, q.y + 7]], { layers: ['path-osm-ground', 'path-ground', 'track-ground'].filter((id) => m.getLayer(id)) }); };
+  window.faWay = (graded) => {
+    for (const f of m.queryRenderedFeatures({ layers: ['path-osm-ground'] })) {
+      if (!!f.properties.mtb_scale !== graded) continue;
+      for (const c of f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates.flat()) {
+        const q = m.project(c), R = m.getCanvas().getBoundingClientRect();
+        if (q.x < 80 || q.x > R.width - 120 || q.y < 140 || q.y > R.height - 80) continue;
+        const near = hits(c);
+        if (near.length && near.every((x) => !!x.properties.mtb_scale === graded)) return { ll: c, id: f.properties.osm || null };
+      }
+    }
+    return null;
+  };
+  Object.assign(window.fa, { el, text, row, facts, heads, wait,
+    state: () => ({ kind: p.cards.current ? p.cards.current.kind : null, text: text(), facts: facts(), heads: heads(), asked: asked.length, osm: !!row('All OpenStreetMap details') }) });
+  return true;
+})()"""
+
+
+def facts(chrome):
+    fails = []
+    name = '1440x900'
+    pg = chrome.page(1440, 900, False)
+    fa = lambda js: pg.js(f'fa.{js}')
+    st = lambda: pg.js('fa.state()')
+    press = lambda label: pg.js(f"(() => {{ const r = fa.row({json.dumps(label)}); if (r) r.click(); return !!r; }})()")
+    open_spot = lambda ll: (pg.js(f"polku.planner.openSpotCard({json.dumps(ll)}); true"), time.sleep(0.5))
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#16/62.2289/25.7652')
+        pg.js(SEED_TRAILS)
+        pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16.5 }); new Promise((ok) => polku.map.once('idle', () => ok(true)))")
+        pg.js(FA_HELP)
+        pg.js("polku.planner.setActive(false); true")
+        # ---- MTB, a way with no mtb:scale: its difficulty says it isn't mapped; your sport's group first
+        w = pg.js('faWay(false)')
+        if not w:
+            fails.append('no way without a difficulty in the recorded tile')
+        else:
+            open_spot(w['ll'])
+            s = st()
+            if s['kind'] != 'spot' or "What’s here" not in pg.js("[...document.querySelectorAll('.pl-way.card .row b')].map((b) => b.textContent)"):
+                fails.append(f"a way's spot card: {s['kind']} card, no What’s here")
+            press('What’s here')
+            time.sleep(0.3)
+            s = st()
+            f = dict(s['facts'])
+            if s['heads'][:1] != ['For MTB'] or f.get('Difficulty') != '? not mapped':
+                fails.append(f"MTB, a way with no difficulty: groups {s['heads']}, Difficulty “{f.get('Difficulty')}” (For MTB first, ? not mapped)")
+            if not {'Height', 'Coordinates'} <= set(f):
+                fails.append(f"What's here has no Height and Coordinates: {list(f)}")
+            # Hike: the trail grade first, the MTB difficulty further down
+            pg.js("polku.set({ activity: 'hike' }); new Promise((r) => setTimeout(r, 600))")
+            pg.js('polku.planner.cards.close(); true')
+            open_spot(w['ll'])
+            press('What’s here')
+            time.sleep(0.3)
+            h = st()['heads']
+            if h[:2] != ['For hiking', 'For MTB']:
+                fails.append(f"Hike: groups {h} (For hiking first, For MTB after)")
+            pg.js("polku.set({ activity: 'mtb' }); polku.planner.cards.close(); new Promise((r) => setTimeout(r, 600))")
+            # ---- All OpenStreetMap details: one Overpass request, its tags in the card, a second press asks nothing
+            way = {'type': 'way', 'id': 123456789, 'tags': {'highway': 'path', 'surface': 'dirt', 'mtb:scale': '1', 'check_date': '2024-06-12'},
+                   'geometry': [{'lat': 62.2289, 'lon': 25.7650}, {'lat': 62.2290, 'lon': 25.7655}]}
+            pg.js(f"fa.answer = () => ({json.dumps({'elements': [way]})}); fa.asked.length = 0; true")
+            open_spot(w['ll'])
+            press('What’s here')
+            press('All OpenStreetMap details')
+            time.sleep(1.5)
+            s = st()
+            if len(pg.js('fa.asked')) != 1 or 'way 123456789' not in s['text'] or 'Last checked' not in s['heads'] or s['osm']:
+                fails.append(f"All OpenStreetMap details: {len(pg.js('fa.asked'))} requests, “way 123456789” {'in' if 'way 123456789' in s['text'] else 'not in'} the card, Last checked {'shown' if 'Last checked' in s['heads'] else 'missing'}, its button {'still there' if s['osm'] else 'gone'}")
+            pg.js("polku.planner.osmOnCard(polku.planner.cards.current, polku.planner.cards.current.key); true")
+            time.sleep(0.5)
+            if len(pg.js('fa.asked')) != 1:
+                fails.append(f"a second press asked Overpass again ({len(pg.js('fa.asked'))} requests)")
+            # Not right? for a way with an id: its editor; and the note at the spot
+            pg.js('polku.planner.cards.back(); true')
+            time.sleep(0.3)
+            pg.js("[...document.querySelectorAll('.pl-way.card .btn')].find((b) => b.textContent.trim() === 'Not right?')?.click(); true")
+            time.sleep(0.4)
+            links = pg.js("[...document.querySelectorAll('.pl-way.card a')].map((a) => a.getAttribute('href'))")
+            # (the way's own id, as the tile has it)
+            if not any(re.match(r'https://www\.openstreetmap\.org/note/new#map=19/62\.\d+/25\.\d+$', x) for x in links) or not any(re.match(r'https://www\.openstreetmap\.org/edit\?way=\d+$', x) for x in links):
+                fails.append(f'Not right? for a way with an id: {links}')
+            pg.js('polku.planner.cards.close(); true')
+            # ---- a failure says so and keeps the button; an answer after the card closed changes nothing
+            pg.js("fa.answer = () => 503; fa.asked.length = 0; true")
+            open_spot(w['ll'])
+            press('What’s here')
+            press('All OpenStreetMap details')
+            time.sleep(1.5)
+            s = st()
+            if 'OpenStreetMap didn’t answer' not in s['text'] or not s['osm']:
+                fails.append(f"a failed answer: “{s['text'][-80:]}”, the button {'still there' if s['osm'] else 'gone'}")
+            pg.js('polku.planner.cards.close(); true')
+            pg.js(f"fa.answer = () => ({json.dumps({'elements': [way]})}); fa.hold = new Promise((r) => {{ fa.release = r; }}); true")
+            open_spot(w['ll'])
+            press('What’s here')
+            press('All OpenStreetMap details')
+            pg.js('polku.planner.cards.close(); fa.release(); true')
+            time.sleep(1.0)
+            if st()['kind'] or pg.js('document.querySelector(".pl-way.card")'):
+                fails.append('an answer after the card closed opened or changed a card')
+            pg.js('fa.hold = null; true')
+        # ---- Copy: the clipboard reads the spot's coordinates; Not right? with no way: the note only
+        pg.js("window.copied = []; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { copied.push(t); } }, configurable: true }); true")
+        open_spot([23.76, 61.5025])
+        press('What’s here')
+        time.sleep(0.3)
+        pg.js("[...document.querySelectorAll('.pl-way.card .btn')].find((b) => b.textContent.trim() === 'Copy')?.click(); true")
+        time.sleep(0.4)
+        if pg.js('copied') != ['61.50250, 23.76000']:
+            fails.append(f"Copy: the clipboard reads {pg.js('copied')}")
+        pg.js('polku.planner.cards.back(); true')
+        time.sleep(0.3)
+        pg.js("[...document.querySelectorAll('.pl-way.card .btn')].find((b) => b.textContent.trim() === 'Not right?')?.click(); true")
+        time.sleep(0.4)
+        links = pg.js("[...document.querySelectorAll('.pl-way.card a')].map((a) => a.getAttribute('href'))")
+        if links != ['https://www.openstreetmap.org/note/new#map=19/61.502500/23.760000']:
+            fails.append(f'Not right? at a spot with no way: {links}')
+        pg.js('polku.planner.cards.close(); true')
+        # ---- a toilet: its fee and opening hours once OpenStreetMap's tags are in; no wheelchair tag says so
+        toilet = {'type': 'node', 'id': 42, 'lat': 61.5025, 'lon': 23.76, 'tags': {'amenity': 'toilets', 'fee': 'no', 'opening_hours': '24/7'}}
+        pg.js(f"fa.answer = () => ({json.dumps({'elements': [toilet]})}); fa.asked.length = 0; true")
+        pg.js("polku.planner.openPlaceCard({ layer: { id: 'poi-minor' }, properties: { class: 'toilets', name: 'Kaupin vessa' }, geometry: { type: 'Point', coordinates: [23.76, 61.5025] } }, [23.76, 61.5025]); true")
+        time.sleep(0.5)
+        press('What’s here')
+        press('All OpenStreetMap details')
+        time.sleep(1.5)
+        f = dict(pg.js('fa.facts()'))
+        if f.get('Fee') != 'Free' or f.get('Open') != 'All the time' or f.get('Wheelchair access') != '? not mapped':
+            fails.append(f"a toilet's What's here: Fee “{f.get('Fee')}”, Open “{f.get('Open')}”, Wheelchair access “{f.get('Wheelchair access')}”")
+        pg.js('polku.planner.cards.close(); true')
+        # ---- the planner put away: a path's tap is the card with What's here; a ship still opens its own card
+        w = pg.js('faWay(true)')
+        if w:
+            q = pg.js(f"(() => {{ const q = polku.map.project({json.dumps(w['ll'])}); return [q.x, q.y]; }})()")
+            pg.js(f"polku.map.fire('click', {{ point: {{ x: {q[0]}, y: {q[1]} }}, lngLat: polku.map.unproject([{q[0]}, {q[1]}]), originalEvent: new MouseEvent('click') }}); true")
+            time.sleep(0.8)
+            s = st()
+            if s['kind'] != 'spot' or s['asked'] != 0 or 'S1' not in s['text'] and 'difficulty' not in s['text']:
+                fails.append(f"a click on a path with the planner put away: {s['kind'] or 'no'} card, {s['asked']} requests")
+            pg.js('polku.planner.cards.close(); true')
+        pg.js("polku.set({ activity: 'paddle' }); new Promise((r) => setTimeout(r, 800))")
+        pg.js("""(() => { window.shipOpened = null; polku.safety.openShip = (mmsi) => { window.shipOpened = mmsi; };
+          polku.map.jumpTo({ center: [24.95, 60.15], zoom: 10 });
+          polku.map.getSource('sfShips').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { mmsi: 123456789, name: 'Test', moving: true, sog: 8, group: 'Cargo', age: 1, kind: 'ship' }, geometry: { type: 'Point', coordinates: [24.95, 60.15] } }] });
+          return true; })()""")
+        time.sleep(1.5)
+        r = pg.js("""(() => { const q = polku.map.project([24.95, 60.15]); const f = polku.map.queryRenderedFeatures([[q.x - 10, q.y - 10], [q.x + 10, q.y + 10]], { layers: ['sf-ships'].filter((id) => polku.map.getLayer(id)) });
+          if (!f.length) return 'no ship drawn';
+          polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') });
+          return 'clicked'; })()""")
+        time.sleep(0.6)
+        if r == 'clicked' and (pg.js('window.shipOpened') != 123456789 or st()['kind']):
+            fails.append(f"a click on a ship: opened {pg.js('window.shipOpened')}, {st()['kind'] or 'no'} card (its own card, not the planner's)")
+        elif r != 'clicked':
+            fails.append(f'the ship: {r}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    except Exception as e:
+        fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} What's here in levels (25d part 6a): a way's facts for your sport, a missing one said so, All OpenStreetMap details once a card, Copy, Not right?, a place's facts, a path's card with the planner put away, a ship's own card" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Route's list in sections, and Reorder (25d's part 4, Journey D): a section where the sport changes, at a stop and at a
 # night (a day each); point rows for the points you see, stretch rows between them with their shaping points folded;
 # a tap opens the point's or the stretch's card, and Back finds the list as it was; Reorder with a grip, Earlier and
@@ -12050,6 +12245,7 @@ GROUPS = [
     ('routecard', [route_card], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, Add a point here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('spotcard', [spot_card], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
+    ('facts', [facts], 'What\'s here in levels and Not right? (25d part 6a): a way\'s facts for your sport first and a missing one said so, All OpenStreetMap details once a card (a failure, a late answer), Copy, Not right?, a place\'s facts, a path\'s card with the planner put away, a ship\'s own card (a recorded tile, mocked Overpass)'),
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
