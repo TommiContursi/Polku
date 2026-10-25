@@ -6304,7 +6304,7 @@ export function parseShared(params) {
     const carry = (params.get('cg') || '').split(',').filter((x) => /^\d+$/.test(x)).map(Number);
     const avoid = decodeAvoid(params.get('av'));
     const alts = (params.get('al') || '').split(',').map((x) => x.split(':').map(Number)).filter(([i, k]) => Number.isInteger(i) && Number.isInteger(k) && k >= 1 && k <= 3);
-    const ice = (params.get('ic') || '').split(',').map(Number).filter((i) => Number.isInteger(i) && i >= 0);
+    const ice = (params.get('ic') || '').split(',').filter((x) => /^\d+$/.test(x)).map(Number);
     return { points, modes: (params.get('m') || '').split(''), activity: params.get('a'), style: params.get('p') || '', legStyles: params.get('ps') || '', lipas, sports, changes, stops, carry, nogos: avoid.nogos, nogosLost: avoid.lost, alts, ice };
   } catch {
     return null;

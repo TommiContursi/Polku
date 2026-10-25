@@ -1086,6 +1086,8 @@ STOPS = """(async () => {
   p.clear();
   p.restore(P.parseShared(q));
   await wait(300);
+  // a link without ic= puts no leg on the ice (#479)
+  if (q.has('ic') || p.legs.some((l) => l.ice) || warns().some((t) => /^On the ice/.test(t))) errs.push(`from the link: ice on legs ${p.legs.map((l, i) => (l.ice ? i : '')).join('')} (ic=${q.get('ic')})`);
   const back = `${JSON.stringify(p.stopAt(1))} ${JSON.stringify(p.stopAt(2))} ${p.carryAt(1)}`;
   if (back !== '{"min":45} {"on":480} true') errs.push(`from the link: ${back}`);
   p.save();
