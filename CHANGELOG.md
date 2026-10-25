@@ -28,6 +28,10 @@ On a route in more than one sport, such as a bike ride with a paddled leg, **How
 
 When brouter.de asked Polku to retry later while another route was still on its way, that route's answer could cancel the wait, and the next legs went straight back to brouter.de. Asking again too soon can block your whole connection to it for minutes. Now Polku keeps waiting as long as it was asked to.
 
+### Fixed: a link with a stay of more than 30 nights ([#506](https://github.com/TommiContursi/Polku/issues/506))
+
+A link changed by hand to stay more than 30 nights at a point opened with a stay of one night. Now it stays 30, the most a stay can be, as a break longer than a day is a day.
+
 ## 2026-10-24
 
 ### Fixed: shared routes aren't put on the ice ([#479](https://github.com/TommiContursi/Polku/issues/479))
