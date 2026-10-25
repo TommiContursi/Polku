@@ -10577,7 +10577,7 @@ def spot_card(chrome):
         finger = lambda kind, pts: pg.c.send('Input.dispatchTouchEvent', {'type': kind, 'touchPoints': pts, 'timestamp': time.time()}, pg.s)
         one = {'x': t['x'], 'y': t['y'], 'id': 1}
         finger('touchStart', [one])
-        time.sleep(0.4)
+        time.sleep(0.34)  # (armed at 0.3 s, and well before Edit this stretch's 0.5 s, which a slow page reaches soon after)
         finger('touchStart', [one, {'x': t['x'] + 90, 'y': t['y'] + 60, 'id': 2}])
         for k in range(1, 6):
             time.sleep(0.03)
