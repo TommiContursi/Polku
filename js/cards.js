@@ -208,7 +208,7 @@ export function leaveBlock(pl) {
   const put = () => {
     const at = pl.leaveAt, now = Date.now() / 1000, passed = at == null && pl.leavePassed, far = at != null && at - now >= LONG_HOURS * 3600;
     row.put({ line: at == null ? 'Sets the times and the weather along the route' : pl.dayOf(at, true), val: at == null ? 'Now' : pl.timeOf(at),
-      value: local(at ?? Math.ceil(now / 900) * 900), min: local(now), set: at != null });
+      value: local(at ?? Math.ceil(now / 900) * 900), min: local(Math.floor(now / 900) * 900), set: at != null }); // (min on the clock's quarter hour: the field's steps count from it)
     note.hidden = !far && !passed;
     note.classList.toggle('info', !!passed);
     note.replaceChildren(h('span', { 'aria-hidden': 'true', html: icon(far ? 'cloudSun' : 'info', 16) }),

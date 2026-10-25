@@ -17,7 +17,7 @@ import { sunTimes, darkness } from './sun.js';
 import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS } from './weather.js';
+import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { keepInView, wayNear, OSM_KEYS } from './inspect.js';
@@ -207,6 +207,7 @@ export class Planner {
     this.colorOnMap = store.get('colorOnMap', false);
     this.leaveAt = null; // when you leave (#364): epoch seconds, or null to leave now
     this.leavePassed = null; // a planned departure that had passed when its route was opened (said under Leave until a new one)
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.expireLeave(); });
     this.nogos = []; // places to avoid: [{ll, r, label}]
     this.gen = 0;
     this.selected = null;
@@ -2557,6 +2558,7 @@ export class Planner {
     if (!fromMap && this.app.onStartChange) this.app.onStartChange(this.leaveHour());
     this.drawMarks(); // the clock times move immediately while the new forecast loads
     if (this.analysis) { this.renderSpeed(); this.renderTabTimes(); this.renderWaypoints(); this.renderTake(); } // (the list's times and the share link's line too)
+    this.expireLeave();
     clearTimeout(this.windTimer);
     // playback moves an hour a second; let it settle a little before re-fetching (and keeping it with the route)
     this.windTimer = setTimeout(() => {
@@ -3792,6 +3794,20 @@ export class Planner {
     this.leavePassed = sec && !ahead ? sec : null;
     this.renderLeave();
     if (this.app.onStartChange) this.app.onStartChange(this.leaveHour());
+    this.expireLeave();
+  }
+
+  // A planned departure that passes while Polku stays open leaves now, saying when it was planned for, as a reload
+  // says: on a timer, when the page is shown again, and before a link or a file is made (the review of #475)
+  expireLeave() {
+    clearTimeout(this.leaveTimer);
+    if (this.leaveAt == null) return;
+    const left = this.leaveAt - Date.now() / 1000;
+    if (left > 0) { this.leaveTimer = setTimeout(() => this.expireLeave(), Math.min(left * 1000 + 500, 864e5)); return; }
+    const was = this.leaveAt;
+    this.setLeave(null);
+    this.leavePassed = was;
+    this.renderLeave();
   }
 
   // the route's style for each sport but the map's (whose is `style`, as before), as codes
@@ -3862,6 +3878,7 @@ export class Planner {
   }
 
   shareUrl() {
+    this.expireLeave();
     const u = new URL(location.href);
     u.search = '';
     u.hash = ''; // the map's view isn't shared (the link fits the route): while it follows you, it's where you are
@@ -3913,6 +3930,7 @@ export class Planner {
   }
 
   exportGpx() {
+    this.expireLeave();
     const a = this.analysis;
     if (!a) { toast('Nothing to export yet'); return; }
     const name = this.routeName || `Polku ${ACTIVITIES[this.mainSport()].label} ${new Date().toISOString().slice(0, 10)}`;
@@ -5412,6 +5430,7 @@ export class Planner {
       for (let k = 0, next = step / 2; k < n; k++) {
         if (a.along[k] < next) continue;
         next += step;
+        if (!forecastKnown(a.wind, k)) break; // (none past the forecast's reach, #465)
         const c = windClass(a.wind.head[k], a.wind.speed[k]);
         arrows.push({ type: 'Feature', properties: { rot: (a.wind.dir[k] + 180) % 360, color: c.color, size: Math.min(1.3, 0.6 + a.wind.speed[k] / 12) }, geometry: { type: 'Point', coordinates: a.pts[k] } });
       }
@@ -5620,14 +5639,16 @@ export class Planner {
       stat('Hardest climb', hardest ? `<i class="dot" style="background:${gradeColor(hardest.avg)}"></i>${Math.round(hardest.avg)} %` : '—', hardest ? `${Math.round(hardest.gain)} m over ${fmtDist(hardest.len)}` : a.terrain && a.terrain.all ? 'no terrain' : '');
     } else if (paddle) {
       const w = a.wind;
-      if (w) {
+      // (as far as the forecast reaches, #465)
+      const reach = w ? (w.beyond >= 0 ? w.beyond : a.pts.length) : 0, upTo = w && w.beyond > 0 ? ` · to km ${(a.along[w.beyond] / 1000).toFixed(1)}` : '';
+      if (reach > 1) {
         let head = 0, maxS = 0, maxG = 0;
-        for (let i = 1; i < a.pts.length; i++) {
+        for (let i = 1; i < reach; i++) {
           if (w.head[i] > 1) head += a.along[i] - a.along[i - 1];
           maxS = Math.max(maxS, w.speed[i]); maxG = Math.max(maxG, w.gust[i]);
         }
-        stat('Headwind', `${Math.round((head / a.total) * 100)} %`, 'of the distance');
-        stat('Strongest wind', `${maxS.toFixed(0)} m/s`, `gusts ${maxG.toFixed(0)}`);
+        stat('Headwind', `${Math.round((head / (a.along[reach - 1] || 1)) * 100)} %`, `of the distance${upTo}`);
+        stat('Strongest wind', `${maxS.toFixed(0)} m/s`, `gusts ${maxG.toFixed(0)}${upTo}`);
       }
       if (a.up >= 5) stat('Carry ascent', `${Math.round(a.up)} m`);
     } else {

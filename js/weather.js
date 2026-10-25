@@ -43,6 +43,9 @@ export function latticePoint({ L, i, j }) {
 }
 // keyed in level-0 units, so the same point has one key at every level ('q/': the long forecast)
 const keyOf = (c, long = false) => `${long ? 'q' : 'p'}/${c.i * 2 ** c.L}/${c.j * 2 ** c.L}`;
+// whether the forecast reaches sample i of `windAlong()`'s answer: past `beyond` its values are its last hour's (#465)
+export const forecastKnown = (w, i) => !!w && !(w.beyond >= 0 && i >= w.beyond);
+
 // Multi-day trips need more than 49 hours: 10 days (Open-Meteo has 16) for the
 // route's points only, cached apart from the map's cells.
 export const LONG_HOURS = 240;

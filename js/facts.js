@@ -3,6 +3,7 @@
 import { fmtDist, fmtDuration } from './geo.js';
 import { OFFROAD_BIKE, isWater, ACTIVITIES } from './config.js';
 import { surfaceClass } from './analysis.js';
+import { forecastKnown } from './weather.js';
 
 // ------------------------------------------------------------------ the route's facts, by sport (1b)
 // The three numbers a tap on the route shows, your sport's first: when you'd be there, how steep, and what the sport
@@ -40,8 +41,9 @@ export function headline(a, i, sport, { when = null, clock = String } = {}) {
     if (key === 'mtb') { const m = mtbGrade(tags); return m ? { key, ...m, label: 'difficulty' } : miss(key, 'difficulty not mapped'); }
     if (key === 'sac') { const m = sacGrade(tags); return m ? { key, ...m, label: 'trail grade' } : miss(key, 'trail grade not mapped'); }
     if (key === 'surface') return a.surf[i] && a.surf[i] !== 'unknown' ? { key, value: cap(plain(a.surf[i])), label: 'surface' } : miss(key, 'surface not mapped');
-    if (key === 'wind') return w ? { key, value: `${Math.round(w.speed[i])} m/s`, label: 'wind' } : miss(key, 'wind not known yet');
-    return w ? { key, value: `${Math.round(w.temp[i])} °C`, label: 'temperature' } : miss(key, 'temperature not known yet');
+    // (past the forecast's reach its values are its last hour's: none yet, #465)
+    if (key === 'wind') return forecastKnown(w, i) ? { key, value: `${Math.round(w.speed[i])} m/s`, label: 'wind' } : miss(key, w ? 'wind: no forecast yet' : 'wind not known yet');
+    return forecastKnown(w, i) ? { key, value: `${Math.round(w.temp[i])} °C`, label: 'temperature' } : miss(key, w ? 'temperature: no forecast yet' : 'temperature not known yet');
   });
 }
 

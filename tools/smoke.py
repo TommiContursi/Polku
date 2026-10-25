@@ -10902,6 +10902,22 @@ LV_REST = """(async () => {
   p.restoreSnapshot(snap);
   await wait(400);
   if (p.startSec() !== tomorrow) errs.push(`a route saved offline leaves ${new Date(p.startSec() * 1000)}`);
+  // a departure that passes while Polku stays open leaves now, saying so, as a reload says (the review of #475): a share
+  // link made then carries no date, and the page shown again leaves now
+  const realNow = Date.now, soon = Math.ceil(Date.now() / 60000) * 60 + 1800;
+  try {
+    for (const how of ['share', 'shown']) {
+      LV.set('go', LV.iso(soon));
+      await wait(200);
+      Date.now = () => realNow() + 75 * 60000;
+      const lv = how === 'share' ? new URL(p.shareUrl()).searchParams.get('lv') : (document.dispatchEvent(new Event('visibilitychange')), null);
+      await wait(200);
+      const r = LV.read('go'), want = `Planned for ${when(soon)}. That’s passed, so it leaves now: pick a new time above.`;
+      if (lv != null || p.leaveAt != null || Math.abs(p.startSec() - Date.now() / 1000) > 60 || r.val !== 'Now' || r.note !== want) errs.push(`a departure passed while open (${how}): lv=${lv}, leaveAt ${p.leaveAt}, starts ${Math.round(p.startSec() - Date.now() / 1000)} s from now, Go says ${r.val}, “${r.note}”`);
+      Date.now = realNow;
+    }
+  } finally { Date.now = realNow; }
+  LV.set('go', LV.iso(tomorrow));
   // two nights at via 2: Stay with the stepper, and Go on at by the phone's clock, its line the day
   p.setStop(2, { on: 480 });
   for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await wait(200);
@@ -11002,6 +11018,10 @@ def leave(chrome):
             fails.append(f"{name}: the start's card's Leave row: {r}")
             pg.close()
             return
+        # its quarter hours on the clock's: min on a quarter hour, so the next whole hour is a step, never a mismatch (the review of #475)
+        q = pg.js("(() => { const i = LV.row('card').querySelector('input'), d = new Date(); d.setHours(d.getHours() + 1, 0, 0, 0); i.value = LV.iso(d / 1000); const bad = i.validity.stepMismatch; i.value = ''; return { min: i.min, bad }; })()")
+        if int(q['min'][-2:]) % 15 or q['bad']:
+            fails.append(f"{name}: Leave's quarter hours: min {q['min']}, the next whole hour a step mismatch: {q['bad']}")
         press(pg, show(pg, 'card'), f'{name}: Leave', touch)
         if not phone:
             enter(pg)
@@ -11417,6 +11437,25 @@ PF_JS = """(async () => {
   a.activity = 'paddle'; p.mainSport = () => 'paddle'; a.attr.forEach((x) => { if (x) delete x.sport; }); set(fill(5));
   const line = p.els.facts ? [...p.els.facts.querySelectorAll('.kf-b')].map((b) => b.textContent.trim()) : [];
   if (line.length !== 1 || !line[0].startsWith('Wind up to 8 m/s, gusts 12 · headwind ') || !line[0].endsWith(` · no forecast yet from km ${km}`)) errs.push(`paddling's key fact: ${line.join(' / ')}`);
+  // nothing shows the repeated last hour as known (the review of #475): past the cut 20 m/s, −3 °C and snow, within it calm
+  const after = (v, w) => Float32Array.from({ length: n }, (_, i) => (i >= k ? v : w));
+  Object.assign(a.wind, { speed: after(20, 5), gust: after(26, 7), temp: after(-3, 5), precip: after(2, 0), dir: after(270, 90), head: after(0, 3) });
+  p.renderAnalysis();
+  const C2 = await import(location.origin + '/js/facts.js');
+  const card = C2.headline(a, n - 2, 'paddle', {}).filter((x) => x.key !== 'clock').map((x) => `${x.value} ${x.label}${x.missing ? ' (missing)' : ''}`);
+  if (card.some((t) => /20 m\/s|−3|-3/.test(t)) || card.some((t) => !/missing/.test(t))) errs.push(`the route's card past the forecast: ${card.join(' / ')}`);
+  const tip = C.routeReadout ? C.routeReadout(a, n - 2) : null, tipText = tip ? [tip.title, ...tip.lines].join(' ') : '';
+  if (!tip || /20 m\/s|−3|-3 °C|snow|Crosswind|Calm/.test(tipText) || !/No forecast yet/.test(tipText)) errs.push(`the route's tip past the forecast: ${tipText}`);
+  const head = [...p.els.stats.querySelectorAll('.stat')].map((x) => x.textContent);
+  if (head.some((t) => /20 m\/s|gusts 26/.test(t)) || !head.some((t) => /^Headwind100 %/.test(t))) errs.push(`the paddle's header past the forecast: ${head.join(' / ')}`);
+  p.showMode('wind');
+  const arrows = polku.map.getSource('routeWind')?.serialize().data.features || [];
+  const at = (c) => a.pts.findIndex((q) => Math.abs(q[0] - c[0]) < 1e-9 && Math.abs(q[1] - c[1]) < 1e-9), past = arrows.filter((f) => at(f.geometry.coordinates) >= k).length;
+  if (!arrows.length || past) errs.push(`the map's wind arrows: ${arrows.length}, past the cut ${past}`);
+  p.chart.setHover && p.chart.setHover(n - 2, true);
+  const ptip = document.getElementById('profile-tip');
+  if (ptip && !ptip.hidden && (/20\.0 m\/s|−3|-3 °C/.test(ptip.textContent) || !/No forecast yet/.test(ptip.textContent))) errs.push(`the profile's tip past the forecast: ${ptip.textContent}`);
+  p.showMode('grade');
   // a start past the forecast: none anywhere, said once for the trip
   a.wind.beyond = 0; p.renderAnalysis();
   const far = p.headsUp().not.find((x) => x.key === 'beyond');

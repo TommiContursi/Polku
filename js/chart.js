@@ -4,7 +4,7 @@
 
 import { gradeColor, DIFF_COLORS, SURFACE_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, OFFROAD_BIKE, isWater, SPORT_COLORS, ACTIVITIES } from './config.js';
 import { fmtDist, fmtDuration, compass } from './geo.js';
-import { windClass, tempBand, rainBand } from './weather.js';
+import { windClass, tempBand, rainBand, forecastKnown } from './weather.js';
 import { escapeHtml, icon } from './ui.js';
 import { fromCss } from './palette.js';
 
@@ -56,7 +56,7 @@ export const NO_TERRAIN = '#d6dde3';
 // past the forecast's last hour (#465): its values are that hour's, so the weather's colours go grey there
 export const NO_FORECAST = NO_TERRAIN;
 const WEATHER_MODES = new Set(['wind', 'temp', 'rain']);
-const pastForecast = (a, i) => !!a.wind && a.wind.beyond >= 0 && i >= a.wind.beyond;
+const pastForecast = (a, i) => !!a.wind && !forecastKnown(a.wind, i);
 
 export function colorAt(a, i, mode) {
   if ((mode === 'grade' || mode === 'uphill') && noTerrain(a, i)) return NO_TERRAIN; // no grade to colour by
@@ -97,7 +97,8 @@ export function routeReadout(a, i, road = '') {
     if (t.smoothness) trail.push(`smoothness ${escapeHtml(String(t.smoothness).replace(/_/g, ' '))}`);
   }
   const when = [];
-  if (a.wind) {
+  if (pastForecast(a, i)) when.push('No forecast yet');
+  else if (a.wind) {
     const w = a.wind;
     const c = windClass(w.head[i], w.speed[i]);
     when.push(`${dot(c.color)}${c.label}${c.key === 'calm' ? '' : ` ${w.speed[i].toFixed(0)} m/s`}`, `${w.temp[i].toFixed(0)} °C`,
@@ -301,7 +302,8 @@ export class ProfileChart {
       const road = this.nameAt ? this.nameAt(i) : '';
       rows.push(`${road ? `<b>${escapeHtml(road)}</b> · ` : ''}${a.way[i]} · ${a.surf[i].replace('_', ' ')}`);
     }
-    if (a.wind) {
+    if (pastForecast(a, i)) rows.push('No forecast yet');
+    else if (a.wind) {
       const w = a.wind;
       const c = windClass(w.head[i], w.speed[i]);
       rows.push(`${c.label} · ${w.speed[i].toFixed(1)} m/s from ${compass(w.dir[i])}${w.gust[i] > w.speed[i] + 2 ? `, gusts ${w.gust[i].toFixed(0)}` : ''}`);
