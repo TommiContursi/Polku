@@ -10902,6 +10902,17 @@ LV_REST = """(async () => {
   p.restoreSnapshot(snap);
   await wait(400);
   if (p.startSec() !== tomorrow) errs.push(`a route saved offline leaves ${new Date(p.startSec() * 1000)}`);
+  // Undo after opening one brings back the route you had leaving when it did, and Redo the opened one's (#506)
+  LV.set('go', LV.iso(far));
+  await wait(300);
+  p.restoreSnapshot(snap);
+  await wait(400);
+  p.undo();
+  await wait(400);
+  if (p.startSec() !== far || LV.read('go').val !== LV.clock(far)) errs.push(`Undo after opening a route: leaves ${new Date(p.startSec() * 1000)}, Go says ${LV.read('go').val}`);
+  p.redo();
+  await wait(400);
+  if (p.startSec() !== tomorrow) errs.push(`Redo after that: leaves ${new Date(p.startSec() * 1000)}`);
   // a departure that passes while Polku stays open leaves now, saying so, as a reload says (the review of #475): a share
   // link made then carries no date, and the page shown again leaves now
   const realNow = Date.now, soon = Math.ceil(Date.now() / 60000) * 60 + 1800;

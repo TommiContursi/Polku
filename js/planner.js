@@ -304,6 +304,7 @@ export class Planner {
     this.routeName = s.routeName || '';
     if (s.styles) this.styles = { ...s.styles };
     if (s.read) this.readKeys = new Set(s.read);
+    if ('leave' in s) this.openLeave(s.leave);
     this.matchMode();
     this.update();
   }
@@ -485,9 +486,10 @@ export class Planner {
     const el = this.markers[i] && this.markers[i].getElement();
     if (el) { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
   }
-  // (across another route put in place: each comes back with what was read on it, freshRead())
-  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.future.push(t); this.restoreSnap(s); } }
-  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.past.push(t); this.restoreSnap(s); } }
+  // (across another route put in place: each comes back with what was read on it, freshRead(); across one opened, with
+  // when it leaves, restoreSnapshot())
+  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.future.push(t); this.restoreSnap(s); } }
+  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.past.push(t); this.restoreSnap(s); } }
 
   addPoint(ll) {
     this.commit();
@@ -3849,7 +3851,7 @@ export class Planner {
 
   restoreSnapshot(s) {
     const had = this.points.length > 0;
-    if (had) this.commit(); // (Undo brings back the route you had)
+    if (had) { this.commit(); this.past[this.past.length - 1].leave = this.leaveAt ?? this.leavePassed; } // (Undo brings back the route you had, leaving when it did)
     this.points = s.points;
     this.freshRead(had);
     this.nameAll(s.names);
