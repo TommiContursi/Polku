@@ -3287,7 +3287,7 @@ export class Planner {
       armed = true;
       map.dragPan.disable();
       if (navigator.vibrate) navigator.vibrate(10);
-      still = setTimeout(() => { map.dragPan.enable(); edit(); }, STILL - HOLD);
+      still = setTimeout(() => { still = setTimeout(() => { map.dragPan.enable(); edit(); }, 60); }, STILL - HOLD); // (a moment more for a late lift, as the hold's)
     };
     const move = (ev) => {
       if (!dot) {
@@ -3546,7 +3546,7 @@ export class Planner {
   // A ring fills under the finger from 0.15 s; let go sooner and it's a tap. A move or a second finger is the map's own.
   // While drawing, a hold on the line is the line's own (onLinePress()), and a right-click there is Edit this stretch.
   bindHold() {
-    const map = this.map, HOLD = 500, RING = 150;
+    const map = this.map, HOLD = 500, RING = 150, LATE = 60;
     let timers = [], p0 = null, lastTouch = 0, t0 = 0, held = null, ring = null, open = null, cam = null;
     const cancel = () => { timers.forEach(clearTimeout); timers = []; if (ring) { ring.remove(); ring = null; } };
     const onUi = (e) => { const t = e.originalEvent && e.originalEvent.target; return !!(t && t.closest && t.closest('.maplibregl-marker, .maplibregl-popup')); };
@@ -3569,7 +3569,9 @@ export class Planner {
       };
       timers = [
         setTimeout(() => { ring = h('div', { class: 'hold-ring', style: `left:${R.left + pt.x}px;top:${R.top + pt.y}px`, 'aria-hidden': 'true' }); document.body.append(ring); }, RING),
-        setTimeout(open, HOLD),
+        // (on a busy page this timer can run before the touchend the finger's lift sent has been handled: it waits a moment
+        // for it, and a lift that comes cancels it, so no card is opened and moved for a tap)
+        setTimeout(() => timers.push(setTimeout(open, LATE)), HOLD),
       ];
     });
     map.on('touchmove', (e) => {
@@ -4210,8 +4212,8 @@ export class Planner {
     this.els.warnings = h('div', { class: 'list warnings' });
     this.els.wind = h('div', { class: 'list wind' });
     this.els.hint = h('p', { class: 'hint' }, matchMedia('(pointer: coarse)').matches
-      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for its card · hold the map to see what’s there'
-      : 'Click the map to add points · drag a point or the line to reshape · click a point or the line for its card · right-click the map to see what’s there');
+      ? 'Tap the map to add points · drag a point, or hold the line and drag, to reshape · tap a point or the line for options · hold the map for more'
+      : 'Click the map to add points · drag a point or the line to reshape · click a point or the line for options · right-click the map for more');
     this.els.dock = h('div', { class: 'dock' }); // (the timeline stays over the map while planning: #225)
 
     // The profile, one, under the header: always in sight (but at the summary size), with the
