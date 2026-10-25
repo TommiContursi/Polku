@@ -9908,6 +9908,10 @@ def route_card(chrome):
             spot = pg.js(f"(() => {{ const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project({json.dumps(t['ll'])}); return {{ x: R.left + q.x, y: R.top + q.y }}; }})()")
             if not s['pill'] or not s['pin'] or not 0 <= spot['y'] - s['pill']['bottom'] <= 60 or spot['y'] >= s['card']['top']:
                 fails.append(f"{name}: the pill {s['pill']} and the pin {s['pin']}, for the spot at {round(spot['y'])} px over a card from {round(s['card']['top'])} px")
+            # nothing over the pill: its middle is the pill's, not the map's scale or its credits (they took its tap)
+            over = pg.js("(() => { const b = document.querySelector('.card-pill'), r = b && b.getBoundingClientRect(), e = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e && !b.contains(e) ? (e.id || String(e.className.baseVal ?? e.className)) : ''; })()")
+            if over:
+                fails.append(f'{name}: {over} is over the pill')
             if s['labels'][:2] != ['there at', 'uphill'] and s['labels'][:2] != ['there at', 'downhill'] or s['miss'] != ['difficulty not mapped'] or s['values'][2:] != ['?']:
                 fails.append(f"{name}: a straight line's numbers: {s['values']} {s['labels']}, dashed {s['miss']}")
             if s['rows'] != ['This stretch', 'What’s here', 'Edit this stretch', 'On the profile', 'Avoid this spot', 'The whole route']:
@@ -10427,6 +10431,9 @@ def spot_card(chrome):
             hold(pg, s, 0.65)
             c = st(pg)
             pill = pg.js("document.querySelector('.card-pill')?.textContent.trim()")
+            over = pg.js("(() => { const b = document.querySelector('.card-pill'), r = b && b.getBoundingClientRect(), e = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e && !b.contains(e) ? (e.id || String(e.className.baseVal ?? e.className)) : ''; })()")
+            if over:
+                fails.append(f'{name}: held {what}: {over} is over the pill')
             if c['kind'] != 'spot' or c['labels'][:1] != ['from your route'] or pill != 'Add to my route' or c['rows'][:1] != ['What’s here'] or not {'Start here', 'End here', 'Avoid this spot'} <= set(c['rows']):
                 fails.append(f"{name}: held {what}: {c['kind']} card, numbers {c['labels']}, pill “{pill}”, rows {c['rows']}")
                 pg.js('polku.planner.cards.close(); true')
