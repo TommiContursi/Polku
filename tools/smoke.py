@@ -10061,7 +10061,12 @@ def route_card(chrome):
         pg.js("polku.planner.setActive(false); true")
         time.sleep(0.6)
         press(pg, on_line(pg, 1, 0.3), f'{name}: the line, the planner put away', touch)
-        s = st(pg)
+        # (a tap a busy page took for a hold is replayed once the map has gone idle, then the planner opens: waited for)
+        for _ in range(20):
+            s = st(pg)
+            if s['kind'] == 'route':
+                break
+            time.sleep(0.25)
         if not s['active'] or s['kind'] != 'route' or s['n'] != s0['n']:
             fails.append(f"{name}: a tap on the route with the planner put away: planner {'open' if s['active'] else 'away'}, {s['kind']} card, {s['n'] - s0['n']} points added")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
