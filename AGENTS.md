@@ -40,14 +40,10 @@ and priorities. A milestone groups the issues that ship together, not their
 order. A phase issue holds its scope, decisions and Hand-overs, and
 `docs/plans/` its design.
 
-**Names:** a phase's milestone and its issue are named by its goal in plain
-words ("Calmer planner"), and its PRs by that and what people get ("Calmer
-planner: the map's cards"). In chat and Hand-overs, name work by its number
-and those words ("#475, the route's card"), never by codes of your own
-(25d, Journey D, part 4). A milestone is open only while its work is being
-built: an idea not started is its issue on the Project. Fixes go in this
-month's milestone ("Fixes: November 2026"); what's open at the month's end
-moves to the next one.
+**Names** are plain words: "Calmer planner" for a phase's milestone and
+issue, "Calmer planner: the map's cards" for its PRs, and "#475, the route's
+card" in chat, never codes like 25d. A milestone is only for work being built;
+fixes go in the month's ("Fixes: November 2026").
 
 - **Start from the task the user picked, or the latest Hand-over** on the
   phase issue; otherwise from the Project's Now column, top first (Later and
@@ -65,7 +61,7 @@ moves to the next one.
 - **What you notice but don't do now** goes in your Hand-over (see "Bugs
   and findings"), and the work goes on: only a blocker or a serious problem
   for people using Polku (safety, reliability, accessibility) interrupts it.
-  Small fixes go into this month's Fixes milestone, each in a Fix PR of its
+  Small fixes go into the month's Fixes milestone, each in a Fix PR of its
   own, never mixed into a phase; ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
@@ -81,15 +77,12 @@ moves to the next one.
   changes. When one reaches its usage limit, the next continues from its
   last Hand-over. No "status" session. A subagent can do a wide search, but
   not verify the work or run the suite: those stay with the session.
-- **Say what the user has to do.** Every reply to the user and every
-  Hand-over starts with three lines. **Needs you:** the one thing only the
-  user can do (merge #n, pick A or B, try it on a phone), or "nothing, the
-  work goes on". **Next:** what happens next. **Left:** how many sessions or
-  PRs, never hours. While an issue or PR waits on the user, it has the
-  `needs-owner` label, taken off once the user has answered.
+- **Lead with what the user must do:** every reply and Hand-over opens with
+  **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
+  sessions or PRs). `needs-owner` labels what waits on the user.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
-  issue, headed "Hand-over": the three lines above, then 6–8 short lines, no
+  issue, headed "Hand-over", in 6–8 short lines after the three above, no
   prose: who you are and whether the claim is released; branch, commit and
   PR; done; verified, with the exact commands and the commit they ran on;
   not verified; decisions, with links; next step, from the plan's order;
