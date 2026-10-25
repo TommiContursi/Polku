@@ -69,8 +69,10 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   (repeating work, forgetting a decision). Write the Hand-over first.
 - **One coding session at a time,** unless the user starts more: Claude A,
   Claude B and Codex take turns as each reaches its usage limit, from the
-  last Hand-over. No "status" session, and no subagents to verify or run the
-  suite.
+  last Hand-over: more at once ran into the limits
+  ([retro](docs/retros/2026-10-15-16.md)). When the user starts more, each
+  has a branch of its own and leaves alone the files another open PR
+  changes. No "status" session, and no subagents to verify or run the suite.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
   issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
