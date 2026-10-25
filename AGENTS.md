@@ -37,8 +37,10 @@ is real.
 **GitHub holds what to do; the repo holds how things work.** The
 [Project](https://github.com/users/TommiContursi/projects/1) holds the order
 and priorities. A milestone groups the issues that ship together, not their
-order. A phase issue holds its scope, decisions and Hand-overs, and
-`docs/plans/` its design.
+order. A phase issue holds its scope, decisions, **current delivery order**
+and Hand-overs, and `docs/plans/` its design. For an active phase, read its
+current delivery order first; old Hand-overs describe past work, not a newer
+owner decision.
 
 **Names** are plain words: "Calmer planner" for a phase's milestone and
 issue, "Calmer planner: the map's cards" for its PRs, and "#475, the route's
@@ -64,16 +66,20 @@ November 2026").
   and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it.
   Small fixes go into the month's Fixes milestone, each in a Fix PR of its
-  own, never mixed into a phase; ideas wait in Someday.
+  own, never mixed into a phase; ideas wait in Someday. When a fix blocks a
+  phase's completion, link it in the phase issue's order rather than moving
+  it solely to make its progress visible.
 - **The user decides** a larger investigation and any change of scope or
   order.
-- **One session, one issue** (or one PR of a phase). A session carries its
-  PR through to ready, across as many checkpoints as it takes: a token
-  count never stops it mid-part. Start a new session (or Codex thread) from
-  the Hand-over when the next issue begins, when a part is done and the
-  context is past about 300k tokens, when the session reaches its usage
-  limit, or when its context has been compacted and it starts losing track
-  (repeating work, forgetting a decision). Write the Hand-over first.
+- **One session, one bounded work package.** It may cover several small,
+  closely related issues when the owner has grouped them in the phase issue
+  or picked them together. Preserve each issue's claim, checks and closure;
+  keep unrelated fixes in their own focused PRs, delivered sequentially in
+  the same session where practical. Do not start a backlog audit to invent
+  bundles. Carry the current PR through to ready across checkpoints. Start
+  a fresh session when the next package is different, usage runs out, context
+  passes about 300k tokens after a completed part, or compaction causes lost
+  decisions or repeated work. Write a Hand-over first.
 - **Sessions side by side,** as many as the user starts: each has a claim
   and a branch of its own, and leaves alone the files another open PR
   changes. When one reaches its usage limit, the next continues from its
