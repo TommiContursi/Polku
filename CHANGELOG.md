@@ -28,6 +28,10 @@ On a route in more than one sport, such as a bike ride with a paddled leg, **How
 
 When brouter.de asked Polku to retry later while another route was still on its way, that route's answer could cancel the wait, and the next legs went straight back to brouter.de. Asking again too soon can block your whole connection to it for minutes. Now Polku keeps waiting as long as it was asked to.
 
+### Fixed: Undo after opening a route brings back when you left ([#506](https://github.com/TommiContursi/Polku/issues/506))
+
+After opening a saved route or one saved offline in place of the route you had, **Undo** brought the route back but kept the opened route's time to leave. Now it leaves when it did before, and **Redo** brings back the opened route's time.
+
 ## 2026-10-24
 
 ### Fixed: shared routes aren't put on the ice ([#479](https://github.com/TommiContursi/Polku/issues/479))
