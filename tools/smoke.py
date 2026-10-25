@@ -10534,7 +10534,12 @@ def spot_card(chrome):
                 fails.append(f'{name}: held 20 m from the line, the pill says “{pill}”')
             pg.js('sc.calm()')
             pill_at = at(pg, "document.querySelector('.card-pill')")
+            n_before = pg.js('polku.planner.points.length')
             press(pg, pill_at, f'{name}: Add a point here', True)
+            for _ in range(12):  # (the tap's answer, on a slow page a moment after)
+                if pg.js('polku.planner.points.length') != n_before:
+                    break
+                time.sleep(0.25)
             r = pg.js(f"""(() => {{ const p = polku.planner, q = p.points[1], a = {json.dumps(A)}, b = {json.dumps(B)}, k = Math.cos(q[1] * Math.PI / 180) * 111320;
               const x = (u) => [(u[0] - a[0]) * k, (u[1] - a[1]) * 111320], Bq = x(b), Q = x(q), f = Math.max(0, Math.min(1, (Q[0] * Bq[0] + Q[1] * Bq[1]) / (Bq[0] ** 2 + Bq[1] ** 2)));
               return {{ n: p.points.length, past: p.past.length, calls: (window.routerCalls || []).length, line: Math.hypot(Q[0] - f * Bq[0], Q[1] - f * Bq[1]) }}; }})()""")
@@ -10585,7 +10590,9 @@ def spot_card(chrome):
         finger('touchEnd', [])
         time.sleep(0.8)
         r = pg.js("({ n: polku.planner.points.length, past: polku.planner.past.length, edit: !!polku.planner.edit, pan: polku.map.dragPan.isEnabled(), kind: polku.planner.cards.current && polku.planner.cards.current.kind })")
-        if r['n'] != n or r['past'] != past or r['edit'] or not r['pan'] or r['kind']:
+        # (on a slow page Edit this stretch's timer can run before the second finger is handled: a hold after all, its card open,
+        # and nothing to split; it's a point added that this is about)
+        if r['n'] != n or r['past'] != past or r['edit'] or not r['pan'] or r['kind'] not in (None, 'edit'):
             fails.append(f"{name}: a second finger on the held line: {r['n'] - n} points added, {r['past'] - past} steps in Undo, editing {r['edit']}, the map's pan {'on' if r['pan'] else 'off'}, {r['kind'] or 'no'} card")
         pg.js('polku.planner.cards.close(); true')
         t = on_line(pg, 0, 0.3)
