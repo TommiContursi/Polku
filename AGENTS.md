@@ -12,16 +12,15 @@ what it must stay: PRODUCT.md keeps the commitments to people apart from it.
 [polku.si](https://polku.si) is GitHub Pages from `main`, so **merging a PR
 publishes it.**
 
-Read what the task needs (this file is already loaded), and more only when
-that leaves a question open:
+Read only what the assigned task needs (this file is already loaded):
 
-- **A fix:** its issue, the module's part of
-  [docs/DEVELOPING.md](docs/DEVELOPING.md), and its smoke group.
-- **A phase, or anything people see:** also the latest Hand-over and what
-  came after it, the part's sections of its plan in
-  [docs/plans/](docs/plans/), relevant issues in its milestone, and
-  [PRODUCT.md](PRODUCT.md): who Polku is for, its principles and its
-  accessibility baseline.
+- **A fix:** the assigned issue(s), the relevant section of
+  [docs/DEVELOPING.md](docs/DEVELOPING.md), and its smoke group. Search that
+  long document for the relevant section; don't load it all.
+- **A phase or visible change:** its assigned plan section in
+  [docs/plans/](docs/plans/), latest relevant Hand-over, and applicable
+  sections of [PRODUCT.md](PRODUCT.md). Don't audit the milestone or read
+  unrelated issues before implementation.
 - [README.md](README.md), [docs/ROADMAP.md](docs/ROADMAP.md) and
   [CHANGELOG.md](CHANGELOG.md) only when the task changes them. Older
   Hand-overs, reviews and threads are for looking things up: starting is not
@@ -47,18 +46,17 @@ and PRs is always a link to it, so it never reads as part of a sentence. A
 milestone is only for work being built; fixes go in the month's ("Fixes:
 November 2026").
 
-- **Start from the task the user picked, or the latest Hand-over** on the
-  phase issue; otherwise from the Project's Now column, top first (Later and
-  Someday need the user's OK). Trust a Hand-over for what ran on which
-  commit, and check it against its PR and branch. What comes next is the
-  user's latest choice and the plan's order on `main`, however recent the
-  Hand-over. A review, an audit or a proposal decides nothing until the user
-  chooses it (#352). When unsure, ask.
-- **Claim the work:** on the primary issue, name the agent, branch and all
-  included issues. Link that claim from the others so parallel agents see it.
-  Claim a phase on its phase issue. Take over only when the claim is
-  released or the user says its session stopped, using the last Hand-over
-  and pushed branch.
+- **Start from the assigned issue, PR or Hand-over, not a backlog search.**
+  Its approved plan and linked issues define the work. Only if no task was
+  assigned, use the Project's Now column, top first (Later and Someday need
+  the user's OK). Check a Hand-over against its PR and branch. The user's
+  latest approved choice and the plan's order on `main` take precedence
+  over reviews, audits and proposals (#352).
+- **Claim the work:** on its primary issue, name the agent, branch and
+  included issues. Link the included issues from the PR; don't duplicate
+  status reports across them. Claim a phase on its phase issue. Take over
+  only when released or the user says its session stopped, using the last
+  Hand-over and pushed branch.
 - **What you notice but don't do now** is filed (see "Bugs and findings"),
   and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it.
@@ -67,14 +65,14 @@ November 2026").
   approved scope can ship in that phase's PR. Ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
-- **Batch related work, not sessions.** When choosing approved work, check
-  nearby issues in Project Now or the current milestone, not the whole
-  backlog. Group fixes with a shared cause, screen, code or tests into one
-  focused PR when that saves repeated work without making review or testing
-  harder. State the included issue numbers and shared outcome before coding.
-  Keep each issue open until fully fixed; use `Fixes #N` for each in the PR.
-  Don't create parent issues or sub-issues merely for batching, or change
-  scope or priority without the user's approval.
+- **Plan batches before implementation.** The user or a dedicated planning
+  task groups approved issues into focused work packages in GitHub. When
+  planning, bundle related fixes sharing a cause, screen, code or tests if
+  this saves work without making review or testing harder. The implementing
+  agent works from the assigned package: no Project sweep or regrouping.
+  List its issue numbers in the PR; use `Fixes #N` for each fully resolved
+  issue. Don't invent parent or sub-issues just to batch fixes, or expand
+  approved scope when discovering more work.
 - **Use sessions while their context helps.** One session may resolve several
   issues or produce successive PRs (a separate branch for each); one PR may
   span sessions. Finish at a useful checkpoint and write a Hand-over before
@@ -89,9 +87,10 @@ November 2026").
   **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
   sessions or PRs). `needs-owner` labels what waits on the user.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
-  commit, push (a draft PR at the first push), and comment on the primary claimed issue, headed "Hand-over", in 6–8
-  short lines after the three above, no
-  prose: who you are and whether the claim is released; branch, commit and
+  commit, push (a draft PR at the first push), and comment on the primary
+  claimed issue, headed "Hand-over", in 6–8 short lines after the three
+  above, no prose: who you are and whether the claim is released; branch,
+  commit and
   PR; done; verified, with the exact commands and the commit they ran on;
   not verified; decisions, with links; next step, from the plan's order,
   with the model and effort it needs (below); what to watch out for;
