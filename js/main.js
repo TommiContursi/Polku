@@ -509,15 +509,23 @@ function columnFits(extra) {
   const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
   return innerHeight - sheet - extra - 12 - h >= $('.topbar').getBoundingClientRect().bottom + 8;
 }
+// Last, the key facts' line under the route's numbers steps aside (a short phone, #471's A2: Check's top keeps the facts),
+// its height remembered so it comes back only once there's room for it again.
+let factsH = 0;
 function fitColumn() {
-  const col = $('#map-ctrls');
+  const col = $('#map-ctrls'), off = document.body.classList.contains('kf-off');
   col.classList.remove('no-compass', 'no-3d');
-  if (!phoneMQ.matches) return;
+  if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); return; }
+  if (!off) factsH = planner.els.facts.offsetHeight;
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
-  const room = () => innerHeight - css('--sheet-h') - css('--wx-h') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
-  if (room()) return;
+  const back = off ? factsH : 0; // (the room the line would take back)
+  const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
+  const facts = (on) => document.body.classList.toggle('kf-off', !on);
+  if (room()) { facts(true); return; }
   if (Math.abs(map.getBearing()) < 0.5) col.classList.add('no-compass');
-  if (!room()) col.classList.add('no-3d');
+  if (room()) { facts(true); return; }
+  col.classList.add('no-3d');
+  facts(room());
 }
 new ResizeObserver(fitColumn).observe($('#map-ctrls'));
 map.on('rotateend', fitColumn);

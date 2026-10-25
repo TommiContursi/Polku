@@ -712,7 +712,8 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .kf-b:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 @media (hover: hover) { .kf-b:hover { background: var(--surface-2); } }
 @media (pointer: coarse) { .kf-b { min-height: 44px; } }
-@media (max-height: 520px) { .kf { display: none; } } /* (200 %, a phone on its side: no room under the top bar; Check's top has them) */
+@media (max-height: 520px) { .kf { display: none; } }
+body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the map's buttons need its room: fitColumn() in js/main.js) */ /* (200 %, a phone on its side: no room under the top bar; Check's top has them) */
 /* the header is one row: the route's numbers, which wrap onto lines of their own before they touch (#242), and Done */
 .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
 .sum-item { display: flex; flex-direction: column; min-width: 0; }

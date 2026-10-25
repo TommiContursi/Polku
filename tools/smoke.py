@@ -1394,7 +1394,7 @@ DETOUR = """(async () => {
   if (round.length !== 1) errs.push(`goes round: ${all.join(' / ') || 'no rows'}`);
   else {
     if (!/save about 3[23]0 m/.test(round[0])) errs.push(`the short cut's saving: ${round[0]}`);
-    if (!/start was moved 5\\d m and the finish 5\\d m off it/.test(round[0])) errs.push(`the moved points: ${round[0]}`);
+    if (!/start was moved 5\\d m and the end 5\\d m off it/.test(round[0])) errs.push(`the moved points: ${round[0]}`); // (End, never Finish: #353)
   }
   if (all.some((t) => /moved .* off a way marked private/.test(t))) errs.push('a moved-point row as well as the short cut');
   // its card draws the short cut
@@ -10077,6 +10077,19 @@ def route_card(chrome):
                 near = f and round(math.hypot(max(0, f['box']['left'] - e['x'], e['x'] - f['box']['right']), max(0, f['box']['top'] - e['y'], e['y'] - f['box']['bottom'])))
                 if s['kind'] != 'route' or not c or c['left'] < 0 or c['right'] > 1440 or c['top'] < 0 or c['bottom'] > 900 or (where == 'right edge' and c['right'] > e['x'] + 1) or (where == 'bottom' and c['bottom'] > e['y'] + 1) or not f or near > 30:
                     fails.append(f"{name}: a click on the line at the {where} ({e['x']}, {e['y']}): {s['kind']} card at {c}, its button {f}")
+                # at the window's middle height, where neither half holds the whole card (GitHub's runner clicked at 1330, 450):
+                # it stays on the screen and scrolls inside, grown by a late box too
+                if s['kind'] == 'route':
+                    g = pg.js(f"""(async () => {{ const p = polku.planner, m = polku.map, ll = {json.dumps(t['ll'])}, R = m.getCanvas().getBoundingClientRect(), wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+                      p.cards.close(); let q = m.project(ll); m.panBy([R.left + q.x - 1330, R.top + q.y - 450], {{ duration: 0 }}); await wait(300);
+                      p.openRouteCard(0, ll); await wait(600);
+                      const box = () => {{ const r = document.querySelector('.pl-way.card').closest('.maplibregl-popup-content').getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; }};
+                      const opened = box(), k = p.cards.current, b = k.build;
+                      k.build = (body) => {{ b(body); body.append(Object.assign(document.createElement('div'), {{ style: 'height: 300px' }})); }};
+                      p.cards.refresh(); await wait(300);
+                      const grown = box(); k.build = b; return {{ opened, grown }}; }})()""")
+                    if min(g['opened'][0], g['grown'][0]) < 0 or max(g['opened'][1], g['grown'][1]) > 900:
+                        fails.append(f"{name}: a card at the window's middle height: opened at {g['opened']}, grown at {g['grown']}")
                 close(pg)
                 pg.js("polku.planner.fitRoute({ animate: false }); true")
                 time.sleep(0.5)
