@@ -20,6 +20,10 @@ A tap on the route shows a card for it, Route's list is in sections, a route can
 - Route opens with **How you go** and **Your speed**, each a step of its own with **Back**. Go opens with **Leave**, when you'd be there and where the time goes, then **Your speed**. The marks on the route (distances and times) are under **Your route** in all layers while a route is drawn.
 - Past the forecast's ten days the route says so: the profile goes grey in the weather's colours with **No forecast yet** where it ends, Check's **Not checked** says from where, and the wind, the rain, the cold and the waves aren't judged there by the forecast's last hour, as they were. The time leaves the wind out there. A paddle more than two days ahead is routed by the ten-day forecast's wind.
 
+### Fixed: GPX's planned times when you leave now ([#506](https://github.com/TommiContursi/Polku/issues/506))
+
+Leaving now, **Export GPX** wrote Leave at the minute you exported and the times you'd be there from when the forecast came, so "Leave 11:32" could come before "There at 11:26". Now Leave is the moment the route's times are counted from, as on the screen.
+
 ### Fixed: How you go on a route of more than one sport
 
 On a route in more than one sport, such as a bike ride with a paddled leg, **How you go** showed only the main sport's style and said it was for the whole route. Now Route has a **How you go** for each of the route's sports, and each says which legs a change routes again.
