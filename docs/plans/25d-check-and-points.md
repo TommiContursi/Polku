@@ -62,7 +62,7 @@ The one list of what's decided, what waits for the user and what's next. The oth
 7. **Then** the rest of Phase 25's issues where "Where the other issues go" puts them, the design system's later steps (#382: the route on the map, outdoor contrast), and its second audit (#379).
 8. **Before the milestone closes, the bigger check** (planned with the user on 2026-10-24): the design system's second audit (#379) and the test as people (#365) as one pass, on what's on polku.si once 25d's PRs are merged. First an audit of the whole planner with the impeccable skill and `tools/census.py`: one style throughout (the cards' rows, headings and switches, and what's still in an older style), and at each moment (drawing, checking, setting off) the most important information first: when you leave, how long, what to read before you go. Then the newcomer and expert test in the browser pane. Its findings, checked against the approved plans first, become one plan of fixes for the user to choose from; then the retro.
 
-> **For agentic workers:** use superpowers:executing-plans for one piece at a time, inside its journey's PR. Steps use checkboxes (`- [ ]`). Where it differs from AGENTS.md, AGENTS.md wins.
+> One piece at a time, inside its journey's PR. Steps use checkboxes (`- [ ]`). Where it differs from AGENTS.md, AGENTS.md wins.
 
 **Goal:** a tap on a point, the route, a warning or a place shows one card; a long press or a right-click shows what's there and what you can do; Check sorts every Heads-up item by how serious and how sure.
 
