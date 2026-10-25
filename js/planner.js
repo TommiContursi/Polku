@@ -5307,7 +5307,9 @@ export class Planner {
       if (x.sport && isWater(x.sport)) this.wxOpen.add(this.secLit);
       this.renderWaypoints();
       this.reveal('points');
-      requestAnimationFrame(() => this.flash(this.els.points.querySelector('.sec2.lit')));
+      const lit = () => this.els.points.querySelector('.sec2.lit');
+      requestAnimationFrame(() => this.flash(lit()));
+      setTimeout(() => lit()?.scrollIntoView({ block: 'nearest' }), 400); // (in sight again once a rising sheet has its size: --t-sheet)
       return;
     }
     if (a) this.reveal('depart'); // the wind, the rain, a headwind, the weather not known: the weather along the route

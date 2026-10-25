@@ -423,7 +423,8 @@ export class CardHost {
     // as tall as the room it opens into, so it stays on the screen and scrolls inside, grown by a late answer too (a
     // card at the window's middle height has room for neither its whole height above nor below)
     const R = this.map.getCanvas().getBoundingClientRect(), y = R.top + this.map.project(this.popup.getLngLat()).y, up = (this.popup.options.anchor || '').startsWith('bottom');
-    const room = up ? y - 120 - 16 : innerHeight - (pad.bottom || 0) - 8 - y - 16;
+    const card = el && el.querySelector('.card'), chrome = card ? el.offsetHeight - card.offsetHeight : 0; // (the popup's own padding)
+    const room = (up ? y - 120 - 16 : innerHeight - (pad.bottom || 0) - 8 - y - 16) - chrome;
     if (el) el.style.setProperty('--card-max', `${Math.max(220, Math.min(innerHeight - (pad.bottom || 0) - 8 - 120 - 16, room))}px`);
     keepInView(this.map, this.popup, { left: (pad.left || 0) + 8, bottom: (pad.bottom || 0) + 8 });
   }
