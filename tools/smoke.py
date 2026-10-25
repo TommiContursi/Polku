@@ -4182,9 +4182,9 @@ QUICK_TAPS = """(() => {
   const stamp = (what) => seen.push(`${what} ${Math.round(performance.now() - t00)}`);
   p.cards.open = (c, o) => { stamp(`open ${c.kind}`); return open(c, o); };
   p.cards.close = (o) => { if (p.cards.current) stamp(`close ${p.cards.current.kind}`); return close(o); };
-  for (const k of ['touchstart', 'touchend']) m.on(k, () => stamp(k));
+  for (const k of ['touchstart', 'touchend']) m.on(k, (e) => stamp(`${k} (event ${Math.round(e.originalEvent.timeStamp)})`));
   window.qt = {
-    seen: () => seen.splice(0).slice(-8).join(', ') || 'nothing',
+    seen: () => seen.splice(0).slice(-14).join(', ') || 'nothing',
     heldMenu: () => until(() => title() === "the spot's card"),
     heldLine: () => until(() => title() === "the edit's card"),
     async empty() {
@@ -4728,7 +4728,8 @@ HEADING = """(async () => {
       const t = (k) => [new Touch({ identifier: 1, target: cv, clientX: x + dx * k, clientY: y + dy * k })];
       const ev = (type, k) => cv.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: type === 'touchend' ? [] : t(k), targetTouches: type === 'touchend' ? [] : t(k), changedTouches: t(k) }));
       ev('touchstart', 0);
-      for (let k = 1; k <= 8; k++) { await frames(1); ev('touchmove', k / 8); }
+      ev('touchmove', 0.3); // (past 10 px at once: a finger that rests half a second is a hold, the spot's card; frames are slow under load)
+      for (let k = 3; k <= 8; k++) { await frames(1); ev('touchmove', k / 8); }
       ev('touchend', 1);
     } else {
       const ev = (type, k) => cv.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x + dx * k, clientY: y + dy * k, button: 0, buttons: type === 'mouseup' ? 0 : 1 }));
@@ -11003,16 +11004,17 @@ def facts(chrome):
             if s['kind'] != 'spot' or s['asked'] != 0 or 'S1' not in s['text'] and 'difficulty' not in s['text']:
                 fails.append(f"a click on a path with the planner put away: {s['kind'] or 'no'} card, {s['asked']} requests")
             pg.js('polku.planner.cards.close(); true')
-        pg.js("polku.set({ activity: 'paddle' }); new Promise((r) => setTimeout(r, 800))")
-        pg.js("""(() => { window.shipOpened = null; const S = polku.safety; S.openShip = (mmsi) => { window.shipOpened = mmsi; };
-          // a ship of our own in the safety layer's list, the network's answer (another list) kept out
-          S.loadShips = async () => {}; S.ships = [{ type: 'Feature', properties: { mmsi: 123456789, sog: 8, cog: 0, moving: true, age: 1 }, geometry: { type: 'Point', coordinates: [24.95, 60.15] } }];
-          S.on = { ...S.on, ships: true }; polku.map.jumpTo({ center: [24.95, 60.15], zoom: 10 }); S.publish();
+        # a ship under the finger (a layer of its own named as the ships', drawn as plain circles, so it needs no icon or font and
+        # no network answer): its card is its own, not the planner's
+        pg.js("""(() => { window.shipOpened = null; polku.safety.openShip = (mmsi) => { window.shipOpened = mmsi; };
+          const m = polku.map; m.jumpTo({ center: [24.95, 60.15], zoom: 10 });
+          m.addSource('shipTest', { type: 'geojson', data: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { mmsi: 123456789 }, geometry: { type: 'Point', coordinates: [24.95, 60.15] } }] } });
+          m.addLayer({ id: 'sf-ships-test', type: 'circle', source: 'shipTest', paint: { 'circle-radius': 14, 'circle-color': '#e11' } });
           return true; })()""")
-        r = pg.js("""new Promise(async (done) => { // (the ship drawn: the layer and its icon come a moment after the source, longer on a slow machine)
+        r = pg.js("""new Promise(async (done) => {
           const q = polku.map.project([24.95, 60.15]), t0 = Date.now();
           let f = [];
-          while (!f.length && Date.now() - t0 < 15000) { await new Promise((r) => setTimeout(r, 250)); f = polku.map.queryRenderedFeatures([[q.x - 10, q.y - 10], [q.x + 10, q.y + 10]], { layers: ['sf-ships'].filter((id) => polku.map.getLayer(id)) }); }
+          while (!f.length && Date.now() - t0 < 15000) { await new Promise((r) => setTimeout(r, 250)); f = polku.map.queryRenderedFeatures([[q.x - 10, q.y - 10], [q.x + 10, q.y + 10]], { layers: ['sf-ships-test'] }); }
           if (!f.length) return done('no ship drawn');
           polku.map.fire('click', { point: q, lngLat: polku.map.unproject(q), originalEvent: new MouseEvent('click') });
           done('clicked'); })""", timeout=30000)
