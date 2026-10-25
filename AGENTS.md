@@ -54,36 +54,32 @@ November 2026").
   user's latest choice and the plan's order on `main`, however recent the
   Hand-over. A review, an audit or a proposal decides nothing until the user
   chooses it (#352). When unsure, ask.
-- **Claim the work package first:** comment on its primary issue with the
-  branch, agent (Claude, Codex or another) and all included issue numbers.
-  Add a short pointer on each other included issue, so parallel agents see
-  the claim. A phase is claimed on its phase issue. Take over only when a
-  claim is released or the user says its session has stopped, never because
-  it's old: continue from its last Hand-over and pushed branch, and say so
-  on the primary issue.
+- **Claim the work:** on the primary issue, name the agent, branch and all
+  included issues. Link that claim from the others so parallel agents see it.
+  Claim a phase on its phase issue. Take over only when the claim is
+  released or the user says its session stopped, using the last Hand-over
+  and pushed branch.
 - **What you notice but don't do now** is filed (see "Bugs and findings"),
   and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it.
-  Small fixes outside a phase go into the month's Fixes milestone. Bundle
-  closely related fixes into one Fix PR when they share a UI surface,
-  behavior or root cause and can be reviewed and verified together. Do not
-  bundle unrelated work just to reduce PRs, or silently expand a phase.
-  Approved fixes within a phase's scope can ship in its PR. Ideas wait in
-  Someday.
+  Small fixes belong in the month's Fixes milestone. Related fixes can
+  share a Fix PR; keep unrelated fixes separate. Fixes already in a phase's
+  approved scope can ship in that phase's PR. Ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
-- **One coherent work package, one PR; not one issue per session.** Within
-  the user's chosen scope, group related issues when solving them together
-  reduces duplicated context, code changes or tests. Before coding, list
-  the included issues, shared outcome and checks on the primary issue or PR.
-  Keep each issue traceable and close it with its own `Fixes #N` only when
-  fully resolved. Use sub-issues for genuine parts of a larger task, not just
-  to batch fixes. Keep unrelated or independently risky changes separate.
-  A session may complete more than one package/PR when context permits, but
-  use a separate branch for each. A PR may span several sessions: start a
-  fresh one from the Hand-over when usage limits or degraded context demand
-  it (for example, after compaction or around 300k tokens), not merely
-  because the next issue in the package begins. Write the Hand-over first.
+- **Batch related work, not sessions.** When choosing approved work, check
+  nearby issues in Project Now or the current milestone, not the whole
+  backlog. Group fixes with a shared cause, screen, code or tests into one
+  focused PR when that saves repeated work without making review or testing
+  harder. State the included issue numbers and shared outcome before coding.
+  Keep each issue open until fully fixed; use `Fixes #N` for each in the PR.
+  Don't create parent issues or sub-issues merely for batching, or change
+  scope or priority without the user's approval.
+- **Use sessions while their context helps.** One session may resolve several
+  issues or produce successive PRs (a separate branch for each); one PR may
+  span sessions. Finish at a useful checkpoint and write a Hand-over before
+  a usage limit or degraded context forces a fresh session. Do not restart
+  merely because an issue in the same work package is done.
 - **Sessions side by side,** as many as the user starts: each has a claim
   and a branch of its own, and leaves alone the files another open PR
   changes. When one reaches its usage limit, the next continues from its
@@ -93,8 +89,8 @@ November 2026").
   **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
   sessions or PRs). `needs-owner` labels what waits on the user.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
-  commit, push (a draft PR at the first push), and comment on the primary claimed
-  issue, headed "Hand-over", in 6–8 short lines after the three above, no
+  commit, push (a draft PR at the first push), and comment on the primary claimed issue, headed "Hand-over", in 6–8
+  short lines after the three above, no
   prose: who you are and whether the claim is released; branch, commit and
   PR; done; verified, with the exact commands and the commit they ran on;
   not verified; decisions, with links; next step, from the plan's order,
@@ -227,10 +223,9 @@ conversation again
   number, since merging closes it (#383 shut #233). A phase's parts refer
   to the phase issue; the last part fixes it. No attribution lines
   (`Co-Authored-By`, session links) in commits or PR bodies.
-- **Milestone:** the PR goes into its issue's milestone. Bundled fixes normally
-  belong to the same milestone; ask before combining work across milestones.
-  An issue left open in a phase's milestone is moved on, with a reason,
-  before the milestone closes.
+- **Milestone:** the PR goes into its issue's milestone. Before combining
+  different milestones, ask. Move any unfinished issue onward, with a
+  reason, before closing its milestone.
 - **Screenshots** of a change people see, before and after, on the
   `pr-screenshots` branch (DEVELOPING, "Running it"). No images in `main`.
 - **In the same PR:**
