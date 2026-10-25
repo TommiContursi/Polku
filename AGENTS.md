@@ -87,8 +87,9 @@ November 2026").
   issue, headed "Hand-over", in 6–8 short lines after the three above, no
   prose: who you are and whether the claim is released; branch, commit and
   PR; done; verified, with the exact commands and the commit they ran on;
-  not verified; decisions, with links; next step, from the plan's order;
-  what to watch out for; noticed, one line each.
+  not verified; decisions, with links; next step, from the plan's order,
+  with the model and effort it needs (below); what to watch out for;
+  noticed, one line each.
   Write one too before a turn that waits for the user, so the answer can
   start a fresh session. Never end a turn with uncommitted work: #177 lost a
   whole claim.
@@ -102,10 +103,6 @@ only when high is stuck on the same problem; never `max` as a habit.
 Mid-session, change effort, not models: a new model sends the whole
 conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
-A prompt for the next session is short: its model and effort, links to
-its issue and Hand-over, and only what those don't say. It leaves out
-AGENTS.md's rules (every session loads them), lists of skills, and what the
-session can check itself, such as whether a PR has merged.
 
 ## Engineering judgment
 
