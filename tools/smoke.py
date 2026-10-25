@@ -11378,6 +11378,17 @@ LV_REST = """(async () => {
   p.restoreSnapshot(snap);
   await wait(400);
   if (p.startSec() !== tomorrow) errs.push(`a route saved offline leaves ${new Date(p.startSec() * 1000)}`);
+  // Undo after opening one brings back the route you had leaving when it did, and Redo the opened one's (#506)
+  LV.set('go', LV.iso(far));
+  await wait(300);
+  p.restoreSnapshot(snap);
+  await wait(400);
+  p.undo();
+  await wait(400);
+  if (p.startSec() !== far || LV.read('go').val !== LV.clock(far)) errs.push(`Undo after opening a route: leaves ${new Date(p.startSec() * 1000)}, Go says ${LV.read('go').val}`);
+  p.redo();
+  await wait(400);
+  if (p.startSec() !== tomorrow) errs.push(`Redo after that: leaves ${new Date(p.startSec() * 1000)}`);
   // a departure that passes while Polku stays open leaves now, saying so, as a reload says (the review of #475): a share
   // link made then carries no date, and the page shown again leaves now
   const realNow = Date.now, soon = Math.ceil(Date.now() / 60000) * 60 + 1800;
@@ -11421,7 +11432,8 @@ LV_NIGHTS = """(async () => {
   // the link and the saved route keep the nights; one night is as before
   const q = new URL(p.shareUrl()).searchParams;
   if (q.get('st') !== '2:n0700x2') errs.push(`st=${q.get('st')}`);
-  if (JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0')) !== '[[2,{"on":480}],[3,{"on":420,"n":2}],[4,{"on":420}]]') errs.push(`st= read: ${JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0'))}`);
+  // (a stay longer than the most in a hand-made link is the most, as a break longer than a day is a day: #506)
+  if (JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0,5:n0700x31,6:2000')) !== '[[2,{"on":480}],[3,{"on":420,"n":2}],[4,{"on":420}],[5,{"on":420,"n":30}],[6,{"min":1440}]]') errs.push(`st= read: ${JSON.stringify(S.decodeStops('2:n0800,3:n0700x2,4:n0700x0,5:n0700x31,6:2000'))}`);
   const t = Date.parse('2026-10-14T20:00:00+03:00') / 1000;
   if (S.restSec({ on: 480, n: 2 }, t) - S.restSec({ on: 480 }, t) !== 86400) errs.push(`two nights rest ${S.restSec({ on: 480, n: 2 }, t)} s`);
   p.save();
@@ -11431,17 +11443,29 @@ LV_NIGHTS = """(async () => {
   if (JSON.stringify(p.stopAt(2)) !== '{"on":420,"n":2}') errs.push(`the saved route's stay: ${JSON.stringify(p.stopAt(2))}`);
   for (let k = 0; k < 40 && !(p.analysis && p.analysis.waits && p.analysis.waits.length === 1); k++) await wait(200);
   // GPX: the planned times in words in the waypoints' descriptions, nothing on the track
-  let blob = null;
-  const make = URL.createObjectURL, click = HTMLAnchorElement.prototype.click;
-  URL.createObjectURL = (b) => { blob = b; return make.call(URL, b); };
-  HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
-  p.exportGpx();
-  URL.createObjectURL = make; HTMLAnchorElement.prototype.click = click;
-  const doc = new DOMParser().parseFromString(await blob.text(), 'application/xml'), desc = [...doc.querySelectorAll('wpt')].map((x) => x.querySelector('desc')?.textContent || '');
+  const gpx = async () => {
+    let blob = null;
+    const make = URL.createObjectURL, click = HTMLAnchorElement.prototype.click;
+    URL.createObjectURL = (b) => { blob = b; return make.call(URL, b); };
+    HTMLAnchorElement.prototype.click = function () { if (!this.download) click.call(this); };
+    try { p.exportGpx(); } finally { URL.createObjectURL = make; HTMLAnchorElement.prototype.click = click; }
+    return new DOMParser().parseFromString(await blob.text(), 'application/xml');
+  };
+  const doc = await gpx(), descs = (d) => [...d.querySelectorAll('wpt')].map((x) => x.querySelector('desc')?.textContent || ''), desc = descs(doc);
   const s0 = p.startSec(), w2 = p.analysis.waits[0];
   const on = `${LV.day(w2.arrive + w2.sec)}, 07:00`;
   if (desc[0] !== `Leave ${LV.day(s0)}, ${LV.clock(s0)}` || !/^There at /.test(desc[1]) || !desc[2].startsWith('There at ') || !desc[2].endsWith(`. 2 nights, go on ${on}`) || !desc[3].startsWith(`There at ${LV.day(w2.arrive + w2.sec)}, `)) errs.push(`GPX's descriptions: ${desc.join(' / ')}`);
   if (doc.querySelectorAll('trkpt').length < 4 || doc.querySelector('trkpt time') || !doc.querySelector('metadata > time')) errs.push(`GPX's times: ${doc.querySelectorAll('trkpt time').length} on the track, ${doc.querySelectorAll('metadata > time').length} in its metadata`);
+  // leaving now, exported ten minutes after the forecast came: Leave is the moment the route is timed from, as There at's
+  // times are, so it never comes after them (#506)
+  p.setLeave(null);
+  for (let k = 0; k < 50 && !(p.analysis && p.analysis.wind && p.analysis.wind.startSec < Date.now() / 1000 + 60 && p.analysis.waits); k++) await wait(200);
+  if (!p.analysis.wind) errs.push('leaving now: no forecast came');
+  const realNow = Date.now;
+  let now;
+  try { Date.now = () => realNow() + 10 * 60000; now = descs(await gpx()); } finally { Date.now = realNow; }
+  const s1 = p.arriveAt(0);
+  if (now[0] !== `Leave ${LV.day(s1)}, ${LV.clock(s1)}` || !now[1].startsWith(`There at ${LV.clock(p.arriveAt(1))}`)) errs.push(`GPX leaving now, timed from ${LV.clock(s1)}: ${now.join(' / ')}`);
   return errs;
 })()"""
 

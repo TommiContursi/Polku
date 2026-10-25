@@ -87,8 +87,9 @@ November 2026").
   issue, headed "Hand-over", in 6–8 short lines after the three above, no
   prose: who you are and whether the claim is released; branch, commit and
   PR; done; verified, with the exact commands and the commit they ran on;
-  not verified; decisions, with links; next step, from the plan's order;
-  what to watch out for; noticed, one line each.
+  not verified; decisions, with links; next step, from the plan's order,
+  with the model and effort it needs (below); what to watch out for;
+  noticed, one line each.
   Write one too before a turn that waits for the user, so the answer can
   start a fresh session. Never end a turn with uncommitted work: #177 lost a
   whole claim.

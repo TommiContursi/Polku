@@ -308,6 +308,7 @@ export class Planner {
     this.routeName = s.routeName || '';
     if (s.styles) this.styles = { ...s.styles };
     if (s.read) this.readKeys = new Set(s.read);
+    if ('leave' in s) this.openLeave(s.leave);
     this.matchMode();
     this.update();
   }
@@ -489,9 +490,10 @@ export class Planner {
     const el = this.markers[i] && this.markers[i].getElement();
     if (el) { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
   }
-  // (across another route put in place: each comes back with what was read on it, freshRead())
-  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.future.push(t); this.restoreSnap(s); } }
-  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; this.past.push(t); this.restoreSnap(s); } }
+  // (across another route put in place: each comes back with what was read on it, freshRead(); across one opened, with
+  // when it leaves, restoreSnapshot())
+  undo() { if (this.past.length) { const s = this.past.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.future.push(t); this.restoreSnap(s); } }
+  redo() { if (this.future.length) { const s = this.future.pop(), t = this.snapshot({ sports: s.sports }); if (s.read) t.read = [...this.readKeys]; if ('leave' in s) t.leave = this.leaveAt ?? this.leavePassed; this.past.push(t); this.restoreSnap(s); } }
 
   addPoint(ll) {
     this.commit();
@@ -3980,7 +3982,7 @@ export class Planner {
 
   restoreSnapshot(s) {
     const had = this.points.length > 0;
-    if (had) this.commit(); // (Undo brings back the route you had)
+    if (had) { this.commit(); this.past[this.past.length - 1].leave = this.leaveAt ?? this.leavePassed; } // (Undo brings back the route you had, leaving when it did)
     this.points = s.points;
     this.freshRead(had);
     this.nameAll(s.names);
@@ -4075,9 +4077,10 @@ export class Planner {
 
   // Each point's planned times in words, for GPX's waypoints (#364's C): "Leave Sat 31 Oct, 07:30", "There at 09:12",
   // "There at 18:40. Night, go on Sun 1 Nov, 07:00". None go on the track's points: apps such as Strava read a GPX with
-  // times as a recorded activity.
+  // times as a recorded activity. Leave is the moment the route is timed from, as in arriveAt(): leaving now, when the
+  // forecast came, not the export's minute (#506)
   plannedTimes() {
-    const start = this.startSec(), waits = (this.analysis && this.analysis.waits) || [];
+    const a = this.analysis, start = a && a.wind ? a.wind.startSec : this.startSec(), waits = (a && a.waits) || [];
     const at = (sec) => (new Date(sec * 1000).toDateString() === new Date(start * 1000).toDateString() ? this.timeOf(sec) : `${this.dayOf(sec)}, ${this.timeOf(sec)}`);
     return this.points.map((_, i) => {
       if (i === 0) return `Leave ${this.dayOf(start)}, ${this.timeOf(start)}`;

@@ -21,13 +21,13 @@ export const hhmm = (min) => `${String(Math.floor(min / 60) % 24).padStart(2, '0
 export const parseHhmm = (s) => { const m = /^(\d{1,2}):?(\d{2})$/.exec(String(s || '').trim()); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
 
 export const MAX_NIGHTS = 30;
-/** A stop made safe: a break of 1–1440 min, or a night with a clock time and 2–30 nights or one; anything else is no stop. */
+/** A stop made safe: a break of 1–1440 min, or a night with a clock time and 2–30 nights or one (more are 30); anything else is no stop. */
 export function cleanStop(s) {
   if (!s || typeof s !== 'object') return null;
   if (s.on != null) {
     const on = Math.round(+s.on), n = Math.round(+s.n);
     if (!(Number.isFinite(on) && on >= 0 && on < 1440)) return null;
-    return n > 1 && n <= MAX_NIGHTS ? { on, n } : { on };
+    return n > 1 ? { on, n: Math.min(MAX_NIGHTS, n) } : { on };
   }
   const min = Math.round(+s.min);
   return Number.isFinite(min) && min > 0 ? { min: Math.min(1440, min) } : null;

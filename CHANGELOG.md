@@ -20,13 +20,25 @@ A tap on the route shows a card for it, Route's list is in sections, a route can
 - Route opens with **How you go** and **Your speed**, each a step of its own with **Back**. Go opens with **Leave**, when you'd be there and where the time goes, then **Your speed**. The marks on the route (distances and times) are under **Your route** in all layers while a route is drawn.
 - Past the forecast's ten days the route says so: the profile goes grey in the weather's colours with **No forecast yet** where it ends, Check's **Not checked** says from where, and the wind, the rain, the cold and the waves aren't judged there by the forecast's last hour, as they were. The time leaves the wind out there. A paddle more than two days ahead is routed by the ten-day forecast's wind.
 
+### Fixed: GPX's planned times when you leave now ([#506](https://github.com/TommiContursi/Polku/issues/506))
+
+Leaving now, **Export GPX** wrote Leave at the minute you exported and the times you'd be there from when the forecast came, so "Leave 11:32" could come before "There at 11:26". Now Leave is the moment the route's times are counted from, as on the screen.
+
 ### Fixed: How you go on a route of more than one sport
 
 On a route in more than one sport, such as a bike ride with a paddled leg, **How you go** showed only the main sport's style and said it was for the whole route. Now Route has a **How you go** for each of the route's sports, and each says which legs a change routes again.
 
+### Fixed: Undo after opening a route brings back when you left ([#506](https://github.com/TommiContursi/Polku/issues/506))
+
+After opening a saved route or one saved offline in place of the route you had, **Undo** brought the route back but kept the opened route's time to leave. Now it leaves when it did before, and **Redo** brings back the opened route's time.
+
 ### Fixed: Polku waits out BRouter's request to slow down ([#480](https://github.com/TommiContursi/Polku/issues/480))
 
 When brouter.de asked Polku to retry later while another route was still on its way, that route's answer could cancel the wait, and the next legs went straight back to brouter.de. Asking again too soon can block your whole connection to it for minutes. Now Polku keeps waiting as long as it was asked to.
+
+### Fixed: a link with a stay of more than 30 nights ([#506](https://github.com/TommiContursi/Polku/issues/506))
+
+A link changed by hand to stay more than 30 nights at a point opened with a stay of one night. Now it stays 30, the most a stay can be, as a break longer than a day is a day.
 
 ## 2026-10-24
 
