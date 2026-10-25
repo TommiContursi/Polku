@@ -11346,6 +11346,23 @@ def tabs(chrome):
         if r != {'tab': 'route', 'step': 'speed'}:
             fails.append(f"{name}: Go's Your speed opened {r}")
         pg.js("polku.planner.openStep(null); true")
+        # a multisport route: How you go has a row for each sport, and Paddle's styles the paddle legs, not the MTB ones
+        pg.js("polku.planner.setTab('route'); polku.planner.setSportFrom(2, 'paddle'); true")
+        time.sleep(0.6)
+        r = pg.js("TB.route()")['first']
+        if [x.split(' · ')[0] for x in r] != ['How you go', 'How you go', 'Your speed']:
+            fails.append(f"{name}: Route's rows on a multisport route: {r}")
+        else:
+            press(pg, at(pg, "TB.pane().querySelectorAll('.how-rows > .row')[1]"), f"{name}: Paddle's How you go", touch)
+            line = pg.js("TB.pane().querySelector('.step-head p').textContent")
+            if pg.js("TB.step()")['step'] != 'how' or not line.startswith('Paddle, for the route’s Paddle legs'):
+                fails.append(f"{name}: Paddle's How you go says {line!r}")
+            was = pg.js("({ mtb: polku.planner.styleOf('mtb').p, paddle: polku.planner.styleOf('paddle').p })")
+            press(pg, at(pg, "[...document.querySelectorAll('#pl-pane-route .style-box .chip')].find((c) => c.getAttribute('aria-pressed') !== 'true')"), f'{name}: another Paddle style', touch)
+            now = pg.js("({ mtb: polku.planner.styleOf('mtb').p, paddle: polku.planner.styleOf('paddle').p })")
+            if now['mtb'] != was['mtb'] or now['paddle'] == was['paddle']:
+                fails.append(f"{name}: a style in Paddle's How you go: {was} → {now}")
+            pg.js("polku.planner.openStep(null); true")
         # the marks on the map: in Layers, a Your route group while a route is drawn; none in Check
         r = pg.js("""(async () => { const p = polku.planner, vis = (e) => !!e && e.getClientRects().length > 0; p.setTab('check');
           const inCheck = vis(document.querySelector('#pl-pane-check [data-sec=onmap]')) || vis(document.querySelector('#pl-pane-check .onmap'));

@@ -42,7 +42,7 @@ Tap or click the route for its card: the way there, three numbers for your sport
 
 The planner has three tabs:
 
-- **Route:** **How you go** (the route style) and **Your speed**, each a step of its own with **Back**, then the list: sections where the sport changes, at a stop and at a night (then a section a day), each with its distance, time and climb, the weather at its end and its warnings; a row for each point you see and for each stretch between them, the points that only shape a stretch folded under it. **Reorder** lists every point with its grip, **Earlier** and **Later**: a mouse drags by the grip, and a finger holds a row a moment first. On a desktop ↑ and ↓ move between rows, Alt+↑ and Alt+↓ move a point, and Delete removes it.
+- **Route:** **How you go** (the route style, one for each sport on a multisport route) and **Your speed**, each a step of its own with **Back**, then the list: sections where the sport changes, at a stop and at a night (then a section a day), each with its distance, time and climb, the weather at its end and its warnings; a row for each point you see and for each stretch between them, the points that only shape a stretch folded under it. **Reorder** lists every point with its grip, **Earlier** and **Later**: a mouse drags by the grip, and a finger holds a row a moment first. On a desktop ↑ and ↓ move between rows, Alt+↑ and Alt+↓ move a point, and Delete removes it.
 - **Check:** the key facts, warnings, climbs, ground conditions and route colours.
 - **Go:** **Leave**, when you'd be there and where the time goes, **Your speed**, the weather, GPX export, sharing and offline save.
 
