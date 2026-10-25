@@ -12,7 +12,7 @@ import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
 import { buildStyle } from './style.js';
 import { installIcons, iconUrl } from './icons.js';
-import { Planner, parseShared, dockOf } from './planner.js';
+import { Planner, parseShared, parsePin, dockOf } from './planner.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
@@ -68,6 +68,7 @@ if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version
 state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
 for (const k of ['quickTiles', 'depthsBack']) if (!state[k] || typeof state[k] !== 'object') state[k] = {};
 const shared = parseShared(new URLSearchParams(location.search));
+const pin = parsePin(new URLSearchParams(location.search)); // a link to a spot: its card opens there (25d part 6b)
 if (shared && ACTIVITIES[shared.activity]) state.activity = shared.activity;
 
 const overlaysFor = (act) => ({ ...ACTIVITY_OVERLAYS[act], ...(state.overlaysByActivity[act] || {}) });
@@ -122,7 +123,7 @@ const ctx = {
 // Where the map opens: a link's view (#zoom/lat/lon, MapLibre reads it), else where
 // you left it last time, else (a first visit) Helsinki, and Polku asks for your location.
 const lastView = store.get('view', null);
-const firstVisit = !/^#\d/.test(location.hash) && !lastView && !shared;
+const firstVisit = !/^#\d/.test(location.hash) && !lastView && !shared && !pin;
 // the planner left open (25c, #238): it opens again after a reload, as it was (editing or the route's view)
 const leftOpen = !!(store.get('plannerOpen', null) || {}).open;
 const map = new maplibregl.Map({
@@ -328,6 +329,7 @@ const planner = new Planner(map, {
     const has = planner.points.length > 1;
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
   },
+  weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
   saveOffline: () => {
@@ -1713,5 +1715,14 @@ map.on('load', () => {
   } else {
     planner.loadSaved(); // last session's route
     if (leftOpen) planner.setActive(true); // and the planner, if it was left open (#238)
+  }
+  // a link to a spot (25d part 6b): the map there, a pin and its card once the map has drawn what's there; the route
+  // you had stays as it was
+  if (pin) {
+    history.replaceState(null, '', location.pathname + location.hash);
+    map.once('idle', () => {
+      map.jumpTo({ center: pin.ll, zoom: Math.max(map.getZoom(), 14) });
+      map.once('idle', () => planner.openSpotCard(pin.ll, { pin: true, name: pin.name }));
+    });
   }
 });

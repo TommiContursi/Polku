@@ -10855,6 +10855,94 @@ def facts(chrome):
     return not fails
 
 
+# Share a spot, and Weather here (25d part 6b): Share on a spot's card opens the phone's share sheet with a link to the
+# spot, its name and coordinates, elsewhere copies the link and says so; the link opens Polku at the spot with a pin and
+# its card, carrying only the spot and the map's view, never the route; a bad pin is ignored; an old route link opens as
+# before; Weather here opens the timeline held at the spot, released when it closes, and no request carries the spot.
+def share_spot(chrome):
+    fails = []
+    name = '1440x900'
+    pg = chrome.page(1440, 900, False)
+    wait_card = lambda: pg.js("new Promise((ok) => { const t0 = Date.now(), f = () => (polku.planner.cards.current || Date.now() - t0 > 20000 ? ok(polku.planner.cards.current ? polku.planner.cards.current.kind : null) : setTimeout(f, 100)); f(); })")
+    btn = lambda label: pg.js(f"(() => {{ const b = [...document.querySelectorAll('.pl-way.card .btn')].find((x) => x.textContent.trim() === {json.dumps(label)}); if (b) b.click(); return !!b; }})()")
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.5025/23.76')
+        pg.js("""(() => { window.reqs = []; const real = window.fetch.bind(window); window.fetch = (i, o) => { window.reqs.push(String(i && i.url ? i.url : i)); return real(i, o); };
+          window.shared = []; navigator.share = async (d) => { shared.push(d); }; window.copied = [];
+          Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { copied.push(t); } }, configurable: true }); return true; })()""")
+        # ---- Share: the share sheet once, with the link, a name and the coordinates
+        pg.js("polku.planner.openSpotCard([23.76123, 61.50251]); true")
+        time.sleep(0.6)
+        if not btn('Share'):
+            fails.append('no Share on the spot’s card')
+        time.sleep(0.4)
+        d = pg.js('shared')
+        if len(d) != 1 or 'pin=61.50251,23.76123' not in d[0]['url'] or '61.50251, 23.76123' not in d[0]['text'] or not d[0].get('title') or 'r=' in d[0]['url']:
+            fails.append(f'Share on a phone: {d}')
+        # the link has the five decimals and the view, nothing of a route
+        if d and not re.search(r'^http\S+\?pin=61\.50251,23\.76123(&pn=[^#&]*)?#\d+/61\.50251/23\.76123$', d[0]['url']):
+            fails.append(f"the spot's link: {d[0]['url']}")
+        # without a share sheet: the link is copied, and the note says so
+        pg.js("navigator.share = undefined; true")
+        btn('Share')
+        time.sleep(0.5)
+        note = pg.js("document.querySelector('#toast.show')?.textContent || ''")
+        if len(pg.js('copied')) != 1 or 'pin=61.50251,23.76123' not in pg.js('copied')[0] or 'copied' not in note:
+            fails.append(f"Share with no share sheet: copied {pg.js('copied')}, the note “{note}”")
+        link = pg.js('copied[0]')
+        # ---- Weather here: the timeline open, held at the spot, released when it closes; no request carries the spot
+        pg.js("window.reqs.length = 0; true")
+        btn('Weather here ›')
+        time.sleep(2.0)
+        r = pg.js("({ open: polku.weather.open, held: polku.weather.heldLL, card: !!polku.planner.cards.current, pin: !!document.querySelector('.maplibregl-marker.card-pin'), bar: !!document.querySelector('#wx-bar') && !document.querySelector('#wx-bar').hidden })")
+        if not r['open'] or not r['held'] or abs(r['held'][0] - 23.76123) > 1e-6 or abs(r['held'][1] - 61.50251) > 1e-6 or r['card'] or not r['pin']:
+            fails.append(f'Weather here: {r}')
+        leaked = [u for u in pg.js('reqs') if '61.50251' in u or '23.76123' in u]
+        if leaked:
+            fails.append(f'a request carries the spot: {leaked[0][:120]}')
+        pg.js("polku.weather.setOpen(false); true")
+        time.sleep(0.4)
+        if pg.js('polku.weather.heldLL') or pg.js("!!document.querySelector('.maplibregl-marker.card-pin')"):
+            fails.append('Weather here stays held after the timeline closed')
+        # ---- the link, opened in a page with a route of its own: its pin and card, the route as it was
+        pg.js("(() => { const p = polku.planner; p.setActive(true, { edit: true }); p.clear(); p.setMode('line'); p.addPoint([23.80, 61.512]); p.addPoint([23.815, 61.5155]); return true; })()")
+        time.sleep(1.0)
+        before = pg.js("polku.planner.points.map((q) => q.join()).join('|')")
+        pg.goto(link)
+        pg.map_loaded()
+        kind = wait_card()
+        r = pg.js("({ kind: polku.planner.cards.current && polku.planner.cards.current.kind, pin: !!document.querySelector('.maplibregl-marker.card-pin'), pts: polku.planner.points.map((q) => q.join()).join('|'), url: location.search, c: polku.map.getCenter().toArray() })")
+        if kind not in ('spot', 'place') or not r['pin'] or r['pts'] != before or r['url']:
+            fails.append(f"the spot's link in a page with a route: {r} (a card and its pin, the route {before} as it was, the address cleaned)")
+        if abs(r['c'][0] - 23.76123) > 0.01 or abs(r['c'][1] - 61.50251) > 0.01:
+            fails.append(f"the spot's link: the map at {r['c']}, not at the spot")
+        # ---- a bad pin is ignored, with no card and no console error; an old route link opens as before
+        for bad in ('?pin=abc', '?pin=200,10', '?pin=61.5,300', '?pin=61.5', '?pin=1e9,2'):
+            pg.errors()
+            pg.goto(BASE + bad + '#15/61.5025/23.76')
+            pg.map_loaded()
+            time.sleep(1.5)
+            c = pg.js("polku.planner.cards.current ? polku.planner.cards.current.kind : null")
+            e = pg.errors()
+            if c or e:
+                fails.append(f'{bad}: {c or "no"} card, console {e[:1]}')
+        pg.js("(() => { const p = polku.planner; p.setActive(true, { edit: true }); p.clear(); p.setMode('line'); p.addPoint([23.80, 61.512]); p.addPoint([23.815, 61.5155]); return true; })()")
+        time.sleep(1.0)
+        old = pg.js("polku.planner.shareUrl()")
+        pg.goto(old)
+        pg.map_loaded()
+        time.sleep(1.5)
+        r = pg.js("({ n: polku.planner.points.length, card: polku.planner.cards.current && polku.planner.cards.current.kind, view: polku.planner.inView() })")
+        if r['n'] != 2 or r['card']:
+            fails.append(f'an old route link: {r}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    except Exception as e:
+        fails.append(f"raised {type(e).__name__}: {str(e).splitlines()[0][:140]}")
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link's pin and card, a bad pin, an old route link, the timeline held at the spot and released" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Route's list in sections, and Reorder (25d's part 4, Journey D): a section where the sport changes, at a stop and at a
 # night (a day each); point rows for the points you see, stretch rows between them with their shaping points folded;
 # a tap opens the point's or the stretch's card, and Back finds the list as it was; Reorder with a grip, Earlier and
@@ -12246,6 +12334,7 @@ GROUPS = [
     ('spotcard', [spot_card], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'What\'s here in levels and Not right? (25d part 6a): a way\'s facts for your sport first and a missing one said so, All OpenStreetMap details once a card (a failure, a late answer), Copy, Not right?, a place\'s facts, a path\'s card with the planner put away, a ship\'s own card (a recorded tile, mocked Overpass)'),
+    ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
     ('sections', [sections_list], 'Route\'s list in sections, and Reorder (25d part 4): a section where the sport changes, at a stop and a night; stretches with their shaping points folded; cards and Back as it was; Reorder by touch and mouse; the list\'s keys; the route\'s view; 52 points; a warning shown once; 360 px in Finnish (straight legs, mocked BRouter)'),
     ('leave', [leave], 'when you leave (25d, #364\'s C): the Leave row on the start\'s card and in Go with the phone\'s own picker, Now, past the forecast, the timeline in step, share links, saved routes, a reload and a passed date, a stay of nights and Go on at, GPX\'s planned times (straight legs)'),
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),

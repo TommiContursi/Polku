@@ -3628,7 +3628,7 @@ export class Planner {
 
   // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there.
   // `place`: a place to show (from search, part 6); `from`: the card it's opened from (Back goes back to it)
-  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map' } = {}) {
+  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '' } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from }); return; }
@@ -3638,7 +3638,7 @@ export class Planner {
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
     const water = !d && this.map.getLayer('water') && this.map.queryRenderedFeatures(p, { layers: ['water'] }).length;
     const route = feats.find((x) => x.layer.id === 'lipas-route');
-    this.openCard(spotCard(this, { ll, title: d ? text(d.title) : water ? 'Water' : 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
+    this.openCard(spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       ...wayExtras(way ? way.properties : {}, { winter: winterAt(feats, ll), uphill: feats.find((x) => x.layer.id === 'uphill-line'), bike }),
       partOf: route && route.properties.name ? { props: route.properties, ll } : null }), ll, from);
@@ -3683,6 +3683,23 @@ export class Planner {
     for (let k = 0; k < n - 1; k++) { const c = dist(P[k], ll) + dist(ll, P[k + 1]) - dist(P[k], P[k + 1]); if (c < cost) { cost = c; after = k; } }
     return { after };
   }
+  // Share on a card (part 6b) [p-shared]: a phone opens its share sheet with a link to the spot, its name and its
+  // coordinates; elsewhere the link is copied and the note says so
+  async shareSpot(spot) {
+    const name = spot.title === 'This spot' ? '' : spot.title, z = Math.max(13, Math.min(17, Math.round(this.map.getZoom())));
+    const url = spotUrl(spot.ll, name, z), at = `${spot.ll[1].toFixed(5)}, ${spot.ll[0].toFixed(5)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: name || 'A spot on Polku', text: `${name ? `${name}, ` : ''}${at}`, url }); } catch { /* it was closed */ }
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); toast('Link to this spot copied'); } catch { prompt('Copy this link', url); }
+  }
+  // Weather here › (part 6b): the timeline, held at the spot
+  weatherHere(ll) {
+    this.cards.close();
+    this.app.weatherHere(ll);
+  }
+
   // + Add to my route (part 5) [p-added]: by the line (30 m) a point on it, as Add a point here (no call); else where it
   // fits (bestInsert()), its two new legs routed. One step of Undo; the note names the point it follows.
   addWhereItFits(ll) {
@@ -6791,6 +6808,19 @@ function decodeAvoid(s) {
     } else lost = true;
   }
   return { nogos, lost };
+}
+
+// A link to a spot (25d part 6b): only the spot and the map's view, never the route and never where you are. Five
+// decimals (about a metre), the name up to 80 characters.
+export function spotUrl(ll, name = '', zoom = 15) {
+  const at = `${ll[1].toFixed(5)},${ll[0].toFixed(5)}`;
+  return `${location.origin}${location.pathname}?pin=${at}${name ? `&pn=${encodeURIComponent(name.slice(0, 80))}` : ''}#${zoom}/${ll[1].toFixed(5)}/${ll[0].toFixed(5)}`;
+}
+// …and its reading: { ll: [lng, lat], name } or null for anything but two numbers on the earth
+export function parsePin(params) {
+  const m = /^(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/.exec(params.get('pin') || '');
+  if (!m || Math.abs(+m[1]) > 90 || Math.abs(+m[2]) > 180) return null;
+  return { ll: [+m[2], +m[1]], name: (params.get('pn') || '').slice(0, 80) };
 }
 
 export function parseShared(params) {

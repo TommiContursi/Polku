@@ -563,7 +563,7 @@ function placeMark(spot) {
 
 export function spotCard(pl, spot) {
   const card = {
-    kind: spot.place ? 'place' : 'spot', key: spot.ll, spot, ele: undefined,
+    kind: spot.place ? 'place' : 'spot', key: spot.ll, spot, ele: undefined, pinned: !!spot.pin,
     get title() { return spot.title; }, get label() { return spot.title; }, get sub() { return spot.line; },
     get pill() {
       if (pl.inView()) return null;
@@ -651,9 +651,11 @@ function lipasLinks(p) {
     www ? link({ icon: 'external', label: 'Website', line: 'The place’s own page', href: www }) : null];
 }
 
-// the card's last row [p-spot]: Not right? (part 6), with Share and Weather here (6b)
+// the card's last row [p-spot]: Share, Weather here › and Not right?
 function foot(pl, card, spot) {
-  return h('div', { class: 'insp-actions' },
+  return h('div', { class: 'insp-actions card-foot' },
+    h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.shareSpot(spot), html: icon('share', 16) }, h('span', {}, 'Share')),
+    h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.weatherHere(spot.ll), html: icon('cloudSun', 16) }, h('span', {}, 'Weather here ›')),
     h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?'));
 }
 

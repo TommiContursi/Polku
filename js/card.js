@@ -293,7 +293,7 @@ export class CardHost {
       this.peek.replaceChildren();
       this.peek.hidden = true;
       if (entry.beside || !at) this.besideAt(box, entry.beside);
-      else this.floatAt(box, at, fresh, card.pill ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
+      else this.floatAt(box, at, fresh, card.pill && !card.pinned ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
     }
     this.box = box;
     this.placePill(card, at, where);
@@ -347,9 +347,11 @@ export class CardHost {
   placePill(card, at, where) {
     if (this.pill) { this.pill.remove(); this.pill = null; document.body.classList.remove('card-pill-on'); }
     if (this.pin) { this.pin.remove(); this.pin = null; }
-    if (!card.pill || !at || where !== 'peek') return;
-    const p = card.pill;
+    // (a spot's pin: with its pill on a phone, or for a shared spot wherever its card is)
+    if (!at || !(card.pinned || (card.pill && where === 'peek'))) return;
     this.pin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(at).addTo(this.map);
+    if (!card.pill || where !== 'peek') return;
+    const p = card.pill;
     const el = h('button', { type: 'button', class: 'card-pill', onclick: () => p.fn(), html: icon(p.icon, 20) }, h('span', {}, p.label));
     this.pill = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -22] }).setLngLat(at).addTo(this.map);
     document.body.classList.add('card-pill-on'); // (the zoom note steps aside meanwhile: the spot and its pill need the map)

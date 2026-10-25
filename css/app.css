@@ -1596,6 +1596,8 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .map-keys dd { margin: 0; }
 .map-keys kbd { font: 600 12px ui-monospace, Menlo, monospace; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
 /* What's here (25d part 6): a fact the map doesn't have, said so in its place */
+/* a card's last row: Share, Weather here and Not right? (25d part 6b) */
+.card-foot .btn { flex: 1 1 auto; justify-content: center; gap: 6px; }
 .card .insp-row.miss b { color: var(--muted); font-weight: 500; }
 .card .insp-row .btn { flex: none; }
 .maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
