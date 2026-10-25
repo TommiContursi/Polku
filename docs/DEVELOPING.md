@@ -247,7 +247,7 @@ docs/               ROADMAP (how phases work), plans/ (phase designs), retros/, 
 
 ## Working on it
 
-The rules are in [AGENTS.md](../AGENTS.md). In short: start from the latest Hand-over or the Project's Now column, and claim the issue; one part of a phase or one fix per pull request, with "Fixes #n" and the issue's milestone; `tools/smoke.py` passes; CHANGELOG updated in the same PR (and a phase's plan); every request through `js/net.js`; share links keep working; and only the user merges.
+The rules are in [AGENTS.md](../AGENTS.md). In short: start from the assigned issue, PR or latest relevant Hand-over (use Project Now only if no task was assigned), and claim the work; one focused PR may resolve several related issues, each with its own "Fixes #n", in the right milestone. Run the relevant `tools/smoke.py` groups during work and the full suite before the PR is ready; update CHANGELOG in the same PR (and a phase's plan); use `js/net.js` for requests; keep share links working; only the user merges. Read this document by relevant section rather than loading the whole file for every task.
 
 ### Shared controls
 
