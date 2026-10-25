@@ -114,7 +114,7 @@ export async function request(source, url, opts = {}) {
     const e = fail(source, res.status === 429 ? 'limit' : 'down', wait);
     throw new Limited(source, e.until, e.reason);
   }
-  if (s) {
+  if (s && status.get(source) === s) { // a back-off set while this call was out stays
     status.delete(source);
     emit(source, null);
   }

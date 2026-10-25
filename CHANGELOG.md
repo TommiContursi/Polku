@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-25
+
+### Fixed: Polku waits out BRouter's request to slow down ([#480](https://github.com/TommiContursi/Polku/issues/480))
+
+When brouter.de asked Polku to retry later while another route was still on its way, that route's answer could cancel the wait, and the next legs went straight back to brouter.de. Asking again too soon can block your whole connection to it for minutes. Now Polku keeps waiting as long as it was asked to.
+
 ## 2026-10-24
 
 ### Fixed: shared routes aren't put on the ice ([#479](https://github.com/TommiContursi/Polku/issues/479))
