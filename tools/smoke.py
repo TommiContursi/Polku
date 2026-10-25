@@ -10286,6 +10286,15 @@ SC_HELP = """(() => {
 })()"""
 
 
+# what's over a card's pill, or beside it where it would take its tap: the map's buttons, the scale and credits, the toolbox
+# (their boxes against the pill's whole box, not only its middle); '' when nothing
+PILL_OVER = """(() => { const b = document.querySelector('.card-pill'); if (!b) return ''; const r = b.getBoundingClientRect(), vis = (e) => e && e.getClientRects().length && !e.hidden && getComputedStyle(e).visibility !== 'hidden';
+  const hit = ['#map-ctrls', '.maplibregl-ctrl-bottom-left', '#pl-tools', '#zoom-hint', '.topbar'].filter((sel) => { const e = document.querySelector(sel); if (!vis(e)) return false;
+    return [...(e.matches('#map-ctrls, .maplibregl-ctrl-bottom-left') ? e.querySelectorAll('button, .maplibregl-ctrl-scale, a, .tool') : [e])].some((c) => { if (!c.getClientRects().length) return false; const q = c.getBoundingClientRect();
+      return q.width && q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top; }); });
+  return hit.join(', '); })()"""
+
+
 def spot_card(chrome):
     fails, trail = [], []
     st = lambda pg: pg.js(RC_STATE)
@@ -10431,9 +10440,9 @@ def spot_card(chrome):
             hold(pg, s, 0.65)
             c = st(pg)
             pill = pg.js("document.querySelector('.card-pill')?.textContent.trim()")
-            over = pg.js("(() => { const b = document.querySelector('.card-pill'), r = b && b.getBoundingClientRect(), e = r && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return e && !b.contains(e) ? (e.id || String(e.className.baseVal ?? e.className)) : ''; })()")
+            over = pg.js(PILL_OVER)
             if over:
-                fails.append(f'{name}: held {what}: {over} is over the pill')
+                fails.append(f'{name}: held {what}: {over} over the pill')
             if c['kind'] != 'spot' or c['labels'][:1] != ['from your route'] or pill != 'Add to my route' or c['rows'][:1] != ['What’s here'] or not {'Start here', 'End here', 'Avoid this spot'} <= set(c['rows']):
                 fails.append(f"{name}: held {what}: {c['kind']} card, numbers {c['labels']}, pill “{pill}”, rows {c['rows']}")
                 pg.js('polku.planner.cards.close(); true')
@@ -10614,6 +10623,16 @@ def crosshair(chrome):
             s = st(pg)
             if not s['cross'] or s['mid'] is None or s['mid'] > 2 or s['keys'] != ['← ↑ → ↓', 'Enter', 'Shift F10', 'Esc']:
                 fails.append(f"{name}: Tab to the map: the crosshair {'shown' if s['cross'] else 'not shown'} {s['mid']} px from the middle, the keys {s['keys']}")
+            # the keys are whole: nothing of the planner, the toolbar, the timeline or the map's buttons over them (the timeline was)
+            pg.js("document.querySelector('#btn-time').click(); true")
+            time.sleep(1.5)
+            to_map(pg, name)
+            over = pg.js("""(() => { const k = document.querySelector('.map-keys').getBoundingClientRect(), vis = (e) => e && e.getClientRects().length && !e.hidden;
+              return ['#wx-bar', '#pl-tools', '#map-ctrls', '.topbar', '#planner', '#zoom-hint', '.plan-btn'].filter((sel) => { const e = document.querySelector(sel); if (!vis(e)) return false; const r = e.getBoundingClientRect();
+                return r.left < k.right && r.right > k.left && r.top < k.bottom && r.bottom > k.top; }); })()""")
+            if over:
+                fails.append(f'{name}: the keys on the map are under {", ".join(over)}')
+            pg.js("document.querySelector('#btn-time').click(); true")
             # Enter while drawing: one point at the map's middle
             key(pg, 'Enter', 'Enter', 13)
             r = pg.js("polku.planner.points.map((q) => q.slice())")
@@ -10964,7 +10983,10 @@ def spot_card_foot(chrome):
             pg.js(f"({RC_ROUTE})({json.dumps({'mode': 'line', 'pts': [[23.8, 61.512], [23.815, 61.5155], [23.83, 61.513]]})})", timeout=60000)
             for what, js in (('a spot', "polku.planner.openSpotCard(polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]), { touch: true })"),
                              ('a place', f"polku.planner.openPlaceCard({{ layer: {{ id: 'poi-minor' }}, properties: {{ class: 'toilets', name: {json.dumps(name_)} }}, geometry: {{ type: 'Point', coordinates: polku.map.unproject([polku.map.getCanvas().clientWidth * 0.5, polku.map.getCanvas().clientHeight * 0.3]).toArray() }} }}, [23.82, 61.516])")):
-                pg.js(f"{js}; new Promise((r) => setTimeout(() => r(true), 1200))")
+                pg.js(f"{js}; new Promise((r) => setTimeout(() => r(true), 1500))")
+                over = pg.js(PILL_OVER)
+                if over:
+                    fails.append(f'{name}: {what}: {over} over the pill')
                 r = pg.js("""(() => { const c = document.querySelector('.pl-way.card'), f = c && c.querySelector('.card-foot'), box = (e) => e.getBoundingClientRect();
                   if (!f) return null;
                   const bs = [...f.querySelectorAll('.btn')], C = box(c);

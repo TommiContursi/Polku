@@ -452,18 +452,22 @@ export class CardHost {
       const dy = y > bottom || y < top ? y - (bottom > top ? (top + bottom) / 2 : top) : 0;
       let dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;
       // …and clear of what floats over the map there: the toolbox's undo and redo, the zoom note, the map's buttons, its
-      // scale and credits (over the pill, they'd take its tap)
+      // scale and credits (over the pill, they'd take its tap). If the spot (and its pill) is over one, the nearest place
+      // that isn't, in steps of 8 px, with the spot still between the top bar and the card (a little more for a sideways
+      // move than for an upward one, as a map's nicer to nudge sideways)
       let ddy = dy;
       const half = pill ? pill.offsetWidth / 2 : 0;
-      for (const el of [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls'), document.querySelector('.maplibregl-ctrl-bottom-left')]) {
-        const b = el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null, nx = x - dx, ny = y - ddy;
-        if (!b || nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20) continue;
-        // beside it, on whichever side keeps the point (and its pill) on the screen; else under it, while that's above the
-        // card; else above it, while that's under the top bar
-        const side = [b.right + 32 + half, b.left - 32 - half].find((to) => to - half >= 24 && to + half <= innerWidth - 72);
-        if (side != null) dx = x - side;
-        else if (b.bottom + 28 + head <= bottom) ddy = y - (b.bottom + 28 + head);
-        else if (b.top - 20 >= top) ddy = y - (b.top - 20);
+      const over = [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls'), document.querySelector('.maplibregl-ctrl-bottom-left')]
+        .map((el) => (el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null)).filter(Boolean);
+      const clear = (nx, ny) => over.every((b) => nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20);
+      if (!clear(x - dx, y - ddy)) {
+        let best = null;
+        for (let a = -320; a <= 320; a += 8) for (let c = -320; c <= 320; c += 8) {
+          const nx = x - dx - a, ny = y - ddy - c, cost = Math.abs(a) + 1.2 * Math.abs(c);
+          if (nx < 24 || nx > innerWidth - 72 || ny < top || (bottom > top && ny > bottom) || (best && cost >= best.cost) || !clear(nx, ny)) continue;
+          best = { a, c, cost };
+        }
+        if (best) { dx += best.a; ddy += best.c; }
       }
       if (Math.abs(dx) > 1 || Math.abs(ddy) > 1) this.map.panBy([dx, ddy], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
     };
