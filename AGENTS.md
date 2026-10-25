@@ -102,6 +102,10 @@ only when high is stuck on the same problem; never `max` as a habit.
 Mid-session, change effort, not models: a new model sends the whole
 conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
+A prompt that starts the next session names its model and effort, links
+its issue and Hand-over, and adds only what those leave out: AGENTS.md
+loads itself, so none of its rules, no skills, and nothing the session can
+check for itself (whether a PR has merged).
 
 ## Engineering judgment
 
