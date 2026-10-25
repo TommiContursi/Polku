@@ -60,9 +60,9 @@ November 2026").
   claim is released or the user says its session has stopped, never because
   it's old: continue from its last Hand-over and pushed branch, and say so
   on the issue.
-- **What you notice but don't do now** goes in your Hand-over (see "Bugs
-  and findings"), and the work goes on: only a blocker or a serious problem
-  for people using Polku (safety, reliability, accessibility) interrupts it.
+- **What you notice but don't do now** is filed (see "Bugs and findings"),
+  and the work goes on: only a blocker or a serious problem for people using
+  Polku (safety, reliability, accessibility) interrupts it.
   Small fixes go into the month's Fixes milestone, each in a Fix PR of its
   own, never mixed into a phase; ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
@@ -186,11 +186,10 @@ conversation again
   later commit whose files outside `docs/`, AGENTS.md, README.md and
   PRODUCT.md are the same: a docs-only commit, or a rebase onto one (the
   app reads `CHANGELOG.md`: run `changelog`).
-- **A check that fails only sometimes,** or only in a whole run, goes in
-  the Hand-over's noticed lines (or a comment on its issue): the commit, the
-  command, the browser, what was cached and what else ran, what failed, and
-  whether it passes alone. Never rerun until it's green, nor weaken or skip a
-  check to pass.
+- **A check that fails only sometimes,** or only in a whole run, gets an
+  issue (or a comment on its issue): the commit, the command, the browser,
+  what was cached and what else ran, what failed, and whether it passes
+  alone. Never rerun until it's green, nor weaken or skip a check to pass.
 - **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
   the sports it touches (MTB and paddle when unsure), with a route drawn and
   the timeline open. Where your tool has a browser the user can watch (Claude
@@ -261,20 +260,25 @@ each of these as P1, and skip style nits:
 
 ## Bugs and findings
 
-- **File an issue only for a bug you reproduced on `main` that hurts people
-  using Polku,** labelled `bug` with its size, once you've searched (a
-  symptom that may share a cause goes on the issue that exists). File it
-  before your next commit or the end of the turn: what happens, what should,
-  for whom, where in the code, the commit. When your branch could be the
-  cause, fix it there instead.
-- **Everything else you notice** (a suspected bug, a risk, a check that
-  failed for no clear reason, an idea) is one line in your Hand-over's
-  noticed lines: what, where, the commit. An idea the user wants kept is a
-  one-line `idea` issue.
-- **The weekly sweep,** a routine on Mondays: a fresh session reads the
-  noticed lines since the last sweep and asks the user which few are worth
-  an issue. It comments on the "Weekly sweep" issue (the first sweep
-  opens it): the commits it covered, what it found, what the user kept.
+- **File what someone else can act on,** with its kind and size, once you've
+  searched: a check failing the same way, or a symptom that may share a
+  cause, goes on the issue that exists.
+  - `bug`: a confirmed bug, small ones too: run, or traced in the code, on
+    `main`.
+  - `watch`: a suspected bug, a credible risk to safety, reliability,
+    accessibility, privacy or saved data, a check planned for later with
+    what triggers it, or a check that failed for no clear reason, with when
+    to look again. One-off failures count: #371 and #378 were the app's bugs
+    #392 and #393.
+  - `enhancement` or `idea`: when it meets a need of people using Polku, or
+    the user asks. Not every passing thought: that's a noticed line in the
+    Hand-over.
+- **File it before your next commit or the end of the turn:** a session can
+  stop at a usage limit without warning. Short is fine: what happens, what
+  should, for whom, where in the code, the commit, what's unknown; the
+  templates list the rest. Check `main` when your branch could be the cause
+  (then fix it there), and link it to the phase when an approved design
+  replaces it.
 - **The issue is the one place for its status,** so nothing to do is listed in
   the docs. "Fixes #n" closes it when the PR merges; anything closed without a
   fix says why (`duplicate`, `wontfix`, or done elsewhere).
