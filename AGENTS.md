@@ -48,8 +48,8 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   Hand-over. A review, an audit or a proposal decides nothing until the user
   chooses it (#352). When unsure, ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
-  agent you are (Claude A, Claude B or Codex: all post as the user's GitHub
-  account). A phase is claimed on its phase issue. Take over only when a
+  agent you are (Claude or Codex: all post as the user's GitHub account).
+  A phase is claimed on its phase issue. Take over only when a
   claim is released or the user says its session has stopped, never because
   it's old: continue from its last Hand-over and pushed branch, and say so
   on the issue.
