@@ -181,3 +181,39 @@ function waterWind(a, w, wet) {
   if (!n) return null;
   return known ? { sp: Math.round(sp), g: Math.round(g), head: Math.round((head / m) * 100), past } : { none: true };
 }
+
+// ------------------------------------------------------------------ a spot and a place on the map (part 5)
+// a way's tile properties as the OpenStreetMap tags they come from, so What's here says them as the route's tags
+export const tileTags = (p) => ({ 'mtb:scale': p.mtb_scale, surface: p.surface, sac_scale: p.sac, width: p.width, trail_visibility: p.tv, smoothness: p.smooth, name: p.name });
+
+// The spot's three numbers: how far from your route (none with no route), its height, and your sport's fact of the way
+// there. `fromRoute` metres or null; `ele` metres, undefined while it's asked, null when there's none; `tags` the way's,
+// null with no way there.
+export function spotNums({ fromRoute, ele, tags, sport }) {
+  const key = (SPORT_FACTS[sport] || SPORT_FACTS.mtb)[2], miss = (label) => ({ value: '?', label, missing: true });
+  const fact = !tags && ['mtb', 'sac', 'surface'].includes(key) ? miss('no trail here')
+    : key === 'mtb' ? (mtbGrade(tags) ? { ...mtbGrade(tags), label: 'difficulty' } : miss('difficulty not mapped'))
+    : key === 'sac' ? (sacGrade(tags) ? { ...sacGrade(tags), label: 'trail grade' } : miss('trail grade not mapped'))
+      : key === 'surface' ? (tags && tags.surface ? { value: cap(plain(tags.surface)), label: 'surface' } : miss('surface not mapped'))
+        : null; // (on the water the wind is Weather here's, part 6)
+  return [
+    fromRoute != null ? { value: fmtDist(fromRoute), label: 'from your route' } : null,
+    ele === undefined ? { value: '–', label: 'height', wait: true } : ele == null ? miss('height not known') : { value: `${Math.round(ele)} m`, label: 'height' },
+    fact,
+  ].filter(Boolean);
+}
+
+// A place's facts, as plain lines: three at most, from what the map has (a tile's properties, OpenStreetMap's tags once
+// they're asked for, LIPAS's)
+const PLACE_FACTS = [
+  (t) => (t.fee === 'no' ? 'Free' : t.fee === 'yes' ? 'A fee' : null),
+  (t) => (t.opening_hours ? (t.opening_hours === '24/7' ? 'Open all the time' : `Open ${t.opening_hours}`) : null),
+  (t) => (t.toilets === 'yes' || t.wc === 'true' ? 'A toilet' : null),
+  (t) => (t.fireplace === 'yes' || ['firepit', 'bbq'].includes(t.subclass) ? 'A fireplace' : null),
+  (t) => (t.drinking_water === 'yes' ? 'Drinking water' : null),
+  (t) => (t.wheelchair === 'yes' ? 'Wheelchair access' : t.wheelchair === 'no' ? 'No wheelchair access' : null),
+  (t) => (t.ele ? `${Math.round(t.ele)} m high` : null),
+  (t) => (t.length ? `${t.length} km long` : null),
+  (t) => (t.surface ? cap(plain(t.surface)) : null),
+];
+export const placeFacts = (tags) => PLACE_FACTS.map((f) => f(tags || {})).filter(Boolean).slice(0, 3);

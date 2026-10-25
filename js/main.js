@@ -378,7 +378,8 @@ async function rideLipas(props, { click = null, near = null, add = false } = {})
 }
 const inspector = initInspector(map, {
   // the map's own cards: with the planner put away, and in the route's view for what the planner doesn't take (25c)
-  isPlanning: (e) => planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent)),
+  // (and not the click that ends a hold on the map, whose card is the planner's: 25d part 5)
+  isPlanning: (e) => (planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent))) || Date.now() < planner.noClickUntil,
   activity: () => state.activity,
   difficulty: showsDifficulty,
   bike: isBike,

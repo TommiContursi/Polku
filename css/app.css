@@ -724,6 +724,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .sum-item small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .sum-elev .sum-down { color: var(--muted); font-weight: 600; }
 .sum-empty { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
+.sum-empty small { display: block; margin-top: 2px; font-size: 12.5px; }
 .sum-time { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 6px; }
 .sum-time small { text-decoration: underline dotted; text-underline-offset: 2px; }
 .sum-time:hover small, .sum-time:focus-visible small { color: var(--text); }
@@ -1577,6 +1578,15 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-banner [role="status"]:focus { outline: none; }
 .wp-hit[data-card] .wp { box-shadow: 0 0 0 4px var(--accent-bg), 0 0 0 7px #fff; }
 /* the spot a card is about, on a phone: a pin, and the card's action just above it, clear of the finger (1b) */
+/* the hold on the map (25d part 5): a ring fills under the finger until the spot's card opens; with reduced motion it
+   stands still. A hold selects nothing on the map, and calls up no callout over its points */
+.hold-ring { position: fixed; z-index: 8; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--accent-bg) var(--fill, 0%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 22px, #000 23px); mask: radial-gradient(circle, transparent 22px, #000 23px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.6); animation: hold-fill 350ms linear forwards; }
+@property --fill { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@keyframes hold-fill { to { --fill: 100%; } }
+@media (prefers-reduced-motion: reduce) { .hold-ring { animation: none; --fill: 100%; opacity: .7; } }
+.maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
 .card-pill { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }

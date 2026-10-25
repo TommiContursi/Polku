@@ -3,7 +3,9 @@
 // the planner's note with Edit.
 import { h, icon, toast } from './ui.js';
 import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
-import { pointNums, headline, wayFacts, SPORT_FACTS } from './facts.js';
+import { pointNums, headline, wayFacts, SPORT_FACTS, spotNums, placeFacts } from './facts.js';
+import { elevation } from './dem.js';
+import { iconUrl } from './icons.js';
 import { ACTIVITIES, CRAFTS } from './config.js';
 import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration } from './geo.js';
@@ -545,3 +547,74 @@ function itemBody(pl, card, body) {
   if (pl.itemLit) pl.lightItem(w, { frame: false });
 }
 
+
+// ------------------------------------------------------------------ a spot and a place on the map (25d part 5)
+// [p-spot, p-place, p-none, r-near, d-spot]: what's there and its line, three numbers, What's here ›, Your route (Start
+// here, End here, Round trip from here, Avoid this spot, each with its line), and the pill: + Add to my route where it
+// fits, + Add a point here by the line, + Start a route here with no route. In the route's view no pill, no Your route,
+// and the planner's note with Edit. `spot`: { ll, title, line, tags, place } from the planner (openSpotCard()).
+const PLACE_ICON = { campsite: 'hut', shelter: 'hut', lodging: 'hut', picnic_site: 'hut', drinking_water: 'drop', toilets: 'pin', information: 'info', parking: 'car', harbor: 'buoy', ranger_station: 'hut', swimming: 'water', peak: 'mountain' };
+// the place's own icon as the map draws it, where Polku draws it (LIPAS's, the trail details'); else the app's
+function placeMark(spot) {
+  const url = spot.image ? iconUrl(spot.image) : '';
+  return url ? h('img', { src: url, alt: '', width: 28, height: 28 }) : h('span', { html: icon(PLACE_ICON[spot.kind] || 'pin', 24) });
+}
+
+export function spotCard(pl, spot) {
+  const card = {
+    kind: spot.place ? 'place' : 'spot', key: spot.ll, spot, ele: undefined,
+    get title() { return spot.title; }, get label() { return spot.title; }, get sub() { return spot.line; },
+    get pill() {
+      if (pl.inView()) return null;
+      if (!pl.points.length) return { label: 'Start a route here', icon: 'plus', fn: () => pl.startRouteAt(spot.ll) };
+      return pl.byTheLine(spot.ll) ? { label: 'Add a point here', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) } : { label: 'Add to my route', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) };
+    },
+    mark: () => (spot.place ? placeMark(spot) : h('span', { class: 'card-pin' })), at: () => spot.ll,
+    build: (body) => spotBody(pl, card, body),
+  };
+  elevation(spot.ll).then((e) => { card.ele = Number.isFinite(e) ? e : null; }, () => { card.ele = null; }).then(() => { if (pl.cards.current === card) pl.cards.refresh(); });
+  return card;
+}
+
+function spotBody(pl, card, body) {
+  const { spot } = card, view = pl.inView(), n = pl.points.length, near = n > 1 ? pl.nearLine(spot.ll) : null;
+  if (spot.place) {
+    if (spot.src) body.append(h('p', { class: 'rt-cost' }, spot.src));
+    const facts = placeFacts(spot.tags);
+    if (facts.length) body.append(h('div', { class: 'rows' }, ...facts.map((f) => h('div', { class: 'insp-row' }, h('span', { 'aria-hidden': 'true', html: icon('check', 16) }), h('b', {}, f)))));
+  } else body.append(nums(spotNums({ fromRoute: near ? near.d : null, ele: card.ele, tags: spot.way ? spot.tags : null, sport: pl.app.activity() })));
+  body.append(rows(item({ icon: 'info', label: 'What’s here', line: 'Everything Polku knows here', chev: true, onclick: () => pl.cards.open(spotHereCard(pl, card), { at: spot.ll, from: card }) })));
+  if (view) { body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); })); return; }
+  // Your route: only what can be done now (with no route, a round trip from here)
+  const undo = { label: 'Undo', fn: () => pl.undo() };
+  const yours = acts(
+    n ? item({ icon: 'flag', label: 'Start here', line: 'Adds a new start point', k: 'start', onclick: () => pl.startFrom(spot.ll) }) : null,
+    n ? item({ icon: 'flagend', label: 'End here', line: 'Adds a new end point', k: 'end', onclick: () => { pl.cards.close(); pl.endAt(spot.ll); toast('A new end is added', { ms: 7000, action: undo }); } }) : null,
+    pl.loopsHere() ? item({ icon: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose, from here', k: 'loop', onclick: () => { pl.cards.close(); pl.openLoop(spot.ll); } }) : null,
+    n ? item({ icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m', k: 'avoid', onclick: () => { pl.cards.close(); if (!pl.active) pl.setActive(true); pl.addNogo(spot.ll, 40, spot.place ? spot.title : 'Avoided place'); } }) : null);
+  if (yours) body.append(h('h4', { class: 'menu-h' }, 'Your route'), yours);
+}
+
+// What's here › [p-more]: your sport's details of the way first, then the other sports', then the spot: its height and
+// its coordinates with Copy
+function spotHereCard(pl, spotC) {
+  const { spot } = spotC;
+  return {
+    kind: 'spothere', key: spot.ll, title: spot.title, sub: spot.line, mark: spotC.mark, at: () => spot.ll,
+    build: (body) => {
+      const facts = [...(spot.way ? wayFacts(spot.tags, pl.app.activity()) : []),
+        { group: 'The spot', label: 'Height', value: spotC.ele === undefined ? '…' : spotC.ele == null ? 'not known' : `${Math.round(spotC.ele)} m`, missing: spotC.ele == null },
+        { group: 'The spot', label: 'Coordinates', value: coords(spot.ll), copy: true }];
+      let g = null;
+      for (const f of facts) {
+        if (f.group !== g) { g = f.group; body.append(h('h4', { class: 'menu-h' }, g)); }
+        body.append(h('div', { class: 'insp-row' }, h('span', {}, f.label), h('b', {}, f.value),
+          f.copy ? h('button', { type: 'button', class: 'btn small quiet', onclick: () => copyText(coords(spot.ll)) }, 'Copy') : null));
+      }
+    },
+  };
+}
+const coords = (ll) => `${ll[1].toFixed(5)}, ${ll[0].toFixed(5)}`;
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); toast('Copied'); } catch { toast(`Couldn’t copy: ${t}`); }
+}

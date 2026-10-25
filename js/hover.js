@@ -162,7 +162,7 @@ function wayKind(feats) {
   return { f: w, p, name: WAY_NAMES[kind] || (kind ? cap(String(kind).replace(/_/g, ' ')) : 'Way') };
 }
 
-function describe(f, feats, ctx) {
+export function describe(f, feats, ctx) {
   const p = f.properties;
   const id = f.layer.id;
 
