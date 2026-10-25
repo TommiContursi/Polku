@@ -20,7 +20,15 @@ A tap on the route shows a card for it, Route's list is in sections, a route can
 - Route opens with **How you go** and **Your speed**, each a step of its own with **Back**. Go opens with **Leave**, when you'd be there and where the time goes, then **Your speed**. The marks on the route (distances and times) are under **Your route** in all layers while a route is drawn.
 - Past the forecast's ten days the route says so: the profile goes grey in the weather's colours with **No forecast yet** where it ends, Check's **Not checked** says from where, and the wind, the rain, the cold and the waves aren't judged there by the forecast's last hour, as they were. The time leaves the wind out there. A paddle more than two days ahead is routed by the ten-day forecast's wind.
 
+### Fixed: Polku waits out BRouter's request to slow down ([#480](https://github.com/TommiContursi/Polku/issues/480))
+
+When brouter.de asked Polku to retry later while another route was still on its way, that route's answer could cancel the wait, and the next legs went straight back to brouter.de. Asking again too soon can block your whole connection to it for minutes. Now Polku keeps waiting as long as it was asked to.
+
 ## 2026-10-24
+
+### Fixed: shared routes aren't put on the ice ([#479](https://github.com/TommiContursi/Polku/issues/479))
+
+A shared route that began with a straight line opened with that leg drawn onto the ice, and Check warned "On the ice" in any season. Sharing it again carried the mistake into the new link. Now only the legs the link puts on the ice are there.
 
 ### Fixed: the timeline keeps its height when its forecast comes in ([#301](https://github.com/TommiContursi/Polku/issues/301))
 

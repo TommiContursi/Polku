@@ -2,9 +2,9 @@
 
 **The order and priorities are in [the GitHub Project](https://github.com/users/TommiContursi/projects/1):** Now, Next, Later and Someday, changed there by the user without a commit. How to work on Polku is in [AGENTS.md](../AGENTS.md).
 
-- **[Milestones](https://github.com/TommiContursi/Polku/milestones)** group the issues that ship together: one for each phase, one for each round of fixes. A milestone says what belongs together, not when it's done.
+- **[Milestones](https://github.com/TommiContursi/Polku/milestones)** group the issues that ship together: one for each phase being built, one for each month of fixes. Names follow [AGENTS.md](../AGENTS.md), "Names". A milestone says what belongs together, not when it's done.
 - **Phase issues** hold a phase's scope, decisions and latest Hand-over, and [docs/plans/](plans/) its design. Finished phases are in [plans/done.md](plans/done.md).
-- **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`. A `watch` issue says when to look again: a date (in its title and the Project's Due field) or a trigger.
+- **Labels:** the kind, `bug`, `enhancement`, `idea` or `watch`, and the size, `small`, `medium` or `big`. `needs-owner` marks an issue or PR waiting on the user, to merge, decide or test. A `watch` issue says when to look again: a date (in its title and the Project's Due field) or a trigger.
 - **What shipped:** the [CHANGELOG](../CHANGELOG.md), closed issues and milestones, and the [retros](retros/).
 
 The order of the phases and the reasons for it, as last kept in this file, are in [its 2026-10-18 version](https://github.com/TommiContursi/Polku/blob/6b1e2932cab389cfc9e9367918d126a38f5d2047/docs/ROADMAP.md).

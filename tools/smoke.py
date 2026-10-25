@@ -1097,6 +1097,8 @@ STOPS = """(async () => {
   p.clear();
   p.restore(P.parseShared(q));
   await wait(300);
+  // a link without ic= puts no leg on the ice (#479)
+  if (q.has('ic') || p.legs.some((l) => l.ice) || warns().some((t) => /^On the ice/.test(t))) errs.push(`from the link: ice on legs ${p.legs.map((l, i) => (l.ice ? i : '')).join('')} (ic=${q.get('ic')})`);
   const back = `${JSON.stringify(p.stopAt(1))} ${JSON.stringify(p.stopAt(2))} ${p.carryAt(1)}`;
   if (back !== '{"min":45} {"on":480} true') errs.push(`from the link: ${back}`);
   p.save();
@@ -4618,6 +4620,24 @@ PACING = """(async () => {
     await advance(0);
     if (!again.ok) errs.push('Valhalla was not asked again after its Retry-After');
     if (session(net, 'valhalla') !== sent.length) errs.push(`after a 429: ${session(net, 'valhalla')} calls counted for ${sent.length} sent`);
+  }
+  { // a late answer clears only the back-off it left under, not one set while it was out (#480)
+    const net = await fresh(), refused = () => new Response('Error: retry later', { status: 403 });
+    let late;
+    answer = (url) => (/\\/1$/.test(url) || /\\/3$/.test(url) ? refused() : /\\/2$/.test(url) ? new Promise((ok) => { late = ok; }) : null);
+    // awaited, not advanced past: reading a refusal's body isn't done within settle() on a slow machine
+    await net.request('brouter', 'https://mock.invalid/brouter/1').catch(() => {});
+    await advance(61e3); // its minute's back-off is over
+    const a = track(net.request('brouter', 'https://mock.invalid/brouter/2'));
+    await advance(0);
+    await net.request('brouter', 'https://mock.invalid/brouter/3').catch(() => {});
+    const before = net.sourceStatus('brouter');
+    late(new Response('{}'));
+    await advance(0);
+    const after = net.sourceStatus('brouter');
+    if (!a.ok || ids(/brouter/) !== '1,2,3') errs.push(`(the test) sent ${ids(/brouter/)}, the late call ${a.ok ? 'answered' : 'not answered'}`);
+    else if (!before) errs.push('(the test) the second refusal set no back-off');
+    else if (!after || after.fails !== before.fails) errs.push(`a late answer after a refusal: BRouter ${after ? `${after.fails} fails, not ${before.fails}` : 'no longer backed off'}`);
   }
   localStorage.removeItem('polku.usage');
   return errs;

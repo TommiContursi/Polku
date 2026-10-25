@@ -40,6 +40,13 @@ and priorities. A milestone groups the issues that ship together, not their
 order. A phase issue holds its scope, decisions and Hand-overs, and
 `docs/plans/` its design.
 
+**Names** are plain words: "Calmer planner" for a phase's milestone and
+issue, "Calmer planner: the map's cards" for its PRs, and "#475, the route's
+card" in chat, never codes like 25d. A milestone's name in chat, Hand-overs
+and PRs is always a link to it, so it never reads as part of a sentence. A
+milestone is only for work being built; fixes go in the month's ("Fixes:
+November 2026").
+
 - **Start from the task the user picked, or the latest Hand-over** on the
   phase issue; otherwise from the Project's Now column, top first (Later and
   Someday need the user's OK). Trust a Hand-over for what ran on which
@@ -48,16 +55,16 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   Hand-over. A review, an audit or a proposal decides nothing until the user
   chooses it (#352). When unsure, ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
-  agent you are (Claude A, Claude B or Codex: all post as the user's GitHub
-  account). A phase is claimed on its phase issue. Take over only when a
+  agent you are (Claude or Codex: all post as the user's GitHub account).
+  A phase is claimed on its phase issue. Take over only when a
   claim is released or the user says its session has stopped, never because
   it's old: continue from its last Hand-over and pushed branch, and say so
   on the issue.
-- **What you notice but don't do now** goes in your Hand-over (see "Bugs
-  and findings"), and the work goes on: only a blocker or a serious problem
-  for people using Polku (safety, reliability, accessibility) interrupts it.
-  Small fixes go into the open Fixes milestone, each in a Fix PR of its own,
-  never mixed into a phase; ideas wait in Someday.
+- **What you notice but don't do now** is filed (see "Bugs and findings"),
+  and the work goes on: only a blocker or a serious problem for people using
+  Polku (safety, reliability, accessibility) interrupts it.
+  Small fixes go into the month's Fixes milestone, each in a Fix PR of its
+  own, never mixed into a phase; ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
 - **One session, one issue** (or one PR of a phase). A session carries its
@@ -67,26 +74,33 @@ order. A phase issue holds its scope, decisions and Hand-overs, and
   context is past about 300k tokens, when the session reaches its usage
   limit, or when its context has been compacted and it starts losing track
   (repeating work, forgetting a decision). Write the Hand-over first.
-- **One coding session at a time,** unless the user starts more: Claude A,
-  Claude B and Codex take turns as each reaches its usage limit, from the
-  last Hand-over. No "status" session, and no subagents to verify or run the
-  suite.
+- **Sessions side by side,** as many as the user starts: each has a claim
+  and a branch of its own, and leaves alone the files another open PR
+  changes. When one reaches its usage limit, the next continues from its
+  last Hand-over. No "status" session. A subagent can do a wide search, but
+  not verify the work or run the suite: those stay with the session.
+- **Lead with what the user must do:** every reply and Hand-over opens with
+  **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
+  sessions or PRs). `needs-owner` labels what waits on the user.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
   commit, push (a draft PR at the first push), and comment on the claimed
-  issue, headed "Hand-over", in 6–8 short lines, no prose: who you are and
-  whether the claim is released; branch, commit and PR; done; verified, with
-  the exact commands and the commit they ran on; not verified; decisions,
-  with links; next step, from the plan's order; what to watch out for;
-  noticed, one line each.
+  issue, headed "Hand-over", in 6–8 short lines after the three above, no
+  prose: who you are and whether the claim is released; branch, commit and
+  PR; done; verified, with the exact commands and the commit they ran on;
+  not verified; decisions, with links; next step, from the plan's order;
+  what to watch out for; noticed, one line each.
   Write one too before a turn that waits for the user, so the answer can
   start a fresh session. Never end a turn with uncommitted work: #177 lost a
   whole claim.
 - Docs and tooling PRs stay on their one subject.
 
-**Effort:** xhigh for code, design, plans, and anything touching routing,
-saved data or share links; medium for docs, rebases and filing issues; never
-`max` as a habit. Set it at the start: the default is lower. Change effort,
-not models, mid-session: a new model sends the whole conversation again
+**Model and effort,** picked when the session starts: Sonnet, or Opus at
+medium, for docs, small fixes, rebases, filing issues and the weekly sweep;
+Opus at high for a phase's part, multi-file work and hard bugs, including
+anything touching routing, saved data or share links. Raise it to xhigh
+only when high is stuck on the same problem; never `max` as a habit.
+Mid-session, change effort, not models: a new model sends the whole
+conversation again
 ([prompt caching](https://code.claude.com/docs/en/prompt-caching#changing-effort-level)).
 
 ## Engineering judgment
@@ -172,11 +186,10 @@ not models, mid-session: a new model sends the whole conversation again
   later commit whose files outside `docs/`, AGENTS.md, README.md and
   PRODUCT.md are the same: a docs-only commit, or a rebase onto one (the
   app reads `CHANGELOG.md`: run `changelog`).
-- **A check that fails only sometimes,** or only in a whole run, goes in
-  the Hand-over's noticed lines (or a comment on its issue): the commit, the
-  command, the browser, what was cached and what else ran, what failed, and
-  whether it passes alone. Never rerun until it's green, nor weaken or skip a
-  check to pass.
+- **A check that fails only sometimes,** or only in a whole run, gets an
+  issue (or a comment on its issue): the commit, the command, the browser,
+  what was cached and what else ran, what failed, and whether it passes
+  alone. Never rerun until it's green, nor weaken or skip a check to pass.
 - **A change people see:** look at it at **1440 × 900** and **390 × 844**, in
   the sports it touches (MTB and paddle when unsure), with a route drawn and
   the timeline open. Where your tool has a browser the user can watch (Claude
@@ -195,13 +208,14 @@ not models, mid-session: a new model sends the whole conversation again
   (`git rebase --onto origin/main <old base>`), or it conflicts with the
   squashed copy of them.
 - **Title** like the history, saying what changes for people using Polku:
-  "Phase 22a: the drawer in three tabs", "Fix: the map's credits stay folded on
+  "Calmer planner: the map's cards", "Fix: the map's credits stay folded on
   phones", "Docs: …". Not `feat:` or `docs:`.
 - **Body:** what changes for the user, how you tested it, what isn't done or
   is still unknown. "Fixes #65" for each issue it fixes in full, and the
   issues it found; no closing word ("fixes", "closed"…) before any other
   number, since merging closes it (#383 shut #233). A phase's parts refer
-  to the phase issue; the last part fixes it.
+  to the phase issue; the last part fixes it. No attribution lines
+  (`Co-Authored-By`, session links) in commits or PR bodies.
 - **Milestone:** the PR goes into its issue's milestone. An issue left open in
   a phase's milestone is moved on, with a reason, before the milestone closes.
 - **Screenshots** of a change people see, before and after, on the
@@ -246,20 +260,25 @@ each of these as P1, and skip style nits:
 
 ## Bugs and findings
 
-- **File an issue only for a bug you reproduced on `main` that hurts people
-  using Polku,** labelled `bug` with its size, once you've searched (a
-  symptom that may share a cause goes on the issue that exists). File it
-  before your next commit or the end of the turn: what happens, what should,
-  for whom, where in the code, the commit. When your branch could be the
-  cause, fix it there instead.
-- **Everything else you notice** (a suspected bug, a risk, a check that
-  failed for no clear reason, an idea) is one line in your Hand-over's
-  noticed lines: what, where, the commit. An idea the user wants kept is a
-  one-line `idea` issue.
-- **The weekly sweep,** a routine on Mondays: a fresh session reads the
-  noticed lines since the last sweep and asks the user which few are worth
-  an issue. It comments on the "Weekly sweep" issue (the first sweep
-  opens it): the commits it covered, what it found, what the user kept.
+- **File what someone else can act on,** with its kind and size, once you've
+  searched: a check failing the same way, or a symptom that may share a
+  cause, goes on the issue that exists.
+  - `bug`: a confirmed bug, small ones too: run, or traced in the code, on
+    `main`.
+  - `watch`: a suspected bug, a credible risk to safety, reliability,
+    accessibility, privacy or saved data, a check planned for later with
+    what triggers it, or a check that failed for no clear reason, with when
+    to look again. One-off failures count: #371 and #378 were the app's bugs
+    #392 and #393.
+  - `enhancement` or `idea`: when it meets a need of people using Polku, or
+    the user asks. Not every passing thought: that's a noticed line in the
+    Hand-over.
+- **File it before your next commit or the end of the turn:** a session can
+  stop at a usage limit without warning. Short is fine: what happens, what
+  should, for whom, where in the code, the commit, what's unknown; the
+  templates list the rest. Check `main` when your branch could be the cause
+  (then fix it there), and link it to the phase when an approved design
+  replaces it.
 - **The issue is the one place for its status,** so nothing to do is listed in
   the docs. "Fixes #n" closes it when the PR merges; anything closed without a
   fix says why (`duplicate`, `wontfix`, or done elsewhere).
