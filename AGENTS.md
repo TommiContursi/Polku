@@ -12,15 +12,18 @@ what it must stay: PRODUCT.md keeps the commitments to people apart from it.
 [polku.si](https://polku.si) is GitHub Pages from `main`, so **merging a PR
 publishes it.**
 
-Read only what the assigned task needs (this file is already loaded):
+Read what the task needs (this file is already loaded), and more only when
+that leaves a question open:
 
-- **A fix:** the assigned issue(s), the relevant section of
-  [docs/DEVELOPING.md](docs/DEVELOPING.md), and its smoke group. Search that
-  long document for the relevant section; don't load it all.
-- **A phase or visible change:** its assigned plan section in
-  [docs/plans/](docs/plans/), latest relevant Hand-over, and applicable
-  sections of [PRODUCT.md](PRODUCT.md). Don't audit the milestone or read
-  unrelated issues before implementation.
+- **A fix:** its issue, the module's section of
+  [docs/DEVELOPING.md](docs/DEVELOPING.md) (its Contents lists the
+  sections with their files: read that section, not the whole file), and
+  its smoke group.
+- **A phase, or anything people see:** also the latest Hand-over and what
+  came after it, the part's sections of its plan in
+  [docs/plans/](docs/plans/), and
+  [PRODUCT.md](PRODUCT.md): who Polku is for, its principles and its
+  accessibility baseline.
 - [README.md](README.md), [docs/ROADMAP.md](docs/ROADMAP.md) and
   [CHANGELOG.md](CHANGELOG.md) only when the task changes them. Older
   Hand-overs, reviews and threads are for looking things up: starting is not
@@ -46,38 +49,37 @@ and PRs is always a link to it, so it never reads as part of a sentence. A
 milestone is only for work being built; fixes go in the month's ("Fixes:
 November 2026").
 
-- **Start from the assigned issue, PR or Hand-over, not a backlog search.**
-  Its approved plan and linked issues define the work. Only if no task was
-  assigned, use the Project's Now column, top first (Later and Someday need
-  the user's OK). Check a Hand-over against its PR and branch. The user's
-  latest approved choice and the plan's order on `main` take precedence
-  over reviews, audits and proposals (#352).
-- **Claim the work:** on its primary issue, name the agent, branch and
-  included issues. Link the included issues from the PR; don't duplicate
-  status reports across them. Claim a phase on its phase issue. Take over
-  only when released or the user says its session stopped, using the last
-  Hand-over and pushed branch.
+- **Start from the task the user picked, or the latest Hand-over** on the
+  phase issue; otherwise from the Project's Now column, top first (Later and
+  Someday need the user's OK). Trust a Hand-over for what ran on which
+  commit, and check it against its PR and branch. What comes next is the
+  user's latest choice and the plan's order on `main`, however recent the
+  Hand-over. A review, an audit or a proposal decides nothing until the user
+  chooses it. When unsure, ask.
+- **Claim it first:** a comment on the issue with your branch, saying which
+  agent you are (Claude or Codex: all post as the user's GitHub account).
+  A phase is claimed on its phase issue. Take over only when a
+  claim is released or the user says its session has stopped, never because
+  it's old: continue from its last Hand-over and pushed branch, and say so
+  on the issue.
 - **What you notice but don't do now** is filed (see "Bugs and findings"),
   and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it.
-  Small fixes belong in the month's Fixes milestone. Related fixes can
-  share a Fix PR; keep unrelated fixes separate. Fixes already in a phase's
-  approved scope can ship in that phase's PR. Ideas wait in Someday.
+  Small fixes go into the month's Fixes milestone, never mixed into a
+  phase; related ones may share a Fix PR. Ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
-- **Plan batches before implementation.** The user or a dedicated planning
-  task groups approved issues into focused work packages in GitHub. When
-  planning, bundle related fixes sharing a cause, screen, code or tests if
-  this saves work without making review or testing harder. The implementing
-  agent works from the assigned package: no Project sweep or regrouping.
-  List its issue numbers in the PR; use `Fixes #N` for each fully resolved
-  issue. Don't invent parent or sub-issues just to batch fixes, or expand
-  approved scope when discovering more work.
-- **Use sessions while their context helps.** One session may resolve several
-  issues or produce successive PRs (a separate branch for each); one PR may
-  span sessions. Finish at a useful checkpoint and write a Hand-over before
-  a usage limit or degraded context forces a fresh session. Do not restart
-  merely because an issue in the same work package is done.
+- **Plan, then build.** The user or a planning session groups related
+  issues (same cause, screen, code or tests) into a work package on the
+  primary issue: the issues, their order, the scope, and the model for the
+  build. A build session starts from that package and doesn't regroup. One
+  PR may close several issues, each with its own `Fixes #N`. A session
+  carries its PR through to ready, across as many checkpoints as it takes:
+  a token count never stops it mid-part. Start a new session (or Codex
+  thread) from the Hand-over when the package is done, when a part is done
+  and the context is past about 300k tokens, when the session reaches its
+  usage limit, or when its context has been compacted and it starts losing
+  track (repeating work, forgetting a decision). Write the Hand-over first.
 - **Sessions side by side,** as many as the user starts: each has a claim
   and a branch of its own, and leaves alone the files another open PR
   changes. When one reaches its usage limit, the next continues from its
@@ -87,17 +89,15 @@ November 2026").
   **Needs you** (merge, decide, test, or nothing), **Next** and **Left** (in
   sessions or PRs). `needs-owner` labels what waits on the user.
 - **A Hand-over at every checkpoint.** When a part passes its smoke groups,
-  commit, push (a draft PR at the first push), and comment on the primary
-  claimed issue, headed "Hand-over", in 6–8 short lines after the three
-  above, no prose: who you are and whether the claim is released;
-  branch, commit and PR; done; verified, with the exact commands and the
-  commit they ran on;
+  commit, push (a draft PR at the first push), and comment on the claimed
+  issue, headed "Hand-over", in 6–8 short lines after the three above, no
+  prose: who you are and whether the claim is released; branch, commit and
+  PR; done; verified, with the exact commands and the commit they ran on;
   not verified; decisions, with links; next step, from the plan's order,
   with the model and effort it needs (below); what to watch out for;
   noticed, one line each.
   Write one too before a turn that waits for the user, so the answer can
-  start a fresh session. Never end a turn with uncommitted work: #177 lost a
-  whole claim.
+  start a fresh session. Never end a turn with uncommitted work.
 - Docs and tooling PRs stay on their one subject.
 
 **Model and effort,** picked when the session starts: Sonnet, or Opus at
@@ -111,14 +111,11 @@ conversation again
 
 ## Engineering judgment
 
-- **Evidence before fixes.** Observe the failure, form a falsifiable hypothesis, and test it before changing code. A plausible explanation is not a proven cause.
-- **Fix causes, not symptoms.** Make the smallest change that addresses the demonstrated cause. Verify the failure before and after the fix.
-- **Intermittent failures count.** Record conditions, isolate variables, and investigate proportionately. Don't invent a fix or rerun tests until they happen to pass.
-- **Keep one clear implementation.** Reuse existing mechanisms. Avoid parallel code paths, unnecessary abstractions, defensive layers, and special cases without demonstrated value.
-- **Fail clearly; recover appropriately.** Surface programming errors. Handle expected service failures without hiding missing data or losing the user's work.
-- **Clarity over compatibility.** Clear code beats backward compatibility. Prefer one clear implementation over compatibility layers for superseded behavior or formats.
-- **Prefer less complexity.** A new dependency, fallback, abstraction, or persistent state must justify its maintenance cost.
-- **Stay focused.** Make surgical changes. Don't refactor unrelated code, build speculative infrastructure, or expand the task without a concrete reason.
+- **Evidence before fixes.** Observe the failure and test a falsifiable
+  hypothesis before changing code. Fix the demonstrated cause, not the
+  symptom, and check the failure before and after the fix.
+- **Fail clearly.** Surface programming errors. Handle expected service
+  failures without hiding missing data or losing the user's work.
 
 ## In the code
 
@@ -219,12 +216,11 @@ conversation again
 - **Body:** what changes for the user, how you tested it, what isn't done or
   is still unknown. "Fixes #65" for each issue it fixes in full, and the
   issues it found; no closing word ("fixes", "closed"…) before any other
-  number, since merging closes it (#383 shut #233). A phase's parts refer
+  number, since merging closes it. A phase's parts refer
   to the phase issue; the last part fixes it. No attribution lines
   (`Co-Authored-By`, session links) in commits or PR bodies.
-- **Milestone:** the PR goes into its issue's milestone. Before combining
-  different milestones, ask. Move any unfinished issue onward, with a
-  reason, before closing its milestone.
+- **Milestone:** the PR goes into its issue's milestone. An issue left open in
+  a phase's milestone is moved on, with a reason, before the milestone closes.
 - **Screenshots** of a change people see, before and after, on the
   `pr-screenshots` branch (DEVELOPING, "Running it"). No images in `main`.
 - **In the same PR:**
@@ -275,8 +271,7 @@ each of these as P1, and skip style nits:
   - `watch`: a suspected bug, a credible risk to safety, reliability,
     accessibility, privacy or saved data, a check planned for later with
     what triggers it, or a check that failed for no clear reason, with when
-    to look again. One-off failures count: #371 and #378 were the app's bugs
-    #392 and #393.
+    to look again. One-off failures count.
   - `enhancement` or `idea`: when it meets a need of people using Polku, or
     the user asks. Not every passing thought: that's a noticed line in the
     Hand-over.
