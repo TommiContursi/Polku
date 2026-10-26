@@ -106,7 +106,7 @@ export function buildStyle(s, ctx) {
     uphill: { type: 'geojson', data: ctx.data.uphill || EMPTY },
     trailWays: { type: 'geojson', data: ctx.data.trailWays || EMPTY }, // trail details (js/trails.js)
     trailPoints: { type: 'geojson', data: ctx.data.trailPoints || EMPTY },
-    lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS' },
+    lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS', promoteId: 'lipasId' }, // the LIPAS id as the feature id: the route under the mouse is lit by its feature state
     winterWays: { type: 'geojson', data: ctx.data.winterWays || EMPTY }, // OSM's winter tags (js/winter.js)
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
     tracks: { type: 'geojson', data: ctx.data.tracks || EMPTY },
@@ -463,10 +463,13 @@ export function buildStyle(s, ctx) {
   add({ id: 'nogo-fill', type: 'fill', source: 'nogo', paint: { 'fill-color': '#dc2626', 'fill-opacity': 0.14 } });
   add({ id: 'nogo-line', type: 'line', source: 'nogo', paint: { 'line-color': '#dc2626', 'line-width': 2, 'line-dasharray': [2, 1.5] } });
 
-  // ---- A LIPAS route picked in search (drawn at any zoom, until its card closes)
+  // ---- A LIPAS route picked in search or by a tap (drawn at any zoom, until its card closes), and the one under the
+  // mouse (its feature state in the route's own source: every part of it shares its LIPAS id; hover.js sets it)
   const pickColor = ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#555'];
-  add({ id: 'lipas-pick-casing', type: 'line', source: 'lipasPick', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(6, 4, 14, 9, 18, 13), 'line-opacity': 0.9 } });
-  add({ id: 'lipas-pick', type: 'line', source: 'lipasPick', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': pickColor, 'line-width': zi(6, 2, 14, 5, 18, 8) } });
+  for (const [id, source, opacity] of [['lipas-pick', 'lipasPick', (o) => o], ['lipas-hover', 'lipasRoutes', (o) => ['case', ['boolean', ['feature-state', 'hover'], false], o, 0]]]) {
+    add({ id: `${id}-casing`, type: 'line', source, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(6, 4, 14, 9, 18, 13), 'line-opacity': opacity(0.9) } });
+    add({ id, type: 'line', source, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': pickColor, 'line-width': zi(6, 2, 14, 5, 18, 8), 'line-opacity': opacity(1) } });
+  }
 
   // ---- Imported tracks & the planned route (always on top) --------------
   add({ id: 'tracks-casing', type: 'line', source: 'tracks', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 4, 16, 9), 'line-opacity': 0.8 } });
