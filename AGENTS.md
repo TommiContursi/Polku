@@ -60,10 +60,10 @@ November 2026").
   agent you are (Claude or Codex: all post as the user's GitHub account).
   For a work package, claim it on the primary issue, list the issues it
   includes, and leave a one-line link to that claim on each of them, so
-  other sessions see it. A phase is claimed on its phase issue. Take over only when a
-  claim is released or the user says its session has stopped, never because
-  it's old: continue from its last Hand-over and pushed branch, and say so
-  on the issue.
+  other sessions see it. A phase is claimed on its phase issue. Take over
+  only when a claim is released or the user says its session has stopped,
+  never because it's old: continue from its last Hand-over and pushed
+  branch, and say so on the issue.
 - **What you notice but don't do now** is filed (see "Bugs and findings"),
   and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it.
@@ -74,19 +74,20 @@ November 2026").
   wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
-- **Plan, then build.** The user or a planning session groups related
-  issues (same cause, screen, code or tests) into a work package on the
-  primary issue: the issues it includes, and their order, scope or model
-  only when they aren't obvious. The planning session reads the milestone to do it; a build session
-  starts from the package and doesn't regroup. Ask before a package spans
-  milestones, and use sub-issues only for a real parent and child. One
-  PR may close several issues, each with its own `Fixes #N`. A session
-  carries its PR through to ready, across as many checkpoints as it takes:
-  a token count never stops it mid-part. Start a new session (or Codex
-  thread) from the Hand-over when the package is done, when a part is done
-  and the context is past about 300k tokens, when the session reaches its
-  usage limit, or when its context has been compacted and it starts losing
-  track (repeating work, forgetting a decision). Write the Hand-over first.
+- **Plan, then build.** The user or a planning session groups related issues
+  (same cause, screen, code or tests) into a work package on the primary
+  issue: the issues it includes, and their order, scope or model only when
+  they aren't obvious. The planning session reads the milestone to do it; a
+  build session starts from the package and doesn't regroup. Ask before a
+  package spans milestones, and use sub-issues only for a real parent and
+  child. One PR may close several issues, each with its own `Fixes #N`. A
+  session carries its PR through to ready, across as many checkpoints as it
+  takes: a token count never stops it mid-part. Start a new session (or
+  Codex thread) from the Hand-over when the package is done, when a part is
+  done and the context is past about 300k tokens, when the session reaches
+  its usage limit, or when its context has been compacted and it starts
+  losing track (repeating work, forgetting a decision). Write the Hand-over
+  first.
 - **Sessions side by side,** as many as the user starts: each has a claim
   and a branch of its own, and leaves alone the files another open PR
   changes. When one reaches its usage limit, the next continues from its
