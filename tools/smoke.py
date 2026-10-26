@@ -824,11 +824,16 @@ MARKED_JS = """(() => {
     await wait(600);
     return map.queryRenderedFeatures({ layers: ['route-casing'] }).filter((f) => f.properties.kind === 'leg').length;
   };
-  // the queries one pointer move makes before the tooltip's rest (260 ms)
+  // the queries made within 85 ms of a pointer move (the tooltip's own waits 90 ms at the least), however late this is read
   mk.spy = (on) => {
-    if (on) { mk.n = 0; mk.was = map.queryRenderedFeatures; map.queryRenderedFeatures = function (...a) { mk.n++; return mk.was.apply(this, a); }; }
-    else if (mk.was) { map.queryRenderedFeatures = mk.was; mk.was = null; }
-    return mk.n;
+    if (on) {
+      mk.qs = []; mk.t0 = null; mk.was = map.queryRenderedFeatures;
+      map.queryRenderedFeatures = function (...a) { mk.qs.push(performance.now()); return mk.was.apply(this, a); };
+      canvas.addEventListener('pointermove', mk.mark = () => { if (mk.t0 == null) mk.t0 = performance.now(); }, true);
+      return 0;
+    }
+    if (mk.was) { map.queryRenderedFeatures = mk.was; mk.was = null; canvas.removeEventListener('pointermove', mk.mark, true); }
+    return mk.t0 == null ? -1 : mk.qs.filter((t) => t >= mk.t0 && t < mk.t0 + 85).length;
   };
   return true;
 })()"""
@@ -861,13 +866,13 @@ def marked(chrome):
                 move(s['far'])
                 if state() != {'cursor': '', 'lit': False}:
                     fails.append(f"off the route: {state()}")
-                # a move makes one query (the cursor's) before the tooltip's, 90 ms after at the soonest
+                # a move makes one query (the cursor's) before the tooltip's, 90 ms after at the soonest (the spy counts by time, so a slow runner doesn't matter)
                 pg.js('mk.spy(true)')
                 pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': s['on']['x'], 'y': s['on']['y'], 'button': 'none'}, pg.s)
-                time.sleep(0.05)
-                if pg.js('mk.spy(false)') > 1:
-                    fails.append('a pointer move made more than one query before the tooltip')
-                time.sleep(0.1)
+                time.sleep(0.4)
+                made = pg.js('mk.spy(false)')
+                if made > 1:
+                    fails.append(f'a pointer move made {made} queries before the tooltip, not one')
                 if state() != {'cursor': 'pointer', 'lit': True}:
                     fails.append(f"over a route: {state()}")
                 ids = pg.js(f"mk.ids({json.dumps(s['key'])})")
