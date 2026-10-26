@@ -4894,7 +4894,7 @@ export class Planner {
       // asked again in the frame it runs in, so a press or a card opened in between stops it
       const f = this.fitAt;
       const wanted = () => this.fitAt === f && this.panel.dataset.state === 'peek' && !this.cards.current;
-      if (f && f.peek !== peek && wanted() && Date.now() - f.t < 60000) requestAnimationFrame(() => { if (wanted()) this.fitRoute({ animate: false }); });
+      if (f && f.peek !== peek && wanted() && Date.now() - f.t < 60000) requestAnimationFrame(() => { if (wanted()) this.fitRoute({ animate: false }); else if (this.fitAt === f) this.fitAt = null; }); // (used once, as asked or not)
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
     };
     this.measureSheet = sizes;

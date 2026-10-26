@@ -221,6 +221,14 @@ REFIT_LATE = """(async () => {
     const r = p.cards.box && p.cards.box.getBoundingClientRect(); // (the card moves the map itself, to be whole)
     return !r || r.top < 0 || r.bottom > innerHeight || r.left < 0 || r.right > innerWidth ? [`the card isn't whole on the screen: ${r && JSON.stringify([r.left, r.top, r.right, r.bottom].map(Math.round))}`] : [];
   });
+  // …and the refit the card stopped is gone: the card closed, the peek changing again frames nothing
+  p.cards.close();
+  if (p.fitAt) p.fitAt.peek = '1px';
+  fits = 0;
+  p.measureSheet();
+  for (let k = 0; k < 2; k++) await new Promise((ok) => requestAnimationFrame(ok));
+  await wait(300);
+  if (fits) errs.push('the card closed, then the peek changed: the route was framed again, as the card stopped');
   await trial('nothing pressed, no card (#242)', () => {}, true);
   p.cards.close();
   delete map.fitBounds;
