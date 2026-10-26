@@ -710,6 +710,7 @@ export function lipasCard(pl, props, ll, { click = null, near = null, under = fa
       body.append(foot(pl, card, spot));
     },
   };
+  elevation(ll).then((e) => { card.ele = Number.isFinite(e) ? e : null; }, () => { card.ele = null; }).then(() => { if (pl.cards.stack.some((e) => e.card === card)) pl.cards.refresh(); });
   if (!winter) pl.app.lipasRide(props, click).then((r) => { card.ride = r || { none: true }; }, () => { card.ride = { failed: true }; }).then(() => { if (pl.cards.stack.some((e) => e.card === card)) pl.cards.refresh(); });
   return card;
 }

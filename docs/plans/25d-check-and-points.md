@@ -796,4 +796,5 @@ Built in one PR (#514), a piece a commit, each with its checks.
   - The card keeps its spot clear of the map's scale and credits as well as the toolbox and the buttons (`inSight()`): over the pill they took its tap.
 - **Not built:** the mock-up's wind on the water as the spot's third number, and the pin for a held spot on a desktop (the card's corner is at it).
 - **Checks:** new groups `spotcard`, `crosshair`, `facts` and `sharespot`; `routemenu`'s quick taps, `trails`, `lipas`, `winter` and `routeview` use the card.
+- **Review fixes (2026-10-26):** a shared place keeps its pin when its card opens; a LIPAS route's What's here finishes its height, including a missing height. `sharespot` opens a link shared from a map place, and `lipas` checks What's here on the route picked in search before following it.
 

@@ -3649,7 +3649,7 @@ export class Planner {
   openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '' } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
-    if (place) { this.openPlaceCard(place, ll, { from }); return; }
+    if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
     const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
@@ -3662,14 +3662,14 @@ export class Planner {
       partOf: route && route.properties.name ? { props: route.properties, ll } : null }), ll, from);
   }
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
-  openPlaceCard(f, ll, { from = 'map' } = {}) {
+  openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
     const p = f.properties, id = f.layer.id, at = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates.map((x) => +x.toFixed(6)) : ll;
     const kind = id === 'label-peak' ? 'peak' : p.subclass || p.class || '', words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
     const o = /^td-/.test(id) ? obstacleText(p, groupOf(this.app.activity()) === 'bike') : null;
     const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
       : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
         : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
-    this.openCard(spotCard(this, { ...spot, ll: at, kind, place: true, tags: p }), at, from);
+    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
   }
   // A LIPAS route's card (part 6): Follow it, add it to your route, the trail under it, What's here
   openLipasCard(props, ll, { click = null, near = null } = {}) {

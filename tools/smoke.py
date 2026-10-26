@@ -648,6 +648,14 @@ LIPAS_RIDE = """(async () => {
   for (let k = 0; k < 30 && !/loop|one way/.test(note()); k++) await wait(150);
   if (!/^18 km, a loop/.test(note())) errs.push(`the card says: ${note() || 'nothing'}`);
   if (!polku.map.getLayer('lipas-pick') || !polku.map.queryRenderedFeatures({ layers: ['lipas-pick'] }).length) errs.push('the picked route is not highlighted');
+  // What's here must finish its height too, for a route opened from search.
+  [...document.querySelectorAll('.pl-way.card .row')].find((b) => b.querySelector('b')?.textContent === 'What’s here').click();
+  const height = () => [...document.querySelectorAll('.pl-way.card .insp-row')].find((r) => r.firstChild.textContent === 'Height')?.querySelector('b').textContent;
+  for (let k = 0; k < 50 && height() === '…'; k++) await wait(200);
+  if (!height() || height() === '…') errs.push(`a LIPAS route's What's here keeps Height at ${height() || 'nothing'}`);
+  polku.planner.cards.back();
+  for (let k = 0; k < 20 && polku.planner.cards.current?.kind !== 'lipas'; k++) await wait(100);
+  ride = [...document.querySelectorAll('.pl-way.card button')].find((b) => /Follow this route/.test(b.textContent));
   ride.click();
   const p = polku.planner;
   for (let k = 0; k < 50 && !(p.analysis && p.legs.length === 3); k++) await wait(200);
@@ -11115,6 +11123,27 @@ def share_spot(chrome):
             fails.append(f"the spot's link in a page with a route: {r} (a card and its pin, the route {before} as it was, the address cleaned)")
         if abs(r['c'][0] - 23.76123) > 0.01 or abs(r['c'][1] - 61.50251) > 0.01:
             fails.append(f"the spot's link: the map at {r['c']}, not at the spot")
+        # Share a real place icon too: its link must keep the pin on a desktop.
+        pg.js("polku.planner.cards.close(); polku.map.jumpTo({ center: [23.8167, 61.5076], zoom: 16 }); true")
+        pg.idle()
+        place = pg.js("""(() => { const m = polku.map, f = m.queryRenderedFeatures({ layers: ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point'].filter((id) => m.getLayer(id)) }).find((f) => f.geometry.type === 'Point');
+          if (!f) return null;
+          const point = m.project(f.geometry.coordinates);
+          m.fire('contextmenu', { point, lngLat: m.unproject(point), originalEvent: new MouseEvent('contextmenu') });
+          navigator.share = undefined; window.copied = [];
+          Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { copied.push(t); } }, configurable: true });
+          return f.geometry.coordinates; })()""")
+        if not place:
+            fails.append('no place icon to share in the map tiles')
+        else:
+            btn('Share')
+            place_link = pg.js('copied[0]')
+            pg.goto(place_link)
+            pg.map_loaded()
+            wait_card()
+            r = pg.js("({ kind: polku.planner.cards.current?.kind, pin: !!document.querySelector('.maplibregl-marker.card-pin') })")
+            if r['kind'] != 'place' or not r['pin']:
+                fails.append(f"the shared place's link has no place card and pin: {r}")
         # ---- a bad pin is ignored, with no card and no console error; an old route link opens as before
         for bad in ('?pin=abc', '?pin=200,10', '?pin=61.5,300', '?pin=61.5', '?pin=1e9,2'):
             pg.errors()
