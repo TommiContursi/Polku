@@ -11277,8 +11277,9 @@ def share_spot(chrome):
             fails.append(f"the spot's link in a page with a route: {r} (a card and its pin, the route {before} as it was, the address cleaned)")
         if abs(r['c'][0] - 23.76123) > 0.01 or abs(r['c'][1] - 61.50251) > 0.01:
             fails.append(f"the spot's link: the map at {r['c']}, not at the spot")
-        # Share a real place icon too: its link must keep the pin on a desktop.
-        pg.js("polku.planner.cards.close(); polku.map.jumpTo({ center: [23.8167, 61.5076], zoom: 16 }); true")
+        # Share a real place icon too: its link must keep the pin on a desktop. (The map's view is the page's first, with a
+        # shelter in it that is drawn in the link's page; the Back of the card above used to put the map there, #513.)
+        pg.js("polku.planner.cards.close(); polku.map.jumpTo({ center: [23.76, 61.5025], zoom: 15 }); true")
         pg.idle()
         place = pg.js("""(() => { const m = polku.map, f = m.queryRenderedFeatures({ layers: ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point'].filter((id) => m.getLayer(id)) }).find((f) => f.geometry.type === 'Point');
           if (!f) return null;
