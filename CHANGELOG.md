@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-26
 
+### Fixed: the track's card leaves the end of an imported track in view ([#131](https://github.com/TommiContursi/Polku/issues/131))
+
+After you import a GPX or KML file, the map frames the track with room for its card (**Analyse & edit**) at the bottom, so the end of the track is no longer under the card, with the planner open or put away.
+
 ### Fixed: the map stays still when you press the route or open a card as its numbers come in ([#467](https://github.com/TommiContursi/Polku/issues/467), [#513](https://github.com/TommiContursi/Polku/issues/513))
 
 Just after the route was shown whole, its numbers could come in, the sheet grow, and the map frame the route again a moment later, even if you had pressed the map or opened a card in that moment. The press then missed the route, or the card slid down the screen and off it. Now the map frames the route again only if you haven't pressed it, moved it or opened a card since.

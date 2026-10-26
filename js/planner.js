@@ -4998,6 +4998,10 @@ export class Planner {
     else v = { top, bottom: innerHeight - this.sheetTop() + this.overSheet() + m / 2, left: m / 2, right: m + 30 };
     const room = 0.25; // of the map's height and width, at least, to fit into
     v.bottom = Math.max(0, Math.min(v.bottom, innerHeight * (1 - room) - v.top));
+    // an import's card sits over the map's corner (main.js showTrackCard()): its height and its 40 px gap above the stack
+    // again, into the room above a half sheet on a phone too (120 px of map left at least)
+    const card = $('#track-card');
+    if (!card.hidden) v.bottom = Math.min(v.bottom + card.offsetHeight + 40, Math.max(v.bottom, innerHeight - v.top - 120));
     v.right = Math.max(0, Math.min(v.right, innerWidth * (1 - room) - v.left));
     return v;
   }

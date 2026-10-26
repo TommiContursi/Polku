@@ -1572,11 +1572,8 @@ async function importFile(file) {
     const coords = t.lines.flat();
     const features = t.lines.map((c) => ({ type: 'Feature', properties: { name: t.name }, geometry: { type: 'LineString', coordinates: c } }));
     setData('tracks', { type: 'FeatureCollection', features });
-    const b = bbox(coords);
-    // above the planner when it's open (its ⋯ menu imports too)
-    if (planner.active) planner.frame(b, { duration: 800 });
-    else map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 70, duration: 800 });
-    showTrackCard(t.name || file.name, coords);
+    showTrackCard(t.name || file.name, coords); // first: the fit leaves room for the card (viewPadding())
+    planner.frame(bbox(coords), { duration: 800 }); // above the planner when it's open (its ⋯ menu imports too)
   } catch (e) {
     toast(e.message || 'Could not import that file', { tone: 'warn' });
   }
@@ -1586,7 +1583,7 @@ function showTrackCard(name, coords) {
   card.innerHTML = '';
   card.append(
     h('div', { class: 'tc-main' }, h('b', {}, name), h('span', {}, fmtDist(lineLength(coords)))),
-    h('button', { type: 'button', class: 'btn primary', onclick: () => { planner.loadTrack(coords, name); card.hidden = true; setData('tracks', { type: 'FeatureCollection', features: [] }); } }, 'Analyse & edit'),
+    h('button', { type: 'button', class: 'btn primary', onclick: () => { card.hidden = true; planner.loadTrack(coords, name); setData('tracks', { type: 'FeatureCollection', features: [] }); } }, 'Analyse & edit'),
     h('button', { type: 'button', class: 'tool', 'aria-label': 'Remove track', onclick: () => { card.hidden = true; setData('tracks', { type: 'FeatureCollection', features: [] }); }, html: icon('close', 18) }));
   card.hidden = false;
 }
