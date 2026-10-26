@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-26
 
+### Fixed: closing a card leaves the map where you moved it ([#513](https://github.com/TommiContursi/Polku/issues/513))
+
+- Closing a card, with **✕**, Esc or the back gesture, leaves the map where you moved it. Going back a step in Draw it, Marked routes or a round trip does too.
+
 ### Fixed: the Avoided place menu on a phone at 200 % ([#440](https://github.com/TommiContursi/Polku/issues/440))
 
 On a phone with the text enlarged to 200 %, tapping a place you avoid opened a menu wider than the screen, with **Stop avoiding** partly off its right edge. Now the menu is never wider than the screen less 8 px each side, and the map's buttons step aside while it's open. With the planner's sheet open on such a small screen, the sheet can still cover the menu's lower part.
