@@ -724,6 +724,7 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .sum-item small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .sum-elev .sum-down { color: var(--muted); font-weight: 600; }
 .sum-empty { margin: 0; color: var(--muted); font-size: 13px; font-weight: 500; }
+.sum-empty small { display: block; margin-top: 2px; font-size: 12.5px; }
 .sum-time { border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 6px; }
 .sum-time small { text-decoration: underline dotted; text-underline-offset: 2px; }
 .sum-time:hover small, .sum-time:focus-visible small { color: var(--text); }
@@ -1577,9 +1578,34 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-banner [role="status"]:focus { outline: none; }
 .wp-hit[data-card] .wp { box-shadow: 0 0 0 4px var(--accent-bg), 0 0 0 7px #fff; }
 /* the spot a card is about, on a phone: a pin, and the card's action just above it, clear of the finger (1b) */
+/* the hold on the map (25d part 5): a ring fills under the finger until the spot's card opens; with reduced motion it
+   stands still. A hold selects nothing on the map, and calls up no callout over its points */
+.hold-ring { position: fixed; z-index: 8; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--accent-bg) var(--fill, 0%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 22px, #000 23px); mask: radial-gradient(circle, transparent 22px, #000 23px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.6); animation: hold-fill 350ms linear forwards; }
+@property --fill { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@keyframes hold-fill { to { --fill: 100%; } }
+@media (prefers-reduced-motion: reduce) { .hold-ring { animation: none; --fill: 100%; opacity: .7; } }
+/* the keyboard's crosshair in the map's middle, and its keys (25d part 5b): only while the map has the keyboard's focus */
+.crosshair { position: absolute; z-index: 2; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: none; }
+.crosshair::before, .crosshair::after { content: ''; position: absolute; background: #111; box-shadow: 0 0 0 2px #fff; }
+.crosshair::before { left: 21px; top: 0; width: 2px; height: 44px; }
+.crosshair::after { top: 21px; left: 0; height: 2px; width: 44px; }
+.map-keys { position: absolute; z-index: 2; left: calc(var(--pl-left, 0px) + 12px); top: calc(max(62px, var(--tools-bottom, 0px)) + 44px); /* under the toolbar, clear of the timeline over the bottom */ display: grid; gap: 6px; margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--surface-solid); box-shadow: var(--shadow); font-size: 13.5px; pointer-events: none; }
+.map-keys div { display: grid; grid-template-columns: 96px auto; align-items: center; gap: 10px; }
+.map-keys dd { margin: 0; }
+.map-keys kbd { font: 600 12px ui-monospace, Menlo, monospace; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+/* What's here (25d part 6): a fact the map doesn't have, said so in its place */
+/* a card's last row: Share, Weather here and Not right? (25d part 6b) */
+.card-foot { flex-wrap: nowrap; gap: 4px; }
+.card-foot .btn { flex: 1 1 auto; justify-content: center; gap: 5px; padding: 0 8px; white-space: nowrap; }
+@container (max-width: 290px) { .card-foot { flex-wrap: wrap; } .card-foot .btn { white-space: normal; } } /* a narrow card or an enlarged text: a button on a line of its own where it must */
+.card .insp-row.miss b { color: var(--muted); font-weight: 500; }
+.card .insp-row .btn { flex: none; }
+.maplibregl-canvas-container, .maplibregl-marker { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body.card-pill-on #zoom-hint { display: none; } /* (a hint; it comes back with the card closed) */
 .card-pin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); pointer-events: none; }
-.card-pill { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
+.card-pill { z-index: 5; /* over the map's credits where a narrow screen leaves no room beside them */ display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.3); cursor: pointer; }
 @media (pointer: coarse) {
   .card .btn, .card .tool { min-height: 44px; min-width: 44px; }
   .card .rt-len { min-height: 44px; }

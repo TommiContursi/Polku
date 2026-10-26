@@ -70,14 +70,14 @@ November 2026").
   Small fixes get their own Fix PR in the month's Fixes milestone, so
   people don't wait for a phase to get them. Related fixes can share one
   Fix PR. One exception: if a phase is already rebuilding the code a fix
-  touches, the fix goes into that phase instead (move its issue to the
-  phase's milestone). Ideas wait in Someday.
+  touches, propose moving the fix into that phase; the user decides. Ideas
+  wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
 - **Plan, then build.** The user or a planning session groups related
   issues (same cause, screen, code or tests) into a work package on the
-  primary issue: the issues, their order, the scope, and the model for the
-  build. The planning session reads the milestone to do it; a build session
+  primary issue: the issues it includes, and their order, scope or model
+  only when they aren't obvious. The planning session reads the milestone to do it; a build session
   starts from the package and doesn't regroup. Ask before a package spans
   milestones, and use sub-issues only for a real parent and child. One
   PR may close several issues, each with its own `Fixes #N`. A session
@@ -123,6 +123,9 @@ conversation again
   symptom, and check the failure before and after the fix.
 - **Fail clearly.** Surface programming errors. Handle expected service
   failures without hiding missing data or losing the user's work.
+- **Clarity over compatibility.** Clear code beats backward compatibility.
+  Prefer one clear implementation over compatibility layers for superseded
+  behavior or formats.
 
 ## In the code
 

@@ -1,5 +1,5 @@
 {
-  "about": "The smoke suite's groups and sizes in parallel jobs (.github/workflows/smoke.yml), each about 10 minutes on GitHub's runner: 8–11 in run 39898918235, with `tilefail` placed by its 86 s in run 39901539991. `button3d` and `button3dphone` (#226) have a job each: as one group they took 16–27 minutes (#411). Every group and size is in exactly one job: .github/smoke_plan.py fails the run otherwise. Journey D's four new groups (25d, #233) have a job of their own.",
+  "about": "The smoke suite's groups and sizes in parallel jobs (.github/workflows/smoke.yml), each about 10 minutes on GitHub's runner: 8–11 in run 39898918235, with `tilefail` placed by its 86 s in run 39901539991. `button3d` and `button3dphone` (#226) have a job each: as one group they took 16–27 minutes (#411). Every group and size is in exactly one job: .github/smoke_plan.py fails the run otherwise. Journey D's four new groups (25d, #233) have a job of their own, and so do the map's cards' four.",
   "shards": [
     ["changelog", "trails", "lipas", "backtostart", "shortcut", "sports", "colours", "toolbox", "390x844"],
     ["layers", "header", "routebits", "detour", "winterroute", "previews", "quick", "contrast", "sportmenu", "1440x900"],
@@ -9,6 +9,7 @@
     ["button3dphone"],
     ["routeview", "pointcard", "heads", "onroute", "warnfix", "sections"],
     ["values", "start", "nextleg", "routecard"],
-    ["leave", "keyfacts", "tabs", "pastforecast"]
+    ["leave", "keyfacts", "tabs", "pastforecast"],
+    ["spotcard", "crosshair", "facts", "sharespot"]
   ]
 }

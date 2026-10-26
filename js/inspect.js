@@ -1,21 +1,11 @@
-// Click-to-inspect: trails, roads, POIs, LIPAS places/routes and water depth.
-// Shows what the vector tiles know instantly, then enriches from Overpass /
-// Traficom on demand.
+// Click-to-inspect: what the map's own cards show with the planner put away. Ways, places and LIPAS's routes and places
+// open on the planner's card (25d part 6: openSpot()); ships, cameras, sea marks, road works and the water's depth keep
+// their own cards here, from what the map draws and, on demand, Overpass and Traficom.
 
-import { DIFF_COLORS, MTB_SCALE_TEXT, UPHILL_TEXT, TRAFICOM_WMS, LIPAS_TYPES, isLipasRoute } from './config.js';
-
-// LIPAS's winter lines aren't to ride: what each one is for instead
-const WINTER_LIPAS_NOTE = {
-  4402: 'A ski track: keep off it on foot and by bike. Whether it’s groomed: the operator’s website.',
-  4421: 'A snowmobile route: for snowmobiles, not a way to walk or ride.',
-  1550: 'A skating route on natural ice. Polku never says ice is safe: check the operator’s status before you go.',
-};
-import { elevation } from './dem.js';
-import { gradeHere } from './uphill.js';
+import { TRAFICOM_WMS, isLipasRoute } from './config.js';
 import { overpass } from './osm.js';
-import { obstacleText, VIS_TEXT } from './trails.js';
 import { dist, pointSegment } from './geo.js';
-import { h, icon, escapeHtml } from './ui.js';
+import { h, icon } from './ui.js';
 import { NAV_TEXT } from './nautical.js';
 import { WINTER_TEXT } from './winter.js';
 import { request } from './net.js';
@@ -34,9 +24,10 @@ export const OSM_KEYS = [
   ['mtb:winter', 'In winter (opens after snow)'], ['snowplowing', 'Ploughed'], ['winter_service', 'Winter maintenance'], ['bicycle:winter', 'Bicycle in winter'], ['foot:winter', 'Foot in winter'], ['seasonal', 'Seasonal'], ['piste:type', 'Piste'], ['piste:grooming', 'Grooming'],
 ];
 
-// "Tagged wrong?": a note on OpenStreetMap at the spot asks its mappers to look
-const osmNote = ([lon, lat]) => `https://www.openstreetmap.org/note/new#map=19/${lat.toFixed(6)}/${lon.toFixed(6)}`;
-const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https://${u}` : '';
+// Not right? (25d part 6): a note on OpenStreetMap at the spot asks its mappers to look, with no account; with the way's
+// or the place's own id, its editor
+export const notRight = ([lon, lat], osm = null) => (osm && osm.id ? `https://www.openstreetmap.org/edit?${osm.type}=${osm.id}` : `https://www.openstreetmap.org/note/new#map=19/${lat.toFixed(6)}/${lon.toFixed(6)}`);
+export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `https://${u}` : '';
 
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
@@ -78,8 +69,8 @@ export function pickFeature(feats) {
 export function initInspector(map, app) {
   let popup = null;
 
-  // the card for a feature (a click, or a pick in search)
-  async function show(f, ll, feats = []) {
+  // the card for a ship's, a sea mark's, a road's or the water's feature
+  async function show(f, ll) {
     if (popup) popup.remove();
     // as wide as the room beside the map's buttons, or over them where it's too narrow (a phone at 200 %); a tall
     // card scrolls inside the room there is, under the top bar, less its padding and its tip (#435)
@@ -92,60 +83,18 @@ export function initInspector(map, app) {
       h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(ll); }, html: `${icon('flag', 15)} Route from here` }),
       h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeTo(ll); }, html: `${icon('plus', 15)} Add to route` }),
       h('button', { type: 'button', class: 'btn avoid', title: 'Routes will go around this spot (40 m)', onclick: () => { pop.remove(); app.avoid(ll, body.querySelector('.insp-title')?.textContent); }, html: `${icon('close', 15)} Avoid` }));
-
     if (/^nm-/.test(f.layer.id)) { renderNautical(body, f, map); body.append(actions); return; }
     if (/^sf-|^military/.test(f.layer.id)) { await renderSafety(body, f, app); body.append(actions); return; }
-    if (/^td-/.test(f.layer.id)) renderObstacle(body, f, app);
-    else if (f.layer.id === 'lipas-route') {
-      renderLipas(body, f.properties);
-      const under = feats.find((x) => /^(path|track|cycleway)-|^road-/.test(x.layer.id));
-      if (under) body.append(h('button', { type: 'button', class: 'link insp-switch', onclick: () => show(under, ll, feats), html: `The ${(WAY_NAMES[under.properties.class === 'path' ? under.properties.subclass || 'path' : under.properties.class] || 'way').toLowerCase()} under it ${icon('chevronRight', 13)}` }));
-      const wt = LIPAS_TYPES[f.properties.type];
-      if (wt && wt.winter) body.append(h('p', { class: 'insp-info insp-winter', html: `${icon('snow', 14)} ${escapeHtml(WINTER_LIPAS_NOTE[f.properties.type] || '')}` }));
-      else body.append(rideActions(f.properties, f.click || null, pop, f.near));
-    }
-    else if (/^lipas/.test(f.layer.id)) renderLipas(body, f.properties);
-    else if (/^winter-/.test(f.layer.id)) renderWinter(body, f.properties);
-    else if (/^poi|^label-peak/.test(f.layer.id)) renderPoi(body, f);
-    else if (f.layer.id === 'water') { await renderWater(body, ll, map, app); return; }
-    else renderWay(body, f, feats, ll, app.difficulty ? app.difficulty() : app.activity() === 'mtb', (g) => { g.click = ll; show(g, ll, feats); }, app.bike ? app.bike() : false);
-    if (f.layer.id !== 'lipas-route') body.append(actions);
-    const ele = await elevation(ll);
-    const slot = body.querySelector('[data-ele]');
-    if (slot && Number.isFinite(ele)) slot.textContent = `${Math.round(ele)} m`;
-  }
-
-  // A LIPAS route's card: ride it (its own line, no routing), add all of it to
-  // your route, or start a route here (in words for every sport, #306). What following gives is said once LIPAS has
-  // sent all its parts (one request, kept).
-  function rideActions(p, click, pop, near) {
-    const note = h('div', { class: 'insp-ride' }, 'Checking the route…');
-    const ride = h('button', { type: 'button', class: 'btn primary', onclick: () => { pop.remove(); app.rideLipas(p, { click, near }); }, html: `${icon('route', 15)} Follow this route` });
-    const add = h('button', { type: 'button', class: 'btn', title: 'Your route goes to this one and follows it', onclick: () => { pop.remove(); app.rideLipas(p, { click, near, add: true }); }, html: `${icon('plus', 15)} Add to route` });
-    app.lipasRide(p, click).then((r) => {
-      if (!r) { note.textContent = ''; return; }
-      const km = r.km >= 10 ? Math.round(r.km) : r.km.toFixed(1);
-      if (r.network) {
-        const touch = matchMedia('(pointer: coarse)').matches;
-        note.textContent = `A network of trails: following it takes the ${click ? `stretch you ${touch ? 'tapped' : 'clicked'}` : 'longest stretch'} (${km} km). ${touch ? 'Tap' : 'Click'} another to follow that one.`;
-        ride.innerHTML = `${icon('route', 15)} Follow this stretch`;
-      } else {
-        const bits = [`${km} km`, r.loop ? 'a loop' : 'one way'];
-        if (r.left >= 0.3) bits.push(`side trails (${r.left.toFixed(1)} km) left out`);
-        note.textContent = `${bits.join(' · ')}. Follows LIPAS's line: no routing needed.`;
-      }
-    }).catch(() => { note.textContent = 'LIPAS isn\'t answering: following it may not work right now.'; });
-    return h('div', {}, note, h('div', { class: 'insp-actions' }, ride, add,
-      h('button', { type: 'button', class: 'btn', onclick: () => { pop.remove(); app.routeFrom(click || pop.getLngLat().toArray()); }, html: `${icon('flag', 15)} Route from here` })));
+    await renderWater(body, ll, map, app);
   }
 
   let lastTouch = 0, openAtPress = false;
-  map.on('touchstart', () => { lastTouch = Date.now(); openAtPress = !!popup && popup.isOpen(); });
+  map.on('touchstart', () => { lastTouch = Date.now(); openAtPress = (!!popup && popup.isOpen()) || app.cardOpen(); });
   map.on('click', async (e) => {
     if (app.isPlanning(e)) return; // (the planner's: drawing, or something it took in the route's view)
     const touch = Date.now() - lastTouch < 800;
     // a finger beside an open card closes it; another tap opens the next one
-    if (touch && openAtPress) { openAtPress = false; if (popup) popup.remove(); return; }
+    if (touch && openAtPress) { openAtPress = false; if (popup) popup.remove(); app.closeCard(); return; }
     const box = hitBox(e.point, touch);
     const ll = [e.lngLat.lng, e.lngLat.lat];
     // a marker of Check's on your route (25d part 3): its card
@@ -161,17 +110,15 @@ export function initInspector(map, app) {
     // cameras and ships open their own modal / live card
     if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }
     if (/^sf-ships/.test(f.layer.id)) { app.openShip(f.properties.mmsi); return; }
-    if (f.layer.id === 'lipas-route') f.click = ll;
-    show(f, ll, feats);
+    // a way, a place, a LIPAS route or place: the planner's card at the spot (25d part 6)
+    if (!/^(nm-|sf-|military|water$)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
+    show(f, ll);
   });
-  // the other card for the same spot: the trail under a LIPAS route, or the route a trail is part of
-  app.switchCard = (f, ll, feats) => show(f, ll, feats);
 
   return {
-    /** A LIPAS route's or stop's card (from search): props as the map layer has them. */
+    /** A LIPAS route's or place's card (from search): props as the map layer has them. */
     openLipas(props, ll, near) {
-      show({ layer: { id: isLipasRoute(props.type) ? 'lipas-route' : 'lipas-point' }, properties: props, near }, ll);
-      return popup; // made before show() first waits
+      app.openSpot({ layer: { id: isLipasRoute(props.type) ? 'lipas-route' : 'lipas-point' }, properties: props, near }, ll, null, false);
     },
   };
 }
@@ -227,76 +174,6 @@ function row(label, value, html = false) {
   return h('div', { class: 'insp-row' }, h('span', {}, label), html ? h('b', { html: value }) : h('b', {}, value));
 }
 
-function chip(color, text) {
-  return `<i class="dot" style="background:${color}"></i>${escapeHtml(text)}`;
-}
-
-function renderWay(body, f, feats, ll, mtb, open = null, bike = false) {
-  const p = f.properties;
-  const isUphill = f.layer.id === 'uphill-line';
-  const way = isUphill ? (feats.find((x) => /^(path|track)-/.test(x.layer.id)) || f) : f;
-  const wp = way.properties;
-  const kind = wp.class === 'path' ? (wp.subclass || 'path') : wp.class;
-  body.append(h('div', { class: 'insp-title' }, WAY_NAMES[kind] || kind || 'Way'));
-  const route = feats.find((x) => x.layer.id === 'lipas-route');
-  if (route && route.properties.name) {
-    const r = row('Part of', route.properties.name);
-    if (open) { r.classList.add('insp-link'); r.title = 'Open the route’s card'; r.addEventListener('click', () => open(route)); r.lastChild.append(' ', h('span', { html: icon('chevronRight', 13) })); }
-    body.append(r);
-  }
-  const idx = wp.mtb_scale != null ? parseInt(String(wp.mtb_scale), 10) : NaN;
-  if (Number.isFinite(idx)) body.append(row('MTB difficulty', chip(DIFF_COLORS[idx], MTB_SCALE_TEXT[idx]), true));
-  // what winter means on it, where the winter ways are drawn (OSM's winter tags, js/winter.js)
-  const win = winterAt(feats, ll);
-  if (win) body.append(win.beside ? row('Beside it', 'A ski track: keep off it on foot and by bike') : row('In winter', WINTER_TEXT[win.cls]));
-  const up = feats.find((x) => x.layer.id === 'uphill-line');
-  if (up) body.append(row('Uphill', chip(DIFF_COLORS[up.properties.cls], `${UPHILL_TEXT[up.properties.cls]} (${up.properties.grade} %)`), true));
-  else {
-    // uphill layer off: grade the ~25 m under the click from the DEM
-    const trail = /^(path|track|cycleway)-/.test(way.layer.id);
-    const slot = row(mtb && trail ? 'Uphill' : 'Incline', '…');
-    body.append(slot);
-    gradeHere(way, ll).then((r) => {
-      if (!r) { slot.remove(); return; }
-      slot.lastChild.innerHTML = mtb && trail ? chip(DIFF_COLORS[r.cls], `${UPHILL_TEXT[r.cls]} (${r.grade} %)`) : `${r.grade} %`;
-    }).catch(() => slot.remove());
-  }
-  if (wp.surface) body.append(row('Surface', wp.surface));
-  const access = [wp.access === 'no' ? 'private or no access' : '', ...['bicycle', 'foot', 'horse'].filter((k) => wp[k]).map((k) => `${k} ${wp[k]}`)].filter(Boolean).join(', ');
-  if (access) body.append(row('Access', access));
-  // closed for your sport, as the map says (the tiles fold private into no): why routes go round
-  const own = bike ? 'bicycle' : 'foot';
-  if ((own === 'foot' && wp.foot === 'no') || (wp.access === 'no' && !['yes', 'designated', 'permissive'].includes(wp[own]))) {
-    body.append(h('p', { class: 'insp-info', html: `Marked ${own === 'foot' && wp.foot === 'no' ? 'no walking' : 'private or no access'} in OpenStreetMap, so routes keep off it. Private usually means closed: factory and military sites, house yards, roads closed by a sign. In Finland private roads and apartment-block yards are open on foot and by bike, so there it may be tagged wrong: <a href="${osmNote(ll)}" target="_blank" rel="noopener">leave a note on OpenStreetMap</a>.` }));
-  }
-  if (wp.brunnel) body.append(row('Structure', wp.boardwalk ? 'boardwalk (pitkospuut)' : wp.brunnel));
-  if (wp.osm) trailRows(body, wp);
-  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
-  const more = h('div', { class: 'insp-more' });
-  const btn = h('button', {
-    type: 'button', class: 'link',
-    onclick: async () => {
-      btn.disabled = true;
-      btn.textContent = 'Loading OSM details…';
-      try {
-        const near = await wayNear(ll, wp.osm);
-        if (!near) { btn.textContent = 'No OSM way found here'; return; }
-        btn.remove();
-        for (const [k, label] of OSM_KEYS) if (near.tags[k]) more.append(row(label, near.tags[k]));
-        more.append(row('Length', `${Math.round(near.len)} m`));
-        more.append(h('div', { class: 'insp-links' },
-          h('a', { href: `https://www.openstreetmap.org/way/${near.id}`, target: '_blank', rel: 'noopener', html: `OSM way ${near.id} ${icon('external', 13)}` }),
-          h('a', { href: `https://www.openstreetmap.org/edit?way=${near.id}`, target: '_blank', rel: 'noopener', html: `Improve it ${icon('external', 13)}` })));
-      } catch {
-        btn.disabled = false;
-        btn.textContent = 'Overpass is busy — try again';
-      }
-    },
-  }, 'Show all OSM tags (sac_scale, uphill, visibility…)');
-  more.append(btn);
-  body.append(more);
-}
-
 // OpenStreetMap's way at a spot, asked once (Overpass): the way given (a trail drawn from OSM knows its own), else the
 // nearest one with a highway tag within 12 m. { id, tags, len } or null.
 export async function wayNear(ll, osm = null) {
@@ -313,66 +190,21 @@ export async function wayNear(ll, osm = null) {
   return near;
 }
 
-// What trail details know about a trail (js/trails.js), without asking Overpass.
-function trailRows(body, p) {
-  if (p.width != null) body.append(row('Width', `${p.width}${/[a-z]/i.test(String(p.width)) ? '' : ' m'}`));
-  if (p.tv) body.append(row('Visibility', `${p.vis ? VIS_TEXT[p.vis] : 'clear'} (${p.tv})`));
-  const issues = [p.veg && 'overgrown', p.mud && 'wet or muddy', p.tree && 'fallen trees', p.wayford && 'ford'].filter(Boolean);
-  if (issues.length) body.append(row('On the way', issues.join(', ')));
-  if (p.smooth) body.append(row('Smoothness', String(p.smooth).replace(/_/g, ' ')));
-  if (p.sac) body.append(row('Hiking (SAC)', String(p.sac).replace(/_/g, ' ')));
-  if (p.informal) body.append(row('Path', 'informal (not an official trail)'));
-}
-
-function renderObstacle(body, f, app) {
-  const p = f.properties;
-  const { title, note } = obstacleText(p, app.bike ? app.bike() : false);
-  body.append(h('div', { class: 'insp-title' }, title));
-  if (note) body.append(h('div', { class: 'insp-sub' }, note));
-  if (p.barrier) body.append(row('OSM', `barrier=${p.barrier}${p.obstacle ? ` · obstacle=${p.obstacle}` : ''}`));
-  else if (p.obstacle) body.append(row('OSM', `obstacle=${p.obstacle}`));
-  const kind = p.kind ? 'node' : 'way';
-  const ll = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates : null;
-  body.append(h('div', { class: 'insp-links' },
-    h('a', { href: `https://www.openstreetmap.org/${kind}/${p.osm}`, target: '_blank', rel: 'noopener', html: `OSM ${kind} ${p.osm} ${icon('external', 13)}` }),
-    h('a', { href: `https://www.openstreetmap.org/edit?${kind}=${p.osm}`, target: '_blank', rel: 'noopener', html: `Gone? Fix the map ${icon('external', 13)}` }),
-    // without an OpenStreetMap account to edit with: a note asks the mappers to look
-    ll ? h('a', { href: `https://www.openstreetmap.org/note/new#map=19/${ll[1].toFixed(6)}/${ll[0].toFixed(6)}`, target: '_blank', rel: 'noopener', title: 'A note on the map asks OpenStreetMap’s mappers to check it', html: `or leave a note ${icon('external', 13)}` }) : null));
-  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
-}
-
-function renderPoi(body, f) {
-  const p = f.properties;
-  const title = p.name || (p.subclass || p.class || 'Place').replace(/_/g, ' ');
-  body.append(h('div', { class: 'insp-title' }, title));
-  if (p.subclass || p.class) body.append(row('Type', (p.subclass || p.class).replace(/_/g, ' ')));
-  if (p.ele) body.append(row('Height', `${p.ele} m`));
-  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
-}
-
-// A way drawn by its winter tags with no trail of the map's under it (a ski track over a field or a lake)
-function renderWinter(body, p) {
-  body.append(h('div', { class: 'insp-title' }, p.name || (p.cls === 'ski' ? 'Ski track' : 'Winter way')));
-  body.append(h('div', { class: 'insp-sub' }, 'OpenStreetMap, winter tags'));
-  body.append(row('In winter', WINTER_TEXT[p.cls] || ''));
-  if (p.grooming) body.append(row('Groomed for', String(p.grooming).replace(/\+|;/g, ' and ')));
-  if (p.lit) body.append(row('Lit', 'yes'));
-  if (p.cls === 'ski') body.append(h('p', { class: 'insp-info insp-winter', html: `${icon('snow', 14)} Keep off it on foot and by bike: footprints and tyre tracks spoil the track.` }));
-  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
-}
-
-function renderLipas(body, p) {
-  body.append(h('div', { class: 'insp-title' }, p.name));
-  body.append(h('div', { class: 'insp-sub' }, `${p.typeName}${p.city ? ` · ${p.city}` : ''}`));
-  if (p.length) body.append(row('Length', `${p.length} km`));
-  if (p.surface) body.append(row('Surface', p.surface));
-  if (p.wc === 'true') body.append(row('Toilet', 'yes'));
-  if (p.info) body.append(h('p', { class: 'insp-info' }, p.info.length > 280 ? `${p.info.slice(0, 280)}…` : p.info));
-  const www = isHttp(p.www);
-  body.append(h('div', { class: 'insp-links' },
-    www ? h('a', { href: www, target: '_blank', rel: 'noopener', html: `Website ${icon('external', 13)}` }) : null,
-    h('a', { href: `https://www.lipas.fi/liikuntapaikat/${p.lipasId}`, target: '_blank', rel: 'noopener', html: `LIPAS ${icon('external', 13)}` })));
-  body.append(h('div', { class: 'insp-row' }, h('span', {}, 'Elevation'), h('b', { 'data-ele': '' }, '…')));
+// OpenStreetMap's own data for a way or a place (25d part 6), asked when you press All OpenStreetMap details: the object
+// by its own number (a way, a node, a relation) when the map knows it, else a way at the spot, or the place nearest it,
+// 40 m at most, with a tag of its kind. { type, id, tags, len } or null when there's none
+export async function osmDetails({ type = 'way', id = null, ll }) {
+  if (type === 'way') { const w = await wayNear(ll, id); return w && { type: 'way', ...w }; }
+  // the object the card is about, by its own number (another may be nearer, or at the same spot)
+  if (id && (type === 'node' || type === 'relation')) {
+    const json = await overpass(`[out:json][timeout:15];${type}(${+id});out tags center;`, { race: true });
+    const x = (json.elements || []).find((e) => e.type === type && e.id === +id);
+    return x ? { type, id: x.id, tags: x.tags || {}, len: 0 } : null;
+  }
+  const json = await overpass(`[out:json][timeout:15];nwr(around:40,${ll[1]},${ll[0]})[~"^(amenity|tourism|leisure|natural|barrier|ford|man_made|historic)$"~"."];out tags center;`, { race: true });
+  const at = (x) => (x.center ? [x.center.lon, x.center.lat] : [x.lon, x.lat]);
+  const near = (json.elements || []).filter((x) => x.tags && Number.isFinite(at(x)[0])).sort((a, b) => dist(at(a), ll) - dist(at(b), ll))[0];
+  return near ? { type: near.type, id: near.id, tags: near.tags, len: 0 } : null;
 }
 
 const when = (iso) => (iso ? new Date(iso).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');

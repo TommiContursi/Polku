@@ -12,7 +12,7 @@ import { CameraLayer } from './cameras.js';
 import { NauticalLayer } from './nautical.js';
 import { buildStyle } from './style.js';
 import { installIcons, iconUrl } from './icons.js';
-import { Planner, parseShared, dockOf } from './planner.js';
+import { Planner, parseShared, parsePin, dockOf } from './planner.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
@@ -24,7 +24,7 @@ import { initSearch } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
 import { $, $$, h, icon, toast, store, popMenu } from './ui.js';
-import { initGestures } from './gestures.js';
+import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
 import { Heading } from './heading.js';
@@ -68,6 +68,7 @@ if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version
 state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
 for (const k of ['quickTiles', 'depthsBack']) if (!state[k] || typeof state[k] !== 'object') state[k] = {};
 const shared = parseShared(new URLSearchParams(location.search));
+const pin = parsePin(new URLSearchParams(location.search)); // a link to a spot: its card opens there (25d part 6b)
 if (shared && ACTIVITIES[shared.activity]) state.activity = shared.activity;
 
 const overlaysFor = (act) => ({ ...ACTIVITY_OVERLAYS[act], ...(state.overlaysByActivity[act] || {}) });
@@ -122,7 +123,7 @@ const ctx = {
 // Where the map opens: a link's view (#zoom/lat/lon, MapLibre reads it), else where
 // you left it last time, else (a first visit) Helsinki, and Polku asks for your location.
 const lastView = store.get('view', null);
-const firstVisit = !/^#\d/.test(location.hash) && !lastView && !shared;
+const firstVisit = !/^#\d/.test(location.hash) && !lastView && !shared && !pin;
 // the planner left open (25c, #238): it opens again after a reload, as it was (editing or the route's view)
 const leftOpen = !!(store.get('plannerOpen', null) || {}).open;
 const map = new maplibregl.Map({
@@ -137,6 +138,7 @@ const map = new maplibregl.Map({
 });
 installIcons(map);
 initGestures(map, { trackpadTilt: () => state.terrain3d && state.trackpadTilt, trackpadRotate: () => state.trackpadTilt });
+bindCrosshair(map);
 const view3d = initView3d(map, $('#view3d'));
 // Rotation and tilt stay available in 2D too (right-drag, Ctrl+drag, two fingers);
 // the on-screen pad appears whenever the view is tilted or 3D terrain is on.
@@ -318,7 +320,7 @@ const planner = new Planner(map, {
   overlayOn: (id) => !!state.overlays[id],
   setOverlay: (id, on) => setOverlay(id, on),
   rideLipas: (props, opts) => rideLipas(props, opts),
-  lipasRide: (props) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, {})),
+  lipasRide: (props, click = null) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
   setData,
   onStartChange: (k) => { if (k != null) weather.setHour(k, { silent: true }); safety.publish(); }, // (a day past the timeline's two: it stays)
   onAnalysis: () => {
@@ -327,6 +329,7 @@ const planner = new Planner(map, {
     const has = planner.points.length > 1;
     if (has !== hadRoute) { hadRoute = has; if (!$('#layers-panel').hidden) renderLayersPanel(); }
   },
+  weatherHere: (ll) => { if (!state.timeline) setTimeline(true); weather.holdAt(ll); }, // (Weather here on a card)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
   saveOffline: () => {
@@ -378,10 +381,8 @@ async function rideLipas(props, { click = null, near = null, add = false } = {})
 }
 const inspector = initInspector(map, {
   // the map's own cards: with the planner put away, and in the route's view for what the planner doesn't take (25c)
-  isPlanning: (e) => planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent)),
-  activity: () => state.activity,
-  difficulty: showsDifficulty,
-  bike: isBike,
+  // (and not the click that ends a hold on the map, whose card is the planner's: 25d part 5)
+  isPlanning: (e) => (planner.active && (!planner.inView() || (!!e && planner.tookClick === e.originalEvent))) || Date.now() < planner.noClickUntil,
   routeFrom: (ll, mode) => {
     planner.setActive(true, { edit: true });
     if (mode) planner.setMode(mode);
@@ -391,14 +392,16 @@ const inspector = initInspector(map, {
   },
   routeTo: (ll) => { planner.setActive(true, { edit: true }); planner.addPoint(ll); },
   avoid: (ll, label) => { planner.setActive(true); planner.addNogo(ll, 40, label || 'Avoided place'); },
-  rideLipas,
   // a click on your route with the planner closed: open it, with that part's choices
   // (in the route's view too, where the planner leaves map taps to the map: 25c)
   // Check's markers on the route with the planner put away: their card first (25d part 3)
   headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10),
   openHead: (f) => planner.openHead(f),
   openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openRouteCard(leg, lngLat), 60); }, // (the same click mustn't add a point too)
-  lipasRide: (props, click) => lipasPlace(props.type, props.lipasId).then((place) => rideOf(place, { click })),
+  // a way, a place, a LIPAS route or place: the planner's card, at the spot (25d part 6)
+  openSpot: (f, ll, point, touch) => (f.layer.id === 'lipas-route' ? planner.openLipasCard(f.properties, ll, { click: point ? ll : null, near: f.near }) : planner.openSpotCard(ll, { pt: point, touch, place: point ? null : f })),
+  cardOpen: () => !!planner.cards.current,
+  closeCard: () => planner.cards.close(),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
@@ -411,7 +414,8 @@ initSearch(map, $('#search-input'), $('#search-results'), {
   // the picked route stands out (and shows at any zoom) while its card is open
   openLipas: (props, ll, near, parts) => {
     setData('lipasPick', { type: 'FeatureCollection', features: (parts || []).map((p) => ({ type: 'Feature', properties: { type: props.type }, geometry: { type: 'LineString', coordinates: p.coords } })) });
-    inspector.openLipas(props, ll, near).on('close', () => setData('lipasPick', { type: 'FeatureCollection', features: [] }));
+    inspector.openLipas(props, ll, near);
+    if (planner.cards.current) planner.cards.current.gone = () => setData('lipasPick', { type: 'FeatureCollection', features: [] });
   },
 });
 
@@ -1711,5 +1715,14 @@ map.on('load', () => {
   } else {
     planner.loadSaved(); // last session's route
     if (leftOpen) planner.setActive(true); // and the planner, if it was left open (#238)
+  }
+  // a link to a spot (25d part 6b): the map there, a pin and its card once the map has drawn what's there; the route
+  // you had stays as it was
+  if (pin) {
+    history.replaceState(null, '', location.pathname + location.hash);
+    map.once('idle', () => {
+      map.jumpTo({ center: pin.ll, zoom: Math.max(map.getZoom(), 14) });
+      map.once('idle', () => planner.openSpotCard(pin.ll, { pin: true, name: pin.name }));
+    });
   }
 });
