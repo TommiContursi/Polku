@@ -4890,9 +4890,11 @@ export class Planner {
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
       // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
       // to read came once a source didn't answer (25d part 3, which can take a while): the peek is taller now, so
-      // frame it once more, unless the map has been moved or framed on something else since, or a card is open
+      // frame it once more, unless the map has been moved or framed on something else since, or a card is open:
+      // asked again in the frame it runs in, so a press or a card opened in between stops it
       const f = this.fitAt;
-      if (f && f.peek !== peek && this.panel.dataset.state === 'peek' && !this.cards.current && Date.now() - f.t < 60000) { this.fitAt = null; requestAnimationFrame(() => this.fitRoute({ animate: false })); }
+      const wanted = () => this.fitAt === f && this.panel.dataset.state === 'peek' && !this.cards.current;
+      if (f && f.peek !== peek && wanted() && Date.now() - f.t < 60000) requestAnimationFrame(() => { if (wanted()) this.fitRoute({ animate: false }); });
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
     };
     this.measureSheet = sizes;
