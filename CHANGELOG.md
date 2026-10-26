@@ -4,6 +4,21 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-25
 
+### The map's cards: hold the map to see what's there ([#233](https://github.com/TommiContursi/Polku/issues/233), [#345](https://github.com/TommiContursi/Polku/issues/345))
+
+Hold the map, or right-click it, to see what's there and what you can do. Ways, places and official routes open on the same card as your route's points, and a spot can be shared.
+
+- Holding the map still for half a second (a ring fills under your finger), or a right-click, opens a card for the spot: what the map has there, how far it is from your route, its height and your sport's fact of the way. A tap is still a tap, and moving your finger is still the map's.
+- **+ Add to my route** puts the spot where it adds the least to your route, between two points or after the end, and the note says which point it follows. Within 30 m of the line it adds a point on the line. With no route it starts one. **Start here** and **End here** add a new start or end, and **Undo** takes them back.
+- A tap on a place's icon (a shelter, a campfire site, a toilet, a peak, an obstacle or a LIPAS place) shows its card instead of adding a point, even while you draw. A tap beside it still adds a point.
+- Holding the route still while you draw opens **Edit this stretch**, and so does a right-click on it. Hold it a moment and drag, and it still reshapes the route. The first point's peek says how to see what's there.
+- **What's here** says what the map knows, your sport's details of the way first and what it doesn't know said so, as “? not mapped”. A place has its details in groups. **All OpenStreetMap details** asks OpenStreetMap once for its own data, and adds what it says to the card. **Copy** puts the spot's coordinates on the clipboard.
+- **Not right?** opens OpenStreetMap's note page at the spot, which needs no account, or its editor for that way or place; a LIPAS place opens LIPAS's page.
+- **Share** opens your phone's share sheet with a link to the spot, its name and its coordinates, or copies the link and says so. The link opens Polku at the spot with a pin and its card, and carries only the spot and the map's view, never your route or where you are.
+- **Weather here ›** opens the timeline held at the spot, with a pin on it, until you close the timeline or pick another spot.
+- With the planner put away, a tap on a way, a place or an official route opens the same card, with the same **What's here**. Ships, sea marks, road works and the water's depth keep their own cards.
+- With a keyboard, Tab to the map for a crosshair in its middle and the keys listed on the map: the arrows move the map, **Enter** does what a tap does there, **Shift+F10** or the menu key what holding does, and **Esc** closes the card.
+
 ### The route's card, the list in sections, when you leave, and what stands out ([#233](https://github.com/TommiContursi/Polku/issues/233), [#364](https://github.com/TommiContursi/Polku/issues/364), [#424](https://github.com/TommiContursi/Polku/issues/424), [#471](https://github.com/TommiContursi/Polku/issues/471))
 
 A tap on the route shows a card for it, Route's list is in sections, a route can leave on any day, and a line under the route's numbers says what stands out.

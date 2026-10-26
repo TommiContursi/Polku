@@ -1,7 +1,8 @@
 // The facts a card shows (25d). Pure: read from the route's analysis and what the planner says of a point, so a
 // missing one says so in its place, in the same words on every card. 1b adds the route's, by sport.
 import { fmtDist, fmtDuration } from './geo.js';
-import { OFFROAD_BIKE, isWater, ACTIVITIES } from './config.js';
+import { OFFROAD_BIKE, isWater, ACTIVITIES, UPHILL_TEXT } from './config.js';
+import { WINTER_TEXT } from './winter.js';
 import { surfaceClass } from './analysis.js';
 import { forecastKnown } from './weather.js';
 
@@ -180,4 +181,88 @@ function waterWind(a, w, wet) {
   }
   if (!n) return null;
   return known ? { sp: Math.round(sp), g: Math.round(g), head: Math.round((head / m) * 100), past } : { none: true };
+}
+
+// ------------------------------------------------------------------ a spot and a place on the map (part 5)
+// a way's tile properties as the OpenStreetMap tags they come from, so What's here says them as the route's tags
+export const tileTags = (p) => ({ 'mtb:scale': p.mtb_scale, surface: p.surface, sac_scale: p.sac, width: p.width, trail_visibility: p.tv, smoothness: p.smooth, name: p.name });
+
+// The spot's three numbers: how far from your route (none with no route), its height, and your sport's fact of the way
+// there. `fromRoute` metres or null; `ele` metres, undefined while it's asked, null when there's none; `tags` the way's,
+// null with no way there.
+export function spotNums({ fromRoute, ele, tags, sport }) {
+  const key = (SPORT_FACTS[sport] || SPORT_FACTS.mtb)[2], miss = (label) => ({ value: '?', label, missing: true });
+  const fact = !tags && ['mtb', 'sac', 'surface'].includes(key) ? miss('no trail here')
+    : key === 'mtb' ? (mtbGrade(tags) ? { ...mtbGrade(tags), label: 'difficulty' } : miss('difficulty not mapped'))
+    : key === 'sac' ? (sacGrade(tags) ? { ...sacGrade(tags), label: 'trail grade' } : miss('trail grade not mapped'))
+      : key === 'surface' ? (tags && tags.surface ? { value: cap(plain(tags.surface)), label: 'surface' } : miss('surface not mapped'))
+        : null; // (on the water the wind is Weather here's, part 6)
+  return [
+    fromRoute != null ? { value: fmtDist(fromRoute), label: 'from your route' } : null,
+    ele === undefined ? { value: '–', label: 'height', wait: true } : ele == null ? miss('height not known') : { value: `${Math.round(ele)} m`, label: 'height' },
+    fact,
+  ].filter(Boolean);
+}
+
+// A place's facts, as plain lines: three at most, from what the map has (a tile's properties, OpenStreetMap's tags once
+// they're asked for, LIPAS's)
+const PLACE_FACTS = [
+  (t) => (t.fee === 'no' ? 'Free' : t.fee === 'yes' ? 'A fee' : null),
+  (t) => (t.opening_hours ? (t.opening_hours === '24/7' ? 'Open all the time' : `Open ${t.opening_hours}`) : null),
+  (t) => (t.toilets === 'yes' || t.wc === 'true' ? 'A toilet' : null),
+  (t) => (t.fireplace === 'yes' || ['firepit', 'bbq'].includes(t.subclass) ? 'A fireplace' : null),
+  (t) => (t.drinking_water === 'yes' ? 'Drinking water' : null),
+  (t) => (t.wheelchair === 'yes' ? 'Wheelchair access' : t.wheelchair === 'no' ? 'No wheelchair access' : null),
+  (t) => (t.ele ? `${Math.round(t.ele)} m high` : null),
+  (t) => (t.length ? `${t.length} km long` : null),
+  (t) => (t.surface ? cap(plain(t.surface)) : null),
+];
+export const placeFacts = (tags) => PLACE_FACTS.map((f) => f(tags || {})).filter(Boolean).slice(0, 3);
+
+// ------------------------------------------------------------------ What's here, in levels (part 6)
+// What the map draws about a way beyond its tags: its winter (winterAt()), the uphill layer's grade, its access, a bridge
+// or boardwalk, what the trail details found on it. { extra: [{ group, label, value }], closed }: closed says why routes
+// keep off it for your sport ('no walking', 'private or no access'), or null.
+export function wayExtras(p, { winter = null, uphill = null, bike = false }) {
+  const own = bike ? 'bicycle' : 'foot';
+  const access = [p.access === 'no' ? 'private or no access' : '', ...['bicycle', 'foot', 'horse'].filter((k) => p[k]).map((k) => `${k} ${p[k]}`)].filter(Boolean).join(', ');
+  const issues = [p.veg && 'overgrown', p.mud && 'wet or muddy', p.tree && 'fallen trees', p.wayford && 'a ford'].filter(Boolean).join(', ');
+  return {
+    extra: [
+      winter ? { group: 'In winter', label: winter.beside ? 'Beside it' : 'On the map', value: winter.beside ? 'A ski track: keep off it on foot and by bike' : WINTER_TEXT[winter.cls] } : null,
+      uphill ? { group: 'The way', label: 'Uphill', value: `${UPHILL_TEXT[uphill.properties.cls]}, ${uphill.properties.grade} %` } : null,
+      access ? { group: 'The way', label: 'Access', value: cap(access) } : null,
+      p.brunnel ? { group: 'The way', label: 'Structure', value: p.boardwalk ? 'Boardwalk (pitkospuut)' : cap(p.brunnel) } : null,
+      issues ? { group: 'The way', label: 'On the way', value: cap(issues) } : null,
+      p.informal ? { group: 'The way', label: 'Path', value: 'Informal, not an official trail' } : null,
+    ].filter(Boolean),
+    closed: own === 'foot' && p.foot === 'no' ? 'no walking' : p.access === 'no' && !['yes', 'designated', 'permissive'].includes(p[own]) ? 'private or no access' : null,
+  };
+}
+
+// A place's What's here [p-placemore]: at the site, getting there, when it's open, when it was last checked, as far as
+// the map knows. `known`: OpenStreetMap's tags are in (All OpenStreetMap details), so what a place of its kind would have
+// and doesn't says "not mapped"; before that, only what's there shows. [{ group, label, value, missing }]
+const YES = (v) => (v === 'yes' ? 'Yes' : v === 'no' ? 'No' : v && cap(plain(v)));
+const PLACE_ROWS = [
+  ['At the site', 'Fee', (t) => (t.fee === 'no' ? 'Free' : t.fee === 'yes' ? 'A fee' : t.fee && cap(plain(t.fee))), 'fee'],
+  ['At the site', 'Toilet', (t) => (t['toilets:disposal'] ? cap(plain(t['toilets:disposal'])) : t.wc === 'true' ? 'Yes' : YES(t.toilets)), 'toilets'],
+  ['At the site', 'Fireplace', (t) => YES(t.fireplace), 'fireplace'],
+  ['At the site', 'Drinking water', (t) => YES(t.drinking_water), 'drinking_water'],
+  ['At the site', 'Shelter', (t) => t.shelter_type && cap(plain(t.shelter_type)), null],
+  ['At the site', 'Wheelchair access', (t) => (t.wheelchair === 'limited' ? 'Limited' : YES(t.wheelchair)), 'wheelchair'],
+  ['At the site', 'Run by', (t) => t.operator, 'operator'],
+  ['Getting there', 'Access', (t) => t.access && cap(plain(t.access)), null],
+  ['When', 'Open', (t) => (t.opening_hours === '24/7' ? 'All the time' : t.opening_hours), 'opening_hours'],
+  ['When', 'Seasons', (t) => t.seasonal && cap(plain(t.seasonal)), 'seasonal'],
+  ['Last checked', 'OpenStreetMap', (t) => t.check_date || t['survey:date'], null],
+];
+// what a place of each kind would have, said "not mapped" once OpenStreetMap's tags are in
+const PLACE_WANTS = { toilets: ['fee', 'opening_hours', 'seasonal', 'wheelchair', 'operator'], shelter: ['fireplace', 'toilets'], campsite: ['toilets', 'drinking_water', 'fee'], picnic_site: ['fireplace'], firepit: ['fireplace'], drinking_water: ['seasonal'] };
+export function placeGroups(tags, kind, { known = false } = {}) {
+  const t = tags || {}, wants = new Set(known ? PLACE_WANTS[kind] || [] : []);
+  return PLACE_ROWS.flatMap(([group, label, get, key]) => {
+    const v = get(t);
+    return v ? [{ group, label, value: v }] : key && wants.has(key) ? [{ group, label, value: 'not mapped', missing: true }] : [];
+  });
 }

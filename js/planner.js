@@ -6,7 +6,7 @@ import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } f
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
 import { retryFailed as retryTerrainTiles } from './dem.js';
-import { detailsAlong, forgetFailures as forgetTrailFailures } from './trails.js';
+import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } from './trails.js';
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, WAY_COLORS, TRAIL_SCALES, colorAt, routeReadout, noTerrain, NO_TERRAIN } from './chart.js';
@@ -18,12 +18,13 @@ import { winterAlong, windChill, WINTER_TEXT, forgetWinterFailures } from './win
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, tripDays, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
-import { keyFacts, factLine, sportFacts, hardestClimb, climbWords } from './facts.js';
+import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags, wayExtras } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
-import { keepInView, wayNear, OSM_KEYS } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt } from './inspect.js';
+import { describe } from './hover.js';
 import { CardHost, item, rows } from './card.js';
 import { darkWords } from './palette.js';
-import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock } from './cards.js';
+import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
@@ -62,6 +63,9 @@ const TIPS = {
   done: { name: 'Done', keys: 'E', text: 'Ends editing: the route stays open to read, check and take along.' },
   edit: { name: 'Edit', keys: 'E', text: 'Back to drawing: a click on the map adds a point.' },
 };
+// the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
+const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points'];
+const NEAR_LINE = 30;
 // a leg waits this long for a BRouter slot before Valhalla routes it instead (router.js)
 const STAND_IN_AFTER = 6000;
 // round trips: lengths to pick from per sport, the candidates' colours, and how many calls they may take
@@ -252,7 +256,7 @@ export class Planner {
       const names = this.points.map((_, i) => this.autoName(i)).join('|');
       if (names !== this.shownNames) this.renderWaypoints();
     });
-    this.bindSpotMenu();
+    this.bindHold();
     this.bindWayHistory();
   }
 
@@ -506,10 +510,11 @@ export class Planner {
     this.update();
   }
 
-  insertPoint(legIdx, ll) {
+  // exact: the point at ll itself, its two legs routed again (Add to my route); else on the line nearest it (no call)
+  insertPoint(legIdx, ll, { exact = false } = {}) {
     if (!this.legs[legIdx]) return this.addPoint(ll);
     this.commit();
-    this.splitLeg(legIdx, ll);
+    this.splitLeg(legIdx, ll, null, { exact });
     this.update();
   }
 
@@ -517,10 +522,10 @@ export class Planner {
   // halves keep the geometry they had (a route through a point on it is the
   // same route), so adding a point on the line costs no routing request.
   // Returns the new point's index.
-  splitLeg(li, ll, near = null) {
+  splitLeg(li, ll, near = null, { exact = false } = {}) {
     const leg = this.legs[li];
     const r = leg.result;
-    if (r && leg.status === 'ok' && leg.mode !== 'water' && r.coords.length > 1) {
+    if (!exact && r && leg.status === 'ok' && leg.mode !== 'water' && r.coords.length > 1) {
       const c = r.coords;
       near = near || nearestOnLine(ll, c);
       const q = c[near.i], q2 = c[near.i + 1];
@@ -2628,16 +2633,11 @@ export class Planner {
 
   // ---------------------------------------------------------------- map interaction
   onMapClick(e) {
-    const tl = this.tapOnLeg; // this click only
-    this.tapOnLeg = null;
     if (!this.active || Date.now() < this.noClickUntil) return; // the click that ends a drag or a long-press
     // Move on a card asked where: this is the answer
     if (this.picking) { this.popupAtPress = false; this.picking.done([+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)]); return; }
     // a menu or card was open: this click (a tap beside it) closes it, and adds nothing
     if (this.popupAtPress) { this.popupAtPress = false; this.cards.close(); return; }
-    // a quick tap on the line that a busy page took for a hold: that part's menu, though the map
-    // may not have redrawn the route without the hold's split yet (#293)
-    if (tl && Date.now() - tl.at < 1000 && this.legs[tl.li]) { this.openRouteCard(tl.li, e.lngLat); return; }
     const touch = this.isTouch();
     const r = touch ? 12 : 6;
     // Map taps inside a way to begin belong to it (A): in the round trip a tap picks a loop or sets the start
@@ -2669,6 +2669,9 @@ export class Planner {
     // is easy, and most taps on the route are to check something); "Add a point here" is at the spot, and a drag still
     // reshapes the route (25d's 1b)
     if (hit && !hit.properties.loading) { this.openRouteCard(hit.properties.leg, e.lngLat); return; }
+    // a place's icon (a campfire site, a toilet, a lean-to, a LIPAS place, an obstacle): its card, not a point (part 5)
+    const place = this.placeAt(e.point, touch);
+    if (place) { this.openPlaceCard(place, ll); return; }
     else {
       const wet = this.points.length > 0 && this.onOpenWater(e.point); // (a first point has no leg to get there by)
       this.addPoint(ll); // (the first point's peek offers a round trip from it: #232)
@@ -3255,9 +3258,9 @@ export class Planner {
     this.restoreSnap(ed.snap);
   }
 
-  // Press on the route and drag: a new via point under the pointer. With a
-  // mouse the drag starts as soon as it moves; on a touch screen hold the line
-  // for a moment first, so a swipe across it still pans the map.
+  // Press on the route and drag: a new via point under the pointer. With a mouse the drag starts as soon as it moves;
+  // on a touch screen hold the line for a moment first (0.3 s), so a swipe across it still pans the map, and the split
+  // waits for the first move after it. Held still to 0.5 s, Edit this stretch opens and nothing is split (25d part 5).
   onLinePress(e) {
     if (!this.active || this.edit || this.panel.hidden || this.inView()) return; // (in the route's view a tap on the line is its menu)
     // Marker presses bubble through the map too: their own drag must be the
@@ -3268,45 +3271,76 @@ export class Planner {
     if (!f || f.properties.loading) return;
     const touch = e.type === 'touchstart';
     if (touch ? e.points.length !== 1 : e.originalEvent.button !== 0) return;
-    const map = this.map, li = f.properties.leg, p0 = e.point, t0 = e.originalEvent.timeStamp, HOLD = 300;
+    const map = this.map, li = f.properties.leg, p0 = e.point, t0 = e.originalEvent.timeStamp, HOLD = 300, STILL = 500;
     const ll0 = [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)];
-    let dot = null, hold = 0, moved = false;
+    let dot = null, hold = 0, still = 0, armed = false, card = null;
     const start = () => {
       if (this.edit) return;
-      if (touch) { map.dragPan.disable(); if (navigator.vibrate) navigator.vibrate(10); }
       const snap = this.snapshot();
       const k = this.splitLeg(li, ll0);
       dot = new maplibregl.Marker({ element: h('div', { class: 'wp-hit' }, h('div', { class: 'wp wp-via' })) }).setLngLat(this.points[k]).addTo(map);
       this.beginEdit(k, snap);
       this.drawRoute();
     };
+    // held for the line: the map stays still under the finger; held still on, Edit this stretch
+    const arm = () => {
+      armed = true;
+      map.dragPan.disable();
+      if (navigator.vibrate) navigator.vibrate(10);
+      still = setTimeout(() => { still = setTimeout(() => { map.dragPan.enable(); edit(); }, 60); }, STILL - HOLD); // (a moment more for a late lift, as the hold's)
+    };
     const move = (ev) => {
       if (!dot) {
         const d = Math.hypot(ev.point.x - p0.x, ev.point.y - p0.y);
-        if (touch) { if (d > 10 || (ev.points && ev.points.length > 1)) stop(); return; } // a swipe or a pinch: the map's
-        if (d < 4) return;
+        if (touch && ev.points && ev.points.length > 1) { stop(); return; } // a second finger, held or not: a pinch, the map's
+        if (touch && !armed) {
+          // held long enough by the finger's own times, though a busy page hasn't run the hold's timer yet: held after all
+          if (ev.originalEvent.timeStamp - t0 >= HOLD) { clearTimeout(hold); arm(); } else { if (d > 10) stop(); return; } // (a swipe: the map's)
+        }
+        if (d < (touch ? 10 : 4)) return;
+        // Edit this stretch is open: the finger moved before its time, though a busy page saw it late, so it's a drag
+        // after all (#293); else the card is the hold's, and the move nothing
+        if (card) {
+          if (ev.originalEvent.timeStamp - t0 >= STILL) return;
+          if (this.cards.current === card) this.cards.close();
+          card = null;
+          this.noClickUntil = 0;
+          map.dragPan.disable();
+        }
+        clearTimeout(still);
         start();
       }
       const ll = [+ev.lngLat.lng.toFixed(6), +ev.lngLat.lat.toFixed(6)];
-      moved = true;
       dot.setLngLat(ll);
       this.editTo(ll);
     };
+    const edit = () => {
+      if (navigator.vibrate) navigator.vibrate(10);
+      this.noClickUntil = Date.now() + 700;
+      this.openStretchCard(this.stretchAt(li), { edit: true, at: ll0 });
+      card = this.cards.current;
+    };
     const stop = (ev) => {
       clearTimeout(hold);
+      clearTimeout(still);
       map.off(touch ? 'touchmove' : 'mousemove', move);
       if (touch) { map.off('touchend', stop); map.off('touchcancel', stop); } else window.removeEventListener('mouseup', stop);
+      if (armed) map.dragPan.enable();
+      // held still long enough by the finger's own times, though a busy page hasn't run the timers yet: Edit this stretch
+      if (touch && !dot && !card && ev && ev.type === 'touchend' && ev.originalEvent.timeStamp - t0 >= STILL) { edit(); ev.originalEvent.preventDefault(); this.noClickUntil = Date.now() + 400; return; }
+      // the finger was up before the hold's time, though a busy page saw it late: a tap after all, so the route's card
+      // (#293), whether or not a click follows
+      if (card) {
+        if (ev) ev.originalEvent.preventDefault(); // (no click as the finger lifts)
+        this.noClickUntil = Date.now() + 400;
+        if (ev && ev.type === 'touchend' && ev.originalEvent.timeStamp - t0 < STILL) this.openRouteCard(li, ll0);
+        return;
+      }
       if (!dot) return;
-      if (touch) map.dragPan.enable();
       dot.remove();
-      // the finger was up before the hold's time, though a busy page saw it late: a tap after
-      // all, so the route as it was, nothing in Undo, and its click opens this part's menu (#293)
-      if (touch && !moved && ev && ev.type === 'touchend' && ev.originalEvent.timeStamp - t0 < HOLD) {
-        this.dropEdit();
-        this.tapOnLeg = { li, at: Date.now() };
-      } else this.endEdit();
+      this.endEdit();
     };
-    if (touch) hold = setTimeout(start, HOLD);
+    if (touch) hold = setTimeout(arm, HOLD);
     else e.preventDefault(); // no panning: this press may become a drag
     map.on(touch ? 'touchmove' : 'mousemove', move);
     if (touch) { map.on('touchend', stop); map.on('touchcancel', stop); } else window.addEventListener('mouseup', stop);
@@ -3382,14 +3416,7 @@ export class Planner {
     return { from, to };
   }
   // the leg the route passes a spot on (40 m at most), or null: a card at that spot finds its leg again by it
-  legNear(ll) {
-    let best = null, bd = 40;
-    this.legs.forEach((l, k) => {
-      const c = l.result ? l.result.coords : [this.points[k], this.points[k + 1]];
-      for (let j = 1; j < c.length; j++) { const d = pointSegment(ll, c[j - 1], c[j]).d; if (d < bd) { bd = d; best = k; } }
-    });
-    return best;
-  }
+  legNear(ll) { const n = this.nearLine(ll); return n && n.d < 40 ? n.li : null; }
   // the route at a spot: its analysis sample, how far along, the way and its tags; null while the route is worked out
   routeSpot(ll) {
     const a = this.analysis;
@@ -3495,15 +3522,19 @@ export class Planner {
     this.cards.close();
     this.addNogo(ll, 40, 'Avoided place');
   }
-  // What's here's All OpenStreetMap details: the way nearest the spot, asked once (Overpass), its tags as rows
-  async osmOnCard(card, ll) {
-    card.osm = { state: 'Asking OpenStreetMap…' };
+  // What's here's All OpenStreetMap details (25d part 6): the way or the place at the spot, asked once a card (Overpass,
+  // osmDetails()); its tags then fill the card's facts too (Last checked, a toilet's fee). `what`: { type, id } or null
+  // for the way nearest the spot. An answer after the card closed changes nothing.
+  async osmOnCard(card, ll, what = null) {
+    if (card.osm && (card.osm.rows || card.osm.asking)) return;
+    card.osm = { state: 'Asking OpenStreetMap…', asking: true };
     this.cards.refresh();
     try {
-      const w = await wayNear(ll);
-      card.osm = w ? { rows: [...OSM_KEYS.filter(([k]) => w.tags[k]).map(([k, label]) => [label, String(w.tags[k])]), ['Length', `${Math.round(w.len)} m`], ['OpenStreetMap', `way ${w.id}`]] } : { state: 'No OpenStreetMap way found here' };
+      const w = await osmDetails({ ll, type: what ? what.type : 'way', id: what ? what.id : null });
+      card.osm = w ? { w, rows: [...OSM_KEYS.filter(([k]) => w.tags[k]).map(([k, label]) => [label, String(w.tags[k])]), ...(w.len ? [['Length', `${Math.round(w.len)} m`]] : []), ['OpenStreetMap', `${w.type} ${w.id}`]] }
+        : { state: `No OpenStreetMap ${what && what.type === 'place' ? 'place' : 'way'} found here` };
     } catch { card.osm = { state: 'OpenStreetMap didn’t answer: try again' }; }
-    if (this.cards.current === card) this.cards.refresh();
+    if (this.cards.stack.some((e) => e.card === card)) this.cards.refresh();
   }
   // Share link's line: what the link carries beyond the route, the date once one is set (#364's C; to share without it,
   // set Now first)
@@ -3511,72 +3542,216 @@ export class Planner {
   loopsHere() { return roundTripSports.includes(this.app.activity()); }
   importFile() { $('#file-input').click(); }
 
-  // Long-press (touch) or right-click elsewhere on the map: what you can do at that spot.
-  bindSpotMenu() {
-    const map = this.map, HOLD = 550;
-    let hold = 0, p0 = null, lastTouch = 0, t0 = 0, held = null;
-    const cancel = () => { clearTimeout(hold); hold = 0; };
+  // Hold the map still for 0.5 s (within 10 px), or right-click it: what's there and what you can do there (25d part 5).
+  // A ring fills under the finger from 0.15 s; let go sooner and it's a tap. A move or a second finger is the map's own.
+  // While drawing, a hold on the line is the line's own (onLinePress()), and a right-click there is Edit this stretch.
+  bindHold() {
+    const map = this.map, HOLD = 500, RING = 150, LATE = 60;
+    let timers = [], p0 = null, lastTouch = 0, t0 = 0, held = null, ring = null, open = null, cam = null;
+    const cancel = () => { timers.forEach(clearTimeout); timers = []; if (ring) { ring.remove(); ring = null; } };
     const onUi = (e) => { const t = e.originalEvent && e.originalEvent.target; return !!(t && t.closest && t.closest('.maplibregl-marker, .maplibregl-popup')); };
     map.on('touchstart', (e) => {
       lastTouch = Date.now();
       cancel();
-      if (e.points.length !== 1 || this.edit || onUi(e)) return;
-      if (this.map.getLayer('route-casing') && this.map.queryRenderedFeatures(e.point, { layers: ['route-casing'] }).length && this.active && !this.inView()) return; // the line's own hold
+      if (e.points.length !== 1 || this.edit || this.picking || onUi(e)) return;
+      if (this.drawing() && this.lineAt(e.point, 0) != null) return; // the line's own hold
       p0 = e.point;
       t0 = e.originalEvent.timeStamp;
       held = null;
-      const ll = e.lngLat;
-      hold = setTimeout(() => {
-        hold = 0;
+      const ll = e.lngLat, pt = e.point, R = map.getCanvas().getBoundingClientRect();
+      open = () => {
+        cancel();
         if (navigator.vibrate) navigator.vibrate(10);
         this.noClickUntil = Date.now() + 700;
-        this.openSpotMenu(ll);
-        held = this.menu;
-      }, HOLD);
+        cam = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
+        this.openSpotCard(ll, { pt, touch: true });
+        held = this.cards.current;
+      };
+      timers = [
+        setTimeout(() => { ring = h('div', { class: 'hold-ring', style: `left:${R.left + pt.x}px;top:${R.top + pt.y}px`, 'aria-hidden': 'true' }); document.body.append(ring); }, RING),
+        // (on a busy page this timer can run before the touchend the finger's lift sent has been handled: it waits a moment
+        // for it, and a lift that comes cancels it, so no card is opened and moved for a tap)
+        setTimeout(() => timers.push(setTimeout(open, LATE)), HOLD),
+      ];
     });
-    map.on('touchmove', (e) => { if (hold && (e.points.length > 1 || Math.hypot(e.point.x - p0.x, e.point.y - p0.y) > 10)) cancel(); });
-    map.on('touchend', (e) => {
-      cancel();
-      // the finger was up before the hold's time, though a busy page saw it late (its timer ran
-      // first): a tap after all, so no menu, and its click goes through (#293)
-      if (held && e.originalEvent.timeStamp - t0 < HOLD) {
-        if (this.menu === held) this.menu.remove();
+    map.on('touchmove', (e) => {
+      if (!p0 || (e.points.length < 2 && Math.hypot(e.point.x - p0.x, e.point.y - p0.y) <= 10)) return;
+      if (timers.length) cancel();
+      // …and a move before the hold's time that a busy page saw late: the map's after all (#293)
+      else if (held && e.originalEvent.timeStamp - t0 < HOLD) {
+        if (this.cards.current === held) this.cards.close();
         this.noClickUntil = 0;
+        held = null;
+      }
+    });
+    map.on('touchend', (e) => {
+      // held long enough by the finger's own times, though a busy page hasn't run the hold's timer yet: the hold's card
+      if (timers.length && e.originalEvent.timeStamp - t0 >= HOLD) { open(); e.originalEvent.preventDefault(); this.noClickUntil = Date.now() + 400; held = null; return; }
+      cancel();
+      // the finger was up before the hold's time, though a busy page saw it late (its timer ran first): a tap after
+      // all, so no card, and its click goes through (#293)
+      if (held && e.originalEvent.timeStamp - t0 < HOLD) {
+        if (this.cards.current === held) this.cards.close();
+        // the card may have moved the map to make room: put it back, and replay the tap once the map has drawn again, since
+        // the click that follows would be judged by what it drew moved, not by what's under the finger (the browser's own
+        // click is held off meanwhile)
+        map.jumpTo(cam);
+        this.noClickUntil = Date.now() + 1500;
+        const at = p0, ev = e.originalEvent;
+        let sent = false;
+        const replay = () => {
+          if (sent) return;
+          sent = true;
+          this.noClickUntil = 0;
+          map.fire('click', { point: at, lngLat: map.unproject(at), originalEvent: ev });
+          this.noClickUntil = Date.now() + 400; // (the browser's own click may still come: on what the tap just put there, the new point's marker)
+        };
+        map.once('idle', replay); // (its symbols are placed again by then: a marker of Check's is found under the finger)
+        setTimeout(replay, 250);
+      } else if (held) {
+        // no click as the finger lifts, however long it was held: it would land on the card, moved under the finger
+        e.originalEvent.preventDefault();
+        this.noClickUntil = Date.now() + 400;
       }
       held = null;
     });
     map.on('touchcancel', () => { cancel(); held = null; });
-    // right-drag (and Ctrl+drag) rotates the map: no menu after a drag (Windows sends it on release)
+    // right-drag (and Ctrl+drag) turns the map: no card after a drag (Windows sends it on release); Android sends one
+    // after a hold, which has its card already
     let down = null;
     map.on('mousedown', (e) => { down = e.originalEvent.button === 2 || e.originalEvent.ctrlKey ? e.point : null; });
     map.on('contextmenu', (e) => {
-      if (Date.now() - lastTouch < 1000 || onUi(e) || (down && Math.hypot(e.point.x - down.x, e.point.y - down.y) > 4)) return;
-      // on the route: that part of it
-      const leg = this.active && map.getLayer('route-casing') && map.queryRenderedFeatures([[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
-      if (leg && !leg.properties.loading) { this.openRouteCard(leg.properties.leg, e.lngLat); return; } // (part 5: Edit this stretch)
-      this.openSpotMenu(e.lngLat);
+      const d = down;
+      down = null; // (a press of its own each time: the keyboard's has none, 5b)
+      if (Date.now() - lastTouch < 1000 || this.edit || this.picking || onUi(e) || (d && Math.hypot(e.point.x - d.x, e.point.y - d.y) > 4)) return;
+      const li = this.active ? this.lineAt(e.point, 6) : null;
+      if (li != null) { if (this.drawing()) this.openStretchCard(this.stretchAt(li), { edit: true, at: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)] }); else this.openRouteCard(li, e.lngLat); return; }
+      this.openSpotCard(e.lngLat, { pt: e.point });
     });
-    map.on('rotatestart', () => { if (this.menu && this.menu.spot) this.menu.remove(); });
+    map.on('rotatestart', () => { const c = this.cards.current; if (c && (c.kind === 'spot' || c.kind === 'place')) this.cards.close(); });
+  }
+  drawing() { return this.active && !this.inView(); }
+  // the leg whose line is under a spot of the screen (r px around it), or null; not while it's routed
+  lineAt(pt, r) {
+    if (!this.map.getLayer('route-casing')) return null;
+    const f = this.map.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]], { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
+    return f && !f.properties.loading ? f.properties.leg : null;
+  }
+  // a place's icon under a tap or a hold (12 px by touch, 6 px with a mouse): a campfire site, a toilet, a lean-to, a
+  // peak, a LIPAS place, an obstacle; or null
+  placeAt(pt, touch) {
+    const r = touch ? 12 : 6, layers = PLACE_LAYERS.filter((id) => this.map.getLayer(id));
+    return layers.length ? this.map.queryRenderedFeatures([[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]], { layers })[0] || null : null;
   }
 
-  openSpotMenu(lngLat) {
+  // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there.
+  // `place`: a place to show (from search, part 6); `from`: the card it's opened from (Back goes back to it)
+  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '' } = {}) {
+    const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
+    place = place || this.placeAt(p, touch);
+    if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
+    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
+    const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
+    const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
+    const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
+    const water = !d && this.map.getLayer('water') && this.map.queryRenderedFeatures(p, { layers: ['water'] }).length;
+    const route = feats.find((x) => x.layer.id === 'lipas-route');
+    this.openCard(spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
+      tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
+      ...wayExtras(way ? way.properties : {}, { winter: winterAt(feats, ll), uphill: feats.find((x) => x.layer.id === 'uphill-line'), bike }),
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null }), ll, from);
+  }
+  // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
+  openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
+    const p = f.properties, id = f.layer.id, at = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates.map((x) => +x.toFixed(6)) : ll;
+    const kind = id === 'label-peak' ? 'peak' : p.subclass || p.class || '', words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
+    const o = /^td-/.test(id) ? obstacleText(p, groupOf(this.app.activity()) === 'bike') : null;
+    const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
+      : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
+        : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
+    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
+  }
+  // A LIPAS route's card (part 6): Follow it, add it to your route, the trail under it, What's here
+  openLipasCard(props, ll, { click = null, near = null } = {}) {
+    const at = Array.isArray(ll) ? ll : [ll.lng, ll.lat];
+    const p = this.map.project(at), under = click ? this.map.queryRenderedFeatures(hitBox(p, false), { layers: inspectLayers(this.map) }).some((x) => /^(path|track|cycleway)-|^road-/.test(x.layer.id)) : false;
+    this.openCard(lipasCard(this, props, at, { click, near, under }), at);
+  }
+  openCard(card, at, from = 'map') {
     if (this.menu) this.menu.remove();
-    const ll = [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)];
-    const act = (ic, label, title, fn) => h('button', { type: 'button', class: 'btn', title, onclick: () => { this.menu.remove(); fn(); }, html: `${icon(ic, 16)} ${label}` });
-    const drawing = this.active && !this.inView(); // (the route's view is as the planner put away: these edit, 25c)
-    const body = h('div', { class: 'pt-menu' },
-      h('div', { class: 'pt-title' }, 'This spot'),
-      drawing
-        ? act('plus', 'Add a point here', 'The route goes on to here', () => { this.addPoint(ll); this.autoPeek(); })
-        : act('flag', 'Route from here', 'Start a new route here', () => { this.setActive(true, { edit: true }); this.clear(); this.addPoint(ll); toast('Now tap or click where you want to go'); }),
-      !drawing && this.points.length ? act('plus', 'Add to my route', 'Your route goes on to here', () => { this.setActive(true, { edit: true }); this.addPoint(ll); }) : null,
-      roundTripSports.includes(this.app.activity()) ? act('roundtrip', 'Round trip from here', 'Loops of the length you choose, starting and ending here', () => this.openLoop(ll)) : null,
-      act('close', 'Avoid this spot', 'Routes go around it (40 m)', () => { if (!this.active) this.setActive(true); this.addNogo(ll, 40, 'Avoided place'); }));
-    this.menu = new maplibregl.Popup({ offset: 6, closeButton: true, maxWidth: '320px', className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
-    this.menu.spot = true;
-    this.keepMenuInView();
+    this.stopPicking();
+    this.cards.open(card, { at, from });
   }
 
+  // How far a spot is from the route's line, and the leg it's nearest ({ li, d }), or null with no legs
+  nearLine(ll) {
+    let best = null;
+    this.legs.forEach((l, k) => {
+      const c = l.result ? l.result.coords : [this.points[k], this.points[k + 1]];
+      for (let j = 1; j < c.length; j++) { const d = pointSegment(ll, c[j - 1], c[j]).d; if (!best || d < best.d) best = { li: k, d }; }
+    });
+    return best;
+  }
+  byTheLine(ll) { const n = this.nearLine(ll); return !!n && n.d <= NEAR_LINE; }
+  // Where a new point fits best: after the point it follows, where it adds the least distance, between two points or
+  // after the end, never before the start (straight-line distances). { after }
+  bestInsert(ll) {
+    const P = this.points, n = P.length;
+    let after = n - 1, cost = n ? dist(P[n - 1], ll) : 0;
+    for (let k = 0; k < n - 1; k++) { const c = dist(P[k], ll) + dist(ll, P[k + 1]) - dist(P[k], P[k + 1]); if (c < cost) { cost = c; after = k; } }
+    return { after };
+  }
+  // Share on a card (part 6b) [p-shared]: a phone opens its share sheet with a link to the spot, its name and its
+  // coordinates; elsewhere the link is copied and the note says so
+  async shareSpot(spot) {
+    const name = spot.title === 'This spot' ? '' : spot.title, z = Math.max(13, Math.min(17, Math.round(this.map.getZoom())));
+    const url = spotUrl(spot.ll, name, z), at = `${spot.ll[1].toFixed(5)}, ${spot.ll[0].toFixed(5)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: name || 'A spot on Polku', text: `${name ? `${name}, ` : ''}${at}`, url }); } catch { /* it was closed */ }
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); toast('Link to this spot copied'); } catch { prompt('Copy this link', url); }
+  }
+  // Weather here › (part 6b): the timeline, held at the spot
+  weatherHere(ll) {
+    this.cards.close();
+    this.app.weatherHere(ll);
+  }
+
+  // + Add to my route (part 5) [p-added]: by the line (30 m) a point on it, as Add a point here (no call); else where it
+  // fits (bestInsert()), its two new legs routed. One step of Undo; the note names the point it follows.
+  addWhereItFits(ll) {
+    this.cards.close();
+    if (!this.active || !this.editing) this.setActive(true, { edit: true });
+    const near = this.nearLine(ll), on = near && near.d <= NEAR_LINE, k = on ? near.li : this.bestInsert(ll).after;
+    const name = this.nameOf(k);
+    if (on) this.insertPoint(k, ll);
+    else if (k >= this.points.length - 1) this.addPoint(ll);
+    else this.insertPoint(k, ll, { exact: true });
+    toast(`Added after ${name}`, { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+  }
+  // + Start a route here, with no route: its first point, drawing
+  startRouteAt(ll) {
+    this.cards.close();
+    this.setActive(true, { edit: true });
+    this.addPoint(ll);
+    this.autoPeek();
+  }
+  // Start here on a spot: a new start before the old one, which is Via 1 now; nothing is removed
+  startFrom(ll) {
+    this.cards.close();
+    if (!this.active || !this.editing) this.setActive(true, { edit: true });
+    this.commit();
+    this.points.unshift(ll);
+    this.legs.unshift({ mode: this.mode, sport: this.legs[0] ? this.legs[0].sport : this.next || undefined });
+    this.update();
+    toast('A new start is added', { ms: 7000, action: { label: 'Undo', fn: () => this.undo() } });
+  }
+  // End here on a spot: a new end after the old one
+  endAt(ll) {
+    if (!this.active || !this.editing) this.setActive(true, { edit: true });
+    this.addPoint(ll);
+  }
 
   // A point's card (25d, #345, Revision 4 of #355): built in js/cards.js. `p` is the point itself, not its index: the
   // card follows it through a move, Undo and a new order, and closes when it's gone. From the map there's no Back.
@@ -3714,15 +3889,6 @@ export class Planner {
         h('span', { class: 'day-what' }, `${fmtDist(d.to - d.from)} · ${fmtDuration(d.moving)} moving${d.up >= 20 ? ` · ↑${Math.round(d.up)} m` : ''}${night ? ` · night at ${this.nameOf(night.i)}` : ''}`),
         weather ? h('span', { class: 'day-wx' }, weather) : null);
     }));
-  }
-
-  // clear of the top bar, the controls and the planner
-  keepMenuInView() {
-    const pad = this.viewPadding(0);
-    // a tall menu (a night's places to sleep) scrolls inside the room there is: under the top bar, over the planner
-    const body = this.menu && this.menu.getElement() && this.menu.getElement().querySelector('.pt-menu');
-    if (body) body.style.maxHeight = `${Math.max(220, window.innerHeight - pad.bottom - 8 - 120 - 40)}px`;
-    keepInView(this.map, this.menu, { left: this.layout() === 'side' && this.active ? pad.left + 8 : 8, bottom: pad.bottom + 8 });
   }
 
   // ---------------------------------------------------------------- persistence & sharing
@@ -5603,7 +5769,9 @@ export class Planner {
     if (!a) {
       const tap = matchMedia('(pointer: coarse)').matches ? 'tap' : 'click';
       sum.append(h('p', { class: 'sum-empty' }, this.loop.open ? `Round trip: ${tap} the map to move its start`
-        : this.points.length ? 'Add another point to make a route' : `${tap[0].toUpperCase()}${tap.slice(1)} the map to add a start point`));
+        : this.points.length ? 'Add another point to make a route' : `${tap[0].toUpperCase()}${tap.slice(1)} the map to add a start point`,
+        // the first point's: how to see what's on the map, where a phone has no hover (part 5) [r-first]
+        this.points.length === 1 && !this.loop.open ? h('small', {}, tap === 'tap' ? 'Hold the map to see what’s there.' : 'Right-click the map to see what’s there.') : null));
 
       this.chart.setData(null);
       this.renderBreakdown();
@@ -6658,6 +6826,19 @@ function decodeAvoid(s) {
     } else lost = true;
   }
   return { nogos, lost };
+}
+
+// A link to a spot (25d part 6b): only the spot and the map's view, never the route and never where you are. Five
+// decimals (about a metre), the name up to 80 characters.
+export function spotUrl(ll, name = '', zoom = 15) {
+  const at = `${ll[1].toFixed(5)},${ll[0].toFixed(5)}`;
+  return `${location.origin}${location.pathname}?pin=${at}${name ? `&pn=${encodeURIComponent(name.slice(0, 80))}` : ''}#${zoom}/${ll[1].toFixed(5)}/${ll[0].toFixed(5)}`;
+}
+// …and its reading: { ll: [lng, lat], name } or null for anything but two numbers on the earth
+export function parsePin(params) {
+  const m = /^(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/.exec(params.get('pin') || '');
+  if (!m || Math.abs(+m[1]) > 90 || Math.abs(+m[2]) > 180) return null;
+  return { ll: [+m[2], +m[1]], name: (params.get('pn') || '').slice(0, 80) };
 }
 
 export function parseShared(params) {

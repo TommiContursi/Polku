@@ -211,6 +211,9 @@ SUN_JS = MULTI_JS('warnings').replace("p.setActive(true);", "p.setActive(true); 
 # a point's card (25d), or before it the point menu; `from` 'list' gives the card Back
 POINT_CARD = lambda name=None, from_='map': ("(async () => { const p = polku.planner; " + (f"p.setName(1, {json.dumps(name)}); " if name else '')
     + "await new Promise((r) => setTimeout(r, 300)); if (p.openPointCard) p.openPointCard(p.points[1], { from: " + json.dumps(from_) + " }); else p.openPointMenu(1, p.markers[1]); return true; })()")
+# the spot's card, then its What's here
+SPOT_HERE = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner; p.openSpotCard(polku.map.unproject(matchMedia('(pointer: coarse)').matches ? [250, 300] : [980, 560])); await wait(800);"
+             " [...document.querySelectorAll('.pl-way.card .row')].find((b) => /What/.test(b.textContent)).click(); await wait(600); return true; })()")
 DESK = dict(w=1440, h=900, phone=False)
 PHONE = dict(w=390, h=844, phone=True)
 # the quick layer drawer (#123): Layers, then a step in it (a tile's ›, Edit, More), or the worst case
@@ -479,8 +482,14 @@ SCENES = {
     'phone-profile': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='half', js="polku.planner.reveal('profile'); true"),
     'desk-point-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=POINT_CARD()),
     'phone-point-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD()),
-    'desk-spot-menu': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([980, 560])); true"),
-    'phone-spot-menu': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotMenu && polku.planner.openSpotMenu(polku.map.unproject([250, 300])); true"),
+    'desk-spot-card': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="polku.planner.openSpotCard(polku.map.unproject([980, 560])); true"),
+    # the map's cards (25d parts 5 and 6): What's here, a place's card, the spot's card in Paddle, the keyboard's crosshair
+    'desk-spot-here': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=SPOT_HERE),
+    'phone-spot-here': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js=SPOT_HERE),
+    'desk-spot-paddle': dict(DESK, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], js="polku.planner.openSpotCard(polku.map.unproject([980, 420])); true"),
+    'phone-spot-paddle': dict(PHONE, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='peek', js="polku.planner.openSpotCard(polku.map.unproject([200, 300])); true"),
+    'desk-crosshair': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="(async () => { polku.map.getCanvas().focus(); await new Promise((r) => setTimeout(r, 300)); return true; })()"),
+    'phone-spot-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotCard(polku.map.unproject([250, 300])); true"),
     # the waypoint list, one point named
     'desk-waypoints': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WAYPOINTS),
     'phone-waypoints': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=WAYPOINTS),

@@ -11,6 +11,8 @@
 //    Shift + two-finger scroll tilts in any mode; Safari's rotate gesture
 //    rotates. A real mouse wheel always zooms.
 
+import { h } from './ui.js';
+
 const OVERLAY = '.topbar, .map-ctrls, .plan-btn, .panel, .sheet, .zoom-hint, .track-card, .toast, .view3d, .wx-bar, .maplibregl-ctrl';
 // Panels are places of their own: over them a wheel or a pinch never moves the
 // map (it scrolls the panel, or the profile chart zooms itself). Small controls
@@ -125,4 +127,31 @@ export function initGestures(map, { trackpadTilt = () => false, trackpadRotate =
     map.setZoom(pinch.z + Math.log2(dist(e.touches) / pinch.d));
   }, { passive: false });
   document.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true });
+}
+
+// The keyboard's way to what a tap and a hold do (25d part 5b, WCAG 2.1.1). Tab to the map: a crosshair in its middle,
+// and the keys listed on the map. The arrows move the map (MapLibre's own keys); Enter does what a tap does at the
+// crosshair, Shift+F10 or the menu key what a long press does: the map's own click and contextmenu there, so every
+// card answers as it does for a finger or a mouse. Escape closes the card and the focus comes back to the map. A touch
+// or a click never shows the crosshair.
+const KEYS = [['← ↑ → ↓', 'Move the map'], ['Enter', 'Click there'], ['Shift F10', 'Right-click there'], ['Esc', 'Close the card']];
+export function bindCrosshair(map) {
+  const canvas = map.getCanvas(), box = map.getContainer();
+  const cross = h('div', { class: 'crosshair', 'aria-hidden': 'true', hidden: true });
+  const keys = h('dl', { class: 'map-keys', 'aria-label': 'Keys on the map', hidden: true }, ...KEYS.map(([k, d]) => h('div', {}, h('dt', {}, h('kbd', {}, k)), h('dd', {}, d))));
+  box.append(cross, keys);
+  const show = (on) => { cross.hidden = !on; keys.hidden = !on; };
+  canvas.addEventListener('focus', () => show(canvas.matches(':focus-visible')));
+  canvas.addEventListener('blur', () => show(false));
+  const middle = (type, e) => {
+    const r = canvas.getBoundingClientRect(), point = new maplibregl.Point(r.width / 2, r.height / 2);
+    map.fire(type, { point, lngLat: map.unproject(point), originalEvent: e });
+  };
+  let keyed = 0;
+  canvas.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); middle('click', e); }
+    else if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) { e.preventDefault(); keyed = Date.now(); middle('contextmenu', e); }
+  });
+  // (the browser's own contextmenu for those keys, after ours: not a second card at the pointer)
+  canvas.addEventListener('contextmenu', (e) => { if (Date.now() - keyed < 600) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
 }

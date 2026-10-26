@@ -118,6 +118,8 @@ const OFFSET = 14; // the float's corner from its spot, so the point stays in si
 // a control, as it's found again in a card built anew: its kind and its key, label or words
 const keyOf = (el) => `${el.tagName}|${el.dataset.k || el.getAttribute('aria-label') || el.textContent.trim().slice(0, 60)}`;
 const NARROW = 290; // px: a card this narrow (200 %, a small phone) has its top row of its own, and undo and redo in it
+// cards that leave the stack: their gone() (search's LIPAS route lit while its card is open)
+const gone = (entries) => { for (const e of entries) if (e.card.gone) e.card.gone(); };
 
 export class CardHost {
   // peek: where a phone's card goes; where(): 'peek' or 'float' now; onChange(card | null) after it changes.
@@ -183,7 +185,7 @@ export class CardHost {
     const entry = { card, at, beside, from };
     // from the card open now: Back goes back to it; else a card of its own, and the ones before it go (their history too)
     if (from && typeof from === 'object' && this.stack.some((e) => e.card === from)) this.stack.push(entry);
-    else this.stack = [entry];
+    else { gone(this.stack); this.stack = [entry]; }
     this.syncHistory();
     this.render({ fresh: true });
   }
@@ -196,7 +198,7 @@ export class CardHost {
   }
   stepBack() {
     if (this.folded) { const f = this.folded; this.folded = null; f.cancel(); }
-    if (this.stack.length > 1) { this.stack.pop(); this.render({ fresh: true }); return; }
+    if (this.stack.length > 1) { gone([this.stack.pop()]); this.render({ fresh: true }); return; }
     this.closeNow();
   }
 
@@ -210,6 +212,7 @@ export class CardHost {
     const f = this.folded, saved = this.saved;
     this.folded = null;
     this.saved = null;
+    gone(this.stack);
     this.stack = [];
     this.remove();
     if (f) f.cancel();
@@ -290,7 +293,7 @@ export class CardHost {
       this.peek.replaceChildren();
       this.peek.hidden = true;
       if (entry.beside || !at) this.besideAt(box, entry.beside);
-      else this.floatAt(box, at, fresh, card.pill ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
+      else this.floatAt(box, at, fresh, card.pill && !card.pinned ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
     }
     this.box = box;
     this.placePill(card, at, where);
@@ -344,9 +347,11 @@ export class CardHost {
   placePill(card, at, where) {
     if (this.pill) { this.pill.remove(); this.pill = null; document.body.classList.remove('card-pill-on'); }
     if (this.pin) { this.pin.remove(); this.pin = null; }
-    if (!card.pill || !at || where !== 'peek') return;
-    const p = card.pill;
+    // (a spot's pin: with its pill on a phone, or for a shared spot wherever its card is)
+    if (!at || !(card.pinned || (card.pill && where === 'peek'))) return;
     this.pin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(at).addTo(this.map);
+    if (!card.pill || where !== 'peek') return;
+    const p = card.pill;
     const el = h('button', { type: 'button', class: 'card-pill', onclick: () => p.fn(), html: icon(p.icon, 20) }, h('span', {}, p.label));
     this.pill = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -22] }).setLngLat(at).addTo(this.map);
     document.body.classList.add('card-pill-on'); // (the zoom note steps aside meanwhile: the spot and its pill need the map)
@@ -446,16 +451,34 @@ export class CardHost {
       const pt = this.map.project(at), x = R.left + pt.x, y = R.top + pt.y;
       const dy = y > bottom || y < top ? y - (bottom > top ? (top + bottom) / 2 : top) : 0;
       let dx = x < 24 ? x - 24 : x > innerWidth - 72 ? x - (innerWidth - 72) : 0;
-      // …and clear of what floats over the map there: the toolbox's undo and redo, the zoom note, the map's buttons
+      // …and clear of what floats over the map there: the toolbox's undo and redo, the zoom note, the map's buttons, its
+      // scale and credits (over the pill, they'd take its tap). If the spot (and its pill) is over one, the nearest place
+      // that isn't, in steps of 8 px, with the spot still between the top bar and the card (a little more for a sideways
+      // move than for an upward one, as a map's nicer to nudge sideways)
       let ddy = dy;
       const half = pill ? pill.offsetWidth / 2 : 0;
-      for (const el of [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')]) {
-        const b = el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null, nx = x - dx, ny = y - ddy;
-        if (!b || nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20) continue;
-        // beside it, on whichever side keeps the point (and its pill) on the screen; else under it, while that's above the card
-        const side = [b.right + 32 + half, b.left - 32 - half].find((to) => to - half >= 24 && to + half <= innerWidth - 72);
-        if (side != null) dx = x - side;
-        else if (b.bottom + 28 + head <= bottom) ddy = y - (b.bottom + 28 + head);
+      const box = (el) => (el && !el.hidden && el.offsetParent ? el.getBoundingClientRect() : null);
+      const base = [document.getElementById('pl-tools'), document.getElementById('zoom-hint'), document.getElementById('map-ctrls')].map(box).filter(Boolean);
+      const credits = box(document.querySelector('.maplibregl-ctrl-bottom-left'));
+      const clear = (list) => (nx, ny) => list.every((b) => nx + half < b.left - 20 || nx - half > b.right + 20 || ny < b.top - 20 || ny - head > b.bottom + 20);
+      // (with no room under the top bar and above the card, the spot goes where it meets the top bar, as it did)
+      const hi = Math.max(bottom, top + 8);
+      const nearest = (ok) => {
+        let best = null;
+        for (let a = -320; a <= 320; a += 8) for (let c = -320; c <= 320; c += 8) {
+          const nx = x - dx - a, ny = y - ddy - c, cost = Math.abs(a) + 1.2 * Math.abs(c);
+          if (nx < 24 || nx > innerWidth - 72 || ny < top || ny > hi || (best && cost >= best.cost) || !ok(nx, ny)) continue;
+          best = { a, c, cost };
+        }
+        return best;
+      };
+      // the scale and credits too, the whole pill clear of them where there's room; else at least the spot itself (a tiny screen
+      // has none to spare, and then it's as before)
+      const spotClear = credits ? (nx, ny) => clear(base)(nx, ny) && (nx < credits.left - 8 || nx > credits.right + 8 || ny < credits.top - 8 || ny > credits.bottom + 8) : clear(base);
+      for (const ok of [clear(credits ? [...base, credits] : base), spotClear, clear(base)]) {
+        if (ok(x - dx, y - ddy)) break;
+        const best = nearest(ok);
+        if (best) { dx += best.a; ddy += best.c; break; }
       }
       if (Math.abs(dx) > 1 || Math.abs(ddy) > 1) this.map.panBy([dx, ddy], { duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
     };

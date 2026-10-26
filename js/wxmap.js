@@ -127,7 +127,23 @@ export class WeatherOverlay {
 
   // Show / hide the floating timeline. Layers keep their selected time either way.
   // While docked in the planner it stays there; this only sets what comes back.
+  // Weather here (25d part 6b): the readout is for a spot of the map you chose, with a pin on it, until the timeline
+  // closes or you pick another; the forecast it reads is the grid's, so no request carries the spot
+  holdAt(ll) {
+    this.heldLL = ll;
+    if (this.heldPin) this.heldPin.remove();
+    this.heldPin = new maplibregl.Marker({ element: h('div', { class: 'card-pin', 'aria-hidden': 'true' }) }).setLngLat(ll).addTo(this.map);
+    this.readout();
+  }
+  release() {
+    if (!this.heldLL) return;
+    this.heldLL = null;
+    if (this.heldPin) { this.heldPin.remove(); this.heldPin = null; }
+    this.readout();
+  }
+
   setOpen(on) {
+    if (!on) this.release();
     this.open = on;
     if (!this.docked) this.bar.hidden = !on;
     this.wake();
@@ -1047,7 +1063,7 @@ export class WeatherOverlay {
       if (!this.active || !this.nowEl) return;
       this.renderLegend();
       this.infoEl.hidden = !this.legendKey;
-      const ll = this.pointerLL || this.map.getCenter().toArray();
+      const ll = this.heldLL || this.pointerLL || this.map.getCenter().toArray();
       const s = this.sample(ll);
       this.nowEl.style.setProperty('--tl-lines', this.on.snow ? 4 : 3); // (its room from the start: css/app.css, #301)
       if (!s) {
@@ -1064,9 +1080,10 @@ export class WeatherOverlay {
       const sum = this.accum(ll, 6);
       const rainTxt = s.rain >= 0.05 ? `${s.rain.toFixed(1)} mm/h` : 'dry';
       const gust = s.gust > s.speed + 2 ? ` <span>gusts ${s.gust.toFixed(0)}</span>` : '';
-      this.nowEl.title = `${sky} · ${this.pointerLL ? 'under the mouse' : 'at the map centre'}`;
+      const where = this.heldLL ? 'at the spot' : this.pointerLL ? 'under the mouse' : 'at the map centre';
+      this.nowEl.title = `${sky} · ${where}`;
       this.nowEl.innerHTML =
-        `<div class="tl-now-main">${icon(kind, 24)}<b>${Math.round(s.temp)}°</b><small>${this.pointerLL ? 'here' : 'map centre'}</small></div>` +
+        `<div class="tl-now-main">${icon(kind, 24)}<b>${Math.round(s.temp)}°</b><small>${this.heldLL ? 'the spot' : this.pointerLL ? 'here' : 'map centre'}</small></div>` +
         `<div><svg class="tl-arrow" viewBox="0 0 12 12" style="transform:rotate(${(s.dir + 180) % 360}deg)" aria-hidden="true"><path d="M6 1 10 10 6 8 2 10Z"/></svg>${s.speed < 0.5 ? 'calm' : `${s.speed.toFixed(s.speed < 3 ? 1 : 0)} m/s ${compass(s.dir)}`}${gust}</div>` +
         `<div>${icon('drop', 12)}${rainTxt}${sum != null && sum >= 0.05 ? ` <span>· 6 h ${sum.toFixed(1)} mm</span>` : ''}</div>` +
         (this.on.snow && Number.isFinite(s.snow) ? `<div>${icon('snow', 12)}${s.snow >= 1 ? `${Math.round(s.snow)} cm of snow` : 'no snow'}</div>` : '');
