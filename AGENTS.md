@@ -72,7 +72,9 @@ November 2026").
 - **Plan, then build.** The user or a planning session groups related
   issues (same cause, screen, code or tests) into a work package on the
   primary issue: the issues, their order, the scope, and the model for the
-  build. A build session starts from that package and doesn't regroup. One
+  build. The planning session reads the milestone to do it; a build session
+  starts from the package and doesn't regroup. Ask before a package spans
+  milestones, and use sub-issues only for a real parent and child. One
   PR may close several issues, each with its own `Fixes #N`. A session
   carries its PR through to ready, across as many checkpoints as it takes:
   a token count never stops it mid-part. Start a new session (or Codex
