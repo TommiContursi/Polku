@@ -58,15 +58,20 @@ November 2026").
   chooses it. When unsure, ask.
 - **Claim it first:** a comment on the issue with your branch, saying which
   agent you are (Claude or Codex: all post as the user's GitHub account).
-  A phase is claimed on its phase issue. Take over only when a
+  For a work package, claim it on the primary issue, list the issues it
+  includes, and leave a one-line link to that claim on each of them, so
+  other sessions see it. A phase is claimed on its phase issue. Take over only when a
   claim is released or the user says its session has stopped, never because
   it's old: continue from its last Hand-over and pushed branch, and say so
   on the issue.
 - **What you notice but don't do now** is filed (see "Bugs and findings"),
   and the work goes on: only a blocker or a serious problem for people using
   Polku (safety, reliability, accessibility) interrupts it.
-  Small fixes go into the month's Fixes milestone, never mixed into a
-  phase; related ones may share a Fix PR. Ideas wait in Someday.
+  Small fixes get their own Fix PR in the month's Fixes milestone, so
+  people don't wait for a phase to get them. Related fixes can share one
+  Fix PR. One exception: if a phase is already rebuilding the code a fix
+  touches, the fix goes into that phase instead (move its issue to the
+  phase's milestone). Ideas wait in Someday.
 - **The user decides** a larger investigation and any change of scope or
   order.
 - **Plan, then build.** The user or a planning session groups related
