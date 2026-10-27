@@ -126,8 +126,8 @@ button { font: inherit; color: inherit; }
   --route: #ee1d5c; --good: #23863a; --ok: #a35b00; --warn: #c4400c; --bad-base: var(--danger); --bad-glass: #8f1d24; --start: #23863a;
 }
 .screen[data-dir="b"][data-theme="dark"] {
-  --thin-bg: rgba(18, 22, 20, .72); --thin-filter: blur(20px) saturate(160%);
-  --thick-bg: rgba(16, 20, 18, .78); --thick-filter: blur(32px) saturate(150%);
+  --thin-bg: rgba(8, 10, 9, .67); --thin-filter: blur(20px) saturate(160%);
+  --thick-bg: rgba(8, 10, 9, .73); --thick-filter: blur(32px) saturate(150%);
   --text: #f2f5f3; --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffa3a3; --surface-2: rgba(232, 236, 233, .08); --line: rgba(232, 236, 233, .16);
   --edge-thin: inset 0 0 0 1px rgba(255, 255, 255, .34), inset 0 1px 0 rgba(255, 255, 255, .42), 0 0 0 1px rgba(0, 0, 0, .7); --edge-thick: var(--edge-thin);
   --shadow-one: 0 8px 28px rgba(0, 0, 0, .35), 0 1px 3px rgba(0, 0, 0, .25);
@@ -260,7 +260,7 @@ button { font: inherit; color: inherit; }
 
   <div class="bars" role="group" aria-label="What the frame shows">
     <div class="bar"><span id="l-dir">Direction</span><div class="sw" data-k="dir" aria-labelledby="l-dir"><button data-v="today">Today</button><button data-v="a">A, field instrument</button><button data-v="b">B, clear water</button><button data-v="c">C, paper map</button></div></div>
-    <div class="bar"><span id="l-map">Map</span><div class="sw" data-k="map" aria-labelledby="l-map"><button data-v="maasto">Maastokartta</button><button data-v="bright">Aerial, the city</button><button data-v="forest">Aerial, forest and lake</button><button data-v="night">Night</button></div></div>
+    <div class="bar"><span id="l-map">Map</span><div class="sw" data-k="map" aria-labelledby="l-map"><button data-v="maasto">Maastokartta</button><button data-v="bright">Aerial, the city (mid-dark)</button><button data-v="forest">Aerial, forest and lake</button><button data-v="night">Night</button></div></div>
     <div class="bar"><span id="l-theme">Theme</span><div class="sw" data-k="theme" aria-labelledby="l-theme"><button data-v="light">Light</button><button data-v="dark">Dark</button></div>
       <span id="l-device">Device</span><div class="sw" data-k="device" aria-labelledby="l-device"><button data-v="phone">Phone</button><button data-v="desk">Desktop</button></div></div>
     <div class="bar"><span id="l-mode">Mode</span><div class="sw" data-k="mode" aria-labelledby="l-mode"><button data-v="default">Default</button><button data-v="contrast">More contrast</button><button data-v="clear">Reduced transparency</button></div>
@@ -317,14 +317,14 @@ button { font: inherit; color: inherit; }
 // ============================================================== the versions, the maps and the scene
 const MAPS = 'https://raw.githubusercontent.com/TommiContursi/Polku/fce14e13acee445f72b2274657a8ac1d40b675b9/claude/547-the-look/maps/';
 const MAP_FILE = { maasto: 'maasto', bright: 'aerial-bright', forest: 'aerial-forest', night: 'night' };
-const MAP_NAME = { maasto: 'Maastokartta', bright: 'Aerial FI, the city beside the route', forest: 'Aerial FI, Kauppi’s forest and Näsijärvi', night: 'the night map' };
+const MAP_NAME = { maasto: 'Maastokartta', bright: 'Aerial FI, the city beside the route (as dark as the forest: Finnish summer photos are mid-dark; Maastokartta is the bright map)', forest: 'Aerial FI, Kauppi’s forest and Näsijärvi', night: 'the night map' };
 const DIRS = {
   today: { name: 'Today', card: 'solid', hint: 'hint',
     about: 'Polku on <code>main</code>: one glass, white at 94 % with a 10–14 px blur and no saturation, for everything that floats except the cards, menus and popups, which are solid. One shadow. No edges. The route in Tailwind’s rose-600, the state colours Tailwind’s 600s.' },
   a: { name: 'A, a field instrument', card: 'thick', hint: 'thin',
     about: 'Sure, sharp and readable in the sun. <b>Two materials:</b> a thin glass (white at 78 %, a 16 px blur, saturated) for what you glance past: the top bar, the map’s buttons, the toolbox; a near-solid one (97 %) for what you read: the planner, the card, the drawer. A two-tone hairline round every surface (light inside, dark outside, as the route’s own white edge works), so it shows on any map; the dark surface a step lighter than the night map. Heavier lines that hold in the sun; on the thin glass, a darker grey and green for words. The route in a navigation magenta, apart from every red on the map; state colours at 5:1 or more, with dark versions.' },
   b: { name: 'B, clear water over the land', card: 'thick', hint: 'thin',
-    about: 'Light and open: the map shows through everything that floats. <b>Glass:</b> thin at 58 % white with a 20 px blur, thick at 68 % with 32 px, both saturated so the map’s colours come through (apple-design §12). A bright inner edge with a dark outer hairline, so every surface shows on any map. Words on the glass take a darker grey, green and red, so they keep 4.5:1 over the map without a thicker glass. <b>In dark</b> that can’t work over a bright map, since the words are already near-white: the dark glass is 72 % and 78 %, the least that keeps them at 4.5:1 over Maastokartta. The more contrast and reduced transparency modes make the glass solid. The route a lifted pink-red, further from the map’s reds; state colours with dark versions.' },
+    about: 'Light and open: the map shows through everything that floats. <b>Glass:</b> thin at 58 % white with a 20 px blur, thick at 68 % with 32 px, both saturated so the map’s colours come through (apple-design §12). A bright inner edge with a dark outer hairline, so every surface shows on any map. Words on the glass take a darker grey, green and red, so they keep 4.5:1 over the map without a thicker glass. <b>In dark</b> that can’t work over a bright map, since the words are already near-white: the dark glass is a near-black 67 % and 73 %, the least that kept every word at 4.5:1 over Maastokartta in the tints tried (at 55 % and 64 %, as light as the light glass, the top bar’s words fall to 3.1:1 there). The more contrast and reduced transparency modes make the glass solid. The route a lifted pink-red, further from the map’s reds; state colours with dark versions.' },
   c: { name: 'C, a paper map in its case', card: 'thick', hint: 'thin',
     about: 'Calm and warm: the chrome made of the map’s own material. Warm paper surfaces (95 %, a light blur) in light; in dark, the night map’s blue-black lifted a step. Warm text and greys, a printed two-tone hairline round every surface. The route in the orienteering overprint’s purple-magenta, earthy state colours. The accent stays: <b>Plan</b>’s green is decided.' },
 };
