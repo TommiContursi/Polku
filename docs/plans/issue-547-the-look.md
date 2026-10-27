@@ -1,39 +1,101 @@
-# The look: a review and a direction (#547)
+# The look: a review and three directions (#547)
 
-The first review of Polku's look as a whole. Phase 24 ([its review](../reviews/2026-10-17-design/README.md)) looked at usability and structure, and #382 made the look consistent without changing it. This one asks whether the look itself is right: the materials, the depth, the colours, the type's weights and spacing, the 18 base values on `:root`, and how they sit with the map's own colours. What's still to do, and its status, is on GitHub, in #547.
+The first review of Polku's look as a whole, and three directions for it, built side by side. Phase 24 ([its review](../reviews/2026-10-17-design/README.md)) looked at usability and structure, and #382 made the look consistent without changing it. This one asks whether the look itself is right: the materials, the depth, the colours, the type's weights and spacing, the 18 base values on `:root`, and how they sit with the map's own colours. What's still to do, and its status, is on GitHub, in #547.
 
-- **Status (2026-10-28): stop 1, the review and the direction, waiting for the user's two answers** ([What's for you to decide](#whats-for-you-to-decide)). Nothing is built: `DESIGN.md` and `css/app.css` are as they are on `main`.
-- **Stop 2, after the answers:** a mock-up at `docs/plans/mockups/issue-547-the-look.html` with options only for the values the chosen direction changes ([Stop 2](#stop-2-the-mock-up)).
-- **From:** `main` at 18b43d4, looked at on 2026-10-27 and 2026-10-28 at 390 × 844 and 1440 × 900, light and dark, over the terrain map (Maastokartta), aerial photos (Aerial FI) and the night map, with the Kauppi route, the planner, a point's card and Layers open; Impeccable's critique ([how it ran](#how-the-critique-ran)); the apple-design skill's §12 (materials and depth) in full, §15 (weight, tracking and leading) and §16 (craft and delight); the measurements below.
+- **Status (2026-10-28): Stop 2 is built, waiting for the user to choose from the mock-up** ([What's for you to decide](#whats-for-you-to-decide)). Nothing is built in the app: `DESIGN.md` and `css/app.css` are as they are on `main`.
+- **The mock-up:** [mockups/issue-547-the-look.html](mockups/issue-547-the-look.html): today's look and directions A, B and C as complete versions, over real map pictures from the running app, with the contrast under every word measured in the page. Its switches: the direction, the map (Maastokartta, aerial photos of the city beside the route, aerial photos of forest and lake, the night map), light or dark, phone or desktop, the mode (default, more contrast, reduced transparency), the depth (one shadow, or thicker when bigger) and **Beside today**. The same scene in every version: the Kauppi route, the planner open with a point's card, and the map's buttons.
+- **Decided by the user (2026-10-28):** refine, not replace, for all three directions; build all three before choosing, with B as the main candidate; bright sun and low vision belong to the modes (`prefers-contrast: more` and `prefers-reduced-transparency`, #382's §7), and the default look still meets 4.5:1 for words over the map and 3:1 for icons and edges; for B, the floor comes from darker words on the glass, not a thicker glass; "Match the map" stays out of #547 and goes with the theme setting (#323).
+- **From:** `main` at 18b43d4, looked at on 2026-10-27 and 2026-10-28 at 390 × 844 and 1440 × 900, light and dark, over the terrain map, aerial photos and the night map; Impeccable's critique ([how it ran](#how-the-critique-ran)); the apple-design skill's §12 (materials and depth) in full, §15 (weight, tracking and leading) and §16 (craft and delight); the measurements below.
 - **Out of scope:** the typeface (#181), the motion curves (#249), the difficulty scale's colours (#382, the user's choice 4), layout and structure. What the review found outside the look is filed as issues ([below](#filed-apart)).
 
 ## What's for you to decide
 
-### 1. What Polku should feel like
+From the mock-up:
 
-What PRODUCT.md already says about the look:
-- "Polku's own look, not a generic one: the map first, plain words" (Brand Commitments);
-- "Polku should look and feel thoughtfully designed and polished, and accessibility or depth never excuses less" (Brand Commitments);
-- "legible in bright sun, usable while moving, with wet or cold hands and at a glance" (Accessibility & Inclusion);
-- people "trust it on real trips" (Product Purpose).
+1. **The direction:** Today, A, B or C. **Recommended: B.** It's the only one that does what #547 set out to do, the map showing through what floats, and it meets the floor on every map measured; its costs are known and bounded ([below](#what-each-direction-costs)): the dark glass at 72–78 % rather than lighter, three colours for words on glass, #382's two modes in the same PR, and a pan test on a real phone before the build.
+2. **The depth:** one shadow for everything (DESIGN.md's One Float Rule, as today) or thicker when bigger (a small shadow on the map's buttons and the top bar, a deep one on the planner, the card and the drawer, as apple-design §12 asks). No recommendation, as asked. Thicker when bigger rewrites the One Float Rule and DESIGN.md's "Don't add… a heavier shadow".
 
-It names the qualities, not the character: what the surfaces are made of, how much of the map comes through, what temperature the colours have. Three ways to fill that in:
+The directions' parts can be mixed when you choose: B's glass with A's magenta route, say, or C's warm neutrals in A. The mock-up shows them as three wholes so each can be judged as a look.
 
-| | Polku feels like… | From PRODUCT.md | What it would change |
+The three directions, as PRODUCT.md frames them: it already names the qualities ("Polku's own look, not a generic one: the map first, plain words"; "thoughtfully designed and polished"; "legible in bright sun, usable while moving… at a glance"; people "trust it on real trips"), not the character, which is what the directions fill in.
+
+| | Polku feels like… | From PRODUCT.md | What it changes |
 |---|---|---|---|
-| **A** | **A field instrument:** sure, sharp and readable in the sun, like a good compass. What you read sits on a near-solid surface, the map shows through what you only glance past, and each colour means one thing. | "trust it on real trips"; "legible in bright sun… at a glance" | Two materials, a thin glass for the small controls and a near-solid one for reading; edges in dark mode; one meaning per colour on the map |
-| **B** | **Clear water over the land:** light and open, the map showing through everything that floats, the chrome stepping back. | "the map first"; DESIGN.md's "Nothing covers the map that the moment doesn't need" | A light glass everywhere, the planner and cards too; a darker grey and heavier weight for words on glass; outdoor contrast and reduced transparency become essential |
-| **C** | **A paper map in its case:** calm and warm, the chrome made of the map's own material: warm paper surfaces, colours from the map's world, the dashed path as its one motif. | "Polku's own look, not a generic one"; "a pleasure to use" | New neutrals with the map's warmth, a new accent and signal palette, Polku's own shapes; the glass much as today |
+| **A** | **A field instrument:** sure, sharp and readable in the sun, like a good compass | "trust it on real trips"; "legible in bright sun… at a glance" | Two materials: a thin glass (78 %) for what you glance past, a near-solid one (97 %) for what you read; a navigation magenta for the route |
+| **B** | **Clear water over the land:** light and open, the map showing through everything that floats | "the map first" | A light, saturated glass everywhere (58 % and 68 %; 72 % and 78 % in dark), darker words on it; a lifted pink-red route |
+| **C** | **A paper map in its case:** calm and warm, the chrome made of the map's own material | "Polku's own look, not a generic one"; "a pleasure to use" | Warm paper surfaces (95 %), warm text and greys, the night map's blue-black in dark; the orienteering overprint's purple for the route |
 
-**Recommended: A.** The hardest moment PRODUCT.md names, a phone in bright sun read at a glance, decides, and it's what both design reviews asked for (two materials, reading surfaces near-solid, edges in dark); C's warmer neutrals can be one of Stop 2's options within it.
+All three keep the accent, **Plan**'s green and Check's warning colours (`--danger`, its box and the badge), which #382 and 25d decided, and the difficulty scale's colours. All three give `--bad` the value of `--danger`, so danger has one red, and give the state colours dark versions they don't have today.
 
-### 2. Refine the current look, or replace it
+## The three directions
 
-Impeccable's question. **Refine** keeps the identity (the map first, quiet neutral chrome, one green action, the route in red, plain words, DESIGN.md's rules) and changes values within it. **Replace** treats today's look as evidence only, picks a new visual world and rewrites DESIGN.md.
+The values are in the mock-up's **Values** table under the frame, light and dark, for whichever direction is chosen. In short:
 
-**Recommended: refine.** The identity is right and written down, and almost every finding below is a value on `:root` or a material that was never chosen; a replacement would also undo #382's controls, approved on 2026-10-23, for no gain to people on the trail.
+| | Today | A, field instrument | B, clear water | C, paper map |
+|---|---|---|---|---|
+| **Thin glass** (top bar, map buttons, toolbox) | white 94 %, blur 10 px | white 78 %, blur 16 px, saturate 160 % | white 58 %, blur 20 px, saturate 180 %; dark 72 % | paper `#faf7f0` 95 %, blur 12 px |
+| **Thick glass** (planner, card, drawer) | white 94 %, blur 14 px; the card solid | white 97 %, blur 24 px | white 68 %, blur 32 px, saturate 180 %; dark 78 % | the same paper |
+| **Edges** | none | two-tone hairline: white 70 % inside, `#101814` 55 % outside; dark: white 34 %, black 70 % | the same, with a bright top edge | the same in warm paper and brown-black |
+| **Words on glass** | `--muted` | a darker grey, `#4c5751` | darker grey `#2f3934`, green `#0f4029`, red `#8f1d24`; in dark lighter ones | `#655d50` |
+| **Neutrals** | cool green-grey | as today; dark surface lifted to `#1f2522` | as today, text a step darker (`#141b17`) | warm: text `#29251f`, muted `#6b6355`; dark `#1d2127` |
+| **Lines** | text at 12 % (1.26:1) | 20 % | 14 % | warm, 18 % |
+| **Route** | `#e11d48` | `#d6006e`, ΔE 18 or more from every red and purple on the map | `#ee1d5c`, ΔE 13.8 from the map's red | `#b0267f`, ΔE 14 from difficulty S4 |
+| **Good, ok, warn** (light) | `#16a34a`, `#ca8a04`, `#ea580c`: 3.3, 2.9 and 3.6:1 on white | `#2e7d1f`, `#946200`, `#c2410c`: 5.2:1 or more | `#23863a`, `#a35b00`, `#c4400c`: 4.6:1 or more | `#4a7a1e`, `#8d6206`, `#b04d17`: 5.1:1 or more |
 
-**What Stop 2 would show with A and refine:** two materials (two or three values each, today's beside them); depth A or B; a route red apart from the map's other reds, or today's; the signal colours chosen for Polku, or today's; a bright edge and a lifted dark surface; `--line` and `--surface-2` that hold in the sun; and, if you want it, a "Match the map" choice that lets the night and aerial maps turn the interface dark, under the person's own setting. With B instead: a light glass on every surface and a glass-only grey for words. With C: the neutrals, the accent and the shapes too.
+### What each direction costs
+
+Measured in the mock-up on 2026-10-28 ([how](#how-the-mock-up-measures)): the lowest contrast under any word or icon over all four maps, phone and desktop; for edges, the share of each surface's rim that shows at 3:1 (averaged, and on the worst map).
+
+| | Today | A | B | C |
+|---|---|---|---|---|
+| `--text`, light · dark | 13.6 · 10.0 | 10.1 · 6.9 | 6.8 · 7.4 | 12.8 · 9.4 |
+| `--muted` (on glass), light · dark | 4.75 · 4.68 | 4.90 · 5.05 | 4.92 · 5.08 | 5.51 · 5.08 |
+| Other words (green, red, on the accent), light · dark | 4.8 · 5.5 | 5.3 · 5.0 | 4.8 · 5.0 | 5.2 · 5.4 |
+| Icons, light · dark | 3.3 · 3.3 | 5.2 · 5.0 | 4.6 · 4.2 | 5.1 · 5.1 |
+| Edges at 3:1, light · dark | 75 % (11 % on Maastokartta) · 34 % (3 % on the night map) | 99 % (94 %) · 97 % (91 %) | 99 % (94 %) · 98 % (91 %) | 99 % (94 %) · 97 % (91 %) |
+| Pan, Mac (M1 Pro) | 60 frames a second | 60 | 60 | 60 |
+| From #382's §7 first | nothing | recommended | **needed, in the same PR** | not needed |
+| Other costs | — | two glass values, a darker grey for glass | three colours for words on glass in each theme; the dark glass can't go lighter than 72 % and 78 % | warm neutrals across the whole app, which touch every screen |
+
+- **Every direction passes the floor in every mode**, Today included for words and icons (Today's lowest is 4.68, with 0.2 to spare). What Today doesn't have is edges: its surfaces disappear into a light map in light and a dark map in dark.
+- **B's floor comes from colour.** A heavier weight doesn't change a measured ratio (WCAG keeps 4.5:1 for text under 18.66 px bold), so B uses a darker grey (`#2f3934`), green (`#0f4029`) and red (`#8f1d24`) for words on its light glass. The lowest word over a dark map is 4.92.
+- **B in dark is the limit.** Its words are near-white already, so over a bright map only the glass can keep them at 4.5:1: at 55 % and 64 % the top bar's words fall to 4.3:1 and the search hint to 3.0:1 on Maastokartta; at 65 % and 72 % to 5.9 and 4.0:1; at **72 % and 78 %** they pass (7.4 and 5.1:1). That's still lighter than today's 94 %.
+- **Edges need two tones.** One edge colour can't show against every map: a light hairline vanishes on a light map and a dark one on a dark map. A light inner hairline with a dark outer one, as the route's own white edge works, shows on 91–99 % of every rim; the rest is where a map's own pixels sit between the two.
+- **#382's §7:** B makes the glass light enough that the person who needs solid surfaces (bright sun, low vision) must have them, so reduced transparency and more contrast land with B or before it. With A and C they're still worth building, but the default glass is near-solid already.
+
+## The mock-up
+
+- **Same scene, real pictures.** The map pictures are the running app's with its interface hidden (`pr-screenshots`, `claude/547-the-look/maps/`, retaken on 2026-10-28 once the tiles had finished loading); the route, its glow, its white edge and the points are drawn over them from the app's own points, so the route's colour follows the version. The words are the live app's.
+- **Today beside each proposal:** the **Compare** switch, **Beside today**, puts today's frame next to the chosen one.
+- **Measured in the page,** under the frame, for the chosen map, theme, device and mode: the lowest contrast under `--text` and `--muted` words, other words, icons, and the edges, with anything under 4.5:1 (3:1 for icons) marked; **Mark what's under 4.5:1** outlines those words in the frame. Safari before 18 can't blur a canvas, so the page says it isn't measured there instead of showing wrong numbers.
+- **Pan test:** moves the map picture under the glass for 3 s and reports the frame rate. It leaves out MapLibre's own drawing, so a real phone does worse; it's there to run on one.
+- **Left out of the scene:** the weather box and timeline (#377, #431), the scale bar and credits, the km labels and chevrons on the route, the profile's colours, the other planner sections. Finnish words and 200 % zoom aren't drawn, since this changes values, not layout.
+
+### How the mock-up measures
+
+- **Contrast:** for each word, every pixel under its own glyph boxes: the map picture (with the route) blurred and saturated as the surface's computed `backdrop-filter` says, the surface's colour laid over it, and whatever lies between the surface and the word over that. Checked against Chrome's own render of the same frames (the words made transparent, the screen captured, every pixel under each word): the page reads 0.06 or less high (B over the forest: 4.93 in the page, 4.87 rendered; today over the night map: 4.94 and 4.96, and the app's own 4.96).
+- **Edges:** every 2 px round each surface (corners left out), whether the outer hairline is 3:1 against the map beside it, or the inner edge is 3:1 against the outer hairline.
+- **The bright aerial isn't bright:** Finnish summer aerial photos are mid-dark. Under the planner the city view's median lightness is L\* 29–45 and the forest's 33–43, while Maastokartta's is 82–91. So Maastokartta is the bright case, and it's the one that sets B's dark glass.
+- **Blur:** in Chrome on this Mac's GPU (`ANGLE Metal Renderer: Apple M1 Pro`), the pan test runs at 60 frames a second for every version, phone and desktop, on a second run (the first run of each drops a frame or a few while the GPU warms up). That bounds nothing for a mid-range phone; the browser pane couldn't be used, since a hidden pane draws no frames.
+- **The scripts and the results** are on `pr-screenshots`, `claude/547-the-look/measure/` (`mock_matrix.py`, `mockup-matrix.json`, `gpu_pan.py`, `edge_try.py`), and the frames of every direction in `claude/547-the-look/mockup/`.
+
+## Dark mode today, and the theme setting (#323)
+
+A theme setting in Settings (**Automatic**, **Light**, **Dark**, and perhaps **Match the map**, to decide later) already has its issue, #323; the idea and its evidence from finding 3 are there.
+
+- **How dark is applied today:** both ways, with every dark rule written twice: `@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { … } }` and `:root[data-theme="dark"] { … }` (`css/app.css:75–121`, again at 1913–1914 and 2024–2025). One dark rule has no attribute twin: the MapLibre buttons' icons (`filter: invert(1)`, line 445). Nothing in `js/` or `index.html` sets `data-theme`; only `tools/smoke.py` does. `js/palette.js:43` reads the colours again only when the device's preference changes, and `js/wxmap.js:876` asks `matchMedia` itself. `<meta name="theme-color">` is one green for both.
+- **What the setting changes:** it sets `data-theme` on `<html>`, or leaves the device to decide. The cleaner way keeps the dark values in one place: a few lines in `<head>` always set the attribute (from the setting, or from the device for Automatic, and again when the device changes) before the first paint, and the `@media` copies go; `palette.js` and `wxmap.js` follow the attribute.
+- **Recommended: the setting lands before #547's build,** with the dark values moved into one block, so #547 changes them once. The other way round, #547 edits both copies and #323 then moves them.
+- **PRODUCT.md** would say (Accessibility & Inclusion): "Light or dark is the person's choice: Automatic follows the device and is the default; Light and Dark in Settings set it for Polku alone, on this device."
+
+## The build, after the choice
+
+- `DESIGN.md` and `css/app.css` change together: the chosen direction's values on `:root` with their dark versions; the glass as two values per weight (a background and a filter) rather than `--surface`, which `.zoom-hint`, `.fab-layers[aria-expanded]` and `.track-card` use without a blur; one rule naming which surfaces are thin and which thick.
+- **Safari before 18:** `-webkit-backdrop-filter` is only on `pl-tools` today, so every other frosted surface shows no blur there. The build writes both properties wherever the glass is.
+- **#382's §7** (reduced transparency and more contrast for every surface) in the same PR if B is chosen; `prefers-reduced-transparency` today turns only the layer drawer solid (`.qd`, `css/app.css:681`), and nothing answers `prefers-contrast: more`. Settings' **High contrast** takes the more-contrast look too (#382, the user's choice 5).
+- **A check over the map** in `tools/smoke.py`: the contrast sweep composites the glass over the page's own colour, never the map ([Text over the glass](#text-over-the-glass)), so a lighter glass needs the mock-up's measurement in the suite.
+- **The JavaScript's colours** that would follow a new route red or state colours are typed in `js/style.js`, `js/chart.js`, `js/icons.js` and `js/cards.js` among colours that must not follow (the fairway marks, ship types): the build lists which move.
+- **Order:** #323 first (above), and after #543 (the desktop toolbar), which changes `pl-tools`.
 
 ## The findings, ranked
 
@@ -41,7 +103,7 @@ Ranked by how much they cost people outdoors, how often they show, and how sure 
 
 1. **One material and one shadow for everything, and no rule for which surface is which** (§12: material weights, bigger reads thicker; both reviews' first issue). The top bar, a 40 px map button, the planner's sheet and Layers all compute to white at 94 % with a 10–14 px blur and the same `--shadow`. At 94 % only 6 % of the map comes through: in the model ([Text over the glass](#text-over-the-glass)) the glass's own lightness stays between L\* 96 and 100 over every base map, so it reads as flat white slabs (near-black ones in dark), and a blur of 10 or 14 px changes the words' contrast by under 0.05. The blur can't be seen, yet it's still drawn every frame while the map pans (its cost isn't measured yet). Meanwhile a point's card, the menus and the popups are solid, and DESIGN.md says sheets are solid while the planner's sheet is glass. `--shadow-sheet`, `--shadow-dialog` and `--shadow-marker` are defined and used nowhere; 38 shadows are typed in place. Surfaces also stack: the weather box over the planner's sheet on a phone (a white card on a white sheet, the "Your speed" row clipped under it), Layers over the timeline, Settings over the sheet; §12 says never to stack one translucent surface on another (the weather box's place is #377 and #431).
 2. **In dark mode the chrome has no edges over the night map** (§12: the bright edge; both reviews). The dark surface `#181c1a` against the night map's `#161a1f` is 1.02:1, against its forest 1.1:1. The floats have no border and a black shadow can't show on near-black, so the map buttons and the sheet dissolve and only their icons float. Over the bright terrain map the same black shadow smudges grey around the pills. Neither theme has a bright edge anywhere.
-3. **The interface's tone ignores the map.** The map's style has its own idea of dark (`dark: () => isAerial(state.base) || state.base === 'night'`, `js/main.js:456`); the interface follows the device, as PRODUCT.md commits it to: "Polku follows the person's settings: larger text, reduced motion, light or dark." A light interface over the night map is a white glare beside a black map (the paddler at dusk); a dark one over Maastokartta punches dark holes in a bright map. Anything that lets the map set the tone has to stay under the person's setting, as a choice they make (say, "Match the map" in Settings), never in place of it; Polku has no theme setting of its own today. The neutrals are a cool green-grey (hue 162°) while the trail map's paper and words are warm (94° and 78°) and the night map blue-grey (264°), which shows at every edge. MapLibre's scale bar stays light in dark mode.
+3. **The interface's tone ignores the map.** The map's style has its own idea of dark (`dark: () => isAerial(state.base) || state.base === 'night'`, `js/main.js:456`); the interface follows the device, as PRODUCT.md commits it to: "Polku follows the person's settings: larger text, reduced motion, light or dark." A light interface over the night map is a white glare beside a black map (the paddler at dusk); a dark one over Maastokartta punches dark holes in a bright map. Anything that lets the map set the tone has to stay under the person's setting, as a choice they make, never in place of it: Polku has no theme setting of its own yet, and #323 is where one, with "Match the map", is decided. The neutrals are a cool green-grey (hue 162°) while the trail map's paper and words are warm (94° and 78°) and the night map blue-grey (264°), which shows at every edge. MapLibre's scale bar stays light in dark mode.
 4. **Red is the route's and five other things'** (DESIGN.md's Map Holds the Colour Rule; both reviews). The route's `#e11d48` is ΔE 9.2 from the `#dc2626` the map uses for military areas, avoided places, incidents, closed winter ways, LIPAS's hiking routes and its campfire pins, which sit right beside the line at the same lightness (1.03:1); 8.8 from difficulty S3, on by default for MTB; and it runs over Maastokartta's red roads. Apart, on a phone in the sun, they're one red, and only the white edge says which is yours. Danger shares the hue too: the pink Read before you go box is the most saturated thing in the peek, and Check's badge is red. Those two are decided: `--danger`, its box and the badge are 25d's approved mock-ups' values, and #382 kept "red for the route and for danger". Stop 2 leaves them as they are unless you reopen them; what it can change is the route's red and the map's other reds.
 5. **Words on the glass are checked over the wrong background, and pass by a hair** ([Text over the glass](#text-over-the-glass)). The contrast sweep measures them over the page's own grey-green, never the map. Over real maps `--muted` is 4.62–4.68:1 at worst, against 4.5; at 80 % white it would fall to 3.65 (night) and 3.76 (aerial). The safeguards aren't there yet: reduced transparency turns only the layer drawer solid (`css/app.css:681`), and nothing answers `prefers-contrast: more` (#382's §7, not built). §12: no flat grey on glass; heavier, higher-contrast words instead.
 6. **Lines and fills vanish in the sun, and the shapes don't agree** (§12: scroll edge effects; §16, craft). `--line` is 1.26:1 on white (1.38:1 in dark) and `--surface-2` 1.1:1, yet they carry the grouping: 45 dividers and outlines, rows divided in one group and not the next, no fade where a list meets a floating header. 14 corner sizes: `--radius` (14 px) is written 5 times while 12 px is typed 25 times, with 9, 16 and 18 px beside them; the top bar is pills and circles, the map's buttons 16 px rounded squares, the mark a rounded square in a circle.
@@ -113,18 +175,3 @@ Every value the first commit wrote on `:root` (2026-10-12), unchanged since. "Us
 The lowest are the zoom hint (`.zoom-hint`, the glass's colour with no blur) on Maastokartta and the aerial, the planner over the night map, and the grey line in a danger box in dark. Nothing fails today; there's 0.1–0.2 to spare.
 
 **What a lighter glass would do** (the model, `--muted`, the worst map): at 80 % white, 3.65 (night) and 3.76 (aerial), failing; at 80 % dark, 3.66 (Maastokartta) and 3.77 (the trail map). So a glass much lighter than today's needs, with it, a darker grey or a heavier weight for words on glass, the check over the map in `tools/smoke.py`, and #382's reduced transparency and outdoor contrast.
-
-## Stop 2: the mock-up
-
-After the answers, a clickable mock-up at `docs/plans/mockups/issue-547-the-look.html`, with options only for the values the chosen direction changes, each beside today's. What it keeps from the first brief (2026-10-27):
-
-- **Real map pictures** from the running app: the terrain map, aerial photos (a bright, busy one and a dark forest) and the night map, in light and dark, with the route drawn over them so its colour can be switched. The pictures go on `pr-screenshots` under `claude/547-the-look/`, never in `main`.
-- **Today's look beside each proposal,** on the surfaces that carry it: a small map control and the top bar; the planner, a card and the drawer.
-- **Depth A or B,** for the user to choose, with no recommendation: A keeps the One Float Rule (one `--shadow`); B lets bigger surfaces read thicker (a stronger blur, a deeper shadow), which rewrites the One Float Rule and DESIGN.md's "Don't add a heavier shadow".
-- **The difficulty scale's colours unchanged** (#382, the user's choice 4).
-- **Measured, not guessed:**
-  - `--text` and `--muted` over each proposed glass, per pixel under each word, on the worst map for each theme (dark forest and the night map for light glass, a bright aerial for dark glass), with any under 4.5:1 marked;
-  - the blur's cost while the map pans, on this Mac's GPU in a visible browser (there's no phone to test on), with a small pan test in the mock-up to run on a phone;
-  - reduced transparency: #382's map and scales PR, which turns every frosted surface solid (its §7), hasn't landed: `prefers-reduced-transparency` is only on the layer drawer (`.qd`, `css/app.css:681`), no PR or claim exists for that row, and it's planned after 25d's journeys. A lighter glass needs it first or in the same PR; the plan will recommend which;
-  - Safari before 18: `-webkit-backdrop-filter` is only on `pl-tools`, so every other frosted surface shows no blur there. The build writes both properties wherever the glass is.
-- **The build after the mock-up** changes `DESIGN.md` and `css/app.css` together, and comes after #543 (the desktop toolbar), which changes `pl-tools`.
