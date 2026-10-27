@@ -5033,6 +5033,13 @@ def pacing(chrome):
 HEADING = """(async () => {
   const errs = [], map = polku.map, L = polku.locate, H = polku.heading, C = polku.compass;
   const btn = document.querySelector('#btn-locate'), touch = matchMedia('(pointer: coarse)').matches;
+  // the needle turns the short way past south: 4°, not 356° the wrong way round (#540)
+  const needle = () => +/rotate\\((-?[\\d.]+)deg\\)$/.exec(document.querySelector('.compass-btn svg').style.transform)[1];
+  map.jumpTo({ bearing: 178 });
+  const n0 = needle();
+  map.jumpTo({ bearing: -178 });
+  if (Math.abs(needle() - n0) > 5) errs.push(`turning the map 4° past south turned the needle ${Math.abs(needle() - n0)}°`);
+  map.jumpTo({ bearing: 0 });
   const frames = (n = 2) => new Promise((ok) => { const f = () => (--n <= 0 ? ok() : requestAnimationFrame(f)); requestAnimationFrame(f); });
   // until nothing moves: the map, the dot's frames, the compass's turning, the heading's next frame
   const settle = () => new Promise((ok) => {
