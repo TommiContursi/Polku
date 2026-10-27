@@ -241,9 +241,10 @@ export function tooltip(el, { name, keys = '', text = '' }) {
     tipEl.innerHTML = `<b>${escapeHtml(name)}${keys ? keys.split(' ').map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('') : ''}</b>${escapeHtml(text)}`;
     tipEl.hidden = false;
     el.setAttribute('aria-describedby', 'tip');
-    const r = el.getBoundingClientRect(), w = tipEl.offsetWidth;
+    const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
     tipEl.style.left = `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`;
-    tipEl.style.top = `${r.bottom + 8}px`;
+    // under its button, or above it where there's no room (a toolbar at the map's foot, #468)
+    tipEl.style.top = `${r.bottom + 8 + th <= innerHeight - 8 ? r.bottom + 8 : r.top - 8 - th}px`;
   };
   const later = () => {
     clearTimeout(tipShow);

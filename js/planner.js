@@ -38,8 +38,8 @@ const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 const MODES = ['auto', 'line', 'water'];
 const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
 // what the desktop toolbar shortens where room runs out (placeTools()): the style's caption, the names of
-// the modes not in use, then all the modes' names
-const FOLDS = ['fold1', 'fold2', 'foldS', 'fold3'];
+// the modes not in use, then all the modes' names, then the style's name (the longest beside a 1024 px window's panel)
+const FOLDS = ['fold1', 'fold2', 'foldS', 'fold3', 'fold4'];
 // how a sport goes along a line, for "MTB legs can't be paddled on the same line"
 const VERB = { mtb: 'ridden', gravel: 'ridden', road: 'ridden', hike: 'walked', trailrun: 'run', run: 'run', paddle: 'paddled', swim: 'swum' };
 const MODE_DESC = { auto: 'Along paths and roads, in the route style', line: 'Straight: off the trail, or across a gap', water: 'Polku’s water router: round land and marked hazards' };
@@ -4999,8 +4999,8 @@ export class Planner {
     const top = Math.max(80, $('.topbar').getBoundingClientRect().bottom + 16);
     let v;
     if (!this.active || this.panel.hidden) v = { top, bottom: m + 20, left: m, right: m + 50 };
-    // beside the side panel, under its toolbar
-    else if (this.layout() === 'side') v = { top: Math.max(top, this.tools.hidden ? 0 : this.tools.getBoundingClientRect().bottom + 16), bottom: m, left: this.panel.getBoundingClientRect().right + m, right: m + 70 };
+    // beside the side panel, above its toolbar at the map's foot (#468)
+    else if (this.layout() === 'side') v = { top, bottom: this.tools.hidden ? m : innerHeight - this.tools.getBoundingClientRect().top + 16, left: this.panel.getBoundingClientRect().right + m, right: m + 70 };
     else v = { top, bottom: innerHeight - this.sheetTop() + this.overSheet() + m / 2, left: m / 2, right: m + 30 };
     const room = 0.25; // of the map's height and width, at least, to fit into
     v.bottom = Math.max(0, Math.min(v.bottom, innerHeight * (1 - room) - v.top));
@@ -5206,10 +5206,9 @@ export class Planner {
     box.hidden = !show;
     box.classList.toggle('desk', desk);
     if (!show) this.dockTools(false);
-    // the room it takes, for what sits there too: above the sheet (--tools-h: the scale, notes, the 3D pad,
-    // a track's card) and under the top bar (--tools-bottom: the zoom note)
-    const root = document.documentElement.style;
-    const toolsH = (px, below = 0) => { root.setProperty('--tools-h', `${px}px`); root.setProperty('--tools-bottom', `${below}px`); };
+    // the room it takes above the sheet, or the window's foot beside a side panel, for what sits there too
+    // (--tools-h: the scale, notes, the 3D pad, a track's card, the timeline)
+    const toolsH = (px) => document.documentElement.style.setProperty('--tools-h', `${px}px`);
     if (!show) { toolsH(0); return; }
     const colLeft = $('#map-ctrls').getBoundingClientRect().left;
     // the route's actions once there's a leg (Back to start not on a loop); in turn, as far as there's room
@@ -5229,24 +5228,27 @@ export class Planner {
       this.dockTools(inPanel);
       box.classList.toggle('at-side', side);
       box.classList.toggle('at-bottom', !side && !inPanel);
-      Object.assign(box.style, inPanel ? { left: '', top: '', bottom: '' } : side ? { left: `${r.right}px`, top: `${r.top}px`, bottom: '' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top}px` });
+      // beside a side panel at the map's foot, however tall the panel is (#468)
+      Object.assign(box.style, inPanel ? { left: '', top: '', bottom: '' } : side ? { left: `${r.right}px`, top: '', bottom: '12px' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top}px` });
       // the map's buttons only count where they're level with the toolbar
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
       const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 : box.getBoundingClientRect().right > limit);
       // in turn: the route's actions from the last, the style's caption, the names of the modes not in use, the
-      // sport's name (its icon stays), Show the whole route (an action to keep in sight), then all the modes' names
+      // sport's name (its icon stays), Show the whole route (an action to keep in sight), all the modes' names,
+      // then the style's name shortens
       box.classList.remove(...FOLDS);
       setOpts(box, opts.length);
       const steps = [];
       for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
-      steps.push(() => box.classList.add('fold1'), () => box.classList.add('fold2'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold3'));
+      steps.push(() => box.classList.add('fold1'), () => box.classList.add('fold2'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold3'), () => box.classList.add('fold4'));
       for (const step of steps) {
         if (!over()) break;
         step();
       }
+      // (a bottom panel's own height is --sheet-h already)
       const tb = box.getBoundingClientRect();
-      toolsH(side || inPanel ? 0 : Math.round(innerHeight - r.bottom + tb.height), side ? Math.round(tb.bottom + 8) : 0);
+      toolsH(inPanel ? 0 : Math.round(side ? innerHeight - tb.top : innerHeight - r.bottom + tb.height));
       return;
     }
     box.classList.remove('at-side', 'at-bottom', ...FOLDS);
