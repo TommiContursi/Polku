@@ -460,7 +460,7 @@ const hhmm = (h, m) => `${String(h).padStart(2, '0')}${S.lang === 'fi' ? '.' : '
 const QUESTIONS = {
   fold: {
     title: 'Question 1: one way to fold, for the planner and for the cards?',
-    text: `<p>#338 asks for the planner to get out of the map's way without closing. #303 asks for the floating tools to go in one move, and #434 for a card that folds to a line and opens full. #338 itself asks what a swipe below the peek does: fold, put the route away, or first one and then the other. Every alternative has to work at 200 % (#453: the full sheet can't be reached; #344: the map's buttons leave the screen). <b>Recommended: Fold to a line</b>, the reasons in the plan.</p>`,
+    text: `<p>#338 asks for the planner to get out of the map's way without closing. #303 asks for the floating tools to go in one move, and #434 for a card that folds to a line and opens full. #338 itself asks what a swipe below the peek does: fold, put the route away, or first one and then the other. Every alternative has to work at 200 % (#453: the full sheet can't be reached; #344: the map's buttons leave the screen).</p>`,
     names: ['Today', 'Fold to a line', 'Swipe away', 'Fold, then away'],
     table: [['Fold to a line', 'A size below the peek, for the planner and every card', 'The map matters for a moment and you come straight back: the common case outdoors', 'A new size to learn; a swipe up on a card opens the card, not the list'],
             ['Swipe away', 'No new size: below the peek is Put away (plan §5)', 'Few new things: it reuses the state the plan already has', 'At 200 % the map stays mostly covered unless you close; cards keep one size (#434 not done)'],
@@ -468,7 +468,7 @@ const QUESTIONS = {
   },
   weather: {
     title: 'Question 2: where does the weather timeline go?',
-    text: `<p>Today the timeline covers the planner's tabs at half and full (#377). With a card it leaves about 150 px of map and pushes the map's buttons off the top (#344). At 200 % it sits under the top bar. On desktops it overlaps a card. #431 proposes a card instead. All three below are drawn on question 1's <b>Fold to a line</b>; with Swipe away the folded row is missing and the rest holds. Each keeps <b>Weather here</b>, the <kbd>T</kbd> key, and a forecast that is loading or failed, which never looks complete. <b>Recommended: A weather line</b>, the reasons in the plan.</p>`,
+    text: `<p>Today the timeline covers the planner's tabs at half and full (#377). With a card it leaves about 150 px of map and pushes the map's buttons off the top (#344). At 200 % it sits under the top bar. On desktops it overlaps a card. #431 proposes a card instead. All three below are drawn on question 1's <b>Fold to a line</b>; with Swipe away the folded row is missing and the rest holds. Each keeps <b>Weather here</b>, the <kbd>T</kbd> key, and a forecast that is loading or failed, which never looks complete.</p>`,
     names: ['Today', 'Window, kept clear', 'A weather line', 'Weather card'],
     table: [['Window, kept clear', 'Today’s window, with a rule for when it folds', 'The least change: the window people know, minus the overlaps', 'Still a big box at the peek; three looks (window, pill, docked)'],
             ['A weather line', 'One line with its strip, on the sheet’s edge', 'The map stays, and the hour the map shows is always on screen', 'The chips move to Layers; the three days are a tap away'],
