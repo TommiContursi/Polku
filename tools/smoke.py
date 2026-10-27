@@ -10035,6 +10035,30 @@ def route_card(chrome):
     on_line = lambda pg, li, t: (pg.js(SETTLED), pg.js(f"({RC_ON})({li}, {t})"))[1]
     close = lambda pg: (pg.js("polku.planner.cards.close(); true"), time.sleep(0.3))
 
+    # the map stays where you left it when the card goes (#513): panned with the card open, then ✕ or the back gesture
+    def keeps_view(pg, name, touch, zoom=None):
+        for how in ('✕', 'the back gesture'):
+            press(pg, on_line(pg, 0, 0.3), f'{name}: the line', touch)
+            if st(pg)['kind'] != 'route':  # (no card, nothing to close: a back gesture would leave the page)
+                fails.append(f"{name}: the route's card for {how}: {st(pg)['kind'] or 'no'} card")
+                continue
+            pg.js("new Promise((ok) => setTimeout(ok, 1200))")  # (the card's own look for its spot, 900 ms after it opens)
+            # (zoom: a centre with more decimals than five, as a map at that zoom has)
+            a = pg.js("(() => { polku.map.panBy([300, 0], { duration: 0 }); const c = polku.map.getCenter(); return [c.lng, c.lat]; })()" if not zoom else
+                      f"(() => {{ const c = polku.map.getCenter(); polku.map.jumpTo({{ center: [c.lng + 0.0000049, c.lat + 0.0000049], zoom: {zoom} }}); const n = polku.map.getCenter(); return [n.lng, n.lat]; }})()")
+            time.sleep(0.8)
+            if how == '✕':
+                press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-x')].find((b) => b.getClientRects().length)"), f'{name}: ✕', touch)
+            else:
+                pg.js("history.back(); true")
+            time.sleep(1.2)
+            r = pg.js(f"""(() => {{ const m = polku.map, c = m.getCenter(), h = location.hash.slice(1).split('/').map(Number);
+              return {{ moved: Math.round(m.project({json.dumps(a)}).x - m.project(c).x), off: Math.round(Math.hypot((h[2] - c.lng) * 55000, (h[1] - c.lat) * 111000)), hash: location.hash, card: polku.planner.cards.current && polku.planner.cards.current.kind }}; }})()""")
+            if r['card'] or r['moved'] or r['off'] > 5:
+                fails.append(f"{name}: the card closed by {how} after the map was moved: the map jumped {r['moved']} px, the address {r['off']} m from the map ({r['hash']}), card {r['card'] or 'closed'}")
+        pg.js("polku.planner.fitRoute({ animate: false }); true")
+        time.sleep(0.5)
+
     def page(w, h_, phone, sport='mtb'):
         pg = chrome.page(w, h_, phone)
         pg.open_app({'activity': sport}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'}, '#14/61.514/23.818')
@@ -10190,6 +10214,8 @@ def route_card(chrome):
             if s['kind'] != 'stretch' or s['title'] != 'Kaupintie → Lielahti' or s['back'] != pg.js("polku.planner.nameOf(2)"):
                 fails.append(f"{name}: Next stretch ›: {s['kind']} card “{s['title']}”, Back “{s['back']}”")
         close(pg)
+        keeps_view(pg, name, touch)
+        keeps_view(pg, name, touch, 20.5)
         # the route's view: the same card, without the pill, Edit this stretch or Avoid this spot, and the note with Edit
         pg.js("polku.planner.done(); true")
         time.sleep(0.6)
@@ -10284,6 +10310,7 @@ def route_card(chrome):
                 close(pg)
                 pg.js("polku.planner.fitRoute({ animate: false }); true")
                 time.sleep(0.5)
+        keeps_view(pg, name, touch)
         # an imported track: its own line, so nothing to choose for how it's drawn
         pg.js("polku.planner.loadTrack([[23.800, 61.518], [23.805, 61.5185], [23.810, 61.519], [23.815, 61.5188]], 'A track'); polku.planner.fitRoute({ animate: false }); true")
         time.sleep(1.5)
@@ -11253,8 +11280,9 @@ def share_spot(chrome):
             fails.append(f"the spot's link in a page with a route: {r} (a card and its pin, the route {before} as it was, the address cleaned)")
         if abs(r['c'][0] - 23.76123) > 0.01 or abs(r['c'][1] - 61.50251) > 0.01:
             fails.append(f"the spot's link: the map at {r['c']}, not at the spot")
-        # Share a real place icon too: its link must keep the pin on a desktop.
-        pg.js("polku.planner.cards.close(); polku.map.jumpTo({ center: [23.8167, 61.5076], zoom: 16 }); true")
+        # Share a real place icon too: its link must keep the pin on a desktop. (The map's view is the page's first, with a
+        # shelter in it that is drawn in the link's page; the Back of the card above used to put the map there, #513.)
+        pg.js("polku.planner.cards.close(); polku.map.jumpTo({ center: [23.76, 61.5025], zoom: 15 }); true")
         pg.idle()
         place = pg.js("""(() => { const m = polku.map, f = m.queryRenderedFeatures({ layers: ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point'].filter((id) => m.getLayer(id)) }).find((f) => f.geometry.type === 'Point');
           if (!f) return null;

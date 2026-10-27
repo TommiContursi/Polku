@@ -4187,7 +4187,7 @@ export class Planner {
         this.renderTools(); // undo and redo stay while a card is open; the rest of the toolbox steps aside (phones)
         this.measureSheet?.();
       },
-      onPop: () => { this.keepView = Date.now() + 600; },
+      onPop: () => this.keepView(),
       pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
       // Back and ✕ leave the planner as it was before the card: its sheet's size, its list's scroll
       keep: () => ({ sheet: this.panel.dataset.state, scroll: this.els.body.scrollTop }),
@@ -4614,20 +4614,21 @@ export class Planner {
   bindWayHistory() {
     this.wayDepth = 0;
     addEventListener('popstate', () => {
-      if (this.skipPop) { this.skipPop = false; this.keepView = Date.now() + 600; return; }
+      if (this.skipPop) { this.skipPop = false; this.keepView(); return; }
       if (!this.wayDepth) return;
       this.wayDepth--;
-      this.keepView = Date.now() + 600;
+      this.keepView();
       this.wayStepBack();
     });
-    // The map stays where it is: going back a step also takes the address back to where the map was when the
-    // step began (its view is in the hash), and MapLibre would move the map there. The address follows the map.
-    addEventListener('hashchange', (e) => {
-      if (Date.now() > (this.keepView || 0)) return;
-      e.stopImmediatePropagation();
-      const c = this.map.getCenter(), z = this.map.getZoom(), b = this.map.getBearing(), pt = this.map.getPitch();
-      history.replaceState(history.state, '', `#${z.toFixed(2)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}${b || pt ? `/${Math.round(b * 10) / 10}/${Math.round(pt)}` : ''}`);
-    }, true);
+  }
+  // The map stays where it is: going back a step also takes the address back to where the map was when the step
+  // began (its view is in the hash), and MapLibre moves the map there on the hashchange after the popstate. Its
+  // listener runs before any of ours (on window they run in the order added, capture or not), so the address
+  // follows the map here, in the popstate, and MapLibre finds the map already there.
+  keepView() {
+    const c = this.map.getCenter(), z = this.map.getZoom(), b = this.map.getBearing(), pt = this.map.getPitch();
+    const d = Math.ceil((z * Math.LN2 + Math.log(512 / 360 / 0.5)) / Math.LN10); // (MapLibre's own hash: a pixel's worth of degrees at this zoom)
+    history.replaceState(history.state, '', `#${z.toFixed(2)}/${c.lat.toFixed(d)}/${c.lng.toFixed(d)}${b || pt ? `/${Math.round(b * 10) / 10}/${Math.round(pt)}` : ''}`);
   }
 
   // The first point's peek: the next point first, then a round trip from here, any length one tap (#232)
