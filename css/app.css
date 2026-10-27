@@ -1712,11 +1712,18 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
 
 /* ---------------------------------------------------------------- misc */
 .toast {
-  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 24px), calc(100% - 150px)); z-index: 20; transform: translate(-50%, 10px);
+  position: absolute; left: calc(50% + var(--pl-left) / 2); bottom: min(calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 24px), calc(100% - 150px)); z-index: 20; transform: translateX(-50%); translate: 0 10px;
   max-width: min(520px, calc(100vw - 32px)); padding: 10px 16px; border-radius: 12px;
-  background: #111a16; color: #fff; box-shadow: var(--shadow); font-weight: 500; opacity: 0; transition: opacity .2s, transform .2s;
+  background: #111a16; color: #fff; box-shadow: var(--shadow); font-weight: 500; opacity: 0; transition: opacity var(--t-press) var(--ease-out), translate var(--t-press) var(--ease-out);
 }
-.toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* a note rises 10 px and fades in from where it's hidden (it comes out of display: none, so its start is @starting-style),
+   and goes quicker than it came; with reduced motion it only fades */
+.toast.show { opacity: 1; translate: none; transition-duration: var(--t-open); }
+@starting-style { .toast.show { opacity: 0; translate: 0 10px; } }
+@media (prefers-reduced-motion: reduce) {
+  .toast { translate: none; }
+  @starting-style { .toast.show { translate: none; } }
+}
 .toast .toast-act { pointer-events: auto; margin-left: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
 /* a choice ("This point is on the water. How do you get there?"): the question, then each answer on a line of its own */
 .toast.choice { display: grid; justify-items: start; gap: 8px; }
@@ -1788,8 +1795,7 @@ body.dropping .drop-hint { display: flex; }
   .sheet-head .btn.done { min-height: 44px; }
   .pl-viewnote .btn { min-height: 44px; }
   /* a note with the planner closed stays left of the map's buttons, so it never covers Layers or Plan (25c) */
-  body:not(.planning) .toast { left: 12px; right: 78px; max-width: none; transform: translate(0, 10px); }
-  body:not(.planning) .toast.show { transform: none; }
+  body:not(.planning) .toast { left: 12px; right: 78px; max-width: none; transform: none; }
   .toast .toast-act { min-height: 44px; } /* (Open, Undo: a finger's size) */
   .sum-time { min-height: 44px; justify-content: flex-end; }
   .sum-item b { font-size: 18px; }

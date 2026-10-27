@@ -12026,6 +12026,19 @@ CT_WORDS = r"""(async () => {""" + CT_HELP + r"""
   return out;
 })()"""
 # A press answers: a chip, a button and a switch shrink a little while held (motion allowed)
+# a note (the toast) shown from hidden, and gone again: what moves on its way in and out (#540)
+CT_TOAST = """(async () => {
+  const { toast } = await import(location.origin + '/js/ui.js'), t = document.querySelector('#toast'), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  t.classList.remove('show'); t.hidden = true; await wait(50);
+  toast('A note', { ms: 2000 });
+  const moves = () => t.getAnimations().map((a) => a.transitionProperty).sort().join(' ') || 'nothing';
+  const enter = moves();
+  await Promise.all(t.getAnimations().map((a) => a.finished)); // (in before it goes: a busy page draws its frames late)
+  // read as it starts to go, not after a wait: a slow frame would find it gone
+  const exit = await new Promise((r) => { const mo = new MutationObserver(() => { if (!t.classList.contains('show')) { mo.disconnect(); r(moves()); } }); mo.observe(t, { attributes: true, attributeFilter: ['class'] }); });
+  await wait(400);
+  return [enter, exit];
+})()"""
 CT_PRESSED = """((sel) => { const e = document.querySelector(sel), m = getComputedStyle(e).transform.match(/matrix\\(([\\d.]+)/); return m ? +m[1] : 1; })"""
 CT_POINTS = "(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); for (const q of [[23.80, 61.512], [23.815, 61.5155], [23.83, 61.513]]) p.addPoint(q); await new Promise((r) => setTimeout(r, 800)); return true; })()"
 CT_RING = """((sel) => { const e = document.activeElement, c = getComputedStyle(e), probe = document.body.appendChild(document.createElement('i'));
@@ -12122,6 +12135,12 @@ def controls(chrome):
         try:
             fails += [f'{name}: {f}' for f in pg.js(CT_LOOK)]
             if phone:
+                # a note at the left above Plan, the planner closed (its own place on phones): it rises too
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+                enter, exit = pg.js(CT_TOAST)
+                if (enter, exit) != ('opacity translate', 'opacity translate'):
+                    fails.append(f'{name}: a note fades and rises in with {enter}, out with {exit}, not opacity and translate')
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
                 # the ⋯ menu's items draw the focus ring inside (#385)
                 pg.js(CT_POINTS)
                 pg.js("document.querySelector('#pl-tools [aria-haspopup=menu][aria-label^=More]').click(), true")  # (it focuses its first item)
@@ -12149,7 +12168,13 @@ def controls(chrome):
                     pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': 900, 'y': 450, 'button': 'left', 'buttons': 0, 'clickCount': 1}, pg.s)
                     if not 0.95 < s < 0.99:
                         fails.append(f'{name}: {what} held down is at scale {s}, not 0.97')
+                enter, exit = pg.js(CT_TOAST)
+                if (enter, exit) != ('opacity translate', 'opacity translate'):
+                    fails.append(f'{name}: a note fades and rises in with {enter}, out with {exit}, not opacity and translate')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+                enter, exit = pg.js(CT_TOAST)
+                if (enter, exit) != ('opacity', 'opacity'):
+                    fails.append(f'{name}, reduced motion: a note comes in with {enter}, goes with {exit}, not opacity alone')
                 # one focus ring (#385): the sport menu's sports and the ⋯ menu's items draw it inside, a button outside
                 pg.js("polku.planner.close(); document.querySelector('#activity-bar .act-current').focus(), true")
                 key(pg, 'Enter', 'Enter', 13, '\r')

@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-27
+
+### Fixed: notes fade in ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- A note at the bottom of the map, such as **Undo** after clearing a route, now rises a little and fades in instead of appearing all at once, and it goes a little quicker than it came. With reduced motion turned on in your phone or computer, it only fades.
+
 ## 2026-10-26
 
 ### Marked routes are easier to pick on the map ([#308](https://github.com/TommiContursi/Polku/issues/308))
