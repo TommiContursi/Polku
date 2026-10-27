@@ -2394,6 +2394,19 @@ def heads(chrome):
 # ✕ brings Check back at half; a late item updates the count; Not checked's item has Retry, and Retry with an answer
 # closes it; a tap on the map closes the card and adds no point. On a desktop: the card beside the panel at its box,
 # the box lit, no ‹ ›, Escape closes it and unlights the stretch.
+ROW_STILL = """async (el) => {
+  const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  let a = el.getBoundingClientRect(), same = 0;
+  for (let k = 0; k < 50 && same < 2; k++) {
+    await frames();
+    const b = el.getBoundingClientRect();
+    same = Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 ? same + 1 : 0;
+    a = b;
+  }
+  return [a.left + a.width / 2, a.top + a.height / 2];
+}"""
+# the item's card open: the check's own wait, a few seconds, before anything reads it
+CARD_OPEN = """(async () => { for (let k = 0; k < 50 && !(polku.planner.cards.current && polku.planner.cards.box); k++) await new Promise((r) => setTimeout(r, 100)); return !!polku.planner.cards.current; })()"""
 ONROUTE_OPEN = """(async (sel, text) => {
   const errs = [];
 """ + CHECK_ROUTE + """
@@ -2404,10 +2417,8 @@ ONROUTE_OPEN = """(async (sel, text) => {
   const el = [...document.querySelectorAll(`[data-sec=warnings] ${sel}`)].find((r) => r.textContent.includes(text));
   if (!el) return [[`no ${sel} with "${text}" in Check: ${document.querySelector('[data-sec=warnings]')?.textContent}`], null];
   el.scrollIntoView({ block: 'center' });
-  await wait(400);
   await """ + SETTLED + """;
-  const r = el.getBoundingClientRect();
-  return [errs, [r.left + r.width / 2, r.top + r.height / 2]];
+  return [errs, await (""" + ROW_STILL + """)(el)];
 })"""
 ONROUTE_CARD = """(async (title, of, opts = {}) => {
   const errs = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -2449,14 +2460,14 @@ def onroute(chrome):
         fails += errs
         if at:
             pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
-            time.sleep(1.0)
+            pg.js(CARD_OPEN)
             fails += card(pg, 'Steep climb, up to 18 %', 2, {'group': 'Worth a look', 'all': False, 'src': 'From the map · OpenStreetMap', 'main': None})
             if pg.js("polku.planner.panel.dataset.state") != 'peek':
                 fails.append(f"the sheet at {pg.js('polku.planner.panel.dataset.state')} with the card, not the peek")
             # ‹ › along the route
             fails += pg.js("""(async () => {
               const errs = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
-              const press = async (k) => { p.cards.box.querySelector(`.heads-step [aria-label="${k}"]`).click(); await wait(300); };
+              const press = async (k) => { const was = p.cards.box.querySelector('.way-hint b').textContent; p.cards.box.querySelector(`.heads-step [aria-label="${k}"]`).click(); for (let n = 0; n < 30 && p.cards.box.querySelector('.way-hint b').textContent === was; n++) await wait(100); };
               const title = () => p.cards.box.querySelector('.way-hint b').textContent;
               await press('Next');
               if (title() !== 'Road works: Teiskontie') errs.push(`› went to ${title()}, not Road works`);
@@ -2470,7 +2481,7 @@ def onroute(chrome):
               // a late item: the count follows
               p.analysis.darkWarn = [...p.analysis.darkWarn, { at: 50, len: 20, kind: 'test', ic: 'warn', noHide: true, text: 'A late item', tier: 'look', src: { kind: 'map', by: 'OpenStreetMap' } }];
               p.renderWarnings();
-              await wait(200);
+              for (let n = 0; n < 30 && !/ of 7$/.test(p.cards.box.querySelector('.heads-step [aria-live]').textContent.trim()); n++) await wait(100);
               const live = p.cards.box.querySelector('.heads-step [aria-live]').textContent.trim();
               if (live !== `${p.itemsAlong().length} of ${p.itemsAlong().length}` || p.itemsAlong().length !== 7) errs.push(`a late item: the stepper says ${live}, of ${p.itemsAlong().length}`);
               return errs;
@@ -2479,7 +2490,8 @@ def onroute(chrome):
             fails += pg.js("""(async () => {
               const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
               p.cards.box.querySelector('.way-x').click();
-              await wait(800);
+              for (let n = 0; n < 50 && (p.cards.current || p.panel.dataset.state !== 'half' || p.tab !== 'check'); n++) await wait(100);
+              await """ + SETTLED + """;
               const errs = [];
               if (p.cards.current) errs.push('✕ left the card open');
               if (p.panel.dataset.state !== 'half' || p.tab !== 'check') errs.push(`✕ brought back ${p.panel.dataset.state} at ${p.tab}, not Check at half`);
@@ -2487,10 +2499,10 @@ def onroute(chrome):
               return errs;
             })()""")
         # Not checked's Retry, with an answer: gone
-        errs, at = pg.js("(async () => { const el = document.querySelector('[data-sec=warnings] .tier-not .row'); if (!el) return [[], null]; el.scrollIntoView({ block: 'center' }); await new Promise((ok) => setTimeout(ok, 400)); const r = el.getBoundingClientRect(); return [[], [r.left + r.width / 2, r.top + r.height / 2]]; })()")
+        errs, at = pg.js("(async () => { const p = polku.planner; for (let k = 0; k < 50 && (p.panel.dataset.state !== 'half' || p.tab !== 'check'); k++) await new Promise((ok) => setTimeout(ok, 100)); const el = document.querySelector('[data-sec=warnings] .tier-not .row'); if (!el) return [[], null]; el.scrollIntoView({ block: 'center' }); await " + SETTLED + "; return [[], await (" + ROW_STILL + ")(el)]; })()")
         if at:
             pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
-            time.sleep(1.0)
+            pg.js(CARD_OPEN)
             fails += card(pg, 'The forecast didn’t answer', 7, {'group': 'Not checked', 'main': 'Retry'})
             fails += pg.js("""(async () => {
               if (!polku.planner.cards.box) return ['(no card to press Retry on)'];
@@ -2546,7 +2558,7 @@ def onroute(chrome):
         })()""", timeout=90000)
         at = pg.js("(() => { const r = polku.planner.els.readRow.querySelector('.pl-readrow-go').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
         pg.quick_tap(*at)  # (a finger up after 50 ms by its own times: pg.tap() waits for the page's answer to the touchstart, and a page that's busy 0.5 s takes it for a hold, #293)
-        time.sleep(1.0)
+        pg.js(CARD_OPEN)
         fails += card(pg, 'Road works: Teiskontie', 3, {'group': 'Read before you go', 'src': 'Live · Fintraffic'})
         fails += pg.js("""(async () => {
           const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
