@@ -112,7 +112,10 @@ button { font: inherit; color: inherit; }
 .sheet.has-fold .sheet-top { height: 40px; align-items: center; } /* (⌄ needs a row of its own: the peek's first row has its ✕ at the same corner) */
 .sheet.has-fold[data-state="folded"] .sheet-top { height: 18px; }
 .sheet-fold { width: 44px; height: 44px; margin-left: -8px; }
-.sheet[data-state="folded"] .sheet-fold { visibility: hidden; }
+.sheet[data-state="folded"] .sheet-fold { display: none; }
+.sheet-away { display: none; width: 44px; height: 44px; margin-left: -8px; }
+.sheet[data-state="folded"] .sheet-away { display: inline-flex; }
+.sheet.both.has-fold[data-state="folded"] .sheet-top { height: 40px; }
 .sheet-handle { flex: none; position: relative; width: 72px; height: 18px; margin: 0 auto; cursor: grab; border-radius: 9px; }
 .sheet-handle::before { content: ""; position: absolute; left: 20px; right: 20px; top: 7px; height: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
 .sheet-handle:focus-visible { outline: 2px solid var(--focus); }
@@ -258,7 +261,8 @@ button { font: inherit; color: inherit; }
 .wl-row { display: grid; grid-auto-flow: column; grid-template-columns: 44px auto auto minmax(0, 1fr); grid-auto-columns: 44px; align-items: center; column-gap: 4px; min-height: 44px; }
 .wl-row.msg { display: flex; gap: 4px; }
 .wl-read { display: contents; }
-@container (max-width: 300px) { .wl-read > span { grid-row: 2; grid-column: 1 / -1; padding: 0 8px 4px; } } /* (break-ui: at 200 % the details made a column of single words) */
+@container (max-width: 300px) { .wl-read > span { grid-row: 2; grid-column: 1 / -1; padding: 0 8px 4px; } .wl-row > [data-a="wx-more"] { display: none; } }
+.wl-read > span[data-a] { cursor: pointer; border-radius: 8px; } /* (break-ui: at 200 % the details made a column of single words) */
 .wl-row .tool { width: 44px; height: 44px; flex: none; }
 .wl-read b, .wl-read span { font-variant-numeric: tabular-nums; line-height: 1.2; }
 .wl-read b { font-size: 18px; letter-spacing: -.02em; }
@@ -505,7 +509,7 @@ const S = { size: ['390', '360', '200'].includes(Q.get('size')) ? Q.get('size') 
             motion: ['slow', 'reduced'].includes(Q.get('motion')) ? Q.get('motion') : 'normal', scene: Qn === 'fold' ? 'planner' : 'peek', weatherOn: false };
 const setParam = (k, v) => { const u = new URL(location); if (v == null) u.searchParams.delete(k); else u.searchParams.set(k, v); history.replaceState(null, '', u); };
 const W = () => WORDS[S.lang];
-const N = () => (S.worst ? NUMS.worst : NUMS[S.lang]);
+const N = () => (S.worst ? NUMS.worst : NUMS[S.lang]).map((x) => x.replace(/(\d) (?=\d)/g, '$1\u00a0').replace(/(\d) (?=[a-z%])/gi, '$1\u00a0'));
 const DIM = { 390: [390, 844, 1], 360: [360, 740, 1], 200: [195, 422, 2] };
 
 // ---------------------------------------------------------------- the map behind a frame
@@ -653,7 +657,7 @@ function Phone(host, cfg) {
     <div class="undo-pair" hidden><button class="tool pair-mode" aria-label="${w.mode} · ${w.modeSub}">${I('route', 20)}</button><button class="tool" aria-label="Undo">${I('undo')}</button><button class="tool" aria-label="Redo" disabled>${I('redo')}</button></div>
     <div class="wx-bar" hidden></div><button class="wx-pill" hidden></button><div class="wx-line" hidden></div>
     <div class="sheet" data-state="peek">
-      <div class="sheet-top"><span></span><div class="sheet-handle" role="button" tabindex="0" aria-label="${w.size}"></div><span>${hasFold ? `<button class="tool sheet-fold" data-a="fold" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}</span></div>
+      <div class="sheet-top"><span></span><div class="sheet-handle" role="button" tabindex="0" aria-label="${w.size}"></div><span>${hasFold ? `<button class="tool sheet-fold" data-a="fold" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}${cfg.fold === 'both' ? `<button class="tool sheet-away" data-a="away" aria-label="${w.putAway}">${I('close', 20)}</button>` : ''}</span></div>
       <div class="sheet-in">
         <div class="fold-line"></div>
         <div class="sheet-head">
@@ -682,7 +686,7 @@ function Phone(host, cfg) {
     const d = head.querySelector('.done'); const col = document.createElement('div'); col.className = 'sum-acts';
     col.innerHTML = `<button class="btn warn-chip" aria-label="${S.worst ? w.readN : w.read1}">${I('warn', 18)}${S.worst ? 17 : 1}</button>`; d.replaceWith(col); col.append(d);
   }
-  sheet.classList.toggle('has-fold', hasFold);
+  sheet.classList.toggle('has-fold', hasFold); sheet.classList.toggle('both', cfg.fold === 'both');
 
   // ---- what the sheet holds
   function cardHtml(kind) {
@@ -711,7 +715,7 @@ function Phone(host, cfg) {
   function wxLineHtml() {
     const r = reading();
     if (r.msg) return `<div class="wl-row msg"><button class="tool" aria-label="Play" disabled>${I('play', 18)}</button><span class="wl-msg${r.fail ? ' fail' : ''}">${r.msg}</span>${r.fail ? `<button class="btn">${w.retry}</button>` : ''}<button class="tool" data-a="wx-close" aria-label="Close the timeline">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, true)}`;
-    return `<div class="wl-row"><button class="tool" aria-label="Play">${I('play', 18)}</button><span class="wl-read">${I('drop', 18)}<b>${r.t}°</b><span>${r.wind} · ${r.rain}<small>${r.time} · ${st.pin ? '📍 ' : ''}${r.where}</small></span></span><button class="tool" data-a="wx-more" aria-label="The three days" aria-expanded="${st.wxOpen}">${I(st.wxOpen ? 'down' : 'up', 18)}</button><button class="tool" data-a="wx-close" aria-label="${w.closeTl}">${I('close', 18)}</button></div>
+    return `<div class="wl-row"><button class="tool" aria-label="Play">${I('play', 18)}</button><span class="wl-read">${I('drop', 18)}<b>${r.t}°</b><span role="button" tabindex="0" data-a="wx-more" aria-expanded="${st.wxOpen}">${r.wind} · ${r.rain}<small>${r.time} · ${st.pin ? '📍 ' : ''}${r.where}</small></span></span><button class="tool" data-a="wx-more" aria-label="The three days" aria-expanded="${st.wxOpen}">${I(st.wxOpen ? 'down' : 'up', 18)}</button><button class="tool" data-a="wx-close" aria-label="${w.closeTl}">${I('close', 18)}</button></div>
       <div class="wl-scrub" role="slider" tabindex="0" aria-label="${w.hour}" aria-valuemin="0" aria-valuemax="72" aria-valuenow="${st.hour}" aria-valuetext="${r.time}">${strip('wl-strip', st.hour, 22)}</div><div class="wl-more" ${st.wxOpen ? '' : 'hidden'}><div class="tl-layers" style="padding:4px 2px 8px"><button class="chip" aria-pressed="false">${I('wind', 14)}${w.wind}</button><button class="chip" aria-pressed="false">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip" aria-pressed="false">${I('snow', 14)}${w.snow}</button></div>${strip('tl-strip', st.hour)}<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 2px 0"><span>${w.now}</span><span>${S.lang === 'fi' ? 'ke' : 'Wed'}</span><span>${S.lang === 'fi' ? 'to' : 'Thu'}</span></div></div>`;
   }
   function wxCardHtml() {
@@ -726,7 +730,7 @@ function Phone(host, cfg) {
   function foldHtml() {
     if (st.card === 'wx') { const r = reading(); return `<button class="fold-go" data-a="unfold">${I('drop', 22)}<b>${r.msg ? r.msg : `<span class="wxg">${r.t}° ·</span> <span class="wxg">${r.time}</span>`}<span class="vh">, ${w.openIt}</span></b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`; }
     if (st.card) return `<button class="fold-go" data-a="unfold"><span class="card-mark"><span class="wp">1</span></span><b class="name">${pointName}<span class="vh">, ${w.openIt}</span></b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`;
-    const act = cfg.fold === 'both' ? `<button class="tool way-x" data-a="away" aria-label="${w.putAway}">${I('close', 20)}</button>` : '';
+    const act = ''; // (Fold, then away: its ✕ sits in the folded sheet's top right, where ⌄ is when it's open)
     return `<button class="fold-go" data-a="unfold"><span class="fold-warn">${I('warn', 16)}${S.worst ? 17 : 1}<span class="vh"> ${w.toRead},</span></span><b><span>${n[0]} ·</span> <span>${n[1]} ·</span> ${n[2].split(' ↓').map((x, i) => `<span>${i ? '↓' : ''}${x}</span>`).join(' ')}</b><span class="vh">, ${w.openIt}</span><span class="fold-chev">${I('up', 20)}</span></button>${act}`;
   }
 
@@ -736,7 +740,7 @@ function Phone(host, cfg) {
   let H = { folded: 74, peek: 186, card: 400 };
   function sizes() {
     fold.innerHTML = foldHtml();
-    H.folded = 18 + Math.max(56, fold.scrollHeight) + 4;
+    H.folded = (cfg.fold === 'both' ? 40 : 18) + Math.max(56, fold.scrollHeight) + 4;
     H.peek = Math.min(full(), measure(head) + (st.wx === 'line' && st.wxOn && hasDock() ? 0 : 0));
     if (st.card) H.card = Math.min(Math.round(Ht * 0.56), measure(cardC));
   }
@@ -1048,7 +1052,7 @@ const CAP = {
             desk: `<p><b>Desktops:</b> Minimise folds the panel to its numbers, as today. A card on the map gets the same fold: its chevron leaves the title row at the spot. A card has no full size here, since it already grows to the room it opens into. Try ① on the map, the card's chevron, and the panel's.</p>` },
     away: { phone: `<p><b>Swipe away.</b> No new size. A swipe below the peek puts the planner away, as the plan's Put away says (25c left the swipe out). The route stays on the map, the note says so with <b>Open</b>, and Plan in the column brings the planner back as it was. A swipe down on a card closes it and leaves the planner. Cards keep one size, so #434 isn't done.</p><p><b>200 %:</b> the peek leaves the map about a third of the screen, and the column there keeps Layers alone. With Finnish words and 17 warnings, nothing fits: the map's buttons come back only once the planner is put away.</p>`,
             desk: `<p><b>Desktops:</b> as today. Minimise folds the panel; a card has one size; ✕ in the route's view puts the route away.</p>` },
-    both: { phone: `<p><b>Fold, then away.</b> Two steps down. A swipe from the peek stops at the line: one swipe never goes further. A second swipe from the line puts the planner away, with the note and <b>Open</b>, and the line's ✕ does the same in one tap. Cards fold as in Fold to a line, and a swipe down on a folded card closes it, back to the planner's line.</p><p><b>200 %</b> as Fold to a line.</p>`,
+    both: { phone: `<p><b>Fold, then away.</b> Two steps down. A swipe from the peek stops at the line: one swipe never goes further. A second swipe from the line puts the planner away, with the note and <b>Open</b>, and ✕ at the folded sheet's top right does the same in one tap. Cards fold as in Fold to a line, and a swipe down on a folded card closes it, back to the planner's line.</p><p><b>200 %</b> as Fold to a line.</p>`,
             desk: `<p><b>Desktops:</b> Minimise folds the panel, and a card folds to its title row. The panel's ✕ puts the route away, and Plan in the column brings it back.</p>` },
     motion: `<p><b>The motion.</b> Swipes use the app's own spring (damping 0.85, response 0.3 s). It starts at the finger's speed, is aimed by Apple's projection (0.998), resists past the ends (0.55), and can be grabbed mid-way: the interrupted drag shows it. Taps use the app's height change (0.22 s). The line and the numbers cross-fade as the sheet passes between them, so nothing jumps at rest. Coming back from Put away slides up the way it went, using the quick drawer's opening (260 ms, its curve). That part is proposed: today the planner appears in place. <b>Reduced motion:</b> the sheet still follows the finger; on release it takes its size at once with a 150 ms fade, as the app does now.</p>`,
   },
