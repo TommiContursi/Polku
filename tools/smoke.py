@@ -8433,7 +8433,7 @@ def toolbox(chrome):
     # as far), right of a side panel; the timeline over the map clear of it, and beside the panel of the credits' ⓘ too
     ON_EDGE = """(() => { const p = polku.planner, b = p.tools.getBoundingClientRect(), r = p.panel.getBoundingClientRect(), c = document.getElementById('map-ctrls').getBoundingClientRect();
       const side = p.layout() === 'side', level = c.top < b.bottom + 8, s = document.querySelector('.maplibregl-ctrl-bottom-left').getBoundingClientRect(), wx = document.getElementById('wx-bar'), t = !wx.hidden && wx.getBoundingClientRect();
-      return { side, folds: [...p.tools.classList].filter((k) => /^fold/.test(k)), edge: side ? Math.abs(b.left - r.right) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - r.top) <= 1 && Math.abs(b.left - r.left) <= 1,
+      return { side, folds: [...p.tools.classList].filter((k) => /^fold|^tb-rows$/.test(k)), timeline: !!t, edge: side ? Math.abs(b.left - r.right) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - r.top) <= 1 && Math.abs(b.left - r.left) <= 1,
         clear: b.right <= (level ? c.left - 12 : innerWidth - 12) + 0.5, below: b.top >= document.querySelector('.topbar').getBoundingClientRect().bottom - 0.5,
         active: [...p.tools.querySelectorAll('.tb-modes [aria-checked=true] span')].some((s) => s.offsetParent),
         scale: s.bottom <= b.top + 0.5 && s.bottom >= b.top - 12 && (!side || s.left >= r.right - 0.5),
@@ -8550,7 +8550,7 @@ def toolbox(chrome):
             placed(pg)
             pg.js(SETTLED)
             e = pg.js(ON_EDGE)
-            if not (e['edge'] and e['clear'] and e['scale'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short:
+            if not (e['edge'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short or 'tb-rows' in e['folds']:
                 fails.append(f'{name}, {style}: the toolbar {e}')
         d = dupes(pg, name)
         if 'Show the whole route' not in d['bar'] + d['more']:
@@ -8565,7 +8565,7 @@ def toolbox(chrome):
     placed(pg)
     pg.js(SETTLED)
     e = pg.js(ON_EDGE)
-    if not (e['edge'] and e['clear'] and e['scale'] and e['apart'] and e['credits']):
+    if not (e['edge'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' not in e['folds']:
         fails.append(f'{name}: the toolbar {e}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()

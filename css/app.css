@@ -336,7 +336,7 @@ body:not(.ready) .map-ctrls { display: none; }
   background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); transition: bottom .2s;
 }
 /* beside the side panel the scale and the credits are under its left end: above them, on the toolbar at the map's foot (#468) */
-body:has(#planner[data-layout="side"]) .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
+body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-head { display: flex; align-items: center; gap: 10px; padding: 2px 0 6px 8px; }
 .tl-title { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 13px; white-space: nowrap; }
 .tl-layers { flex: 1; }
@@ -420,7 +420,8 @@ body:has(#planner[data-layout="side"]) .wx-bar { bottom: calc(var(--tools-h, 0px
 .maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; background: var(--surface-solid); }
 .maplibregl-ctrl-group button { width: 36px; height: 36px; }
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); transition: bottom .2s; }
-/* --tools-h: the planner's toolbox floating above the sheet, or its toolbar above a bottom panel (planner.js placeTools()) */
+/* --tools-h: the planner's toolbox floating above the sheet, its toolbar above a bottom panel, or beside the side panel the
+   room from the window's foot to its toolbar's top (planner.js placeTools()) */
 .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + var(--tools-h, 0px) + 4px); }
 .maplibregl-ctrl-bottom-left { left: var(--pl-left); display: flex; align-items: flex-end; }
 /* scale bar and the attribution (i) side by side, bottom left */
@@ -2019,9 +2020,9 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools.fold2 .tb-modes button[aria-checked="false"] span, .pl-tools.fold3 .tb-modes button span { display: none; }
 .pl-tools.foldS .sportbtn > span { display: none; }
 .pl-tools.fold4 .stylebtn .two span { max-width: 5em; overflow: hidden; text-overflow: ellipsis; }
-/* last, beside the side panel of a narrow window: a second row, growing up from the map's foot, before the map's buttons
-   (their 60 px column, 12 px from the edge and 12 px apart) */
-.pl-tools.desk.tb-rows { height: auto; flex-wrap: wrap; max-width: calc(100vw - var(--pl-left, 0px) - 84px); padding: 8px; }
+/* last, beside the side panel of a narrow window: a second row, growing up from the map's foot (its max-width, up to the
+   map's buttons, from planner.js placeTools()) */
+.pl-tools.desk.tb-rows { height: auto; flex-wrap: wrap; padding: 8px; }
 @media (hover: hover) { .tbtn.danger:hover:not(:disabled) { color: var(--bad); } }
 
 /* the toolbar's tooltips (ui.js tooltip()) */

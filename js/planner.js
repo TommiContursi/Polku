@@ -5230,7 +5230,7 @@ export class Planner {
       box.classList.toggle('at-side', side);
       box.classList.toggle('at-bottom', !side && !inPanel);
       // beside a side panel at the map's foot, however tall the panel is (#468)
-      Object.assign(box.style, inPanel ? { left: '', top: '', bottom: '' } : side ? { left: `${r.right}px`, top: '', bottom: '12px' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top}px` });
+      Object.assign(box.style, { maxWidth: '' }, inPanel ? { left: '', top: '', bottom: '' } : side ? { left: `${r.right}px`, top: '', bottom: '12px' } : { left: `${r.left}px`, top: '', bottom: `${innerHeight - r.top}px` });
       // the map's buttons only count where they're level with the toolbar
       const col = $('#map-ctrls').getBoundingClientRect(), b = box.getBoundingClientRect();
       const limit = col.top < b.bottom + 8 ? colLeft - 12 : innerWidth - 12;
@@ -5243,7 +5243,7 @@ export class Planner {
       const steps = [];
       for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
       steps.push(() => box.classList.add('fold1'), () => box.classList.add('fold2'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold3'), () => box.classList.add('fold4'));
-      if (side) steps.push(() => box.classList.add('tb-rows'));
+      if (side) steps.push(() => { box.classList.add('tb-rows'); box.style.maxWidth = `${limit - r.right}px`; });
       for (const step of steps) {
         if (!over()) break;
         step();
@@ -5254,7 +5254,7 @@ export class Planner {
       return;
     }
     box.classList.remove('at-side', 'at-bottom', ...FOLDS);
-    Object.assign(box.style, { left: '', top: '', bottom: '' });
+    Object.assign(box.style, { left: '', top: '', bottom: '', maxWidth: '' });
     // measured as it would float: a copy, so the sheet's size doesn't change while measuring
     const probe = box.cloneNode(true);
     probe.classList.remove('docked');
