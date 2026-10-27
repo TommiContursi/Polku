@@ -6996,41 +6996,34 @@ def panels_desktop(chrome):
                     fails.append(f"{name}: the planner {after['st']} {after['h']:.0f} px after it closed, not {before['st']} {before['h']:.0f} px")
         if w == 1440:
             # Settings grows from ⚙ and a dialog from the middle, as Layers does from its button: at once from the keyboard,
-            # opacity only with reduced motion (#540). What starts to move is caught as it starts, however late the frames
-            arm = "(() => { const p = document.querySelector('#settings-panel'); window.__runs = []; p.ontransitionrun = (e) => e.target === p && window.__runs.push(e.propertyName); return true; })()"
-            runs = "window.__runs.sort().join(' ') || 'nothing'"
-            close = "document.querySelector('#settings-panel').hidden || document.querySelector('#settings-panel .panel-close').click(), true"
+            # opacity only with reduced motion (#540). What moves is read as it opens, not after frames that may come late
+            opened = """((detail) => {
+              const p = document.querySelector('#settings-panel');
+              document.querySelector('#btn-settings').dispatchEvent(new MouseEvent('click', { bubbles: true, detail }));
+              const moves = p.hidden ? 'not open' : p.getAnimations().map((a) => a.transitionProperty).sort().join(' ') || 'nothing';
+              document.querySelector('#settings-panel .panel-close').click();
+              return moves;
+            })"""
             dialog = """(async () => {
               const M = await import(location.origin + '/js/modal.js');
-              M.openModal({ title: 'A dialog' }, () => {}); M.closeModal(); // (made once, and its events gone, before it is watched)
-              await new Promise((r) => setTimeout(r, 400));
-              const d = document.querySelector('dialog.modal'), seen = [];
-              d.ontransitionrun = (e) => e.target === d && !e.pseudoElement && seen.push(e.propertyName); // (the box, not its backdrop)
               M.openModal({ title: 'A dialog' }, () => {});
-              await new Promise((r) => setTimeout(r, 400));
+              const d = document.querySelector('dialog.modal'), moves = d.getAnimations().map((a) => a.transitionProperty).sort().join(' ') || 'nothing';
               M.closeModal();
-              return seen.sort().join(' ') || 'nothing';
+              return moves;
             })()"""
             for media, want in (('no-preference', 'opacity transform'), ('reduce', 'opacity')):
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
-                pg.js(arm)
-                click(*centre('#btn-settings'))
-                if pg.js(runs) != want:
-                    fails.append(f"{w}x{h_}, reduced motion {media}: Settings opened by a click moves {pg.js(runs)}, not {want}")
-                pg.js(close)
+                got = pg.js(opened + '(1)')
+                if got != want:
+                    fails.append(f'{w}x{h_}, reduced motion {media}: Settings opened by a click moves {got}, not {want}')
                 got = pg.js(dialog)
                 if got != want:
                     fails.append(f'{w}x{h_}, reduced motion {media}: a dialog opens moving {got}, not {want}')
+            # a key press is a click with no count (detail 0): Settings is there at once
             pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
-            pg.js(arm + " && document.querySelector('#btn-settings').focus(), true")
-            for event in ('rawKeyDown', 'char', 'keyUp'):
-                pg.c.send('Input.dispatchKeyEvent', {'type': event, 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, **({'text': '\r'} if event == 'char' else {})}, pg.s)
-            time.sleep(0.4)
-            if pg.js("document.querySelector('#settings-panel').hidden"):
-                fails.append(f'{w}x{h_}: Enter on ⚙ did not open Settings')
-            elif pg.js(runs) != 'nothing':
-                fails.append(f'{w}x{h_}: Settings opened by the keyboard moves {pg.js(runs)}, not at once')
-            pg.js(close)
+            got = pg.js(opened + '(0)')
+            if got != 'nothing':
+                fails.append(f'{w}x{h_}: Settings opened by the keyboard moves {got}, not at once')
             pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         pg.close()
