@@ -7001,6 +7001,37 @@ def panels_desktop(chrome):
                 after = pg.js(SHEET_STATE)
                 if after['st'] != before['st'] or abs(after['h'] - before['h']) > 1:
                     fails.append(f"{name}: the planner {after['st']} {after['h']:.0f} px after it closed, not {before['st']} {before['h']:.0f} px")
+        if w == 1440:
+            # Settings grows from ⚙ and a dialog from the middle, as Layers does from its button: at once from the keyboard,
+            # opacity only with reduced motion (#540). What moves is read as it opens, not after frames that may come late
+            opened = """((detail) => {
+              const p = document.querySelector('#settings-panel');
+              document.querySelector('#btn-settings').dispatchEvent(new MouseEvent('click', { bubbles: true, detail }));
+              const moves = p.hidden ? 'not open' : p.getAnimations().map((a) => a.transitionProperty).sort().join(' ') || 'nothing';
+              document.querySelector('#settings-panel .panel-close').click();
+              return moves;
+            })"""
+            dialog = """(async () => {
+              const M = await import(location.origin + '/js/modal.js');
+              M.openModal({ title: 'A dialog' }, () => {});
+              const d = document.querySelector('dialog.modal'), moves = d.getAnimations().map((a) => a.transitionProperty).sort().join(' ') || 'nothing';
+              M.closeModal();
+              return moves;
+            })()"""
+            for media, want in (('no-preference', 'opacity transform'), ('reduce', 'opacity')):
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+                got = pg.js(opened + '(1)')
+                if got != want:
+                    fails.append(f'{w}x{h_}, reduced motion {media}: Settings opened by a click moves {got}, not {want}')
+                got = pg.js(dialog)
+                if got != want:
+                    fails.append(f'{w}x{h_}, reduced motion {media}: a dialog opens moving {got}, not {want}')
+            # a key press is a click with no count (detail 0): Settings is there at once
+            pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+            got = pg.js(opened + '(0)')
+            if got != 'nothing':
+                fails.append(f'{w}x{h_}: Settings opened by the keyboard moves {got}, not at once')
+            pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} Settings and all layers over a desktop's bottom planner (#257)" + ''.join(f'\n     - {f}' for f in fails), flush=True)

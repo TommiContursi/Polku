@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-27
 
+### Settings and dialogs open the way Layers does ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- **Settings** now grows quickly out of the ⚙ button, as Layers does from its button, and closes at once. Opened from the keyboard, it appears at once.
+- Dialogs, such as **What's new**, **Save offline** and a road camera's card, fade in and grow a little from the middle (a card from its corner), and the dim behind them fades in too.
+- With reduced motion turned on in your phone or computer, they only fade.
+
 ### Fixed: notes fade in ([#540](https://github.com/TommiContursi/Polku/issues/540))
 
 - A note at the bottom of the map, such as **Undo** after clearing a route, now rises a little and fades in instead of appearing all at once, and it goes a little quicker than it came. With reduced motion turned on in your phone or computer, it only fades.
