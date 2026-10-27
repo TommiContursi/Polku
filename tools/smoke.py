@@ -97,6 +97,7 @@ EMPTY_DEPTHS = """(() => {
 # the pointer, one undo step, an unmoved map and map panning back on.
 EDIT = """(async () => {
   const p = polku.planner, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let k = 0; k < 100 && !p.analysis; k++) await wait(100); // (the route beneath is worked out again after the handle drag's Undo)
   const a = p.analysis.pts, b = a.reduce((m, q) => [Math.min(m[0], q[0]), Math.min(m[1], q[1]), Math.max(m[2], q[0]), Math.max(m[3], q[1])], [180, 90, -180, -90]);
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: p.viewPadding(), duration: 0 });
   await wait(600);
@@ -137,13 +138,14 @@ MIDPOINT_EDIT = """(async () => {
   await p.analysing;
   p.fitRoute();
   await wait(900);
-  const ghost = p.ghosts[0], el = ghost.getElement();
+  // (the handles are drawn again when the rain answer comes in: read the one on the page each time)
+  const hit = () => p.ghosts[0] && map.queryRenderedFeatures(map.project(p.ghosts[0].getLngLat()), { layers: ['route-casing'] })
+    .some((f) => f.properties.kind === 'leg');
   // Wait for the route beneath the handle to be drawn: otherwise only the
   // marker gets the press and the conflicting line gesture is never tested.
-  const hit = () => map.queryRenderedFeatures(map.project(ghost.getLngLat()), { layers: ['route-casing'] })
-    .some((f) => f.properties.kind === 'leg');
   for (let k = 0; k < 100 && !hit(); k++) await wait(100);
   if (!hit()) return ['route beneath the midpoint handle was not rendered'];
+  const el = p.ghosts[0].getElement();
   const R = el.getBoundingClientRect();
   const x = R.left + R.width / 2, y = R.top + R.height / 2;
   if (el.hidden || !R.width) return ['no visible midpoint handle'];
@@ -186,6 +188,54 @@ MIDPOINT_EDIT = """(async () => {
 })()"""
 
 
+# (#467, #513) the route framed, then its numbers come in and the peek grows: the refit that queues waits for a frame, and
+# a press on the map, or a card opened, in that frame must stop it (the pan under a handle drag, a card sliding off)
+REFIT_LATE = """(async () => {
+  const p = polku.planner, map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  let fits = 0; const fb = map.fitBounds.bind(map); map.fitBounds = (...a) => { fits++; return fb(...a); };
+  p.setActive(true); p.clear(); p.setMode('line');
+  p.addPoint([23.800, 61.509]); p.addPoint([23.838, 61.516]);
+  await p.analysing;
+  p.setTab('route'); p.setSheetState('peek');
+  await wait(600);
+  // the peek is another height now (sizes() queues the refit), and in the same task: act() (a press, a card)
+  const trial = async (name, act, framed, check) => {
+    p.cards.close();
+    p.fitRoute({ animate: false });
+    await new Promise((ok) => map.once('idle', ok));
+    map.jumpTo({ center: [map.getCenter().lng + 0.002, map.getCenter().lat] }); // (a map the refit would move back)
+    const c = map.getCenter(), z = map.getZoom();
+    p.fitAt.peek = '1px';
+    fits = 0;
+    p.measureSheet();
+    act();
+    for (let k = 0; k < 2; k++) await new Promise((ok) => requestAnimationFrame(ok));
+    await wait(1000); // (a card pans the map into place, 250 ms, again at 320 and 900)
+    const d = map.getCenter();
+    if (framed !== (fits > 0)) errs.push(`${name}: the route was ${fits ? '' : 'not '}framed again`);
+    if (check) errs.push(...check(d.lng !== c.lng || d.lat !== c.lat || map.getZoom() !== z));
+  };
+  await trial('a press on the map just after the peek changed', () => map.getContainer().dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true })), false,
+    (moved) => moved ? ['the map moved under the press'] : []);
+  await trial('a card opened just after the peek changed', () => p.openRouteCard(0, [23.819, 61.5125]), false, () => {
+    const r = p.cards.box && p.cards.box.getBoundingClientRect(); // (the card moves the map itself, to be whole)
+    return !r || r.top < 0 || r.bottom > innerHeight || r.left < 0 || r.right > innerWidth ? [`the card isn't whole on the screen: ${r && JSON.stringify([r.left, r.top, r.right, r.bottom].map(Math.round))}`] : [];
+  });
+  // …and the refit the card stopped is gone: the card closed, the peek changing again frames nothing
+  p.cards.close();
+  if (p.fitAt) p.fitAt.peek = '1px';
+  fits = 0;
+  p.measureSheet();
+  for (let k = 0; k < 2; k++) await new Promise((ok) => requestAnimationFrame(ok));
+  await wait(300);
+  if (fits) errs.push('the card closed, then the peek changed: the route was framed again, as the card stopped');
+  await trial('nothing pressed, no card (#242)', () => {}, true);
+  p.cards.close();
+  delete map.fitBounds;
+  return errs;
+})()"""
+
+
 def editing(chrome):
     ok = True
     for sport in ('mtb', 'gravel', 'hike', 'paddle'):
@@ -195,6 +245,7 @@ def editing(chrome):
                 pg.open_app({'activity': sport, 'timeline': True}, {'polku:plannerDock': '"left"'})
                 pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
                 fails = pg.js(MIDPOINT_EDIT)
+                if phone and sport == 'mtb': fails += [f'refit: {e}' for e in pg.js(REFIT_LATE)]
                 fails += [f'line: {e}' for e in pg.js(EDIT)]
                 fails += [f'console: {e[:160]}' for e in pg.errors()]
             finally:

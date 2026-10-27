@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-26
+
+### Fixed: the map stays still when you press the route or open a card as its numbers come in ([#467](https://github.com/TommiContursi/Polku/issues/467), [#513](https://github.com/TommiContursi/Polku/issues/513))
+
+Just after the route was shown whole, its numbers could come in, the sheet grow, and the map frame the route again a moment later, even if you had pressed the map or opened a card in that moment. The press then missed the route, or the card slid down the screen and off it. Now the map frames the route again only if you haven't pressed it, moved it or opened a card since.
+
 ## 2026-10-25
 
 ### The map's cards: hold the map to see what's there ([#233](https://github.com/TommiContursi/Polku/issues/233), [#345](https://github.com/TommiContursi/Polku/issues/345))
