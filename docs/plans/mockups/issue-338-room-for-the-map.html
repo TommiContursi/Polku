@@ -147,10 +147,10 @@ button { font: inherit; color: inherit; }
 .tl-msg { flex: 1; display: grid; align-content: center; gap: 4px; padding: 6px 8px; min-height: 56px; border-radius: 8px; background: var(--surface-2); color: var(--muted); font-size: 12.5px; }
 .tl-msg.fail { background: var(--unk-soft); border: 1.5px dashed var(--unk); color: var(--text); }
 /* the note with the planner closed (toast, 25c) */
-.toast { position: absolute; left: 12px; right: 68px; bottom: 12px; z-index: 8; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: 14px; background: #1c2420; color: #fff; font-weight: 600; font-size: 13.5px; box-shadow: var(--shadow); opacity: 0; transform: translateY(10px); transition: opacity calc(.18s * var(--slow)) var(--ease-out), transform calc(.18s * var(--slow)) var(--ease-out); pointer-events: none; }
+.toast { position: absolute; left: 12px; right: 68px; bottom: 12px; z-index: 8; display: block; padding: 10px 12px 10px 14px; border-radius: 14px; background: #1c2420; color: #fff; font-weight: 600; font-size: 13.5px; box-shadow: var(--shadow); opacity: 0; transform: translateY(10px); transition: opacity calc(.18s * var(--slow)) var(--ease-out), transform calc(.18s * var(--slow)) var(--ease-out); pointer-events: none; }
 .toast.show { opacity: 1; transform: none; pointer-events: auto; }
-.toast span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.toast .toast-act { min-height: 44px; padding: 4px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font-weight: 700; cursor: pointer; }
+.toast span { overflow-wrap: break-word; }
+.toast .toast-act { min-height: 44px; margin-left: 8px; padding: 4px 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font-weight: 700; cursor: pointer; }
 /* a finger for the motion's demos (mock-up chrome) */
 .finger { position: absolute; z-index: 60; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: rgba(28,36,32,.22); box-shadow: 0 0 0 2px rgba(255,255,255,.85); pointer-events: none; opacity: 0; transition: opacity .12s; }
 .finger.on { opacity: 1; }
@@ -215,7 +215,10 @@ button { font: inherit; color: inherit; }
 .sheet :is(.sheet-head, .card-c, .sheet-body) { transition: opacity calc(.15s * var(--slow)) ease-out; }
 .fold-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; }
 .fold-go b { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 16px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.25; }
-.fold-go b > span { white-space: nowrap; } /* (the numbers wrap between themselves, never inside one: break-ui at 200 %) */
+.fold-go b > span { white-space: nowrap; }
+.fold-go b.name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; } /* (break-ui: a long Finnish name made the line nine lines tall at 200 %) */
+.fold-line { container-type: inline-size; }
+@container (max-width: 250px) { .fold-line .fold-chev { display: none; } } /* (the whole line is the button; its chevron goes first) */ /* (the numbers wrap between themselves, never inside one: break-ui at 200 %) */
 .fold-chev { flex: none; display: grid; place-items: center; width: 44px; height: 44px; color: var(--muted); }
 .fold-warn { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border-radius: 999px; background: var(--danger-soft); color: var(--danger); font-weight: 700; font-size: 13px; }
 /* the handle's touch area is a finger's size, over the sheet's top edge (its look stays 18 px) */
@@ -228,9 +231,13 @@ button { font: inherit; color: inherit; }
 .wx-line { position: absolute; left: 8px; right: 8px; z-index: 6; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); padding: 2px 4px 4px; }
 .wx-line[hidden] { display: none; }
 .wx-line.docked { position: static; box-shadow: none; background: none; backdrop-filter: none; border-bottom: 1px solid var(--line); border-radius: 0; margin: 0 -4px 6px; }
-.wl-row { display: flex; align-items: center; gap: 4px; min-height: 44px; }
+.wx-line { container-type: inline-size; }
+.wl-row { display: grid; grid-auto-flow: column; grid-template-columns: 44px auto auto minmax(0, 1fr); grid-auto-columns: 44px; align-items: center; column-gap: 4px; min-height: 44px; }
+.wl-row.msg { display: flex; gap: 4px; }
+.wl-read { display: contents; }
+@container (max-width: 300px) { .wl-read > span { grid-row: 2; grid-column: 1 / -1; padding: 0 8px 4px; } } /* (break-ui: at 200 % the details made a column of single words) */
 .wl-row .tool { width: 44px; height: 44px; flex: none; }
-.wl-read { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.wl-read b, .wl-read span { font-variant-numeric: tabular-nums; line-height: 1.2; }
 .wl-read b { font-size: 18px; letter-spacing: -.02em; }
 .wl-read span { min-width: 0; overflow-wrap: break-word; } /* (whole words wrap: break-ui at 200 %) */
 .wl-read small { display: block; color: var(--muted); font-size: 11.5px; }
@@ -244,7 +251,8 @@ button { font: inherit; color: inherit; }
 .wx-pill { position: absolute; left: 8px; z-index: 6; display: flex; align-items: center; gap: 6px; min-height: 44px; max-width: calc(100% - 72px); padding: 0 12px 0 8px; border: 0; border-radius: 22px; background: var(--surface-solid); box-shadow: var(--shadow); font-weight: 600; font-size: 13.5px; font-variant-numeric: tabular-nums; text-align: left; }
 .wx-pill[hidden] { display: none; }
 .wx-pill.docked { position: static; width: 100%; max-width: none; margin: 0 0 6px; background: var(--surface-2); box-shadow: none; }
-.wx-pill span { overflow-wrap: anywhere; }
+.wx-pill span { overflow-wrap: break-word; }
+.wx-pill span span, .fold-go .wxg { white-space: nowrap; }
 /* the weather card (question 2, "Weather card"): a card of 25d's kind */
 .wx-card .wc-read { display: flex; align-items: center; gap: 10px; margin: 2px 0 6px; }
 .wx-card .wc-read b { font-size: 34px; letter-spacing: -.03em; line-height: 1; }
@@ -443,6 +451,10 @@ const WORDS = {
 const NUMS = { en: ['3.05 km', '13 min', '↑44 ↓65 m', '06:44', '1.78 km', '98 m'], fi: ['3,05 km', '13 min', '↑44 ↓65 m', '06.44', '1,78 km', '98 m'],
                worst: ['123.4 km', '7 h 45 min', '↑2 345 ↓2 310 m', '14:52', '61.25 km', '1 024 m'] };
 const LONG_NAME = 'Pohjois-Pohjanmaan virkistysalueyhdistyksen Ylikiiminginjoen laavu';
+// the weather's reading: as demo data, and its worst case (a cold, windy, wet hour; Finnish decimals and times)
+const WX = () => (S.worst ? { t: -12, wind: S.lang === 'fi' ? '14 m/s NNW' : '14 m/s NNW', gusts: S.lang === 'fi' ? 'puuskat 23' : 'gusts 23', rain: S.lang === 'fi' ? 'räntää 4,2 mm/h' : 'sleet 4.2 mm/h' }
+  : { t: 9, wind: '6 m/s SW', gusts: W().gusts, rain: W().dry });
+const hhmm = (h, m) => `${String(h).padStart(2, '0')}${S.lang === 'fi' ? '.' : ':'}${String(m).padStart(2, '0')}`;
 
 // ---------------------------------------------------------------- the questions and their alternatives
 const QUESTIONS = {
@@ -656,18 +668,18 @@ function Phone(host, cfg) {
     const w2 = w, where = st.pin ? w2.atPin : w2.centre;
     if (st.wxState === 'loading') return { msg: w2.loading, fail: false };
     if (st.wxState === 'failed') return { msg: w2.failed, fail: true };
-    const t = 9 - Math.round(st.hour / 30);
-    return { t, where, wind: `6 m/s SW`, rain: w2.dry, time: st.hour ? `${['Tue', 'Wed', 'Thu'][Math.floor(st.hour / 24) % 3]} ${String((6 + st.hour) % 24).padStart(2, '0')}:00` : `${w2.now} · 06:36` };
+    const x = WX(), t = x.t - Math.round(st.hour / 30), days = S.lang === 'fi' ? ['ti', 'ke', 'to'] : ['Tue', 'Wed', 'Thu'];
+    return { t: String(t).replace('-', '−'), where, wind: x.wind, gusts: x.gusts, rain: x.rain, time: st.hour ? `${days[Math.floor((6 + st.hour) / 24) % 3]} ${hhmm((6 + st.hour) % 24, 0)}` : `${w2.now} · ${hhmm(6, 36)}` };
   }
   function wxWindowHtml() {
     const r = reading();
     return `<div class="tl-head"><div class="tl-layers"><button class="chip" aria-pressed="false">${I('wind', 14)}${w.wind}</button><button class="chip" aria-pressed="false">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip" aria-pressed="false">${I('snow', 14)}${w.snow}</button></div><button class="tool" data-a="wx-close" aria-label="Close the timeline">${I('close', 18)}</button></div>
-      <div class="tl-main">${r.msg ? `<div class="tl-msg${r.fail ? ' fail' : ''}">${r.msg}${r.fail ? `<button class="btn" style="justify-self:start">${w.retry}</button>` : ''}</div>` : `${strip('tl-strip', st.hour)}<div class="tl-now"><div class="big">${I('cloud', 22)}<b>${r.t}°</b><small>${r.where}</small></div><div>${I('wind', 12)} ${r.wind} <span style="color:var(--muted)">${w.gusts}</span></div><div>${I('drop', 12)} ${r.rain}</div></div>`}</div>
+      <div class="tl-main">${r.msg ? `<div class="tl-msg${r.fail ? ' fail' : ''}">${r.msg}${r.fail ? `<button class="btn" style="justify-self:start">${w.retry}</button>` : ''}</div>` : `${strip('tl-strip', st.hour)}<div class="tl-now"><div class="big">${I('cloud', 22)}<b>${r.t}°</b><small>${r.where}</small></div><div>${I('wind', 12)} ${r.wind} <span style="color:var(--muted)">${r.gusts}</span></div><div>${I('drop', 12)} ${r.rain}</div></div>`}</div>
       <div class="tl-play"><button class="tool" aria-label="Play" ${r.msg ? 'disabled' : ''}>${I('play', 18)}</button><input type="range" min="0" max="72" value="${st.hour}" aria-label="Hour" ${r.msg ? 'disabled' : ''}><span class="tl-time">${r.msg ? '–' : r.time}</span></div>`;
   }
   function wxLineHtml() {
     const r = reading();
-    if (r.msg) return `<div class="wl-row"><button class="tool" aria-label="Play" disabled>${I('play', 18)}</button><span class="wl-msg${r.fail ? ' fail' : ''}">${r.msg}</span>${r.fail ? `<button class="btn">${w.retry}</button>` : ''}<button class="tool" data-a="wx-close" aria-label="Close the timeline">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, true)}`;
+    if (r.msg) return `<div class="wl-row msg"><button class="tool" aria-label="Play" disabled>${I('play', 18)}</button><span class="wl-msg${r.fail ? ' fail' : ''}">${r.msg}</span>${r.fail ? `<button class="btn">${w.retry}</button>` : ''}<button class="tool" data-a="wx-close" aria-label="Close the timeline">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, true)}`;
     return `<div class="wl-row"><button class="tool" aria-label="Play">${I('play', 18)}</button><span class="wl-read">${I('drop', 18)}<b>${r.t}°</b><span>${r.wind} · ${r.rain}<small>${r.time} · ${st.pin ? '📍 ' : ''}${r.where}</small></span></span><button class="tool" data-a="wx-more" aria-label="The three days" aria-expanded="${st.wxOpen}">${I(st.wxOpen ? 'down' : 'up', 18)}</button></div>
       ${strip('wl-strip', st.hour, 18)}<div class="wl-more" ${st.wxOpen ? '' : 'hidden'}>${strip('tl-strip', st.hour)}<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 2px 0"><span>${w.now}</span><span>Wed</span><span>Thu</span></div></div>`;
   }
@@ -676,15 +688,15 @@ function Phone(host, cfg) {
     const back = st.cardFrom === 'spot' ? `<button class="btn quiet way-back" data-a="card-back">‹ ${w.backSpot}</button>` : '';
     return `<div class="card-top">${back || `<span class="card-mark" style="color:var(--accent)">${I('cloud', 24)}</span>`}<h3 class="way-name">${back ? '' : w.wxCard}</h3>${hasFold ? `<button class="tool" data-a="fold-card" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}<button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button></div>
       <div class="wx-card">${r.msg ? `<div class="tl-msg${r.fail ? ' fail' : ''}">${r.msg}${r.fail ? `<button class="btn" style="justify-self:start">${w.retry}</button>` : ''}</div>`
-        : `<div class="wc-read">${I('cloud', 34)}<b>${r.t}°</b><span>${r.wind} · ${w.gusts}<small>${r.rain} · ${st.pin ? w.atPin : r.where}</small></span></div>${strip('tl-strip', st.hour, 60)}`}
+        : `<div class="wc-read">${I('cloud', 34)}<b>${r.t}°</b><span>${r.wind} · ${r.gusts}<small>${r.rain} · ${st.pin ? w.atPin : r.where}</small></span></div>${strip('tl-strip', st.hour, 60)}`}
       <div class="tl-play" style="padding-left:0"><button class="tool" aria-label="Play" ${r.msg ? 'disabled' : ''}>${I('play', 18)}</button><input type="range" min="0" max="72" value="${st.hour}" aria-label="Hour" ${r.msg ? 'disabled' : ''}><span class="tl-time">${r.msg ? '–' : r.time}</span></div>
       <div class="rows"><button class="row"><span>${I('layers')}</span><span><b>${w.onMap}</b></span><span class="val">${w.rain}</span>${I('chev', 16)}</button></div></div>`;
   }
   function foldHtml() {
-    if (st.card === 'wx') { const r = reading(); return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}">${I('cloud', 22)}<b>${r.msg ? r.msg : `${r.t}° · ${r.wind} · ${r.time}`}</b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`; }
-    if (st.card) return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}"><span class="card-mark"><span class="wp">1</span></span><b>${pointName}</b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`;
+    if (st.card === 'wx') { const r = reading(); return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}">${I('cloud', 22)}<b>${r.msg ? r.msg : `<span class="wxg">${r.t}° ·</span> <span class="wxg">${r.time}</span>`}</b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`; }
+    if (st.card) return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}: ${pointName}"><span class="card-mark"><span class="wp">1</span></span><b class="name">${pointName}</b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`;
     const act = cfg.fold === 'both' ? `<button class="tool way-x" data-a="away" aria-label="${w.closed}">${I('close', 20)}</button>` : '';
-    return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}"><span class="fold-warn">${I('warn', 16)}${S.worst ? 17 : 1}</span><b><span>${n[0]} ·</span> <span>${n[1]} ·</span> <span>${n[2]}</span></b><span class="fold-chev">${I('up', 20)}</span></button>${act}`;
+    return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}"><span class="fold-warn">${I('warn', 16)}${S.worst ? 17 : 1}</span><b><span>${n[0]} ·</span> <span>${n[1]} ·</span> ${n[2].split(' ↓').map((x, i) => `<span>${i ? '↓' : ''}${x}</span>`).join(' ')}</b><span class="fold-chev">${I('up', 20)}</span></button>${act}`;
   }
 
   // ---- sizes, as visible heights from the sheet's bottom (js/planner.js: the peek is measured, half is 50 %, full is the screen less 76)
@@ -760,13 +772,14 @@ function Phone(host, cfg) {
         if (fits || st.away) { wxBar.innerHTML = wxWindowHtml(); wxBar.hidden = false; wxBar.style.top = ''; wxBar.style.zIndex = ''; wxBar.style.bottom = (st.away ? 40 : base + 8) + 'px'; wxH = wxBar.offsetHeight + 8; }
         else {
           const r = reading(), dock = st.state === 'full';
-          wxPill.innerHTML = `${I('drop', 18)}<span>${r.msg ? r.msg : `${r.t}° · ${r.time}`}</span>${I('up', 16)}`; wxPill.hidden = false;
+          wxPill.innerHTML = `${I('drop', 18)}<span>${r.msg ? r.msg : `<span>${r.t}° ·</span> <span>${r.time}</span>`}</span>${I('up', 16)}`; wxPill.hidden = false;
           wxPill.classList.toggle('docked', dock); // (at full there's no edge to sit on: it docks into the sheet, as the toolbox does)
           if (dock) (st.card ? cardC : head).prepend(wxPill); else { if (wxPill.parentElement !== sc) sc.insertBefore(wxPill, sheet); wxPill.style.bottom = base + 'px'; wxH = 52; }
         }
       } else if (st.wx === 'line') {
         wxLine.innerHTML = wxLineHtml(); wxLine.hidden = false;
-        const dock = st.state === 'full';
+        wxLine.classList.remove('docked'); if (wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet);
+        const dock = st.state === 'full' || Ht - base - wxLine.offsetHeight < 64 + 52;
         wxLine.classList.toggle('docked', dock);
         if (dock) { (st.card ? cardC : head).prepend(wxLine); }
         else { if (wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet); wxLine.style.bottom = (st.away ? 12 : base) + 'px'; wxH = wxLine.offsetHeight + 8; }
@@ -932,11 +945,11 @@ function Desk(host, cfg) {
   const pointName = S.worst ? LONG_NAME : w.via;
   function render() {
     const v = viaAt('desk');
-    const wxR = st.wxState === 'loading' ? { msg: w.loading } : st.wxState === 'failed' ? { msg: w.failed, fail: true } : { t: 9, where: st.pin ? w.atPin : w.centre };
-    const strip2 = wxR.msg ? `<div class="tl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}${wxR.fail ? ` <button class="btn" style="justify-self:start">${w.retry}</button>` : ''}</div>` : `${strip('tl-strip', st.hour)}<div class="tl-now"><div class="big">${I('cloud', 22)}<b>${wxR.t}°</b><small>${wxR.where}</small></div><div>${I('wind', 12)} 6 m/s SW</div><div>${I('drop', 12)} ${w.dry}</div></div>`;
-    const windowHtml = `<div class="wx-bar"><div class="tl-head"><div class="tl-layers"><b style="display:inline-flex;align-items:center;gap:5px;font-size:13px">${I('speed', 16)}Timeline</b><button class="chip">${I('wind', 14)}${w.wind}</button><button class="chip">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip">${I('snow', 14)}${w.snow}</button></div><button class="tool">${I('close', 18)}</button></div><div class="tl-main">${strip2}</div><div class="tl-play"><button class="tool">${I('play', 18)}</button><input type="range" min="0" max="72" value="0" aria-label="Hour"><span class="tl-time">${wxR.msg ? '–' : `${w.now} · 06:38`}</span></div></div>`;
-    const lineHtml = `<div class="wx-line"><div class="wl-row"><button class="tool">${I('play', 18)}</button>${wxR.msg ? `<span class="wl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}</span>${wxR.fail ? `<button class="btn">${w.retry}</button>` : ''}` : `<span class="wl-read">${I('drop', 18)}<b>9°</b><span>6 m/s SW · ${w.dry}<small>${wxR.where}</small></span></span><span class="wl-time">${w.now} · 06:38</span>`}<button class="tool">${I('up', 18)}</button><button class="tool">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, !!wxR.msg)}</div>`;
-    const wxCard = `<div class="d-card" style="left:420px;bottom:16px"><div class="card-top"><span class="card-mark" style="color:var(--accent)">${I('cloud', 22)}</span><h3 class="way-name">${w.wxCard}</h3><button class="tool">${I('close', 18)}</button></div>${wxR.msg ? `<div class="tl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}</div>` : `<div class="wx-card"><div class="wc-read">${I('cloud', 30)}<b>9°</b><span>6 m/s SW · ${w.gusts}<small>${w.dry} · ${wxR.where}</small></span></div>${strip('tl-strip', 0, 54)}</div>`}<div class="tl-play" style="padding-left:0"><button class="tool">${I('play', 18)}</button><input type="range" aria-label="Hour"><span class="tl-time">${w.now} · 06:38</span></div><div class="rows"><button class="row"><span>${I('layers', 18)}</span><span><b>${w.onMap}</b></span><span class="val">${w.rain}</span></button></div></div>`;
+    const X = WX(), wxR = st.wxState === 'loading' ? { msg: w.loading } : st.wxState === 'failed' ? { msg: w.failed, fail: true } : { t: String(X.t).replace('-', '−'), where: st.pin ? w.atPin : w.centre }, nowT = `${w.now} · ${hhmm(6, 38)}`;
+    const strip2 = wxR.msg ? `<div class="tl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}${wxR.fail ? ` <button class="btn" style="justify-self:start">${w.retry}</button>` : ''}</div>` : `${strip('tl-strip', st.hour)}<div class="tl-now"><div class="big">${I('cloud', 22)}<b>${wxR.t}°</b><small>${wxR.where}</small></div><div>${I('wind', 12)} ${X.wind}</div><div>${I('drop', 12)} ${X.rain}</div></div>`;
+    const windowHtml = `<div class="wx-bar"><div class="tl-head"><div class="tl-layers"><b style="display:inline-flex;align-items:center;gap:5px;font-size:13px">${I('speed', 16)}Timeline</b><button class="chip">${I('wind', 14)}${w.wind}</button><button class="chip">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip">${I('snow', 14)}${w.snow}</button></div><button class="tool">${I('close', 18)}</button></div><div class="tl-main">${strip2}</div><div class="tl-play"><button class="tool">${I('play', 18)}</button><input type="range" min="0" max="72" value="0" aria-label="Hour"><span class="tl-time">${wxR.msg ? '–' : nowT}</span></div></div>`;
+    const lineHtml = `<div class="wx-line"><div class="wl-row${wxR.msg ? ' msg' : ''}"><button class="tool">${I('play', 18)}</button>${wxR.msg ? `<span class="wl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}</span>${wxR.fail ? `<button class="btn">${w.retry}</button>` : ''}` : `<span class="wl-read">${I('drop', 18)}<b>${wxR.t}°</b><span>${X.wind} · ${X.rain}<small>${nowT} · ${wxR.where}</small></span></span>`}<button class="tool">${I('up', 18)}</button><button class="tool">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, !!wxR.msg)}</div>`;
+    const wxCard = `<div class="d-card" style="left:420px;bottom:16px"><div class="card-top"><span class="card-mark" style="color:var(--accent)">${I('cloud', 22)}</span><h3 class="way-name">${w.wxCard}</h3><button class="tool">${I('close', 18)}</button></div>${wxR.msg ? `<div class="tl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}</div>` : `<div class="wx-card"><div class="wc-read">${I('cloud', 30)}<b>${wxR.t}°</b><span>${X.wind} · ${X.gusts}<small>${X.rain} · ${wxR.where}</small></span></div>${strip('tl-strip', 0, 54)}</div>`}<div class="tl-play" style="padding-left:0"><button class="tool">${I('play', 18)}</button><input type="range" aria-label="Hour"><span class="tl-time">${nowT}</span></div><div class="rows"><button class="row"><span>${I('layers', 18)}</span><span><b>${w.onMap}</b></span><span class="val">${w.rain}</span></button></div></div>`;
     // where the card opens: clear of the window and the line (Window, kept clear; A weather line)
     let cardTop = v[1] + 40, cardLeft = v[0] + 14;
     if (cfg.wx === 'window' || cfg.wx === 'line') cardTop = Math.min(cardTop, 900 - (cfg.wx === 'window' ? 230 : 96) - 420);
