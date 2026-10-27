@@ -411,9 +411,10 @@ export class CardHost {
     el.replaceChildren(box);
     if (rect) {
       el.style.left = `${Math.round(rect.right + 8)}px`;
-      // above the timeline where it's open under the card (a desktop's), scrolling inside when it's taller than the room
-      const wx = document.getElementById('wx-bar'), w = wx && !wx.hidden && wx.offsetParent ? wx.getBoundingClientRect() : null;
-      const bottom = (w && w.left < rect.right + 8 + el.offsetWidth && w.right > rect.right + 8 ? w.top : innerHeight) - 8;
+      // above the timeline where it's open under the card (a desktop's) and the toolbar at the map's foot (#468),
+      // scrolling inside when it's taller than the room
+      const x = rect.right + 8, under = ['wx-bar', 'pl-tools'].map((id) => document.getElementById(id)).filter((e) => e && !e.hidden && e.getClientRects().length).map((e) => e.getBoundingClientRect());
+      const bottom = Math.min(innerHeight, ...under.filter((w) => w.left < x + el.offsetWidth && w.right > x).map((w) => w.top)) - 8;
       const top = Math.max(72, Math.min(rect.top, bottom - el.offsetHeight));
       el.style.top = `${Math.round(top)}px`;
       box.style.maxHeight = `${Math.max(160, Math.round(bottom - top - 20))}px`;

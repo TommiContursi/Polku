@@ -8471,6 +8471,19 @@ def toolbox(chrome):
         e = pg.js(IN_FREE)
         if e['side'] != (to == 'the side') or not e['inside']:
             fails.append(f"{name}: moved to {to} by its button, the route isn’t framed in the map it leaves free: {e} (#387)")
+    # a card from the list stays clear of the toolbar at the foot (#468): End's, the lowest row, with the timeline closed;
+    # its last button, scrolled to inside the card, is what's under its middle
+    click(pg, '#btn-time', f'{name}: the timeline')
+    click(pg, '#planner .wpl-point:has(.wp-end)', f'{name}: End in the list')
+    pg.js(SETTLED)
+    c = pg.js("""(() => { const c = document.querySelector('.card-beside'); if (!c) return null; const r = c.getBoundingClientRect(), t = polku.planner.tools.getBoundingClientRect();
+      const last = [...c.querySelectorAll('button')].filter((b) => b.offsetParent).at(-1); last.scrollIntoView({ block: 'nearest' });
+      const q = last.getBoundingClientRect(), e = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2), R = (a) => [a.left, a.top, a.right, a.bottom].map(Math.round);
+      return { timeline: !document.getElementById('wx-bar').hidden, card: R(r), tools: R(t), clear: r.bottom <= t.top + 0.5 || r.right <= t.left || r.left >= t.right,
+        last: last.textContent.trim(), at: !!e && last.contains(e), over: e ? e.id || String(e.className) : '' }; })()""")
+    if not c or c['timeline'] or not c['clear'] or not c['at']:
+        fails.append(f'{name}: End’s card from the list, the timeline closed: {c}')
+    pg.js("polku.planner.cards.close(); true")
     # the keys: P, S, W pick the mode; nothing else changes
     for k, code, vk, mode in (('s', 'KeyS', 83, 'line'), ('w', 'KeyW', 87, 'water'), ('p', 'KeyP', 80, 'auto')):
         key(pg, k, code, vk)
