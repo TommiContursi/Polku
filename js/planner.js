@@ -4804,6 +4804,8 @@ export class Planner {
     this.app.onActiveChange(this.active); // padding vars, button states
     this.renderStart(); // the start's own button says where the panel goes next
     requestAnimationFrame(() => this.chart.draw());
+    // the map it leaves free has moved: the route is framed in it again (#387)
+    if (this.active && this.points.length > 1) requestAnimationFrame(() => this.fitRoute());
   }
 
   renderDockBtn() {

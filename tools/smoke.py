@@ -8439,6 +8439,23 @@ def toolbox(chrome):
             fails.append(f'{name} {label}: the toolbar {e}')
     pg.js("polku.planner.setDock('left'); true")
     placed(pg)
+    # #387: the panel's place button frames the route again in the map it leaves free, both ways: from the side
+    # (framed beside it), and from the bottom at its peek (framed wide, under where the side panel goes)
+    IN_FREE = """(() => { const p = polku.planner, m = polku.map, r = p.routeBounds(), a = m.project([r[0], r[3]]), b = m.project([r[2], r[1]]);
+      const pl = p.panel.getBoundingClientRect(), side = p.layout() === 'side', R = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math.round(v)]));
+      const free = { top: document.querySelector('.topbar').getBoundingClientRect().bottom, bottom: side ? innerHeight : pl.top, left: side ? pl.right : 0, right: document.getElementById('map-ctrls').getBoundingClientRect().left };
+      const route = { top: a.y, bottom: b.y, left: a.x, right: b.x };
+      return { side, inside: route.top >= free.top - 1 && route.bottom <= free.bottom + 1 && route.left >= free.left - 1 && route.right <= free.right + 1, route: R(route), free: R(free) }; })()"""
+    for to, before in (('the bottom', 'true'), ('the side', "polku.planner.setSheetState('peek'), true")):
+        pg.js(before)
+        placed(pg)
+        pg.js("polku.planner.fitRoute({ animate: false }); true")
+        click(pg, '.sheet-dock', f'{name}: Move the planner to {to}')
+        placed(pg)
+        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.map.isMoving() || Date.now() - t0 > 5000 ? ok(true) : setTimeout(go, 50); go(); })")
+        e = pg.js(IN_FREE)
+        if e['side'] != (to == 'the side') or not e['inside']:
+            fails.append(f"{name}: moved to {to} by its button, the route isn’t framed in the map it leaves free: {e} (#387)")
     # the keys: P, S, W pick the mode; nothing else changes
     for k, code, vk, mode in (('s', 'KeyS', 83, 'line'), ('w', 'KeyW', 87, 'water'), ('p', 'KeyP', 80, 'auto')):
         key(pg, k, code, vk)
@@ -8506,7 +8523,7 @@ def toolbox(chrome):
         fails.append('1024x768: Show the whole route is neither on the toolbar nor in More')
     fails += [f'1024x768 console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251, #356" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251, #356, #387" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -13033,7 +13050,7 @@ GROUPS = [
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
-    ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356'),
+    ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),
