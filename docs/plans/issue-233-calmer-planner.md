@@ -236,7 +236,7 @@ The map in view at peek on a 390 phone: 82.7 % today, about 91 % when there's no
 ## 11. Acceptance criteria
 
 - **Layouts:** 390 × 844, 360 × 740, 375 × 667, 1440 × 900 and 1024 × 768; light and dark; Finnish-length words; 200 % zoom. No planner control on a phone under 44 × 44 px; none overlapping another or off the screen; no number cut; no name cut with "…"; the toolbox clear of the map's buttons or docked; the map's column clear of the top bar.
-- **The weather line's hour strip** (step 3) is at least 44 px tall, on phones and desktops, at every size and at 200 %. Since 2026-10-27.
+- **The weather line's hour strip** (step 3) is at least 44 px tall, on phones and desktops, at every size and at 200 %. Its folded pill is at least 44 px tall too, and its name for a screen reader is its reading. Since 2026-10-27.
 - **The workflows** in part a–d's checks, and the review's test script with people.
 - **Nothing lost:** every control and section of today's planner is where the change/move/keep table puts it, doing what it did; the regression list passes in every part.
 
@@ -402,6 +402,10 @@ Drawn on Fold to a line. Each alternative keeps Weather here, <kbd>T</kbd>, and 
 
 - **Question 1: Fold, then away.** One rule for the planner and the cards: one swipe down folds, a second closes, and ✕ closes too.
 - **Question 2: A weather line,** with the layer chips behind ⌃. Its hour strip is at least 44 px tall (§11).
+- **The weather line folds** (asked for on 2026-10-27, drawn for the user's OK). Folded, it is Window, kept clear's pill: the active layer's icon, the temperature, the hour and ⌃. The pill is at least 44 px tall, and a screen reader hears its reading: the layer, the temperature, the hour, where it's from, the wind and the rain.
+  - It folds by the planner's and the cards' rule: a swipe down or ⌄ folds it, and with the three days open the first one closes them. A tap or a swipe up on the pill opens it, and ✕ on the line closes the weather.
+  - It also folds by itself where the whole line would have to go into the sheet, over the planner or a card: at 200 % with the peek or a card, for one. On desktops that is where it would cover a card on the map or reach the top bar.
+  - At full it docks into the sheet, as the line does. Opened by hand where it doesn't fit, it goes into the sheet, and a folded sheet opens to take it in.
 - **Left to settle before the choice is recorded:** where ⌄ goes on phones, and how the map's foot is shared on desktops. The mock-up's third tab (`?q=foot`) draws both on the chosen pair: Fold, then away with the weather line and its 44 px strip.
 
 ### ⌄'s place on phones: its own row, or the header row (for the user's choice)
