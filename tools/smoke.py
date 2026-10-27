@@ -824,11 +824,11 @@ MARKED_JS = """(() => {
     await wait(600);
     return map.queryRenderedFeatures({ layers: ['route-casing'] }).filter((f) => f.properties.kind === 'leg').length;
   };
-  // the queries made within 85 ms of a pointer move (the tooltip's own waits 90 ms at the least), however late this is read
+  // the queries (a warning marker's apart) made within 85 ms of a pointer move (the tooltip's own waits 90 ms at the least), however late this is read
   mk.spy = (on) => {
     if (on) {
       mk.qs = []; mk.t0 = null; mk.was = map.queryRenderedFeatures;
-      map.queryRenderedFeatures = function (...a) { mk.qs.push(performance.now()); return mk.was.apply(this, a); };
+      map.queryRenderedFeatures = function (...a) { if (!(a[1] && a[1].layers || []).includes('heads-icon')) mk.qs.push(performance.now()); return mk.was.apply(this, a); };
       canvas.addEventListener('pointermove', mk.mark = () => { if (mk.t0 == null) mk.t0 = performance.now(); }, true);
       return 0;
     }
@@ -889,6 +889,14 @@ def marked(chrome):
                     if state() != {'cursor': 'pointer', 'lit': False}:
                         fails.append(f"where your route runs over it: {state()}")
                 pg.js('mk.plan([])', timeout=30000)
+                # a warning marker under the pointer is what a click opens first: a hand, and the marked route not lit
+                pg.js('mk.headWas = polku.planner.headAt; polku.planner.headAt = () => ({ properties: { key: "x" } }); true')
+                move(s['far'])
+                move(s['on'])
+                if state() != {'cursor': 'pointer', 'lit': False}:
+                    fails.append(f"where a warning marker is over it: {state()}")
+                pg.js('polku.planner.headAt = mk.headWas; true')
+                move(s['far'])
                 # a click: the card opens with the route lit, and the hover's light goes
                 move(s['on'])
                 for kind in ('mousePressed', 'mouseReleased'):

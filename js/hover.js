@@ -22,7 +22,7 @@ const OPENS = ['cameras', 'sf-ships', 'nm-marks', 'sf-points', 'lipas-route']; /
 
 export const hoverCapable = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-/** app: { enabled(), isPlanning(), hoverRoute(props | null) } */
+/** app: { enabled(), isPlanning(), hoverRoute(props | null), headAt(point, touch) } */
 export function initHover(map, app) {
   const canvas = map.getCanvas();
   const tip = h('div', { class: 'hover-tip', 'aria-hidden': 'true', hidden: true });
@@ -117,7 +117,9 @@ export function initHover(map, app) {
     const hit = feats.some((f) => OPENS.includes(f.layer.id));
     if (hit !== pointer) { pointer = hit; canvas.style.cursor = hit ? 'pointer' : ''; }
     const top = pickFeature(feats), leg = feats.some((f) => f.layer.id === 'route-casing' && f.properties.kind === 'leg');
-    light(top && top.layer.id === 'lipas-route' && !leg ? top.properties : null);
+    // (a warning marker's hit area is wider than the box, and wins over the route: asked only when the route would light)
+    const lights = top && top.layer.id === 'lipas-route' && !leg && !app.headAt({ x: at[0], y: at[1] }, false);
+    light(lights ? top.properties : null);
   };
   const press = () => { hide(); light(null); };
 

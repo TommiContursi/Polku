@@ -8,7 +8,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 A marked route on the map shows that it can be picked, and which one you picked.
 
-- With a mouse, the pointer is a hand over a marked route (LIPAS), and the whole route lights up while the pointer is on it, before you click. A place's icon or your own route on the same line is what a click opens there, so the route doesn't light.
+- With a mouse, the pointer is a hand over a marked route (LIPAS), and the whole route lights up while the pointer is on it, before you click. A place's icon, a warning marker or your own route on the same line is what a click opens there, so the route doesn't light.
 - A route you click or tap on the map stays lit while its card is open, so it's clear which route it was.
 - While you plan a route, the map doesn't open marked routes' cards: **Marked routes** in the planner's start is where to pick one.
 

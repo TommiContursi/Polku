@@ -424,7 +424,7 @@ const inspector = initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
