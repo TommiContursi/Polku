@@ -11459,11 +11459,18 @@ def sections_list(chrome):
         route(pg, name, {'pts': big, 'names': [[17, 'Sorila bridge'], [34, 'Kaukajärvi beach']]})
         pg.js("polku.planner.setStop(17, { min: 20 }); polku.planner.setStop(34, { min: 20 }); true")
         time.sleep(1.0)
+        # five draws each, big and small interleaved after one warm-up of each, medians compared: one cold draw or one
+        # busy moment on a shared runner no longer lands on one side only
         t = pg.js("""(() => { const p = polku.planner, T = () => { const t0 = performance.now(); for (let k = 0; k < 5; k++) p.renderWaypoints(); return (performance.now() - t0) / 5; };
-          const big = T(), keys = p.points.map((_, i) => i).filter((i) => p.keyPoint(i)), s = p.snapshot();
-          p.points = keys.map((i) => p.points[i]); p.legs = keys.slice(1).map((_, k) => ({ ...p.legs[keys[k]] }));
-          const small = T(); p.restoreSnap(s);
-          return { big, small, secs: p.els.points.querySelectorAll('.sec2').length, rows: p.els.points.querySelectorAll('.wpl-point:not(.shape)').length }; })()""")
+          const med = (a) => a.sort((x, y) => x - y)[a.length >> 1];
+          const keys = p.points.map((_, i) => i).filter((i) => p.keyPoint(i)), s = p.snapshot();
+          const bigPts = p.points, bigLegs = p.legs, smallPts = keys.map((i) => p.points[i]), smallLegs = keys.slice(1).map((_, k) => ({ ...p.legs[keys[k]] }));
+          const as = (pts, legs) => { p.points = pts; p.legs = legs; };
+          as(smallPts, smallLegs); T(); as(bigPts, bigLegs); T();
+          const bigs = [], smalls = [];
+          for (let r = 0; r < 7; r++) { as(bigPts, bigLegs); bigs.push(T()); as(smallPts, smallLegs); smalls.push(T()); }
+          p.restoreSnap(s);
+          return { big: med(bigs), small: med(smalls), secs: p.els.points.querySelectorAll('.sec2').length, rows: p.els.points.querySelectorAll('.wpl-point:not(.shape)').length }; })()""")
         if t['big'] > 2 * max(t['small'], 1) or t['secs'] != 3:
             fails.append(f"{name}: a 52-point route's list: {t['big']:.1f} ms, the points you see alone {t['small']:.1f} ms; {t['secs']} sections, {t['rows']} point rows")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
