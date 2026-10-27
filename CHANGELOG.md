@@ -2,6 +2,14 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-27
+
+### Settings and dialogs open the way Layers does ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- **Settings** now grows quickly out of the ⚙ button, as Layers does from its button, and closes at once. Opened from the keyboard, it appears at once.
+- Dialogs, such as **What's new**, **Save offline** and a road camera's card, fade in and grow a little from the middle (a card from its corner), and the dim behind them fades in too.
+- With reduced motion turned on in your phone or computer, they only fade.
+
 ## 2026-10-26
 
 ### Marked routes are easier to pick on the map ([#308](https://github.com/TommiContursi/Polku/issues/308))

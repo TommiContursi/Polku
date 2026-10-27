@@ -1531,6 +1531,7 @@ function openPanel(id, { instant = false, step = false, back = false } = {}) {
   for (const el of $$('.panel')) {
     const on = el.id === id && (el.hidden || step);
     el.hidden = !on;
+    el.classList.toggle('instant', on && instant);
     if (on && step) { el.classList.add('step-in'); el.addEventListener('animationend', () => el.classList.remove('step-in'), { once: true }); }
     const btn = $(`[data-panel="${el.id}"]`);
     if (btn) btn.setAttribute('aria-pressed', String(on));

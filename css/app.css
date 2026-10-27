@@ -459,6 +459,11 @@ body:not(.ready) .map-ctrls { display: none; }
    phones (placePanels(), #240, #257) */
 body.panels-over .panel { bottom: var(--space-12); max-height: calc(100% - 64px - 2 * var(--space-12)); z-index: 7; }
 body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - var(--space-12)); }
+/* Settings grows from ⚙ as Layers does from its button (.qd): in on --t-open, at once from the keyboard (.instant,
+   openPanel()), closed at once; with reduced motion it only fades */
+.panel-settings { transform-origin: 100% 0; transition: transform var(--t-open) var(--ease-out), opacity var(--t-open) var(--ease-out); }
+@starting-style { .panel-settings:not([hidden]) { opacity: 0; transform: scale(0.96); } }
+.panel.instant { transition: none; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 10px 6px 16px; }
 .panel-head h2 { margin: 0; font-size: 16px; }
 .panel-body { overflow: auto; padding: 0 16px 16px; }
@@ -1681,9 +1686,16 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
   display: flex; flex-direction: column; overflow: hidden;
 }
 .modal:not([open]) { display: none; }
-.modal::backdrop { background: rgba(10, 14, 12, 0.55); backdrop-filter: blur(2px); }
+.modal::backdrop { background: rgba(10, 14, 12, 0.55); backdrop-filter: blur(2px); transition: opacity var(--t-open) var(--ease-out); }
+/* a dialog grows from the middle, a card dialog from its corner, as Settings does from ⚙; closed at once */
+.modal { transition: transform var(--t-open) var(--ease-out), opacity var(--t-open) var(--ease-out); }
+@starting-style { .modal[open] { opacity: 0; transform: scale(0.96); } .modal[open]::backdrop { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .panel-settings, .modal { transition: opacity 150ms ease; }
+  @starting-style { .panel-settings:not([hidden]), .modal[open] { transform: none; } }
+}
 .modal-wide { width: min(980px, calc(100vw - 24px)); }
-.modal-card { position: fixed; inset: auto auto calc(var(--sheet-h) + 16px) calc(12px + var(--pl-left)); margin: 0; width: min(360px, calc(100vw - 24px)); max-height: min(70vh, calc(100vh - var(--sheet-h) - 140px)); z-index: 9; box-shadow: var(--shadow); }
+.modal-card { position: fixed; inset: auto auto calc(var(--sheet-h) + 16px) calc(12px + var(--pl-left)); margin: 0; transform-origin: 0 100%; width: min(360px, calc(100vw - 24px)); max-height: min(70vh, calc(100vh - var(--sheet-h) - 140px)); z-index: 9; box-shadow: var(--shadow); }
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px 12px 8px 18px; }
 .modal-head h2 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
 .modal-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
