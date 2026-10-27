@@ -3269,10 +3269,10 @@ FIT_LIB = """(() => {
   const line = () => p.legs.flatMap((l, i) => (l.result ? l.result.coords : [p.points[i], p.points[i + 1]]));
   const corners = (b) => [[b[0], b[1]], [b[2], b[3]], [b[0], b[3]], [b[2], b[1]]];
   const TRACK = [[23.70, 61.45], [23.74, 61.47], [23.78, 61.455], [23.76, 61.43], [23.72, 61.435]];
-  const gpx = `<?xml version="1.0"?><gpx version="1.1" creator="smoke"><trk><name>Test track</name><trkseg>${TRACK.map(([x, y]) => `<trkpt lat="${y}" lon="${x}"></trkpt>`).join('')}</trkseg></trk></gpx>`;
-  const importTrack = async () => {
+  const gpxOf = (c) => `<?xml version="1.0"?><gpx version="1.1" creator="smoke"><trk><name>Test track</name><trkseg>${c.map(([x, y]) => `<trkpt lat="${y}" lon="${x}"></trkpt>`).join('')}</trkseg></trk></gpx>`;
+  const importTrack = async (c = TRACK) => {
     const input = document.querySelector('#file-input'), dt = new DataTransfer();
-    dt.items.add(new File([gpx], 'test.gpx', { type: 'application/gpx+xml' }));
+    dt.items.add(new File([gpxOf(c)], 'test.gpx', { type: 'application/gpx+xml' }));
     input.files = dt.files;
     const mv = moved();
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -3340,6 +3340,40 @@ FIT_LIB = """(() => {
       await framed(`Analyse & edit, the planner opening at ${st}`, TRACK);
     }
     p.setSheetState('half');
+    return T.errs.splice(0);
+  };
+  // the import's card is over the map's corner: a track that ends at the bottom of its frame (its southernmost
+  // point, leaning west) still has its end clear of the card (#131), with the planner open at each of `states` and put away
+  // (tall for a phone, wide for a desktop, so the end lands in the frame's corner at either)
+  T.importCard = async (states) => {
+    const ENDS = innerWidth > 720 ? [[23.84, 61.45], [23.78, 61.465], [23.74, 61.47], [23.70, 61.43]] : [[23.74, 61.49], [23.725, 61.465], [23.715, 61.447], [23.70, 61.43]];
+    for (const st of [...states, null]) {
+      if (st) { p.setActive(true); await state(st, true); } else p.setActive(false);
+      const what = `an import with the planner ${st ? `at ${st}` : 'put away'}`;
+      away();
+      await importTrack(ENDS);
+      const late = await settled();
+      if (late) err(`${what}: ${late}`);
+      // the map you can see: the sheet's (free()) or, beside a side panel, all of it right of the panel
+      const side = p.active && p.layout() === 'side', f = free(), pr = document.querySelector('#planner').getBoundingClientRect();
+      if (side) Object.assign(f, { bottom: innerHeight, left: pr.right });
+      const out = ENDS.map((c) => map.project(c)).filter((q) => q.x < f.left || q.x > f.right || q.y < f.top || q.y > f.bottom).length;
+      if (out) err(`${what}: ${out} of ${ENDS.length} points outside the map you can see`);
+      const card = document.querySelector('#track-card'), c = card.getBoundingClientRect(), e = map.project(ENDS[ENDS.length - 1]);
+      if (card.hidden) err(`${what}: no card`);
+      else if (e.x > c.left - 8 && e.x < c.right + 8 && e.y > c.top - 8 && e.y < c.bottom + 8) err(`${what}: the track's end (${Math.round(e.x)}, ${Math.round(e.y)}) is under the card (${Math.round(c.left)}-${Math.round(c.right)}, ${Math.round(c.top)}-${Math.round(c.bottom)})`);
+      card.querySelector('[aria-label="Remove track"]').click();
+    }
+    // Analyse & edit frames the route with the card gone: on a phone, where the tall track is as tall as the map, the lowest point is near the bottom of the map you can see
+    away();
+    await importTrack(ENDS);
+    const mv = moved();
+    document.querySelector('#track-card .btn.primary').click();
+    await mv;
+    const late = await settled();
+    if (late) err(`Analyse & edit: ${late}`);
+    const g = free(), low = Math.max(...ENDS.map((c) => map.project(c).y));
+    if (innerWidth < 720 && g.bottom - low > 80) err(`Analyse & edit: the lowest point is ${Math.round(g.bottom - low)} px above the bottom of the map, as if the card were still there`);
     return T.errs.splice(0);
   };
   // before a tap from Python, a frame that comes quickly: on GitHub's runner the page can be busy
@@ -3497,6 +3531,7 @@ def fit_phone(chrome):
             pg.js(FIT_LIB)
             fails += pg.js('fitT.button()', timeout=90000)
             fails += pg.js('fitT.gpx()', timeout=90000)
+            fails += pg.js("fitT.importCard(['peek', 'half', 'full'])", timeout=90000)
             tap(pg, pg.js('fitT.firstTap()'))
             fails += pg.js('fitT.loopFromStart()', timeout=120000)
             s = pg.js('fitT.loopSpot()')
@@ -3534,6 +3569,7 @@ def fit_phone(chrome):
         pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'})
         pg.js(FIT_LIB)
         fails = pg.js('fitT.desktop()')
+        fails += pg.js("fitT.importCard(['open'])", timeout=90000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -12635,7 +12671,7 @@ GROUPS = [
     ('otherways', [otherways], 'other ways for a new leg: one after a pause and a second later, none while adding points or on a short leg, the way before as a ghost, links, Undo, a point taken back at once (#351) (mocked BRouter)'),
     ('flow', [flow], 'the route\'s glow and moving chevrons: they move, survive a style change, stop with reduced motion, the switch off or left alone'),
     ('loops', [loops], 'round trips on the water, More loops (recorded fairways, a fixed wind)'),
-    ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, loops tapped on the map (mocked BRouter)'),
+    ('fit', [fit_phone], 'phones: the route framed above the sheet at every size, an import\'s card clear of the track\'s end (#131), loops tapped on the map (mocked BRouter)'),
     ('winter', [winter], 'winter on the map: Auto / On / Off, winter ways (a recorded tile), FMI snow, ski tracks'),
     ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
