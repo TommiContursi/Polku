@@ -115,10 +115,17 @@ New in 22a:
 **22b: the panel on desktop moves.**
 - Drag its header to dock it left, right or at the bottom; drop zones show while dragging.
 - Resize it from its edge (the width is already yours on the side).
-- Fold it to a pill.
+- Fold it to a pill. Since #233's step 3 (2026-10-27) the pill is a line: the panel folds down to its numbers' line on its own edge, as everything does (below).
 - This replaces "Move to the left", and the map's controls make room on whichever side it's on.
 
 **22c: cards to pull out (maybe).** A section's pop-out turns the profile or the time into a small card on the map. It snaps to the map's corners, stays while the panel is folded, and goes back with a click. Desktop only. Built only if 22a and 22b leave a need for it.
+
+### From #233's step 3 (2026-10-27), for 22b and 22c
+
+[#233's plan](issue-233-calmer-planner.md#the-weather-as-a-card-chosen-2026-10-27) sets rules that 22b and 22c build on, since they make the other parts movable too. Its mock-up, [issue-338-room-for-the-map.html](mockups/issue-338-room-for-the-map.html) (`?q=foot`), draws them, with a right dock.
+- **Sides, not left and right.** The planner, its toolbar, the weather and the map's column are placed by the planner's side and the column's side, so a right dock mirrors all of it.
+- **Everything folds down to one line on its own edge:** the planner, the cards and the weather. At home, that edge is its home edge. A part that was moved folds where it is, and its line keeps its bottom edge there. A double-click brings any of them home.
+- **This line is what "fold it to a pill" becomes** (above).
 
 ### From phase 24's review (2026-10-17), for 22b
 
