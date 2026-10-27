@@ -20,7 +20,7 @@ import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, WIND_CLASSES, TEMP_BANDS, tempBand, RAIN_BANDS, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags, wayExtras } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
-import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt, keepInView } from './inspect.js';
 import { describe } from './hover.js';
 import { CardHost, item, rows } from './card.js';
 import { darkWords } from './palette.js';
@@ -691,7 +691,10 @@ export class Planner {
       h('div', { class: 'pt-title' }, 'Avoided place'),
       h('div', { class: 'pt-label' }, n.label),
       h('button', { type: 'button', class: 'btn danger-text', onclick: () => { this.menu.remove(); this.removeNogo(i); }, html: `${icon('trash', 16)} Stop avoiding` }));
-    this.menu = new maplibregl.Popup({ offset: 8, closeButton: true, className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
+    // never wider than the screen less 8 px each side (a phone at 200 %, #440); pan it in sight, over the map's buttons if need be
+    this.menu = new maplibregl.Popup({ maxWidth: `${Math.min(258, window.innerWidth - 16)}px`, offset: 8, closeButton: true, className: 'polku-popup' }).setLngLat(lngLat).setDOMContent(body).addTo(this.map);
+    const pad = this.cards.pad();
+    keepInView(this.map, this.menu, { left: (pad.left || 0) + 8, bottom: (pad.bottom || 0) + 8 });
   }
 
   setLegMode(i, mode) {

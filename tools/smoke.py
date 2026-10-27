@@ -3057,6 +3057,49 @@ def warnfix(chrome):
         fails += [f'195x422 (200 %) console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
+    # (#440) the Avoided place menu, opened by a tap on its circle: whole on the screen less 8 px each side at 200 % (a 390
+    # phone's 195 × 422) and on the phone itself, where Stop avoiding is in reach and works
+    for w, h_ in ((195, 422), (390, 844)):
+        pg = chrome.page(w, h_, True)
+        try:
+            pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
+            pg.js(f"(async () => {{ const errs = []; {CHECK_ROUTE} return true; }})()", timeout=150000)
+            at = pg.js("""(async () => { const p = polku.planner, m = polku.map; p.cards.close(); p.setSheetState('min', { remember: false });
+                await new Promise((ok) => setTimeout(ok, 500));
+                // (a spot of the map's own: clear of the planner's tools above and its sheet below)
+                const free = (y) => [-20, 0, 20].every((d) => [-20, 0, 20].every((e) => document.elementFromPoint(innerWidth / 2 + e, y + d) === m.getCanvas()));
+                let y = 40; while (y < innerHeight - 20 && !free(y)) y += 5;
+                const c = m.unproject([innerWidth / 2, y]);
+                p.addNogo([c.lng, c.lat], 40, 'Avoided place'); await new Promise((ok) => m.once('idle', ok));
+                await new Promise((ok) => setTimeout(ok, 3800)); // (its toast out of the way)
+                const q = m.project(c); return [q.x, q.y]; })()""")
+            pg.quick_tap(*at)
+            time.sleep(1.0)
+            # (across, at 200 % too; down, only on the phone itself)
+            r = pg.js("""(() => { const m = document.querySelector('.pt-menu'), b = m && m.querySelector('.btn');
+              if (!b) return null;
+              const R = m.closest('.maplibregl-popup-content').getBoundingClientRect(), B = b.getBoundingClientRect();
+              const hid = getComputedStyle(document.querySelector('.map-ctrls')).visibility === 'hidden';
+              return { R: [R.left, R.right], B: [B.left, B.right], W: innerWidth, right: innerWidth - (hid ? 8 : innerWidth < 720 ? 64 : 84) }; })()""")
+            if not r:
+                fails.append(f'{w}x{h_}, a tap on the circle opened no menu')
+            else:
+                (L, Rt), (bl, br) = r['R'], r['B']
+                if L < 7.5 or Rt > r['W'] - 7.5:
+                    fails.append(f"{w}x{h_}, the Avoided place menu at x {L:.0f}–{Rt:.0f} on a {r['W']} px screen")
+                if bl < L - 0.5 or br > Rt + 0.5:
+                    fails.append(f"{w}x{h_}, Stop avoiding at x {bl:.0f}–{br:.0f} out of its menu at {L:.0f}–{Rt:.0f}")
+                if Rt > r['right'] + 0.5:
+                    fails.append(f"{w}x{h_}, the Avoided place menu reaches x {Rt:.0f}, over the map's buttons (they start at {r['right']:.0f})")
+                if w > 200:  # (at 200 % the planner's sheet still covers the menu's foot: its height isn't fixed, #440)
+                    fails += [f'{w}x{h_}, the Avoided place menu: {e}' for e in pg.js(f"({CARD_FIT})('.pt-menu', false)")['errs']]
+                    pg.quick_tap(*pg.js("(() => { const r = document.querySelector('.pt-menu .btn').getBoundingClientRect(); return [(r.left + r.right) / 2, (r.top + r.bottom) / 2]; })()"))
+                    time.sleep(0.5)
+                    if pg.js("polku.planner.nogos.length") != 0:
+                        fails.append(f'{w}x{h_}, Stop avoiding in the Avoided place menu left the place')
+            fails += [f'{w}x{h_} console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
     # (13) 360 × 740: ‹ › in sight on a card with rows
     pg = chrome.page(360, 740, True)
     try:

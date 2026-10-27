@@ -1658,7 +1658,7 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
 .hover-tip .tip-hint { font-style: normal; font-size: 11px; opacity: .8; }
 @keyframes hover-tip-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .hover-tip { animation: none; } }
-.pt-menu { display: flex; flex-direction: column; gap: 8px; min-width: 236px; }
+.pt-menu { display: flex; flex-direction: column; gap: 8px; min-width: min(236px, calc(100vw - 2 * (var(--space-8) + var(--pop-pad) - 3px))); } /* (never wider than the screen less 8 px each side, #440) */
 .pt-menu .seg { align-self: stretch; display: grid; grid-template-columns: repeat(3, 1fr); }
 .pt-menu .seg button { padding: 0 6px; }
 .pt-style select { min-width: 0; text-overflow: ellipsis; }

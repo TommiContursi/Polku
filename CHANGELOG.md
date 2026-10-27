@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-26
 
+### Fixed: the Avoided place menu on a phone at 200 % ([#440](https://github.com/TommiContursi/Polku/issues/440))
+
+On a phone with the text enlarged to 200 %, tapping a place you avoid opened a menu wider than the screen, with **Stop avoiding** partly off its right edge. Now the menu is never wider than the screen less 8 px each side, and the map's buttons step aside while it's open. With the planner's sheet open on such a small screen, the sheet can still cover the menu's lower part.
+
 ### Fixed: the track's card leaves the end of an imported track in view ([#131](https://github.com/TommiContursi/Polku/issues/131))
 
 After you import a GPX or KML file, the map frames the track with room for its card (**Analyse & edit**) at the bottom, so the end of the track is no longer under the card, with the planner open or put away.
