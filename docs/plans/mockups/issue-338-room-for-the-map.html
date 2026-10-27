@@ -262,6 +262,13 @@ button { font: inherit; color: inherit; }
 .wl-row.msg { display: flex; gap: 4px; }
 .wl-read { display: contents; }
 @container (max-width: 300px) { .wl-read > span { grid-row: 2; grid-column: 1 / -1; padding: 0 8px 4px; } .wl-row > [data-a="wx-more"] { display: none; } }
+@container (max-width: 380px) { /* (tab 3: with ⌄ beside ⌃ and ✕, the details take a row of their own on phones, and the buttons keep the first) */
+  .wx-line.steps .wl-row { grid-auto-flow: row; grid-template-columns: 44px auto auto minmax(0, 1fr) repeat(3, 44px); }
+  .wx-line.steps .wl-read > span { grid-row: 2; grid-column: 1 / -1; padding: 0 8px 4px; }
+  .wx-line.steps .wl-row > [data-a="wx-more"] { grid-row: 1; grid-column: 5; }
+  .wx-line.steps .wl-row > :is([data-a="wx-fold"], [data-a="wx-days-close"]) { grid-row: 1; grid-column: 6; }
+  .wx-line.steps .wl-row > [data-a="wx-close"] { grid-row: 1; grid-column: 7; }
+}
 .wl-read > span[data-a] { cursor: pointer; border-radius: 8px; } /* (break-ui: at 200 % the details made a column of single words) */
 .wl-row .tool { width: 44px; height: 44px; flex: none; }
 .wl-read b, .wl-read span { font-variant-numeric: tabular-nums; line-height: 1.2; }
@@ -541,7 +548,7 @@ const QUESTIONS = {
   },
   foot: {
     title: 'The chosen pair: where ⌄ goes, and the map’s foot on desktops',
-    text: `<p>Chosen on 2026-10-27: <b>Fold, then away</b>, with one rule for the planner and the cards (one swipe down folds, a second closes, ✕ closes too), and <b>A weather line</b>, with the layer chips behind ⌃ and an hour strip 44 px tall. Two things are left to settle. <b>On phones</b>, ⌄ can have a row of its own above the peek, as in question 1, or sit at the right of the header row: use the <b>⌄</b> switch. <b>On desktops</b>, #468 puts the toolbar at the bottom in both docks, so four things share the map’s foot: the toolbar, the weather line, the scale and the credits. The picker shows three ways to share it. Use the <b>Dock</b> and <b>Window</b> switches, and the scenes. <b>The weather line folds</b> to Window, kept clear’s pill by ⌄ or a swipe down, and by itself where the whole line would go over the planner or a card: the <b>Weather folded</b> scene.</p>`,
+    text: `<p>Chosen on 2026-10-27: <b>Fold, then away</b>, with one rule for the planner and the cards (one swipe down folds, a second closes, ✕ closes too), and <b>A weather line</b>, with the layer chips behind ⌃ and an hour strip 44 px tall. Two things are left to settle. <b>On phones</b>, ⌄ can have a row of its own above the peek, as in question 1, or sit at the right of the header row: use the <b>⌄</b> switch. <b>On desktops</b>, #468 puts the toolbar at the bottom in both docks, so four things share the map’s foot: the toolbar, the weather line, the scale and the credits. The picker shows three ways to share it. Use the <b>Dock</b> and <b>Window</b> switches, and the scenes. On both, the toolbar sits against the planner and the weather line above it. <b>The weather line folds</b> to Window, kept clear’s pill by ⌄ or a swipe down, and by itself where the whole line would go over the planner or a card: the <b>Weather folded</b> scene.</p>`,
     names: ['Today', 'One stack', 'Scale in the corner', 'Planner left, map right'],
     table: [['One stack', 'The toolbar on the panel’s edge, the weather line on the toolbar, the scale and the credits on top, all at the panel’s corner', 'One place for everything, in both docks and at any width', 'The corner by the panel is the busiest part of the map'],
             ['Scale in the corner', 'The scale and the credits keep the map’s corner; the toolbar starts to their right; the weather line is centred above', 'The scale never moves', 'The toolbar loses 126 px: at 1024 × 768 it runs into the map’s buttons, and the opened credits cover it'],
@@ -551,7 +558,7 @@ const QUESTIONS = {
 let Qn = ['weather', 'foot'].includes(Q.get('q')) ? Q.get('q') : 'fold';
 const S = { size: ['390', '360', '200'].includes(Q.get('size')) ? Q.get('size') : '390', lang: Q.get('lang') === 'fi' ? 'fi' : 'en', worst: Q.get('worst') === '1',
             motion: ['slow', 'reduced'].includes(Q.get('motion')) ? Q.get('motion') : 'normal', scene: Qn === 'weather' ? 'peek' : 'planner', weatherOn: false,
-            chev: Q.get('chev') === 'row' ? 'row' : 'head', dock: Q.get('dock') === 'bottom' ? 'bottom' : 'side', desk: Q.get('desk') === '1024' ? '1024' : '1440' };
+            chev: Q.get('chev') === 'row' ? 'row' : 'head', order: Q.get('order') === 'edge' ? 'edge' : 'tools', dock: Q.get('dock') === 'bottom' ? 'bottom' : 'side', desk: Q.get('desk') === '1024' ? '1024' : '1440' };
 const setParam = (k, v) => { const u = new URL(location); if (v == null) u.searchParams.delete(k); else u.searchParams.set(k, v); history.replaceState(null, '', u); };
 const W = () => WORDS[S.lang];
 const N = () => (S.worst ? NUMS.worst : NUMS[S.lang]).map((x) => x.replace(/(\d) (?=\d)/g, '$1\u00a0').replace(/(\d) (?=[a-z%])/gi, '$1\u00a0'));
@@ -853,6 +860,10 @@ function Phone(host, cfg) {
     tools.hidden = st.away || (!!st.card && !tools.classList.contains('docked')) || (folded && !tools.classList.contains('docked'));
     pair.hidden = st.away || !(st.card || folded) || tools.classList.contains('docked') && !st.card && !folded;
     if (tools.classList.contains('docked') && (st.card || folded)) pair.hidden = false;
+    pair.classList.toggle('folded', folded && !st.card);
+    // tab 3: the toolbar keeps the sheet's edge and the weather sits on it, as on desktops (?order=edge: the weather on the sheet's edge, as before)
+    const floating = !tools.hidden && !tools.classList.contains('docked') ? tools : !pair.hidden ? pair : null;
+    const lift = cfg.pill && S.order !== 'edge' && floating ? floating.offsetHeight + 8 : 0, wb = base + lift;
     // the weather
     wxBar.hidden = wxPill.hidden = wxLine.hidden = true;
     sc.querySelector('[data-c=weather]').classList.toggle('wx-on', st.wxOn);
@@ -873,30 +884,30 @@ function Phone(host, cfg) {
           if (dock) (st.card ? cardC : head).prepend(wxPill); else { if (wxPill.parentElement !== sc) sc.insertBefore(wxPill, sheet); wxPill.style.bottom = base + 'px'; wxH = 52; }
         }
       } else if (st.wx === 'line') {
-        wxLine.innerHTML = wxLineHtml(); wxLine.hidden = false;
+        wxLine.innerHTML = wxLineHtml(); wxLine.hidden = false; wxLine.classList.toggle('steps', !!cfg.pill);
         wxLine.classList.remove('docked'); if (wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet);
-        const floor = st.away ? 12 + toast.offsetHeight + 8 : base, fits = (h) => Ht - floor - h >= 64 + 52; // (room for the top bar and one of the map's buttons)
+        const floor = st.away ? 12 + toast.offsetHeight + 8 : wb, fits = (h) => Ht - floor - h >= 64 + 52; // (room for the top bar and one of the map's buttons)
         // tab 3: the pill where it was folded, or where the whole line would have to go into the sheet over the planner or a card; at full the line docks, as before
         if (cfg.pill && st.state !== 'full' && (st.wxFold || (!fits(wxLine.offsetHeight) && !st.wxForce))) {
           wxLine.hidden = true; wxPill.innerHTML = wxPillHtml(); wxPill.dataset.a = 'wx-unfold'; wxPill.hidden = false;
           wxPill.classList.remove('docked'); if (wxPill.parentElement !== sc) sc.insertBefore(wxPill, sheet);
           const dock = !fits(wxPill.offsetHeight); // (44 px, or two lines at 200 %)
           wxPill.classList.toggle('docked', dock);
-          if (dock) (st.card ? cardC : head).prepend(wxPill); else { wxPill.style.bottom = floor + 'px'; wxH = wxPill.offsetHeight + 8 + floor - base; }
+          if (dock) (st.card ? cardC : head).prepend(wxPill); else { wxPill.style.bottom = floor + 'px'; wxH = wxPill.offsetHeight + 8 + floor - wb; }
         } else {
-        const dock = st.state === 'full' || Ht - base - wxLine.offsetHeight < 64 + 52;
+        const dock = st.state === 'full' || Ht - wb - wxLine.offsetHeight < 64 + 52;
         wxLine.classList.toggle('docked', dock);
         if (dock) { (st.card ? cardC : head).prepend(wxLine); }
-        else { if (wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet); wxLine.style.bottom = (st.away ? 12 + toast.offsetHeight + 8 : base) + 'px'; wxH = wxLine.offsetHeight + 8 + (st.away ? toast.offsetHeight + 8 : 0); } // (closed, it rides on the note, as on the sheet)
+        else { if (wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet); wxLine.style.bottom = (st.away ? 12 + toast.offsetHeight + 8 : wb) + 'px'; wxH = wxLine.offsetHeight + 8 + (st.away ? toast.offsetHeight + 8 : 0); } // (closed, it rides on the note, as on the sheet)
         }
       }
     }
     if (wxLine.hidden && wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet);
     if (wxPill.hidden && wxPill.parentElement !== sc) sc.insertBefore(wxPill, sheet);
-    above = base + wxH;
-    if (!tools.hidden && !tools.classList.contains('docked')) { tools.style.bottom = above + 'px'; }
-    pair.style.bottom = above + 'px'; pair.classList.toggle('folded', folded && !st.card);
-    const toolsUp = (!tools.hidden && !tools.classList.contains('docked')) || !pair.hidden;
+    above = wb + wxH;
+    if (!tools.hidden && !tools.classList.contains('docked')) { tools.style.bottom = (lift ? base : above) + 'px'; }
+    pair.style.bottom = (lift ? base : above) + 'px';
+    const toolsUp = !lift && ((!tools.hidden && !tools.classList.contains('docked')) || !pair.hidden);
     scale.style.bottom = (above + (toolsUp ? 56 : 0)) + 'px';
     // the column: Layers and Locate stay; it lets go of the compass, then 3D, Weather (T, Layers), Show the whole route (⋯)
     ctrls.style.bottom = above + 'px';
@@ -1231,6 +1242,8 @@ function Desk(host, cfg) {
 }
 
 // ---------------------------------------------------------------- captions, by question and alternative
+// the foot's order on phones, as on desktops (tab 3)
+const ORDER = '<b>The toolbar keeps the sheet’s edge, and the weather line sits on it</b>, as on desktops: the planner’s tools against the planner, the weather above them. Below 380 px the line’s details take a row of their own beside ⌃, ⌄ and ✕. Its hour strip is 44 px tall. The <b>Weather</b> switch shows the earlier order: the line on the sheet’s edge, the toolbar above it.';
 const CAP = {
   fold: {
     line: { phone: `<p><b>Fold to a line.</b> Swipe down from the peek, or tap the handle: the planner folds to one line, its warnings' count and its numbers. The toolbox goes too, leaving Undo and Redo. The whole line is one button: a tap on it, a swipe up, or the handle brings the planner back to the size it left. Close is ✕ only: no swipe closes the planner.</p><p><b>A card</b> (tap ① or its row) does the same: folded, its title and ✕; swiped up, the card's own full height. <b>This changes</b> a swipe up on a card: today it closes the card and raises the list; here Back or ✕ reaches the list.</p><p><b>200 %:</b> the planner rests at its line when its peek would cover more than half the screen, and at full the whole sheet scrolls as one (#453). The map's column keeps Locate and Layers; it lets go of the compass, then 3D, then Weather (<kbd>T</kbd>, and in Layers), then Show the whole route (in ⋯) (#344).</p>`,
@@ -1252,8 +1265,8 @@ const CAP = {
   },
   foot: {
     phone: {
-      row: `<p><b>Fold, then away, with ⌄ in a row of its own</b> (question 1’s version). ⌄ sits at the sheet’s top right, above the header, for the planner and every card. Folded, ✕ takes its place and puts the planner away. <b>A weather line</b> rides on the sheet’s edge, with its hour strip 44 px tall.</p>`,
-      head: `<p><b>Fold, then away, with ⌄ in the header row.</b> The sheet’s top is the handle alone, as today. ⌄ sits just before the way out: before <b>Done</b> in the planner’s numbers row, and before ✕ in a card’s title row. That is where the desktop has Minimise and a card’s fold. Folded, the sheet is as in its own row’s version: ✕ at the top right puts the planner away. (✕ at the line’s end broke the worst case’s numbers mid-number at 200 %.) <b>A weather line</b> rides on the sheet’s edge, with its hour strip 44 px tall.</p><p><b>What it saves:</b> 22 px only where the numbers already take two lines (the worst case, and 360 px in English). Elsewhere ⌄ takes their room: at 390 px in English the numbers wrap and the peek is 13 px taller, and in Finnish 20 px taller. At 200 % a card’s title is left 25 px wide, a syllable a line. Compare with <b>⌄: Own row</b>.</p>`,
+      row: `<p><b>Fold, then away, with ⌄ in a row of its own</b> (question 1’s version). ⌄ sits at the sheet’s top right, above the header, for the planner and every card. Folded, ✕ takes its place and puts the planner away. ${ORDER}</p>`,
+      head: `<p><b>Fold, then away, with ⌄ in the header row.</b> The sheet’s top is the handle alone, as today. ⌄ sits just before the way out: before <b>Done</b> in the planner’s numbers row, and before ✕ in a card’s title row. That is where the desktop has Minimise and a card’s fold. Folded, the sheet is as in its own row’s version: ✕ at the top right puts the planner away. (✕ at the line’s end broke the worst case’s numbers mid-number at 200 %.) ${ORDER}</p><p><b>What it saves:</b> 22 px only where the numbers already take two lines (the worst case, and 360 px in English). Elsewhere ⌄ takes their room: at 390 px in English the numbers wrap and the peek is 13 px taller, and in Finnish 20 px taller. At 200 % a card’s title is left 25 px wide, a syllable a line. Compare with <b>⌄: Own row</b>.</p>`,
     },
     pill: `<p><b>The weather line folds</b> to a pill, as the planner and the cards fold: ⌄ or a swipe down (with the three days open, the first one closes them). The pill is Window, kept clear’s: the active layer’s icon, the temperature, the hour and ⌃, 44 px tall, and a screen reader hears its reading (the layer, the temperature, the hour, where, the wind and the rain). A tap or a swipe up opens the line again, and ✕ on the line closes the weather. It also folds by itself where the whole line would have to go into the sheet, over the planner or a card: at 200 % with the peek, for one. At full it docks into the sheet, as the line does. Try <b>Weather folded</b>, and 200 %.</p>`,
     pillDesk: `<p><b>The weather line folds</b> here too: ⌄ on the line, a tap on the pill to open it. It folds by itself where the whole line would cover a card on the map or reach the top bar. Try <b>Weather folded</b>, and <b>A point’s card</b> at 1024 × 768 in the bottom dock.</p>`,
@@ -1273,7 +1286,7 @@ function renderQuestion() {
   const sw = (label, key, opts) => `<span>${label}</span><div class="sw" role="group" aria-label="${label}">${opts.map(([v, t]) => `<button data-k="${key}" data-v="${v}" aria-pressed="${String(S[key]) === v}">${t}</button>`).join('')}</div>`;
   document.getElementById('switches').innerHTML = sw('Screen', 'size', [['390', '390 × 844'], ['360', '360 × 740'], ['200', '200 % (195 × 422)']]) + sw('Words', 'lang', [['en', 'English'], ['fi', 'Finnish']])
     + `<div class="sw"><button data-k="worst" aria-pressed="${S.worst}">Worst case</button></div>`
-    + (Qn === 'foot' ? sw('⌄', 'chev', [['row', 'Own row'], ['head', 'Header row']]) + sw('Dock', 'dock', [['side', 'Side'], ['bottom', 'Bottom']]) + sw('Window', 'desk', [['1440', '1440 × 900'], ['1024', '1024 × 768']]) : '')
+    + (Qn === 'foot' ? sw('⌄', 'chev', [['row', 'Own row'], ['head', 'Header row']]) + sw('Weather', 'order', [['tools', 'Above the toolbar'], ['edge', 'On the sheet (before)']]) + sw('Dock', 'dock', [['side', 'Side'], ['bottom', 'Bottom']]) + sw('Window', 'desk', [['1440', '1440 × 900'], ['1024', '1024 × 768']]) : '')
     + (Qn !== 'weather' ? sw('Motion', 'motion', [['normal', 'Normal'], ['slow', 'Slow ×4'], ['reduced', 'Reduced']]) : '');
   const scenes = Qn === 'foot' ? [['planner', 'The planner'], ['wxfold', 'Weather folded'], ['folded', 'Folded'], ['half', 'Half'], ['card', 'A point’s card'], ['credits', 'Credits open'], ['closed', 'Planner closed']]
     : Qn === 'fold' ? [['planner', 'The planner'], ['card', 'A point’s card'], ['wx', 'Weather on']] : [['peek', 'Peek'], ['folded', 'Folded'], ['half', 'Half'], ['full', 'Full'], ['card', 'A point’s card'], ['here', 'Weather here'], ['loading', 'Loading'], ['failed', 'Failed']];
