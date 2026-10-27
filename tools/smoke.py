@@ -332,6 +332,37 @@ LOOP = """(async () => {
 # Layers: every sport has the same layers and controls (the trail colours
 # included), "On now" comes first, and every raster overlay that's on has its
 # opacity slider. Ends in paddle with Depth areas at 30 % for the reload check.
+# A switch and a segment pressed in Layers move from what was on screen, though the panel is built again (#540's
+# package 5): the track's colour and the knob, the pressed segment's colour; no knob slide with reduced motion; the
+# focus stays on the switch
+LAYERS_MOTION = """(async (reduced) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], tag = reduced ? 'reduced motion: ' : '';
+  if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); }
+  await wait(300);
+  const body = document.querySelector('#layers-body');
+  const sw = (l) => [...body.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === l).querySelector('input');
+  const seg = (l) => [...body.querySelectorAll('.seg button')].find((b) => b.textContent === l && b.parentNode.firstElementChild.textContent === 'Off');
+  const moving = (el, pseudo = '') => el.getAnimations({ subtree: true }).filter((a) => (a.effect.pseudoElement || '') === pseudo).map((a) => a.transitionProperty).sort().join(' ') || 'nothing';
+  const was = sw('Trail details').checked;
+  sw('Trail details').focus();
+  getComputedStyle(sw('Trail details').nextElementSibling).backgroundColor;
+  sw('Trail details').click();
+  const ui = sw('Trail details').nextElementSibling, track = moving(ui), knob = moving(ui, '::after');
+  if (!track.includes('background-color')) errs.push(`${tag}Trail details' track moves ${track}, not its colour`);
+  if (knob !== (reduced ? 'nothing' : 'transform')) errs.push(`${tag}Trail details' knob moves ${knob}, not ${reduced ? 'nothing' : 'transform'}`);
+  if (document.activeElement !== sw('Trail details')) errs.push(`${tag}the focus went to ${document.activeElement.tagName}.${document.activeElement.className}, not the switch it pressed`);
+  if (sw('Trail details').checked === was) errs.push(`${tag}Trail details didn't change`);
+  sw('Trail details').click();
+  await wait(300);
+  getComputedStyle(seg('Uphill')).backgroundColor;
+  seg('Uphill').click();
+  const pressed = moving(seg('Uphill'));
+  if (seg('Uphill').getAttribute('aria-pressed') !== 'true') errs.push(`${tag}Uphill isn't pressed`);
+  if (!pressed.includes('background-color')) errs.push(`${tag}the Uphill segment moves ${pressed}, not its colour`);
+  seg('Off').click();
+  await wait(300);
+  return errs;
+})"""
 LAYERS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const { ACTIVITIES, RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
@@ -4853,6 +4884,10 @@ def layers(chrome):
     fails = pg.js(LAYERS)
     pg.reload()
     fails += pg.js(LAYERS_AFTER)
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+    fails += pg.js(LAYERS_MOTION + '(false)')
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
+    fails += pg.js(LAYERS_MOTION + '(true)')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} layers (every sport)" + ''.join(f'\n     - {f}' for f in fails), flush=True)

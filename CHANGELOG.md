@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-27
 
+### Fixed: switches in Layers move, and keep the keyboard's place ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- A switch in Layers, such as **Trail details** or **Wind**, now slides its knob and fades its colour when you turn it on or off, as the switches in Settings did already. A choice such as the trail colours' **Off / Difficulty / Uphill** fades to the one you picked. With reduced motion turned on in your phone or computer, the colours still fade and nothing slides.
+- After you turn a switch in Layers on or off from the keyboard, the focus stays on it, so you can go on from there.
+
 ### Settings and dialogs open the way Layers does ([#540](https://github.com/TommiContursi/Polku/issues/540))
 
 - **Settings** now grows quickly out of the ⚙ button, as Layers does from its button, and closes at once. Opened from the keyboard, it appears at once.

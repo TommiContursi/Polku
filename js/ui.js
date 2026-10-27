@@ -106,6 +106,32 @@ export const icon = (name, size = 20) =>
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+/**
+ * A panel built again after one of its controls changed (its counts, notes and other rows follow the change).
+ * Call it before the box is emptied, and what it returns once the box is built: a switch or a segment that
+ * changed shows its old state for one style pass, then its new one, so its own transitions run where it was
+ * pressed, and the focus goes back to the control it was on.
+ */
+const CONTROLS = 'input[role="switch"], .seg button';
+const controlKey = (el) => (el.matches('input')
+  ? el.closest('label').querySelector('.tg-text').firstChild.textContent
+  : `${el.parentNode.firstElementChild.textContent}/${el.textContent}`);
+// (a switch's drawn state is its checked attribute: a press has already flipped .checked when its panel is built again)
+const controlOn = (el) => (el.matches('input') ? el.defaultChecked : el.getAttribute('aria-pressed') === 'true');
+const showControl = (el, on) => { if (el.matches('input')) el.checked = on; else el.setAttribute('aria-pressed', String(on)); };
+export function settleControls(box) {
+  const was = new Map($$(CONTROLS, box).map((el) => [controlKey(el), controlOn(el)]));
+  const focused = box.contains(document.activeElement) && document.activeElement.matches(CONTROLS) ? controlKey(document.activeElement) : null;
+  return () => {
+    const now = $$(CONTROLS, box);
+    const changed = now.filter((el) => was.has(controlKey(el)) && was.get(controlKey(el)) !== controlOn(el)).map((el) => [el, controlOn(el)]);
+    for (const [el, on] of changed) showControl(el, !on);
+    for (const [el] of changed) getComputedStyle(el.matches('input') ? el.nextElementSibling : el).color; // (the old look, as their start)
+    for (const [el, on] of changed) showControl(el, on);
+    if (focused) now.find((el) => controlKey(el) === focused)?.focus({ preventScroll: true });
+  };
+}
+
 export function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
