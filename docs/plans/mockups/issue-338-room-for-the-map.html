@@ -391,8 +391,11 @@ button { font: inherit; color: inherit; }
 .d-panel.pfold .fold-go b { font-size: 15px; }
 .dwx { position: absolute; z-index: 6; box-sizing: border-box; width: 440px; padding: 2px 10px 6px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); }
 .dwx[hidden] { display: none; }
-.dwx.line { width: 240px; padding: 2px 2px 2px 8px; }
+.dwx.line { width: auto; padding: 2px 2px 2px 10px; border-radius: 24px; }
+.dwx.line .dwx-head { gap: 5px; }
 .dwx.line .dwx-head .tool { width: 36px; height: 36px; }
+.dwx.line .hr { min-width: 4.9em; font-size: 13.5px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; } /* (room for a day's name: the line keeps its width as the hour changes) */
+.dwx.line .fl-mark { display: grid; color: var(--accent); } /* (following the route: the route's mark in the layer icon's place) */
 .dwx-head { display: flex; align-items: center; gap: 6px; min-height: 48px; cursor: grab; user-select: none; }
 .dwx-head .grip { flex: none; display: grid; color: var(--muted); }
 .dwx-head > .ic { flex: none; color: #1d4ed8; }
@@ -620,14 +623,14 @@ const QUESTIONS = {
   // tab 3's latest (2026-10-27): the third tab's default; the weather line's version stays behind the Version switch
   card: {
     title: 'The weather as a card, and everything folds down to one line on its own edge',
-    text: `<p>Decided on 2026-10-27: <b>Fold, then away</b>, with ⌄ in a row of its own. Asked for on 2026-10-27 and drawn here for the user’s OK: <b>the weather is a card</b>, and its line is the card folded, not a layer of its own. On phones it has the planner’s sheet, one thing at a time: open, folded to its line, or away, where the <b>Weather</b> button below Layers says it’s on. On desktops it is a strip at home on the map’s foot, beside the map’s column, and the planner folds down to its line at the bottom of its side. <b>Pointing along the profile</b> moves a marker on the route and says the distance, when you get there and Colour by’s reading. With Colour by on wind, temperature or rain and the weather on, the map’s weather follows the hour you get there, up to its 48 hours.</p><p>Try the scenes, the <b>Dock</b> switch (<b>Right</b> is 22b’s, #179: everything mirrors) and the <b>Window</b> switch. On a phone, drag along the profile in <b>Following the route</b>; on a desktop, point at it, drag the weather strip by its title row, resize it from its edge, double-click it home, and try <b>Show the whole route</b> in the toolbar. <b>Version</b> shows the weather line’s version from before.</p>`,
+    text: `<p>Chosen on 2026-10-27: <b>Fold, then away</b>, with ⌄ in a row of its own, and <b>the weather is a card</b>: its line is the card folded, not a layer of its own. On phones it has the planner’s sheet, one thing at a time: open, folded to its line, or away, where the <b>Weather</b> button below Layers says it’s on. On desktops it is a strip at home on the map’s foot, beside the map’s column, and the planner folds down to its line at the bottom of its side. <b>Pointing along the profile</b> moves a marker on the route and says the distance, when you get there and Colour by’s reading. With Colour by on wind, temperature or rain and the weather on, the map’s weather follows the hour you get there, up to its 48 hours.</p><p>Try the scenes, the <b>Dock</b> switch (<b>Right</b> is 22b’s, #179: everything mirrors) and the <b>Window</b> switch. On a phone, drag along the profile in <b>Following the route</b>; on a desktop, point at it, drag the weather strip by its title row, resize it from its edge, double-click it home, and try <b>Show the whole route</b> in the toolbar. <b>Version</b> shows the weather line’s version from before.</p>`,
     names: ['Today', 'The weather card'],
     head: ['', 'Open', 'Folded: one line on its own edge', 'Away'],
     table: [['Phone: the planner', 'The peek, the profile, half and full', 'Its numbers, in the sheet’s place', 'The note with <b>Open</b>, and Plan in the column; ✕ at the line puts it away'],
             ['Phone: the weather', 'A card in the sheet’s place: the reading, the layers and the 48 hours. The planner and its tools wait behind it', 'Its reading, in the sheet’s place', 'The <b>Weather</b> button, below Layers, shows it’s on, with the hour beside it while the map isn’t showing now. The planner comes back as it was. ✕ turns the weather off'],
             ['Phone: a point’s card', 'The card, over what was there', 'Its title', 'Closed: what was under it comes back as it was'],
             ['Desktop: the planner', 'The side panel, the screen’s height, or the bottom panel', 'Its numbers, at the bottom of its side, the toolbar beside it; in the bottom dock, the panel’s line', 'The panel’s ✕; Plan in the column'],
-            ['Desktop: the weather', 'A strip at home on the foot by the map’s column: beside the toolbar, or on the bottom panel’s top edge. It moves and resizes; a double-click brings it home', 'Its reading, where it is: at home, or where it was moved, keeping its bottom edge. It starts folded where the strip has no room beside the toolbar', 'Where not even its line fits beside the toolbar: the <b>Weather</b> button with its hour, as on phones']],
+            ['Desktop: the weather', 'A strip at home on the foot by the map’s column: beside the toolbar, or on the bottom panel’s top edge. It moves and resizes; a double-click brings it home', 'Its icon, temperature and hour, where it is: at home, or where it was moved, keeping its bottom edge. It starts folded where the strip has no room beside the toolbar', 'Where not even its line fits beside the full toolbar (the toolbar never gives anything up for it): the <b>Weather</b> button with its hour, as on phones']],
   },
 };
 let Qn = ['weather', 'foot'].includes(Q.get('q')) ? Q.get('q') : 'fold';
@@ -1557,10 +1560,14 @@ function Desk2(host) {
       <div class="sheet-body"><div class="rows" style="margin:4px -4px"><button class="row"><span>${I('how')}</span><span><b>${w.how}</b><small>${w.howSub}</small></span><span class="val">${w.howVal}</span></button><button class="row"><span>${I('speed')}</span><span><b>${w.speed}</b><small>${w.speedSub}</small></span><span class="val">${w.speedVal}</span></button><button class="row" data-d="card"><span><span class="wp" style="width:22px;height:22px;font-size:11px;border-width:2px">1</span></span><span><b>${pointName}</b><small>${n[3]} · ${n[4]}</small></span></button></div></div>`;
     return `<div class="d-panel v2${bottom ? ' bottom' : ''}"><div class="sheet-head"><div class="sheet-row" style="align-items:flex-start">${sum}<button class="tool" aria-label="${bottom ? 'Move to the side' : 'Move to the bottom'}">${I('layers', 18)}</button><button class="tool" data-d="pfold" aria-label="${w.foldDown}">${I('down', 18)}</button><button class="tool" data-d="away" aria-label="${w.putAway}">${I('close', 18)}</button></div>${bottom ? '' : `<div class="kf"><button class="kf-b"><span>${I('climb', 18)}</span><span>${w.climb}</span><span>${I('chev', 16)}</span></button></div>`}</div>${profHtml(st, false)}${bottom ? '' : rest}</div>`;
   }
-  function wxInner(line) { // (the line is 240 px: the temperature, the rain and the hour; the wind and where are the open strip's)
+  function wxInner(line) {
     const R = wxRead(st), fl = following(st);
-    const head = `<div class="dwx-head" title="${w.dragHome}">${line ? '' : `<span class="grip" aria-hidden="true">${I('move', 16)}</span>`}${I('drop', 20)}<b>${R.t}°</b><span class="r">${line ? R.rain : `${R.wind} · ${R.rain}`}<small>${fl ? followShort(st) : line ? R.time : `${R.time} · ${R.where}`}</small></span>${line ? `<button class="tool" data-d="wx-open" aria-label="${w.openWx}">${I('up', 18)}</button>` : `<button class="tool" data-d="wx-fold" aria-label="${w.foldWx}">${I('down', 18)}</button>`}<button class="tool" data-d="wx-off" aria-label="${w.wxOff}">${I('close', 18)}</button></div>`;
-    return line ? head : `${head}${fl ? `<p class="wc-follow">${I('route', 16)}<span>${followLong(st)}</span></p>` : ''}${wxStripHtml(st, arrive(1, st.nights) / 60)}<span class="dwx-size" aria-hidden="true" title="Resize"></span>`;
+    if (line) { // the line: the layer's icon, the temperature and the hour, as small as the pill was; following, the route's mark by the hour (in words for a screen reader)
+      const hr = mapHour(st) ? timeAt(mapHour(st)) : hhmm(6, 31);
+      return `<div class="dwx-head" title="${w.dragHome}">${fl ? `<span class="fl-mark">${I('route', 20)}</span>` : I('drop', 20)}<b>${R.t}°</b><span class="hr">${hr}</span><span class="vh">: ${fl ? followShort(st) : R.time}, ${R.where}, ${R.wind}, ${R.rain}</span><button class="tool" data-d="wx-open" aria-label="${w.openWx}">${I('up', 18)}</button><button class="tool" data-d="wx-off" aria-label="${w.wxOff}">${I('close', 18)}</button></div>`;
+    }
+    const head = `<div class="dwx-head" title="${w.dragHome}"><span class="grip" aria-hidden="true">${I('move', 16)}</span>${I('drop', 20)}<b>${R.t}°</b><span class="r">${R.wind} · ${R.rain}<small>${fl ? followShort(st) : `${R.time} · ${R.where}`}</small></span><button class="tool" data-d="wx-fold" aria-label="${w.foldWx}">${I('down', 18)}</button><button class="tool" data-d="wx-off" aria-label="${w.wxOff}">${I('close', 18)}</button></div>`;
+    return `${head}${fl ? `<p class="wc-follow">${I('route', 16)}<span>${followLong(st)}</span></p>` : ''}${wxStripHtml(st, arrive(1, st.nights) / 60)}<span class="dwx-size" aria-hidden="true" title="Resize"></span>`;
   }
   function cardHtml() {
     return `<div class="d-card${st.cardFold ? ' folded' : ''}"><div class="card-top"><span class="card-mark"><span class="wp">1</span></span><h3 class="way-name">${pointName}</h3><button class="tool" data-d="fold" aria-expanded="${!st.cardFold}" aria-label="${st.cardFold ? 'Open the card' : 'Fold the card to its title'}">${I(st.cardFold ? 'up' : 'down', 18)}</button><button class="tool" data-d="close" aria-label="Close">${I('close', 18)}</button></div>
@@ -1587,24 +1594,18 @@ function Desk2(host) {
       if (bottom) set(panel, { s: 12, e: 84, b: 12 }); else if (st.planFold) set(panel, { s: 12, b: 12 }); else set(panel, { s: 12, t: 64, b: 12 });
       if (bottom) floor = 12 + panel.offsetHeight + 6;
     }
-    // the weather beside the toolbar, by tiers: open, where the toolbar can make room by putting its route actions in ⋯; else its line, the toolbar folding
-    // as placeTools() does; else away, where the Weather button says it's on. Opened by hand without room, it opens above what sits at the planner's side.
-    const openW = (st.wxW || 440) + 12, lineW = 240 + 12;
+    // the weather beside the toolbar: the toolbar never gives anything up for it (it folds only as placeTools() does for the map's column). The strip opens
+    // where it fits beside the toolbar; else its line; else it's away, and the Weather button shows it with its hour. Opened by hand without room, it opens
+    // above what sits at the planner's side.
+    let lineW = 0; const openW = (st.wxW || 440) + 12;
+    if (wx) { wx.hidden = false; wx.classList.add('line'); wx.innerHTML = wxInner(true); wx.style.width = ''; lineW = wx.offsetWidth + 12; } // (the line keeps its width: its hour has room for a day's name)
     if (!st.away) {
-      const tbS = bottom ? 12 : 416, maxW = DW - 84 - tbS, fits = (w2, upTo) => { fitTools(tb, maxW - w2, upTo); return tb.offsetWidth <= maxW - w2; };
-      set(tb, { s: tbS, b: floor });
-      if (!wx || st.wxPos) fitTools(tb, maxW);
-      else if (!st.wxFold && fits(openW, 6)) mode = 'open';
-      else if (!st.wxFold && st.wxForce && fits(openW)) mode = 'open';
-      else if (!st.wxFold && st.wxForce) { fitTools(tb, maxW); mode = 'lift'; }
-      else if (fits(lineW)) mode = 'line';
-      else { fitTools(tb, maxW); mode = 'away'; }
+      const tbS = bottom ? 12 : 416;
+      set(tb, { s: tbS, b: floor }); fitTools(tb, DW - 84 - tbS);
       used = tbS + tb.offsetWidth; set(sca, { s: tbS, b: topOf(tb) + 8 });
-    } else {
-      set(sca, { s: 12, b: 16 });
-      const room = DW - 84 - used;
-      if (wx && !st.wxPos) mode = !st.wxFold && room >= openW ? 'open' : !st.wxFold && st.wxForce ? 'lift' : room >= lineW ? 'line' : 'away';
-    }
+    } else set(sca, { s: 12, b: 16 });
+    const room = DW - 84 - used;
+    if (wx && !st.wxPos) mode = !st.wxFold && room >= openW ? 'open' : !st.wxFold && st.wxForce ? 'lift' : room >= lineW ? 'line' : st.wxForce ? 'lift' : 'away';
     if (wx) {
       const line = mode === 'free' ? st.wxFold : mode === 'line' || mode === 'away';
       wx.hidden = mode === 'away'; wx.classList.toggle('line', line); wx.innerHTML = wxInner(line); wx.style.width = line ? '' : (openW - 12) + 'px';
@@ -1632,8 +1633,12 @@ function Desk2(host) {
     wxWhen(btn, st, !wx || wx.hidden);
     // the hour sits beside the Weather button; where that would be over the toolbar or the bottom panel, the column rises above them
     set(col, { e: 12, b: 16 });
-    const tag = btn.querySelector('.wx-when'), r = tag.getBoundingClientRect(), over = (el) => { if (!placed(el)) return false; const o = el.getBoundingClientRect(); return r.left < o.right && o.left < r.right && r.top < o.bottom && o.top < r.bottom; };
-    if (!tag.hidden) { const hit = [q('.d-tb'), bottom ? q('.d-panel') : null].filter(over); if (hit.length) set(col, { e: 12, b: Math.max(...hit.map(topOf)) + 8 }); }
+    const tag = btn.querySelector('.wx-when');
+    for (let i = 0; i < 3 && !tag.hidden; i++) { // (risen clear of the panel, it may meet the toolbar on its edge: rise again)
+      const r2 = tag.getBoundingClientRect(), hit = [q('.d-tb'), bottom ? q('.d-panel') : null].filter((el) => { if (!placed(el)) return false; const o = el.getBoundingClientRect(); return r2.left < o.right && o.left < r2.right && r2.top < o.bottom && o.top < r2.bottom; });
+      if (!hit.length) break;
+      set(col, { e: 12, b: Math.max(...hit.map(topOf)) + 8 });
+    }
   }
   function fitFrame() { // Show the whole route: the route goes in what the planner, the top bar, the map's column and the foot leave, clear of the weather
     const wx = q('.dwx'), items = [q('.d-tb'), q('.d-scale'), bottom ? q('.d-panel') : null].filter(placed);
@@ -1756,7 +1761,7 @@ const CAP = {
     corner: `<p><b>Scale in the corner.</b> The scale and the credits keep the map’s bottom left, as maps usually have them. The toolbar starts to their right, and the weather line is centred above it. The scale never moves, but the toolbar loses 126 px. At 1440 × 900 beside the panel it folds two steps further. At 1024 × 768 it doesn’t fit even fully folded, and runs into the map’s buttons. The opened credits cover the toolbar in every dock.</p>`,
     card: {
       phone: `<p><b>The weather is a card in the planner’s sheet,</b> with the planner’s rule: one swipe down or ⌄ folds it, a second puts it away, and ✕ turns the weather off. <b>Open</b> (the Weather button), it takes the sheet’s place with the reading, the layers and the 48 hours, and the planner and its tools wait behind it. <b>Folded</b>, its reading is a line in the sheet’s place; a tap or a swipe up opens it. <b>Away</b>, the planner comes back exactly as it was, and the Weather button below Layers shows the weather is on. Only when the map isn’t showing now (an hour you chose, or following the route) does the hour sit beside it. The planner and the weather are never on screen together, and nothing stacks above the toolbar. A point’s card opened over the weather takes the sheet, and its ✕ brings the weather back as it was.</p><p><b>Following the route:</b> drag along the profile. The marker on the route and the line above the profile say the distance, when you get there and Colour by’s reading; with Colour by on wind, temperature or rain, the map’s weather goes to that hour. The point stays when you lift your finger, until you tap the map or change Colour by. Dragging the weather’s 48 hours sets the hour and the departure, as today, and stops following. Past 48 hours (<b>Past 2 days</b>, a route with two nights) the map stays at its last hour and says so; the profile’s colours go on.</p><p><b>200 %:</b> the planner rests at its line; Weather is the last of the map’s buttons to go while the weather is on.</p>`,
-      desk: `<p><b>The planner folds down</b> (⌄): beside the map it becomes its numbers’ line at the bottom of its side, with the toolbar beside it; in the bottom dock, the panel’s line, with the toolbar on its top edge. <b>The weather is a strip again,</b> at home on the map’s foot beside the map’s column, on the same edge as the toolbar: the screen’s foot beside the panel, or the bottom panel’s top edge. Where the strip has no room beside the toolbar it starts folded to its line, in the same place; where not even the line fits, the Weather button says it’s on, with its hour. It keeps its drag and resize. Moved, it folds where it is, keeping its bottom edge, and a double-click on its title row brings it home. <b>Show the whole route</b> fits the route clear of it. Pointing at the profile follows the route as on phones, and lets go when the pointer leaves. <b>Dock: Right</b> is 22b’s right dock: every side is the planner’s or the column’s, so it all mirrors.</p>`,
+      desk: `<p><b>The planner folds down</b> (⌄): beside the map it becomes its numbers’ line at the bottom of its side, with the toolbar beside it; in the bottom dock, the panel’s line, with the toolbar on its top edge. <b>The weather is a strip again,</b> at home on the map’s foot beside the map’s column, on the same edge as the toolbar: the screen’s foot beside the panel, or the bottom panel’s top edge. The toolbar never gives anything up for it. Where the strip has no room beside the toolbar it starts folded to its line, in the same place: the layer’s icon (the route’s mark while following the route), the temperature and the hour. Where not even the line fits, the Weather button says it’s on, with its hour. At the mock-up’s two sizes only the bottom dock at 1440 × 900 has room for the line (not with the worst case’s words). It keeps its drag and resize. Moved, it folds where it is, keeping its bottom edge, and a double-click on its title row brings it home. <b>Show the whole route</b> fits the route clear of it. Pointing at the profile follows the route as on phones, and lets go when the pointer leaves. <b>Dock: Right</b> is 22b’s right dock: every side is the planner’s or the column’s, so it all mirrors.</p>`,
     },
     split: `<p><b>Planner left, map right.</b> The toolbar is on the panel’s edge, and the weather line sits at the right, by the Weather button. When the toolbar leaves room, the line shares its row; when it doesn’t, the line rides a row up. The scale and the credits sit above the toolbar at the left, and go above the line where it reaches the left. The opened credits run into the line at 1440 × 900 and in the bottom dock. At 1024 × 768 beside the panel the line is as wide as the foot, so it becomes One stack.</p>`,
   },
