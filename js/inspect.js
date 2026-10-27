@@ -43,6 +43,12 @@ export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x -
 
 export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
 
+// The layers a click picks before a LIPAS route where both are under it (a place's icon, a camera…)
+export const overRoutes = (map) => {
+  const rank = (id) => PRIORITY.findIndex((re) => re.test(id)), route = rank('lipas-route');
+  return inspectLayers(map).filter((id) => rank(id) >= 0 && rank(id) < route);
+};
+
 // The winter way at the spot: the nearest drawn one within about 10 m (a hit box also catches a
 // ski track beside a cycleway, which isn't what the cycleway is like). { cls, beside } or null:
 // `beside` when it's a ski track of its own next to the way you're looking at.

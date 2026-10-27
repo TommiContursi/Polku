@@ -214,6 +214,16 @@ function routeHoverLeg(leg) {
   if (v != null) map.setFeatureState({ source: 'route', id: v }, { hover: true });
 }
 
+// The LIPAS route under the mouse is lit along all its parts: they share its LIPAS id, the feature state's
+let hoveredRoute = null;
+function routeHoverRoute(p) {
+  const id = p ? p.lipasId : null;
+  if (id === hoveredRoute) return;
+  if (hoveredRoute != null) map.setFeatureState({ source: 'lipasRoutes', id: hoveredRoute }, { hover: false });
+  hoveredRoute = id;
+  if (id != null) map.setFeatureState({ source: 'lipasRoutes', id }, { hover: true });
+}
+
 function applyStyle() {
   map.setStyle(buildStyle(state, ctx), { diff: true });
   syncView3d();
@@ -399,14 +409,22 @@ const inspector = initInspector(map, {
   openHead: (f) => planner.openHead(f),
   openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openRouteCard(leg, lngLat), 60); }, // (the same click mustn't add a point too)
   // a way, a place, a LIPAS route or place: the planner's card, at the spot (25d part 6)
-  openSpot: (f, ll, point, touch) => (f.layer.id === 'lipas-route' ? planner.openLipasCard(f.properties, ll, { click: point ? ll : null, near: f.near }) : planner.openSpotCard(ll, { pt: point, touch, place: point ? null : f })),
+  openSpot: (f, ll, point, touch) => {
+    if (f.layer.id !== 'lipas-route') return planner.openSpotCard(ll, { pt: point, touch, place: point ? null : f });
+    planner.openLipasCard(f.properties, ll, { click: point ? ll : null, near: f.near });
+    if (!point) return; // (from search, the route is lit already)
+    // the route a click or a tap picked is lit, as search's pick is, until its card goes (unless another pick has taken the layer since)
+    const p = f.properties, lit = { type: 'FeatureCollection', features: ((data.lipasRoutes || {}).features || []).filter((x) => x.properties.type === p.type && x.properties.lipasId === p.lipasId).map((x) => ({ type: 'Feature', properties: { type: p.type, lipasId: p.lipasId }, geometry: x.geometry })) };
+    setData('lipasPick', lit);
+    planner.cards.current.gone = () => { if (data.lipasPick === lit) setData('lipasPick', { type: 'FeatureCollection', features: [] }); };
+  },
   cardOpen: () => !!planner.cards.current,
   closeCard: () => planner.cards.close(),
   vessel: (mmsi) => safety.vessel(mmsi),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg });
+const hover = initHover(map, { enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,

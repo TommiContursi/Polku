@@ -7,7 +7,7 @@
 
 import { DIFF_COLORS, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { inspectLayers, pickFeature, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
+import { inspectLayers, overRoutes, pickFeature, hitBox, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
@@ -18,11 +18,11 @@ const FIRST = 260; // ms the pointer rests before the first tooltip
 const WARM = 90; // …and when moving on from one that was just shown
 const RADIUS = 5; // px around the pointer
 const DRIFT = 16; // px the pointer may move before a shown tooltip hides
-const OPENS = ['cameras', 'sf-ships', 'nm-marks', 'sf-points']; // pointer cursor: these open a card
+const OPENS = ['cameras', 'sf-ships', 'nm-marks', 'sf-points', 'lipas-route']; // pointer cursor: these open a card
 
 export const hoverCapable = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-/** app: { enabled(), isPlanning() } */
+/** app: { enabled(), isPlanning(), hoverRoute(props | null), headAt(point, touch) } */
 export function initHover(map, app) {
   const canvas = map.getCanvas();
   const tip = h('div', { class: 'hover-tip', 'aria-hidden': 'true', hidden: true });
@@ -99,15 +99,29 @@ export function initHover(map, app) {
     place();
   };
 
-  // Pointer cursor over things that open a card or modal: one query per frame
-  // at most (MapLibre's per-layer mouseenter/leave would run one per layer per move).
+  // The LIPAS route under the pointer is lit along all its parts (hoverRoute), as the pick is while its card is open
+  let lit = '';
+  const light = (p) => {
+    const k = p ? `${p.type}/${p.lipasId}` : '';
+    if (k !== lit) { lit = k; app.hoverRoute(p); }
+  };
+
+  // Pointer cursor over things that open a card or modal, and the route lit: one query per frame at most
+  // (MapLibre's per-layer mouseenter/leave would run one per layer per move). The box is the click's (hitBox).
   const cursor = () => {
     frame = 0;
-    if (!at || app.isPlanning()) { pointer = false; return; }
-    const layers = OPENS.filter((id) => map.getLayer(id));
-    const hit = layers.length > 0 && map.queryRenderedFeatures(at, { layers }).length > 0;
+    if (!at || app.isPlanning()) { pointer = false; light(null); return; }
+    // what a click picks first is what's lit: your route's line and a place's icon win over a LIPAS route (inspect.js)
+    const layers = [...overRoutes(map), 'lipas-route', 'route-casing'].filter((id) => map.getLayer(id));
+    const feats = map.queryRenderedFeatures(hitBox({ x: at[0], y: at[1] }, false), { layers });
+    const hit = feats.some((f) => OPENS.includes(f.layer.id));
     if (hit !== pointer) { pointer = hit; canvas.style.cursor = hit ? 'pointer' : ''; }
+    const top = pickFeature(feats), leg = feats.some((f) => f.layer.id === 'route-casing' && f.properties.kind === 'leg');
+    // (a warning marker's hit area is wider than the box, and wins over the route: asked only when the route would light)
+    const lights = top && top.layer.id === 'lipas-route' && !leg && !app.headAt({ x: at[0], y: at[1] }, false);
+    light(lights ? top.properties : null);
   };
+  const press = () => { hide(); light(null); };
 
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return;
@@ -124,9 +138,9 @@ export function initHover(map, app) {
     clearTimeout(timer);
     timer = setTimeout(probe, tip.hidden && performance.now() - hiddenAt > 600 ? FIRST : WARM);
   });
-  canvas.addEventListener('pointerleave', () => { at = null; hide(); });
-  canvas.addEventListener('pointerdown', hide);
-  map.on('movestart', hide);
+  canvas.addEventListener('pointerleave', () => { at = null; press(); });
+  canvas.addEventListener('pointerdown', press);
+  map.on('movestart', press);
 
   return {
     hide,

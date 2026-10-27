@@ -742,6 +742,203 @@ def lipas(chrome):
     return not fails
 
 
+# Marked routes picked on the map (#308): with a mouse the pointer is a hand over a LIPAS route and the route is lit
+# before a click, all its parts (they share its LIPAS id, which its feature state is set on); with a finger a tap 10 px
+# beside its line opens its card and lights it while the card is open, and a tap 30 px away doesn't. LIPAS answers
+# from the recorded Multamäki route, cut in two parts, and a second route made from it south-east.
+MARKED_LIPAS = """(() => {
+  const real = window.fetch.bind(window), json = (o) => new Response(JSON.stringify(o), { headers: { 'Content-Type': 'application/json' } });
+  const empty = { type: 'FeatureCollection', features: [] };
+  let fx = null;
+  const load = async () => {
+    if (fx) return fx;
+    const f = await (await real(location.origin + '/tools/fixtures/lipas-multamaki.json')).json();
+    const [one] = f.place.features, c = one.geometry.coordinates, k = Math.floor(c.length / 2);
+    const part = (id, cs, rid, dx, dy) => ({ ...one, properties: { ...one.properties, id, reitti_id: rid }, geometry: { type: 'LineString', coordinates: cs.map(([e, n]) => [e + dx, n + dy]) } });
+    return (fx = { features: [part(615379, c.slice(0, k + 1), 1, 0, 0), part(615379, c.slice(k), 2, 0, 0), part(615380, c, 1, 900, -700)] });
+  };
+  window.fetch = async (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    if (!/^https:\\/\\/lipas\\.fi\\//.test(url)) return real(input, init);
+    const { features } = await load();
+    if (!/lipas_4411_/.test(url)) return json(empty);
+    return json({ type: 'FeatureCollection', features });
+  };
+})()"""
+MARKED_JS = """(() => {
+  const map = polku.map, canvas = map.getCanvas(), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const mk = (window.mk = {});
+  const keyOf = (p) => `${p.type}/${p.lipasId}`;
+  const drawn = (layer, key) => (map.getLayer(layer) ? map.queryRenderedFeatures({ layers: [layer] }).filter((f) => !key || keyOf(f.properties) === key) : []);
+  const parts = (source, key) => map.getSource(source).serialize().data.features.filter((f) => !key || keyOf(f.properties) === key); // (whole lines, as sent to the map)
+  mk.ready = async () => {
+    map.jumpTo({ center: [25.9026, 62.4345], zoom: 13 });
+    for (let k = 0; k < 80 && !(parts('lipasRoutes').length === 3 && drawn('lipas-route').length > 1); k++) await wait(150);
+    return parts('lipasRoutes').length;
+  };
+  // a place on a route's line, and one 10 px and one 30 px beside it (a mouse: one 50 px beside it), on the bare map, in window px
+  mk.spot = async (touch) => {
+    const I = await import(location.origin + '/js/inspect.js'), r = canvas.getBoundingClientRect();
+    const win = (q) => ({ x: r.left + q.x, y: r.top + q.y });
+    const ok = (q) => { const w = win(q); return w.x > 40 && w.x < innerWidth - 80 && w.y > 130 && w.y < innerHeight * (touch ? 0.55 : 0.85) && document.elementFromPoint(w.x, w.y) === canvas; };
+    const opens = ['cameras', 'sf-ships', 'nm-marks', 'sf-points', 'lipas-route'].filter((id) => map.getLayer(id));
+    const near = (q, d) => map.queryRenderedFeatures([[q.x - d, q.y - d], [q.x + d, q.y + d]], { layers: opens }).length;
+    const key = keyOf(parts('lipasRoutes')[0].properties);
+    for (const f of parts('lipasRoutes', key)) for (let i = 2; i < f.geometry.coordinates.length; i += 3) {
+      const c = f.geometry.coordinates, a = map.project(c[i - 1]), P = map.project(c[i]), len = Math.hypot(P.x - a.x, P.y - a.y);
+      if (len < 4 || !ok(P)) continue;
+      const n = { x: -(P.y - a.y) / len, y: (P.x - a.x) / len }, at = (d) => ({ x: P.x + n.x * d, y: P.y + n.y * d });
+      for (const s of [1, -1]) {
+        const q10 = at(10 * s), q30 = at(30 * s), q50 = at(50 * s);
+        const top = I.pickFeature(map.queryRenderedFeatures(I.hitBox(touch ? q10 : P, touch), { layers: I.inspectLayers(map) }));
+        if (!top || top.layer.id !== 'lipas-route' || keyOf(top.properties) !== key) continue;
+        if (!(touch ? ok(q10) && ok(q30) && !near(q30, 17) : ok(q50) && !near(q50, 20))) continue;
+        // a mouse: also two vertices 50 px apart (and their midpoint on the line) for a route of yours drawn over it
+        let plan = null;
+        if (!touch) {
+          const j = c.findIndex((x, m) => m > i && Math.hypot(map.project(x).x - P.x, map.project(x).y - P.y) >= 50), Q = j > 0 && map.project(c[j]);
+          const mid = Q && { x: (P.x + Q.x) / 2, y: (P.y + Q.y) / 2 };
+          if (!Q || !ok(Q) || !ok(mid) || Math.hypot(Q.x - P.x, Q.y - P.y) > 90 || !map.queryRenderedFeatures([[mid.x - 3, mid.y - 3], [mid.x + 3, mid.y + 3]], { layers: ['lipas-route'] }).some((x) => keyOf(x.properties) === key)) continue;
+          plan = { ll: [c[i], c[j]], mid: win(mid) };
+        }
+        return { key, id: f.properties.lipasId, on: win(P), near: win(q10), far: win(touch ? q30 : q50), plan };
+      }
+    }
+    return null;
+  };
+  // the pointer, and whether the route is lit (its feature state, set on the LIPAS id its parts share)
+  mk.state = (id) => ({ cursor: canvas.style.cursor, lit: !!map.getFeatureState({ source: 'lipasRoutes', id }).hover });
+  mk.ids = (key) => [...new Set(drawn('lipas-route', key).map((f) => f.id))].join();
+  // what the pick holds (its parts as sent to the map), and whether it's drawn
+  mk.picked = () => ({ parts: parts('lipasPick').length, keys: [...new Set(parts('lipasPick').map((f) => keyOf(f.properties)))].join(), drawn: drawn('lipas-pick').length > 0 });
+  mk.card = () => { const c = polku.planner.cards.current; return c ? `${c.kind}${c.props ? ` ${keyOf(c.props)}` : ''}` : 'none'; };
+  mk.close = async () => { polku.planner.cards.close(); await wait(300); return true; };
+  // a route of yours between two points (none for none), the planner put away again: its line is drawn over the marked route's
+  mk.plan = async (ll) => {
+    const p = polku.planner;
+    p.setActive(true);
+    p.clear();
+    for (const q of ll) p.addPoint(q);
+    for (let k = 0; k < 60 && ll.length && !(p.analysis && p.legs.every((l) => l.result)); k++) await wait(100);
+    p.setActive(false);
+    await wait(600);
+    return map.queryRenderedFeatures({ layers: ['route-casing'] }).filter((f) => f.properties.kind === 'leg').length;
+  };
+  // the queries (a warning marker's apart) made within 85 ms of a pointer move (the tooltip's own waits 90 ms at the least), however late this is read
+  mk.spy = (on) => {
+    if (on) {
+      mk.qs = []; mk.t0 = null; mk.was = map.queryRenderedFeatures;
+      map.queryRenderedFeatures = function (...a) { if (!(a[1] && a[1].layers || []).includes('heads-icon')) mk.qs.push(performance.now()); return mk.was.apply(this, a); };
+      canvas.addEventListener('pointermove', mk.mark = () => { if (mk.t0 == null) mk.t0 = performance.now(); }, true);
+      return 0;
+    }
+    if (mk.was) { map.queryRenderedFeatures = mk.was; mk.was = null; canvas.removeEventListener('pointermove', mk.mark, true); }
+    return mk.t0 == null ? -1 : mk.qs.filter((t) => t >= mk.t0 && t < mk.t0 + 85).length;
+  };
+  return true;
+})()"""
+
+
+def marked(chrome):
+    ok = True
+    for w, h_, phone in [(1440, 900, False), (390, 844, True)]:
+        fails = []
+        pg = chrome.page(w, h_, phone)
+        try:
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': MARKED_LIPAS}, pg.s)
+            pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': FIT_ROUTER % (0.002, 0)}, pg.s)
+            pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"', **LOCAL_BROUTER}, '#13/62.4345/25.9026')
+            pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+            pg.js(MARKED_JS)
+            s = None
+            if pg.js('mk.ready()', timeout=30000) != 3:
+                fails.append('the route’s parts are not on the map')
+            else:
+                s = pg.js(f'mk.spot({"true" if phone else "false"})', timeout=30000)
+                if not s:
+                    fails.append('no place on a route in the clear')
+            if s and not phone:
+                state = lambda: pg.js(f"mk.state({s['id']})")
+
+                def move(at):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'], 'y': at['y'], 'button': 'none'}, pg.s)
+                    time.sleep(0.15)
+                move(s['far'])
+                if state() != {'cursor': '', 'lit': False}:
+                    fails.append(f"off the route: {state()}")
+                # a move makes one query (the cursor's) before the tooltip's, 90 ms after at the soonest (the spy counts by time, so a slow runner doesn't matter)
+                pg.js('mk.spy(true)')
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': s['on']['x'], 'y': s['on']['y'], 'button': 'none'}, pg.s)
+                time.sleep(0.4)
+                made = pg.js('mk.spy(false)')
+                if made > 1:
+                    fails.append(f'a pointer move made {made} queries before the tooltip, not one')
+                if state() != {'cursor': 'pointer', 'lit': True}:
+                    fails.append(f"over a route: {state()}")
+                ids = pg.js(f"mk.ids({json.dumps(s['key'])})")
+                if ids != str(s['id']):
+                    fails.append(f"the route's parts don't share one id to be lit by: {ids}")
+                move(s['far'])
+                if state() != {'cursor': '', 'lit': False}:
+                    fails.append(f"back off the route: {state()}")
+                # your own route on the line is what a click opens there: a hand, and the marked route not lit
+                if not pg.js(f"mk.plan({json.dumps(s['plan']['ll'])})", timeout=30000):
+                    fails.append('no route of yours drawn over the marked route')
+                else:
+                    move(s['plan']['mid'])
+                    if state() != {'cursor': 'pointer', 'lit': False}:
+                        fails.append(f"where your route runs over it: {state()}")
+                pg.js('mk.plan([])', timeout=30000)
+                # a warning marker under the pointer is what a click opens first: a hand, and the marked route not lit
+                pg.js('mk.headWas = polku.planner.headAt; polku.planner.headAt = () => ({ properties: { key: "x" } }); true')
+                move(s['far'])
+                move(s['on'])
+                if state() != {'cursor': 'pointer', 'lit': False}:
+                    fails.append(f"where a warning marker is over it: {state()}")
+                pg.js('polku.planner.headAt = mk.headWas; true')
+                move(s['far'])
+                # a click: the card opens with the route lit, and the hover's light goes
+                move(s['on'])
+                for kind in ('mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': s['on']['x'], 'y': s['on']['y'], 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+                time.sleep(0.8)
+                if pg.js('mk.card()') != f"lipas {s['key']}":
+                    fails.append(f"a click on the route opened {pg.js('mk.card()')}")
+                if pg.js('mk.picked()') != {'parts': 2, 'keys': s['key'], 'drawn': True}:
+                    fails.append(f"a click on the route: lit {pg.js('mk.picked()')}")
+                if state()['lit']:
+                    fails.append('the hover light stays on beside the picked one')
+            if s and phone:
+                # 30 px away: no card of the route and nothing lit; 10 px away: its card, the route lit, and unlit when it closes
+                pg.quick_tap(s['far']['x'], s['far']['y'])
+                time.sleep(0.8)
+                if pg.js('mk.card()').startswith('lipas') or pg.js('mk.picked()')['parts']:
+                    fails.append(f"a tap 30 px from the line: {pg.js('mk.card()')}, lit {pg.js('mk.picked()')}")
+                pg.js('mk.close()')
+                pg.quick_tap(s['near']['x'], s['near']['y'])
+                time.sleep(0.8)
+                if pg.js('mk.card()') != f"lipas {s['key']}":
+                    fails.append(f"a tap 10 px from the line opened {pg.js('mk.card()')}")
+                if pg.js('mk.picked()') != {'parts': 2, 'keys': s['key'], 'drawn': True}:
+                    fails.append(f"a tap 10 px from the line: lit {pg.js('mk.picked()')}")
+                pg.js('mk.close()')
+                if pg.js('mk.picked()')['parts']:
+                    fails.append('the route stays lit after its card closes')
+                # a pick made since (search's, Marked routes') is not wiped when the tapped route's card goes
+                pg.quick_tap(s['near']['x'], s['near']['y'])
+                time.sleep(0.8)
+                pg.js("polku.planner.app.setData('lipasPick', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { type: 4411, lipasId: 1 }, geometry: { type: 'LineString', coordinates: [[25.9, 62.4], [25.91, 62.41]] } }] }); true")
+                pg.js('mk.close()')
+                if pg.js('mk.picked()')['parts'] != 1:
+                    fails.append(f"another pick wiped when the tapped route's card closed: {pg.js('mk.picked()')}")
+            fails += [f'console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+        print(f"{'ok  ' if not fails else 'FAIL'} marked routes picked on the map ({w}x{h_})" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+        ok = ok and not fails
+    return ok
+
+
 # Water routing (13): Kaivopuisto → Suomenlinna over the Särkän väylä shipping lane,
 # with Väylävirasto's fairways and marks from a recorded file, a fixed wind and no
 # OSM. The lane is crossed (no longer inside it than when fairways are ignored), a
@@ -12736,6 +12933,7 @@ GROUPS = [
     ('trails', [trails, uphill_late], 'the trail details (from a recorded tile), a trail\'s card on phones, whole and clear of the map\'s buttons at 200 % (#435), and the uphill colours when the terrain comes late (mocked)'),
     ('header', [header_fit], 'the planner header fitting its sheet'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers)'),
+    ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
     ('water', [water, water_late], 'the paddling router\'s costs (recorded fairways, a fixed wind), and OSM\'s rocks coming late (mocked)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
