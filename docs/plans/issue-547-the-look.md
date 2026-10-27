@@ -3,7 +3,7 @@
 The first review of Polku's look as a whole, and three directions for it, built side by side. Phase 24 ([its review](../reviews/2026-10-17-design/README.md)) looked at usability and structure, and #382 made the look consistent without changing it. This one asks whether the look itself is right: the materials, the depth, the colours, the type's weights and spacing, the 18 base values on `:root`, and how they sit with the map's own colours. What's still to do, and its status, is on GitHub, in #547.
 
 - **Status (2026-10-28): Stop 2 is built, waiting for the user to choose from the mock-up** ([What's for you to decide](#whats-for-you-to-decide)). Nothing is built in the app: `DESIGN.md` and `css/app.css` are as they are on `main`.
-- **The mock-up:** [mockups/issue-547-the-look.html](mockups/issue-547-the-look.html): today's look and directions A, B and C as complete versions, over real map pictures from the running app, with the contrast under every word measured in the page. Its switches: the direction, the map (Maastokartta, aerial photos of the city beside the route, aerial photos of forest and lake, the night map), light or dark, phone or desktop, the mode (default, more contrast, reduced transparency), the depth (one shadow, or thicker when bigger) and **Beside today**. The same scene in every version: the Kauppi route, the planner open with a point's card, and the map's buttons.
+- **The mock-up:** [mockups/issue-547-the-look.html](mockups/issue-547-the-look.html): today's look and directions A, B and C as complete versions, over real map pictures from the running app, with the contrast under every word measured in the page. Its switches: the direction, the map (Maastokartta, the bright one; aerial photos of the city beside the route, which are as mid-dark as the forest; aerial photos of forest and lake; the night map), light or dark, phone or desktop, the mode (default, more contrast, reduced transparency), the depth (one shadow, or thicker when bigger) and **Beside today**. The same scene in every version: the Kauppi route, the planner open with a point's card, and the map's buttons.
 - **Decided by the user (2026-10-28):** refine, not replace, for all three directions; build all three before choosing, with B as the main candidate; bright sun and low vision belong to the modes (`prefers-contrast: more` and `prefers-reduced-transparency`, #382's §7), and the default look still meets 4.5:1 for words over the map and 3:1 for icons and edges; for B, the floor comes from darker words on the glass, not a thicker glass; "Match the map" stays out of #547 and goes with the theme setting (#323).
 - **From:** `main` at 18b43d4, looked at on 2026-10-27 and 2026-10-28 at 390 × 844 and 1440 × 900, light and dark, over the terrain map, aerial photos and the night map; Impeccable's critique ([how it ran](#how-the-critique-ran)); the apple-design skill's §12 (materials and depth) in full, §15 (weight, tracking and leading) and §16 (craft and delight); the measurements below.
 - **Out of scope:** the typeface (#181), the motion curves (#249), the difficulty scale's colours (#382, the user's choice 4), layout and structure. What the review found outside the look is filed as issues ([below](#filed-apart)).
@@ -12,8 +12,13 @@ The first review of Polku's look as a whole, and three directions for it, built 
 
 From the mock-up:
 
-1. **The direction:** Today, A, B or C. **Recommended: B.** It's the only one that does what #547 set out to do, the map showing through what floats, and it meets the floor on every map measured; its costs are known and bounded ([below](#what-each-direction-costs)): the dark glass at 72–78 % rather than lighter, three colours for words on glass, #382's two modes in the same PR, and a pan test on a real phone before the build.
+1. **The direction:** Today, A, B or C. **Recommended: B.** It's the only one that does what #547 set out to do, the map showing through what floats; its words and icons meet the floor on every map measured, and its costs are known and bounded ([below](#what-each-direction-costs)): three colours for words on glass, #382's two modes in the same PR, a pan test on a real phone before the build, and question 3.
 2. **The depth:** one shadow for everything (DESIGN.md's One Float Rule, as today) or thicker when bigger (a small shadow on the map's buttons and the top bar, a deep one on the planner, the card and the drawer, as apple-design §12 asks). No recommendation, as asked. Thicker when bigger rewrites the One Float Rule and DESIGN.md's "Don't add… a heavier shadow".
+3. **If B: its dark glass.** Two of the rules for B can't both hold in dark, so one has to give. Its words are near-white already, so over a bright map only the glass can keep them at 4.5:1.
+   - **a. A darker dark glass (recommended):** a near-black 67 % (thin) and 73 % (thick), the least that kept every word at 4.5:1 over Maastokartta in the tints tried; still far lighter than today's 94 %. The floor holds; the dark glass is thicker than the light one (58 % and 68 %).
+   - **b. The same lightness as in light (55 % and 64 %):** the glass rule holds, but over Maastokartta the top bar's words fall to 3.1:1, under the floor.
+
+   Recommended **a**, because the floor is what keeps Polku readable at dusk; the darker tint and the saturation were tried too, and only the glass's opacity moves it.
 
 The directions' parts can be mixed when you choose: B's glass with A's magenta route, say, or C's warm neutrals in A. The mock-up shows them as three wholes so each can be judged as a look.
 
@@ -22,7 +27,7 @@ The three directions, as PRODUCT.md frames them: it already names the qualities 
 | | Polku feels like… | From PRODUCT.md | What it changes |
 |---|---|---|---|
 | **A** | **A field instrument:** sure, sharp and readable in the sun, like a good compass | "trust it on real trips"; "legible in bright sun… at a glance" | Two materials: a thin glass (78 %) for what you glance past, a near-solid one (97 %) for what you read; a navigation magenta for the route |
-| **B** | **Clear water over the land:** light and open, the map showing through everything that floats | "the map first" | A light, saturated glass everywhere (58 % and 68 %; 72 % and 78 % in dark), darker words on it; a lifted pink-red route |
+| **B** | **Clear water over the land:** light and open, the map showing through everything that floats | "the map first" | A light, saturated glass everywhere (58 % and 68 %; a near-black 67 % and 73 % in dark), darker words on it; a lifted pink-red route |
 | **C** | **A paper map in its case:** calm and warm, the chrome made of the map's own material | "Polku's own look, not a generic one"; "a pleasure to use" | Warm paper surfaces (95 %), warm text and greys, the night map's blue-black in dark; the orienteering overprint's purple for the route |
 
 All three keep the accent, **Plan**'s green and Check's warning colours (`--danger`, its box and the badge), which #382 and 25d decided, and the difficulty scale's colours. All three give `--bad` the value of `--danger`, so danger has one red, and give the state colours dark versions they don't have today.
@@ -33,8 +38,8 @@ The values are in the mock-up's **Values** table under the frame, light and dark
 
 | | Today | A, field instrument | B, clear water | C, paper map |
 |---|---|---|---|---|
-| **Thin glass** (top bar, map buttons, toolbox) | white 94 %, blur 10 px | white 78 %, blur 16 px, saturate 160 % | white 58 %, blur 20 px, saturate 180 %; dark 72 % | paper `#faf7f0` 95 %, blur 12 px |
-| **Thick glass** (planner, card, drawer) | white 94 %, blur 14 px; the card solid | white 97 %, blur 24 px | white 68 %, blur 32 px, saturate 180 %; dark 78 % | the same paper |
+| **Thin glass** (top bar, map buttons, toolbox) | white 94 %, blur 10 px | white 78 %, blur 16 px, saturate 160 % | white 58 %, blur 20 px, saturate 180 %; dark: near-black 67 % | paper `#faf7f0` 95 %, blur 12 px |
+| **Thick glass** (planner, card, drawer) | white 94 %, blur 14 px; the card solid | white 97 %, blur 24 px | white 68 %, blur 32 px, saturate 180 %; dark: near-black 73 % | the same paper |
 | **Edges** | none | two-tone hairline: white 70 % inside, `#101814` 55 % outside; dark: white 34 %, black 70 % | the same, with a bright top edge | the same in warm paper and brown-black |
 | **Words on glass** | `--muted` | a darker grey, `#4c5751` | darker grey `#2f3934`, green `#0f4029`, red `#8f1d24`; in dark lighter ones | `#655d50` |
 | **Neutrals** | cool green-grey | as today; dark surface lifted to `#1f2522` | as today, text a step darker (`#141b17`) | warm: text `#29251f`, muted `#6b6355`; dark `#1d2127` |
@@ -44,23 +49,24 @@ The values are in the mock-up's **Values** table under the frame, light and dark
 
 ### What each direction costs
 
-Measured in the mock-up on 2026-10-28 ([how](#how-the-mock-up-measures)): the lowest contrast under any word or icon over all four maps, phone and desktop; for edges, the share of each surface's rim that shows at 3:1 (averaged, and on the worst map).
+Measured in the mock-up on 2026-10-28, all 128 combinations in one run on the committed version (`claude/547-the-look/measure/mockup-matrix.json`; [how](#how-the-mock-up-measures)): the lowest contrast under any word or icon over all four maps, phone and desktop; for edges, the share of each surface's rim that shows at 3:1 (averaged, and on the worst map).
 
 | | Today | A | B | C |
 |---|---|---|---|---|
-| `--text`, light · dark | 13.6 · 10.0 | 10.1 · 6.9 | 6.8 · 7.4 | 12.8 · 9.4 |
-| `--muted` (on glass), light · dark | 4.75 · 4.68 | 4.90 · 5.05 | 4.92 · 5.08 | 5.51 · 5.08 |
-| Other words (green, red, on the accent), light · dark | 4.8 · 5.5 | 5.3 · 5.0 | 4.8 · 5.0 | 5.2 · 5.4 |
-| Icons, light · dark | 3.3 · 3.3 | 5.2 · 5.0 | 4.6 · 4.2 | 5.1 · 5.1 |
-| Edges at 3:1, light · dark | 75 % (11 % on Maastokartta) · 34 % (3 % on the night map) | 99 % (94 %) · 97 % (91 %) | 99 % (94 %) · 98 % (91 %) | 99 % (94 %) · 97 % (91 %) |
+| `--text`, light · dark | 13.6 · 10.0 | 10.1 · 6.9 | 6.8 · 7.1 | 12.8 · 9.4 |
+| `--muted` (on glass), light · dark | 4.75 · 4.68 | 4.90 · 5.05 | 4.92 · 4.85 | 5.51 · 5.08 |
+| Other words (green, red, on the accent), light · dark | 4.8 · 5.5 | 5.3 · 5.0 | 4.8 · 4.7 | 5.2 · 5.4 |
+| Icons, light · dark | 3.3 · 3.3 | 5.2 · 5.0 | 4.6 · 4.1 | 5.1 · 5.1 |
+| Edges at 3:1, light · dark | 75 % (11 % on Maastokartta) · 34 % (3 % on the night map) | 99 % (94 %) · 97 % (91 %) | 99 % (94 %) · 97 % (91 %) | 99 % (94 %) · 97 % (91 %) |
 | Pan, Mac (M1 Pro) | 60 frames a second | 60 | 60 | 60 |
 | From #382's §7 first | nothing | recommended | **needed, in the same PR** | not needed |
-| Other costs | — | two glass values, a darker grey for glass | three colours for words on glass in each theme; the dark glass can't go lighter than 72 % and 78 % | warm neutrals across the whole app, which touch every screen |
+| Other costs | — | two glass values, a darker grey for glass | three colours for words on glass in each theme; the dark glass can't go lighter than 67 % and 73 % (question 3) | warm neutrals across the whole app, which touch every screen |
 
-- **Every direction passes the floor in every mode**, Today included for words and icons (Today's lowest is 4.68, with 0.2 to spare). What Today doesn't have is edges: its surfaces disappear into a light map in light and a dark map in dark.
+- **Words and icons pass the floor in every direction and every mode,** Today included (Today's lowest is 4.68, with 0.2 to spare).
+- **No direction fully meets the 3:1 floor for edges.** Today's surfaces disappear into a light map in light and a dark map in dark (75 % and 34 % of the rim at 3:1). A, B and C's two-tone hairline brings it to 97–99 % on average and 91–94 % on the worst map; the rest is where a map's own pixels sit between the two hairlines' colours. The measure counts an edge as showing where the outer hairline is 3:1 against the map, or the inner edge 3:1 against the outer hairline.
 - **B's floor comes from colour.** A heavier weight doesn't change a measured ratio (WCAG keeps 4.5:1 for text under 18.66 px bold), so B uses a darker grey (`#2f3934`), green (`#0f4029`) and red (`#8f1d24`) for words on its light glass. The lowest word over a dark map is 4.92.
-- **B in dark is the limit.** Its words are near-white already, so over a bright map only the glass can keep them at 4.5:1: at 55 % and 64 % the top bar's words fall to 4.3:1 and the search hint to 3.0:1 on Maastokartta; at 65 % and 72 % to 5.9 and 4.0:1; at **72 % and 78 %** they pass (7.4 and 5.1:1). That's still lighter than today's 94 %.
-- **Edges need two tones.** One edge colour can't show against every map: a light hairline vanishes on a light map and a dark one on a dark map. A light inner hairline with a dark outer one, as the route's own white edge works, shows on 91–99 % of every rim; the rest is where a map's own pixels sit between the two.
+- **B in dark is the limit** (question 3). Over Maastokartta, with B's green-black tint, the lowest word is 3.3:1 at 60 %, 3.9:1 at 65 % and 4.65:1 at 70 %; a near-black tint gains a little (4.4:1 at 65 %, 5.2:1 at 70 %), so 67 % and 73 % pass (4.7:1 at the lowest). A lighter grey changes nothing there, and neither does a lower saturation: the near-white words are the ones that fall.
+- **Edges need two tones.** One edge colour can't show against every map: a light hairline vanishes on a light map and a dark one on a dark map. A light inner hairline with a dark outer one works as the route's own white edge does.
 - **#382's §7:** B makes the glass light enough that the person who needs solid surfaces (bright sun, low vision) must have them, so reduced transparency and more contrast land with B or before it. With A and C they're still worth building, but the default glass is near-solid already.
 
 ## The mock-up
@@ -118,8 +124,9 @@ Ranked by how much they cost people outdoors, how often they show, and how sure 
 Found by this review but outside its values; each is a small fix of its own:
 - #551: the search field's hint is the browser's grey (`#757575`), 3.7:1 on the dark glass;
 - #553: the word **Layers** over its map picture is 2.1–2.4:1 at worst on the light pictures;
-- #554: on the aerial maps, peaks' names and heights and lakes' names are dark words on a dark halo;
-- #552 (watch): Maastokartta's names and symbols look blown up at trail zooms in headless Chrome, worst on phones.
+- #554: on the aerial maps, peaks' names and heights and lakes' names are dark words on a dark halo.
+
+(#552, Maastokartta's names blown up, was closed: the pictures had been taken before the tiles loaded.)
 
 ## How the critique ran
 
