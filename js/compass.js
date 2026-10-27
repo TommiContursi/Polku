@@ -42,7 +42,9 @@ export class CompassControl {
 
   sync() {
     const b = this.map.getBearing();
-    this.needle.style.transform = `rotateX(${this.map.getPitch() * 0.6}deg) rotate(${-b}deg)`;
+    // the short way round: past south the bearing jumps from 180° to −180°, and the needle's transition would spin a turn
+    this.angle = (this.angle ?? -b) + ((((-b - (this.angle ?? -b)) % 360) + 540) % 360) - 180;
+    this.needle.style.transform = `rotateX(${this.map.getPitch() * 0.6}deg) rotate(${this.angle}deg)`;
     if (this.mode !== 'heading') this.mode = Math.abs(b) < 0.5 ? 'north' : 'free';
     this.btn.classList.toggle('heading', this.mode === 'heading');
     const label = this.mode === 'heading' ? 'The map faces the way you face — tap for north up'

@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-27
+
+### Fixed: the compass needle turns the short way past south ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- When you turned the map past south, the compass needle spun almost a full turn the wrong way before pointing north again. Now it turns the short way, as far as the map does.
+
 ## 2026-10-26
 
 ### Marked routes are easier to pick on the map ([#308](https://github.com/TommiContursi/Polku/issues/308))
