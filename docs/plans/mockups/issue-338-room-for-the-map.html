@@ -107,6 +107,12 @@ button { font: inherit; color: inherit; }
 .sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 6; display: flex; flex-direction: column; background: var(--surface); border-radius: 20px; box-shadow: var(--shadow); backdrop-filter: blur(14px); transition: height calc(.22s * var(--slow)) ease; }
 .sheet.dragging, .sheet.instant { transition: none; }
 .sheet[hidden] { display: none; }
+.sheet-top { flex: none; display: grid; grid-template-columns: 44px 1fr 44px; align-items: start; height: 18px; }
+.sheet-top > span:last-child { position: relative; z-index: 3; }
+.sheet.has-fold .sheet-top { height: 40px; align-items: center; } /* (⌄ needs a row of its own: the peek's first row has its ✕ at the same corner) */
+.sheet.has-fold[data-state="folded"] .sheet-top { height: 18px; }
+.sheet-fold { width: 44px; height: 44px; margin-left: -8px; }
+.sheet[data-state="folded"] .sheet-fold { visibility: hidden; }
 .sheet-handle { flex: none; position: relative; width: 72px; height: 18px; margin: 0 auto; cursor: grab; border-radius: 9px; }
 .sheet-handle::before { content: ""; position: absolute; left: 20px; right: 20px; top: 7px; height: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
 .sheet-handle:focus-visible { outline: 2px solid var(--focus); }
@@ -229,9 +235,11 @@ button { font: inherit; color: inherit; }
 .fold-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; }
 .fold-go b { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 16px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.25; }
 .fold-go b > span { white-space: nowrap; }
-.fold-go b.name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; } /* (break-ui: a long Finnish name made the line nine lines tall at 200 %) */
+.fold-go b.name { font-size: 15px; overflow-wrap: break-word; } /* (a name wraps whole, never cut with …, the plan's §8; at 200 % a 66-letter name takes several lines) */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sheet:not([data-state="folded"]):not(.dragging) .fold-line { visibility: hidden; } /* (out of the tab order while it's not there) */
 .fold-line { container-type: inline-size; }
-@container (max-width: 250px) { .fold-line .fold-chev { display: none; } } /* (the whole line is the button; its chevron goes first) */ /* (the numbers wrap between themselves, never inside one: break-ui at 200 %) */
+@container (max-width: 250px) { .fold-line .fold-chev { display: none; } .fold-go b > span { white-space: normal; } } /* (the whole line is the button; its chevron goes first) */ /* (the numbers wrap between themselves, never inside one: break-ui at 200 %) */
 .fold-chev { flex: none; display: grid; place-items: center; width: 44px; height: 44px; color: var(--muted); }
 .fold-warn { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border-radius: 999px; background: var(--danger-soft); color: var(--danger); font-weight: 700; font-size: 13px; }
 /* the handle's touch area is a finger's size, over the sheet's top edge (its look stays 18 px) */
@@ -240,6 +248,8 @@ button { font: inherit; color: inherit; }
 .undo-pair { position: absolute; z-index: 5; left: 8px; display: flex; gap: 2px; padding: 3px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); }
 .undo-pair .tool { width: 44px; height: 44px; }
 .undo-pair[hidden] { display: none; }
+.undo-pair .pair-mode { color: var(--accent); }
+.undo-pair:not(.folded) .pair-mode { display: none; }
 /* the weather line (question 2, "A weather line"): one row and its strip */
 .wx-line { position: absolute; left: 8px; right: 8px; z-index: 6; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); padding: 2px 4px 4px; }
 .wx-line[hidden] { display: none; }
@@ -255,7 +265,9 @@ button { font: inherit; color: inherit; }
 .wl-read span { min-width: 0; overflow-wrap: break-word; } /* (whole words wrap: break-ui at 200 %) */
 .wl-read small { display: block; color: var(--muted); font-size: 11.5px; }
 .wl-time { flex: none; font-weight: 700; font-size: 13px; white-space: nowrap; padding: 0 2px; }
-.wl-strip { display: block; width: 100%; height: 18px; border-radius: 6px; cursor: ew-resize; touch-action: none; }
+.wl-scrub { padding: 8px 0 10px; cursor: ew-resize; touch-action: none; border-radius: 8px; } /* (the strip 22 px, its target 40 px: a finger's height in the build) */
+.wl-scrub:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.wl-strip { display: block; width: 100%; height: 22px; border-radius: 6px; }
 .wl-more { padding: 6px 4px 2px; }
 .wl-more[hidden] { display: none; }
 .wl-msg { flex: 1; min-width: 0; color: var(--muted); font-size: 12.5px; line-height: 1.25; }
@@ -449,7 +461,7 @@ const WORDS = {
         closed: 'Planner closed · your route stays', open: 'Open', plan: 'Plan', layers: 'Layers', weather: 'Weather', search: 'Search places or paste coordinates',
         wind: 'Wind', temp: 'Temperature', rain: 'Rain', snow: 'Snow', centre: 'map centre', atPin: 'at the pin', dry: 'dry', gusts: 'gusts 11', now: 'Now', loading: 'Loading the forecast…',
         failed: 'No forecast: the weather service didn’t answer.', retry: 'Retry', onMap: 'On the map', wxCard: 'Weather', backSpot: 'The spot', onRoute: 'On your route: km 1.8 at 06:44',
-        fold: 'Fold the planner to a line', unfold: 'Open the planner as it was', size: 'Planner size' },
+        fold: 'Fold the planner to a line', unfold: 'Open the planner as it was', size: 'Planner size', toRead: 'to read before you go', openIt: 'open', putAway: 'Put the planner away: your route stays', backWx: 'Weather', hour: 'Hour of the forecast', closeTl: 'Close the timeline' },
   fi: { read1: '1 luettavaa ennen lähtöä', readN: '17 luettavaa ennen lähtöä', dark: 'Pimeässä 3,05 km matkalla', distance: 'kokonaismatka', fromNow: 'lähtöajasta klo 14.00', asc: 'nousumetrit · laskumetrit', done: 'Valmis',
         climb: 'Jyrkin nousu <b>↑S0</b>, 25 m, <b>4 %</b>', mode: 'Seuraa polkuja', modeSub: 'Maastopyöräily · Tasapainoinen', route: 'Reitti', check: 'Tarkista', go: 'Lähde',
         how: 'Kulkutapa', howSub: 'Reitit, joita Polku valitsee maastopyöräilyyn', howVal: 'Tasapainoinen', speed: 'Vauhtisi', speedSub: '20 / 16 / 11 km/h · 600 m/h ylös', speedVal: 'Tavallinen',
@@ -459,7 +471,7 @@ const WORDS = {
         closed: 'Suunnittelija suljettu · reittisi säilyy', open: 'Avaa', plan: 'Suunnittele', layers: 'Tasot', weather: 'Sää', search: 'Hae paikkoja tai liitä koordinaatit',
         wind: 'Tuuli', temp: 'Lämpötila', rain: 'Sade', snow: 'Lumisade', centre: 'kartan keskipiste', atPin: 'nastan kohdalla', dry: 'poutaa', gusts: 'puuskat 11', now: 'Nyt', loading: 'Ennustetta ladataan…',
         failed: 'Ei ennustetta: sääpalvelu ei vastannut.', retry: 'Yritä uudelleen', onMap: 'Kartalla', wxCard: 'Sää', backSpot: 'Paikka', onRoute: 'Reitilläsi: km 1,8 klo 06.44',
-        fold: 'Taita suunnittelija riviksi', unfold: 'Avaa suunnittelija ennallaan', size: 'Suunnittelijan koko' },
+        fold: 'Taita suunnittelija riviksi', unfold: 'Avaa suunnittelija ennallaan', size: 'Suunnittelijan koko', toRead: 'luettavaa ennen lähtöä', openIt: 'avaa', putAway: 'Sulje suunnittelija: reittisi säilyy', backWx: 'Sää', hour: 'Ennusteen tunti', closeTl: 'Sulje aikajana' },
 };
 const NUMS = { en: ['3.05 km', '13 min', '↑44 ↓65 m', '06:44', '1.78 km', '98 m'], fi: ['3,05 km', '13 min', '↑44 ↓65 m', '06.44', '1,78 km', '98 m'],
                worst: ['123.4 km', '7 h 45 min', '↑2 345 ↓2 310 m', '14:52', '61.25 km', '1 024 m'] };
@@ -623,6 +635,7 @@ function Phone(host, cfg) {
   const k = () => sc.getBoundingClientRect().height / sc.offsetHeight;
   const narrow = Wd < 380;
   const pointName = S.worst ? LONG_NAME : w.via;
+  const hasFold = ['line', 'both'].includes(cfg.fold);
 
   sc.innerHTML = `${mapSvg('phone')}
     <div class="topbar"><button class="tb-btn tb-logo" aria-label="Polku">${I('route', 22)}</button><div class="tb-search">${I('search', 18)}<span>${w.search}</span></div><button class="tb-sport" aria-label="Sport: MTB">${I('bike', 22)}${I('down', 16)}</button><button class="tb-btn" aria-label="Settings">${I('gear', 22)}</button></div>
@@ -637,10 +650,10 @@ function Phone(host, cfg) {
     </div>
     <div class="scale">500 m</div>
     <div class="pl-tools"><button class="mode">${I('route', 20)}<span><b>${w.mode}</b><small>${w.modeSub}</small></span>${I('down', 16)}</button><button class="tool" aria-label="Undo">${I('undo')}</button><button class="tool" aria-label="Redo" disabled>${I('redo')}</button><button class="tool" aria-label="More">${I('more')}</button></div>
-    <div class="undo-pair" hidden><button class="tool" aria-label="Undo">${I('undo')}</button><button class="tool" aria-label="Redo" disabled>${I('redo')}</button></div>
+    <div class="undo-pair" hidden><button class="tool pair-mode" aria-label="${w.mode} · ${w.modeSub}">${I('route', 20)}</button><button class="tool" aria-label="Undo">${I('undo')}</button><button class="tool" aria-label="Redo" disabled>${I('redo')}</button></div>
     <div class="wx-bar" hidden></div><button class="wx-pill" hidden></button><div class="wx-line" hidden></div>
     <div class="sheet" data-state="peek">
-      <div class="sheet-handle" role="button" tabindex="0" aria-label="${w.size}"></div>
+      <div class="sheet-top"><span></span><div class="sheet-handle" role="button" tabindex="0" aria-label="${w.size}"></div><span>${hasFold ? `<button class="tool sheet-fold" data-a="fold" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}</span></div>
       <div class="sheet-in">
         <div class="fold-line"></div>
         <div class="sheet-head">
@@ -669,12 +682,12 @@ function Phone(host, cfg) {
     const d = head.querySelector('.done'); const col = document.createElement('div'); col.className = 'sum-acts';
     col.innerHTML = `<button class="btn warn-chip" aria-label="${S.worst ? w.readN : w.read1}">${I('warn', 18)}${S.worst ? 17 : 1}</button>`; d.replaceWith(col); col.append(d);
   }
-  const hasFold = ['line', 'both'].includes(cfg.fold);
+  sheet.classList.toggle('has-fold', hasFold);
 
   // ---- what the sheet holds
   function cardHtml(kind) {
     if (kind === 'wx') return wxCardHtml();
-    return `<div class="card-top"><span class="card-mark"><span class="wp">1</span></span><h3 class="way-name">${pointName}</h3>${hasFold ? `<button class="tool" data-a="fold-card" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}<button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button></div>
+    return `${st.cardFrom === 'wx' ? `<button class="btn quiet way-back" data-a="card-back">‹ ${w.backWx}</button>` : ''}<div class="card-top"><span class="card-mark"><span class="wp">1</span></span><h3 class="way-name">${pointName}</h3><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button></div>
       <div class="sheet-sum" style="flex:none;column-gap:20px"><span class="sum-item"><b>${n[3]}</b><small>${w.thereAt}</small></span><span class="sum-item"><b>${n[4]}</b><small>${w.fromStart}</small></span><span class="sum-item"><b>${n[5]}</b><small>${w.height}</small></span></div>
       <div class="menu-h">${w.atPoint}</div>
       <div class="seg full icons" role="radiogroup"><button role="radio" aria-checked="true">${I('pass', 18)}${w.pass}</button><button role="radio" aria-checked="false">${I('stop', 18)}${w.stop}</button><button role="radio" aria-checked="false">${I('night', 18)}${w.night}</button></div>
@@ -698,28 +711,28 @@ function Phone(host, cfg) {
   function wxLineHtml() {
     const r = reading();
     if (r.msg) return `<div class="wl-row msg"><button class="tool" aria-label="Play" disabled>${I('play', 18)}</button><span class="wl-msg${r.fail ? ' fail' : ''}">${r.msg}</span>${r.fail ? `<button class="btn">${w.retry}</button>` : ''}<button class="tool" data-a="wx-close" aria-label="Close the timeline">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, true)}`;
-    return `<div class="wl-row"><button class="tool" aria-label="Play">${I('play', 18)}</button><span class="wl-read">${I('drop', 18)}<b>${r.t}°</b><span>${r.wind} · ${r.rain}<small>${r.time} · ${st.pin ? '📍 ' : ''}${r.where}</small></span></span><button class="tool" data-a="wx-more" aria-label="The three days" aria-expanded="${st.wxOpen}">${I(st.wxOpen ? 'down' : 'up', 18)}</button></div>
-      ${strip('wl-strip', st.hour, 18)}<div class="wl-more" ${st.wxOpen ? '' : 'hidden'}>${strip('tl-strip', st.hour)}<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 2px 0"><span>${w.now}</span><span>Wed</span><span>Thu</span></div></div>`;
+    return `<div class="wl-row"><button class="tool" aria-label="Play">${I('play', 18)}</button><span class="wl-read">${I('drop', 18)}<b>${r.t}°</b><span>${r.wind} · ${r.rain}<small>${r.time} · ${st.pin ? '📍 ' : ''}${r.where}</small></span></span><button class="tool" data-a="wx-more" aria-label="The three days" aria-expanded="${st.wxOpen}">${I(st.wxOpen ? 'down' : 'up', 18)}</button><button class="tool" data-a="wx-close" aria-label="${w.closeTl}">${I('close', 18)}</button></div>
+      <div class="wl-scrub" role="slider" tabindex="0" aria-label="${w.hour}" aria-valuemin="0" aria-valuemax="72" aria-valuenow="${st.hour}" aria-valuetext="${r.time}">${strip('wl-strip', st.hour, 22)}</div><div class="wl-more" ${st.wxOpen ? '' : 'hidden'}><div class="tl-layers" style="padding:4px 2px 8px"><button class="chip" aria-pressed="false">${I('wind', 14)}${w.wind}</button><button class="chip" aria-pressed="false">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip" aria-pressed="false">${I('snow', 14)}${w.snow}</button></div>${strip('tl-strip', st.hour)}<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 2px 0"><span>${w.now}</span><span>${S.lang === 'fi' ? 'ke' : 'Wed'}</span><span>${S.lang === 'fi' ? 'to' : 'Thu'}</span></div></div>`;
   }
   function wxCardHtml() {
     const r = reading();
     const back = st.cardFrom === 'spot' ? `<button class="btn quiet way-back" data-a="card-back">‹ ${w.backSpot}</button>` : '';
-    return `<div class="card-top">${back || `<span class="card-mark" style="color:var(--accent)">${I('cloud', 24)}</span>`}<h3 class="way-name">${back ? '' : w.wxCard}</h3>${hasFold ? `<button class="tool" data-a="fold-card" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}<button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button></div>
+    return `${back}<div class="card-top"><span class="card-mark" style="color:var(--accent)">${I('drop', 24)}</span><h3 class="way-name">${w.wxCard}</h3><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button></div>
       <div class="wx-card">${r.msg ? `<div class="tl-msg${r.fail ? ' fail' : ''}">${r.msg}${r.fail ? `<button class="btn" style="justify-self:start">${w.retry}</button>` : ''}</div>`
         : `<div class="wc-read">${I('cloud', 34)}<b>${r.t}°</b><span>${r.wind} · ${r.gusts}<small>${r.rain} · ${st.pin ? w.atPin : r.where}</small></span></div>${strip('tl-strip', st.hour, 60)}`}
       <div class="tl-play" style="padding-left:0"><button class="tool" aria-label="Play" ${r.msg ? 'disabled' : ''}>${I('play', 18)}</button><input type="range" min="0" max="72" value="${st.hour}" aria-label="Hour" ${r.msg ? 'disabled' : ''}><span class="tl-time">${r.msg ? '–' : r.time}</span></div>
       <div class="rows"><button class="row"><span>${I('layers')}</span><span><b>${w.onMap}</b></span><span class="val">${w.rain}</span>${I('chev', 16)}</button></div></div>`;
   }
   function foldHtml() {
-    if (st.card === 'wx') { const r = reading(); return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}">${I('cloud', 22)}<b>${r.msg ? r.msg : `<span class="wxg">${r.t}° ·</span> <span class="wxg">${r.time}</span>`}</b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`; }
-    if (st.card) return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}: ${pointName}"><span class="card-mark"><span class="wp">1</span></span><b class="name">${pointName}</b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`;
-    const act = cfg.fold === 'both' ? `<button class="tool way-x" data-a="away" aria-label="${w.closed}">${I('close', 20)}</button>` : '';
-    return `<button class="fold-go" data-a="unfold" aria-label="${w.unfold}"><span class="fold-warn">${I('warn', 16)}${S.worst ? 17 : 1}</span><b><span>${n[0]} ·</span> <span>${n[1]} ·</span> ${n[2].split(' ↓').map((x, i) => `<span>${i ? '↓' : ''}${x}</span>`).join(' ')}</b><span class="fold-chev">${I('up', 20)}</span></button>${act}`;
+    if (st.card === 'wx') { const r = reading(); return `<button class="fold-go" data-a="unfold">${I('drop', 22)}<b>${r.msg ? r.msg : `<span class="wxg">${r.t}° ·</span> <span class="wxg">${r.time}</span>`}<span class="vh">, ${w.openIt}</span></b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`; }
+    if (st.card) return `<button class="fold-go" data-a="unfold"><span class="card-mark"><span class="wp">1</span></span><b class="name">${pointName}<span class="vh">, ${w.openIt}</span></b></button><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button>`;
+    const act = cfg.fold === 'both' ? `<button class="tool way-x" data-a="away" aria-label="${w.putAway}">${I('close', 20)}</button>` : '';
+    return `<button class="fold-go" data-a="unfold"><span class="fold-warn">${I('warn', 16)}${S.worst ? 17 : 1}<span class="vh"> ${w.toRead},</span></span><b><span>${n[0]} ·</span> <span>${n[1]} ·</span> ${n[2].split(' ↓').map((x, i) => `<span>${i ? '↓' : ''}${x}</span>`).join(' ')}</b><span class="vh">, ${w.openIt}</span><span class="fold-chev">${I('up', 20)}</span></button>${act}`;
   }
 
   // ---- sizes, as visible heights from the sheet's bottom (js/planner.js: the peek is measured, half is 50 %, full is the screen less 76)
   const full = () => Ht - 76;
-  const measure = (el) => { const was = sheet.style.height, inst = sheet.classList.contains('instant'); sheet.classList.add('instant'); sheet.style.height = Ht + 'px'; const h = 18 + el.scrollHeight; sheet.style.height = was; sheet.classList.toggle('instant', inst); return h; };
+  const measure = (el) => { const was = sheet.style.height, inst = sheet.classList.contains('instant'); sheet.classList.add('instant'); sheet.style.height = Ht + 'px'; const h = (hasFold ? 40 : 18) + el.scrollHeight; sheet.style.height = was; sheet.classList.toggle('instant', inst); return h; };
   let H = { folded: 74, peek: 186, card: 400 };
   function sizes() {
     fold.innerHTML = foldHtml();
@@ -786,7 +799,8 @@ function Phone(host, cfg) {
         if (raised) { wxBar.style.bottom = ''; wxBar.style.top = (Ht - sh - 8 + headH()) + 'px'; wxBar.style.zIndex = 7; } // (#225's wx-over: on the sheet under its header)
         else { wxBar.style.top = ''; wxBar.style.zIndex = ''; wxBar.style.bottom = (st.away ? 40 : base + 8) + 'px'; wxH = wxBar.offsetHeight + 8; }
       } else if (st.wx === 'window') {
-        const fits = !raised && !(st.card && st.card !== 'wx') && z !== 2;
+        let fits = !raised && !(st.card && st.card !== 'wx') && z !== 2;
+        if (fits) { wxBar.innerHTML = wxWindowHtml(); wxBar.hidden = false; fits = Ht - (base + 8 + wxBar.offsetHeight + 8) - 64 >= 4 * 44 + 3 * 8; wxBar.hidden = true; }
         if (fits || st.away) { wxBar.innerHTML = wxWindowHtml(); wxBar.hidden = false; wxBar.style.top = ''; wxBar.style.zIndex = ''; wxBar.style.bottom = (st.away ? 40 : base + 8) + 'px'; wxH = wxBar.offsetHeight + 8; }
         else {
           const r = reading(), dock = st.state === 'full';
@@ -806,7 +820,7 @@ function Phone(host, cfg) {
     if (wxLine.hidden && wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet);
     above = base + wxH;
     if (!tools.hidden && !tools.classList.contains('docked')) { tools.style.bottom = above + 'px'; }
-    pair.style.bottom = above + 'px';
+    pair.style.bottom = above + 'px'; pair.classList.toggle('folded', folded && !st.card);
     const toolsUp = (!tools.hidden && !tools.classList.contains('docked')) || !pair.hidden;
     scale.style.bottom = (above + (toolsUp ? 56 : 0)) + 'px';
     // the column: Layers and Locate stay; it lets go of the compass, then 3D, Weather (T, Layers), Show the whole route (⋯)
@@ -847,7 +861,7 @@ function Phone(host, cfg) {
   const swipe = swipeSheet(sheet, {
     k, slow, reduced,
     enabled: () => !st.away,
-    grab: (t) => !t.closest('input[type=range], .wl-strip'),
+    grab: (t) => !t.closest('input[type=range], .wl-scrub'),
     start: () => {
       sizes(); fromState = st.state;
       const S2 = ladder(st.state), now = sheet.getBoundingClientRect().height / k();
@@ -881,7 +895,9 @@ function Phone(host, cfg) {
     const act = a.dataset.a || a.dataset.c || (a.classList.contains('toast-act') && 'open') || (a.classList.contains('sheet-handle') && 'handle') || (a.classList.contains('wx-pill') && 'pill') || (a.dataset.open && 'card') || '';
     if (act === 'handle') return handleTap();
     if (act === 'unfold') return rest(st.lastOpen && st.lastOpen !== 'folded' ? (st.card ? 'card' : st.lastOpen) : (st.card ? 'card' : 'peek'));
-    if (act === 'fold-card') return rest('folded');
+    if (act === 'fold' || act === 'fold-card') return rest('folded');
+    if (act === 'card-back' && st.card === 'point' && st.cardFrom === 'wx') return openCard('wx'); // (Back: the card it replaced)
+    if (act === 'close-card' && (st.card === 'wx' || st.cardFrom === 'wx')) st.wxOn = false; // (✕ closes the weather with its card: the map's layers go too)
     if (act === 'close-card' || act === 'card-back') { if (st.cardFrom === 'spot') { st.pin = true; } return closeCard(); }
     if (act === 'away') return putAway();
     if (act === 'open' || act === 'plan') return comeBack();
@@ -892,7 +908,7 @@ function Phone(host, cfg) {
     if (act === 'pill') { rest('peek'); return; }
   });
   function handleTap() {
-    if (hasFold) { if (st.state === 'folded') rest(st.card ? 'card' : (st.lastOpen || 'peek')); else rest('folded'); return; } // (Proposed: the handle folds and unfolds; the header's tap still goes to the peek or where it was)
+    if (st.state === 'folded') return rest(st.card ? 'card' : (st.lastOpen || 'peek')); // (the handle and the header do today's tap; ⌄ folds)
     toggleSize();
   }
   function toggleSize() { if (st.card) return; rest(st.state === 'peek' ? (st.last || 'profile') : 'peek'); }
@@ -904,7 +920,13 @@ function Phone(host, cfg) {
   });
   // the hour: drag along a strip, or the slider
   sc.addEventListener('input', (e) => { if (e.target.type === 'range') { st.hour = +e.target.value; const v = e.target; layoutKeep(v); } });
-  sc.addEventListener('pointerdown', (e) => { const s = e.target.closest('.wl-strip'); if (!s || st.wxState !== 'ok') return; const mv = (ev) => { const r = s.getBoundingClientRect(); st.hour = Math.round(Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * 72); layout(); }; mv(e); const upf = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', upf); }; addEventListener('pointermove', mv); addEventListener('pointerup', upf); });
+  sc.addEventListener('pointerdown', (e) => { const s = e.target.closest('.wl-scrub'); if (!s || st.wxState !== 'ok') return; const mv = (ev) => { const r = s.getBoundingClientRect(); st.hour = Math.round(Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * 72); layout(); }; mv(e); const upf = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', upf); }; addEventListener('pointermove', mv); addEventListener('pointerup', upf); });
+  sc.addEventListener('keydown', (e) => { // the hour by keys: an hour, a day, the ends
+    if (!e.target.closest('.wl-scrub')) return;
+    const step = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 24, PageDown: -24 }[e.key];
+    if (step == null && !['Home', 'End'].includes(e.key)) return;
+    e.preventDefault(); st.hour = e.key === 'Home' ? 0 : e.key === 'End' ? 72 : Math.max(0, Math.min(72, st.hour + step)); layout(); sc.querySelector('.wl-scrub')?.focus();
+  });
   function layoutKeep() { if (st.card === 'wx') { cardC.innerHTML = cardHtml('wx'); } layout(); }
 
   // ---- scenes
