@@ -117,6 +117,19 @@ button { font: inherit; color: inherit; }
 .sheet-row { display: flex; align-items: center; gap: 8px; }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 12px 12px; }
 .sheet .done { min-height: 44px; padding: 4px 16px; font-size: 15px; }
+.sum-acts { flex: none; display: grid; gap: 8px; }
+.warn-chip { min-height: 44px; justify-content: center; background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger); font-size: 17px; }
+.pl-readrow[hidden], .kf[hidden] { display: none; }
+.sheet-row:has(.sum-acts) .sum-item b { white-space: normal; }
+/* #453 at 200 %, proposed with the fold: the list's rows take the card's narrow rule (the value under the name), and the tabs wrap */
+.sheet-body { container-type: inline-size; }
+@container (max-width: 220px) {
+  .row:has(.val) { flex-wrap: wrap; }
+  .row:has(.val) > span:nth-child(2) { flex-basis: calc(100% - 32px); }
+  .row .val { order: 3; max-width: none; margin-left: 32px; text-align: left; }
+  .tabs { flex-wrap: wrap; }
+  .tabs button { flex: 1 1 40%; }
+}
 .prof { display: block; width: 100%; height: 120px; margin: 4px 0 8px; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 -12px 6px; padding: 0 12px; }
 .tabs button { flex: 1; min-height: 44px; border: 0; background: none; font-weight: 700; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-bottom: 3px solid transparent; }
@@ -651,6 +664,11 @@ function Phone(host, cfg) {
   const sheet = $('.sheet'), head = $('.sheet-head'), body = $('.sheet-body'), cardC = $('.card-c'), fold = $('.fold-line'), tools = $('.pl-tools'), pair = $('.undo-pair'),
         ctrls = $('.map-ctrls'), scale = $('.scale'), toast = $('.toast'), wxBar = $('.wx-bar'), wxPill = $('.wx-pill'), wxLine = $('.wx-line'), handle = $('.sheet-handle');
   if (narrow || z === 2) { tools.classList.add('docked'); head.prepend(tools); }
+  if (z === 2) { // as the app at 200 % (live capture): the warnings as a chip above Done, no key facts (max-height: 520px)
+    head.querySelector('.pl-readrow').hidden = true; head.querySelector('.kf').hidden = true;
+    const d = head.querySelector('.done'); const col = document.createElement('div'); col.className = 'sum-acts';
+    col.innerHTML = `<button class="btn warn-chip" aria-label="${S.worst ? w.readN : w.read1}">${I('warn', 18)}${S.worst ? 17 : 1}</button>`; d.replaceWith(col); col.append(d);
+  }
   const hasFold = ['line', 'both'].includes(cfg.fold);
 
   // ---- what the sheet holds
@@ -798,6 +816,8 @@ function Phone(host, cfg) {
     $$('.ctrl-btn').forEach((b) => { if (b.dataset.c !== 'plan') b.hidden = false; });
     const room = Ht - above - 64; let need = () => ctrls.offsetHeight;
     for (const c of order) { if (need() <= room) break; sc.querySelector(`[data-c="${c}"]`).hidden = true; }
+    if (need() > room) $$('.ctrl-btn').forEach((b) => { b.hidden = true; }); // (not even Layers fits: nothing goes under the top bar; the planner has to be folded or put away)
+    scale.hidden = Ht - (above + (toolsUp ? 56 : 0)) - 24 < 64;
     sheet.hidden = st.away;
     toast.classList.toggle('show', st.away);
     toast.style.bottom = '12px';
@@ -1004,7 +1024,7 @@ const CAP = {
   fold: {
     line: { phone: `<p><b>Fold to a line.</b> Swipe down from the peek, or tap the handle: the planner folds to one line, its warnings' count and its numbers. The toolbox goes too, leaving Undo and Redo. The whole line is one button: a tap on it, a swipe up, or the handle brings the planner back to the size it left. Close is ✕ only: no swipe closes the planner.</p><p><b>A card</b> (tap ① or its row) does the same: folded, its title and ✕; swiped up, the card's own full height. <b>This changes</b> a swipe up on a card: today it closes the card and raises the list; here Back or ✕ reaches the list.</p><p><b>200 %:</b> the planner rests at its line when its peek would cover more than half the screen, and at full the whole sheet scrolls as one (#453). The map's column keeps Locate and Layers; it lets go of the compass, then 3D, then Weather (<kbd>T</kbd>, and in Layers), then Show the whole route (in ⋯) (#344).</p>`,
             desk: `<p><b>Desktops:</b> Minimise folds the panel to its numbers, as today. A card on the map gets the same fold: its chevron leaves the title row at the spot. A card has no full size here, since it already grows to the room it opens into. Try ① on the map, the card's chevron, and the panel's.</p>` },
-    away: { phone: `<p><b>Swipe away.</b> No new size. A swipe below the peek puts the planner away, as the plan's Put away says (25c left the swipe out). The route stays on the map, the note says so with <b>Open</b>, and Plan in the column brings the planner back as it was. A swipe down on a card closes it and leaves the planner. Cards keep one size, so #434 isn't done.</p><p><b>200 %:</b> the peek leaves the map about a third of the screen, and the column there keeps Layers alone. Locate comes back once the planner is put away.</p>`,
+    away: { phone: `<p><b>Swipe away.</b> No new size. A swipe below the peek puts the planner away, as the plan's Put away says (25c left the swipe out). The route stays on the map, the note says so with <b>Open</b>, and Plan in the column brings the planner back as it was. A swipe down on a card closes it and leaves the planner. Cards keep one size, so #434 isn't done.</p><p><b>200 %:</b> the peek leaves the map about a third of the screen, and the column there keeps Layers alone. With Finnish words and 17 warnings, nothing fits: the map's buttons come back only once the planner is put away.</p>`,
             desk: `<p><b>Desktops:</b> as today. Minimise folds the panel; a card has one size; ✕ in the route's view puts the route away.</p>` },
     both: { phone: `<p><b>Fold, then away.</b> Two steps down. A swipe from the peek stops at the line: one swipe never goes further. A second swipe from the line puts the planner away, with the note and <b>Open</b>, and the line's ✕ does the same in one tap. Cards fold as in Fold to a line, and a swipe down on a folded card closes it, back to the planner's line.</p><p><b>200 %</b> as Fold to a line.</p>`,
             desk: `<p><b>Desktops:</b> Minimise folds the panel, and a card folds to its title row. The panel's ✕ puts the route away, and Plan in the column brings it back.</p>` },
