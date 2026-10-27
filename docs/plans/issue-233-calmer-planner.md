@@ -236,6 +236,7 @@ The map in view at peek on a 390 phone: 82.7 % today, about 91 % when there's no
 ## 11. Acceptance criteria
 
 - **Layouts:** 390 × 844, 360 × 740, 375 × 667, 1440 × 900 and 1024 × 768; light and dark; Finnish-length words; 200 % zoom. No planner control on a phone under 44 × 44 px; none overlapping another or off the screen; no number cut; no name cut with "…"; the toolbox clear of the map's buttons or docked; the map's column clear of the top bar.
+- **The weather line's hour strip** (step 3) is at least 44 px tall, on phones and desktops, at every size and at 200 %. Since 2026-10-27.
 - **The workflows** in part a–d's checks, and the review's test script with people.
 - **Nothing lost:** every control and section of today's planner is where the change/move/keep table puts it, doing what it did; the regression list passes in every part.
 
@@ -347,7 +348,7 @@ The optional introduction (#114, phase 19's #189) teaches deeper features later 
 
 ## Room for the map (step 3, 2026-10-27, for the user's choice)
 
-Step 3 of #233's order: #338 and #303 as one way to make room for the map, with #377's timeline, within #453's and #344's 200 % limits. Two questions were open; the rest of #233 is decided. **The mock-up:** [mockups/issue-338-room-for-the-map.html](mockups/issue-338-room-for-the-map.html) (`?q=fold` or `?q=weather`, the alternative in the picker at the top; Today is the live app on `main` at 414690d).
+Step 3 of #233's order: #338 and #303 as one way to make room for the map, with #377's timeline, within #453's and #344's 200 % limits. Two questions were open; the rest of #233 is decided. **The mock-up:** [mockups/issue-338-room-for-the-map.html](mockups/issue-338-room-for-the-map.html) (`?q=fold`, `?q=weather` or `?q=foot`, the alternative in the picker at the top; Today is the live app on `main` at 414690d).
 
 **Today** (390 × 844, a route drawn, the timeline on): the peek leaves the map the top half. A point's card and the timeline leave about 150 px of map and push the map's buttons off the top (#344 at 100 %). At half and full the timeline covers Route, Check and Go (#377). At 200 % the timeline sits under the top bar, the map's buttons are gone (#344), and the full sheet ends at its numbers (#453). On desktops the timeline covers a card on the map.
 
@@ -396,6 +397,50 @@ Drawn on Fold to a line. Each alternative keeps Weather here, <kbd>T</kbd>, and 
   - The three days are a tap away.
   - The hour is set on a strip that must be a finger's height in the build.
   - **If you want the least change:** Window, kept clear.
+
+### Chosen (2026-10-27)
+
+- **Question 1: Fold, then away.** One rule for the planner and the cards: one swipe down folds, a second closes, and ✕ closes too.
+- **Question 2: A weather line,** with the layer chips behind ⌃. Its hour strip is at least 44 px tall (§11).
+- **Left to settle before the choice is recorded:** where ⌄ goes on phones, and how the map's foot is shared on desktops. The mock-up's third tab (`?q=foot`) draws both on the chosen pair: Fold, then away with the weather line and its 44 px strip.
+
+### ⌄'s place on phones: its own row, or the header row (for the user's choice)
+
+The header row is the planner's numbers row, with ⌄ just before **Done**, and a card's title row, with ⌄ just before ✕. That is where the desktop already has Minimise and a card's fold. Folded, the sheet is the same in both versions: ✕ at the top right puts the planner away. In the header try, ✕ at the line's end broke the worst case's numbers mid-number at 200 %.
+
+The peek's height, in px (measured in the mock-up, a route with one warning):
+
+| | ⌄'s own row | ⌄ in the header row |
+|---|---|---|
+| 390 × 844, English | 201 | 214: the numbers wrap to a second line |
+| 390 × 844, Finnish | 236 | 256 |
+| 390 × 844, the worst case in English | 236 | 214 |
+| 360 × 740, English | 292 | 270 |
+| 360 × 740, Finnish | 301 | 321 |
+| 200 %, English | 306 | 346, the whole height |
+| 200 %, Finnish | 346 | 346 |
+| Folded | 100 (108 at 200 %, 128 with the worst case) | the same |
+| A card's title at 200 % | 71 px wide | 25 px wide: a syllable a line |
+
+The header row saves the 22 px only where the numbers take two lines anyway: the worst case, and 360 px in English. Elsewhere ⌄ takes the numbers' room, and the peek grows by 13–20 px. At 200 % it also leaves a card's title too narrow to read.
+
+**Recommendation: keep ⌄'s own row** (question 1's version). It costs 22 px at the peek everywhere, and nothing else wraps. The header row fits only by making the numbers or a card's title wrap.
+
+### The map's foot on desktops (for the user's choice)
+
+#468 (approved) puts the toolbar at the bottom of the planner's map-facing edge in both docks. With the weather line, the scale and the credits, four things share the map's foot. Three arrangements, drawn at 1440 × 900 and 1024 × 768 in both docks, with the planner, at half, with a card, with the credits open and with the planner closed:
+- **One stack:** the toolbar on the panel's edge, the weather line on the toolbar, then the scale and the credits on top, all at the panel's corner. In the bottom dock, the stack sits on the panel's top edge and rises with it. With the planner closed, the line comes down to the foot.
+- **Scale in the corner:** the scale and the credits keep the map's bottom left; the toolbar starts to their right; the weather line is centred above it.
+- **Planner left, map right:** the toolbar on the panel's edge; the weather line at the right, by the Weather button, sharing the toolbar's row where there's room; the scale and the credits above the toolbar.
+
+What the mock-up shows:
+- **One stack** overlaps nothing in either dock, at either size, in any of those scenes. The toolbar keeps all the room the map's buttons leave it, and the opened credits open over the map. With the bottom panel at half at 1024 × 768, 106 px of map is left above the stack at the left.
+- **Scale in the corner** costs the toolbar 126 px. Beside the panel at 1440 × 900 it folds two steps further; at 1024 × 768 it doesn't fit even fully folded and runs into the map's buttons. The opened credits cover the toolbar in both docks.
+- **Planner left, map right:** the opened credits run into the line at 1440 × 900 beside the panel and in the bottom dock. At 1024 × 768 beside the panel the line is as wide as the foot, so it becomes One stack.
+
+**Recommendation: One stack.** It is the only one that holds everywhere, it is one rule for both docks and every width, and the line rides on the planner's edge as it rides on the sheet's edge on phones, with the toolbar between, since #468 keeps the toolbar against the panel. **It costs:** the corner by the panel is the busiest part of the map, and the line is farther from the Weather button than in Planner left, map right.
+
+**For #468, whichever is chosen:** at the bottom, the map's buttons are level with the toolbar, so beside the panel at 1024 × 768 it has 524 px. Today's toolbar there, under the top bar, is 600 px; fully folded it is about 525 px, which just fits in English. Longer words (the mock-up's Finnish) don't fit: one more fold step, or a second row, is #468's to decide. The bottom panel raised to the top bar stays #468's own open point too.
 
 ## Built
 

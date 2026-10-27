@@ -113,7 +113,7 @@ button { font: inherit; color: inherit; }
 .sheet.has-fold[data-state="folded"] .sheet-top { height: 18px; }
 .sheet-fold { width: 44px; height: 44px; margin-left: -8px; }
 .sheet[data-state="folded"] .sheet-fold { display: none; }
-.sheet-away { display: none; width: 44px; height: 44px; margin-left: -8px; }
+.sheet .sheet-away { display: none; width: 44px; height: 44px; margin-left: -8px; } /* (.sheet: .tool's display came later and showed it at the peek too, fixed 2026-10-27) */
 .sheet[data-state="folded"] .sheet-away { display: inline-flex; }
 .sheet.both.has-fold[data-state="folded"] .sheet-top { height: 40px; }
 .sheet-handle { flex: none; position: relative; width: 72px; height: 18px; margin: 0 auto; cursor: grab; border-radius: 9px; }
@@ -315,6 +315,32 @@ button { font: inherit; color: inherit; }
 .d-card.folded .body { grid-template-rows: 0fr; opacity: 0; transition-duration: calc(var(--t-press) * var(--slow)); } /* (closing takes the next shorter one, as the app's tokens say) */
 .screen.desk .wx-bar { left: 50%; right: auto; width: 640px; margin-left: -124px; bottom: 40px; }
 .screen.desk .wx-line { left: 50%; right: auto; width: 560px; margin-left: -84px; bottom: 16px; }
+/* the chosen pair (tab 3). ⌄ at the right of the header row, the try against its own row (?chev=row) */
+.sheet.has-fold.chev-head:not([data-state="folded"]) .sheet-top { height: 18px; } /* (folded, Fold, then away's ✕ keeps the top row: at the line's end it broke the worst case's numbers at 200 %) */
+.screen.phone .head-fold { flex: none; width: 44px; height: 44px; }
+.card-top .head-fold { margin: -4px -6px 0 0; }
+.sum-acts .head-fold { justify-self: end; }
+/* the hour strip at a finger's height (an acceptance criterion since 2026-10-27) */
+.screen.strip44 .wl-strip { height: 44px; }
+.screen.strip44 .wl-scrub { padding: 2px 0; }
+/* the map's foot on desktops: #468's toolbar at the bottom in both docks, with the weather line, the scale and the credits */
+.screen.desk.foot .d-panel { max-height: calc(100% - 76px); }
+.screen.desk.foot .d-panel.bottom { left: 12px; right: 84px; top: auto; bottom: 12px; width: auto; max-height: none; }
+.d-panel.bottom.half .sheet-body { max-height: none; flex: 1; }
+.d-panel.bottom.half .prof { height: 90px; }
+.screen.desk.foot .d-tb { top: auto; right: auto; width: max-content; overflow: visible; }
+.d-tb .tb-two { display: grid; line-height: 1.05; }
+.d-tb .tb-cap { color: var(--muted); font-size: 11px; font-weight: 500; }
+.d-tb.fold1 .tb-cap, .d-tb.fold2 .tbm.mode:not(.on) .nm, .d-tb.foldS .tb-sport .nm, .d-tb.fold3 .tbm.mode .nm { display: none; }
+.d-tb [hidden] { display: none; }
+.screen.desk.foot .wx-line { right: auto; width: auto; margin: 0; }
+.d-scale { position: absolute; z-index: 7; display: flex; align-items: flex-end; gap: 6px; }
+.d-scale .bar { flex: none; width: 84px; padding: 1px 6px; border: 2px solid #333; border-top: 0; border-radius: 0 0 3px 3px; background: rgba(255,255,255,.8); font-size: 11px; }
+.d-scale .attrib { position: relative; min-width: 24px; min-height: 24px; border-radius: 12px; font-size: 12px; line-height: 1.35; }
+.d-scale .attrib .i { position: absolute; left: 0; bottom: 0; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 12px; background: rgba(255,255,255,.92); color: #111; padding: 0; }
+.d-scale .cred { display: none; }
+.d-scale.open .attrib { padding: 3px 10px 3px 30px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.d-scale.open .cred { display: block; }
 /* reduced motion: no travel; what changes fades (the app's rule) */
 .screen.reduced .sheet, .screen.reduced .d-card .body { transition: none; }
 @media (prefers-reduced-motion: reduce) {
@@ -416,6 +442,7 @@ button { font: inherit; color: inherit; }
     <nav class="cv-tabs" aria-label="Questions">
       <a href="?q=fold" data-q="fold">1. How the planner and the cards fold</a>
       <a href="?q=weather" data-q="weather">2. Where the weather timeline goes</a>
+      <a href="?q=foot" data-q="foot">3. The chosen pair: ⌄ and the map’s foot</a>
     </nav>
   </header>
   <section class="cv-q" id="question"></section>
@@ -437,6 +464,7 @@ button { font: inherit; color: inherit; }
 const Q = new URLSearchParams(location.search);
 const BG = 'https://raw.githubusercontent.com/TommiContursi/Polku/c33edbe302eaaaf277315836b3f51f52af5ba941/claude/phase-24-design/mockup-bg/';
 const SHOTS = 'https://raw.githubusercontent.com/TommiContursi/Polku/58a56574f786f20d31c5a86e5c42ab78e1546c0f/claude/233-step3-room/today/';
+const SHOTS2 = 'https://raw.githubusercontent.com/TommiContursi/Polku/1f1484e6b64a8ff518da6f61d36ebbd03b9a85a2/claude/233-step3-room/today/';
 
 // ---------------------------------------------------------------- icons (the app's shapes, drawn small)
 const P = {
@@ -451,6 +479,9 @@ const P = {
   climb: 'M3 19l6-8 4 4 3-5 5 9z', pass: 'M5 12h14M13 6l6 6-6 6', stop: 'M9 5v14M15 5v14', night: 'M20 14A8 8 0 019 3a8 8 0 1011 11z', move: 'M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3',
   rename: 'M4 20h4L19 9l-4-4L4 16v4z', flag: 'M5 21V4h11l-2 4 2 4H5', trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13', stretch: 'M7 6a2 2 0 100 .01M17 18a2 2 0 100 .01M7 8c0 6 10 2 10 8',
   speed: 'M4 15a8 8 0 1116 0M12 15l4-5', how: 'M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4', layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
+  straight: 'M5 19L19 5M5 19a1 1 0 100-.01M19 5a1 1 0 100-.01', water: 'M3 9c3 0 3-2 6-2s3 2 6 2 3-2 6-2M3 15c3 0 3-2 6-2s3 2 6 2 3-2 6-2', swap: 'M7 7h12l-3-3M17 17H5l3 3',
+  loop: 'M20 12a8 8 0 11-3-6.2M20 4v4h-4', link: 'M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1', download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+  info: 'M12 2a10 10 0 110 20 10 10 0 010-20zM12 11v6M12 7.5v.5',
 };
 const I = (n, s = 20) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[n]}"/></svg>`;
 
@@ -465,7 +496,7 @@ const WORDS = {
         closed: 'Planner closed · your route stays', open: 'Open', plan: 'Plan', layers: 'Layers', weather: 'Weather', search: 'Search places or paste coordinates',
         wind: 'Wind', temp: 'Temperature', rain: 'Rain', snow: 'Snow', centre: 'map centre', atPin: 'at the pin', dry: 'dry', gusts: 'gusts 11', now: 'Now', loading: 'Loading the forecast…',
         failed: 'No forecast: the weather service didn’t answer.', retry: 'Retry', onMap: 'On the map', wxCard: 'Weather', backSpot: 'The spot', onRoute: 'On your route: km 1.8 at 06:44',
-        fold: 'Fold the planner to a line', unfold: 'Open the planner as it was', size: 'Planner size', toRead: 'to read before you go', openIt: 'open', putAway: 'Put the planner away: your route stays', backWx: 'Weather', hour: 'Hour of the forecast', closeTl: 'Close the timeline' },
+        fold: 'Fold the planner to a line', unfold: 'Open the planner as it was', size: 'Planner size', toRead: 'to read before you go', openIt: 'open', putAway: 'Put the planner away: your route stays', backWx: 'Weather', hour: 'Hour of the forecast', closeTl: 'Close the timeline', straight: 'Straight line', water: 'Over water', styleCap: 'Route style', credits: 'Credits' },
   fi: { read1: '1 luettavaa ennen lähtöä', readN: '17 luettavaa ennen lähtöä', dark: 'Pimeässä 3,05 km matkalla', distance: 'kokonaismatka', fromNow: 'lähtöajasta klo 14.00', asc: 'nousumetrit · laskumetrit', done: 'Valmis',
         climb: 'Jyrkin nousu <b>↑S0</b>, 25 m, <b>4 %</b>', mode: 'Seuraa polkuja', modeSub: 'Maastopyöräily · Tasapainoinen', route: 'Reitti', check: 'Tarkista', go: 'Lähde',
         how: 'Kulkutapa', howSub: 'Reitit, joita Polku valitsee maastopyöräilyyn', howVal: 'Tasapainoinen', speed: 'Vauhtisi', speedSub: '20 / 16 / 11 km/h · 600 m/h ylös', speedVal: 'Tavallinen',
@@ -475,11 +506,13 @@ const WORDS = {
         closed: 'Suunnittelija suljettu · reittisi säilyy', open: 'Avaa', plan: 'Suunnittele', layers: 'Tasot', weather: 'Sää', search: 'Hae paikkoja tai liitä koordinaatit',
         wind: 'Tuuli', temp: 'Lämpötila', rain: 'Sade', snow: 'Lumisade', centre: 'kartan keskipiste', atPin: 'nastan kohdalla', dry: 'poutaa', gusts: 'puuskat 11', now: 'Nyt', loading: 'Ennustetta ladataan…',
         failed: 'Ei ennustetta: sääpalvelu ei vastannut.', retry: 'Yritä uudelleen', onMap: 'Kartalla', wxCard: 'Sää', backSpot: 'Paikka', onRoute: 'Reitilläsi: km 1,8 klo 06.44',
-        fold: 'Taita suunnittelija riviksi', unfold: 'Avaa suunnittelija ennallaan', size: 'Suunnittelijan koko', toRead: 'luettavaa ennen lähtöä', openIt: 'avaa', putAway: 'Sulje suunnittelija: reittisi säilyy', backWx: 'Sää', hour: 'Ennusteen tunti', closeTl: 'Sulje aikajana' },
+        fold: 'Taita suunnittelija riviksi', unfold: 'Avaa suunnittelija ennallaan', size: 'Suunnittelijan koko', toRead: 'luettavaa ennen lähtöä', openIt: 'avaa', putAway: 'Sulje suunnittelija: reittisi säilyy', backWx: 'Sää', hour: 'Ennusteen tunti', closeTl: 'Sulje aikajana', straight: 'Suora viiva', water: 'Vesitse', styleCap: 'Reittityyli', credits: 'Lähteet' },
 };
 const NUMS = { en: ['3.05 km', '13 min', '↑44 ↓65 m', '06:44', '1.78 km', '98 m'], fi: ['3,05 km', '13 min', '↑44 ↓65 m', '06.44', '1,78 km', '98 m'],
                worst: ['123.4 km', '7 h 45 min', '↑2 345 ↓2 310 m', '14:52', '61.25 km', '1 024 m'] };
 const LONG_NAME = 'Pohjois-Pohjanmaan virkistysalueyhdistyksen Ylikiiminginjoen laavu';
+// the map's credits opened, as the app's are with MTB's layers on (js/main.js's own line first)
+const CREDITS = 'Polku © TommiContursi | MapLibre | © OpenFreeMap © OpenMapTiles Data from OpenStreetMap | © Maanmittauslaitos, Kapsi ry | © waymarkedtrails.org | © LIPAS | Radar © RainViewer';
 // the weather's reading: as demo data, and its worst case (a cold, windy, wet hour; Finnish decimals and times)
 const WX = () => (S.worst ? { t: -12, wind: S.lang === 'fi' ? '14 m/s NNW' : '14 m/s NNW', gusts: S.lang === 'fi' ? 'puuskat 23' : 'gusts 23', rain: S.lang === 'fi' ? 'räntää 4,2 mm/h' : 'sleet 4.2 mm/h' }
   : { t: 9, wind: '6 m/s SW', gusts: W().gusts, rain: W().dry });
@@ -503,10 +536,19 @@ const QUESTIONS = {
             ['A weather line', 'One line with its strip, on the sheet’s edge', 'The map stays, and the hour the map shows is always on screen', 'The chips move to Layers; the three days are a tap away'],
             ['Weather card', 'A card of 25d’s kind (#431)', 'One thing at a time, the cards’ own rules', 'A point’s card hides the hour while the map still shows its weather']],
   },
+  foot: {
+    title: 'The chosen pair: where ⌄ goes, and the map’s foot on desktops',
+    text: `<p>Chosen on 2026-10-27: <b>Fold, then away</b>, with one rule for the planner and the cards (one swipe down folds, a second closes, ✕ closes too), and <b>A weather line</b>, with the layer chips behind ⌃ and an hour strip 44 px tall. Two things are left to settle. <b>On phones</b>, ⌄ can have a row of its own above the peek, as in question 1, or sit at the right of the header row: use the <b>⌄</b> switch. <b>On desktops</b>, #468 puts the toolbar at the bottom in both docks, so four things share the map’s foot: the toolbar, the weather line, the scale and the credits. The picker shows three ways to share it. Use the <b>Dock</b> and <b>Window</b> switches, and the scenes.</p>`,
+    names: ['Today', 'One stack', 'Scale in the corner', 'Planner left, map right'],
+    table: [['One stack', 'The toolbar on the panel’s edge, the weather line on the toolbar, the scale and the credits on top, all at the panel’s corner', 'One place for everything, in both docks and at any width', 'The corner by the panel is the busiest part of the map'],
+            ['Scale in the corner', 'The scale and the credits keep the map’s corner; the toolbar starts to their right; the weather line is centred above', 'The scale never moves', 'The toolbar loses 126 px: at 1024 × 768 it runs into the map’s buttons, and the opened credits cover it'],
+            ['Planner left, map right', 'The toolbar on the panel’s edge; the weather line at the right, by the Weather button; the scale and the credits above the toolbar', 'Each thing by what it belongs to', 'The opened credits run into the line; at 1024 × 768 the line is as wide as the foot, so it is One stack there']],
+  },
 };
-let Qn = Q.get('q') === 'weather' ? 'weather' : 'fold';
+let Qn = ['weather', 'foot'].includes(Q.get('q')) ? Q.get('q') : 'fold';
 const S = { size: ['390', '360', '200'].includes(Q.get('size')) ? Q.get('size') : '390', lang: Q.get('lang') === 'fi' ? 'fi' : 'en', worst: Q.get('worst') === '1',
-            motion: ['slow', 'reduced'].includes(Q.get('motion')) ? Q.get('motion') : 'normal', scene: Qn === 'fold' ? 'planner' : 'peek', weatherOn: false };
+            motion: ['slow', 'reduced'].includes(Q.get('motion')) ? Q.get('motion') : 'normal', scene: Qn === 'weather' ? 'peek' : 'planner', weatherOn: false,
+            chev: Q.get('chev') === 'row' ? 'row' : 'head', dock: Q.get('dock') === 'bottom' ? 'bottom' : 'side', desk: Q.get('desk') === '1024' ? '1024' : '1440' };
 const setParam = (k, v) => { const u = new URL(location); if (v == null) u.searchParams.delete(k); else u.searchParams.set(k, v); history.replaceState(null, '', u); };
 const W = () => WORDS[S.lang];
 const N = () => (S.worst ? NUMS.worst : NUMS[S.lang]).map((x) => x.replace(/(\d) (?=\d)/g, '$1\u00a0').replace(/(\d) (?=[a-z%])/gi, '$1\u00a0'));
@@ -640,6 +682,9 @@ function Phone(host, cfg) {
   const narrow = Wd < 380;
   const pointName = S.worst ? LONG_NAME : w.via;
   const hasFold = ['line', 'both'].includes(cfg.fold);
+  const chevHead = hasFold && cfg.chev === 'head'; // (tab 3's try: ⌄ at the right of the header row, no row of its own)
+  const headFold = () => (chevHead ? `<button class="tool head-fold" data-a="fold" aria-label="${w.fold}">${I('down', 20)}</button>` : '');
+  if (cfg.strip === 44) sc.classList.add('strip44');
 
   sc.innerHTML = `${mapSvg('phone')}
     <div class="topbar"><button class="tb-btn tb-logo" aria-label="Polku">${I('route', 22)}</button><div class="tb-search">${I('search', 18)}<span>${w.search}</span></div><button class="tb-sport" aria-label="Sport: MTB">${I('bike', 22)}${I('down', 16)}</button><button class="tb-btn" aria-label="Settings">${I('gear', 22)}</button></div>
@@ -657,12 +702,12 @@ function Phone(host, cfg) {
     <div class="undo-pair" hidden><button class="tool pair-mode" aria-label="${w.mode} · ${w.modeSub}">${I('route', 20)}</button><button class="tool" aria-label="Undo">${I('undo')}</button><button class="tool" aria-label="Redo" disabled>${I('redo')}</button></div>
     <div class="wx-bar" hidden></div><button class="wx-pill" hidden></button><div class="wx-line" hidden></div>
     <div class="sheet" data-state="peek">
-      <div class="sheet-top"><span></span><div class="sheet-handle" role="button" tabindex="0" aria-label="${w.size}"></div><span>${hasFold ? `<button class="tool sheet-fold" data-a="fold" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}${cfg.fold === 'both' ? `<button class="tool sheet-away" data-a="away" aria-label="${w.putAway}">${I('close', 20)}</button>` : ''}</span></div>
+      <div class="sheet-top"><span></span><div class="sheet-handle" role="button" tabindex="0" aria-label="${w.size}"></div><span>${hasFold && !chevHead ? `<button class="tool sheet-fold" data-a="fold" aria-label="${w.fold}">${I('down', 20)}</button>` : ''}${cfg.fold === 'both' ? `<button class="tool sheet-away" data-a="away" aria-label="${w.putAway}">${I('close', 20)}</button>` : ''}</span></div>
       <div class="sheet-in">
         <div class="fold-line"></div>
         <div class="sheet-head">
           <div class="warn-row pl-readrow danger"><button class="pl-readrow-go"><span>${I('warn', 22)}</span><span><b>${S.worst ? w.readN : w.read1}</b><small>${w.dark}</small></span><span style="color:var(--muted)">${I('chev', 18)}</span></button><button class="tool pl-readrow-x" aria-label="Hide the row">${I('close', 18)}</button></div>
-          <div class="sheet-row"><div class="sheet-sum"><span class="sum-item"><b>${n[0]}</b><small>${w.distance}</small></span><span class="sum-item sum-time"><b>${n[1]}</b><small>${w.fromNow}</small></span><span class="sum-item"><b>${n[2]}</b><small>${w.asc}</small></span></div><button class="btn done">${w.done}</button></div>
+          <div class="sheet-row"><div class="sheet-sum"><span class="sum-item"><b>${n[0]}</b><small>${w.distance}</small></span><span class="sum-item sum-time"><b>${n[1]}</b><small>${w.fromNow}</small></span><span class="sum-item"><b>${n[2]}</b><small>${w.asc}</small></span></div>${headFold()}<button class="btn done">${w.done}</button></div>
           <div class="kf"><button class="kf-b"><span>${I('climb', 18)}</span><span>${w.climb}</span><span>${I('chev', 16)}</span></button></div>
         </div>
         <div class="card-c" hidden></div>
@@ -686,12 +731,12 @@ function Phone(host, cfg) {
     const d = head.querySelector('.done'); const col = document.createElement('div'); col.className = 'sum-acts';
     col.innerHTML = `<button class="btn warn-chip" aria-label="${S.worst ? w.readN : w.read1}">${I('warn', 18)}${S.worst ? 17 : 1}</button>`; d.replaceWith(col); col.append(d);
   }
-  sheet.classList.toggle('has-fold', hasFold); sheet.classList.toggle('both', cfg.fold === 'both');
+  sheet.classList.toggle('has-fold', hasFold); sheet.classList.toggle('both', cfg.fold === 'both'); sheet.classList.toggle('chev-head', chevHead);
 
   // ---- what the sheet holds
   function cardHtml(kind) {
     if (kind === 'wx') return wxCardHtml();
-    return `${st.cardFrom === 'wx' ? `<button class="btn quiet way-back" data-a="card-back">‹ ${w.backWx}</button>` : ''}<div class="card-top"><span class="card-mark"><span class="wp">1</span></span><h3 class="way-name">${pointName}</h3><button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button></div>
+    return `${st.cardFrom === 'wx' ? `<button class="btn quiet way-back" data-a="card-back">‹ ${w.backWx}</button>` : ''}<div class="card-top"><span class="card-mark"><span class="wp">1</span></span><h3 class="way-name">${pointName}</h3>${headFold()}<button class="tool way-x" data-a="close-card" aria-label="Close">${I('close', 20)}</button></div>
       <div class="sheet-sum" style="flex:none;column-gap:20px"><span class="sum-item"><b>${n[3]}</b><small>${w.thereAt}</small></span><span class="sum-item"><b>${n[4]}</b><small>${w.fromStart}</small></span><span class="sum-item"><b>${n[5]}</b><small>${w.height}</small></span></div>
       <div class="menu-h">${w.atPoint}</div>
       <div class="seg full icons" role="radiogroup"><button role="radio" aria-checked="true">${I('pass', 18)}${w.pass}</button><button role="radio" aria-checked="false">${I('stop', 18)}${w.stop}</button><button role="radio" aria-checked="false">${I('night', 18)}${w.night}</button></div>
@@ -714,9 +759,9 @@ function Phone(host, cfg) {
   }
   function wxLineHtml() {
     const r = reading();
-    if (r.msg) return `<div class="wl-row msg"><button class="tool" aria-label="Play" disabled>${I('play', 18)}</button><span class="wl-msg${r.fail ? ' fail' : ''}">${r.msg}</span>${r.fail ? `<button class="btn">${w.retry}</button>` : ''}<button class="tool" data-a="wx-close" aria-label="Close the timeline">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, true)}`;
+    if (r.msg) return `<div class="wl-row msg"><button class="tool" aria-label="Play" disabled>${I('play', 18)}</button><span class="wl-msg${r.fail ? ' fail' : ''}">${r.msg}</span>${r.fail ? `<button class="btn">${w.retry}</button>` : ''}<button class="tool" data-a="wx-close" aria-label="Close the timeline">${I('close', 18)}</button></div>${strip('wl-strip', 0, cfg.strip || 18, true)}`;
     return `<div class="wl-row"><button class="tool" aria-label="Play">${I('play', 18)}</button><span class="wl-read">${I('drop', 18)}<b>${r.t}°</b><span role="button" tabindex="0" data-a="wx-more" aria-expanded="${st.wxOpen}">${r.wind} · ${r.rain}<small>${r.time} · ${st.pin ? '📍 ' : ''}${r.where}</small></span></span><button class="tool" data-a="wx-more" aria-label="The three days" aria-expanded="${st.wxOpen}">${I(st.wxOpen ? 'down' : 'up', 18)}</button><button class="tool" data-a="wx-close" aria-label="${w.closeTl}">${I('close', 18)}</button></div>
-      <div class="wl-scrub" role="slider" tabindex="0" aria-label="${w.hour}" aria-valuemin="0" aria-valuemax="72" aria-valuenow="${st.hour}" aria-valuetext="${r.time}">${strip('wl-strip', st.hour, 22)}</div><div class="wl-more" ${st.wxOpen ? '' : 'hidden'}><div class="tl-layers" style="padding:4px 2px 8px"><button class="chip" aria-pressed="false">${I('wind', 14)}${w.wind}</button><button class="chip" aria-pressed="false">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip" aria-pressed="false">${I('snow', 14)}${w.snow}</button></div>${strip('tl-strip', st.hour)}<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 2px 0"><span>${w.now}</span><span>${S.lang === 'fi' ? 'ke' : 'Wed'}</span><span>${S.lang === 'fi' ? 'to' : 'Thu'}</span></div></div>`;
+      <div class="wl-scrub" role="slider" tabindex="0" aria-label="${w.hour}" aria-valuemin="0" aria-valuemax="72" aria-valuenow="${st.hour}" aria-valuetext="${r.time}">${strip('wl-strip', st.hour, cfg.strip || 22)}</div><div class="wl-more" ${st.wxOpen ? '' : 'hidden'}><div class="tl-layers" style="padding:4px 2px 8px"><button class="chip" aria-pressed="false">${I('wind', 14)}${w.wind}</button><button class="chip" aria-pressed="false">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip" aria-pressed="false">${I('snow', 14)}${w.snow}</button></div>${strip('tl-strip', st.hour)}<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:2px 2px 0"><span>${w.now}</span><span>${S.lang === 'fi' ? 'ke' : 'Wed'}</span><span>${S.lang === 'fi' ? 'to' : 'Thu'}</span></div></div>`;
   }
   function wxCardHtml() {
     const r = reading();
@@ -736,7 +781,7 @@ function Phone(host, cfg) {
 
   // ---- sizes, as visible heights from the sheet's bottom (js/planner.js: the peek is measured, half is 50 %, full is the screen less 76)
   const full = () => Ht - 76;
-  const measure = (el) => { const was = sheet.style.height, inst = sheet.classList.contains('instant'); sheet.classList.add('instant'); sheet.style.height = Ht + 'px'; const h = (hasFold ? 40 : 18) + el.scrollHeight; sheet.style.height = was; sheet.classList.toggle('instant', inst); return h; };
+  const measure = (el) => { const was = sheet.style.height, inst = sheet.classList.contains('instant'); sheet.classList.add('instant'); sheet.style.height = Ht + 'px'; const h = (hasFold && !chevHead ? 40 : 18) + el.scrollHeight; sheet.style.height = was; sheet.classList.toggle('instant', inst); return h; };
   let H = { folded: 74, peek: 186, card: 400 };
   function sizes() {
     fold.innerHTML = foldHtml();
@@ -818,7 +863,7 @@ function Phone(host, cfg) {
         const dock = st.state === 'full' || Ht - base - wxLine.offsetHeight < 64 + 52;
         wxLine.classList.toggle('docked', dock);
         if (dock) { (st.card ? cardC : head).prepend(wxLine); }
-        else { if (wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet); wxLine.style.bottom = (st.away ? 12 : base) + 'px'; wxH = wxLine.offsetHeight + 8; }
+        else { if (wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet); wxLine.style.bottom = (st.away ? 12 + toast.offsetHeight + 8 : base) + 'px'; wxH = wxLine.offsetHeight + 8 + (st.away ? toast.offsetHeight + 8 : 0); } // (closed, it rides on the note, as on the sheet)
       }
     }
     if (wxLine.hidden && wxLine.parentElement !== sc) sc.insertBefore(wxLine, sheet);
@@ -936,11 +981,12 @@ function Phone(host, cfg) {
   // ---- scenes
   function scene(name) {
     st.away = false; st.pin = false; st.wxState = 'ok'; st.card = null; st.cardFrom = null; cardC.hidden = true; head.hidden = false; st.wxOpen = false; st.hour = 0;
-    if (cfg.question === 'weather') st.wxOn = true;
+    if (cfg.question !== 'fold') st.wxOn = true;
     sizes();
     const atRest = (s) => { if (z === 2 && s === 'peek' && hasFold && cfg.question === 'fold') return 'folded'; return s; }; // (200 %: the planner rests at its line when its peek would cover more than half the screen)
     const start = z === 2 && hasFold && H.peek > Ht * 0.5 ? 'folded' : 'peek';
-    if (name === 'planner' || name === 'peek') rest(start, { anim: false });
+    if (name === 'planner' || name === 'peek' || name === 'credits') rest(start, { anim: false });
+    else if (name === 'closed') { rest('peek', { anim: false }); putAway(); }
     else if (['profile', 'half', 'full', 'folded'].includes(name)) rest(name === 'folded' && !hasFold ? 'peek' : name, { anim: false });
     else if (name === 'card') { rest('peek', { anim: false }); st.wx === 'card' ? (openCard('wx'), openCard('point', 'wx')) : openCard('point'); }
     else if (name === 'here') { st.pin = true; rest('peek', { anim: false }); if (st.wx === 'card') openCard('wx', 'spot'); }
@@ -983,18 +1029,22 @@ function Phone(host, cfg) {
 // ---------------------------------------------------------------- a desktop
 function Desk(host, cfg) {
   const w = W(), n = N();
+  const foot = cfg.question === 'foot'; // (tab 3: #468's toolbar at the bottom, in either dock, at 1440 × 900 or 1024 × 768)
+  const [DW, DH] = foot && S.desk === '1024' ? [1024, 768] : [1440, 900];
   const fig = document.createElement('figure'); fig.className = 'fr desk';
   const sc = document.createElement('div'); sc.className = 'screen desk' + (S.motion === 'reduced' ? ' reduced' : ''); const room = host.clientWidth - (host.clientWidth > 1100 ? 370 : 0); sc.style.zoom = String(Math.max(0.2, Math.min(0.62, room / 1440))); sc.style.setProperty('--slow', S.motion === 'slow' ? 4 : 1);
+  if (foot) { sc.classList.add('foot', 'strip44'); sc.style.width = DW + 'px'; sc.style.height = DH + 'px'; }
   fig.append(sc); host.append(fig);
   const hasFold = ['line', 'both'].includes(cfg.fold);
-  const st = { card: false, folded: false, min: false, away: false, wxOn: cfg.weather, pin: false, wxState: 'ok', hour: 0 };
+  const st = { card: false, folded: false, min: false, away: false, wxOn: cfg.weather, pin: false, wxState: 'ok', hour: 0, half: false, credits: false };
   const pointName = S.worst ? LONG_NAME : w.via;
   function render() {
     const v = viaAt('desk');
     const X = WX(), wxR = st.wxState === 'loading' ? { msg: w.loading } : st.wxState === 'failed' ? { msg: w.failed, fail: true } : { t: String(X.t).replace('-', '−'), where: st.pin ? w.atPin : w.centre }, nowT = `${w.now} · ${hhmm(6, 38)}`;
     const strip2 = wxR.msg ? `<div class="tl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}${wxR.fail ? ` <button class="btn" style="justify-self:start">${w.retry}</button>` : ''}</div>` : `${strip('tl-strip', st.hour)}<div class="tl-now"><div class="big">${I('cloud', 22)}<b>${wxR.t}°</b><small>${wxR.where}</small></div><div>${I('wind', 12)} ${X.wind}</div><div>${I('drop', 12)} ${X.rain}</div></div>`;
     const windowHtml = `<div class="wx-bar"><div class="tl-head"><div class="tl-layers"><b style="display:inline-flex;align-items:center;gap:5px;font-size:13px">${I('speed', 16)}Timeline</b><button class="chip">${I('wind', 14)}${w.wind}</button><button class="chip">${I('temp', 14)}${w.temp}</button><button class="chip" aria-pressed="true">${I('drop', 14)}${w.rain}</button><button class="chip">${I('snow', 14)}${w.snow}</button></div><button class="tool">${I('close', 18)}</button></div><div class="tl-main">${strip2}</div><div class="tl-play"><button class="tool">${I('play', 18)}</button><input type="range" min="0" max="72" value="0" aria-label="Hour"><span class="tl-time">${wxR.msg ? '–' : nowT}</span></div></div>`;
-    const lineHtml = `<div class="wx-line"><div class="wl-row${wxR.msg ? ' msg' : ''}"><button class="tool">${I('play', 18)}</button>${wxR.msg ? `<span class="wl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}</span>${wxR.fail ? `<button class="btn">${w.retry}</button>` : ''}` : `<span class="wl-read">${I('drop', 18)}<b>${wxR.t}°</b><span>${X.wind} · ${X.rain}<small>${nowT} · ${wxR.where}</small></span></span>`}<button class="tool">${I('up', 18)}</button><button class="tool">${I('close', 18)}</button></div>${strip('wl-strip', 0, 18, !!wxR.msg)}</div>`;
+    const scrub = foot ? `<div class="wl-scrub" role="slider" tabindex="0" aria-label="${w.hour}" aria-valuemin="0" aria-valuemax="72" aria-valuenow="0" aria-valuetext="${nowT}">${strip('wl-strip', 0, 44, !!wxR.msg)}</div>` : strip('wl-strip', 0, 18, !!wxR.msg);
+    const lineHtml = `<div class="wx-line"><div class="wl-row${wxR.msg ? ' msg' : ''}"><button class="tool">${I('play', 18)}</button>${wxR.msg ? `<span class="wl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}</span>${wxR.fail ? `<button class="btn">${w.retry}</button>` : ''}` : `<span class="wl-read">${I('drop', 18)}<b>${wxR.t}°</b><span>${X.wind} · ${X.rain}<small>${nowT} · ${wxR.where}</small></span></span>`}<button class="tool" aria-label="The three days">${I('up', 18)}</button><button class="tool" aria-label="${w.closeTl}">${I('close', 18)}</button></div>${scrub}</div>`;
     const wxCard = `<div class="d-card" style="left:420px;bottom:16px"><div class="card-top"><span class="card-mark" style="color:var(--accent)">${I('cloud', 22)}</span><h3 class="way-name">${w.wxCard}</h3><button class="tool">${I('close', 18)}</button></div>${wxR.msg ? `<div class="tl-msg${wxR.fail ? ' fail' : ''}">${wxR.msg}</div>` : `<div class="wx-card"><div class="wc-read">${I('cloud', 30)}<b>${wxR.t}°</b><span>${X.wind} · ${X.gusts}<small>${X.rain} · ${wxR.where}</small></span></div>${strip('tl-strip', 0, 54)}</div>`}<div class="tl-play" style="padding-left:0"><button class="tool">${I('play', 18)}</button><input type="range" aria-label="Hour"><span class="tl-time">${nowT}</span></div><div class="rows"><button class="row"><span>${I('layers', 18)}</span><span><b>${w.onMap}</b></span><span class="val">${w.rain}</span></button></div></div>`;
     // where the card opens: clear of the window and the line (Window, kept clear; A weather line)
     let cardTop = v[1] + 40, cardLeft = v[0] + 14;
@@ -1006,6 +1056,7 @@ function Desk(host, cfg) {
       <div class="rows" style="margin-top:4px"><button class="row"><span>${I('bike', 18)}</span><span><b>${w.sportFrom}</b></span><span class="val">MTB</span>${I('chev', 14)}</button><button class="row"><span>${I('stretch', 18)}</span><span><b>${w.next}</b></span>${I('chev', 14)}</button></div>
       <div class="acts"><button class="btn">${I('flag', 16)}${w.startHere}</button><button class="btn">${I('flag', 16)}${w.endHere}</button><button class="btn">${I('move', 16)}${w.move}</button><button class="btn">${I('rename', 16)}${w.rename}</button><button class="btn danger">${I('trash', 16)}${w.remove}</button></div></div></div></div>`;
     const showWxCard = cfg.wx === 'card' && st.wxOn && !st.card;
+    if (foot) return renderFoot({ card, lineHtml });
     sc.innerHTML = `${mapSvg('desk', st.pin ? [1010, 560] : null)}
       <div class="topbar" style="right:auto;width:740px"><button class="tb-btn tb-logo" style="width:auto;padding:0 12px;border-radius:14px;display:flex;gap:6px;font-weight:800">${I('route', 22)}Polku</button><div class="tb-search">${I('search', 18)}<span>${w.search}</span></div><button class="tb-sport">${I('bike', 20)}MTB${I('down', 14)}</button><button class="tb-btn">${I('gear', 22)}</button></div>
       <div class="d-panel${st.min ? ' min' : ''}" ${st.away ? 'hidden' : ''}><div class="sheet-head"><div class="sheet-row" style="align-items:flex-start"><div class="sheet-sum"><span class="sum-item"><b>${n[0]}</b><small>${w.distance}</small></span><span class="sum-item sum-time"><b>${n[1]}</b><small>${w.fromNow}</small></span><span class="sum-item"><b>${n[2]}</b><small>${w.asc}</small></span></div><button class="tool" aria-label="Move to the bottom">${I('layers', 18)}</button><button class="tool" data-d="min" aria-label="${st.min ? 'Show the details' : 'Minimise'}" title="${st.min ? 'Show the details' : 'Minimise'}">${I(st.min ? 'down' : 'up', 18)}</button>${cfg.fold === 'both' ? `<button class="tool" data-d="away" aria-label="${w.closed}">${I('close', 18)}</button>` : ''}</div>
@@ -1021,6 +1072,69 @@ function Desk(host, cfg) {
       ${showWxCard ? wxCard : ''}
       ${st.card ? card : ''}`;
   }
+  // ---- tab 3: the map's foot
+  function renderFoot({ card, lineHtml }) {
+    const side = S.dock === 'side';
+    const panel = `<div class="d-panel${st.min ? ' min' : ''}${side ? '' : ' bottom'}${st.half && !side ? ' half' : ''}" ${st.away ? 'hidden' : ''} style="${st.half && !side ? `height:${Math.round(DH * 0.5)}px` : ''}"><div class="sheet-head"><div class="sheet-row" style="align-items:flex-start"><div class="sheet-sum"><span class="sum-item"><b>${n[0]}</b><small>${w.distance}</small></span><span class="sum-item sum-time"><b>${n[1]}</b><small>${w.fromNow}</small></span><span class="sum-item"><b>${n[2]}</b><small>${w.asc}</small></span></div><button class="tool" aria-label="${side ? 'Move to the bottom' : 'Move to the side'}">${I('layers', 18)}</button><button class="tool" data-d="min" aria-label="${st.min ? 'Show the details' : 'Minimise'}">${I(st.min ? 'down' : 'up', 18)}</button><button class="tool" data-d="away" aria-label="${w.closed}">${I('close', 18)}</button></div>
+        <div class="kf"><button class="kf-b"><span>${I('climb', 18)}</span><span>${w.climb}</span><span>${I('chev', 16)}</span></button></div></div>
+        ${side || st.half ? `<svg class="prof" viewBox="0 0 300 120" preserveAspectRatio="none" style="padding:0 14px"><path d="M0,90 C30,80 40,40 70,46 S110,20 130,30 S160,95 190,92 S240,80 260,84 S290,70 300,72 L300,120 L0,120Z" fill="#8fb996" opacity=".55"/></svg>
+        <div class="tabs" style="margin:0"><button aria-selected="true">${I('route', 18)}${w.route}</button><button>${I('warn', 18)}${w.check}<span class="badge">1</span></button><button>${I('speed', 18)}${w.go}</button></div>
+        <div class="sheet-body"><div class="rows" style="margin:4px -4px"><button class="row"><span>${I('how')}</span><span><b>${w.how}</b><small>${w.howSub}</small></span><span class="val">${w.howVal}</span></button><button class="row"><span>${I('speed')}</span><span><b>${w.speed}</b><small>${w.speedSub}</small></span><span class="val">${w.speedVal}</span></button><button class="row" data-d="card"><span><span class="wp" style="width:22px;height:22px;font-size:11px;border-width:2px">1</span></span><span><b>${pointName}</b><small>${n[3]} · ${n[4]}</small></span></button></div></div>` : ''}</div>`;
+    const acts = [['fit', 'Show the whole route'], ['swap', 'Reverse'], ['loop', 'Back to start'], ['link', 'Share'], ['download', 'GPX'], ['cloud', 'Save for offline'], ['trash', 'Clear']];
+    const tb = `<div class="d-tb" role="toolbar" aria-label="Planner" ${st.away ? 'hidden' : ''}><span class="tbm mode on">${I('route', 18)}<span class="nm">${w.mode}</span></span><span class="tbm mode">${I('straight', 18)}<span class="nm">${w.straight}</span></span><span class="tbm mode">${I('water', 18)}<span class="nm">${w.water}</span></span><span class="sep"></span>
+      <span class="tbm tb-sport">${I('bike', 18)}<span class="nm">MTB</span>${I('down', 14)}</span><span class="tbm"><span class="tb-two"><span class="tb-cap">${w.styleCap}</span><span>${w.howVal}</span></span>${I('down', 14)}</span><span class="sep"></span>
+      <button class="tool" aria-label="Undo">${I('undo', 18)}</button><button class="tool" disabled aria-label="Redo">${I('redo', 18)}</button><span class="sep" data-g="acts"></span>${acts.map(([k, t], i) => `<button class="tool" data-opt="${i}" aria-label="${t}">${I(k, 18)}</button>`).join('')}<span class="sep"></span><button class="tool" aria-label="More">${I('more', 18)}</button><button class="btn">${w.done}</button></div>`;
+    const scale = `<div class="d-scale${st.credits ? ' open' : ''}"><div class="bar">200 m</div><div class="attrib"><button class="i" data-d="cred" aria-label="${w.credits}" aria-expanded="${st.credits}">${I('info', 18)}</button><span class="cred">${CREDITS}</span></div></div>`;
+    sc.innerHTML = `${mapSvg('desk', st.pin ? [1010, 560] : null)}
+      <div class="topbar" style="right:auto;width:740px"><button class="tb-btn tb-logo" style="width:auto;padding:0 12px;border-radius:14px;display:flex;gap:6px;font-weight:800">${I('route', 22)}Polku</button><div class="tb-search">${I('search', 18)}<span>${w.search}</span></div><button class="tb-sport">${I('bike', 20)}MTB${I('down', 14)}</button><button class="tb-btn">${I('gear', 22)}</button></div>
+      ${panel}${tb}
+      <div class="map-ctrls" style="bottom:16px"><button class="ctrl-btn" aria-label="North up">${I('compass', 18)}</button><button class="ctrl-btn" aria-label="Where I am">${I('locate', 20)}</button><button class="ctrl-btn">3D</button><button class="ctrl-btn ${st.wxOn ? 'wx-on' : ''}" data-d="wx" aria-label="${w.weather}">${I('cloud', 20)}</button><button class="ctrl-btn layers">${w.layers}</button>${st.away ? `<button class="ctrl-btn plan" data-d="plan" aria-label="${w.plan}">${I('route', 20)}</button>` : ''}</div>
+      ${st.wxOn ? lineHtml : ''}${scale}${st.card ? card : ''}`;
+    placeFoot();
+  }
+  function fitTools(tb, maxW) { // as placeTools(): the route's actions from the last, the style's caption, the modes' names not in use, the sport's name, Show the whole route, all the modes' names
+    const acts = [...tb.querySelectorAll('[data-opt]')];
+    tb.classList.remove('fold1', 'fold2', 'foldS', 'fold3'); acts.forEach((a) => { a.hidden = false; });
+    const steps = [...acts.slice(1).reverse().map((a) => () => { a.hidden = true; }), () => tb.classList.add('fold1'), () => tb.classList.add('fold2'), () => tb.classList.add('foldS'), () => { acts[0].hidden = true; }, () => tb.classList.add('fold3')];
+    for (const step of steps) { if (tb.offsetWidth <= maxW) break; step(); }
+    tb.querySelector('[data-g="acts"]').hidden = acts.every((a) => a.hidden);
+  }
+  function placeFoot() {
+    const q = (s) => sc.querySelector(s), tb = q('.d-tb'), line = q('.wx-line'), sca = q('.d-scale'), panel = q('.d-panel'), card = q('.d-card');
+    const side = S.dock === 'side', away = st.away, R = DW - 84; // (the map's column: 60 px and its margins)
+    const L = away || !side ? 12 : 12 + 392 + 12; // the foot's left edge: the side panel's map-facing edge, or the screen's
+    const base = away || side ? 16 : 12 + panel.offsetHeight + 6; // and its floor: the screen's foot, or the bottom panel's top edge
+    const put = (el, x, b) => { el.style.left = x + 'px'; el.style.bottom = b + 'px'; };
+    const topOf = (el) => parseFloat(el.style.bottom) + el.offsetHeight; // px from the frame's bottom
+    const scaleW = 84 + 6 + 24;
+    let row2 = base, tbRight = L; // row2: the floor of what sits on the toolbar
+    if (!away) {
+      const x = cfg.arr === 'corner' ? L + scaleW + 12 : L;
+      put(tb, x, base); fitTools(tb, R - x);
+      row2 = topOf(tb) + 8; tbRight = x + tb.offsetWidth;
+    }
+    let lineTop = null, lineX = null, lineB = null;
+    if (line) {
+      const lw = Math.min(560, R - L); line.style.width = lw + 'px';
+      if (cfg.arr === 'stack') { lineX = L; lineB = row2; }
+      else if (cfg.arr === 'corner') { lineX = Math.min(R - lw, L + Math.max(scaleW + 12, (R - L - lw) / 2)); lineB = row2; }
+      else { lineX = R - lw; lineB = away || tbRight + 12 <= lineX ? base : row2; }
+      put(line, lineX, lineB); lineTop = topOf(line) + 8;
+    }
+    let sb = row2;
+    if (cfg.arr === 'stack') sb = line ? lineTop : row2;
+    else if (cfg.arr === 'corner') sb = base;
+    else if (line && lineX < L + scaleW + 12 && lineB === row2) sb = lineTop;
+    put(sca, L, sb);
+    sca.querySelector('.attrib').style.maxWidth = (R - L - 90) + 'px'; // (the opened credits wrap short of the map's buttons)
+    if (card) { // a card on the map opens above what sits at the foot
+      const k = sc.getBoundingClientRect().width / sc.offsetWidth, s0 = sc.getBoundingClientRect(), v = q('.via').getBoundingClientRect();
+      const vx = (v.left + v.width / 2 - s0.left) / k, vy = (v.top + v.height / 2 - s0.top) / k;
+      const footTop = DH - Math.max(...[tb, line, sca].filter((e) => e && !e.hidden).map(topOf));
+      card.style.left = Math.max(away || !side ? 12 : 416, Math.min(R - 320, vx + 14)) + 'px';
+      card.style.top = Math.max(72, Math.min(vy + 40, footTop - card.offsetHeight - 12)) + 'px';
+    }
+  }
   sc.addEventListener('click', (e) => {
     const a = e.target.closest('[data-d]');
     if (!a) { const r = sc.querySelector('.via')?.getBoundingClientRect(); if (r && Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) < 24) { st.card = true; st.folded = false; render(); } return; }
@@ -1032,11 +1146,15 @@ function Desk(host, cfg) {
     if (d === 'away') st.away = true;
     if (d === 'plan') st.away = false;
     if (d === 'wx') st.wxOn = !st.wxOn;
+    if (d === 'cred') st.credits = !st.credits;
     render();
   });
   function scene(name) {
-    Object.assign(st, { card: false, folded: false, min: false, away: false, pin: false, wxState: 'ok', wxOn: cfg.weather || cfg.question === 'weather' });
+    Object.assign(st, { card: false, folded: false, min: false, away: false, pin: false, wxState: 'ok', wxOn: cfg.weather || cfg.question !== 'fold', half: false, credits: false });
     if (name === 'card') st.card = true;
+    if (name === 'half') st.half = true;
+    if (name === 'credits') st.credits = true;
+    if (name === 'closed') st.away = true;
     if (name === 'here') st.pin = true;
     if (name === 'loading' || name === 'failed') st.wxState = name;
     if (name === 'folded') { st.card = true; st.folded = hasFold; st.min = true; }
@@ -1065,6 +1183,15 @@ const CAP = {
             desk: `<p><b>Desktops:</b> a card beside the panel, 320 px, as #431 says. A point's card on the map takes its place: one at a time.</p>` },
     today: `<p>The window as it is on <code>main</code>.</p>`,
   },
+  foot: {
+    phone: {
+      row: `<p><b>Fold, then away, with ⌄ in a row of its own</b> (question 1’s version). ⌄ sits at the sheet’s top right, above the header, for the planner and every card. Folded, ✕ takes its place and puts the planner away. <b>A weather line</b> rides on the sheet’s edge, with its hour strip 44 px tall.</p>`,
+      head: `<p><b>Fold, then away, with ⌄ in the header row.</b> The sheet’s top is the handle alone, as today. ⌄ sits just before the way out: before <b>Done</b> in the planner’s numbers row, and before ✕ in a card’s title row. That is where the desktop has Minimise and a card’s fold. Folded, the sheet is as in its own row’s version: ✕ at the top right puts the planner away. (✕ at the line’s end broke the worst case’s numbers mid-number at 200 %.) <b>A weather line</b> rides on the sheet’s edge, with its hour strip 44 px tall.</p><p><b>What it saves:</b> 22 px only where the numbers already take two lines (the worst case, and 360 px in English). Elsewhere ⌄ takes their room: at 390 px in English the numbers wrap and the peek is 13 px taller, and in Finnish 20 px taller. At 200 % a card’s title is left 25 px wide, a syllable a line. Compare with <b>⌄: Own row</b>.</p>`,
+    },
+    stack: `<p><b>One stack.</b> Everything at the foot sits at the panel’s corner, one thing on the next: the toolbar on the panel’s edge (#468), the weather line on the toolbar, the scale and the credits on top. In the bottom dock it is the same stack on the panel’s top edge, and it rises with the panel. With the planner closed, the line comes down to the foot and the scale rides on it. The toolbar keeps all the room the map’s buttons leave it, and the opened credits open over the map. Nothing overlaps in either dock, at either size, in any scene.</p>`,
+    corner: `<p><b>Scale in the corner.</b> The scale and the credits keep the map’s bottom left, as maps usually have them. The toolbar starts to their right, and the weather line is centred above it. The scale never moves, but the toolbar loses 126 px. At 1440 × 900 beside the panel it folds two steps further. At 1024 × 768 it doesn’t fit even fully folded, and runs into the map’s buttons. The opened credits cover the toolbar in every dock.</p>`,
+    split: `<p><b>Planner left, map right.</b> The toolbar is on the panel’s edge, and the weather line sits at the right, by the Weather button. When the toolbar leaves room, the line shares its row; when it doesn’t, the line rides a row up. The scale and the credits sit above the toolbar at the left, and go above the line where it reaches the left. The opened credits run into the line at 1440 × 900 and in the bottom dock. At 1024 × 768 beside the panel the line is as wide as the foot, so it becomes One stack.</p>`,
+  },
 };
 
 // ---------------------------------------------------------------- the page
@@ -1076,25 +1203,30 @@ function renderQuestion() {
   document.getElementById('question').innerHTML = `<h2>${qq.title}</h2>${qq.text}<table><thead><tr><th>Alternative</th><th>What it changes</th><th>When it's right</th><th>Its cost</th></tr></thead><tbody>${qq.table.map((r, i) => `<tr class="${current === i + 1 ? 'on' : ''}">${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   const sw = (label, key, opts) => `<span>${label}</span><div class="sw" role="group" aria-label="${label}">${opts.map(([v, t]) => `<button data-k="${key}" data-v="${v}" aria-pressed="${String(S[key]) === v}">${t}</button>`).join('')}</div>`;
   document.getElementById('switches').innerHTML = sw('Screen', 'size', [['390', '390 × 844'], ['360', '360 × 740'], ['200', '200 % (195 × 422)']]) + sw('Words', 'lang', [['en', 'English'], ['fi', 'Finnish']])
-    + `<div class="sw"><button data-k="worst" aria-pressed="${S.worst}">Worst case</button></div>` + (Qn === 'fold' ? sw('Motion', 'motion', [['normal', 'Normal'], ['slow', 'Slow ×4'], ['reduced', 'Reduced']]) : '');
-  const scenes = Qn === 'fold' ? [['planner', 'The planner'], ['card', 'A point’s card'], ['wx', 'Weather on']] : [['peek', 'Peek'], ['folded', 'Folded'], ['half', 'Half'], ['full', 'Full'], ['card', 'A point’s card'], ['here', 'Weather here'], ['loading', 'Loading'], ['failed', 'Failed']];
-  const demos = Qn === 'fold' && current > 0 ? `<span>Play</span><div class="sw" role="group" aria-label="Play the motion"><button data-demo="open">Open full</button><button data-demo="fold">${current === 2 ? 'Swipe away' : 'Fold'}</button>${current === 3 ? '<button data-demo="away">Away</button>' : ''}<button data-demo="ret">Return</button><button data-demo="interrupt">Interrupted drag</button></div>` : '';
+    + `<div class="sw"><button data-k="worst" aria-pressed="${S.worst}">Worst case</button></div>`
+    + (Qn === 'foot' ? sw('⌄', 'chev', [['row', 'Own row'], ['head', 'Header row']]) + sw('Dock', 'dock', [['side', 'Side'], ['bottom', 'Bottom']]) + sw('Window', 'desk', [['1440', '1440 × 900'], ['1024', '1024 × 768']]) : '')
+    + (Qn !== 'weather' ? sw('Motion', 'motion', [['normal', 'Normal'], ['slow', 'Slow ×4'], ['reduced', 'Reduced']]) : '');
+  const scenes = Qn === 'foot' ? [['planner', 'The planner'], ['folded', 'Folded'], ['half', 'Half'], ['card', 'A point’s card'], ['credits', 'Credits open'], ['closed', 'Planner closed']]
+    : Qn === 'fold' ? [['planner', 'The planner'], ['card', 'A point’s card'], ['wx', 'Weather on']] : [['peek', 'Peek'], ['folded', 'Folded'], ['half', 'Half'], ['full', 'Full'], ['card', 'A point’s card'], ['here', 'Weather here'], ['loading', 'Loading'], ['failed', 'Failed']];
+  const demos = Qn !== 'weather' && current > 0 ? `<span>Play</span><div class="sw" role="group" aria-label="Play the motion"><button data-demo="open">Open full</button><button data-demo="fold">${current === 2 && Qn === 'fold' ? 'Swipe away' : 'Fold'}</button>${current === 3 || Qn === 'foot' ? '<button data-demo="away">Away</button>' : ''}<button data-demo="ret">Return</button><button data-demo="interrupt">Interrupted drag</button></div>` : '';
   document.getElementById('scenes').innerHTML = current > 0 ? `<span>Scene</span><div class="sw" role="group" aria-label="Scene">${scenes.map(([v, t]) => `<button data-scene="${v}" aria-pressed="${S.scene === v}">${t}</button>`).join('')}</div>${demos}<div class="sw"><button data-reset>Reset</button></div>` : '';
 }
 function todayHtml() {
-  const f = (pic, cap, wide) => `<figure class="${wide ? 'wide' : ''}"><img src="${SHOTS}${pic}.jpg" alt="${cap.replace(/<[^>]+>/g, '')}" loading="lazy"><figcaption>${cap}</figcaption></figure>`;
+  const f = (pic, cap, wide) => `<figure class="${wide ? 'wide' : ''}"><img src="${(pic.startsWith('desk-foot') ? SHOTS2 : SHOTS)}${pic}.jpg" alt="${cap.replace(/<[^>]+>/g, '')}" loading="lazy"><figcaption>${cap}</figcaption></figure>`;
+  if (Qn === 'foot') return `<div class="today">${f('desk-foot-side-1440', 'Side dock, 1440 × 900: the toolbar under the top bar; the scale and the credits at the map’s bottom left; the timeline’s window in the middle of the foot.', true)}${f('desk-foot-side-1024', 'Side dock, 1024 × 768: the toolbar folded to fit; the window over the route.', true)}${f('desk-foot-bottom-1440', 'Bottom dock, 1440 × 900: the toolbar on the panel’s top edge, the scale and the credits above it at the left, the window above it in the middle.', true)}${f('desk-foot-bottom-1024', 'Bottom dock, 1024 × 768.', true)}</div>`;
   return `<div class="today">${f('phone-peek', 'The peek with the timeline on: the map has the top half.')}${f('phone-point-menu', 'A point’s card with the timeline: about 150 px of map, and the map’s buttons pushed off the top (#344 at 100 %).')}${f('phone-full', 'Full: the timeline covers Route, Check and Go (#377).')}${f('phone-peek-200', '200 %: the timeline under the top bar, the map’s buttons gone (#344).')}${f('phone-full-200', '200 %, full: the sheet ends at the numbers; the profile, the tabs and the list can’t be reached (#453).')}${f('phone-card-200', '200 %, a point’s card.')}${f('desk-card', 'Desktop: the timeline over a point’s card.', true)}</div>`;
 }
 function mount(i) {
   stage.innerHTML = '';
   requestAnimationFrame(() => {
     if (i === 0) { stage.innerHTML = todayHtml(); return; }
-    const fold = Qn === 'fold' ? ['line', 'away', 'both'][i - 1] : 'line';
-    const wx = Qn === 'weather' ? ['window', 'line', 'card'][i - 1] : 'today';
-    const cfg = { fold, wx, question: Qn, weather: Qn === 'weather' || S.scene === 'wx' };
+    const fold = Qn === 'fold' ? ['line', 'away', 'both'][i - 1] : Qn === 'foot' ? 'both' : 'line';
+    const wx = Qn === 'weather' ? ['window', 'line', 'card'][i - 1] : Qn === 'foot' ? 'line' : 'today';
+    const cfg = Qn === 'foot' ? { fold, wx, question: Qn, weather: true, chev: S.chev, strip: 44, arr: ['stack', 'corner', 'split'][i - 1] }
+      : { fold, wx, question: Qn, weather: Qn === 'weather' || S.scene === 'wx' };
     const ph = Phone(stage, cfg), dk = Desk(stage, cfg);
-    const cap = Qn === 'fold' ? CAP.fold[fold] : CAP.weather[wx];
-    ph.fig.insertAdjacentHTML('beforeend', `<figcaption>${cap.phone}${Qn === 'fold' ? CAP.fold.motion : ''}</figcaption>`);
+    const cap = Qn === 'fold' ? CAP.fold[fold] : Qn === 'foot' ? { phone: CAP.foot.phone[S.chev], desk: CAP.foot[cfg.arr] } : CAP.weather[wx];
+    ph.fig.insertAdjacentHTML('beforeend', `<figcaption>${cap.phone}${Qn !== 'weather' ? CAP.fold.motion : ''}</figcaption>`);
     dk.fig.insertAdjacentHTML('beforeend', `<figcaption>${cap.desk}</figcaption>`);
     frames = { ph, dk };
     const sc = S.scene === 'wx' ? 'planner' : S.scene;
@@ -1110,7 +1242,7 @@ document.addEventListener('click', (e) => {
   if (b.dataset.demo && frames) frames.ph.demos[b.dataset.demo === 'ret' ? 'ret' : b.dataset.demo]();
 });
 document.querySelectorAll('.cv-tabs a').forEach((a) => a.addEventListener('click', (e) => {
-  e.preventDefault(); Qn = a.dataset.q; S.scene = Qn === 'fold' ? 'planner' : 'peek'; setParam('q', Qn);
+  e.preventDefault(); Qn = a.dataset.q; S.scene = Qn === 'weather' ? 'peek' : 'planner'; setParam('q', Qn);
   QUESTIONS[Qn].names.forEach((t, j) => { items[j].textContent = t; });
   renderQuestion(); setActive(current);
 }));
