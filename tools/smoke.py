@@ -10036,14 +10036,16 @@ def route_card(chrome):
     close = lambda pg: (pg.js("polku.planner.cards.close(); true"), time.sleep(0.3))
 
     # the map stays where you left it when the card goes (#513): panned with the card open, then ✕ or the back gesture
-    def keeps_view(pg, name, touch):
+    def keeps_view(pg, name, touch, zoom=None):
         for how in ('✕', 'the back gesture'):
             press(pg, on_line(pg, 0, 0.3), f'{name}: the line', touch)
             if st(pg)['kind'] != 'route':  # (no card, nothing to close: a back gesture would leave the page)
                 fails.append(f"{name}: the route's card for {how}: {st(pg)['kind'] or 'no'} card")
                 continue
             pg.js("new Promise((ok) => setTimeout(ok, 1200))")  # (the card's own look for its spot, 900 ms after it opens)
-            a = pg.js("(() => { polku.map.panBy([300, 0], { duration: 0 }); const c = polku.map.getCenter(); return [c.lng, c.lat]; })()")
+            # (zoom: a centre with more decimals than five, as a map at that zoom has)
+            a = pg.js("(() => { polku.map.panBy([300, 0], { duration: 0 }); const c = polku.map.getCenter(); return [c.lng, c.lat]; })()" if not zoom else
+                      f"(() => {{ const c = polku.map.getCenter(); polku.map.jumpTo({{ center: [c.lng + 0.0000049, c.lat + 0.0000049], zoom: {zoom} }}); const n = polku.map.getCenter(); return [n.lng, n.lat]; }})()")
             time.sleep(0.8)
             if how == '✕':
                 press(pg, at(pg, "[...document.querySelectorAll('.pl-way.card .way-x')].find((b) => b.getClientRects().length)"), f'{name}: ✕', touch)
@@ -10213,6 +10215,7 @@ def route_card(chrome):
                 fails.append(f"{name}: Next stretch ›: {s['kind']} card “{s['title']}”, Back “{s['back']}”")
         close(pg)
         keeps_view(pg, name, touch)
+        keeps_view(pg, name, touch, 20.5)
         # the route's view: the same card, without the pill, Edit this stretch or Avoid this spot, and the note with Edit
         pg.js("polku.planner.done(); true")
         time.sleep(0.6)

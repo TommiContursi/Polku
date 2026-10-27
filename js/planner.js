@@ -4627,7 +4627,8 @@ export class Planner {
   // follows the map here, in the popstate, and MapLibre finds the map already there.
   keepView() {
     const c = this.map.getCenter(), z = this.map.getZoom(), b = this.map.getBearing(), pt = this.map.getPitch();
-    history.replaceState(history.state, '', `#${z.toFixed(2)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}${b || pt ? `/${Math.round(b * 10) / 10}/${Math.round(pt)}` : ''}`);
+    const d = Math.ceil((z * Math.LN2 + Math.log(512 / 360 / 0.5)) / Math.LN10); // (MapLibre's own hash: a pixel's worth of degrees at this zoom)
+    history.replaceState(history.state, '', `#${z.toFixed(2)}/${c.lat.toFixed(d)}/${c.lng.toFixed(d)}${b || pt ? `/${Math.round(b * 10) / 10}/${Math.round(pt)}` : ''}`);
   }
 
   // The first point's peek: the next point first, then a round trip from here, any length one tap (#232)
