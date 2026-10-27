@@ -38,8 +38,9 @@ const MODE_SHORT = { auto: 'Follow', line: 'Straight', water: 'Water' };
 const MODES = ['auto', 'line', 'water'];
 const MODE_KEY = { auto: 'P', line: 'S', water: 'W' };
 // what the desktop toolbar shortens where room runs out (placeTools()): the style's caption, the names of
-// the modes not in use, then all the modes' names, then the style's name (the longest beside a 1024 px window's panel)
-const FOLDS = ['fold1', 'fold2', 'foldS', 'fold3', 'fold4'];
+// the modes not in use, then all the modes' names, then the style's name (the longest beside a 1024 px window's panel);
+// last, beside the side panel, a second row
+const FOLDS = ['fold1', 'fold2', 'foldS', 'fold3', 'fold4', 'tb-rows'];
 // how a sport goes along a line, for "MTB legs can't be paddled on the same line"
 const VERB = { mtb: 'ridden', gravel: 'ridden', road: 'ridden', hike: 'walked', trailrun: 'run', run: 'run', paddle: 'paddled', swim: 'swum' };
 const MODE_DESC = { auto: 'Along paths and roads, in the route style', line: 'Straight: off the trail, or across a gap', water: 'Polku’s water router: round land and marked hazards' };
@@ -5236,12 +5237,13 @@ export class Planner {
       const over = () => (inPanel ? box.scrollWidth > box.clientWidth + 1 : box.getBoundingClientRect().right > limit);
       // in turn: the route's actions from the last, the style's caption, the names of the modes not in use, the
       // sport's name (its icon stays), Show the whole route (an action to keep in sight), all the modes' names,
-      // then the style's name shortens
+      // then the style's name shortens; last, beside the side panel of a narrow window, a second row above the first
       box.classList.remove(...FOLDS);
       setOpts(box, opts.length);
       const steps = [];
       for (let n = opts.length - 1; n >= 1; n--) steps.push(() => setOpts(box, n));
       steps.push(() => box.classList.add('fold1'), () => box.classList.add('fold2'), () => box.classList.add('foldS'), () => setOpts(box, 0), () => box.classList.add('fold3'), () => box.classList.add('fold4'));
+      if (side) steps.push(() => box.classList.add('tb-rows'));
       for (const step of steps) {
         if (!over()) break;
         step();

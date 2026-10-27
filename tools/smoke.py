@@ -8557,6 +8557,18 @@ def toolbox(chrome):
             fails.append(f'{name}: Show the whole route is neither on the toolbar nor in More')
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
+    # a narrower window (200 % on a 1920 px screen): fully folded, the toolbar still doesn't fit beside the panel, so it
+    # takes a second row, growing upward, clear of the map's buttons, and the scale and the credits ride above it (#468)
+    name = '960x700'
+    pg = page(960, 700, False)
+    pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+    placed(pg)
+    pg.js(SETTLED)
+    e = pg.js(ON_EDGE)
+    if not (e['edge'] and e['clear'] and e['scale'] and e['apart'] and e['credits']):
+        fails.append(f'{name}: the toolbar {e}')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+    pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251, #356, #387" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 

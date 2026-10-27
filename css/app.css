@@ -2019,6 +2019,9 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools.fold2 .tb-modes button[aria-checked="false"] span, .pl-tools.fold3 .tb-modes button span { display: none; }
 .pl-tools.foldS .sportbtn > span { display: none; }
 .pl-tools.fold4 .stylebtn .two span { max-width: 5em; overflow: hidden; text-overflow: ellipsis; }
+/* last, beside the side panel of a narrow window: a second row, growing up from the map's foot, before the map's buttons
+   (their 60 px column, 12 px from the edge and 12 px apart) */
+.pl-tools.desk.tb-rows { height: auto; flex-wrap: wrap; max-width: calc(100vw - var(--pl-left, 0px) - 84px); padding: 8px; }
 @media (hover: hover) { .tbtn.danger:hover:not(:disabled) { color: var(--bad); } }
 
 /* the toolbar's tooltips (ui.js tooltip()) */
