@@ -847,10 +847,10 @@
    "device": "phone",
    "mode": "default",
    "depth": "one",
-   "text": 7.397437984452975,
-   "muted": 5.080174912080309,
-   "other": 7.679237461019832,
-   "icon": 7.344458152782713,
+   "text": 7.085873614143645,
+   "muted": 4.849374044880208,
+   "other": 7.6194487364868255,
+   "icon": 7.008006434206392,
    "edge": 1,
    "edgeMin": 1,
    "lowest": {
@@ -868,10 +868,10 @@
    "device": "phone",
    "mode": "default",
    "depth": "one",
-   "text": 9.75776829467237,
-   "muted": 8.467850256729001,
-   "other": 8.797013330419473,
-   "icon": 9.064061236730128,
+   "text": 9.84510126924634,
+   "muted": 8.573863857659662,
+   "other": 9.022166500464238,
+   "icon": 9.309240736439328,
    "edge": 1,
    "edgeMin": 1,
    "lowest": {
@@ -889,10 +889,10 @@
    "device": "phone",
    "mode": "default",
    "depth": "one",
-   "text": 10.973112193364067,
-   "muted": 8.397644479666045,
-   "other": 9.514191061858902,
-   "icon": 9.74883718377469,
+   "text": 11.35676486217702,
+   "muted": 8.48762820905813,
+   "other": 9.897822776559263,
+   "icon": 10.14454641908721,
    "edge": 1,
    "edgeMin": 1,
    "lowest": {
@@ -910,12 +910,12 @@
    "device": "phone",
    "mode": "default",
    "depth": "one",
-   "text": 13.335468466697005,
-   "muted": 10.568213960913681,
-   "other": 10.848754160720754,
+   "text": 14.299816378553476,
+   "muted": 11.253559464577576,
+   "other": 11.432028816102886,
    "icon": 10.452779041056136,
-   "edge": 0.9933687002652519,
-   "edgeMin": 0.9602122015915119,
+   "edge": 0.9869584438549955,
+   "edgeMin": 0.9217506631299734,
    "lowest": {
     "text": "Stop",
     "muted": "Search places or pas",
@@ -931,10 +931,10 @@
    "device": "desk",
    "mode": "default",
    "depth": "one",
-   "text": 7.4495598218856705,
-   "muted": 5.0783637603033185,
-   "other": 4.965256954736595,
-   "icon": 4.179740878084076,
+   "text": 7.1111138240792355,
+   "muted": 4.84766227972367,
+   "other": 4.739677003089761,
+   "icon": 4.112264319447095,
    "edge": 0.9619662418958195,
    "edgeMin": 0.6607142857142857,
    "lowest": {
@@ -952,11 +952,11 @@
    "device": "desk",
    "mode": "default",
    "depth": "one",
-   "text": 10.157409939887293,
-   "muted": 6.855894698315188,
+   "text": 10.37647054894992,
+   "muted": 6.988036172942917,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.9543650793650793,
+   "edge": 0.9540787105220095,
    "edgeMin": 0.5892857142857143,
    "lowest": {
     "text": "1 to read before you go",
@@ -973,11 +973,11 @@
    "device": "desk",
    "mode": "default",
    "depth": "one",
-   "text": 10.094326454155196,
-   "muted": 6.899760876397314,
+   "text": 10.289803340663424,
+   "muted": 7.036568030648977,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.9778392577688353,
+   "edge": 0.9776672591448242,
    "edgeMin": 0.8035714285714286,
    "lowest": {
     "text": "1 to read before you go",
@@ -994,11 +994,11 @@
    "device": "desk",
    "mode": "default",
    "depth": "one",
-   "text": 11.934188697733294,
-   "muted": 8.304578209631845,
+   "text": 12.554651198897883,
+   "muted": 8.80099859417721,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.9134794359053081,
+   "edge": 0.9115315958179256,
    "edgeMin": 0.23214285714285715,
    "lowest": {
     "text": "Night",
@@ -1187,14 +1187,14 @@
    "muted": 6.421518687662248,
    "other": 5.527510807795804,
    "icon": 5.929200384316168,
-   "edge": 0.963780472401162,
-   "edgeMin": 0.8541114058355438,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Stop",
     "muted": "Tap where it goes",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "tools"
    }
   },
   {
@@ -1208,14 +1208,14 @@
    "muted": 6.720532166260923,
    "other": 5.715614391391374,
    "icon": 5.929200384316168,
-   "edge": 0.3868716907510011,
-   "edgeMin": 0.07142857142857142,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Stop",
     "muted": "To the next change of sport,",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "fab"
+    "edge": "tools"
    }
   },
   {
@@ -1229,14 +1229,14 @@
    "muted": 6.746530307786867,
    "other": 5.8230540284644565,
    "icon": 5.929200384316168,
-   "edge": 0.35339130813268743,
-   "edgeMin": 0,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Stop",
     "muted": "Its sport, how it\u2019s drawn an",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "fab"
+    "edge": "tools"
    }
   },
   {
@@ -1250,14 +1250,14 @@
    "muted": 7.146426897272069,
    "other": 6.036805093908788,
    "icon": 5.929200384316168,
-   "edge": 0.9626334367713678,
-   "edgeMin": 0.8607427055702918,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Stop",
     "muted": "Give it a name of your own",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "tools"
    }
   },
   {
@@ -1271,7 +1271,7 @@
    "muted": 5.076910355825712,
    "other": 5.361301280338402,
    "icon": 5.077973569174494,
-   "edge": 0.9033864134737318,
+   "edge": 0.9623015873015874,
    "edgeMin": 0.6607142857142857,
    "lowest": {
     "text": "1 to read before you go",
@@ -1292,8 +1292,8 @@
    "muted": 5.274494460298068,
    "other": 5.806132885970538,
    "icon": 5.129795899188292,
-   "edge": 0.5442186397260517,
-   "edgeMin": 0.1388888888888889,
+   "edge": 0.9503968253968255,
+   "edgeMin": 0.5535714285714286,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
@@ -1313,8 +1313,8 @@
    "muted": 5.322482462214681,
    "other": 5.791288172959312,
    "icon": 5.129795899188292,
-   "edge": 0.525001242535366,
-   "edgeMin": 0.375,
+   "edge": 0.9682539682539681,
+   "edgeMin": 0.7142857142857143,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
@@ -1334,7 +1334,7 @@
    "muted": 5.610037748265269,
    "other": 5.8852264895316235,
    "icon": 5.129795899188292,
-   "edge": 0.8508381471093482,
+   "edge": 0.9146825396825398,
    "edgeMin": 0.23214285714285715,
    "lowest": {
     "text": "1 to read before you go",
@@ -2615,14 +2615,14 @@
    "muted": 7.10407310146126,
    "other": 5.929200384316168,
    "icon": 5.929200384316168,
-   "edge": 0.9617910824807376,
-   "edgeMin": 0.8421750663129973,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Stop",
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "tools"
    }
   },
   {
@@ -2636,14 +2636,14 @@
    "muted": 7.10407310146126,
    "other": 5.929200384316168,
    "icon": 5.929200384316168,
-   "edge": 0.5782156256294188,
-   "edgeMin": 0,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Stop",
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "fab"
+    "edge": "tools"
    }
   },
   {
@@ -2657,7 +2657,7 @@
    "muted": 5.542194057656496,
    "other": 5.929200384316168,
    "icon": 5.129795899188292,
-   "edge": 0.8830292603433936,
+   "edge": 0.9623015873015874,
    "edgeMin": 0.6607142857142857,
    "lowest": {
     "text": "1 to read before you go",
@@ -2678,8 +2678,8 @@
    "muted": 5.542194057656496,
    "other": 5.929200384316168,
    "icon": 5.129795899188292,
-   "edge": 0.48443106357855176,
-   "edgeMin": 0.2857142857142857,
+   "edge": 0.9682539682539681,
+   "edgeMin": 0.7142857142857143,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
@@ -3045,7 +3045,7 @@
     {
      "t": "Via 1",
      "color": "rgb(20, 27, 23)",
-     "min": 10.69
+     "min": 10.72
     },
     {
      "t": "01:00",
@@ -3313,10 +3313,10 @@
     "device": "phone",
     "mode": "default",
     "depth": "one",
-    "text": 7.397437984452975,
-    "muted": 5.080174912080309,
-    "other": 7.679237461019832,
-    "icon": 7.344458152782713,
+    "text": 7.085873614143645,
+    "muted": 4.849374044880208,
+    "other": 7.6194487364868255,
+    "icon": 7.008006434206392,
     "edge": 1,
     "edgeMin": 1,
     "lowest": {
@@ -3331,62 +3331,62 @@
     {
      "t": "Search places or pas",
      "color": "rgb(197, 206, 201)",
-     "min": 5.1
+     "min": 4.84
     },
     {
      "t": "Zoom in to see every trail",
      "color": "rgb(197, 206, 201)",
-     "min": 5.1
+     "min": 4.85
     },
     {
      "t": "3D",
      "color": "rgb(242, 245, 243)",
-     "min": 7.81
+     "min": 7.54
     },
     {
      "t": "Weather",
      "color": "rgb(242, 245, 243)",
-     "min": 7.67
+     "min": 7.39
     },
     {
      "t": "Via 1",
      "color": "rgb(242, 245, 243)",
-     "min": 11.8
+     "min": 11.78
     },
     {
      "t": "01:00",
      "color": "rgb(242, 245, 243)",
-     "min": 11.38
+     "min": 11.28
     },
     {
      "t": "there at",
      "color": "rgb(197, 206, 201)",
-     "min": 7.7
+     "min": 7.69
     },
     {
      "t": "1.76 km",
      "color": "rgb(242, 245, 243)",
-     "min": 11.49
+     "min": 11.4
     },
     {
      "t": "from the start",
      "color": "rgb(197, 206, 201)",
-     "min": 7.7
+     "min": 7.65
     },
     {
      "t": "98 m",
      "color": "rgb(242, 245, 243)",
-     "min": 11.68
+     "min": 11.58
     },
     {
      "t": "height",
      "color": "rgb(197, 206, 201)",
-     "min": 7.79
+     "min": 7.78
     },
     {
      "t": "At this point",
      "color": "rgb(197, 206, 201)",
-     "min": 7.71
+     "min": 7.65
     },
     {
      "t": "Pass by",
@@ -3396,62 +3396,62 @@
     {
      "t": "Stop",
      "color": "rgb(242, 245, 243)",
-     "min": 9.09
+     "min": 8.92
     },
     {
      "t": "Night",
      "color": "rgb(242, 245, 243)",
-     "min": 9.21
+     "min": 9.18
     },
     {
      "t": "Sport from here",
      "color": "rgb(242, 245, 243)",
-     "min": 11.51
+     "min": 11.41
     },
     {
      "t": "To the next change of sport,",
      "color": "rgb(197, 206, 201)",
-     "min": 7.77
+     "min": 7.66
     },
     {
      "t": "MTB",
      "color": "rgb(127, 220, 174)",
-     "min": 7.6
+     "min": 7.59
     },
     {
      "t": "Next stretch, to End",
      "color": "rgb(242, 245, 243)",
-     "min": 11.71
+     "min": 11.75
     },
     {
      "t": "Its sport, how it\u2019s drawn an",
      "color": "rgb(197, 206, 201)",
-     "min": 7.53
+     "min": 7.48
     },
     {
      "t": "Edit this point",
      "color": "rgb(197, 206, 201)",
-     "min": 7.03
+     "min": 6.82
     },
     {
      "t": "Move",
      "color": "rgb(242, 245, 243)",
-     "min": 10.08
+     "min": 9.79
     },
     {
      "t": "Tap where it goes",
      "color": "rgb(197, 206, 201)",
-     "min": 6.4
+     "min": 6.05
     },
     {
      "t": "Rename",
      "color": "rgb(242, 245, 243)",
-     "min": 9.96
+     "min": 9.58
     },
     {
      "t": "Give it a name of your own",
      "color": "rgb(197, 206, 201)",
-     "min": 6.35
+     "min": 6.06
     }
    ]
   },
@@ -3466,10 +3466,10 @@
     "device": "phone",
     "mode": "default",
     "depth": "one",
-    "text": 9.75776829467237,
-    "muted": 8.467850256729001,
-    "other": 8.797013330419473,
-    "icon": 9.064061236730128,
+    "text": 9.84510126924634,
+    "muted": 8.573863857659662,
+    "other": 9.022166500464238,
+    "icon": 9.309240736439328,
     "edge": 1,
     "edgeMin": 1,
     "lowest": {
@@ -3484,62 +3484,62 @@
     {
      "t": "Search places or pas",
      "color": "rgb(197, 206, 201)",
-     "min": 10.13
+     "min": 10.79
     },
     {
      "t": "Zoom in to see every trail",
      "color": "rgb(197, 206, 201)",
-     "min": 10.39
+     "min": 11.05
     },
     {
      "t": "3D",
      "color": "rgb(242, 245, 243)",
-     "min": 13.97
+     "min": 14.82
     },
     {
      "t": "Weather",
      "color": "rgb(242, 245, 243)",
-     "min": 13.95
+     "min": 14.81
     },
     {
      "t": "Via 1",
      "color": "rgb(242, 245, 243)",
-     "min": 12.57
+     "min": 12.8
     },
     {
      "t": "01:00",
      "color": "rgb(242, 245, 243)",
-     "min": 12.57
+     "min": 12.8
     },
     {
      "t": "there at",
      "color": "rgb(197, 206, 201)",
-     "min": 8.57
+     "min": 8.73
     },
     {
      "t": "1.76 km",
      "color": "rgb(242, 245, 243)",
-     "min": 12.75
+     "min": 13.02
     },
     {
      "t": "from the start",
      "color": "rgb(197, 206, 201)",
-     "min": 8.73
+     "min": 8.97
     },
     {
      "t": "98 m",
      "color": "rgb(242, 245, 243)",
-     "min": 12.94
+     "min": 13.34
     },
     {
      "t": "height",
      "color": "rgb(197, 206, 201)",
-     "min": 8.7
+     "min": 8.97
     },
     {
      "t": "At this point",
      "color": "rgb(197, 206, 201)",
-     "min": 8.57
+     "min": 8.73
     },
     {
      "t": "Pass by",
@@ -3549,62 +3549,62 @@
     {
      "t": "Stop",
      "color": "rgb(242, 245, 243)",
-     "min": 9.77
+     "min": 9.81
     },
     {
      "t": "Night",
      "color": "rgb(242, 245, 243)",
-     "min": 10.55
+     "min": 10.78
     },
     {
      "t": "Sport from here",
      "color": "rgb(242, 245, 243)",
-     "min": 12.56
+     "min": 12.78
     },
     {
      "t": "To the next change of sport,",
      "color": "rgb(197, 206, 201)",
-     "min": 8.45
+     "min": 8.6
     },
     {
      "t": "MTB",
      "color": "rgb(127, 220, 174)",
-     "min": 8.76
+     "min": 9.03
     },
     {
      "t": "Next stretch, to End",
      "color": "rgb(242, 245, 243)",
-     "min": 13.12
+     "min": 13.4
     },
     {
      "t": "Its sport, how it\u2019s drawn an",
      "color": "rgb(197, 206, 201)",
-     "min": 8.96
+     "min": 9.26
     },
     {
      "t": "Edit this point",
      "color": "rgb(197, 206, 201)",
-     "min": 9.82
+     "min": 10.23
     },
     {
      "t": "Move",
      "color": "rgb(242, 245, 243)",
-     "min": 14.26
+     "min": 14.87
     },
     {
      "t": "Tap where it goes",
      "color": "rgb(197, 206, 201)",
-     "min": 9.47
+     "min": 9.88
     },
     {
      "t": "Rename",
      "color": "rgb(242, 245, 243)",
-     "min": 13.49
+     "min": 13.93
     },
     {
      "t": "Give it a name of your own",
      "color": "rgb(197, 206, 201)",
-     "min": 9.08
+     "min": 9.38
     }
    ]
   },
@@ -3623,14 +3623,14 @@
     "muted": 6.746530307786867,
     "other": 5.8230540284644565,
     "icon": 5.929200384316168,
-    "edge": 0.35339130813268743,
-    "edgeMin": 0,
+    "edge": 1,
+    "edgeMin": 1,
     "lowest": {
      "text": "Stop",
      "muted": "Its sport, how it\u2019s drawn an",
      "other": "MTB",
      "icon": "arrow",
-     "edge": "fab"
+     "edge": "tools"
     }
    },
    "real": [
