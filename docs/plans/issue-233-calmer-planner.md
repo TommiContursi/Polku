@@ -345,6 +345,36 @@ The optional introduction (#114, phase 19's #189) teaches deeper features later 
 - **mobile-native:** a sideways swipe on the cards could chain into the browser's back gesture (now contained). For building: the sheet's vertical swipe and the cards' horizontal scroll (#89's too), and markers as a map layer rather than buttons over the map.
 - **Not checked:** real phones, and people (§8).
 
+## Room for the map (step 3, 2026-10-27, for the user's choice)
+
+Step 3 of #233's order: #338 and #303 as one way to make room for the map, with #377's timeline, within #453's and #344's 200 % limits. Two questions were open; the rest of #233 is decided. **The mock-up:** [mockups/issue-338-room-for-the-map.html](mockups/issue-338-room-for-the-map.html) (`?q=fold` or `?q=weather`, the alternative in the picker at the top; Today is the live app on `main` at 414690d).
+
+**Today** (390 × 844, a route drawn, the timeline on): the peek leaves the map the top half. A point's card and the timeline leave about 150 px of map and push the map's buttons off the top (#344 at 100 %). At half and full the timeline covers Route, Check and Go (#377). At 200 % the timeline sits under the top bar, the map's buttons are gone (#344), and the full sheet ends at its numbers (#453). On desktops the timeline covers a card on the map.
+
+### Question 1: one way to fold, for the planner and the cards?
+
+What a swipe below the peek does (#338's own question) decides the rest:
+- **Fold to a line:** a size below the peek, about 74 px, showing the warnings' count and the route's numbers. The whole line is a button that brings back the size it left, and the toolbox gives way to Undo and Redo. A card has the same three sizes: folded to its title and ✕, as now, and its own full height. The handle folds and unfolds; today a tap there opens the profile, and the header's tap still does. The arrows step through the sizes, and ✕ is the only close. Desktops: Minimise as today, and a card on the map folds to its title row.
+- **Swipe away:** no new size. A swipe below the peek is §5's Put away: the route stays, the note offers Open, and Plan brings the planner back as it was. A swipe down on a card closes it. Cards keep one size, so #434 isn't done. Desktops as today.
+- **Fold, then away:** the line first. A single swipe stops there; a second swipe, or the line's ✕, puts the planner away. Cards fold, and a folded card swiped down closes.
+- **What changes:** in the first and third, a swipe up on a card opens the card full. Today it closes the card and raises the list.
+- **At 200 % (#453, #344):** the planner rests at its line where its peek would cover more than half the screen, and at full the whole sheet scrolls as one. The map's column keeps Locate and Layers. It lets go of the compass first, then 3D, then Weather (<kbd>T</kbd>, and in Layers), then Show the whole route (in ⋯). With Swipe away, the peek leaves room for Layers alone.
+- **The motion:** swipes use `js/sheet.js`'s spring as it is (damping 0.85, response 0.3 s, projection 0.998, rubber band 0.55). It starts at the finger's speed and can be grabbed mid-way. Taps use the app's 0.22 s change of height. The line and the numbers cross-fade as the sheet passes between them, so nothing jumps at rest. Coming back from Put away, the sheet slides up the way it went, using the quick drawer's opening (260 ms, `--ease-drawer`); today it appears in place, so this part is proposed. Under reduced motion the sheet follows the finger and takes its size at once with a 150 ms fade, as the app does now.
+
+### Question 2: where does the weather timeline go?
+
+Drawn on Fold to a line. Each alternative keeps Weather here, <kbd>T</kbd>, and a loading or failed forecast that shows no numbers.
+- **Window, kept clear:** today's window, while the sheet is at its line or peek and the map's buttons fit. Otherwise it becomes its line above the sheet (the temperature and the hour), docked into the sheet at full. A tap on the line brings the sheet to its peek and the window back. Desktops: a card on the map opens clear of it.
+- **A weather line:** the timeline is one line: play, the reading at the hour chosen and where it's from, the hour, and ⌃ for the three days. Dragging along its strip changes the hour. It rides on the sheet's edge, sits on a card, and docks into the sheet at full or where it would reach the top bar. The layer chips move to Layers' weather tiles. Desktops: the same line at the map's foot.
+- **Weather card (#431):** a card of 25d's kind, one at a time, that folds as every card does. A point's card puts it away, and while it's away the map's weather layers stay with no hour on screen.
+- **#508's reading** of the route at your time goes in the window's or the line's reading, or in a row of the card.
+
+### Checked with the design skills (2026-10-27)
+
+- **apple-design:** one sheet for the planner and its cards, as Maps does, with sizes it can be thrown between. The spring is interruptible and carries the finger's speed (the app's own). A fold follows its own path back. The rubber band past the last size is the app's. Folding needs a way without a drag (WCAG 2.5.7): the handle's tap and arrows, and the line's button. The handle's touch area is 44 px over the sheet's edge, though it still looks 18 px.
+- **animate:** the sheet is moved by hand, so a spring and no fixed curve. A fold is a frequent action, so it gets no flourish: the app's spring is nearly critically damped (0.85), and nothing else on the screen moves with it. The line's cross-fade is opacity only (150 ms, ease-out). A desktop card's fold opens in `--t-open` and closes in `--t-press`, as the app's tokens say. Reduced motion keeps the fade and drops the travel.
+- **break-ui** (360 × 740 and 200 %, Finnish, 17 warnings, 123.4 km, 7 h 45 min, ↑2 345 ↓2 310 m, a 66-character place name, −12 °, 14 m/s, sleet). Fixed in the mock-up: the folded numbers broke letter by letter and ran off the line at 200 %, so they now wrap between groups and the chevron goes first. A folded card with the long name was nine lines tall, so its title now stops at two lines, with the full name a tap away and in the button's label. The weather line made a column of single words at 200 %, so its details now take a row of their own. The window's line and a folded weather card took four lines, so they now show the temperature and the hour. The put-away note broke words at 200 % in the mock-up's copy (the app's note was right). What held: every loading and failed state (a sentence, Retry, no numbers); the desktop's line and card in Finnish; the docked toolbox at 360 px. A card's own title breaks between syllables at 200 %, which is the card as it is today, not this step's to change.
+
 ## Built
 
 ### 25a, the toolbox and the header (2026-10-20)
