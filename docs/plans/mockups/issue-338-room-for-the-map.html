@@ -148,7 +148,7 @@ button { font: inherit; color: inherit; }
 .card-top { display: flex; align-items: center; gap: 8px; min-height: 52px; }
 .card-top .way-name { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .card-c { flex: none; padding: 0 8px 10px 12px; }
-.card-c[hidden], .sheet-head[hidden] { display: none; }
+.card-c[hidden], .sheet-head[hidden], .sheet-body[hidden] { display: none; }
 .screen.phone .tool { width: 30px; height: 32px; }
 .screen.phone .way-x, .screen.phone .pl-readrow-x { width: 44px; height: 44px; }
 /* the weather timeline as today (js/wxmap.js): chips, the strip, the reading, play */
@@ -372,6 +372,8 @@ button { font: inherit; color: inherit; }
 .pf-cur::before { content: ''; position: absolute; left: -5px; top: -5px; width: 12px; height: 12px; border: 2px solid #1c2420; border-radius: 50%; background: #fff; box-sizing: border-box; }
 .pf-night { position: absolute; top: 2px; transform: translateX(-50%); display: grid; place-items: center; width: 18px; height: 18px; border-radius: 9px; background: #fff; color: #1c2420; pointer-events: none; }
 .pf-axis { display: flex; justify-content: space-between; margin-top: 2px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wx-card .wc-read { flex-wrap: wrap; row-gap: 2px; } /* (the reading goes under the temperature where the card is narrow: 200 %) */
+.wx-card .wc-read > span { flex: 1 1 150px; min-width: 0; overflow-wrap: break-word; }
 .wc-follow { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; padding: 6px 10px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 650; }
 .wc-follow .ic { flex: none; }
 .ws-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; }
@@ -505,7 +507,7 @@ button { font: inherit; color: inherit; }
     <nav class="cv-tabs" aria-label="Questions">
       <a href="?q=fold" data-q="fold">1. How the planner and the cards fold</a>
       <a href="?q=weather" data-q="weather">2. Where the weather timeline goes</a>
-      <a href="?q=foot" data-q="foot">3. The chosen pair: ⌄ and the map’s foot</a>
+      <a href="?q=foot" data-q="foot">3. The chosen pair, and the weather as a card</a>
     </nav>
   </header>
   <section class="cv-q" id="question"></section>
@@ -996,7 +998,7 @@ function Phone(host, cfg) {
     fold.innerHTML = foldHtml();
     H.folded = (cfg.fold === 'both' ? 40 : 18) + Math.max(56, fold.scrollHeight) + 4;
     H.peek = Math.min(full(), measure(head) + (st.wx === 'line' && st.wxOn && hasDock() ? 0 : 0));
-    if (st.card) H.card = Math.min(Math.round(Ht * 0.56), measure(cardC));
+    if (st.card) H.card = Math.min(cfg.v2 && st.card === 'wx' ? full() : Math.round(Ht * 0.56), measure(cardC)); // (the weather card has one size: all of it, up to full)
   }
   const hasDock = () => false;
   function ladder(from) {
@@ -1031,7 +1033,7 @@ function Phone(host, cfg) {
     st.state = name;
     sheet.classList.toggle('instant', !anim || reduced());
     sheet.dataset.state = name;
-    sheet.classList.toggle('scroll-all', z === 2 && name === 'full');
+    sheet.classList.toggle('scroll-all', z === 2 && (name === 'full' || (cfg.v2 && name === 'card' && st.card === 'wx'))); // (the weather card at 200 %: the whole card scrolls to its 48 hours)
     sheet.style.height = heightOf(name) + 'px';
     if ((!anim || reduced()) && sheet.animate && anim) sheet.animate([{ opacity: 0.6 }, { opacity: 1 }], { duration: 150 * slow(), easing: 'ease-out' });
     sheet.querySelectorAll('.sheet-head, .card-c, .sheet-body').forEach((e) => { e.style.opacity = ''; });
@@ -1051,6 +1053,7 @@ function Phone(host, cfg) {
     if (tools.classList.contains('docked') && (st.card || folded)) pair.hidden = false;
     pair.classList.toggle('folded', folded && !st.card);
     if (cfg.v2 && st.card === 'wx') pair.hidden = true; // (the weather card has the sheet: the planner and its tools are behind it)
+    if (cfg.v2) body.hidden = !!st.card; // (a card has the whole sheet: the planner's list isn't under it)
     if (cfg.v2) { // the top row's ✕ when folded: the weather's turns it off, a card's closes it, the planner's puts it away
       const x = sheet.querySelector('.sheet-away'), [a, l] = st.card === 'wx' ? ['wx-off', w.wxOff] : st.card ? ['close-card', 'Close'] : ['away', w.putAway];
       if (x) { x.dataset.a = a; x.setAttribute('aria-label', l); }

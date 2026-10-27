@@ -236,7 +236,7 @@ The map in view at peek on a 390 phone: 82.7 % today, about 91 % when there's no
 ## 11. Acceptance criteria
 
 - **Layouts:** 390 × 844, 360 × 740, 375 × 667, 1440 × 900 and 1024 × 768; light and dark; Finnish-length words; 200 % zoom. No planner control on a phone under 44 × 44 px; none overlapping another or off the screen; no number cut; no name cut with "…"; the toolbox clear of the map's buttons or docked; the map's column clear of the top bar.
-- **The weather line's hour strip** (step 3) is at least 44 px tall, on phones and desktops, at every size and at 200 %. Its folded pill is at least 44 px tall too, and its name for a screen reader is its reading. Since 2026-10-27.
+- **The weather's hour strip** (step 3) is at least 44 px tall, on phones and desktops, at every size and at 200 %. The weather's folded line is at least 44 px tall too. While the weather is away, the Weather button's name for a screen reader includes the hour it shows and whether it's following the route. Since 2026-10-27.
 - **The workflows** in part a–d's checks, and the review's test script with people.
 - **Nothing lost:** every control and section of today's planner is where the change/move/keep table puts it, doing what it did; the regression list passes in every part.
 
@@ -348,7 +348,7 @@ The optional introduction (#114, phase 19's #189) teaches deeper features later 
 
 ## Room for the map (step 3, 2026-10-27, for the user's choice)
 
-Step 3 of #233's order: #338 and #303 as one way to make room for the map, with #377's timeline, within #453's and #344's 200 % limits. Two questions were open; the rest of #233 is decided. **The mock-up:** [mockups/issue-338-room-for-the-map.html](mockups/issue-338-room-for-the-map.html) (`?q=fold`, `?q=weather` or `?q=foot`, the alternative in the picker at the top; Today is the live app on `main` at 414690d).
+Step 3 of #233's order: #338 and #303 as one way to make room for the map, with #377's timeline, within #453's and #344's 200 % limits. Two questions were open; the rest of #233 is decided. **The mock-up:** [mockups/issue-338-room-for-the-map.html](mockups/issue-338-room-for-the-map.html) (`?q=fold`, `?q=weather` or `?q=foot`, the alternative in the picker at the top; Today is the live app on `main` at 414690d). `?q=foot` opens on the latest design, [the weather as a card](#the-weather-as-a-card-2026-10-27-for-the-users-ok); its **Version** switch shows the weather line's version from before.
 
 **Today** (390 × 844, a route drawn, the timeline on): the peek leaves the map the top half. A point's card and the timeline leave about 150 px of map and push the map's buttons off the top (#344 at 100 %). At half and full the timeline covers Route, Check and Go (#377). At 200 % the timeline sits under the top bar, the map's buttons are gone (#344), and the full sheet ends at its numbers (#453). On desktops the timeline covers a card on the map.
 
@@ -400,16 +400,11 @@ Drawn on Fold to a line. Each alternative keeps Weather here, <kbd>T</kbd>, and 
 
 ### Chosen (2026-10-27)
 
-- **Question 1: Fold, then away.** One rule for the planner and the cards: one swipe down folds, a second closes, and ✕ closes too.
-- **Question 2: A weather line,** with the layer chips behind ⌃. Its hour strip is at least 44 px tall (§11).
-- **The foot's order, on phones and desktops alike** (2026-10-27): the toolbar against the planner (the sheet's edge on phones, the panel's edge on desktops), the weather line on the toolbar, then the scale. On a phone the floating toolbox, or Undo and Redo while a card is open or the planner folded, keeps the sheet's edge, and the line or its pill sits on it. Below 380 px the line's details take a row of their own beside ⌃, ⌄ and ✕. The earlier phone order (the line on the sheet's edge, the toolbox above it) stays behind the mock-up's Weather switch.
-- **The weather line folds** (asked for on 2026-10-27, drawn for the user's OK). Folded, it is Window, kept clear's pill: the active layer's icon, the temperature, the hour and ⌃. The pill is at least 44 px tall, and a screen reader hears its reading: the layer, the temperature, the hour, where it's from, the wind and the rain.
-  - It folds by the planner's and the cards' rule: a swipe down or ⌄ folds it, and with the three days open the first one closes them. A tap or a swipe up on the pill opens it, and ✕ on the line closes the weather.
-  - It also folds by itself where the whole line would have to go into the sheet, over the planner or a card: at 200 % with the peek or a card, for one. On desktops that is where it would cover a card on the map or reach the top bar.
-  - At full it docks into the sheet, as the line does. Opened by hand where it doesn't fit, it goes into the sheet, and a folded sheet opens to take it in.
-- **Left to settle before the choice is recorded:** where ⌄ goes on phones, and how the map's foot is shared on desktops. The mock-up's third tab (`?q=foot`) draws both on the chosen pair: Fold, then away with the weather line and its 44 px strip.
+- **Question 1: Fold, then away.** One rule for the planner and the cards: one swipe down folds, a second closes, and ✕ closes too. **⌄ has a row of its own** (decided 2026-10-27; the measurements are below).
+- **Question 2: A weather line,** with the layer chips behind ⌃, and its hour strip at least 44 px tall (§11). **Changed on 2026-10-27:** the line is the weather card's folded state, not a layer of its own, and there is no pill: [the weather as a card](#the-weather-as-a-card-2026-10-27-for-the-users-ok). The line's earlier version, with the foot's order and the pill, stays behind the mock-up's **Version** switch.
+- **The map's foot on desktops:** not One stack. It holds #468's toolbar at the planner's edge, the scale and the credits; in the bottom dock the toolbar keeps the panel's top edge, as now. The weather has its own place on the same edge, by the map's column (below).
 
-### ⌄'s place on phones: its own row, or the header row (for the user's choice)
+### ⌄'s place on phones: its own row, or the header row (decided: its own row)
 
 The header row is the planner's numbers row, with ⌄ just before **Done**, and a card's title row, with ⌄ just before ✕. That is where the desktop already has Minimise and a card's fold. Folded, the sheet is the same in both versions: ✕ at the top right puts the planner away. In the header try, ✕ at the line's end broke the worst case's numbers mid-number at 200 %.
 
@@ -431,7 +426,7 @@ The header row saves the 22 px only where the numbers take two lines anyway: the
 
 **Recommendation: keep ⌄'s own row** (question 1's version). It costs 22 px at the peek everywhere, and nothing else wraps. The header row fits only by making the numbers or a card's title wrap.
 
-### The map's foot on desktops (for the user's choice)
+### The map's foot on desktops (not chosen: the weather got a place of its own)
 
 #468 (approved) puts the toolbar at the bottom of the planner's map-facing edge in both docks. With the weather line, the scale and the credits, four things share the map's foot. Three arrangements, drawn at 1440 × 900 and 1024 × 768 in both docks, with the planner, at half, with a card, with the credits open and with the planner closed:
 - **One stack:** the toolbar on the panel's edge, the weather line on the toolbar, then the scale and the credits on top, all at the panel's corner. In the bottom dock, the stack sits on the panel's top edge and rises with it. With the planner closed, the line comes down to the foot.
@@ -446,6 +441,58 @@ What the mock-up shows:
 **Recommendation: One stack.** It is the only one that holds everywhere, it is one rule for both docks and every width, and its order is the phone's: the toolbar against the planner, the weather line on it. **It costs:** the corner by the panel is the busiest part of the map, and the line is farther from the Weather button than in Planner left, map right.
 
 **For #468, whichever is chosen:** at the bottom, the map's buttons are level with the toolbar, so beside the panel at 1024 × 768 it has 524 px. Today's toolbar there, under the top bar, is 600 px; fully folded it is about 525 px, which just fits in English. Longer words (the mock-up's Finnish) don't fit: one more fold step, or a second row, is #468's to decide. The bottom panel raised to the top bar stays #468's own open point too.
+
+### The weather as a card (2026-10-27, for the user's OK)
+
+Asked for on 2026-10-27 and drawn in the mock-up's third tab (`?q=foot`, The weather card). **One rule:** everything folds down to one line on its own edge: the planner, the cards and the weather. A thing that was moved folds where it is, keeping its bottom edge, and a double-click brings any of them home. Sides are named after the planner and the map's column, never left and right, so 22b's right dock mirrors them (the mock-up's **Dock: Right**).
+
+**Phones.**
+- The weather is a card in the sheet, as a point's card is: one thing at a time, with Fold, then away's three states.
+  - **Open** (the Weather button): the reading, the layers and the 48 hours, in the sheet's place. The planner and its tools wait behind it.
+  - **Folded** (a swipe down or ⌄): its reading is a line in the sheet's place. A tap or a swipe up opens it.
+  - **Away** (a second swipe): the planner comes back exactly as it was. ✕ turns the weather off.
+  - The planner and the weather are never on screen together, and nothing stacks above the toolbar.
+- A point's card opened over the weather takes the sheet, and its ✕ brings the weather back as it was.
+- **There is no pill.** The Weather button is the column's bottom item, below Layers, and shows the weather is on.
+  - Only when the map isn't showing now (an hour you chose, or following the route) does the hour sit beside it, with "Following the route" when it is.
+  - Where the hour would be over the toolbox, the column rises above the toolbox's row.
+  - While the weather is on, Weather is the last of the map's buttons to go.
+- At 200 % the weather card can take the whole height, so its 48 hours are in reach.
+
+**Desktops.**
+- **The planner folds down.** Beside the map it becomes its numbers' line at the bottom of its side, with the toolbar beside it. In the bottom dock it becomes the panel's line, with the toolbar on its top edge. ✕ puts it away, as now.
+- **The weather is a strip again:** the reading, the layers and the 48 hours.
+  - Its home is on the foot by the map's column, on the toolbar's edge: the screen's foot beside the side panel, or the bottom panel's top edge in the bottom dock.
+  - Folded, it is a 240 px line in the same place: the temperature, the rain and the hour.
+  - It keeps its drag and resize, and a double-click on its title row brings it home.
+- **It shares the edge with the toolbar by tiers.**
+  - The strip opens where the toolbar can make room by putting its route actions in ⋯.
+  - Otherwise it starts as its line, and the toolbar folds to make room for it, as `placeTools()` does.
+  - Where not even the line fits, the weather is away: the Weather button shows it is on, with its hour, as on phones.
+  - Opened by hand where there's no room, it opens above what sits at the planner's side.
+- Show the whole route fits the route clear of the weather. Weather sits below Layers.
+- A point's card on the map with no room above the foot starts folded to its title.
+
+**Following the route** (phones and desktops).
+- The profile keeps distance on its axis, since stops and nights make the time jump.
+- Pointing at the profile on a desktop, or dragging along it on a phone, moves a marker on the route. A line above the profile says the distance, the time you get there and Colour by's reading. Desktops keep today's tip with the rest.
+- With Colour by on wind, temperature or rain and the weather on, the map's weather goes to the hour you get there. The strip, the line or the Weather button says "Following the route".
+- On a desktop it lets go when the pointer leaves the profile. On a phone the point stays until you tap the map or change Colour by.
+- Dragging the weather's 48 hours sets the hour, and with it the departure, as today, and stops following. Following never changes the departure.
+- Past 48 hours the map's weather stays at its last hour and says "The map's weather reaches 2 days". The profile's colours go on. A longer forecast for the map is an issue of its own.
+- **What it costs:** no new request within 48 hours.
+  - The map's grid holds 49 hours of forecast, so following only picks another hour from it: `applyHour()` in `js/wxmap.js`, the same work as dragging the strip.
+  - The profile already has each point's arrival time (`tAtWind`).
+  - Today the map's hour is also the route's departure (`onHour` → `planner.setLeave` in `js/main.js`), so following must not send it on.
+  - Past 48 hours the grid would need the 10-day cells (`forecastCells(list, { long: true })`): one more request of the same size per view.
+
+**What the mock-up shows** (measured 2026-10-27, in every scene, both window sizes, all three docks, English, Finnish and the worst case):
+- **Beside the panel at 1440 × 900** the edge has 940 px. The toolbar is 1099 px with all its route actions, 859 with them in ⋯, and 525 fully folded (in Finnish 1121, 881 and 566). So the strip opens there only by hand. The line takes the edge with the toolbar folded three steps: the style's caption, the names of the modes not in use, and the sport's name.
+- **In the bottom dock:** at 1440 the strip opens beside the toolbar, with the route actions in ⋯. At 1024 × 768 it starts as its line.
+- **Beside the panel at 1024 × 768** even the toolbar alone needs every step, so the weather is away there, on the Weather button. In Finnish the toolbar doesn't fit at all, which is #468's open point.
+- Nothing else overlaps.
+
+**For 22b and 22c** (#179, #186), which make the other parts movable: the same rules, noted in [22's plan](22-drawer.md).
 
 ## Built
 
