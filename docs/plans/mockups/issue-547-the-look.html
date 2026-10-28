@@ -40,7 +40,7 @@ button { font: inherit; color: inherit; }
 .bar > span { min-width: 74px; font-size: 12.5px; font-weight: 700; opacity: .8; }
 .sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
 .sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; font-weight: 600; font-size: 13px; }
-.sw button[hidden] { display: none; }
+.sw button[hidden], .bar [hidden] { display: none; }
 .sw button[aria-pressed="true"] { background: var(--switch-on); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 .sw button:focus-visible, .act:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
 .about { margin: 14px 0 10px; padding: 12px 16px; border-radius: 14px; background: var(--page-card); max-width: 1040px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
@@ -200,6 +200,10 @@ body.bare #stage { margin: 0; gap: 0; }
   --good: #3ddc71; --ok: #ffd34d; --warn: #ffa24a;
   --danger-soft: #3a2124; --seg-on: #3f4843;
 }
+/* B's map buttons, the plan's question 3: a (drawn), b (the reading glass's saturation), c (thin and vivid) */
+.screen[data-dir="b"][data-fab="b"] { --thin-filter: blur(24px) saturate(105%); }
+.screen[data-dir="b"][data-fab="c"] { --thin-bg: rgba(255, 255, 255, .66); --thin-filter: blur(24px) saturate(180%); }
+.screen[data-dir="b"][data-fab="c"][data-theme="dark"] { --thin-bg: rgba(8, 10, 9, .67); }
 /* D, the map's margin: nothing floats. The top bar, the planner and the panel are the margin round the map, solid and
    flat to the screen's edges; the map sits in a rounded window with a neatline round it, as a printed map does. The
    map's buttons are bays of the margin; the card at a point is a flat callout. No blur and no shadow. With Match the
@@ -321,7 +325,7 @@ body.bare #stage { margin: 0; gap: 0; }
 /* version 2's polish (B and D) */
 .screen[data-dir="b"] .layers { border: 0; box-shadow: var(--sh-s), inset 0 0 0 1.5px rgba(255, 255, 255, .85), 0 0 0 1px rgba(16, 24, 20, .26); }
 .screen[data-dir="b"][data-theme="dark"] .layers { box-shadow: var(--sh-s), inset 0 0 0 1.5px rgba(255, 255, 255, .5), 0 0 0 1px rgba(0, 0, 0, .7); }
-.screen:is([data-dir="b"], [data-dir="d"]) .tbtn.dim { opacity: .6; color: var(--muted-glass); }
+.screen:is([data-dir="b"], [data-dir="d"]) .tbtn.dim { opacity: .7; color: var(--muted-glass); }
 .brand-solo { position: absolute; width: 44px; height: 44px; border-radius: 12px; background: var(--accent-bg); color: #fff; display: grid; place-items: center; box-shadow: var(--sh-s); }
 .screen[data-dir="b"] .brand-pill { border-radius: 13px; padding-left: 5px !important; }
 /* D's shapes: the window onto the map, the margin's strips, the bays and tabs that grow out of it */
@@ -356,6 +360,7 @@ body.bare #stage { margin: 0; gap: 0; }
       <span id="l-device">Device</span><div class="sw" data-k="device" aria-labelledby="l-device"><button data-v="phone">Phone</button><button data-v="desk">Desktop</button></div></div>
     <div class="bar"><span id="l-mode">Mode</span><div class="sw" data-k="mode" aria-labelledby="l-mode"><button data-v="default">Default</button><button data-v="contrast">More contrast</button><button data-v="clear">Reduced transparency</button></div>
       <span id="l-depth">Depth</span><div class="sw" data-k="depth" aria-labelledby="l-depth"><button data-v="one">One shadow</button><button data-v="thick">Thicker when bigger</button></div>
+      <span class="only-b" id="l-fab">B’s map buttons</span><div class="sw only-b" data-k="fab" aria-labelledby="l-fab"><button data-v="a">a. 84 %, colours lifted</button><button data-v="b">b. 84 %, as the reading glass</button><button data-v="c">c. 66 %, thin and vivid</button></div>
       <span id="l-cmp">Compare</span><div class="sw" data-k="compare" aria-labelledby="l-cmp"><button data-v="0">Alone</button><button data-v="1">Beside today</button><button data-v="depth">Both depths</button></div></div>
   </div>
 
@@ -420,13 +425,13 @@ const DIRS = {
   c: { name: 'C, a paper map in its case', card: 'thick', hint: 'thin',
     about: 'Calm and warm: the chrome made of the map’s own material. Warm paper surfaces (95 %, a light blur) in light; in dark, the night map’s blue-black lifted a step. Warm text and greys, a printed two-tone hairline round every surface. The route in the orienteering overprint’s purple-magenta, earthy state colours. The accent stays: <b>Plan</b>’s green is decided.' },
   b: { name: 'B, clear water over the land', card: 'thick', hint: 'thick', bar: 'thick', logo: 'solo',
-    about: 'Light and open: the map shows through everything that floats, calmer than version 1. <b>Two glasses:</b> what you read (the top bar, the hint, the undo, the planner and the card) sits on a glass at 72 % white with a 32 px blur and the map’s colours barely lifted (saturate 105 %), so a sheet stays one quiet tone over any map; the map’s buttons keep the map’s colours lifted (160 %) under a whiter glass (84 %), so the group stays closer to one tint (over Maastokartta its lake and its built-up pink still show through, about half as much as in version 1). A light inner edge and a soft outer hairline (26 %); in more contrast it becomes a 3:1 rim. Words on the glass take a darker grey, green and red. <b>In dark</b> a near-black glass, 73 % for what you read and 84 % for the map’s buttons, with the same rim as version 1. Check’s warning box is solid, and in dark the chosen segment is lighter than its track. The logo stands alone, the Layers tile takes the glass’s edge, and an undo that can’t undo stays readable in grey. The state colours have dark versions.' },
+    about: 'Light and open: the map shows through everything that floats, calmer than version 1. <b>Two glasses:</b> what you read (the top bar, the hint, the undo, the planner and the card) sits on a glass at 72 % white with a 32 px blur and the map’s colours barely lifted (saturate 105 %), so a sheet stays one quiet tone over any map; the map’s buttons keep the map’s colours lifted (160 %) under a whiter glass (84 %), so the group stays closer to one tint: over Maastokartta its lake and its built-up pink still show through, about half as much as in version 1 and about three times as much as today (the switch under Mode tries the reading glass’s saturation, and a thin glass). A light inner edge and a soft outer hairline (26 %); in more contrast it becomes a 3:1 rim. Words on the glass take a darker grey, green and red. <b>In dark</b> a near-black glass, 73 % for what you read and 84 % for the map’s buttons, with the same rim as version 1. Check’s warning box is solid, and in dark the chosen segment is lighter than its track. The logo stands alone, the Layers tile takes the glass’s edge, and an undo that can’t undo stays readable in grey. The state colours have dark versions.' },
   d: { name: 'D, the map’s margin', ui: 'd',
     about: 'Nothing floats: the interface is the map’s margin. <b>Solid and flat:</b> the top bar, the planner’s sheet and the desktop’s panel run to the screen’s edges, white in light and near-black in dark, and the map sits in a rounded window with a neatline round it, as a printed map does. The map’s buttons and the undo are bays that grow out of the margin, the zoom hint a tab under the top bar, and the card at a point on a desktop a flat callout with the same line. No blur and no shadow, so nothing depends on the map under it: words read the same over every map, reduced transparency changes nothing, and the phone draws no glass. <b>Match the map</b>, a possible choice in Settings (#323), gives the margin the map’s tone: white round Maastokartta, black round the aerial photos and the night map. The depth switch does nothing here, since D has no shadows. State colours at 5:1 or more, with dark versions.' },
 };
 const VER = { 1: ['today', 'a', 'b1', 'c'], 2: ['today', 'b', 'd'] };
 const MODE_NAME = { default: 'the default look', contrast: 'more contrast (prefers-contrast: more, or Settings’ High contrast)', clear: 'reduced transparency' };
-const S = { ver: '2', dir: 'b', map: 'forest', theme: 'light', device: 'phone', mode: 'default', depth: 'one', compare: '0' };
+const S = { ver: '2', dir: 'b', map: 'forest', theme: 'light', device: 'phone', mode: 'default', depth: 'one', compare: '0', fab: 'a' };
 const q = new URLSearchParams(location.search);
 for (const k of Object.keys(S)) if (q.get(k)) S[k] = q.get(k);
 if (q.get('bare') === '1') document.body.classList.add('bare');
@@ -598,7 +603,7 @@ async function frame(dir, extra, depth = S.depth) {
   const scale = phone ? 1 : Math.min(1, (S.compare === '1' ? avail : avail) / w);
   fig.innerHTML = `<figcaption><b>${d.name}</b>${extra || ''} · ${MAP_NAME[S.map]}, ${S.theme === 'match' ? `match the map (${th})` : th}, ${phone ? 'phone' : 'desktop'}, ${MODE_NAME[S.mode]}</figcaption>
     <div class="scroller"><div class="box" style="width:${w * scale}px;height:${h * scale}px">
-      <div class="screen ${phone ? 'phone' : 'desk'}" data-ver="${S.ver}" data-dir="${dir}" data-theme="${th}" data-mode="${S.mode}" data-depth="${depth}" style="transform:scale(${scale});transform-origin:0 0">
+      <div class="screen ${phone ? 'phone' : 'desk'}" data-ver="${S.ver}" data-dir="${dir}" data-theme="${th}" data-mode="${S.mode}" data-depth="${depth}" data-fab="${S.fab}" style="transform:scale(${scale});transform-origin:0 0">
         <div class="map"><img alt="" crossorigin="anonymous" src="${MAPS}${MAP_FILE[S.map]}-${S.device}.jpg">${routeSvg(r)}</div>
         <div class="ui">${(d.ui === 'd' ? (phone ? phoneUiD : deskUiD) : (phone ? phoneUi : deskUi))(d, r)}</div>
       </div></div></div>
@@ -617,6 +622,7 @@ async function render() {
   if (S.theme === 'match' && S.dir !== 'd') S.theme = themeOf();
   for (const b of document.querySelectorAll('.sw[data-k="dir"] button[data-ver]')) b.hidden = b.dataset.ver !== S.ver;
   for (const b of document.querySelectorAll('.sw button[data-only]')) b.hidden = b.dataset.only !== S.dir;
+  for (const e of document.querySelectorAll('.only-b')) e.hidden = S.dir !== 'b';
   for (const [k, v] of Object.entries(S)) for (const b of document.querySelectorAll(`.sw[data-k="${k}"] button`)) b.setAttribute('aria-pressed', String(b.dataset.v === v));
   history.replaceState(null, '', '?' + new URLSearchParams(S));
   const d = DIRS[S.dir];
@@ -747,7 +753,7 @@ async function measure(fig) {
       return rgb;
     };
   };
-  const res = { text: [], muted: [], other: [], icon: [], edge: [] }, marks = [];
+  const res = { text: [], muted: [], other: [], icon: [], edge: [], off: [] }, marks = [];
   const walk = document.createTreeWalker(sc.querySelector('.ui'), NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
     const t = n.textContent.trim(), el = n.parentElement; if (!t || el.closest('.layers')) continue; // the Layers word is on its picture (#553)
@@ -769,9 +775,11 @@ async function measure(fig) {
   for (const ic of sc.querySelectorAll('.ui svg.ic')) {
     const bg = bgFn(ic); if (!bg) continue;
     const fg = parse(getComputedStyle(ic).color), [x0, y0, x1, y1] = rel(ic.getBoundingClientRect());
-    if (ic.closest('.sport, .brand-m, .brand-solo, .dim')) continue; // white on the accent, not on the glass; or off, which needs no contrast
+    if (ic.closest('.sport, .brand-m, .brand-solo')) continue; // white on the accent, not on the glass
     let min = 99;
     for (let y = Math.floor(y0 * k); y < Math.ceil(y1 * k); y += 2) for (let x = Math.floor(x0 * k); x < Math.ceil(x1 * k); x += 2) { const b = bg(x, y); min = Math.min(min, ratio(lum(...over(fg, ...b)), lum(...b))); }
+    const off = ic.closest('.dim'), op = off ? +getComputedStyle(off).opacity : 1;
+    if (off) { let o = 99; for (let y = Math.floor(y0 * k); y < Math.ceil(y1 * k); y += 2) for (let x = Math.floor(x0 * k); x < Math.ceil(x1 * k); x += 2) { const b = bg(x, y); o = Math.min(o, ratio(lum(...over({ ...fg, a: op }, ...b)), lum(...b))); } res.off.push({ t: 'undo', min: o }); continue; } // off: no floor, shown
     res.icon.push({ t: ic.querySelector('use').getAttribute('href').slice(3), min });
     if (min < 3) marks.push([x0, y0, x1, y1, 'icon']);
   }
@@ -817,13 +825,14 @@ async function measure(fig) {
   out.innerHTML = `<table><tr><th>Measured over this map</th><th>Lowest</th><th></th></tr>${rowsT}
     <tr><td>${edgeLabel}</td><td>${res.edge.length ? `${hc && ver2 && edgeMin.share < 1 ? '<span class="fail">' : '<span>'}${Math.round(edgeAvg * 100)} % on average</span>` : '—'}</td><td>${res.edge.length ? `lowest ${Math.round(Math.min(1, edgeMin.share) * 100)} % (${edgeMin.t})` : 'no floating surfaces'}</td></tr>
     ${fabs.length > 1 ? `<tr><td>The map’s buttons: the most any two differ in tint over this map (CIEDE2000; about 2 is the least you’d notice side by side)</td><td>${fabDE.toFixed(1)}</td><td>${fabs.length} buttons</td></tr>` : ''}
+    ${res.off.length ? `<tr><td>The undo that can’t undo: its lowest contrast (off, so no floor; it should show, and read dimmer than redo)</td><td>${worst(res.off).min.toFixed(2)}:1</td><td></td></tr>` : ''}
     <tr><td>The map in the clear: share of the screen under no surface${win ? ' (the margin counts)' : ''}</td><td>${Math.round(clear * 100)} %</td><td></td></tr></table>
     <p class="note">Words need 4.5:1 and icons 3:1 under every pixel of them (the lowest is shown). The glass is modelled from each surface’s computed colour and backdrop-filter over the map picture and the route; checked against Chrome’s own render of the same frames, it reads 0.06 or less high (2026-10-28). The Layers word sits on the map picture, not a surface, and isn’t counted here (#553).</p>`;
   const layer = document.createElement('div'); layer.style.cssText = 'position:absolute;inset:0;pointer-events:none';
   for (const [x0, y0, x1, y1, kind] of marks) { const m = document.createElement('div'); m.className = `mark-box${kind === 'icon' ? ' icon' : ''}`; m.hidden = true; m.style.cssText = `left:${x0}px;top:${y0}px;width:${x1 - x0}px;height:${y1 - y0}px`; layer.append(m); }
   sc.append(layer);
   const sum = { dir: sc.dataset.dir, map: S.map, device: S.device, mode: S.mode,
-    ver: sc.dataset.ver, theme: sc.dataset.theme, depth: sc.dataset.depth, clear, fabDE,
+    ver: sc.dataset.ver, theme: sc.dataset.theme, depth: sc.dataset.depth, fab: sc.dataset.fab, clear, fabDE, off: res.off.length ? worst(res.off).min : null,
     text: worst(res.text).min, muted: worst(res.muted).min, other: worst(res.other.filter((x) => !x.big)).min, icon: worst(res.icon).min, edge: edgeAvg, edgeMin: Math.min(1, edgeMin.share),
     lowest: { text: worst(res.text).t, muted: worst(res.muted).t, other: worst(res.other.filter((x) => !x.big)).t, icon: worst(res.icon).t, edge: edgeMin.t } };
   return sum;
