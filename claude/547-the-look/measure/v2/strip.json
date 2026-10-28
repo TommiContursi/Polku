@@ -1,0 +1,1109 @@
+[
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "inside",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   2.93,
+   1.4,
+   1.1,
+   0.91
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "inside",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   2.93,
+   1.4,
+   1.1,
+   0.91
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "inside",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   9.82,
+   7.92,
+   8.52,
+   9.92
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "inside",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   9.82,
+   7.92,
+   8.52,
+   9.92
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "partial",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   2.93,
+   1.4,
+   1.11,
+   1.14
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "partial",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "partial",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   9.83,
+   7.91,
+   8.51,
+   9.47
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 1,
+  "place": "partial",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "inside",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.54,
+   0.72,
+   0.57,
+   0.46
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "inside",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   1.54,
+   0.72,
+   0.57,
+   0.46
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "inside",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   3.93,
+   3.06,
+   3.26,
+   3.65
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "inside",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   3.93,
+   3.06,
+   3.26,
+   3.65
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "partial",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.52,
+   0.72,
+   0.57,
+   0.58
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "partial",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "partial",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   3.91,
+   3.06,
+   3.26,
+   3.55
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 2,
+  "place": "partial",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "inside",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.03,
+   0.49,
+   0.38,
+   0.31
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "inside",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   1.03,
+   0.49,
+   0.38,
+   0.31
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "inside",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   2.1,
+   1.58,
+   1.66,
+   1.82
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "inside",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   2.1,
+   1.58,
+   1.66,
+   1.82
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "partial",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.02,
+   0.49,
+   0.38,
+   0.39
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "partial",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "partial",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   2.1,
+   1.58,
+   1.66,
+   1.8
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": false,
+  "dpr": 3,
+  "place": "partial",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "inside",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   2.93,
+   1.39,
+   1.1,
+   0.91
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "inside",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   2.93,
+   1.39,
+   1.1,
+   0.91
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "inside",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   9.82,
+   7.92,
+   8.52,
+   9.92
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "inside",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   9.82,
+   7.92,
+   8.52,
+   9.92
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "partial",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   2.93,
+   1.39,
+   1.1,
+   1.13
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "partial",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "partial",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   9.83,
+   7.91,
+   8.51,
+   9.47
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 1,
+  "place": "partial",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "inside",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.54,
+   0.72,
+   0.57,
+   0.46
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "inside",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   1.54,
+   0.72,
+   0.57,
+   0.46
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "inside",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   3.93,
+   3.06,
+   3.26,
+   3.65
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "inside",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   3.93,
+   3.06,
+   3.26,
+   3.65
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "partial",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.52,
+   0.72,
+   0.57,
+   0.58
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "partial",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "partial",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   3.91,
+   3.06,
+   3.26,
+   3.55
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 2,
+  "place": "partial",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "inside",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.03,
+   0.49,
+   0.38,
+   0.31
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "inside",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   1.03,
+   0.49,
+   0.38,
+   0.31
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "inside",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   2.1,
+   1.58,
+   1.66,
+   1.82
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "inside",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   2.1,
+   1.58,
+   1.66,
+   1.82
+  ],
+  "frame_in_view": [
+   40,
+   0,
+   430,
+   844
+  ],
+  "viewport": [
+   1600,
+   1300
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "partial",
+  "blur": true,
+  "beyond": true,
+  "quarters": [
+   1.02,
+   0.49,
+   0.39,
+   0.39
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "partial",
+  "blur": true,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "partial",
+  "blur": false,
+  "beyond": true,
+  "quarters": [
+   2.1,
+   1.58,
+   1.66,
+   1.8
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "gpu": true,
+  "dpr": 3,
+  "place": "partial",
+  "blur": false,
+  "beyond": false,
+  "quarters": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "frame_in_view": [
+   16,
+   1291,
+   406,
+   2135
+  ],
+  "viewport": [
+   390,
+   844
+  ]
+ },
+ {
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+ }
+]
