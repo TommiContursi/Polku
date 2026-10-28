@@ -3595,10 +3595,16 @@ FIT_LIB = """(() => {
       await state(st);
       away();
       const mv = moved();
-      // the toolbar's on desktops, the map's column's on phones (25a)
-      const fit = p.tools.classList.contains('desk') ? p.els.fit : document.getElementById('btn-fit');
-      if (!fit.offsetParent || fit.disabled) err(`no fit button at ${st}`);
-      fit.click();
+      // the toolbar's on desktops, the map's column's on phones (25a); where the column let go of it (a full sheet), More's
+      // (#344, step 3 of #233)
+      let fit = p.tools.classList.contains('desk') ? p.els.fit : document.getElementById('btn-fit');
+      if (!fit.offsetParent && document.getElementById('map-ctrls').classList.contains('no-fit')) {
+        p.els.more.click();
+        await wait(300);
+        fit = [...document.querySelectorAll('.menu-pop button')].find((b) => /Show the whole route/.test(b.textContent));
+      }
+      if (!fit || !fit.offsetParent || fit.disabled) err(`no fit button at ${st}`);
+      else fit.click();
       await mv;
       await framed(`the fit button at ${st}`, line());
     }
@@ -7964,7 +7970,6 @@ def button3d_phones(chrome):
     return button3d(chrome, phones=True)
 
 
-# The runner itself (#262, #263, #254), in a Chrome of its own beside the one the run holds
 # Fold, then away (step 3 of #233: #338, #303, #434): the planner and every card fold to one line and come back as
 # they were; a second swipe, or ✕ at the line, puts the planner away or closes the card. Phones by touch, desktops by mouse.
 FOLD_INFO = """(() => { const p = polku.planner, b = (e) => { if (!e || !e.getClientRects().length) return null; const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height }; };
@@ -8279,6 +8284,7 @@ def fold(chrome):
     return not fails
 
 
+# The runner itself (#262, #263, #254), in a Chrome of its own beside the one the run holds
 def runner(chrome):
     import contextlib
     import io

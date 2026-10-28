@@ -546,7 +546,7 @@ function fitColumn() {
   const col = $('#map-ctrls'), off = document.body.classList.contains('kf-off');
   col.classList.remove('no-compass', 'no-3d', ...LETS_GO);
   if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); return; }
-  if (!off) factsH = planner.els.facts.offsetHeight;
+  if (!off) factsH = planner.els.facts.offsetHeight + (parseFloat(getComputedStyle(planner.els.facts).marginTop) || 0); // (all the room it takes: else, at the edge, it comes and goes every frame)
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
   const back = off ? factsH : 0; // (the room the line would take back)
   const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - css('--col-lift') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;

@@ -14,7 +14,7 @@ When the map matters more, the planner and its cards fold out of the way to one 
 - A card, such as a point's, folds the same way to its name, and a swipe up opens it to the full height. Before, a swipe up on a card closed it. From its line, a swipe down or ✕ closes the card, and the planner is as it was under it.
 - On a desktop, **⌄** in the planner's header folds the planner down to its line at the foot of the map, with the toolbar beside it, in place of **Minimise**. With the planner at the bottom, it folds to its line with the toolbar on it. A card on the map folds to its title with its own ⌄, its foot staying where it was.
 - At 200 % zoom, or wherever the planner's summary would cover more than half the screen, the planner rests at its line, and opened all the way its whole sheet scrolls, so the list can be reached.
-- The map's buttons no longer go under the top bar when the planner or a start step is raised. Where there's no room they step aside: Weather first (it's also **T** and in Layers), then **Show the whole route** (then in ⋯), then **Where I am**.
+- The map's buttons no longer go under the top bar when the planner or a start step is raised. Where there's no room they step aside: Weather first (it's also **T** and in Layers), then **Show the whole route** (then in ⋯), then **Show my location**.
 - The map's buttons no longer slide after the planner as it changes size: they move once, to where it's going.
 
 ### The planner's toolbar is at the bottom on a desktop ([#468](https://github.com/TommiContursi/Polku/issues/468), [#387](https://github.com/TommiContursi/Polku/issues/387))
