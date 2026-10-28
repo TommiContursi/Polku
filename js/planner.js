@@ -5005,6 +5005,7 @@ export class Planner {
     new ResizeObserver(sizes).observe(this.els.head);
     new ResizeObserver(sizes).observe(this.els.profZone);
     new ResizeObserver(sizes).observe(this.els.fold);
+    new ResizeObserver(sizes).observe(this.els.top); // (⌄'s row comes with a route: the header moves down without changing its size)
     addEventListener('resize', sizes);
     // One swipe for every sheet (js/sheet.js, #96): from the handle, the header (its buttons too), the
     // profile's top row and the tabs, and from the body where it can't scroll that way itself. While it
