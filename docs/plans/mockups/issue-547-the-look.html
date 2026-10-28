@@ -7,15 +7,17 @@
 <meta name="description" content="Clickable mock-up for #547: today's look and two directions for Polku's look (B, clear water over the land; D, the map's margin), with the first set (A, B and C) behind a switch, over real map pictures, with the contrast of the words over the glass measured in the page. Not wired to the app.">
 <!--
   #547, Stop 2 (2026-10-28), version 2: today, B after the quieter and polish passes, and D; version 1 (today, A, B, C)
-  stays behind the Version switch. The plan: docs/plans/issue-547-the-look.md.
+  stays behind the Version switch. Chosen on 2026-10-28: B, its map buttons' glass b, one shadow; D kept as the road
+  not taken. The Trail map and Plain added that day, and Match the map for every direction. The plan: docs/plans/issue-547-the-look.md.
   Not wired to the app: nothing here is loaded by Polku. Today's values are css/app.css's on main at 18b43d4.
   The map pictures are the running app's, with the interface and the route hidden (pr-screenshots,
-  claude/547-the-look/maps/, retaken 2026-10-28 with the tiles settled); the route is drawn here from the
+  claude/547-the-look/maps/, retaken 2026-10-28 with the tiles settled, and the Trail map and Plain with their trail
+  colours drawn); the route is drawn here from the
   app's own points, so its colour can follow the version.
 
-  ?ver=2&dir=today|b|d  or  ?ver=1&dir=today|a|b1|c   &map=maasto|bright|forest|night
-  &theme=light|dark|match (match: D only)  &device=phone|desk  &mode=default|contrast|clear
-  &depth=one|thick  &compare=0|1|depth (1: today beside the version; depth: both depths side by side)
+  ?ver=2&dir=today|b|d  or  ?ver=1&dir=today|a|b1|c   &map=trail|plain|maasto|bright|forest|night
+  &theme=light|dark|match (match: dark over the aerial photos and the night map)  &device=phone|desk  &mode=default|contrast|clear
+  &depth=one|thick  &fab=a|b|c (B's map buttons)  &compare=0|1|depth (1: today beside the version; depth: both depths side by side)
 
   The numbers under the frame are measured in the page: each word's colour against every pixel under its
   own glyph boxes, where each pixel is the map picture (and the route) blurred and saturated as the surface's
@@ -350,17 +352,17 @@ body.bare #stage { margin: 0; gap: 0; }
 <body>
 <div class="cv">
   <h1>The look: directions</h1>
-  <p>#547, Stop 2: today's look and the directions for it, over real map pictures from the running app, with the same scene in every one: the Kauppi route, the planner open with a point's card, and the map's buttons. Each direction has its own materials, depth, edges, neutrals, signal colours and lines; the accent, <b>Plan</b>'s green and Check's warning colours stay as they are in all of them (decided in #382 and 25d). <b>Version 2</b> (2026-10-28): today, B after a quieter and polish pass, and a new direction, D; the route is magenta in all three. <b>Version 1</b>, the first set (today, A, B and C), is kept behind the Version switch to compare.</p>
+  <p>#547, Stop 2: today's look and the directions for it, over real map pictures from the running app, with the same scene in every one: the Kauppi route, the planner open with a point's card, and the map's buttons. Each direction has its own materials, depth, edges, neutrals, signal colours and lines; the accent, <b>Plan</b>'s green and Check's warning colours stay as they are in all of them (decided in #382 and 25d). <b>Version 2</b> (2026-10-28): today, B after a quieter and polish pass, and a new direction, D; the route is magenta in all three. <b>Version 1</b>, the first set (today, A, B and C), is kept behind the Version switch to compare. <b>Chosen</b> (2026-10-28): B, with its map buttons on glass b and one shadow; D stays as the road not taken.</p>
 
   <div class="bars" role="group" aria-label="What the frame shows">
     <div class="bar"><span id="l-ver">Version</span><div class="sw" data-k="ver" aria-labelledby="l-ver"><button data-v="2">2: today, B, D</button><button data-v="1">1: today, A, B, C (the first set)</button></div></div>
     <div class="bar"><span id="l-dir">Direction</span><div class="sw" data-k="dir" aria-labelledby="l-dir"><button data-v="today">Today</button><button data-v="a" data-ver="1">A, field instrument</button><button data-v="b1" data-ver="1">B, clear water</button><button data-v="c" data-ver="1">C, paper map</button><button data-v="b" data-ver="2">B, clear water</button><button data-v="d" data-ver="2">D, the map’s margin</button></div></div>
-    <div class="bar"><span id="l-map">Map</span><div class="sw" data-k="map" aria-labelledby="l-map"><button data-v="maasto">Maastokartta</button><button data-v="bright">Aerial, the city (mid-dark)</button><button data-v="forest">Aerial, forest and lake</button><button data-v="night">Night</button></div></div>
-    <div class="bar"><span id="l-theme">Theme</span><div class="sw" data-k="theme" aria-labelledby="l-theme"><button data-v="light">Light</button><button data-v="dark">Dark</button><button data-v="match" data-only="d">Match the map (a Settings choice, #323)</button></div>
+    <div class="bar"><span id="l-map">Map</span><div class="sw" data-k="map" aria-labelledby="l-map"><button data-v="trail">Trail map</button><button data-v="plain">Plain</button><button data-v="maasto">Maastokartta</button><button data-v="bright">Aerial, the city (mid-dark)</button><button data-v="forest">Aerial, forest and lake</button><button data-v="night">Night</button></div></div>
+    <div class="bar"><span id="l-theme">Theme</span><div class="sw" data-k="theme" aria-labelledby="l-theme"><button data-v="light">Light</button><button data-v="dark">Dark</button><button data-v="match">Match the map (a Settings choice, #323)</button></div>
       <span id="l-device">Device</span><div class="sw" data-k="device" aria-labelledby="l-device"><button data-v="phone">Phone</button><button data-v="desk">Desktop</button></div></div>
     <div class="bar"><span id="l-mode">Mode</span><div class="sw" data-k="mode" aria-labelledby="l-mode"><button data-v="default">Default</button><button data-v="contrast">More contrast</button><button data-v="clear">Reduced transparency</button></div>
-      <span id="l-depth">Depth</span><div class="sw" data-k="depth" aria-labelledby="l-depth"><button data-v="one">One shadow</button><button data-v="thick">Thicker when bigger</button></div>
-      <span class="only-b" id="l-fab">B’s map buttons</span><div class="sw only-b" data-k="fab" aria-labelledby="l-fab"><button data-v="a">a. 84 %, colours lifted</button><button data-v="b">b. 84 %, as the reading glass</button><button data-v="c">c. 66 %, thin and vivid</button></div>
+      <span id="l-depth">Depth</span><div class="sw" data-k="depth" aria-labelledby="l-depth"><button data-v="one">One shadow (chosen)</button><button data-v="thick">Thicker when bigger</button></div>
+      <span class="only-b" id="l-fab">B’s map buttons</span><div class="sw only-b" data-k="fab" aria-labelledby="l-fab"><button data-v="a">a. 84 %, colours lifted</button><button data-v="b">b. 84 %, as the reading glass (chosen)</button><button data-v="c">c. 66 %, thin and vivid</button></div>
       <span id="l-cmp">Compare</span><div class="sw" data-k="compare" aria-labelledby="l-cmp"><button data-v="0">Alone</button><button data-v="1">Beside today</button><button data-v="depth">Both depths</button></div></div>
   </div>
 
@@ -411,9 +413,9 @@ body.bare #stage { margin: 0; gap: 0; }
 
 <script>
 // ============================================================== the versions, the maps and the scene
-const MAPS = 'https://raw.githubusercontent.com/TommiContursi/Polku/fce14e13acee445f72b2274657a8ac1d40b675b9/claude/547-the-look/maps/';
-const MAP_FILE = { maasto: 'maasto', bright: 'aerial-bright', forest: 'aerial-forest', night: 'night' };
-const MAP_NAME = { maasto: 'Maastokartta', bright: 'Aerial FI, the city beside the route (as dark as the forest: Finnish summer photos are mid-dark; Maastokartta is the bright map)', forest: 'Aerial FI, Kauppi’s forest and Näsijärvi', night: 'the night map' };
+const MAPS = 'https://raw.githubusercontent.com/TommiContursi/Polku/8b1fb601519566314a94d6ab3d8b381cf0165848/claude/547-the-look/maps/';
+const MAP_FILE = { trail: 'trail', plain: 'plain', maasto: 'maasto', bright: 'aerial-bright', forest: 'aerial-forest', night: 'night' };
+const MAP_NAME = { trail: 'the Trail map (Polku’s own, the default), Kauppi’s trails in their colours', plain: 'Plain, Kauppi’s trails in their colours', maasto: 'Maastokartta', bright: 'Aerial FI, the city beside the route (as dark as the forest: Finnish summer photos are mid-dark; Maastokartta is the bright map)', forest: 'Aerial FI, Kauppi’s forest and Näsijärvi', night: 'the night map' };
 const DIRS = {
   today: { name: 'Today', card: 'solid', hint: 'hint',
     about: 'Polku on <code>main</code>: one glass, white at 94 % with a 10–14 px blur and no saturation, for everything that floats except the cards, menus and popups, which are solid. One shadow. No edges. The route in Tailwind’s rose-600, the state colours Tailwind’s 600s.',
@@ -425,13 +427,13 @@ const DIRS = {
   c: { name: 'C, a paper map in its case', card: 'thick', hint: 'thin',
     about: 'Calm and warm: the chrome made of the map’s own material. Warm paper surfaces (95 %, a light blur) in light; in dark, the night map’s blue-black lifted a step. Warm text and greys, a printed two-tone hairline round every surface. The route in the orienteering overprint’s purple-magenta, earthy state colours. The accent stays: <b>Plan</b>’s green is decided.' },
   b: { name: 'B, clear water over the land', card: 'thick', hint: 'thick', bar: 'thick', logo: 'solo',
-    about: 'Light and open: the map shows through everything that floats, calmer than version 1. <b>Two glasses:</b> what you read (the top bar, the hint, the undo, the planner and the card) sits on a glass at 72 % white with a 32 px blur and the map’s colours barely lifted (saturate 105 %), so a sheet stays one quiet tone over any map; the map’s buttons keep the map’s colours lifted (160 %) under a whiter glass (84 %), so the group stays closer to one tint: over Maastokartta its lake and its built-up pink still show through, about half as much as in version 1 and about three times as much as today (the switch under Mode tries the reading glass’s saturation, and a thin glass). A light inner edge and a soft outer hairline (26 %); in more contrast it becomes a 3:1 rim. Words on the glass take a darker grey, green and red. <b>In dark</b> a near-black glass, 73 % for what you read and 84 % for the map’s buttons, with the same rim as version 1. Check’s warning box is solid, and in dark the chosen segment is lighter than its track. The logo stands alone, the Layers tile takes the glass’s edge, and an undo that can’t undo stays readable in grey. The state colours have dark versions.' },
-  d: { name: 'D, the map’s margin', ui: 'd',
-    about: 'Nothing floats: the interface is the map’s margin. <b>Solid and flat:</b> the top bar, the planner’s sheet and the desktop’s panel run to the screen’s edges, white in light and near-black in dark, and the map sits in a rounded window with a neatline round it, as a printed map does. The map’s buttons and the undo are bays that grow out of the margin, the zoom hint a tab under the top bar, and the card at a point on a desktop a flat callout with the same line. No blur and no shadow, so nothing depends on the map under it: words read the same over every map, reduced transparency changes nothing, and the phone draws no glass. <b>Match the map</b>, a possible choice in Settings (#323), gives the margin the map’s tone: white round Maastokartta, black round the aerial photos and the night map. The depth switch does nothing here, since D has no shadows. State colours at 5:1 or more, with dark versions.' },
+    about: 'Light and open: the map shows through everything that floats, calmer than version 1. <b>Two glasses:</b> what you read (the top bar, the hint, the undo, the planner and the card) sits on a glass at 72 % white with a 32 px blur and the map’s colours barely lifted (saturate 105 %), so a sheet stays one quiet tone over any map; the map’s buttons sit on a whiter glass (84 %) with the colours lifted as little, so the group stays close to one tint (glass b, chosen on 2026-10-28; the switch under Mode keeps a, the colours lifted to 160 %, and c, a thin vivid glass, to compare). A light inner edge and a soft outer hairline (26 %); in more contrast it becomes a 3:1 rim. Words on the glass take a darker grey, green and red. <b>In dark</b> a near-black glass, 73 % for what you read and 84 % for the map’s buttons, with the same rim as version 1. Check’s warning box is solid, and in dark the chosen segment is lighter than its track. The logo stands alone, the Layers tile takes the glass’s edge, and an undo that can’t undo stays readable in grey. The state colours have dark versions. <b>Match the map</b>, #323’s possible choice, gives B its dark glass over the aerial photos and the night map, where light glass turns grey, and its light glass over the drawn maps. <b>Chosen</b> on 2026-10-28, with one shadow.' },
+  d: { name: 'D, the map’s margin (not taken)', ui: 'd',
+    about: '<b>The road not taken</b> (2026-10-28): nothing floats in it, the opposite of what #547 set out to do, and it costs room for the map and a change of layout. Nothing floats: the interface is the map’s margin. <b>Solid and flat:</b> the top bar, the planner’s sheet and the desktop’s panel run to the screen’s edges, white in light and near-black in dark, and the map sits in a rounded window with a neatline round it, as a printed map does. The map’s buttons and the undo are bays that grow out of the margin, the zoom hint a tab under the top bar, and the card at a point on a desktop a flat callout with the same line. No blur and no shadow, so nothing depends on the map under it: words read the same over every map, reduced transparency changes nothing, and the phone draws no glass. <b>Match the map</b>, a possible choice in Settings (#323), gives the margin the map’s tone: white round the drawn maps, black round the aerial photos and the night map. The depth switch does nothing here, since D has no shadows. State colours at 5:1 or more, with dark versions.' },
 };
 const VER = { 1: ['today', 'a', 'b1', 'c'], 2: ['today', 'b', 'd'] };
 const MODE_NAME = { default: 'the default look', contrast: 'more contrast (prefers-contrast: more, or Settings’ High contrast)', clear: 'reduced transparency' };
-const S = { ver: '2', dir: 'b', map: 'forest', theme: 'light', device: 'phone', mode: 'default', depth: 'one', compare: '0', fab: 'a' };
+const S = { ver: '2', dir: 'b', map: 'trail', theme: 'light', device: 'phone', mode: 'default', depth: 'one', compare: '0', fab: 'b' };
 const q = new URLSearchParams(location.search);
 for (const k of Object.keys(S)) if (q.get(k)) S[k] = q.get(k);
 if (q.get('bare') === '1') document.body.classList.add('bare');
@@ -592,8 +594,9 @@ function deskUiD(d, r) {
 }
 
 // ============================================================== rendering
-// Match the map (D's tone, a Settings choice): light round Maastokartta, dark round the photos and the night map
-const themeOf = () => (S.theme === 'match' ? (S.map === 'maasto' ? 'light' : 'dark') : S.theme);
+const LIGHT_MAPS = new Set(['trail', 'plain', 'maasto']);
+// Match the map (#323's possible choice, for any direction): light over the drawn maps, dark over the photos and the night map
+const themeOf = () => (S.theme === 'match' ? (LIGHT_MAPS.has(S.map) ? 'light' : 'dark') : S.theme);
 async function frame(dir, extra, depth = S.depth) {
   const d = DIRS[dir], phone = S.device === 'phone', r = await routeOf(S.map, S.device), th = themeOf();
   const fig = document.createElement('figure');
@@ -619,9 +622,7 @@ async function frame(dir, extra, depth = S.depth) {
 async function render() {
   if (!VER[S.ver]) S.ver = '2';
   if (!VER[S.ver].includes(S.dir)) S.dir = S.ver === '1' ? 'b1' : 'b';
-  if (S.theme === 'match' && S.dir !== 'd') S.theme = themeOf();
   for (const b of document.querySelectorAll('.sw[data-k="dir"] button[data-ver]')) b.hidden = b.dataset.ver !== S.ver;
-  for (const b of document.querySelectorAll('.sw button[data-only]')) b.hidden = b.dataset.only !== S.dir;
   for (const e of document.querySelectorAll('.only-b')) e.hidden = S.dir !== 'b';
   for (const [k, v] of Object.entries(S)) for (const b of document.querySelectorAll(`.sw[data-k="${k}"] button`)) b.setAttribute('aria-pressed', String(b.dataset.v === v));
   history.replaceState(null, '', '?' + new URLSearchParams(S));
@@ -654,7 +655,7 @@ function renderVals() {
   probe.className = 'screen phone'; probe.style.cssText = 'position:absolute;left:-9999px;top:0';
   const rows = [];
   for (const theme of ['light', 'dark']) {
-    probe.dataset.ver = S.ver; probe.dataset.dir = S.dir; probe.dataset.theme = theme; probe.dataset.mode = 'default'; probe.dataset.depth = S.depth;
+    probe.dataset.ver = S.ver; probe.dataset.dir = S.dir; probe.dataset.theme = theme; probe.dataset.mode = 'default'; probe.dataset.depth = S.depth; probe.dataset.fab = S.fab;
     document.body.append(probe);
     const cs = getComputedStyle(probe), v = (n) => cs.getPropertyValue(n).trim();
     rows.push([theme, v]);
