@@ -90,14 +90,14 @@ Measured as the other maps were (`measure/v2/mockup-matrix-trail-plain.json`: 88
 
 1. **The direction: B, clear water over the land.** It changes values, not layout; it keeps today's room for the map (38 % of a phone's screen in the clear); it meets the floors in the default look on every map, and its modes turn it solid for the sun and for low vision.
 2. **B's map buttons: glass b,** 84 % white with the map's colours lifted no more than under the reading glass (`blur(24px) saturate(105%)`). Over Maastokartta and the Trail map the buttons still take the map's tints, up to 4.9–5.6 apart in light and 7.2–7.4 in dark; over the photos and the night map they're one tint.
-3. **The depth: one shadow,** as today. The One Float Rule and DESIGN.md's "Don't add… a heavier shadow" stay.
+3. **The depth: one shadow** for everything that floats, with B's value (a little softer and wider than today's). The One Float Rule and DESIGN.md's "Don't add… a heavier shadow" stay.
 4. **B's reading glass stays** at 72 % white with the map's colours barely lifted (`blur(32px) saturate(105%)`). Over Maastokartta the sheet takes a faint pink and cyan from the map, and over the Trail map its trails show through: both are fine.
 
 B, as PRODUCT.md frames it ("the map first"): light and open, the map showing through everything that floats. It keeps the accent, **Plan**'s green, Check's warning colours (decided in #382 and 25d) and the difficulty scale's colours. It gives `--bad` the value of `--danger`, so danger has one red; gives the state colours dark versions they don't have today; and draws the route in `#d6006e`.
 
 ## The build plan for B
 
-One PR, after #323 (the theme setting). #543, the desktop toolbar at the map's foot, is on `main` since 2026-10-28 (8016176): its toolbar is one more surface on the reading glass. Read on `main` at ec8523d; the line numbers below are `css/app.css`'s there.
+One PR, after #323 (the theme setting). The values are B's, as chosen from the mock-up, except three marked **proposed**: neither drawn in the mock-up nor chosen, they wait for the user's OK, and the build checks them. #543, the desktop toolbar at the map's foot, is on `main` since 2026-10-28 (8016176): its toolbar is one more surface on the reading glass. Read on `main` at ec8523d; the line numbers below are `css/app.css`'s there.
 
 ### The order
 
@@ -109,7 +109,7 @@ One PR, after #323 (the theme setting). #543, the desktop toolbar at the map's f
 
 - **Overview and North Star:** "frosted cards" becomes two glasses, a reading glass for what you read and a whiter glass for the map's buttons; "the red route line" becomes the magenta route.
 - **The frontmatter and its `dark-` twins:**
-  - `route: "#d6006e"`; `route-line: "#9c0050"` for the straight line (darker and dashed: 12.0 from the route and 21.7 from the nearest trail colour); a new `route-text`, `#9c0050` and dark `#ff7ab8`, for words in the route's colour (below).
+  - `route: "#d6006e"`. **Proposed:** `route-line: "#9c0050"` for the straight line (darker and dashed: 12.0 from the route and 21.7 from the nearest trail colour), and a new `route-text`, `#9c0050` and dark `#ff7ab8`, for words in the route's colour (below).
   - `surface` gives way to `glass-read: "rgba(255, 255, 255, 0.72)"` and `glass-control: "rgba(255, 255, 255, 0.84)"`, dark `rgba(8, 10, 9, 0.73)` and `rgba(8, 10, 9, 0.84)`. `surface-solid` and `surface-2` stay for solid surfaces.
   - `text: "#141b17"`, dark `#f2f5f3`.
   - Words on glass: `muted-glass: "#3b4741"`, `accent-glass: "#165a3a"`, `bad-glass: "#9b1f27"`; dark `#c5cec9`, `#7fdcae`, `#ffa3a3`. `muted` stays for solid surfaces.
@@ -133,7 +133,7 @@ One PR, after #323 (the theme setting). #543, the desktop toolbar at the map's f
   | Glass | Surfaces |
   |---|---|
   | Reading, 72 % | `.brand` (162), `.search` (168), `.zoom-hint` (248, no blur today), `.wx-bar` (333), `.panel` (454), `.qd` (572), `.sheet` (696), `.track-card` (1753, no blur today), `.pl-tools` (1973: the toolbox, and the desktop toolbar since #543) |
-  | Map buttons, 84 % | `.fab-layers[aria-expanded="true"]` (285), `.top-btn` (286), `.fab` (293), `.view3d` (397), and MapLibre's `.maplibregl-ctrl-group` (420, solid today), so the map's buttons are one group |
+  | Map buttons, 84 % | `.fab-layers[aria-expanded="true"]` (285), `.top-btn` (286), `.fab` (293), `.view3d` (397); **proposed:** MapLibre's compass and zoom, `.maplibregl-ctrl-group` (420, solid today), as the mock-up draws the compass, so the map's buttons are one group |
   | Solid, as today | the cards at a point, menus, popups and dialogs |
 
   Each glass rule writes `-webkit-backdrop-filter` too: only `.pl-tools` has it today, so Safari before 18 draws the others without blur. `.wx-bar.docked` and `.pl-tools.docked` keep `backdrop-filter: none`.
