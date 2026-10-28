@@ -257,7 +257,7 @@ button { font: inherit; color: inherit; }
    above a bottom planner and an open phone timeline; Plan sits below it. */
 .map-ctrls {
   position: absolute; right: 12px; bottom: calc(var(--wx-h, 0px) + 12px); z-index: 5;
-  display: flex; flex-direction: column; align-items: flex-end; gap: 8px; transition: bottom .2s;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 }
 /* out of the page until js/main.js has put it in its place, above a phone timeline left on: its buttons
    do nothing before that, and then they'd move up under a finger (#292) */
@@ -333,7 +333,7 @@ body:not(.ready) .map-ctrls { display: none; }
 .wx-bar {
   position: absolute; left: calc(50% + var(--pl-left) / 2); transform: translateX(-50%); bottom: calc(var(--sheet-h) + max(40px, var(--tools-h, 0px) + 8px)); z-index: 6;
   width: min(640px, calc(100% - 200px - var(--pl-left))); padding: 6px 12px 8px 6px; border-radius: 16px;
-  background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px); transition: bottom .2s;
+  background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px);
 }
 /* beside the side panel the scale and the credits are under its left end: above them, on the toolbar at the map's foot (#468) */
 body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
@@ -399,7 +399,6 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
   position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 40px); z-index: 5;
   display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px 8px;
   background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
-  transition: bottom .2s;
 }
 .orbit {
   position: relative; width: 76px; height: 76px; border-radius: 50%; cursor: grab; touch-action: none;
@@ -419,7 +418,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 /* MapLibre controls */
 .maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; background: var(--surface-solid); }
 .maplibregl-ctrl-group button { width: 36px; height: 36px; }
-.maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); transition: bottom .2s; }
+.maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); }
 /* --tools-h: the planner's toolbox floating above the sheet, its toolbar above a bottom panel, or beside the side panel the
    room from the window's foot to its toolbar's top (planner.js placeTools()) */
 .maplibregl-ctrl-bottom-left { bottom: calc(var(--sheet-h) + var(--tools-h, 0px) + 4px); }
@@ -713,6 +712,40 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet-handle { flex: none; position: relative; width: 72px; height: 18px; margin: 0 auto; cursor: grab; touch-action: none; border-radius: 9px; }
 .sheet-handle::before { content: ""; position: absolute; left: 20px; right: 20px; top: 7px; height: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
 .sheet-handle:focus-visible { outline: 2px solid var(--focus); }
+/* its touch area is a finger's size, over the sheet's top edge; it still looks 18 px (step 3 of #233) */
+.sheet-handle::after { content: ""; position: absolute; left: -16px; right: -16px; top: -13px; bottom: -13px; }
+/* Fold, then away (step 3 of #233): the sheet's top row, the handle and, on phones, ⌄ at its right in a row of its own,
+   for the planner and every card; folded, ✕ in its place puts the planner away or closes the card */
+.sheet-top { flex: none; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; height: 18px; }
+.sheet-top-end { display: flex; justify-content: flex-end; }
+.sheet-top .tool { display: none; width: 44px; height: 44px; }
+.sheet[data-layout="side"] .sheet-top { display: none; }
+@media (max-width: 720px) {
+  .sheet.foldable .sheet-top { height: 40px; }
+  .sheet.foldable:not([data-state="folded"]) .sheet-fold, .sheet.foldable[data-state="folded"] .sheet-away { display: inline-flex; }
+  .fold-x { display: none; }
+}
+@media (min-width: 721px) { .sheet[data-state="folded"] .sheet-top, .sheet[data-state="folded"] .sheet-min { display: none; } }
+/* the folded line: the planner's numbers (or a card's mark and name) over where they were, one button that opens it as it
+   was; the two cross-fade while the sheet moves between them (js/planner.js, moved()) */
+.sheet[data-layout="sheet"][data-state="folded"] { height: var(--fold-h, 100px); }
+.fold-line { position: absolute; left: 0; right: 0; top: var(--fold-top, 0px); z-index: 2; display: flex; align-items: center; gap: 4px; min-height: 56px; padding: 0 8px 4px 14px; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .15s ease-out; container-type: inline-size; }
+.sheet[data-state="folded"] .fold-line { opacity: 1; visibility: visible; pointer-events: auto; }
+.sheet.dragging .fold-line { visibility: visible; pointer-events: none; transition: none; }
+.sheet > :is(.sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: opacity .15s ease-out; }
+.sheet.dragging > :is(.sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: none; }
+.sheet[data-state="folded"]:not(.dragging) > :is(.sheet-head, .pl-profile, .pl-tabs, .sheet-body) { opacity: 0; visibility: hidden; }
+.fold-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.fold-go:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.fold-go > b { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.fold-go > b > span { white-space: nowrap; }
+.fold-go > b.name { font-size: 15px; overflow-wrap: break-word; } /* (a name wraps whole, never cut with "…": the plan's §8) */
+.fold-chev { flex: none; display: grid; place-items: center; width: 44px; height: 44px; color: var(--muted); }
+.fold-warn { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.fold-warn.danger { background: var(--danger-soft); color: var(--danger); }
+.fold-warn.unk { background: var(--unk-soft); color: var(--unk); }
+/* (narrow, 200 %: the whole line is the button, its chevron goes first, and the numbers wrap between themselves) */
+@container (max-width: 250px) { .fold-chev { display: none; } .fold-go > b > span { white-space: normal; } }
 .sheet-head { flex: none; padding: 0 10px 8px 14px; touch-action: none; container-type: inline-size; }
 .sheet-row { display: flex; align-items: center; gap: 8px; }
 /* key facts (#471's A2): a line under the route's numbers, a row a sport on a route of two; each opens where it's told */
@@ -780,10 +813,12 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="side"] { right: auto; top: 64px; bottom: auto; width: var(--pl-w, 392px); height: auto; max-height: calc(100% - 76px); transition: none; }
 .sheet[data-layout="side"] .sheet-handle { display: none; }
 .sheet[data-layout="side"] .sheet-head { padding-top: 12px; touch-action: auto; }
-.sheet[data-layout="side"][data-state="min"] .sheet-body { display: none; }
+.sheet[data-layout="side"][data-state="folded"] { top: auto; bottom: 12px; }
+.sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet[data-layout="side"] .fold-line { position: static; }
 /* resize grip on the side panel's right edge */
 .sheet-resize { display: none; position: absolute; top: 50%; right: -7px; width: 14px; height: 56px; margin-top: -28px; cursor: ew-resize; touch-action: none; z-index: 1; }
-.sheet[data-layout="side"]:not([data-state="min"]) .sheet-resize { display: block; }
+.sheet[data-layout="side"]:not([data-state="folded"]) .sheet-resize { display: block; }
 .sheet-resize::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.45); transition: background .15s; }
 .sheet-resize:hover::before, .sheet-resize:focus-visible::before, .sheet.resizing .sheet-resize::before { background: var(--accent); }
 .sheet-resize:focus-visible { outline: none; }
@@ -805,7 +840,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
   .pl-profile .mode-select-box, .pl-profile .mode-select select { flex: 1 1 100%; width: 100%; }
 }
 .pl-profile.compact #profile-canvas { height: 72px; }
-.pl-tabs { flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.pl-tabs { flex: none; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); } /* (they wrap where they don't fit: 200 %, #453) */
 .pl-tab { height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .pl-tab:hover { color: var(--text); }
 .pl-tabs .sheet-dock { align-self: center; color: var(--muted); }
@@ -822,7 +857,6 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 /* the sheet's sizes: peek is the header; the profile size adds the profile; half and full the tabs too */
 .sheet[data-state="peek"]:not(.dragging) :is(.pl-profile, .pl-tabs) { display: none; }
 .sheet[data-state="profile"]:not(.dragging) :is(.pl-tabs, .sheet-body) { display: none; }
-.sheet[data-layout="side"][data-state="min"] :is(.pl-profile, .pl-tabs) { display: none; }
 /* half a sheet: a short profile, so the tab has room (the profile size and full show it whole) */
 .sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile #profile-canvas { height: 64px; }
 .sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile .profile-top { display: none; }
@@ -1538,9 +1572,26 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
   .row:has(.val) .way-chev { display: none; }
 }
 @container card (max-width: 190px) { .card-mark { display: none; } }
+/* the planner's list at 200 % (#453): its rows take the cards' narrow rule, the value under the name */
+.sheet-body { container: plbody / inline-size; }
+@container plbody (max-width: 220px) {
+  .row:has(.val) { flex-wrap: wrap; }
+  .row:has(.val) > span:nth-child(2) { flex-basis: calc(100% - 32px); }
+  .row .val { order: 3; max-width: none; margin-left: 32px; text-align: left; }
+  .row:has(.val) .way-chev { display: none; }
+}
+/* the whole sheet scrolls as one where its top parts take more than half of it at full (#453, js/planner.js scrollAll()) */
+.sheet.scroll-all { overflow: hidden auto; overscroll-behavior: contain; }
+.sheet.scroll-all > .sheet-body { flex: none; overflow: visible; }
+.sheet.scroll-all > .sheet-top { position: sticky; top: 0; z-index: 3; background: var(--surface-solid); border-radius: 18px 18px 0 0; }
 /* a phone's peek: the card is the peek, 52 % of the window at most (it scrolls inside), the point in sight above it */
 .card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
+/* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, it takes
+   the sheet's full height and scrolls inside it */
+.sheet.carded > :is(.pl-profile, .pl-tabs, .sheet-body) { display: none; }
+.sheet.carded[data-state="full"] > .sheet-head, .sheet.carded[data-state="full"] :is(.sheet-head-in, .card-peek) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sheet.carded[data-state="full"] .card-peek .card { flex: 1; max-height: none; }
 /* at its spot (desktops, the planner put away), Revision 5: a quick look, not a sheet. 320 px wide and 480 px tall at
    most, scrolling inside; smaller type and 36 px rows (#380); every line the row's tooltip; the actions
    buttons with their icon and name, two a row, no heading above them, Remove a red button on a row of its own */
@@ -1554,6 +1605,10 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 .card-float .card > .way-bar { min-height: 36px; margin-bottom: -4px; }
 .card-float .way-back { min-height: 36px; font-size: 14px; }
 .card-float .way-x { width: 36px; height: 36px; }
+/* a desktop's card folds to its title row (step 3 of #233); on a phone the sheet's ⌄ folds the card in the peek */
+.card .way-fold { display: none; }
+@media (min-width: 721px) { .card-float .way-fold { display: inline-flex; width: 36px; height: 36px; margin: -4px -2px 0 0; } }
+.card.rolled > :not(.way-bar, .way-head) { display: none; }
 .card-float .way-head { gap: 8px; }
 .card-float .way-head > .way-x { margin: -4px -6px 0 0; }
 .card-float .card-mark { margin-top: 0; }
@@ -1774,7 +1829,7 @@ body.dropping .drop-hint { display: flex; }
   .act-menu { position: fixed; top: 62px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 74px); overflow-y: auto; overscroll-behavior: contain; }
   /* the map controls keep their place (bottom right, thumb reach); the sheet is full
      width here, so they ride above it */
-  .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 12px); }
+  .map-ctrls { bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--col-lift, 0px) + 12px); }
   body.planning .plan-btn { display: none; } /* the sheet opens where the pill was, with its own ✕ */
   .ctrl-btn { width: 44px; height: 44px; }
   .ctrl-compass .maplibregl-ctrl-group button { width: 44px; height: 44px; }
@@ -2020,6 +2075,9 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools .btn.done { min-height: 40px; padding-inline: 12px; margin-left: 4px; }
 /* the route's view (25c): Show the whole route, More and Edit; nothing to keep apart */
 .pl-tools[data-stage="view"] .tb-sep { display: none; }
+/* the planner folded on a phone (step 3 of #233): how the next leg is drawn, its icon alone, beside undo and redo */
+.pl-tools[data-stage="folded"] .modebtn { width: 44px; padding: 0; justify-content: center; background: none; }
+.pl-tools[data-stage="folded"] .modebtn > :not(.ic:first-child) { display: none; }
 /* where room runs out, once the route's actions that don't fit are in More (planner.js FOLDS): the style's caption,
    then the names of the modes not in use, then all of them, then the style's name shortens */
 .pl-tools.fold1 .stylebtn .two small { display: none; }
@@ -2069,3 +2127,5 @@ body.dropping .drop-hint { display: flex; }
 
 /* the map's column on short phones with the sheet raised (main.js fitColumn()) */
 .map-ctrls.no-compass .ctrl-compass, .map-ctrls.no-3d .ctrl-3d { display: none; }
+/* (#344: with less room still, Weather, Show the whole route and Locate go too, and where not even Layers fits, all of it) */
+.map-ctrls.no-wx #btn-time, .map-ctrls.no-fit #btn-fit, .map-ctrls.no-locate #btn-locate, .map-ctrls.no-col > * { display: none; }
