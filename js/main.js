@@ -512,13 +512,15 @@ function syncPlannerPadding() {
   if (sheet.classList.contains('dragging')) return; // a swipe moves it: the room changes once, when it comes to rest
   const open = planner.active && !sheet.hidden;
   const side = open && planner.layout() === 'side';
-  document.documentElement.style.setProperty('--sheet-h', `${open && !side ? Math.round(planner.settledHeight()) : 0}px`);
+  const moving = sheet.getAnimations().some((a) => a.transitionProperty === 'height');
+  document.documentElement.style.setProperty('--sheet-h', `${open && !side ? (moving ? Math.round(planner.settledHeight()) : sheet.offsetHeight) : 0}px`);
   document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
   placePanels();
   if (quickOpen()) placeQuick();
   syncWxH(); // (and the map's column)
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
+$('#planner').addEventListener('transitionend', (e) => { if (e.target === e.currentTarget && e.propertyName === 'height') syncPlannerPadding(); });
 
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
 // the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D

@@ -4133,8 +4133,8 @@ export class Planner {
   }
 
   // ---------------------------------------------------------------- panel
-  // One panel, two layouts: a side panel on wide screens (open / minimised) and
-  // a bottom sheet elsewhere (peek / half / full). The summary row — distance,
+  // One panel, two layouts: a side panel on wide screens (open / folded down to its line) and
+  // a bottom sheet elsewhere (folded / peek / profile / half / full). The summary row — distance,
   // time, ascent, routing mode, undo — is always visible; the rest scrolls in
   // collapsible sections whose open state is remembered.
   buildPanel() {
@@ -4900,6 +4900,9 @@ export class Planner {
     const had = this.els.fold.contains(document.activeElement), to = this.unfoldTo;
     this.setSheetState(to && to !== 'folded' ? to : this.layout() === 'side' ? 'open' : 'peek');
     if (had) [this.els.foldBtn, this.els.min].find((b) => b.offsetParent)?.focus({ preventScroll: true });
+    // a card opened again: its spot in sight above it, as when it opened
+    const e = this.cards.place === 'peek' && this.cards.stack[this.cards.stack.length - 1], at = e && (e.card.at ? e.card.at() : e.at);
+    if (at) this.cards.inSight(at);
   }
   foldAway() { if (this.cards.place === 'peek') this.cards.close(); else this.close(); }
   // The folded line: the planner's numbers, with the count of what's to read before you go, or the card's mark and its
