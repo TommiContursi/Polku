@@ -800,6 +800,8 @@ body.kf-off .sheet-head-in > .kf { display: none; } /* (a short phone where the 
 .pl-viewnote .btn { flex: none; gap: 6px; }
 b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere; }
 .sheet-min { display: none; }
+.sheet-row > .way-x { display: none; }
+@media (min-width: 721px) { .sheet:not(.viewing) .sheet-row > .way-x { display: inline-flex; } }
 /* desktops: Done is at the toolbar's end */
 @media (min-width: 900px) { .sheet-head .done { display: none; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }

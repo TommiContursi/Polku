@@ -521,7 +521,8 @@ function syncPlannerPadding() {
   syncWxH(); // (and the map's column)
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
-$('#planner').addEventListener('transitionend', (e) => { if (e.target === e.currentTarget && e.propertyName === 'height') syncPlannerPadding(); });
+// (at rest, its own height again; and where a change was taken back in the same frame, so no resize was seen)
+for (const t of ['transitionend', 'transitioncancel']) $('#planner').addEventListener(t, (e) => { if (e.target === e.currentTarget && e.propertyName === 'height') syncPlannerPadding(); });
 $('#planner').addEventListener('sheetstate', syncPlannerPadding);
 
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and

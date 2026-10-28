@@ -4161,7 +4161,8 @@ export class Planner {
     // it holds the start instead (renderStart(), A with 25b).
     this.els.done = h('button', { type: 'button', class: 'btn done', title: 'Done editing (E): the route stays open to read and take along', onclick: () => this.done() }, 'Done');
     this.els.edit = h('button', { type: 'button', class: 'btn done edit', title: 'Edit the route (E)', onclick: () => this.setEditing(true), hidden: true }, 'Edit');
-    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.min, this.els.done, this.els.edit);
+    // (wider screens: ✕ at the header row's end while editing, as the mock-up of step 3 has it; the route's view has its own)
+    this.els.row = h('div', { class: 'sheet-row' }, this.els.sum, this.els.dockBtn, this.els.min, this.els.done, this.els.edit, this.closeX());
     this.els.titleName = h('b');
     this.els.titleSub = h('small');
     this.els.title = h('div', { class: 'pl-title', hidden: true }, h('h2', { class: 'pl-ttl' }, this.els.titleName, this.els.titleSub), this.closeX());
@@ -4981,7 +4982,7 @@ export class Planner {
       // never under the top bar (a phone on its side at 200 %, ⌄'s row too): the peek stops below it, and scrolls as one
       this.peekCut = this.layout() === 'sheet' && h > dvh() - 76;
       if (this.peekCut) h = Math.floor(dvh() - 76);
-      const peek = `${h}px`, was = [this.panel.style.getPropertyValue('--peek-h'), this.panel.style.getPropertyValue('--fold-h')];
+      const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
       // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
@@ -4999,10 +5000,6 @@ export class Planner {
       const top = this.els.top.offsetHeight;
       this.panel.style.setProperty('--fold-top', `${top}px`);
       this.panel.style.setProperty('--fold-h', `${top + Math.max(56, this.els.fold.offsetHeight) + 4}px`);
-      // the size it rests at changed: what rides above it follows at once (main.js), even where the sheet's own height
-      // didn't change in the end (a transition cancelled in the same frame, so no resize was seen)
-      const now = [this.panel.style.getPropertyValue('--peek-h'), this.panel.style.getPropertyValue('--fold-h')], st = this.panel.dataset.state;
-      if ((st === 'peek' && now[0] !== was[0]) || (st === 'folded' && now[1] !== was[1])) this.panel.dispatchEvent(new Event('sheetstate'));
     };
     this.measureSheet = sizes;
     new ResizeObserver(sizes).observe(this.els.head);
