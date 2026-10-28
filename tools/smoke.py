@@ -8023,11 +8023,21 @@ def fold_phone(chrome):
         # without it the numbers keep the header's 8 px)
         if s['last'] and abs(s['panel']['b'] - s['last']['b']) > 1:
             fails.append(f"peek: the sheet ends {s['panel']['b'] - s['last']['b']:.0f} px under its last row")
-        gap = pg.js("""new Promise((ok) => { const s = document.createElement('style'); s.id = 'no-kf'; s.textContent = '.sheet-head-in > .kf { display: none !important; }'; document.head.append(s);
-          setTimeout(() => { const g = polku.planner.panel.getBoundingClientRect().bottom - polku.planner.els.sum.closest('.sheet-row').getBoundingClientRect().bottom; s.remove(); ok(Math.round(g)); }, 400); })""")
-        if gap != 8:
+        pg.js("(() => { const s = document.createElement('style'); s.id = 'no-kf'; s.textContent = '.sheet-head-in > .kf { display: none !important; }'; document.head.append(s); })(); true")
+        fold_settled(pg, fails, 'step 1a')
+        gap = pg.js("Math.round(polku.planner.panel.getBoundingClientRect().bottom - polku.planner.els.sum.closest('.sheet-row').getBoundingClientRect().bottom)")
+        pg.js("document.getElementById('no-kf').remove(); true")
+        if not 7 <= gap <= 9:  # (a px either way: the rows' sub-pixel heights)
             fails.append(f"peek without the key facts' line: {gap} px under the numbers, not the header's 8")
         fold_settled(pg, fails, 'step 1b')
+        # …and the profile size ends at its zone's foot (the zone's own padding under its chart), as the peek at its last row
+        pg.js("polku.planner.setSheetState('profile', { remember: false }); true")
+        fold_settled(pg, fails, 'step 1c')
+        d = pg.js("Math.round(polku.planner.panel.getBoundingClientRect().bottom - polku.planner.els.profZone.getBoundingClientRect().bottom)")
+        if not -3 <= d <= 0:
+            fails.append(f"profile: the sheet ends {d} px from its zone's foot")
+        pg.js("polku.planner.setSheetState('peek'); true")
+        fold_settled(pg, fails, 'step 1d')
         # (the handle a button: Safari rings a div with tabindex after a tap, and it doesn't focus a button)
         if pg.js("polku.planner.els.handle.tagName") != 'BUTTON':
             fails.append('the handle is not a button')

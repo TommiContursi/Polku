@@ -4962,13 +4962,13 @@ export class Planner {
     // profile size adds the elevation chart and its colours (the stats row
     // folds away there), measured, so it fits whatever the sport shows
     // under the peek's last row, 14 px (the header's padding and 6 px more). With ⌄'s row (40 px, the handle's alone is 18),
-    // none under a row with room of its own, the key facts' line or a card, so the row costs the map 8 px, not 22; the
-    // header's 8 px under the numbers where a short phone has no key facts (step 3 of #233)
-    const under = () => (this.els.top.offsetHeight <= 18 ? 6 : this.panel.classList.contains('carded') || this.els.facts.offsetParent ? -8 : 0);
+    // none under a row with room of its own, the key facts' line, a card or the profile's zone, so the row costs the map
+    // 8 px, not 22; the header's 8 px under the numbers where a short phone has no key facts (step 3 of #233)
+    const under = (zone = false) => (this.els.top.offsetHeight <= 18 ? 6 : zone || this.panel.classList.contains('carded') || this.els.facts.offsetParent ? -8 : 0);
     // the profile zone's height at the profile size: measured while it's in sight at that size
     const profileH = () => {
       const hd = this.els.head, z = this.els.profZone;
-      const peek = hd.offsetTop + hd.offsetHeight + under();
+      const peek = hd.offsetTop + hd.offsetHeight + under(true);
       const st = this.panel.dataset.state;
       if (z.offsetHeight && (st === 'profile' || st === 'full')) this.profZoneH = z.offsetHeight;
       return Math.round(Math.min(innerHeight * 0.45, peek + (this.profZoneH || (this.profCompact ? 120 : 190)) + 6));
