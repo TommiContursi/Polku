@@ -316,6 +316,7 @@ map.on('mouseout', () => routeHoverLeg(null)); // off the map (onto the planner,
 const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
 const planner = new Planner(map, {
   activity: () => state.activity,
+  fitColumn: () => fitColumn(), // (the map's column, again: a folded toolbox lifted it, step 3 of #233)
   hoverLeg: routeHoverLeg,
   winter: () => ({ on: !!state.winterOn, setting: winterSetting() }), // winter on the route (15b): snow in the time, Heads-up
   sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),

@@ -815,7 +815,8 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="side"] .sheet-head { padding-top: 12px; touch-action: auto; }
 .sheet[data-layout="side"][data-state="folded"] { top: auto; bottom: 12px; }
 .sheet[data-layout="side"][data-state="folded"] > :is(.sheet-head, .pl-profile, .pl-tabs, .sheet-body) { display: none; }
-.sheet[data-layout="side"] .fold-line { position: static; }
+.sheet[data-layout="side"] .fold-line { display: none; }
+.sheet[data-layout="side"][data-state="folded"] .fold-line { display: flex; position: static; }
 /* resize grip on the side panel's right edge */
 .sheet-resize { display: none; position: absolute; top: 50%; right: -7px; width: 14px; height: 56px; margin-top: -28px; cursor: ew-resize; touch-action: none; z-index: 1; }
 .sheet[data-layout="side"]:not([data-state="folded"]) .sheet-resize { display: block; }
@@ -1583,9 +1584,11 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 /* the whole sheet scrolls as one where its top parts take more than half of it at full (#453, js/planner.js scrollAll()) */
 .sheet.scroll-all { overflow: hidden auto; overscroll-behavior: contain; }
 .sheet.scroll-all > .sheet-body { flex: none; overflow: visible; }
+.sheet.scroll-all[data-state="peek"] > .sheet-body { display: none; }
 .sheet.scroll-all > .sheet-top { position: sticky; top: 0; z-index: 3; background: var(--surface-solid); border-radius: 18px 18px 0 0; }
 /* a phone's peek: the card is the peek, 52 % of the window at most (it scrolls inside), the point in sight above it */
 .card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
+@media (max-width: 720px) { .sheet.foldable .card-peek .card { max-height: calc(52dvh - 22px); } } /* (⌄'s row above it takes 22 px more than the handle did: the map keeps its room, step 3 of #233) */
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, it takes
    the sheet's full height and scrolls inside it */

@@ -4874,8 +4874,8 @@ export class Planner {
   // #453: at full, where the header, the profile and the tabs take more than half of the sheet (200 %), the whole sheet
   // scrolls as one, so the list can be reached; its top row with the handle stays
   scrollAll() {
-    const p = this.panel, on = this.layout() === 'sheet' && p.dataset.state === 'full' && !this.cards.current
-      && this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2;
+    const p = this.panel, on = this.layout() === 'sheet' && !this.cards.current && ((p.dataset.state === 'peek' && this.peekCut)
+      || (p.dataset.state === 'full' && this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2));
     if (p.classList.contains('scroll-all') === on) return;
     p.classList.toggle('scroll-all', on);
     if (!on) p.scrollTop = 0;
@@ -4977,6 +4977,9 @@ export class Planner {
       const over = t && !t.hidden && this.layout() === 'sheet' ? h - (dvh() - 76) : 0;
       if (over > 0) { const nh = n.offsetHeight, to = Math.max(38, nh - over); n.style.maxHeight = `${to}px`; h -= nh - to; }
       if (n) n.classList.toggle('scrolls', over > 0);
+      // never under the top bar (a phone on its side at 200 %, ⌄'s row too): the peek stops below it, and scrolls as one
+      this.peekCut = this.layout() === 'sheet' && h > dvh() - 76;
+      if (this.peekCut) h = Math.floor(dvh() - 76);
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
@@ -5024,8 +5027,9 @@ export class Planner {
         const S = this.peekOnly() ? [{ name: 'peek', at: peek }]
           : this.cards.place === 'peek' ? [...line, { name: 'peek', at: peek }, { name: 'full', at: full }]
             : [...line, { name: 'peek', at: peek }, { name: 'profile', at: px('--profile-h') }, { name: 'half', at: D * 0.5 }, { name: 'full', at: full }];
-        if (from === 'folded' && line.length) S.unshift({ name: 'closed', at: -14 });
-        return { H: full, now, from, sizes: S, min: S[0].at, max: full };
+        const up = S.filter((z, i) => i === 0 || z.at > Math.max(...S.slice(0, i).map((y) => y.at)) + 1); // (only ever up: a peek as tall as the screen has none above it)
+        if (from === 'folded' && line.length) up.unshift({ name: 'closed', at: -14 });
+        return { H: full, now, from: up.some((z) => z.name === from) ? from : up[up.length - 1].name, sizes: up, min: up[0].at, max: full };
       },
       // a closing size needs SWIPE.closeAt of the way, as a sheet that closes by a swipe does
       pick: (aim, ride) => {
@@ -5332,7 +5336,7 @@ export class Planner {
     // the room it takes above the sheet, or the window's foot beside a side panel, for what sits there too
     // (--tools-h: the scale, notes, the 3D pad, a track's card, the timeline)
     const toolsH = (px) => document.documentElement.style.setProperty('--tools-h', `${px}px`);
-    if (!show || desk) document.documentElement.style.setProperty('--col-lift', '0px');
+    if ((!show || desk) && document.documentElement.style.getPropertyValue('--col-lift') !== '0px') { document.documentElement.style.setProperty('--col-lift', '0px'); requestAnimationFrame(() => this.app.fitColumn?.()); }
     if (!show) { toolsH(0); return; }
     const colLeft = $('#map-ctrls').getBoundingClientRect().left;
     // the route's actions once there's a leg (Back to start not on a loop); in turn, as far as there's room
@@ -5410,7 +5414,8 @@ export class Planner {
     } else setOpts(box, n);
     toolsH(dock ? 0 : 16 + th); // from the sheet (and an open timeline) to the toolbox's top
     // folded on a narrow screen (200 %) it floats where it doesn't clear the map's buttons: they rise above its row
-    document.documentElement.style.setProperty('--col-lift', `${!dock && 8 + w + 8 > Math.min(colLeft, innerWidth - 66) ? th + 8 : 0}px`); // (66: the column's widest button, whatever it shows now)
+    const lift = `${!dock && 8 + w + 8 > Math.min(colLeft, innerWidth - 66) ? th + 8 : 0}px`; // (66: the column's widest button, whatever it shows now)
+    if (document.documentElement.style.getPropertyValue('--col-lift') !== lift) { document.documentElement.style.setProperty('--col-lift', lift); requestAnimationFrame(() => this.app.fitColumn?.()); }
   }
 
   dockTools(on) {

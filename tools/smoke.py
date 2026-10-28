@@ -8169,8 +8169,11 @@ def fold_200(chrome):
         pg.js("polku.planner.setSheetState('full'); polku.planner.setTab('route'); true")
         pg.js(SETTLED)
         r = pg.js("""(async () => { const p = polku.planner, rows = p.els.body.querySelectorAll('.wpl-point'), last = rows[rows.length - 1];
-          if (!last) return 'no rows'; p.panel.scrollTop = p.panel.scrollHeight; await new Promise((ok) => setTimeout(ok, 200));
-          const b = last.getBoundingClientRect(), s = p.panel.getBoundingClientRect(); return b.top >= s.top - 1 && b.bottom <= s.bottom + 1 ? '' : `the last row at ${Math.round(b.top)}–${Math.round(b.bottom)}, the sheet ${Math.round(s.top)}–${Math.round(s.bottom)}`; })()""")
+          if (!last) return 'no rows';
+          if (p.panel.scrollHeight <= p.panel.clientHeight + 1) return `the sheet doesn't scroll (${p.panel.scrollHeight} px in ${p.panel.clientHeight})`;
+          last.scrollIntoView({ block: 'end' }); await new Promise((ok) => setTimeout(ok, 200));
+          const b = last.getBoundingClientRect(), s = p.panel.getBoundingClientRect(), t = p.els.top.getBoundingClientRect();
+          return b.top >= t.bottom - 1 && b.bottom <= s.bottom + 1 ? '' : `the last row at ${Math.round(b.top)}–${Math.round(b.bottom)}, the sheet ${Math.round(t.bottom)}–${Math.round(s.bottom)} under its top row`; })()""")
         if r:
             fails.append(f'full at 200 %: {r}')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
