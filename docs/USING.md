@@ -68,7 +68,7 @@ On a phone, swipe the planner up or down to change how much of it is visible: fr
 
 To see the map, fold the planner to one line: **⌄** at its top right, or a swipe down from its smallest size. The line shows the route's numbers and how many things there are to read before you go; a tap on it, or a swipe up, opens the planner as it was. A second swipe down, or **✕** where ⌄ was, puts the planner away: the route stays on the map, and **Open** in the note or **Plan** brings the planner back. A single swipe always stops at the line. Folded, the toolbox keeps how the next leg is drawn, **Undo** and **Redo**, since a tap on the map still adds a point. A card, such as a point's, folds the same way to its name, and a swipe up opens it to the full height; from its line, a swipe down or ✕ closes it and the planner is as it was. Where the planner would cover more than half the screen, as at 200 % zoom, it rests at its line, and opened all the way its whole sheet scrolls.
 
-On a desktop, **⌄** in the planner's header folds it down to its line at the foot of the map, with the toolbar beside it; with the planner at the bottom, to its line with the toolbar on it. A card on the map folds to its title with its own ⌄, keeping its foot where it was. The button in the planner's header next to ⌄ moves the planner between the side and bottom of the map.
+On a desktop, **⌄** in the planner's header folds it down to its line at the foot of the map, with the toolbar beside it, and **✕** puts it away; with the planner at the bottom, to its line with the toolbar on it. A card on the map folds to its title with its own ⌄, keeping its foot where it was. The button in the planner's header next to ⌄ moves the planner between the side and bottom of the map.
 
 ## Read the map
 
