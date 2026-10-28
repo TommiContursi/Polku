@@ -4203,10 +4203,11 @@ export class Planner {
       onPop: () => this.keepView(),
       pad: () => { const v = this.viewPadding(0); return { left: this.layout() === 'side' && this.active ? v.left : 0, bottom: v.bottom }; },
       // Back and ✕ leave the planner as it was before the card: its sheet's size, its list's scroll
-      keep: () => ({ sheet: this.panel.dataset.state, scroll: this.els.body.scrollTop }),
+      keep: () => ({ sheet: this.panel.dataset.state, scroll: this.els.body.scrollTop, unfoldTo: this.unfoldTo }),
       restore: (was) => {
         if (!this.active) return;
         if (this.layout() === 'sheet' && was.sheet && was.sheet !== this.panel.dataset.state) this.setSheetState(was.sheet, { remember: false });
+        this.unfoldTo = was.unfoldTo; // (its line opens to the size it left, not to a card's)
         requestAnimationFrame(() => { this.els.body.scrollTop = was.scroll; });
       },
       // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
@@ -4842,8 +4843,8 @@ export class Planner {
     const ok = lay === 'side' ? ['open', 'folded'] : SHEET_STATES;
     if (!ok.includes(st)) st = lay === 'side' ? 'open' : 'half';
     if (st === 'folded' && !this.foldable()) st = lay === 'side' ? 'open' : 'peek';
-    // the start's views are the sheet's whole height: its peek grows with them (A)
-    if (lay === 'sheet' && this.peekOnly()) { st = 'peek'; remember = false; }
+    // the start's views are the sheet's whole height: its peek grows with them (A); a card over them has its own sizes
+    if (lay === 'sheet' && this.peekOnly() && this.cards.place !== 'peek') { st = 'peek'; remember = false; }
     // a card in the peek has three sizes, folded, its own and full; the planner's others close it
     if (!['folded', 'peek', 'full'].includes(st) && this.cards.place === 'peek') this.cards.close({ restore: false });
     const p = this.panel, was = p.dataset.state;
@@ -4890,9 +4891,9 @@ export class Planner {
   peekTooTall() { return this.foldable() && !this.cards.current && (parseFloat(this.panel.style.getPropertyValue('--peek-h')) || 0) > dvh() / 2; }
 
   // Fold, then away (step 3 of #233): what folds to a line is the planner with a route (the start's views keep their
-  // peek) and a card in the peek. ⌄ or a swipe down folds it; the line opens it as it was; ✕ at the line, or a second
+  // peek) and a card in the peek, over them too. ⌄ or a swipe down folds it; the line opens it as it was; ✕ at the line, or a second
   // swipe, puts the planner away (with its note) or closes the card (the planner as it was under it).
-  foldable() { return !this.peekOnly() && (this.cards.place === 'peek' || this.points.length > 1); }
+  foldable() { return this.cards.place === 'peek' || (this.points.length > 1 && !this.peekOnly()); }
   // the keyboard's focus goes with it: from ⌄ or the handle to the line, and back to where it came from
   fold() {
     this.foldFocus = [this.els.foldBtn, this.els.min, this.els.handle].find((b) => b === document.activeElement) || null;

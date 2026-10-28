@@ -8186,13 +8186,33 @@ def fold_phone(chrome):
         s = info()
         if s['card'] != 'point' or s['st'] != 'peek':
             fails.append(f"the card's line, the planner folded from half: card {s['card']}, {s['st']} (the card at its own size)")
-        # the start's views keep their peek: no ⌄ on a card over them, where it would do nothing
+        # the card closed, the planner's line opens to half, the size it left, not the card's
+        pg.js("polku.planner.cards.close(); true")
+        fold_settled(pg, fails, 'step 24b')
+        pg.tap(*(fold_at(pg, 'polku.planner.els.foldGo') or (0, 0)))
+        fold_settled(pg, fails, 'step 24c')
+        s = info()
+        if s['card'] or s['st'] != 'half':
+            fails.append(f"the planner's line after a card opened from it: card {s['card']}, {s['st']} (half, as it was)")
+        # a card over the start's view folds as every card does (the start's views keep their peek; a card has its own sizes)
         pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
         time.sleep(0.6)
         fold_settled(pg, fails, 'step 25')
+        pg.tap(*(fold_at(pg, 'polku.planner.els.foldBtn') or (0, 0)))
+        fold_settled(pg, fails, 'step 26')
         s = info()
-        if s['card'] != 'spot' or s['fold']:
-            fails.append(f"a card over the start's view: card {s['card']}, ⌄ {bool(s['fold'])} (none: the start's views keep their peek)")
+        if s['card'] != 'spot' or s['st'] != 'folded':
+            fails.append(f"⌄ on a card over the start's view: card {s['card']}, {s['st']} (the card folded)")
+        pg.tap(*(fold_at(pg, 'polku.planner.els.foldGo') or (0, 0)))
+        fold_settled(pg, fails, 'step 27')
+        s = info()
+        if s['card'] != 'spot' or s['st'] != 'peek':
+            fails.append(f"the line of a card over the start's view: card {s['card']}, {s['st']} (the card at its peek)")
+        pg.js("polku.planner.cards.close(); true")
+        fold_settled(pg, fails, 'step 28')
+        s = info()
+        if s['card'] or s['st'] != 'peek':
+            fails.append(f"the card over the start's view closed: card {s['card']}, {s['st']} (the start's view at its peek)")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
