@@ -22,7 +22,7 @@ import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags, way
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
 import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, winterAt, keepInView } from './inspect.js';
 import { describe } from './hover.js';
-import { CardHost, item, rows, firstNums } from './card.js';
+import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
 import { pointCard, itemCard, routeCard, stretchCard, editCard, leaveBlock, spotCard, lipasCard } from './cards.js';
 import { FIX_THE_MAP } from './valhalla.js';
@@ -4926,10 +4926,11 @@ export class Planner {
     this.els.foldBtn.title = f;
     if (card) {
       const name = typeof card.title === 'string' ? card.title : card.title.textContent;
-      const facts = firstNums(this.cards.box);
+      // (its words wrap with its name: a place's line can be long; its numbers stay whole)
+      const { nums, words } = foldFacts(card, this.cards.box), head = [name, ...words].join(' · ');
       go.replaceChildren(card.mark ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, card.mark()) : '',
-        h('b', { class: 'name', 'aria-hidden': 'true' }, h('span', { class: 'fold-name' }, facts.length ? `${name} ·` : name), ' ', ...line(facts)));
-      go.setAttribute('aria-label', `${[name, ...facts].join(', ')}: open the card`);
+        h('b', { class: 'name', 'aria-hidden': 'true' }, h('span', { class: 'fold-name' }, nums.length ? `${head} ·` : head), ' ', ...line(nums)));
+      go.setAttribute('aria-label', `${[name, ...words, ...nums].join(', ')}: open the card`);
       return;
     }
     const R1 = this.unread(this.heads, 'read'), R3 = this.unread(this.heads, 'not'), n = R1.length || R3.length;

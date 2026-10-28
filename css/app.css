@@ -746,6 +746,8 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .fold-go > b > span { white-space: nowrap; }
 .fold-go > b.name { font-size: 15px; }
 .fold-go .fold-name { white-space: normal; overflow-wrap: break-word; } /* (a name wraps whole, never cut with "…", the plan's §8; at 200 % two lines, below) */
+/* a card's words after its name (no numbers: a place's line, a stretch's points) stop at two lines, so they give way first */
+.fold-go .fold-name:only-child { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .fold-warn { flex: none; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border-radius: 999px; font-size: 13px; font-weight: 700; }
 .fold-warn.danger { background: var(--danger-soft); color: var(--danger); }
 .fold-warn.unk { background: var(--unk-soft); color: var(--unk); }

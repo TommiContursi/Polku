@@ -8322,6 +8322,79 @@ def fold_start(chrome):
     return fails
 
 
+# A folded card with no numbers says its own words (#558's change 7): the whole route its distance and time, a place
+# its line, a choice the one made, Edit this stretch its stretch, a list how many once that's known; Not right? its
+# name. The desktop's rolled title row (.way-facts) says the same.
+FOLD_KINDS = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((ok) => setTimeout(ok, ms)), out = {};
+  const row = (t) => [...p.cards.box.querySelectorAll('button')].find((b) => b.textContent.includes(t)).click();
+  const read = async (name, open) => {
+    p.cards.close(); p.setSheetState('peek', { remember: false }); await wait(100);
+    await open(); await wait(400);
+    const c = p.cards.current, box = p.cards.box;
+    p.setSheetState('folded', { remember: false }); await wait(300);
+    out[name] = { kind: c && c.kind, name: c && (typeof c.title === 'string' ? c.title : c.title.textContent), label: p.els.foldGo.getAttribute('aria-label'), facts: (box.querySelector('.way-facts') || {}).textContent || '',
+      rows: box.querySelectorAll('.insp-row').length, state: c && c.state, found: c && c.found ? c.found.length : null, sub: c && c.sub };
+  };
+  const mid = () => p.analysis.pts[Math.floor(p.analysis.pts.length / 2)], spot = { lng: 23.83, lat: 61.518 };
+  await read('whole', () => { p.openRouteCard(1, mid()); row('The whole route'); });
+  await read('sport', () => { p.openPointCard(p.points[1]); row('Sport from here'); });
+  // (once LIPAS and OpenStreetMap have answered, two found, so the count doesn't depend on what's there)
+  await read('stays', async () => { p.setStop(1, { on: 480 }); p.openPointCard(p.points[1]); row('Places to sleep');
+    for (let k = 0; k < 150 && p.cards.current.state === 'looking'; k++) await wait(100);
+    Object.assign(p.cards.current, { found: [{ name: 'Laavu', kind: 'Lean-to', d: 800 }, { name: 'Kota', kind: 'Hut', d: 2100 }], state: 'done' }); p.cards.refresh(); });
+  await read('here', () => { p.openRouteCard(1, mid()); row('What'); });
+  await read('edit', () => p.openStretchCard(p.stretchAt(1), { edit: true }));
+  await read('esport', () => { p.openStretchCard(p.stretchAt(1), { edit: true }); row('Sport'); });
+  // (Route style shows on a stretch that follows paths: its mode set by hand, with no routing)
+  p.legs[p.stretchAt(1).from].mode = 'auto';
+  await read('estyle', () => { p.openStretchCard(p.stretchAt(1), { edit: true }); out.styleVal = p.cards.box.querySelector('[data-k=style] .val')?.textContent.trim(); row('Route style'); });
+  await read('spothere', () => { p.openSpotCard(spot); row('What'); });
+  await read('notright', () => { p.openSpotCard(spot); row('Not right'); });
+  await read('place', () => p.openPlaceCard({ properties: { name: 'Pyynikki', class: 'peak', ele: 160 }, layer: { id: 'label-peak' }, geometry: { type: 'Point', coordinates: [23.73, 61.495] } }, [23.73, 61.495]));
+  await read('lipas', () => p.openLipasCard({ name: 'Kaupin kuntorata', typeName: 'Kuntorata', city: 'Tampere' }, [23.81, 61.512]));
+  p.cards.close();
+  return out;
+})()"""
+
+
+def fold_kinds(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        r = pg.js(FOLD_KINDS, timeout=60000)
+        want = {
+            'whole': r'.+ → .+, [\d.]+ k?m, \d[^,]*',
+            'sport': r'Sport from here, MTB',
+            'stays': r'Places to sleep nearby, 2',
+            'here': r'[^,]+, ' + str(r['here']['rows']) + r' details?',
+            'edit': re.escape(f"Edit this stretch, {r['edit']['sub']}"),
+            'esport': r'Sport for this stretch, MTB',
+            'estyle': re.escape(f"Route style, {r.get('styleVal')}"),
+            'spothere': r'[^,]+, ' + str(r['spothere']['rows']) + r' details?',
+            'notright': r'Not right\?',
+            'place': r'Pyynikki, Peak',
+            'lipas': r'Kaupin kuntorata, Kuntorata, Tampere',
+        }
+        for k, rx in want.items():
+            c = r.get(k) or {}
+            label = c.get('label') or ''
+            if not re.fullmatch(rx + ': open the card', label):
+                fails.append(f"{k}: the folded line says “{label}” (card {c.get('kind')})")
+                continue
+            # the desktop's rolled title row: the same words after the name
+            if f"{c['name']}{c['facts'].replace(' · ', ', ')}: open the card" != label:
+                fails.append(f"{k}: the rolled title row says “{c['name']}{c['facts']}”, the line “{label}”")
+        if not r.get('styleVal'):
+            fails.append('Route style: no style on its row in Edit this stretch')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 # The planner's tabs in one row at every usual size, with Check's count and its "?" and Go's time showing; they wrap only
 # at 200 % (#453)
 def fold_tabs(chrome):
@@ -8343,7 +8416,7 @@ def fold_tabs(chrome):
 
 
 def fold(chrome):
-    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome)
+    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -13552,7 +13625,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
-    ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge'),
+    ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))
