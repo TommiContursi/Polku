@@ -4987,11 +4987,14 @@ export class Planner {
       document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
       // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
       // to read came once a source didn't answer (25d part 3, which can take a while): the peek is taller now, so
-      // frame it once more, unless the map has been moved or framed on something else since, or a card is open:
-      // asked again in the frame it runs in, so a press or a card opened in between stops it
+      // frame it once more, unless the map has been moved or framed on something else since, or a card is open: at once,
+      // in the frame the peek changed in, so no frame shows the route under the sheet (the map's buttons and the toolbox
+      // take the new size at once too, step 3 of #233)
       const f = this.fitAt;
-      const wanted = () => this.fitAt === f && this.panel.dataset.state === 'peek' && !this.cards.current;
-      if (f && f.peek !== peek && wanted() && Date.now() - f.t < 60000) requestAnimationFrame(() => { if (wanted()) this.fitRoute({ animate: false }); else if (this.fitAt === f) this.fitAt = null; }); // (used once, as asked or not)
+      if (f && f.peek !== peek && this.panel.dataset.state === 'peek' && !this.cards.current && Date.now() - f.t < 60000 && !this.refitting) {
+        this.refitting = true; // (framing places the toolbox, which may measure the sheet again)
+        try { this.fitRoute({ animate: false }); } finally { this.refitting = false; }
+      }
       this.panel.style.setProperty('--profile-h', `${profileH()}px`);
       this.scrollAll();
       // the planner resting at its peek, which turns out taller than half the screen (its toolbox docked into it): its line
