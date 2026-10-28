@@ -5777,7 +5777,7 @@ def check(chrome, w, h, phone, bottom=False):
     # while planning, the timeline stays over the map (#225): on a phone just above the sheet, clear of the toolbox
     if pg.js("!!document.querySelector('#planner #wx-bar') || document.querySelector('#wx-bar').hidden"):
         fails.append('the timeline isn’t over the map while planning')
-    states = ['open', 'min'] if layout == 'side' else ['peek', 'profile', 'half', 'full']
+    states = ['open', 'folded'] if layout == 'side' else ['peek', 'profile', 'half', 'full']
     for st in states:
         pg.js(f"polku.planner.setSheetState({json.dumps(st)}, {{ remember: false }}); true")
         late = pg.js(SETTLED)  # the sheet's and the controls' transitions (slow in software rendering)
@@ -6056,7 +6056,7 @@ PREVIEWS = r"""(async () => {
   enter(); p.toggleSection('colours', false); empty('section fold'); p.toggleSection('colours', true);
   enter(); const fold = p.breakdownKinds.grade.el.closest('.bd-group').querySelector('.bd-group-toggle'); fold.click(); empty('group fold'); fold.click();
   enter(); p.setActive(false); empty('planner close'); p.setActive(true);
-  enter(); p.setSheetState(p.layout() === 'side' ? 'min' : 'peek', { remember: false }); empty('planner minimise'); p.reveal('colours');
+  enter(); p.setSheetState(p.layout() === 'side' ? 'folded' : 'peek', { remember: false }); empty('planner fold'); p.reveal('colours');
   const windRow = p.breakdownRows('wind')[0]; fire(cell('wind', windRow[3]), 'pointerenter');
   a.wind = null; p.renderBreakdown(); empty('forecast loss');
   a.eleGap = null; p.renderBreakdown();
@@ -8802,7 +8802,7 @@ def toolbox(chrome):
         apart: !t || t.bottom <= b.top + 0.5 || t.top >= b.bottom - 0.5 || t.right <= b.left + 0.5 || t.left >= b.right - 0.5,
         credits: ((i) => { const q = i.getBoundingClientRect(), e = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return !!e && i.contains(e); })(document.querySelector('.maplibregl-ctrl-attrib-button')) }; })()"""
     for label, js in (('the side panel', 'true'), ('the side panel, wide', "polku.planner.panel.style.setProperty('--pl-w', '640px'), true"),
-                      ('the side panel, minimised', "polku.planner.panel.style.removeProperty('--pl-w'), polku.planner.setSheetState('min', { remember: false }), true"),
+                      ('the side panel, folded', "polku.planner.panel.style.removeProperty('--pl-w'), polku.planner.setSheetState('folded', { remember: false }), true"),
                       ('the panel at the bottom', "polku.planner.setDock('bottom'), true")):
         pg.js(js)
         placed(pg)
