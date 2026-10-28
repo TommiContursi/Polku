@@ -8178,6 +8178,9 @@ TB_DUPES = """(async () => { const p = polku.planner; p.toggleMore(); await new 
 TB_AT = """((sel) => { const el = typeof sel === 'string' ? document.querySelector(sel) : sel; if (!el || !el.offsetParent) return null;
   const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y);
   return { x, y, w: b.width, h: b.height, clear: !!top && (el === top || el.contains(top)) }; })"""
+# a menu or a tooltip shown and wholly on screen
+TB_ON_SCREEN = """((sel) => { const el = document.querySelector(sel); if (!el || el.hidden) return false;
+  const r = el.getBoundingClientRect(); return r.top >= -0.5 && r.left >= -0.5 && r.bottom <= innerHeight + 0.5 && r.right <= innerWidth + 0.5; })"""
 TB_PHONE = """(async () => {
   const p = polku.planner, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms)), txt = (e) => e.textContent.trim();
   const fit = document.getElementById('btn-fit');
@@ -8425,27 +8428,69 @@ def toolbox(chrome):
     name = '1440x900'
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
     pg.js(SETTLED)
+    # the toolbar at the map's foot (#468): beside the side panel 12 px up from the window's foot, however tall the
+    # panel is; on a bottom panel's top edge. The scale and the credits just above it (not under it, nor lifted twice
+    # as far), right of a side panel; the timeline over the map clear of it, and beside the panel of the credits' ⓘ too
     ON_EDGE = """(() => { const p = polku.planner, b = p.tools.getBoundingClientRect(), r = p.panel.getBoundingClientRect(), c = document.getElementById('map-ctrls').getBoundingClientRect();
-      const side = p.layout() === 'side', level = c.top < b.bottom + 8;
-      return { side, folds: [...p.tools.classList].filter((k) => /^fold/.test(k)), edge: side ? Math.abs(b.left - r.right) <= 1 && Math.abs(b.top - r.top) <= 1 : Math.abs(b.bottom - r.top) <= 1 && Math.abs(b.left - r.left) <= 1,
+      const side = p.layout() === 'side', level = c.top < b.bottom + 8, s = document.querySelector('.maplibregl-ctrl-bottom-left').getBoundingClientRect(), wx = document.getElementById('wx-bar'), t = !wx.hidden && wx.getBoundingClientRect();
+      return { side, folds: [...p.tools.classList].filter((k) => /^fold|^tb-rows$/.test(k)), timeline: !!t, edge: side ? Math.abs(b.left - r.right) <= 1 && Math.abs(b.bottom - (innerHeight - 12)) <= 1 : Math.abs(b.bottom - r.top) <= 1 && Math.abs(b.left - r.left) <= 1,
         clear: b.right <= (level ? c.left - 12 : innerWidth - 12) + 0.5, below: b.top >= document.querySelector('.topbar').getBoundingClientRect().bottom - 0.5,
-        active: [...p.tools.querySelectorAll('.tb-modes [aria-checked=true] span')].some((s) => s.offsetParent) }; })()"""
+        active: [...p.tools.querySelectorAll('.tb-modes [aria-checked=true] span')].some((s) => s.offsetParent),
+        scale: s.bottom <= b.top + 0.5 && s.bottom >= b.top - 12 && (!side || s.left >= r.right - 0.5),
+        apart: !t || t.bottom <= b.top + 0.5 || t.top >= b.bottom - 0.5 || t.right <= b.left + 0.5 || t.left >= b.right - 0.5,
+        credits: ((i) => { const q = i.getBoundingClientRect(), e = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return !!e && i.contains(e); })(document.querySelector('.maplibregl-ctrl-attrib-button')) }; })()"""
     for label, js in (('the side panel', 'true'), ('the side panel, wide', "polku.planner.panel.style.setProperty('--pl-w', '640px'), true"),
-                      ('the panel at the bottom', "polku.planner.panel.style.removeProperty('--pl-w'), polku.planner.setDock('bottom'), true")):
+                      ('the side panel, minimised', "polku.planner.panel.style.removeProperty('--pl-w'), polku.planner.setSheetState('min', { remember: false }), true"),
+                      ('the panel at the bottom', "polku.planner.setDock('bottom'), true")):
         pg.js(js)
         placed(pg)
+        pg.js(SETTLED)  # (the scale and the timeline follow the toolbar's room, --tools-h, in 0.2 s)
         e = pg.js(ON_EDGE)
-        if not (e['edge'] and e['clear'] and e['below'] and e['active']) or (label == 'the side panel' and e['folds']):
+        if not (e['edge'] and e['clear'] and e['below'] and e['active'] and e['scale'] and e['apart'] and (e['credits'] or not e['side'])) or (label == 'the side panel' and e['folds']):
             fails.append(f'{name} {label}: the toolbar {e}')
+        if label == 'the panel at the bottom':
+            d = dupes(pg, f'{name} {label}')
+            if 'Show the whole route' not in d['bar'] or 'Export GPX' not in d['bar']:
+                fails.append(f"{name} {label}: room on the toolbar, but it lacks Show the whole route or Export GPX: {', '.join(d['bar'])}")
     pg.js("polku.planner.setDock('left'); true")
     placed(pg)
+    # #387: the panel's place button frames the route again in the map it leaves free, both ways: from the side
+    # (framed beside it, above its toolbar), and from the bottom at its peek (framed wide, under where the side panel goes)
+    IN_FREE = """(() => { const p = polku.planner, m = polku.map, r = p.routeBounds(), a = m.project([r[0], r[3]]), b = m.project([r[2], r[1]]);
+      const pl = p.panel.getBoundingClientRect(), side = p.layout() === 'side', R = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math.round(v)]));
+      const free = { top: document.querySelector('.topbar').getBoundingClientRect().bottom, bottom: side ? p.tools.getBoundingClientRect().top : pl.top, left: side ? pl.right : 0, right: document.getElementById('map-ctrls').getBoundingClientRect().left };
+      const route = { top: a.y, bottom: b.y, left: a.x, right: b.x };
+      return { side, inside: route.top >= free.top - 1 && route.bottom <= free.bottom + 1 && route.left >= free.left - 1 && route.right <= free.right + 1, route: R(route), free: R(free) }; })()"""
+    for to, before in (('the bottom', 'true'), ('the side', "polku.planner.setSheetState('peek'), true")):
+        pg.js(before)
+        placed(pg)
+        pg.js("polku.planner.fitRoute({ animate: false }); true")
+        click(pg, '.sheet-dock', f'{name}: Move the planner to {to}')
+        placed(pg)
+        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !polku.map.isMoving() || Date.now() - t0 > 5000 ? ok(true) : setTimeout(go, 50); go(); })")
+        e = pg.js(IN_FREE)
+        if e['side'] != (to == 'the side') or not e['inside']:
+            fails.append(f"{name}: moved to {to} by its button, the route isn’t framed in the map it leaves free: {e} (#387)")
+    # a card from the list stays clear of the toolbar at the foot (#468): End's, the lowest row, with the timeline closed;
+    # its last button, scrolled to inside the card, is what's under its middle
+    click(pg, '#btn-time', f'{name}: the timeline')
+    click(pg, '#planner .wpl-point:has(.wp-end)', f'{name}: End in the list')
+    pg.js(SETTLED)
+    c = pg.js("""(() => { const c = document.querySelector('.card-beside'); if (!c) return null; const r = c.getBoundingClientRect(), t = polku.planner.tools.getBoundingClientRect();
+      const last = [...c.querySelectorAll('button')].filter((b) => b.offsetParent).at(-1); last.scrollIntoView({ block: 'nearest' });
+      const q = last.getBoundingClientRect(), e = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2), R = (a) => [a.left, a.top, a.right, a.bottom].map(Math.round);
+      return { timeline: !document.getElementById('wx-bar').hidden, card: R(r), tools: R(t), clear: r.bottom <= t.top + 0.5 || r.right <= t.left || r.left >= t.right,
+        last: last.textContent.trim(), at: !!e && last.contains(e), over: e ? e.id || String(e.className) : '' }; })()""")
+    if not c or c['timeline'] or not c['clear'] or not c['at']:
+        fails.append(f'{name}: End’s card from the list, the timeline closed: {c}')
+    pg.js("polku.planner.cards.close(); true")
     # the keys: P, S, W pick the mode; nothing else changes
     for k, code, vk, mode in (('s', 'KeyS', 83, 'line'), ('w', 'KeyW', 87, 'water'), ('p', 'KeyP', 80, 'auto')):
         key(pg, k, code, vk)
         got = pg.js("({ mode: polku.planner.mode, checked: polku.planner.tools.querySelector('.tb-modes [aria-checked=true]').dataset.mode })")
         if got['mode'] != mode or got['checked'] != mode:
             fails.append(f'{name}: the key {k.upper()}: {got}')
-    # a tooltip on the pointer, with the name and the key
+    # a tooltip on the pointer, with the name and the key, wholly on screen with the toolbar at the map's foot (#468)
     b = at(pg, '#pl-tools [aria-label="Show the whole route"]')
     if b:
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': b['x'], 'y': b['y'], 'button': 'none'}, pg.s)
@@ -8453,6 +8498,8 @@ def toolbox(chrome):
         tip = pg.js("(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()")
         if 'Show the whole route' not in tip or 'F' not in tip:
             fails.append(f'{name}: the tooltip of Show the whole route: “{tip}”')
+        if not pg.js(f"({TB_ON_SCREEN})('#tip')"):
+            fails.append(f"{name}: the tooltip of Show the whole route is off the screen: {pg.js('JSON.stringify(document.getElementById(`tip`).getBoundingClientRect())')} in a {pg.js('innerHeight')} px window")
         pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 700, 'y': 500, 'button': 'none'}, pg.s)
         time.sleep(0.5)
         if pg.js("!document.getElementById('tip').hidden"):
@@ -8472,11 +8519,19 @@ def toolbox(chrome):
     head = pg.js("document.querySelector('.menu-pop .menu-head b')?.textContent || ''")
     if head != 'Kauppi loop':
         fails.append(f'{name}: More’s title is “{head}”, not the route’s name')
+    # the toolbar's menus, opened from the map's foot, wholly on screen (#468)
+    if not pg.js(f"({TB_ON_SCREEN})('.menu-pop')"):
+        fails.append(f'{name}: More isn’t wholly on screen')
     pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); polku.planner.routeName = ''; true")
+    if click(pg, '#pl-tools .stylebtn', f'{name}: the route style') and not pg.js(f"({TB_ON_SCREEN})('.menu-pop')"):
+        fails.append(f'{name}: the route style’s menu isn’t wholly on screen')
+    pg.js("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true")
+    # beside the panel the map's buttons are level with the toolbar (#468): Show the whole route stays on it, and
+    # each of the route's actions is on it or in More (the bottom dock, with room for them, is checked above)
     d = dupes(pg, name)
-    # (the next leg's sport, B of #233, takes the room Save offline and Clear route had: they're in More, checked below)
-    if 'Show the whole route' not in d['bar'] or 'Export GPX' not in d['bar']:
-        fails.append(f"{name}: room on the toolbar, but it lacks Show the whole route or Export GPX: {', '.join(d['bar'])}")
+    lost = [a for a in ('Show the whole route', 'Reverse', 'Back to start', 'Share link', 'Export GPX', 'Save offline', 'Clear route') if a not in d['bar'] + d['more']]
+    if 'Show the whole route' not in d['bar'] or lost:
+        fails.append(f"{name}: Show the whole route isn’t on the toolbar ({', '.join(d['bar'])}), or neither it nor More has {', '.join(lost)}")
     for label, check in (('Share link', "tbCalls.includes('share')"), ('Export GPX', "tbCalls.includes('exportGpx')"), ('Save offline', "tbCalls.includes('offline')"),
                          ('Reverse', "polku.planner.points[0][0] === 23.835"), ('Back to start', "polku.planner.isLoop()"),
                          ('Round trip', "polku.planner.loop.open")):
@@ -8494,19 +8549,40 @@ def toolbox(chrome):
         fails.append(f'{name}: after Done: {d}')
     fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    # a narrow desktop: the toolbar folds before the map's buttons, and the mode in use keeps its name
-    pg = page(1024, 768, False)
+    # a narrow desktop: the toolbar folds before the map's buttons, level with it at the map's foot (#468), with the
+    # timeline open. There all the modes' names go (fold3); the longest words, MTB's Roads to the trail and Paddle's
+    # Over water with Near the shore, shorten the style's name too (fold4), and only they do
+    for sport, styles in (('mtb', (('balanced', False), ('transfer', True))), ('paddle', (('shore', True),))):
+        name = f'1024x768 {sport}'
+        pg = page(1024, 768, False, sport)
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        if sport == 'paddle':
+            pg.js("polku.planner.setMode('water'); true")
+        for style, short in styles:
+            pg.js(f"polku.planner.setStyle({{ p: '{style}', v: {{}}, wet: 'auto' }}); true")
+            placed(pg)
+            pg.js(SETTLED)
+            e = pg.js(ON_EDGE)
+            if not (e['edge'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or ('fold4' in e['folds']) != short or 'tb-rows' in e['folds']:
+                fails.append(f'{name}, {style}: the toolbar {e}')
+        d = dupes(pg, name)
+        if 'Show the whole route' not in d['bar'] + d['more']:
+            fails.append(f'{name}: Show the whole route is neither on the toolbar nor in More')
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    # a narrower window (200 % on a 1920 px screen): fully folded, the toolbar still doesn't fit beside the panel, so it
+    # takes a second row, growing upward, clear of the map's buttons, and the scale and the credits ride above it (#468)
+    name = '960x700'
+    pg = page(960, 700, False)
     pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
     placed(pg)
+    pg.js(SETTLED)
     e = pg.js(ON_EDGE)
-    if not (e['edge'] and e['clear'] and e['active']):
-        fails.append(f'1024x768: the toolbar {e}')
-    d = dupes(pg, '1024x768')
-    if 'Show the whole route' not in d['bar'] + d['more']:
-        fails.append('1024x768: Show the whole route is neither on the toolbar nor in More')
-    fails += [f'1024x768 console: {e[:160]}' for e in pg.errors()]
+    if not (e['edge'] and e['clear'] and e['scale'] and e['timeline'] and e['apart'] and e['credits']) or 'tb-rows' not in e['folds']:
+        fails.append(f'{name}: the toolbar {e}')
+    fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251, #356" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the toolbox and the header (25a): phones, desktops, #241, #242, #251, #356, #387" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -8550,11 +8626,13 @@ START_LIB = """(() => {
   const routed = async () => { const n = await import(location.origin + '/js/net.js'); return n.usage().filter((u) => /^brouter|^valhalla/.test(u.id)).reduce((s, u) => s + (u.session || 0), 0); };
   // a control's middle, for a tap or click from Python, and whether it's what's there (nothing over it)
   T.at = async (sel) => { await settled(); const el = typeof sel === 'string' ? $(sel) : sel; if (!el || !el.offsetParent) return null; el.scrollIntoView({ block: 'nearest' }); const b = el.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2, top = document.elementFromPoint(x, y); return { x, y, clear: !!top && (el === top || el.contains(top)), over: top ? top.id || String(top.className) : 'nothing' }; };
-  // the map you can see: below the top bar, above the sheet and what floats over it, beside the side panel
+  // the map you can see: below the top bar, above the sheet and what floats over it, beside the side panel above
+  // its toolbar at the map's foot (#468)
   const free = () => {
     const bar = $('.topbar').getBoundingClientRect(), pl = $('#planner').getBoundingClientRect(), side = p.layout() === 'side';
-    const over = ['#pl-tools:not(.docked)', '#wx-bar'].map((s) => $(s)).filter((e) => e && !e.hidden && getComputedStyle(e).display !== 'none').map((e) => e.getBoundingClientRect());
-    return { top: Math.max(bar.bottom, ...over.filter(() => side).map((r) => r.bottom)) + 10, bottom: side ? innerHeight - 20 : Math.min(pl.top, ...over.map((r) => r.top)) - 10, left: side ? pl.right + 20 : 20, right: $('#map-ctrls').getBoundingClientRect().left - 20 };
+    const shown = (s) => [$(s)].filter((e) => e && !e.hidden && getComputedStyle(e).display !== 'none').map((e) => e.getBoundingClientRect());
+    const tools = shown('#pl-tools:not(.docked)'), over = [...tools, ...shown('#wx-bar')];
+    return { top: bar.bottom + 10, bottom: side ? Math.min(innerHeight - 20, ...tools.map((r) => r.top - 10)) : Math.min(pl.top, ...over.map((r) => r.top)) - 10, left: side ? pl.right + 20 : 20, right: $('#map-ctrls').getBoundingClientRect().left - 20 };
   };
   const onMap = (x, y) => document.elementFromPoint(x, y) === map.getCanvas();
   // a spot of the map you can see, a share of the way across and down it
@@ -13033,7 +13111,7 @@ GROUPS = [
     ('column', [column_early, timeline_height], 'phones: the map\'s column in its place from its first frame, the timeline on and the map\'s load held back (#292); the timeline\'s height when its forecast comes in (#301)'),
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now (#393)'),
     ('sportmenu', [sport_menu], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392)'),
-    ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356'),
+    ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %'),
     ('nextleg', [nextleg], 'the next leg (B of #233): its sport and speed in the drawing menu (touch) and on the toolbar (mouse), the drawing button, Draw it, Go › Time, a point on open water (not a bridge or the shore; the ice in winter), the craft in the start\'s sport menu, Settings\' speeds by sport (#87)'),

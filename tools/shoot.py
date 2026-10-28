@@ -466,6 +466,10 @@ SCENES = {
     'desk-quick-hike': dict(DESK, timeline=False, activity='hike', js=QUICK()),
     'desk-quick-paddle': dict(DESK, timeline=False, activity='paddle', hash='#13/61.53/23.73', js=QUICK()),
     'desk-min': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='min'),
+    # #468: the toolbar at the map's foot, beside the side panel and in the bottom dock, at a laptop's and a small window's size
+    'desk-side': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage={'polku:plannerDock': '"left"'}),
+    'desk-1024-side': dict(DESK, w=1024, h=768, timeline=True, route='route-kauppi-mtb.json', storage={'polku:plannerDock': '"left"'}),
+    'desk-1024-bottom': dict(DESK, w=1024, h=768, timeline=True, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
     'desk-bottom': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='half', storage={'polku:plannerDock': '"bottom"'}),
     'desk-bottom-peek': dict(DESK, timeline=True, route='route-kauppi-mtb.json', state='peek', storage={'polku:plannerDock': '"bottom"'}),
     'desk-wide': dict(DESK, timeline=True, route='route-kauppi-mtb.json', storage={'polku:panelWidth': '860'}),

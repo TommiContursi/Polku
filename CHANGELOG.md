@@ -2,6 +2,16 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-28
+
+### The planner's toolbar is at the bottom on a desktop ([#468](https://github.com/TommiContursi/Polku/issues/468), [#387](https://github.com/TommiContursi/Polku/issues/387))
+
+On a desktop the planner's toolbar sits at the bottom whichever side the planner is on, as the toolbox does on a phone.
+
+- With the planner at the side, the toolbar is at the foot of the map along the planner's edge, with the map's scale and credits just above it. With the planner at the bottom, it stays on the planner's top edge.
+- The map's buttons are level with the toolbar now, so in a laptop-sized window more of the route's actions are in **More**. In a narrow window the toolbar shortens its names, and in the narrowest it takes a second row rather than run under the map's buttons.
+- Moving the planner between the side and the bottom, with its place button or in Settings, frames your route again clear of it, as **Show the whole route** does. Before, the route could end up under the planner.
+
 ## 2026-10-27
 
 ### Settings and dialogs open the way Layers does ([#540](https://github.com/TommiContursi/Polku/issues/540))
