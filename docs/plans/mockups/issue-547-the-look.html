@@ -216,7 +216,7 @@ body.bare #stage { margin: 0; gap: 0; }
   --solid: #0d0f0e; --surface-2: #1d2220; --text: #eef1ef; --muted: #a3aea8; --muted-hc: #c9d1cc;
   --line: rgba(232, 236, 233, .14); --line-hc: rgba(232, 236, 233, .36); --neat: rgba(232, 236, 233, .34); --neat-hc: rgba(232, 236, 233, .8);
   --good: #5bd38a; --ok: #f2c14e; --warn: #ff9a5c;
-  --danger-soft: #3a2124; --seg-on: #343b38;
+  --danger-soft: #3a2124; --seg-on: #434c47;
 }
 .screen[data-dir="d"][data-mode="contrast"] { --neat: var(--neat-hc); }
 
@@ -319,8 +319,9 @@ body.bare #stage { margin: 0; gap: 0; }
 .screen.desk { width: 1440px; height: 900px; --target: 36px; --row-h: 44px; }
 .screen.desk .card { --title: 15px; --num: 17px; --font-row: 14px; --row-h: 36px; --mk: 28px; --seg: 13px; }
 /* version 2's polish (B and D) */
-.screen[data-dir="b"] .layers { border: 0; box-shadow: var(--sh-s), var(--edge-thin); }
-.screen:is([data-dir="b"], [data-dir="d"]) .tbtn.dim { opacity: 1; color: var(--muted-glass); }
+.screen[data-dir="b"] .layers { border: 0; box-shadow: var(--sh-s), inset 0 0 0 1.5px rgba(255, 255, 255, .85), 0 0 0 1px rgba(16, 24, 20, .26); }
+.screen[data-dir="b"][data-theme="dark"] .layers { box-shadow: var(--sh-s), inset 0 0 0 1.5px rgba(255, 255, 255, .5), 0 0 0 1px rgba(0, 0, 0, .7); }
+.screen:is([data-dir="b"], [data-dir="d"]) .tbtn.dim { opacity: .6; color: var(--muted-glass); }
 .brand-solo { position: absolute; width: 44px; height: 44px; border-radius: 12px; background: var(--accent-bg); color: #fff; display: grid; place-items: center; box-shadow: var(--sh-s); }
 .screen[data-dir="b"] .brand-pill { border-radius: 13px; padding-left: 5px !important; }
 /* D's shapes: the window onto the map, the margin's strips, the bays and tabs that grow out of it */
@@ -330,11 +331,11 @@ body.bare #stage { margin: 0; gap: 0; }
 .d-strip { position: absolute; display: flex; align-items: center; gap: 8px; }
 .d-field { display: flex; align-items: center; gap: 8px; min-width: 0; height: 40px; padding: 0 14px; border-radius: 12px; background: var(--surface-2); }
 .d-bay { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.d-bay.right { right: -24px; padding: 6px 30px 6px 6px; border-radius: 14px 0 0 14px; }
+.d-bay.right { right: -24px; padding: 6px 32px 6px 8px; border-radius: 14px 0 0 14px; }
 .d-bay.left { left: -24px; padding: 3px 3px 3px 27px; flex-direction: row; border-radius: 0 14px 14px 0; }
 .d-bay.top { top: 40px; padding: 26px 12px 4px; border-radius: 0 0 12px 12px; flex-direction: row; }
 .d-bay .fab { position: static; }
-.d-bay .layers { position: static; border: 0; box-shadow: 0 0 0 1px var(--neat); border-radius: 10px; }
+.d-bay .layers { position: relative; flex: none; border: 0; box-shadow: 0 0 0 1px var(--neat); border-radius: 10px; }
 .d-sep { width: 32px; height: 1px; background: var(--line); }
 .screen[data-dir="d"] .sheet, .screen[data-dir="d"] .panel { border-radius: 0; }
 .mark-box { position: absolute; pointer-events: none; outline: 2px dashed var(--bad-mark); outline-offset: 1px; border-radius: 3px; }
@@ -562,7 +563,7 @@ function phoneUiD(d, r) {
 }
 
 function deskUiD(d, r) {
-  const [cx, cy] = cardAt(r);
+  const [cx0, cy] = cardAt(r), cx = Math.max(416, cx0); // the callout stays in the map's window
   return `
   <div class="d-window" style="left:404px;top:64px;right:6px;bottom:6px"></div>
   <div class="d-bay top tools" data-mat="solid" style="left:416px;right:18px;padding:27px 3px 3px">${toolsInner()}</div>
@@ -768,7 +769,7 @@ async function measure(fig) {
   for (const ic of sc.querySelectorAll('.ui svg.ic')) {
     const bg = bgFn(ic); if (!bg) continue;
     const fg = parse(getComputedStyle(ic).color), [x0, y0, x1, y1] = rel(ic.getBoundingClientRect());
-    if (ic.closest('.sport, .brand-m, .brand-solo')) continue; // white on the accent, not on the glass
+    if (ic.closest('.sport, .brand-m, .brand-solo, .dim')) continue; // white on the accent, not on the glass; or off, which needs no contrast
     let min = 99;
     for (let y = Math.floor(y0 * k); y < Math.ceil(y1 * k); y += 2) for (let x = Math.floor(x0 * k); x < Math.ceil(x1 * k); x += 2) { const b = bg(x, y); min = Math.min(min, ratio(lum(...over(fg, ...b)), lum(...b))); }
     res.icon.push({ t: ic.querySelector('use').getAttribute('href').slice(3), min });
