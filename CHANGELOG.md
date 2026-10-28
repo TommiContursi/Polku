@@ -8,12 +8,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 When the map matters more, the planner and its cards fold out of the way to one line and come back as they were.
 
-- On a phone, **⌄** at the planner's top right, or a swipe down, folds the planner to one line: the route's numbers and how many things there are to read before you go. A tap on the line, or a swipe up, opens it as it was.
-- A second swipe down, or **✕** where ⌄ was, puts the planner away. Your route stays on the map, and **Open** in the note or **Plan** brings the planner back. A single swipe always stops at the line.
+- On a phone, **⌄** at the planner's top right, or a swipe down, folds the planner to one line: how many things there are to read before you go, and the route's numbers. A tap anywhere on the line, or a swipe up, opens it as it was.
+- A second swipe down, or **✕** at the line's end, puts the planner away. Your route stays on the map, and **Open** in the note or **Plan** brings the planner back. A single swipe always stops at the line.
 - Folded, the toolbox keeps how the next leg is drawn, **Undo** and **Redo**, since a tap on the map still adds a point.
-- A card, such as a point's, folds the same way to its name, and a swipe up opens it to the full height. Before, a swipe up on a card closed it. From its line, a swipe down or ✕ closes the card, and the planner is as it was under it.
-- On a desktop, **⌄** in the planner's header folds the planner down to its line at the foot of the map, with the toolbar beside it, in place of **Minimise**, and **✕** beside it puts the planner away while you draw. With the planner at the bottom, it folds to its line with the toolbar on it. A card on the map folds to its title with its own ⌄, its foot staying where it was.
-- At 200 % zoom, or wherever the planner's summary would cover more than half the screen, the planner rests at its line, and opened all the way its whole sheet scrolls, so the list can be reached.
+- A card, such as a point's, folds the same way to its name and its first two numbers: a point's line says when you get there and how far it is from the start. A swipe up opens a card to its own height, and to the full height only when it needs it. Before, a swipe up on a card closed it. From its line, a swipe down or ✕ closes the card, and the planner is as it was under it.
+- In the route's view, **⋯** sits at the left of ⌄'s row when the planner is open all the way, so the list has more room.
+- On a desktop, **⌄** in the planner's header folds the planner down to its line at the foot of the map, with the toolbar beside it, in place of **Minimise**, and **✕** beside it puts the planner away while you draw. With the planner at the bottom, it folds to its line with the toolbar on it. A card on the map folds to its title row with its own ⌄, with the same two numbers beside its name, its foot staying where it was.
+- At 200 % zoom, or wherever the planner's summary would cover more than half the screen, the planner rests at its line, and opened all the way its whole sheet scrolls, so the list can be reached. On the line, each number stays whole with its unit.
+- The planner's tabs keep to one row on a phone and beside the panel, with Check's count showing, as before this update.
 - The map's buttons no longer go under the top bar when the planner or a start step is raised. Where there's no room they step aside: Weather first (it's also **T** and in Layers), then **Show the whole route** (then in ⋯), then **Show my location**.
 - The map's buttons no longer slide after the planner as it changes size: they move once, to where it's going.
 
