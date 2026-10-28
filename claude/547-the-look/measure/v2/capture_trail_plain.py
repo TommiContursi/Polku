@@ -56,7 +56,7 @@ def one(c, name, base, phone, centre, zoom):
         pg.js(HIDE_UI)
         pg.js(f"polku.map.setPadding({{ top: 0, bottom: 0, left: 0, right: 0 }}); polku.map.jumpTo({{ center: {json.dumps(centre)}, zoom: {zoom}, bearing: 0, pitch: 0 }}); true")
         took = settle(c, pg)
-        for _ in range(60):
+        for _ in range(120):
             n = pg.js("polku.map.queryRenderedFeatures({ layers: polku.map.getStyle().layers.filter((l) => /^path-.*-halo$/.test(l.id)).map((l) => l.id) }).length")
             if n > 50:
                 break
@@ -75,8 +75,8 @@ def one(c, name, base, phone, centre, zoom):
 
 
 VIEWS = [
-    ('trail', 'trail', [23.8220, 61.5165], 13.2, [23.8300, 61.5140], 14.65),
-    ('plain', 'plain', [23.8220, 61.5165], 13.2, [23.8300, 61.5140], 14.65),
+    ('trail', 'trail', [23.8220, 61.5099], 13.2, [23.8300, 61.5140], 14.65),
+    ('plain', 'plain', [23.8220, 61.5099], 13.2, [23.8300, 61.5140], 14.65),
 ]
 # where a red (S3) or purple (S4–S6) trail comes nearest the route, round Kauppi at zoom 14.2
 NEAR = """(() => { const m = polku.map, a = polku.planner.legs.flatMap((l) => l.result.coords);
@@ -126,6 +126,5 @@ c = Chrome()
 try:
     for name, base, pc, pz, dc, dz in VIEWS:
         one(c, name, base, True, pc, pz)
-        one(c, name, base, False, dc, dz)
 finally:
     c.close()
