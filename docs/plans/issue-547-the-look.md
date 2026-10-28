@@ -2,7 +2,7 @@
 
 The first review of Polku's look as a whole, and the directions for it, built side by side. Phase 24 ([its review](../reviews/2026-10-17-design/README.md)) looked at usability and structure, and #382 made the look consistent without changing it. This one asks whether the look itself is right: the materials, the depth, the colours, the type's weights and spacing, the 18 base values on `:root`, and how they sit with the map's own colours. What's still to do, and its status, is on GitHub, in #547.
 
-- **Status (2026-10-28): B is chosen,** with its map buttons on glass b and one shadow. D stays in this plan as [the road not taken](#the-road-not-taken-d-the-maps-margin), with its numbers. [The build plan for B](#the-build-plan-for-b) is below. Nothing is built in the app: `DESIGN.md` and `css/app.css` are as they are on `main`.
+- **Status (2026-10-28): B is chosen,** with its map buttons on glass b and one shadow, and its build plan is approved. D stays in this plan as [the road not taken](#the-road-not-taken-d-the-maps-margin), with its numbers. [The build plan for B](#the-build-plan-for-b) is below. Nothing is built in the app: `DESIGN.md` and `css/app.css` are as they are on `main`.
 - **The mock-up:** [mockups/issue-547-the-look.html](mockups/issue-547-the-look.html). Version 2: today's look, B and D, over real map pictures from the running app, with the contrast under every word measured in the page. It opens on B over the Trail map. Its switches:
   - **Version:** 2, or 1, the first set: today, A, B and C as they were.
   - **The direction.**
@@ -35,12 +35,16 @@ The first review of Polku's look as a whole, and the directions for it, built si
   - **One shadow,** DESIGN.md's One Float Rule, as today.
   - **B's reading glass stays as it is.** The map's colours showing through it are fine, and seeing the trails under it is a gain.
   - Before the build plan: add the Trail map and Plain to the mock-up and check B on them, and show B with Match the map.
+- **Decided by the user (2026-10-28), on the build plan:** the plan is right, with its three values that weren't in the mock-up:
+  - `#9c0050` for the straight-line route;
+  - `--route-text` for words in the route's colour, `#9c0050` in light and `#ff7ab8` in dark;
+  - MapLibre's compass and zoom on the map buttons' glass, so the map's buttons are one group.
 - **From:** `main` at 18b43d4, looked at on 2026-10-27 and 2026-10-28 at 390 × 844 and 1440 × 900, light and dark, over the Trail map, Plain, the terrain map, aerial photos and the night map. The build plan reads `main` at ec8523d. Also: Impeccable's critique, three times ([how it ran](#how-the-critique-ran)); Impeccable's shape for D, and its quieter and polish passes for B; the apple-design skill's §12 (materials and depth) in full, §15 (weight, tracking and leading) and §16 (craft and delight); the measurements below.
 - **Out of scope:** the typeface (#181), the motion curves (#249), the difficulty scale's colours (#382, the user's choice 4), layout and structure. What the review found outside the look is filed as issues ([below](#filed-apart)).
 
 ## The Trail map and Plain
 
-The Trail map is Polku's own map from OpenStreetMap and the default, so it's what most people see; Plain is its pale version. Both were added to the mock-up on 2026-10-28 (`pr-screenshots`, `claude/547-the-look/maps/trail-*` and `plain-*`), with MTB's trail colours on, as they are by default, and the route over Kauppi's trails: above the planner's sheet on a phone, beside the card on a desktop. **Nothing there changes B or the magenta.** One thing to check later, in winter: LIPAS's ski tracks (below).
+The Trail map is Polku's own map from OpenStreetMap and the default, so it's what most people see; Plain is its pale version. Both were added to the mock-up on 2026-10-28 (`pr-screenshots`, `claude/547-the-look/maps/trail-*` and `plain-*`), with MTB's trail colours on, as they are by default, and the route over Kauppi's trails: above the planner's sheet on a phone, beside the card on a desktop. **Nothing there changes B or the magenta.** Its closeness to LIPAS's winter ski tracks is checked in #560.
 
 ### The magenta against the Trail map's colours
 
@@ -59,7 +63,7 @@ The distances are CIEDE2000 between the route and each colour the Trail map draw
 
 - **The magenta stands clear of every summer trail colour,** at about twice today's distance. In close-ups at zoom 16 where the route runs along S3 trails, today's red route and the red trail read as one line but for the trail's black dashes; the magenta stays apart (`claude/547-the-look/measure/v2/route/`, made from the running app with the route recoloured).
 - **With colour blindness** (Machado, Oliveira and Fernandes's simulation at full strength), the magenta's nearest trail colour is 16.9 apart for deuteranopia and 15.3 for protanopia, where today's red comes to 4.5 and 9.6. For tritanopia, which is rare, both come close to S3's red and the no-bike ticks (the magenta 5.5 and 4.6, today's red 6.1 and 1.1).
-- **One catch, in winter:** LIPAS's ski tracks are a pink (`#db2777`) 7.3 from the magenta, 6.5 with deuteranopia. They're drawn as a double line with a white centre and only show in winter, and the route keeps its white edge and glow. Today's red is as close to LIPAS's hiking routes, which show all year. The magenta stays; the winter map is where to check it against the ski tracks.
+- **In winter,** LIPAS's ski tracks are a pink 7.3 from the magenta, but drawn as a double line with a white centre. Whether the two can be told apart is checked the first time the winter map shows ski tracks: #560.
 
 ### B over the Trail map and Plain
 
@@ -97,7 +101,7 @@ B, as PRODUCT.md frames it ("the map first"): light and open, the map showing th
 
 ## The build plan for B
 
-One PR, after #323 (the theme setting). The values are B's, as chosen from the mock-up, except three marked **proposed**: neither drawn in the mock-up nor chosen, they wait for the user's OK, and the build checks them. #543, the desktop toolbar at the map's foot, is on `main` since 2026-10-28 (8016176): its toolbar is one more surface on the reading glass. Read on `main` at ec8523d; the line numbers below are `css/app.css`'s there.
+One PR, after #323 (the theme setting). The values are B's, as chosen from the mock-up, and three the mock-up doesn't draw, decided with this plan: the straight line's colour, `--route-text` and MapLibre's compass and zoom on the map buttons' glass. #543, the desktop toolbar at the map's foot, is on `main` since 2026-10-28 (8016176): its toolbar is one more surface on the reading glass. Read on `main` at ec8523d; the line numbers below are `css/app.css`'s there.
 
 ### The order
 
@@ -109,7 +113,7 @@ One PR, after #323 (the theme setting). The values are B's, as chosen from the m
 
 - **Overview and North Star:** "frosted cards" becomes two glasses, a reading glass for what you read and a whiter glass for the map's buttons; "the red route line" becomes the magenta route.
 - **The frontmatter and its `dark-` twins:**
-  - `route: "#d6006e"`. **Proposed:** `route-line: "#9c0050"` for the straight line (darker and dashed: 12.0 from the route and 21.7 from the nearest trail colour), and a new `route-text`, `#9c0050` and dark `#ff7ab8`, for words in the route's colour (below).
+  - `route: "#d6006e"`; `route-line: "#9c0050"` for the straight line (darker and dashed: 12.0 from the route and 21.7 from the nearest trail colour); and a new `route-text`, `#9c0050` and dark `#ff7ab8`, for words in the route's colour (below).
   - `surface` gives way to `glass-read: "rgba(255, 255, 255, 0.72)"` and `glass-control: "rgba(255, 255, 255, 0.84)"`, dark `rgba(8, 10, 9, 0.73)` and `rgba(8, 10, 9, 0.84)`. `surface-solid` and `surface-2` stay for solid surfaces.
   - `text: "#141b17"`, dark `#f2f5f3`.
   - Words on glass: `muted-glass: "#3b4741"`, `accent-glass: "#165a3a"`, `bad-glass: "#9b1f27"`; dark `#c5cec9`, `#7fdcae`, `#ffa3a3`. `muted` stays for solid surfaces.
@@ -133,7 +137,7 @@ One PR, after #323 (the theme setting). The values are B's, as chosen from the m
   | Glass | Surfaces |
   |---|---|
   | Reading, 72 % | `.brand` (162), `.search` (168), `.zoom-hint` (248, no blur today), `.wx-bar` (333), `.panel` (454), `.qd` (572), `.sheet` (696), `.track-card` (1753, no blur today), `.pl-tools` (1973: the toolbox, and the desktop toolbar since #543) |
-  | Map buttons, 84 % | `.fab-layers[aria-expanded="true"]` (285), `.top-btn` (286), `.fab` (293), `.view3d` (397); **proposed:** MapLibre's compass and zoom, `.maplibregl-ctrl-group` (420, solid today), as the mock-up draws the compass, so the map's buttons are one group |
+  | Map buttons, 84 % | `.fab-layers[aria-expanded="true"]` (285), `.top-btn` (286), `.fab` (293), `.view3d` (397), and MapLibre's compass and zoom, `.maplibregl-ctrl-group` (420, solid today), so the map's buttons are one group |
   | Solid, as today | the cards at a point, menus, popups and dialogs |
 
   Each glass rule writes `-webkit-backdrop-filter` too: only `.pl-tools` has it today, so Safari before 18 draws the others without blur. `.wx-bar.docked` and `.pl-tools.docked` keep `backdrop-filter: none`.
@@ -170,7 +174,7 @@ One PR, after #323 (the theme setting). The values are B's, as chosen from the m
 ### Not in B's build
 
 - **Match the map:** #323's choice.
-- **The magenta against LIPAS's ski tracks,** in the winter map.
+- **The magenta against LIPAS's ski tracks:** #560.
 
 ## The road not taken: D, the map's margin
 
