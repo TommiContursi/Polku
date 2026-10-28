@@ -7976,7 +7976,8 @@ FOLD_INFO = """(() => { const p = polku.planner, b = (e) => { if (!e || !e.getCl
   const vis = (e) => !!e && !!e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
   return { st: p.panel.dataset.state, active: p.active, card: p.cards.current ? p.cards.current.kind : null, carded: p.panel.classList.contains('carded'),
     panel: b(p.panel), line: vis(p.els.fold) ? b(p.els.fold) : null, lineLabel: p.els.foldGo.getAttribute('aria-label'), lineText: p.els.foldGo.textContent,
-    fold: vis(p.els.foldBtn) ? b(p.els.foldBtn) : null, away: vis(p.els.awayBtn) ? b(p.els.awayBtn) : null, min: vis(p.els.min) ? b(p.els.min) : null, lineX: vis(p.els.foldX) ? b(p.els.foldX) : null,
+    fold: vis(p.els.foldBtn) ? b(p.els.foldBtn) : null, min: vis(p.els.min) ? b(p.els.min) : null, lineX: vis(p.els.foldX) ? b(p.els.foldX) : null, cardFull: parseFloat(p.panel.style.getPropertyValue('--card-full')),
+    last: b([...p.els.head.querySelectorAll('.sheet-head-in > *')].filter((e) => e.getClientRects().length).pop()), toolsIn: p.tools.closest('.sheet-top') ? 'top' : p.tools.parentElement === p.panel ? 'row' : 'map',
     head: getComputedStyle(p.els.head).visibility, foldH: parseFloat(p.panel.style.getPropertyValue('--fold-h')),
     stage: p.tools.hidden ? null : p.tools.dataset.stage, tools: p.tools.hidden ? null : b(p.tools), docked: p.tools.classList.contains('docked'),
     toolBtns: p.tools.hidden ? [] : [...p.tools.querySelectorAll('button')].filter((e) => e.getClientRects().length).map((e) => ({ name: e.getAttribute('aria-label') || e.textContent.trim(), ...b(e) })),
@@ -8016,20 +8017,32 @@ def fold_phone(chrome):
         # ⌄ in a row of its own at the sheet's top right, a finger's size, and no ✕ there yet
         if not s['fold'] or s['fold']['w'] < 44 or s['fold']['h'] < 44 or s['fold']['r'] < s['panel']['r'] - 16 or s['fold']['t'] > s['panel']['t'] + 8:
             fails.append(f"peek: ⌄ not at the sheet's top right, 44 px: {s['fold']} in {s['panel']}")
-        if s['away'] or s['line']:
+        if s['lineX'] or s['line']:
             fails.append('peek: ✕ or the folded line showing above the peek')
-        # a tap on ⌄: the line, with the numbers, a button that says so; ✕ in ⌄'s place; the drawing mode, undo and redo float
+        # (nothing under the key facts' line, a row with room of its own: ⌄'s row costs the map 8 px over the handle's, not 22;
+        # without it the numbers keep the header's 8 px)
+        if s['last'] and abs(s['panel']['b'] - s['last']['b']) > 1:
+            fails.append(f"peek: the sheet ends {s['panel']['b'] - s['last']['b']:.0f} px under its last row")
+        gap = pg.js("""new Promise((ok) => { const s = document.createElement('style'); s.id = 'no-kf'; s.textContent = '.sheet-head-in > .kf { display: none !important; }'; document.head.append(s);
+          setTimeout(() => { const g = polku.planner.panel.getBoundingClientRect().bottom - polku.planner.els.sum.closest('.sheet-row').getBoundingClientRect().bottom; s.remove(); ok(Math.round(g)); }, 400); })""")
+        if gap != 8:
+            fails.append(f"peek without the key facts' line: {gap} px under the numbers, not the header's 8")
+        fold_settled(pg, fails, 'step 1b')
+        # (the handle a button: Safari rings a div with tabindex after a tap, and it doesn't focus a button)
+        if pg.js("polku.planner.els.handle.tagName") != 'BUTTON':
+            fails.append('the handle is not a button')
+        # a tap on ⌄: one line, with the numbers, a button that says so, ✕ at its end; the drawing mode, undo and redo float
         pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
         fold_settled(pg, fails, 'step 2')
         s = info()
         if s['st'] != 'folded' or not s['line'] or s['head'] != 'hidden':
             fails.append(f"⌄: state {s['st']}, line {s['line']}, header {s['head']}")
-        if s['panel']['h'] > 112 or abs(s['panel']['h'] - s['foldH']) > 1:
-            fails.append(f"folded: the sheet {s['panel']['h']:.0f} px tall (its line {s['foldH']} px)")
+        if s['panel']['h'] > 64 or abs(s['panel']['h'] - s['foldH']) > 1:
+            fails.append(f"folded: the sheet {s['panel']['h']:.0f} px tall (its line {s['foldH']} px), not one row of 64 px at most")
         if 'km' not in s['lineText'] or 'open the planner as it was' not in s['lineLabel'] or 'km' not in s['lineLabel']:
             fails.append(f"folded: the line says “{s['lineText']}”, its name “{s['lineLabel']}”")
-        if not s['away'] or abs(s['away']['r'] - s['fold']['r'] if s['fold'] else 0) > 1:
-            fails.append(f"folded: ✕ not in ⌄'s place: {s['away']}")
+        if not s['lineX'] or s['lineX']['w'] < 44 or s['lineX']['h'] < 44 or s['lineX']['r'] < s['panel']['r'] - 16 or s['lineX']['t'] < s['panel']['t']:
+            fails.append(f"folded: ✕ not at the line's end: {s['lineX']}")
         names = [t['name'] for t in s['toolBtns']]
         if s['stage'] != 'folded' or s['docked'] or len(names) != 3 or not names[0].startswith('Draw the next leg') or names[1:] != ['Undo', 'Redo']:
             fails.append(f"folded: the toolbox {s['stage']}, docked {s['docked']}: {names}")
@@ -8037,11 +8050,11 @@ def fold_phone(chrome):
             fails.append(f"folded: a toolbox button under 44 px: {[(t['name'][:12], round(t['w']), round(t['h'])) for t in s['toolBtns']]}")
         if s['tools'] and s['tools']['b'] > s['panel']['t'] - 8:
             fails.append(f"folded: the toolbox's foot at {s['tools']['b']:.0f}, the sheet's top at {s['panel']['t']:.0f}")
-        # a tap on the line: as it was
-        pg.tap(*fold_at(pg, 'polku.planner.els.foldGo'))
+        # a tap on the line, even where its handle is drawn: as it was
+        pg.tap(s['panel']['l'] + s['panel']['w'] / 2, s['panel']['t'] + 6)
         fold_settled(pg, fails, 'step 3')
         if info()['st'] != 'peek':
-            fails.append(f"a tap on the line came to {info()['st']}, not the peek it left")
+            fails.append(f"a tap on the line's handle came to {info()['st']}, not the peek it left")
         # a long swipe down from the peek stops at the line; a second puts the planner away, with its note
         y = pg.js("polku.planner.els.sum.getBoundingClientRect().top + 10")
         pg.swipe(120, y, y + 420, ms=500, hold=0.1)
@@ -8067,7 +8080,7 @@ def fold_phone(chrome):
         if info()['st'] != 'folded' or not info()['active']:
             fails.append(f"a short slow drag down from the line: {info()['st']}, open {info()['active']}")
         # ✕ at the line puts the planner away
-        pg.tap(*fold_at(pg, 'polku.planner.els.awayBtn'))
+        pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
         fold_settled(pg, fails, 'step 9')
         time.sleep(0.3)
         s = info()
@@ -8078,7 +8091,7 @@ def fold_phone(chrome):
         fold_settled(pg, fails, 'step 10')
         if info()['st'] == 'folded' or not info()['active']:
             fails.append(f"Plan after ✕ at the line: open {info()['active']}, {info()['st']}")
-        # the handle's keys: down to the line and no further, up again
+        # the handle's keys: down to the line and no further (the keyboard's focus on the line), up again
         pg.js("polku.planner.setSheetState('peek'); polku.planner.els.handle.focus(); true")
         for k, want in (('ArrowDown', 'folded'), ('ArrowDown', 'folded'), ('ArrowUp', 'peek')):
             pg.c.send('Input.dispatchKeyEvent', {'type': 'keyDown', 'key': k, 'code': k, 'windowsVirtualKeyCode': {'ArrowDown': 40, 'ArrowUp': 38}[k]}, pg.s)
@@ -8087,6 +8100,14 @@ def fold_phone(chrome):
             if info()['st'] != want or not info()['active']:
                 fails.append(f"the handle's {k}: {info()['st']}, open {info()['active']} (wanted {want})")
                 break
+        # the route's view at full: More (⋯), a single button, joins ⌄'s row at its left; the title's ✕ stays a row below
+        pg.js("polku.planner.setEditing(false); polku.planner.setSheetState('full'); true")
+        fold_settled(pg, fails, 'step 11b')
+        s = info()
+        x, row = pg.js("[((r) => r.top + r.height / 2)(polku.planner.els.title.querySelector('.way-x').getBoundingClientRect()), polku.planner.els.top.getBoundingClientRect().bottom]")
+        if s['toolsIn'] != 'top' or not s['toolBtns'] or len(s['toolBtns']) != 1 or (s['toolBtns'][0]['t'] + s['toolBtns'][0]['b']) / 2 > row or s['toolBtns'][0]['l'] > s['panel']['l'] + 16 or x < row:
+            fails.append(f"the route's view at full: the toolbox {s['toolBtns']} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f} (⋯ at the left of ⌄'s row)")
+        pg.js("polku.planner.setEditing(true); true")
         # the map's buttons don't chase the sheet (#540): with motion, a fold moves them once
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         pg.js("polku.planner.setSheetState('profile'); true")
@@ -8113,15 +8134,16 @@ def fold_phone(chrome):
             pg.swipe(120, y, y - 300, ms=500, hold=0.1)
             fold_settled(pg, fails, 'step 16')
             s = info()
+            fit = pg.js("(() => { const c = polku.planner.cards.box; return c.scrollHeight <= c.clientHeight + 1; })()")
             if s['st'] != 'full' or s['card'] != 'point':
-                fails.append(f"a swipe up on the card: {s['st']}, card {s['card']} (it opens full)")
-            elif s['panel']['t'] > s['top'] + 30:
-                fails.append(f"the card at full starts at {s['panel']['t']:.0f}")
+                fails.append(f"a swipe up on the card: {s['st']}, card {s['card']} (it opens as tall as it is)")
+            elif not fit or abs(s['panel']['h'] - s['cardFull']) > 1 or s['panel']['h'] >= 844 - 76:
+                fails.append(f"a swipe up on the card: the sheet {s['panel']['h']:.0f} px (the card's height {s['cardFull']}), the card whole {fit}")
             pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
             fold_settled(pg, fails, 'step 17')
             s = info()
-            if s['st'] != 'folded' or s['card'] != 'point' or 'open the card' not in (s['lineLabel'] or ''):
-                fails.append(f"⌄ on the card: {s['st']}, card {s['card']}, the line “{s['lineLabel']}”")
+            if s['st'] != 'folded' or s['card'] != 'point' or not re.fullmatch(r'Via 1, \d\d:\d\d, [\d.]+ k?m: open the card', s['lineLabel'] or '') or s['panel']['h'] > 64:
+                fails.append(f"⌄ on the card: {s['st']}, card {s['card']}, the line “{s['lineLabel']}” {s['panel']['h']:.0f} px (its name, there at, from the start)")
             y = s['panel']['t'] + 60
             pg.swipe(120, y, y + 200, ms=400, hold=0.1)
             fold_settled(pg, fails, 'step 18')
@@ -8138,7 +8160,7 @@ def fold_phone(chrome):
         if s['card'] != 'point' or s['st'] != 'folded':
             fails.append(f"a tap on point 1 with the planner folded: card {s['card']}, {s['st']} (folded, its line)")
         else:
-            pg.tap(*fold_at(pg, 'polku.planner.els.awayBtn'))
+            pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
             fold_settled(pg, fails, 'step 21')
             s = info()
             if s['card'] or s['st'] != 'folded' or not s['active'] or 'km' not in s['lineText']:
@@ -8175,8 +8197,12 @@ def fold_200(chrome):
                     fails.append(f'folded: Layers not in the column ({[c["id"] for c in s["col"]]})')
                 if s['tools'] and any(c['l'] < s['tools']['r'] and c['b'] > s['tools']['t'] and c['t'] < s['tools']['b'] for c in s['col']):
                     fails.append('folded: the map\'s buttons over the toolbox')
-                if not s['away'] or s['away']['w'] < 44:
-                    fails.append(f'folded: ✕ {s["away"]}')
+                if not s['lineX'] or s['lineX']['w'] < 44:
+                    fails.append(f'folded: ✕ {s["lineX"]}')
+                # (each number whole with its unit: the line breaks only between them, at " · ")
+                split = pg.js("[...polku.planner.els.foldGo.querySelectorAll('b > span')].filter((e) => e.getClientRects().length > 1).map((e) => e.textContent)")
+                if split:
+                    fails.append(f'folded: the line breaks inside {split}')
         # full: the whole sheet scrolls to the last point's row (#453)
         pg.js("polku.planner.setSheetState('full'); polku.planner.setTab('route'); true")
         fold_settled(pg, fails, 'step 24')
@@ -8248,8 +8274,9 @@ def fold_desktop(chrome):
             time.sleep(0.5)
             c1 = pg.js(card)
             lab = pg.js("polku.planner.cards.box.querySelector('.way-fold').getAttribute('aria-label') + '|' + polku.planner.cards.box.querySelector('.way-fold').getAttribute('aria-expanded')")
-            if abs(c1[1] - c0[1]) > 2 or c1[2] > 80 or lab != 'Open the card|false':
-                fails.append(f'the card folded: {c1} (was {c0}), its button “{lab}”')
+            line = pg.js("polku.planner.cards.box.querySelector('.way-hint').innerText.replace(/\\s+/g, ' ').trim()")
+            if abs(c1[1] - c0[1]) > 2 or c1[2] > 80 or lab != 'Open the card|false' or not re.fullmatch(r'Via 1 · \d\d:\d\d · [\d.]+ k?m', line):
+                fails.append(f'the card folded: {c1} (was {c0}), its button “{lab}”, its line “{line}” (its name, there at, from the start)')
             fold_click(pg, *fold_at(pg, "polku.planner.cards.box.querySelector('.way-fold')"))
             time.sleep(0.5)
             c2 = pg.js(card)
@@ -8285,8 +8312,28 @@ def fold_start(chrome):
     return fails
 
 
+# The planner's tabs in one row at every usual size, with Check's count and its "?" and Go's time showing; they wrap only
+# at 200 % (#453)
+def fold_tabs(chrome):
+    fails = []
+    for w, h_, phone in [(390, 844, True), (360, 740, True), (1440, 900, False)]:
+        pg = chrome.page(w, h_, phone)
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            r = pg.js("""(() => { const p = polku.planner; p.setSheetState(p.layout() === 'side' ? 'open' : 'half', { remember: false }); p.setLeave(Date.now() / 1000 + 7200);
+              p.renderBadge({ read: [{}, {}], look: [], not: [{}] });
+              const t = p.els.tabs, tabs = [...t.querySelectorAll('.pl-tab')].filter((e) => e.getClientRects().length);
+              return { rows: new Set(tabs.map((e) => Math.round(e.getBoundingClientRect().top))).size, h: Math.round(t.getBoundingClientRect().height), text: tabs.map((e) => e.textContent).join(' | ') }; })()""")
+            if r['rows'] != 1:
+                fails.append(f"{w}x{h_}: the tabs in {r['rows']} rows, {r['h']} px ({r['text']})")
+        finally:
+            pg.close()
+    return fails
+
+
 def fold(chrome):
-    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)]
+    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome)
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 

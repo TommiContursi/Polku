@@ -20,6 +20,8 @@ export function nums(list) {
   return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, word, label, missing, wait }) =>
     h('span', { class: `sum-item${missing ? ' miss' : wait ? ' wait' : ''}`, 'aria-busy': wait ? 'true' : null }, h('b', {}, value), word ? h('em', {}, word) : null, h('small', {}, label))));
 }
+// a folded card's line says its first two numbers after its name (step 3 of #233; a point's: there at, from the start)
+export const firstNums = (box) => [...box.querySelectorAll('.sheet-sum .sum-item > b')].slice(0, 2).map((b) => b.textContent.trim());
 
 // A group's heading, as the ⋯ menu's (it names the rows under it for screen readers too)
 export function group(title, ...items) {
@@ -374,6 +376,8 @@ export class CardHost {
     this.rollLabel(body);
     if (!this.byKey) body.dataset.pointer = '';
     card.build(body);
+    const facts = firstNums(body);
+    if (facts.length) name.after(h('span', { class: 'way-facts' }, ` · ${facts.join(' · ')}`));
     return body;
   }
 
