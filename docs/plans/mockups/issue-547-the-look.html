@@ -3,17 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The look: three directions</title>
-<meta name="description" content="Clickable mock-up for #547: today's look and three directions for Polku's look (A, a field instrument; B, clear water over the land; C, a paper map in its case), over real map pictures, with the contrast of the words over the glass measured in the page. Not wired to the app.">
+<title>The look: directions</title>
+<meta name="description" content="Clickable mock-up for #547: today's look and two directions for Polku's look (B, clear water over the land; D, the map's margin), with the first set (A, B and C) behind a switch, over real map pictures, with the contrast of the words over the glass measured in the page. Not wired to the app.">
 <!--
-  #547, Stop 2 (2026-10-28). The plan and the choices: docs/plans/issue-547-the-look.md.
+  #547, Stop 2 (2026-10-28), version 2: today, B after the quieter and polish passes, and D; version 1 (today, A, B, C)
+  stays behind the Version switch. The plan: docs/plans/issue-547-the-look.md.
   Not wired to the app: nothing here is loaded by Polku. Today's values are css/app.css's on main at 18b43d4.
   The map pictures are the running app's, with the interface and the route hidden (pr-screenshots,
   claude/547-the-look/maps/, retaken 2026-10-28 with the tiles settled); the route is drawn here from the
   app's own points, so its colour can follow the version.
 
-  ?dir=today|a|b|c  &map=maasto|bright|forest|night  &theme=light|dark  &device=phone|desk
-  &mode=default|contrast|clear  &depth=one|thick  &compare=1 (today beside the version)
+  ?ver=2&dir=today|b|d  or  ?ver=1&dir=today|a|b1|c   &map=maasto|bright|forest|night
+  &theme=light|dark|match (match: D only)  &device=phone|desk  &mode=default|contrast|clear
+  &depth=one|thick  &compare=0|1|depth (1: today beside the version; depth: both depths side by side)
 
   The numbers under the frame are measured in the page: each word's colour against every pixel under its
   own glyph boxes, where each pixel is the map picture (and the route) blurred and saturated as the surface's
@@ -38,6 +40,7 @@ button { font: inherit; color: inherit; }
 .bar > span { min-width: 74px; font-size: 12.5px; font-weight: 700; opacity: .8; }
 .sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
 .sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; font-weight: 600; font-size: 13px; }
+.sw button[hidden] { display: none; }
 .sw button[aria-pressed="true"] { background: var(--switch-on); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 .sw button:focus-visible, .act:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
 .about { margin: 14px 0 10px; padding: 12px 16px; border-radius: 14px; background: var(--page-card); max-width: 1040px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
@@ -62,6 +65,10 @@ button { font: inherit; color: inherit; }
 .vals th, .vals td { text-align: left; padding: 3px 12px 3px 0; border-top: 1px solid rgba(128,128,128,.25); vertical-align: top; }
 .vals code { font-size: 12px; }
 .chip-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; box-shadow: inset 0 0 0 1px rgba(128,128,128,.4); }
+/* ?bare=1: the frames alone, for a review that should see only the design */
+body.bare { padding: 0; }
+body.bare :is(h1, .cv > p, .bars, .about, .vals, .left-out, .fr figcaption, .meas, .acts) { display: none; }
+body.bare #stage { margin: 0; gap: 0; }
 .left-out { margin-top: 14px; max-width: 1040px; font-size: 13px; color: var(--page-cap); }
 
 /* ======================================================= the versions' values
@@ -114,8 +121,8 @@ button { font: inherit; color: inherit; }
   --shadow-one: 0 8px 28px rgba(0, 0, 0, .35), 0 1px 3px rgba(0, 0, 0, .3);
   --good: #5bd38a; --ok: #f2c14e; --warn: #ff9a5c;
 }
-/* B, clear water over the land: the map shows through everything that floats; darker words on the glass */
-.screen[data-dir="b"] {
+/* B (version 1), clear water over the land: the map shows through everything that floats; darker words on the glass */
+.screen[data-dir="b1"] {
   --thin-bg: rgba(255, 255, 255, .58); --thin-filter: blur(20px) saturate(180%);
   --thick-bg: rgba(255, 255, 255, .68); --thick-filter: blur(32px) saturate(180%);
   --text: #141b17; --muted-glass: #2f3934; --accent-glass: #0f4029; --surface-2: rgba(28, 36, 32, .07); --line: rgba(28, 36, 32, .14);
@@ -125,7 +132,7 @@ button { font: inherit; color: inherit; }
   --shadow-big: 0 18px 50px rgba(16, 24, 20, .26), 0 2px 8px rgba(16, 24, 20, .1);
   --route: #ee1d5c; --good: #23863a; --ok: #a35b00; --warn: #c4400c; --bad-base: var(--danger); --bad-glass: #8f1d24; --start: #23863a;
 }
-.screen[data-dir="b"][data-theme="dark"] {
+.screen[data-dir="b1"][data-theme="dark"] {
   --thin-bg: rgba(8, 10, 9, .67); --thin-filter: blur(20px) saturate(160%);
   --thick-bg: rgba(8, 10, 9, .73); --thick-filter: blur(32px) saturate(150%);
   --text: #f2f5f3; --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffa3a3; --surface-2: rgba(232, 236, 233, .08); --line: rgba(232, 236, 233, .16);
@@ -155,22 +162,83 @@ button { font: inherit; color: inherit; }
   --shadow-one: 0 6px 20px rgba(0, 0, 0, .4), 0 1px 2px rgba(0, 0, 0, .3);
   --good: #a3cf6a; --ok: #e9b949; --warn: #f0915a;
 }
-/* depth: one shadow for everything (the One Float Rule), or bigger surfaces read thicker */
-.screen { --sh-thin: var(--shadow-one); --sh-thick: var(--shadow-one); }
-.screen[data-depth="thick"] { --sh-thin: var(--shadow-small); --sh-thick: var(--shadow-big); }
+/* ======================================================= version 2 (2026-10-28, after the critique of version 1) */
+/* the route is the same magenta in every version, today's included */
+.screen[data-ver="2"] { --route: #d6006e; --seg-on: var(--solid); }
+/* depth, made easy to tell apart: with thicker when bigger, the small things lie almost flat on the map and the big
+   ones (the planner, the panel, the card) are lifted well off it; with one shadow, everything floats the same */
+.screen[data-ver="2"] {
+  --shadow-small: 0 1px 2px rgba(16, 24, 20, .16);
+  --shadow-big: 0 30px 80px rgba(16, 24, 20, .36), 0 8px 22px rgba(16, 24, 20, .16);
+  --sheet-one: 0 -6px 28px rgba(16, 24, 20, .2); --sheet-big: 0 -14px 40px rgba(16, 24, 20, .45), 0 -2px 8px rgba(16, 24, 20, .2);
+}
+.screen[data-ver="2"][data-theme="dark"] {
+  --shadow-small: 0 1px 2px rgba(0, 0, 0, .5);
+  --shadow-big: 0 30px 80px rgba(0, 0, 0, .75), 0 8px 22px rgba(0, 0, 0, .5);
+  --sheet-one: 0 -6px 28px rgba(0, 0, 0, .5); --sheet-big: 0 -14px 40px rgba(0, 0, 0, .8), 0 -2px 8px rgba(0, 0, 0, .5);
+}
+/* the phone's sheet casts upwards, as the app's does (--shadow-sheet) */
+.screen[data-ver="2"] .sheet[data-mat] { --sh: var(--sheet-one); }
+.screen[data-ver="2"][data-depth="thick"] .sheet[data-mat] { --sh: var(--sheet-big); }
+/* B, clear water over the land, after the quieter and polish passes: what you read sits on a quieter glass (72 %, the
+   map's colours barely lifted); the map's buttons keep the map's colours lifted (160 %) under a whiter glass (84 %), so
+   they stay closer to one tint. A lighter outer hairline; the strict 3:1 rim belongs to more contrast. */
+.screen[data-dir="b"] {
+  --thin-bg: rgba(255, 255, 255, .84); --thin-filter: blur(24px) saturate(160%);
+  --thick-bg: rgba(255, 255, 255, .72); --thick-filter: blur(32px) saturate(105%);
+  --text: #141b17; --muted-glass: #3b4741; --accent-glass: #165a3a; --bad-glass: #9b1f27; --surface-2: rgba(28, 36, 32, .07); --line: rgba(28, 36, 32, .14);
+  --edge-thin: inset 0 0 0 1px rgba(255, 255, 255, .7), inset 0 1px 0 rgba(255, 255, 255, .95), 0 0 0 1px rgba(16, 24, 20, .26); --edge-thick: var(--edge-thin);
+  --shadow-one: 0 8px 28px rgba(16, 24, 20, .18), 0 1px 3px rgba(16, 24, 20, .1);
+  --good: #23863a; --ok: #a35b00; --warn: #c4400c; --bad-base: var(--danger); --start: #23863a;
+}
+.screen[data-dir="b"][data-theme="dark"] {
+  --thin-bg: rgba(8, 10, 9, .84); --thin-filter: blur(24px) saturate(160%);
+  --thick-bg: rgba(8, 10, 9, .73); --thick-filter: blur(32px) saturate(105%);
+  --text: #f2f5f3; --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffa3a3; --surface-2: rgba(232, 236, 233, .08); --line: rgba(232, 236, 233, .16);
+  --edge-thin: inset 0 0 0 1px rgba(255, 255, 255, .34), inset 0 1px 0 rgba(255, 255, 255, .42), 0 0 0 1px rgba(0, 0, 0, .7); --edge-thick: var(--edge-thin);
+  --shadow-one: 0 8px 28px rgba(0, 0, 0, .35), 0 1px 3px rgba(0, 0, 0, .25);
+  --good: #3ddc71; --ok: #ffd34d; --warn: #ffa24a;
+  --danger-soft: #3a2124; --seg-on: #3f4843;
+}
+/* D, the map's margin: nothing floats. The top bar, the planner and the panel are the margin round the map, solid and
+   flat to the screen's edges; the map sits in a rounded window with a neatline round it, as a printed map does. The
+   map's buttons are bays of the margin; the card at a point is a flat callout. No blur and no shadow. With Match the
+   map (a choice for #323), the margin takes the map's tone: white round Maastokartta, black round the photos and the
+   night map. */
+.screen[data-dir="d"] {
+  --solid: #fff; --surface-2: #eef0ec; --text: #1c2420; --muted: #56625b; --muted-glass: var(--muted); --muted-hc: #3f4a44;
+  --line: rgba(28, 36, 32, .14); --line-hc: rgba(28, 36, 32, .4); --neat: rgba(28, 36, 32, .5); --neat-hc: rgba(16, 24, 20, .85);
+  --shadow-one: 0 0 0 0 transparent; --shadow-small: 0 0 0 0 transparent; --shadow-big: 0 0 0 0 transparent;
+  --good: #2e7d1f; --ok: #946200; --warn: #c2410c; --bad-base: var(--danger); --start: #2e7d1f;
+}
+.screen[data-dir="d"][data-theme="dark"] {
+  --shadow-one: 0 0 0 0 transparent; --shadow-small: 0 0 0 0 transparent; --shadow-big: 0 0 0 0 transparent;
+  --solid: #0d0f0e; --surface-2: #1d2220; --text: #eef1ef; --muted: #a3aea8; --muted-hc: #c9d1cc;
+  --line: rgba(232, 236, 233, .14); --line-hc: rgba(232, 236, 233, .36); --neat: rgba(232, 236, 233, .34); --neat-hc: rgba(232, 236, 233, .8);
+  --good: #5bd38a; --ok: #f2c14e; --warn: #ff9a5c;
+  --danger-soft: #3a2124; --seg-on: #343b38;
+}
+.screen[data-dir="d"][data-mode="contrast"] { --neat: var(--neat-hc); }
+
+/* depth: one shadow for everything (the One Float Rule), or bigger surfaces read thicker; by size, not by glass */
+.screen { --sh-s: var(--shadow-one); --sh-b: var(--shadow-one); }
+.screen[data-depth="thick"] { --sh-s: var(--shadow-small); --sh-b: var(--shadow-big); }
+.screen [data-mat] { --sh: var(--sh-s); }
+.screen [data-mat][data-big] { --sh: var(--sh-b); }
 
 /* the materials: data-mat on each surface. "hint" is today's zoom hint: the glass's colour with no blur */
-.screen [data-mat="thin"] { background: var(--thin-bg); -webkit-backdrop-filter: var(--thin-filter); backdrop-filter: var(--thin-filter); box-shadow: var(--sh-thin), var(--edge-thin); }
-.screen [data-mat="hint"] { background: var(--thin-bg); box-shadow: var(--sh-thin), var(--edge-thin); }
-.screen [data-mat="thick"] { background: var(--thick-bg); -webkit-backdrop-filter: var(--thick-filter); backdrop-filter: var(--thick-filter); box-shadow: var(--sh-thick), var(--edge-thick); }
-.screen [data-mat="solid"] { background: var(--solid); box-shadow: var(--sh-thick), var(--edge-thick); }
+.screen [data-mat="thin"] { background: var(--thin-bg); -webkit-backdrop-filter: var(--thin-filter); backdrop-filter: var(--thin-filter); box-shadow: var(--sh), var(--edge-thin); }
+.screen [data-mat="hint"] { background: var(--thin-bg); box-shadow: var(--sh), var(--edge-thin); }
+.screen [data-mat="thick"] { background: var(--thick-bg); -webkit-backdrop-filter: var(--thick-filter); backdrop-filter: var(--thick-filter); box-shadow: var(--sh), var(--edge-thick); }
+.screen [data-mat="solid"] { background: var(--solid); box-shadow: var(--sh), var(--edge-thick); }
+.screen .mu { color: var(--muted); }
 .screen :is([data-mat="thin"], [data-mat="thick"], [data-mat="hint"]):is(.mu), .screen :is([data-mat="thin"], [data-mat="thick"], [data-mat="hint"]) :is(.mu, .chev) { color: var(--muted-glass); }
 .screen :is([data-mat="thin"], [data-mat="thick"], [data-mat="hint"]) { --accent: var(--accent-glass); --bad: var(--bad-glass); }
 /* the modes: reduced transparency turns every surface solid; more contrast (prefers-contrast: more, or Settings'
    High contrast) does too, with a darker grey, heavier lines and a clear 1 px border (#382's §7) */
 .screen:is([data-mode="clear"], [data-mode="contrast"]) [data-mat] { background: var(--solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
 .screen[data-mode="contrast"] { --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc); }
-.screen[data-mode="contrast"] [data-mat] { box-shadow: var(--sh-thick), inset 0 0 0 1px var(--hc-inner), 0 0 0 1px var(--hc-border); }
+.screen[data-mode="contrast"] [data-mat]:not([data-flush]) { box-shadow: var(--sh), inset 0 0 0 1px var(--hc-inner), 0 0 0 1px var(--hc-border); }
 
 /* ======================================================= the scene, copied from css/app.css (simplified) */
 .screen { position: relative; overflow: hidden; color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #333; }
@@ -185,13 +253,15 @@ button { font: inherit; color: inherit; }
 .search-t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .kbd { flex: none; padding: 0 6px; border-radius: 5px; font-size: 11px; line-height: 18px; box-shadow: inset 0 0 0 1px var(--line); }
 .plan-chip { flex: none; display: flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent); font-weight: 700; font-size: 13px; }
-.sport { background: var(--accent-bg); color: #fff; font-weight: 700; box-shadow: var(--sh-thin); }
+.sport { background: var(--accent-bg); color: #fff; font-weight: 700; box-shadow: var(--sh-s); }
 .round { position: absolute; display: grid; place-items: center; border-radius: 999px; }
 .fab { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 16px; font-size: 11px; font-weight: 600; }
 .fab.sq { border-radius: 12px; }
 .fab b { font-weight: 700; font-size: 14px; }
+.screen .fab.plan { color: var(--accent); box-shadow: var(--sh), inset 0 0 0 2px var(--accent); }
+.screen[data-mode="contrast"] .fab.plan[data-mat] { box-shadow: var(--sh), inset 0 0 0 2px var(--accent), 0 0 0 1px var(--hc-border); }
 .needle { width: 8px; height: 22px; background: linear-gradient(#dc2626 50%, var(--muted) 50%); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
-.layers { position: absolute; overflow: hidden; border-radius: 16px; border: 2px solid #fff; box-shadow: var(--sh-thin); background-size: 900% auto; }
+.layers { position: absolute; overflow: hidden; border-radius: 16px; border: 2px solid #fff; box-shadow: var(--sh-s); background-size: 900% auto; }
 .layers span { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 0 4px; text-align: center; color: #fff; font-size: 11px; font-weight: 600; background: linear-gradient(transparent, var(--scrim)); }
 .hint { position: absolute; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .tools { position: absolute; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 16px; }
@@ -216,7 +286,7 @@ button { font: inherit; color: inherit; }
 .sh { margin: 4px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .seg { display: flex; padding: 3px; border-radius: 12px; background: var(--surface-2); }
 .seg span { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--target, 44px); border-radius: 10px; font-weight: 600; font-size: var(--seg, 15px); }
-.seg span.on { background: var(--solid); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.seg span.on { background: var(--seg-on, var(--solid)); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
 .seg span.on .ic { color: var(--accent); }
 .row { display: flex; align-items: center; gap: 12px; min-height: var(--row-h, 50px); }
 .row .tx { flex: 1; min-width: 0; }
@@ -248,6 +318,25 @@ button { font: inherit; color: inherit; }
 .screen.phone { width: 390px; height: 844px; border-radius: 28px; --target: 44px; }
 .screen.desk { width: 1440px; height: 900px; --target: 36px; --row-h: 44px; }
 .screen.desk .card { --title: 15px; --num: 17px; --font-row: 14px; --row-h: 36px; --mk: 28px; --seg: 13px; }
+/* version 2's polish (B and D) */
+.screen[data-dir="b"] .layers { border: 0; box-shadow: var(--sh-s), var(--edge-thin); }
+.screen:is([data-dir="b"], [data-dir="d"]) .tbtn.dim { opacity: 1; color: var(--muted-glass); }
+.brand-solo { position: absolute; width: 44px; height: 44px; border-radius: 12px; background: var(--accent-bg); color: #fff; display: grid; place-items: center; box-shadow: var(--sh-s); }
+.screen[data-dir="b"] .brand-pill { border-radius: 13px; padding-left: 5px !important; }
+/* D's shapes: the window onto the map, the margin's strips, the bays and tabs that grow out of it */
+.d-window { position: absolute; border-radius: 16px; pointer-events: none; box-shadow: 0 0 0 1600px var(--solid), inset 0 0 0 1px var(--neat); }
+.screen[data-dir="d"] [data-mat] { box-shadow: none; }
+.screen[data-dir="d"] .d-bay, .screen[data-dir="d"] .card { box-shadow: 0 0 0 1px var(--neat) !important; }
+.d-strip { position: absolute; display: flex; align-items: center; gap: 8px; }
+.d-field { display: flex; align-items: center; gap: 8px; min-width: 0; height: 40px; padding: 0 14px; border-radius: 12px; background: var(--surface-2); }
+.d-bay { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.d-bay.right { right: -24px; padding: 6px 30px 6px 6px; border-radius: 14px 0 0 14px; }
+.d-bay.left { left: -24px; padding: 3px 3px 3px 27px; flex-direction: row; border-radius: 0 14px 14px 0; }
+.d-bay.top { top: 40px; padding: 26px 12px 4px; border-radius: 0 0 12px 12px; flex-direction: row; }
+.d-bay .fab { position: static; }
+.d-bay .layers { position: static; border: 0; box-shadow: 0 0 0 1px var(--neat); border-radius: 10px; }
+.d-sep { width: 32px; height: 1px; background: var(--line); }
+.screen[data-dir="d"] .sheet, .screen[data-dir="d"] .panel { border-radius: 0; }
 .mark-box { position: absolute; pointer-events: none; outline: 2px dashed var(--bad-mark); outline-offset: 1px; border-radius: 3px; }
 .mark-box.icon { outline-style: dotted; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -255,17 +344,18 @@ button { font: inherit; color: inherit; }
 </head>
 <body>
 <div class="cv">
-  <h1>The look: three directions</h1>
-  <p>#547, Stop 2: today's look and three directions for it, over real map pictures from the running app, with the same scene in every version: the Kauppi route, the planner open with a point's card, and the map's buttons. Each direction has its own materials, depth, edges, neutrals, route red, signal colours and lines; the accent, <b>Plan</b>'s green and Check's warning colours stay as they are in all of them (decided in #382 and 25d). The plan: <a href="../issue-547-the-look.md">issue-547-the-look.md</a>. Version 1, 2026-10-28.</p>
+  <h1>The look: directions</h1>
+  <p>#547, Stop 2: today's look and the directions for it, over real map pictures from the running app, with the same scene in every one: the Kauppi route, the planner open with a point's card, and the map's buttons. Each direction has its own materials, depth, edges, neutrals, signal colours and lines; the accent, <b>Plan</b>'s green and Check's warning colours stay as they are in all of them (decided in #382 and 25d). <b>Version 2</b> (2026-10-28): today, B after a quieter and polish pass, and a new direction, D; the route is magenta in all three. <b>Version 1</b>, the first set (today, A, B and C), is kept behind the Version switch to compare.</p>
 
   <div class="bars" role="group" aria-label="What the frame shows">
-    <div class="bar"><span id="l-dir">Direction</span><div class="sw" data-k="dir" aria-labelledby="l-dir"><button data-v="today">Today</button><button data-v="a">A, field instrument</button><button data-v="b">B, clear water</button><button data-v="c">C, paper map</button></div></div>
+    <div class="bar"><span id="l-ver">Version</span><div class="sw" data-k="ver" aria-labelledby="l-ver"><button data-v="2">2: today, B, D</button><button data-v="1">1: today, A, B, C (the first set)</button></div></div>
+    <div class="bar"><span id="l-dir">Direction</span><div class="sw" data-k="dir" aria-labelledby="l-dir"><button data-v="today">Today</button><button data-v="a" data-ver="1">A, field instrument</button><button data-v="b1" data-ver="1">B, clear water</button><button data-v="c" data-ver="1">C, paper map</button><button data-v="b" data-ver="2">B, clear water</button><button data-v="d" data-ver="2">D, the map’s margin</button></div></div>
     <div class="bar"><span id="l-map">Map</span><div class="sw" data-k="map" aria-labelledby="l-map"><button data-v="maasto">Maastokartta</button><button data-v="bright">Aerial, the city (mid-dark)</button><button data-v="forest">Aerial, forest and lake</button><button data-v="night">Night</button></div></div>
-    <div class="bar"><span id="l-theme">Theme</span><div class="sw" data-k="theme" aria-labelledby="l-theme"><button data-v="light">Light</button><button data-v="dark">Dark</button></div>
+    <div class="bar"><span id="l-theme">Theme</span><div class="sw" data-k="theme" aria-labelledby="l-theme"><button data-v="light">Light</button><button data-v="dark">Dark</button><button data-v="match" data-only="d">Match the map (a Settings choice, #323)</button></div>
       <span id="l-device">Device</span><div class="sw" data-k="device" aria-labelledby="l-device"><button data-v="phone">Phone</button><button data-v="desk">Desktop</button></div></div>
     <div class="bar"><span id="l-mode">Mode</span><div class="sw" data-k="mode" aria-labelledby="l-mode"><button data-v="default">Default</button><button data-v="contrast">More contrast</button><button data-v="clear">Reduced transparency</button></div>
       <span id="l-depth">Depth</span><div class="sw" data-k="depth" aria-labelledby="l-depth"><button data-v="one">One shadow</button><button data-v="thick">Thicker when bigger</button></div>
-      <span id="l-cmp">Compare</span><div class="sw" data-k="compare" aria-labelledby="l-cmp"><button data-v="0">Alone</button><button data-v="1">Beside today</button></div></div>
+      <span id="l-cmp">Compare</span><div class="sw" data-k="compare" aria-labelledby="l-cmp"><button data-v="0">Alone</button><button data-v="1">Beside today</button><button data-v="depth">Both depths</button></div></div>
   </div>
 
   <section class="about" id="about" aria-live="polite"></section>
@@ -320,18 +410,25 @@ const MAP_FILE = { maasto: 'maasto', bright: 'aerial-bright', forest: 'aerial-fo
 const MAP_NAME = { maasto: 'Maastokartta', bright: 'Aerial FI, the city beside the route (as dark as the forest: Finnish summer photos are mid-dark; Maastokartta is the bright map)', forest: 'Aerial FI, Kauppi’s forest and Näsijärvi', night: 'the night map' };
 const DIRS = {
   today: { name: 'Today', card: 'solid', hint: 'hint',
-    about: 'Polku on <code>main</code>: one glass, white at 94 % with a 10–14 px blur and no saturation, for everything that floats except the cards, menus and popups, which are solid. One shadow. No edges. The route in Tailwind’s rose-600, the state colours Tailwind’s 600s.' },
+    about: 'Polku on <code>main</code>: one glass, white at 94 % with a 10–14 px blur and no saturation, for everything that floats except the cards, menus and popups, which are solid. One shadow. No edges. The route in Tailwind’s rose-600, the state colours Tailwind’s 600s.',
+    about2: 'Polku on <code>main</code>, with one change: the route is magenta (#d6006e), as in B and D. One glass, white at 94 % with a 10–14 px blur and no saturation, for everything that floats except the cards, menus and popups, which are solid. One shadow. No edges. The state colours Tailwind’s 600s.' },
   a: { name: 'A, a field instrument', card: 'thick', hint: 'thin',
     about: 'Sure, sharp and readable in the sun. <b>Two materials:</b> a thin glass (white at 78 %, a 16 px blur, saturated) for what you glance past: the top bar, the map’s buttons, the toolbox; a near-solid one (97 %) for what you read: the planner, the card, the drawer. A two-tone hairline round every surface (light inside, dark outside, as the route’s own white edge works), so it shows on any map; the dark surface a step lighter than the night map. Heavier lines that hold in the sun; on the thin glass, a darker grey and green for words. The route in a navigation magenta, apart from every red on the map; state colours at 5:1 or more, with dark versions.' },
-  b: { name: 'B, clear water over the land', card: 'thick', hint: 'thin',
+  b1: { name: 'B, clear water over the land (version 1)', card: 'thick', hint: 'thin',
     about: 'Light and open: the map shows through everything that floats. <b>Glass:</b> thin at 58 % white with a 20 px blur, thick at 68 % with 32 px, both saturated so the map’s colours come through (apple-design §12). A bright inner edge with a dark outer hairline, so every surface shows on any map. Words on the glass take a darker grey, green and red, so they keep 4.5:1 over the map without a thicker glass. <b>In dark</b> that can’t work over a bright map, since the words are already near-white: the dark glass is a near-black 67 % and 73 %, the least that kept every word at 4.5:1 over Maastokartta in the tints tried (at 55 % and 64 %, as light as the light glass, the top bar’s words fall to 3.1:1 there). The more contrast and reduced transparency modes make the glass solid. The route a lifted pink-red, further from the map’s reds; state colours with dark versions.' },
   c: { name: 'C, a paper map in its case', card: 'thick', hint: 'thin',
     about: 'Calm and warm: the chrome made of the map’s own material. Warm paper surfaces (95 %, a light blur) in light; in dark, the night map’s blue-black lifted a step. Warm text and greys, a printed two-tone hairline round every surface. The route in the orienteering overprint’s purple-magenta, earthy state colours. The accent stays: <b>Plan</b>’s green is decided.' },
+  b: { name: 'B, clear water over the land', card: 'thick', hint: 'thick', bar: 'thick', logo: 'solo',
+    about: 'Light and open: the map shows through everything that floats, calmer than version 1. <b>Two glasses:</b> what you read (the top bar, the hint, the undo, the planner and the card) sits on a glass at 72 % white with a 32 px blur and the map’s colours barely lifted (saturate 105 %), so a sheet stays one quiet tone over any map; the map’s buttons keep the map’s colours lifted (160 %) under a whiter glass (84 %), so the group stays closer to one tint (over Maastokartta its lake and its built-up pink still show through, about half as much as in version 1). A light inner edge and a soft outer hairline (26 %); in more contrast it becomes a 3:1 rim. Words on the glass take a darker grey, green and red. <b>In dark</b> a near-black glass, 73 % for what you read and 84 % for the map’s buttons, with the same rim as version 1. Check’s warning box is solid, and in dark the chosen segment is lighter than its track. The logo stands alone, the Layers tile takes the glass’s edge, and an undo that can’t undo stays readable in grey. The state colours have dark versions.' },
+  d: { name: 'D, the map’s margin', ui: 'd',
+    about: 'Nothing floats: the interface is the map’s margin. <b>Solid and flat:</b> the top bar, the planner’s sheet and the desktop’s panel run to the screen’s edges, white in light and near-black in dark, and the map sits in a rounded window with a neatline round it, as a printed map does. The map’s buttons and the undo are bays that grow out of the margin, the zoom hint a tab under the top bar, and the card at a point on a desktop a flat callout with the same line. No blur and no shadow, so nothing depends on the map under it: words read the same over every map, reduced transparency changes nothing, and the phone draws no glass. <b>Match the map</b>, a possible choice in Settings (#323), gives the margin the map’s tone: white round Maastokartta, black round the aerial photos and the night map. The depth switch does nothing here, since D has no shadows. State colours at 5:1 or more, with dark versions.' },
 };
+const VER = { 1: ['today', 'a', 'b1', 'c'], 2: ['today', 'b', 'd'] };
 const MODE_NAME = { default: 'the default look', contrast: 'more contrast (prefers-contrast: more, or Settings’ High contrast)', clear: 'reduced transparency' };
-const S = { dir: 'b', map: 'forest', theme: 'light', device: 'phone', mode: 'default', depth: 'one', compare: '0' };
+const S = { ver: '2', dir: 'b', map: 'forest', theme: 'light', device: 'phone', mode: 'default', depth: 'one', compare: '0' };
 const q = new URLSearchParams(location.search);
 for (const k of Object.keys(S)) if (q.get(k)) S[k] = q.get(k);
+if (q.get('bare') === '1') document.body.classList.add('bare');
 const data = {}; // map + device -> the route's points
 const use = (id, size = 20, cls = 'ic') => `<svg class="${cls}" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 
@@ -369,34 +466,50 @@ const cardInner = (desk) => `
   ${desk ? `<div class="btns"><span class="btn">${use('flag', 16)}Start here</span><span class="btn">${use('flag', 16)}End here</span><span class="btn">${use('move', 16)}Move</span><span class="btn">${use('pen', 16)}Rename</span><span class="btn remove">${use('trash', 16)}Remove</span></div>`
     : `<p class="sh mu">Edit this point</p><div class="rows-div"><div class="row">${use('move', 22)}<div class="tx"><b>Move</b><span class="mu">Tap where it goes</span></div></div><div class="row">${use('pen', 22)}<div class="tx"><b>Rename</b><span class="mu">Give it a name of your own</span></div></div></div>`}`;
 
+const undoRedo = (size) => `<span class="tbtn plain dim">${use('undo', size)}</span><span class="tbtn plain">${use('redo', size)}</span>`;
+const layersTile = (style) => `<div class="layers" style="${style}width:60px;height:56px;background-image:url(${MAPS}${MAP_FILE[S.map]}-phone.jpg);background-position:62% 22%"><span>Layers</span></div>`;
 function phoneUi(d, r) {
+  const bar = d.bar || 'thin';
   return `
-  <div class="pill" data-mat="thin" style="left:12px;top:12px;width:44px;height:44px;justify-content:center"><span class="brand-m">${use('logo', 20)}</span></div>
-  <div class="pill" data-mat="thin" style="left:66px;top:12px;width:194px;height:44px;padding:0 14px">${use('search', 18)}<span class="search-t mu">Search places or pas</span></div>
+  ${d.logo === 'solo' ? `<span class="brand-solo" style="left:12px;top:12px">${use('logo', 22)}</span>`
+    : `<div class="pill" data-mat="${bar}" style="left:12px;top:12px;width:44px;height:44px;justify-content:center"><span class="brand-m">${use('logo', 20)}</span></div>`}
+  <div class="pill" data-mat="${bar}" style="left:66px;top:12px;width:194px;height:44px;padding:0 14px">${use('search', 18)}<span class="search-t mu">Search places or pas</span></div>
   <div class="pill sport" style="left:270px;top:12px;width:60px;height:44px;justify-content:center">${use('bike', 20)}${use('down', 14)}</div>
-  <div class="round" data-mat="thin" style="left:338px;top:12px;width:44px;height:44px">${use('gear', 22)}</div>
+  <div class="round" data-mat="${bar}" style="left:338px;top:12px;width:44px;height:44px">${use('gear', 22)}</div>
   <div class="hint mu" data-mat="${d.hint}" style="left:12px;top:64px">Zoom in to see every trail</div>
-  <div class="tools" data-mat="thin" style="left:8px;top:128px">${'<span class="tbtn plain dim">' + use('undo', 20) + '</span><span class="tbtn plain">' + use('redo', 20) + '</span>'}</div>
+  <div class="tools" data-mat="${bar}" style="left:8px;top:128px">${undoRedo(20)}</div>
   <div class="fab" data-mat="thin" style="left:334px;top:96px;width:44px;height:44px"><span class="needle"></span></div>
   <div class="fab" data-mat="thin" style="left:334px;top:148px;width:44px;height:44px">${use('locate', 20)}</div>
   <div class="fab" data-mat="thin" style="left:334px;top:200px;width:44px;height:44px"><b>3D</b></div>
   <div class="fab" data-mat="thin" style="left:318px;top:252px;width:60px;height:56px">${use('cloud', 22)}Weather</div>
-  <div class="layers" style="left:318px;top:316px;width:60px;height:56px;background-image:url(${MAPS}${MAP_FILE[S.map]}-phone.jpg);background-position:62% 22%"><span>Layers</span></div>
-  <div class="sheet" data-mat="thick" style="left:8px;right:8px;top:388px;bottom:8px">
+  ${layersTile('left:318px;top:316px;')}
+  <div class="sheet" data-mat="thick" data-big style="left:8px;right:8px;top:388px;bottom:8px">
     <div class="handle"></div>
     <div class="card" style="position:static;padding:4px 16px 16px">${cardInner(false)}</div>
   </div>`;
 }
 
+const cardAt = (r) => { const [vx, vy] = r.points[1]; return [Math.min(1440 - 340, vx + 24), Math.max(130, Math.min(900 - 430, vy + 14))]; };
+const searchDesk = `${use('search', 16)}<span class="search-t mu">Search places or paste coordinates</span><span class="kbd mu">/</span><span class="plan-chip">${use('plan', 15)}Plan</span>`;
 function deskUi(d, r) {
-  const [vx, vy] = r.points[1];
-  const cx = Math.min(1440 - 340, vx + 24), cy = Math.max(130, Math.min(900 - 430, vy + 14));
+  const [cx, cy] = cardAt(r), bar = d.bar || 'thin';
   return `
-  <div class="pill" data-mat="thin" style="left:12px;top:12px;height:40px;padding:0 14px 0 6px"><span class="brand-m">${use('logo', 18)}</span><b style="font-size:16px;letter-spacing:-.01em">Polku</b></div>
-  <div class="pill" data-mat="thin" style="left:118px;top:12px;width:468px;height:40px;padding:0 6px 0 14px">${use('search', 16)}<span class="search-t mu">Search places or paste coordinates</span><span class="kbd mu">/</span><span class="plan-chip">${use('plan', 15)}Plan</span></div>
+  <div class="pill brand-pill" data-mat="${bar}" style="left:12px;top:12px;height:40px;padding:0 14px 0 6px"><span class="brand-m">${use('logo', 18)}</span><b style="font-size:16px;letter-spacing:-.01em">Polku</b></div>
+  <div class="pill" data-mat="${bar}" style="left:118px;top:12px;width:468px;height:40px;padding:0 6px 0 14px">${searchDesk}</div>
   <div class="pill sport" style="left:594px;top:12px;height:40px;padding:0 12px;font-size:14px">${use('bike', 18)}MTB${use('down', 14)}</div>
-  <div class="round" data-mat="thin" style="left:702px;top:12px;width:40px;height:40px">${use('gear', 20)}</div>
-  <div class="panel" data-mat="thick" style="left:12px;top:64px;width:392px;bottom:12px">
+  <div class="round" data-mat="${bar}" style="left:702px;top:12px;width:40px;height:40px">${use('gear', 20)}</div>
+  <div class="panel" data-mat="thick" data-big style="left:12px;top:64px;width:392px;bottom:12px">${panelInner()}</div>
+  <div class="tools" data-mat="${bar}" style="left:416px;top:72px;right:18px;height:48px">${toolsInner()}</div>
+  <div class="card" data-mat="${d.card}" data-big style="left:${cx}px;top:${cy}px;width:320px">${cardInner(true)}</div>
+  <div class="fab sq" data-mat="thin" style="left:1388px;top:468px;width:40px;height:40px"><span class="needle" style="height:18px;width:7px"></span></div>
+  <div class="fab sq" data-mat="thin" style="left:1388px;top:516px;width:40px;height:40px">${use('locate', 18)}</div>
+  <div class="fab sq" data-mat="thin" style="left:1388px;top:564px;width:40px;height:80px;gap:18px">${use('plus', 18)}${use('minus', 18)}</div>
+  <div class="fab sq" data-mat="thin" style="left:1388px;top:652px;width:40px;height:40px"><b>3D</b></div>
+  <div class="fab" data-mat="thin" style="left:1368px;top:700px;width:60px;height:56px">${use('cloud', 22)}Weather</div>
+  ${layersTile('left:1368px;top:764px;')}
+  <div class="fab plan" data-mat="solid" style="left:1368px;top:828px;width:60px;height:56px">${use('plan', 22)}Plan</div>`;
+}
+const panelInner = () => `
     <div style="padding:12px 14px 0">
       <div class="sum"><div><b>3.03 km</b><span class="mu">distance</span></div><div><b>14 min</b><span class="mu" style="text-decoration:underline dotted">from now</span></div></div>
       <div class="sum" style="margin-top:4px"><div><b>↑42 ↓62 m</b><span class="mu">ascent · descent</span></div></div>
@@ -414,38 +527,79 @@ function deskUi(d, r) {
       <div class="row" style="min-height:36px">${use('bike', 18)}<b style="font-size:15px">MTB · Start → End</b></div>
       <div class="warn-row">${use('tri', 20)}<div class="tx" style="flex:1"><b>1 to read before you go</b><span class="mu">In the dark for 3.03 km</span></div>${use('right', 16)}</div>
       <div class="row"><span class="wp-ic" style="background:var(--start);color:#fff">▶</span><div class="tx"><b>Start</b><span class="mu">Leave now · 0 m</span></div><span class="chev">${use('right', 16)}</span></div>
-    </div>
-  </div>
-  <div class="tools" data-mat="thin" style="left:416px;top:72px;right:18px;height:48px">
+    </div>`;
+const toolsInner = () => `
     <span class="tbtn on">${use('route', 16)}Follow paths</span><span class="tbtn">${use('line', 16)}Straight line</span><span class="tbtn">${use('water', 16)}Over water</span><span class="tsep"></span>
     <span class="tbtn">${use('bike', 16)}MTB${use('down', 12, 'ic')}</span><span class="tbtn"><span><small class="mu">Route style</small>Balanced</span>${use('down', 12)}</span><span class="tsep"></span>
     <span class="tbtn plain dim">${use('undo', 18)}</span><span class="tbtn plain dim">${use('redo', 18)}</span><span class="tsep"></span>
     <span class="tbtn plain">${use('fit', 18)}</span><span class="tbtn plain">${use('rev', 18)}</span><span class="tbtn plain">${use('loop', 18)}</span><span class="tbtn plain">${use('link', 18)}</span><span class="tbtn plain">${use('dl', 18)}</span><span class="tsep"></span>
-    <span class="tbtn plain">${use('more', 18)}</span><span style="flex:1"></span><span class="tbtn" style="box-shadow:inset 0 0 0 1px var(--line)">Done</span>
+    <span class="tbtn plain">${use('more', 18)}</span><span style="flex:1"></span><span class="tbtn" style="box-shadow:inset 0 0 0 1px var(--line)">Done</span>`;
+
+// D: the margin round the map. Strips and the sheet run to the edges; bays and tabs reach under them (so their own
+// line stops at the margin); the window's box-shadow paints the margin and its neatline round the map
+function phoneUiD(d, r) {
+  return `
+  <div class="d-window" style="left:6px;top:64px;right:6px;bottom:456px"></div>
+  <div class="d-bay top" data-mat="solid" style="left:12px;padding:30px 12px 7px"><span class="mu" style="font-size:12px;font-weight:600">Zoom in to see every trail</span></div>
+  <div class="d-strip" data-mat="solid" data-flush style="left:0;top:0;right:0;height:64px;padding:0 12px">
+    <span class="brand-solo" style="position:static;box-shadow:none">${use('logo', 22)}</span>
+    <div class="d-field" style="flex:1;height:44px">${use('search', 18)}<span class="search-t mu">Search places or pas</span></div>
+    <div class="pill sport" style="position:static;width:60px;height:44px;justify-content:center;box-shadow:none">${use('bike', 20)}${use('down', 14)}</div>
+    <div class="round" style="position:static;width:44px;height:44px">${use('gear', 22)}</div>
   </div>
-  <div class="card" data-mat="${d.card}" style="left:${cx}px;top:${cy}px;width:320px">${cardInner(true)}</div>
-  <div class="fab sq" data-mat="thin" style="left:1388px;top:468px;width:40px;height:40px"><span class="needle" style="height:18px;width:7px"></span></div>
-  <div class="fab sq" data-mat="thin" style="left:1388px;top:516px;width:40px;height:40px">${use('locate', 18)}</div>
-  <div class="fab sq" data-mat="thin" style="left:1388px;top:564px;width:40px;height:80px;gap:18px">${use('plus', 18)}${use('minus', 18)}</div>
-  <div class="fab sq" data-mat="thin" style="left:1388px;top:652px;width:40px;height:40px"><b>3D</b></div>
-  <div class="fab" data-mat="thin" style="left:1368px;top:700px;width:60px;height:56px">${use('cloud', 22)}Weather</div>
-  <div class="layers" style="left:1368px;top:764px;width:60px;height:56px;background-image:url(${MAPS}${MAP_FILE[S.map]}-phone.jpg);background-position:62% 22%"><span>Layers</span></div>
-  <div class="fab" data-mat="solid" style="left:1368px;top:828px;width:60px;height:56px;color:var(--accent);box-shadow:var(--sh-thin),inset 0 0 0 2px var(--accent)">${use('plan', 22)}Plan</div>`;
+  <div class="d-bay left" data-mat="solid" style="top:124px">${undoRedo(20)}</div>
+  <div class="d-bay right" data-mat="solid" style="top:84px">
+    <div class="fab" style="width:44px;height:44px"><span class="needle"></span></div>
+    <div class="fab" style="width:44px;height:44px">${use('locate', 20)}</div>
+    <div class="fab" style="width:44px;height:44px"><b>3D</b></div><span class="d-sep"></span>
+    <div class="fab" style="width:60px;height:56px">${use('cloud', 22)}Weather</div>
+    ${layersTile('')}
+  </div>
+  <div class="sheet" data-mat="solid" data-flush data-big style="left:0;right:0;top:388px;bottom:0">
+    <div class="handle"></div>
+    <div class="card" style="position:static;padding:4px 16px 16px;box-shadow:none !important">${cardInner(false)}</div>
+  </div>`;
+}
+
+function deskUiD(d, r) {
+  const [cx, cy] = cardAt(r);
+  return `
+  <div class="d-window" style="left:404px;top:64px;right:6px;bottom:6px"></div>
+  <div class="d-bay top tools" data-mat="solid" style="left:416px;right:18px;padding:27px 3px 3px">${toolsInner()}</div>
+  <div class="d-strip" data-mat="solid" data-flush style="left:0;top:0;right:0;height:64px;padding:0 12px">
+    <span class="brand-m">${use('logo', 18)}</span><b style="font-size:16px;letter-spacing:-.01em;margin-right:30px">Polku</b>
+    <div class="d-field" style="width:468px;padding-right:6px">${searchDesk}</div>
+    <div class="pill sport" style="position:static;height:40px;padding:0 12px;font-size:14px;box-shadow:none">${use('bike', 18)}MTB${use('down', 14)}</div>
+    <div class="round" style="position:static;width:40px;height:40px">${use('gear', 20)}</div>
+  </div>
+  <div class="panel" data-mat="solid" data-flush data-big style="left:0;top:64px;width:404px;bottom:0">${panelInner()}</div>
+  <div class="card" data-mat="solid" data-big style="left:${cx}px;top:${cy}px;width:320px;border-radius:12px">${cardInner(true)}</div>
+  <div class="d-bay right" data-mat="solid" style="bottom:-24px;padding-bottom:30px">
+    <div class="fab sq" style="width:40px;height:40px"><span class="needle" style="height:18px;width:7px"></span></div>
+    <div class="fab sq" style="width:40px;height:40px">${use('locate', 18)}</div>
+    <div class="fab sq" style="width:40px;height:80px;gap:18px">${use('plus', 18)}${use('minus', 18)}</div>
+    <div class="fab sq" style="width:40px;height:40px"><b>3D</b></div><span class="d-sep"></span>
+    <div class="fab" style="width:60px;height:56px">${use('cloud', 22)}Weather</div>
+    ${layersTile('')}
+    <div class="fab plan" style="width:60px;height:56px">${use('plan', 22)}Plan</div>
+  </div>`;
 }
 
 // ============================================================== rendering
-async function frame(dir, extra) {
-  const d = DIRS[dir], phone = S.device === 'phone', r = await routeOf(S.map, S.device);
+// Match the map (D's tone, a Settings choice): light round Maastokartta, dark round the photos and the night map
+const themeOf = () => (S.theme === 'match' ? (S.map === 'maasto' ? 'light' : 'dark') : S.theme);
+async function frame(dir, extra, depth = S.depth) {
+  const d = DIRS[dir], phone = S.device === 'phone', r = await routeOf(S.map, S.device), th = themeOf();
   const fig = document.createElement('figure');
   fig.className = 'fr';
   const w = phone ? 390 : 1440, h = phone ? 844 : 900;
   const avail = Math.min(document.querySelector('.cv').clientWidth, S.compare === '1' && phone ? 9999 : 9999);
   const scale = phone ? 1 : Math.min(1, (S.compare === '1' ? avail : avail) / w);
-  fig.innerHTML = `<figcaption><b>${d.name}</b>${extra || ''} · ${MAP_NAME[S.map]}, ${S.theme}, ${phone ? 'phone' : 'desktop'}, ${MODE_NAME[S.mode]}</figcaption>
+  fig.innerHTML = `<figcaption><b>${d.name}</b>${extra || ''} · ${MAP_NAME[S.map]}, ${S.theme === 'match' ? `match the map (${th})` : th}, ${phone ? 'phone' : 'desktop'}, ${MODE_NAME[S.mode]}</figcaption>
     <div class="scroller"><div class="box" style="width:${w * scale}px;height:${h * scale}px">
-      <div class="screen ${phone ? 'phone' : 'desk'}" data-dir="${dir}" data-theme="${S.theme}" data-mode="${S.mode}" data-depth="${S.depth}" style="transform:scale(${scale});transform-origin:0 0">
+      <div class="screen ${phone ? 'phone' : 'desk'}" data-ver="${S.ver}" data-dir="${dir}" data-theme="${th}" data-mode="${S.mode}" data-depth="${depth}" style="transform:scale(${scale});transform-origin:0 0">
         <div class="map"><img alt="" crossorigin="anonymous" src="${MAPS}${MAP_FILE[S.map]}-${S.device}.jpg">${routeSvg(r)}</div>
-        <div class="ui">${phone ? phoneUi(d, r) : deskUi(d, r)}</div>
+        <div class="ui">${(d.ui === 'd' ? (phone ? phoneUiD : deskUiD) : (phone ? phoneUi : deskUi))(d, r)}</div>
       </div></div></div>
     <div class="meas" aria-live="polite"><p class="note">Measuring…</p></div>
     <div class="acts"><button class="act" data-act="marks" aria-pressed="false">Mark what’s under 4.5:1</button><button class="act" data-act="pan">Pan test: the map moves under the glass for 3 s</button><span class="pan-out" style="font-size:12.5px"></span></div>`;
@@ -457,13 +611,19 @@ async function frame(dir, extra) {
 }
 
 async function render() {
+  if (!VER[S.ver]) S.ver = '2';
+  if (!VER[S.ver].includes(S.dir)) S.dir = S.ver === '1' ? 'b1' : 'b';
+  if (S.theme === 'match' && S.dir !== 'd') S.theme = themeOf();
+  for (const b of document.querySelectorAll('.sw[data-k="dir"] button[data-ver]')) b.hidden = b.dataset.ver !== S.ver;
+  for (const b of document.querySelectorAll('.sw button[data-only]')) b.hidden = b.dataset.only !== S.dir;
   for (const [k, v] of Object.entries(S)) for (const b of document.querySelectorAll(`.sw[data-k="${k}"] button`)) b.setAttribute('aria-pressed', String(b.dataset.v === v));
   history.replaceState(null, '', '?' + new URLSearchParams(S));
   const d = DIRS[S.dir];
-  document.getElementById('about').innerHTML = `<h2>${d.name}</h2><p>${d.about}</p>`;
+  document.getElementById('about').innerHTML = `<h2>${d.name}</h2><p>${S.ver === '2' && d.about2 ? d.about2 : d.about}</p>`;
   const stage = document.getElementById('stage');
-  const figs = [await frame(S.dir)];
+  const figs = S.compare === 'depth' ? [await frame(S.dir, ', one shadow', 'one'), await frame(S.dir, ', thicker when bigger', 'thick')] : [await frame(S.dir)];
   if (S.compare === '1' && S.dir !== 'today') figs.unshift(await frame('today', ', for comparison'));
+  if (S.compare === 'depth') document.getElementById('about').insertAdjacentHTML('beforeend', `<p><b>Both depths:</b> on the left one shadow for everything that floats; on the right the small controls lie almost flat and the planner, the panel and the card are lifted well off the map. Shadows show over Maastokartta; over the photos and the night map they barely show in any version.${S.dir === 'd' ? ' D has no shadows, so the two are the same.' : ''}</p>`);
   stage.replaceChildren(...figs);
   renderVals();
   window.lastMeasure = Promise.all(figs.map((f) => measure(f)));
@@ -487,12 +647,12 @@ function renderVals() {
   probe.className = 'screen phone'; probe.style.cssText = 'position:absolute;left:-9999px;top:0';
   const rows = [];
   for (const theme of ['light', 'dark']) {
-    probe.dataset.dir = S.dir; probe.dataset.theme = theme; probe.dataset.mode = 'default'; probe.dataset.depth = S.depth;
+    probe.dataset.ver = S.ver; probe.dataset.dir = S.dir; probe.dataset.theme = theme; probe.dataset.mode = 'default'; probe.dataset.depth = S.depth;
     document.body.append(probe);
     const cs = getComputedStyle(probe), v = (n) => cs.getPropertyValue(n).trim();
     rows.push([theme, v]);
   }
-  const names = [['--thin-bg', 'Thin glass'], ['--thin-filter', 'its blur'], ['--thick-bg', 'Thick glass'], ['--thick-filter', 'its blur'], ['--solid', 'Solid'], ['--surface-2', 'Surface 2'],
+  const names = [['--thin-bg', 'Glass for small controls (version 2’s B: the map’s buttons)'], ['--thin-filter', 'its blur'], ['--thick-bg', 'Glass for what you read'], ['--thick-filter', 'its blur'], ['--solid', 'Solid'], ['--surface-2', 'Surface 2'], ['--neat', 'Neatline (D)'],
     ['--text', 'Text'], ['--muted', 'Muted'], ['--muted-glass', 'Muted on glass'], ['--line', 'Line'], ['--edge-thin', 'Edge, thin'], ['--edge-thick', 'Edge, thick'],
     ['--shadow-one', 'One shadow'], ['--shadow-small', 'Small (thicker when bigger)'], ['--shadow-big', 'Big (thicker when bigger)'], ['--route', 'Route'], ['--good', 'Good'], ['--ok', 'Ok'], ['--warn', 'Warn'], ['--bad', 'Bad']];
   const cell = (x) => /^(#|rgba?\()/.test(x) && !x.includes(' 0 ') ? `<span class="chip-sw" style="background:${x}"></span><code>${x}</code>` : `<code>${x || '—'}</code>`;
@@ -507,6 +667,22 @@ const lum = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 const ratio = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 const parse = (c) => { const m = String(c).match(/[\d.]+/g); return m ? { r: +m[0], g: +m[1], b: +m[2], a: m[3] === undefined ? 1 : +m[3] } : null; };
 const over = (c, r, g, b) => [c.r * c.a + r * (1 - c.a), c.g * c.a + g * (1 - c.a), c.b * c.a + b * (1 - c.a)];
+const r0w = (sc) => sc.offsetWidth, r0h = (sc) => sc.offsetHeight;
+const lab = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }, h = (t) => (t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116);
+  const R = f(r), G = f(g), B = f(b), X = h((R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047), Y = h(R * 0.2126 + G * 0.7152 + B * 0.0722), Z = h((R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883);
+  return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)]; };
+const de2000 = ([L1, a1, b1], [L2, a2, b2]) => {
+  const d = Math.PI / 180, C7 = (c) => c ** 7 / (c ** 7 + 25 ** 7), G = 0.5 * (1 - Math.sqrt(C7((Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2)));
+  const A1 = a1 * (1 + G), A2 = a2 * (1 + G), C1 = Math.hypot(A1, b1), C2 = Math.hypot(A2, b2), H = (b, a) => (Math.atan2(b, a) / d + 360) % 360, h1 = H(b1, A1), h2 = H(b2, A2);
+  let dh = C1 * C2 === 0 ? 0 : h2 - h1; if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
+  let hm = h1 + h2; if (C1 * C2 !== 0) hm = Math.abs(h1 - h2) <= 180 ? hm / 2 : hm < 360 ? (hm + 360) / 2 : (hm - 360) / 2;
+  const Lm = (L1 + L2) / 2, Cm = (C1 + C2) / 2, dH = 2 * Math.sqrt(C1 * C2) * Math.sin(dh * d / 2);
+  const T = 1 - 0.17 * Math.cos((hm - 30) * d) + 0.24 * Math.cos(2 * hm * d) + 0.32 * Math.cos((3 * hm + 6) * d) - 0.2 * Math.cos((4 * hm - 63) * d);
+  const SL = 1 + 0.015 * (Lm - 50) ** 2 / Math.sqrt(20 + (Lm - 50) ** 2), SC = 1 + 0.045 * Cm, SH = 1 + 0.015 * Cm * T;
+  const RT = -Math.sin(60 * Math.exp(-(((hm - 275) / 25) ** 2)) * d) * 2 * Math.sqrt(C7(Cm));
+  return Math.sqrt(((L2 - L1) / SL) ** 2 + ((C2 - C1) / SC) ** 2 + (dH / SH) ** 2 + RT * ((C2 - C1) / SC) * (dH / SH)); };
+// self-check against Sharma, Wu and Dalal's test data (pairs 1 and 17): 2.0425 and 27.1492
+console.assert(Math.abs(de2000([50, 2.6772, -79.7751], [50, 0, -82.7485]) - 2.0425) < 1e-3 && Math.abs(de2000([50, 2.5, 0], [73, 25, -18]) - 27.1492) < 1e-3, 'CIEDE2000 is off');
 
 // whether this browser's canvas applies ctx.filter (Safari before 18 doesn't, and then nothing here would be measured right)
 const filterWorks = (() => {
@@ -573,7 +749,7 @@ async function measure(fig) {
   const res = { text: [], muted: [], other: [], icon: [], edge: [] }, marks = [];
   const walk = document.createTreeWalker(sc.querySelector('.ui'), NodeFilter.SHOW_TEXT);
   for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-    const t = n.textContent.trim(), el = n.parentElement; if (!t) continue;
+    const t = n.textContent.trim(), el = n.parentElement; if (!t || el.closest('.layers')) continue; // the Layers word is on its picture (#553)
     const bg = bgFn(el); if (!bg) continue;
     const cs = getComputedStyle(el), fg = parse(cs.color), op = +cs.opacity || 1;
     const rg = document.createRange(); rg.selectNodeContents(n);
@@ -592,14 +768,14 @@ async function measure(fig) {
   for (const ic of sc.querySelectorAll('.ui svg.ic')) {
     const bg = bgFn(ic); if (!bg) continue;
     const fg = parse(getComputedStyle(ic).color), [x0, y0, x1, y1] = rel(ic.getBoundingClientRect());
-    if (ic.closest('.sport, .brand-m')) continue; // white on the accent, not on the glass
+    if (ic.closest('.sport, .brand-m, .brand-solo')) continue; // white on the accent, not on the glass
     let min = 99;
     for (let y = Math.floor(y0 * k); y < Math.ceil(y1 * k); y += 2) for (let x = Math.floor(x0 * k); x < Math.ceil(x1 * k); x += 2) { const b = bg(x, y); min = Math.min(min, ratio(lum(...over(fg, ...b)), lum(...b))); }
     res.icon.push({ t: ic.querySelector('use').getAttribute('href').slice(3), min });
     if (min < 3) marks.push([x0, y0, x1, y1, 'icon']);
   }
   // edges: around each surface, its rim (with its edge line) against the map just outside it, every 2 px, corners left out
-  for (const m of sc.querySelectorAll('[data-mat]')) {
+  for (const m of sc.querySelectorAll('[data-mat]:not([data-flush])')) {
     const ms = getComputedStyle(m), [x0, y0, x1, y1] = rel(m.getBoundingClientRect()), rad = parseFloat(ms.borderTopLeftRadius) || 0, bg = bgFn(m.firstElementChild || m) || bgFn(m);
     // the boundary has two neighbours: an outer hairline (if any) against the map, and the rim inside (with its inset
     // hairlines) against that; it shows where either pair is 3:1 (as the route's white edge does on any map)
@@ -613,19 +789,38 @@ async function measure(fig) {
     for (let y = y0 + rad; y <= y1 - rad; y += 2) { at(Math.round((x0 + 1) * k), Math.round(y * k), Math.round((x0 - 2) * k), Math.round(y * k)); at(Math.round((x1 - 1) * k), Math.round(y * k), Math.round((x1 + 2) * k), Math.round(y * k)); }
     if (n) res.edge.push({ t: m.className.split(' ')[0], share: ok / n });
   }
+  // the map in the clear: the share of the screen under no surface (D's margin counts as a surface)
+  const parts = [...sc.querySelectorAll('.ui > *:not(.d-window)')].map((e) => rel(e.getBoundingClientRect()));
+  const win = sc.querySelector('.d-window'), wr = win && rel(win.getBoundingClientRect());
+  let seen = 0, all = 0;
+  for (let y = 1; y < r0h(sc); y += 4) for (let x = 1; x < r0w(sc); x += 4) {
+    all++; if ((!wr || (x > wr[0] && x < wr[2] && y > wr[1] && y < wr[3])) && !parts.some((q) => x > q[0] && x < q[2] && y > q[1] && y < q[3])) seen++; }
+  const clear = seen / all;
+  // the map's buttons: how far apart their glass's tints are (the mean colour under each, CIEDE2000)
+  const fabs = [...sc.querySelectorAll('.fab[data-mat="thin"]')].map((f) => { const bg = bgFn(f), [x0, y0, x1, y1] = rel(f.getBoundingClientRect()), t = [0, 0, 0]; let n = 0;
+    for (let y = Math.ceil(y0 * k); y < Math.floor(y1 * k); y += 2) for (let x = Math.ceil(x0 * k); x < Math.floor(x1 * k); x += 2) { const b = bg(x, y); t[0] += b[0]; t[1] += b[1]; t[2] += b[2]; n++; }
+    return lab(t.map((v) => v / n)); });
+  let fabDE = 0; for (let i = 0; i < fabs.length; i++) for (let j = i + 1; j < fabs.length; j++) fabDE = Math.max(fabDE, de2000(fabs[i], fabs[j]));
   // what the page shows
   const worst = (a) => a.reduce((w, x) => (x.min < w.min ? x : w), { min: 99, t: '' });
   const fmt = (v, need) => `<span class="${v < need ? 'fail' : 'pass'}">${v.toFixed(2)}:1${v < need ? ' ✕' : ''}</span>`;
   const rowsT = [['Words in <code>--text</code>', res.text, 4.5], ['Words in <code>--muted</code> (and its grey on glass)', res.muted, 4.5], ['Other words (green values, red, on the accent)', res.other.filter((x) => !x.big), 4.5], ['Icons on the surfaces', res.icon, 3]]
     .map(([label, a, need]) => { const w = worst(a); return `<tr><td>${label}</td><td>${a.length ? fmt(w.min, need) : '—'}</td><td>${a.length} ${need === 3 ? 'icons' : 'words'}${w.t ? `; lowest: “${w.t}”` : ''}</td></tr>`; }).join('');
   const shares = res.edge.map((e) => e.share), edgeAvg = shares.length ? shares.reduce((a, b) => a + b, 0) / shares.length : 0, edgeMin = res.edge.reduce((w, e) => (e.share < w.share ? e : w), { share: 2, t: '' });
+  const hc = S.mode === 'contrast', ver2 = sc.dataset.ver === '2';
+  const edgeLabel = !ver2 ? 'Edges: share of each surface’s rim where its outer hairline, or its inner edge, is 3:1 against its neighbour'
+    : hc ? 'Edges, 3:1 needed in more contrast: share of each surface’s rim where its outer line, or its inner edge, is 3:1 against its neighbour'
+    : 'Edges, not needed in the default look (each control is told by its words or icon; more contrast gives a 3:1 rim): share of each surface’s rim at 3:1';
   out.innerHTML = `<table><tr><th>Measured over this map</th><th>Lowest</th><th></th></tr>${rowsT}
-    <tr><td>Edges: share of each surface’s rim where its outer hairline, or its inner edge, is 3:1 against its neighbour</td><td>${Math.round(edgeAvg * 100)} % on average</td><td>lowest ${Math.round(Math.min(1, edgeMin.share) * 100)} % (${edgeMin.t})</td></tr></table>
+    <tr><td>${edgeLabel}</td><td>${res.edge.length ? `${hc && ver2 && edgeMin.share < 1 ? '<span class="fail">' : '<span>'}${Math.round(edgeAvg * 100)} % on average</span>` : '—'}</td><td>${res.edge.length ? `lowest ${Math.round(Math.min(1, edgeMin.share) * 100)} % (${edgeMin.t})` : 'no floating surfaces'}</td></tr>
+    ${fabs.length > 1 ? `<tr><td>The map’s buttons: the most any two differ in tint over this map (CIEDE2000; about 2 is the least you’d notice side by side)</td><td>${fabDE.toFixed(1)}</td><td>${fabs.length} buttons</td></tr>` : ''}
+    <tr><td>The map in the clear: share of the screen under no surface${win ? ' (the margin counts)' : ''}</td><td>${Math.round(clear * 100)} %</td><td></td></tr></table>
     <p class="note">Words need 4.5:1 and icons 3:1 under every pixel of them (the lowest is shown). The glass is modelled from each surface’s computed colour and backdrop-filter over the map picture and the route; checked against Chrome’s own render of the same frames, it reads 0.06 or less high (2026-10-28). The Layers word sits on the map picture, not a surface, and isn’t counted here (#553).</p>`;
   const layer = document.createElement('div'); layer.style.cssText = 'position:absolute;inset:0;pointer-events:none';
   for (const [x0, y0, x1, y1, kind] of marks) { const m = document.createElement('div'); m.className = `mark-box${kind === 'icon' ? ' icon' : ''}`; m.hidden = true; m.style.cssText = `left:${x0}px;top:${y0}px;width:${x1 - x0}px;height:${y1 - y0}px`; layer.append(m); }
   sc.append(layer);
-  const sum = { dir: sc.dataset.dir, map: S.map, theme: S.theme, device: S.device, mode: S.mode, depth: S.depth,
+  const sum = { dir: sc.dataset.dir, map: S.map, device: S.device, mode: S.mode,
+    ver: sc.dataset.ver, theme: sc.dataset.theme, depth: sc.dataset.depth, clear, fabDE,
     text: worst(res.text).min, muted: worst(res.muted).min, other: worst(res.other.filter((x) => !x.big)).min, icon: worst(res.icon).min, edge: edgeAvg, edgeMin: Math.min(1, edgeMin.share),
     lowest: { text: worst(res.text).t, muted: worst(res.muted).t, other: worst(res.other.filter((x) => !x.big)).t, icon: worst(res.icon).t, edge: edgeMin.t } };
   return sum;
