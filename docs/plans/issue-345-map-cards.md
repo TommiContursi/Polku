@@ -135,3 +135,38 @@ The mock-up draws each of these; its frame ids are in brackets.
 
 - Where it goes in Phase 25's order (above).
 - The long press's numbers (0.5 s, 10 px) on real phones; iOS and Android differ (0.5 s and 10 pt, 400 ms and 8 dp).
+
+## The facts on the cards (#561)
+
+**Where it stands (2026-10-28):** to choose. The [mock-up](mockups/issue-561-card-facts.html) shows each scene as Today, A and B side by side, at 390 px, 360 px and 200 %, with example data, the worst case and nothing mapped. Choose A or B for a trail's card and What's here, and whether the map's other cards move onto the same card. The build waits for that choice. Work package: #561, #562, #564, #565.
+
+**Why.** Testing on 2026-10-28 found that a trail's card says less than its hover. In Gravel, a path drawn purple as S5 says "118 m height · surface not mapped". On a path beside the route, "unpaved" shows twice and nothing says how steep it is, while the hover says "↑S2 13 % · unpaved". A trail's three numbers were how far from your route, its height and one fact for your sport, and the hover's grades were left out of the line because the numbers were meant to have them (#561). In sports without trail details, What's here says "not mapped" for what wasn't loaded (#562). Road works, sea marks, the water and the rest still open the old popup (#564), and road works' dates have no year (#565).
+
+**A and B, a trail's card:**
+- The three numbers say what the way is like for your sport: its own fact, the incline here, then the next fact the map has. MTB: difficulty, incline, surface. Gravel and Road: surface, incline, difficulty. Hike and Trail run: trail grade, incline, surface. Run: surface, incline, trail grade. With Layers' difficulty colours on, the MTB grade is in every sport's list. Known facts come first. A missing fact says so in its place, except a third, which is left out.
+- The incline is the hover's: the uphill layer's where it's drawn, else worked out from the terrain at the spot (`gradeHere()`), with its ↑S class as the word under it. With no terrain there, it says so.
+- The line under the name is the hover's other words (width, visibility, a bridge, private, what the trail details found), then how far from your route. It's two lines at most; all of it is in What's here, and on a desktop in its tooltip. The height moves to What's here's The spot, where it already is.
+- What's here: a detail Polku didn't load says "not loaded", and All OpenStreetMap details asks for it.
+
+**B adds:**
+- What's here › moves into the card's last row (What's here ›, Share, Weather here ›). Not right? moves into What's here, beside the data it's about.
+- "You're not editing" becomes one line without its box, on all six cards that have it.
+- What's here lists what's known, then one line of what isn't loaded or mapped.
+
+**The other cards (A and B):** road works, traffic incidents, road conditions, busy roads, military areas, sea marks, faults, signs, navigation lines, fairways, restriction areas, light sectors and the water open `spotCard()` through `CardHost`. They get the map's own mark, their facts as `insp-row`s, where the data comes from, Your route and the pill. Not right? stays off them: the data isn't OpenStreetMap's. The water has one card, the depth a number from Traficom's chart, shown only, with Paddle from here. Dates outside this year carry their year. Ships and cameras keep their own live card and modal.
+
+**Checked (2026-10-28):** in the browser pane at 390 px, 360 px and 200 %, with example data, the worst case and nothing mapped. No row or button runs out of its card, and every control on a phone's card is 44 px or more. Long cards scroll inside the peek, as in the app. Two breaks were fixed in the mock-up:
+- B's last row ran past a 320 px card. What's here › has no icon now, as Not right? has none.
+- At 200 % a long name and its line filled the peek before the numbers. The line is clamped to two lines in A and B. Today has the same break.
+
+Not checked: dark mode, and a real phone.
+
+**Left out:**
+- #558's fold row (⌄) on the peek, not on `main` yet.
+- The desktop's card at its spot. It has the same parts, in Revision 5's compact look.
+- Military areas and road conditions, which follow road works.
+
+**Building it**, once chosen:
+- `spotNums()` and `SPORT_FACTS` in `js/facts.js`; `openSpotCard()` in `js/planner.js`, for the line and the incline; `spotBody()`, `spotHereCard()` and `foot()` in `js/cards.js`; `js/inspect.js`'s `show()`, which goes, with its renderers moved onto the card; `lockNote()` in `js/card.js` (B).
+- Checks in `tools/smoke.py`: `spotcard` and `facts` for the numbers per sport (an S5 path in Gravel with colours on; a path with nothing mapped), and a new check that road works open the map's card with their years.
+- The build touches `js/planner.js`, `css/app.css` and `tools/smoke.py`, which #558 also changes. It starts once #558 is merged, or rebases onto it.

@@ -20,6 +20,12 @@
         ],
         "createdAt": "2026-10-22T04:43:46.487Z",
         "reason": "Claude: the inner card is a demo of the floating menu (menu-item) shown inside the specimen's controls panel, not page structure"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "ui\",roboto,sans-serif",
+        "createdAt": "2026-10-28T14:36:33.624Z",
+        "reason": "Claude: it is DESIGN.md's own stack (Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif), copied from css/app.css; the quoted \"Segoe UI\" splits the match"
       }
     ]
   }

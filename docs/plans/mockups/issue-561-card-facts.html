@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The facts on the map's cards</title>
+<meta name="description" content="Clickable mock-ups for #561, #562, #564 and #565: what a trail's card says at a tap, What's here, and the map's other cards on the same card. Today beside A and B, at 390 px, 360 px and 200 %.">
+<!--
+  #561's package, 2026-10-28. The design and the choice are in docs/plans/issue-345-map-cards.md, "The facts on the
+  cards (#561)". Not wired to the app: nothing here is loaded by Polku.
+
+  Every scene is drawn three times side by side: Today (the card as main draws it at 25526c5, its DOM copied from
+  the app), A and B. The old cards are drawn twice: Today (the old popup) and the new card, the same in A and B.
+  The controls are the app's own (the classes and CSS of js/card.js and css/app.css), copied below in marked blocks.
+  The icons are js/ui.js's, copied in at 25526c5.
+
+  ?size=390 | 360 | 200 (a 390 phone at 200 %)   &worst=1 (long Finnish names, every fact the map can have) | empty (a path with no tags)
+-->
+<style>
+/* ================================================================ the page */
+html { background: #eef1ee; color: #1c2420; font: 15px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { margin: 0; padding: 24px 16px 96px; }
+main { max-width: 1320px; margin: 0 auto; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0 0 8px; }
+h2 { font-size: 20px; margin: 40px 0 4px; }
+.lede { max-width: 760px; margin: 0 0 12px; }
+.where { max-width: 760px; padding: 12px 16px; border-radius: 12px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.where p { margin: 4px 0; }
+.sec-intro { max-width: 760px; margin: 0 0 16px; color: #39443f; }
+.scene { margin: 0 0 36px; }
+.scene > h3 { font-size: 16px; margin: 0 0 2px; }
+.scene > p { margin: 0 0 12px; max-width: 760px; color: #39443f; font-size: 14px; }
+.cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+figure.fr { margin: 0; display: grid; gap: 8px; width: min-content; }
+figure.fr figcaption { font-size: 13px; line-height: 1.4; color: #39443f; max-width: 390px; }
+figure.fr figcaption b { display: block; font-size: 14px; color: #1c2420; }
+.tag { display: inline-block; padding: 0 7px; border-radius: 6px; background: #1f6f4a; color: #fff; font-size: 12px; font-weight: 700; vertical-align: 1px; }
+.tag.now { background: #5f6b65; }
+ul.changes { max-width: 860px; padding-left: 20px; }
+ul.changes li { margin: 4px 0; }
+.picker { position: fixed; right: 12px; bottom: 12px; z-index: 50; display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; background: #fff; box-shadow: 0 6px 24px rgba(16,24,20,.18); font-size: 13px; }
+.picker div { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.picker span { min-width: 64px; color: #5f6b65; font-weight: 600; }
+.picker button { min-height: 32px; padding: 0 10px; border: 1px solid rgba(28,36,32,.15); border-radius: 8px; background: #fff; font: inherit; cursor: pointer; }
+.picker button[aria-pressed="true"] { background: #e3f1e9; border: 2px solid #1f6f4a; font-weight: 700; }
+
+/* ================================================================ The app's values, from css/app.css at 25526c5 */
+.screen {
+  --accent: #1f6f4a; --accent-2: #2f8f62; --accent-soft: #e3f1e9; --accent-bg: #1f6f4a; --route: #e11d48;
+  --surface: rgba(255, 255, 255, 0.94); --surface-solid: #ffffff; --surface-2: #f3f4f1;
+  --text: #1c2420; --muted: #5f6b65; --line: rgba(28, 36, 32, 0.12);
+  --shadow: 0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12); --radius: 14px;
+  --good: #16a34a; --ok: #ca8a04; --warn: #ea580c; --bad: #dc2626;
+  --danger: #b4232a; --danger-soft: #fbe9e9; --look: #8a5a00; --look-soft: #fbf4e2; --unk: #47607a; --unk-soft: #eaf0f6;
+  --focus: #1f6f4a;
+  --font-small: 0.75rem; --font-control: 0.8125rem; --font-body: 0.875rem; --font-row: 0.9375rem; --font-field: 1rem;
+  --font-title: 1.0625rem; --font-number: 1.1875rem; --font-numeral: 1.375rem;
+  --weight-regular: 400; --weight-name: 600; --weight-strong: 700;
+  --space-2: 2px; --space-4: 4px; --space-8: 8px;
+  --shadow-sheet: 0 -6px 28px rgba(16, 24, 20, 0.2);
+  /* a phone: a finger's target (the app's @media (pointer: coarse)) */
+  --target: 44px; --row-h: 50px; --mark: 34px;
+  --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce;
+  position: relative; overflow: hidden; border-radius: 28px; background: #dfe6e0; color: var(--text);
+  font: 14px/1.4 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased;
+  box-shadow: 0 0 0 8px #1c2420, 0 10px 30px rgba(0,0,0,.25); margin: 8px;
+  container-type: inline-size;
+}
+.screen * { box-sizing: border-box; }
+.screen button { font: inherit; color: inherit; }
+.screen .ic { display: block; }
+
+/* ================================================================ The app's own controls, copied from css/app.css at 25526c5 */
+.screen .menu-h { font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.screen .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px; overflow-wrap: break-word; text-align: center; }
+.screen .btn.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: #fff; }
+.screen .btn.quiet { border-color: transparent; background: transparent; }
+.screen .btn.big { justify-content: center; width: 100%; min-height: 52px; padding-block: 8px; border-radius: 14px; font-size: 17px; line-height: 1.25; }
+.screen .tool { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; }
+.screen .sheet-sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-end; }
+.screen .sum-item { display: flex; flex-direction: column; min-width: 0; }
+.screen .sum-item b { font-size: 19px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.screen .sum-item small { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+@container (max-width: 340px) { .screen .sheet-sum { column-gap: 12px; } .screen .sheet-sum .sum-item b { font-size: 16.5px; } }
+.screen .pl-viewnote { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 8px 10px; border-radius: 12px; background: var(--surface-2); font-size: 13.5px; }
+.screen .pl-viewnote > span:first-child { flex: none; display: grid; color: var(--muted); }
+.screen .pl-viewnote > span:nth-child(2) { flex: 1; min-width: 0; }
+.screen .pl-viewnote .btn { flex: none; gap: 6px; }
+.screen .pl-way { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; gap: 10px; padding: 2px 2px 4px; min-width: 0; overflow: hidden auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.screen .way-head { display: flex; align-items: flex-start; gap: 8px; }
+.screen .way-head > :first-child { flex: 1; min-width: 0; }
+.screen .way-hint { display: grid; gap: 2px; }
+.screen .way-hint b { font-size: var(--font-title); font-weight: 700; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.screen .way-hint small { color: var(--muted); font-size: 13.5px; }
+.screen .way-x { flex: none; margin: -4px -6px 0 0; }
+.screen .pl-way .way-x { width: 44px; height: 44px; }
+.screen .way-chev { flex: none; align-self: center; color: var(--muted); display: inline-flex; }
+.screen .rt-cost { display: grid; gap: 2px; margin: -4px 0 0; color: var(--muted); font-size: 13px; }
+.screen .way-bar { display: flex; align-items: center; justify-content: space-between; gap: 4px 8px; min-height: 44px; margin: 0 0 -2px -8px; }
+.screen .way-bar .way-back { min-width: 0; }
+.screen .way-bar .way-back span { white-space: normal; text-align: left; line-height: 1.15; }
+.screen .way-bar .way-x { flex: none; margin: 0 0 0 auto; }
+/* cards (js/card.js, 25d, Revision 4 of #355) */
+.screen .pl-way.card { container: card / inline-size; overflow-y: auto; overscroll-behavior: contain; margin-inline: -8px; padding-inline: 8px; }
+.screen .card h3.way-hint { margin: 0; padding-top: 3px; font: inherit; }
+.screen .card .way-hint b { line-height: 1.25; hyphens: manual; }
+.screen .card .way-head { align-items: flex-start; }
+.screen .card .way-head > .way-x { margin: -6px -8px 0 0; }
+.screen .card > .way-bar { margin-bottom: -6px; }
+.screen .card[data-back="yes"] > .way-head > .way-x { display: none; }
+.screen .card-mark { flex: none; order: -1; display: grid; place-items: center; width: var(--mark); height: var(--mark); margin-top: -2px; }
+.screen .sum-item.miss { padding: 2px 8px; border: 1.5px dashed var(--muted); border-radius: 10px; }
+.screen .sum-item.miss b { color: var(--muted); }
+.screen .sum-item em { font-style: normal; font-size: var(--font-small); font-weight: var(--weight-strong); line-height: 1.2; overflow-wrap: anywhere; }
+.screen .card .sheet-sum { flex: none; align-items: flex-start; column-gap: 20px; }
+.screen .card .sheet-sum .sum-item b { font-size: 18px; } /* (a phone: the app's @media (max-width: 720px)) */
+.screen .rows { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0 -8px; }
+.screen .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--row-h); padding: 6px 10px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.screen .rows > .row + .row, .screen .rows > :not(.row) + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
+.screen .rows > .row:first-child:not(:only-child) { border-radius: 12px 12px 0 0; }
+.screen .rows > .row:last-child:not(:only-child) { border-radius: 0 0 12px 12px; }
+.screen .row > span:first-child { flex: none; display: grid; color: var(--text); }
+.screen .row > span:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.screen .row b { font-size: var(--font-row); font-weight: var(--weight-name); line-height: 1.25; overflow-wrap: anywhere; }
+.screen .row small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.screen .row:hover { background: var(--surface-2); }
+.screen .card .menu-h { margin: 2px 0 -8px; padding: 0; }
+.screen .card .rt-cost { margin-top: -6px; }
+.screen .card .pl-viewnote { margin: 0; }
+.screen .card .btn, .screen .card .tool { min-height: 44px; min-width: 44px; } /* (the app's @media (pointer: coarse)) */
+@container card (max-width: 190px) { .screen .card-mark { display: none; } }
+/* a phone's peek */
+.screen .card-peek .card { max-height: calc(var(--ph) * 0.52); padding-bottom: 6px; } /* (52 % of the phone's height: the app's 52dvh) */
+/* at its spot */
+.screen .card-float { --row-h: 36px; --mark: 28px; --font-title: 0.9375rem; --font-number: 1.0625rem; --font-row: 0.875rem; }
+.screen .card-float .card { width: 320px; max-width: calc(100cqw - 32px); max-height: min(480px, var(--card-max, 70%)); gap: 8px; }
+.screen .card-float .way-x { width: 36px; height: 36px; }
+.screen .card-float .way-head > .way-x { margin: -4px -6px 0 0; }
+.screen .card-float .card-mark { margin-top: 0; }
+.screen .card-float h3.way-hint { padding-top: 0; }
+.screen .card-float .way-hint small { font-size: 12.5px; }
+.screen .card-float .sum-item small { font-size: 12px; }
+.screen .card-float .menu-h { margin: 0 0 -4px; }
+.screen .card-float .rows { margin: 0 -8px; }
+.screen .card-float .row { padding: 4px 8px; gap: 10px; }
+.screen .card-float .row > span:first-child .ic { width: 18px; height: 18px; }
+.screen .card-float .row small { display: none; }
+.screen .card-float .menu-h:has(+ .rows.acts) { display: none; }
+.screen .card-float .rows.acts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.screen .card-float .rows.acts:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+.screen .card-float .rows.acts > .row { min-height: 36px; padding: 0 10px; gap: 8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: none; background: var(--surface-solid); font-size: 13.5px; }
+.screen .card-float .rows.acts > .row b { font-size: 13.5px; }
+.screen .card-float .rows.acts > .row > span:nth-child(2) { display: block; }
+/* the card's last row (25d part 6b) */
+.screen .insp-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.screen .card-foot { flex-wrap: nowrap; gap: 4px; }
+.screen .card-foot .btn { flex: 1 1 auto; justify-content: center; gap: 5px; padding: 0 8px; white-space: nowrap; }
+@container (max-width: 290px) { .screen .card-foot { flex-wrap: wrap; } .screen .card-foot .btn { white-space: normal; } }
+/* facts as rows (the map's card) */
+.screen .insp-row { display: flex; flex-wrap: wrap; column-gap: 10px; row-gap: var(--space-2); padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; align-items: baseline; }
+.screen .insp-row span { color: var(--muted); }
+.screen .insp-row > span { flex: 0 0 96px; }
+.screen .insp-row b { flex: 1 1 120px; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.screen .card .insp-row.miss b { color: var(--muted); font-weight: 500; }
+.screen .card .insp-row .btn { flex: none; }
+.screen .insp-info { font-size: 12px; color: var(--muted); margin: 6px 0; }
+/* the old popup (js/inspect.js) */
+.screen .insp-title { font-weight: 700; font-size: var(--font-title); padding-right: 22px; overflow-wrap: anywhere; }
+.screen .insp-sub { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.screen .insp-links { display: flex; gap: 12px; margin-top: 8px; font-size: 12px; }
+.screen .insp-links a { color: var(--accent); display: inline-flex; align-items: center; gap: 3px; font-weight: 600; text-decoration: none; }
+.screen .btn.avoid { min-height: 26px; padding-block: 2px; padding-inline: 9px; font-size: 12px; color: var(--bad); border-color: rgba(220,38,38,.35); }
+.screen .card-pin { display: block; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: var(--accent-bg); box-shadow: 0 0 0 2px var(--accent-bg), 0 2px 6px rgba(0,0,0,.35); }
+.screen .card-pill { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px 0 12px; border: 0; border-radius: 999px; background: var(--accent-bg); color: #fff; font: inherit; font-weight: 700; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+
+/* ================================================================ New in A and B (marked where only B has it) */
+/* A and B: the line under the name at two lines at most, so the facts stay in the peek at 200 % (all of it in What's here,
+   and on a desktop in its tooltip) */
+.screen .way-hint small.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+/* B: the view note on one line, with no box (every card that has it) */
+.screen .pl-viewnote.b { padding: 0 0 0 2px; background: none; color: var(--muted); }
+/* B: What's here's facts the map doesn't have, in one line under them */
+.screen .insp-row.none { display: block; color: var(--muted); }
+.screen .insp-row.none b { font-weight: 500; color: var(--muted); }
+
+/* ================================================================ the phone around the card: the map, the sheet, the old popup */
+.screen > svg.map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.screen > svg.map path { vector-effect: non-scaling-stroke; }
+.screen .pin { position: absolute; transform: translate(-50%, -50%); }
+.screen .pillat { position: absolute; transform: translate(-50%, calc(-100% - 22px)); }
+.screen .sheet { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); }
+.screen .sheet-handle { flex: none; position: relative; width: 72px; height: 18px; margin: 0 auto; border-radius: 9px; }
+.screen .sheet-handle::before { content: ""; position: absolute; left: 20px; right: 20px; top: 7px; height: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
+.screen .sheet-head { padding: 0 10px 8px 14px; }
+.screen .float { position: absolute; left: 50%; transform: translateX(-50%); padding: 8px 12px 10px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.screen .popup { position: absolute; left: 50%; transform: translateX(-50%); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); background: var(--surface-solid); width: min(320px, calc(100cqw - 16px)); }
+.screen .popup .x { position: absolute; right: 4px; top: 4px; width: 26px; height: 26px; border: 0; background: none; color: var(--muted); font-size: 18px; }
+.screen .topbar { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; gap: 6px; }
+.screen .topbar span { height: 44px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); }
+.mark-rw { display: grid; place-items: center; width: 24px; height: 24px; transform: rotate(45deg); border-radius: 4px; background: #f59e0b; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+.mark-rw > span { transform: rotate(-45deg); font-size: 12px; line-height: 1; }
+.mark-sea { width: 12px; height: 26px; border-radius: 6px 6px 3px 3px; background: #dc2626; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+.mark-aadt { width: 26px; height: 8px; border-radius: 4px; background: #dc2626; box-shadow: 0 0 0 2px #fff; }
+.mark-water { color: #0369a1; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The facts on the map's cards</h1>
+  <p class="lede">What a tap on a trail, a road works sign or the water tells you. Each scene shows <b>Today</b> (as <code>main</code> draws it) beside <b>A</b> and <b>B</b>. The switches at the bottom right set the size (390 px, 360 px, a 390 phone at 200 %) and the worst case (long Finnish names, every fact the map can have).</p>
+  <div class="where">
+    <p><b>Where it stands (2026-10-28):</b> nothing is decided. Two choices: <b>A or B</b> for a trail's card and What's here (sections 1 and 2), and whether the map's other cards move onto the same card (section 3, the same in A and B). The plan, with what's left out, is <code>docs/plans/issue-345-map-cards.md</code>, "The facts on the cards (#561)".</p>
+    <p><b>A</b> fixes the facts only: a trail's numbers become what the way is like for your sport (how hard, how steep, its surface), and What's here says when a detail wasn't loaded instead of "not mapped". <b>B</b> is A made calmer: What's here moves into the card's last row, where Not right? was, and Not right? moves into What's here, beside the data it's about. The "You're not editing" note becomes one line without its box (on all six cards that have it), and What's here lists what's known, then one line of what isn't.</p>
+  </div>
+
+  <h2 id="s1">1 · A trail's card</h2>
+  <p class="sec-intro">Today the three numbers are how far from your route, the height, and one fact for your sport (MTB: difficulty, Gravel, Road and Run: surface, Hike and Trail run: trail grade). The hover over the same trail says its MTB grade and how steep it is, and the card doesn't (#561). In A and B the numbers say what the way is like: your sport's own fact, the incline here (the hover's, worked out from the terrain), and the next fact the map has. A known fact comes before one that isn't mapped. How far from your route moves into the line under the name; the height moves to What's here, where it already is.</p>
+  <div id="trail"></div>
+
+  <h2 id="s2">2 · What's here</h2>
+  <p class="sec-intro">The second level. In Gravel, Road, Run, Paddle and Swim, Polku doesn't load the trail details, so the card has only the base map's tags. Today every other row says "? not mapped", which is a claim about OpenStreetMap that isn't true (#562).</p>
+  <div id="here"></div>
+
+  <h2 id="s3">3 · The map's other cards</h2>
+  <p class="sec-intro">Road works, traffic incidents, road conditions, busy roads, military areas, sea marks and the water's depth still open the old popup, with its own look and actions: Route from here, Add to route and a red Avoid (#564). On the new card they get the map's own mark, their facts as rows, Your route (Start here, End here, Round trip from here, Avoid this spot) and the pill, as a trail's card has. Not right? stays off them: the data is Fintraffic's, Väylä's or Traficom's, not OpenStreetMap's. Dates outside this year get their year (#565). The values on the sea mark, the water and the busy road are examples; the road works are the ones seen on 2026-10-28.</p>
+  <div id="other"></div>
+
+  <h2 id="s4">What changes</h2>
+  <ul class="changes">
+    <li><b>A and B, a trail's numbers:</b> your sport's fact, the incline, and the next fact the map has, known ones first. MTB: difficulty, incline, surface. Gravel and Road: surface, incline, difficulty. Hike and Trail run: trail grade, incline, surface. Run: surface, incline, trail grade. With Layers' difficulty colours on, the MTB grade is in every sport's list, since the map draws it. A third number that isn't mapped is left out; the first two say so in their place.</li>
+    <li><b>A and B, the line under the name:</b> the hover's words that aren't in the numbers (0.3 m wide, faint in places, a bridge, private), then how far from your route.</li>
+    <li><b>A and B, What's here:</b> a detail Polku didn't load says "not loaded", and All OpenStreetMap details asks for it. B folds the missing ones into one line under the facts.</li>
+    <li><b>B only:</b> What's here › is in the card's last row (What's here ›, Share, Weather here ›), and Not right? is in What's here's last row, beside the data; "You're not editing" is one line without its box, on all six cards that have it; What's here lists only what's known, then one line of what isn't.</li>
+    <li><b>A and B, the other cards:</b> on the map's card, with the year where it isn't this year. Ships and cameras keep their own live card and modal.</li>
+  </ul>
+</main>
+
+<div class="picker" role="group" aria-label="Mock-up settings">
+  <div><span>Size</span><button type="button" data-pk="size" data-v="390">390</button><button type="button" data-pk="size" data-v="360">360</button><button type="button" data-pk="size" data-v="200">200 %</button></div>
+  <div><span>Data</span><button type="button" data-pk="worst" data-v="0">Example</button><button type="button" data-pk="worst" data-v="1">Worst case</button><button type="button" data-pk="worst" data-v="empty">Nothing mapped</button></div>
+</div>
+
+<script>
+// ---------------------------------------------------------------- the app's icons, copied from js/ui.js at 25526c5
+const P = {"chevronLeft": "<path d=\"m15 6-6 6 6 6\"/>", "avoid": "<circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"m6 6 12 12\"/>", "chevronRight": "<path d=\"m9 6 6 6-6 6\"/>", "close": "<path d=\"M6 6l12 12M18 6 6 18\"/>", "cloudSun": "<path d=\"M8 2.5v1.5M2.5 8H4M3.9 3.9l1 1M12.1 3.9l-1 1\"/><path d=\"M5 10.5a3.5 3.5 0 0 1 6.3-3.4\"/><path d=\"M8 20a4 4 0 1 1 1.3-7.8A5 5 0 0 1 19 14a3 3 0 0 1-1 6H8Z\"/>", "details": "<path d=\"M3 20.5c1.8-1 3-2.6 4.4-4.4\" stroke-width=\"3.6\"/><path d=\"M7.4 16.1c1.5-2 3-4 5.6-5.2\"/><path d=\"M13 10.9c2.8-1.3 4.6-3.8 7.5-6.6\" stroke-dasharray=\".1 3.4\" stroke-width=\"2.5\"/>", "external": "<path d=\"M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5\"/>", "flag": "<path d=\"M5 21V4M5 4h11l-2 4 2 4H5\"/>", "flagend": "<path d=\"M5 21V4\"/><path d=\"M5 4h14v9H5\"/><path d=\"M5 4h3.5v3H5zM12 4h3.5v3H12zM8.5 7H12v3H8.5zM15.5 7H19v3h-3.5zM5 10h3.5v3H5zM12 10h3.5v3H12z\" fill=\"currentColor\" stroke=\"none\"/>", "info": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11v6M12 7.5v.5\"/>", "paddle": "<path d=\"M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5\"/><path d=\"M5 13.5h14l-2 2.5H7Z\"/><path d=\"m6 5 12 9M4.5 3.8 7 5.7M17 13.3l2.5 1.9\"/>", "pencil": "<path d=\"M4 20h4L19 9l-4-4L4 16v4Z\"/><path d=\"m13.5 6.5 4 4\"/>", "plus": "<path d=\"M12 5v14M5 12h14\"/>", "roundtrip": "<circle cx=\"12\" cy=\"12\" r=\"7.5\" stroke-dasharray=\"3 2.2\"/><circle cx=\"12\" cy=\"4.5\" r=\"2.2\" fill=\"currentColor\" stroke=\"none\"/><path d=\"m15.5 9.5 2-1.6.4 2.5\"/>", "share": "<circle cx=\"18\" cy=\"5\" r=\"2.5\"/><circle cx=\"6\" cy=\"12\" r=\"2.5\"/><circle cx=\"18\" cy=\"19\" r=\"2.5\"/><path d=\"m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4\"/>"};
+const ic = (n, s = 20) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------------------------------------------------------------- the card's parts, as js/card.js builds them
+const nums = (list) => `<div class="sheet-sum">${list.map((n) => `<span class="sum-item${n.miss ? ' miss' : ''}"><b>${esc(n.v)}</b>${n.w ? `<em>${esc(n.w)}</em>` : ''}<small>${esc(n.l)}</small></span>`).join('')}</div>`;
+const item = ({ i, l, line = '', chev = false }) => `<button type="button" class="row"><span aria-hidden="true">${ic(i)}</span><span><b>${esc(l)}</b>${line ? `<small>${esc(line)}</small>` : ''}</span>${chev ? `<span class="way-chev" aria-hidden="true">${ic('chevronRight', 18)}</span>` : ''}</button>`;
+const rows = (items, acts = false) => (items.length ? `<div class="rows${acts ? ' acts' : ''}">${items.join('')}</div>` : '');
+const menuH = (t) => `<h4 class="menu-h">${esc(t)}</h4>`;
+const fact = ([k, v, miss]) => `<div class="insp-row${miss ? ' miss' : ''}"><span>${esc(k)}</span><b>${esc(miss ? `? ${v}` : v)}</b></div>`;
+const head = (title, line, mark, clamp = false) => `<div class="way-head"><h3 class="way-hint"><b>${esc(title)}</b>${line ? `<small${clamp ? ` class="clamp" title="${esc(line)}"` : ''}>${esc(line)}</small>` : ''}</h3><span class="card-mark" aria-hidden="true">${mark}</span><button type="button" class="tool way-x" aria-label="Close">${ic('close')}</button></div>`;
+const note = (v) => (v === 'b'
+  ? `<div class="pl-viewnote b" role="note"><span aria-hidden="true">${ic('info', 18)}</span><span>You’re not editing</span><button type="button" class="btn small">${ic('pencil', 16)}<span>Edit</span></button></div>`
+  : `<div class="pl-viewnote" role="note"><span aria-hidden="true">${ic('info', 18)}</span><span>You’re not editing: the route stays as it is.</span><button type="button" class="btn small">${ic('pencil', 16)}<span>Edit</span></button></div>`);
+const foot = (notRight = true) => `<div class="insp-actions card-foot"><button type="button" class="btn quiet">${ic('share', 16)}<span>Share</span></button><button type="button" class="btn quiet">${ic('cloudSun', 16)}<span>Weather here ›</span></button>${notRight ? '<button type="button" class="btn quiet">Not right?</button>' : ''}</div>`;
+const here = () => item({ i: 'info', l: 'What’s here', line: 'Everything Polku knows here', chev: true });
+// B: What's here › in the card's last row, where Not right? was, with no icon as Not right? has none (Not right? moves into
+// What's here, beside the data)
+const footB = () => `<div class="insp-actions card-foot"><button type="button" class="btn quiet">What’s here ›</button><button type="button" class="btn quiet">${ic('share', 16)}<span>Share</span></button><button type="button" class="btn quiet">${ic('cloudSun', 16)}<span>Weather here ›</span></button></div>`;
+const yours = ({ route = true, loop = true, paddle = false } = {}) => [menuH('Your route'), rows([
+  paddle ? item({ i: 'paddle', l: 'Paddle from here', line: 'A new start, on the water' }) : null,
+  route ? item({ i: 'flag', l: 'Start here', line: 'Adds a new start point' }) : null,
+  route ? item({ i: 'flagend', l: 'End here', line: 'Adds a new end point' }) : null,
+  loop ? item({ i: 'roundtrip', l: 'Round trip from here', line: 'Loops of the length you choose, from here' }) : null,
+  route ? item({ i: 'avoid', l: 'Avoid this spot', line: 'The route goes around it, 40 m' }) : null,
+].filter(Boolean), true)].join('');
+const pin = '<span class="card-pin"></span>';
+
+// ---------------------------------------------------------------- the map behind a card: a forest, its trails, the route
+const DIFF = ['#22a447', '#c7c100', '#f59e0b', '#ef4444', '#c026d3', '#7e22ce'];
+function map({ route = false, water = false, road = false, spot = [0.5, 0.35], s5 = false }) {
+  const ry = 110; // the road, clear of the peek
+  const trails = [[0, 'M-10 90 C 60 70, 120 120, 200 100 S 330 60, 420 90'], [1, 'M40 -10 C 60 80, 30 160, 90 230 S 150 330, 120 420'],
+    [2, 'M420 200 C 330 190, 260 240, 200 200 S 90 150, -10 190'], [0, 'M260 -10 C 250 60, 300 140, 280 230'], [3, 'M300 420 C 290 340, 340 290, 420 280']];
+  const s = `<svg class="map" viewBox="0 0 390 420" preserveAspectRatio="none" aria-hidden="true">
+    <rect width="390" height="844" fill="${water ? '#cfe3f0' : '#dfe9d6'}"/>
+    ${water ? '<rect width="390" height="844" fill="#a9cde4"/><path d="M-10 230 C 60 210, 110 260, 170 250 S 260 300, 300 420 L-10 420Z" fill="#e3ead9"/><path d="M260 -10 C 300 30, 350 40, 400 30 L400 -10Z" fill="#e3ead9"/>' : ''}
+    ${water ? '' : '<g fill="none" stroke="#c7d2b8" stroke-width="1">' + [60, 120, 180, 240, 300, 360].map((y) => `<path d="M-10 ${y} C 100 ${y - 20}, 200 ${y + 25}, 400 ${y - 10}"/>`).join('') + '</g>'}
+    ${road ? `<path d="M-10 ${ry} C 120 ${ry - 20}, 260 ${ry + 10}, 400 ${ry - 10}" stroke="#fff" stroke-width="14" fill="none"/><path d="M-10 ${ry} C 120 ${ry - 20}, 260 ${ry + 10}, 400 ${ry - 10}" stroke="#f3c969" stroke-width="9" fill="none"/>` : ''}
+    ${water ? '' : trails.map(([c, d]) => `<path d="${d}" fill="none" stroke="${DIFF[c]}" stroke-width="5"/><path d="${d}" fill="none" stroke="#1c2420" stroke-width="1.2" stroke-dasharray="4 3"/>`).join('')}
+    ${s5 ? `<path d="M120 60 C 150 110, 190 120, 230 170" fill="none" stroke="${DIFF[5]}" stroke-width="6"/><path d="M120 60 C 150 110, 190 120, 230 170" fill="none" stroke="#1c2420" stroke-width="1.2" stroke-dasharray="4 3"/>` : ''}
+    ${route ? '<path d="M-10 330 C 80 300, 140 200, 240 150 S 360 60, 400 40" fill="none" stroke="#fff" stroke-width="9"/><path d="M-10 330 C 80 300, 140 200, 240 150 S 360 60, 400 40" fill="none" stroke="#e11d48" stroke-width="5"/>' : ''}
+  </svg>`;
+  return s + `<span class="pin" style="left:${spot[0] * 100}%;top:${spot[1] * 100}%">${pin}</span>`;
+}
+
+// ---------------------------------------------------------------- a phone: its size, and a card in the peek or at its spot
+const SIZES = { 390: [390, 844, 1], 360: [360, 740, 1], 200: [195, 422, 2] };
+const st = { size: '390', worst: '0' };
+function phone(inner, opts) {
+  const [w, h, z] = SIZES[st.size];
+  return `<div class="screen" style="width:${w}px;height:${h}px;zoom:${z};--ph:${h}px">${map(opts.map || {})}<div class="topbar"><span style="width:44px"></span><span style="flex:1"></span><span style="width:44px"></span></div>${inner}</div>`;
+}
+const peek = (card) => `<div class="sheet"><div class="sheet-handle"></div><div class="sheet-head"><div class="card-peek">${card}</div></div></div>`;
+// at its spot: the card's foot 14 px above the pin (the app's card-float), as tall as the room there
+// (`at`: the spot's height as a share of the phone; the card opens down from it, as tall as the room below, as keep() does)
+const float = (card, at) => { const h = SIZES[st.size][1], top = Math.round(h * at + 20); return `<div class="float" style="top:${top}px"><div class="card-float" style="--card-max:${h - top - 30}px">${card}</div></div>`; };
+const popup = (body, top) => `<div class="popup" style="top:${top}"><button class="x" aria-label="Close">×</button>${body}</div>`;
+const card = (inner) => `<div class="pl-way card" data-back="no">${inner}</div>`;
+const fig = (tag, title, cap, screen) => `<figure class="fr"><figcaption><b><span class="tag${tag === 'Today' ? ' now' : ''}">${tag}</span> ${esc(title)}</b>${cap}</figcaption>${screen}</figure>`;
+
+// ---------------------------------------------------------------- 1 · a trail's card
+const W = () => st.worst === '1', E = () => st.worst === 'empty';
+function trailScenes() {
+  const name = W() ? 'Hervannan–Vuoreksen–Hallilan ulkoilureitti' : 'Path';
+  const out = [];
+
+  // T1: the case from testing: Gravel, difficulty colours on, a path 83 m from the route, in the route's view
+  {
+    const m = { route: true, spot: [200 / 390, 100 / 420] };
+    const lineToday = W() ? 'unpaved, 0.3 m wide, faint in places, overgrown, a ford' : E() ? '' : 'unpaved';
+    const lineNew = W() ? '0.3 m wide, faint in places, overgrown, a ford · 83 m from your route' : '83 m from your route';
+    const surf = E() ? { v: '?', l: 'surface not mapped', miss: true } : { v: 'Unpaved', l: 'surface' };
+    const today = card(head(name, lineToday, pin) + nums([{ v: '83 m', l: 'from your route' }, { v: '131 m', l: 'height' }, surf]) + rows([here('now')]) + note('now') + foot());
+    const n = nums(E() ? [{ v: '13 %', w: '↑S2', l: 'incline' }, surf] : [surf, { v: '13 %', w: '↑S2', l: 'incline' }].concat(W() ? [{ v: 'S2', w: 'medium', l: 'difficulty' }] : []));
+    const a = card(head(name, lineNew, pin, true) + n + rows([here('a')]) + note('a') + foot());
+    const b = card(head(name, lineNew, pin, true) + n + note('b') + footB());
+    out.push(`<section class="scene"><h3>Gravel, the route's view: a path beside your route</h3><p>The case from testing: Gravel with Layers' difficulty and uphill colours on. The hover over this path says "↑S2 13 % · unpaved". The path has no MTB grade mapped, so A and B show two numbers.</p><div class="cols">
+      ${fig('Today', 'As main draws it', 'Unpaved twice, the height, and nothing on how steep it is.', phone(peek(today), { map: m }))}
+      ${fig('A', 'The right facts', 'Surface, then the incline the hover has. How far from your route is in the line.', phone(peek(a), { map: m }))}
+      ${fig('B', 'A, calmer', 'As A, with What’s here in the last row and the note on one line, without its box.', phone(peek(b), { map: m }))}
+    </div></section>`);
+  }
+
+  // T2: a path tagged S5 in Gravel, the planner put away: the card at its spot
+  {
+    const m = { s5: true, spot: [172 / 390, 112 / 420] };
+    const pill = '<button type="button" class="btn primary big" data-k="pill">' + ic('plus') + '<span>Start a route here</span></button>';
+    const today = card(head(name, '', pin) + nums([{ v: '118 m', l: 'height' }, { v: '?', l: 'surface not mapped', miss: true }]) + rows([here('now')]) + yours({ route: false }) + foot() + pill);
+    const n = nums([{ v: '32 %', w: '↑S5', l: 'incline' }].concat(E() ? [] : [{ v: 'S5', w: 'extreme', l: 'difficulty' }], [{ v: '?', l: 'surface not mapped', miss: true }]));
+    const a = card(head(name, '', pin) + n + rows([here('a')]) + yours({ route: false }) + foot() + pill);
+    const b = card(head(name, '', pin) + n + yours({ route: false }) + footB() + pill);
+    const top = 112 / 420; // (no room above the spot: it opens down)
+    out.push(`<section class="scene"><h3>Gravel, the planner put away: a path tagged S5</h3><p>A path tagged <code>mtb:scale=5</code> at 61.51065, 23.81593 (Kauppi, Tampere), with no surface mapped and 32 % steep (the terrain's, ↑S5). The map draws it purple. Today the card says its height and "surface not mapped".</p><div class="cols">
+      ${fig('Today', 'As main draws it', 'Nothing says this is an extreme trail.', phone(float(today, top), { map: m }))}
+      ${fig('A', 'The right facts', 'Known facts first: 32 % and S5, then the surface that isn’t mapped.', phone(float(a, top), { map: m }))}
+      ${fig('B', 'A, calmer', 'As A, with What’s here in the last row. Not right? is in What’s here, beside the data it’s about.', phone(float(b, top), { map: m }))}
+    </div></section>`);
+  }
+
+  // T3: MTB, drawing a route: a well-mapped trail
+  {
+    const m = { route: true, spot: [52 / 390, 80 / 420] };
+    const lineToday = W() ? 'dirt, 0.3 m wide, faint in places, overgrown, fallen trees, a ford, bridge' : E() ? '' : 'dirt, 0.3 m wide, faint in places';
+    const lineNew = (W() ? '0.3 m wide, faint in places, overgrown, fallen trees, a ford, bridge · ' : E() ? '' : '0.3 m wide, faint in places · ') + '40 m from your route';
+    const pillAt = `<span class="pillat" style="left:${(52 / 390) * 100}%;top:${(80 / 420) * 100}%"><button type="button" class="card-pill">${ic('plus')}<span>Add to my route</span></button></span>`;
+    const grade = E() ? { v: '?', l: 'difficulty not mapped', miss: true } : { v: 'S1', w: 'fairly easy', l: 'difficulty' };
+    const today = card(head(name, lineToday, pin) + nums([{ v: '40 m', l: 'from your route' }, { v: '141 m', l: 'height' }, grade]) + rows([here('now')]) + yours() + foot());
+    const n = nums(E() ? [{ v: '3 %', w: '↑S0', l: 'incline' }, grade] : [grade, { v: '3 %', w: '↑S0', l: 'incline' }, { v: 'Dirt', l: 'surface' }]);
+    const a = card(head(name, lineNew, pin, true) + n + rows([here('a')]) + yours() + foot());
+    const b = card(head(name, lineNew, pin, true) + n + yours() + footB());
+    out.push(`<section class="scene"><h3>MTB, drawing a route: a well-mapped trail</h3><p>MTB loads the trail details, so this path (OpenStreetMap way 1063593743) has its surface, width and visibility. The card with the most on it: Your route's four rows and the pill above the spot.</p><div class="cols">
+      ${fig('Today', 'As main draws it', 'The grade is there in MTB; the incline isn’t.', phone(pillAt + peek(today), { map: m }))}
+      ${fig('A', 'The right facts', 'Difficulty, incline, surface. The height is in What’s here.', phone(pillAt + peek(a), { map: m }))}
+      ${fig('B', 'A, calmer', 'As A, with What’s here in the last row.', phone(pillAt + peek(b), { map: m }))}
+    </div></section>`);
+  }
+  return out.join('');
+}
+
+// ---------------------------------------------------------------- 2 · What's here
+function hereScenes() {
+  const name = W() ? 'Hervannan–Vuoreksen–Hallilan ulkoilureitti' : 'Path';
+  const m = { route: true, spot: [200 / 390, 100 / 420] };
+  // a second level: Back in words to the card it came from, ✕ beside it
+  const top = () => `<div class="way-bar"><button type="button" class="btn small quiet way-back">${ic('chevronLeft', 18)}<span>${esc(name)}</span></button><button type="button" class="tool way-x" aria-label="Close">${ic('close')}</button></div>${head(name, 'unpaved', pin)}<p class="rt-cost">From OpenStreetMap</p>`;
+  const card = (inner) => `<div class="pl-way card" data-back="yes">${inner}</div>`;
+  const spot = [menuH('The spot'), fact(['Height', '141 m']), '<div class="insp-row"><span>Coordinates</span><b>61.51128, 23.81742</b><button type="button" class="btn small quiet">Copy</button></div>'].join('');
+  const osm = rows([item({ i: 'details', l: 'All OpenStreetMap details', line: 'The map’s own data, as tags' })]);
+  const uphill = [menuH('The way'), fact(['Uphill', '↑S0 · Under 10 %, good grip, 3 %'])].join('');
+  const groups = (miss) => [
+    menuH('For cycling'), fact(['Surface', 'Unpaved']), fact(['Smoothness', miss, true]), fact(['Track grade', miss, true]),
+    menuH('For MTB'), fact(['Difficulty', 'S1, fairly easy']), fact(['Uphill difficulty', miss, true]), fact(['Surface', 'Unpaved']), fact(['Width', miss, true]),
+    menuH('For hiking'), fact(['Trail grade', miss, true]), fact(['Visibility', miss, true]),
+  ].join('');
+  const today = card(top() + groups('not mapped') + uphill + spot + osm + foot());
+  const a = card(top() + groups('not loaded') + uphill + spot + osm + foot());
+  const b = card(top() + [menuH('For cycling'), fact(['Surface', 'Unpaved']), menuH('For MTB'), fact(['Difficulty', 'S1, fairly easy']),
+    '<div class="insp-row none">Not loaded in Gravel: <b>smoothness, track grade, uphill difficulty, width, trail grade and visibility</b>. All OpenStreetMap details asks for them.</div>'].join('') + uphill + spot + osm + foot());
+  return `<section class="scene"><h3>Gravel: What's here for a path the trail details know</h3><p>OpenStreetMap has this path's surface (dirt), width (0.3 m) and visibility (intermediate); MTB shows them. Gravel doesn't load them.</p><div class="cols">
+    ${fig('Today', 'As main draws it', 'Seven rows of "? not mapped", though most are mapped.', phone(peek(today), { map: m }))}
+    ${fig('A', 'Says it wasn’t loaded', 'The same rows, each saying "not loaded". All OpenStreetMap details fills them.', phone(peek(a), { map: m }))}
+    ${fig('B', 'The known ones, then one line', 'What Polku has, then one line of what it didn’t load, and how to get it.', phone(peek(b), { map: m }))}
+  </div></section>`;
+}
+
+// ---------------------------------------------------------------- 3 · the map's other cards
+function otherScenes() {
+  const out = [];
+  const oldActs = `<div class="insp-actions"><button type="button" class="btn">${ic('flag', 15)} Route from here</button><button type="button" class="btn">${ic('plus', 15)} Add to route</button><button type="button" class="btn avoid">${ic('close', 15)} Avoid</button></div>`;
+  const pillAt = (x, y) => `<span class="pillat" style="left:${x}%;top:${y}%"><button type="button" class="card-pill">${ic('plus')}<span>Add to my route</span></button></span>`;
+  const top = 'calc(25% + 20px)'; // (the old popup under its spot: no room above it under the top bar)
+  const rw = W()
+    ? { title: 'Tie 45 välillä Helsinki – Tuusula, Helsinki. Tietyö.', effect: 'Toinen ajorata on suljettu liikenteeltä. Kaistajärjestelyjä. Nopeusrajoitus 50 km/h. Liikenteenohjaus.', where: 'Tie 45 välillä Helsinki - Tuusula, Helsinki. Tarkempi paikka: Välillä Kumpulantie - Hämeentie. Työaikaa koskevat tiedot: arkisin klo 7–22, viikonloppuisin klo 9–18. Lisätietoja: Uudenmaan ELY-keskuksen liikennekeskus.' }
+    : { title: 'Tie 45, Helsinki. Tietyö.', effect: 'Toinen ajorata on suljettu liikenteeltä', where: 'Tie 45 välillä Helsinki - Tuusula, Helsinki. Tarkempi paikka: Välillä Kumpulantie - Hämeentie.' };
+  const markRw = '<span class="mark-rw"><span>⚒</span></span>';
+
+  // road works
+  {
+    const today = `<div class="insp-title">Road works</div><div class="insp-sub">${esc(rw.title)}</div>
+      <div class="insp-row"><span>Effect</span><b>${esc(rw.effect)}</b></div><div class="insp-row"><span>From</span><b>Mon 15/12, 00:00</b></div><div class="insp-row"><span>Until</span><b>Thu 30/09, 23:59</b></div>
+      <p class="insp-info">${esc(rw.where)}</p><div class="insp-links"><a href="#" onclick="return false">Fintraffic traffic situation ${ic('external', 13)}</a></div>${oldActs}`;
+    const now = card(head('Road works', rw.title, markRw) + [fact(['Effect', rw.effect]), fact(['From', 'Mon 15/12/2025, 00:00']), fact(['Until', 'Thu 30/09/2027, 23:59'])].join('')
+      + `<p class="insp-info">${esc(rw.where)}</p>` + rows([item({ i: 'external', l: 'Fintraffic’s traffic situation', line: 'Fintraffic, live', chev: true })]) + yours() + foot(false));
+    out.push(`<section class="scene"><h3>Road works (Road cycling)</h3><p>Seen on Tie 45, Helsinki, 2026-10-28. The works run from 15 December 2025 to 30 September 2027; today's card leaves the years out (#565).</p><div class="cols">
+      ${fig('Today', 'The old popup', 'Its own title, rows and buttons. From 15/12 until 30/09 reads as if it ended before it began.', phone(`<span class="pin" style="left:50%;top:${(105 / 420) * 100}%">${markRw}</span>` + popup(today, top), { map: { road: true, spot: [-1, -1] } }))}
+      ${fig('A and B', 'On the map’s card', 'Its mark, its facts as rows, the years, Fintraffic’s page as a row, Your route and the pill.', phone(pillAt(50, (105 / 420) * 100) + `<span class="pin" style="left:50%;top:${(105 / 420) * 100}%">${markRw}</span>` + peek(now), { map: { road: true, spot: [-1, -1] } }))}
+    </div></section>`);
+  }
+
+  // a sea mark
+  {
+    const name = W() ? 'Kustaanmiekan pohjoinen väylä, viitta 2134' : 'Spar buoy';
+    const today = `<div class="insp-title">${esc(name)}</div><div class="insp-sub">Spar buoy · floating</div>
+      <div class="insp-row"><span>Meaning</span><b>Port-hand lateral (keep it on your left going in)</b></div><div class="insp-row"><span>Light</span><b>Unlit</b></div>
+      <div class="insp-row"><span>Location</span><b>Suomenlinna</b></div><div class="insp-row"><span>Maintained by</span><b>Väylävirasto</b></div><div class="insp-row"><span>Number</span><b>21345</b></div>${oldActs}`;
+    const now = card(head(name, 'Spar buoy · floating', '<span class="mark-sea"></span>') + [fact(['Meaning', 'Port-hand lateral (keep it on your left going in)']), fact(['Light', 'Unlit']), fact(['Location', 'Suomenlinna']), fact(['Maintained by', 'Väylävirasto']), fact(['Number', '21345'])].join('')
+      + '<p class="insp-info">From Väylävirasto’s marks.</p>' + yours() + foot(false));
+    out.push(`<section class="scene"><h3>A sea mark (Paddle)</h3><p>Example values, in the old popup's words.</p><div class="cols">
+      ${fig('Today', 'The old popup', 'Route from here and Add to route: the land’s words on the water.', phone(`<span class="pin" style="left:50%;top:20%"><span class="mark-sea"></span></span>` + popup(today, top), { map: { water: true, spot: [-1, -1] } }))}
+      ${fig('A and B', 'On the map’s card', 'The same facts as rows, Your route and the pill.', phone(pillAt(50, 20) + `<span class="pin" style="left:50%;top:20%"><span class="mark-sea"></span></span>` + peek(now), { map: { water: true, spot: [-1, -1] } }))}
+    </div></section>`);
+  }
+
+  // the water's depth
+  {
+    const today = `<div class="insp-title">Water</div><div class="insp-row"><span>Depth</span><b>2–3 m (Traficom chart)</b></div><div class="insp-actions"><button type="button" class="btn">${ic('paddle', 15)} Paddle from here</button></div>`;
+    const now = card(head('Water', '', pin) + nums([{ v: '2–3 m', l: 'depth' }]) + '<p class="insp-info">From Traficom’s chart. Shown only: routes don’t use it, and it’s for planning, not navigation.</p>' + yours({ paddle: true }) + foot(false));
+    out.push(`<section class="scene"><h3>The water (Paddle)</h3><p>Today a tap on the water opens one of two cards: the old popup with the planner put away, the planner's "Water" spot card while planning. One card for both. Traficom's depth is shown, never routed on.</p><div class="cols">
+      ${fig('Today', 'The old popup', 'The depth and Paddle from here.', phone(popup(today, top), { map: { water: true, spot: [0.5, 0.2] } }))}
+      ${fig('A and B', 'On the map’s card', 'The depth as a number, where it comes from, Paddle from here first in Your route.', phone(pillAt(50, 20) + peek(now), { map: { water: true, spot: [0.5, 0.2] } }))}
+    </div></section>`);
+  }
+
+  // a busy road
+  {
+    const today = `<div class="insp-title">Busy road</div><div class="insp-row"><span>Traffic</span><b>about 6 400 vehicles/day</b></div><p class="insp-info">Heavy traffic for cycling — look for a cycleway or a quieter road.</p>${oldActs}`;
+    const now = card(head('Busy road', W() ? 'Hämeenlinnanväylä (Kantatie 45), Helsinki' : 'Fintraffic’s traffic count', '<span class="mark-aadt"></span>') + nums([{ v: '6 400', l: 'vehicles a day' }]) + '<p class="insp-info">Heavy traffic for cycling: look for a cycleway or a quieter road.</p>' + yours() + foot(false));
+    out.push(`<section class="scene"><h3>A busy road (Road cycling)</h3><p>Example values.</p><div class="cols">
+      ${fig('Today', 'The old popup', 'One fact, one note, three buttons.', phone(popup(today, top), { map: { road: true, spot: [0.5, 105 / 420] } }))}
+      ${fig('A and B', 'On the map’s card', 'The count as a number, the note, Your route.', phone(pillAt(50, (105 / 420) * 100) + peek(now), { map: { road: true, spot: [0.5, 105 / 420] } }))}
+    </div></section>`);
+  }
+  return out.join('');
+}
+
+// ---------------------------------------------------------------- the switches
+function draw() {
+  document.getElementById('trail').innerHTML = trailScenes();
+  document.getElementById('here').innerHTML = hereScenes();
+  document.getElementById('other').innerHTML = otherScenes();
+  for (const b of document.querySelectorAll('[data-pk]')) b.setAttribute('aria-pressed', String(st[b.dataset.pk] === b.dataset.v));
+}
+const q = new URLSearchParams(location.search);
+if (SIZES[q.get('size')]) st.size = q.get('size');
+if (['1', 'empty'].includes(q.get('worst'))) st.worst = q.get('worst');
+document.querySelector('.picker').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pk]');
+  if (!b) return;
+  st[b.dataset.pk] = b.dataset.v;
+  const u = new URL(location.href);
+  u.searchParams.set('size', st.size); u.searchParams.set('worst', st.worst);
+  history.replaceState(null, '', u);
+  draw();
+});
+draw();
+</script>
+</body>
+</html>
