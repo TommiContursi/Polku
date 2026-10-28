@@ -505,11 +505,14 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .tg-text small { color: var(--muted); font-size: 11px; }
 /* keep the real checkbox inside its row: focusing it must not scroll the page */
 .tg input { position: absolute; right: 0; top: 50%; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
-.tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); box-shadow: inset 0 0 0 1.5px var(--muted); position: relative; flex: none; transition: background .15s, box-shadow .15s; }
-.tg-ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); box-shadow: inset 0 0 0 1.5px var(--muted); position: relative; flex: none; transition: background-color var(--t-press) ease, box-shadow var(--t-press) ease; }
+.tg-ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform var(--t-press) var(--ease-out); }
 .tg input:checked + .tg-ui { background: var(--accent-bg); box-shadow: none; }
 .tg input:checked + .tg-ui::after { transform: translateX(15px); }
 .tg input:focus-visible + .tg-ui { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* a switch: its track's colour fades and its knob slides, as quick as a press (as a segment's choice); with reduced motion
+   only the colour fades */
+@media (prefers-reduced-motion: reduce) { .tg-ui::after { transition: none; } }
 .range { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); padding: 4px 0 8px; }
 /* an overlay's opacity, under its switch */
 .tg-group { display: flex; flex-direction: column; }
@@ -531,6 +534,9 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 } /* (one height in a place, #356: 36 px with a mouse, 44 px by touch) */
 .seg.small button { padding: 0 10px; font-size: 12px; }
 .seg button[aria-pressed="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+/* the pressed one's colour and shadow fade in as the press lets go; with reduced motion the fade stays, the press's scale goes */
+.seg button { transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; }
+@media (prefers-reduced-motion: reduce) { .seg button { transition: background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; } }
 .seg button[aria-pressed="true"] .ic, .seg button[aria-checked="true"] .ic { color: var(--accent); } /* (the chosen one's icon green, #356) */
 .seg button:disabled { opacity: .45; cursor: not-allowed; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }

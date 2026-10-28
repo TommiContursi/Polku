@@ -23,7 +23,7 @@ import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflin
 import { initSearch } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist } from './geo.js';
-import { $, $$, h, icon, toast, store, popMenu } from './ui.js';
+import { $, $$, h, icon, toast, store, popMenu, settleControls } from './ui.js';
 import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
@@ -898,7 +898,7 @@ const toggle = (label, on, fn, note = '') => {
   const id = `t-${Math.random().toString(36).slice(2, 8)}`;
   return h('label', { class: 'tg', for: id },
     h('span', { class: 'tg-text' }, label, note ? h('small', {}, note) : null),
-    h('input', { type: 'checkbox', id, checked: on, role: 'switch', onchange: (e) => fn(e.target.checked) }),
+    h('input', { type: 'checkbox', id, checked: on, role: 'switch', onchange: (e) => { fn(e.target.checked); e.target.defaultChecked = e.target.checked; } }), // (as drawn: settleControls())
     h('span', { class: 'tg-ui', 'aria-hidden': 'true' }));
 };
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
@@ -1028,6 +1028,7 @@ function renderLayersPanel() {
   const p = $('#layers-body');
   const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
   requestAnimationFrame(() => { p.scrollTop = keepScroll; });
+  const settle = settleControls(p);
   p.innerHTML = '';
   const act = ACTIVITIES[state.activity];
 
@@ -1117,8 +1118,7 @@ function renderLayersPanel() {
   p.append(layerGroup('weather', 'Weather on the map', wx.length + (state.timeline ? 1 : 0),
     timelineToggle(), wxToggle('wind'), wxToggle('temp'), wxToggle('rain'), wxToggle('snow'),
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Scrub or play the next 48 hours on the timeline.')));
-
-
+  settle();
 }
 
 // ------------------------------------------------------------------ quick layer drawer (#123)
@@ -1330,7 +1330,9 @@ function renderQuickLayers(dir = null) {
             h('span', { class: 'qt-ic', html: icon('layers', 20) }), h('span', { class: 'qt-l' }, 'More', h('small', {}, more ? `${more} more on` : 'All layers')),
             h('span', { class: 'chev', html: icon('chevronRight', 18) }))))];
   }
+  const settle = settleControls(qd);
   qd.replaceChildren(...parts);
+  settle();
   const body = qd.querySelector('.qd-body');
   if (dir) body.classList.add(dir === 'in' ? 'from-right' : 'from-left');
   else body.scrollTop = keep;
@@ -1436,6 +1438,7 @@ function renderSettingsPanel() {
   const p = $('#settings-body');
   const keepScroll = p.scrollTop;
   requestAnimationFrame(() => { p.scrollTop = keepScroll; });
+  const settle = settleControls(p);
   p.innerHTML = '';
   p.append(section('About Polku',
     h('button', { type: 'button', class: 'btn', id: 'btn-changelog', onclick: (e) => openChangelog(e.currentTarget) }, 'What’s new'),
@@ -1516,6 +1519,7 @@ function renderSettingsPanel() {
       if (!state.mmlKey && state.base === 'mml') state.base = 'trail';
       applyStyle(); renderLayersPanel(); renderSettingsPanel(); toast(state.mmlKey ? 'MML key saved' : 'MML key removed');
     } }, 'Save'))));
+  settle();
 }
 
 // ------------------------------------------------------------------ panels & buttons
