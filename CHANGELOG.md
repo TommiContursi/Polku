@@ -15,7 +15,6 @@ When the map matters more, the planner and its cards fold out of the way to one 
 - In the route's view, **⋯** sits at the left of ⌄'s row when the planner is open all the way, so the list has more room.
 - On a desktop, **⌄** in the planner's header folds the planner down to its line at the foot of the map, with the toolbar beside it, in place of **Minimise**, and **✕** beside it puts the planner away while you draw. With the planner at the bottom, it folds to its line with the toolbar on it. A card on the map folds to its title row with its own ⌄, with the same two numbers beside its name, its foot staying where it was.
 - At 200 % zoom, or wherever the planner's summary would cover more than half the screen, the planner rests at its line, and opened all the way its whole sheet scrolls, so the list can be reached. On the line, each number stays whole with its unit.
-- The planner's tabs keep to one row on a phone and beside the panel, with Check's count showing, as before this update.
 - The map's buttons no longer go under the top bar when the planner or a start step is raised. Where there's no room they step aside: Weather first (it's also **T** and in Layers), then **Show the whole route** (then in ⋯), then **Show my location**.
 - The map's buttons no longer slide after the planner as it changes size: they move once, to where it's going.
 
