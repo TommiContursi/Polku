@@ -4476,6 +4476,7 @@ export class Planner {
     if (top) box.scrollTop = top;
     if (left) box.querySelector('.loop-cards')?.scrollTo({ left });
     if (focus) (box.querySelector(`[data-k="${focus}"]`) || box.querySelector('.way-back'))?.focus({ preventScroll: true });
+    this.renderFold(); // (⌄ only with a route to fold: Clear route takes it away)
     this.measureSheet?.(); // the peek is the view's height (its box may not change when the sheet holds it)
     if (this.peekOnly() && this.layout() === 'sheet' && this.panel.dataset.state !== 'peek') this.setSheetState('peek', { remember: false });
     this.renderTools(); // Done waits for the first point
@@ -4915,6 +4916,8 @@ export class Planner {
     if (!go) return;
     const card = this.cards.place === 'peek' ? this.cards.current : null;
     this.panel.classList.toggle('foldable', this.foldable());
+    // nothing left to fold (Undo on the line down to one point): it opens as it was, as setSheetState() won't fold it then
+    if (!this.foldable() && this.panel.dataset.state === 'folded') return this.unfold();
     this.panel.classList.toggle('fold-card', !!card);
     // each number whole, with its unit: the line breaks only between them, at " · " (200 %)
     const line = (items) => items.flatMap((t, i) => [i ? ' ' : '', h('span', {}, i < items.length - 1 ? `${t} ·` : t)]);

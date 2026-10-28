@@ -8322,6 +8322,37 @@ def fold_start(chrome):
     return fails
 
 
+# Clear route, and Undo on the line down to one point: nothing left to fold, so no ⌄ and no line, and the sheet comes to
+# rest (a ⌄ left from the route kept the start's view 22 px short, and its peek rounded to 1 px more, then 1 px less, for ever)
+def fold_clear(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb', 'timeline': True}, {'polku:winter': '"off"'})
+        if not pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000):
+            return ['no route']
+        pg.js("polku.planner.setSheetState('peek'); polku.planner.clear(); true")
+        fold_settled(pg, fails, 'Clear route')
+        s = pg.js("({ fold: !!polku.planner.els.foldBtn.offsetParent, top: polku.planner.els.top.offsetHeight })")
+        if s['fold'] or s['top'] > 18:
+            fails.append(f"Clear route: ⌄ still there, in a {s['top']} px row, with nothing to fold")
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS[:2])})", timeout=60000)
+        pg.js("polku.planner.setSheetState('folded'); true")
+        fold_settled(pg, fails, 'two points, folded')
+        at = fold_at(pg, 'polku.planner.els.undo')
+        if not at:
+            return fails + ['the folded line: no Undo']
+        pg.tap(*at)
+        fold_settled(pg, fails, 'Undo down to one point')
+        st = pg.js("({ n: polku.planner.points.length, state: polku.planner.panel.dataset.state })")
+        if st['n'] != 1 or st['state'] == 'folded':
+            fails.append(f"Undo on the line down to one point: {st['n']} points, the planner {st['state']}")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 # A folded card with no numbers says its own words (#558's change 7): the whole route its distance and time, a place
 # its line, a choice the one made, Edit this stretch its stretch, a list how many once that's known; Not right? its
 # name. The desktop's rolled title row (.way-facts) says the same.
@@ -8416,7 +8447,7 @@ def fold_tabs(chrome):
 
 
 def fold(chrome):
-    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)]
+    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -13625,7 +13656,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
-    ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge'),
+    ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))
