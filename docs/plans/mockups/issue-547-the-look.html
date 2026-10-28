@@ -777,17 +777,19 @@ async function measure(fig) {
   // edges: around each surface, its rim (with its edge line) against the map just outside it, every 2 px, corners left out
   for (const m of sc.querySelectorAll('[data-mat]:not([data-flush])')) {
     const ms = getComputedStyle(m), [x0, y0, x1, y1] = rel(m.getBoundingClientRect()), rad = parseFloat(ms.borderTopLeftRadius) || 0, bg = bgFn(m.firstElementChild || m) || bgFn(m);
-    // the boundary has two neighbours: an outer hairline (if any) against the map, and the rim inside (with its inset
-    // hairlines) against that; it shows where either pair is 3:1 (as the route's white edge does on any map)
-    const rings = (ms.boxShadow.match(/rgba?\([^)]*\)\s+0px\s+0px\s+0px\s+(?:0\.5|1)px(?:\s+inset)?/g) || []).map((x) => ({ c: parse(x), inset: /inset/.test(x) })).filter((r) => r.c && r.c.a > 0);
+    // the boundary's layers, from the map inwards: an outer line (if any), the inner rings, the fill; it shows where any
+    // neighbouring two are 3:1 (as the route's white edge does on any map)
+    const rings = (ms.boxShadow.match(/rgba?\([^)]*\)\s+0px\s+0px\s+0px\s+(?:0\.5|1|2)px(?:\s+inset)?/g) || []).map((x) => ({ c: parse(x.match(/rgba?\([^)]*\)/)[0]), inset: /inset/.test(x) })) // the colour alone: rgb() has no alpha to read.filter((r) => r.c && r.c.a > 0);
     const rim = (x, y) => { let rgb = bg ? bg(x, y) : [0, 0, 0]; for (const r of rings) if (r.inset) rgb = over(r.c, ...rgb); return rgb; };
     let n = 0, ok = 0;
     const at = (xi, yi, xo, yo) => { if (xo < 0 || yo < 0 || xo >= W || yo >= H) return; const i = (yo * W + xo) * 4, o = [base.data[i], base.data[i + 1], base.data[i + 2]];
       let outer = o; for (const r of rings) if (!r.inset) outer = over(r.c, ...outer);
-      n++; if (Math.max(ratio(lum(...outer), lum(...o)), ratio(lum(...rim(xi, yi)), lum(...outer))) >= 3) ok++; };
+      // from the map inwards: the map, the outer line, the inner ring, the fill; it shows where any neighbouring two are 3:1
+      const seq = [o, outer, rim(xi, yi), bg ? bg(xi, yi) : rim(xi, yi)];
+      n++; if (seq.some((c, i) => i && ratio(lum(...c), lum(...seq[i - 1])) >= 3)) ok++; };
     for (let x = x0 + rad; x <= x1 - rad; x += 2) { at(Math.round(x * k), Math.round((y0 + 1) * k), Math.round(x * k), Math.round((y0 - 2) * k)); at(Math.round(x * k), Math.round((y1 - 1) * k), Math.round(x * k), Math.round((y1 + 2) * k)); }
     for (let y = y0 + rad; y <= y1 - rad; y += 2) { at(Math.round((x0 + 1) * k), Math.round(y * k), Math.round((x0 - 2) * k), Math.round(y * k)); at(Math.round((x1 - 1) * k), Math.round(y * k), Math.round((x1 + 2) * k), Math.round(y * k)); }
-    if (n) res.edge.push({ t: m.className.split(' ')[0], share: ok / n });
+    if (n) res.edge.push({ t: `${m.className.split(' ')[0]}${m.textContent.trim() ? ` “${m.textContent.trim().slice(0, 12)}”` : ''}`, share: ok / n });
   }
   // the map in the clear: the share of the screen under no surface (D's margin counts as a surface)
   const parts = [...sc.querySelectorAll('.ui > *:not(.d-window)')].map((e) => rel(e.getBoundingClientRect()));
