@@ -1,0 +1,2926 @@
+{
+ "rows": [
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 2.172874432672267,
+   "off": 2.744773577949035,
+   "text": 14.382000884589287,
+   "muted": 5.411585920701705,
+   "other": 5.988570185203401,
+   "icon": 5.4634220263114655,
+   "edge": 0.08203865100416824,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 1.5767380816229568,
+   "off": 2.7488330699723433,
+   "text": 14.382000884589287,
+   "muted": 5.436573695357145,
+   "other": 6.017418472690342,
+   "icon": 5.484685991848196,
+   "edge": 0.07156277630415561,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Stop",
+    "muted": "there at",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0.751121523916711,
+   "off": 2.748534541769802,
+   "text": 13.559870268446174,
+   "muted": 4.7475041686395985,
+   "other": 4.829404522659002,
+   "icon": 3.2957336053312796,
+   "edge": 0.16172264286508034,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0.6817071824606331,
+   "off": 2.75181563941815,
+   "text": 13.559870268446174,
+   "muted": 4.7475041686395985,
+   "other": 4.829404522659002,
+   "icon": 3.2957336053312796,
+   "edge": 0.15911429259786186,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 2.8168164177394464,
+   "off": 3.765976487939473,
+   "text": 12.468164923320069,
+   "muted": 5.868454582252655,
+   "other": 5.5089478026251095,
+   "icon": 5.9071547297757165,
+   "edge": 0.976174687381584,
+   "edgeMin": 0.9285714285714286,
+   "lowest": {
+    "text": "98 m",
+    "muted": "Give it a name of your own",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "fab \u201cWeather\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 2.039141517460397,
+   "off": 3.750683111666951,
+   "text": 12.41240293751602,
+   "muted": 5.844545745220226,
+   "other": 5.474847790214014,
+   "icon": 5.87520327821072,
+   "edge": 0.983232284956423,
+   "edgeMin": 0.9285714285714286,
+   "lowest": {
+    "text": "98 m",
+    "muted": "Give it a name of your own",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "fab \u201cWeather\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0.9496218859439267,
+   "off": 3.7335608188269833,
+   "text": 9.88858831750624,
+   "muted": 4.672741673005452,
+   "other": 5.490112684045509,
+   "icon": 3.2957336053312796,
+   "edge": 0.9788568097566572,
+   "edgeMin": 0.9107142857142857,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Balanced",
+    "icon": "\u25b6",
+    "edge": "fab \u201cWeather\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0.8920032789608946,
+   "off": 3.7193931044057837,
+   "text": 9.810141921988196,
+   "muted": 4.6354412845282855,
+   "other": 5.448948587677517,
+   "icon": 3.2957336053312796,
+   "edge": 0.9818694534768686,
+   "edgeMin": 0.9285714285714286,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Balanced",
+    "icon": "\u25b6",
+    "edge": "fab \u201cWeather\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 5.620756215920228,
+   "off": 3.8919403583461154,
+   "text": 13.987728903492918,
+   "muted": 8.539709095428934,
+   "other": 7.531057527434045,
+   "icon": 8.210572105635844,
+   "edge": 0.1334470127573576,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Night",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 4.217027837177874,
+   "off": 3.9617908450251327,
+   "text": 14.317335179011685,
+   "muted": 8.833410358811866,
+   "other": 7.685403475386625,
+   "icon": 8.210572105635844,
+   "edge": 0.11690034103827207,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Night",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 1.5294889700919958,
+   "off": 3.958935206664535,
+   "text": 13.298034626886835,
+   "muted": 8.243924871462852,
+   "other": 6.1208081049978755,
+   "icon": 4.62290162162545,
+   "edge": 0.29031340106930204,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Night",
+    "muted": "The ways Polku picks for MTB",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 1.3329588386012936,
+   "off": 4.0193979977066405,
+   "text": 13.60274638871989,
+   "muted": 8.289034060912542,
+   "other": 6.1208081049978755,
+   "icon": 4.62290162162545,
+   "edge": 0.28181031190137495,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Night",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 7.383479234710354,
+   "off": 4.1549005600125355,
+   "text": 7.059768258046665,
+   "muted": 5.9129315207291615,
+   "other": 5.9998604644739,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Give it a name of your own",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 5.591472207953204,
+   "off": 3.9846128546406407,
+   "text": 6.8684300336978845,
+   "muted": 5.73306969905084,
+   "other": 5.79518776909862,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Give it a name of your own",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 1.9238886461550087,
+   "off": 3.916060430892711,
+   "text": 7.829243066400218,
+   "muted": 6.295951808330316,
+   "other": 5.537891646732665,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "there at",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 1.7570932014594192,
+   "off": 3.7757973866766306,
+   "text": 7.550932428757474,
+   "muted": 6.012413443117307,
+   "other": 5.327179968230958,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "there at",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.844646314750756,
+   "muted": 5.559094533331161,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.844646314750756,
+   "muted": 5.559094533331161,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.559870268446174,
+   "muted": 5.444747302911216,
+   "other": 5.336962733713518,
+   "icon": 5.1604653019539635,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.559870268446174,
+   "muted": 5.444747302911216,
+   "other": 5.336962733713518,
+   "icon": 5.1604653019539635,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 7.048995069784507,
+   "other": 7.054980575374797,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 7.048995069784507,
+   "other": 7.054980575374797,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 6.449498738275347,
+   "other": 5.280205869387772,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 6.449498738275347,
+   "other": 5.280205869387772,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 14.382000884589287,
+   "muted": 8.27100525787234,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 14.382000884589287,
+   "muted": 8.27100525787234,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 13.559870268446174,
+   "muted": 7.063458082779691,
+   "other": 4.829404522659002,
+   "icon": 3.2957336053312796,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "panel \u201c3.03 kmdista\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 13.559870268446174,
+   "muted": 7.063458082779691,
+   "other": 4.829404522659002,
+   "icon": 3.2957336053312796,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "panel \u201c3.03 kmdista\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 12.560484201835182,
+   "muted": 10.470917702255655,
+   "other": 6.314282264557322,
+   "icon": 6.314282264557322,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 12.560484201835182,
+   "muted": 10.470917702255655,
+   "other": 6.314282264557322,
+   "icon": 6.314282264557322,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 11.325886317924082,
+   "muted": 8.216847677326909,
+   "other": 6.223516980838981,
+   "icon": 3.2957336053312796,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "panel \u201c3.03 kmdista\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 11.325886317924082,
+   "muted": 8.216847677326909,
+   "other": 6.223516980838981,
+   "icon": 3.2957336053312796,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "panel \u201c3.03 kmdista\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 3.7752731128295562,
+   "text": 15.30599074389134,
+   "muted": 8.27100525787234,
+   "other": 8.210572105635844,
+   "icon": 8.210572105635844,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 3.7752731128295562,
+   "text": 15.30599074389134,
+   "muted": 8.27100525787234,
+   "other": 8.210572105635844,
+   "icon": 8.210572105635844,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 3.7752731128295562,
+   "text": 14.95887789069687,
+   "muted": 7.063458082779691,
+   "other": 6.1208081049978755,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 3.7752731128295562,
+   "text": 14.95887789069687,
+   "muted": 7.063458082779691,
+   "other": 6.1208081049978755,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 10.694702475616246,
+   "other": 10.452779041056136,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 10.694702475616246,
+   "other": 10.452779041056136,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 9.168430458235777,
+   "other": 6.314282264557322,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 9.168430458235777,
+   "other": 6.314282264557322,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 4.036816003357539,
+   "text": 13.844646314750756,
+   "muted": 8.051007789458037,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 4.036816003357539,
+   "text": 13.844646314750756,
+   "muted": 8.051007789458037,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 4.036816003357539,
+   "text": 13.559870268446174,
+   "muted": 7.885403402395692,
+   "other": 5.336962733713518,
+   "icon": 5.1604653019539635,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 4.036816003357539,
+   "text": 13.559870268446174,
+   "muted": 7.885403402395692,
+   "other": 5.336962733713518,
+   "icon": 5.1604653019539635,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 6.440641805933715,
+   "text": 7.812380256993728,
+   "muted": 7.048995069784507,
+   "other": 7.054980575374797,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "phone",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 6.440641805933715,
+   "text": 7.812380256993728,
+   "muted": 7.048995069784507,
+   "other": 7.054980575374797,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 6.440641805933715,
+   "text": 7.812380256993728,
+   "muted": 6.449498738275347,
+   "other": 5.280205869387772,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "desk",
+   "mode": "contrast",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 6.440641805933715,
+   "text": 7.812380256993728,
+   "muted": 6.449498738275347,
+   "other": 5.280205869387772,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 14.382000884589287,
+   "muted": 5.5591229508841815,
+   "other": 6.1208081049978755,
+   "icon": 5.5591229508841815,
+   "edge": 0.08203865100416824,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 14.382000884589287,
+   "muted": 5.5591229508841815,
+   "other": 6.1208081049978755,
+   "icon": 5.5591229508841815,
+   "edge": 0.0720048629531388,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 13.559870268446174,
+   "muted": 4.7475041686395985,
+   "other": 4.829404522659002,
+   "icon": 3.2957336053312796,
+   "edge": 0.16519088774225996,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 2.7601960734537356,
+   "text": 13.559870268446174,
+   "muted": 4.7475041686395985,
+   "other": 4.829404522659002,
+   "icon": 3.2957336053312796,
+   "edge": 0.15920974887888517,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 12.560484201835182,
+   "muted": 6.82796490920148,
+   "other": 6.314282264557322,
+   "icon": 6.314282264557322,
+   "edge": 0.9768378173550588,
+   "edgeMin": 0.9285714285714286,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "fab \u201cWeather\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 12.560484201835182,
+   "muted": 6.82796490920148,
+   "other": 6.314282264557322,
+   "icon": 6.314282264557322,
+   "edge": 0.9870926487305797,
+   "edgeMin": 0.9464285714285714,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "fab \u201cWeather\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 11.325886317924082,
+   "muted": 5.358111791190544,
+   "other": 6.223516980838981,
+   "icon": 3.2957336053312796,
+   "edge": 0.9817954995510172,
+   "edgeMin": 0.9285714285714286,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "fab \u201cWeather\u201d"
+   }
+  },
+  {
+   "dir": "today",
+   "map": "plain",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 3.9316378987624754,
+   "text": 11.325886317924082,
+   "muted": 5.358111791190544,
+   "other": 6.223516980838981,
+   "icon": 3.2957336053312796,
+   "edge": 0.9910468930666794,
+   "edgeMin": 0.9722222222222222,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "fab"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 4.164086331296863,
+   "text": 15.30599074389134,
+   "muted": 9.706101954173496,
+   "other": 8.210572105635844,
+   "icon": 8.210572105635844,
+   "edge": 0.13388909940634078,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 4.164086331296863,
+   "text": 15.30599074389134,
+   "muted": 9.706101954173496,
+   "other": 8.210572105635844,
+   "icon": 8.210572105635844,
+   "edge": 0.12417898193760261,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 4.164086331296863,
+   "text": 14.95887789069687,
+   "muted": 8.289034060912542,
+   "other": 6.1208081049978755,
+   "icon": 4.62290162162545,
+   "edge": 0.2913791719245785,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 4.164086331296863,
+   "text": 14.95887789069687,
+   "muted": 8.289034060912542,
+   "other": 6.1208081049978755,
+   "icon": 4.62290162162545,
+   "edge": 0.283538632095432,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "fab \u201c3D\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 10.694702475616246,
+   "other": 10.452779041056136,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 10.694702475616246,
+   "other": 10.452779041056136,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 9.168430458235777,
+   "other": 6.314282264557322,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0,
+   "off": 5.875212080101937,
+   "text": 8.61993117451201,
+   "muted": 9.168430458235777,
+   "other": 6.314282264557322,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.844646314750756,
+   "muted": 5.559094533331161,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.844646314750756,
+   "muted": 5.559094533331161,
+   "other": 6.1208081049978755,
+   "icon": 6.1208081049978755,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.559870268446174,
+   "muted": 5.444747302911216,
+   "other": 5.336962733713518,
+   "icon": 5.1604653019539635,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 3.2333783076422318,
+   "text": 13.559870268446174,
+   "muted": 5.444747302911216,
+   "other": 5.336962733713518,
+   "icon": 5.1604653019539635,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "1 to read before you go",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 7.048995069784507,
+   "other": 7.054980575374797,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "phone",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.2848921559144985,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 7.048995069784507,
+   "other": 7.054980575374797,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cZoom in to s\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "trail",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 6.449498738275347,
+   "other": 5.280205869387772,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "d",
+   "map": "plain",
+   "device": "desk",
+   "mode": "clear",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5088148148148148,
+   "fabDE": 0,
+   "off": 4.625510645025991,
+   "text": 7.812380256993728,
+   "muted": 6.449498738275347,
+   "other": 5.280205869387772,
+   "icon": 3.259052412993552,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "d-bay \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "maasto",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 4.890733073761817,
+   "off": 4.009950003333826,
+   "text": 12.046243641786633,
+   "muted": 7.181189375685837,
+   "other": 6.482907890057038,
+   "icon": 7.651773847107605,
+   "edge": 0.18913414172034862,
+   "edgeMin": 0,
+   "lowest": {
+    "text": "Night",
+    "muted": "Its sport, how it\u2019s drawn an",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "bright",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 1.9744655066215524,
+   "off": 3.0955800036425525,
+   "text": 10.908247872826655,
+   "muted": 5.605368196030753,
+   "other": 5.75855181443414,
+   "icon": 6.758774869334932,
+   "edge": 0.9859874321081218,
+   "edgeMin": 0.9642857142857143,
+   "lowest": {
+    "text": "Night",
+    "muted": "Zoom in to see every trail",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "fab"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "forest",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0.6711980296900913,
+   "off": 3.0990148174870438,
+   "text": 10.136197137967597,
+   "muted": 5.559720979540951,
+   "other": 5.3684799341550296,
+   "icon": 6.2568475829666115,
+   "edge": 0.9868558165971959,
+   "edgeMin": 0.9389920424403183,
+   "lowest": {
+    "text": "Night",
+    "muted": "Search places or pas",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "night",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 1.9615098462777907,
+   "off": 3.0650159289970187,
+   "text": 8.705728828393761,
+   "muted": 5.397912659422437,
+   "other": 4.605710351644051,
+   "icon": 5.41248442828933,
+   "edge": 0.9908503852469369,
+   "edgeMin": 0.9642857142857143,
+   "lowest": {
+    "text": "Night",
+    "muted": "Give it a name of your own",
+    "other": "MTB",
+    "icon": "right",
+    "edge": "fab"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "maasto",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5817037037037037,
+   "fabDE": 4.880589047321173,
+   "off": 3.98476252770528,
+   "text": 12.42189181671686,
+   "muted": 6.902220438681134,
+   "other": 6.1208081049978755,
+   "icon": 4.62290162162545,
+   "edge": 0.49255209825441637,
+   "edgeMin": 0.09959758551307847,
+   "lowest": {
+    "text": "Night",
+    "muted": "Leave now \u00b7 0 m",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "tools \u201cFollow paths\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "bright",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5817037037037037,
+   "fabDE": 1.4954443574744205,
+   "off": 3.159517346521056,
+   "text": 9.920362321836654,
+   "muted": 5.497084860451835,
+   "other": 4.775333351403778,
+   "icon": 4.62290162162545,
+   "edge": 0.9814153833094711,
+   "edgeMin": 0.9226006191950464,
+   "lowest": {
+    "text": "\u219142 \u219362 m",
+    "muted": "from now",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "card \u201c1Via 1\n  01:\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "forest",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 0.9813039266274716,
+   "off": 3.21962352686514,
+   "text": 9.920362321836654,
+   "muted": 5.531759662111489,
+   "other": 4.715870623593445,
+   "icon": 4.62290162162545,
+   "edge": 0.9359170265636816,
+   "edgeMin": 0.75,
+   "lowest": {
+    "text": "Over water",
+    "muted": "distance",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "fab"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "night",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "light",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5817037037037037,
+   "fabDE": 1.39311433796681,
+   "off": 3.0720021048693447,
+   "text": 9.429486854699345,
+   "muted": 5.415115369723755,
+   "other": 4.667995295862112,
+   "icon": 4.62290162162545,
+   "edge": 0.9857125118190411,
+   "edgeMin": 0.9380804953560371,
+   "lowest": {
+    "text": "Stop",
+    "muted": "20 / 16 / 11 km/h \u00b7 600 m/h ",
+    "other": "Balanced",
+    "icon": "\u25b6",
+    "edge": "card \u201c1Via 1\n  01:\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "maasto",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 5.913414574373561,
+   "off": 3.7731248112013445,
+   "text": 8.61993117451201,
+   "muted": 5.869992538835483,
+   "other": 7.6735885709081755,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Zoom in to see every trail",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "bright",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 2.3362162825943344,
+   "off": 6.076621923508624,
+   "text": 8.61993117451201,
+   "muted": 8.569656068188849,
+   "other": 9.032766297695957,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "To the next change of sport,",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "forest",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 0.7715319031997184,
+   "off": 6.10451689866117,
+   "text": 8.61993117451201,
+   "muted": 8.50739200270837,
+   "other": 9.912557690085352,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Its sport, how it\u2019s drawn an",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "night",
+   "device": "phone",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.38045265499564757,
+   "fabDE": 1.9075103139372493,
+   "off": 6.14434323710604,
+   "text": 8.61993117451201,
+   "muted": 11.510542525410859,
+   "other": 11.429018863404481,
+   "icon": 5.745329151912595,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Give it a name of your own",
+    "other": "MTB",
+    "icon": "arrow",
+    "edge": "tools"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "maasto",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5817037037037037,
+   "fabDE": 7.1831921690156975,
+   "off": 3.760675913895624,
+   "text": 8.342147556723951,
+   "muted": 5.854971132008122,
+   "other": 5.695606010688723,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Stop",
+    "muted": "Search places or paste coord",
+    "other": "Remove",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "bright",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5817037037037037,
+   "fabDE": 2.061700910134161,
+   "off": 5.955798141533391,
+   "text": 8.61993117451201,
+   "muted": 8.646881226772702,
+   "other": 6.314282264557322,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "Leave now \u00b7 0 m",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "forest",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.6158765432098765,
+   "fabDE": 1.3569585969183988,
+   "off": 5.860388105153049,
+   "text": 8.61993117451201,
+   "muted": 9.168430458235777,
+   "other": 6.314282264557322,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  },
+  {
+   "dir": "b",
+   "map": "night",
+   "device": "desk",
+   "mode": "default",
+   "ver": "2",
+   "theme": "dark",
+   "depth": "one",
+   "fab": "b",
+   "clear": 0.5817037037037037,
+   "fabDE": 1.5126299879816938,
+   "off": 6.142342047371021,
+   "text": 8.61993117451201,
+   "muted": 9.168430458235777,
+   "other": 6.314282264557322,
+   "icon": 4.62290162162545,
+   "edge": 1,
+   "edgeMin": 1,
+   "lowest": {
+    "text": "Pass by",
+    "muted": "In the dark for 3.03 km",
+    "other": "Plan",
+    "icon": "\u25b6",
+    "edge": "pill \u201cPolku\u201d"
+   }
+  }
+ ],
+ "checks": [
+  {
+   "dir": "b",
+   "map": "trail",
+   "theme": "light",
+   "model": {
+    "dir": "b",
+    "map": "trail",
+    "device": "phone",
+    "mode": "default",
+    "ver": "2",
+    "theme": "light",
+    "depth": "one",
+    "fab": "b",
+    "clear": 0.38045265499564757,
+    "fabDE": 5.614280164620227,
+    "off": 3.8919403583461154,
+    "text": 13.987728903492918,
+    "muted": 8.539709095428934,
+    "other": 7.531057527434045,
+    "icon": 8.210572105635844,
+    "edge": 0.1334470127573576,
+    "edgeMin": 0,
+    "lowest": {
+     "text": "Night",
+     "muted": "Search places or pas",
+     "other": "MTB",
+     "icon": "arrow",
+     "edge": "tools"
+    }
+   },
+   "real": [
+    {
+     "t": "Search places or pas",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.46
+    },
+    {
+     "t": "Zoom in to see every trail",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.45
+    },
+    {
+     "t": "3D",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.38
+    },
+    {
+     "t": "Weather",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.98
+    },
+    {
+     "t": "Via 1",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.4
+    },
+    {
+     "t": "01:00",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.8
+    },
+    {
+     "t": "there at",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.79
+    },
+    {
+     "t": "1.76 km",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.8
+    },
+    {
+     "t": "from the start",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.86
+    },
+    {
+     "t": "98 m",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.82
+    },
+    {
+     "t": "height",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.93
+    },
+    {
+     "t": "At this point",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.74
+    },
+    {
+     "t": "Pass by",
+     "color": "rgb(20, 27, 23)",
+     "min": 17.52
+    },
+    {
+     "t": "Stop",
+     "color": "rgb(20, 27, 23)",
+     "min": 14.37
+    },
+    {
+     "t": "Night",
+     "color": "rgb(20, 27, 23)",
+     "min": 13.96
+    },
+    {
+     "t": "Sport from here",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.19
+    },
+    {
+     "t": "To the next change of sport,",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.95
+    },
+    {
+     "t": "MTB",
+     "color": "rgb(22, 90, 58)",
+     "min": 7.52
+    },
+    {
+     "t": "Next stretch, to End",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.3
+    },
+    {
+     "t": "Its sport, how it\u2019s drawn an",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.03
+    },
+    {
+     "t": "Edit this point",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.04
+    },
+    {
+     "t": "Move",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.22
+    },
+    {
+     "t": "Tap where it goes",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.97
+    },
+    {
+     "t": "Rename",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.19
+    },
+    {
+     "t": "Give it a name of your own",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.97
+    }
+   ]
+  },
+  {
+   "dir": "b",
+   "map": "plain",
+   "theme": "light",
+   "model": {
+    "dir": "b",
+    "map": "plain",
+    "device": "phone",
+    "mode": "default",
+    "ver": "2",
+    "theme": "light",
+    "depth": "one",
+    "fab": "b",
+    "clear": 0.38045265499564757,
+    "fabDE": 4.217027837177874,
+    "off": 3.9617908450251327,
+    "text": 14.317335179011685,
+    "muted": 8.833410358811866,
+    "other": 7.685403475386625,
+    "icon": 8.210572105635844,
+    "edge": 0.11690034103827207,
+    "edgeMin": 0,
+    "lowest": {
+     "text": "Night",
+     "muted": "Search places or pas",
+     "other": "MTB",
+     "icon": "arrow",
+     "edge": "tools"
+    }
+   },
+   "real": [
+    {
+     "t": "Search places or pas",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.75
+    },
+    {
+     "t": "Zoom in to see every trail",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.67
+    },
+    {
+     "t": "3D",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.56
+    },
+    {
+     "t": "Weather",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.27
+    },
+    {
+     "t": "Via 1",
+     "color": "rgb(20, 27, 23)",
+     "min": 15.78
+    },
+    {
+     "t": "01:00",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.14
+    },
+    {
+     "t": "there at",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.92
+    },
+    {
+     "t": "1.76 km",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.17
+    },
+    {
+     "t": "from the start",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.03
+    },
+    {
+     "t": "98 m",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.16
+    },
+    {
+     "t": "height",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.04
+    },
+    {
+     "t": "At this point",
+     "color": "rgb(59, 71, 65)",
+     "min": 8.93
+    },
+    {
+     "t": "Pass by",
+     "color": "rgb(20, 27, 23)",
+     "min": 17.52
+    },
+    {
+     "t": "Stop",
+     "color": "rgb(20, 27, 23)",
+     "min": 14.63
+    },
+    {
+     "t": "Night",
+     "color": "rgb(20, 27, 23)",
+     "min": 14.29
+    },
+    {
+     "t": "Sport from here",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.47
+    },
+    {
+     "t": "To the next change of sport,",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.12
+    },
+    {
+     "t": "MTB",
+     "color": "rgb(22, 90, 58)",
+     "min": 7.66
+    },
+    {
+     "t": "Next stretch, to End",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.62
+    },
+    {
+     "t": "Its sport, how it\u2019s drawn an",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.21
+    },
+    {
+     "t": "Edit this point",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.2
+    },
+    {
+     "t": "Move",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.62
+    },
+    {
+     "t": "Tap where it goes",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.14
+    },
+    {
+     "t": "Rename",
+     "color": "rgb(20, 27, 23)",
+     "min": 16.61
+    },
+    {
+     "t": "Give it a name of your own",
+     "color": "rgb(59, 71, 65)",
+     "min": 9.2
+    }
+   ]
+  },
+  {
+   "dir": "b",
+   "map": "trail",
+   "theme": "dark",
+   "model": {
+    "dir": "b",
+    "map": "trail",
+    "device": "phone",
+    "mode": "default",
+    "ver": "2",
+    "theme": "dark",
+    "depth": "one",
+    "fab": "b",
+    "clear": 0.38045265499564757,
+    "fabDE": 7.383479234710354,
+    "off": 4.1549005600125355,
+    "text": 7.059768258046665,
+    "muted": 5.9129315207291615,
+    "other": 5.9998604644739,
+    "icon": 5.745329151912595,
+    "edge": 1,
+    "edgeMin": 1,
+    "lowest": {
+     "text": "Stop",
+     "muted": "Give it a name of your own",
+     "other": "MTB",
+     "icon": "arrow",
+     "edge": "tools"
+    }
+   },
+   "real": [
+    {
+     "t": "Search places or pas",
+     "color": "rgb(197, 206, 201)",
+     "min": 6.63
+    },
+    {
+     "t": "Zoom in to see every trail",
+     "color": "rgb(197, 206, 201)",
+     "min": 6.92
+    },
+    {
+     "t": "3D",
+     "color": "rgb(242, 245, 243)",
+     "min": 14.13
+    },
+    {
+     "t": "Weather",
+     "color": "rgb(242, 245, 243)",
+     "min": 13.45
+    },
+    {
+     "t": "Via 1",
+     "color": "rgb(242, 245, 243)",
+     "min": 9.4
+    },
+    {
+     "t": "01:00",
+     "color": "rgb(242, 245, 243)",
+     "min": 9.13
+    },
+    {
+     "t": "there at",
+     "color": "rgb(197, 206, 201)",
+     "min": 6.31
+    },
+    {
+     "t": "1.76 km",
+     "color": "rgb(242, 245, 243)",
+     "min": 8.97
+    },
+    {
+     "t": "from the start",
+     "color": "rgb(197, 206, 201)",
+     "min": 6
+    },
+    {
+     "t": "98 m",
+     "color": "rgb(242, 245, 243)",
+     "min": 9.09
+    },
+    {
+     "t": "height",
+     "color": "rgb(197, 206, 201)",
+     "min": 6.1
+    },
+    {
+     "t": "At this point",
+     "color": "rgb(197, 206, 201)",
+     "min": 6.06
+    },
+    {
+     "t": "Pass by",
+     "color": "rgb(242, 245, 243)",
+     "min": 8.62
+    },
+    {
+     "t": "Stop",
+     "color": "rgb(242, 245, 243)",
+     "min": 7.04
+    },
+    {
+     "t": "Night",
+     "color": "rgb(242, 245, 243)",
+     "min": 7.39
+    },
+    {
+     "t": "Sport from here",
+     "color": "rgb(242, 245, 243)",
+     "min": 8.88
+    },
+    {
+     "t": "To the next change of sport,",
+     "color": "rgb(197, 206, 201)",
+     "min": 5.98
+    },
+    {
+     "t": "MTB",
+     "color": "rgb(127, 220, 174)",
+     "min": 6.03
+    },
+    {
+     "t": "Next stretch, to End",
+     "color": "rgb(242, 245, 243)",
+     "min": 8.8
+    },
+    {
+     "t": "Its sport, how it\u2019s drawn an",
+     "color": "rgb(197, 206, 201)",
+     "min": 6
+    },
+    {
+     "t": "Edit this point",
+     "color": "rgb(197, 206, 201)",
+     "min": 6.05
+    },
+    {
+     "t": "Move",
+     "color": "rgb(242, 245, 243)",
+     "min": 8.92
+    },
+    {
+     "t": "Tap where it goes",
+     "color": "rgb(197, 206, 201)",
+     "min": 6.06
+    },
+    {
+     "t": "Rename",
+     "color": "rgb(242, 245, 243)",
+     "min": 8.9
+    },
+    {
+     "t": "Give it a name of your own",
+     "color": "rgb(197, 206, 201)",
+     "min": 5.89
+    }
+   ]
+  },
+  {
+   "dir": "today",
+   "map": "trail",
+   "theme": "light",
+   "model": {
+    "dir": "today",
+    "map": "trail",
+    "device": "phone",
+    "mode": "default",
+    "ver": "2",
+    "theme": "light",
+    "depth": "one",
+    "fab": "b",
+    "clear": 0.38045265499564757,
+    "fabDE": 2.172874432672267,
+    "off": 2.744773577949035,
+    "text": 14.382000884589287,
+    "muted": 5.411585920701705,
+    "other": 5.988570185203401,
+    "icon": 5.4634220263114655,
+    "edge": 0.08203865100416824,
+    "edgeMin": 0,
+    "lowest": {
+     "text": "Stop",
+     "muted": "Search places or pas",
+     "other": "MTB",
+     "icon": "right",
+     "edge": "tools"
+    }
+   },
+   "real": [
+    {
+     "t": "Search places or pas",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.41
+    },
+    {
+     "t": "Zoom in to see every trail",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.41
+    },
+    {
+     "t": "3D",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.07
+    },
+    {
+     "t": "Weather",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.22
+    },
+    {
+     "t": "Via 1",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.45
+    },
+    {
+     "t": "01:00",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.53
+    },
+    {
+     "t": "there at",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.41
+    },
+    {
+     "t": "1.76 km",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.56
+    },
+    {
+     "t": "from the start",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.45
+    },
+    {
+     "t": "98 m",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.47
+    },
+    {
+     "t": "height",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.46
+    },
+    {
+     "t": "At this point",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.41
+    },
+    {
+     "t": "Pass by",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.88
+    },
+    {
+     "t": "Stop",
+     "color": "rgb(28, 36, 32)",
+     "min": 14.38
+    },
+    {
+     "t": "Night",
+     "color": "rgb(28, 36, 32)",
+     "min": 14.38
+    },
+    {
+     "t": "Sport from here",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.59
+    },
+    {
+     "t": "To the next change of sport,",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.45
+    },
+    {
+     "t": "MTB",
+     "color": "rgb(31, 111, 74)",
+     "min": 5.97
+    },
+    {
+     "t": "Next stretch, to End",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.61
+    },
+    {
+     "t": "Its sport, how it\u2019s drawn an",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.46
+    },
+    {
+     "t": "Edit this point",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.46
+    },
+    {
+     "t": "Move",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.59
+    },
+    {
+     "t": "Tap where it goes",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.46
+    },
+    {
+     "t": "Rename",
+     "color": "rgb(28, 36, 32)",
+     "min": 15.6
+    },
+    {
+     "t": "Give it a name of your own",
+     "color": "rgb(95, 107, 101)",
+     "min": 5.46
+    }
+   ]
+  }
+ ]
+}
