@@ -10023,7 +10023,8 @@ PC_LOOK = """((phone) => {
   if (w > 700) out.push(`the title at weight ${w}`);
   for (const l of c.querySelectorAll('.sum-item small')) if (phone && parseFloat(getComputedStyle(l).fontSize) < 12.5) out.push(`a number's label at ${getComputedStyle(l).fontSize}`);
   for (const b of c.querySelectorAll('.sum-item b')) { const lh = parseFloat(getComputedStyle(b).lineHeight) || 20; if (b.offsetHeight > lh * 1.5) out.push(`“${b.textContent}” on more than one line`); }
-  if (/ · /.test(c.textContent)) out.push('facts strung with “ · ”');
+  // (but the card folded to its title row: its name and two numbers, one line, step 3 of #233's fix round)
+  if (/ · /.test(((k) => { k.querySelectorAll('.way-facts').forEach((e) => e.remove()); return k.textContent; })(c.cloneNode(true)))) out.push('facts strung with “ · ”');
   const rows = [...c.querySelectorAll('.row')], rm = rows[rows.length - 1];
   if (!rm || rm.querySelector('b').textContent !== 'Remove' || !rm.classList.contains('danger')) out.push('Remove isn’t the last row, in red');
   else if (rm.parentElement.previousElementSibling?.tagName !== 'HR') out.push('Remove isn’t apart, after a line');
@@ -10733,7 +10734,8 @@ RC_LOOK = """((phone) => {
   if (extra.size) out.push(`classes that aren't shared controls: ${[...extra].join(', ')}`);
   const least = phone ? 44 : 36;
   for (const b of c.querySelectorAll('button')) { const a = r(b); if (a.width && (a.width < least || a.height < least)) out.push(`${(b.textContent.trim() || b.getAttribute('aria-label') || '').slice(0, 30)} ${Math.round(a.width)} × ${Math.round(a.height)} px`); }
-  if (/ · /.test(c.textContent)) out.push('facts strung with “ · ”');
+  // (but the card folded to its title row: its name and two numbers, one line, step 3 of #233's fix round)
+  if (/ · /.test(((k) => { k.querySelectorAll('.way-facts').forEach((e) => e.remove()); return k.textContent; })(c.cloneNode(true)))) out.push('facts strung with “ · ”');
   if (/…(?!$)/.test(c.textContent.replace(/Save offline…|Import GPX or KML…/g, ''))) out.push('“…” in the card');
   for (const row of c.querySelectorAll('.row')) {
     if (!row.getClientRects().length || row.getAttribute('role') === 'radio') continue;
