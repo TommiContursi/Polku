@@ -5661,10 +5661,10 @@ export class Planner {
       this.secLit = this.pidOf(this.points[sec.from]);
       if (x.sport && isWater(x.sport)) this.wxOpen.add(this.secLit);
       this.renderWaypoints();
-      this.reveal('points');
-      const lit = () => this.els.points.querySelector('.sec2.lit');
-      requestAnimationFrame(() => this.flash(lit()));
-      setTimeout(() => lit()?.scrollIntoView({ block: 'nearest' }), 400); // (in sight again once a rising sheet has its size: --t-sheet)
+      this.reveal('points', { flash: false }); // (the part lights up, not the whole list: its scroll would win)
+      // in sight once a rising sheet has its size (--t-sheet), then lit up: one scroll, as a smooth one still on its way
+      // took the list past the part's heading
+      setTimeout(() => { const el = this.els.points.querySelector('.sec2.lit'); if (el) { el.scrollIntoView({ block: 'nearest' }); this.flash(el); } }, 400);
       return;
     }
     if (a) this.reveal('depart'); // the wind, the rain, a headwind, the weather not known: the weather along the route
@@ -5788,7 +5788,7 @@ export class Planner {
   }
 
   // Open a section and bring it into view (expanding a peeking sheet).
-  reveal(id) {
+  reveal(id, { flash = true } = {}) {
     if (id === 'style') { this.openStep('how'); return; }
     if (TAB_OF[id] && TAB_OF[id] !== this.tab) this.setTab(TAB_OF[id]);
     this.toggleSection(id, true);
@@ -5797,7 +5797,7 @@ export class Planner {
     else if (this.layout() === 'sheet' && (['folded', 'peek'].includes(st) || (st === 'profile' && id !== 'profile'))) this.setSheetState('half');
     else if (this.layout() === 'side' && st === 'folded') this.setSheetState('open');
     // and show where: the section lights up for a moment (the Weather button, Speed, Style, a link…)
-    requestAnimationFrame(() => this.flash(this.sec[id].el));
+    if (flash) requestAnimationFrame(() => this.flash(this.sec[id].el));
   }
 
   // Route's rows, each sport's style and your speed, each opening its step (#424's C)

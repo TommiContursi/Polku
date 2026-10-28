@@ -8080,7 +8080,7 @@ def fold_phone(chrome):
         if info()['st'] != 'folded' or not info()['active']:
             fails.append(f"a short slow drag down from the line: {info()['st']}, open {info()['active']}")
         # ✕ at the line puts the planner away
-        pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
+        pg.tap(*(fold_at(pg, 'polku.planner.els.foldX') or (0, 0)))
         fold_settled(pg, fails, 'step 9')
         time.sleep(0.3)
         s = info()
@@ -8160,7 +8160,7 @@ def fold_phone(chrome):
         if s['card'] != 'point' or s['st'] != 'folded':
             fails.append(f"a tap on point 1 with the planner folded: card {s['card']}, {s['st']} (folded, its line)")
         else:
-            pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
+            pg.tap(*(fold_at(pg, 'polku.planner.els.foldX') or (0, 0)))
             fold_settled(pg, fails, 'step 21')
             s = info()
             if s['card'] or s['st'] != 'folded' or not s['active'] or 'km' not in s['lineText']:
@@ -13210,8 +13210,9 @@ def keyfacts(chrome):
             pg.js(SETTLED)
             press(pg, pg.js("KF.at(0)"), f'{name}: the hardest day', touch)
             pg.js(SETTLED)
-            r = pg.js("""(() => { const p = polku.planner, lit = [...document.querySelectorAll('.wpl .sec2.lit')], b = p.els.body.getBoundingClientRect(), r = lit[0] && lit[0].getBoundingClientRect();
-              return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), seen: !!r && r.top < b.bottom - 20 && r.bottom > b.top + 20 }; })()""")
+            # (its heading in sight: a smooth scroll still on its way took the list past it, step 3 of #233's fix round)
+            r = pg.js("""(() => { const p = polku.planner, lit = [...document.querySelectorAll('.wpl .sec2.lit')], b = p.els.body.getBoundingClientRect(), r = lit[0] && lit[0].querySelector('.sec2-head').getBoundingClientRect();
+              return { tab: p.tab, lit: lit.map((x) => x.querySelector('.sec2-head b').textContent.split(' · ')[0]), seen: !!r && r.top >= b.top - 1 && r.bottom <= b.bottom + 1 }; })()""")
             want = 'Day ' + pg.js("KF.read().line[0]").split(' ')[1]
             if r['tab'] != 'route' or r['lit'] != [want] or not r['seen']:
                 fails.append(f"{name}: a tap on the hardest day: {r}, not {want}")
