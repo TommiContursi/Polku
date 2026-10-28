@@ -1,0 +1,9 @@
+GPU: ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version) | visible: visible
+phone today | 60 frames a second, 95 % of frames under 16.8 ms, 0 of 180 over 20 ms || 60 frames a second, 95 % of frames under 16.8 ms, 0 of 180 over 20 ms
+phone b | 60 frames a second, 95 % of frames under 16.8 ms, 0 of 179 over 20 ms || 60 frames a second, 95 % of frames under 16.8 ms, 0 of 179 over 20 ms
+phone d | 60 frames a second, 95 % of frames under 16.7 ms, 0 of 180 over 20 ms || 60 frames a second, 95 % of frames under 16.7 ms, 0 of 179 over 20 ms
+phone b, reduced transparency (no blur) | 60 frames a second, 95 % of frames under 16.7 ms, 0 of 180 over 20 ms
+desk today | 60 frames a second, 95 % of frames under 16.7 ms, 0 of 179 over 20 ms || 60 frames a second, 95 % of frames under 16.8 ms, 0 of 180 over 20 ms
+desk b | 60 frames a second, 95 % of frames under 16.8 ms, 0 of 180 over 20 ms || 60 frames a second, 95 % of frames under 16.7 ms, 0 of 180 over 20 ms
+desk d | 60 frames a second, 95 % of frames under 16.8 ms, 0 of 180 over 20 ms || 60 frames a second, 95 % of frames under 16.7 ms, 0 of 180 over 20 ms
+desk b, reduced transparency (no blur) | 60 frames a second, 95 % of frames under 16.8 ms, 0 of 180 over 20 ms

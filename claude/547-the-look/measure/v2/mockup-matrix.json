@@ -9,7 +9,7 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.38045265499564757,
-   "fabDE": 2.334073128017643,
+   "fabDE": 2.3332633511285183,
    "text": 14.382000884589287,
    "muted": 5.129632689671258,
    "other": 5.840640116849069,
@@ -45,7 +45,7 @@
     "muted": "Zoom in to see every trail",
     "other": "MTB",
     "icon": "right",
-    "edge": "sheet"
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -57,7 +57,7 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.38045265499564757,
-   "fabDE": 0.3341270471142422,
+   "fabDE": 0.3340854754190832,
    "text": 14.1527957221957,
    "muted": 4.962460581736504,
    "other": 5.616716976292616,
@@ -69,7 +69,7 @@
     "muted": "Zoom in to see every trail",
     "other": "MTB",
     "icon": "right",
-    "edge": "sheet"
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -81,7 +81,7 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.38045265499564757,
-   "fabDE": 0.8236397685073393,
+   "fabDE": 0.8229991565536038,
    "text": 14.137680085425941,
    "muted": 4.942450799668342,
    "other": 5.462986659721059,
@@ -105,19 +105,19 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.5817037037037037,
-   "fabDE": 3.7612358074926417,
+   "fabDE": 3.7581789322421018,
    "text": 13.559870268446174,
    "muted": 4.7475041686395985,
    "other": 4.829404522659002,
    "icon": 3.2957336053312796,
-   "edge": 0.32386883632084246,
-   "edgeMin": 0.07243460764587525,
+   "edge": 0.38291795285667174,
+   "edgeMin": 0.07142857142857142,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "tools"
+    "edge": "tools \u201cFollow paths\u201d"
    }
   },
   {
@@ -129,12 +129,12 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.5817037037037037,
-   "fabDE": 0.8834212779517998,
+   "fabDE": 0.8832891442444872,
    "text": 13.559870268446174,
    "muted": 4.7475041686395985,
    "other": 4.829404522659002,
    "icon": 3.2957336053312796,
-   "edge": 0.8287190152841895,
+   "edge": 0.8523565404697023,
    "edgeMin": 0.618421052631579,
    "lowest": {
     "text": "1 to read before you go",
@@ -153,7 +153,7 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.6158765432098765,
-   "fabDE": 0.48073631489557067,
+   "fabDE": 0.48348375049927367,
    "text": 13.559870268446174,
    "muted": 4.7475041686395985,
    "other": 4.829404522659002,
@@ -177,19 +177,19 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.5817037037037037,
-   "fabDE": 0.6298746030922602,
+   "fabDE": 0.6335286951032121,
    "text": 13.559870268446174,
    "muted": 4.7475041686395985,
    "other": 4.829404522659002,
    "icon": 3.2957336053312796,
-   "edge": 0.9617885540661217,
-   "edgeMin": 0.875,
+   "edge": 0.9756774429550106,
+   "edgeMin": 0.8792569659442725,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "card \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -213,7 +213,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "right",
-    "edge": "sheet"
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -249,12 +249,12 @@
    "theme": "dark",
    "depth": "one",
    "clear": 0.38045265499564757,
-   "fabDE": 0.5015090804812184,
+   "fabDE": 0.5014451304814813,
    "text": 12.560484201835182,
    "muted": 6.265022245776077,
    "other": 6.014903922913742,
    "icon": 6.314282264557322,
-   "edge": 0.06442623468485538,
+   "edge": 0.06420519136036378,
    "edgeMin": 0,
    "lowest": {
     "text": "Stop",
@@ -302,14 +302,14 @@
    "muted": 4.68378848697717,
    "other": 5.454506734862129,
    "icon": 3.2957336053312796,
-   "edge": 0.7846917591649294,
+   "edge": 0.8223901718633422,
    "edgeMin": 0.4166666666666667,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "fab \u201c3D\u201d"
    }
   },
   {
@@ -326,14 +326,14 @@
    "muted": 4.913412658889269,
    "other": 5.999846701260778,
    "icon": 3.2957336053312796,
-   "edge": 0.38183329587214476,
+   "edge": 0.4274682165070654,
    "edgeMin": 0.03822937625754527,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Balanced",
     "icon": "\u25b6",
-    "edge": "tools"
+    "edge": "tools \u201cFollow paths\u201d"
    }
   },
   {
@@ -345,19 +345,19 @@
    "theme": "dark",
    "depth": "one",
    "clear": 0.6158765432098765,
-   "fabDE": 0.6346655915527589,
+   "fabDE": 0.6380827508057633,
    "text": 10.41559446121991,
    "muted": 4.945615106142251,
-   "other": 5.981004971398336,
+   "other": 5.981276191544489,
    "icon": 3.2957336053312796,
-   "edge": 0.28827214400849793,
+   "edge": 0.3100020845528715,
    "edgeMin": 0.03722334004024145,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Normal",
     "icon": "\u25b6",
-    "edge": "tools"
+    "edge": "tools \u201cFollow paths\u201d"
    }
   },
   {
@@ -374,7 +374,7 @@
    "muted": 5.261789107458537,
    "other": 6.1407895813325295,
    "icon": 3.2957336053312796,
-   "edge": 0.06733712107379805,
+   "edge": 0.15265458139125837,
    "edgeMin": 0,
    "lowest": {
     "text": "1 to read before you go",
@@ -453,7 +453,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "undo",
-    "edge": "sheet"
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -494,14 +494,14 @@
    "muted": 6.900884318922088,
    "other": 6.1208081049978755,
    "icon": 4.62290162162545,
-   "edge": 0.3417915844268923,
-   "edgeMin": 0.011111111111111112,
+   "edge": 0.4924661876014955,
+   "edgeMin": 0.09959758551307847,
    "lowest": {
     "text": "Night",
     "muted": "Leave now \u00b7 0 m",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "pill"
+    "edge": "tools \u201cFollow paths\u201d"
    }
   },
   {
@@ -518,14 +518,14 @@
    "muted": 5.497084860451835,
    "other": 4.775333351403778,
    "icon": 4.62290162162545,
-   "edge": 0.9599868118808997,
-   "edgeMin": 0.7857142857142857,
+   "edge": 0.9814153833094711,
+   "edgeMin": 0.9226006191950464,
    "lowest": {
     "text": "\u219142 \u219362 m",
     "muted": "from now",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "card \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -537,12 +537,12 @@
    "theme": "light",
    "depth": "one",
    "clear": 0.6158765432098765,
-   "fabDE": 1.3909556340743339,
+   "fabDE": 1.3831854586969634,
    "text": 9.920362321836654,
    "muted": 5.531759662111489,
    "other": 4.715870623593445,
    "icon": 4.62290162162545,
-   "edge": 0.9361577359782126,
+   "edge": 0.9359170265636816,
    "edgeMin": 0.75,
    "lowest": {
     "text": "Over water",
@@ -566,14 +566,14 @@
    "muted": 5.415115369723755,
    "other": 4.665139751407297,
    "icon": 4.62290162162545,
-   "edge": 0.973212511819041,
-   "edgeMin": 0.875,
+   "edge": 0.9857125118190411,
+   "edgeMin": 0.9380804953560371,
    "lowest": {
     "text": "Stop",
     "muted": "20 / 16 / 11 km/h \u00b7 600 m/h ",
     "other": "Balanced",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "card \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -614,14 +614,14 @@
    "muted": 8.569656068188849,
    "other": 9.032766297695957,
    "icon": 5.745329151912595,
-   "edge": 0.9761904761904762,
-   "edgeMin": 0.8571428571428571,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "To the next change of sport,",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "fab"
+    "edge": "tools"
    }
   },
   {
@@ -638,14 +638,14 @@
    "muted": 8.50739200270837,
    "other": 9.912557690085352,
    "icon": 5.745329151912595,
-   "edge": 0.8869047619047619,
-   "edgeMin": 0.5714285714285714,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "Its sport, how it\u2019s drawn an",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "fab"
+    "edge": "tools"
    }
   },
   {
@@ -662,14 +662,14 @@
    "muted": 11.510542525410859,
    "other": 11.429018863404481,
    "icon": 5.745329151912595,
-   "edge": 0.9869584438549955,
-   "edgeMin": 0.9217506631299734,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "Give it a name of your own",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "tools"
    }
   },
   {
@@ -686,14 +686,14 @@
    "muted": 5.854971132008122,
    "other": 5.700814176542736,
    "icon": 4.62290162162545,
-   "edge": 0.9657696177062375,
-   "edgeMin": 0.6607142857142857,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Stop",
     "muted": "Search places or paste coord",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -710,14 +710,14 @@
    "muted": 8.646881226772702,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.951475768458948,
-   "edgeMin": 0.5892857142857143,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "Leave now \u00b7 0 m",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -729,19 +729,19 @@
    "theme": "dark",
    "depth": "one",
    "clear": 0.6158765432098765,
-   "fabDE": 1.7210767382529915,
+   "fabDE": 1.6933562773974598,
    "text": 8.61993117451201,
    "muted": 9.168430458235777,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.8958675340657637,
-   "edgeMin": 0.5555555555555556,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -758,14 +758,14 @@
    "muted": 9.168430458235777,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.904617922408609,
-   "edgeMin": 0.23214285714285715,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -789,7 +789,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -813,7 +813,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -837,7 +837,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -861,7 +861,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -885,7 +885,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -909,7 +909,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -933,7 +933,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -957,7 +957,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -981,7 +981,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -1005,7 +1005,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -1029,7 +1029,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -1053,7 +1053,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201c3D\n    Weath\u201d"
    }
   },
   {
@@ -1077,7 +1077,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201c3D\n    Weath\u201d"
    }
   },
   {
@@ -1101,7 +1101,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -1125,7 +1125,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -1149,7 +1149,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "card"
+    "edge": "card \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -1221,7 +1221,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "panel"
+    "edge": "panel \u201c3.03 kmdista\u201d"
    }
   },
   {
@@ -1245,7 +1245,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "panel"
+    "edge": "panel \u201c3.03 kmdista\u201d"
    }
   },
   {
@@ -1310,14 +1310,14 @@
    "muted": 8.216847677326909,
    "other": 6.223516980838981,
    "icon": 3.2957336053312796,
-   "edge": 0.9623015873015874,
-   "edgeMin": 0.6607142857142857,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "panel \u201c3.03 kmdista\u201d"
    }
   },
   {
@@ -1334,14 +1334,14 @@
    "muted": 8.216847677326909,
    "other": 6.223516980838981,
    "icon": 3.2957336053312796,
-   "edge": 0.9900793650793651,
-   "edgeMin": 0.9107142857142857,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "panel \u201c3.03 kmdista\u201d"
    }
   },
   {
@@ -1413,7 +1413,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "pill"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -1437,7 +1437,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "pill"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -1502,14 +1502,14 @@
    "muted": 9.168430458235777,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.9660714285714287,
-   "edgeMin": 0.6607142857142857,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -1526,14 +1526,14 @@
    "muted": 9.168430458235777,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.9910714285714286,
-   "edgeMin": 0.9107142857142857,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -1557,7 +1557,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -1581,7 +1581,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -1605,7 +1605,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -1629,7 +1629,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -1653,7 +1653,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -1677,7 +1677,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -1701,7 +1701,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -1725,7 +1725,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -1773,7 +1773,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "right",
-    "edge": "sheet"
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -1790,14 +1790,14 @@
    "muted": 4.7475041686395985,
    "other": 4.829404522659002,
    "icon": 3.2957336053312796,
-   "edge": 0.33298670544956344,
+   "edge": 0.390526387989246,
    "edgeMin": 0.07243460764587525,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "tools"
+    "edge": "tools \u201cFollow paths\u201d"
    }
   },
   {
@@ -1845,7 +1845,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -1886,14 +1886,14 @@
    "muted": 5.358111791190544,
    "other": 6.223516980838981,
    "icon": 3.2957336053312796,
-   "edge": 0.794714668672375,
+   "edge": 0.8324130813707877,
    "edgeMin": 0.4166666666666667,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "fab \u201c3D\u201d"
    }
   },
   {
@@ -1910,14 +1910,14 @@
    "muted": 5.358111791190544,
    "other": 6.223516980838981,
    "icon": 3.2957336053312796,
-   "edge": 0.3192158884402148,
+   "edge": 0.34104128526561167,
    "edgeMin": 0.03722334004024145,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Remove",
     "icon": "\u25b6",
-    "edge": "tools"
+    "edge": "tools \u201cFollow paths\u201d"
    }
   },
   {
@@ -1965,7 +1965,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "sheet \u201c1Via 1\n  01:\u201d"
    }
   },
   {
@@ -1982,14 +1982,14 @@
    "muted": 8.289034060912542,
    "other": 6.1208081049978755,
    "icon": 4.62290162162545,
-   "edge": 0.34860964534632244,
-   "edgeMin": 0.011111111111111112,
+   "edge": 0.49928424852092573,
+   "edgeMin": 0.09959758551307847,
    "lowest": {
     "text": "1 to read before you go",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "pill"
+    "edge": "tools \u201cFollow paths\u201d"
    }
   },
   {
@@ -2006,7 +2006,7 @@
    "muted": 8.289034060912542,
    "other": 6.1208081049978755,
    "icon": 4.62290162162545,
-   "edge": 0.9443851217055185,
+   "edge": 0.9444710323584393,
    "edgeMin": 0.7777777777777778,
    "lowest": {
     "text": "1 to read before you go",
@@ -2030,14 +2030,14 @@
    "muted": 10.694702475616246,
    "other": 10.452779041056136,
    "icon": 5.745329151912595,
-   "edge": 0.9991158267020336,
-   "edgeMin": 0.9946949602122016,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "tools"
    }
   },
   {
@@ -2054,14 +2054,14 @@
    "muted": 10.694702475616246,
    "other": 10.452779041056136,
    "icon": 5.745329151912595,
-   "edge": 0.995579133510168,
-   "edgeMin": 0.9734748010610079,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "sheet"
+    "edge": "tools"
    }
   },
   {
@@ -2078,14 +2078,14 @@
    "muted": 9.168430458235777,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.9622697116848672,
-   "edgeMin": 0.6607142857142857,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -2102,14 +2102,14 @@
    "muted": 9.168430458235777,
    "other": 6.314282264557322,
    "icon": 4.62290162162545,
-   "edge": 0.951363080086668,
-   "edgeMin": 0.8035714285714286,
+   "edge": 1,
+   "edgeMin": 1,
    "lowest": {
     "text": "Pass by",
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "fab"
+    "edge": "pill \u201cPolku\u201d"
    }
   },
   {
@@ -2133,7 +2133,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -2157,7 +2157,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -2181,7 +2181,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -2205,7 +2205,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "Plan",
     "icon": "\u25b6",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   },
   {
@@ -2229,7 +2229,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -2253,7 +2253,7 @@
     "muted": "Search places or pas",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cZoom in to s\u201d"
    }
   },
   {
@@ -2277,7 +2277,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201c3D\n    Weath\u201d"
    }
   },
   {
@@ -2301,7 +2301,7 @@
     "muted": "In the dark for 3.03 km",
     "other": "MTB",
     "icon": "arrow",
-    "edge": "d-bay"
+    "edge": "d-bay \u201cFollow paths\u201d"
    }
   }
  ],
@@ -2643,7 +2643,7 @@
      "muted": "Search places or pas",
      "other": "MTB",
      "icon": "undo",
-     "edge": "sheet"
+     "edge": "sheet \u201c1Via 1\n  01:\u201d"
     }
    },
    "real": [
@@ -3099,19 +3099,19 @@
     "theme": "dark",
     "depth": "one",
     "clear": 0.38045265499564757,
-    "fabDE": 3.540466888620882,
+    "fabDE": 3.530686321272854,
     "text": 8.61993117451201,
     "muted": 8.569656068188849,
     "other": 9.032766297695957,
     "icon": 5.745329151912595,
-    "edge": 0.9732142857142857,
-    "edgeMin": 0.8392857142857143,
+    "edge": 1,
+    "edgeMin": 1,
     "lowest": {
      "text": "Pass by",
      "muted": "To the next change of sport,",
      "other": "MTB",
      "icon": "arrow",
-     "edge": "fab"
+     "edge": "tools"
     }
    },
    "real": [
@@ -3267,7 +3267,7 @@
      "muted": "Search places or pas",
      "other": "MTB",
      "icon": "arrow",
-     "edge": "d-bay"
+     "edge": "d-bay \u201cZoom in to s\u201d"
     }
    },
    "real": [
