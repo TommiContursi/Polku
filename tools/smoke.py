@@ -8175,6 +8175,24 @@ def fold_phone(chrome):
             s = info()
             if s['card'] or s['st'] != 'folded' or not s['active'] or 'km' not in s['lineText']:
                 fails.append(f"✕ on the card's line: card {s['card']}, {s['st']}, open {s['active']}, the line “{s['lineText']}”")
+        # folded from half, a card's line opens the card at its own size, not the planner's half (which closed it)
+        pg.js("polku.planner.setSheetState('half'); polku.planner.fold(); true")
+        fold_settled(pg, fails, 'step 22')
+        pg.tap(*fold_at(pg, "polku.planner.markers[1].getElement().querySelector('.wp')"))
+        time.sleep(0.6)
+        fold_settled(pg, fails, 'step 23')
+        pg.tap(*(fold_at(pg, 'polku.planner.els.foldGo') or (0, 0)))
+        fold_settled(pg, fails, 'step 24')
+        s = info()
+        if s['card'] != 'point' or s['st'] != 'peek':
+            fails.append(f"the card's line, the planner folded from half: card {s['card']}, {s['st']} (the card at its own size)")
+        # the start's views keep their peek: no ⌄ on a card over them, where it would do nothing
+        pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+        time.sleep(0.6)
+        fold_settled(pg, fails, 'step 25')
+        s = info()
+        if s['card'] != 'spot' or s['fold']:
+            fails.append(f"a card over the start's view: card {s['card']}, ⌄ {bool(s['fold'])} (none: the start's views keep their peek)")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()

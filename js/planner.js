@@ -4892,7 +4892,7 @@ export class Planner {
   // Fold, then away (step 3 of #233): what folds to a line is the planner with a route (the start's views keep their
   // peek) and a card in the peek. ⌄ or a swipe down folds it; the line opens it as it was; ✕ at the line, or a second
   // swipe, puts the planner away (with its note) or closes the card (the planner as it was under it).
-  foldable() { return this.cards.place === 'peek' || (this.points.length > 1 && !this.loop.open); }
+  foldable() { return !this.peekOnly() && (this.cards.place === 'peek' || this.points.length > 1); }
   // the keyboard's focus goes with it: from ⌄ or the handle to the line, and back to where it came from
   fold() {
     this.foldFocus = [this.els.foldBtn, this.els.min, this.els.handle].find((b) => b === document.activeElement) || null;
@@ -4901,7 +4901,8 @@ export class Planner {
   }
   unfold() {
     const had = this.els.fold.contains(document.activeElement), to = this.unfoldTo;
-    this.setSheetState(to && to !== 'folded' ? to : this.layout() === 'side' ? 'open' : 'peek');
+    // (a card opened on the planner's line has no half or profile size: those would close it)
+    this.setSheetState(to && to !== 'folded' && !(this.cards.place === 'peek' && ['half', 'profile'].includes(to)) ? to : this.layout() === 'side' ? 'open' : 'peek');
     if (had) [this.foldFocus, this.els.foldBtn, this.els.min].find((b) => b && b.offsetParent)?.focus({ preventScroll: true });
     // a card opened again: its spot in sight above it, as when it opened
     const e = this.cards.place === 'peek' && this.cards.stack[this.cards.stack.length - 1], at = e && (e.card.at ? e.card.at() : e.at);
