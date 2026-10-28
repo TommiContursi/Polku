@@ -522,6 +522,7 @@ function syncPlannerPadding() {
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 $('#planner').addEventListener('transitionend', (e) => { if (e.target === e.currentTarget && e.propertyName === 'height') syncPlannerPadding(); });
+$('#planner').addEventListener('sheetstate', syncPlannerPadding);
 
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
 // the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D

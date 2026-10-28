@@ -725,7 +725,12 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
   .sheet.foldable:not([data-state="folded"]) .sheet-fold, .sheet.foldable[data-state="folded"] .sheet-away { display: inline-flex; }
   .fold-x { display: none; }
 }
-@media (min-width: 721px) { .sheet[data-state="folded"] .sheet-top, .sheet[data-state="folded"] .sheet-min { display: none; } }
+@media (min-width: 721px) {
+  .sheet[data-state="folded"] .sheet-top, .sheet[data-state="folded"] .sheet-min { display: none; }
+  /* (a card in the peek of a window 721–899 px wide hides the header row and its ⌄: the card's is in the top row) */
+  .sheet.carded:not([data-state="folded"]) .sheet-top { height: 40px; }
+  .sheet.carded:not([data-state="folded"]) .sheet-fold { display: inline-flex; }
+}
 /* the folded line: the planner's numbers (or a card's mark and name) over where they were, one button that opens it as it
    was; the two cross-fade while the sheet moves between them (js/planner.js, moved()) */
 .sheet[data-layout="sheet"][data-state="folded"] { height: var(--fold-h, 100px); }
@@ -1588,7 +1593,7 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .sheet.scroll-all > .sheet-top { position: sticky; top: 0; z-index: 3; background: var(--surface-solid); border-radius: 18px 18px 0 0; }
 /* a phone's peek: the card is the peek, 52 % of the window at most (it scrolls inside), the point in sight above it */
 .card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
-@media (max-width: 720px) { .sheet.foldable .card-peek .card { max-height: calc(52dvh - 22px); } } /* (⌄'s row above it takes 22 px more than the handle did: the map keeps its room, step 3 of #233) */
+.sheet.carded .card-peek .card { max-height: calc(52dvh - 22px); } /* (⌄'s row above it takes 22 px more than the handle did: the map keeps its room, step 3 of #233) */
 .sheet.carded .sheet-head-in > :not(.card-peek) { display: none; }
 /* the card has the whole sheet (step 3 of #233): the planner's profile, tabs and list wait behind it; swiped up, it takes
    the sheet's full height and scrolls inside it */

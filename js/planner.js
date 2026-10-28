@@ -4845,7 +4845,7 @@ export class Planner {
     if (lay === 'sheet' && this.peekOnly()) { st = 'peek'; remember = false; }
     // a card in the peek has three sizes, folded, its own and full; the planner's others close it
     if (!['folded', 'peek', 'full'].includes(st) && this.cards.place === 'peek') this.cards.close({ restore: false });
-    const was = this.panel.dataset.state;
+    const p = this.panel, was = p.dataset.state;
     // folded is never remembered: the planner opens as it was before, and the line opens to the size it left
     if (st === 'folded') { remember = false; if (was && was !== 'folded') this.unfoldTo = was; }
     this.panel.dataset.layout = lay;
@@ -4863,6 +4863,7 @@ export class Planner {
     if ((st === 'folded') !== (was === 'folded')) this.renderTools(); // (folded, the toolbox is the mode, undo and redo)
     this.scrollAll();
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
+    p.dispatchEvent(new Event('sheetstate')); // (main.js: --sheet-h, the size it's going to, at once)
   }
 
   // While drawing or dragging on the map, the phone sheet gets out of the way: to its peek, or its line where the peek
