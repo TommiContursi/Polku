@@ -1305,6 +1305,13 @@ export class Planner {
   // what the routers get for a leg (styles.js)
   styleOpts(t) { return { params: t.rp.params, valhalla: t.rp.valhalla, water: { ...t.rp.water, craft: this.craftOf(t.i), at: t.at, nogos: t.nogos } }; }
 
+  // a leg is being routed: the bar on the sheet's top edge, and Routing… on the folded line (#580)
+  setBusy(on) {
+    if (this.panel.classList.contains('busy') === on) return;
+    this.panel.classList.toggle('busy', on);
+    this.renderFold();
+  }
+
   async routeAll() {
     const gen = ++this.gen;
     const todo = []; // legs to route: { leg, key, from, to, nogos, profile }
@@ -1332,10 +1339,10 @@ export class Planner {
       jobs.push(run.length > 1 ? () => this.routeRunOf(run) : () => this.routeOne(run[0]));
     }
     this.drawRoute();
-    this.panel.classList.toggle('busy', jobs.length > 0);
+    this.setBusy(jobs.length > 0);
     await pool(jobs, 3);
     if (gen !== this.gen) return;
-    this.panel.classList.remove('busy');
+    this.setBusy(false);
     if (this.refit && this.legs.every((l) => l.result && l.status !== 'waiting')) { this.refit = false; this.fitRoute(); }
     if (this.snapPoints()) { this.renderMarkers(); this.drawRoute(); }
     if (jobs.length) this.save(); // now with the routed geometry
@@ -4325,7 +4332,8 @@ export class Planner {
     this.els.grip = h('div', { class: 'sheet-resize', role: 'separator', tabindex: '0', 'aria-orientation': 'vertical', 'aria-controls': 'planner',
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
     this.els.top = h('div', { class: 'sheet-top' }, h('span'), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.foldBtn));
-    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.tabs, this.els.body, this.els.grip);
+    this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
+    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.tabs, this.els.body, this.els.grip, this.els.bar);
     this.setTab(this.tab);
     this.els.leave.put();
     this.renderOnMap();
@@ -4971,11 +4979,11 @@ export class Planner {
       return;
     }
     const R1 = this.unread(this.heads, 'read'), R3 = this.unread(this.heads, 'not'), n = R1.length || R3.length;
-    const nums = [...this.els.sum.querySelectorAll('.sum-item > b')].map((b) => b.textContent.trim());
+    const busy = this.panel.classList.contains('busy'), nums = [...this.els.sum.querySelectorAll('.sum-item > b')].map((b) => b.textContent.trim());
     go.replaceChildren(
       n ? h('span', { class: `fold-warn ${R1.length ? 'danger' : 'unk'}`, 'aria-hidden': 'true', html: icon(R1.length ? 'warnf' : 'unk', 16) }, String(n)) : '',
-      h('b', { 'aria-hidden': 'true' }, ...line(nums)));
-    go.setAttribute('aria-label', `${n ? `${n} ${R1.length ? 'to read before you go' : 'not checked'}, ` : ''}${nums.join(', ')}: open the planner as it was`);
+      h('b', { 'aria-hidden': 'true' }, ...line(busy ? ['Routing…', ...nums] : nums)));
+    go.setAttribute('aria-label', `${n ? `${n} ${R1.length ? 'to read before you go' : 'not checked'}, ` : ''}${busy ? 'routing, ' : ''}${nums.join(', ')}: open the planner as it was`);
   }
 
   // A swipe has come to rest at a size (or was stopped, name null): the size changes while transitions
@@ -5966,7 +5974,7 @@ export class Planner {
 
   flash(el) {
     if (!el) return;
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    el.scrollIntoView({ block: 'nearest', behavior: this.keyed || matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     el.classList.remove('sec-flash');
     void el.offsetWidth; // restart the animation
     el.classList.add('sec-flash');

@@ -2650,6 +2650,40 @@ ONROUTE_OPEN = """(async (sel, text) => {
   await """ + SETTLED + """;
   return [errs, await (""" + ROW_STILL + """)(el)];
 })"""
+# The section a warning's card opens for you (its "Sunrise and sunset" row: Go's weather along the route) is scrolled to
+# at once with reduced motion or when a key press opened it, and smoothly otherwise (#540). Read from where the list
+# stands right after the scroll is asked for: a smooth one hasn't moved yet, and a page too busy to draw frames can't
+# hide it. Armed first (and the row clicked, unless a key press is to do it), then read.
+CARD_SCROLL_ARM = """(async (click) => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  p.cards.close();
+  p.analysis.darkWarn = [...window.mine];
+  p.renderWarnings();
+  p.setTab('check'); p.setSheetState('half');
+  await wait(500);
+  p.openItemCard(p.itemsAlong().find((x) => /In the dark/.test(x.w.text)), { from: 'check' });
+  for (let k = 0; k < 50 && !(p.cards.current && p.cards.box); k++) await wait(100);
+  const row = p.cards.box && [...p.cards.box.querySelectorAll('.row')].find((r) => /Sunrise and sunset/.test(r.textContent));
+  if (!row) return 'no Sunrise and sunset on the card';
+  const real = Element.prototype.scrollIntoView, body = p.els.body, at = [];
+  Element.prototype.scrollIntoView = function (o) { const r = real.call(this, o); at.push(body.scrollTop); return r; };
+  window.cardScroll = { real, body, at };
+  if (click) row.click(); else row.focus();
+  return '';
+})"""
+CARD_SCROLL_READ = """(async (atOnce) => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), { real, body, at } = window.cardScroll;
+  // (until it has been asked for and the list has stopped: a smooth scroll on a page too busy for frames takes seconds)
+  let end = -1;
+  for (let k = 0; k < 100 && !(at.length && body.scrollTop && body.scrollTop === end); k++) { end = body.scrollTop; await wait(150); }
+  Element.prototype.scrollIntoView = real;
+  end = body.scrollTop;
+  const first = at[0];
+  if (!at.length || !end) return [`the card's Sunrise and sunset scrolled nothing (${at.length} scrolls at ${at.join(', ')} px, Go at ${end} px of ${body.scrollHeight - body.clientHeight}, ${p.tab} at ${p.panel.dataset.state})`];
+  if (atOnce && first !== end) return [`the list is at ${first} px right after the scroll to Go's weather, not at ${end} px: it scrolls smoothly`];
+  if (!atOnce && first === end) return [`the scroll to Go's weather is at once, not smooth`];
+  return [];
+})"""
 ONROUTE_CARD = """(async (title, of, opts = {}) => {
   const errs = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
   // (the card, and its stretch lit in the next frame: late on a slow machine, so waited for)
@@ -2814,6 +2848,19 @@ def onroute(chrome):
           p.hideWarnKind({ key: 'roadwork' }, false);
           return errs;
         })()""", timeout=60000)
+        # (headless Chrome asks for reduced motion; a person usually doesn't)
+        for media, how in (('reduce', 'click'), ('no-preference', 'click'), ('no-preference', 'key')):
+            pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+            err = pg.js(f"({CARD_SCROLL_ARM})({'true' if how == 'click' else 'false'})", timeout=30000)
+            if err:
+                fails.append(f'{media}, {how}: {err}')
+                continue
+            if how == 'key':  # Enter on the row, which has the focus
+                for event in ('rawKeyDown', 'char', 'keyUp'):
+                    chrome.send('Input.dispatchKeyEvent', {'type': event, 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13, **({'text': '\r'} if event == 'char' else {})}, pg.s)
+            at_once = 'true' if media == 'reduce' or how == 'key' else 'false'
+            fails += [f'{media}, {how}: {e}' for e in pg.js(f"({CARD_SCROLL_READ})({at_once})", timeout=60000)]
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -4719,11 +4766,74 @@ ROUTE_BITS = """(async () => {
 })()"""
 
 
+# While a leg is routed, the bar on the planner's top edge says so (#540): it waits 300 ms, so a quick answer shows
+# nothing, then fades in over 180 ms; it slides on transform, and with reduced motion stays where it is, full width, and
+# pulses instead. The leg's router is held until the bar has been read.
+ROUTING_BAR = """(async (reduced) => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), tag = reduced ? 'reduced motion: ' : '';
+  p.setActive(true); p.clear(); p.setMode('auto');
+  let release;
+  p.routeOne = (t) => new Promise((r) => { release = () => { p.legDone(t, { coords: [t.from, t.to], tags: [{}], portage: [] }); p.drawRoute(); r(); }; });
+  p.addPoint([23.750, 61.500]); p.addPoint([23.770, 61.505]);
+  for (let k = 0; k < 30 && !p.panel.classList.contains('busy'); k++) await wait(100);
+  const errs = [], bar = p.panel.querySelector('.route-bar'), i = bar && bar.firstElementChild;
+  if (!p.panel.classList.contains('busy')) errs.push(`${tag}no routing while a leg is routed`);
+  else if (!i) errs.push(`${tag}no routing bar (.route-bar) on the planner`);
+  else {
+    const move = i.getAnimations()[0], name = move && move.animationName, want = reduced ? 'pulse' : 'busy';
+    const fade = bar.getAnimations().find((a) => a.animationName === 'bar-in'), t = fade && fade.effect.getTiming();
+    if (name !== want) errs.push(`${tag}the routing bar runs ${name}, not ${want}`);
+    else if (!reduced && !('transform' in move.effect.getKeyframes()[0])) errs.push(`the routing bar slides on ${Object.keys(move.effect.getKeyframes()[0]).filter((k) => !['offset', 'easing', 'composite', 'computedOffset'].includes(k)).join(', ')}, not transform`);
+    else if (reduced && getComputedStyle(i).backgroundImage !== 'none') errs.push(`${tag}the routing bar is ${getComputedStyle(i).backgroundImage.slice(0, 30)}, not a full bar`);
+    if (!t || t.delay !== 300 || t.duration !== 180) errs.push(`${tag}the routing bar ${t ? `shows after ${t.delay} ms and fades in over ${t.duration} ms` : 'has no fade-in'}, not after 300 ms over 180 ms`);
+  }
+  release();
+  for (let k = 0; k < 50 && p.panel.classList.contains('busy'); k++) await wait(100);
+  if (p.panel.classList.contains('busy')) errs.push(`${tag}still routing after the leg was routed`);
+  p.clear();
+  return errs;
+})"""
+
+# On a phone, with the planner folded to its line while a leg is routed (#580): the line says so, in words; the bar
+# stays on the sheet's top edge, where the line is; and nothing runs under the hidden header.
+ROUTING_FOLDED = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  p.setActive(true); p.clear(); p.setMode('auto');
+  let release;
+  p.routeOne = (t) => new Promise((r) => { release = () => { p.legDone(t, { coords: [t.from, t.to], tags: [{}], portage: [] }); p.drawRoute(); r(); }; });
+  p.addPoint([23.750, 61.500]); p.addPoint([23.770, 61.505]);
+  for (let k = 0; k < 30 && !p.panel.classList.contains('busy'); k++) await wait(100);
+  p.setSheetState('folded');
+  for (let k = 0; k < 50 && getComputedStyle(p.els.head).visibility !== 'hidden'; k++) await wait(100);
+  const said = () => p.els.foldGo.textContent.replace(/\\s+/g, ' ').trim(), bar = p.panel.querySelector('.route-bar');
+  if (p.panel.dataset.state !== 'folded') errs.push(`the planner is ${p.panel.dataset.state}, not folded`);
+  if (!/Routing/.test(said()) || !/routing/.test(p.els.foldGo.getAttribute('aria-label'))) errs.push(`the folded line says “${said()}” (${p.els.foldGo.getAttribute('aria-label')}) while a leg is routed, not Routing…`);
+  if (!bar || getComputedStyle(bar).visibility !== 'visible' || getComputedStyle(bar).display === 'none') errs.push('no routing bar with the planner folded');
+  const under = document.getAnimations().filter((a) => a.effect && a.effect.target && p.els.head.contains(a.effect.target));
+  if (under.length) errs.push(`${under.length} animation runs under the folded planner's hidden header (${under.map((a) => a.animationName || a.transitionProperty).join(', ')})`);
+  release();
+  for (let k = 0; k < 50 && p.panel.classList.contains('busy'); k++) await wait(100);
+  if (/Routing/.test(said())) errs.push(`the folded line still says “${said()}” after the leg was routed`);
+  p.clear();
+  return errs;
+})()"""
+
+
 def route_bits(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.505/23.73')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(ROUTE_BITS, timeout=60000)
+    # (headless Chrome asks for reduced motion; a person usually doesn't)
+    for media in ('reduce', 'no-preference'):
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+        fails += pg.js(f"({ROUTING_BAR})({'true' if media == 'reduce' else 'false'})", timeout=30000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'}, {}, '#13/61.505/23.73')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails += [f'390x844: {e}' for e in pg.js(ROUTING_FOLDED, timeout=60000)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} what the route shows" + ''.join(f'\n     - {f}' for f in fails), flush=True)
@@ -13916,7 +14026,7 @@ GROUPS = [
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
     ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
-    ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun (no routing)'),
+    ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun, the routing bar and the folded line while a leg is held (no routing)'),
     ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
     ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
