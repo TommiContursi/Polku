@@ -8118,14 +8118,16 @@ def fold_phone(chrome):
         if s['toolsIn'] != 'top' or not s['toolBtns'] or len(s['toolBtns']) != 1 or (s['toolBtns'][0]['t'] + s['toolBtns'][0]['b']) / 2 > row or s['toolBtns'][0]['l'] > s['panel']['l'] + 16 or x < row:
             fails.append(f"the route's view at full: the toolbox {s['toolBtns']} in {s['toolsIn']}, ⌄'s row to {row:.0f}, the title's ✕ at {x:.0f} (⋯ at the left of ⌄'s row)")
         pg.js("polku.planner.setEditing(true); true")
-        # the map's buttons don't chase the sheet (#540): with motion, a fold moves them once
+        # the map's buttons don't chase the sheet (#540): with motion, a fold changes their place once, and they go with the
+        # sheet there in one move (#569), so their place in the layout (their bottom, the move left out) changes once
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
         pg.js("polku.planner.setSheetState('profile'); true")
         fold_settled(pg, fails, 'step 12')
-        seen = pg.js("""new Promise((done) => { const col = document.getElementById('map-ctrls'), out = new Set(), t0 = performance.now();
-          polku.planner.fold(); const f = () => { out.add(Math.round(col.getBoundingClientRect().bottom)); if (performance.now() - t0 < 500) requestAnimationFrame(f); else done([...out]); }; f(); })""")
-        if len(seen) > 2:
-            fails.append(f'a fold with motion: the map\'s buttons moved through {len(seen)} places ({seen[:6]}…), not once')
+        seen, moves = pg.js("""new Promise((done) => { const col = document.getElementById('map-ctrls'), out = new Set(), t0 = performance.now();
+          polku.planner.fold(); const moves = col.getAnimations().filter((a) => a.id === 'ride').length;
+          const f = () => { out.add(getComputedStyle(col).bottom); if (performance.now() - t0 < 500) requestAnimationFrame(f); else done([[...out], moves]); }; f(); })""")
+        if len(seen) > 1 or moves != 1:
+            fails.append(f'a fold with motion: the map\'s buttons took {len(seen)} places ({seen[:6]}) in {moves} moves, not one place in one move')
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fold_settled(pg, fails, 'step 13')
         # a card: opened from the map, its own size; up, full; ⌄ its line, with its name; down from there, closed and the planner as it was
