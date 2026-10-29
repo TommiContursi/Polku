@@ -594,7 +594,7 @@ Asked for on 2026-10-29, after trying #558 on a phone. Since the user's note of 
 **What the phone showed:** ⌄ folds and the line opens the size it left, but neither reaches the sizes in between. A swipe doesn't show where the sheet can stop: you have to know it.
 
 **The mock-up:** [mockups/issue-233-sheet-stops.html](mockups/issue-233-sheet-stops.html).
-- Both frames run `main`'s own app, with a route of four points by straight lines, so nothing is routed. **Today** is left as it is.
+- Both frames run `main`'s own app, with a route of four points by straight lines, so nothing is routed. **Today** runs `main`'s code unchanged. To list its stops, the readout sets its sizes for a moment, with nothing drawn.
 - In the option's frame the planner's own swipe is set aside, and one built on `main`'s `js/sheet.js` takes its place. It has the same spring (damping 0.85, response 0.3 s), projection, rubber band (0.55) and flick threshold (1.1 px/ms), with the option's stops and flicks.
 - A stop that goes is never set. What asks for it (a tab, Check, the handle's tap, a remembered size) gets the next stop that stays, in its direction.
 - ⌃ and ⌄ are buttons added to the sheet's top row. Cards are as they are today.
@@ -625,7 +625,7 @@ Asked for on 2026-10-29, after trying #558 on a phone. Since the user's note of 
 From the line, a second swipe or ✕ puts the planner away. The start's views have their peek alone. At 200 % the profile size and half are below the peek, so the sheet has three stops there.
 
 **What the numbers show:**
-- **A light flick reaches only the ends.** At 0.998, a flick of 1.2 px/ms aims about 600 px on. Up, from any stop, it lands on full. Down, it lands on the line, except from full, which stops at the peek at some sizes. The profile size and half are reached only by a slow drag let go near them. At 390 × 844, editing:
+- **A light flick reaches only the ends.** At 0.998, a flick of 1.2 px/ms aims about 600 px on. Up, from any stop, it lands on full. Down, it lands on the line, except from full, which stops at the peek at some sizes. The profile size and half are reached only by a slow drag let go near them. Real touch flicks in Today's frame land where the table says (up from the peek on full, down from half and from the profile size on the line). At 390 × 844, editing:
 
   | From | ↑ Today | ↑ B + C | ↓ Today | ↓ B + C |
   |---|---|---|---|---|
@@ -636,14 +636,14 @@ From the line, a second swipe or ✕ puts the planner away. The start's views ha
   | Full | – | – | Peek | Half |
 
 - **The stops are close and uneven.** On a phone the profile size is 68–71 px above the peek. At 360 × 740, the peek, the profile size and half are within 131 px of each other.
-- **A swipe lands, then jumps** (#586). The peek and the profile size are measured with the rows of the size the sheet is at, so a swipe from the profile size aims the peek at 92 px and then jumps to 182 px. Half, full and the line land where they rest.
+- **A swipe lands, then jumps** (#586). The peek and the profile size are measured with the rows of the size the sheet is at, so a swipe from the profile size aims the peek at 92 px and then jumps to 182 px. Seen frame by frame in Today's frame: the sheet comes to rest at 92 px, then jumps to the peek. Half, full and the line land where they rest.
 - **Without a drag, nothing opens the sheet to full.** The handle's tap goes between the peek and the last size above it (at first the profile size), and tabs, Check and the sections raise the sheet to half. Only the handle's arrow keys reach full. Full's content can still be reached at half, by scrolling the list.
 - **The start's views move freely up to full** and spring back to their peek. That's the one place a drag isn't slowed past the last stop. Everywhere else, today already has Apple's rubber band past the first and last stop.
 
 **The options:**
 - **A: ⌃ and ⌄ together,** at the right of the sheet's top row, each moving one stop. From the peek, ⌄ folds as today. ⌃ is dimmed at full. A second switch makes the line open to the peek instead of the size it left. On the desktop's bottom dock, ⌃ joins ⌄ in the header row. The side panel has only its two sizes and doesn't change. **It costs:**
   - ⌄ no longer folds at once: from full it's four taps to the line, three with B.
-  - The top row holds 88 px of buttons at its right. At 390 and 360 the handle stays in the middle; at 200 % it moves left of it.
+  - The top row holds 88 px of buttons at its right. At 390 and 360 the handle stays in the middle. At 200 % it moves left of the middle, and in the route's view at full, beside ⋯, it narrows to 47 px; every button stays 44 px.
   - A card in the sheet keeps today's ⌄, which folds at once, so ⌄ does two things in one place.
   - **It gains:** every stop can be reached by a tap, full too.
 - **B: fewer stops.** Which go: the profile size, half or both. **What asks for each:**
@@ -652,7 +652,7 @@ From the line, a second swipe or ✕ puts the planner away. The start's views ha
   - Without the profile size, those ask for half from below and the peek from above. Without half, tabs, Check and the sections open the sheet to full, over the map, and framing from full lowers it to the profile size or the peek.
   - At 200 % nothing changes: there are three stops there already.
 - **C: a swipe that shows its stops,** four switches:
-  - **A flick moves one stop:** to the next stop past where it's let go, in its direction, and at least one from where it began (`js/sheet.js`'s own rule). A slow release goes to the stop nearest where it would come to rest, as today.
+  - **A flick moves one stop:** to the next stop past where it's let go, in its direction, and at least one from where it began (`js/sheet.js`'s own rule). A slow release goes to the stop nearest where it would come to rest, as today. With the profile size kept, a light flick up from the peek has already passed it (68 px) by the time it's let go, so it lands on half. Close stops and a flick of one stop don't go together, which is one more reason for B.
   - **0.99, Apple's faster deceleration,** against today's 0.998. A release just under a flick's speed comes to rest about 100 px on, not 500. So a slow release lands near where the finger lets go.
   - **The start's views resist** above their peek: the rubber band starts at the peek, not at full.
   - **Marks while dragging:** a tick at each stop at the screen's left edge, and a line where the sheet would come to rest if let go now, named (Half). They fade in over `--t-press` as a drag starts and out over `--t-open` when it's let go, and the line moves at once. This is the mock-up's reading of "shows its stops". Apple's sheets have none.
@@ -672,4 +672,4 @@ From the line, a second swipe or ✕ puts the planner away. The start's views ha
 
 **Not in it:** cards (#574), the weather card (part 2), building it in the app.
 
-**Not checked:** the feel on a real iPhone, Safari, VoiceOver on ⌃ and ⌄. The mock-up was tried in headless Chrome, at every size above and by touch, with the browser pane hidden. Headless Chrome draws about a frame every 0.6 s, so springs were judged by where they came to rest, not by eye.
+**Not checked:** the feel on a real iPhone, Safari, VoiceOver on ⌃ and ⌄. The mock-up was tried in headless Chrome (`tools/cdp.py`), at every size above, its swipes by touch and ⌃ and ⌄ by a script's click, with the browser pane hidden. A mouse drag on the desktop's bottom dock wasn't tried. Headless Chrome draws about a frame every 0.6 s, so springs were judged by where they came to rest, not by eye.

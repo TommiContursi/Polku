@@ -6,7 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <title>Sheet stops</title>
 <!-- A mock-up for #233's "the sheet's stops" (docs/plans/issue-233-calmer-planner.md, "The sheet's stops"). Both frames
-     run main's own app, with a route drawn by straight lines, so nothing is routed. Today is left as it is. In the
+     run main's own app, with a route drawn by straight lines, so nothing is routed. Today runs main's code unchanged
+     (to list its stops, the readout sets its sizes for a moment, with nothing drawn). In the
      option's frame the planner's own swipe is set aside, and a swipe built on main's js/sheet.js takes its place: the
      same spring, projection and rubber band, with the option's stops, flicks and buttons. Nothing in the app changes. -->
 <link rel="stylesheet" href="../../../css/app.css">
@@ -127,7 +128,7 @@ const stopsBox = h('div');
 function renderSide() {
   side.replaceChildren(
     h('h1', {}, "The planner's stops"),
-    h('p', {}, "Today is main as it is. The option is main's app with its own swipe set aside, and one built on main's js/sheet.js in its place: the same spring, projection and rubber band, with the option's stops and flicks. Cards stay as they are today: their stops are #574's."),
+    h('p', {}, "Today is main's code, unchanged. The option is main's app with its own swipe set aside, and one built on main's js/sheet.js in its place: the same spring, projection and rubber band, with the option's stops and flicks. Cards stay as they are today: their stops are #574's."),
     h('div', { class: 'menu-h' }, 'Option'),
     seg('', [...Object.keys(PRESETS).map((k) => [k, PRESET_NAMES[k]]), ...(preset ? [] : [[null, 'Your mix']])], preset, (k) => { if (!k) return; preset = k; Object.assign(OPT, BASE, PRESETS[k]); changed(); }),
     h('div', { class: 'menu-h' }, 'A: ⌃ and ⌄'),
@@ -267,7 +268,7 @@ async function patch(f) {
     .sheet-up, .sheet-up-min { display: none; }
     .ss-arrows .sheet-top { grid-template-columns: 88px 1fr 88px; }
     @media (max-width: 720px) { .ss-arrows .sheet.foldable:not(.carded) .sheet-up { display: inline-flex; } }
-    @media (max-width: 359px) { .ss-arrows .sheet-top { grid-template-columns: auto 1fr auto; } .ss-arrows .sheet-handle { max-width: 100%; } }
+    @media (max-width: 359px) { .ss-arrows .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .ss-arrows .sheet-handle { max-width: 100%; } }
     @media (min-width: 721px) { .ss-arrows .sheet[data-layout="sheet"].foldable:not(.carded) .sheet-up-min { display: inline-flex; } }
     .ss-marks { position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0; transition: opacity var(--t-open) var(--ease-out); }
     .ss-marks.on { opacity: 1; transition-duration: var(--t-press); }
