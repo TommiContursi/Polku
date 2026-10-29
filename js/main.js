@@ -512,7 +512,7 @@ function syncPlanButton(on) {
 function syncPlannerPadding() {
   const sheet = $('#planner');
   if (sheet.classList.contains('dragging')) return; // a swipe moves it: the room changes once, when it comes to rest
-  const open = planner.active && !sheet.hidden;
+  const open = !sheet.hidden; // (the planner open, or a phone's card in its sheet with the planner put away)
   const side = open && planner.layout() === 'side';
   const moving = sheet.getAnimations().some((a) => a.transitionProperty === 'height');
   const was = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;

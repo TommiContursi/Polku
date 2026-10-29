@@ -13,6 +13,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **⋯** no longer fades in again each time the planner opens from its line.
 - On a desktop, a card's **⌄** pressed with the keyboard folds and opens the card at once.
 
+### On a phone, cards open at the foot of the screen with the planner closed too ([#570](https://github.com/TommiContursi/Polku/issues/570))
+
+- With the planner closed, a tap on a trail, a place or a warning on your route opens its card at the foot of the screen, as it does while you plan, instead of in a window over the map. **⌄** folds it to a line and **✕** closes it, and the planner stays closed.
+
 ## 2026-10-28
 
 ### The planner and its cards fold to one line ([#338](https://github.com/TommiContursi/Polku/issues/338), [#303](https://github.com/TommiContursi/Polku/issues/303), [#434](https://github.com/TommiContursi/Polku/issues/434))

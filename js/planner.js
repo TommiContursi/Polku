@@ -4174,17 +4174,22 @@ export class Planner {
     // key facts (#471's A2): what stands out on this route, under its numbers
     this.els.facts = h('div', { class: 'kf', role: 'group', 'aria-label': 'Key facts', hidden: true });
     this.els.head = h('div', { class: 'sheet-head' }, h('div', { class: 'sheet-head-in' }, this.els.card, this.els.title, this.els.readRow, this.els.row, this.els.facts, this.els.way), this.els.said);
-    // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, at
-    // its spot elsewhere (js/card.js, 25d)
+    // One card at a time for a point (and, in later parts, the route, a warning, a spot): in the peek on a phone, the
+    // planner put away too, at its spot elsewhere (js/card.js, 25d)
     this.cards = new CardHost(this.map, {
       peek: this.els.card,
-      where: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
+      where: () => (this.layout() === 'sheet' && !this.sideMQ.matches ? 'peek' : 'float'),
       onChange: (card, fresh) => {
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
+        // the planner put away: the sheet comes for the card alone, and goes with it (#570)
+        if (!this.active) {
+          this.panel.hidden = this.cards.place !== 'peek';
+          if (this.panel.hidden) { delete document.body.dataset.sheet; delete document.body.dataset.pl; }
+        }
         // a card opens at its own size; tapped on the map while the sheet is folded, it opens folded (its line), so the map
-        // stays (step 3 of #233)
+        // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had
         const st = this.panel.dataset.state, entry = this.cards.stack[this.cards.stack.length - 1];
-        if (card && fresh && this.cards.place === 'peek' && st !== 'peek' && !(st === 'folded' && entry.from === 'map')) this.setSheetState('peek', { remember: false });
+        if (card && fresh && this.cards.place === 'peek' && (!this.active || (st !== 'peek' && !(st === 'folded' && entry.from === 'map')))) this.setSheetState('peek', { remember: false });
         // the card's point ringed on the map, while its card (or Move's banner) is open
         const ringed = card && card.key && this.points.includes(card.key) ? card.key : null;
         this.markers.forEach((m, k) => { const el = m.getElement(); if (this.points[k] === ringed) el.dataset.card = ''; else delete el.dataset.card; });
@@ -4212,7 +4217,7 @@ export class Planner {
         requestAnimationFrame(() => { this.els.body.scrollTop = was.scroll; });
       },
       // a narrow card (200 %) has undo and redo in its top row, as 25a docks the toolbox
-      dock: () => (this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
+      dock: () => (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !this.inView()
         ? { undo: () => this.undo(), redo: () => this.redo(), canUndo: !!this.past.length, canRedo: !!this.future.length } : null),
     });
     this.buildTools();
@@ -4856,7 +4861,7 @@ export class Planner {
     this.panel.dataset.layout = lay;
     this.panel.dataset.state = st;
     if (!['folded', 'peek'].includes(st)) this.lastOpen = st;
-    if (this.active) {
+    if (!p.hidden) { // (the planner open, or a card's sheet with it put away)
       document.body.dataset.sheet = st; // a full sheet hides the map chrome under it
       document.body.dataset.pl = lay;
     }

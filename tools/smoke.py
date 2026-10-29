@@ -52,7 +52,7 @@ SETTLED = """new Promise((done) => {
   const moving = () => {
     const out = document.getAnimations().filter((a) => (a instanceof CSSTransition || a.id === 'ride') && a.playState === 'running')
       .map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`);
-    const open = polku.planner.active && !pl.hidden && polku.planner.layout() === 'sheet';
+    const open = !pl.hidden && polku.planner.layout() === 'sheet';
     const room = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
     if (room !== (open ? pl.offsetHeight : 0)) out.push(`--sheet-h ${room} px for a ${pl.offsetHeight} px sheet`);
     return out;
@@ -532,12 +532,12 @@ def trails(chrome):
     return not fails
 
 
-# A trail's card on a phone, the planner put away (#435), opened by a real tap on a trail of the recorded tile. At 200 %
-# (a 390 phone's 195 × 422) it stays on the screen less 8 px each side and under the top bar, with nothing over it (the
-# map's buttons step aside; the scale and the credits are under it), its words in it, and every button in it reachable
-# by scrolling the card; ✕ closes it and the buttons are back. At 390 × 844 it sits beside the buttons, which stay.
-# CARD_FIT(sel, acts) measures the card that sel finds (the element that scrolls) once it's open and still; `warnfix`
-# measures a warning's card with it too.
+# A trail's card on a phone, the planner put away (#435), opened by a real tap on a trail of the recorded tile: in the
+# sheet, as while planning (#570). At 200 % (a 390 phone's 195 × 422) it stays on the screen less 8 px each side and under
+# the top bar, with nothing over it (the map's buttons step aside; the scale and the credits are under it), its words in
+# it, and every button in it reachable by scrolling the card; ✕ closes it and the buttons are back. At 390 × 844 the
+# buttons stay. CARD_FIT(sel, acts) measures the card that sel finds (the element that scrolls) once it's open and still,
+# on the map or in the sheet; `warnfix` measures a warning's card and a menu with it too.
 CARD_TAP = """(() => {
   const m = polku.map, W = innerWidth, H = innerHeight, top = document.querySelector('.topbar').getBoundingClientRect().bottom;
   for (const f of m.queryRenderedFeatures({ layers: ['path-osm-ground'] }))
@@ -554,13 +554,13 @@ CARD_FIT = """(async (sel, acts) => {
   let a = null, same = 0;
   for (let k = 0; k < 60 && same < 2; k++) {
     await frames();
-    const b = card() && card().closest('.maplibregl-popup-content').getBoundingClientRect();
+    const b = card() && card().closest('.maplibregl-popup-content, .sheet').getBoundingClientRect();
     same = a && b && Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.height - b.height) < 1 && !polku.map.isMoving() ? same + 1 : 0;
     a = b;
   }
   const c = card();
   if (!c) return { errs: ['no card opened'] };
-  const pop = c.closest('.maplibregl-popup'), R = c.closest('.maplibregl-popup-content').getBoundingClientRect(), W = innerWidth, H = innerHeight; // (the card, not its tip)
+  const pop = c.closest('.maplibregl-popup, .sheet'), R = c.closest('.maplibregl-popup-content, .sheet').getBoundingClientRect(), W = innerWidth, H = innerHeight; // (the card, not its tip)
   const box = (r) => `x ${Math.round(r.left)}–${Math.round(r.right)}, y ${Math.round(r.top)}–${Math.round(r.bottom)}`;
   if (R.left < 7.5 || R.right > W - 7.5 || R.top < document.querySelector('.topbar').getBoundingClientRect().bottom || R.bottom > H - 7.5)
     errs.push(`the card at ${box(R)} on a ${W} × ${H} screen`);
@@ -605,7 +605,7 @@ def trail_card(chrome):
             fails.append(f'{name}: no trail from the recorded tile on the screen')
         else:
             pg.quick_tap(*at)  # (a tap by the touch's own times: pg.tap() on a busy page can be a hold, and the spot's menu)
-            r = pg.js(f"({CARD_FIT})('.card-float .pl-way.card', true)")  # (the way's card on the planner's card, 25d part 6)
+            r = pg.js(f"({CARD_FIT})('.sheet .pl-way.card', true)")  # (the way's card on the planner's card, 25d part 6, in the sheet: #570)
             fails += [f'{name}: {e}' for e in r['errs']]
             if w == 390 and not r.get('shown'):
                 fails.append(f"{name}: the map's buttons hidden for a card that fits beside them")
@@ -946,6 +946,7 @@ def marked(chrome):
                 if pg.js('mk.card()').startswith('lipas') or pg.js('mk.picked()')['parts']:
                     fails.append(f"a tap 30 px from the line: {pg.js('mk.card()')}, lit {pg.js('mk.picked()')}")
                 pg.js('mk.close()')
+                s = pg.js('mk.spot(true)', timeout=30000) or s  # (that card, in the sheet, moved the map to keep its spot in sight: #570)
                 pg.quick_tap(s['near']['x'], s['near']['y'])
                 time.sleep(0.8)
                 if pg.js('mk.card()') != f"lipas {s['key']}":
@@ -3277,8 +3278,9 @@ def warnfix(chrome):
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    # (#435) at 200 % (a 390 phone's 195 × 422), the planner put away: the triangle's card on the screen less 8 px each
-    # side with nothing over it (the map's buttons step aside while it's open, CARD_FIT), and they're back after its ✕
+    # (#435) at 200 % (a 390 phone's 195 × 422), the planner put away: the triangle's card (in the sheet, #570) on the screen
+    # less 8 px each side with nothing over it (the map's buttons step aside while it's open, CARD_FIT), and they're back
+    # after its ✕
     pg = chrome.page(195, 422, True)
     try:
         pg.open_app({'activity': 'mtb'}, {}, '#14/63.30/26.71')
@@ -3288,7 +3290,7 @@ def warnfix(chrome):
             const q = m.project(p.analysis.pts[30]); m.jumpTo({{ center: m.unproject([q.x + (m.getCanvas().clientWidth / 2 - 58), q.y]) }});
             await new Promise((ok) => m.once('idle', ok)); return {WARNFIX_AT}(p.analysis.pts[30]); }})()""")
         pg.quick_tap(*at)
-        r = pg.js(f"({CARD_FIT})('.card-float .pl-way.card', false)")
+        r = pg.js(f"({CARD_FIT})('.sheet .pl-way.card', false)")
         fails += [f"195x422 (200 %), the planner put away, the triangle's card: {e}" for e in r['errs']]
         if r.get('close'):
             pg.quick_tap(*r['close'])
@@ -8578,8 +8580,54 @@ def fold_motion(chrome):
     return fails
 
 
+# #570: on a phone a card opens in the sheet with the planner put away too (folded or not when it went), at its own size,
+# with ⌄; its line's ✕ closes it, and the planner stays put away, the sheet gone with the card
+def fold_away_card(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        info = lambda: pg.js(FOLD_INFO)
+        extra = "(() => { const p = polku.planner; return { hidden: p.panel.hidden, place: p.cards.place, sheet: document.body.dataset.sheet || null, room: parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0 }; })()"
+        for how in ('put away', 'put away from its line'):
+            pg.js("(() => { const p = polku.planner; p.cards.close(); if (!p.active) p.setActive(true); p.setSheetState('peek'); return true; })()")
+            fold_settled(pg, fails, f'{how}: step 1')
+            if how == 'put away':
+                pg.js("polku.planner.close(); true")
+            else:
+                pg.js("polku.planner.fold(); true")
+                fold_settled(pg, fails, f'{how}: step 1a')
+                pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
+            fold_settled(pg, fails, f'{how}: step 2')
+            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f'{how}: step 3')
+            s, x = info(), pg.js(extra)
+            if s['active'] or s['card'] != 'spot' or x['place'] != 'peek' or x['hidden'] or s['st'] != 'peek' or not s['fold'] or x['sheet'] != 'peek':
+                fails.append(f"{how}, a spot's card: planner {'open' if s['active'] else 'away'}, card {s['card']} in {x['place']}, sheet {'hidden' if x['hidden'] else s['st']}, ⌄ {bool(s['fold'])} (the card in the sheet at its own size, ⌄ there, the planner away)")
+                continue
+            if any(c['b'] > s['panel']['t'] for c in s['col']):
+                fails.append(f"{how}, a spot's card: the map's buttons under the sheet: {[(c['id'], round(c['b'])) for c in s['col']]} for its top {round(s['panel']['t'])}")
+            pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
+            fold_settled(pg, fails, f'{how}: step 4')
+            s = info()
+            if s['st'] != 'folded' or not s['line'] or not s['lineX']:
+                fails.append(f"{how}, the card's ⌄: {s['st']}, line {bool(s['line'])}, ✕ {bool(s['lineX'])}")
+                continue
+            pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
+            fold_settled(pg, fails, f'{how}: step 5')
+            s, x = info(), pg.js(extra)
+            if s['active'] or s['card'] or not x['hidden'] or x['sheet'] or x['room']:
+                fails.append(f"{how}, ✕ on the card's line: planner {'open' if s['active'] else 'away'}, card {s['card']}, sheet {'hidden' if x['hidden'] else 'shown'}, body {x['sheet']}, --sheet-h {x['room']} (the card closed, the planner still away, no sheet)")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 def fold(chrome):
-    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)]
+    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)] + [f'390x844, a card with the planner put away: {f}' for f in fold_away_card(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
