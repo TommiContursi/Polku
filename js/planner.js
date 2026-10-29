@@ -5079,7 +5079,7 @@ export class Planner {
       enabled: () => this.active && this.layout() === 'sheet',
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows
       grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize, .card')
-        && (type !== 'mouse' || !!t.closest('.sheet-handle, .sheet-head, .pl-tabs')),
+        && (type !== 'mouse' || !!t.closest('.sheet-handle, .fold-line, .sheet-head, .pl-tabs')),
       // the sizes, lowest first: the line, then the peek and the rest; a card's are its line, its own size and full.
       // From the line a second swipe down puts the planner away, or closes the card (Fold, then away): a single swipe
       // stops at the line
