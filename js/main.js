@@ -316,6 +316,7 @@ map.on('mouseout', () => routeHoverLeg(null)); // off the map (onto the planner,
 const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
 const planner = new Planner(map, {
   activity: () => state.activity,
+  fitColumn: () => fitColumn(), // (the map's column, again: a folded toolbox lifted it, step 3 of #233)
   hoverLeg: routeHoverLeg,
   winter: () => ({ on: !!state.winterOn, setting: winterSetting() }), // winter on the route (15b): snow in the time, Heads-up
   sports: () => Object.entries(ACTIVITIES).map(([k, x]) => ({ k, label: x.label, icon: ACT_ICONS[k] })),
@@ -505,19 +506,24 @@ function syncPlanButton(on) {
   }
 }
 
-// What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel.
+// What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel. The sheet's height is the one it's
+// going to: what rides above it moves once, at once, and never chases it (#540; a fold moves nothing else, #233's step 3).
 function syncPlannerPadding() {
   const sheet = $('#planner');
   if (sheet.classList.contains('dragging')) return; // a swipe moves it: the room changes once, when it comes to rest
   const open = planner.active && !sheet.hidden;
   const side = open && planner.layout() === 'side';
-  document.documentElement.style.setProperty('--sheet-h', `${open && !side ? sheet.offsetHeight : 0}px`);
+  const moving = sheet.getAnimations().some((a) => a.transitionProperty === 'height');
+  document.documentElement.style.setProperty('--sheet-h', `${open && !side ? (moving ? Math.round(planner.settledHeight()) : sheet.offsetHeight) : 0}px`);
   document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
   placePanels();
   if (quickOpen()) placeQuick();
   syncWxH(); // (and the map's column)
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
+// (at rest, its own height again; and where a change was taken back in the same frame, so no resize was seen)
+for (const t of ['transitionend', 'transitioncancel']) $('#planner').addEventListener(t, (e) => { if (e.target === e.currentTarget && e.propertyName === 'height') syncPlannerPadding(); });
+$('#planner').addEventListener('sheetstate', syncPlannerPadding);
 
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
 // the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D
@@ -531,23 +537,27 @@ function columnFits(extra) {
   const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
   return innerHeight - sheet - extra - 12 - h >= $('.topbar').getBoundingClientRect().bottom + 8;
 }
-// Last, the key facts' line under the route's numbers steps aside (a short phone, #471's A2: Check's top keeps the facts),
-// its height remembered so it comes back only once there's room for it again.
+// Then the key facts' line under the route's numbers steps aside (a short phone, #471's A2: Check's top keeps the facts),
+// its height remembered so it comes back only once there's room for it again. With less room still (200 %, a raised start
+// step, #344), the column lets go of Weather (T, and in Layers), then Show the whole route (in ⋯), then Locate, and where
+// not even Layers fits, of all of it: nothing goes under the top bar (step 3 of #233).
 let factsH = 0;
+const LETS_GO = ['no-wx', 'no-fit', 'no-locate', 'no-col'];
 function fitColumn() {
   const col = $('#map-ctrls'), off = document.body.classList.contains('kf-off');
-  col.classList.remove('no-compass', 'no-3d');
+  col.classList.remove('no-compass', 'no-3d', ...LETS_GO);
   if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); return; }
-  if (!off) factsH = planner.els.facts.offsetHeight;
+  if (!off) factsH = planner.els.facts.offsetHeight + (parseFloat(getComputedStyle(planner.els.facts).marginTop) || 0); // (all the room it takes: else, at the edge, it comes and goes every frame)
   const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
   const back = off ? factsH : 0; // (the room the line would take back)
-  const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
+  const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - css('--col-lift') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
   const facts = (on) => document.body.classList.toggle('kf-off', !on);
   if (room()) { facts(true); return; }
   if (Math.abs(map.getBearing()) < 0.5) col.classList.add('no-compass');
   if (room()) { facts(true); return; }
   col.classList.add('no-3d');
   facts(room());
+  for (const c of LETS_GO) { if (room(0)) break; col.classList.add(c); }
 }
 new ResizeObserver(fitColumn).observe($('#map-ctrls'));
 map.on('rotateend', fitColumn);

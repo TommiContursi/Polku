@@ -20,6 +20,14 @@ export function nums(list) {
   return h('div', { class: 'sheet-sum' }, ...list.filter(Boolean).map(({ value, word, label, missing, wait }) =>
     h('span', { class: `sum-item${missing ? ' miss' : wait ? ' wait' : ''}`, 'aria-busy': wait ? 'true' : null }, h('b', {}, value), word ? h('em', {}, word) : null, h('small', {}, label))));
 }
+// a folded card's line says its first two numbers after its name (step 3 of #233; a point's: there at, from the start)
+const firstNums = (box) => [...box.querySelectorAll('.sheet-sum .sum-item > b')].slice(0, 2).map((b) => b.textContent.trim());
+// ...from card.sum() where they aren't on the card (the whole route's); a card with none says its own words, card.fold():
+// its line, the choice made, how many
+export const foldFacts = (card, box) => {
+  const nums = firstNums(card.sum ? card.sum() : box);
+  return { nums, words: nums.length || !card.fold ? [] : card.fold(box).filter(Boolean) };
+};
 
 // A group's heading, as the ⋯ menu's (it names the rows under it for screen readers too)
 export function group(title, ...items) {
@@ -122,7 +130,8 @@ const NARROW = 290; // px: a card this narrow (200 %, a small phone) has its top
 const gone = (entries) => { for (const e of entries) if (e.card.gone) e.card.gone(); };
 
 export class CardHost {
-  // peek: where a phone's card goes; where(): 'peek' or 'float' now; onChange(card | null) after it changes.
+  // peek: where a phone's card goes; where(): 'peek' or 'float' now; onChange(card | null, fresh) after it changes (fresh: just
+  // opened, or gone back to, rather than built again).
   // onPop: a step of history went back (the map stays where it is); pad(): the room the planner takes { left, bottom }.
   // keep(): how the planner is before the first card opens (its sheet, its list's scroll); restore(it) puts it back.
   // dock(): undo and redo for a narrow card's top row ({ undo, redo, canUndo, canRedo }), or null.
@@ -261,6 +270,7 @@ export class CardHost {
     if (!entry) return;
     const { card } = entry;
     const at = card.at ? card.at() : entry.at;
+    if (fresh) this.rolled = false; // (a card opens whole, or folded where it wouldn't fit: below)
     if (this.folded) {
       this.remove();
       this.box = this.bannerBox();
@@ -292,12 +302,13 @@ export class CardHost {
     } else {
       this.peek.replaceChildren();
       this.peek.hidden = true;
-      if (entry.beside || !at) this.besideAt(box, entry.beside);
+      box.classList.toggle('rolled', this.rolled);
+      if (entry.beside || !at) this.besideAt(box, this.rolled ? null : entry.beside); // (folded, it stays where it folded)
       else this.floatAt(box, at, fresh, card.pill && !card.pinned ? 4 : OFFSET); // (an action at the pointer: the card's corner right there)
     }
     this.box = box;
     this.placePill(card, at, where);
-    this.onChange(card);
+    this.onChange(card, fresh);
     if (was) {
       box.scrollTop = scroll;
       const again = focused && [...box.querySelectorAll('button, input, select, [tabindex]')].find((el) => keyOf(el) === focused);
@@ -307,7 +318,45 @@ export class CardHost {
       const t = box.querySelector('.way-hint');
       if (t) t.focus({ preventScroll: true });
       if (where === 'peek' && at) this.inSight(at);
+      // a desktop's card with no room between the top bar and the map's foot opens folded to its title (step 3 of #233)
+      if (where !== 'peek' && box.scrollHeight > innerHeight - (this.pad().bottom || 0) - 16 - 72 && getComputedStyle(box.querySelector('.way-fold')).display !== 'none') this.roll(true, { motion: false });
     }
+  }
+
+  // Desktops (step 3 of #233): a card at its spot or beside the panel folds to its title row, keeping its bottom edge where it
+  // was (it's anchored by it while folded); opened again, it's back where it opens. Opening takes --t-open, folding --t-press.
+  roll(on = !this.rolled, { motion = true } = {}) {
+    const entry = this.stack[this.stack.length - 1], box = this.box;
+    if (!entry || !box || !this.popup) return;
+    const el = this.popup.getElement(), r0 = el.getBoundingClientRect(), h0 = box.offsetHeight;
+    this.rolled = on;
+    box.classList.toggle('rolled', on);
+    this.rollLabel(box);
+    const { card } = entry, at = card.at ? card.at() : entry.at;
+    if (!on) {
+      if (entry.beside || !at) this.besideAt(box, entry.beside);
+      else this.floatAt(box, at, true, card.pill && !card.pinned ? 4 : OFFSET);
+    } else if (this.popup.besideEl) el.style.top = `${Math.round(r0.bottom - el.offsetHeight)}px`;
+    else {
+      const R = this.map.getCanvas().getBoundingClientRect(), pt = this.map.project(this.popup.getLngLat()), x = R.left + pt.x;
+      const side = String(this.popup.options.anchor).endsWith('right') ? 'right' : 'left';
+      this.popup.options.anchor = `bottom-${side}`;
+      this.popup.setOffset({ [`bottom-${side}`]: [Math.round((side === 'left' ? r0.left : r0.right) - x), Math.round(r0.bottom - (R.top + pt.y))] });
+      this.popup.setLngLat(this.popup.getLngLat());
+    }
+    const h1 = box.offsetHeight, t = (k) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(k)) || 150;
+    if (motion && box.animate && h0 !== h1) {
+      box.animate(matchMedia('(prefers-reduced-motion: reduce)').matches ? [{ opacity: 0.6 }, { opacity: 1 }] : [{ height: `${h0}px` }, { height: `${h1}px` }],
+        { duration: t(on ? '--t-press' : '--t-open'), easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+    }
+  }
+  rollLabel(box) {
+    const b = box.querySelector('.way-fold');
+    if (!b) return;
+    b.innerHTML = icon(this.rolled ? 'chevronUp' : 'chevronDown', 20);
+    b.setAttribute('aria-expanded', String(!this.rolled));
+    b.setAttribute('aria-label', this.rolled ? 'Open the card' : 'Fold the card to its title');
+    b.title = b.getAttribute('aria-label');
   }
 
   // the top row: Back (in words, when there's somewhere to go back to), undo and redo (narrow), ✕; then the thing's
@@ -325,12 +374,16 @@ export class CardHost {
       h('h3', { class: 'way-hint', tabindex: '-1' }, name, card.sub ? h('small', {}, card.sub) : null),
       card.mark ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, card.mark()) : null,
       card.save || null,
+      h('button', { type: 'button', class: 'tool way-fold', onclick: () => this.roll() }),
       x());
     const body = h('div', { class: 'pl-way card', role: 'region', 'aria-label': typeof card.title === 'string' ? card.title : card.label || '' }, bar, head);
     body.dataset.kind = card.kind;
     body.dataset.back = back ? 'yes' : 'no';
+    this.rollLabel(body);
     if (!this.byKey) body.dataset.pointer = '';
     card.build(body);
+    const { nums, words } = foldFacts(card, body), facts = [...words, ...nums];
+    if (facts.length) name.after(h('span', { class: 'way-facts' }, ` · ${facts.join(' · ')}`));
     return body;
   }
 

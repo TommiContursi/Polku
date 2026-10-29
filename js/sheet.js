@@ -23,7 +23,6 @@ export const SWIPE = {
   damping: 0.85, // the spring's damping ratio (1: no bounce)
   response: 0.3, // the spring's response, s
   rubber: 0.55, // resistance past the first and last size
-  peekCloses: false, // #96: a swipe down from the planner's peek closes it (Done does today)
 };
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -58,6 +57,7 @@ const own = (t, type) => !!t.closest('input[type=range], [contenteditable=""], [
  *                       min, max: the range it moves freely (rubber band outside) }
  *  pick(aim, ride)    optional: the size for a release that would come to rest at aim; default the nearest
  *  aim(name, ride)    optional: on release, before the spring (a view that changes at once)
+ *  moved(v, ride)     optional: the sheet is at visible height v now, under the finger or the spring (a cross-fade)
  *  end(name, ride)    it has come to rest at that size; the transform is cleared just before
  *  cancel(ride)       stopped from outside (stop()), mid-way
  * Returns { stop(), busy }.
@@ -68,9 +68,10 @@ export function swipeSheet(el, o) {
   let raf = 0;
   let quietUntil = 0; // the click that may follow a drag isn't a tap
 
-  const place = (v) => { ride.v = v; el.style.transform = `translateY(${ride.H - v}px)`; };
+  const place = (v) => { ride.v = v; el.style.transform = `translateY(${ride.H - v}px)`; if (o.moved) o.moved(v, ride); };
+  // what scrolls under the finger: a body in the sheet, or the sheet itself where it scrolls as one (the planner at 200 %)
   const scroller = (t) => {
-    for (let n = t; n && n !== el; n = n.parentElement) {
+    for (let n = t; n; n = n === el ? null : n.parentElement) {
       if (n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(n).overflowY)) return n;
     }
     return null;
