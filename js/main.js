@@ -1758,6 +1758,7 @@ onStatus((src, s) => {
 
 // ------------------------------------------------------------------ boot
 registerServiceWorker();
+applyTheme(); // (as index.html's <head> did, unless the service worker gave an older index.html than this)
 initOfflineStatus();
 document.body.dataset.activity = state.activity;
 renderActivityBar();

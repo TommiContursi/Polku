@@ -6676,8 +6676,8 @@ def appearance(chrome):
 
         for device in ('light', 'dark'):
             scheme(pg, device)
-            for choice, base in [('auto', 'trail'), ('light', 'trail'), ('dark', 'trail'), ('map', 'trail'), ('map', 'aerial'), ('map', 'night')]:
-                want = device if choice == 'auto' else choice if choice != 'map' else 'dark' if base != 'trail' else 'light'
+            for choice, base in [('auto', 'trail'), ('light', 'trail'), ('dark', 'trail'), ('map', 'trail'), ('map', 'plain'), ('map', 'aerial'), ('map', 'ortofi'), ('map', 'night')]:
+                want = device if choice == 'auto' else choice if choice != 'map' else 'dark' if base in ('aerial', 'ortofi', 'night') else 'light'
                 where = f'{choice} over {base} on a {device} device'
                 pg.open_app({'activity': 'mtb', 'appearance': choice, 'base': base})
                 r = pg.js(THEME_NOW)
@@ -6695,6 +6695,15 @@ def appearance(chrome):
                     time.sleep(0.6)  # (time for a change that mustn't come)
                 looks(pg.js(THEME_NOW), other if choice == 'auto' else want, f'{where}, then the device {other}')
                 scheme(pg, device)
+
+        # an index.html from before Appearance, as the service worker may give a slow network beside today's CSS and
+        # JavaScript: no theme from <head> (taken away as it comes), and Polku sets it as it starts
+        old = pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': "new MutationObserver((l, o) => { if (document.documentElement?.dataset.theme) "
+                        "{ delete document.documentElement.dataset.theme; o.disconnect(); } }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-theme'] })"}, pg.s)['identifier']
+        scheme(pg, 'dark')
+        pg.open_app({'activity': 'mtb', 'base': 'trail'})
+        looks(pg.js(THEME_NOW), 'dark', 'an older index.html, Automatic on a dark device')
+        pg.c.send('Page.removeScriptToEvaluateOnNewDocument', {'identifier': old}, pg.s)
 
         # Match the map: the quick drawer's maps, by touch, on a dark device (the map decides)
         scheme(pg, 'dark')
