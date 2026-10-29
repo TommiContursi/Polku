@@ -825,14 +825,15 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 @media (min-width: 900px) { .sheet-head .done { display: none; } }
 .sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
-.sheet.busy .sheet-head::after {
-  content: ""; position: absolute; top: 0; left: 18px; right: 18px; height: 3px; border-radius: 3px;
-  background: linear-gradient(90deg, transparent, var(--route), transparent); background-size: 50% 100%; background-repeat: no-repeat;
-  animation: busy 1s linear infinite;
-}
-@keyframes busy { from { background-position: -50% 0; } to { background-position: 150% 0; } }
-/* (reduced motion: the bar stays where it is, full width, and fades in and out as Locate's "finding you" does) */
-@media (prefers-reduced-motion: reduce) { .sheet.busy .sheet-head::after { background: var(--route); animation: pulse 1s ease-in-out infinite; } }
+/* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
+   300 ms, so a quick answer shows nothing, fades in, and its gradient slides on transform alone; with reduced motion a full
+   bar pulses in place, as Locate's "finding you" does */
+.route-bar { display: none; position: absolute; z-index: 3; top: 0; left: 18px; right: 18px; height: 3px; border-radius: 3px; overflow: hidden; pointer-events: none; }
+.sheet.busy .route-bar { display: block; animation: bar-in var(--t-open) var(--ease-out) .3s backwards; }
+.route-bar > i { display: block; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, var(--route), transparent); animation: busy 1s linear infinite; }
+@keyframes bar-in { from { opacity: 0; } }
+@keyframes busy { from { transform: translateX(-50%); } to { transform: translateX(150%); } }
+@media (prefers-reduced-motion: reduce) { .route-bar > i { width: 100%; background: var(--route); animation: pulse 1s ease-in-out infinite; } }
 .sheet-resize { display: none; }
 @media (min-width: 721px) { .sheet-min { display: inline-flex; } }
 /* the panel's place (left or bottom): wide screens, where there's a choice */

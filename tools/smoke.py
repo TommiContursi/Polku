@@ -14026,7 +14026,7 @@ GROUPS = [
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
     ('backtostart', [back_to_start], 'Back to start buttons, closing leg and undo (straight legs)'),
-    ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun (no routing)'),
+    ('routebits', [route_bits], 'snapping, the sport strip, distance marks, the sun, the routing bar and the folded line while a leg is held (no routing)'),
     ('terrain', [terrain], 'terrain tiles that don\'t load, load in part, then come back (mocked tiles, straight legs)'),
     ('stops', [stops], 'stops and nights: breaks, nights, days, the gear check, share links (straight legs)'),
     ('avoid', [avoid_link], 'places to avoid in share links: shared, opened in a clean page, routed around (mocked BRouter)'),
