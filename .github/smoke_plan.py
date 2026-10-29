@@ -24,13 +24,9 @@ if args:
         sys.exit(f"No smoke group or size called {', '.join(unknown)}. Groups and sizes: {' '.join(known)}")
     shards = [args]
 else:
-    shards = json.load(open(os.path.join(here, 'smoke-shards.json')))['shards']
-    named = [n for s in shards for n in s]
-    problems = [f'{n} is in no job' for n in known if n not in named]
-    problems += [f'{n} is in {named.count(n)} jobs' for n in dict.fromkeys(named) if named.count(n) > 1]
-    problems += [f'{n} is no smoke group or size' for n in dict.fromkeys(named) if n not in known]
-    if problems:
-        sys.exit('.github/smoke-shards.json: ' + '; '.join(problems) + '. Every group and size goes in exactly one job.')
+    shards, problem = smoke.shard_check()  # (tools/smoke.py checks it too, before every local run)
+    if problem:
+        sys.exit(problem)
 
 matrix = {'include': [{'shard': str(i + 1), 'groups': ' '.join(s)} for i, s in enumerate(shards)]}
 print('matrix=' + json.dumps(matrix))
