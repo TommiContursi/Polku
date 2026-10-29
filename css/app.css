@@ -1499,7 +1499,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .seg.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 15px; }
 .seg.icons button { height: auto; min-height: var(--target); padding: 6px 4px; border-radius: 12px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
 .seg.icons button span { display: inline; }
-.seg.icons button[aria-checked="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
+.seg.icons button[aria-checked="true"] { background: var(--seg-on); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
 .seg.icons button[aria-checked="true"] .ic { color: var(--accent); }
 .seg.icons button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* a warning: the box in its group's colour, with its shape and its group's name (Journey C builds the parts that use it) */

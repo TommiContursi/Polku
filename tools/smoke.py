@@ -13380,7 +13380,8 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   if (!ref) out.push('no chosen length in the round trip');
   else for (const [sel, what] of [['.chips .chip', 'a chip in Layers or the profile'], ['.tl-layers .chip', 'the timeline’s chip'], ['.chip-on', 'Custom'], ['.act-chip', 'the sport menu’s craft'], ['.menu-chips .chip', 'a menu’s chip']])
     if (chip(box.querySelector(sel)) !== chip(ref)) out.push(`${what}, chosen: ${chip(box.querySelector(sel))}, not the round trip's ${chip(ref)}`);
-  // switches: one height in a place, --target; the chosen one white, with black words and a green icon
+  // switches: one height in a place, --target; the chosen one white (--seg-on), with black words and a green icon (the green where
+  // it sits: the glass's on the glass, #547)
   box.innerHTML = `<div class="seg"><button aria-pressed="true">${U.icon('route', 16)}<span>Distance</span></button><button aria-pressed="false">${U.icon('roundtrip', 16)}<span>Time</span></button></div>
     <div class="seg small"><button aria-pressed="true">Small</button></div>`;
   const target = parseFloat(val('--target'));
@@ -13391,18 +13392,18 @@ CT_LOOK = r"""(async () => {""" + CT_HELP + r"""
   for (const b of [box.querySelector('.seg button'), way.querySelector('.rt-unit button[aria-pressed=true]')]) {
     const ic = b && b.querySelector('.ic');
     if (!b) out.push('no chosen switch in the round trip');
-    else if (cs(b).backgroundColor !== col(val('--surface-solid')) || cs(b).color !== col(val('--text')) || !ic || cs(ic).color !== col(val('--accent')))
+    else if (cs(b).backgroundColor !== col(val('--seg-on')) || cs(b).color !== col(val('--text')) || !ic || cs(ic).color !== col(cs(b).getPropertyValue('--accent').trim()))
       out.push(`a chosen switch: ${cs(b).backgroundColor}, words ${cs(b).color}, icon ${ic && cs(ic).color}`);
   }
   // a switch's off track: its edge at 3:1 on the card (#376)
   box.innerHTML = `<label class="tg"><span class="tg-text">Avoid main roads</span><input type="checkbox"><span class="tg-ui"></span></label>`;
   const ui = box.querySelector('.tg-ui'), edge = (cs(ui).boxShadow.match(/rgba?\([^)]*\)/) || [cs(ui).backgroundColor])[0], er = ratio(over(rgb(edge), solid), solid);
   if (er < 3) out.push(`a switch's off track: its edge ${er.toFixed(2)}:1, under 3:1`);
-  // small headings: 12 px capitals in grey, .06em, bold (a desktop's card too)
+  // small headings: 12 px capitals in grey (the grey where they sit: the glass's on the glass, #547), .06em, bold (a desktop's card too)
   box.innerHTML = `<div class="menu-h">A</div><div class="lp-sec"><h3>A</h3></div><span class="chip-group-label">A</span><span class="sec-title">A</span><span class="lg-title">A</span>
     <div class="qd-lab">A</div><div class="act-head">A</div><span class="stat-label">A</span><div class="pt-label">A</div><div class="speed-route"><h4>A</h4></div>
     <div class="wind-title">A</div><span class="cam-wx-title">A</span><button class="bd-group-toggle">A</button><div class="card-float"><div class="pl-way card"><h4 class="menu-h">A</h4></div></div>`;
-  const want = `12px 700 0.72px uppercase ${col(val('--muted'))}`;
+  const want = `12px 700 0.72px uppercase ${col(cs(box).getPropertyValue('--muted').trim())}`;
   for (const e of box.querySelectorAll('.menu-h, h3, .chip-group-label, .sec-title, .lg-title, .qd-lab, .act-head, .stat-label, .pt-label, h4, .wind-title, .cam-wx-title, .bd-group-toggle')) {
     const c = cs(e), got = `${c.fontSize} ${c.fontWeight} ${c.letterSpacing} ${c.textTransform} ${c.color}`;
     if (got !== want) out.push(`the small heading ${e.className || e.parentElement.className + ' ' + e.tagName.toLowerCase()}: ${got}, not ${want}`);
