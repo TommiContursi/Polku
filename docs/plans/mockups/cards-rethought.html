@@ -196,8 +196,8 @@ const SCENES = [
   { group: 'Ways', id: 'dual', title: 'A street with two carriageways', note: 'Kalevantie: one name, two one-way sides. Which is one thing? A question for you.', at: [23.77612, 61.4948], z: 15.4, way: 4983772, sport: 'road' },
   { group: 'Ways', id: 'named', title: 'A named trail across kinds', note: 'Kuntokolmonen runs on cycleways and a track: its name joins them.', at: [23.78778, 61.5118], z: 15, way: 90255645, sport: 'hike' },
   { group: 'Ways', id: 'unnamed', title: 'Unnamed paths in a forest', note: 'The rule joins unnamed paths while their kind stays the same: at a fork, see At a fork.', at: [23.83863, 61.51935], z: 16, way: 153350916, sport: 'mtb' },
-  { group: 'Things', id: 'lake', title: 'A lake', note: 'Iidesjärvi: its outline is drawn; its card has its own facts.', at: [23.8193, 61.48065], z: 14.2, area: true, sport: 'hike' },
-  { group: 'Things', id: 'park', title: 'A park', note: 'Sorsapuisto, by its outline.', at: [23.78427, 61.49793], z: 15.6, area: true, sport: 'hike' },
+  { group: 'Things', id: 'lake', title: 'A lake', note: 'Iidesjärvi: its outline is drawn; its card has its own facts.', at: [23.81288, 61.48435], z: 14.2, area: true, sport: 'hike' },
+  { group: 'Things', id: 'park', title: 'A park', note: 'Sorsapuisto, by its outline.', at: [23.78113, 61.49683], z: 15.6, area: true, sport: 'hike' },
   { group: 'Things', id: 'lipas', title: 'A LIPAS place', note: 'A place from LIPAS in Kauppi, as its own card.', at: [23.8125, 61.5126], z: 15.6, lipas: true, sport: 'hike' },
   { group: 'Things', id: 'point', title: 'A point on your route', note: 'The recorded Kauppi route: when you’re there, how far along, the profile up to it.', at: [23.8172, 61.519], z: 14.4, point: 1, sport: 'mtb' },
   { group: 'Things', id: 'roadworks', title: 'Road works', note: 'Live from Fintraffic: the nearest works in Tampere, on the same card.', at: [23.7609, 61.4978], z: 14, road: true, sport: 'road' },
@@ -888,8 +888,8 @@ function initScreen() {
       if (p.failed) box.append(h('p', { class: 'cr-fail' }, 'OpenStreetMap didn’t answer: its outline and facts aren’t shown.'));
       if (p.recorded) box.append(h('p', { class: 'cr-fail' }, 'Overpass didn’t answer: its outline is from a recording made on 2026-10-29.'));
       box.append(...actions(p, opened), ...group('About it', [t.access ? ['Access', cap(plain(t.access))] : null, t.operator ? ['Run by', t.operator] : null, t.opening_hours ? ['Open', t.opening_hours] : null, t.wikipedia ? ['Wikipedia', t.wikipedia.replace(/^\w+:/, '')] : null,
-        t.natural === 'water' ? ['Swimming', t.swimming ? cap(plain(t.swimming)) : 'Not mapped'] : null, t.salt === 'yes' ? ['Water', 'Salt'] : null]), ...weatherGroup(p), ...placesGroup(p));
-      box.append(unmapped(p, p.failed ? [] : ['access', 'operator'].filter((k) => !t[k])) || '');
+        t.natural === 'water' && t.swimming ? ['Swimming', cap(plain(t.swimming))] : null, t.salt === 'yes' ? ['Water', 'Salt'] : null]), ...weatherGroup(p), ...placesGroup(p));
+      box.append(unmapped(p, p.failed ? [] : (t.natural === 'water' ? ['swimming', 'access'] : ['access', 'operator']).filter((k) => !t[k])) || '');
     } else if (p.kind === 'lipas') {
       box.append(nums([p.ele === undefined ? { value: '–', label: 'height', wait: true } : p.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(p.ele)} m`, label: 'height' }]));
       const f = p.facts && p.facts !== 'failed' ? p.facts : {};
@@ -1023,7 +1023,7 @@ function initScreen() {
       if (sheet) { const s = sheet; sheet = null; s.remove(); }
       const box = h('div', {}, card);
       if (!popup) {
-        popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', anchor: anchorFor(at), className: `polku-popup card-float${isNew ? ' cr-card' : ''}`, offset: 14 }).setLngLat(at).setDOMContent(box).addTo(map);
+        popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, focusAfterOpen: false, maxWidth: 'none', anchor: anchorFor(at), className: `polku-popup card-float${isNew ? ' cr-card' : ''}`, offset: 14 }).setLngLat(at).setDOMContent(box).addTo(map);
       } else popup.setDOMContent(box);
       box.firstChild.style.setProperty('--card-max', `${Math.max(240, innerHeight - 100)}px`);
       requestAnimationFrame(keepInView);
@@ -1165,7 +1165,8 @@ function initScreen() {
         const list = failing() ? [] : await lipasNear(sc.at, 0.5, types).catch(() => []);
         lipasPicks = list.filter((x) => x.at && x.name);
         const x = lipasPicks.sort((p1, p2) => dist(p1.at, sc.at) - dist(p2.at, sc.at))[0];
-        if (x) ll = x.at;
+        if (!x) { status('LIPAS didn’t answer, so there’s no place to show here. Try again in a minute.'); return; }
+        ll = x.at;
         setData('cr-ring', EMPTY);
       }
       if (sc.road) {

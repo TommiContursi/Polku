@@ -13,14 +13,14 @@ Today a tap on a trail opens a big card with about three facts, while the small 
 [mockups/cards-rethought.html](mockups/cards-rethought.html), served at `/docs/plans/mockups/cards-rethought.html` from `python3 serve.py`. It's built on the app's own map, style, modules and data: the map is `js/style.js`'s, the controls `css/app.css`'s, the heights `js/dem.js`'s, the colours `js/chart.js`'s `colorAt()`, and every request goes through `request()` in `js/net.js`. The scenes are real places in Tampere, picked from OpenStreetMap on 2026-10-29.
 
 - **On a Mac** (a window 1,000 px wide or more): the scenes and settings on the left, and **Today** and **New** side by side at the size you choose (Phone 390, Phone 360, 200 %, Desktop 1440 × 900). A tap in one frame is made in the other too, so the two stay side by side.
-- **On an iPhone:** the Mac serves the folder to the network, and Safari opens the page. `serve.py` listens only on this computer, so use Python's own server from the repository's folder, with the Mac and the iPhone on the same Wi-Fi:
+- **On an iPhone:** the Mac serves the folder to the network, and Safari opens the page. `serve.py` listens only on this computer, so use Python's own server from the folder that has this branch (`.claude/worktrees/561-card-facts` until #566 is merged, then the repository's own), with the Mac and the iPhone on the same Wi-Fi:
 
   ```bash
   python3 -m http.server 8807 --bind 0.0.0.0
   ```
 
   Then open `http://<the Mac's name>.local:8807/docs/plans/mockups/cards-rethought.html` on the iPhone (the name is in System Settings → General → Sharing → Local hostname). macOS may ask whether Python may accept connections: allow it. Over plain `http` on the network, Share and the clipboard don't work (the page isn't a secure context), and **Copy my choices** shows the text to copy instead.
-- **When Overpass is busy:** the ways come from Overpass as the app asks it for a tap (three mirrors at once, `race`). When none answers in 25 s, the mock-up uses a recording of the scenes' ways made on 2026-10-29 (`cards-rethought-ways.json`, 930 KB), and the card says so. `&rec=1` in the address uses the recording at once.
+- **When Overpass is busy:** the ways come from Overpass as the app asks it for a tap (three mirrors at once, `race`). When none answers in 25 s, the mock-up uses a recording of the scenes' ways made on 2026-10-29 (`cards-rethought-ways.json`, about 1 MB; the lake's and the park's outlines from Nominatim), and the card says so. `&rec=1` in the address uses the recording at once.
 - **The bar** at the top: the scene (it opens the scenes, the moment, your sport, At a fork, the data and the buttons) and **Today · New**.
 - **Today** is the spot's card as `main` builds it at the same spot: the same map features, `describe()` from `js/hover.js` and `spotNums()` from `js/facts.js`, as `planner.openSpotCard()` does; the old popup for road works. Trail details aren't loaded in the mock-up, so Today's line lacks their width and visibility words in MTB, Hike and Trail run.
 
@@ -103,7 +103,13 @@ These are cases #574 doesn't decide. Each is in the mock-up to try.
 
 ## Checked
 
-In the browser pane at 390 × 844, 360 × 740, 200 % (195 × 422 at twice the size) and 1440 × 900, with real data, the worst case, nothing mapped and the sources failing. A script measured every scene's card: nothing runs out of its card, the card stays clear of the bar, and the controls on a phone are 44 px or more.
+On 2026-10-29, in headless Chrome through `tools/cdp.py` (light, reduced motion, touch on the phone sizes), with a script that opens each scene, opens its card at both heights, and measures it:
+- **390 × 844:** all 16 scenes, on real data. **360 × 740 and 200 %** (195 × 422 at twice the size): 8 scenes each, on real data and the worst case. **390:** nothing mapped and the sources failing. **1440 × 900:** 4 scenes, at the card's spot.
+- **What it measured:** nothing runs out of its card, the card stays below the bar and on the screen, and the controls on a phone's card are 44 px or more.
+- **What it found, fixed in the mock-up:** at 200 % the bar squeezed the scene's name to one letter (it now wraps, and the card stays below it), and the point card's note couldn't wrap.
+- **Also seen:** the lake's tap landed by its shore (now at its deepest point); a LIPAS scene with LIPAS failing picked the path under it (it now says LIPAS didn't answer); the desktop's card took the focus on a click (no longer).
+- **In the browser pane:** the trail scene at 390, light and dark, by taps on the line and the card; Today's card for the same spot (#561's case: no grade in Gravel).
+- **Not checked:** a real iPhone and a hold by touch; dark mode beyond the pane's own; most scenes on live Overpass: it timed out much of the day, so the measurements ran on the recording. The S3 trail and Hämeenkatu also ran live, in the browser pane.
 
 ## Left out
 
