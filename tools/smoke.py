@@ -50,7 +50,7 @@ SETTLED = """new Promise((done) => {
   const pl = document.querySelector('#planner'), t0 = performance.now();
   let frames = 0, calm = 0;
   const moving = () => {
-    const out = document.getAnimations().filter((a) => (a instanceof CSSTransition || a.id === 'ride') && a.playState === 'running')
+    const out = document.getAnimations().filter((a) => (a instanceof CSSTransition || a.id === 'ride' || a.id === 'sheet') && a.playState === 'running')
       .map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`);
     const open = !pl.hidden && polku.planner.layout() === 'sheet';
     const room = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
@@ -8310,6 +8310,18 @@ def fold_desktop(chrome):
             fails.append(f"bottom, ⌄: {s['st']}, the panel {s['panel']}")
         if not s['tools'] or abs(s['tools']['b'] - s['panel']['t']) > 1:
             fails.append(f"bottom, folded: the toolbar {s['tools']} not on the line's top edge {s['panel']}")
+        # with motion, a tap on the handle: the toolbar on the panel's edge moves with it, the map's column beside the panel
+        # doesn't (#569: it moved 350 px off the screen and back)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+        pg.js("polku.planner.unfold(); polku.planner.setSheetState('peek'); true")
+        fold_settled(pg, fails, 'step 29a')
+        r = pg.js("""(() => { const p = polku.planner, col = document.getElementById('map-ctrls'), y0 = col.getBoundingClientRect().top;
+          p.els.handle.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+          return { col: col.getAnimations().some((a) => a.id === 'ride'), dy: Math.round(col.getBoundingClientRect().top - y0), tools: p.tools.getAnimations().some((a) => a.id === 'ride'), st: p.panel.dataset.state }; })()""")
+        if r['col'] or r['dy'] or not r['tools']:
+            fails.append(f"bottom, a tap on the handle to {r['st']}: the map's column {'moving' if r['col'] else 'still'}, {r['dy']} px from where it was; the toolbar {'moving' if r['tools'] else 'still'} (the column still, the toolbar with the panel)")
+        fold_settled(pg, fails, 'step 29b')
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         pg.js("polku.planner.unfold(); polku.planner.setDock('left'); polku.planner.setSheetState('open'); true")
         fold_settled(pg, fails, 'step 30')
         # a point's card on the map: folded to its title row, its bottom edge where it was; opened again, where it was
@@ -8494,12 +8506,16 @@ def fold_tabs(chrome):
     return fails
 
 
-# The fold's motion (#569, from #558's motion review): a tap cross-fades the line and what it folds (the side that leaves
-# fades before it hides); the sheet opens on --t-sheet and the drawer's curve, and folds on --t-open; the map's buttons
-# and the toolbox move with it, once, never behind it or ahead of it; ⋯ doesn't fade in again after a fold; from the
-# keyboard all of it happens at once. With reduced motion the sheet changes size at once, and the parts still fade.
+# The sheet's motion (#569, #570, from #558's two motion reviews): it changes size with transform, never its height, growing
+# on --t-sheet and shrinking on --t-open on the drawer's curve; a tap cross-fades the line and what it folds (the side that
+# leaves fades before it hides, on --ease-out, the two that overlap with 2 px of blur); what rides above it (the map's
+# buttons, the toolbox) moves with it, each by its own move, ending with it when a tap turns it back, and stops at its place
+# when the sheet then changes at once; ⋯ doesn't fade in again after a fold. Put away and opened again, and a card's sheet
+# with the planner put away, it slides out and in as Layers' phone drawer does. From the keyboard all of it happens at
+# once; with reduced motion the sizes change at once, and the fades and slides are fades without blur.
 FOLD_MOTION = """(async (reduced) => {
   const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], tag = reduced ? 'reduced motion: ' : '';
+  const frame = () => new Promise((r) => requestAnimationFrame(r));
   const press = (el, detail) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
   const key = (el, k) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
   const vis = (el) => getComputedStyle(el).visibility;
@@ -8509,61 +8525,122 @@ FOLD_MOTION = """(async (reduced) => {
   const near = (a, b) => a.length === b.length && a.every((g, i) => Math.abs(g - b[i]) <= 3);
   const moving = () => [...p.panel.getAnimations({ subtree: true }), ...riders().flatMap((e) => e.getAnimations())]
     .filter((a) => a.playState === 'running').map((a) => `${a.effect.target.id || a.effect.target.className.split(' ')[0]} ${a.transitionProperty || a.id}`);
-  const curve = () => { const c = getComputedStyle(p.panel); return `${c.transitionDuration} ${c.transitionTimingFunction}`; };
-  const DRAWER = 'cubic-bezier(0.32, 0.72, 0, 1)';
+  const move = () => p.panel.getAnimations().find((a) => a.id === 'sheet' && a.playState === 'running');
+  const curve = () => { const a = move(); return a ? `${a.effect.getTiming().duration} ${a.effect.getTiming().easing}` : 'at once'; };
+  const heightMoves = () => p.panel.getAnimations().some((a) => a.transitionProperty === 'height' || (a.effect.getKeyframes().some((k) => 'height' in k)));
+  const left = (a) => a.effect.getComputedTiming().endTime - a.currentTime;
+  const DRAWER = 'cubic-bezier(0.32, 0.72, 0, 1)', OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
   // (until nothing moves: headless Chrome can go most of a second without a frame, so a fixed wait looks too early)
-  const settle = async () => { for (let calm = 0, t = performance.now(); calm < 2 && performance.now() - t < 10000;) { await new Promise((r) => requestAnimationFrame(r)); calm = document.getAnimations().some((a) => (a instanceof CSSTransition || a.id === 'ride') && a.playState === 'running') ? 0 : calm + 1; } };
+  const settle = async () => { for (let calm = 0, t = performance.now(); calm < 2 && performance.now() - t < 10000;) { await frame(); calm = document.getAnimations().some((a) => (a instanceof CSSTransition || a.id === 'ride' || a.id === 'sheet') && a.playState === 'running') ? 0 : calm + 1; } };
   p.setSheetState('peek');
   await settle();
-  // a tap: what leaves fades before it hides, the sheet folds on --t-open, its riders start where they were
+  // a tap: what leaves fades before it hides, the sheet folds on --t-open with transform, its riders start where they were
   const g0 = gaps();
   press(p.els.foldBtn, 1);
   let head = vis(p.els.head), line = vis(p.els.fold), g = gaps();
   if (head !== 'visible' || line !== 'visible') errs.push(`${tag}⌄: in the first frame the header is ${head}, the line ${line} (both visible while they cross-fade)`);
-  if (!reduced && curve() !== `0.18s ${DRAWER}`) errs.push(`⌄: the sheet folds on ${curve()}, not 0.18s and the drawer's curve`);
-  if (reduced && curve() !== '0s ease') errs.push(`${tag}⌄: the sheet moves on ${curve()}, not at once`);
+  if (curve() !== (reduced ? 'at once' : `180 ${DRAWER}`)) errs.push(`${tag}⌄: the sheet folds ${curve()}, not ${reduced ? 'at once' : "in 180 ms on the drawer's curve"}`);
+  if (heightMoves()) errs.push(`${tag}⌄: the sheet animates its height, not transform`);
+  if (!getComputedStyle(p.els.head).transitionTimingFunction.includes(OUT)) errs.push(`${tag}the header fades on ${getComputedStyle(p.els.head).transitionTimingFunction}, not --ease-out`);
   if (!reduced && !near(g, g0)) errs.push(`⌄: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g0} (where they were)`);
   await settle();
   const g1 = gaps();
   if (reduced && !near(g, g1)) errs.push(`${tag}⌄: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g1} (with it, at once)`);
   if (vis(p.els.head) !== 'hidden') errs.push(`${tag}⌄: the header still ${vis(p.els.head)} after the fade`);
+  const blur = getComputedStyle(p.els.head).filter;
+  if (blur !== (reduced ? 'blur(0px)' : 'blur(2px)')) errs.push(`${tag}folded, the header faded to ${blur}, not ${reduced ? 'no blur' : '2 px of blur'}`);
   // the line: the same the other way; and ⋯ comes back without fading in
   p.toolsFaded = null;
   press(p.els.foldGo, 1);
   head = vis(p.els.head); line = vis(p.els.fold); g = gaps();
   if (head !== 'visible' || line !== 'visible') errs.push(`${tag}the line: in the first frame the header is ${head}, the line ${line} (both visible while they cross-fade)`);
-  if (!reduced && curve() !== `0.26s ${DRAWER}`) errs.push(`the line: the sheet opens on ${curve()}, not 0.26s and the drawer's curve`);
+  if (curve() !== (reduced ? 'at once' : `260 ${DRAWER}`)) errs.push(`${tag}the line: the sheet opens ${curve()}, not ${reduced ? 'at once' : "in 260 ms on the drawer's curve"}`);
   if (!reduced && !near(g, g1)) errs.push(`the line: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g1} (where they were)`);
   await settle();
   if (p.toolsFaded) errs.push(`${tag}the line: ${p.toolsFaded.map((e) => e.getAttribute('aria-label') || 'the toolbox').join(', ')} faded in again`);
   if (reduced && !near(g, gaps())) errs.push(`${tag}the line: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${gaps()} (with it, at once)`);
-  // a tap on the handle (the peek to the size it had last, and back): each of them moves once, with the sheet
-  if (!reduced) for (const way of ['up', 'down']) {
-    const from = p.panel.dataset.state;
-    const rides = [], was = Element.prototype.animate;
-    Element.prototype.animate = function (k, o) { if (o && o.id === 'ride') rides.push(this.id || this.className.split(' ')[0]); return was.call(this, k, o); };
-    press(p.els.handle, 1);
+  if (getComputedStyle(p.els.head).filter !== 'none') errs.push(`${tag}opened, the header still ${getComputedStyle(p.els.head).filter}`);
+  if (!reduced) {
+    // a tap on the handle (the peek to the size it had last, and back): each of them moves once, with the sheet
+    for (const way of ['up', 'down']) {
+      const from = p.panel.dataset.state;
+      const rides = [], was = Element.prototype.animate;
+      Element.prototype.animate = function (k, o) { if (o && o.id === 'ride') rides.push(this.id || this.className.split(' ')[0]); return was.call(this, k, o); };
+      press(p.els.handle, 1);
+      await settle();
+      Element.prototype.animate = was;
+      const n = riders().length;
+      if (p.panel.dataset.state === from || rides.length !== n) errs.push(`the handle ${way} from ${from}: ${p.panel.dataset.state}, ${rides.length} moves (${rides.join(', ')}), not one each for ${n}`);
+    }
+    // turned back mid-move: the riders end with the sheet
+    press(p.els.foldBtn, 1);
+    for (let k = 0; k < 40 && move() && move().currentTime < 30; k++) await frame(); // (once it has begun to move)
+    press(p.els.foldGo, 1);
+    const m = move(), off = riders().map((e) => e.getAnimations().find((a) => a.id === 'ride')).filter(Boolean).map((a) => Math.round(left(a) - (m ? left(m) : 0)));
+    if (!m || off.some((x) => Math.abs(x) > 20)) errs.push(`⌄ and back at once: the sheet ${m ? `${Math.round(left(m))} ms from its place` : 'not moving'}, the map's buttons and the toolbox ${off} ms after it`);
     await settle();
-    Element.prototype.animate = was;
-    const n = riders().length;
-    if (p.panel.dataset.state === from || rides.length !== n) errs.push(`the handle ${way} from ${from}: ${p.panel.dataset.state}, ${rides.length} moves (${rides.join(', ')}), not one each for ${n}`);
+    // a tap, then a key mid-move: the sheet at its size at once, and they at their places, nothing still moving
+    press(p.els.foldBtn, 1);
+    key(p.els.handle, 'ArrowUp');
+    await wait(40);
+    if (moving().length) errs.push(`⌄, then the handle's ArrowUp: ${moving().join(', ')} still moving`);
+    await settle();
+    // put away (✕ by pointer): it slides down off the screen, the map's buttons going down with it; Plan: it slides up
+    const ga = gaps();
+    p.close();
+    const out = move(), outTo = out && out.effect.getKeyframes().at(-1).translate;
+    if (!near(gaps(), ga)) errs.push(`put away: in the first frame the map's buttons and the toolbox are ${gaps()} px above the sheet, not ${ga} (where they were)`);
+    if (p.panel.hidden || !p.panel.classList.contains('leaving') || !out || !/calc\\(100% \\+ 12px\\)/.test(outTo) || out.effect.getTiming().duration !== 180) errs.push(`put away: the sheet ${p.panel.hidden ? 'gone at once' : `${out ? `to ${outTo} in ${out.effect.getTiming().duration} ms` : 'not moving'}`} (down off the screen in 180 ms)`);
+    if (!document.getElementById('map-ctrls').getAnimations().some((a) => a.id === 'ride')) errs.push("put away: the map's buttons didn't go down with the sheet");
+    await settle();
+    if (!p.panel.hidden || p.panel.classList.contains('leaving')) errs.push('put away: the sheet still there once it has slid away');
+    const colAt = () => Math.round(document.getElementById('map-ctrls').getBoundingClientRect().bottom), c0 = colAt();
+    press(document.getElementById('btn-plan'), 1);
+    const inn = move(), top = Math.round(p.panel.getBoundingClientRect().top), gi = gaps(), c1 = colAt();
+    if (!p.active || !inn || inn.effect.getTiming().duration !== 260 || top < innerHeight - 2) errs.push(`Plan: the sheet ${inn ? `in ${inn.effect.getTiming().duration} ms from y ${top}` : 'there at once'} (up from below the screen in 260 ms)`);
+    if (Math.abs(c1 - c0) > 1 || gi.some((x) => x < 0)) errs.push(`Plan: in the first frame the map's column ${c1 - c0} px from where it was, the map's buttons and the toolbox ${gi} px above the sheet (where they were, never behind it)`);
+    await settle();
+    // a card's sheet with the planner put away comes and goes the same way
+    p.close();
+    await settle();
+    p.openSpotCard(p.map.getCenter(), { touch: true });
+    const cin = move();
+    if (p.cards.place !== 'peek' || !cin || cin.effect.getTiming().duration !== 260) errs.push(`a card with the planner put away: ${p.cards.place}, the sheet ${cin ? `in ${cin.effect.getTiming().duration} ms` : 'there at once'} (up in 260 ms)`);
+    await settle();
+    p.cards.close();
+    const cout = move();
+    if (p.panel.hidden || !cout || cout.effect.getTiming().duration !== 180) errs.push(`the card closed: the sheet ${cout ? `down in ${cout.effect.getTiming().duration} ms` : 'gone at once'} (down in 180 ms)`);
+    await settle();
+    if (!p.panel.hidden || p.active) errs.push(`the card closed: the sheet ${p.panel.hidden ? 'gone' : 'still there'}, the planner ${p.active ? 'open' : 'away'} (gone, away)`);
+    p.setActive(true, { instant: true });
+    await settle();
+  } else {
+    // reduced motion: put away and Plan fade, in place
+    p.close();
+    const out = move();
+    if (!out || out.effect.getKeyframes().at(-1).opacity !== '0' || out.effect.getKeyframes().some((k) => k.translate)) errs.push(`${tag}put away: ${out ? JSON.stringify(out.effect.getKeyframes()) : 'gone at once'} (a fade in place)`);
+    await settle();
+    press(document.getElementById('btn-plan'), 1);
+    const inn = move();
+    if (!inn || inn.effect.getKeyframes()[0].opacity !== '0') errs.push(`${tag}Plan: ${inn ? JSON.stringify(inn.effect.getKeyframes()) : 'there at once'} (a fade in place)`);
+    await settle();
   }
-  // the keyboard: the handle's arrows, ArrowUp on the line, ⌄ and the line with Enter: at once
+  // the keyboard: the handle's arrows, ArrowUp on the line, ⌄ and the line with Enter, R to put it away and back: at once
   const steps = [['the handle ArrowUp', () => key(p.els.handle, 'ArrowUp')], ['the handle ArrowDown', () => key(p.els.handle, 'ArrowDown')],
     ['the handle ArrowDown to the line', () => key(p.els.handle, 'ArrowDown')], ['ArrowUp on the line', () => key(p.els.foldGo, 'ArrowUp')],
-    ['⌄ with Enter', () => press(p.els.foldBtn, 0)], ['the line with Enter', () => press(p.els.foldGo, 0)]];
+    ['⌄ with Enter', () => press(p.els.foldBtn, 0)], ['the line with Enter', () => press(p.els.foldGo, 0)],
+    ['R', () => key(document.body, 'r')], ['R again', () => key(document.body, 'r')]];
   for (const [what, act] of steps) {
-    const st = p.panel.dataset.state;
+    const st = `${p.panel.dataset.state}${p.panel.hidden ? ', away' : ''}`;
     act();
     await wait(40);
-    const m = moving();
-    if (p.panel.dataset.state === st) errs.push(`${tag}${what}: still ${st}`);
-    else if (m.length) errs.push(`${tag}${what} (${st} to ${p.panel.dataset.state}): ${m.join(', ')} moving, not at once`);
+    const m = moving(), now = `${p.panel.dataset.state}${p.panel.hidden ? ', away' : ''}`;
+    if (now === st) errs.push(`${tag}${what}: still ${st}`);
+    else if (m.length) errs.push(`${tag}${what} (${st} to ${now}): ${m.join(', ')} moving, not at once`);
     await settle();
   }
   return errs;
 })"""
-
 
 def fold_motion(chrome):
     fails = []
@@ -8635,6 +8712,19 @@ def fold_away_card(chrome):
             fold_settled(pg, fails, f'{how}: step 6')
             if info()['st'] != 'half':
                 fails.append(f"{how}: Plan after the card opened the planner at {info()['st']}, not half (the size it had)")
+        # #572: the timeline open, a card at full with the planner put away: the timeline on the sheet under its header, as over
+        # a full planner, not off the screen above it
+        pg.js("document.querySelector('#btn-time').click(); true")
+        pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 20000 ? ok() : setTimeout(go, 100); go(); })")
+        pg.js("(() => { const p = polku.planner; p.close(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+        time.sleep(0.6)
+        fold_settled(pg, fails, 'the timeline: step 1')
+        pg.js("polku.planner.setSheetState('full'); true")
+        fold_settled(pg, fails, 'the timeline: step 2')
+        w = pg.js("(() => { const b = document.querySelector('#wx-bar'), r = b.getBoundingClientRect(); return { hidden: b.hidden, t: Math.round(r.top), b: Math.round(r.bottom), H: innerHeight, top: Math.round(document.querySelector('.topbar').getBoundingClientRect().bottom), over: document.body.classList.contains('wx-over'), st: polku.planner.panel.dataset.state, place: polku.planner.cards.place }; })()")
+        if w['place'] != 'peek' or w['st'] != 'full' or w['hidden'] or w['t'] < w['top'] or w['b'] > w['H'] or not w['over']:
+            fails.append(f"the timeline with a card at full, the planner put away: the card {w['place']} at {w['st']}; the timeline {'hidden' if w['hidden'] else f'at y {w[chr(116)]}–{w[chr(98)]}'} on a {w['H']} px screen, {'on' if w['over'] else 'not on'} the sheet (on it, under the top bar)")
+        pg.js("polku.planner.cards.close(); document.querySelector('#btn-time').click(); true")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()

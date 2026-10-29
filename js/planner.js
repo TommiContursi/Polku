@@ -94,6 +94,10 @@ const LOOP_CALLS = 6; // per generation
 const LOOP_CAP = 5; // generations per 10 minutes
 // bottom sheet sizes: folded to one line, the summary, + the elevation profile, half the screen, nearly all of it
 const SHEET_STATES = ['folded', 'peek', 'profile', 'half', 'full'];
+// a token from css/app.css (--t-sheet: 260ms), and how far a move has slid the sheet down over its foot
+const cssVar = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const token = (k) => parseFloat(cssVar(k));
+const slid = (el) => parseFloat(getComputedStyle(el).translate.split(' ')[1]) || 0;
 // where the planner sits on a wide screen: on the left, unless you moved it to the bottom
 export const dockOf = () => store.get('plannerDock', 'left');
 // The drawer's tabs (22a): drawing, what's on the way, setting off. Each section lives in one.
@@ -973,12 +977,14 @@ export class Planner {
 
   // The planner open or put away (25c, #233). Open, it's editing or the route's view (setEditing()): `edit` says
   // which, else it opens as it was left. Either is remembered, so a reload opens it again as it was (#238).
-  setActive(on, { edit = null } = {}) {
+  // instant: at once (the page loading); on a phone it slides in and out otherwise (showSheet())
+  setActive(on, { edit = null, instant = false } = {}) {
     if (!on) this.clearCategoryPreview();
     this.active = on;
     if (on && edit != null) this.editing = edit;
     this.remember();
-    this.panel.hidden = !on;
+    if (on) this.toolsShown = null; // (the toolbox coming back with it isn't new: it doesn't fade in)
+    this.showSheet(on, { instant });
     if (!on) {
       this.cards.close(); this.stopPicking();
       this.closeMore(); this.litLeg(null); this.clearAlts(); delete document.body.dataset.sheet; delete document.body.dataset.pl;
@@ -991,7 +997,7 @@ export class Planner {
     // would cover more than half the screen)
     if (on) {
       const st = !this.points.length && this.layout() === 'sheet' ? 'peek' : store.get('sheetState', {})[this.layout()];
-      this.setSheetState(st === 'peek' && this.layout() === 'sheet' ? this.restSize() : st, { remember: false, rest: true });
+      this.setSheetState(st === 'peek' && this.layout() === 'sheet' ? this.restSize() : st, { remember: false, rest: true, instant });
     }
     document.body.classList.toggle('planning', on);
     for (const m of this.markers) m.getElement().hidden = !on;
@@ -4183,8 +4189,8 @@ export class Planner {
         this.panel.classList.toggle('carded', !!card && this.cards.place === 'peek');
         // the planner put away: the sheet comes for the card alone, and goes with it (#570)
         if (!this.active) {
-          this.panel.hidden = this.cards.place !== 'peek';
-          if (this.panel.hidden) { delete document.body.dataset.sheet; delete document.body.dataset.pl; }
+          this.showSheet(this.cards.place === 'peek');
+          if (this.cards.place !== 'peek') { delete document.body.dataset.sheet; delete document.body.dataset.pl; }
         }
         // a card opens at its own size; tapped on the map while the sheet is folded, it opens folded (its line), so the map
         // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had
@@ -4843,7 +4849,10 @@ export class Planner {
   // instant: at once, nothing moving (the keyboard)
   setSheetState(st, { remember = true, rest = false, instant = false } = {}) {
     if (!this.restingSheet) this.sheetSwipe?.stop(); // changed some other way while a swipe moved it
+    instant ||= this.keyed;
     if (instant) this.panel.classList.add('instant');
+    const from = this.shownHeight();
+    this.panel.dispatchEvent(new Event('sheetchange')); // (main.js: where what rides above it is, before anything moves)
     this.resting = rest;
     if (['folded', 'peek', 'profile'].includes(st)) this.clearCategoryPreview();
     const lay = this.layout();
@@ -4874,6 +4883,7 @@ export class Planner {
     if ((st === 'folded') !== (was === 'folded')) { this.toolsShown = null; this.renderTools(); }
     this.scrollAll();
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
+    this.moveSheet(from);
     p.dispatchEvent(new Event('sheetstate')); // (main.js: --sheet-h, the size it's going to, at once)
     if (instant) { this.measureSheet?.(); void p.offsetHeight; p.classList.remove('instant'); } // (its sizes for this size, at once too)
   }
@@ -4973,6 +4983,9 @@ export class Planner {
 
   bindSheet() {
     this.sideMQ = matchMedia('(min-width: 900px)');
+    // what a key does happens at once, nothing animates for the keyboard: from a key's own events (Space
+    // presses a button on keyup), until what they changed has been drawn (its sizes are measured again in that frame)
+    for (const t of ['keydown', 'keyup']) addEventListener(t, () => { this.keyed = true; cancelAnimationFrame(this.keyedOff); this.keyedOff = requestAnimationFrame(() => { this.keyedOff = requestAnimationFrame(() => { this.keyed = false; }); }); }, true);
     this.sideMQ.addEventListener('change', () => this.setSheetState(store.get('sheetState', {})[this.layout()]));
     // the summary rows are always visible: the peek height is theirs; the
     // profile size adds the elevation chart and its colours (the stats row
@@ -4990,7 +5003,7 @@ export class Planner {
       return Math.round(Math.min(innerHeight * 0.45, peek + (this.profZoneH || (this.profCompact ? 120 : 190)) + 6));
     };
     const sizes = () => {
-      const hd = this.els.head, w = this.els.way;
+      const hd = this.els.head, w = this.els.way, from = this.shownHeight();
       // the start's view as tall as it is, not as tall as the sheet let it be: it scrolls inside only once the
       // sheet stops below the top bar (css/app.css .way-only)
       const grow = w && !w.hidden ? w.scrollHeight - w.clientHeight : 0;
@@ -5007,7 +5020,9 @@ export class Planner {
       if (this.peekCut) h = Math.floor(dvh() - 76);
       const peek = `${h}px`;
       this.panel.style.setProperty('--peek-h', peek);
-      document.documentElement.style.setProperty('--sheet-head', peek); // a phone's timeline over a raised sheet goes under its header
+      // a phone's timeline over a raised sheet goes under its header: the planner's numbers, or a card's title row (#572)
+      const ch = this.cards.place === 'peek' && this.cards.box && this.cards.box.querySelector('.way-head');
+      document.documentElement.style.setProperty('--sheet-head', ch ? `${Math.round(ch.getBoundingClientRect().bottom - this.panel.getBoundingClientRect().top)}px` : peek);
       // the route's numbers came in just after it was framed and wrap onto a second line (#242), or the row of what
       // to read came once a source didn't answer (25d part 3, which can take a while): the peek is taller now, so
       // frame it once more, unless the map has been moved or framed on something else since, or a card is open:
@@ -5025,6 +5040,7 @@ export class Planner {
       // a card swiped up opens as tall as it is, full at most (step 3 of #233)
       const c = this.cards.place === 'peek' && this.cards.box;
       if (c) this.panel.style.setProperty('--card-full', `${Math.round(Math.min(dvh() - 76, c.getBoundingClientRect().top - this.panel.getBoundingClientRect().top + c.scrollHeight + parseFloat(getComputedStyle(hd).paddingBottom)))}px`);
+      this.moveSheet(from); // (a peek that grows or shrinks moves as a tap does)
     };
     this.measureSheet = sizes;
     new ResizeObserver(sizes).observe(this.els.head);
@@ -5047,7 +5063,8 @@ export class Planner {
       // stops at the line
       start: () => {
         sizes();
-        const D = dvh(), full = D - 76, peek = px('--peek-h'), now = this.panel.getBoundingClientRect().height, from = this.panel.dataset.state;
+        const D = dvh(), full = D - 76, peek = px('--peek-h'), now = this.shownHeight(), from = this.panel.dataset.state;
+        this.stopSheet(); // (caught mid-move: the finger takes it from where it is)
         const carded = this.cards.place === 'peek';
         this.panel.classList.add('dragging');
         this.panel.style.height = `${full}px`;
@@ -5181,8 +5198,63 @@ export class Planner {
   }
   sheetTop() {
     const pl = this.panel, r = pl.getBoundingClientRect();
-    if (!(pl.getAnimations && pl.getAnimations().some((a) => a.transitionProperty === 'height'))) return r.top;
-    return r.bottom - this.settledHeight();
+    if (!this.sheetMove) return r.top;
+    return r.bottom - slid(pl) - this.settledHeight();
+  }
+
+  // The sheet moves with transform, as a swipe does (DESIGN.md's Motion, #569): for a move it's as tall as the larger of
+  // what shows and what it's going to, and slides between the two over its foot, growing on --t-sheet and shrinking on
+  // --t-open, on --ease-drawer; at rest it's its own height again. A second change takes it from where it is. From the
+  // keyboard, with reduced motion and while a swipe holds it, it changes at once.
+  shownHeight() { return this.panel.hidden ? 0 : this.panel.offsetHeight - slid(this.panel); }
+  moveSheet(from) {
+    const p = this.panel, a = this.sheetMove;
+    if (p.classList.contains('dragging')) return;
+    const held = p.style.height;
+    p.style.height = '';
+    const to = p.offsetHeight;
+    if (a && to === this.sheetTo) { p.style.height = held; return; } // (already going there)
+    this.stopSheet();
+    if (Math.abs(to - from) < 1 || p.hidden || this.sheetSlide || this.layout() !== 'sheet' || p.classList.contains('instant') || this.keyed || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const M = Math.max(from, to);
+    p.style.height = `${M}px`;
+    const m = this.sheetMove = p.animate([{ translate: `0 ${M - from}px` }, { translate: `0 ${M - to}px` }],
+      { id: 'sheet', duration: token(to > from ? '--t-sheet' : '--t-open'), easing: cssVar('--ease-drawer'), fill: 'forwards' });
+    this.sheetTo = to;
+    m.onfinish = () => { if (this.sheetMove === m) this.stopSheet(); };
+  }
+  stopSheet() {
+    this.sheetMove?.cancel();
+    this.sheetMove = null;
+    this.panel.style.height = '';
+  }
+  // The planner, or a card's sheet with it put away, comes and goes on a phone as Layers' drawer does: up from below the
+  // screen on --t-sheet, down on --t-open, on --ease-drawer, from where it is when it turns back; with reduced motion it
+  // fades; from the keyboard, as the page loads and on a wider screen, at once. Leaving, it takes no taps and the map's
+  // room is back at once (main.js), so what rides above it goes down with it.
+  showSheet(on, { instant = false } = {}) {
+    const p = this.panel, a = this.sheetSlide;
+    if (on === (!p.hidden && !p.classList.contains('leaving'))) return;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, prop = reduce ? 'opacity' : 'translate';
+    const now = a && getComputedStyle(p)[prop];
+    p.dispatchEvent(new Event('sheetchange'));
+    a?.cancel();
+    this.sheetSlide = null;
+    this.stopSheet();
+    const slides = !instant && !this.keyed && this.layout() === 'sheet' && !this.sideMQ.matches;
+    p.classList.toggle('leaving', !on && slides);
+    p.hidden = !on && !slides;
+    if (!slides) return;
+    const away = reduce ? '0' : '0 calc(100% + 12px)', here = reduce ? '1' : '0 0'; // (12 px: the sheet's foot over the screen's)
+    const s = this.sheetSlide = p.animate([{ [prop]: now || (on ? away : here) }, { [prop]: on ? here : away }],
+      { id: 'sheet', duration: reduce ? 150 : token(on ? '--t-sheet' : '--t-open'), easing: reduce ? 'ease' : cssVar('--ease-drawer'), fill: 'forwards' });
+    s.onfinish = () => {
+      if (this.sheetSlide !== s) return;
+      this.sheetSlide = null;
+      if (!on) { p.hidden = true; p.classList.remove('leaving'); this.placeTools(); } // (the toolbox went down with it)
+      s.cancel();
+    };
+    p.dispatchEvent(new Event('sheetstate')); // (main.js: the map's room, and what rides above the sheet)
   }
 
   /** Frame bounds [w, s, e, n] in the map the planner leaves free. A full sheet leaves no map
@@ -5358,7 +5430,7 @@ export class Planner {
     // (a card in a phone's peek keeps undo and redo here, or in its own top row when it's narrow; none in the route's view, 25d,
     // nor with the planner folded there)
     const carded = this.cards.place === 'peek' && !desk, folded = !desk && this.panel.dataset.state === 'folded';
-    const show = this.active && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && ((this.cards.narrow && !folded) || this.inView())) && !(folded && this.inView());
+    const show = (this.active || this.panel.classList.contains('leaving')) && !this.panel.hidden && !!(this.points.length || this.past.length || this.future.length) && !(carded && ((this.cards.narrow && !folded) || this.inView())) && !(folded && this.inView());
     box.hidden = !show;
     box.classList.toggle('desk', desk);
     if (!show) this.dockTools(false);
