@@ -11810,13 +11810,13 @@ def spot_card(chrome):
         if c['kind'] != 'spot' or c['pill'] or c['rows'] != ['What’s here'] or not c['note']:
             fails.append(f"{name}: held in the route's view: {c['kind']} card, pill {bool(c['pill'])}, rows {c['rows']}, the note {c['note']}")
         pg.js('polku.planner.cards.close(); polku.planner.setEditing(true); true')
-        # the planner put away: the card at the spot
+        # the planner put away: the card in the sheet, as while planning (#570)
         pg.js("polku.planner.setActive(false); new Promise((r) => setTimeout(r, 600))")
         pg.js('sc.still()')  # (the map at rest: a tap on a map still easing from the last card isn't a tap)
         s = pg.js('sc.spot()')
         hold(pg, s, 0.65)
         c = st(pg)
-        if c['kind'] != 'spot' or c['place'] != 'float':
+        if c['kind'] != 'spot' or c['place'] != 'peek':
             fails.append(f"{name}: held with the planner put away: {c['kind'] or 'no'} card ({c['place']}; the cards: {pg.js('sc.log()')})")
         pg.js('polku.planner.cards.close(); true')
         # a place's icon while drawing: its card, no point; the way beside it: a point
