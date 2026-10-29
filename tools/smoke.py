@@ -13722,6 +13722,19 @@ def run(chrome, steps):
     return ok, chrome
 
 
+# GitHub's jobs (.github/smoke-shards.json), and why they don't hold every group and size exactly once ('' when they do):
+# GitHub runs only what's in them, so a group left out would never run there (#262). Every run checks it, here as on
+# GitHub (.github/smoke_plan.py), so a new group can't be missed until GitHub's run stops (#577).
+def shard_check():
+    shards = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.github', 'smoke-shards.json')))['shards']
+    known = [n for n, _, _ in GROUPS] + SIZES
+    named = [n for s in shards for n in s]
+    problems = [f'{n} is in no job' for n in known if n not in named]
+    problems += [f'{n} is in {named.count(n)} jobs' for n in dict.fromkeys(named) if named.count(n) > 1]
+    problems += [f'{n} is no smoke group or size' for n in dict.fromkeys(named) if n not in known]
+    return shards, '.github/smoke-shards.json: ' + '; '.join(problems) + '. Every group and size goes in exactly one job.' if problems else ''
+
+
 def main():
     args = sys.argv[1:]
     if args == ['--list']:
@@ -13729,6 +13742,9 @@ def main():
         print('\n'.join(f'{n:<{w}}  {d}' for n, _, d in GROUPS))
         print(f"{'sizes':<{w}}  the layout at one size: {', '.join(SIZES)} (all of them with no arguments)")
         return
+    problem = shard_check()[1]
+    if problem:
+        sys.exit(problem)
     known = [n for n, _, _ in GROUPS] + SIZES
     unknown = [a for a in args if a not in known]
     if unknown:
