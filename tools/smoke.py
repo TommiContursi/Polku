@@ -2667,10 +2667,13 @@ CARD_SCROLL = """(async (reduced) => {
   const real = Element.prototype.scrollIntoView, body = p.els.body, at = [];
   Element.prototype.scrollIntoView = function (o) { const r = real.call(this, o); at.push(body.scrollTop); return r; };
   row.click();
-  await wait(800);
+  // (until it has been asked for and the list has stopped: a smooth scroll on a page too busy for frames takes seconds)
+  let end = -1;
+  for (let k = 0; k < 100 && !(at.length && body.scrollTop && body.scrollTop === end); k++) { end = body.scrollTop; await wait(150); }
   Element.prototype.scrollIntoView = real;
-  const end = body.scrollTop, first = at[0];
-  if (!at.length || !end) return [`${tag}the card's Sunrise and sunset scrolled nothing (${at.length} scrolls, Go at ${end} px)`];
+  end = body.scrollTop;
+  const first = at[0];
+  if (!at.length || !end) return [`${tag}the card's Sunrise and sunset scrolled nothing (${at.length} scrolls at ${at.join(', ')} px, Go at ${end} px of ${body.scrollHeight - body.clientHeight}, ${p.tab} at ${p.panel.dataset.state})`];
   if (reduced && first !== end) return [`${tag}the list is at ${first} px right after the scroll to Go's weather, not at ${end} px: it scrolls smoothly`];
   if (!reduced && first === end) return [`the scroll to Go's weather is at once, not smooth`];
   return [];
