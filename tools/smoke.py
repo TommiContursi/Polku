@@ -50,7 +50,7 @@ SETTLED = """new Promise((done) => {
   const pl = document.querySelector('#planner'), t0 = performance.now();
   let frames = 0, calm = 0;
   const moving = () => {
-    const out = document.getAnimations().filter((a) => a instanceof CSSTransition && a.playState === 'running')
+    const out = document.getAnimations().filter((a) => (a instanceof CSSTransition || a.id === 'ride') && a.playState === 'running')
       .map((a) => `${a.effect.target.id || a.effect.target.getAttribute('class')} ${a.transitionProperty}`);
     const open = polku.planner.active && !pl.hidden && polku.planner.layout() === 'sheet';
     const room = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
@@ -8330,6 +8330,12 @@ def fold_desktop(chrome):
             c2 = pg.js(card)
             if abs(c2[0] - c0[0]) > 2 or abs(c2[2] - c0[2]) > 2:
                 fails.append(f'the card opened again: {c2} (was {c0})')
+            # from the keyboard (Enter on ⌄: a click with no pointer) it folds and opens at once, with reduced motion too
+            for what in ('folded', 'opened'):
+                m = pg.js("(async () => { const b = polku.planner.cards.box; b.querySelector('.way-fold').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 })); await new Promise((r) => setTimeout(r, 30)); return b.getAnimations().length; })()")
+                if m:
+                    fails.append(f'the card {what} with Enter: {m} animation(s), not at once')
+                time.sleep(0.3)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -8484,8 +8490,84 @@ def fold_tabs(chrome):
     return fails
 
 
+# The fold's motion (#569, from #558's motion review): a tap cross-fades the line and what it folds (the side that leaves
+# fades before it hides); the sheet opens on --t-sheet and the drawer's curve, and folds on --t-open; the map's buttons
+# and the toolbox move with it, once, never behind it or ahead of it; ⋯ doesn't fade in again after a fold; from the
+# keyboard all of it happens at once. With reduced motion the sheet changes size at once, and the parts still fade.
+FOLD_MOTION = """(async (reduced) => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], tag = reduced ? 'reduced motion: ' : '';
+  const press = (el, detail) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
+  const key = (el, k) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  const vis = (el) => getComputedStyle(el).visibility;
+  const riders = () => [document.getElementById('map-ctrls'), ...(p.tools.hidden || p.tools.classList.contains('docked') ? [] : [p.tools])];
+  // how far above the sheet's top each of them is, as seen (its move included)
+  const gaps = () => { const t = p.panel.getBoundingClientRect().top; return riders().map((e) => Math.round(t - e.getBoundingClientRect().bottom)); };
+  const near = (a, b) => a.length === b.length && a.every((g, i) => Math.abs(g - b[i]) <= 3);
+  const moving = () => [...p.panel.getAnimations({ subtree: true }), ...riders().flatMap((e) => e.getAnimations())]
+    .filter((a) => a.playState === 'running').map((a) => `${a.effect.target.id || a.effect.target.className.split(' ')[0]} ${a.transitionProperty || a.id}`);
+  const curve = () => { const c = getComputedStyle(p.panel); return `${c.transitionDuration} ${c.transitionTimingFunction}`; };
+  const DRAWER = 'cubic-bezier(0.32, 0.72, 0, 1)';
+  // (until nothing moves: headless Chrome can go most of a second without a frame, so a fixed wait looks too early)
+  const settle = async () => { for (let calm = 0, t = performance.now(); calm < 2 && performance.now() - t < 10000;) { await new Promise((r) => requestAnimationFrame(r)); calm = document.getAnimations().some((a) => (a instanceof CSSTransition || a.id === 'ride') && a.playState === 'running') ? 0 : calm + 1; } };
+  p.setSheetState('peek');
+  await settle();
+  // a tap: what leaves fades before it hides, the sheet folds on --t-open, its riders start where they were
+  const g0 = gaps();
+  press(p.els.foldBtn, 1);
+  let head = vis(p.els.head), line = vis(p.els.fold), g = gaps();
+  if (head !== 'visible' || line !== 'visible') errs.push(`${tag}⌄: in the first frame the header is ${head}, the line ${line} (both visible while they cross-fade)`);
+  if (!reduced && curve() !== `0.18s ${DRAWER}`) errs.push(`⌄: the sheet folds on ${curve()}, not 0.18s and the drawer's curve`);
+  if (reduced && curve() !== '0s ease') errs.push(`${tag}⌄: the sheet moves on ${curve()}, not at once`);
+  if (!reduced && !near(g, g0)) errs.push(`⌄: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g0} (where they were)`);
+  await settle();
+  const g1 = gaps();
+  if (reduced && !near(g, g1)) errs.push(`${tag}⌄: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g1} (with it, at once)`);
+  if (vis(p.els.head) !== 'hidden') errs.push(`${tag}⌄: the header still ${vis(p.els.head)} after the fade`);
+  // the line: the same the other way; and ⋯ comes back without fading in
+  press(p.els.foldGo, 1);
+  head = vis(p.els.head); line = vis(p.els.fold); g = gaps();
+  if (head !== 'visible' || line !== 'visible') errs.push(`${tag}the line: in the first frame the header is ${head}, the line ${line} (both visible while they cross-fade)`);
+  if (!reduced && curve() !== `0.26s ${DRAWER}`) errs.push(`the line: the sheet opens on ${curve()}, not 0.26s and the drawer's curve`);
+  if (!reduced && !near(g, g1)) errs.push(`the line: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g1} (where they were)`);
+  await wait(60);
+  const faded = [...p.tools.querySelectorAll('.tb-new'), ...(p.tools.classList.contains('tb-new') ? [p.tools] : [])].map((e) => e.getAttribute('aria-label') || 'the toolbox');
+  if (faded.length) errs.push(`${tag}the line: ${faded.join(', ')} faded in again`);
+  await settle();
+  if (reduced && !near(g, gaps())) errs.push(`${tag}the line: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${gaps()} (with it, at once)`);
+  // the keyboard: the handle's arrows, ArrowUp on the line, ⌄ and the line with Enter: at once
+  const steps = [['the handle ArrowUp', () => key(p.els.handle, 'ArrowUp')], ['the handle ArrowDown', () => key(p.els.handle, 'ArrowDown')],
+    ['the handle ArrowDown to the line', () => key(p.els.handle, 'ArrowDown')], ['ArrowUp on the line', () => key(p.els.foldGo, 'ArrowUp')],
+    ['⌄ with Enter', () => press(p.els.foldBtn, 0)], ['the line with Enter', () => press(p.els.foldGo, 0)]];
+  for (const [what, act] of steps) {
+    const st = p.panel.dataset.state;
+    act();
+    await wait(40);
+    const m = moving();
+    if (p.panel.dataset.state === st) errs.push(`${tag}${what}: still ${st}`);
+    else if (m.length) errs.push(`${tag}${what} (${st} to ${p.panel.dataset.state}): ${m.join(', ')} moving, not at once`);
+    await settle();
+  }
+  return errs;
+})"""
+
+
+def fold_motion(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        for reduced in (False, True):
+            pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce' if reduced else 'no-preference'}]}, pg.s)
+            fails += pg.js(f"({FOLD_MOTION})({'true' if reduced else 'false'})", timeout=30000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 def fold(chrome):
-    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)]
+    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 

@@ -2,6 +2,17 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-29
+
+### The planner folds and opens more smoothly ([#569](https://github.com/TommiContursi/Polku/issues/569))
+
+- On a phone, the planner and its folded line fade into each other when you tap **⌄** or the line, as they do when you swipe. Before, the planner went blank for a moment.
+- The map's buttons and the toolbox move with the planner as it changes size, so they no longer disappear behind it or jump ahead of it.
+- The planner opens and folds on the same curve as the Layers drawer, and folds a little faster than it opens.
+- From the keyboard, and with reduced motion turned on, the planner changes size at once.
+- **⋯** no longer fades in again each time the planner opens from its line.
+- On a desktop, a card's **⌄** pressed with the keyboard folds and opens the card at once.
+
 ## 2026-10-28
 
 ### The planner and its cards fold to one line ([#338](https://github.com/TommiContursi/Polku/issues/338), [#303](https://github.com/TommiContursi/Polku/issues/303), [#434](https://github.com/TommiContursi/Polku/issues/434))

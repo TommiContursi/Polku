@@ -697,7 +697,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
   height: 50vh; height: 50dvh;
   display: flex; flex-direction: column;
   background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(14px);
-  transition: height .22s ease;
+  transition: height var(--t-sheet) var(--ease-drawer); /* as Layers' phone drawer: it opens on --t-sheet, folds on --t-open (below) */
 }
 .sheet[data-state="peek"] { height: var(--peek-h, 116px); }
 /* in between: the summary and the elevation profile (the stats row folds away) */
@@ -731,13 +731,19 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
    mark, name and first two numbers), one button that opens it as it was, and ✕ at its end. It and what it folds
    cross-fade while the sheet moves between them (js/planner.js, moved()) */
 .sheet[data-layout="sheet"][data-state="folded"] { height: var(--fold-h, 64px); }
-.fold-line { position: absolute; left: 0; right: 0; top: 0; z-index: 2; display: flex; align-items: flex-start; gap: 4px; padding: 0 8px 0 0; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .15s ease-out; container: foldline / inline-size; }
+.sheet[data-state="folded"] { transition-duration: var(--t-open); }
+/* (the side that leaves fades out before it hides, as Layers does; the side that arrives shows at once and fades in) */
+.fold-line { position: absolute; left: 0; right: 0; top: 0; z-index: 2; display: flex; align-items: flex-start; gap: 4px; padding: 0 8px 0 0; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .15s ease-out, visibility 0s .15s; container: foldline / inline-size; }
 .sheet[data-layout="sheet"] .fold-line::before { left: calc(50% - 16px); right: auto; width: 32px; top: 5px; pointer-events: none; }
-.sheet[data-state="folded"] .fold-line { opacity: 1; visibility: visible; pointer-events: auto; }
+.sheet[data-state="folded"] .fold-line { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
 .sheet.dragging .fold-line { visibility: visible; pointer-events: none; transition: none; }
-.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: opacity .15s ease-out; }
+.sheet > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: opacity .15s ease-out, visibility 0s; }
+.sheet[data-state="folded"] > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition-delay: 0s, .15s; }
 .sheet.dragging > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: none; }
 .sheet[data-state="folded"]:not(.dragging) > :is(.sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { opacity: 0; visibility: hidden; }
+/* from the keyboard it changes at once (planner.js setSheetState()); with reduced motion the size does, and the parts still fade */
+.sheet.instant, .sheet.instant > :is(.fold-line, .sheet-top, .sheet-head, .pl-profile, .pl-tabs, .sheet-body) { transition: none; }
+@media (prefers-reduced-motion: reduce) { .sheet, .sheet[data-state] { transition: none; } }
 .fold-go { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 14px 0 2px 14px; border: 0; border-radius: var(--radius-control); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .fold-line > .fold-x { flex: none; width: 44px; height: 44px; margin-top: 16px; }
 .fold-go:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }

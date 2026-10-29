@@ -507,18 +507,34 @@ function syncPlanButton(on) {
 }
 
 // What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel. The sheet's height is the one it's
-// going to: what rides above it moves once, at once, and never chases it (#540; a fold moves nothing else, #233's step 3).
+// going to: what rides above it takes its place at once, and never chases it (#540). While the sheet moves there, the map's
+// buttons and the toolbox go with it, once (ride()).
 function syncPlannerPadding() {
   const sheet = $('#planner');
   if (sheet.classList.contains('dragging')) return; // a swipe moves it: the room changes once, when it comes to rest
   const open = planner.active && !sheet.hidden;
   const side = open && planner.layout() === 'side';
   const moving = sheet.getAnimations().some((a) => a.transitionProperty === 'height');
-  document.documentElement.style.setProperty('--sheet-h', `${open && !side ? (moving ? Math.round(planner.settledHeight()) : sheet.offsetHeight) : 0}px`);
+  const was = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
+  const now = open && !side ? (moving ? Math.round(planner.settledHeight()) : sheet.offsetHeight) : 0;
+  document.documentElement.style.setProperty('--sheet-h', `${now}px`);
+  if (moving && now !== was) ride(now - was, getComputedStyle(sheet));
   document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
   placePanels();
   if (quickOpen()) placeQuick();
   syncWxH(); // (and the map's column)
+}
+// The map's buttons and the toolbox, moved d px by the sheet: from where they were to their new place on the sheet's own
+// time and curve, one move (a second change takes it from where it is), so none of them goes behind the sheet or ahead
+// of it (#569). With reduced motion, or from the keyboard, the sheet changes at once and so do they.
+function ride(d, sheet) {
+  for (const el of [$('#map-ctrls'), planner.tools]) {
+    if (!el || el.hidden || el.classList.contains('docked')) continue;
+    const on = el.getAnimations().find((a) => a.id === 'ride');
+    const from = d + (on ? parseFloat(getComputedStyle(el).translate.split(' ')[1]) || 0 : 0);
+    on?.cancel();
+    el.animate([{ translate: `0 ${from}px` }, { translate: '0 0' }], { id: 'ride', duration: parseFloat(sheet.transitionDuration) * 1000, easing: sheet.transitionTimingFunction });
+  }
 }
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
 // (at rest, its own height again; and where a change was taken back in the same frame, so no resize was seen)

@@ -374,7 +374,7 @@ export class CardHost {
       h('h3', { class: 'way-hint', tabindex: '-1' }, name, card.sub ? h('small', {}, card.sub) : null),
       card.mark ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, card.mark()) : null,
       card.save || null,
-      h('button', { type: 'button', class: 'tool way-fold', onclick: () => this.roll() }),
+      h('button', { type: 'button', class: 'tool way-fold', onclick: (e) => this.roll(!this.rolled, { motion: !!e.detail }) }), // (the keyboard's: at once)
       x());
     const body = h('div', { class: 'pl-way card', role: 'region', 'aria-label': typeof card.title === 'string' ? card.title : card.label || '' }, bar, head);
     body.dataset.kind = card.kind;
