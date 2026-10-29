@@ -507,22 +507,46 @@ function syncPlanButton(on) {
 }
 
 // What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel. The sheet's height is the one it's
-// going to: what rides above it moves once, at once, and never chases it (#540; a fold moves nothing else, #233's step 3).
+// going to: what rides above it takes its place at once, and never chases it (#540). While the sheet moves or slides
+// there (planner.js moveSheet(), showSheet()), what rides above it goes with it (ride()).
 function syncPlannerPadding() {
   const sheet = $('#planner');
   if (sheet.classList.contains('dragging')) return; // a swipe moves it: the room changes once, when it comes to rest
-  const open = planner.active && !sheet.hidden;
+  const open = !sheet.hidden && !sheet.classList.contains('leaving'); // (the planner open, or a phone's card in its sheet with the planner put away)
   const side = open && planner.layout() === 'side';
-  const moving = sheet.getAnimations().some((a) => a.transitionProperty === 'height');
-  document.documentElement.style.setProperty('--sheet-h', `${open && !side ? (moving ? Math.round(planner.settledHeight()) : sheet.offsetHeight) : 0}px`);
+  const was = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
+  const now = open && !side ? (planner.sheetMove ? Math.round(planner.settledHeight()) : sheet.offsetHeight) : 0;
+  const riders = now === was ? [] : riding();
+  const seen = riders.map((el) => (seenBefore ? seenBefore.get(el) : el.getBoundingClientRect().bottom));
+  seenBefore = null;
+  document.documentElement.style.setProperty('--sheet-h', `${now}px`);
   document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
   placePanels();
   if (quickOpen()) placeQuick();
   syncWxH(); // (and the map's column)
+  // (what wasn't there before the change comes with the sheet: from as far below its place as the sheet is)
+  const move = sheet.getAnimations().find((a) => a.id === 'sheet' && a.playState === 'running');
+  const below = () => (sheet.offsetParent ? sheet.getBoundingClientRect().top - sheet.offsetParent.getBoundingClientRect().top - sheet.offsetTop : 0);
+  riders.forEach((el, i) => ride(el, seen[i] ?? el.getBoundingClientRect().bottom + below(), move));
 }
+// Something above the sheet whose foot was at `seen` before the room changed (its foot: it's placed by it, and its own
+// height can change in the same step, as the map's column does when Plan leaves it): from there to its new place in one move, on the
+// sheet's own time and curve, so it never goes behind the sheet or ahead of it (#569); what didn't move (a desktop's
+// column beside a bottom panel) doesn't. A move it was making stops where it is, and with the sheet changing at once
+// (the keyboard, reduced motion) it's at its place at once too.
+function ride(el, seen, move) {
+  el.getAnimations().find((a) => a.id === 'ride')?.cancel();
+  const d = seen - el.getBoundingClientRect().bottom;
+  if (!move || Math.abs(d) < 0.5 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // (every ride starts in the same frame as the sheet's move or slide: planner.js dispatches 'sheetstate' right after it
+  // starts one, so both run the whole curve together, side by side)
+  el.animate([{ translate: `0 ${d}px` }, { translate: '0 0' }], { id: 'ride', duration: move.effect.getTiming().duration, easing: move.effect.getTiming().easing });
+}
+// what rides above the sheet, and where it was when the planner began a change (it places its toolbox before the room changes)
+const riding = () => [$('#map-ctrls'), planner.tools, $('#wx-bar')].filter((el) => el && !el.hidden && !el.classList.contains('docked') && el.getClientRects().length);
+let seenBefore = null;
+$('#planner').addEventListener('sheetchange', () => { seenBefore = new Map(riding().map((el) => [el, el.getBoundingClientRect().bottom])); });
 new ResizeObserver(syncPlannerPadding).observe($('#planner'));
-// (at rest, its own height again; and where a change was taken back in the same frame, so no resize was seen)
-for (const t of ['transitionend', 'transitioncancel']) $('#planner').addEventListener(t, (e) => { if (e.target === e.currentTarget && e.propertyName === 'height') syncPlannerPadding(); });
 $('#planner').addEventListener('sheetstate', syncPlannerPadding);
 
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
@@ -1587,7 +1611,8 @@ function syncWxH() {
   // desktops: a bottom panel raised too high for it above (unless you've placed it yourself)
   const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
     && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < $('.topbar').getBoundingClientRect().bottom + 8;
-  const over = deskOver || (open && planner.active && (st === 'half' || st === 'full' || (st === 'profile' && !columnFits(b.offsetHeight + 12))));
+  const sheet = !planner.panel.hidden && !planner.panel.classList.contains('leaving'); // (the planner, or a card's sheet with it put away: #572)
+  const over = deskOver || (open && sheet && (st === 'half' || st === 'full' || (st === 'profile' && !columnFits(b.offsetHeight + 12))));
   document.body.classList.toggle('wx-over', over);
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)
@@ -1736,7 +1761,7 @@ map.on('load', () => {
   if (firstVisit && navigator.geolocation) setTimeout(() => locate.start({ quiet: true }), 600);
   if (shared && shared.points.length) {
     planner.restore(shared);
-    planner.setActive(true, { edit: false }); // a shared route opens in the route's view, to read it first (25c)
+    planner.setActive(true, { edit: false, instant: true }); // a shared route opens in the route's view, to read it first (25c)
     // its points now, its routed line once the legs are in
     const b = bbox(shared.points);
     if (b[0] !== b[2]) planner.frame(b, { duration: 0, maxZoom: map.getMaxZoom() });
@@ -1744,7 +1769,7 @@ map.on('load', () => {
     history.replaceState(null, '', location.pathname + location.hash);
   } else {
     planner.loadSaved(); // last session's route
-    if (leftOpen) planner.setActive(true); // and the planner, if it was left open (#238)
+    if (leftOpen) planner.setActive(true, { instant: true }); // and the planner, if it was left open (#238)
   }
   // a link to a spot (25d part 6b): the map there, a pin and its card once the map has drawn what's there; the route
   // you had stays as it was

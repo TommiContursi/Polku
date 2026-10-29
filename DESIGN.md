@@ -276,7 +276,7 @@ Polku's motion follows Emil Kowalski's design engineering ([Great animations](ht
 - **Entering:** nothing enters from `scale(0)`: from 0.9 or more (tooltips 0.97), with opacity. Menus, popovers and tooltips grow from their trigger (`transform-origin` at the trigger; dialogs stay centred) and leave the way they came.
 - **Tooltips:** a delay before the first one; once one is open, the next opens at once, with no animation.
 - **Interrupting:** a move starts from where things are and can be caught mid-way: CSS transitions rather than keyframes.
-- **Performance:** interface elements animate `transform` and `opacity` only (`filter: blur()` where needed), with CSS or WAAPI rather than `requestAnimationFrame`, so they stay smooth while the main thread is busy. The map's canvas effects (wind, rain, snow) draw each frame by nature.
+- **Performance:** interface elements animate `transform` and `opacity` only (`filter: blur()` where needed), with CSS or WAAPI rather than `requestAnimationFrame`, so they stay smooth while the main thread is busy. The map's canvas effects (wind, rain, snow) draw each frame by nature. The one exception is a desktop card folding to its title row, which animates its height (120 ms to fold, 180 ms to open, `roll()` in `js/card.js`): `clip-path` would cut its shadow while it moves.
 - **A crossfade** between two states that still feels off gets 2 px of blur.
 - **The map:** colour and opacity changes use MapLibre's paint transitions; camera moves share one set of durations; no tweening of geometry.
 - **Rebuilt content:** where only a state changes, the control shows its change through `settleControls()` (`js/ui.js`); nothing re-animates on a rebuild the person didn't cause.

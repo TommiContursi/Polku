@@ -494,6 +494,9 @@ SCENES = {
     'phone-spot-paddle': dict(PHONE, timeline=True, activity='paddle', water=[[23.742, 61.507], [23.700, 61.540], [23.757, 61.585]], state='peek', js="polku.planner.openSpotCard(polku.map.unproject([200, 300])); true"),
     'desk-crosshair': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js="(async () => { polku.map.getCanvas().focus(); await new Promise((r) => setTimeout(r, 300)); return true; })()"),
     'phone-spot-card': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="polku.planner.openSpotCard(polku.map.unproject([250, 300])); true"),
+    # a card with the planner put away (#570): in the sheet, as while planning; at full with the timeline on (#572)
+    'phone-card-away': dict(PHONE, timeline=False, route='route-kauppi-mtb.json', state='peek', js="(async () => { const p = polku.planner; p.setActive(false, { instant: true }); p.openSpotCard(p.map.unproject([250, 300]), { touch: true }); await new Promise((r) => setTimeout(r, 1200)); return true; })()"),
+    'phone-card-away-full': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='peek', js="(async () => { const p = polku.planner; p.setActive(false, { instant: true }); p.openSpotCard(p.map.unproject([250, 300]), { touch: true }); await new Promise((r) => setTimeout(r, 600)); if (p.cards.place === 'peek') p.setSheetState('full'); await new Promise((r) => setTimeout(r, 1200)); return true; })()"),
     # the waypoint list, one point named
     'desk-waypoints': dict(DESK, timeline=True, route='route-kauppi-mtb.json', js=WAYPOINTS),
     'phone-waypoints': dict(PHONE, timeline=True, route='route-kauppi-mtb.json', state='full', js=WAYPOINTS),

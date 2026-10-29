@@ -2,6 +2,23 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-29
+
+### The planner folds and opens more smoothly ([#569](https://github.com/TommiContursi/Polku/issues/569))
+
+- On a phone, the planner and its folded line fade into each other when you tap **⌄** or the line, as they do when you swipe. Before, the planner went blank for a moment.
+- The map's buttons, the toolbox and the timeline move with the planner as it changes size, so they no longer disappear behind it or jump ahead of it. On a desktop with the planner at the bottom, the map's buttons beside it stay where they are.
+- The planner changes size on the same curve as the Layers drawer, and gets smaller a little faster than it grows.
+- On a phone, the planner slides down off the screen when you put it away and slides back up when you open it again, as the Layers drawer does.
+- From the keyboard the planner changes size and opens or closes at once. With reduced motion turned on it changes size at once and fades in and out instead of sliding.
+- **⋯** no longer fades in again each time the planner opens from its line.
+- On a desktop, a card's **⌄** pressed with the keyboard folds and opens the card at once.
+
+### On a phone, cards open at the foot of the screen with the planner closed too ([#570](https://github.com/TommiContursi/Polku/issues/570), [#572](https://github.com/TommiContursi/Polku/issues/572))
+
+- With the planner closed, a tap on a trail, a place or a warning on your route opens its card at the foot of the screen, as it does while you plan, instead of in a window over the map. It slides up and back down as the planner does. **⌄** folds it to a line and **✕** closes it, and the planner stays closed.
+- With the timeline open, a card at full height has the timeline on it under the card's name, instead of off the screen.
+
 ## 2026-10-28
 
 ### The planner and its cards fold to one line ([#338](https://github.com/TommiContursi/Polku/issues/338), [#303](https://github.com/TommiContursi/Polku/issues/303), [#434](https://github.com/TommiContursi/Polku/issues/434))
