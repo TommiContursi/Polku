@@ -119,6 +119,10 @@ conversation again
 
 ## Engineering judgment
 
+- **Think before building.** Say what you assume. When a task can be read
+  more than one way and the readings lead to different work, name them and
+  ask, rather than picking one silently. When a simpler way would do, or the
+  task as asked looks wrong, say so before building.
 - **Evidence before fixes.** Observe the failure and test a falsifiable
   hypothesis before changing code. Fix the demonstrated cause, not the
   symptom, and check the failure before and after the fix.
@@ -157,12 +161,15 @@ conversation again
 - **Don't break:** weather along the route, Heads-up and Avoid, water routing
   and carries, round trips, offline save and preview, GPX/KML import and GPX
   export, share links, 3D and hover.
-- Follow the module that already does the job (DEVELOPING has the list). Keep
-  changes to the point: tidy only what makes the change simpler, and add a
-  helper, abstraction or dependency only when the task needs one. Use skills
-  where they help. Where one differs from this file, this file wins:
-  same-commit runs count, the user decides scope and order (not a ledger),
-  progress goes in Hand-overs, and only the user merges.
+- Follow the module that already does the job (DEVELOPING has the list), in
+  its style. Keep changes to the point: every changed line is there for the
+  task, tidy only what makes the change simpler, and add a helper,
+  abstraction, option or dependency only when the task needs one. Remove what
+  your own change left unused; older dead code is a noticed line, unless
+  removing it makes the change simpler. Use skills where they help. Where one
+  differs from this file, this file wins: same-commit runs count, the user
+  decides scope and order (not a ledger), progress goes in Hand-overs, and
+  only the user merges.
 - Think of the phone outdoors: touch, one thumb, small screens, bright sun,
   battery, a bad network. **WCAG 2.2 AA is the baseline:** keyboard, screen
   readers, enlarged text, reduced motion, and nothing said by colour alone.
@@ -266,8 +273,9 @@ each of these as P1, and skip style nits:
 
 - **Bloat:** code the task didn't need, a helper or abstraction with one
   caller, a defensive check or fallback nothing has shown is needed, a second
-  way of doing what a module already does, old formats kept for compatibility,
-  tidying of unrelated code.
+  way of doing what a module already does, an option or setting its issue or
+  plan doesn't ask for, code the change left unused, old formats kept for
+  compatibility, tidying of unrelated code.
 - **Drift from this file:** network calls outside `request()`, a new
   dependency, build step or backend, a position leaving the device, Traficom
   data used for routing, missing data that looks complete, a control that
