@@ -1,0 +1,1268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Cards rethought</title>
+<!-- A mock-up for #574 (docs/plans/cards-rethought.md). It runs on the app's own map, style, modules and data: the
+     map is js/style.js's, the controls are css/app.css's, the ways come from Overpass through js/net.js's request(),
+     the heights from js/dem.js and the colours from js/chart.js's colorAt(). Nothing in the app changes. -->
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous">
+<link rel="stylesheet" href="../../../css/app.css">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/maplibre-contour@0.1.1/dist/index.min.js" crossorigin="anonymous"></script>
+<style>
+/* ================================================================ new in this mock-up: the controls #574 proposes.
+   Everything else is css/app.css's own, by its class names. */
+body.cr { background: var(--page); }
+#map { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
+/* the line at the spot (phone): the hover's words, as a button above the spot's pin */
+.cr-line { display: flex; align-items: center; gap: 8px; max-width: min(300px, calc(100vw - 24px)); min-height: 44px; padding: 6px 8px 7px 12px; border: 0; border-radius: var(--radius-control);
+  background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font: inherit; text-align: left; cursor: pointer;
+  transform-origin: 50% 100%; transition: opacity var(--t-open) var(--ease-out), transform var(--t-press) var(--ease-out); }
+@starting-style { .cr-line { opacity: 0; transform: scale(0.96); } }
+.cr-line > span:first-child { display: grid; gap: 1px; min-width: 0; }
+.cr-line b { font-size: var(--font-control); font-weight: var(--weight-strong); overflow-wrap: anywhere; }
+.cr-line small { font-size: var(--font-small); font-weight: var(--weight-regular); color: var(--muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.cr-line .ic { flex: none; color: var(--muted); }
+.cr-line:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.cr-line:active { transform: scale(0.97); }
+/* the desktop's card grows from the corner nearest its spot */
+.card-float.cr-card .maplibregl-popup-content { transition: opacity var(--t-open) var(--ease-out), transform var(--t-open) var(--ease-out); }
+@starting-style { .card-float.cr-card .maplibregl-popup-content { opacity: 0; transform: scale(0.97); } }
+.card-float.cr-card.maplibregl-popup-anchor-top-left .maplibregl-popup-content { transform-origin: 0 0; }
+.card-float.cr-card.maplibregl-popup-anchor-top-right .maplibregl-popup-content { transform-origin: 100% 0; }
+.card-float.cr-card.maplibregl-popup-anchor-bottom-left .maplibregl-popup-content { transform-origin: 0 100%; }
+.card-float.cr-card.maplibregl-popup-anchor-bottom-right .maplibregl-popup-content { transform-origin: 100% 100%; }
+/* the hover's line on a desktop is .hover-tip itself (css/app.css), at the pointer */
+.hover-tip.cr-tip { pointer-events: none; }
+
+/* the card on a phone: at the foot of the screen, at two heights (the card, then all of it) */
+.cr-sheet { position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 6; display: flex; flex-direction: column;
+  height: var(--cr-h, 320px); max-height: calc(100dvh - var(--cr-top, 68px) - 8px); background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-sheet); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transition: height var(--t-sheet) var(--ease-drawer), transform var(--t-sheet) var(--ease-drawer), opacity var(--t-open) var(--ease-out); }
+.cr-sheet.entering { transform: translateY(calc(100% + 16px)); }
+.cr-sheet.leaving { transition-duration: var(--t-open); }
+.cr-sheet.dragging { transition: none; }
+.cr-sheet > .pl-way.card { flex: 1; min-height: 0; padding: 0 12px 12px; margin: 0; overflow-y: auto; overscroll-behavior: contain; }
+.cr-sheet[data-step="card"] > .pl-way.card { overflow-y: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .cr-sheet { transition: opacity var(--t-open) linear; } .cr-sheet.entering { transform: none; opacity: 0; }
+  .cr-line, .card-float.cr-card .maplibregl-popup-content { transition: opacity var(--t-open) linear; }
+  @starting-style { .cr-line, .card-float.cr-card .maplibregl-popup-content { transform: none; } }
+  .cr-line:active { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) { .cr-sheet { background: var(--surface-solid); backdrop-filter: none; } }
+
+/* the profile: a small one, coloured as the map, and Colour by's choices under it */
+.cr-prof { position: relative; height: 64px; margin: 2px 0 0; }
+.cr-prof svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.cr-prof .ax { position: absolute; left: 0; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cr-prof .ax.top { top: -2px; } .cr-prof .ax.bot { bottom: -2px; }
+.cr-by { margin-top: 2px; }
+.cr-by .chip .dot { margin: 0; }
+.cr-legend { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: -2px 0 0; font-size: var(--font-small); color: var(--muted); }
+.cr-legend span { white-space: nowrap; }
+.cr-legend .dot { width: 9px; height: 9px; margin-right: 4px; }
+
+/* facts in groups, as insp-row; a value that changes along the way says where */
+.cr-facts .insp-row b { font-weight: var(--weight-name); }
+.cr-facts .insp-row small { flex-basis: 100%; color: var(--muted); font-size: var(--font-small); }
+/* what isn't mapped: one quiet line, with Not right? at its end */
+.cr-unmapped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: var(--font-small); color: var(--muted); }
+.cr-unmapped .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-small); color: var(--accent); } /* (a finger's target, without growing the line) */
+.cr-fail { margin: 0; font-size: var(--font-small); color: var(--muted); }
+.cr-fail .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-small); }
+
+/* the pick's own mark, left of its name: the map's line, in its colour */
+.cr-mark { display: block; width: 22px; height: 6px; border-radius: 3px; background: var(--c, #374151); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,.25); }
+.cr-mark.area { height: 16px; border-radius: 4px; background: color-mix(in srgb, var(--c, #374151) 20%, transparent); box-shadow: inset 0 0 0 2.5px var(--c, #374151); }
+.cr-mark.dot { width: 16px; height: 16px; border-radius: 50%; }
+
+/* the mock-up's own chrome: the bar, its panel, the shell on a Mac */
+.cr-bar { position: fixed; z-index: 7; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: none; }
+.cr-bar > * { pointer-events: auto; }
+.cr-bar .btn { background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); min-height: var(--target); min-width: 0; }
+.cr-bar .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-bar .seg { box-shadow: var(--shadow); flex: none; }
+.cr-bar .cr-scene-btn { flex: 1 1 150px; justify-content: flex-start; } /* (on a narrow screen, as at 200 %, the switch goes under it) */
+.cr-panel { font-size: var(--font-body); color: var(--text); }
+.cr-panel h2 { margin: 0 0 4px; font-size: var(--font-title); }
+.cr-panel p { margin: 0 0 10px; color: var(--muted); font-size: var(--font-small); line-height: 1.45; }
+.cr-panel .menu-h { margin: 16px 0 6px; }
+.cr-panel .seg { display: flex; flex-wrap: wrap; }
+.cr-panel .seg button { flex: 1 1 auto; min-height: var(--target); }
+.cr-panel .rows { margin: 0 -8px; }
+.cr-panel .row[aria-current="true"] { background: var(--accent-soft); }
+.cr-panel .row small { color: var(--muted); }
+.cr-sheetpanel { position: fixed; inset: auto 0 0 0; z-index: 9; max-height: 82dvh; overflow-y: auto; overscroll-behavior: contain; padding: 6px 16px max(16px, env(safe-area-inset-bottom));
+  background: var(--surface-solid); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; box-shadow: var(--shadow-sheet); }
+.cr-scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0,0,0,.25); }
+.cr-btns { display: grid; gap: 0; margin: 0 -2px; }
+.cr-btn { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 8px 2px 10px; border-bottom: 1px solid var(--line); }
+.cr-btn b { font-weight: var(--weight-name); }
+.cr-btn small { display: block; color: var(--muted); font-size: var(--font-small); line-height: 1.4; }
+.cr-btn .seg button { font-size: var(--font-small); }
+.cr-copy { margin-top: 10px; }
+.cr-status { position: fixed; z-index: 7; top: calc(max(12px, env(safe-area-inset-top)) + 54px); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 24px); padding: 8px 12px; border-radius: var(--radius-control);
+  background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font-size: var(--font-small); }
+.cr-status[hidden] { display: none; }
+.cr-toast { top: auto; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 12px); }
+body.cr-shell { overflow: auto; display: grid; grid-template-columns: 340px minmax(0, 1fr); height: 100dvh; }
+body.cr-shell #map { display: none; }
+.cr-side { height: 100dvh; overflow-y: auto; padding: 16px 16px 40px; background: var(--surface-solid); border-right: 1px solid var(--line); }
+.cr-stage { height: 100dvh; overflow: auto; display: flex; align-items: flex-start; justify-content: center; gap: 20px; padding: 16px; }
+.cr-fig { margin: 0; display: grid; gap: 6px; justify-items: start; }
+.cr-fig figcaption { font-size: var(--font-small); color: var(--muted); }
+.cr-fig figcaption b { color: var(--text); font-size: var(--font-control); }
+.cr-frame { position: relative; overflow: hidden; border-radius: 28px; box-shadow: 0 0 0 1px var(--line), var(--shadow); background: var(--page); }
+.cr-frame.desk { border-radius: 10px; }
+.cr-frame iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: var(--page); }
+</style>
+</head>
+<body class="cr">
+<div id="map" aria-label="Map"></div>
+<script type="module">
+import { buildStyle } from '../../../js/style.js';
+import { installIcons } from '../../../js/icons.js';
+import { DEM_URL, DEM_MAXZOOM, DIFF_COLORS, SURFACE_COLORS, UPHILL_TEXT, LIPAS_TYPES, ACTIVITY_OVERLAYS, ACTIVITIES } from '../../../js/config.js';
+import { cachedOverpass } from '../../../js/osm.js';
+import { analyse } from '../../../js/analysis.js';
+import { colorAt } from '../../../js/chart.js';
+import { dist, lineLength, fmtDist, fmtDuration, compass, bearing, lonLatToTile, tileBounds, pointSegment } from '../../../js/geo.js';
+import { pointForecasts, sampleAt } from '../../../js/weather.js';
+import { request } from '../../../js/net.js';
+import { icon, h } from '../../../js/ui.js';
+import { lipasNear, lipasPlace } from '../../../js/lipas.js';
+import { WAY_NAMES, hitBox, inspectLayers, pickFeature } from '../../../js/inspect.js';
+import { describe } from '../../../js/hover.js';
+import { spotNums, tileTags, mtbGrade, sacGrade } from '../../../js/facts.js';
+import { nums, rows, acts, item } from '../../../js/card.js';
+import { elevation } from '../../../js/dem.js';
+import { VIS_TEXT, visClass } from '../../../js/trails.js';
+
+// ================================================================ settings: the URL holds them, so a link keeps them
+const q = new URLSearchParams(location.search);
+const FRAME = q.has('f');
+const SHELL = !FRAME && innerWidth >= 1000 && self === top;
+
+// The buttons on today's cards (js/cards.js, js/inspect.js), each with what it does and when it's needed. `on`: the
+// picks it's for; `at`: where #574 suggests it goes (c: on the card, m: in the long-press menu, g: gone). The person
+// using the mock-up chooses; the choice is in the URL (b=) and Copy my choices writes it as text for the issue.
+const BUTTONS = [
+  { k: 'close', card: 'Every card', label: '✕ Close', ic: 'close', does: 'Closes the card and the pick.', when: 'Always.', at: 'c', on: 'all' },
+  { k: 'notright', card: 'Every card', label: 'Not right?', ic: 'external', does: 'How to fix the map: a note on OpenStreetMap, or LIPAS’s page.', when: 'When the map is wrong.', at: 'c', on: 'way area lipas' },
+  { k: 'add', card: 'The spot’s card', label: '+ Add to my route', ic: 'plus', does: 'Adds the spot to your route where it fits, or starts one.', when: 'Planning a route.', at: 'm', on: 'way area lipas road' },
+  { k: 'start', card: 'The spot’s card', label: 'Start here', ic: 'flag', does: 'A new start point, before the old one.', when: 'Planning, with a route.', at: 'm', on: 'way area lipas road' },
+  { k: 'end', card: 'The spot’s card', label: 'End here', ic: 'flagend', does: 'A new end point.', when: 'Planning, with a route.', at: 'm', on: 'way area lipas road' },
+  { k: 'loop', card: 'The spot’s card', label: 'Round trip from here', ic: 'roundtrip', does: 'Loops of the length you choose, from here.', when: 'Looking for a loop to do.', at: 'm', on: 'way area lipas' },
+  { k: 'avoid', card: 'The spot’s card', label: 'Avoid this spot', ic: 'avoid', does: 'The route goes around it, 40 m.', when: 'The route uses something you don’t want.', at: 'm', on: 'way road' },
+  { k: 'here', card: 'The spot’s card', label: 'What’s here ›', ic: 'info', does: 'Today’s second level: every fact. The new card has them all.', when: 'Today: to read more than three facts.', at: 'g', on: 'way area lipas' },
+  { k: 'share', foot: true, card: 'The spot’s card', label: 'Share', ic: 'share', does: 'A link that opens this spot with a pin.', when: 'Sending a place to someone.', at: 'c', on: 'way area lipas road' },
+  { k: 'weather', foot: true, card: 'The spot’s card', label: 'Weather here ›', ic: 'cloudSun', does: 'The timeline, its readout held at this spot.', when: 'Choosing when to go. The card shows now.', at: 'c', on: 'way area lipas' },
+  { k: 'osm', foot: true, card: 'What’s here', label: 'All OpenStreetMap details', ic: 'details', does: 'The way’s own tags, asked for once.', when: 'Checking what the map really says.', at: 'm', on: 'way area' },
+  { k: 'copy', foot: true, card: 'What’s here', label: 'Copy (coordinates)', ic: 'pin', does: 'Copies the spot’s coordinates.', when: 'Telling someone exactly where, a rescue.', at: 'm', on: 'way area lipas' },
+  { k: 'follow', card: 'A LIPAS route', label: 'Follow this route', ic: 'route', does: 'Your route follows LIPAS’s line.', when: 'Riding or walking a marked route.', at: 'c', on: 'lipasroute' },
+  { k: 'lipasstart', card: 'A LIPAS route', label: 'Start a route here', ic: 'flag', does: 'A new route from this spot.', when: 'Planning from the place.', at: 'm', on: 'lipas' },
+  { k: 'lipaspage', foot: true, card: 'A LIPAS place', label: 'LIPAS’s page', ic: 'external', does: 'The place on lipas.fi.', when: 'Opening times, the operator.', at: 'c', on: 'lipas' },
+  { k: 'addpoint', card: 'The route’s card', label: 'Add a point here', ic: 'plus', does: 'A point on the line, splitting the leg.', when: 'Reshaping the route.', at: 'm', on: 'point' },
+  { k: 'editstretch', card: 'The route’s card', label: 'Edit this stretch ›', ic: 'pencil', does: 'Its sport, how it’s drawn, its style.', when: 'Planning.', at: 'm', on: 'point' },
+  { k: 'profile', foot: true, card: 'The route’s card', label: 'On the profile', ic: 'mountain', does: 'Zooms the profile to this stretch.', when: 'Looking at a climb.', at: 'c', on: 'point' },
+  { k: 'whole', card: 'The route’s card', label: 'The whole route ›', ic: 'more', does: 'Share, export, save offline, reverse, clear.', when: 'Done planning.', at: 'm', on: 'point' },
+  { k: 'stop', card: 'A point’s card', label: 'Pass by · Stop · Night', ic: 'pause', does: 'A break or a night at the point.', when: 'Planning a long day or a trip.', at: 'm', on: 'point' },
+  { k: 'leave', card: 'A point’s card', label: 'Leave / Go on at', ic: 'clock', does: 'When you set off from here.', when: 'Planning the time.', at: 'm', on: 'point' },
+  { k: 'sleep', card: 'A point’s card', label: 'Places to sleep nearby ›', ic: 'hut', does: 'Lean-tos, huts and campsites within 3 km.', when: 'A trip of several days.', at: 'm', on: 'point' },
+  { k: 'sport', card: 'A point’s card', label: 'Sport from here ›', ic: 'bike', does: 'The sport to the next change.', when: 'A multisport route.', at: 'm', on: 'point' },
+  { k: 'move', card: 'A point’s card', label: 'Move', ic: 'move', does: 'Tap where it goes.', when: 'Editing.', at: 'm', on: 'point' },
+  { k: 'rename', card: 'A point’s card', label: 'Rename', ic: 'pencil', does: 'A name of your own.', when: 'Planning a trip to share.', at: 'm', on: 'point' },
+  { k: 'remove', card: 'A point’s card', label: 'Remove', ic: 'trash', does: 'Removes the point; Undo brings it back.', when: 'Editing.', at: 'm', on: 'point' },
+  { k: 'fintraffic', foot: true, card: 'Road works (old popup)', label: 'Fintraffic traffic situation', ic: 'external', does: 'Fintraffic’s live map.', when: 'The latest on the works.', at: 'c', on: 'road' },
+  { k: 'routefrom', card: 'Road works (old popup)', label: 'Route from here', ic: 'flag', does: 'Starts a route at the works.', when: 'Rarely: the spot’s card has Start here.', at: 'g', on: 'road' },
+  { k: 'routeadd', card: 'Road works (old popup)', label: 'Add to route', ic: 'plus', does: 'Adds the works to your route.', when: 'Rarely: the card has Add to my route.', at: 'g', on: 'road' },
+  { k: 'routeavoid', card: 'Road works (old popup)', label: 'Avoid', ic: 'avoid', does: 'The route goes around the works.', when: 'Planning past them: the card has Avoid this spot.', at: 'g', on: 'road' },
+  { k: 'lipasadd', card: 'A LIPAS route', label: 'Add to my route (LIPAS)', ic: 'plus', does: 'Your route goes to it and follows it.', when: 'Planning, with a route.', at: 'm', on: 'lipasroute' },
+  { k: 'under', card: 'A LIPAS route', label: 'The trail under it ›', ic: 'route', does: 'The way the route runs on, here.', when: 'Today: a second card. New: tap the way itself.', at: 'g', on: 'lipasroute' },
+  { k: 'stretch', card: 'The route’s card', label: 'This stretch ›', ic: 'route', does: 'The stretch’s card: its numbers and sport.', when: 'Reading a stretch of a long route.', at: 'm', on: 'point' },
+  { k: 'backstart', card: 'A point’s card', label: 'Back to start', ic: 'loop', does: 'Adds a leg back to the start.', when: 'Making a route a loop.', at: 'm', on: 'point' },
+  { k: 'reverse', card: 'A point’s card', label: 'Reverse', ic: 'reverse', does: 'The route runs the other way.', when: 'Riding a route the other way.', at: 'm', on: 'point' },
+  { k: 'otherways', card: 'Edit this stretch', label: 'Other ways', ic: 'route', does: 'Up to two other ways, on the map.', when: 'The route took a way you don’t want.', at: 'm', on: 'point' },
+  { k: 'stophere', card: 'Edit this stretch', label: 'Stop here', ic: 'pause', does: 'A break or a night at this spot.', when: 'Planning a long day.', at: 'm', on: 'point' },
+  { k: 'stretchsport', card: 'Edit this stretch', label: 'Sport ›', ic: 'bike', does: 'This stretch’s own sport.', when: 'A multisport route.', at: 'm', on: 'point' },
+  { k: 'style', card: 'Edit this stretch', label: 'Route style ›', ic: 'sliders', does: 'This stretch’s own style.', when: 'Fine-tuning a route.', at: 'm', on: 'point' },
+  { k: 'finetune', card: 'Edit this stretch', label: 'Fine-tune ›', ic: 'sliders', does: 'Its terrain, climbs and roads, in How you go.', when: 'Fine-tuning a route.', at: 'm', on: 'point' },
+  { k: 'osmnote', card: 'Not right?', label: 'Leave a note on OpenStreetMap', ic: 'external', does: 'Opens a note at the spot; no account needed.', when: 'The map is wrong.', at: 'c', on: 'notright' },
+  { k: 'osmedit', card: 'Not right?', label: 'Edit it on OpenStreetMap', ic: 'external', does: 'The editor, at the way.', when: 'Fixing it yourself.', at: 'c', on: 'notright' },
+  { k: 'lockedit', card: 'Six cards, browsing', label: 'You’re not editing · Edit', ic: 'pencil', does: 'Starts editing from a card while browsing a route.', when: 'Browsing a route, to change it. Not drawn in the mock-up.', at: 'c', on: 'frame' },
+  { k: 'back', card: 'Every card', label: '‹ Back (in words)', ic: 'chevronLeft', does: 'Back to the card before.', when: 'After a card opened from another. Drawn only on Not right?.', at: 'c', on: 'frame' },
+  { k: 'fold', card: 'A desktop’s card', label: '⌄ Fold', ic: 'chevronDown', does: 'Folds the card to its title row.', when: 'Seeing the map under it. Not drawn in the mock-up.', at: 'c', on: 'frame' },
+];
+const AT_WORDS = { c: 'On the card', m: 'Long-press menu', g: 'Gone' };
+const DATA_WORDS = { real: 'Real', worst: 'Worst case', empty: 'Nothing mapped', fail: 'Sources fail' };
+const SPORT_WORDS = { mtb: 'MTB', gravel: 'Gravel', road: 'Road', hike: 'Hike' };
+
+// Each scene: a real place in Tampere. A way scene taps the middle of OSM way `way`; the others tap `at`.
+const SCENES = [
+  { group: 'Ways', id: 'trail', title: 'A trail with an MTB grade', note: 'An S3 path in Kauppi, in Gravel: the case #561 found. Today leaves the grade out.', at: [23.81886, 61.51759], z: 16.2, way: 83486734, sport: 'gravel' },
+  { group: 'Ways', id: 'path', title: 'A path with almost nothing mapped', note: 'Only “path” is mapped. The card says so in one line.', at: [23.8051, 61.51264], z: 16.5, way: 75722427, sport: 'hike' },
+  { group: 'Ways', id: 'shared', title: 'A cycleway shared with walkers', note: 'A lot mapped: lit, 3 m wide, fine gravel, a ski track in winter.', at: [23.83787, 61.5113], z: 15.4, way: 7743913, sport: 'mtb' },
+  { group: 'Ways', id: 'separate', title: 'A cycleway separate from walkers', note: 'Asphalt, 4.5 m, lit, with its own side for walkers.', at: [23.79636, 61.50101], z: 15.8, way: 31049344, sport: 'road' },
+  { group: 'Ways', id: 'lane', title: 'A street with cycle lanes', note: 'Erkkilänkatu: a lane on both sides.', at: [23.77065, 61.50247], z: 16, way: 4999797, sport: 'road' },
+  { group: 'Ways', id: 'long', title: 'A long street in many pieces', note: 'Hämeenkatu: the name joins its pieces; the card counts them.', at: [23.7715, 61.4985], z: 15, way: 7956116, sport: 'road' },
+  { group: 'Ways', id: 'dual', title: 'A street with two carriageways', note: 'Kalevantie: one name, two one-way sides. Which is one thing? A question for you.', at: [23.77612, 61.4948], z: 15.4, way: 4983772, sport: 'road' },
+  { group: 'Ways', id: 'named', title: 'A named trail across kinds', note: 'Kuntokolmonen runs on cycleways and a track: its name joins them.', at: [23.78778, 61.5118], z: 15, way: 90255645, sport: 'hike' },
+  { group: 'Ways', id: 'unnamed', title: 'Unnamed paths in a forest', note: 'The rule joins unnamed paths while their kind stays the same: at a fork, see At a fork.', at: [23.83863, 61.51935], z: 16, way: 153350916, sport: 'mtb' },
+  { group: 'Things', id: 'lake', title: 'A lake', note: 'Iidesjärvi: its outline is drawn; its card has its own facts.', at: [23.81288, 61.48435], z: 14.2, area: true, sport: 'hike' },
+  { group: 'Things', id: 'park', title: 'A park', note: 'Sorsapuisto, by its outline.', at: [23.78237, 61.49777], z: 15.6, area: true, sport: 'hike' },
+  { group: 'Things', id: 'lipas', title: 'A LIPAS place', note: 'A place from LIPAS in Kauppi, as its own card.', at: [23.8125, 61.5126], z: 15.6, lipas: true, sport: 'hike' },
+  { group: 'Things', id: 'point', title: 'A point on your route', note: 'The recorded Kauppi route: when you’re there, how far along, the profile up to it.', at: [23.8172, 61.519], z: 14.4, point: 1, sport: 'mtb' },
+  { group: 'Things', id: 'roadworks', title: 'Road works', note: 'Live from Fintraffic: the nearest works in Tampere, on the same card.', at: [23.7609, 61.4978], z: 14, road: true, sport: 'road' },
+  { group: 'Moments', id: 'heights', title: 'The card’s heights on a phone', note: 'The line at the spot first. Tap it for the card, drag the card up for the rest.', at: [23.83787, 61.5113], z: 15.4, way: 7743913, sport: 'mtb', step: 'line' },
+  { group: 'Moments', id: 'editing', title: 'Editing: a tap adds, a hold opens', note: 'While editing, a tap adds a point. Hold the map (or right-click) for the card with its actions.', at: [23.81886, 61.51759], z: 16, way: 83486734, sport: 'mtb', mode: 'edit', step: 'card' },
+];
+const sceneOf = (id) => SCENES.find((s) => s.id === id) || SCENES[0];
+
+const CFG = {
+  scene: q.get('s') || 'trail', v: q.get('v') || 'new', mode: q.get('m') || '', sport: q.get('sp') || '', fork: q.get('fork') || 'straight',
+  data: q.get('d') || 'real', size: q.get('size') || '390', show: q.get('show') || 'both', b: q.get('b') || '',
+};
+const choiceOf = (k) => { const i = BUTTONS.findIndex((x) => x.k === k); return (CFG.b[i] && AT_WORDS[CFG.b[i]]) ? CFG.b[i] : BUTTONS[i].at; };
+const setChoice = (k, at) => { CFG.b = BUTTONS.map((x) => (x.k === k ? at : choiceOf(x.k))).join(''); };
+const modeOf = () => CFG.mode || sceneOf(CFG.scene).mode || 'browse';
+const sportOf = () => CFG.sport || sceneOf(CFG.scene).sport || 'mtb';
+function writeUrl(extra = {}) {
+  const p = new URLSearchParams({ s: CFG.scene, v: CFG.v, ...(CFG.mode ? { m: CFG.mode } : {}), ...(CFG.sport ? { sp: CFG.sport } : {}), fork: CFG.fork, d: CFG.data, size: CFG.size, show: CFG.show, ...(CFG.b ? { b: CFG.b } : {}), ...extra });
+  return p;
+}
+
+// ================================================================ the panel: scenes, the moment, the data, the buttons
+function seg(label, value, choices, set) {
+  return h('div', { class: 'seg full small', role: 'group', 'aria-label': label },
+    ...Object.entries(choices).map(([k, words]) => h('button', { type: 'button', 'aria-pressed': String(k === value), onclick: () => set(k) }, words)));
+}
+function renderPanel(box, onChange, { shell = false } = {}) {
+  box.replaceChildren();
+  const sc = sceneOf(CFG.scene);
+  box.append(h('h2', {}, 'Cards, rethought'),
+    h('p', {}, 'A mock-up for #574: the thing you pick is drawn on the map, and one card tells everything known about it. Real OpenStreetMap data, in Tampere. Nothing here is built in the app yet: it decides nothing until you choose.'));
+  if (shell) {
+    box.append(h('h4', { class: 'menu-h' }, 'Size'), seg('Size', CFG.size, { 390: 'Phone 390', 360: 'Phone 360', 200: '200 %', desk: 'Desktop' }, (v) => { CFG.size = v; onChange('size'); }));
+    box.append(h('h4', { class: 'menu-h' }, 'Show'), seg('Show', CFG.show, CFG.size === 'desk' ? { today: 'Today', new: 'New' } : { both: 'Today and new', new: 'New only' }, (v) => { CFG.show = v; onChange('size'); }));
+  } else {
+    box.append(h('h4', { class: 'menu-h' }, 'Show'), seg('Show', CFG.v, { today: 'Today', new: 'New' }, (v) => { CFG.v = v; onChange('v'); }));
+  }
+  for (const group of ['Ways', 'Things', 'Moments']) {
+    box.append(h('h4', { class: 'menu-h' }, group), rows(...SCENES.filter((s) => s.group === group).map((s) => {
+      const r = item({ icon: s.group === 'Moments' ? 'clock' : s.area ? 'water' : s.lipas ? 'pin' : s.point ? 'route' : s.road ? 'cone' : 'hike', label: s.title, line: s.note, k: s.id,
+        onclick: () => { CFG.scene = s.id; CFG.mode = ''; CFG.sport = ''; onChange('scene'); } });
+      r.setAttribute('aria-current', String(s.id === sc.id));
+      r.title = '';
+      return r;
+    })));
+  }
+  box.append(h('h4', { class: 'menu-h' }, 'Moment'), seg('Moment', modeOf(), { browse: 'Browsing', edit: 'Editing' }, (v) => { CFG.mode = v; onChange('mode'); }));
+  box.append(h('h4', { class: 'menu-h' }, 'Your sport'), seg('Your sport', sportOf(), SPORT_WORDS, (v) => { CFG.sport = v; onChange('sport'); }),
+    h('p', {}, 'Changes Today’s card and the map’s trail colours. The new card stays the same in every sport.'));
+  box.append(h('h4', { class: 'menu-h' }, 'At a fork'), seg('At a fork', CFG.fork, { straight: 'Straight on', all: 'Every branch', stop: 'Stop' }, (v) => { CFG.fork = v; onChange('fork'); }),
+    h('p', {}, 'Where a piece meets two or more that continue it, which way the pick goes on. #574 doesn’t say: choose.'));
+  box.append(h('h4', { class: 'menu-h' }, 'Data'), seg('Data', CFG.data, DATA_WORDS, (v) => { CFG.data = v; onChange('data'); }),
+    h('p', {}, 'Worst case: a long Finnish name, every fact and six places at the spot. Nothing mapped: only the kind of way. Sources fail: the weather, the heights and LIPAS don’t answer.'));
+  box.append(h('h4', { class: 'menu-h' }, 'The buttons'), h('p', {}, 'Every button on today’s cards, what it does and when it’s needed. Choose where each goes: on the card, in the menu a hold or a right-click opens, or gone. “Nothing Polku does is removed to make it simpler” (PRODUCT.md): gone means its job is done elsewhere.'));
+  const list = h('div', { class: 'cr-btns' });
+  for (const card of new Set(BUTTONS.map((b) => b.card))) {
+    list.append(h('h4', { class: 'menu-h' }, card));
+    for (const b of BUTTONS.filter((x) => x.card === card)) list.append(h('div', { class: 'cr-btn' }, h('div', {}, h('b', {}, b.label), h('small', {}, `${b.does} ${b.when}`)),
+      seg(b.label, choiceOf(b.k), AT_WORDS, (v) => { setChoice(b.k, v); onChange('b'); })));
+  }
+  box.append(list, h('button', { type: 'button', class: 'btn cr-copy', onclick: (e) => copyChoices(e.currentTarget) }, h('span', {}, 'Copy my choices')));
+}
+function copyChoices(btn) {
+  const text = ['Where the buttons go (cards rethought mock-up):', ...['c', 'm', 'g'].map((at) => `${AT_WORDS[at]}: ${BUTTONS.filter((b) => choiceOf(b.k) === at).map((b) => b.label).join(', ') || 'none'}`),
+    `At a fork: ${{ straight: 'straight on', all: 'every branch', stop: 'stop' }[CFG.fork]}`].join('\n');
+  const done = () => { btn.firstChild.textContent = 'Copied'; setTimeout(() => { btn.firstChild.textContent = 'Copy my choices'; }, 1600); };
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(done, () => { prompt('Copy the choices:', text); });
+}
+
+// ================================================================ the shell on a Mac: the panel, Today and new side by side
+if (SHELL) {
+  document.body.classList.add('cr-shell');
+  const side = h('aside', { class: 'cr-side' }), stage = h('main', { class: 'cr-stage' });
+  document.body.append(side, stage);
+  const frames = {};
+  const SIZES = { 390: [390, 844, 1], 360: [360, 740, 1], 200: [195, 422, 2], desk: [1440, 900, 1] };
+  const post = () => { for (const [v, f] of Object.entries(frames)) f.contentWindow?.postMessage({ cr: 'cfg', cfg: { ...CFG, v } }, location.origin); };
+  function layout() {
+    stage.replaceChildren();
+    for (const k of Object.keys(frames)) delete frames[k];
+    const [w, hgt, zoom] = SIZES[CFG.size];
+    const shown = CFG.size === 'desk' ? [CFG.show === 'today' ? 'today' : 'new'] : CFG.show === 'new' ? ['new'] : ['today', 'new'];
+    const room = (innerWidth - 340 - 32 - 20 * (shown.length - 1)) / shown.length;
+    const scale = Math.min(1, (innerHeight - 70) / (hgt * zoom), room / (w * zoom));
+    for (const v of shown) {
+      const src = `${location.pathname}?${writeUrl({ f: 1, v })}`;
+      const fr = h('iframe', { src, title: v === 'today' ? 'Today, as main draws it' : 'New, as #574 decides', width: w, height: hgt, style: `width:${w}px;height:${hgt}px;transform:scale(${zoom * scale})` });
+      frames[v] = fr;
+      stage.append(h('figure', { class: 'cr-fig' },
+        h('figcaption', {}, h('b', {}, v === 'today' ? 'Today' : 'New'), ` · ${v === 'today' ? 'the card as the app on this branch draws it' : 'as #574 decides'}${zoom > 1 ? ' · at 200 %' : ''}`),
+        h('div', { class: `cr-frame${CFG.size === 'desk' ? ' desk' : ''}`, style: `width:${w * zoom * scale}px;height:${hgt * zoom * scale}px` }, fr)));
+    }
+  }
+  const sync = (what) => {
+    history.replaceState(null, '', `?${writeUrl()}`);
+    renderPanel(side, sync, { shell: true });
+    if (what === 'size') layout(); else post();
+  };
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || !e.data.cr) return;
+    if (e.data.cr === 'ready') post();
+    // a tap in one frame is made in the other too, so the two stay side by side
+    if (e.data.cr === 'tap') for (const [v, f] of Object.entries(frames)) if (f.contentWindow !== e.source) f.contentWindow?.postMessage(e.data, location.origin);
+  });
+  addEventListener('resize', () => layout());
+  renderPanel(side, sync, { shell: true });
+  layout();
+} else {
+  initScreen();
+}
+
+// ================================================================ the screen: the map, the pick, the line and the card
+function initScreen() {
+  const wide = () => innerWidth > 720;
+  const touchy = () => matchMedia('(pointer: coarse)').matches;
+  const demSource = new mlcontour.DemSource({ url: DEM_URL, encoding: 'terrarium', maxzoom: DEM_MAXZOOM, worker: true, cacheSize: 120, timeoutMs: 15000 });
+  demSource.setupMaplibre(maplibregl);
+  const ctx = {
+    demTiles: demSource.sharedDemProtocolUrl,
+    contourTiles: demSource.contourProtocolUrl({ multiplier: 1, thresholds: { 9: [100, 500], 10: [50, 250], 11: [20, 100], 12: [10, 50], 13: [5, 25], 14: [5, 25], 15: [2.5, 10], 16: [2.5, 10] }, elevationKey: 'ele', levelKey: 'level', contourLayer: 'contours', overzoom: 1 }),
+    data: {},
+  };
+  const mapState = () => ({
+    activity: sportOf(), base: 'trail', trailColors: 'down', highContrast: false, hillshade: true, contours: true, terrain3d: false, labelsDown: false, labelsUp: false,
+    weather: { wind: false, temp: false, rain: false }, exaggeration: 1.4, mmlKey: '', overlays: { ...ACTIVITY_OVERLAYS[sportOf()], roadworks: true }, overlayOpacity: {}, trailDetails: false,
+  });
+  const sc0 = sceneOf(CFG.scene);
+  const map = new maplibregl.Map({ container: 'map', style: buildStyle(mapState(), ctx), center: sc0.at, zoom: sc0.z, maxPitch: 60, attributionControl: false, dragRotate: false });
+  installIcons(map);
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+  window.cr = { map, CFG };
+  let styled = sportOf();
+
+  // ---------------------------------------------------------------- the pick's own layers, on top of the app's
+  const EMPTY = { type: 'FeatureCollection', features: [] };
+  const zi = (...s) => ['interpolate', ['linear'], ['zoom'], ...s];
+  function addMine() {
+    if (map.getSource('cr-pick')) return;
+    for (const id of ['cr-area', 'cr-branch', 'cr-pick', 'cr-route', 'cr-ring']) map.addSource(id, { type: 'geojson', data: ctx.data[id] || EMPTY });
+    map.addLayer({ id: 'cr-area-fill', type: 'fill', source: 'cr-area', paint: { 'fill-color': '#111827', 'fill-opacity': 0.06 } });
+    map.addLayer({ id: 'cr-area-casing', type: 'line', source: 'cr-area', layout: { 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.9 } });
+    map.addLayer({ id: 'cr-area-line', type: 'line', source: 'cr-area', layout: { 'line-join': 'round' }, paint: { 'line-color': '#111827', 'line-width': 2.5 } });
+    map.addLayer({ id: 'cr-route-casing', type: 'line', source: 'cr-route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(8, 5, 16, 11), 'line-opacity': 0.9 } });
+    map.addLayer({ id: 'cr-route-line', type: 'line', source: 'cr-route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': getComputedStyle(document.documentElement).getPropertyValue('--route').trim() || '#e11d48', 'line-width': zi(8, 3, 16, 6.5) } });
+    // the pick: a soft dark shadow, a white casing, then its colours (the route's look, kept apart from the route by the shadow)
+    for (const [src, w] of [['cr-branch', 0.75], ['cr-pick', 1]]) {
+      map.addLayer({ id: `${src}-shadow`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#0b1220', 'line-width': zi(10, 9 * w, 16, 20 * w), 'line-blur': zi(10, 3, 16, 6), 'line-opacity': 0.35 } });
+      map.addLayer({ id: `${src}-casing`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': zi(10, 6 * w, 16, 13 * w) } });
+      map.addLayer({ id: `${src}-line`, type: 'line', source: src, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['coalesce', ['get', 'color'], '#374151'], 'line-width': zi(10, 3.5 * w, 16, 7.5 * w) } });
+    }
+    map.addLayer({ id: 'cr-ring', type: 'circle', source: 'cr-ring', paint: { 'circle-radius': 13, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': '#111827', 'circle-stroke-width': 3 } });
+  }
+  const setData = (id, fc) => { ctx.data[id] = fc; const s = map.getSource(id); if (s) s.setData(fc); };
+  map.on('load', () => { addMine(); if (!wide()) document.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show'); ready(); });
+  function restyle() { if (styled === sportOf()) return; styled = sportOf(); map.setStyle(buildStyle(mapState(), ctx), { diff: true }); addMine(); }
+
+  // ---------------------------------------------------------------- the ways: one Overpass query per z14 tile, cached a week
+  // (as the trail details' tiles, js/trails.js, with the streets added: what a tap on any way needs; z14, a quarter of
+  // the trail details' z13, as a town's z13 tile of every way timed out on the public mirrors on 2026-10-29)
+  const TILE_Z = 14;
+  const WAY_RE = '^(trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|pedestrian|track|path|footway|cycleway|bridleway|steps)(_link)?$';
+  const KEEP = ['highway', 'name', 'ref', 'surface', 'smoothness', 'tracktype', 'lit', 'width', 'bicycle', 'foot', 'horse', 'access', 'motor_vehicle', 'segregated', 'cycleway', 'cycleway:left', 'cycleway:right', 'cycleway:both',
+    'oneway', 'oneway:bicycle', 'mtb:scale', 'mtb:scale:uphill', 'sac_scale', 'trail_visibility', 'winter_service', 'snowplowing', 'piste:type', 'bicycle:conditional', 'bridge', 'tunnel', 'maxspeed', 'sidewalk', 'sidewalk:both', 'service', 'footway', 'informal'];
+  const pickTags = (t = {}) => Object.fromEntries(KEEP.filter((k) => t[k] != null).map((k) => [k, t[k]]));
+  const waysQuery = (x, y) => { const [w, s, e, n] = tileBounds(x, y, TILE_Z); return `[out:json][timeout:40];way[highway~"${WAY_RE}"](${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)});out body geom qt;`; };
+  const slimWays = (json) => {
+    if (json.remark && /error|timed out|out of memory/i.test(json.remark)) throw new Error(`Overpass: ${json.remark}`);
+    return { v: 1, w: (json.elements || []).filter((el) => el.type === 'way' && el.geometry && el.nodes).map((el) => [el.id, pickTags(el.tags), [el.nodes[0], el.nodes[el.nodes.length - 1]], el.geometry.flatMap((p) => [+p.lon.toFixed(5), +p.lat.toFixed(5)])]) }; // (the ends' nodes are all the join needs)
+  };
+  const tiles = new Map(), loaded = new Set(), recTiles = new Set(), ways = new Map(), ends = new Map();
+  const tileOf = ([lon, lat]) => lonLatToTile(lon, lat, TILE_Z).map(Math.floor);
+  // Overpass is asked as the app asks it for a tap (three mirrors at once); when none answers, the scenes' ways come
+  // from a recording made on 2026-10-29 (cards-rethought-ways.json), and the card says so
+  let recording = null;
+  const recorded = () => (recording ||= request('polku', new URL('cards-rethought-ways.json', location.href).href).then((r) => r.json()).then((d) => { index(d, true); return d; }));
+  function loadTile([x, y]) {
+    const k = `${x}/${y}`;
+    if (!tiles.has(k)) {
+      const p = (failing() || q.has('rec') ? Promise.reject(new Error('Overpass')) : cachedOverpass(`cr-ways/${TILE_Z}/${k}`, waysQuery(x, y), slimWays, { race: true }))
+        .then((d) => { index(d); loaded.add(k); return d; })
+        .catch(async () => { const d = await recorded(); loaded.add(k); recTiles.add(k); return d; });
+      p.catch(() => tiles.delete(k));
+      tiles.set(k, p);
+    }
+    return tiles.get(k);
+  }
+  function index(d, rec = false) {
+    for (const [id, tags, nodes, flat] of d.w) {
+      if (ways.has(id)) continue;
+      const coords = [];
+      for (let i = 0; i < flat.length; i += 2) coords.push([flat[i], flat[i + 1]]);
+      const w = { id, tags, nodes, coords, len: lineLength(coords), rec };
+      ways.set(id, w);
+      for (const n of new Set([nodes[0], nodes[nodes.length - 1]])) { if (!ends.has(n)) ends.set(n, []); ends.get(n).push(w); }
+    }
+  }
+  const isLoaded = (ll) => loaded.has(tileOf(ll).join('/'));
+
+  // the way nearest the tap within a finger's (or a pointer's) reach, from the tiles that have loaded
+  function nearestWay(ll, px) {
+    const m = (40075016.686 * Math.cos((ll[1] * Math.PI) / 180)) / (512 * 2 ** map.getZoom()) * px;
+    let best = null;
+    for (const w of ways.values()) {
+      const c = w.coords;
+      for (let i = 1; i < c.length; i++) {
+        const r = pointSegment(ll, c[i - 1], c[i]);
+        if (r.d < m && (!best || r.d < best.d)) best = { w, d: r.d };
+      }
+    }
+    return best && best.w;
+  }
+
+  // ---------------------------------------------------------------- what one thing is (#574's rule 3)
+  // Pieces that continue each other (one ends where the next begins) join when they have the same name; unnamed ones
+  // join while their kind stays the same. At a fork: the straightest (or every branch, or stop: CFG.fork).
+  const KIND_NAME = { path: 'Path', footway: 'Footpath', cycleway: 'Cycleway', track: 'Track', steps: 'Steps', street: 'Street', road: 'Road', bridleway: 'Bridleway', pedestrian: 'Pedestrian street' };
+  const bikeOn = (t) => ['designated', 'yes'].includes(t.bicycle);
+  function kindOf(t) {
+    const hw = String(t.highway || '').replace(/_link$/, '');
+    if (hw === 'path') return 'path';
+    if (hw === 'footway' || hw === 'pedestrian') return bikeOn(t) ? 'cycleway' : hw === 'pedestrian' ? 'pedestrian' : 'footway';
+    if (['cycleway', 'track', 'steps', 'bridleway'].includes(hw)) return hw;
+    if (['residential', 'living_street', 'unclassified', 'service'].includes(hw)) return 'street';
+    return 'road';
+  }
+  const joinKey = (t) => (t.name ? `n:${t.name}` : `k:${kindOf(t)}`);
+  const angle = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+  function walk(seed) {
+    const key = joinKey(seed.tags), used = new Set([seed]);
+    let chain = [{ w: seed, rev: false }];
+    const stops = {};
+    let total = seed.len;
+    for (const side of ['end', 'start']) {
+      const c0 = seed.coords;
+      let node = side === 'end' ? seed.nodes[seed.nodes.length - 1] : seed.nodes[0];
+      let at = side === 'end' ? c0[c0.length - 1] : c0[0], from = side === 'end' ? c0[c0.length - 2] : c0[1];
+      for (;;) {
+        const cands = (ends.get(node) || []).filter((w) => !used.has(w) && joinKey(w.tags) === key);
+        if (!cands.length) { stops[side] = { why: 'end', at }; break; }
+        if (cands.length > 1 && CFG.fork === 'stop') { stops[side] = { why: 'fork', at }; break; }
+        if (total > 25000) { stops[side] = { why: 'long', at }; break; }
+        const out = bearing(from, at);
+        const best = cands.map((w) => { const fwd = w.nodes[0] === node; const next = fwd ? w.coords[1] : w.coords[w.coords.length - 2]; return { w, fwd, turn: angle(out, bearing(at, next)) }; })
+          .sort((a, b) => a.turn - b.turn)[0];
+        used.add(best.w);
+        total += best.w.len;
+        const wc = best.w.coords;
+        if (side === 'end') chain.push({ w: best.w, rev: !best.fwd }); else chain.unshift({ w: best.w, rev: best.fwd });
+        node = best.fwd ? best.w.nodes[best.w.nodes.length - 1] : best.w.nodes[0];
+        at = best.fwd ? wc[wc.length - 1] : wc[0];
+        from = best.fwd ? wc[wc.length - 2] : wc[1];
+        if (node === (side === 'end' ? seed.nodes[0] : seed.nodes[seed.nodes.length - 1])) { stops[side] = { why: 'loop', at }; break; } // round the block
+      }
+    }
+    // every branch: the same name (or kind) reached from the chain's ends, drawn too (the profile follows the chain)
+    const branches = [];
+    if (CFG.fork === 'all') {
+      const seen = new Set(chain.map((x) => x.w)), todo = chain.map((x) => x.w);
+      while (todo.length && branches.length < 400) {
+        const w = todo.pop();
+        for (const n of [w.nodes[0], w.nodes[w.nodes.length - 1]]) for (const x of ends.get(n) || []) if (!seen.has(x) && joinKey(x.tags) === key) { seen.add(x); branches.push(x); todo.push(x); }
+      }
+    }
+    return { chain, branches, stops };
+  }
+  // the chain, and the tiles its ends run into (a long street leaves the tile): up to sixteen tiles in all
+  async function join(seed) {
+    let j = walk(seed);
+    for (let k = 0; k < 6; k++) {
+      const out = Object.values(j.stops).filter((s) => s.why === 'end' && !isLoaded(s.at));
+      if (!out.length || loaded.size >= 16) break;
+      await Promise.all(out.map((s) => loadTile(tileOf(s.at)).catch(() => null)));
+      j = walk(seed);
+    }
+    return j;
+  }
+  function lineOf(chain) {
+    const coords = [], attrs = [];
+    for (const { w, rev } of chain) {
+      const c = rev ? [...w.coords].reverse() : w.coords;
+      c.forEach((p, i) => { if (i === 0 && coords.length) return; if (coords.length) attrs.push({ tags: w.tags }); coords.push(p); });
+    }
+    return { coords, attrs };
+  }
+
+  // ---------------------------------------------------------------- words for a way's facts
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const plain = (v) => String(v).replace(/_/g, ' ').replace(/;/g, ', ');
+  const BIKES = {
+    separate: ['Separate from walkers', '#15803d'], shared: ['Shared with walkers', '#65a30d'], cycleway: ['Cycleway', '#4d7c0f'], lane: ['Cycle lane', '#ca8a04'],
+    track: ['Cycle track beside it', '#a16207'], beside: ['Cycleway alongside', '#b45309'], trail: ['On a trail', '#7c2d12'], walk: ['For walkers', '#64748b'], traffic: ['With traffic', '#ea580c'], no: ['No bikes', '#334155'],
+  };
+  function bikesOf(t) {
+    const hw = String(t.highway || '').replace(/_link$/, '');
+    if (t.bicycle === 'no' || t.bicycle === 'dismount') return 'no';
+    if (hw === 'cycleway' || (['footway', 'path', 'pedestrian'].includes(hw) && t.bicycle === 'designated')) return t.segregated === 'yes' ? 'separate' : t.segregated === 'no' ? 'shared' : 'cycleway';
+    const sides = [t.cycleway, t['cycleway:both'], t['cycleway:left'], t['cycleway:right']];
+    if (sides.includes('lane') || sides.includes('exclusive')) return 'lane';
+    if (sides.includes('track')) return 'track';
+    if (sides.includes('separate')) return 'beside';
+    if (['path', 'track', 'bridleway'].includes(hw)) return 'trail';
+    if (['footway', 'steps', 'pedestrian'].includes(hw)) return 'walk';
+    return 'traffic';
+  }
+  const LIT = { yes: ['Lit', '#facc15'], no: ['Not lit', '#475569'] };
+  const litOf = (t) => (t.lit === 'no' ? 'no' : t.lit ? 'yes' : null);
+  const SAC_I = { hiking: 0, mountain_hiking: 1, demanding_mountain_hiking: 2, alpine_hiking: 3, demanding_alpine_hiking: 4, difficult_alpine_hiking: 5 };
+  const NONE = '#d6dde3';
+  const SMOOTH = { excellent: 'Excellent: thin road tyres', good: 'Good: road tyres', intermediate: 'Intermediate: city bikes', bad: 'Bad: sturdy tyres', very_bad: 'Very bad: a mountain bike', horrible: 'Horrible: off-road', very_horrible: 'Very horrible', impassable: 'Impassable' };
+
+  // length by value along the chain: [[value, metres]], the most first (null: not mapped)
+  function byLen(chain, fn) {
+    const m = new Map();
+    for (const { w } of chain) { const v = fn(w.tags); m.set(v, (m.get(v) || 0) + w.len); }
+    return [...m].sort((a, b) => b[1] - a[1]);
+  }
+  // a fact's value: one value, or how much of each; what isn't mapped, said as much
+  function valueOf(list, words = plain) {
+    const known = list.filter(([v]) => v != null);
+    if (!known.length) return null;
+    const total = list.reduce((s, [, m]) => s + m, 0), unknown = total - known.reduce((s, [, m]) => s + m, 0);
+    const main = known.length === 1 ? words(known[0][0]) : known.map(([v, m]) => `${words(v)} ${fmtDist(m)}`).join(', ');
+    return { value: cap(main), note: unknown > 20 ? `Not mapped for ${fmtDist(unknown)} of ${fmtDist(total)}` : '' };
+  }
+
+  // ---------------------------------------------------------------- the pick
+  // pick: { kind: 'way' | 'area' | 'lipas' | 'point' | 'road', ll, title, line, ... } and its state as it loads
+  let pick = null, step = 'none', hold = false, token = 0, routePts = [], routeA = null;
+  const worst = () => CFG.data === 'worst', empty = () => CFG.data === 'empty', failing = () => CFG.data === 'fail';
+  const LONG = 'Hervannan–Vuoreksen–Hallilan ulkoilureitin yhdysosuus';
+
+  async function chooseWay(w, ll) {
+    const j = await join(w);
+    const p = { kind: 'way', ll, w, chain: j.chain, branches: j.branches, stops: j.stops, geo: lineOf(j.chain), a: undefined, wx: undefined, places: undefined, ele: undefined };
+    p.recorded = j.chain.some((x) => x.w.rec);
+    p.tagsAt = empty() ? { highway: w.tags.highway } : w.tags;
+    if (empty()) p.chain = p.chain.map((x) => ({ ...x, w: { ...x.w, tags: { highway: x.w.tags.highway } } }));
+    p.title = worst() ? LONG : (p.chain.find((x) => x.w.tags.name) || {}).w?.tags.name || KIND_NAME[kindOf(w.tags)] || 'Way';
+    p.named = worst() || !!(p.chain.find((x) => x.w.tags.name));
+    p.len = p.chain.reduce((s, x) => s + x.w.len, 0);
+    p.line = wayLine(p);
+    return p;
+  }
+  function wayLine(p) {
+    const t = p.chain, bits = [];
+    const bikes = byLen(t, bikesOf)[0][0];
+    if (bikes && !['trail', 'traffic'].includes(bikes) || kindOf(p.w.tags) === 'road') bits.push(BIKES[bikes][0]);
+    const mtb = byLen(t, (x) => (mtbGrade(x) || {}).value || null).find(([v]) => v);
+    const sac = byLen(t, (x) => (sacGrade(x) || {}).value || null).find(([v]) => v);
+    if (mtb) bits.push(mtb[0]); else if (sac) bits.push(sac[0]);
+    const surf = byLen(t, (x) => x.surface || null).find(([v]) => v);
+    if (surf) bits.push(plain(surf[0]));
+    const wid = byLen(t, (x) => x.width || null).find(([v]) => v);
+    if (wid && ['path', 'track', 'cycleway'].includes(kindOf(p.w.tags))) bits.push(`${wid[0]}\u00a0m wide`);
+    const lit = byLen(t, litOf).find(([v]) => v);
+    if (lit) bits.push(lit[0] === 'yes' ? 'lit' : 'not lit');
+    if (worst()) bits.push('faint in places', 'overgrown', 'a ford');
+    return bits.length ? cap(bits.join(' · ')) : 'Little is mapped about it';
+  }
+
+  // Colour by: the route's own colours (grade, surface), and two new scales (bikes, lit). Only those the way has data for.
+  const BY = { grade: 'Grade', surface: 'Surface', bikes: 'Bikes', diff: 'Difficulty', lit: 'Lit' };
+  function byModes(p) {
+    if (p.kind !== 'way' && p.kind !== 'point') return [];
+    const has = (fn) => p.chain.some(({ w }) => fn(w.tags));
+    return ['grade', has((t) => t.surface) && 'surface', has((t) => t.bicycle || t.segregated || t.cycleway || t['cycleway:both'] || t['cycleway:left'] || t['cycleway:right'] || kindOf(t) === 'cycleway') && 'bikes',
+      has((t) => t['mtb:scale'] || t.sac_scale) && 'diff', has((t) => t.lit) && 'lit'].filter(Boolean);
+  }
+  let colourBy = (() => { try { return localStorage.getItem('cr-colour') || 'grade'; } catch { return 'grade'; } })();
+  const modeFor = (p) => (byModes(p).includes(colourBy) ? colourBy : 'grade');
+  function colourFn(p, mode) {
+    const a = p.a;
+    const tagsAt = (i) => (a.attr[i] && a.attr[i].tags) || {};
+    if (mode === 'surface') return (i) => (tagsAt(i).surface ? SURFACE_COLORS[tagsAt(i).surface] || SURFACE_COLORS.unknown : SURFACE_COLORS.unknown);
+    if (mode === 'bikes') return (i) => BIKES[bikesOf(tagsAt(i))][1];
+    if (mode === 'lit') return (i) => (litOf(tagsAt(i)) ? LIT[litOf(tagsAt(i))][1] : NONE);
+    if (mode === 'diff') return (i) => { const t = tagsAt(i), m = parseInt(t['mtb:scale'], 10); return m >= 0 ? DIFF_COLORS[Math.min(6, m)] : SAC_I[t.sac_scale] != null ? DIFF_COLORS[SAC_I[t.sac_scale]] : NONE; };
+    return (i) => colorAt(a, i, 'grade');
+  }
+  function legendOf(p, mode) {
+    const a = p.a, fn = colourFn(p, mode), m = new Map();
+    const word = (i) => {
+      const t = (a.attr[i] && a.attr[i].tags) || {};
+      if (mode === 'surface') return t.surface ? plain(t.surface) : 'not mapped';
+      if (mode === 'bikes') return BIKES[bikesOf(t)][0].toLowerCase();
+      if (mode === 'lit') return litOf(t) ? LIT[litOf(t)][0].toLowerCase() : 'not mapped';
+      if (mode === 'diff') return mtbGrade(t) ? `${mtbGrade(t).value} ${mtbGrade(t).word}` : sacGrade(t) ? `${sacGrade(t).value} ${sacGrade(t).word}` : 'not mapped';
+      const g = a.grade[i];
+      return a.eleGap && a.eleGap[i] ? 'no terrain' : g >= 10 ? 'steep up, 10 % +' : g >= 3 ? 'up, 3–10 %' : g > -3 ? 'flat' : g > -10 ? 'down, 3–10 %' : 'steep down';
+    };
+    for (let i = 1; i < a.pts.length; i++) { const k = word(i); const e = m.get(k) || { c: fn(i), m: 0 }; e.m += a.along[i] - a.along[i - 1]; m.set(k, e); }
+    return [...m].sort((x, y) => y[1].m - x[1].m);
+  }
+  function drawPick(p) {
+    if (!p || CFG.v !== 'new') { setData('cr-pick', EMPTY); setData('cr-branch', EMPTY); setData('cr-area', EMPTY); setData('cr-ring', EMPTY); return; }
+    setData('cr-area', p.kind === 'area' && p.geom ? p.geom : EMPTY);
+    setData('cr-ring', ['lipas', 'point'].includes(p.kind) && CFG.v === 'new' ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: p.at || p.ll } }] } : EMPTY);
+    setData('cr-branch', p.branches && p.branches.length ? { type: 'FeatureCollection', features: p.branches.map((w) => ({ type: 'Feature', properties: { color: '#6b7280' }, geometry: { type: 'LineString', coordinates: w.coords } })) } : EMPTY);
+    if (p.kind === 'road') { setData('cr-pick', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#f59e0b' }, geometry: p.geom }] }); return; }
+    if (p.kind !== 'way') { setData('cr-pick', EMPTY); return; }
+    if (!p.a || p.a === 'failed') { setData('cr-pick', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color: '#374151' }, geometry: { type: 'LineString', coordinates: p.geo.coords } }] }); return; }
+    const fn = colourFn(p, modeFor(p)), feats = [];
+    let cur = null;
+    for (let i = 1; i < p.a.pts.length; i++) {
+      const c = fn(i);
+      if (!cur || cur.properties.color !== c) { cur = { type: 'Feature', properties: { color: c }, geometry: { type: 'LineString', coordinates: [p.a.pts[i - 1]] } }; feats.push(cur); }
+      cur.geometry.coordinates.push(p.a.pts[i]);
+    }
+    setData('cr-pick', { type: 'FeatureCollection', features: feats });
+  }
+
+  // the slower facts: heights (the profile), the weather here now, places at the spot
+  function loadMore(p) {
+    const my = token, again = () => { if (pick === p && my === token) { drawPick(p); render(); } };
+    if (p.kind === 'way') {
+      (failing() ? Promise.reject(new Error('terrain')) : analyse(p.geo, { activity: sportOf() }))
+        .then((a) => { p.a = a.terrain && a.terrain.all ? 'failed' : a; }, () => { p.a = 'failed'; }).then(again);
+    }
+    if (p.kind === 'way' || p.kind === 'area' || p.kind === 'lipas') {
+      (failing() ? Promise.reject(new Error('weather')) : pointForecasts([p.ll]).then(([s]) => sampleAt(s, Date.now() / 1000)))
+        .then((w) => { p.wx = w; }, () => { p.wx = 'failed'; }).then(again);
+    }
+    if (p.kind === 'way' || p.kind === 'area') {
+      const types = Object.keys(LIPAS_TYPES).map(Number).filter((t) => t < 4000);
+      (failing() ? Promise.reject(new Error('lipas')) : worst() ? Promise.resolve(Array.from({ length: 6 }, (_, i) => ({ type: 1520, id: i, name: `${['Kaupin', 'Hervannan', 'Niihaman', 'Kalevan', 'Tammelan', 'Pyynikin'][i]} ulkoilualueen laavu ja tulentekopaikka`, at: p.ll })))
+        : lipasNear(p.ll, 0.12, types)).then((list) => { p.places = list.slice(0, 8); }, () => { p.places = 'failed'; }).then(again);
+    }
+    if (p.kind === 'lipas') (failing() ? Promise.reject(new Error('lipas')) : lipasPlace(p.lipas.type, p.lipas.id)).then((r) => { p.facts = r.props; }, () => { p.facts = 'failed'; }).then(again);
+    if (p.kind !== 'way') (failing() ? Promise.reject() : elevation(p.at || p.ll)).then((e) => { p.ele = Number.isFinite(e) ? e : null; }, () => { p.ele = null; }).then(again);
+  }
+
+  // ---------------------------------------------------------------- what a tap picks
+  async function pickAt(ll, pt, { touch = touchy() } = {}) {
+    const box = hitBox(pt, touch);
+    // the map's own things first: road works, LIPAS, the route's points
+    const rw = map.queryRenderedFeatures(box, { layers: ['sf-lines', 'sf-points'].filter((id) => map.getLayer(id)) }).find((f) => f.properties.kind === 'roadwork');
+    if (rw) return roadPick(rw.properties, ll);
+    const near = routePts.findIndex((q) => { const s = map.project(q); return Math.hypot(s.x - pt.x, s.y - pt.y) < (touch ? 22 : 12); });
+    if (near >= 0) return pointPick(near);
+    if (lipasPicks.length) { const lp = lipasPicks.find((x) => { const s = map.project(x.at); return Math.hypot(s.x - pt.x, s.y - pt.y) < (touch ? 22 : 12); }); if (lp) return lipasPick(lp); }
+    await loadTile(tileOf(ll)).catch(() => null);
+    const w = nearestWay(ll, touch ? 18 : 9);
+    if (w) return chooseWay(w, ll);
+    const a = await areaPick(ll, pt);
+    // where Overpass didn't answer and the recording doesn't reach, nothing found means nothing known, not nothing there
+    if (recTiles.has(tileOf(ll).join('/')) && !a.geom) { status('Overpass didn’t answer, and this spot is outside the recording: the ways here aren’t known. Try again in a minute.', 6000); return null; }
+    return a;
+  }
+
+  // an area: its outline from OpenStreetMap (the smallest named water, park or nature area around the spot)
+  async function areaPick(ll, pt) {
+    const water = map.getLayer('water') && map.queryRenderedFeatures(pt, { layers: ['water'] }).length;
+    const key = `cr-isin/${ll[1].toFixed(4)}/${ll[0].toFixed(4)}`;
+    const qy = `[out:json][timeout:25];is_in(${ll[1]},${ll[0]})->.a;(way(pivot.a)[~"^(natural|leisure|landuse|water|boundary)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground|protected_area)$"];rel(pivot.a)[~"^(natural|leisure|landuse|water)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground)$"];);out body geom qt;`;
+    const p = { kind: 'area', ll, title: water ? 'Water' : 'This spot', line: '', tags: {}, geom: null, wx: undefined, places: undefined, ele: undefined };
+    try {
+      const json = failing() ? await Promise.reject(new Error('Overpass')) : await (q.has('rec') ? Promise.reject(new Error('recording')) : cachedOverpass(key, qy, (j) => j, { race: true }))
+        .catch(async (err) => { const d = await recorded(); const near = Object.entries(d.areas || {}).find(([k2]) => { const [la, lo] = k2.split('/').map(Number); return Math.abs(la - ll[1]) < 0.004 && Math.abs(lo - ll[0]) < 0.008; }); if (!near) throw err; p.recorded = true; return near[1]; });
+      const els = (json.elements || []).filter((e) => e.tags && (e.geometry || e.members));
+      const size = (e) => { const g = e.geometry || (e.members || []).flatMap((m) => m.geometry || []); let s = Infinity, n = -Infinity, w = Infinity, ea = -Infinity; for (const q of g) { if (!q) continue; s = Math.min(s, q.lat); n = Math.max(n, q.lat); w = Math.min(w, q.lon); ea = Math.max(ea, q.lon); } return (n - s) * (ea - w); };
+      const best = els.filter((e) => e.tags.name).sort((a, b) => size(a) - size(b))[0] || els.sort((a, b) => size(a) - size(b))[0];
+      if (best) {
+        const t = best.tags;
+        p.tags = t;
+        p.title = worst() ? LONG : t.name || (t.natural === 'water' ? 'Water' : cap(plain(t.leisure || t.landuse || t.natural)));
+        p.line = cap([t.natural === 'water' ? (t.water ? plain(t.water) : 'water') : plain(t.leisure || t.landuse || t.natural || ''), t.access === 'private' ? 'private' : ''].filter(Boolean).join(' · '));
+        const lines = best.geometry ? [best.geometry.map((q) => [q.lon, q.lat])] : best.members.filter((m) => m.geometry).map((m) => m.geometry.filter(Boolean).map((q) => [q.lon, q.lat]));
+        p.geom = { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: best.geometry ? { type: 'Polygon', coordinates: lines } : { type: 'MultiLineString', coordinates: lines } }] };
+        p.outline = lines;
+      }
+    } catch { p.failed = true; }
+    return p;
+  }
+
+  // LIPAS places near a scene's spot (its map icons are the app's own layer; here, the scene's places)
+  let lipasPicks = [];
+  function lipasPick(x) {
+    const t = LIPAS_TYPES[x.type] || {};
+    return { kind: 'lipas', ll: x.at, at: x.at, title: worst() ? LONG : x.name, line: [t.name, 'from LIPAS'].filter(Boolean).join(' · '), lipas: x, wx: undefined, ele: undefined };
+  }
+
+  // a point on the recorded route (tools/fixtures/route-kauppi-mtb.json): no routing
+  async function loadRoute() {
+    if (routeA) return;
+    const fx = await (await request('polku', new URL('../../../tools/fixtures/route-kauppi-mtb.json', location.href).href)).json();
+    const coords = [], attrs = [];
+    for (const leg of fx.legs) leg.result.coords.forEach((c, i) => { if (i === 0 && coords.length) return; if (coords.length) attrs.push({ tags: leg.result.tags[Math.min(i - 1, leg.result.tags.length - 1)] || {} }); coords.push(c); });
+    routePts = fx.points.map((q) => coords.reduce((b, c) => (dist(c, q) < dist(b, q) ? c : b))); // (a point is drawn where the route reaches it)
+    routeA = await analyse({ coords, attrs }, { activity: 'mtb' }).catch(() => 'failed');
+    setData('cr-route', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] });
+    routeMarkers();
+  }
+  let routeMks = [];
+  function routeMarkers() {
+    routeMks.forEach((m) => m.remove());
+    routeMks = routePts.map((ll, i) => new maplibregl.Marker({ element: h('div', { class: `wp${i === 0 ? ' wp-start' : i === routePts.length - 1 ? ' wp-end' : ''}` }, i === 0 || i === routePts.length - 1 ? '' : String(i)) }).setLngLat(ll).addTo(map));
+  }
+  function pointPick(i) {
+    const ll = routePts[i], a = routeA;
+    const at = a && a !== 'failed' ? a.pts.reduce((b, q, k) => (dist(q, ll) < dist(a.pts[b], ll) ? k : b), 0) : 0;
+    return { kind: 'point', ll, at: ll, i, idx: at, title: i === 0 ? 'Start' : i === routePts.length - 1 ? 'End' : `Point ${i}`, a, chain: [], wx: undefined };
+  }
+
+  // road works from Fintraffic, as the app asks for them (js/safety.js): the nearest to the scene
+  let roadworks = null;
+  async function loadRoadworks(ll) {
+    if (roadworks) return roadworks;
+    const [x, y] = lonLatToTile(ll[0], ll[1], 8).map(Math.floor), [w, s, e, n] = tileBounds(x, y, 8);
+    const res = await request('digitraffic', `https://tie.digitraffic.fi/api/traffic-message/v2/roadworks?xMin=${w}&xMax=${e}&yMin=${s}&yMax=${n}`, { headers: { 'Digitraffic-User': 'Polku/1.0 (polku.si)' } });
+    if (!res.ok) throw new Error(String(res.status));
+    const gj = await res.json();
+    roadworks = (gj.features || []).filter((f) => f.geometry).map((f) => {
+      const p = f.properties || {}, a = (p.announcements || [])[0] || {}, t = a.timeAndDuration || {};
+      const props = { kind: 'roadwork', id: p.situationId, title: (a.title || '').trim(), where: (a.location && a.location.description) || '', details: (a.features || []).map((x) => (x.quantity != null ? `${x.name} ${x.quantity} ${x.unit || ''}`.trim() : x.name)).join(' · '), start: t.startTime || '', end: t.endTime || '' };
+      return { type: 'Feature', properties: props, geometry: f.geometry };
+    });
+    const mid = (g) => { const l = g.type === 'LineString' ? g.coordinates : g.type === 'MultiLineString' ? g.coordinates.flat() : [g.coordinates]; return l[Math.floor(l.length / 2)]; };
+    setData('sfLines', { type: 'FeatureCollection', features: roadworks.filter((f) => f.geometry.type !== 'Point') });
+    map.getSource('sfLines')?.setData(ctx.data.sfLines);
+    const pts = { type: 'FeatureCollection', features: roadworks.map((f) => ({ type: 'Feature', properties: { ...f.properties, icon: 'sf-roadwork' }, geometry: { type: 'Point', coordinates: mid(f.geometry) } })) };
+    ctx.data.sfPoints = pts; map.getSource('sfPoints')?.setData(pts);
+    return roadworks;
+  }
+  function roadPick(props, ll) {
+    const f = (roadworks || []).find((x) => x.properties.id === props.id) || { properties: props, geometry: { type: 'Point', coordinates: ll } };
+    return { kind: 'road', ll, props: f.properties, geom: f.geometry, title: 'Road works', line: worst() ? f.properties.where : f.properties.title };
+  }
+
+  // ---------------------------------------------------------------- the card (New): one card for every kind of thing
+  const fmtWhen = (iso) => (iso ? new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+  const factRows = (list) => h('div', { class: 'cr-facts' }, ...list.filter(Boolean).map(([k, v, note]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v), note ? h('small', {}, note) : null)));
+  const group = (title, list) => { const kept = list.filter(Boolean); return kept.length ? [h('h4', { class: 'menu-h' }, title), factRows(kept)] : []; };
+  const shownHere = (k, opened) => { const at = choiceOf(k); return at === 'c' || (at === 'm' && opened === 'hold'); };
+  const kindHas = (b, p) => b.on === 'all' || b.on.split(' ').includes(p.kind);
+
+  function profileSvg(p, upTo = null) {
+    const a = p.a, W = 300, H = 60, n = a.pts.length;
+    const lo = a.minE, hi = Math.max(a.maxE, a.minE + 10), total = a.along[n - 1] || 1;
+    const X = (i) => (a.along[i] / total) * W, Y = (i) => H - 4 - ((a.ele[i] - lo) / (hi - lo)) * (H - 10);
+    const fn = colourFn(p, modeFor(p));
+    let paths = '';
+    let start = 1;
+    for (let i = 1; i <= n; i++) {
+      const c = i < n ? fn(i) : null;
+      if (i === n || c !== fn(start)) {
+        let d = `M${X(start - 1).toFixed(1)},${H} `;
+        for (let k = start - 1; k < i; k++) d += `L${X(k).toFixed(1)},${Y(k).toFixed(1)} `;
+        d += `L${X(i - 1).toFixed(1)},${H}Z`;
+        const faded = upTo != null && start - 1 >= upTo;
+        paths += `<path d="${d}" fill="${faded ? '#cbd5e1' : fn(start)}" opacity="${faded ? 0.55 : 0.92}"/>`;
+        start = i;
+      }
+    }
+    let ink = '';
+    for (let k = 0; k < n; k++) ink += `${k ? 'L' : 'M'}${X(k).toFixed(1)},${Y(k).toFixed(1)} `;
+    const spot = upTo != null ? upTo : a.pts.reduce((b, q, k) => (dist(q, p.ll) < dist(a.pts[b], p.ll) ? k : b), 0);
+    const sx = X(spot).toFixed(1);
+    const box = h('div', { class: 'cr-prof', role: 'img', 'aria-label': `Height profile, ${Math.round(a.minE)} to ${Math.round(a.maxE)} m` });
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${paths}<path d="${ink}" fill="none" stroke="var(--chart-ink)" stroke-width="1.4" vector-effect="non-scaling-stroke"/><line x1="${sx}" x2="${sx}" y1="0" y2="${H}" stroke="var(--chart-ink)" stroke-width="1.5" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/></svg><span class="ax top">${Math.round(a.maxE)} m</span><span class="ax bot">${Math.round(a.minE)} m</span>`;
+    return box;
+  }
+  function colourChips(p) {
+    const modes = byModes(p), cur = modeFor(p);
+    const chips = h('div', { class: 'way-chips cr-by', role: 'group', 'aria-label': 'Colour by' }, ...modes.map((k) => h('button', {
+      type: 'button', class: 'chip', 'aria-pressed': String(k === cur), html: `${k === cur ? icon('check', 15) : ''}<span>${BY[k]}</span>`,
+      onclick: () => { colourBy = k; try { localStorage.setItem('cr-colour', k); } catch { /* storage blocked */ } drawPick(p); render(); },
+    })));
+    const legend = h('div', { class: 'cr-legend' }, ...legendOf(p, cur).slice(0, 6).map(([w, { c, m }]) => h('span', { html: `<i class="dot" style="background:${c}"></i>${w} ${fmtDist(m)}` })));
+    return [chips, legend];
+  }
+  function weatherGroup(p) {
+    if (p.wx === undefined) return group('Weather here now', [['Weather', '…']]);
+    if (p.wx === 'failed') return [h('h4', { class: 'menu-h' }, 'Weather here now'), h('p', { class: 'cr-fail' }, 'The forecast didn’t load. ', h('button', { type: 'button', class: 'btn quiet', onclick: () => { p.wx = undefined; render(); loadMore(p); } }, 'Try again'))];
+    const w = p.wx;
+    return group('Weather here now', [
+      ['Wind', `${w.speed.toFixed(0)} m/s from the ${compass(w.dir)}`, `Gusts ${w.gust.toFixed(0)} m/s`],
+      ['Rain', w.precip >= 0.1 ? `${w.precip.toFixed(1)} mm an hour${w.temp < 0.5 ? ', snow' : ''}` : 'Dry'],
+      ['Temperature', `${w.temp.toFixed(0)} °C`, 'Open-Meteo’s forecast for its 3 km square'],
+    ]);
+  }
+  function placesGroup(p) {
+    if (p.places === undefined || !p.places.length) return [];
+    if (p.places === 'failed') return [h('h4', { class: 'menu-h' }, 'At this spot'), h('p', { class: 'cr-fail' }, 'LIPAS didn’t answer, so places here aren’t shown.')];
+    return [h('h4', { class: 'menu-h' }, 'At this spot'), rows(...p.places.map((x) => item({ icon: 'pin', label: x.name, line: (LIPAS_TYPES[x.type] || {}).name || 'From LIPAS', chev: true, onclick: () => open(lipasPick(x), 'card') })))];
+  }
+  const x0 = (t) => t.some(({ w }) => /separate/.test(w.tags.sidewalk || w.tags['sidewalk:both'] || ''));
+  function wayFactsOf(p) {
+    const t = p.chain;
+    const v = (fn, words) => valueOf(byLen(t, fn), words);
+    const row = (k, x) => (x ? [k, x.value, x.note] : null);
+    const kind = kindOf(p.w.tags);
+    // what isn't allowed, and on how much of it (a street's carriageway is foot=no where its pavement is mapped apart)
+    const notOn = (fn, word) => { const m = t.reduce((a, { w }) => a + (fn(w.tags) ? w.len : 0), 0); return m ? (m > p.len - 20 ? word : `${word} on ${fmtDist(m)}`) : null; };
+    const notAllowed = [notOn((x) => x.bicycle === 'no', 'bikes'), notOn((x) => x.foot === 'no', x0(t) ? 'walking (the pavement is mapped apart)' : 'walking'),
+      notOn((x) => x.horse === 'no', 'horses'), notOn((x) => x.access === 'private' || (x.access === 'no' && !['yes', 'designated'].includes(x.bicycle) && !['yes', 'designated'].includes(x.foot)), 'marked private')].filter(Boolean);
+    // one way: only where some of it is; the rest goes both ways
+    const oneway = t.some(({ w }) => w.tags.oneway === 'yes') ? v((x) => (x.oneway === 'yes' ? (x['oneway:bicycle'] === 'no' ? 'one way for cars, both ways for bikes' : 'one way, bikes too') : 'both ways')) : null;
+    if (oneway) oneway.note = '';
+    const winter = v((x) => (x['piste:type'] === 'nordic' ? 'a ski track: keep off on foot and by bike' : /no @ \(winter\)/.test(x['bicycle:conditional'] || '') ? 'no bikes in winter'
+      : x.snowplowing === 'yes' || x.winter_service === 'yes' ? 'ploughed' : x.snowplowing === 'no' || x.winter_service === 'no' ? 'not ploughed' : null));
+    const a = p.a && p.a !== 'failed' ? p.a : null;
+    let steep = 0;
+    if (a) for (let i = 0, j = 0; i < a.pts.length; i++) { while (j < a.pts.length - 1 && a.along[j] - a.along[i] < 50) j++; const d = a.along[j] - a.along[i]; if (d >= 30) steep = Math.max(steep, Math.abs(((a.ele[j] - a.ele[i]) / d) * 100)); }
+    const upCls = a ? Math.max(-1, ...a.upCls) : -1;
+    const facts = {
+      along: [
+        row('Bikes', v(bikesOf, (k) => BIKES[k][0].toLowerCase())),
+        oneway ? ['One way', oneway.value, oneway.note] : null,
+        row('Width', v((x) => x.width || null, (x) => `${x}\u00a0m`)),
+        row('Lit', v(litOf, (k) => (k === 'yes' ? 'yes' : 'no'))),
+        row('Speed limit', v((x) => x.maxspeed || null, (x) => `${x} km/h`)),
+        notAllowed.length ? ['Not allowed', cap(notAllowed.join(', '))] : null,
+      ],
+      surface: [row('Surface', v((x) => x.surface || null)), row('Smoothness', v((x) => x.smoothness || null, (x) => SMOOTH[x] || plain(x))), row('In winter', winter)],
+      diff: [
+        row('MTB', v((x) => (mtbGrade(x) ? `${mtbGrade(x).value} ${mtbGrade(x).word}` : null), String)),
+        upCls >= 0 ? ['Uphill', UPHILL_TEXT[upCls].split(' · ')[0], `Steepest ${Math.round(steep)} % over 50 m, worked out from the terrain`] : steep >= 3 ? ['Steepest', `${Math.round(steep)} % over 50 m`] : null,
+        row('Hiking', v((x) => (sacGrade(x) ? `${sacGrade(x).value} ${sacGrade(x).word}` : null), String)),
+        row('Visibility', v((x) => (x.trail_visibility ? VIS_TEXT[visClass(x)] : null), String)),
+      ],
+    };
+    if (worst()) {
+      facts.along.push(['Obstacles', 'Fallen trees, a gate, a ford', 'Mapped 2023: the ford may be deeper after rain']);
+      facts.surface.push(['Smoothness', 'Horrible: off-road']);
+    }
+    // what a way of its kind would have, and this one doesn't
+    const want = { path: [['surface', 'surface'], ['width', 'width'], ['mtb:scale', 'MTB grade'], ['trail_visibility', 'visibility']], track: [['surface', 'surface'], ['width', 'width'], ['tracktype', 'track grade']],
+      cycleway: [['surface', 'surface'], ['width', 'width'], ['lit', 'lit'], ['segregated', 'walkers shared or separate'], ['smoothness', 'smoothness']], footway: [['surface', 'surface'], ['width', 'width'], ['lit', 'lit']],
+      street: [['surface', 'surface'], ['lit', 'lit'], ['maxspeed', 'speed limit']], road: [['surface', 'surface'], ['lit', 'lit'], ['maxspeed', 'speed limit'], ['cycleway', 'bikes']] }[kind] || [['surface', 'surface']];
+    const missing = want.filter(([k]) => !t.some(({ w }) => w.tags[k] != null || (k === 'cycleway' && Object.keys(w.tags).some((x) => x.startsWith('cycleway'))))).map(([, w]) => w);
+    return { facts, missing };
+  }
+
+  // the card's head: its mark, its name or kind, the line about getting along, ✕
+  function head(p, opened) {
+    const mark = p.kind === 'point' ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `wp${p.i === 0 ? ' wp-start' : p.i === routePts.length - 1 ? ' wp-end' : ''}` }, p.i === 0 || p.i === routePts.length - 1 ? '' : String(p.i)))
+      : h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `cr-mark${p.kind === 'area' ? ' area' : ['lipas', 'point'].includes(p.kind) ? ' dot' : ''}`, style: `--c:${p.kind === 'road' ? '#f59e0b' : p.kind === 'way' && p.a && p.a !== 'failed' ? legendOf(p, modeFor(p))[0][1].c : '#374151'}` }));
+    return h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, p.title), p.line ? h('small', {}, p.line) : null), mark,
+      shownHere('close', opened) ? h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close'), onclick: () => close({ echo: true }) }) : null);
+  }
+  // the actions a hold opens (and any chosen to stay on the card), as rows; then the card's quiet last row
+  function actions(p, opened) {
+    const list = BUTTONS.filter((b) => !b.foot && !['close', 'notright', 'here'].includes(b.k) && kindHas(b, p) && shownHere(b.k, opened));
+    const quiet = BUTTONS.filter((b) => b.foot && kindHas(b, p) && shownHere(b.k, opened) && (b.k !== 'profile' || p.kind === 'point'));
+    const out = [];
+    if (list.length) out.push(h('h4', { class: 'menu-h' }, p.kind === 'point' ? 'This point' : 'Your route'), acts(...list.map((b) => item({ icon: b.ic, label: b.label.replace(/ ›$/, '').replace(/^\+ /, ''), line: b.does.replace(/\.$/, ''), chev: / ›$/.test(b.label), k: b.k, onclick: () => toast(`${b.label}: as today`) }))));
+    if (quiet.length) out.push(h('div', { class: 'insp-actions card-foot' }, ...quiet.map((b) => h('button', { type: 'button', class: 'btn quiet', html: icon(b.ic, 16), onclick: () => (b.k === 'fintraffic' ? window.open('https://liikennetilanne.fintraffic.fi/', '_blank') : b.k === 'lipaspage' ? window.open(`https://www.lipas.fi/liikuntapaikat/${p.lipas.id}`, '_blank') : toast(`${b.label}: as today`)) }, h('span', {}, b.label.replace('Copy (coordinates)', 'Copy'))))));
+    return out;
+  }
+  function unmapped(p, missing) {
+    if (!missing.length && !shownHere('notright', opened)) return null;
+    return h('p', { class: 'cr-unmapped' }, missing.length ? h('span', {}, `Not mapped: ${missing.join(', ')}.`) : h('span', {}, p.kind === 'lipas' ? 'From LIPAS.' : 'From OpenStreetMap.'),
+      shownHere('notright', opened) ? h('button', { type: 'button', class: 'btn quiet', onclick: () => open({ ...p, kind: 'notright', from: p }, 'card') }, 'Not right?') : null);
+  }
+  let opened = 'tap';
+  function buildCard(p) {
+    const box = h('div', { class: 'pl-way card', 'data-back': 'no' });
+    if (p.kind === 'notright') {
+      const f = p.from, osm = f.w ? `https://www.openstreetmap.org/edit?way=${f.w.id}` : null;
+      box.append(h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', html: icon('chevronLeft', 18), onclick: () => open(f, 'card') }, h('span', {}, f.title)),
+        h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close'), onclick: () => close({ echo: true }) })),
+      h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, 'Not right?'), h('small', {}, 'The facts come from OpenStreetMap. Anyone can fix them.'))),
+      rows(shownHere('osmnote', opened) ? item({ icon: 'external', label: 'Leave a note on OpenStreetMap', line: 'No account needed. It opens at this spot.', k: 'note', el: 'a', onclick: () => window.open(`https://www.openstreetmap.org/note/new#map=18/${f.ll[1]}/${f.ll[0]}`, '_blank') }) : null,
+        osm && shownHere('osmedit', opened) ? item({ icon: 'external', label: 'Edit it on OpenStreetMap', line: 'With an OpenStreetMap account.', k: 'edit', onclick: () => window.open(osm, '_blank') }) : null) || '');
+      return box;
+    }
+    box.append(head(p, opened));
+    if (p.kind === 'way') {
+      const a = p.a && p.a !== 'failed' ? p.a : null;
+      box.append(nums([{ value: fmtDist(p.len), label: p.chain.length > 1 ? `long, ${p.chain.length} pieces` : 'long' },
+        a ? { value: `${Math.round(a.up)} m`, label: 'up' } : p.a === 'failed' ? { value: '?', label: 'heights didn’t load', missing: true } : { value: '–', label: 'up', wait: true },
+        a ? { value: `${Math.round(a.down)} m`, label: 'down' } : p.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
+      if (a) box.append(profileSvg(p), ...colourChips(p));
+      else if (p.a === 'failed') box.append(h('p', { class: 'cr-fail' }, 'The terrain didn’t load: no profile or grades yet. ', h('button', { type: 'button', class: 'btn quiet', onclick: () => { p.a = undefined; CFG.data = CFG.data === 'fail' ? 'real' : CFG.data; render(); loadMore(p); } }, 'Try again')));
+      const stops = Object.values(p.stops || {});
+      if (stops.some((s) => s.why === 'fork')) box.append(h('p', { class: 'cr-fail' }, 'It forks: the pick stops there (At a fork: Stop).'));
+      if (stops.some((s) => s.why === 'end' && !isLoaded(s.at))) box.append(h('p', { class: 'cr-fail' }, 'It goes on beyond what’s loaded.'));
+      if (p.recorded) box.append(h('p', { class: 'cr-fail' }, 'Overpass didn’t answer: these ways are from a recording of OpenStreetMap made on 2026-10-29.'));
+      const acted = actions(p, opened);
+      box.append(...acted);
+      const { facts, missing } = wayFactsOf(p);
+      const rest = [...group('Getting along', facts.along), ...group('Surface', facts.surface), ...group('Difficulty', facts.diff), ...weatherGroup(p), ...placesGroup(p)];
+      if (rest[0]) rest[0].dataset.stop = '';
+      box.append(...rest);
+      box.append(unmapped(p, missing) || '');
+    } else if (p.kind === 'area') {
+      const t = p.tags || {};
+      box.append(nums([p.ele === undefined ? { value: '–', label: 'height here', wait: true } : p.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(p.ele)} m`, label: 'height here' },
+        p.outline ? { value: fmtDist(p.outline.reduce((s, l) => s + lineLength(l), 0)), label: 'round its edge' } : null]));
+      if (p.failed) box.append(h('p', { class: 'cr-fail' }, 'OpenStreetMap didn’t answer: its outline and facts aren’t shown.'));
+      if (p.recorded) box.append(h('p', { class: 'cr-fail' }, 'Overpass didn’t answer: its outline is from a recording made on 2026-10-29.'));
+      box.append(...actions(p, opened), ...group('About it', [t.access ? ['Access', cap(plain(t.access))] : null, t.operator ? ['Run by', t.operator] : null, t.opening_hours ? ['Open', t.opening_hours] : null, t.wikipedia ? ['Wikipedia', t.wikipedia.replace(/^\w+:/, '')] : null,
+        t.natural === 'water' && t.swimming ? ['Swimming', cap(plain(t.swimming))] : null, t.salt === 'yes' ? ['Water', 'Salt'] : null]), ...weatherGroup(p), ...placesGroup(p));
+      box.append(unmapped(p, p.failed ? [] : (t.natural === 'water' ? ['swimming', 'access'] : ['access', 'operator']).filter((k) => !t[k])) || '');
+    } else if (p.kind === 'lipas') {
+      box.append(nums([p.ele === undefined ? { value: '–', label: 'height', wait: true } : p.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(p.ele)} m`, label: 'height' }]));
+      const f = p.facts && p.facts !== 'failed' ? p.facts : {};
+      box.append(...actions(p, opened), ...group('From LIPAS', [['Kind', (LIPAS_TYPES[p.lipas.type] || {}).name || 'A place'], f.city ? ['Where', f.city] : null, f.length ? ['Length', `${f.length}\u00a0km`] : null,
+        f.surface ? ['Surface', f.surface] : null, f.wc ? ['Toilet', f.wc === 'true' ? 'Yes' : 'No'] : null, f.info ? ['About it', f.info.length > 200 ? `${f.info.slice(0, 200)}…` : f.info] : null]));
+      if (p.facts === undefined) box.append(h('p', { class: 'cr-fail' }, 'Asking LIPAS for its facts…'));
+      if (p.facts === 'failed') box.append(h('p', { class: 'cr-fail' }, 'LIPAS didn’t answer: only its kind is shown.'));
+      box.append(...weatherGroup(p));
+      box.append(unmapped(p, []) || '');
+    } else if (p.kind === 'point') {
+      const a = p.a && p.a !== 'failed' ? p.a : null;
+      if (a) {
+        const t = a.tAt ? a.tAt[p.idx] : 0, now = new Date(); now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+        let up = 0; for (let k = 1; k <= p.idx; k++) up += Math.max(0, a.ele[k] - a.ele[k - 1]);
+        box.append(nums([{ value: new Date(now.getTime() + t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), label: `there, leaving ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` },
+          { value: fmtDist(a.along[p.idx]), label: `along, of ${fmtDist(a.total)}` }, { value: `${Math.round(up)} m`, label: 'up so far' }]));
+        box.append(profileSvg({ ...p, ll: p.ll }, p.idx), h('p', { class: 'cr-fail' }, `The profile up to ${p.title.toLowerCase()} is in colour; after it, grey.`));
+      }
+      box.append(...actions(p, opened));
+    } else if (p.kind === 'road') {
+      const r = p.props;
+      box.append(...actions(p, opened), ...group('The works', [r.details ? ['Effect', r.details] : null, ['From', fmtWhen(r.start) || 'Not said'], ['Until', fmtWhen(r.end) || 'Not said']]));
+      if (r.where) box.append(h('p', { class: 'insp-info' }, r.where));
+    }
+    return box;
+  }
+
+  // ---------------------------------------------------------------- the card (Today): as main draws it at the spot
+  // (planner.openSpotCard() and spotBody() in js/cards.js, from the same map features; the old popup for road works)
+  function todayCard(p) {
+    const box = h('div', { class: 'pl-way card', 'data-back': 'no' });
+    const yours = () => (modeOf() === 'edit' ? [h('h4', { class: 'menu-h' }, 'Your route'), acts(item({ icon: 'flag', label: 'Start here', line: 'Adds a new start point' }), item({ icon: 'flagend', label: 'End here', line: 'Adds a new end point' }),
+      item({ icon: 'roundtrip', label: 'Round trip from here', line: 'Loops of the length you choose, from here' }), item({ icon: 'avoid', label: 'Avoid this spot', line: 'The route goes around it, 40 m' }))] : []);
+    const foot = () => h('div', { class: 'insp-actions card-foot' }, h('button', { type: 'button', class: 'btn quiet', html: icon('share', 16) }, h('span', {}, 'Share')),
+      h('button', { type: 'button', class: 'btn quiet', html: icon('cloudSun', 16) }, h('span', {}, 'Weather here ›')), h('button', { type: 'button', class: 'btn quiet' }, 'Not right?'));
+    const x = h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close'), onclick: () => close({ echo: true }) });
+    if (p.kind === 'road') {
+      const r = p.props, when = (iso) => (iso ? new Date(iso).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+      box.append(h('div', { class: 'insp-title' }, 'Road works'), r.title ? h('div', { class: 'insp-sub' }, r.title) : '',
+        ...[r.details ? ['Effect', r.details] : null, r.start ? ['From', when(r.start)] : null, r.end ? ['Until', when(r.end)] : null].filter(Boolean).map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))),
+        r.where ? h('p', { class: 'insp-info' }, r.where.length > 240 ? `${r.where.slice(0, 240)}…` : r.where) : '',
+        h('div', { class: 'insp-links' }, h('a', { href: 'https://liikennetilanne.fintraffic.fi/', target: '_blank', rel: 'noopener', html: `Fintraffic traffic situation ${icon('external', 13)}` })),
+        h('div', { class: 'insp-actions' }, h('button', { type: 'button', class: 'btn', html: `${icon('flag', 15)} Route from here` }), h('button', { type: 'button', class: 'btn', html: `${icon('plus', 15)} Add to route` }), h('button', { type: 'button', class: 'btn avoid', html: `${icon('close', 15)} Avoid` })));
+      box.classList.add('cr-oldpopup');
+      return box;
+    }
+    if (p.kind === 'point') {
+      const a = p.a && p.a !== 'failed' ? p.a : null;
+      box.append(h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, p.title), h('small', {}, 'MTB')), h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: 'wp' }, String(p.i))), x),
+        nums(a ? [{ value: fmtDuration(a.tAt ? a.tAt[p.idx] : 0), label: 'there at, leaving now' }, { value: fmtDist(a.along[p.idx]), label: 'from the start' }] : []),
+        h('div', { class: 'seg icons full', role: 'radiogroup', 'aria-label': 'At this point' }, ...['Pass by', 'Stop', 'Night'].map((w, i) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(i === 0) }, w))),
+        rows(item({ icon: 'bike', label: 'Sport from here', line: 'To the next change of sport, or the end', val: 'MTB', chev: true })),
+        h('h4', { class: 'menu-h' }, 'This point'), acts(item({ icon: 'move', label: 'Move', line: 'Tap where it goes' }), item({ icon: 'pencil', label: 'Rename', line: 'Give it a name of your own' }),
+          item({ icon: 'flag', label: 'Start here', line: 'The part before it is removed, Undo brings it back' }), item({ icon: 'flagend', label: 'End here', line: 'The part after it is removed, Undo brings it back' })),
+        h('hr'), acts(item({ icon: 'trash', label: 'Remove', line: 'Undo brings it back', danger: true })));
+      return box;
+    }
+    const s = p.today || {};
+    box.append(h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, s.title), s.line ? h('small', {}, s.line) : null), h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: 'card-pin' })), x),
+      nums(spotNums({ fromRoute: null, ele: p.ele, tags: s.way ? s.tags : null, sport: sportOf() })),
+      s.facts && s.facts.length ? h('div', { class: 'cr-facts' }, ...s.facts.map((f) => h('div', { class: 'insp-row' }, h('span', {}, '✓'), h('b', {}, f)))) : '',
+      rows(item({ icon: 'info', label: 'What’s here', line: 'Everything Polku knows here', chev: true })), ...yours(), foot());
+    return box;
+  }
+  // today's words for the spot: describe() on the map's own features, as planner.openSpotCard() does
+  function todayOf(p, pt) {
+    const touch = touchy();
+    const feats = map.queryRenderedFeatures(hitBox(pt, touch), { layers: inspectLayers(map) });
+    const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id));
+    const bike = ['mtb', 'gravel', 'road'].includes(sportOf());
+    const d = f && describe(f, feats, { ll: p.ll, bike, mtb: sportOf() === 'mtb' });
+    const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
+    const water = !d && map.getLayer('water') && map.queryRenderedFeatures(pt, { layers: ['water'] }).length;
+    p.today = { title: worst() ? LONG : d ? text(d.title) : water ? 'Water' : 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
+      tags: way ? (empty() ? {} : tileTags(way.properties)) : {}, way: !!way };
+    if (p.kind === 'lipas') p.today = { title: p.title, line: (LIPAS_TYPES[p.lipas.type] || {}).name || '', tags: {}, way: false };
+    if (p.ele === undefined && p.kind === 'way') (failing() ? Promise.reject() : elevation(p.ll)).then((e) => { p.ele = Number.isFinite(e) ? e : null; }, () => { p.ele = null; }).then(() => { if (pick === p) render(); });
+  }
+
+  // ---------------------------------------------------------------- showing it: the line at the spot, then the card
+  let pinMk = null, lineMk = null, popup = null, sheet = null, tip = null;
+  function clearShown() {
+    pinMk?.remove(); lineMk?.remove(); popup?.remove(); pinMk = lineMk = popup = null;
+    if (sheet) { const s = sheet; sheet = null; s.classList.add('leaving', 'entering'); setTimeout(() => s.remove(), 200); }
+  }
+  function close({ echo = false } = {}) { token++; pick = null; step = 'none'; clearShown(); drawPick(null); if (echo) post({ cr: 'tap', close: true }); }
+  function open(p, s) { pick = p; step = s; if (p.kind !== 'notright') drawPick(p); render(); if (s !== 'line' && CFG.v === 'new') frame(p); }
+  // the pick in view, above the card
+  function frame(p) {
+    const pts = p.kind === 'way' ? p.geo.coords : p.kind === 'area' && p.outline ? p.outline.flat() : p.kind === 'road' && p.geom.type !== 'Point' ? (p.geom.type === 'LineString' ? p.geom.coordinates : p.geom.coordinates.flat()) : null;
+    const pad = wide() ? { top: 90, bottom: 60, left: 60, right: 60 } : { top: 76, bottom: (sheet ? sheet.offsetHeight : 320) + 24, left: 30, right: 30 };
+    if (!pts || pts.length < 2) { if (!wide()) map.easeTo({ center: p.ll, padding: pad, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 400 }); return; }
+    const b = pts.reduce((bb, q) => bb.extend(q), new maplibregl.LngLatBounds(pts[0], pts[0]));
+    if (wide()) { const s = map.getBounds(); if (s.contains(b.getSouthWest()) && s.contains(b.getNorthEast())) return; }
+    map.fitBounds(b, { padding: pad, maxZoom: 17, duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450 });
+  }
+  function render() {
+    const p = pick;
+    if (!p) return;
+    const isNew = CFG.v === 'new';
+    const at = p.kind === 'notright' ? p.from.ll : p.ll;
+    if (p.kind === 'point' && isNew) { pinMk?.remove(); pinMk = null; } else if (!pinMk) pinMk = new maplibregl.Marker({ element: h('span', { class: 'card-pin' }) }).setLngLat(at).addTo(map); else pinMk.setLngLat(at);
+    const title = isNew ? p.title : (p.today || {}).title || p.title;
+    // the line at the spot, on a phone, browsing (New): the hover's words, a button that opens the card
+    if (isNew && !wide() && step === 'line') {
+      const el = h('button', { type: 'button', class: 'cr-line', 'aria-label': `${title}. Open its card`, onclick: (e) => { e.stopPropagation(); open(p, 'card'); } },
+        h('span', {}, h('b', {}, title), p.line ? h('small', {}, p.line) : null), h('span', { html: icon('chevronUp', 18) }));
+      for (const ev of ['mousedown', 'touchstart', 'pointerdown', 'click', 'dblclick']) el.addEventListener(ev, (e) => e.stopPropagation());
+      lineMk?.remove();
+      lineMk = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -16] }).setLngLat(at).addTo(map);
+      popup?.remove(); popup = null;
+      if (sheet) { const s = sheet; sheet = null; s.classList.add('leaving', 'entering'); setTimeout(() => s.remove(), 200); }
+      return;
+    }
+    lineMk?.remove(); lineMk = null;
+    const card = isNew ? buildCard(p) : todayCard(p);
+    const inPeek = !wide() && (isNew || (modeOf() === 'edit' && opened === 'hold') || p.kind === 'point');
+    if (inPeek) {
+      popup?.remove(); popup = null;
+      const fresh = !sheet;
+      if (fresh) {
+        sheet = h('div', { class: 'cr-sheet entering', 'data-step': step === 'full' ? 'full' : 'card', role: 'dialog', 'aria-label': title });
+        document.body.append(sheet);
+      }
+      const handle = h('button', { type: 'button', class: 'sheet-handle', 'aria-label': step === 'full' ? 'Show less of the card' : 'Show all of the card', onclick: () => { step = step === 'full' ? 'card' : 'full'; size(); } });
+      sheet.replaceChildren(handle, card);
+      dragSheet(handle);
+      size();
+      if (fresh) requestAnimationFrame(() => requestAnimationFrame(() => sheet && sheet.classList.remove('entering')));
+    } else {
+      if (sheet) { const s = sheet; sheet = null; s.remove(); }
+      const box = h('div', {}, card);
+      if (!popup) {
+        popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, focusAfterOpen: false, maxWidth: 'none', anchor: anchorFor(at), className: `polku-popup card-float${isNew ? ' cr-card' : ''}`, offset: 14 }).setLngLat(at).setDOMContent(box).addTo(map);
+      } else popup.setDOMContent(box);
+      box.firstChild.style.setProperty('--card-max', `${Math.max(240, innerHeight - 100)}px`);
+      requestAnimationFrame(keepInView);
+    }
+  }
+  // the float in view: the map moves under it (js/inspect.js's keepInView())
+  function keepInView() {
+    if (!popup) return;
+    const r = popup.getElement().getBoundingClientRect(), m = 8, top = 64;
+    const dx = r.left < m ? r.left - m : r.right > innerWidth - m ? Math.min(r.right - (innerWidth - m), r.left - m) : 0;
+    const dy = r.top < top ? r.top - top : r.bottom > innerHeight - m ? Math.min(r.bottom - (innerHeight - m), r.top - top) : 0;
+    if (dx || dy) map.panBy([dx, dy], { duration: 0 });
+  }
+  function anchorFor(ll) {
+    const s = map.project(ll), right = innerWidth - s.x > Math.min(350, s.x), down = innerHeight - s.y > Math.min(480, innerHeight * 0.55);
+    return `${down ? 'top' : 'bottom'}-${right ? 'left' : 'right'}`;
+  }
+  // the sheet's heights: the card (its head, numbers, profile and Colour by), or all of it (full at most)
+  function size() {
+    if (!sheet) return;
+    sheet.dataset.step = step === 'full' ? 'full' : 'card';
+    const card = sheet.querySelector('.pl-way');
+    const upto = card.querySelector('[data-stop]');
+    const all = card.offsetTop + card.scrollHeight + 4;
+    // the card never goes under the bar, however tall the bar is (two rows at 200 %)
+    const top = Math.round((document.querySelector('.cr-bar')?.getBoundingClientRect().bottom || 56) + 8);
+    sheet.style.setProperty('--cr-top', `${top}px`);
+    const max = innerHeight - top - 8;
+    const part = upto ? upto.offsetTop + 2 : all;
+    const hgt = step === 'full' ? Math.min(all, max) : Math.min(part, all, max * 0.62);
+    sheet.style.setProperty('--cr-h', `${Math.round(hgt)}px`);
+  }
+  function dragSheet(handle) {
+    let y0 = null, h0 = 0, t0 = 0;
+    const down = (e) => { if (y0 != null) return; y0 = e.clientY; t0 = e.timeStamp; h0 = sheet.offsetHeight; sheet.classList.add('dragging'); handle.setPointerCapture?.(e.pointerId); };
+    const move = (e) => { if (y0 == null || !sheet) return; sheet.style.setProperty('--cr-h', `${Math.max(80, h0 - (e.clientY - y0))}px`); };
+    const up = (e) => {
+      if (y0 == null || !sheet) return;
+      const dy = e.clientY - y0, fast = Math.abs(dy) / Math.max(1, e.timeStamp - t0) > 0.11; y0 = null; sheet.classList.remove('dragging');
+      if (Math.abs(dy) < 6) return; // a tap: the button's own click
+      if (dy < -30 || (fast && dy < 0)) step = 'full'; else if (dy > 30 || fast) { if (step === 'full') step = 'card'; else { step = 'line'; render(); return; } }
+      size();
+    };
+    handle.addEventListener('pointerdown', down); handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
+  }
+  const toast = (msg) => { const t = h('div', { class: 'cr-status cr-toast', role: 'status' }, msg); document.body.append(t); setTimeout(() => t.remove(), 2200); };
+
+  // ---------------------------------------------------------------- taps, holds and the hover
+  const post = (msg) => { if (FRAME && parent !== self) parent.postMessage(msg, location.origin); };
+  let points = [];
+  async function onTap(ll, pt, how, { echo = true } = {}) {
+    if (echo) post({ cr: 'tap', ll, how });
+    // editing: a tap does the main action, adds a point
+    if (modeOf() === 'edit' && how === 'tap') {
+      close();
+      const mk = new maplibregl.Marker({ element: h('div', { class: 'wp' }, String(points.length + 1)) }).setLngLat(ll).addTo(map);
+      points.push(mk);
+      return;
+    }
+    opened = how;
+    const my = ++token;
+    const p = await pickAt(ll, pt);
+    if (!p || my !== token) return;
+    if (p.kind === 'way') token = my; // (chooseWay counted one)
+    p.ll = p.ll || ll;
+    todayOf(p, pt);
+    loadMore(p);
+    if (p.kind === 'point') p.a = routeA;
+    open(p, how === 'hold' || wide() || CFG.v === 'today' ? 'card' : 'line');
+  }
+  // (a hold swallows only the click that ends it: some browsers send none, and the next tap must count)
+  map.on('click', (e) => { if (Date.now() - heldUp < 400) return; onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'tap'); });
+  map.on('contextmenu', (e) => { e.preventDefault?.(); onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'hold'); });
+  // a hold: the ring from 150 ms, the card at 500 ms within 10 px (js/gestures.js's bindHold)
+  let held = false, heldUp = 0, holdT = 0, ringT = 0, ring = null, start = null;
+  const canvas = map.getCanvasContainer();
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return;
+    start = { x: e.clientX, y: e.clientY };
+    clearTimeout(holdT); clearTimeout(ringT);
+    ringT = setTimeout(() => { ring = h('div', { class: 'hold-ring', style: `left:${start.x}px;top:${start.y}px` }); document.body.append(ring); }, 150);
+    holdT = setTimeout(() => {
+      ring?.remove(); ring = null; held = true;
+      const r = canvas.getBoundingClientRect(), pt = new maplibregl.Point(start.x - r.left, start.y - r.top), ll = map.unproject(pt);
+      onTap([ll.lng, ll.lat], pt, 'hold');
+    }, 500);
+  });
+  const cancelHold = () => { clearTimeout(holdT); clearTimeout(ringT); ring?.remove(); ring = null; };
+  canvas.addEventListener('pointermove', (e) => { if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancelHold(); });
+  // the finger that held lifts: the click that comes with it isn't a tap
+  canvas.addEventListener('pointerup', () => { if (held) { held = false; heldUp = Date.now(); } cancelHold(); });
+  canvas.addEventListener('pointercancel', () => { held = false; cancelHold(); });
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  // the desktop's hover: the same line, at the pointer, and the way it's over drawn plain
+  let hoverT = 0;
+  map.on('mousemove', (e) => {
+    if (!wide() || CFG.v !== 'new' || !matchMedia('(hover: hover)').matches) return;
+    clearTimeout(hoverT);
+    tip?.setAttribute('hidden', '');
+    hoverT = setTimeout(async () => {
+      const ll = [e.lngLat.lng, e.lngLat.lat];
+      const w = nearestWay(ll, 9);
+      if (!w) { if (!pick) drawPick(null); tip?.setAttribute('hidden', ''); return; }
+      const j = walk(w), p = { kind: 'way', w, chain: j.chain, branches: [], geo: lineOf(j.chain), ll };
+      p.title = (j.chain.find((x) => x.w.tags.name) || {}).w?.tags.name || KIND_NAME[kindOf(w.tags)];
+      if (worst()) p.title = LONG;
+      p.line = wayLine(p);
+      if (!pick) drawPick({ ...p, a: null });
+      if (!tip) { tip = h('div', { class: 'hover-tip cr-tip', 'aria-hidden': 'true' }); document.body.append(tip); }
+      tip.innerHTML = `<b></b><span></span>`;
+      tip.querySelector('b').textContent = p.title; tip.querySelector('span').textContent = `${p.line} · click for its card`;
+      const r = map.getContainer().getBoundingClientRect();
+      tip.style.transform = `translate(${Math.min(r.left + e.point.x + 14, innerWidth - 270)}px, ${r.top + e.point.y + 16}px)`;
+      tip.removeAttribute('hidden');
+    }, 120);
+  });
+  map.getCanvas().addEventListener('mouseleave', () => { clearTimeout(hoverT); tip?.setAttribute('hidden', ''); if (!pick) drawPick(null); });
+  map.on('movestart', () => tip?.setAttribute('hidden', ''));
+  // the hover needs the ways in view: the tile in the map's middle, once it's close enough
+  map.on('moveend', () => { if (map.getZoom() >= 14) { const c = map.getCenter(); loadTile(tileOf([c.lng, c.lat])).catch(() => null); } });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && pick) close({ echo: true }); });
+
+  // ---------------------------------------------------------------- scenes
+  async function applyScene() {
+    const sc = sceneOf(CFG.scene);
+    close();
+    points.forEach((m) => m.remove()); points = [];
+    restyle();
+    setData('cr-route', EMPTY); routeMks.forEach((m) => m.remove()); routeMks = []; routePts = []; lipasPicks = [];
+    map.jumpTo({ center: sc.at, zoom: sc.z });
+    status(`Loading: ${sc.title}…`);
+    try {
+      let ll = sc.at;
+      if (sc.way) {
+        await loadTile(tileOf(sc.at));
+        const w = ways.get(sc.way);
+        if (w) { const i = Math.max(1, Math.floor(w.coords.length / 2)); const a = w.coords[i - 1], b = w.coords[i]; ll = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; }
+      }
+      if (sc.point != null) { await loadRoute(); ll = routePts[sc.point]; }
+      if (sc.lipas) {
+        const types = Object.keys(LIPAS_TYPES).map(Number).filter((t) => t < 4000);
+        const list = failing() ? [] : await lipasNear(sc.at, 0.5, types).catch(() => []);
+        lipasPicks = list.filter((x) => x.at && x.name);
+        const x = lipasPicks.sort((p1, p2) => dist(p1.at, sc.at) - dist(p2.at, sc.at))[0];
+        if (!x) { status('LIPAS didn’t answer, so there’s no place to show here. Try again in a minute.'); return; }
+        ll = x.at;
+        setData('cr-ring', EMPTY);
+      }
+      if (sc.road) {
+        const list = failing() ? [] : await loadRoadworks(sc.at).catch(() => []);
+        const near = list.map((f) => { const g = f.geometry, c = g.type === 'Point' ? [g.coordinates] : g.type === 'LineString' ? g.coordinates : g.coordinates.flat(); return { f, c: c[Math.floor(c.length / 2)] }; })
+          .sort((x1, x2) => dist(x1.c, sc.at) - dist(x2.c, sc.at))[0];
+        if (!near) { status('Fintraffic has no road works here now, or didn’t answer.'); return; }
+        ll = near.c; map.jumpTo({ center: ll, zoom: 15 });
+        await settled();
+      }
+      map.jumpTo({ center: ll, zoom: sc.z });
+      await settled();
+      status('');
+      const pt = map.project(ll);
+      opened = sc.mode === 'edit' || modeOf() === 'edit' ? 'hold' : 'tap';
+      await onTap(ll, pt, opened, { echo: false });
+      // a scene opens at its card (the card's heights scene at the line, to show the steps)
+      if (pick && sc.step !== 'line' && step === 'line') open(pick, 'card');
+    } catch (err) {
+      status(`Didn’t load: ${err.message || err}. Overpass may be busy: try again in a minute.`);
+    }
+  }
+  // the map drawn at the scene, or 4 s gone (a slow network, or a page in the background, never draws)
+  const settled = () => new Promise((ok) => { if (map.loaded()) { ok(); return; } map.once('idle', ok); setTimeout(ok, 4000); });
+  // a line under the bar while a scene loads
+  let statusEl = null;
+  let statusT = 0;
+  function status(text, ms = 0) {
+    if (!statusEl) { statusEl = h('div', { class: 'cr-status', role: 'status' }); document.body.append(statusEl); }
+    statusEl.textContent = text; statusEl.hidden = !text;
+    clearTimeout(statusT); if (ms) statusT = setTimeout(() => { statusEl.hidden = true; }, ms);
+  }
+
+  // ---------------------------------------------------------------- the bar and its panel (a phone, or a narrow window)
+  if (!FRAME) {
+    const bar = h('div', { class: 'cr-bar' });
+    const drawBar = () => {
+      bar.replaceChildren(h('button', { type: 'button', class: 'btn cr-scene-btn', html: icon('chevronDown', 16), 'aria-haspopup': 'dialog', onclick: openPanel }, h('span', {}, sceneOf(CFG.scene).title)),
+        seg('Show', CFG.v, { today: 'Today', new: 'New' }, (v) => { CFG.v = v; changed('v'); }));
+      bar.lastChild.classList.remove('full');
+    };
+    document.body.append(bar);
+    drawBar();
+    let panel = null, scrim = null;
+    function openPanel() {
+      scrim = h('div', { class: 'cr-scrim', onclick: closePanel });
+      panel = h('div', { class: 'cr-sheetpanel cr-panel', role: 'dialog', 'aria-label': 'The mock-up' });
+      document.body.append(scrim, panel);
+      renderPanel(panel, onPanel);
+      panel.querySelector('button')?.focus();
+    }
+    function closePanel() { panel?.remove(); scrim?.remove(); panel = scrim = null; }
+    const changed = (what) => { history.replaceState(null, '', `?${writeUrl()}`); drawBar(); apply(what); };
+    function onPanel(what) { changed(what); if (what === 'scene') closePanel(); else if (panel) renderPanel(panel, onPanel); }
+  } else {
+    addEventListener('message', (e) => {
+      if (e.origin !== location.origin || !e.data) return;
+      if (e.data.cr === 'cfg') { const was = { ...CFG }; Object.assign(CFG, e.data.cfg); const what = was.scene !== CFG.scene ? 'scene' : was.mode !== CFG.mode ? 'mode' : was.sport !== CFG.sport ? 'sport' : was.fork !== CFG.fork ? 'fork' : was.data !== CFG.data ? 'data' : was.b !== CFG.b ? 'b' : 'v'; if (booted) apply(what); }
+      if (e.data.cr === 'tap') { if (e.data.close) { close(); return; } const pt = map.project(e.data.ll); onTap(e.data.ll, pt, e.data.how, { echo: false }); }
+    });
+  }
+  function apply(what) {
+    if (what === 'b' || what === 'v') { if (pick) { drawPick(CFG.v === 'new' ? pick : null); render(); } return; }
+    applyScene();
+  }
+  // for scripted checks: go to a scene, and read the pick
+  Object.defineProperties(window.cr, { go: { value: (id, more = {}) => { Object.assign(CFG, { scene: id, mode: '', sport: '' }, more); return applyScene(); } }, pick: { get: () => pick }, step: { get: () => step } });
+  let booted = false;
+  function ready() {
+    booted = true;
+    post({ cr: 'ready' });
+    applyScene();
+  }
+}
+</script>
+</body>
+</html>
