@@ -8524,16 +8524,26 @@ FOLD_MOTION = """(async (reduced) => {
   if (reduced && !near(g, g1)) errs.push(`${tag}⌄: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g1} (with it, at once)`);
   if (vis(p.els.head) !== 'hidden') errs.push(`${tag}⌄: the header still ${vis(p.els.head)} after the fade`);
   // the line: the same the other way; and ⋯ comes back without fading in
+  p.toolsFaded = null;
   press(p.els.foldGo, 1);
   head = vis(p.els.head); line = vis(p.els.fold); g = gaps();
   if (head !== 'visible' || line !== 'visible') errs.push(`${tag}the line: in the first frame the header is ${head}, the line ${line} (both visible while they cross-fade)`);
   if (!reduced && curve() !== `0.26s ${DRAWER}`) errs.push(`the line: the sheet opens on ${curve()}, not 0.26s and the drawer's curve`);
   if (!reduced && !near(g, g1)) errs.push(`the line: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${g1} (where they were)`);
-  await wait(60);
-  const faded = [...p.tools.querySelectorAll('.tb-new'), ...(p.tools.classList.contains('tb-new') ? [p.tools] : [])].map((e) => e.getAttribute('aria-label') || 'the toolbox');
-  if (faded.length) errs.push(`${tag}the line: ${faded.join(', ')} faded in again`);
   await settle();
+  if (p.toolsFaded) errs.push(`${tag}the line: ${p.toolsFaded.map((e) => e.getAttribute('aria-label') || 'the toolbox').join(', ')} faded in again`);
   if (reduced && !near(g, gaps())) errs.push(`${tag}the line: in the first frame the map's buttons and the toolbox are ${g} px above the sheet, not ${gaps()} (with it, at once)`);
+  // a tap on the handle (the peek to the size it had last, and back): each of them moves once, with the sheet
+  if (!reduced) for (const way of ['up', 'down']) {
+    const from = p.panel.dataset.state;
+    const rides = [], was = Element.prototype.animate;
+    Element.prototype.animate = function (k, o) { if (o && o.id === 'ride') rides.push(this.id || this.className.split(' ')[0]); return was.call(this, k, o); };
+    press(p.els.handle, 1);
+    await settle();
+    Element.prototype.animate = was;
+    const n = riders().length;
+    if (p.panel.dataset.state === from || rides.length !== n) errs.push(`the handle ${way} from ${from}: ${p.panel.dataset.state}, ${rides.length} moves (${rides.join(', ')}), not one each for ${n}`);
+  }
   // the keyboard: the handle's arrows, ArrowUp on the line, ⌄ and the line with Enter: at once
   const steps = [['the handle ArrowUp', () => key(p.els.handle, 'ArrowUp')], ['the handle ArrowDown', () => key(p.els.handle, 'ArrowDown')],
     ['the handle ArrowDown to the line', () => key(p.els.handle, 'ArrowDown')], ['ArrowUp on the line', () => key(p.els.foldGo, 'ArrowUp')],
