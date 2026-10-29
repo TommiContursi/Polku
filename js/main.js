@@ -40,10 +40,12 @@ import { openChangelog } from './changelog.js';
 import { onTheme } from './palette.js';
 
 // ------------------------------------------------------------------ state
+const APPEARANCES = [['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark'], ['map', 'Match the map']];
 const DEFAULTS = {
   activity: 'mtb',
   base: 'trail',
   trailColors: 'down',
+  appearance: 'auto', // Settings → Appearance: 'auto' (the device's), 'light', 'dark' or 'map' (Match the map, #323)
   highContrast: false,
   hillshade: true,
   contours: true,
@@ -65,6 +67,7 @@ const DEFAULTS = {
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
+if (!APPEARANCES.some(([k]) => k === state.appearance)) state.appearance = 'auto'; // (and a look)
 state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
 for (const k of ['quickTiles', 'depthsBack']) if (!state[k] || typeof state[k] !== 'object') state[k] = {};
 const shared = parseShared(new URLSearchParams(location.search));
@@ -224,7 +227,21 @@ function routeHoverRoute(p) {
   if (id != null) map.setFeatureState({ source: 'lipasRoutes', id }, { hover: true });
 }
 
+// Light or dark (#323): the device's (Automatic, also when it changes), the person's, or the map's (Match the map: dark
+// over the aerial photos and the night map, the map style's own rule). index.html's <head> decides it the same way
+// before the first paint; js/palette.js reads the colours again when it changes.
+const mapDark = () => isAerial(state.base) || state.base === 'night';
+const deviceDark = matchMedia('(prefers-color-scheme: dark)');
+function applyTheme() {
+  const a = state.appearance, theme = (a === 'auto' ? deviceDark.matches : a === 'map' ? mapDark() : a === 'dark') ? 'dark' : 'light';
+  if (document.documentElement.dataset.theme === theme) return; // (a write redraws the map: palette.js)
+  document.documentElement.dataset.theme = theme;
+  $('meta[name="theme-color"]').content = theme === 'dark' ? '#181c1a' : '#1f6f4a';
+}
+deviceDark.addEventListener('change', applyTheme);
+
 function applyStyle() {
+  applyTheme(); // (the base map may have changed: Match the map)
   map.setStyle(buildStyle(state, ctx), { diff: true });
   syncView3d();
   saveSettings();
@@ -454,7 +471,7 @@ const weather = new WeatherOverlay(map, {
     data.wxRadar = r;
     if (JSON.stringify(r || null) !== before) applyStyle();
   },
-  dark: () => isAerial(state.base) || state.base === 'night',
+  dark: mapDark,
   // the timeline and the route's departure time are one clock
   onHour: (k) => { planner.setLeave(k ? timeAtHour(k) : null, { fromMap: true }); safety.publish(); },
   hasRoute: () => planner.points.length > 1,
@@ -1508,6 +1525,12 @@ function renderSettingsPanel() {
   }
 
   p.append(section('Display',
+    h('div', { class: 'tg-text', id: 'appearance-h' }, 'Appearance'),
+    h('div', { class: 'way-chips', role: 'group', 'aria-labelledby': 'appearance-h' }, ...APPEARANCES.map(([k, label]) => h('button', {
+      type: 'button', class: 'chip', 'data-appearance': k, 'aria-pressed': String(state.appearance === k), html: `${state.appearance === k ? icon('check', 15) : ''}<span>${label}</span>`,
+      onclick: () => { state.appearance = k; saveSettings(); applyTheme(); renderSettingsPanel(); $(`#settings-body [data-appearance="${k}"]`)?.focus(); },
+    }))),
+    h('p', { class: 'note' }, 'Automatic follows your device. Match the map is dark over the aerial photos and the night map, and light over the rest. Kept on this device only.'),
     toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight'),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
     toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery'),

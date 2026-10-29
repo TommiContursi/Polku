@@ -6530,6 +6530,13 @@ def scheme(pg, value):
     pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': value}, {'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
 
 
+# Polku's theme as asked (data-theme on <html>, Settings → Appearance), within 5 s: whether it came
+THEME_IS = """(async (want) => {
+  for (let k = 0; k < 50 && document.documentElement.dataset.theme !== want; k++) await new Promise((r) => setTimeout(r, 100));
+  return document.documentElement.dataset.theme === want;
+})"""
+
+
 # Each name's value on :root and each given value, both as the browser reads a colour, so that #fff and rgb(255, 255, 255) agree
 CSS_COLOURS = """((pairs) => {
   const probe = document.createElement('i'), css = getComputedStyle(document.documentElement);
@@ -6543,8 +6550,7 @@ CSS_COLOURS = """((pairs) => {
 
 def design_colours(chrome):
     """Every colour in DESIGN.md's frontmatter is its value in css/app.css: `x` is `--x`, and `dark-x` is `--x` in dark
-    mode, under both of the CSS's dark rules (the setting's and `data-theme`); a colour with no `dark-` one is the
-    same in both themes."""
+    mode (the device's, under Automatic); a colour with no `dark-` one is the same in both themes."""
     import re
     md = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'DESIGN.md')).read()
     block = re.search(r'^colors:\n((?:  .+\n)+)', md, re.M)
@@ -6557,14 +6563,11 @@ def design_colours(chrome):
     try:
         pg.open_app({'activity': 'mtb'})
         read = lambda want: pg.js(CSS_COLOURS + f"({json.dumps([['--' + k, v] for k, v in want.items()])})")
-        for label, want, setup in [('light', light, None), ('dark', dark, 'media'), ('dark (data-theme)', dark, 'attr')]:
-            if setup == 'media':
+        for label, want in [('light', light), ('dark', dark)]:
+            if label == 'dark':
                 scheme(pg, 'dark')
-            if setup == 'attr':
-                scheme(pg, 'light')
-                pg.js("document.documentElement.dataset.theme = 'dark'; true")
+                pg.js(THEME_IS + "('dark')")
             fails += [f'{label}: {name} is {css} in css/app.css, {md_} in DESIGN.md' for name, css, md_ in read(want) if css != md_]
-        pg.js("delete document.documentElement.dataset.theme; true")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -6577,7 +6580,7 @@ def design_colours(chrome):
 PALETTE_SEEN = """(async (dark) => {
   const map = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), frame = () => new Promise((r) => requestAnimationFrame(r));
   // the theme as asked, and two frames on, so its change has been told (that comes before a frame's callbacks)
-  for (let k = 0; k < 50 && matchMedia('(prefers-color-scheme: dark)').matches !== dark; k++) await wait(100);
+  for (let k = 0; k < 50 && (document.documentElement.dataset.theme === 'dark') !== dark; k++) await wait(100);
   await frame(); await frame();
   for (let k = 0; k < 50 && !map.isStyleLoaded(); k++) await wait(100);
   const paint = (id) => JSON.stringify(map.getLayer(id) ? map.getPaintProperty(id, 'line-color') : null);
@@ -6623,6 +6626,114 @@ def palette_css(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the route's colours and the scales come from the CSS, and again when the theme changes" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Settings → Appearance (#323): Automatic (the device's, also when it changes), Light, Dark, and Match the map (dark over
+# the aerial photos and the night map). index.html's <head> sets data-theme before the first paint, the way
+# js/main.js's applyTheme() decides it, so nothing sets it again as the app starts: THEME_LOG keeps every value it takes
+# from the document's start, and '<body>' where the body began.
+THEME_LOG = """(() => {
+  const log = window.__themeLog = [], html = { attributes: true, attributeFilter: ['data-theme'] };
+  const seen = new MutationObserver((list) => {
+    for (const m of list) {
+      if (m.type === 'attributes') log.push(m.target.dataset.theme);
+      else if ([...m.addedNodes].some((n) => n.nodeName === 'BODY')) { log.push('<body>'); seen.disconnect(); seen.observe(document.documentElement, html); }
+    }
+  });
+  seen.observe(document, { ...html, subtree: true, childList: true });
+})()"""
+THEME_NOW = """(() => ({ log: window.__themeLog, theme: document.documentElement.dataset.theme || 'none', meta: document.querySelector('meta[name="theme-color"]').content,
+  surface: getComputedStyle(document.documentElement).getPropertyValue('--surface-solid').trim(), base: polku.state.base, contrast: polku.state.highContrast,
+  saved: JSON.parse(localStorage.getItem('polku:settings')).appearance ?? null,
+  pressed: [...document.querySelectorAll('#settings-body [data-appearance][aria-pressed="true"]')].map((b) => b.dataset.appearance),
+  focus: document.activeElement.dataset.appearance || document.activeElement.id }))()"""
+LOOK = {'light': ('#1f6f4a', '#ffffff'), 'dark': ('#181c1a', '#181c1a')}  # the theme-color and --surface-solid
+
+
+def appearance(chrome):
+    """Each choice with both device settings, set before the first paint and never again as Polku starts; Automatic
+    following the device while Polku is open and the others not; Match the map switching with the base map, which no
+    choice changes; a choice made in Settings by touch, kept over a reload, with the focus left on it."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': THEME_LOG}, pg.s)
+
+        def tap(sel, name):
+            at = pg.js(f"""(() => {{ const b = document.querySelector({json.dumps(sel)}); if (!b) return null; b.scrollIntoView({{ block: 'nearest' }});
+              const r = b.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()""")
+            if not at:
+                fails.append(f'{name}: not there')
+                return False
+            pg.tap(*at)
+            time.sleep(0.5)
+            return True
+
+        def looks(r, want, where):
+            if r['theme'] != want or (r['meta'], r['surface']) != LOOK[want]:
+                fails.append(f"{where}: {r['theme']} (theme-color {r['meta']}, --surface-solid {r['surface']}), not {want}")
+
+        for device in ('light', 'dark'):
+            scheme(pg, device)
+            for choice, base in [('auto', 'trail'), ('light', 'trail'), ('dark', 'trail'), ('map', 'trail'), ('map', 'aerial'), ('map', 'night')]:
+                want = device if choice == 'auto' else choice if choice != 'map' else 'dark' if base != 'trail' else 'light'
+                where = f'{choice} over {base} on a {device} device'
+                pg.open_app({'activity': 'mtb', 'appearance': choice, 'base': base})
+                r = pg.js(THEME_NOW)
+                if r['log'] != [want, '<body>']:
+                    fails.append(f"{where}: data-theme was {r['log']} from the start, not {want} before <body> and nothing after")
+                looks(r, want, where)
+                if r['base'] != base:
+                    fails.append(f"{where}: the base map is {r['base']}")
+                # the device changes while Polku is open: only Automatic follows it
+                other = 'dark' if device == 'light' else 'light'
+                scheme(pg, other)
+                if choice == 'auto':
+                    pg.js(THEME_IS + f"('{other}')")
+                else:
+                    time.sleep(0.6)  # (time for a change that mustn't come)
+                looks(pg.js(THEME_NOW), other if choice == 'auto' else want, f'{where}, then the device {other}')
+                scheme(pg, device)
+
+        # Match the map: the quick drawer's maps, by touch, on a dark device (the map decides)
+        scheme(pg, 'dark')
+        pg.open_app({'activity': 'mtb', 'appearance': 'map', 'base': 'trail'})
+        tap('#btn-layers', 'Layers')
+        for base, want in [('aerial', 'dark'), ('night', 'dark'), ('maasto', 'light'), ('trail', 'light')]:
+            if tap(f'#quick-layers .qd-base[data-base="{base}"]', f"the quick drawer's {base}"):
+                pg.js(THEME_IS + f"('{want}')")
+                r = pg.js(THEME_NOW)
+                looks(r, want, f'Match the map, then {base}')
+                if r['base'] != base:
+                    fails.append(f"Match the map, then {base}: the base map is {r['base']}")
+
+        # in Settings by touch, on a dark device: Light, and it stays over a reload
+        scheme(pg, 'dark')
+        pg.open_app({'activity': 'mtb', 'base': 'trail'})
+        tap('#btn-settings', 'Settings')
+        before = pg.js(THEME_NOW)
+        if before['pressed'] != ['auto']:
+            fails.append(f"Settings: {before['pressed']} chosen at first, not Automatic")
+        tap('#settings-body [data-appearance="light"]', 'Light')
+        pg.js(THEME_IS + "('light')")
+        r = pg.js(THEME_NOW)
+        looks(r, 'light', 'Light picked in Settings on a dark device')
+        if (r['saved'], r['pressed'], r['focus']) != ('light', ['light'], 'light'):
+            fails.append(f"Light picked: saved {r['saved']}, chosen {r['pressed']}, the focus on {r['focus']}")
+        if (r['base'], r['contrast']) != (before['base'], before['contrast']):
+            fails.append(f"Light picked: the base map {before['base']} → {r['base']}, high contrast {before['contrast']} → {r['contrast']}")
+        pg.reload()
+        r = pg.js(THEME_NOW)
+        if r['log'] != ['light', '<body>']:
+            fails.append(f"Light, after a reload: data-theme was {r['log']} from the start")
+        tap('#btn-settings', 'Settings, after a reload')
+        if pg.js(THEME_NOW)['pressed'] != ['light']:
+            fails.append(f"Light, after a reload: Settings shows {pg.js(THEME_NOW)['pressed']} chosen")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Appearance: each choice on both devices from the first paint, the device and the map changing, and Settings by touch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -13941,6 +14052,7 @@ GROUPS = [
     ('quick', [quick], 'the quick layer drawer (#123): tiles in every sport, steps, Edit, More, status; the one swipe on it and the planner (touch)'),
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
+    ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),

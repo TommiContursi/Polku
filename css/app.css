@@ -72,43 +72,25 @@
 @media (pointer: coarse) { :root { --target: 44px; } }
 /* a desktop's card at the point is one step smaller (Revision 5 of #363) */
 .card-float { --row-h: 36px; --mark: 28px; --font-title: 0.9375rem; --font-number: 1.0625rem; --font-numeral: 1.0625rem; --font-row: 0.875rem; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --accent: #3fb07a;
-    --accent-2: #56c48f;
-    --accent-soft: rgba(63, 176, 122, 0.16);
-    --accent-bg: #237a52; /* white on --accent is 2.7:1, on this 5.3:1 (#239) */
-    --surface: rgba(24, 28, 26, 0.94);
-    --surface-solid: #181c1a;
-    --surface-2: #232825;
-    --text: #e8ece9;
-    --muted: #9aa69f;
-    --line: rgba(232, 236, 233, 0.12);
-    --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
-    --chart-ink: #e8ece9;
-    --chart-grid: rgba(154, 166, 159, 0.18);
-    --you: #4c9bff;
-    --you-soft: rgba(76, 155, 255, 0.16);
-    --bad: #f87171; /* red words: #dc2626 is 3.6:1 on the dark surface, this 6.2:1 (#370) */
-    --danger: #ff8a8a; --danger-soft: rgba(255, 138, 138, 0.14);
-    --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12);
-    --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13);
-    --focus: #6fd3a2;
-    --wx-text: #93c5fd;
-    --good-text: #4ade80; --ok-text: #facc15; --warn-text: #fb923c; --bad-text: #f87171;
-    --grip: rgba(232, 236, 233, 0.45);
-    --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, 0.5);
-    color-scheme: dark;
-  }
-}
+/* Dark: data-theme on <html>, from Settings → Appearance (#323), set before the first paint by index.html and
+   kept by js/main.js's applyTheme(). Every dark value is here, once. */
 :root[data-theme="dark"] {
-  --accent: #3fb07a; --accent-2: #56c48f; --accent-soft: rgba(63, 176, 122, 0.16); --accent-bg: #237a52;
-  --surface: rgba(24, 28, 26, 0.94); --surface-solid: #181c1a; --surface-2: #232825;
-  --text: #e8ece9; --muted: #9aa69f; --line: rgba(232, 236, 233, 0.12);
+  --accent: #3fb07a;
+  --accent-2: #56c48f;
+  --accent-soft: rgba(63, 176, 122, 0.16);
+  --accent-bg: #237a52; /* white on --accent is 2.7:1, on this 5.3:1 (#239) */
+  --surface: rgba(24, 28, 26, 0.94);
+  --surface-solid: #181c1a;
+  --surface-2: #232825;
+  --text: #e8ece9;
+  --muted: #9aa69f;
+  --line: rgba(232, 236, 233, 0.12);
   --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
-  --chart-ink: #e8ece9; --chart-grid: rgba(154, 166, 159, 0.18);
-  --you: #4c9bff; --you-soft: rgba(76, 155, 255, 0.16);
-  --bad: #f87171;
+  --chart-ink: #e8ece9;
+  --chart-grid: rgba(154, 166, 159, 0.18);
+  --you: #4c9bff;
+  --you-soft: rgba(76, 155, 255, 0.16);
+  --bad: #f87171; /* red words: #dc2626 is 3.6:1 on the dark surface, this 6.2:1 (#370) */
   --danger: #ff8a8a; --danger-soft: rgba(255, 138, 138, 0.14);
   --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12);
   --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13);
@@ -444,9 +426,6 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
   .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-button { top: 6px; left: 6px; }
 }
 .maplibregl-ctrl-scale { border-radius: 4px; background: rgba(255,255,255,0.8); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
-}
 
 /* ---------------------------------------------------------------- panels */
 /* Layers opens beside its button (bottom right), Settings under the ⚙ (top right) */
@@ -502,6 +481,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
 .tg-text { flex: 1; display: flex; flex-direction: column; }
 .tg-text small { color: var(--muted); font-size: 11px; }
+.lp-sec > .tg-text { padding: 7px 0 8px; } /* a setting's name over its chips (Appearance) */
 /* keep the real checkbox inside its row: focusing it must not scroll the page */
 .tg input { position: absolute; right: 0; top: 50%; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); box-shadow: inset 0 0 0 1.5px var(--muted); position: relative; flex: none; transition: background-color var(--t-press) ease, box-shadow var(--t-press) ease; }
@@ -2012,7 +1992,6 @@ body.dropping .drop-hint { display: flex; }
 /* service limits */
 .tl-note.warn { color: #b45309; font-weight: 600; }
 .stale-note { color: #b45309; margin: 0 0 6px; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tl-note.warn, :root:not([data-theme="light"]) .stale-note { color: #fbbf24; } }
 :root[data-theme="dark"] .tl-note.warn, :root[data-theme="dark"] .stale-note { color: #fbbf24; }
 
 /* data sources readout */
@@ -2130,7 +2109,6 @@ body.dropping .drop-hint { display: flex; }
 /* the toolbar's tooltips (ui.js tooltip()) */
 .tip { position: fixed; z-index: 30; max-width: 280px; padding: 8px 10px; border-radius: 10px; background: #1c2420; color: #fff; font-size: 12.5px; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 .tip b { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 13px; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tip { background: #e8ece9; color: #111; } }
 :root[data-theme="dark"] .tip { background: #e8ece9; color: #111; }
 .tip kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; border: 1px solid currentColor; font: 600 11px/1 ui-monospace, Menlo, monospace; opacity: .8; }
 

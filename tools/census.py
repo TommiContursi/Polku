@@ -61,7 +61,7 @@ CENSUS = r"""(() => {
         radius: s.borderRadius, fs: s.fontSize, fw: s.fontWeight, bg: s.backgroundColor, color: s.color, border: s.borderTopWidth + ' ' + s.borderTopColor });
     }
   }
-  return { vw, vh, coarse, dark: matchMedia('(prefers-color-scheme: dark)').matches || document.documentElement.dataset.theme === 'dark', text, controls, radius, shadow, timing, family };
+  return { vw, vh, coarse, dark: document.documentElement.dataset.theme === 'dark', text, controls, radius, shadow, timing, family };
 })()"""
 
 _shot = cdp.Page.screenshot
