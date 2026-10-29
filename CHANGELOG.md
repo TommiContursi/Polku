@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-29
 
+### With reduced motion, the planner's list scrolls at once and the routing bar stays put ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- With reduced motion turned on, the planner's list jumps to a section it opens for you, such as Leave or the weather along the route, instead of scrolling to it.
+- While a leg is being routed, the bar across the planner's top stays in place and fades in and out instead of sliding across. Without reduced motion it slides as before.
+
 ### The planner folds and opens more smoothly ([#569](https://github.com/TommiContursi/Polku/issues/569))
 
 - On a phone, the planner and its folded line fade into each other when you tap **⌄** or the line, as they do when you swipe. Before, the planner went blank for a moment.

@@ -2650,6 +2650,31 @@ ONROUTE_OPEN = """(async (sel, text) => {
   await """ + SETTLED + """;
   return [errs, await (""" + ROW_STILL + """)(el)];
 })"""
+# The section a warning's card opens for you (its "Sunrise and sunset" row: Go's weather along the route) is scrolled to
+# at once with reduced motion, and smoothly without (#540). Read from where the list stands right after the scroll is
+# asked for: a smooth one hasn't moved yet, and a page too busy to draw frames can't hide it.
+CARD_SCROLL = """(async (reduced) => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), tag = reduced ? 'reduced motion: ' : '';
+  p.cards.close();
+  p.analysis.darkWarn = [...window.mine];
+  p.renderWarnings();
+  p.setTab('check'); p.setSheetState('half');
+  await wait(500);
+  p.openItemCard(p.itemsAlong().find((x) => /In the dark/.test(x.w.text)), { from: 'check' });
+  for (let k = 0; k < 50 && !(p.cards.current && p.cards.box); k++) await wait(100);
+  const row = p.cards.box && [...p.cards.box.querySelectorAll('.row')].find((r) => /Sunrise and sunset/.test(r.textContent));
+  if (!row) return [`${tag}no Sunrise and sunset on the card`];
+  const real = Element.prototype.scrollIntoView, body = p.els.body, at = [];
+  Element.prototype.scrollIntoView = function (o) { const r = real.call(this, o); at.push(body.scrollTop); return r; };
+  row.click();
+  await wait(800);
+  Element.prototype.scrollIntoView = real;
+  const end = body.scrollTop, first = at[0];
+  if (!at.length || !end) return [`${tag}the card's Sunrise and sunset scrolled nothing (${at.length} scrolls, Go at ${end} px)`];
+  if (reduced && first !== end) return [`${tag}the list is at ${first} px right after the scroll to Go's weather, not at ${end} px: it scrolls smoothly`];
+  if (!reduced && first === end) return [`the scroll to Go's weather is at once, not smooth`];
+  return [];
+})"""
 ONROUTE_CARD = """(async (title, of, opts = {}) => {
   const errs = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
   // (the card, and its stretch lit in the next frame: late on a slow machine, so waited for)
@@ -2814,6 +2839,11 @@ def onroute(chrome):
           p.hideWarnKind({ key: 'roadwork' }, false);
           return errs;
         })()""", timeout=60000)
+        # (headless Chrome asks for reduced motion; a person usually doesn't)
+        for media in ('reduce', 'no-preference'):
+            pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+            fails += pg.js(f"({CARD_SCROLL})({'true' if media == 'reduce' else 'false'})", timeout=30000)
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
@@ -4719,11 +4749,34 @@ ROUTE_BITS = """(async () => {
 })()"""
 
 
+# While a leg is routed, the bar on the planner's header says so: it slides across, and with reduced motion it stays
+# where it is, full width, and pulses instead (#540). The leg's router is held until the bar has been read.
+ROUTING_BAR = """(async (reduced) => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), tag = reduced ? 'reduced motion: ' : '';
+  p.setActive(true); p.clear(); p.setMode('auto');
+  let release;
+  p.routeOne = () => new Promise((r) => { release = r; });
+  p.addPoint([23.750, 61.500]); p.addPoint([23.770, 61.505]);
+  for (let k = 0; k < 30 && !p.panel.classList.contains('busy'); k++) await wait(100);
+  const busy = p.panel.classList.contains('busy'), bar = getComputedStyle(p.panel.querySelector('.sheet-head'), '::after');
+  const errs = [], name = bar.animationName, want = reduced ? 'pulse' : 'busy';
+  if (!busy) errs.push(`${tag}no routing bar while a leg is routed`);
+  else if (name !== want) errs.push(`${tag}the routing bar runs ${name}, not ${want}`);
+  else if (reduced && bar.backgroundImage !== 'none') errs.push(`${tag}the routing bar is ${bar.backgroundImage}, not a full bar`);
+  release(); delete p.routeOne; p.clear();
+  return errs;
+})"""
+
+
 def route_bits(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.505/23.73')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
     fails = pg.js(ROUTE_BITS, timeout=60000)
+    # (headless Chrome asks for reduced motion; a person usually doesn't)
+    for media in ('reduce', 'no-preference'):
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+        fails += pg.js(f"({ROUTING_BAR})({'true' if media == 'reduce' else 'false'})", timeout=30000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} what the route shows" + ''.join(f'\n     - {f}' for f in fails), flush=True)

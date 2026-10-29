@@ -281,7 +281,7 @@ Polku's motion follows Emil Kowalski's design engineering ([Great animations](ht
 - **The map:** colour and opacity changes use MapLibre's paint transitions; camera moves share one set of durations; no tweening of geometry.
 - **Rebuilt content:** where only a state changes, the control shows its change through `settleControls()` (`js/ui.js`); nothing re-animates on a rebuild the person didn't cause.
 - **Outdoors and battery:** nothing loops while idle unless it says something (busy), and it stops when done.
-- **Reduced motion:** opacity only: things fade in place instead of sliding, pulses stop, and the map's camera moves jump.
+- **Reduced motion:** opacity only: things fade in place instead of sliding, pulses stop, the map's camera moves jump, and the planner's list scrolls at once. A busy bar (routing) stays in place and pulses in opacity, since it says something.
 
 ## Do's and Don'ts
 
