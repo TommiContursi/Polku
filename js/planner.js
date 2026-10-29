@@ -5966,7 +5966,7 @@ export class Planner {
 
   flash(el) {
     if (!el) return;
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    el.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     el.classList.remove('sec-flash');
     void el.offsetWidth; // restart the animation
     el.classList.add('sec-flash');
