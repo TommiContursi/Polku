@@ -176,6 +176,10 @@ conversation again
   already does is the one in DEVELOPING's "Shared controls", with its class,
   and a mock-up copies its CSS. A new kind is proposed to the user first. A
   mock-up keeps its earlier versions behind a switch, so they can be compared.
+- **Motion follows DESIGN.md's "Motion"**, built on Emil Kowalski's rules.
+  Every change to motion or interaction is decided with /animate. Before its
+  PRs open, the session stops and asks the user to run /review-animations
+  (only the user can start it), then fixes what it finds.
 
 ## Testing
 
