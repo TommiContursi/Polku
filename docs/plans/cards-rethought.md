@@ -97,7 +97,7 @@ These are cases #574 doesn't decide. Each is in the mock-up to try.
 
 ## What building it costs
 
-- **Ways for every tap.** The trail details load only trails (`js/trails.js`). A card for any way needs every way's tags: one Overpass query per tile, cached a week, as the trail details are. On 2026-10-29 a z13 tile of every way in central Tampere timed out on the public mirrors, so the mock-up asks z14 tiles (a quarter of the area). A long street loads the tiles its ends reach. Overpass is the slowest and least reliable of Polku's sources; the card shows the tile's own facts at once and fills in as the ways come.
+- **Ways for every tap.** The trail details load only trails (`js/trails.js`). A card for any way needs every way's tags: one Overpass query per tile, cached a week, as the trail details are. On 2026-10-29 a z13 tile of every way in central Tampere timed out on the public mirrors, so the mock-up asks z14 tiles (a quarter of the area). A long street loads the tiles its ends reach. Overpass is the slowest and least reliable of Polku's sources. The build could show the map tile's own facts at once and fill in as the ways come; the mock-up waits for them.
 - **The tap's spot** goes to Overpass for an area's outline (`is_in`), as Not right? and All OpenStreetMap details already do. It isn't your position. The weather here asks the forecast grid's point, never the spot.
 - **What it changes in the app:** `js/cards.js` (one card), `js/card.js` (the sheet and its heights), `js/facts.js` (the facts in groups, by length along the way), `js/hover.js` (the same line), `js/inspect.js` (the old popups go), `js/planner.js` (taps and holds), `js/style.js` (the pick's layers), `js/chart.js` (Bikes and Lit), `css/app.css`, and `tools/smoke.py`'s `spotcard`, `facts`, `routecard` and `crosshair` groups, with new ones for the join and the old popups.
 - **Its checks:** the join on recorded ways (`tools/fixtures/`), the heights at 360 px and 200 %, keyboard and screen reader (the card's grip is a button; the line at the spot is one), missing and late data, and a phone in the sun.
@@ -105,13 +105,14 @@ These are cases #574 doesn't decide. Each is in the mock-up to try.
 ## Checked
 
 On 2026-10-29, in headless Chrome through `tools/cdp.py` (light, reduced motion, touch on the phone sizes), with a script that opens each scene, opens its card at both heights, and measures it:
-- **390 × 844:** all 16 scenes, on real data. **360 × 740 and 200 %** (195 × 422 at twice the size): 8 scenes each, on real data and the worst case. **390:** nothing mapped and the sources failing. **1440 × 900:** 4 scenes, at the card's spot.
+- **390 × 844:** all 16 scenes, on real data. **360 × 740 and 200 %** (195 × 422 at twice the size): 6 scenes each on real data, and 2 in the worst case. **390:** nothing mapped and the sources failing. **1440 × 900:** 4 scenes, at the card's spot.
+- **Done as a person would, by script in the same browser:** the Mac's view with Today and New side by side; the desktop's hover line and its click; a touch hold while editing (the card with its actions), then a tap (a point added).
 - **What it measured:** nothing runs out of its card, the card stays below the bar and on the screen, and the controls on a phone's card are 44 px or more.
 - **What it found, fixed in the mock-up:** at 200 % the bar squeezed the scene's name to one letter (it now wraps, and the card stays below it), and the point card's note couldn't wrap.
 - **Found in the app:** #576. A bridge dips to the water in a profile; Hämeenkatu's card shows it at Hämeensilta ("steep up" on a flat street), and so would a route's.
 - **Also seen:** the lake's tap landed by its shore (now at its deepest point); a LIPAS scene with LIPAS failing picked the path under it (it now says LIPAS didn't answer); the desktop's card took the focus on a click (no longer).
 - **In the browser pane:** the trail scene at 390, light and dark, by taps on the line and the card; Today's card for the same spot (#561's case: no grade in Gravel).
-- **Not checked:** a real iPhone and a hold by touch; dark mode beyond the pane's own; most scenes on live Overpass: it timed out much of the day, so the measurements ran on the recording. The S3 trail and Hämeenkatu also ran live, in the browser pane.
+- **Not checked:** a real iPhone (its hold, its sheet, Safari); dark mode beyond the pane's own; most scenes on live Overpass: it timed out much of the day, so the measurements ran on the recording. The S3 trail and Hämeenkatu also ran live, in the browser pane.
 
 ## Left out
 
