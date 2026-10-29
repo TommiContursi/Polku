@@ -74,7 +74,7 @@ body.cr { background: var(--page); }
 .cr-unmapped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: var(--font-small); color: var(--muted); }
 .cr-unmapped .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-small); color: var(--accent); } /* (a finger's target, without growing the line) */
 .cr-fail { margin: 0; font-size: var(--font-small); color: var(--muted); }
-.cr-fail .btn { min-height: 0; padding: 2px 6px; font-size: var(--font-small); }
+.cr-fail .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-small); }
 
 /* the pick's own mark, left of its name: the map's line, in its colour */
 .cr-mark { display: block; width: 22px; height: 6px; border-radius: 3px; background: var(--c, #374151); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,.25); }
@@ -288,7 +288,7 @@ if (SHELL) {
       const fr = h('iframe', { src, title: v === 'today' ? 'Today, as main draws it' : 'New, as #574 decides', width: w, height: hgt, style: `width:${w}px;height:${hgt}px;transform:scale(${zoom * scale})` });
       frames[v] = fr;
       stage.append(h('figure', { class: 'cr-fig' },
-        h('figcaption', {}, h('b', {}, v === 'today' ? 'Today' : 'New'), ` · ${v === 'today' ? 'as main draws it (25526c5 and later)' : 'as #574 decides'}${zoom > 1 ? ' · at 200 %' : ''}`),
+        h('figcaption', {}, h('b', {}, v === 'today' ? 'Today' : 'New'), ` · ${v === 'today' ? 'the card as the app on this branch draws it' : 'as #574 decides'}${zoom > 1 ? ' · at 200 %' : ''}`),
         h('div', { class: `cr-frame${CFG.size === 'desk' ? ' desk' : ''}`, style: `width:${w * zoom * scale}px;height:${hgt * zoom * scale}px` }, fr)));
     }
   }
@@ -1183,7 +1183,8 @@ function initScreen() {
       const pt = map.project(ll);
       opened = sc.mode === 'edit' || modeOf() === 'edit' ? 'hold' : 'tap';
       await onTap(ll, pt, opened, { echo: false });
-      if (pick && sc.step === 'line' && CFG.v === 'new' && !wide()) { step = 'line'; render(); }
+      // a scene opens at its card (the card's heights scene at the line, to show the steps)
+      if (pick && sc.step !== 'line' && step === 'line') open(pick, 'card');
     } catch (err) {
       status(`Didn’t load: ${err.message || err}. Overpass may be busy: try again in a minute.`);
     }
