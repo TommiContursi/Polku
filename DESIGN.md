@@ -263,7 +263,25 @@ What every control shares:
 - **Hover:** `--surface-2` behind, only with a mouse. Today 38 of 57 hover rules also apply on touch screens, where they stay after a tap (#208), and the hover looks vary (`--surface-2`, `--surface-solid`, `--accent-soft`, `--accent-bg`).
 - **Pressed:** buttons, chips, tiles and switches shrink to 97 % for `--t-press` while held, with no grey flash; rows keep their grey (`--surface-2`). With reduced motion, nothing moves.
 - **Chosen:** never colour alone (#356). A chip: a green tint, a 2 px green border, black words. A switch: white, black words, a green icon or tick. A tile: a green border, icon and tick, black words. A row: a green tint and a tick. A switch that's off has a `--muted` edge, at least 3:1.
-- **Motion:** short and quiet. The timings are values: `--t-press` (120 ms) for a press and hover, `--t-open` (180 ms) for cards and menus and `--t-sheet` (260 ms) for the sheet and the panel; closing takes the next shorter one. They ease out on `--ease-out` (`cubic-bezier(0.23, 1, 0.32, 1)`), and the sheet on `--ease-drawer` (`cubic-bezier(0.32, 0.72, 0, 1)`). Today hover and press take 120 to 150 ms in places, typed in place. With reduced motion asked for, they fade in place instead of sliding, and pulses stop.
+- **Motion:** see [Motion](#motion) below: the timings, the curves and when things move.
+
+## Motion
+
+Polku's motion follows Emil Kowalski's design engineering ([Great animations](https://emilkowal.ski/ui/great-animations), [7 practical animation tips](https://emilkowal.ski/ui/7-practical-animation-tips)) and the skills built on it: `/animate` decides each motion and `/review-animations` checks it. The aim is motion nearly everywhere it helps: every press answers, and every change that means something moves. What people do many times a minute stays instant. Where a rule isn't yet true everywhere, #540's Motion 1, 2 and 3 make it true.
+
+- **Timings:** `--t-press` (120 ms) for a press and hover, `--t-open` (180 ms) for cards and menus and `--t-sheet` (260 ms) for the sheet and the panel; closing takes the next shorter one. Interface motion stays under 300 ms. Today hover and press take 120 to 150 ms in places, typed in place.
+- **Curves:** entering and leaving ease out on `--ease-out` (`cubic-bezier(0.23, 1, 0.32, 1)`), and the sheet on `--ease-drawer` (`cubic-bezier(0.32, 0.72, 0, 1)`); never ease-in. What moves with a finger uses the sheet's spring (`js/sheet.js`).
+- **Whether it moves:** never for an action started from the keyboard. What people see tens or hundreds of times a day (typing, undo, adding points, scrubbing) gets no motion, and hover effects come only with a mouse (`@media (hover: hover) and (pointer: fine)`). First paint and page load never animate.
+- **Press:** buttons, chips, tiles and switches shrink to 97 % while held (Pressed, under Components).
+- **Entering:** nothing enters from `scale(0)`: from 0.9 or more (tooltips 0.97), with opacity. Menus, popovers and tooltips grow from their trigger (`transform-origin` at the trigger; dialogs stay centred) and leave the way they came.
+- **Tooltips:** a delay before the first one; once one is open, the next opens at once, with no animation.
+- **Interrupting:** a move starts from where things are and can be caught mid-way: CSS transitions rather than keyframes.
+- **Performance:** interface elements animate `transform` and `opacity` only (`filter: blur()` where needed), with CSS or WAAPI rather than `requestAnimationFrame`, so they stay smooth while the main thread is busy. The map's canvas effects (wind, rain, snow) draw each frame by nature.
+- **A crossfade** between two states that still feels off gets 2 px of blur.
+- **The map:** colour and opacity changes use MapLibre's paint transitions; camera moves share one set of durations; no tweening of geometry.
+- **Rebuilt content:** where only a state changes, the control shows its change through `settleControls()` (`js/ui.js`); nothing re-animates on a rebuild the person didn't cause.
+- **Outdoors and battery:** nothing loops while idle unless it says something (busy), and it stops when done.
+- **Reduced motion:** opacity only: things fade in place instead of sliding, pulses stop, and the map's camera moves jump.
 
 ## Do's and Don'ts
 
