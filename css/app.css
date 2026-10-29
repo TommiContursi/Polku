@@ -679,9 +679,9 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 #layers-panel > .qd-grab { display: none; }
 .qd-scrim { position: fixed; inset: 0; z-index: 11; background: transparent; -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: reduce) {
-  .qd, .qd:not(.open) { transform: none; transition: opacity 150ms ease, visibility 0s; }
-  .qd:not(.open) { transition: opacity 150ms ease, visibility 0s 150ms; }
-  .qd-body.from-right, .qd-body.from-left, #layers-panel.step-in { animation: qd-fade 150ms ease; }
+  .qd, .qd:not(.open) { transform: none; transition: opacity 150ms var(--ease-out), visibility 0s; }
+  .qd:not(.open) { transition: opacity 150ms var(--ease-out), visibility 0s 150ms; }
+  .qd-body.from-right, .qd-body.from-left, #layers-panel.step-in { animation: qd-fade 150ms var(--ease-out); }
   .qt, .qd .qt-tog, .qd .qd-base, .qd .qd-chip { transition: none; }
   .qt:has(.qt-tog:active), .qt:has(.qt-rm:active), .qt-more:active, .qd-base:active, .qd-chip:active { transform: none; }
 }
@@ -1970,8 +1970,8 @@ body.dropping .drop-hint { display: flex; }
   .qt { min-height: 48px; }
 }
 @media (max-width: 720px) and (prefers-reduced-motion: reduce) {
-  .qd { transition: opacity 150ms ease, visibility 0s; }
-  .qd:not(.open) { opacity: 0; transform: none; transition: opacity 150ms ease, visibility 0s 150ms; }
+  .qd { transition: opacity 150ms var(--ease-out), visibility 0s; }
+  .qd:not(.open) { opacity: 0; transform: none; transition: opacity 150ms var(--ease-out), visibility 0s 150ms; }
 }
 
 /* offline areas */

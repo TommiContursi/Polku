@@ -538,8 +538,9 @@ function ride(el, seen, move) {
   el.getAnimations().find((a) => a.id === 'ride')?.cancel();
   const d = seen - el.getBoundingClientRect().bottom;
   if (!move || Math.abs(d) < 0.5 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const t = move.effect.getComputedTiming();
-  el.animate([{ translate: `0 ${d}px` }, { translate: '0 0' }], { id: 'ride', duration: t.endTime - move.currentTime, easing: move.effect.getTiming().easing });
+  // (every ride starts in the same frame as the sheet's move or slide: planner.js dispatches 'sheetstate' right after it
+  // starts one, so both run the whole curve together, side by side)
+  el.animate([{ translate: `0 ${d}px` }, { translate: '0 0' }], { id: 'ride', duration: move.effect.getTiming().duration, easing: move.effect.getTiming().easing });
 }
 // what rides above the sheet, and where it was when the planner began a change (it places its toolbox before the room changes)
 const riding = () => [$('#map-ctrls'), planner.tools, $('#wx-bar')].filter((el) => el && !el.hidden && !el.classList.contains('docked') && el.getClientRects().length);

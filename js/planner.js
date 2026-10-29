@@ -4192,6 +4192,15 @@ export class Planner {
           this.showSheet(this.cards.place === 'peek');
           if (this.cards.place !== 'peek') { delete document.body.dataset.sheet; delete document.body.dataset.pl; }
         }
+        // leaving, the sheet keeps the card it had until it has gone, taking no taps (showSheet() clears it): not the
+        // planner's numbers under it
+        if (!card && this.cardSeen && this.panel.classList.contains('leaving')) {
+          this.cardSeen.inert = true;
+          this.els.card.replaceChildren(this.cardSeen);
+          this.els.card.hidden = false;
+          this.panel.classList.add('carded');
+        }
+        this.cardSeen = this.cards.place === 'peek' ? this.cards.box : null;
         // a card opens at its own size; tapped on the map while the sheet is folded, it opens folded (its line), so the map
         // stays (step 3 of #233); with the planner put away, at its own size whatever size the planner had
         const st = this.panel.dataset.state, entry = this.cards.stack[this.cards.stack.length - 1];
@@ -4883,9 +4892,12 @@ export class Planner {
     if ((st === 'folded') !== (was === 'folded')) { this.toolsShown = null; this.renderTools(); }
     this.scrollAll();
     this.placeTools(); // at once: a camera move in the same step frames above it (viewPadding())
+    // its sizes measured for this size first, so it moves there once (not to one measured at the last size, then on)
+    this.stopSheet();
+    this.measureSheet?.();
     this.moveSheet(from);
     p.dispatchEvent(new Event('sheetstate')); // (main.js: --sheet-h, the size it's going to, at once)
-    if (instant) { this.measureSheet?.(); void p.offsetHeight; p.classList.remove('instant'); } // (its sizes for this size, at once too)
+    if (instant) { void p.offsetHeight; p.classList.remove('instant'); }
   }
 
   // While drawing or dragging on the map, the phone sheet gets out of the way: to its peek, or its line where the peek
@@ -5040,7 +5052,9 @@ export class Planner {
       // a card swiped up opens as tall as it is, full at most (step 3 of #233)
       const c = this.cards.place === 'peek' && this.cards.box;
       if (c) this.panel.style.setProperty('--card-full', `${Math.round(Math.min(dvh() - 76, c.getBoundingClientRect().top - this.panel.getBoundingClientRect().top + c.scrollHeight + parseFloat(getComputedStyle(hd).paddingBottom)))}px`);
-      this.moveSheet(from); // (a peek that grows or shrinks moves as a tap does)
+      // only what you asked for moves: a size that changes from its content alone (a point added) changes at once, and
+      // one that changes while the sheet moves turns that move to it, what rides above it with it
+      if (this.sheetMove) { this.moveSheet(from); this.panel.dispatchEvent(new Event('sheetstate')); }
     };
     this.measureSheet = sizes;
     new ResizeObserver(sizes).observe(this.els.head);
@@ -5204,8 +5218,9 @@ export class Planner {
 
   // The sheet moves with transform, as a swipe does (DESIGN.md's Motion, #569): for a move it's as tall as the larger of
   // what shows and what it's going to, and slides between the two over its foot, growing on --t-sheet and shrinking on
-  // --t-open, on --ease-drawer; at rest it's its own height again. A second change takes it from where it is. From the
-  // keyboard, with reduced motion and while a swipe holds it, it changes at once.
+  // --t-open, on --ease-drawer; at rest it's its own height again. A second change takes it from where it is. Only a
+  // change you asked for moves (setSheetState(); sizes() only turns a running move). From the keyboard, with reduced
+  // motion and while a swipe holds it, it changes at once.
   shownHeight() { return this.panel.hidden ? 0 : this.panel.offsetHeight - slid(this.panel); }
   moveSheet(from) {
     const p = this.panel, a = this.sheetMove;
@@ -5228,6 +5243,14 @@ export class Planner {
     this.sheetMove = null;
     this.panel.style.height = '';
   }
+  // the card a leaving sheet kept (onChange), once it's gone or turned back
+  dropCardSeen() {
+    if (this.cards.box || !this.els.card.firstChild) return;
+    this.els.card.replaceChildren();
+    this.els.card.hidden = true;
+    this.panel.classList.remove('carded');
+    this.cardSeen = null;
+  }
   // The planner, or a card's sheet with it put away, comes and goes on a phone as Layers' drawer does: up from below the
   // screen on --t-sheet, down on --t-open, on --ease-drawer, from where it is when it turns back; with reduced motion it
   // fades; from the keyboard, as the page loads and on a wider screen, at once. Leaving, it takes no taps and the map's
@@ -5241,17 +5264,20 @@ export class Planner {
     a?.cancel();
     this.sheetSlide = null;
     this.stopSheet();
-    const slides = !instant && !this.keyed && this.layout() === 'sheet' && !this.sideMQ.matches;
+    if (on) this.dropCardSeen(); // (turned back, or the planner opening: not the card that was leaving)
+    // (a swipe away has already taken it off the screen: it's gone at once)
+    const slides = !instant && !this.keyed && !p.classList.contains('dragging') && this.layout() === 'sheet' && !this.sideMQ.matches;
     p.classList.toggle('leaving', !on && slides);
+    if (this.tools) this.tools.inert = !on && slides; // (the toolbox goes down with it, and takes no taps either)
     p.hidden = !on && !slides;
     if (!slides) return;
     const away = reduce ? '0' : '0 calc(100% + 12px)', here = reduce ? '1' : '0 0'; // (12 px: the sheet's foot over the screen's)
     const s = this.sheetSlide = p.animate([{ [prop]: now || (on ? away : here) }, { [prop]: on ? here : away }],
-      { id: 'sheet', duration: reduce ? 150 : token(on ? '--t-sheet' : '--t-open'), easing: reduce ? 'ease' : cssVar('--ease-drawer'), fill: 'forwards' });
+      { id: 'sheet', duration: reduce ? 150 : token(on ? '--t-sheet' : '--t-open'), easing: cssVar(reduce ? '--ease-out' : '--ease-drawer'), fill: 'forwards' });
     s.onfinish = () => {
       if (this.sheetSlide !== s) return;
       this.sheetSlide = null;
-      if (!on) { p.hidden = true; p.classList.remove('leaving'); this.placeTools(); } // (the toolbox went down with it)
+      if (!on) { p.hidden = true; p.classList.remove('leaving'); this.tools.inert = false; this.dropCardSeen(); this.placeTools(); } // (the toolbox went down with it)
       s.cancel();
     };
     p.dispatchEvent(new Event('sheetstate')); // (main.js: the map's room, and what rides above the sheet)

@@ -8534,6 +8534,13 @@ FOLD_MOTION = """(async (reduced) => {
   const settle = async () => { for (let calm = 0, t = performance.now(); calm < 2 && performance.now() - t < 10000;) { await frame(); calm = document.getAnimations().some((a) => (a instanceof CSSTransition || a.id === 'ride' || a.id === 'sheet') && a.playState === 'running') ? 0 : calm + 1; } };
   p.setSheetState('peek');
   await settle();
+  // a size that changes from content alone (a point added, a row coming in) changes at once: only what you ask for moves
+  const extra = Object.assign(document.createElement('div'), { style: 'height: 40px' });
+  p.els.head.querySelector('.sheet-head-in').append(extra);
+  await frame(); await frame();
+  if (moving().length) errs.push(`${tag}the peek grown by its content: ${moving().join(', ')} moving, not at once`);
+  extra.remove();
+  await settle();
   // a tap: what leaves fades before it hides, the sheet folds on --t-open with transform, its riders start where they were
   const g0 = gaps();
   press(p.els.foldBtn, 1);
@@ -8586,14 +8593,15 @@ FOLD_MOTION = """(async (reduced) => {
     if (moving().length) errs.push(`⌄, then the handle's ArrowUp: ${moving().join(', ')} still moving`);
     await settle();
     // put away (✕ by pointer): it slides down off the screen, the map's buttons going down with it; Plan: it slides up
-    const ga = gaps();
+    const ga = gaps(), toolsUp = !p.tools.hidden;
     p.close();
     const out = move(), outTo = out && out.effect.getKeyframes().at(-1).translate;
+    if (toolsUp && (p.tools.hidden || !p.tools.inert)) errs.push(`put away: the toolbox ${p.tools.hidden ? 'gone at once' : 'still taking taps'} as the sheet leaves (going with it, taking none)`);
     if (!near(gaps(), ga)) errs.push(`put away: in the first frame the map's buttons and the toolbox are ${gaps()} px above the sheet, not ${ga} (where they were)`);
     if (p.panel.hidden || !p.panel.classList.contains('leaving') || !out || !/calc\\(100% \\+ 12px\\)/.test(outTo) || out.effect.getTiming().duration !== 180) errs.push(`put away: the sheet ${p.panel.hidden ? 'gone at once' : `${out ? `to ${outTo} in ${out.effect.getTiming().duration} ms` : 'not moving'}`} (down off the screen in 180 ms)`);
     if (!document.getElementById('map-ctrls').getAnimations().some((a) => a.id === 'ride')) errs.push("put away: the map's buttons didn't go down with the sheet");
     await settle();
-    if (!p.panel.hidden || p.panel.classList.contains('leaving')) errs.push('put away: the sheet still there once it has slid away');
+    if (!p.panel.hidden || p.panel.classList.contains('leaving') || p.tools.inert) errs.push(`put away: once it has slid away, the sheet ${p.panel.hidden ? 'gone' : 'still there'}, the toolbox ${p.tools.inert ? 'still taking no taps' : 'as it was'}`);
     const colAt = () => Math.round(document.getElementById('map-ctrls').getBoundingClientRect().bottom), c0 = colAt();
     press(document.getElementById('btn-plan'), 1);
     const inn = move(), top = Math.round(p.panel.getBoundingClientRect().top), gi = gaps(), c1 = colAt();
@@ -8607,18 +8615,32 @@ FOLD_MOTION = """(async (reduced) => {
     const cin = move();
     if (p.cards.place !== 'peek' || !cin || cin.effect.getTiming().duration !== 260) errs.push(`a card with the planner put away: ${p.cards.place}, the sheet ${cin ? `in ${cin.effect.getTiming().duration} ms` : 'there at once'} (up in 260 ms)`);
     await settle();
+    const ch = p.panel.offsetHeight;
     p.cards.close();
-    const cout = move();
+    const cout = move(), kept = p.panel.classList.contains('carded') && !!p.els.card.querySelector('.card');
     if (p.panel.hidden || !cout || cout.effect.getTiming().duration !== 180) errs.push(`the card closed: the sheet ${cout ? `down in ${cout.effect.getTiming().duration} ms` : 'gone at once'} (down in 180 ms)`);
+    if (!kept || Math.abs(p.panel.offsetHeight - ch) > 1) errs.push(`the card closed: as the sheet slid away it showed ${kept ? 'the card' : "the planner's numbers"}, ${p.panel.offsetHeight} px tall, not ${ch} (the card it had)`);
     await settle();
-    if (!p.panel.hidden || p.active) errs.push(`the card closed: the sheet ${p.panel.hidden ? 'gone' : 'still there'}, the planner ${p.active ? 'open' : 'away'} (gone, away)`);
+    if (!p.panel.hidden || p.active || p.els.card.childElementCount || p.panel.classList.contains('carded')) errs.push(`the card closed: the sheet ${p.panel.hidden ? 'gone' : 'still there'}, the planner ${p.active ? 'open' : 'away'}, the card it kept ${p.els.card.childElementCount ? 'still in it' : 'gone'} (all gone, the planner away)`);
+    p.setActive(true, { instant: true });
+    await settle();
+    // a second swipe down from the line, as js/sheet.js ends it (its spring has taken the sheet off the screen, its
+    // transform cleared): gone at once, not back at its line to slide down again
+    p.fold();
+    await settle();
+    p.panel.classList.add('dragging');
+    p.restSheet('closed');
+    if (!p.panel.hidden || move()) errs.push(`a swipe away: the sheet ${p.panel.hidden ? 'gone' : `still there${move() ? ', sliding down again' : ''}`} (gone at once)`);
+    await settle();
     p.setActive(true, { instant: true });
     await settle();
   } else {
     // reduced motion: put away and Plan fade, in place
     p.close();
     const out = move();
-    if (!out || out.effect.getKeyframes().at(-1).opacity !== '0' || out.effect.getKeyframes().some((k) => k.translate)) errs.push(`${tag}put away: ${out ? JSON.stringify(out.effect.getKeyframes()) : 'gone at once'} (a fade in place)`);
+    if (!out || out.effect.getKeyframes().at(-1).opacity !== '0' || out.effect.getKeyframes().some((k) => k.translate) || out.effect.getTiming().easing !== OUT) errs.push(`${tag}put away: ${out ? `${JSON.stringify(out.effect.getKeyframes())} on ${out.effect.getTiming().easing}` : 'gone at once'} (a fade in place, on --ease-out)`);
+    const qd = getComputedStyle(document.getElementById('quick-layers')).transitionTimingFunction;
+    if (!qd.includes(OUT)) errs.push(`${tag}Layers' drawer fades on ${qd}, not --ease-out as the planner does`);
     await settle();
     press(document.getElementById('btn-plan'), 1);
     const inn = move();
