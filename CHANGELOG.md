@@ -4,6 +4,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-29
 
+### Choose light or dark in Settings ([#323](https://github.com/TommiContursi/Polku/issues/323))
+
+- **Settings → Display → Appearance** chooses how Polku looks: **Automatic**, **Light**, **Dark** or **Match the map**. Automatic is the default: Polku is light or dark as your device is, and changes when the device does, also while Polku is open.
+- **Light** and **Dark** keep Polku that way, whatever your device is set to.
+- **Match the map** makes Polku dark over the aerial photos and the night map, and light over the Trail map, Plain, Maastokartta and MML, so the panels sit calmly over the map you're looking at. It changes as you pick another map, and never changes the map.
+- Your choice is kept on this device, and Polku opens in it without a flash of the other look. In dark, a browser that colours its bar to match the page makes it dark, not green.
+- **High contrast** stays a setting of its own.
+
 ### With reduced motion, the planner's list scrolls at once and the routing bar stays put ([#540](https://github.com/TommiContursi/Polku/issues/540))
 
 - With reduced motion turned on, or when a key press opens it, the planner's list jumps to a section it opens for you, such as Leave or the weather along the route, instead of scrolling to it.

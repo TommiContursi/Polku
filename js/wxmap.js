@@ -873,7 +873,7 @@ export class WeatherOverlay {
     ctx.font = '10px system-ui, sans-serif';
     if (!d) { ctx.fillStyle = muted; ctx.fillText(this.loading ? 'Loading the forecast…' : 'Zoom in to see the forecast here', PAD, H / 2); return; }
     // night
-    ctx.fillStyle = this.app.dark() || matchMedia('(prefers-color-scheme: dark)').matches ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
+    ctx.fillStyle = this.app.dark() || document.documentElement.dataset.theme === 'dark' ? 'rgba(0,0,0,0.28)' : 'rgba(30,41,59,0.07)';
     for (let hr = 0; hr < HOURS; hr++) {
       if (sunAltitude(d.lat, d.lon, (d.t[hr] + d.t[hr + 1]) / 2) < -0.8) ctx.fillRect(X(hr), 0, X(hr + 1) - X(hr) + 0.5, H);
     }

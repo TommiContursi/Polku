@@ -76,6 +76,8 @@ On a desktop, **⌄** in the planner's header folds it down to its line at the f
 
 **3D** in the map's buttons, under zoom (on a phone, under locate), raises the terrain and tilts the map; another tap lays it flat again. It's filled and underlined while 3D is on. It's the same setting as **3D terrain** in **Layers → More**, where you can also set how much the terrain is raised.
 
+**Settings → Display → Appearance** sets how Polku looks. **Automatic**, the default, is light or dark as your device is, and changes when the device does, also while Polku is open. **Light** and **Dark** keep Polku that way, whatever the device says. **Match the map** makes Polku dark over the aerial photos and the night map, and light over the Trail map, Plain, Maastokartta and MML, and changes as you pick another map; the map itself never changes with it. The choice stays on this device. **High contrast** is a setting of its own.
+
 Trail difficulty uses mountain biking grades **S0–S6**; uphill difficulty uses **↑S0–↑S5**, with arrows pointing uphill. Select a trail for its details. On a desktop, resting the pointer on a feature gives a quick preview, and a marked route lights up along its whole length while the pointer is on it. A route you tap on the map stays lit while its card is open.
 
 Search finds places, official LIPAS routes and stops, trails and coordinates. In a narrow window, such as a phone zoomed to 150 % or 200 %, the search is its magnifier: a tap on it opens the field across the top bar, and Escape or a result folds it back. **Follow this route** puts an official route into the planner using its recorded line; **Add to route** joins it to your existing plan.

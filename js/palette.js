@@ -40,7 +40,8 @@ export function darkWords(hex) {
   return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) > 0.179;
 }
 
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+// the theme changed: data-theme on <html> (applyTheme() in js/main.js, Settings → Appearance, #323)
+new MutationObserver(() => {
   read(slots);
   for (const fn of listeners) fn();
-});
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });

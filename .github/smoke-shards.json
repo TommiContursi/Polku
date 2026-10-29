@@ -8,7 +8,7 @@
     ["button3d"],
     ["button3dphone"],
     ["routeview", "pointcard", "heads", "onroute", "warnfix", "sections"],
-    ["values", "start", "nextleg", "routecard"],
+    ["values", "appearance", "start", "nextleg", "routecard"],
     ["leave", "keyfacts", "tabs", "pastforecast", "fold"],
     ["spotcard", "crosshair", "facts", "sharespot"]
   ]

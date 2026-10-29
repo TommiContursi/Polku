@@ -6,6 +6,17 @@
   <title>Polku — trail map</title>
   <meta name="description" content="Trail map for mountain biking, gravel, hiking and paddling in Finland, with uphill difficulty and open-water route planning.">
   <meta name="theme-color" content="#1f6f4a">
+  <script>
+    // Light or dark before the first paint, as applyTheme() in js/main.js decides it (Settings → Appearance, #323)
+    {
+      let s = {};
+      try { s = JSON.parse(localStorage.getItem('polku:settings')) || {}; } catch { /* private mode */ }
+      const a = s.appearance, dark = a === 'light' || a === 'dark' ? a === 'dark'
+        : a === 'map' ? ['aerial', 'ortofi', 'night'].includes(s.base) : matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.querySelector('meta[name="theme-color"]').content = dark ? '#181c1a' : '#1f6f4a';
+    }
+  </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f6f4a'/%3E%3Cpath d='M6 24c4-1 5-6 9-7s6 2 11-9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-dasharray='4 3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous">
   <link rel="stylesheet" href="css/app.css">
