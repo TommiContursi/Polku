@@ -169,7 +169,7 @@ function sportCard(pl, point) {
   const sports = pl.app.sports ? pl.app.sports() : Object.keys(ACTIVITIES).map((k) => ({ k, label: ACTIVITIES[k].label, icon: 'route' }));
   const card = {
     kind: 'sport', get key() { return point.key; }, pill: null, title: 'Sport from here', span: null, get sub() { return `From ${pl.nameOf(point.i)} to the next change of sport, or the end`; },
-    mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point),
+    mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point), fold: () => [ACTIVITIES[pl.legSport(point.i)].label],
     build: (body) => {
       const i = point.i, cur = pl.legSport(i), route = pl.mainSport();
       // a second pick in this card changes the legs the first one did, no more (the end of them kept by who it is)
@@ -225,6 +225,7 @@ function staysCard(pl, point) {
   const card = {
     kind: 'stays', get key() { return point.key; }, pill: null, title: 'Places to sleep nearby', get sub() { return pl.nameOf(point.i); },
     mark: point.mark, at: () => point.key, alive: () => pl.findPoint(point), found: null, state: 'looking',
+    fold: () => [{ done: String((card.found || []).length), none: 'none' }[card.state]],
     build: (body) => {
       const list = (card.found || []).map((x) => item({ icon: 'hut', label: x.name, line: `${x.kind}, ${fmtDist(x.d)}`, chev: true, onclick: () => {
         const k = point.i;
@@ -354,7 +355,7 @@ export function editCard(pl, s, { spot = null } = {}) {
     kind: 'edit', key: k.ends, spot, title: 'Edit this stretch',
     get s() { return k.s; },
     get sub() { const t = k.s; return `${pl.nameOf(t.from)} → ${pl.nameOf(t.to)}`; },
-    mark: editMark, at: () => spot || pl.stretchMiddle(k.s), alive: k.alive,
+    mark: editMark, at: () => spot || pl.stretchMiddle(k.s), alive: k.alive, fold: () => [card.sub],
     build: (body) => {
       const t = k.s, legs = pl.legs.slice(t.from, t.to), leg = legs[0], n = legs.length, sport = pl.legSport(t.from), route = pl.app.activity();
       const own = sport !== route, water = ['paddle', 'swim'].includes(sport), fixed = leg.mode === 'fixed';
@@ -390,7 +391,7 @@ function stretchSportCard(pl, edit) {
   const sports = pl.app.sports ? pl.app.sports() : Object.keys(ACTIVITIES).map((k) => ({ k, label: ACTIVITIES[k].label, icon: 'route' }));
   return {
     kind: 'esport', get key() { return edit.key; }, get s() { return edit.s; }, title: 'Sport for this stretch', get sub() { return edit.sub; },
-    mark: editMark, at: () => edit.at(), alive: () => edit.alive(),
+    mark: editMark, at: () => edit.at(), alive: () => edit.alive(), fold: () => [ACTIVITIES[pl.legSport(edit.s.from)].label],
     build: (body) => {
       const cur = pl.legSport(edit.s.from), route = pl.app.activity();
       body.append(choices('Sport for this stretch', sports.map((x) => item({
@@ -406,6 +407,7 @@ function stretchStyleCard(pl, edit) {
   return {
     kind: 'estyle', get key() { return edit.key; }, get s() { return edit.s; }, title: 'Route style', get sub() { return edit.sub; },
     mark: editMark, at: () => edit.at(), alive: () => edit.alive(),
+    fold: () => { const s = edit.s, sport = pl.legSport(s.from); return [styleName(sport, pl.legs[s.from].style || pl.styleOf(sport))]; },
     build: (body) => {
       const s = edit.s, sport = pl.legSport(s.from), own = pl.legs[s.from].style, base = pl.styleOf(sport), cat = STYLES[sport] || STYLES.mtb;
       const pick = (style) => { pl.cards.back(); pl.setStretch(s, { style }); };
@@ -417,12 +419,15 @@ function stretchStyleCard(pl, edit) {
   };
 }
 
+// What's here's folded line: how many details it lists
+const details = (box) => { const n = box.querySelectorAll('.insp-row').length; return `${n} detail${n === 1 ? '' : 's'}`; };
+
 // What's here › [p-under]: the way under the line, as the route's own tags know it, in groups, your sport's first;
 // OpenStreetMap's own data on demand (part 6 makes this its levels)
 function hereCard(pl, route) {
   const card = {
     kind: 'here', get key() { return route.key; }, get stretch() { return route.stretch; }, get title() { return route.title; }, get sub() { const x = route.spot; return x && x.name ? cap(x.kind) : ''; }, // (a way with no name is its kind, once)
-    mark: wayMark, at: () => route.key, alive: () => route.alive(), osm: null,
+    mark: wayMark, at: () => route.key, alive: () => route.alive(), osm: null, fold: (box) => (route.spot ? [details(box)] : []),
     build: (body) => {
       const x = route.spot;
       if (!x) { body.append(h('p', { class: 'rt-cost' }, 'The route is being worked out…')); return; }
@@ -448,6 +453,7 @@ export function wholeCard(pl) {
   const undo = { label: 'Undo', fn: () => pl.undo() };
   return {
     kind: 'whole', key: 'whole', get title() { return pl.routeTitle(); }, sub: 'Kept on this device', mark: routeMark, at: () => pl.points[0], alive: () => pl.points.length > 1,
+    sum: () => pl.els.sum,
     build: (body) => {
       const view = pl.inView(), shared = pl.shareSub();
       body.append(...group('Take it along',
@@ -570,7 +576,7 @@ export function spotCard(pl, spot) {
       if (!pl.points.length) return { label: 'Start a route here', icon: 'plus', fn: () => pl.startRouteAt(spot.ll) };
       return pl.byTheLine(spot.ll) ? { label: 'Add a point here', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) } : { label: 'Add to my route', icon: 'plus', fn: () => pl.addWhereItFits(spot.ll) };
     },
-    mark: () => (spot.place ? placeMark(spot) : h('span', { class: 'card-pin' })), at: () => spot.ll,
+    mark: () => (spot.place ? placeMark(spot) : h('span', { class: 'card-pin' })), at: () => spot.ll, fold: () => [spot.line],
     build: (body) => spotBody(pl, card, body),
   };
   // (the height can come while What's here, a card of its own above this one, is the open one: it's built again too)
@@ -606,7 +612,7 @@ function spotBody(pl, card, body) {
 function spotHereCard(pl, spotC) {
   const { spot } = spotC;
   const card = {
-    kind: 'spothere', key: spot.ll, title: spot.title, sub: spot.line, mark: spotC.mark, at: () => spot.ll, osm: null,
+    kind: 'spothere', key: spot.ll, title: spot.title, sub: spot.line, mark: spotC.mark, at: () => spot.ll, osm: null, fold: (box) => [details(box)],
     build: (body) => {
       const osm = card.osm && card.osm.w, tags = { ...spot.tags, ...(osm ? osm.tags : {}) }, sport = pl.app.activity();
       body.append(h('p', { class: 'rt-cost' }, spot.src || (spot.way ? 'From OpenStreetMap' : 'From the map')));
@@ -691,7 +697,7 @@ export function lipasCard(pl, props, ll, { click = null, near = null, under = fa
   const winter = (LIPAS_TYPES[props.type] || {}).winter;
   const spot = { ll, title: props.name, line: [props.typeName, props.city].filter(Boolean).join(', '), src: 'From LIPAS', image: props.icon ? `lipas-${props.icon}` : null, lipas: props, place: true, tags: {} };
   const card = {
-    kind: 'lipas', key: ll, props, ride: null, spot, title: spot.title, sub: spot.line, mark: () => placeMark(spot), at: () => ll, ele: undefined,
+    kind: 'lipas', key: ll, props, ride: null, spot, title: spot.title, sub: spot.line, mark: () => placeMark(spot), at: () => ll, ele: undefined, fold: () => [spot.line],
     build: (body) => {
       const r = card.ride, tap = pl.coarse() ? 'tap' : 'click';
       body.append(h('p', { class: 'rt-cost' }, winter ? WINTER_LIPAS_NOTE[props.type] || ''
