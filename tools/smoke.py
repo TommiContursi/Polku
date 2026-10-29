@@ -8581,7 +8581,8 @@ def fold_motion(chrome):
 
 
 # #570: on a phone a card opens in the sheet with the planner put away too (folded or not when it went), at its own size,
-# with ⌄; its line's ✕ closes it, and the planner stays put away, the sheet gone with the card
+# with ⌄, its spot above the sheet; its line opens it again, and ✕ closes it: the planner stays put away, the sheet gone with
+# the card, and Plan opens it at the size it had
 def fold_away_card(chrome):
     fails = []
     pg = chrome.page(390, 844, True)
@@ -8591,7 +8592,7 @@ def fold_away_card(chrome):
         info = lambda: pg.js(FOLD_INFO)
         extra = "(() => { const p = polku.planner; return { hidden: p.panel.hidden, place: p.cards.place, sheet: document.body.dataset.sheet || null, room: parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0 }; })()"
         for how in ('put away', 'put away from its line'):
-            pg.js("(() => { const p = polku.planner; p.cards.close(); if (!p.active) p.setActive(true); p.setSheetState('peek'); return true; })()")
+            pg.js("(() => { const p = polku.planner; p.cards.close(); if (!p.active) p.setActive(true); p.setSheetState('half'); return true; })()")
             fold_settled(pg, fails, f'{how}: step 1')
             if how == 'put away':
                 pg.js("polku.planner.close(); true")
@@ -8600,7 +8601,8 @@ def fold_away_card(chrome):
                 fold_settled(pg, fails, f'{how}: step 1a')
                 pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
             fold_settled(pg, fails, f'{how}: step 2')
-            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            # (a spot low on the screen, where the sheet comes: the map moves it into sight above the sheet)
+            pg.js("(() => { const p = polku.planner; p.spotAt = p.map.unproject([195, 760]); p.openSpotCard(p.spotAt, { touch: true }); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f'{how}: step 3')
             s, x = info(), pg.js(extra)
@@ -8609,17 +8611,30 @@ def fold_away_card(chrome):
                 continue
             if any(c['b'] > s['panel']['t'] for c in s['col']):
                 fails.append(f"{how}, a spot's card: the map's buttons under the sheet: {[(c['id'], round(c['b'])) for c in s['col']]} for its top {round(s['panel']['t'])}")
+            y = pg.js("Math.round(polku.map.project(polku.planner.spotAt).y)")
+            if y > s['panel']['t'] - 8:
+                fails.append(f"{how}, a spot's card: its spot at y {y}, under the sheet (its top {round(s['panel']['t'])})")
             pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
             fold_settled(pg, fails, f'{how}: step 4')
             s = info()
             if s['st'] != 'folded' or not s['line'] or not s['lineX']:
                 fails.append(f"{how}, the card's ⌄: {s['st']}, line {bool(s['line'])}, ✕ {bool(s['lineX'])}")
                 continue
+            pg.tap(*fold_at(pg, 'polku.planner.els.foldGo'))
+            fold_settled(pg, fails, f'{how}: step 4a')
+            if info()['st'] != 'peek' or info()['card'] != 'spot':
+                fails.append(f"{how}, the card's line: {info()['st']}, card {info()['card']} (the card at its own size)")
+            pg.js("polku.planner.fold(); true")
+            fold_settled(pg, fails, f'{how}: step 4b')
             pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
             fold_settled(pg, fails, f'{how}: step 5')
             s, x = info(), pg.js(extra)
             if s['active'] or s['card'] or not x['hidden'] or x['sheet'] or x['room']:
                 fails.append(f"{how}, ✕ on the card's line: planner {'open' if s['active'] else 'away'}, card {s['card']}, sheet {'hidden' if x['hidden'] else 'shown'}, body {x['sheet']}, --sheet-h {x['room']} (the card closed, the planner still away, no sheet)")
+            pg.js("polku.planner.setActive(true); true")
+            fold_settled(pg, fails, f'{how}: step 6')
+            if info()['st'] != 'half':
+                fails.append(f"{how}: Plan after the card opened the planner at {info()['st']}, not half (the size it had)")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()

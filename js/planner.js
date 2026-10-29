@@ -4865,7 +4865,7 @@ export class Planner {
       document.body.dataset.sheet = st; // a full sheet hides the map chrome under it
       document.body.dataset.pl = lay;
     }
-    if (remember) store.set('sheetState', { ...store.get('sheetState', {}), [lay]: st });
+    if (remember && this.cards.place !== 'peek') store.set('sheetState', { ...store.get('sheetState', {}), [lay]: st }); // (a card's sizes are its own, not the planner's)
     this.els.handle.setAttribute('aria-valuetext', st);
     this.els.handle.title = { folded: 'Open it as it was', peek: 'Show more', profile: 'Drag up for the details, down for the map', half: 'Drag up for everything, down for the profile', full: 'Drag down for the map' }[st] || '';
     this.renderOnRoute(); // (the row gone while Check is in sight; Worth a look's markers with it; and the folded line)
