@@ -257,6 +257,8 @@ What Polku lets you drag, and the way without dragging that each keeps (WCAG 2.2
 
 ## 7. Outdoor contrast and reduced transparency
 
+Built with B's look (#547, 2026-10-30): reduced transparency, more contrast and Settings' **High contrast** turn every glass solid, and more contrast takes a darker grey, heavier lines and a 3:1 rim ([B as built](issue-547-the-look.md#b-as-built)).
+
 - **Outdoor contrast (idea C):** with `@media (prefers-contrast: more)`, or Settings' **High contrast** (the user's choice 5), the frosted cards turn solid, `--muted` moves closer to `--text`, lines double in weight and cards get a clear 1 px border; the switch keeps thickening the trails as it does today. It changes nothing for anyone who doesn't ask for it.
 - **Reduced transparency:** today only the layer drawer turns solid with `prefers-reduced-transparency: reduce`. Every frosted surface does: the top bar, the map's buttons, the sheet, the panel and the cards.
 - **Grey text on frosted glass** is the case these two are for: over busy aerial photos the 94 % surface lets the map through.

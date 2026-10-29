@@ -2,7 +2,7 @@
 
 The first review of Polku's look as a whole, and the directions for it, built side by side. Phase 24 ([its review](../reviews/2026-10-17-design/README.md)) looked at usability and structure, and #382 made the look consistent without changing it. This one asks whether the look itself is right: the materials, the depth, the colours, the type's weights and spacing, the 18 base values on `:root`, and how they sit with the map's own colours. What's still to do, and its status, is on GitHub, in #547.
 
-- **Status (2026-10-28): B is chosen,** with its map buttons on glass b and one shadow, and its build plan is approved. D stays in this plan as [the road not taken](#the-road-not-taken-d-the-maps-margin), with its numbers. [The build plan for B](#the-build-plan-for-b) is below. Nothing is built in the app: `DESIGN.md` and `css/app.css` are as they are on `main`.
+- **Status (2026-10-30): B is built,** in one PR with #382's §7 ([B as built](#b-as-built)). It was chosen on 2026-10-28, with its map buttons on glass b and one shadow, from [the build plan for B](#the-build-plan-for-b) below. D stays in this plan as [the road not taken](#the-road-not-taken-d-the-maps-margin), with its numbers.
 - **The mock-up:** [mockups/issue-547-the-look.html](mockups/issue-547-the-look.html). Version 2: today's look, B and D, over real map pictures from the running app, with the contrast under every word measured in the page. It opens on B over the Trail map. Its switches:
   - **Version:** 2, or 1, the first set: today, A, B and C as they were.
   - **The direction.**
@@ -175,6 +175,22 @@ One PR, after #323 (the theme setting). The values are B's, as chosen from the m
 
 - **Match the map:** #323's choice.
 - **The magenta against LIPAS's ski tracks:** #560.
+
+## B as built
+
+On branch `claude/547-b-build`, from `main` at fb4f15a (2026-10-30), as the build plan says, with what the build found:
+
+- **The values** are the plan's, on `:root` and in the one dark block, with DESIGN.md's frontmatter equal (`tools/smoke.py values`). `--surface` is gone; what floats takes `--glass-read` or `--glass-control`, one rule each in `css/app.css`, with `-webkit-backdrop-filter` beside every `backdrop-filter` and `var(--shadow), var(--edge)`.
+- **The map's buttons** are Polku's own (#581): the compass, Locate, Show the whole route, zoom (the group is the glass, not each button), 3D, Weather, Layers when open, ⚙ and the 3D view's controls take the buttons' glass, as the table says.
+- **Green and red on the glass.** Each glass sets `--accent` and `--bad` to `--accent-glass` and `--bad-glass`, as it does `--muted`, rather than a rule for each green or red word. The check over the map found green and red words, icons, a tile's border and Layers' open ring, all read over the map: a rule each would have missed the lines and rings.
+- **`--route-text`** is `#93004b` in light and `#ffa0ce` in dark, not `#9c0050` and `#ff7ab8`. Those were measured on the buttons' whiter glass (5.9 and 5.6); the timeline's ⚑ is on the reading glass, where `#ff7ab8` came to 3.8–4.1:1 over Maastokartta and the Trail map, and `#9c0050` to 4.49 over Maastokartta. The new ones pass with room on both glasses.
+- **The Layers button's word** was 2.1–2.9:1 over its picture on `main` too (#588): its band is darker under the word (black at 60 % 12 px down, 75 % at the foot).
+- **Layers' pointer** at its button is a glass triangle outside the drawer: a solid diamond showed as a dark or white patch on the glass.
+- **The modes:** `prefers-reduced-transparency`, and more contrast (`data-contrast="more"`, from `prefers-contrast: more` or **High contrast**, set as `data-theme` is), turn both glasses solid on `:root`. More contrast takes `--muted-hc` (on the glass too), `--line-hc` and the rim as `--edge`. `.qd`'s own reduced-transparency rule is gone. **High contrast**'s line in Settings says what it does now.
+- **The logo** on a phone is the mark alone at 44 px; on a desktop its pill's corners are 13 px, concentric with the mark's.
+- **The JavaScript:** none of the typed `#16a34a`, `#ea580c` and `#dc2626` means a state: they're the map's own colours (portages, LIPAS, nautical marks, road conditions, the start's marker), so they stay. `js/wxmap.js` no longer falls back to the old red.
+- **The check over the map** is the `glass` group: every word and icon on a see-through surface, against the map under it as Chrome draws it, over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, in three states (the timeline 3 h ahead with its ⚑, the Weather button's +3 h with Layers open, and Settings). It fails on `main` for #559 and #588. The modes are checked in the same group, by media query and by Settings' toggle, by touch, over a reload.
+- **Not built here:** the card at a point on a desktop and ⚙ stay as the table says (solid; the buttons' glass), though the mock-up draws both on the reading glass; `--surface-2` stays solid where the mock-up's B makes it a 7 % tint; the start's marker keeps its green.
 
 ## The road not taken: D, the map's margin
 

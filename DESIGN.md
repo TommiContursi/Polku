@@ -165,15 +165,15 @@ spacing:
 
 **Creative North Star: "The Map Comes First"**
 
-The map fills the screen and always has the stage. Everything else floats over it on frosted cards: the top bar, the map's buttons, the planner, the layer drawer, the cards that open from the map. On a phone the planner becomes a sheet from the bottom, on a desktop a panel at the side. Nothing covers the map that the moment doesn't need, and what's covered can always be brought back in one step.
+The map fills the screen and always has the stage. Everything else floats over it on glass, so the map shows through: a reading glass for what you read (the top bar, the planner, the layer drawer, the panels) and a whiter glass for the map's buttons. The cards that open at a point on a desktop, the menus and the dialogs are solid. On a phone the planner becomes a sheet from the bottom, on a desktop a panel at the side. Nothing covers the map that the moment doesn't need, and what's covered can always be brought back in one step.
 
-The components are calm and sure-footed. Surfaces are quiet and nearly neutral, a cool green-grey, so the map's colours and the red route line carry the colour. There is one clear main action at a time, in forest green. Targets are at least 44 px where a finger uses them, and words say what happens ("Make 3 loops", "Back to start") rather than leaning on icons alone. The look is built to be legible outdoors: in bright sun, with one thumb, at a glance.
+The components are calm and sure-footed. Surfaces are quiet and nearly neutral, a cool green-grey, so the map's colours and the magenta route line carry the colour. There is one clear main action at a time, in forest green. Targets are at least 44 px where a finger uses them, and words say what happens ("Make 3 loops", "Back to start") rather than leaning on icons alone. The look is built to be legible outdoors: in bright sun, with one thumb, at a glance.
 
 This file holds the tokens: colours, type, shapes, spacing, depth and motion. **The controls themselves are listed in [docs/DEVELOPING.md, "Shared controls"](docs/DEVELOPING.md#shared-controls)**, which is the one list of them; a new screen reuses those for the same jobs. The values here are the ones on `:root` in `css/app.css`, named by what they're for, which stays the source: when the two differ, the CSS is right and this file is out of date. `python3 tools/smoke.py values` fails when a colour in the frontmatter isn't the CSS's, in either theme. **Where a rule below isn't yet true everywhere, it says so.** [The design-system plan](docs/plans/design-system.md) (#382) is how it becomes true; until then, a new screen follows the rule, not the exception.
 
 **Key Characteristics:**
-- The map first; controls on translucent cards over it.
-- Quiet neutral surfaces, one green accent, the route in red.
+- The map first; controls on glass over it, solid when the person asks for more contrast or less transparency.
+- Quiet neutral surfaces, one green accent, the route in magenta.
 - One main action per step, in words.
 - 44 px targets for touch, numbers in tabular figures.
 - Light and dark from the same tokens, following the person's setting.
@@ -189,32 +189,38 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - **Accent-2 (lighter green)** and **Accent-soft (pale green tint)**: hover and the soft fill behind a chosen item.
 
 ### Secondary
-- **Route (red)**: the route line on the map and its glow. It is the one strong colour on the screen and is kept for the route.
-- **The route's legs**: over water deep blue (`--route-water`), with the same glow, and the map's key says so ("Over water"); a straight line darker red and dashed (`--route-line`); a leg being routed grey and dotted (`--route-loading`). They sit on the map, so they're the same in both themes.
-- **Colour by** in the planner can recolour the route line on the map (with its **On map** switch) by grade, uphill difficulty, surface, kind of way, trail width, wind, temperature or rain; with any of them the plain red is replaced along the whole line. Each scale's colours are values too (`--diff-s0` … `--diff-s6`, `--grade-…`, `--surf-…`, `--sport-…`, `--way-…`, `--trail-width-…`, `--trail-vis-…`, `--temp-…`, `--rain-…`, `--wind-…`), while its words and order stay in its table in `js/config.js`, `js/chart.js` or `js/weather.js`. The weather map's own colours are still in `js/wxmap.js`. How the scales read, for colour blindness too, is in the design-system plan's §2.
+- **Route (magenta)**: the route line on the map and its glow. It is the one strong colour on the screen and is kept for the route. A navigation magenta, apart from every red the map draws (the Trail map's S3 trails and no-bike ticks, LIPAS's hiking routes), and from them with colour blindness too (#547).
+- **Route-text (a darker magenta, a pink in dark mode)**: words in the route's colour, such as the Weather button's time ahead and the timeline's ⚑, at 4.5:1 on either glass over any map (#559). The route's own colour is under that on the glass.
+- **The route's legs**: over water deep blue (`--route-water`), with the same glow, and the map's key says so ("Over water"); a straight line darker magenta and dashed (`--route-line`); a leg being routed grey and dotted (`--route-loading`). They sit on the map, so they're the same in both themes.
+- **Colour by** in the planner can recolour the route line on the map (with its **On map** switch) by grade, uphill difficulty, surface, kind of way, trail width, wind, temperature or rain; with any of them the plain magenta is replaced along the whole line. Each scale's colours are values too (`--diff-s0` … `--diff-s6`, `--grade-…`, `--surf-…`, `--sport-…`, `--way-…`, `--trail-width-…`, `--trail-vis-…`, `--temp-…`, `--rain-…`, `--wind-…`), while its words and order stay in its table in `js/config.js`, `js/chart.js` or `js/weather.js`. The weather map's own colours are still in `js/wxmap.js`. How the scales read, for colour blindness too, is in the design-system plan's §2.
 - **In the JavaScript**, the route's colours, the warning colours and the scales come from the CSS: `fromCss()` in `js/palette.js` reads them at start and again when the theme changes, and the map and the planner draw with them again.
 - **You (blue)**: the location dot and its accuracy circle (`--you-soft`). Blue is kept for "where you are" and for water.
 
 ### Tertiary
-- **Good (green), Ok (amber), Warn (orange), Bad (red)**: states and warnings, such as Heads-up rows, difficulty and conditions, as lines, bars, dots and icons. Never the only way something is said: each comes with words or an icon. In dark mode Bad is a lighter red, so red words such as Remove and Delete read at 6.2:1 (#370).
+- **Good (green), Ok (amber), Warn (orange), Bad (red)**: states and warnings, such as Heads-up rows, difficulty and conditions, as lines, bars, dots and icons. Never the only way something is said: each comes with words or an icon. Bad is Danger's red, so danger has one red. Each has a lighter version in dark mode, so red words such as Remove and Delete read there too (#370).
 - **Good-text, Ok-text, Warn-text, Bad-text**: the same four for words and pills, at least 6.2:1 in both themes: the condition pills, a warning on a layer's tile, and Check's count (warn-text behind it, the surface's colour on it, so it reads in both themes).
 - **Ink (black)**: words on one of the map's or a scale's colours, where white doesn't read on it: a climb's badge, a loop's letter. `darkWords()` in `js/palette.js` picks black or white, whichever reads, at 4.58:1 or more. The same in both themes, since it sits on the colour.
 - **Wx-text (blue)**: the weather's blue, for words: an active weather layer's chip in Layers. Lighter in dark mode.
-- **Danger (red), Look (amber), Unk (blue-grey)**, each with a soft version for the box behind it: Check's three groups (25d), Read before you go, Worth a look and Not checked. Each has its shape too: a triangle, an eye, a dashed "?". At least 5.4:1 on its box and on the page, in both themes. 25d's Journey C is the first to use them.
+- **Danger (red), Look (amber), Unk (blue-grey)**, each with a soft version for the box behind it: Check's three groups (25d), Read before you go, Worth a look and Not checked. Each has its shape too: a triangle, an eye, a dashed "?". At least 5.4:1 on its box and on the page, in both themes. Danger's box is solid in dark mode too, so it doesn't take the glass's tint. 25d's Journey C is the first to use them.
 
 ### Neutral
-- **Surface (white, 94 %)**: the frosted cards over the map, with a background blur. With reduced transparency asked for, cards use **Surface-solid**.
-- **Surface-solid (white)**: sheets, menus, inputs and buttons that need an opaque background.
+- **Glass-read (white at 72 %; near-black at 73 % in dark mode)**: the reading glass, for what you read over the map: the top bar, the zoom hint, the planner, the timeline, the toolbox and the desktop's toolbar, the layer drawer, the panels and a track's card.
+- **Glass-control (white at 84 %; near-black at 84 %)**: the whiter glass of the map's buttons: the compass, Locate, zoom, 3D, Weather, Layers when open, ⚙ and the 3D view's controls, so they read as one group and stay close to one tint over a busy map.
+- **Muted-glass, accent-glass and bad-glass**: a darker grey, green and red on the glass (lighter in dark mode), so words, icons, lines and rings keep 4.5:1 (3:1 for what isn't words) over any map. Every glass surface sets its grey, green and red to these.
+- **Surface-solid (white)**: the cards at a point, menus, dialogs, inputs and buttons that need an opaque background, and every glass when the person asks for more contrast or less transparency.
 - **Surface-2 (pale grey-green)**: hover on rows and buttons, and recessed areas.
+- **Seg-on**: a switch's chosen segment: white, and in dark mode a grey lighter than its track, so it never reads as a gap.
 - **Text (near-black green)** and **Muted (grey-green)**: body text and secondary text, such as hints, units and section labels.
-- **Line (text at 12 %)**: borders and dividers.
+- **Line (text at 14 %)**: borders and dividers.
+- **For more contrast**: **Muted-hc**, a grey closer to the text; **Line-hc**, lines at 35 %; and the rim, **Hc-border** outside and **Hc-inner** inside, 3:1 against any map.
+- **Tile-rim**: the Layers button's light inner rim, over its picture.
 - **Grip (grey)**: every grip and handle, at least 3:1 on its surface. Today the grips are still a paler grey (#382's controls and touch PRs).
 - **Page (pale grey-green)**: the page behind the map, seen only before the map draws.
 - **Chart ink and chart grid**: the profile's words and lines, drawn on its canvas.
 - The map's own colours (land, water, parks, labels) are in `js/style.js`, one palette per map style. The sports' own line colours are `--sport-…` (`SPORT_COLORS` in `js/config.js`).
 
 ### Named Rules
-**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Red belongs to the route, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
+**The Map Holds the Colour Rule.** Interface surfaces stay neutral. Magenta belongs to the route, red to danger, blue to water and to where you are; the accent marks what's chosen or the one main action, nothing decorative. **Plan** is green, like every other main action. Today one thing breaks it, decided on 2026-10-22 (#382): **Colour by**'s wind scale draws headwinds in red, and goes orange to blue in the map and scales PR.
 
 **The Never by Colour Alone Rule.** Every colour that means something (a warning, a difficulty, a chosen state) is also said in words, a tick, an icon or a shape (PRODUCT.md, WCAG 2.2 AA).
 
@@ -228,7 +234,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 
 These are the nine sizes, values on `:root` named by what they're for (`--font-glance` … `--font-small`). They're in `rem`, so the browser's text size enlarges them. A control takes its value when it's next touched (the design-system plan's §3), so today most rules still type their size in px: 18 sizes between 9 and 22 px, half sizes included (11.5, 12.5, 13.5, 14.5, 16.5).
 
-- **Glance** (700, 34 px, `--font-glance`, tabular figures): a number read while moving, in `--text` on `--surface-solid`, never on frosted glass. Phase 23 is the first to use it.
+- **Glance** (700, 34 px, `--font-glance`, tabular figures): a number read while moving, in `--text` on `--surface-solid`, never on the glass. Phase 23 is the first to use it.
 - **Numeral** (700, 22 px, `--font-numeral`, line-height 1, tabular figures): the big numbers, such as the time in the timeline and the round trip's length.
 - **Number** (700, 19 px, `--font-number`, tabular figures): a card's numbers.
 - **Title** (700, 17 px, `--font-title`): a step's title, such as "Round trip from your start", a card's name and the map's cards' titles (`insp-title`), and the main action's words (`btn primary big`). On a desktop's card at its spot it's 15 px.
@@ -261,11 +267,12 @@ Spacing is a tight rhythm: 6 and 8 px between items in a row, 10 to 14 px of pad
 
 ## Elevation & Depth
 
-Depth comes from floating over the map: cards and sheets are translucent with a background blur of 10 to 14 px and one soft shadow, and the map moves under them. One shadow token (`--shadow`) carries most of what floats; nothing stacks shadows to make a hierarchy. There are four shadow values; today about 38 other shadows are still typed in place in `css/app.css`, and they move onto the four when they're next touched (#382).
+Depth comes from floating over the map: what floats is glass with one soft shadow, and the map moves under it. The reading glass blurs what's under it by 32 px and lifts its colours by 5 % (`--glass-read-filter`: `blur(32px) saturate(105%)`), so a sheet stays one quiet tone over any map and its trails still show; the map's buttons blur by 24 px (`--glass-control-filter`: `blur(24px) saturate(105%)`). One shadow token (`--shadow`) carries most of what floats; nothing stacks shadows to make a hierarchy. There are four shadow values; today about 38 other shadows are still typed in place in `css/app.css`, and they move onto the four when they're next touched (#382).
 
 ### Shadow Vocabulary
 - **Marker** (`--shadow-marker`: `0 1px 4px rgba(0, 0, 0, 0.35)`, the same in both themes): a marker on the map.
-- **Float** (`--shadow`: `0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12)`; darker in dark mode): every card, sheet, menu and map button over the map.
+- **Float** (`--shadow`: `0 8px 28px rgba(16, 24, 20, 0.18), 0 1px 3px rgba(16, 24, 20, 0.1)`; `0 8px 28px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25)` in dark mode): every card, sheet, menu and map button over the map.
+- **Edge** (`--edge`: `inset 0 0 0 1px` white at 70 %, `inset 0 1px 0` white at 95 % and `0 0 0 1px rgba(16, 24, 20, 0.26)`; in dark mode white at 34 % and 42 % inside and black at 70 % outside): every glass surface's two-tone edge, light inside and soft outside, beside the float shadow. In more contrast it's the 3:1 rim.
 - **Sheet edge** (`--shadow-sheet`: `0 -6px 28px rgba(16, 24, 20, 0.2)`; black at 0.5 in dark mode): the phone's bottom sheet and the panels' edge, casting upwards.
 - **Dialog** (`--shadow-dialog`: `0 24px 60px rgba(0, 0, 0, 0.35)`, the same in both themes): a dialog over everything.
 - **Ring** (`inset 0 0 0 2px` in the accent or the route colour): a chosen or open state, added to the float shadow.
@@ -273,7 +280,9 @@ Depth comes from floating over the map: cards and sheets are translucent with a 
 ### Named Rules
 **The One Float Rule.** Everything over the map uses the same `--shadow`. A chosen state adds a ring, never a bigger shadow.
 
-**The Clear Glass Rule.** When the person asks for reduced transparency, frosted cards turn solid (`--surface-solid`, no blur).
+**The Edge Rule.** Every glass surface has the edge with its shadow (`box-shadow: var(--shadow), var(--edge)`). A ring for a chosen or open state adds to it.
+
+**The Clear Glass Rule.** When the person asks for reduced transparency (`prefers-reduced-transparency`) or more contrast (`prefers-contrast: more`, or Settings' **High contrast**), every glass turns solid (`--surface-solid`, no blur). More contrast also takes the darker grey, heavier lines and the 3:1 rim (`data-contrast` on `<html>`, set as `data-theme` is).
 
 ## Shapes
 
@@ -282,6 +291,11 @@ Gently rounded, never sharp. The corners are values: `--radius-small` (6 px) for
 ## Components
 
 The controls, with their classes and where each comes from, are in **[docs/DEVELOPING.md, "Shared controls"](docs/DEVELOPING.md#shared-controls)**. That table is the one list: this file doesn't repeat it. A new screen uses those controls for the same jobs, a mock-up copies their CSS from `css/app.css`, and a new control is proposed to the user first and then joins that table.
+
+On the glass:
+- **The Layers button**: its map picture with a light inner rim (`--tile-rim`) and the glass's soft outer line; its word on a dark band that's 4.5:1 or more over a white picture.
+- **An undo that can't undo** on the toolbox: the glass's grey at 70 %, readable and still dimmer than redo.
+- **The logo on a phone**: the green mark alone, 44 px, with no pill round it. On a desktop its pill's corners are concentric with the mark's.
 
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
@@ -311,13 +325,13 @@ Polku's motion follows Emil Kowalski's design engineering ([Great animations](ht
 ## Do's and Don'ts
 
 ### Do:
-- **Do** use the CSS variables (`var(--accent)`, `var(--surface)`, `var(--shadow)`), never their hex values, so dark mode follows. In the JavaScript, a colour that means something comes from the CSS through `fromCss()` in `js/palette.js`.
+- **Do** use the CSS variables (`var(--accent)`, `var(--glass-read)`, `var(--shadow)`), never their hex values, so dark mode follows. In the JavaScript, a colour that means something comes from the CSS through `fromCss()` in `js/palette.js`.
 - **Do** keep targets at least 44 px for touch, and say every meaning in words as well as colour.
 - **Do** put white text on `--accent-bg`, not on `--accent` (#239).
 - **Do** reuse a control from DEVELOPING's "Shared controls" for a job it already does.
 
 ### Don't:
-- **Don't** use red for anything but the route and danger, or blue for anything but water and where you are.
+- **Don't** use red for anything but danger, magenta for anything but the route, or blue for anything but water and where you are.
 - **Don't** add a second shadow, a heavier shadow or a new radius to make something stand out; use the ring, the accent or the words.
 - **Don't** make a copy of an existing control under a new class name.
 - **Don't** cover the map with anything the moment doesn't need.

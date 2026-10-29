@@ -594,7 +594,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 }
 .qd:not(.open) { opacity: 0; transform: scale(0.96); visibility: hidden; pointer-events: none; transition: transform 120ms var(--ease-out), opacity 120ms var(--ease-out), visibility 0s 120ms; }
 .qd.instant, .qd.dragging { transition: none; }
-.qd.tail::after { content: ""; position: absolute; right: -6px; bottom: 22px; width: 12px; height: 12px; background: var(--surface-solid); transform: rotate(45deg); box-shadow: 3px -3px 4px rgba(0, 0, 0, .05); }
+.qd.tail::after { content: ""; position: absolute; right: -7px; bottom: 22px; width: 7px; height: 14px; background: var(--glass-read); clip-path: polygon(0 0, 100% 50%, 0 100%); } /* (outside the drawer, so it doesn't lie over its glass) */
 .qd-grab { display: none; flex: none; width: 36px; height: 4px; margin: 6px auto 0; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
 .qd-head { flex: none; display: flex; align-items: center; gap: 2px; min-height: 48px; }
 .qd-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; overflow-wrap: anywhere; hyphens: manual; }
