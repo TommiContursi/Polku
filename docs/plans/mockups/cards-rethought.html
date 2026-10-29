@@ -180,6 +180,23 @@ const BUTTONS = [
   { k: 'remove', card: 'A point’s card', label: 'Remove', ic: 'trash', does: 'Removes the point; Undo brings it back.', when: 'Editing.', at: 'm', on: 'point' },
   { k: 'fintraffic', foot: true, card: 'Road works (old popup)', label: 'Fintraffic traffic situation', ic: 'external', does: 'Fintraffic’s live map.', when: 'The latest on the works.', at: 'c', on: 'road' },
   { k: 'routefrom', card: 'Road works (old popup)', label: 'Route from here', ic: 'flag', does: 'Starts a route at the works.', when: 'Rarely: the spot’s card has Start here.', at: 'g', on: 'road' },
+  { k: 'routeadd', card: 'Road works (old popup)', label: 'Add to route', ic: 'plus', does: 'Adds the works to your route.', when: 'Rarely: the card has Add to my route.', at: 'g', on: 'road' },
+  { k: 'routeavoid', card: 'Road works (old popup)', label: 'Avoid', ic: 'avoid', does: 'The route goes around the works.', when: 'Planning past them: the card has Avoid this spot.', at: 'g', on: 'road' },
+  { k: 'lipasadd', card: 'A LIPAS route', label: 'Add to my route (LIPAS)', ic: 'plus', does: 'Your route goes to it and follows it.', when: 'Planning, with a route.', at: 'm', on: 'lipasroute' },
+  { k: 'under', card: 'A LIPAS route', label: 'The trail under it ›', ic: 'route', does: 'The way the route runs on, here.', when: 'Today: a second card. New: tap the way itself.', at: 'g', on: 'lipasroute' },
+  { k: 'stretch', card: 'The route’s card', label: 'This stretch ›', ic: 'route', does: 'The stretch’s card: its numbers and sport.', when: 'Reading a stretch of a long route.', at: 'm', on: 'point' },
+  { k: 'backstart', card: 'A point’s card', label: 'Back to start', ic: 'loop', does: 'Adds a leg back to the start.', when: 'Making a route a loop.', at: 'm', on: 'point' },
+  { k: 'reverse', card: 'A point’s card', label: 'Reverse', ic: 'reverse', does: 'The route runs the other way.', when: 'Riding a route the other way.', at: 'm', on: 'point' },
+  { k: 'otherways', card: 'Edit this stretch', label: 'Other ways', ic: 'route', does: 'Up to two other ways, on the map.', when: 'The route took a way you don’t want.', at: 'm', on: 'point' },
+  { k: 'stophere', card: 'Edit this stretch', label: 'Stop here', ic: 'pause', does: 'A break or a night at this spot.', when: 'Planning a long day.', at: 'm', on: 'point' },
+  { k: 'stretchsport', card: 'Edit this stretch', label: 'Sport ›', ic: 'bike', does: 'This stretch’s own sport.', when: 'A multisport route.', at: 'm', on: 'point' },
+  { k: 'style', card: 'Edit this stretch', label: 'Route style ›', ic: 'sliders', does: 'This stretch’s own style.', when: 'Fine-tuning a route.', at: 'm', on: 'point' },
+  { k: 'finetune', card: 'Edit this stretch', label: 'Fine-tune ›', ic: 'sliders', does: 'Its terrain, climbs and roads, in How you go.', when: 'Fine-tuning a route.', at: 'm', on: 'point' },
+  { k: 'osmnote', card: 'Not right?', label: 'Leave a note on OpenStreetMap', ic: 'external', does: 'Opens a note at the spot; no account needed.', when: 'The map is wrong.', at: 'c', on: 'notright' },
+  { k: 'osmedit', card: 'Not right?', label: 'Edit it on OpenStreetMap', ic: 'external', does: 'The editor, at the way.', when: 'Fixing it yourself.', at: 'c', on: 'notright' },
+  { k: 'lockedit', card: 'Six cards, browsing', label: 'You’re not editing · Edit', ic: 'pencil', does: 'Starts editing from a card while browsing a route.', when: 'Browsing a route, to change it. Not drawn in the mock-up.', at: 'c', on: 'frame' },
+  { k: 'back', card: 'Every card', label: '‹ Back (in words)', ic: 'chevronLeft', does: 'Back to the card before.', when: 'After a card opened from another. Drawn only on Not right?.', at: 'c', on: 'frame' },
+  { k: 'fold', card: 'A desktop’s card', label: '⌄ Fold', ic: 'chevronDown', does: 'Folds the card to its title row.', when: 'Seeing the map under it. Not drawn in the mock-up.', at: 'c', on: 'frame' },
 ];
 const AT_WORDS = { c: 'On the card', m: 'Long-press menu', g: 'Gone' };
 const DATA_WORDS = { real: 'Real', worst: 'Worst case', empty: 'Nothing mapped', fail: 'Sources fail' };
@@ -197,7 +214,7 @@ const SCENES = [
   { group: 'Ways', id: 'named', title: 'A named trail across kinds', note: 'Kuntokolmonen runs on cycleways and a track: its name joins them.', at: [23.78778, 61.5118], z: 15, way: 90255645, sport: 'hike' },
   { group: 'Ways', id: 'unnamed', title: 'Unnamed paths in a forest', note: 'The rule joins unnamed paths while their kind stays the same: at a fork, see At a fork.', at: [23.83863, 61.51935], z: 16, way: 153350916, sport: 'mtb' },
   { group: 'Things', id: 'lake', title: 'A lake', note: 'Iidesjärvi: its outline is drawn; its card has its own facts.', at: [23.81288, 61.48435], z: 14.2, area: true, sport: 'hike' },
-  { group: 'Things', id: 'park', title: 'A park', note: 'Sorsapuisto, by its outline.', at: [23.78113, 61.49683], z: 15.6, area: true, sport: 'hike' },
+  { group: 'Things', id: 'park', title: 'A park', note: 'Sorsapuisto, by its outline.', at: [23.78237, 61.49777], z: 15.6, area: true, sport: 'hike' },
   { group: 'Things', id: 'lipas', title: 'A LIPAS place', note: 'A place from LIPAS in Kauppi, as its own card.', at: [23.8125, 61.5126], z: 15.6, lipas: true, sport: 'hike' },
   { group: 'Things', id: 'point', title: 'A point on your route', note: 'The recorded Kauppi route: when you’re there, how far along, the profile up to it.', at: [23.8172, 61.519], z: 14.4, point: 1, sport: 'mtb' },
   { group: 'Things', id: 'roadworks', title: 'Road works', note: 'Live from Fintraffic: the nearest works in Tampere, on the same card.', at: [23.7609, 61.4978], z: 14, road: true, sport: 'road' },
@@ -253,10 +270,9 @@ function renderPanel(box, onChange, { shell = false } = {}) {
     h('p', {}, 'Worst case: a long Finnish name, every fact and six places at the spot. Nothing mapped: only the kind of way. Sources fail: the weather, the heights and LIPAS don’t answer.'));
   box.append(h('h4', { class: 'menu-h' }, 'The buttons'), h('p', {}, 'Every button on today’s cards, what it does and when it’s needed. Choose where each goes: on the card, in the menu a hold or a right-click opens, or gone. “Nothing Polku does is removed to make it simpler” (PRODUCT.md): gone means its job is done elsewhere.'));
   const list = h('div', { class: 'cr-btns' });
-  let last = '';
-  for (const b of BUTTONS) {
-    if (b.card !== last) { list.append(h('h4', { class: 'menu-h' }, b.card)); last = b.card; }
-    list.append(h('div', { class: 'cr-btn' }, h('div', {}, h('b', {}, b.label), h('small', {}, `${b.does} ${b.when}`)),
+  for (const card of new Set(BUTTONS.map((b) => b.card))) {
+    list.append(h('h4', { class: 'menu-h' }, card));
+    for (const b of BUTTONS.filter((x) => x.card === card)) list.append(h('div', { class: 'cr-btn' }, h('div', {}, h('b', {}, b.label), h('small', {}, `${b.does} ${b.when}`)),
       seg(b.label, choiceOf(b.k), AT_WORDS, (v) => { setChoice(b.k, v); onChange('b'); })));
   }
   box.append(list, h('button', { type: 'button', class: 'btn cr-copy', onclick: (e) => copyChoices(e.currentTarget) }, h('span', {}, 'Copy my choices')));
@@ -368,7 +384,7 @@ function initScreen() {
     if (json.remark && /error|timed out|out of memory/i.test(json.remark)) throw new Error(`Overpass: ${json.remark}`);
     return { v: 1, w: (json.elements || []).filter((el) => el.type === 'way' && el.geometry && el.nodes).map((el) => [el.id, pickTags(el.tags), [el.nodes[0], el.nodes[el.nodes.length - 1]], el.geometry.flatMap((p) => [+p.lon.toFixed(5), +p.lat.toFixed(5)])]) }; // (the ends' nodes are all the join needs)
   };
-  const tiles = new Map(), loaded = new Set(), ways = new Map(), ends = new Map();
+  const tiles = new Map(), loaded = new Set(), recTiles = new Set(), ways = new Map(), ends = new Map();
   const tileOf = ([lon, lat]) => lonLatToTile(lon, lat, TILE_Z).map(Math.floor);
   // Overpass is asked as the app asks it for a tap (three mirrors at once); when none answers, the scenes' ways come
   // from a recording made on 2026-10-29 (cards-rethought-ways.json), and the card says so
@@ -379,7 +395,7 @@ function initScreen() {
     if (!tiles.has(k)) {
       const p = (failing() || q.has('rec') ? Promise.reject(new Error('Overpass')) : cachedOverpass(`cr-ways/${TILE_Z}/${k}`, waysQuery(x, y), slimWays, { race: true }))
         .then((d) => { index(d); loaded.add(k); return d; })
-        .catch(async () => { const d = await recorded(); loaded.add(k); return d; });
+        .catch(async () => { const d = await recorded(); loaded.add(k); recTiles.add(k); return d; });
       p.catch(() => tiles.delete(k));
       tiles.set(k, p);
     }
@@ -642,7 +658,10 @@ function initScreen() {
     await loadTile(tileOf(ll)).catch(() => null);
     const w = nearestWay(ll, touch ? 18 : 9);
     if (w) return chooseWay(w, ll);
-    return areaPick(ll, pt);
+    const a = await areaPick(ll, pt);
+    // where Overpass didn't answer and the recording doesn't reach, nothing found means nothing known, not nothing there
+    if (recTiles.has(tileOf(ll).join('/')) && !a.geom) { status('Overpass didn’t answer, and this spot is outside the recording: the ways here aren’t known. Try again in a minute.', 6000); return null; }
+    return a;
   }
 
   // an area: its outline from OpenStreetMap (the smallest named water, park or nature area around the spot)
@@ -858,8 +877,8 @@ function initScreen() {
       box.append(h('div', { class: 'way-bar' }, h('button', { type: 'button', class: 'btn small quiet way-back', html: icon('chevronLeft', 18), onclick: () => open(f, 'card') }, h('span', {}, f.title)),
         h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close'), onclick: () => close({ echo: true }) })),
       h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, 'Not right?'), h('small', {}, 'The facts come from OpenStreetMap. Anyone can fix them.'))),
-      rows(item({ icon: 'external', label: 'Leave a note on OpenStreetMap', line: 'No account needed. It opens at this spot.', k: 'note', el: 'a', onclick: () => window.open(`https://www.openstreetmap.org/note/new#map=18/${f.ll[1]}/${f.ll[0]}`, '_blank') }),
-        osm ? item({ icon: 'external', label: 'Edit it on OpenStreetMap', line: 'With an OpenStreetMap account.', k: 'edit', onclick: () => window.open(osm, '_blank') }) : null));
+      rows(shownHere('osmnote', opened) ? item({ icon: 'external', label: 'Leave a note on OpenStreetMap', line: 'No account needed. It opens at this spot.', k: 'note', el: 'a', onclick: () => window.open(`https://www.openstreetmap.org/note/new#map=18/${f.ll[1]}/${f.ll[0]}`, '_blank') }) : null,
+        osm && shownHere('osmedit', opened) ? item({ icon: 'external', label: 'Edit it on OpenStreetMap', line: 'With an OpenStreetMap account.', k: 'edit', onclick: () => window.open(osm, '_blank') }) : null) || '');
       return box;
     }
     box.append(head(p, opened));
@@ -1094,10 +1113,11 @@ function initScreen() {
     if (p.kind === 'point') p.a = routeA;
     open(p, how === 'hold' || wide() || CFG.v === 'today' ? 'card' : 'line');
   }
-  map.on('click', (e) => { if (held) { held = false; return; } onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'tap'); });
+  // (a hold swallows only the click that ends it: some browsers send none, and the next tap must count)
+  map.on('click', (e) => { const late = Date.now() - heldAt > 700; held = false; if (!late) return; onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'tap'); });
   map.on('contextmenu', (e) => { e.preventDefault?.(); onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'hold'); });
   // a hold: the ring from 150 ms, the card at 500 ms within 10 px (js/gestures.js's bindHold)
-  let held = false, holdT = 0, ringT = 0, ring = null, start = null;
+  let held = false, heldAt = 0, holdT = 0, ringT = 0, ring = null, start = null;
   const canvas = map.getCanvasContainer();
   canvas.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
@@ -1105,7 +1125,7 @@ function initScreen() {
     clearTimeout(holdT); clearTimeout(ringT);
     ringT = setTimeout(() => { ring = h('div', { class: 'hold-ring', style: `left:${start.x}px;top:${start.y}px` }); document.body.append(ring); }, 150);
     holdT = setTimeout(() => {
-      ring?.remove(); ring = null; held = true;
+      ring?.remove(); ring = null; held = true; heldAt = Date.now();
       const r = canvas.getBoundingClientRect(), pt = new maplibregl.Point(start.x - r.left, start.y - r.top), ll = map.unproject(pt);
       onTap([ll.lng, ll.lat], pt, 'hold');
     }, 500);
@@ -1193,9 +1213,11 @@ function initScreen() {
   const settled = () => new Promise((ok) => { if (map.loaded()) { ok(); return; } map.once('idle', ok); setTimeout(ok, 4000); });
   // a line under the bar while a scene loads
   let statusEl = null;
-  function status(text) {
+  let statusT = 0;
+  function status(text, ms = 0) {
     if (!statusEl) { statusEl = h('div', { class: 'cr-status', role: 'status' }); document.body.append(statusEl); }
     statusEl.textContent = text; statusEl.hidden = !text;
+    clearTimeout(statusT); if (ms) statusT = setTimeout(() => { statusEl.hidden = true; }, ms);
   }
 
   // ---------------------------------------------------------------- the bar and its panel (a phone, or a narrow window)
