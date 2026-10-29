@@ -611,6 +611,7 @@ def trail_card(chrome):
                 fails.append(f"{name}: the map's buttons hidden for a card that fits beside them")
             if r.get('close'):
                 pg.quick_tap(*r['close'])
+                pg.js(SETTLED)  # (the sheet keeps the card as it leaves: #570)
                 if not pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!document.querySelector('.pl-way.card') && getComputedStyle(document.querySelector('.map-ctrls')).visibility !== 'hidden'))))"):
                     fails.append(f"{name}: after ✕, the card still open or the map's buttons not back")
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
