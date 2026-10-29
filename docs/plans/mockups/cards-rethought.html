@@ -1114,10 +1114,10 @@ function initScreen() {
     open(p, how === 'hold' || wide() || CFG.v === 'today' ? 'card' : 'line');
   }
   // (a hold swallows only the click that ends it: some browsers send none, and the next tap must count)
-  map.on('click', (e) => { const late = Date.now() - heldAt > 700; held = false; if (!late) return; onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'tap'); });
+  map.on('click', (e) => { if (Date.now() - heldUp < 400) return; onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'tap'); });
   map.on('contextmenu', (e) => { e.preventDefault?.(); onTap([e.lngLat.lng, e.lngLat.lat], e.point, 'hold'); });
   // a hold: the ring from 150 ms, the card at 500 ms within 10 px (js/gestures.js's bindHold)
-  let held = false, heldAt = 0, holdT = 0, ringT = 0, ring = null, start = null;
+  let held = false, heldUp = 0, holdT = 0, ringT = 0, ring = null, start = null;
   const canvas = map.getCanvasContainer();
   canvas.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return;
@@ -1125,14 +1125,16 @@ function initScreen() {
     clearTimeout(holdT); clearTimeout(ringT);
     ringT = setTimeout(() => { ring = h('div', { class: 'hold-ring', style: `left:${start.x}px;top:${start.y}px` }); document.body.append(ring); }, 150);
     holdT = setTimeout(() => {
-      ring?.remove(); ring = null; held = true; heldAt = Date.now();
+      ring?.remove(); ring = null; held = true;
       const r = canvas.getBoundingClientRect(), pt = new maplibregl.Point(start.x - r.left, start.y - r.top), ll = map.unproject(pt);
       onTap([ll.lng, ll.lat], pt, 'hold');
     }, 500);
   });
   const cancelHold = () => { clearTimeout(holdT); clearTimeout(ringT); ring?.remove(); ring = null; };
   canvas.addEventListener('pointermove', (e) => { if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancelHold(); });
-  canvas.addEventListener('pointerup', cancelHold); canvas.addEventListener('pointercancel', cancelHold);
+  // the finger that held lifts: the click that comes with it isn't a tap
+  canvas.addEventListener('pointerup', () => { if (held) { held = false; heldUp = Date.now(); } cancelHold(); });
+  canvas.addEventListener('pointercancel', () => { held = false; cancelHold(); });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   // the desktop's hover: the same line, at the pointer, and the way it's over drawn plain
   let hoverT = 0;
