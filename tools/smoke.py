@@ -6716,7 +6716,7 @@ def palette_css(chrome):
           await p.analysing; p.colorOnMap = true; p.showMode('grade'); return true; })()""")
         grades = pg.js(f"(() => {{ const css = getComputedStyle(document.documentElement); return {json.dumps(GRADES)}.map((n) => css.getPropertyValue(n).trim()); }})()")
         before = pg.js(PALETTE_SEEN + '(false)')
-        for want, where in [('#e11d48', 'route'), ('#be123c', 'route'), ('#0369a1', 'glow'), ('#22a447', 'trails'), ('#22a447', 'diff')]:
+        for want, where in [('#d6006e', 'route'), ('#9c0050', 'route'), ('#0369a1', 'glow'), ('#22a447', 'trails'), ('#22a447', 'diff')]:
             if want not in before[where]:
                 fails.append(f'light: {want} not in the {where} ({before[where][:120]})')
         if not before['colored'] or set(before['colored'].split()) - set(grades) - {'#d6dde3'}:
@@ -6903,6 +6903,268 @@ def contrast_sweep(chrome):
     fails += [f'{k[0]}: {k[1]} "{k[2] or "…"}" passes now: take it off CONTRAST_KNOWN ({why})' for k, why in known.items() if not any(match(f, k) for f in found)]
     told = sorted({why for k, why in known.items() if any(match(f, k) for f in found)})
     print(f"{'ok  ' if not fails else 'FAIL'} text at 4.5:1 in {len(CONTRAST_SCENES)} scenes, light and dark" + (f" (known: {', '.join(told)})" if told else '')
+          + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# B's glass over the map (#547). The sweep above composites a see-through surface over the page's own colour
+# (census.py), never the map, so a lighter glass would pass it and fail outdoors. Here every word and icon whose
+# surface is see-through is measured against the map under it as Chrome draws it: the words and icons are made
+# transparent for a screenshot, and each is compared with every pixel under its own boxes. Words on a solid surface are
+# the sweep's, and what has no surface at all (the map's own labels, the route's marks) is the map's.
+GLASS_INK = r"""(() => {
+  const rgba = (c) => { const m = (c.match(/[\d.]+/g) || []).map(Number); return m.length >= 3 ? [m[0], m[1], m[2], m[3] ?? 1] : null; };
+  const vw = innerWidth, vh = innerHeight, out = [];
+  const name = (e) => e.id ? '#' + e.id : e.tagName.toLowerCase() + [...e.classList].slice(0, 2).map((c) => '.' + c).join('');
+  // the first box with a background: a glass if it's see-through, else null (solid: the sweep's; none: the map's)
+  const glassOf = (el) => {
+    for (let e = el; e && e !== document.body; e = e.parentElement) {
+      const c = rgba(getComputedStyle(e).backgroundColor);
+      if (c && c[3] > 0) return c[3] < 1 ? e : null;
+    }
+    return null;
+  };
+  const opacity = (el) => { let o = 1; for (let e = el; e; e = e.parentElement) { const s = getComputedStyle(e); if (s.visibility === 'hidden' || s.display === 'none') return 0; o *= +s.opacity; } return o; };
+  // only what can be seen: clipped by every box that clips it, and not under anything else
+  const clip = (el, q) => { let [x0, y0, x1, y1] = [Math.max(0, q.left), Math.max(0, q.top), Math.min(vw, q.right), Math.min(vh, q.bottom)];
+    for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+      const s = getComputedStyle(e); if (s.overflowX === 'visible' && s.overflowY === 'visible') continue;
+      const b = e.getBoundingClientRect(); x0 = Math.max(x0, b.left); y0 = Math.max(y0, b.top); x1 = Math.min(x1, b.right); y1 = Math.min(y1, b.bottom); }
+    return x1 - x0 > 1 && y1 - y0 > 1 ? [x0, y0, x1, y1] : null; };
+  const onTop = (el, q) => { const h = document.elementFromPoint((q[0] + q[2]) / 2, (q[1] + q[3]) / 2); return h && (el.contains(h) || h.contains(el)); };
+  const pe = document.createElement('style'); pe.textContent = '* { pointer-events: auto !important }'; document.head.append(pe);
+  const add = (el, kind, text, boxes, color) => {
+    const g = glassOf(el), o = opacity(el), c = rgba(color);
+    if (!g || !o || !c || !c[3] || el.closest(':disabled')) return; // (a control that can't be used has no floor)
+    // inside the glass's own edge (its light inner line): a word cut off by the end of a scrolling panel isn't over it
+    const e = g.getBoundingClientRect(), inside = (q) => q && [Math.max(q[0], e.left + 2), Math.max(q[1], e.top + 2), Math.min(q[2], e.right - 2), Math.min(q[3], e.bottom - 2)];
+    const rects = boxes.map((q) => inside(clip(el, q))).filter((q) => q && q[2] - q[0] > 1 && q[3] - q[1] > 1 && onTop(el, q));
+    if (rects.length) out.push({ kind, t: text.slice(0, 30), el: name(el), glass: name(g), color: [c[0], c[1], c[2], c[3] * o], rects, at: rects[0].map(Math.round) });
+  };
+  const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const el = n.parentElement, t = n.textContent.trim();
+    if (!t || !el || el.closest('svg, .maplibregl-ctrl-attrib')) continue;
+    const r = document.createRange(); r.selectNodeContents(n);
+    add(el, 'word', t, [...r.getClientRects()], getComputedStyle(el).color);
+    // a mark written before the words in a colour of its own (the timeline's ⚑ in the route's colour, #559)
+    const before = getComputedStyle(el, '::before'), mark = before.content.replace(/^"|"$/g, '');
+    if (/^"\S/.test(before.content) && r.getClientRects().length) {
+      const q = r.getClientRects()[0], ctx = document.createElement('canvas').getContext('2d'); ctx.font = before.font;
+      add(el, 'word', mark + t, [new DOMRect(q.left - ctx.measureText(mark).width, q.top, ctx.measureText(mark).width, q.height)], before.color);
+    }
+  }
+  for (const svg of document.querySelectorAll('svg.ic')) {
+    if (svg.querySelector(':is([stroke], [fill]):not([stroke="currentColor"], [stroke="none"], [fill="currentColor"], [fill="none"])')) continue; // (a key in colours of its own)
+    const s = getComputedStyle(svg);
+    add(svg, 'icon', svg.closest('[aria-label], [title]')?.getAttribute('aria-label') || name(svg.parentElement), [svg.getBoundingClientRect()], s.stroke !== 'none' ? s.stroke : s.fill);
+  }
+  pe.remove();
+  return out;
+})()"""
+GLASS_HIDE = """(() => { const s = document.createElement('style'); s.id = 'no-ink';
+  s.textContent = '*, *::before, *::after, *::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; caret-color: transparent !important }'
+    + ' *::before, *::after { opacity: 0 !important }'; // (decorations drawn over an icon, as a tile's tick: not what the icon is read against)
+  document.head.append(s); return true; })()"""
+GLASS_MEASURE = r"""(async (png, items) => {
+  const img = new Image(); img.src = 'data:image/png;base64,' + png; await img.decode();
+  const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+  const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0); const d = ctx.getImageData(0, 0, cv.width, cv.height).data, dpr = img.width / innerWidth;
+  const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const L = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  return items.map((it) => {
+    const [r, g, b, a] = it.color; let low = Infinity;
+    for (const [x0, y0, x1, y1] of it.rects) {
+      for (let y = Math.floor(y0 * dpr); y < Math.ceil(y1 * dpr); y++) for (let x = Math.floor(x0 * dpr); x < Math.ceil(x1 * dpr); x++) {
+        const i = (y * cv.width + x) * 4, f = L(r * a + d[i] * (1 - a), g * a + d[i + 1] * (1 - a), b * a + d[i + 2] * (1 - a)), k = L(d[i], d[i + 1], d[i + 2]);
+        low = Math.min(low, (Math.max(f, k) + 0.05) / (Math.min(f, k) + 0.05));
+      }
+    }
+    return { ...it, rects: undefined, cr: Math.round(low * 100) / 100 };
+  });
+})"""
+TILES_IN = ("new Promise((ok) => { const m = polku.map, t0 = Date.now();"
+            " const go = () => m.loaded() && m.areTilesLoaded() ? ok(true) : Date.now() - t0 > 30000 ? ok(false) : setTimeout(go, 300); go(); })")
+GLASS_MAPS = {'trail': 'the Trail map', 'maasto': 'Maastokartta', 'ortofi': 'the aerial photos'}
+
+
+def glass_ink(pg, where, found):
+    """Every word and icon on the glass in the page as it is, measured against the map under it (GLASS_INK)."""
+    items = pg.js(GLASS_INK)
+    pg.js(GLASS_HIDE)
+    time.sleep(0.3)
+    png = pg.c.send('Page.captureScreenshot', {'format': 'png'}, pg.s)['data']
+    pg.js("document.getElementById('no-ink').remove(); true")
+    for it in pg.js(f"{GLASS_MEASURE}({json.dumps(png)}, {json.dumps(items)})", timeout=120000):
+        key = (where, it['kind'], it['el'], it['t'])
+        if it['cr'] < found.get(key, (99,))[0]:
+            found[key] = it['cr'], f"on {it['glass']} at {it['at']}, in rgba{tuple(it['color'])}"
+    return len(items)
+
+
+def glass(chrome):
+    """Words at 4.5:1 and icons at 3:1 on the glass over the map, --route-text's too (#559): the Trail map, Maastokartta
+    and the aerial photos, light and dark, on a phone and a desktop, with the Kauppi route drawn and the planner open.
+    On each page three times: the timeline open and looking 3 h ahead (its ⚑ time linked to the route), the timeline
+    closed with the Layers drawer open (the Weather button's +3 h), and Settings open. Chrome must draw the blur, and
+    the map's tiles must be in: a page whose map didn't load measures nothing, so it fails."""
+    import shoot
+    found, fails, measured = {}, [], 0
+    for phone in (True, False):
+        for base, map_name in GLASS_MAPS.items():
+            for theme in ('light', 'dark'):
+                where = f"{'phone' if phone else 'desktop'}, {theme}, over {map_name}"
+                pg = chrome.page(*((390, 844) if phone else (1440, 900)), phone)
+                try:
+                    pg.open_app({'activity': 'mtb', 'timeline': True, 'base': base, 'appearance': theme})
+                    pg.js('polku.planner.setActive(true); true')
+                    pg.js(f"polku.planner.restoreSnapshot({shoot.FIX('route-kauppi-mtb.json')}); true")
+                    pg.js(shoot.WAIT_ROUTE)
+                    pg.js(shoot.FIT)
+                    pg.js('polku.weather.setHour(3); true')
+                    if not pg.js(TILES_IN, timeout=40000):
+                        fails.append(f"{where}: the map's tiles didn't load in 30 s, so nothing was measured")
+                        continue
+                    time.sleep(1.5)
+                    if not measured:  # does this Chrome draw backdrop-filter? the same view with and without it must differ
+                        sheet = pg.js("(() => { const r = document.querySelector('#planner').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: Math.min(r.height, 200), scale: 1 }; })()")
+                        a = pg.c.send('Page.captureScreenshot', {'format': 'png', 'clip': sheet}, pg.s)['data']
+                        pg.js("document.head.insertAdjacentHTML('beforeend', '<style id=no-blur>* { backdrop-filter: none !important }</style>'); true")
+                        time.sleep(0.3)
+                        if a == pg.c.send('Page.captureScreenshot', {'format': 'png', 'clip': sheet}, pg.s)['data']:
+                            fails.append('this Chrome draws no backdrop-filter: the glass over the map can\'t be measured')
+                        pg.js("document.getElementById('no-blur').remove(); true")
+                    measured += glass_ink(pg, where, found)
+                    pg.js("document.querySelector('#btn-time').click(); true")
+                    time.sleep(0.4)
+                    if 'ahead' not in pg.js("document.querySelector('#btn-time').className"):
+                        fails.append(f"{where}: the Weather button doesn't say it's looking ahead")
+                    pg.js("document.querySelector('#btn-layers').click(); true")
+                    time.sleep(0.6)
+                    measured += glass_ink(pg, where, found)
+                    pg.js("document.querySelector('#btn-layers').click(); document.querySelector('#btn-settings').click(); true")
+                    time.sleep(0.6)
+                    measured += glass_ink(pg, where, found)
+                    fails += [f'{where}, console: {e[:160]}' for e in pg.errors()]
+                finally:
+                    pg.close()
+    for (where, kind, el, t), (cr, on) in sorted(found.items()):
+        need = 4.5 if kind == 'word' else 3
+        if cr < need:
+            fails.append(f'{where}: the {kind} "{t}" ({el} {on}) is {cr}:1 at its lowest, under {need}:1')
+    print(f"{'ok  ' if not fails else 'FAIL'} words at 4.5:1 and icons at 3:1 on the glass over the map, {len(found)} of them ({measured} measures)"
+          + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Every glass surface in the page as it is (those with a blur behind them, marked the first time so the same ones are
+# read in each mode): its background, its blur and whether its edge is the 3:1 rim; and any other blur in the page
+GLASS_NOW = """((first) => {
+  const css = getComputedStyle(document.documentElement), rim = (() => { const i = document.createElement('i'); i.style.color = css.getPropertyValue('--hc-border'); document.body.append(i); const c = getComputedStyle(i).color; i.remove(); return c; })();
+  if (first) [...document.querySelectorAll('body *')].filter((e) => getComputedStyle(e).backdropFilter !== 'none' && e.getClientRects().length).forEach((e, k) => { e.dataset.glassProbe = k; });
+  const name = (e) => e.id ? '#' + e.id : e.tagName.toLowerCase() + [...e.classList].slice(0, 2).map((c) => '.' + c).join('');
+  return { contrast: document.documentElement.dataset.contrast, atStart: window.__contrastAtStart,
+    surfaces: [...document.querySelectorAll('[data-glass-probe]')].map((e) => { const s = getComputedStyle(e), a = (s.backgroundColor.match(/[\\d.]+/g) || [])[3];
+      return { el: name(e), pressed: e.matches('[aria-pressed="true"]'), solid: a === undefined, blur: s.backdropFilter, rim: s.boxShadow.includes(rim), muted: getComputedStyle(e).getPropertyValue('--muted').trim() }; }),
+    others: [...document.querySelectorAll('body *:not([data-glass-probe])')].filter((e) => getComputedStyle(e).backdropFilter !== 'none').map(name),
+    mutedHc: css.getPropertyValue('--muted-hc').trim() };
+})"""
+# data-contrast when <body> began, before Polku's own scripts: what index.html's <head> set
+CONTRAST_AT_START = """new MutationObserver((list, o) => { if (document.body) { window.__contrastAtStart = document.documentElement.dataset.contrast; o.disconnect(); } })
+  .observe(document, { childList: true, subtree: true })"""
+
+
+def glass_modes(chrome):
+    """#382's §7: reduced transparency, more contrast and Settings' High contrast turn every glass surface solid, with no
+    blur anywhere; more contrast also gives each its 3:1 rim and the darker grey. With none of them, the same surfaces
+    are glass. Light and dark, on a desktop with the planner, the timeline and Layers open; High contrast by touch on a
+    phone, set before the first paint after a reload, and off again."""
+    import shoot
+    fails = []
+
+    def look(pg, where, want, first=False):
+        r = pg.js(GLASS_NOW + f'({json.dumps(first)})')
+        if len(r['surfaces']) < 5:
+            fails.append(f"{where}: only {len(r['surfaces'])} glass surfaces found ({', '.join(s['el'] for s in r['surfaces'])})")
+        for s in r['surfaces']:
+            if s['pressed']:
+                continue  # (solid green on purpose)
+            glassy = not s['solid'] and s['blur'] != 'none'
+            if want == 'glass' and not glassy:
+                fails.append(f"{where}: {s['el']} isn't glass (blur {s['blur']}, solid {s['solid']})")
+            if want != 'glass' and (not s['solid'] or s['blur'] != 'none'):
+                fails.append(f"{where}: {s['el']} isn't solid (blur {s['blur']}, solid {s['solid']}, data-contrast {r['contrast']})")
+            if want == 'more' and not (s['rim'] and s['muted'] == r['mutedHc']):
+                fails.append(f"{where}: {s['el']} has {'no' if not s['rim'] else 'its'} rim and grey {s['muted']}, not {r['mutedHc']}")
+        if want != 'glass' and r['others']:
+            fails.append(f"{where}: still a blur behind {', '.join(r['others'][:4])}")
+        return r
+
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb', 'timeline': True})
+        pg.js('polku.planner.setActive(true); true')
+        pg.js(f"polku.planner.restoreSnapshot({shoot.FIX('route-kauppi-mtb.json')}); true")
+        pg.js(shoot.WAIT_ROUTE)
+        pg.js("document.querySelector('#btn-layers').click(); true")
+        time.sleep(0.6)
+        for theme in ('light', 'dark'):
+            look(pg, f'{theme}, the default', 'glass', first=theme == 'light')
+            for feature, value, want in [('prefers-reduced-transparency', 'reduce', 'solid'), ('prefers-contrast', 'more', 'more')]:
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': theme}, {'name': 'prefers-reduced-motion', 'value': 'reduce'},
+                                                                      {'name': feature, 'value': value}]}, pg.s)
+                if feature == 'prefers-contrast':  # (the device's change reaches data-contrast through applyTheme(), at the page's next frame)
+                    pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => document.documentElement.dataset.contrast === 'more' || Date.now() - t0 > 5000 ? ok() : requestAnimationFrame(go); go(); })")
+                pg.js(STILL)
+                look(pg, f'{theme}, {feature}: {value}', want)
+            scheme(pg, 'dark')
+            pg.js(THEME_IS + "('dark')")
+            pg.js(STILL)
+        fails += [f'desktop, console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': CONTRAST_AT_START}, pg.s)
+        pg.open_app({'activity': 'mtb', 'timeline': True})
+        pg.js('polku.planner.setActive(true); true')
+        pg.js(f"polku.planner.restoreSnapshot({shoot.FIX('route-kauppi-mtb.json')}); true")
+        pg.js(shoot.WAIT_ROUTE)
+        look(pg, 'phone, the default', 'glass', first=True)
+
+        def tap_high_contrast(where):
+            at = pg.js("""(() => { const l = [...document.querySelectorAll('#settings-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === 'High contrast');
+              if (!l) return null; l.scrollIntoView({ block: 'center' }); const r = l.querySelector('.tg-ui').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()""")
+            if not at:
+                fails.append(f'{where}: no High contrast in Settings')
+                return
+            pg.tap(*at)
+            time.sleep(0.6)
+
+        at = pg.js("(() => { const r = document.querySelector('#btn-settings').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()")
+        pg.tap(*at)
+        time.sleep(0.6)
+        tap_high_contrast('High contrast on')
+        r = look(pg, 'phone, High contrast on in Settings', 'more')
+        saved = pg.js("JSON.parse(localStorage.getItem('polku:settings')).highContrast")
+        if (r['contrast'], saved) != ('more', True):
+            fails.append(f"High contrast on: data-contrast is {r['contrast']}, saved {saved}")
+        # after a reload nothing has a blur to be found by, so: none anywhere, more contrast from the first paint, the rim on the sheet
+        pg.reload()
+        pg.js('polku.planner.setActive(true); true')
+        r = pg.js(GLASS_NOW + '(false)')
+        sheet = pg.js("getComputedStyle(document.querySelector('#planner')).boxShadow")
+        if r['atStart'] != 'more' or r['others'] or 'rgba(16, 24, 20, 0.7)' not in sheet:
+            fails.append(f"High contrast after a reload: data-contrast {r['atStart']} when the page began, a blur behind {r['others'][:4]}, the sheet's edge {sheet[:90]}")
+        pg.tap(*at)
+        time.sleep(0.6)
+        tap_high_contrast('High contrast off')
+        look(pg, 'phone, High contrast off again', 'glass', first=True)
+        fails += [f'phone, console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} the modes: reduced transparency, more contrast and High contrast turn the glass solid, light and dark"
           + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -14172,6 +14434,7 @@ GROUPS = [
     ('heading', [heading], 'where you are (23a): the cone, follow me, a pan, facing ahead, a hidden page (a GPS and a compass of its own)'),
     ('contrast', [contrast], 'white on the green accent in dark and light: the sport pill, pressed Settings and Weather, Make 3 loops, switches (#239)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
+    ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers'),
     ('panels', [panels, panels_desktop], 'phones: Settings and all layers over the planner at every size, on screen, scrolling and closing by touch (#240); desktops, the planner at the bottom, by mouse and keys (#257)'),

@@ -229,16 +229,19 @@ function routeHoverRoute(p) {
 
 // Light or dark (#323): the device's (Automatic, also when it changes), the person's, or the map's (Match the map: dark
 // over the aerial photos and the night map, the map style's own rule). index.html's <head> decides it the same way
-// before the first paint; js/palette.js reads the colours again when it changes.
+// before the first paint; js/palette.js reads the colours again when it changes. More contrast, the device's or
+// Settings' High contrast, turns the glass solid (css/app.css, #382's §7).
 const mapDark = () => isAerial(state.base) || state.base === 'night';
-const deviceDark = matchMedia('(prefers-color-scheme: dark)');
+const deviceDark = matchMedia('(prefers-color-scheme: dark)'), deviceMore = matchMedia('(prefers-contrast: more)');
 function applyTheme() {
+  document.documentElement.dataset.contrast = state.highContrast || deviceMore.matches ? 'more' : 'normal';
   const a = state.appearance, theme = (a === 'auto' ? deviceDark.matches : a === 'map' ? mapDark() : a === 'dark') ? 'dark' : 'light';
   if (document.documentElement.dataset.theme === theme) return; // (a write redraws the map: palette.js)
   document.documentElement.dataset.theme = theme;
   $('meta[name="theme-color"]').content = theme === 'dark' ? '#181c1a' : '#1f6f4a';
 }
 deviceDark.addEventListener('change', applyTheme);
+deviceMore.addEventListener('change', applyTheme);
 
 function applyStyle() {
   applyTheme(); // (the base map may have changed: Match the map)
@@ -1531,7 +1534,7 @@ function renderSettingsPanel() {
       onclick: () => { state.appearance = k; saveSettings(); applyTheme(); renderSettingsPanel(); $(`#settings-body [data-appearance="${k}"]`)?.focus(); },
     }))),
     h('p', { class: 'note' }, 'Automatic follows your device. Match the map is dark over the aerial photos and the night map, and light over the rest. Kept on this device only.'),
-    toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails for bright sunlight'),
+    toggle('High contrast', state.highContrast, (v) => { state.highContrast = v; applyStyle(); }, 'Thicker trails, solid panels and darker grey words, for bright sunlight'),
     hoverCapable() ? toggle('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
     toggle('Moving arrows on the route', state.routeFlow, (v) => { state.routeFlow = v; saveSettings(); flow.check(); }, 'Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery'),
     hoverCapable() ? toggle('Trackpad rotates & tilts', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms') : null));
