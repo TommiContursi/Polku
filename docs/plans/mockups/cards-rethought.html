@@ -342,9 +342,10 @@ function initScreen() {
   map.on('load', () => { addMine(); if (!wide()) document.querySelector('.maplibregl-ctrl-attrib')?.classList.remove('maplibregl-compact-show'); ready(); });
   function restyle() { if (styled === sportOf()) return; styled = sportOf(); map.setStyle(buildStyle(mapState(), ctx), { diff: true }); addMine(); }
 
-  // ---------------------------------------------------------------- the ways: one Overpass query per z13 tile, cached a week
-  // (the trail details' tiles, js/trails.js, with the streets added: what a tap on any way needs)
-  const TILE_Z = 13;
+  // ---------------------------------------------------------------- the ways: one Overpass query per z14 tile, cached a week
+  // (as the trail details' tiles, js/trails.js, with the streets added: what a tap on any way needs; z14, a quarter of
+  // the trail details' z13, as a town's z13 tile of every way timed out on the public mirrors on 2026-10-29)
+  const TILE_Z = 14;
   const WAY_RE = '^(trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|pedestrian|track|path|footway|cycleway|bridleway|steps)(_link)?$';
   const KEEP = ['highway', 'name', 'ref', 'surface', 'smoothness', 'tracktype', 'lit', 'width', 'bicycle', 'foot', 'horse', 'access', 'motor_vehicle', 'segregated', 'cycleway', 'cycleway:left', 'cycleway:right', 'cycleway:both',
     'oneway', 'oneway:bicycle', 'mtb:scale', 'mtb:scale:uphill', 'sac_scale', 'trail_visibility', 'winter_service', 'snowplowing', 'piste:type', 'bicycle:conditional', 'bridge', 'tunnel', 'maxspeed', 'sidewalk', 'sidewalk:both', 'service', 'footway', 'informal'];
@@ -352,25 +353,31 @@ function initScreen() {
   const waysQuery = (x, y) => { const [w, s, e, n] = tileBounds(x, y, TILE_Z); return `[out:json][timeout:40];way[highway~"${WAY_RE}"](${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)});out body geom qt;`; };
   const slimWays = (json) => {
     if (json.remark && /error|timed out|out of memory/i.test(json.remark)) throw new Error(`Overpass: ${json.remark}`);
-    return { v: 1, w: (json.elements || []).filter((el) => el.type === 'way' && el.geometry && el.nodes).map((el) => [el.id, pickTags(el.tags), el.nodes, el.geometry.flatMap((p) => [+p.lon.toFixed(6), +p.lat.toFixed(6)])]) };
+    return { v: 1, w: (json.elements || []).filter((el) => el.type === 'way' && el.geometry && el.nodes).map((el) => [el.id, pickTags(el.tags), [el.nodes[0], el.nodes[el.nodes.length - 1]], el.geometry.flatMap((p) => [+p.lon.toFixed(5), +p.lat.toFixed(5)])]) }; // (the ends' nodes are all the join needs)
   };
   const tiles = new Map(), loaded = new Set(), ways = new Map(), ends = new Map();
   const tileOf = ([lon, lat]) => lonLatToTile(lon, lat, TILE_Z).map(Math.floor);
+  // Overpass is asked as the app asks it for a tap (three mirrors at once); when none answers, the scenes' ways come
+  // from a recording made on 2026-10-29 (cards-rethought-ways.json), and the card says so
+  let recording = null;
+  const recorded = () => (recording ||= request('polku', new URL('cards-rethought-ways.json', location.href).href).then((r) => r.json()).then((d) => { index(d, true); return d; }));
   function loadTile([x, y]) {
     const k = `${x}/${y}`;
     if (!tiles.has(k)) {
-      const p = cachedOverpass(`cr-ways/${TILE_Z}/${k}`, waysQuery(x, y), slimWays, { timeoutMs: 45000 }).then((d) => { index(d); loaded.add(k); return d; });
+      const p = (failing() ? Promise.reject(new Error('Overpass')) : cachedOverpass(`cr-ways/${TILE_Z}/${k}`, waysQuery(x, y), slimWays, { race: true }))
+        .then((d) => { index(d); loaded.add(k); return d; })
+        .catch(async () => { const d = await recorded(); loaded.add(k); return d; });
       p.catch(() => tiles.delete(k));
       tiles.set(k, p);
     }
     return tiles.get(k);
   }
-  function index(d) {
+  function index(d, rec = false) {
     for (const [id, tags, nodes, flat] of d.w) {
       if (ways.has(id)) continue;
       const coords = [];
       for (let i = 0; i < flat.length; i += 2) coords.push([flat[i], flat[i + 1]]);
-      const w = { id, tags, nodes, coords, len: lineLength(coords) };
+      const w = { id, tags, nodes, coords, len: lineLength(coords), rec };
       ways.set(id, w);
       for (const n of new Set([nodes[0], nodes[nodes.length - 1]])) { if (!ends.has(n)) ends.set(n, []); ends.get(n).push(w); }
     }
@@ -444,12 +451,12 @@ function initScreen() {
     }
     return { chain, branches, stops };
   }
-  // the chain, and the tiles its ends run into (a long street leaves the tile): up to six tiles in all
+  // the chain, and the tiles its ends run into (a long street leaves the tile): up to sixteen tiles in all
   async function join(seed) {
     let j = walk(seed);
-    for (let k = 0; k < 4; k++) {
+    for (let k = 0; k < 6; k++) {
       const out = Object.values(j.stops).filter((s) => s.why === 'end' && !isLoaded(s.at));
-      if (!out.length || loaded.size >= 6) break;
+      if (!out.length || loaded.size >= 16) break;
       await Promise.all(out.map((s) => loadTile(tileOf(s.at)).catch(() => null)));
       j = walk(seed);
     }
@@ -513,6 +520,7 @@ function initScreen() {
   async function chooseWay(w, ll) {
     const j = await join(w);
     const p = { kind: 'way', ll, w, chain: j.chain, branches: j.branches, stops: j.stops, geo: lineOf(j.chain), a: undefined, wx: undefined, places: undefined, ele: undefined };
+    p.recorded = j.chain.some((x) => x.w.rec);
     p.tagsAt = empty() ? { highway: w.tags.highway } : w.tags;
     if (empty()) p.chain = p.chain.map((x) => ({ ...x, w: { ...x.w, tags: { highway: x.w.tags.highway } } }));
     p.title = worst() ? LONG : (p.chain.find((x) => x.w.tags.name) || {}).w?.tags.name || KIND_NAME[kindOf(w.tags)] || 'Way';
@@ -630,7 +638,8 @@ function initScreen() {
     const qy = `[out:json][timeout:25];is_in(${ll[1]},${ll[0]})->.a;(way(pivot.a)[~"^(natural|leisure|landuse|water|boundary)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground|protected_area)$"];rel(pivot.a)[~"^(natural|leisure|landuse|water)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground)$"];);out tags geom qt;`;
     const p = { kind: 'area', ll, title: water ? 'Water' : 'This spot', line: '', tags: {}, geom: null, wx: undefined, places: undefined, ele: undefined };
     try {
-      const json = failing() ? Promise.reject() : await cachedOverpass(key, qy, (j) => j, { timeoutMs: 30000 });
+      const json = failing() ? await Promise.reject(new Error('Overpass')) : await cachedOverpass(key, qy, (j) => j, { race: true })
+        .catch(async (err) => { const d = await recorded(); const near = Object.entries(d.areas || {}).find(([k2]) => { const [la, lo] = k2.split('/').map(Number); return Math.abs(la - ll[1]) < 0.004 && Math.abs(lo - ll[0]) < 0.008; }); if (!near) throw err; p.recorded = true; return near[1]; });
       const els = (json.elements || []).filter((e) => e.tags && (e.geometry || e.members));
       const size = (e) => { const g = e.geometry || (e.members || []).flatMap((m) => m.geometry || []); let s = Infinity, n = -Infinity, w = Infinity, ea = -Infinity; for (const q of g) { if (!q) continue; s = Math.min(s, q.lat); n = Math.max(n, q.lat); w = Math.min(w, q.lon); ea = Math.max(ea, q.lon); } return (n - s) * (ea - w); };
       const best = els.filter((e) => e.tags.name).sort((a, b) => size(a) - size(b))[0] || els.sort((a, b) => size(a) - size(b))[0];
@@ -657,10 +666,10 @@ function initScreen() {
   // a point on the recorded route (tools/fixtures/route-kauppi-mtb.json): no routing
   async function loadRoute() {
     if (routeA) return;
-    const fx = await (await fetch('../../../tools/fixtures/route-kauppi-mtb.json')).json();
+    const fx = await (await request('polku', new URL('../../../tools/fixtures/route-kauppi-mtb.json', location.href).href)).json();
     const coords = [], attrs = [];
     for (const leg of fx.legs) leg.result.coords.forEach((c, i) => { if (i === 0 && coords.length) return; if (coords.length) attrs.push({ tags: leg.result.tags[Math.min(i - 1, leg.result.tags.length - 1)] || {} }); coords.push(c); });
-    routePts = fx.points;
+    routePts = fx.points.map((q) => coords.reduce((b, c) => (dist(c, q) < dist(b, q) ? c : b))); // (a point is drawn where the route reaches it)
     routeA = await analyse({ coords, attrs }, { activity: 'mtb' }).catch(() => 'failed');
     setData('cr-route', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } }] });
     routeMarkers();
@@ -758,13 +767,19 @@ function initScreen() {
     if (p.places === 'failed') return [h('h4', { class: 'menu-h' }, 'At this spot'), h('p', { class: 'cr-fail' }, 'LIPAS didn’t answer, so places here aren’t shown.')];
     return [h('h4', { class: 'menu-h' }, 'At this spot'), rows(...p.places.map((x) => item({ icon: 'pin', label: x.name, line: (LIPAS_TYPES[x.type] || {}).name || 'From LIPAS', chev: true, onclick: () => open(lipasPick(x), 'card') })))];
   }
+  const x0 = (t) => t.some(({ w }) => /separate/.test(w.tags.sidewalk || w.tags['sidewalk:both'] || ''));
   function wayFactsOf(p) {
     const t = p.chain;
     const v = (fn, words) => valueOf(byLen(t, fn), words);
     const row = (k, x) => (x ? [k, x.value, x.note] : null);
     const kind = kindOf(p.w.tags);
-    const notAllowed = [...new Set(t.flatMap(({ w }) => [w.tags.bicycle === 'no' && 'bikes', w.tags.foot === 'no' && 'walking', w.tags.horse === 'no' && 'horses', ['private', 'no'].includes(w.tags.access) && 'marked private'].filter(Boolean)))];
-    const oneway = v((x) => (x.oneway === 'yes' ? (x['oneway:bicycle'] === 'no' ? 'one way for cars, both ways for bikes' : 'one way, bikes too') : null));
+    // what isn't allowed, and on how much of it (a street's carriageway is foot=no where its pavement is mapped apart)
+    const notOn = (fn, word) => { const m = t.reduce((a, { w }) => a + (fn(w.tags) ? w.len : 0), 0); return m ? (m > p.len - 20 ? word : `${word} on ${fmtDist(m)}`) : null; };
+    const notAllowed = [notOn((x) => x.bicycle === 'no', 'bikes'), notOn((x) => x.foot === 'no', x0(t) ? 'walking (the pavement is mapped apart)' : 'walking'),
+      notOn((x) => x.horse === 'no', 'horses'), notOn((x) => x.access === 'private' || (x.access === 'no' && !['yes', 'designated'].includes(x.bicycle) && !['yes', 'designated'].includes(x.foot)), 'marked private')].filter(Boolean);
+    // one way: only where some of it is; the rest goes both ways
+    const oneway = t.some(({ w }) => w.tags.oneway === 'yes') ? v((x) => (x.oneway === 'yes' ? (x['oneway:bicycle'] === 'no' ? 'one way for cars, both ways for bikes' : 'one way, bikes too') : 'both ways')) : null;
+    if (oneway) oneway.note = '';
     const winter = v((x) => (x['piste:type'] === 'nordic' ? 'a ski track: keep off on foot and by bike' : /no @ \(winter\)/.test(x['bicycle:conditional'] || '') ? 'no bikes in winter'
       : x.snowplowing === 'yes' || x.winter_service === 'yes' ? 'ploughed' : x.snowplowing === 'no' || x.winter_service === 'no' ? 'not ploughed' : null));
     const a = p.a && p.a !== 'failed' ? p.a : null;
@@ -802,7 +817,8 @@ function initScreen() {
 
   // the card's head: its mark, its name or kind, the line about getting along, ✕
   function head(p, opened) {
-    const mark = h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `cr-mark${p.kind === 'area' ? ' area' : ['lipas', 'point'].includes(p.kind) ? ' dot' : ''}`, style: `--c:${p.kind === 'road' ? '#f59e0b' : p.kind === 'way' && p.a && p.a !== 'failed' ? colourFn(p, modeFor(p))(1) : '#374151'}` }));
+    const mark = p.kind === 'point' ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `wp${p.i === 0 ? ' wp-start' : p.i === routePts.length - 1 ? ' wp-end' : ''}` }, p.i === 0 || p.i === routePts.length - 1 ? '' : String(p.i)))
+      : h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `cr-mark${p.kind === 'area' ? ' area' : ['lipas', 'point'].includes(p.kind) ? ' dot' : ''}`, style: `--c:${p.kind === 'road' ? '#f59e0b' : p.kind === 'way' && p.a && p.a !== 'failed' ? colourFn(p, modeFor(p))(1) : '#374151'}` }));
     return h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, p.title), p.line ? h('small', {}, p.line) : null), mark,
       shownHere('close', opened) ? h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close'), onclick: () => close({ echo: true }) }) : null);
   }
@@ -843,6 +859,7 @@ function initScreen() {
       const stops = Object.values(p.stops || {});
       if (stops.some((s) => s.why === 'fork')) box.append(h('p', { class: 'cr-fail' }, 'It forks: the pick stops there (At a fork: Stop).'));
       if (stops.some((s) => s.why === 'end' && !isLoaded(s.at))) box.append(h('p', { class: 'cr-fail' }, 'It goes on beyond what’s loaded.'));
+      if (p.recorded) box.append(h('p', { class: 'cr-fail' }, 'Overpass didn’t answer: these ways are from a recording of OpenStreetMap made on 2026-10-29.'));
       const acted = actions(p, opened);
       box.append(...acted);
       const { facts, missing } = wayFactsOf(p);
@@ -855,6 +872,7 @@ function initScreen() {
       box.append(nums([p.ele === undefined ? { value: '–', label: 'height here', wait: true } : p.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(p.ele)} m`, label: 'height here' },
         p.outline ? { value: fmtDist(p.outline.reduce((s, l) => s + lineLength(l), 0)), label: 'round its edge' } : null]));
       if (p.failed) box.append(h('p', { class: 'cr-fail' }, 'OpenStreetMap didn’t answer: its outline and facts aren’t shown.'));
+      if (p.recorded) box.append(h('p', { class: 'cr-fail' }, 'Overpass didn’t answer: its outline is from a recording made on 2026-10-29.'));
       box.append(...actions(p, opened), ...group('About it', [t.access ? ['Access', cap(plain(t.access))] : null, t.operator ? ['Run by', t.operator] : null, t.opening_hours ? ['Open', t.opening_hours] : null, t.wikipedia ? ['Wikipedia', t.wikipedia.replace(/^\w+:/, '')] : null,
         t.natural === 'water' ? ['Swimming', t.swimming ? cap(plain(t.swimming)) : 'Not mapped'] : null, t.salt === 'yes' ? ['Water', 'Salt'] : null]), ...weatherGroup(p), ...placesGroup(p));
       box.append(unmapped(p, p.failed ? [] : ['access', 'operator'].filter((k) => !t[k])) || '');
@@ -868,7 +886,7 @@ function initScreen() {
         const t = a.tAt ? a.tAt[p.idx] : 0, now = new Date(); now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
         let up = 0; for (let k = 1; k <= p.idx; k++) up += Math.max(0, a.ele[k] - a.ele[k - 1]);
         box.append(nums([{ value: new Date(now.getTime() + t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), label: `there, leaving ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` },
-          { value: fmtDist(a.along[p.idx]), label: `along, of ${fmtDist(a.total)}` }, { value: fmtDuration(t), label: 'in' }]));
+          { value: fmtDist(a.along[p.idx]), label: `along, of ${fmtDist(a.total)}` }, { value: `${Math.round(up)} m`, label: 'up so far' }]));
         box.append(profileSvg({ ...p, ll: p.ll }, p.idx), h('div', { class: 'cr-legend' }, h('span', {}, `The profile up to ${p.title.toLowerCase()} is in colour; after it, grey.`)));
       }
       box.append(...actions(p, opened));
@@ -954,7 +972,7 @@ function initScreen() {
     if (!p) return;
     const isNew = CFG.v === 'new';
     const at = p.kind === 'notright' ? p.from.ll : p.ll;
-    if (!pinMk) pinMk = new maplibregl.Marker({ element: h('span', { class: 'card-pin' }) }).setLngLat(at).addTo(map); else pinMk.setLngLat(at);
+    if (p.kind === 'point' && isNew) { pinMk?.remove(); pinMk = null; } else if (!pinMk) pinMk = new maplibregl.Marker({ element: h('span', { class: 'card-pin' }) }).setLngLat(at).addTo(map); else pinMk.setLngLat(at);
     const title = isNew ? p.title : (p.today || {}).title || p.title;
     // the line at the spot, on a phone, browsing (New): the hover's words, a button that opens the card
     if (isNew && !wide() && step === 'line') {
@@ -1186,6 +1204,8 @@ function initScreen() {
     if (what === 'b' || what === 'v') { if (pick) { drawPick(CFG.v === 'new' ? pick : null); render(); } return; }
     applyScene();
   }
+  // for scripted checks: go to a scene, and read the pick
+  Object.defineProperties(window.cr, { go: { value: (id, more = {}) => { Object.assign(CFG, { scene: id, mode: '', sport: '' }, more); return applyScene(); } }, pick: { get: () => pick }, step: { get: () => step } });
   let booted = false;
   function ready() {
     booted = true;

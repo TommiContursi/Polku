@@ -4,6 +4,7 @@ The design, for the user to choose from before it's built. What's still to do, a
 
 - **Status (2026-10-21): a proposal.** Research, a clickable mock-up and this plan; nothing is built.
 - **The mock-up:** [mockups/issue-345-map-cards.html](mockups/issue-345-map-cards.html).
+- **Rethought (2026-10-29):** the user rethought the cards in #574 ([its plan](cards-rethought.md)). Its decisions replace this plan's "three numbers at most" and "the sport orders, never hides": the same facts for everyone, and one card that tells everything known.
 
 ## Revised (2026-10-21)
 
