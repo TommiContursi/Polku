@@ -60,7 +60,7 @@ Today a tap on a trail opens a big card with about three facts, while the small 
 
 ### The card's heights on a phone
 
-The card opens at its first height: its head, its numbers, the profile, Colour by and its quiet row, never more than 62 % of the screen. A swipe up (or a tap on the grip) shows all of it, up to the top bar; a swipe down goes back, then to the line. Inside the card the facts scroll at the second height only.
+The card opens at its first height: its head, its numbers, the profile, Colour by and its quiet row, never more than 62 % of the room under the bar. With a long name (three lines at 360 px) the quiet row falls below that height, a swipe away. A swipe up (or a tap on the grip) shows all of it, up to the top bar; a swipe down goes back, then to the line. Inside the card the facts scroll at the second height only.
 
 ### Motion
 

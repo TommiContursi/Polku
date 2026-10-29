@@ -41,7 +41,7 @@ body.cr { background: var(--page); }
 
 /* the card on a phone: at the foot of the screen, at two heights (the card, then all of it) */
 .cr-sheet { position: fixed; left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); z-index: 6; display: flex; flex-direction: column;
-  height: var(--cr-h, 320px); max-height: calc(100dvh - 76px); background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-sheet); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  height: var(--cr-h, 320px); max-height: calc(100dvh - var(--cr-top, 68px) - 8px); background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-sheet); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   transition: height var(--t-sheet) var(--ease-drawer), transform var(--t-sheet) var(--ease-drawer), opacity var(--t-open) var(--ease-out); }
 .cr-sheet.entering { transform: translateY(calc(100% + 16px)); }
 .cr-sheet.leaving { transition-duration: var(--t-open); }
@@ -82,12 +82,12 @@ body.cr { background: var(--page); }
 .cr-mark.dot { width: 16px; height: 16px; border-radius: 50%; }
 
 /* the mock-up's own chrome: the bar, its panel, the shell on a Mac */
-.cr-bar { position: fixed; z-index: 7; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+.cr-bar { position: fixed; z-index: 7; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: none; }
 .cr-bar > * { pointer-events: auto; }
 .cr-bar .btn { background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); min-height: var(--target); min-width: 0; }
 .cr-bar .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cr-bar .seg { box-shadow: var(--shadow); flex: none; }
-.cr-bar .cr-scene-btn { flex: 1 1 auto; justify-content: flex-start; }
+.cr-bar .cr-scene-btn { flex: 1 1 150px; justify-content: flex-start; } /* (on a narrow screen, as at 200 %, the switch goes under it) */
 .cr-panel { font-size: var(--font-body); color: var(--text); }
 .cr-panel h2 { margin: 0 0 4px; font-size: var(--font-title); }
 .cr-panel p { margin: 0 0 10px; color: var(--muted); font-size: var(--font-small); line-height: 1.45; }
@@ -906,7 +906,7 @@ function initScreen() {
         let up = 0; for (let k = 1; k <= p.idx; k++) up += Math.max(0, a.ele[k] - a.ele[k - 1]);
         box.append(nums([{ value: new Date(now.getTime() + t * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), label: `there, leaving ${now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` },
           { value: fmtDist(a.along[p.idx]), label: `along, of ${fmtDist(a.total)}` }, { value: `${Math.round(up)} m`, label: 'up so far' }]));
-        box.append(profileSvg({ ...p, ll: p.ll }, p.idx), h('div', { class: 'cr-legend' }, h('span', {}, `The profile up to ${p.title.toLowerCase()} is in colour; after it, grey.`)));
+        box.append(profileSvg({ ...p, ll: p.ll }, p.idx), h('p', { class: 'cr-fail' }, `The profile up to ${p.title.toLowerCase()} is in colour; after it, grey.`));
       }
       box.append(...actions(p, opened));
     } else if (p.kind === 'road') {
@@ -1048,7 +1048,10 @@ function initScreen() {
     const card = sheet.querySelector('.pl-way');
     const upto = card.querySelector('[data-stop]');
     const all = card.offsetTop + card.scrollHeight + 4;
-    const max = innerHeight - 76;
+    // the card never goes under the bar, however tall the bar is (two rows at 200 %)
+    const top = Math.round((document.querySelector('.cr-bar')?.getBoundingClientRect().bottom || 56) + 8);
+    sheet.style.setProperty('--cr-top', `${top}px`);
+    const max = innerHeight - top - 8;
     const part = upto ? upto.offsetTop + 2 : all;
     const hgt = step === 'full' ? Math.min(all, max) : Math.min(part, all, max * 0.62);
     sheet.style.setProperty('--cr-h', `${Math.round(hgt)}px`);
