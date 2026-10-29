@@ -20,6 +20,7 @@ Today a tap on a trail opens a big card with about three facts, while the small 
   ```
 
   Then open `http://<the Mac's name>.local:8807/docs/plans/mockups/cards-rethought.html` on the iPhone (the name is in System Settings → General → Sharing → Local hostname). macOS may ask whether Python may accept connections: allow it. Over plain `http` on the network, Share and the clipboard don't work (the page isn't a secure context), and **Copy my choices** shows the text to copy instead.
+- **When Overpass is busy:** the ways come from Overpass as the app asks it for a tap (three mirrors at once, `race`). When none answers in 25 s, the mock-up uses a recording of the scenes' ways made on 2026-10-29 (`cards-rethought-ways.json`, 930 KB), and the card says so. `&rec=1` in the address uses the recording at once.
 - **The bar** at the top: the scene (it opens the scenes, the moment, your sport, At a fork, the data and the buttons) and **Today · New**.
 - **Today** is the spot's card as `main` builds it at the same spot: the same map features, `describe()` from `js/hover.js` and `spotNums()` from `js/facts.js`, as `planner.openSpotCard()` does; the old popup for road works. Trail details aren't loaded in the mock-up, so Today's line lacks their width and visibility words in MTB, Hike and Trail run.
 
@@ -61,6 +62,15 @@ Today a tap on a trail opens a big card with about three facts, while the small 
 
 The card opens at its first height: its head, its numbers, the profile, Colour by and its quiet row, never more than 62 % of the screen. A swipe up (or a tap on the grip) shows all of it, up to the top bar; a swipe down goes back, then to the line. Inside the card the facts scroll at the second height only.
 
+### Motion
+
+As DESIGN.md's Motion section says, reviewed with /emil-design-eng on 2026-10-29:
+- **The line at the spot** fades in from 0.96 in `--t-open` (180 ms) on `--ease-out`, from the spot upwards, as a transition (`@starting-style`), so a quick second tap catches it mid-way. It shrinks to 97 % while pressed.
+- **The card's sheet** slides up in `--t-sheet` (260 ms) on `--ease-drawer` and goes down in `--t-open`. Its heights change on the same curve. A drag on its grip follows the finger; a flick (0.11 px/ms or faster) counts as a swipe however short.
+- **The desktop's card** grows from 0.97 at the corner nearest its spot, in `--t-open`.
+- **The pick on the map** has no motion: picking happens many times a day.
+- **With reduced motion,** each of them only fades.
+
 ### New controls (proposed, not yet in DEVELOPING's Shared controls)
 
 - **The line at the spot** (`cr-line`): the hover's words as a 44 px button above the spot's pin.
@@ -74,14 +84,15 @@ The card opens at its first height: its head, its numbers, the profile, Colour b
 These are cases #574 doesn't decide. Each is in the mock-up to try.
 
 1. **At a fork:** where a piece meets two or more that continue it with the same name (or kind), which way does the pick go? **Straight on** (the least turn; the mock-up's start), **Every branch** (drawn, the profile following the straightest), or **Stop** at the fork.
-2. **Two carriageways** (Kalevantie): one name, two one-way sides that seldom share an end. Today's rule picks one side. Is the street one thing, both sides?
+2. **Two carriageways:** Kalevantie joins 32 pieces into 3.06 km, but only the side that was tapped: its two one-way sides seldom share an end. Is the street one thing, both sides?
 3. **A side street with the same name:** Finnish streets often branch under one name (a -tie with its spurs). At a T, the branch isn't a continuation, so it's left out. Is that right?
-4. **Roundabouts and loops:** a way that comes back to where it began stops there.
-5. **Long roads:** a named road joins until 25 km, or until the tiles stop loading. Should a pick stop sooner, at a town's edge or where the road's number changes?
-6. **Unnamed paths in a forest:** joining while the kind stays the same turns a network of paths into one long pick. Try Unnamed paths in a forest with each At a fork. Should unnamed paths stop at every junction instead?
-7. **Colour by Difficulty** colours by the MTB grade where there is one, else by the hiking (SAC) grade. Two choices, MTB and Hiking, would say it more plainly.
-8. **The desktop's hover** draws the way under the pointer plainly, before a click. Keep it, or the line only?
-9. **The buttons:** where each goes (the panel). The mock-up starts with the route's actions (Add to my route, Start here, End here, Round trip from here, Avoid this spot) in the long-press menu: while browsing they're a hold away, where today they're on the card. PRODUCT.md asks that nothing used today takes more taps or a new hidden view; a hold isn't a tap more, but it is hidden. What's here › starts as Gone, as its facts are on the card now.
+4. **A name on some pieces only:** Kuntokolmonen is named on 9 pieces, but unnamed ones sit between them, so the pick joins only 2. OpenStreetMap often keeps a trail's name on a route relation instead. Should a pick follow a route it's part of, when there is one?
+5. **Roundabouts and loops:** a way that comes back to where it began stops there.
+6. **Long roads:** a named road joins until 25 km, or until the tiles stop loading. Should a pick stop sooner, at a town's edge or where the road's number changes?
+7. **Unnamed paths in a forest:** joining while the kind stays the same turns a network of paths into one long pick. Try Unnamed paths in a forest with each At a fork. Should unnamed paths stop at every junction instead?
+8. **Colour by Difficulty** colours by the MTB grade where there is one, else by the hiking (SAC) grade. Two choices, MTB and Hiking, would say it more plainly.
+9. **The desktop's hover** draws the way under the pointer plainly, before a click. Keep it, or the line only?
+10. **The buttons:** where each goes (the panel). The mock-up starts with the route's actions (Add to my route, Start here, End here, Round trip from here, Avoid this spot) in the long-press menu: while browsing they're a hold away, where today they're on the card. PRODUCT.md asks that nothing used today takes more taps or a new hidden view; a hold isn't a tap more, but it is hidden. What's here › starts as Gone, as its facts are on the card now.
 
 ## What building it costs
 

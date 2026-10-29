@@ -21,14 +21,21 @@ body.cr { background: var(--page); }
 /* the line at the spot (phone): the hover's words, as a button above the spot's pin */
 .cr-line { display: flex; align-items: center; gap: 8px; max-width: min(300px, calc(100vw - 24px)); min-height: 44px; padding: 6px 8px 7px 12px; border: 0; border-radius: var(--radius-control);
   background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); font: inherit; text-align: left; cursor: pointer;
-  transform-origin: 50% 100%; animation: cr-in var(--t-open) var(--ease-out); }
+  transform-origin: 50% 100%; transition: opacity var(--t-open) var(--ease-out), transform var(--t-press) var(--ease-out); }
+@starting-style { .cr-line { opacity: 0; transform: scale(0.96); } }
 .cr-line > span:first-child { display: grid; gap: 1px; min-width: 0; }
 .cr-line b { font-size: var(--font-control); font-weight: var(--weight-strong); overflow-wrap: anywhere; }
 .cr-line small { font-size: var(--font-small); font-weight: var(--weight-regular); color: var(--muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .cr-line .ic { flex: none; color: var(--muted); }
 .cr-line:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .cr-line:active { transform: scale(0.97); }
-@keyframes cr-in { from { opacity: 0; transform: scale(0.96); } }
+/* the desktop's card grows from the corner nearest its spot */
+.card-float.cr-card .maplibregl-popup-content { transition: opacity var(--t-open) var(--ease-out), transform var(--t-open) var(--ease-out); }
+@starting-style { .card-float.cr-card .maplibregl-popup-content { opacity: 0; transform: scale(0.97); } }
+.card-float.cr-card.maplibregl-popup-anchor-top-left .maplibregl-popup-content { transform-origin: 0 0; }
+.card-float.cr-card.maplibregl-popup-anchor-top-right .maplibregl-popup-content { transform-origin: 100% 0; }
+.card-float.cr-card.maplibregl-popup-anchor-bottom-left .maplibregl-popup-content { transform-origin: 0 100%; }
+.card-float.cr-card.maplibregl-popup-anchor-bottom-right .maplibregl-popup-content { transform-origin: 100% 100%; }
 /* the hover's line on a desktop is .hover-tip itself (css/app.css), at the pointer */
 .hover-tip.cr-tip { pointer-events: none; }
 
@@ -37,10 +44,16 @@ body.cr { background: var(--page); }
   height: var(--cr-h, 320px); max-height: calc(100dvh - 76px); background: var(--surface); border-radius: 18px; box-shadow: var(--shadow-sheet); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   transition: height var(--t-sheet) var(--ease-drawer), transform var(--t-sheet) var(--ease-drawer), opacity var(--t-open) var(--ease-out); }
 .cr-sheet.entering { transform: translateY(calc(100% + 16px)); }
+.cr-sheet.leaving { transition-duration: var(--t-open); }
 .cr-sheet.dragging { transition: none; }
 .cr-sheet > .pl-way.card { flex: 1; min-height: 0; padding: 0 12px 12px; margin: 0; overflow-y: auto; overscroll-behavior: contain; }
 .cr-sheet[data-step="card"] > .pl-way.card { overflow-y: hidden; }
-@media (prefers-reduced-motion: reduce) { .cr-sheet { transition: opacity var(--t-open) linear; } .cr-sheet.entering { transform: none; opacity: 0; } .cr-line { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cr-sheet { transition: opacity var(--t-open) linear; } .cr-sheet.entering { transform: none; opacity: 0; }
+  .cr-line, .card-float.cr-card .maplibregl-popup-content { transition: opacity var(--t-open) linear; }
+  @starting-style { .cr-line, .card-float.cr-card .maplibregl-popup-content { transform: none; } }
+  .cr-line:active { transform: none; }
+}
 @media (prefers-reduced-transparency: reduce) { .cr-sheet { background: var(--surface-solid); backdrop-filter: none; } }
 
 /* the profile: a small one, coloured as the map, and Colour by's choices under it */
@@ -59,7 +72,7 @@ body.cr { background: var(--page); }
 .cr-facts .insp-row small { flex-basis: 100%; color: var(--muted); font-size: var(--font-small); }
 /* what isn't mapped: one quiet line, with Not right? at its end */
 .cr-unmapped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin: 0; font-size: var(--font-small); color: var(--muted); }
-.cr-unmapped .btn { min-height: 0; padding: 2px 4px; font-size: var(--font-small); color: var(--accent); }
+.cr-unmapped .btn { min-height: var(--target); margin-block: calc((var(--target) - 1.4em) / -2); padding: 0 6px; font-size: var(--font-small); color: var(--accent); } /* (a finger's target, without growing the line) */
 .cr-fail { margin: 0; font-size: var(--font-small); color: var(--muted); }
 .cr-fail .btn { min-height: 0; padding: 2px 6px; font-size: var(--font-small); }
 
@@ -122,7 +135,7 @@ import { dist, lineLength, fmtDist, fmtDuration, compass, bearing, lonLatToTile,
 import { pointForecasts, sampleAt } from '../../../js/weather.js';
 import { request } from '../../../js/net.js';
 import { icon, h } from '../../../js/ui.js';
-import { lipasNear } from '../../../js/lipas.js';
+import { lipasNear, lipasPlace } from '../../../js/lipas.js';
 import { WAY_NAMES, hitBox, inspectLayers, pickFeature } from '../../../js/inspect.js';
 import { describe } from '../../../js/hover.js';
 import { spotNums, tileTags, mtbGrade, sacGrade } from '../../../js/facts.js';
@@ -183,8 +196,8 @@ const SCENES = [
   { group: 'Ways', id: 'dual', title: 'A street with two carriageways', note: 'Kalevantie: one name, two one-way sides. Which is one thing? A question for you.', at: [23.77612, 61.4948], z: 15.4, way: 4983772, sport: 'road' },
   { group: 'Ways', id: 'named', title: 'A named trail across kinds', note: 'Kuntokolmonen runs on cycleways and a track: its name joins them.', at: [23.78778, 61.5118], z: 15, way: 90255645, sport: 'hike' },
   { group: 'Ways', id: 'unnamed', title: 'Unnamed paths in a forest', note: 'The rule joins unnamed paths while their kind stays the same: at a fork, see At a fork.', at: [23.83863, 61.51935], z: 16, way: 153350916, sport: 'mtb' },
-  { group: 'Things', id: 'lake', title: 'A lake', note: 'Its outline is drawn; its card has its own facts.', at: [23.8017, 61.4885], z: 14.6, area: true, sport: 'hike' },
-  { group: 'Things', id: 'park', title: 'A park', note: 'Sorsapuisto, by its outline.', at: [23.7868, 61.5021], z: 15.6, area: true, sport: 'hike' },
+  { group: 'Things', id: 'lake', title: 'A lake', note: 'Iidesjärvi: its outline is drawn; its card has its own facts.', at: [23.8193, 61.48065], z: 14.2, area: true, sport: 'hike' },
+  { group: 'Things', id: 'park', title: 'A park', note: 'Sorsapuisto, by its outline.', at: [23.78427, 61.49793], z: 15.6, area: true, sport: 'hike' },
   { group: 'Things', id: 'lipas', title: 'A LIPAS place', note: 'A place from LIPAS in Kauppi, as its own card.', at: [23.8125, 61.5126], z: 15.6, lipas: true, sport: 'hike' },
   { group: 'Things', id: 'point', title: 'A point on your route', note: 'The recorded Kauppi route: when you’re there, how far along, the profile up to it.', at: [23.8172, 61.519], z: 14.4, point: 1, sport: 'mtb' },
   { group: 'Things', id: 'roadworks', title: 'Road works', note: 'Live from Fintraffic: the nearest works in Tampere, on the same card.', at: [23.7609, 61.4978], z: 14, road: true, sport: 'road' },
@@ -364,7 +377,7 @@ function initScreen() {
   function loadTile([x, y]) {
     const k = `${x}/${y}`;
     if (!tiles.has(k)) {
-      const p = (failing() ? Promise.reject(new Error('Overpass')) : cachedOverpass(`cr-ways/${TILE_Z}/${k}`, waysQuery(x, y), slimWays, { race: true }))
+      const p = (failing() || q.has('rec') ? Promise.reject(new Error('Overpass')) : cachedOverpass(`cr-ways/${TILE_Z}/${k}`, waysQuery(x, y), slimWays, { race: true }))
         .then((d) => { index(d); loaded.add(k); return d; })
         .catch(async () => { const d = await recorded(); loaded.add(k); return d; });
       p.catch(() => tiles.delete(k));
@@ -539,7 +552,7 @@ function initScreen() {
     const surf = byLen(t, (x) => x.surface || null).find(([v]) => v);
     if (surf) bits.push(plain(surf[0]));
     const wid = byLen(t, (x) => x.width || null).find(([v]) => v);
-    if (wid && ['path', 'track', 'cycleway'].includes(kindOf(p.w.tags))) bits.push(`${wid[0]} m wide`);
+    if (wid && ['path', 'track', 'cycleway'].includes(kindOf(p.w.tags))) bits.push(`${wid[0]}\u00a0m wide`);
     const lit = byLen(t, litOf).find(([v]) => v);
     if (lit) bits.push(lit[0] === 'yes' ? 'lit' : 'not lit');
     if (worst()) bits.push('faint in places', 'overgrown', 'a ford');
@@ -613,6 +626,7 @@ function initScreen() {
       (failing() ? Promise.reject(new Error('lipas')) : worst() ? Promise.resolve(Array.from({ length: 6 }, (_, i) => ({ type: 1520, id: i, name: `${['Kaupin', 'Hervannan', 'Niihaman', 'Kalevan', 'Tammelan', 'Pyynikin'][i]} ulkoilualueen laavu ja tulentekopaikka`, at: p.ll })))
         : lipasNear(p.ll, 0.12, types)).then((list) => { p.places = list.slice(0, 8); }, () => { p.places = 'failed'; }).then(again);
     }
+    if (p.kind === 'lipas') (failing() ? Promise.reject(new Error('lipas')) : lipasPlace(p.lipas.type, p.lipas.id)).then((r) => { p.facts = r.props; }, () => { p.facts = 'failed'; }).then(again);
     if (p.kind !== 'way') (failing() ? Promise.reject() : elevation(p.at || p.ll)).then((e) => { p.ele = Number.isFinite(e) ? e : null; }, () => { p.ele = null; }).then(again);
   }
 
@@ -635,10 +649,10 @@ function initScreen() {
   async function areaPick(ll, pt) {
     const water = map.getLayer('water') && map.queryRenderedFeatures(pt, { layers: ['water'] }).length;
     const key = `cr-isin/${ll[1].toFixed(4)}/${ll[0].toFixed(4)}`;
-    const qy = `[out:json][timeout:25];is_in(${ll[1]},${ll[0]})->.a;(way(pivot.a)[~"^(natural|leisure|landuse|water|boundary)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground|protected_area)$"];rel(pivot.a)[~"^(natural|leisure|landuse|water)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground)$"];);out tags geom qt;`;
+    const qy = `[out:json][timeout:25];is_in(${ll[1]},${ll[0]})->.a;(way(pivot.a)[~"^(natural|leisure|landuse|water|boundary)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground|protected_area)$"];rel(pivot.a)[~"^(natural|leisure|landuse|water)$"~"^(water|park|nature_reserve|forest|wood|recreation_ground)$"];);out body geom qt;`;
     const p = { kind: 'area', ll, title: water ? 'Water' : 'This spot', line: '', tags: {}, geom: null, wx: undefined, places: undefined, ele: undefined };
     try {
-      const json = failing() ? await Promise.reject(new Error('Overpass')) : await cachedOverpass(key, qy, (j) => j, { race: true })
+      const json = failing() ? await Promise.reject(new Error('Overpass')) : await (q.has('rec') ? Promise.reject(new Error('recording')) : cachedOverpass(key, qy, (j) => j, { race: true }))
         .catch(async (err) => { const d = await recorded(); const near = Object.entries(d.areas || {}).find(([k2]) => { const [la, lo] = k2.split('/').map(Number); return Math.abs(la - ll[1]) < 0.004 && Math.abs(lo - ll[0]) < 0.008; }); if (!near) throw err; p.recorded = true; return near[1]; });
       const els = (json.elements || []).filter((e) => e.tags && (e.geometry || e.members));
       const size = (e) => { const g = e.geometry || (e.members || []).flatMap((m) => m.geometry || []); let s = Infinity, n = -Infinity, w = Infinity, ea = -Infinity; for (const q of g) { if (!q) continue; s = Math.min(s, q.lat); n = Math.max(n, q.lat); w = Math.min(w, q.lon); ea = Math.max(ea, q.lon); } return (n - s) * (ea - w); };
@@ -790,8 +804,8 @@ function initScreen() {
       along: [
         row('Bikes', v(bikesOf, (k) => BIKES[k][0].toLowerCase())),
         oneway ? ['One way', oneway.value, oneway.note] : null,
-        row('Width', v((x) => x.width || null, (x) => `${x} m`)),
-        row('Lit', v(litOf, (k) => LIT[k][0].toLowerCase())),
+        row('Width', v((x) => x.width || null, (x) => `${x}\u00a0m`)),
+        row('Lit', v(litOf, (k) => (k === 'yes' ? 'yes' : 'no'))),
         row('Speed limit', v((x) => x.maxspeed || null, (x) => `${x} km/h`)),
         notAllowed.length ? ['Not allowed', cap(notAllowed.join(', '))] : null,
       ],
@@ -818,7 +832,7 @@ function initScreen() {
   // the card's head: its mark, its name or kind, the line about getting along, ✕
   function head(p, opened) {
     const mark = p.kind === 'point' ? h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `wp${p.i === 0 ? ' wp-start' : p.i === routePts.length - 1 ? ' wp-end' : ''}` }, p.i === 0 || p.i === routePts.length - 1 ? '' : String(p.i)))
-      : h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `cr-mark${p.kind === 'area' ? ' area' : ['lipas', 'point'].includes(p.kind) ? ' dot' : ''}`, style: `--c:${p.kind === 'road' ? '#f59e0b' : p.kind === 'way' && p.a && p.a !== 'failed' ? colourFn(p, modeFor(p))(1) : '#374151'}` }));
+      : h('span', { class: 'card-mark', 'aria-hidden': 'true' }, h('span', { class: `cr-mark${p.kind === 'area' ? ' area' : ['lipas', 'point'].includes(p.kind) ? ' dot' : ''}`, style: `--c:${p.kind === 'road' ? '#f59e0b' : p.kind === 'way' && p.a && p.a !== 'failed' ? legendOf(p, modeFor(p))[0][1].c : '#374151'}` }));
     return h('div', { class: 'way-head' }, h('h3', { class: 'way-hint' }, h('b', {}, p.title), p.line ? h('small', {}, p.line) : null), mark,
       shownHere('close', opened) ? h('button', { type: 'button', class: 'tool way-x', 'aria-label': 'Close', html: icon('close'), onclick: () => close({ echo: true }) }) : null);
   }
@@ -827,13 +841,13 @@ function initScreen() {
     const list = BUTTONS.filter((b) => !b.foot && !['close', 'notright', 'here'].includes(b.k) && kindHas(b, p) && shownHere(b.k, opened));
     const quiet = BUTTONS.filter((b) => b.foot && kindHas(b, p) && shownHere(b.k, opened) && (b.k !== 'profile' || p.kind === 'point'));
     const out = [];
-    if (list.length) out.push(h('h4', { class: 'menu-h' }, p.kind === 'point' ? 'This point' : 'Your route'), acts(...list.map((b) => item({ icon: b.ic, label: b.label.replace(/ ›$/, ''), line: b.does, chev: / ›$/.test(b.label), k: b.k, onclick: () => toast(`${b.label}: as today`) }))));
+    if (list.length) out.push(h('h4', { class: 'menu-h' }, p.kind === 'point' ? 'This point' : 'Your route'), acts(...list.map((b) => item({ icon: b.ic, label: b.label.replace(/ ›$/, '').replace(/^\+ /, ''), line: b.does.replace(/\.$/, ''), chev: / ›$/.test(b.label), k: b.k, onclick: () => toast(`${b.label}: as today`) }))));
     if (quiet.length) out.push(h('div', { class: 'insp-actions card-foot' }, ...quiet.map((b) => h('button', { type: 'button', class: 'btn quiet', html: icon(b.ic, 16), onclick: () => (b.k === 'fintraffic' ? window.open('https://liikennetilanne.fintraffic.fi/', '_blank') : b.k === 'lipaspage' ? window.open(`https://www.lipas.fi/liikuntapaikat/${p.lipas.id}`, '_blank') : toast(`${b.label}: as today`)) }, h('span', {}, b.label.replace('Copy (coordinates)', 'Copy'))))));
     return out;
   }
   function unmapped(p, missing) {
     if (!missing.length && !shownHere('notright', opened)) return null;
-    return h('p', { class: 'cr-unmapped' }, missing.length ? h('span', {}, `Not mapped: ${missing.join(', ')}.`) : h('span', {}, 'From OpenStreetMap.'),
+    return h('p', { class: 'cr-unmapped' }, missing.length ? h('span', {}, `Not mapped: ${missing.join(', ')}.`) : h('span', {}, p.kind === 'lipas' ? 'From LIPAS.' : 'From OpenStreetMap.'),
       shownHere('notright', opened) ? h('button', { type: 'button', class: 'btn quiet', onclick: () => open({ ...p, kind: 'notright', from: p }, 'card') }, 'Not right?') : null);
   }
   let opened = 'tap';
@@ -878,7 +892,12 @@ function initScreen() {
       box.append(unmapped(p, p.failed ? [] : ['access', 'operator'].filter((k) => !t[k])) || '');
     } else if (p.kind === 'lipas') {
       box.append(nums([p.ele === undefined ? { value: '–', label: 'height', wait: true } : p.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(p.ele)} m`, label: 'height' }]));
-      box.append(...actions(p, opened), ...group('From LIPAS', [['Kind', (LIPAS_TYPES[p.lipas.type] || {}).name || 'A place'], ['Name', p.lipas.name]]), ...weatherGroup(p));
+      const f = p.facts && p.facts !== 'failed' ? p.facts : {};
+      box.append(...actions(p, opened), ...group('From LIPAS', [['Kind', (LIPAS_TYPES[p.lipas.type] || {}).name || 'A place'], f.city ? ['Where', f.city] : null, f.length ? ['Length', `${f.length}\u00a0km`] : null,
+        f.surface ? ['Surface', f.surface] : null, f.wc ? ['Toilet', f.wc === 'true' ? 'Yes' : 'No'] : null, f.info ? ['About it', f.info.length > 200 ? `${f.info.slice(0, 200)}…` : f.info] : null]));
+      if (p.facts === undefined) box.append(h('p', { class: 'cr-fail' }, 'Asking LIPAS for its facts…'));
+      if (p.facts === 'failed') box.append(h('p', { class: 'cr-fail' }, 'LIPAS didn’t answer: only its kind is shown.'));
+      box.append(...weatherGroup(p));
       box.append(unmapped(p, []) || '');
     } else if (p.kind === 'point') {
       const a = p.a && p.a !== 'failed' ? p.a : null;
@@ -954,7 +973,7 @@ function initScreen() {
   let pinMk = null, lineMk = null, popup = null, sheet = null, tip = null;
   function clearShown() {
     pinMk?.remove(); lineMk?.remove(); popup?.remove(); pinMk = lineMk = popup = null;
-    if (sheet) { const s = sheet; sheet = null; s.classList.add('entering'); setTimeout(() => s.remove(), 220); }
+    if (sheet) { const s = sheet; sheet = null; s.classList.add('leaving', 'entering'); setTimeout(() => s.remove(), 200); }
   }
   function close({ echo = false } = {}) { token++; pick = null; step = 'none'; clearShown(); drawPick(null); if (echo) post({ cr: 'tap', close: true }); }
   function open(p, s) { pick = p; step = s; if (p.kind !== 'notright') drawPick(p); render(); if (s !== 'line' && CFG.v === 'new') frame(p); }
@@ -982,7 +1001,7 @@ function initScreen() {
       lineMk?.remove();
       lineMk = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -16] }).setLngLat(at).addTo(map);
       popup?.remove(); popup = null;
-      if (sheet) { const s = sheet; sheet = null; s.classList.add('entering'); setTimeout(() => s.remove(), 220); }
+      if (sheet) { const s = sheet; sheet = null; s.classList.add('leaving', 'entering'); setTimeout(() => s.remove(), 200); }
       return;
     }
     lineMk?.remove(); lineMk = null;
@@ -1004,7 +1023,7 @@ function initScreen() {
       if (sheet) { const s = sheet; sheet = null; s.remove(); }
       const box = h('div', {}, card);
       if (!popup) {
-        popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', anchor: anchorFor(at), className: 'polku-popup card-float', offset: 14 }).setLngLat(at).setDOMContent(box).addTo(map);
+        popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: 'none', anchor: anchorFor(at), className: `polku-popup card-float${isNew ? ' cr-card' : ''}`, offset: 14 }).setLngLat(at).setDOMContent(box).addTo(map);
       } else popup.setDOMContent(box);
       box.firstChild.style.setProperty('--card-max', `${Math.max(240, innerHeight - 100)}px`);
       requestAnimationFrame(keepInView);
@@ -1035,14 +1054,14 @@ function initScreen() {
     sheet.style.setProperty('--cr-h', `${Math.round(hgt)}px`);
   }
   function dragSheet(handle) {
-    let y0 = null, h0 = 0;
-    const down = (e) => { y0 = e.clientY; h0 = sheet.offsetHeight; sheet.classList.add('dragging'); handle.setPointerCapture?.(e.pointerId); };
+    let y0 = null, h0 = 0, t0 = 0;
+    const down = (e) => { if (y0 != null) return; y0 = e.clientY; t0 = e.timeStamp; h0 = sheet.offsetHeight; sheet.classList.add('dragging'); handle.setPointerCapture?.(e.pointerId); };
     const move = (e) => { if (y0 == null || !sheet) return; sheet.style.setProperty('--cr-h', `${Math.max(80, h0 - (e.clientY - y0))}px`); };
     const up = (e) => {
       if (y0 == null || !sheet) return;
-      const dy = e.clientY - y0; y0 = null; sheet.classList.remove('dragging');
+      const dy = e.clientY - y0, fast = Math.abs(dy) / Math.max(1, e.timeStamp - t0) > 0.11; y0 = null; sheet.classList.remove('dragging');
       if (Math.abs(dy) < 6) return; // a tap: the button's own click
-      if (dy < -30) step = 'full'; else if (dy > 30) { if (step === 'full') step = 'card'; else { step = 'line'; render(); return; } }
+      if (dy < -30 || (fast && dy < 0)) step = 'full'; else if (dy > 30 || fast) { if (step === 'full') step = 'card'; else { step = 'line'; render(); return; } }
       size();
     };
     handle.addEventListener('pointerdown', down); handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', up); handle.addEventListener('pointercancel', up);
@@ -1152,10 +1171,10 @@ function initScreen() {
           .sort((x1, x2) => dist(x1.c, sc.at) - dist(x2.c, sc.at))[0];
         if (!near) { status('Fintraffic has no road works here now, or didn’t answer.'); return; }
         ll = near.c; map.jumpTo({ center: ll, zoom: 15 });
-        await new Promise((ok) => map.once('idle', ok));
+        await settled();
       }
       map.jumpTo({ center: ll, zoom: sc.z });
-      await new Promise((ok) => (map.loaded() ? ok() : map.once('idle', ok)));
+      await settled();
       status('');
       const pt = map.project(ll);
       opened = sc.mode === 'edit' || modeOf() === 'edit' ? 'hold' : 'tap';
@@ -1165,6 +1184,8 @@ function initScreen() {
       status(`Didn’t load: ${err.message || err}. Overpass may be busy: try again in a minute.`);
     }
   }
+  // the map drawn at the scene, or 4 s gone (a slow network, or a page in the background, never draws)
+  const settled = () => new Promise((ok) => { if (map.loaded()) { ok(); return; } map.once('idle', ok); setTimeout(ok, 4000); });
   // a line under the bar while a scene loads
   let statusEl = null;
   function status(text) {
