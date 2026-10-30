@@ -7005,8 +7005,9 @@ def glass_ink(pg, where, found):
 def glass(chrome):
     """Words at 4.5:1 and icons at 3:1 on the glass over the map, --route-text's too (#559): the Trail map, Maastokartta
     and the aerial photos, light and dark, on a phone and a desktop, with the Kauppi route drawn and the planner open.
-    On each page three times: the timeline open and looking 3 h ahead (its ⚑ time linked to the route), the timeline
-    closed with the Layers drawer open (the Weather button's +3 h), and Settings open. Chrome must draw the blur, and
+    On each page four times: the timeline open and looking 3 h ahead (its ⚑ time linked to the route), the timeline
+    closed with the Layers drawer open (the Weather button's +3 h), Settings open, and a point's card (at the point on a
+    desktop, in the sheet on a phone). Chrome must draw the blur, and
     the map's tiles must be in: a page whose map didn't load measures nothing, so it fails."""
     import shoot
     found, fails, measured = {}, [], 0
@@ -7044,6 +7045,11 @@ def glass(chrome):
                     measured += glass_ink(pg, where, found)
                     pg.js("document.querySelector('#btn-layers').click(); document.querySelector('#btn-settings').click(); true")
                     time.sleep(0.6)
+                    measured += glass_ink(pg, where, found)
+                    pg.js("document.querySelector('#btn-settings').click(); polku.planner.openPointCard(polku.planner.points[1]); true")
+                    time.sleep(0.8)
+                    if not pg.js("!!document.querySelector('.card-float .card, .card-peek .card')"):
+                        fails.append(f"{where}: the point's card didn't open")
                     measured += glass_ink(pg, where, found)
                     fails += [f'{where}, console: {e[:160]}' for e in pg.errors()]
                 finally:
@@ -7137,8 +7143,11 @@ def glass_modes(chrome):
         look(pg, 'phone, the default', 'glass', first=True)
 
         def tap_high_contrast(where):
-            at = pg.js("""(() => { const l = [...document.querySelectorAll('#settings-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === 'High contrast');
-              if (!l) return null; l.scrollIntoView({ block: 'center' }); const r = l.querySelector('.tg-ui').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()""")
+            # (scrolled to in Settings' own list only: 'center' scrolls the page too, which Polku puts back a moment later, under the finger)
+            switch = "[...document.querySelectorAll('#settings-body label.tg')].find((x) => x.querySelector('.tg-text').firstChild.textContent.trim() === 'High contrast')"
+            pg.js(f"(() => {{ const l = {switch}; if (l) l.scrollIntoView({{ block: 'nearest' }}); return true; }})()")
+            time.sleep(0.4)
+            at = pg.js(f"(() => {{ const l = {switch}; if (!l) return null; const r = l.querySelector('.tg-ui').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }})()")
             if not at:
                 fails.append(f'{where}: no High contrast in Settings')
                 return

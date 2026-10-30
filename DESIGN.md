@@ -165,7 +165,7 @@ spacing:
 
 **Creative North Star: "The Map Comes First"**
 
-The map fills the screen and always has the stage. Everything else floats over it on glass, so the map shows through: a reading glass for what you read (the top bar, the planner, the layer drawer, the panels) and a whiter glass for the map's buttons. The cards that open at a point on a desktop, the menus and the dialogs are solid. On a phone the planner becomes a sheet from the bottom, on a desktop a panel at the side. Nothing covers the map that the moment doesn't need, and what's covered can always be brought back in one step.
+The map fills the screen and always has the stage. Everything else floats over it on glass, so the map shows through: a reading glass for what you read (the top bar, the planner, the layer drawer, the panels, the card at a point on a desktop) and a whiter glass for the map's buttons. The menus, popups and dialogs are solid. On a phone the planner becomes a sheet from the bottom, on a desktop a panel at the side. Nothing covers the map that the moment doesn't need, and what's covered can always be brought back in one step.
 
 The components are calm and sure-footed. Surfaces are quiet and nearly neutral, a cool green-grey, so the map's colours and the magenta route line carry the colour. There is one clear main action at a time, in forest green. Targets are at least 44 px where a finger uses them, and words say what happens ("Make 3 loops", "Back to start") rather than leaning on icons alone. The look is built to be legible outdoors: in bright sun, with one thumb, at a glance.
 
@@ -204,10 +204,10 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 - **Danger (red), Look (amber), Unk (blue-grey)**, each with a soft version for the box behind it: Check's three groups (25d), Read before you go, Worth a look and Not checked. Each has its shape too: a triangle, an eye, a dashed "?". At least 5.4:1 on its box and on the page, in both themes. Danger's box is solid in dark mode too, so it doesn't take the glass's tint. 25d's Journey C is the first to use them.
 
 ### Neutral
-- **Glass-read (white at 72 %; near-black at 73 % in dark mode)**: the reading glass, for what you read over the map: the top bar, the zoom hint, the planner, the timeline, the toolbox and the desktop's toolbar, the layer drawer, the panels and a track's card.
-- **Glass-control (white at 84 %; near-black at 84 %)**: the whiter glass of the map's buttons: the compass, Locate, zoom, 3D, Weather, Layers when open, ⚙ and the 3D view's controls, so they read as one group and stay close to one tint over a busy map.
+- **Glass-read (white at 72 %; near-black at 73 % in dark mode)**: the reading glass, for what you read over the map: the top bar with ⚙, the zoom hint, the planner, the timeline, the toolbox and the desktop's toolbar, the layer drawer, the panels, the card at a point on a desktop (at the point, or beside the panel) and a track's card.
+- **Glass-control (white at 84 %; near-black at 84 %)**: the whiter glass of the map's buttons: the compass, Locate, zoom, 3D, Weather, Layers when open and the 3D view's controls, so they read as one group and stay close to one tint over a busy map.
 - **Muted-glass, accent-glass and bad-glass**: a darker grey, green and red on the glass (lighter in dark mode), so words keep 4.5:1 and icons 3:1 over the Trail map, Maastokartta and the aerial photos (`tools/smoke.py glass`). Every glass surface sets its grey, green and red to these, so its lines, borders and rings take them too; those aren't measured over the map yet.
-- **Surface-solid (white)**: the cards at a point, menus, dialogs, inputs and buttons that need an opaque background, and every glass when the person asks for more contrast or less transparency.
+- **Surface-solid (white)**: menus, popups, dialogs, inputs and buttons that need an opaque background, and every glass when the person asks for more contrast or less transparency.
 - **Surface-2 (pale grey-green)**: hover on rows and buttons, and recessed areas.
 - **Seg-on**: a switch's chosen segment: white, and in dark mode a grey lighter than its track, so it never reads as a gap.
 - **Text (near-black green)** and **Muted (grey-green)**: body text and secondary text, such as hints, units and section labels.

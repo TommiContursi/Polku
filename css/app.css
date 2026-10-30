@@ -166,14 +166,14 @@ button { font: inherit; color: inherit; }
 .ic { flex: none; display: block; }
 
 /* ---------------------------------------------------------------- the glass over the map (B of #547) */
-/* What you read sits on the reading glass, the map's buttons on theirs; the cards at a point, menus, popups and dialogs
-   stay solid. Each glass surface has the edge, and its grey, green and red take the glass's (words, icons, lines and rings
+/* What you read sits on the reading glass (the card at a point on a desktop too), the map's buttons on theirs; menus,
+   popups and dialogs stay solid. Each glass surface has the edge, and its grey, green and red take the glass's (words, icons, lines and rings
    alike: they're read over the map too). */
-.brand, .search, .zoom-hint, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools {
+.brand, .search, .top-btn, .zoom-hint, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools, .polku-popup.card-float .maplibregl-popup-content, .card-beside {
   background: var(--glass-read); -webkit-backdrop-filter: var(--glass-read-filter); backdrop-filter: var(--glass-read-filter);
   box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); --bad: var(--bad-glass);
 }
-.top-btn, .fab, .view3d, .ctrl-btn, .ctrl-zoom, .ctrl-compass .maplibregl-ctrl-group {
+.fab, .view3d, .ctrl-btn, .ctrl-zoom, .ctrl-compass .maplibregl-ctrl-group {
   background: var(--glass-control); -webkit-backdrop-filter: var(--glass-control-filter); backdrop-filter: var(--glass-control-filter);
   box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); --bad: var(--bad-glass);
 }
@@ -1695,7 +1695,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 /* the point's row in the planner's list, lit while its card is open */
 .wpl-point[aria-current="true"], .wpl-stretch[aria-current="true"] { background: var(--accent-soft); }
 .wpl-point[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
-.card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; }
 .card-beside .card { max-height: calc(100vh - 88px); }
 /* Move: the card gives way to a note under the top bar, with Cancel; the point stays ringed */
 .card-banner { position: fixed; z-index: 7; left: 12px; right: 12px; top: 64px; max-width: 440px; margin: 0 auto; background: var(--surface-solid); box-shadow: var(--shadow); font-weight: 600; }
