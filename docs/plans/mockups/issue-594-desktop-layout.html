@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desktop layout</title>
+<meta name="description" content="Mock-up for #594: where the toolbar, the planner and the top bar sit on a desktop. Today beside each option at 1024 × 768, 1440 × 900, 1920 × 1080 and 2560 × 1440, on B's look (#591), with the planner growing and shrinking, the weather at the foot and the toolbar's ⋯. Not wired to the app.">
+<!--
+  #594, 2026-10-30: today's desktop layout beside each option. The plan and the recommendation:
+  docs/plans/issue-594-desktop-layout.md. Not wired to the app: nothing here is loaded by Polku.
+
+  On B's look (#591 at 79a6ae4). The map behind each frame and the planner in each state are pictures of that build,
+  with the Kauppi route (pr-screenshots, claude/desktop-layout/). The top bar, the toolbar, the map's buttons, the
+  weather's line and the planner's folded line are drawn here with B's values; their sizes and every position and
+  width below are the build's, measured in headless Chrome, except what isn't built yet: #568's three buttons in the
+  route's view and the weather at the foot (step 3, part 2 of #233), drawn as their plans say.
+
+  ?opt=today|a|b|c|d|e  &size=1024|1440|1920|2560  &scene=list|warning|profile|tabs|point|done|weather|folded
+  &state=a|b  &bar=today|centre|right  &planner=top|centre  &tools=edge|map|window  &done=end|start  &show=travel,ghost,room
+  &frames=side|stack
+-->
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #fff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; --bad-mark: #b4232a; --ok-mark: #166534; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; --bad-mark: #ff8a8a; --ok-mark: #4ade80; color-scheme: dark; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; --bad-mark: #ff8a8a; --ok-mark: #4ade80; color-scheme: dark; }
+* { box-sizing: border-box; }
+html { -webkit-tap-highlight-color: transparent; }
+body { margin: 0; padding: 24px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+.cv { max-width: 1560px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -.01em; text-wrap: balance; }
+.cv > p { margin: 0 0 8px; max-width: 980px; }
+.bars { margin: 12px -16px 0; padding: 8px 16px; background: var(--page-bg); border-bottom: 1px solid rgba(128,128,128,.25); }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.sws { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.bar > span { min-width: 74px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; font-weight: 600; font-size: 13px; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.sw button:focus-visible, .act:focus-visible, .chk input:focus-visible + span { outline: 2px solid var(--page-link); outline-offset: 2px; }
+.act { min-height: 36px; padding: 0 14px; border: 1px solid rgba(128,128,128,.4); border-radius: 999px; background: var(--page-card); cursor: pointer; font-weight: 600; font-size: 13px; }
+.act[aria-pressed="true"] { background: var(--page-fg); color: var(--page-bg); }
+.chk { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.chk input { width: 18px; height: 18px; margin: 0; accent-color: var(--page-link); }
+.about { margin: 14px 0 10px; padding: 12px 16px; border-radius: 14px; background: var(--page-card); max-width: 1100px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.about h2 { margin: 0 0 4px; font-size: 16px; }
+.about p { margin: 4px 0; }
+#stage { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; align-items: end; margin-top: 10px; }
+#stage.stack { grid-template-columns: 1fr; }
+@media (max-width: 900px) { #stage { grid-template-columns: 1fr; } }
+.meas .scroll-note { display: none; }
+@media (max-width: 1100px) { .meas .scroll-note { display: block; } }
+.fr { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fr figcaption { font-size: 13px; color: var(--page-cap); }
+.fr figcaption b { color: var(--page-fg); }
+.box { position: relative; overflow: hidden; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.meas { margin-top: 14px; padding: 12px 16px; border-radius: 14px; background: var(--page-card); overflow-x: auto; }
+.meas h2 { margin: 0 0 6px; font-size: 16px; }
+.meas table { border-collapse: collapse; font-size: 12.5px; }
+.meas th, .meas td { text-align: left; padding: 4px 14px 4px 0; border-top: 1px solid rgba(128,128,128,.25); vertical-align: top; font-variant-numeric: tabular-nums; }
+.meas thead th { border-top: 0; }
+.meas .bad { color: var(--bad-mark); font-weight: 700; }
+.meas .good { color: var(--ok-mark); font-weight: 600; }
+.meas .note { margin: 6px 0 0; color: var(--page-cap); font-size: 12.5px; max-width: 1100px; }
+.left-out { margin-top: 14px; max-width: 1100px; font-size: 13px; color: var(--page-cap); }
+
+/* ======================================================= B's look (#591), from the build's values */
+.screen {
+  --accent: #1f6f4a; --accent-glass: #165a3a; --accent-bg: #1f6f4a; --focus: #1f6f4a;
+  --danger: #b4232a; --text: #141b17; --muted: #5f6b65; --muted-glass: #3b4741; --solid: #fff; --surface-2: rgba(28, 36, 32, .07);
+  --line: rgba(28, 36, 32, .14); --route: #d6006e; --start: #23863a; --scrim: rgba(0, 0, 0, .7);
+  --thin-bg: rgba(255, 255, 255, .84); --thin-filter: blur(24px) saturate(105%);
+  --thick-bg: rgba(255, 255, 255, .72); --thick-filter: blur(32px) saturate(105%);
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, .7), inset 0 1px 0 rgba(255, 255, 255, .95), 0 0 0 1px rgba(16, 24, 20, .26);
+  --shadow: 0 8px 28px rgba(16, 24, 20, .18), 0 1px 3px rgba(16, 24, 20, .1);
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative; overflow: hidden; color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #e9efe6;
+  transform-origin: 0 0; color-scheme: light;
+}
+.screen .map { position: absolute; inset: 0; background-repeat: no-repeat; background-position: 0 0; }
+.screen [data-mat="thin"] { background: var(--thin-bg); -webkit-backdrop-filter: var(--thin-filter); backdrop-filter: var(--thin-filter); box-shadow: var(--shadow), var(--edge); }
+.screen [data-mat="thick"] { background: var(--thick-bg); -webkit-backdrop-filter: var(--thick-filter); backdrop-filter: var(--thick-filter); box-shadow: var(--shadow), var(--edge); }
+.screen [data-mat] { --accent: var(--accent-glass); }
+.screen .mu { color: var(--muted-glass); }
+.ic { flex: none; display: block; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.screen .el { position: absolute; transition: left .32s var(--ease), top .32s var(--ease), width .32s var(--ease), height .32s var(--ease), opacity .2s ease-out; }
+.screen.still .el { transition: none; }
+.pill { display: flex; align-items: center; gap: 8px; height: 40px; border-radius: 999px; white-space: nowrap; overflow: hidden; }
+.brand-m { width: 28px; height: 28px; border-radius: 8px; background: var(--accent-bg); display: grid; place-items: center; color: #fff; }
+.search-t { flex: 1; min-width: 0; overflow: hidden; color: var(--muted-glass); font-size: 15px; }
+.kbd { flex: none; padding: 0 6px; border-radius: 5px; font-size: 11px; line-height: 18px; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted-glass); }
+.plan-chip { flex: none; display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent); font-weight: 700; font-size: 13px; }
+.sport { background: var(--accent-bg); color: #fff; font-weight: 700; font-size: 14px; padding: 0 12px; box-shadow: var(--shadow); }
+.round { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; }
+.fab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 16px; font-size: 11px; font-weight: 600; }
+.fab.sq { border-radius: 12px; }
+.fab b { font-weight: 700; font-size: 14px; }
+.screen .fab.on { background: var(--accent-bg); color: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.screen .fab.plan { color: var(--accent); box-shadow: var(--shadow), inset 0 0 0 2px var(--accent); }
+.fab .hour { position: absolute; right: calc(100% + 8px); top: 50%; translate: 0 -50%; padding: 4px 10px; border-radius: 999px; background: var(--thin-bg); box-shadow: var(--shadow), var(--edge); color: var(--text); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.needle { width: 8px; height: 22px; background: linear-gradient(#dc2626 50%, var(--muted) 50%); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.layers { overflow: hidden; border-radius: 16px; box-shadow: var(--shadow), inset 0 0 0 1.5px rgba(255, 255, 255, .85), 0 0 0 1px rgba(16, 24, 20, .26); background-repeat: no-repeat; }
+.layers span { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 0 4px; text-align: center; color: #fff; font-size: 11px; font-weight: 600; background: linear-gradient(transparent, var(--scrim)); }
+/* the planner: the build's picture in it, cut where the window's height stops it (the list then scrolls) */
+.planner { border-radius: 18px; overflow: hidden; box-shadow: var(--shadow), var(--edge); background: #f4f6f2; }
+.planner img { display: block; width: 392px; height: auto; }
+.planner .swap { position: absolute; left: 0; top: 0; }
+/* the folded planner and the weather's line: one row at the foot */
+.line { display: flex; align-items: center; gap: 10px; padding: 0 6px 0 16px; border-radius: 16px; white-space: nowrap; overflow: hidden; }
+.line b { font-size: 17px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.line .sp { flex: 1; }
+.line .tool { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; color: var(--text); }
+/* the toolbar, as css/app.css draws it on a desktop (.pl-tools.desk) */
+.tools { display: flex; align-items: center; gap: 2px; height: 56px; padding: 0 8px; border-radius: 16px; white-space: nowrap; overflow: hidden; }
+.tools.square { border-radius: 0 16px 16px 0; }
+.tools.bad { outline: 3px solid #d6006e; outline-offset: 2px; }
+.tools > * { flex: none; }
+.tools .tb { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; }
+.tools .tb.dim { opacity: .45; }
+.tools .tb.danger { color: var(--danger); }
+.tools .lab { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px 0 8px; border-radius: 10px; font-size: 13.5px; font-weight: 600; }
+.tools .lab .ic { color: var(--accent); }
+.tools .sep { width: 1px; height: 24px; margin: 0 2px; background: var(--line); }
+.tools .modes { display: flex; gap: 2px; padding: 0; }
+.tools .modes span { display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-width: 40px; padding: 0 8px; border-radius: 10px; font-size: 13.5px; font-weight: 600; }
+.tools .modes span .ic { color: var(--muted-glass); }
+.tools .modes span.on { background: var(--solid); box-shadow: 0 1px 3px rgba(0,0,0,.16), inset 0 0 0 1px var(--line); }
+.tools .modes span.on .ic { color: var(--accent); }
+.tools .pick { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 8px 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--solid); font-size: 13.5px; font-weight: 650; }
+.tools .pick .ic:first-child { color: var(--accent); }
+.tools .pick .two { display: flex; flex-direction: column; line-height: 1.1; }
+.tools .pick .two small { font-size: 11px; font-weight: 600; color: var(--muted-glass); }
+.tools .done { display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-width: 59px; padding: 0 12px; margin-left: 4px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); background: var(--solid); font-size: 15px; font-weight: 600; }
+/* the weather: today's timeline (the build's picture) floating, or at the foot as its plan draws it */
+.wx { border-radius: 16px; overflow: hidden; box-shadow: var(--shadow), var(--edge); }
+.wx img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.credits { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.credits .scale { width: 86px; height: 20px; border: 1.5px solid #333; border-top: 0; background: rgba(255,255,255,.75); padding: 2px 6px; font-size: 10.5px; }
+.credits .i { width: 22px; height: 22px; border-radius: 50%; background: #222; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+/* the overlays: how far the pointer goes, where things were, and the room */
+.ov { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.ov .ghost { fill: none; stroke: #d6006e; stroke-width: 3; stroke-dasharray: 10 8; }
+.ov .tr { stroke: #1d4ed8; stroke-width: 4; stroke-dasharray: 2 9; stroke-linecap: round; fill: none; }
+.ov .dot { fill: #1d4ed8; }
+.ov .lbl { font: 700 24px system-ui, sans-serif; fill: #fff; paint-order: stroke; stroke: #1d4ed8; stroke-width: 8px; stroke-linejoin: round; }
+.ov .fit { fill: rgba(29, 78, 216, .06); stroke: #1d4ed8; stroke-width: 3; stroke-dasharray: 14 10; }
+.ov .foot { fill: rgba(214, 0, 110, .14); stroke: #d6006e; stroke-width: 2; }
+.ov .flbl { font: 700 22px system-ui, sans-serif; fill: #8a0047; paint-order: stroke; stroke: #fff; stroke-width: 7px; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { .screen .el { transition: none; } }
+</style>
+</head>
+<body>
+<div class="cv">
+  <h1>Desktop layout</h1>
+  <p>Where the toolbar, the planner and the top bar sit on a desktop (<a href="https://github.com/TommiContursi/Polku/issues/594">#594</a>). <b>Today</b> on the left; the option on the right, in the same scene, at the same size. Use <b>Change</b> (or <b>Play</b>) to grow and shrink the planner, turn the weather on, or press Done, and watch what moves. On B's look (<a href="https://github.com/TommiContursi/Polku/pull/591">#591</a>). The plan with the critique and the recommendation: <a href="../issue-594-desktop-layout.md">issue-594-desktop-layout.md</a>.</p>
+
+  <div class="bars" role="group" aria-label="What the frames show">
+    <div class="bar"><span id="l-opt">Option</span><div class="sw" data-k="opt" aria-labelledby="l-opt"><button data-v="a">A: today, with what's decided</button><button data-v="b">B: the idea</button><button data-v="c">C: B, with the planner at the top</button><button data-v="d">D: recommended at first</button><button data-v="e">E: chosen, D with Done by the planner</button><button data-v="mix" hidden>Your mix</button></div></div>
+    <div class="bar"><span id="l-parts">Its parts</span><div class="sws">
+      <div class="sw" data-k="bar" aria-label="The top bar"><button data-v="today">Top bar at the left</button><button data-v="right">At the left, ⚙ at the right</button><button data-v="centre">Search and sport centred, ⚙ at the right</button></div>
+      <div class="sw" data-k="planner" aria-label="The planner"><button data-v="top">Planner at the top</button><button data-v="centre">Planner centred</button></div>
+      <div class="sw" data-k="tools" aria-label="The toolbar"><button data-v="edge">Toolbar on the planner's edge</button><button data-v="map">Centred beside the planner</button><button data-v="window">Centred in the window</button></div>
+      <div class="sw" data-k="done" aria-label="Done and Edit"><button data-v="end">Done at the toolbar's end</button><button data-v="start">Done by the planner</button></div></div></div>
+    <div class="bar"><span id="l-size">Size</span><div class="sw" data-k="size" aria-labelledby="l-size"><button data-v="1024">1024 × 768</button><button data-v="1440">1440 × 900</button><button data-v="1920">1920 × 1080</button><button data-v="2560">2560 × 1440</button></div>
+      <span id="l-frames">Frames</span><div class="sw" data-k="frames" aria-labelledby="l-frames"><button data-v="side">Side by side</button><button data-v="stack">One above the other</button></div></div>
+    <div class="bar"><span id="l-scene">Scene</span><div class="sw" data-k="scene" aria-labelledby="l-scene"></div></div>
+    <div class="bar"><span>Now</span><button class="act" id="change" type="button"></button><button class="act" id="play" type="button" aria-pressed="false">Play</button>
+      <label class="chk"><input type="checkbox" data-show="ghost"><span>Where it was</span></label>
+      <label class="chk"><input type="checkbox" data-show="travel"><span>Pointer travel</span></label>
+      <label class="chk"><input type="checkbox" data-show="room"><span>Room for the map</span></label></div>
+  </div>
+
+  <section class="about" id="about" aria-live="polite"></section>
+  <div id="stage"></div>
+  <section class="meas" id="scene-meas" aria-live="polite"></section>
+  <section class="meas" id="matrix"></section>
+  <p class="left-out"><b>Left out, to keep to the layout:</b> the bottom dock (B's centred planner has no meaning there; a toolbar centred on the bottom panel's top edge would move as B's does here), dark mode (the planner's pictures are light), the zoom hint, the route's km labels and marks under the planner's glass (the planner is a picture taken over another part of the map, so its glass shows that map, not the one under it), the timeline's own content at 1024 (the picture is 1440's, cut), and Finnish (not measured on #591; on the old look its toolbar was about 22 px wider than English, which would put one more of the route's actions in ⋯ at 1440 in B and C and probably not in A, D and E). The search's results, the menus and Settings' panel aren't drawn; where Settings opens (its head) is a point in <b>Pointer travel</b>.</p>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 24 24"><path d="M5 18c3-1 3-5 6-6s4-4 8-6" stroke-dasharray="3 2.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="16.5" r="3.5"/><circle cx="18.5" cy="16.5" r="3.5"/><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9 12 16.5 15 9M8 6h3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M8 18h9a4 4 0 0 0 0-8 6 6 0 0 0-11.5 2A3 3 0 0 0 8 18z"/><path d="M14 5.5a4 4 0 0 1 5.6 3.6"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-offline" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 11a3.5 3.5 0 0 0 1 7z"/><path d="M12 10v6M9.5 13.5 12 16l2.5-2.5"/></symbol>
+  <symbol id="i-rev" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-line" viewBox="0 0 24 24"><path d="M4 20 20 4"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="4" r="1.5"/></symbol>
+  <symbol id="i-water" viewBox="0 0 24 24"><path d="M3 9c2-2 4 2 6 0s4 2 6 0 4 2 6 0M3 15c2-2 4 2 6 0s4 2 6 0 4 2 6 0"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 17V9a3 3 0 0 1 6 0v6a3 3 0 0 0 6 0V7"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h9"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z"/></symbol>
+</svg>
+
+<script>
+// ============================================================== what was measured (#591 at 79a6ae4, headless Chrome)
+const PIC = 'https://raw.githubusercontent.com/TommiContursi/Polku/238cf025090710b5105a33f9cf7c1b45cfb5197c/claude/desktop-layout/';
+const SIZES = {
+  1024: { W: 1024, H: 768, map: 'map-1440.jpg', wxW: 420, wxH: 213 },
+  1440: { W: 1440, H: 900, map: 'map-1440.jpg', wxW: 640, wxH: 173 },
+  1920: { W: 1920, H: 1080, map: 'map-1920.jpg', wxW: 640, wxH: 173 },
+  2560: { W: 2560, H: 1440, map: 'map-2560.jpg', wxW: 640, wxH: 173 },
+};
+// the planner's states: their pictures, their heights (unclipped) and where things are in them (from its top)
+//   num: the route's numbers, head: ⌄ in the header, prof: the profile's size button, tabs: Route · Check · Go, wp: Waypoints' head
+const PL = {
+  listfolded: { file: 'planner-listfolded', h: 577, num: 22, head: 53, prof: 151, tabs: 344, wp: 484, name: 'Waypoints folded' },
+  list: { file: 'planner-list', h: 959, num: 22, head: 53, prof: 151, tabs: 344, wp: 484, name: 'Waypoints open' },
+  warn: { file: 'planner-warn-listfolded', h: 640, num: 86, head: 117, prof: 215, tabs: 408, wp: 548, name: 'a warning to read' },
+  compact: { file: 'planner-compactfolded', h: 499, num: 22, head: 53, prof: 151, tabs: 266, wp: 406, name: 'the smaller profile' },
+  go: { file: 'planner-go', h: 1273, num: 22, head: 53, prof: 151, tabs: 344, wp: 0, name: 'Go' },
+  list4: { file: 'planner-list4', h: 1064, num: 22, head: 53, prof: 151, tabs: 344, wp: 484, name: 'one more point' },
+  view: { file: 'planner-view', h: 968, num: 66, head: 96, prof: 194, tabs: 388, wp: 595, name: 'the route’s view' },
+};
+// the toolbar while editing, as placeTools() folds it for the room it has: its width at each step (1440 × 900, English)
+const OPTS = [['fit', 'Show the whole route'], ['rev', 'Reverse'], ['loop', 'Back to start'], ['link', 'Share link'], ['dl', 'Export GPX'], ['offline', 'Save offline…'], ['trash', 'Clear route']];
+const EDIT = [
+  { k: 'all out', w: 1110, n: 7, f: 0 }, { k: '6 out', w: 1061, n: 6, f: 0 }, { k: '5 out', w: 1019, n: 5, f: 0 }, { k: '4 out', w: 977, n: 4, f: 0 },
+  { k: '3 out', w: 928, n: 3, f: 0 }, { k: '2 out', w: 886, n: 2, f: 0 }, { k: '1 out', w: 844, n: 1, f: 0 }, { k: 'fold1', w: 844, n: 1, f: 1 },
+  { k: 'fold2', w: 691, n: 1, f: 2 }, { k: 'foldS', w: 655, n: 1, f: 3 }, { k: 'none out', w: 606, n: 0, f: 3 }, { k: 'fold3', w: 522, n: 0, f: 4 },
+];
+// at the first point there's no leg yet, so none of the route's actions (renderTools()); the same folds after that
+const FIRST = [{ k: 'first point', w: 793, n: 0, f: 0 }, { k: 'fold1', w: 793, n: 0, f: 1 }, { k: 'fold2', w: 640, n: 0, f: 2 }, { k: 'foldS', w: 606, n: 0, f: 3 }, { k: 'fold3', w: 522, n: 0, f: 4 }];
+// ⋯ (More) lists what isn't on the toolbar, and always these
+const MORE_ALWAYS = ['Round trip from the start', 'Import GPX or KML…'];
+
+// ============================================================== the options
+const PRESET = {
+  today: { bar: 'today', planner: 'top', tools: 'edge', today: true },
+  a: { bar: 'today', planner: 'top', tools: 'edge' },
+  b: { bar: 'centre', planner: 'centre', tools: 'map' },
+  c: { bar: 'centre', planner: 'top', tools: 'map' },
+  d: { bar: 'right', planner: 'top', tools: 'edge', round: true },
+  e: { bar: 'right', planner: 'top', tools: 'edge', round: true, done: 'start' },
+};
+const NAME = { today: 'Today', a: 'A: today, with what’s decided', b: 'B: the idea', c: 'C: B, with the planner at the top', d: 'D: recommended at first', e: 'E: chosen, D with Done by the planner', mix: 'Your mix' };
+const ABOUT = {
+  a: 'Today’s layout, with what’s already decided for it: <b>#568’s</b> Share link, Export GPX and Save offline in the route’s view, and the weather at the map’s foot by the map’s buttons (<b>step 3, part 2</b> of #233): open where it fits beside the toolbar, else its 210 px line, else away on the Weather button. The top bar at the top left, the planner from under it, as tall as its content, and the toolbar hanging off the planner’s edge at the foot.',
+  b: 'The idea: the toolbar centred at the map’s foot, not bound to the planner; the planner centred on its side; the logo where it is; the search and the sport centred at the top; ⚙ (and later sign-in) at the top right. <b>Centred where?</b> In the window, the toolbar would sit under the planner at 1440 and 1024 (try <b>Centred in the window</b>), so B centres it in the map beside the planner. Everything decided for A (#568, the weather at the foot) is here too.',
+  c: 'B, with the planner at the top, so its edge doesn’t move when its content grows. This planner is today’s: the build already hangs it from under the top bar and lets its foot follow its content. So C is A with B’s top bar and B’s toolbar.',
+  d: 'Today’s planner and toolbar, which keep still, with the part of B that wins: ⚙ at the top right, over the Settings panel it opens (169 px away at every size; at 1024 the left is as near) and beside a later sign-in. The toolbar’s left end is rounded where the planner doesn’t reach it (#595). What’s decided for A is here too. Why: the plan’s Recommendation.',
+  e: 'D, with Done and Edit at the toolbar’s planner end, the end that never moves: from the critique (Assessment A). Edit lands where Done was, and Done stays put when the second point brings the route’s actions. It goes against today’s order (25a), where Done is last, as a toolbar’s main action usually is, and puts the way out before the tools. <b>Chosen on 2026-10-30,</b> with two more that this page doesn’t draw: the toolbar floats beside the planner with the gap the other floating surfaces have, rounded at both ends (#595), and a warning no longer moves the route’s numbers.',
+  mix: 'The parts as you set them.',
+};
+const SCENES = {
+  first: { name: 'The first leg', a: { pl: 'listfolded', tb: 'first' }, b: { pl: 'listfolded' }, ch: ['Add the second point', 'Undo'], at: 'num', atName: 'the route’s numbers' },
+  list: { name: 'The list', a: { pl: 'listfolded' }, b: { pl: 'list' }, ch: ['Open Waypoints', 'Fold Waypoints'], at: 'wp', atName: 'Waypoints’ head (what you clicked)' },
+  warning: { name: 'A warning', a: { pl: 'listfolded' }, b: { pl: 'warn' }, ch: ['A departure after dark', 'Leave now'], at: 'num', atName: 'the route’s numbers' },
+  profile: { name: 'The profile', a: { pl: 'listfolded' }, b: { pl: 'compact' }, ch: ['A smaller profile', 'A taller profile'], at: 'prof', atName: 'the profile’s size button (what you clicked)' },
+  tabs: { name: 'The tabs', a: { pl: 'list' }, b: { pl: 'go' }, ch: ['Go', 'Route'], at: 'tabs', atName: 'the tabs (what you clicked)' },
+  point: { name: 'One more point', a: { pl: 'list' }, b: { pl: 'list4' }, ch: ['Add a point', 'Undo'], at: 'num', atName: 'the route’s numbers' },
+  done: { name: 'Done and Edit', a: { pl: 'list' }, b: { pl: 'view', tb: 'view' }, ch: ['Done', 'Edit'], at: 'head', atName: 'the planner’s header' },
+  weather: { name: 'The weather', a: { pl: 'listfolded' }, b: { pl: 'listfolded', wx: true }, ch: ['Weather on', 'Weather off'], at: 'num', atName: 'the route’s numbers' },
+  viewwx: { name: 'The weather, viewing', a: { pl: 'view', tb: 'view' }, b: { pl: 'view', tb: 'view', wx: true }, ch: ['Weather on', 'Weather off'], at: 'head', atName: 'the planner’s header' },
+  folded: { name: 'Folded', a: { pl: 'listfolded' }, b: { pl: 'listfolded', fold: true }, ch: ['Fold the planner', 'Open it'], at: 'num', atName: 'the route’s numbers' },
+};
+
+const S = { opt: 'e', size: '1440', scene: 'list', state: 'a', frames: 'side', bar: '', planner: '', tools: '', done: '', show: '' };
+const q = new URLSearchParams(location.search);
+for (const k of Object.keys(S)) if (q.get(k)) S[k] = q.get(k);
+const PARTS = ['bar', 'planner', 'tools', 'done'];
+const partsOf = (opt) => ({ done: 'end', ...PRESET[opt === 'mix' ? 'b' : opt] });
+let P = partsOf(S.opt);
+for (const k of PARTS) if (S[k]) P[k] = S[k];
+const use = (id, size = 20, cls = 'ic') => `<svg class="${cls}" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+
+// ============================================================== the toolbar's content
+function editTools(step, first) {
+  const f = step.f, modes = [['route', 'Follow paths'], ['line', 'Straight line'], ['water', 'Over water']];
+  const seg = modes.map(([ic, t], i) => `<span class="${i === 0 ? 'on' : ''}">${use(ic, 19)}${f >= 4 || (f >= 2 && i > 0) ? '' : t}</span>`).join('');
+  const segW = f >= 4 ? 130 : f >= 2 ? 213.4 : 366.5;
+  const opts = OPTS.slice(0, step.n).map(([ic, t], i) => (i === 3 || i === 6 ? '<span class="sep"></span>' : '') + `<span class="tb${ic === 'trash' ? ' danger' : ''}" data-t="${ic}" title="${t}">${use(ic, 20)}</span>`).join('');
+  const done = `<span class="done" data-t="end" style="width:59px${first ? ';margin:0 4px 0 0' : ''}">Done</span>`;
+  return `${first ? done : ''}<span class="modes" data-t="modes" style="width:${segW}px">${seg}</span><span class="sep"></span>
+    <span class="pick" style="width:${f >= 3 ? 56 : 92.3}px;margin-right:4px">${use('bike', 18)}${f >= 3 ? '' : 'MTB'}${use('down', 12)}</span>
+    <span class="pick" style="width:99.2px"><span class="two">${f >= 1 ? '' : '<small>Route style</small>'}<span>Balanced</span></span>${use('down', 12)}</span><span class="sep"></span>
+    <span class="tb dim" data-t="undo">${use('undo', 20)}</span><span class="tb dim">${use('redo', 20)}</span>${step.n ? '<span class="sep"></span>' : ''}${opts}<span class="sep"></span>
+    <span class="tb" data-t="more">${use('more', 20)}</span>${first ? '' : done}`;
+}
+// the route's view: today, Show the whole route, ⋯ and Edit; with #568, Share link, Export GPX and Save offline too,
+// labelled, then as icons, then into ⋯ in turn (Save offline first)
+const VIEW568 = [['link', 'Share link'], ['dl', 'Export GPX'], ['offline', 'Save offline']];
+function viewTools(step, first) {
+  const n = step.n, words = step.words;
+  const mid = VIEW568.slice(0, n).map(([ic, t]) => words ? `<span class="lab" data-t="${ic}">${use(ic, 20)}${t}</span>` : `<span class="tb" data-t="${ic}" title="${t}">${use(ic, 20)}</span>`).join('');
+  const edit = `<span class="done" data-t="end"${first ? ' style="margin:0 4px 0 0"' : ''}>${use('pen', 18)}Edit</span>`;
+  return `${first ? edit : ''}<span class="tb" data-t="fit">${use('fit', 20)}</span>${mid}<span class="tb" data-t="more">${use('more', 20)}</span>${first ? '' : edit}`;
+}
+let VIEW = null; // measured once, in the page, from what's drawn
+function measureView() {
+  const m = document.createElement('div');
+  m.className = 'screen';
+  m.style.cssText = 'position:absolute;left:-9999px;top:0;width:3000px;height:100px';
+  document.body.append(m);
+  const steps = [{ k: 'labelled', n: 3, words: true }, { k: 'icons', n: 3 }, { k: 'icons, Save offline in ⋯', n: 2 }, { k: 'icons, Export in ⋯ too', n: 1 }, { k: 'today’s', n: 0 }];
+  VIEW = steps.map((s) => { m.innerHTML = `<div class="tools" style="display:inline-flex;position:absolute">${viewTools(s)}</div>`; return { ...s, w: Math.ceil(m.firstChild.getBoundingClientRect().width) }; });
+  m.remove();
+}
+
+// ============================================================== the layout
+// P: the parts; sz: the size; st: the state ({ pl, tb, wx, fold }). Every rectangle is in the window's pixels.
+function layout(P, sz, st) {
+  const { W, H } = sz, L = { W, H, P, st };
+  L.brand = { x: 12, y: 12, w: 97, h: 40 };
+  if (P.bar === 'centre') { const x = Math.round((W - 577) / 2); L.search = { x, y: 12, w: 469, h: 40 }; L.sport = { x: x + 477, y: 12, w: 100, h: 40 }; }
+  else { L.search = { x: 117, y: 12, w: 469, h: 40 }; L.sport = { x: 594, y: 12, w: 100, h: 40 }; }
+  L.gear = P.bar === 'today' ? { x: 702, y: 12, w: 40, h: 40 } : { x: W - 52, y: 12, w: 40, h: 40 };
+  // the map's buttons, at the foot of the right edge
+  const colX = W - 72, b = H - 12;
+  L.col = { plan: { x: colX, y: b - 56, w: 60, h: 56 }, layers: { x: colX, y: b - 124, w: 60, h: 56 }, weather: { x: colX, y: b - 188, w: 60, h: 56 },
+    d3: { x: colX + 20, y: b - 236, w: 40, h: 40 }, zoom: { x: colX + 20, y: b - 324, w: 40, h: 80 }, locate: { x: colX + 20, y: b - 372, w: 40, h: 40 }, compass: { x: colX + 20, y: b - 420, w: 40, h: 40 } };
+  // the planner: from under the top bar, as tall as its content up to the window's foot (centred in B)
+  const maxH = H - 76, pl = PL[st.pl];
+  if (st.fold) { L.planner = { x: 12, y: H - 68, w: 392, h: 56, fold: true }; }
+  else {
+    const h = Math.min(pl.h, maxH), y = P.planner === 'centre' ? 64 + Math.round((maxH - h) / 2) : 64;
+    L.planner = { x: 12, y, w: 392, h, key: st.pl };
+  }
+  // the toolbar: beside the planner, folded by placeTools() for the room before the map's buttons
+  const panelR = 404, limitR = colX - 12, view = st.tb === 'view';
+  const room = P.tools === 'edge' ? limitR - panelR : P.tools === 'map' ? limitR - (panelR + 12) : 2 * Math.min(W / 2 - (panelR + 12), limitR - W / 2);
+  const list = view ? (P.today ? VIEW.slice(-1) : VIEW) : st.tb === 'first' ? FIRST : EDIT;
+  const step = list.find((s) => s.w <= room) || list[list.length - 1];
+  const w = Math.round(step.w), x = P.tools === 'edge' ? panelR : P.tools === 'map' ? Math.round((panelR + 12 + limitR) / 2 - w / 2) : Math.round(W / 2 - w / 2);
+  const segW = step.f >= 4 ? 130 : step.f >= 2 ? 213.4 : 366.5;
+  L.modesX = view ? null : x + 8 + (P.done === 'start' ? 63 : 0) + segW / 2;
+  L.endX = P.done === 'start' ? x + 8 + (view ? 37.2 : 29.5) : x + w - 8 - (view ? 37.2 : 29.5);
+  L.tools = { x, y: H - 68, w, h: 56, step, view, room, fits: step.w <= room, square: P.tools === 'edge' && !(P.round && (st.fold || L.planner.y + L.planner.h < H - 68)) };
+  L.more = view
+    ? [...VIEW568.slice(step.n).map(([, t]) => t + (t === 'Save offline' ? '…' : '')), 'Reverse', 'Back to start', ...MORE_ALWAYS, 'Clear route']
+    : st.tb === 'first' ? [...MORE_ALWAYS, 'Clear route']
+    : [...OPTS.slice(step.n).filter(([ic]) => ic !== 'trash').map(([, t]) => t), ...MORE_ALWAYS, ...(step.n < 7 ? ['Clear route'] : [])];
+  // the weather: today's timeline floats above the toolbar, centred beside the planner; with step 3, part 2 it sits on
+  // the foot by the map's buttons, open where it fits beside the toolbar, else its line, else away on the Weather button
+  if (st.wx) {
+    if (P.today) L.wx = { kind: 'float', x: Math.round((panelR + W) / 2 - sz.wxW / 2), y: H - 108 - sz.wxH, w: sz.wxW, h: sz.wxH };
+    else {
+      const free = limitR - (x + w + 12);
+      L.wx = free >= sz.wxW ? { kind: 'open', x: limitR - sz.wxW, y: H - 12 - sz.wxH, w: sz.wxW, h: sz.wxH } : free >= 210 ? { kind: 'line', x: limitR - 210, y: H - 68, w: 210, h: 56 } : { kind: 'away' };
+      L.wx.free = free;
+    }
+  }
+  // where a fit frames the route (viewPadding()): beside the planner, under the top bar, above the toolbar (and the weather)
+  const foot = L.wx && (L.wx.kind === 'open' || L.wx.kind === 'float') ? H - L.wx.y + 16 : 84;
+  L.fit = { x: panelR + 40, y: 80, w: W - 110 - (panelR + 40), h: H - foot - 80 };
+  return L;
+}
+
+// ============================================================== drawing
+const R = (r) => `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px`;
+function frameHTML(L, sz) {
+  const c = L.col;
+  return `<div class="map" style="background-image:url(${PIC}${sz.map})"></div>
+  <div class="el pill" data-e="brand" data-mat="thick" style="padding:0 14px 0 6px"><span class="brand-m">${use('logo', 18)}</span><b style="font-size:16px">Polku</b></div>
+  <div class="el pill" data-e="search" data-mat="thick" style="padding:0 6px 0 14px">${use('search', 18)}<span class="search-t">Search places or paste coordinates</span><span class="kbd">/</span><span class="plan-chip">${use('plan', 15)}Plan</span></div>
+  <div class="el pill sport" data-e="sport">${use('bike', 18)}MTB${use('down', 14)}</div>
+  <div class="el round" data-e="gear" data-mat="thin">${use('gear', 20)}</div>
+  <div class="el fab sq" data-mat="thin" style="${R(c.compass)}"><span class="needle"></span></div>
+  <div class="el fab sq" data-mat="thin" style="${R(c.locate)}">${use('locate', 18)}</div>
+  <div class="el fab sq" data-mat="thin" style="${R(c.zoom)};gap:18px">${use('plus', 18)}${use('minus', 18)}</div>
+  <div class="el fab sq" data-mat="thin" style="${R(c.d3)}"><b>3D</b></div>
+  <div class="el fab" data-e="wxbtn" data-mat="thin" style="${R(c.weather)}">${use('cloud', 22)}Weather</div>
+  <div class="el layers" style="${R(c.layers)};background-image:url(${PIC}${sz.map});background-position:-${Math.round(sz.W * 0.42)}px -${Math.round(sz.H * 0.3)}px"><span>Layers</span></div>
+  <div class="el fab plan" data-mat="thin" style="${R(c.plan)}">${use('plan', 22)}Plan</div>
+  <div class="el credits" data-e="credits"><span class="scale">200 m</span><span class="i">i</span></div>
+  <div class="el planner" data-e="planner"><img alt="" data-e="plimg"></div>
+  <div class="el line" data-e="fold" data-mat="thick"><b>3.03 km</b><b>14 min</b><b>↑42 ↓62 m</b><span class="sp"></span><span class="tool">${use('up', 20)}</span><span class="tool">${use('x', 20)}</span></div>
+  <div class="el tools" data-e="tools" data-mat="thick"></div>
+  <div class="el wx" data-e="wx"><img alt="" src="${PIC}timeline.jpg"></div>
+  <div class="el line" data-e="wxline" data-mat="thick" style="gap:8px;padding-left:12px">${use('cloud', 20)}<b>8°</b><span style="font-weight:600">07:20</span><span class="sp"></span><span class="tool">${use('up', 20)}</span><span class="tool">${use('x', 20)}</span></div>
+  <svg class="ov" data-e="ov" viewBox="0 0 ${sz.W} ${sz.H}" aria-hidden="true"></svg>`;
+}
+const $e = (root, k) => root.querySelector(`[data-e="${k}"]`);
+const place = (el, r) => { el.style.left = `${r.x}px`; el.style.top = `${r.y}px`; el.style.width = `${r.w}px`; el.style.height = `${r.h}px`; };
+function apply(root, L) {
+  for (const k of ['brand', 'search', 'sport', 'gear']) place($e(root, k), L[k]);
+  const p = L.planner, plEl = $e(root, 'planner'), fold = $e(root, 'fold');
+  plEl.style.opacity = p.fold ? '0' : '1';
+  fold.style.opacity = p.fold ? '1' : '0';
+  place(fold, { x: 12, y: L.H - 68, w: 392, h: 56 });
+  if (!p.fold) { place(plEl, p); const img = $e(root, 'plimg'), src = `${PIC}${PL[p.key].file}.jpg`; if (img.getAttribute('src') !== src) img.src = src; }
+  else place(plEl, { x: 12, y: L.H - 68, w: 392, h: 56 });
+  const t = L.tools, tEl = $e(root, 'tools'), first = L.P.done === 'start', html = t.view ? viewTools(t.step, first) : editTools(t.step, first);
+  if (tEl.dataset.html !== html) { tEl.innerHTML = html; tEl.dataset.html = html; }
+  tEl.classList.toggle('square', t.square);
+  tEl.classList.toggle('bad', !t.fits);
+  place(tEl, t);
+  $e(root, 'credits').style.cssText = `left:${416}px;top:${L.H - 108}px`;
+  const wx = $e(root, 'wx'), line = $e(root, 'wxline'), btn = $e(root, 'wxbtn');
+  wx.style.opacity = L.wx && (L.wx.kind === 'open' || L.wx.kind === 'float') ? '1' : '0';
+  line.style.opacity = L.wx && L.wx.kind === 'line' ? '1' : '0';
+  if (L.wx && (L.wx.kind === 'open' || L.wx.kind === 'float')) place(wx, L.wx);
+  if (L.wx && L.wx.kind === 'line') place(line, L.wx);
+  if (!L.wx || L.wx.kind !== 'line') place(line, { x: L.W - 84 - 210, y: L.H - 68, w: 210, h: 56 });
+  if (!L.wx || !(L.wx.kind === 'open' || L.wx.kind === 'float')) place(wx, { x: L.W - 84 - sizeOf(L).wxW, y: L.H - 12 - sizeOf(L).wxH, w: sizeOf(L).wxW, h: sizeOf(L).wxH });
+  btn.classList.toggle('on', !!L.wx);
+  btn.innerHTML = `${use('cloud', 22)}Weather${L.wx && L.wx.kind === 'away' ? '<span class="hour">8° · on</span>' : ''}`;
+}
+const sizeOf = (L) => SIZES[Object.keys(SIZES).find((k) => SIZES[k].W === L.W)];
+
+// where a thing is, in the window's pixels, read from what's drawn (offsetLeft isn't scaled)
+function anchor(root, L, what) {
+  const t = $e(root, 'tools');
+  const at = (sel) => { const el = t.querySelector(`[data-t="${sel}"]`); return el ? { x: L.tools.x + el.offsetLeft + el.offsetWidth / 2, y: L.tools.y + 28 } : null; };
+  if (what === 'modes' || what === 'undo' || what === 'end' || what === 'fit') return at(what);
+  if (what === 'gear') return { x: L.gear.x + 20, y: L.gear.y + 20 };
+  if (what === 'settings') return { x: L.W - 12 - 178, y: 64 + 28 }; // Settings' panel opens at the right, under the top bar (356 px wide)
+  if (what === 'search') return { x: L.search.x + 160, y: L.search.y + 20 };
+  if (what === 'map') return { x: L.fit.x + L.fit.w / 2, y: L.fit.y + L.fit.h / 2 };
+  if (what === 'head') return L.planner.fold ? { x: 12 + 392 - 70, y: L.H - 40 } : { x: 12 + 329, y: L.planner.y + PL[L.planner.key].head };
+}
+const dist = (a, b) => (a && b ? Math.round(Math.hypot(a.x - b.x, a.y - b.y)) : NaN);
+function travel(root, L) {
+  const A = (k) => anchor(root, L, k);
+  return [
+    { k: 'map-modes', name: 'The map’s middle ↔ the drawing modes', a: A('map'), b: A('modes') },
+    { k: 'map-undo', name: 'The map’s middle ↔ Undo', a: A('map'), b: A('undo') },
+    { k: 'end-head', name: L.tools.view ? 'Edit ↔ the planner’s header' : 'Done ↔ the planner’s header', a: A('end'), b: A('head') },
+    { k: 'gear', name: '⚙ ↔ Settings’ panel', a: A('gear'), b: A('settings') },
+    { k: 'search', name: 'The search ↔ the place it shows', a: A('search'), b: A('map') },
+  ].map((r) => ({ ...r, d: dist(r.a, r.b) }));
+}
+
+function overlay(root, L, other, show) {
+  const ov = $e(root, 'ov'), parts = [];
+  if (show.has('room')) {
+    const f = L.fit;
+    parts.push(`<rect class="fit" x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" rx="8"/><text class="flbl" x="${f.x + 14}" y="${f.y + 30}" style="fill:#1d4ed8">Where a fit frames the route: ${f.w} × ${f.h}</text>`);
+    // the foot's spare room, beside the toolbar
+    const t = L.tools, limitR = L.W - 84, spans = [[L.P.tools === 'edge' ? 404 : 416, t.x], [t.x + t.w, limitR]];
+    for (const [x0, x1] of spans) if (x1 - x0 > 24) parts.push(`<rect class="foot" x="${x0 + 6}" y="${L.H - 68}" width="${x1 - x0 - 12}" height="56" rx="10"/><text class="flbl" x="${(x0 + x1) / 2}" y="${L.H - 80}" text-anchor="middle">${Math.round(x1 - x0 - 24)} px</text>`);
+  }
+  if (show.has('ghost') && other) {
+    const p = other.planner, t = other.tools;
+    if (!p.fold && (p.y !== L.planner.y || p.h !== L.planner.h || L.planner.fold)) parts.push(`<rect class="ghost" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="18"/>`);
+    if (t.x !== L.tools.x || t.w !== L.tools.w) parts.push(`<rect class="ghost" x="${t.x}" y="${t.y}" width="${t.w}" height="${t.h}" rx="16"/>`);
+  }
+  if (show.has('travel')) {
+    for (const r of travel(root, L)) {
+      if (!r.a || !r.b || r.k === 'map-undo') continue;
+      const mx = (r.a.x + r.b.x) / 2, my = (r.a.y + r.b.y) / 2;
+      parts.push(`<line class="tr" x1="${r.a.x}" y1="${r.a.y}" x2="${r.b.x}" y2="${r.b.y}"/><circle class="dot" cx="${r.a.x}" cy="${r.a.y}" r="7"/><circle class="dot" cx="${r.b.x}" cy="${r.b.y}" r="7"/><text class="lbl" x="${mx}" y="${my - 10}" text-anchor="middle">${r.d} px</text>`);
+    }
+  }
+  ov.innerHTML = parts.join('');
+}
+
+// ============================================================== the page
+const stage = document.getElementById('stage');
+let frames = [];
+const shows = () => new Set(S.show.split(',').filter(Boolean));
+function stateOf(s) { const sc = SCENES[S.scene][s]; return { pl: sc.pl, tb: sc.tb || 'edit', wx: !!sc.wx, fold: !!sc.fold }; }
+function build() {
+  const sz = SIZES[S.size];
+  stage.className = S.frames === 'stack' ? 'stack' : '';
+  stage.innerHTML = '';
+  frames = [['today', PRESET.today], [S.opt, P]].map(([key, parts]) => {
+    const fig = document.createElement('figure');
+    fig.className = 'fr';
+    fig.innerHTML = `<figcaption><b>${NAME[key]}</b> · ${sz.W} × ${sz.H} · <span data-cap></span></figcaption><div class="box"><div class="screen still" style="width:${sz.W}px;height:${sz.H}px">${frameHTML(layout(parts, sz, stateOf('a')), sz)}</div></div>`;
+    stage.append(fig);
+    return { fig, parts, screen: fig.querySelector('.screen'), box: fig.querySelector('.box') };
+  });
+  fit();
+  draw(true);
+}
+function fit() {
+  const sz = SIZES[S.size];
+  for (const f of frames) {
+    const w = f.fig.clientWidth, s = w / sz.W;
+    f.screen.style.transform = `scale(${s})`;
+    f.box.style.height = `${Math.round(sz.H * s)}px`;
+  }
+}
+function draw(still) {
+  const sz = SIZES[S.size], show = shows();
+  const results = [];
+  for (const f of frames) {
+    f.screen.classList.toggle('still', !!still);
+    const L = layout(f.parts, sz, stateOf(S.state)), other = layout(f.parts, sz, stateOf(S.state === 'a' ? 'b' : 'a'));
+    apply(f.screen, L);
+    overlay(f.screen, L, other, show);
+    f.fig.querySelector('[data-cap]').textContent = SCENES[S.scene].name + (S.state === 'b' ? ', changed' : '');
+    results.push({ L, other, root: f.screen });
+  }
+  if (still) requestAnimationFrame(() => frames.forEach((f) => f.screen.classList.remove('still')));
+  sceneTable(results);
+}
+
+// what moves in this scene, from a to b, in both frames
+function sceneTable(res) {
+  const sc = SCENES[S.scene], sz = SIZES[S.size];
+  const rows = res.map(({ root, L, other }) => {
+    const [La, Lb] = S.state === 'a' ? [L, other] : [other, L];
+    const yAt = (X, k) => (X.planner.fold ? X.H - 40 : X.planner.y + (PL[X.planner.key][k] || 0));
+    return {
+      top: La.planner.fold || Lb.planner.fold ? null : Lb.planner.y - La.planner.y,
+      at: yAt(Lb, sc.at) - yAt(La, sc.at),
+      foot: (Lb.planner.y + Lb.planner.h) - (La.planner.y + La.planner.h),
+      first: Lb.tools.x - La.tools.x,
+      modes: La.modesX == null || Lb.modesX == null ? null : Math.round(Lb.modesX - La.modesX),
+      end: Math.round(Lb.endX - La.endX),
+      wx: [La, Lb].map((X) => (X.wx ? ({ open: 'open', float: 'floating', line: 'its line', away: 'away, on the Weather button' }[X.wx.kind] + (X.wx.free != null ? ` (${Math.round(X.wx.free)} px beside the toolbar)` : '')) : 'off')),
+      more: [La, Lb].map((X) => X.more),
+      fits: [La, Lb].every((X) => X.tools.fits),
+      tr: travel(root, L),
+    };
+  });
+  const mv = (v, ax = 'y') => (v == null ? '—' : v === 0 ? '<span class="good">still</span>' : `<span class="${Math.abs(v) >= 24 ? 'bad' : ''}">${ax === 'y' ? (v > 0 ? '↓' : '↑') : (v > 0 ? '→' : '←')} ${Math.abs(v)} px</span>`);
+  const [t, o] = rows;
+  const head = `<thead><tr><th></th><th>Today</th><th>${NAME[S.opt]}</th></tr></thead>`;
+  const row = (name, f) => `<tr><th>${name}</th><td>${f(t, 0)}</td><td>${f(o, 1)}</td></tr>`;
+  document.getElementById('scene-meas').innerHTML = `<h2>${sc.name}: ${sc.ch[0].toLowerCase()}, at ${sz.W} × ${sz.H}</h2><table>${head}<tbody>
+    ${row('The planner’s top edge', (r) => mv(r.top))}
+    ${row(`${sc.atName[0].toUpperCase()}${sc.atName.slice(1)}`, (r) => mv(r.at))}
+    ${row('The planner’s foot', (r) => mv(r.foot))}
+    ${row('The toolbar’s left end', (r) => mv(r.first, 'x'))}
+    ${row('The drawing modes', (r) => mv(r.modes, 'x'))}
+    ${row('Done or Edit', (r) => mv(r.end, 'x'))}
+    ${row('The weather, before → after', (r) => r.wx.join(' → '))}
+    ${row('In ⋯, now', (r) => (S.state === 'a' ? r.more[0] : r.more[1]).join(', '))}
+    ${row('The toolbar fits', (r) => (r.fits ? 'yes' : '<span class="bad">no: it runs under the planner or the map’s buttons</span>'))}
+    ${row('Pointer travel, now', (r) => r.tr.map((x) => `${x.name}: ${isNaN(x.d) ? '—' : `${x.d} px`}`).join('<br>'))}
+  </tbody></table><p class="note">“What you clicked” moving is the worst case: the pointer is still on it, and a second click lands on something else. A move under 24 px is shown plain. Moves are from before to after the change.</p>`;
+}
+
+// every option at every size: the numbers the critique uses
+function matrix() {
+  const opts = ['today', 'a', 'b', 'c', 'd', 'e'], sizes = ['1024', '1440', '1920', '2560'];
+  const m = document.createElement('div');
+  m.className = 'screen';
+  m.style.cssText = 'position:absolute;left:-99999px;top:0';
+  document.body.append(m);
+  const rows = [];
+  for (const o of opts) {
+    for (const s of sizes) {
+      const sz = SIZES[s], parts = partsOf(o);
+      m.style.width = `${sz.W}px`; m.style.height = `${sz.H}px`;
+      const at = (st) => { const L = layout(parts, sz, st); m.innerHTML = frameHTML(L, sz); apply(m, L); return { L, tr: travel(m, L) }; };
+      const e = at({ pl: 'listfolded', tb: 'edit', wx: true }), v = at({ pl: 'view', tb: 'view', wx: true });
+      // how far a thing moves from a scene's before to its after (the worst of the scenes given)
+      const moves = (keys) => Math.max(...keys.map((k) => {
+        const A = layout(parts, sz, { pl: SCENES[k].a.pl, tb: 'edit' }), B = layout(parts, sz, { pl: SCENES[k].b.pl, tb: 'edit' }), at = SCENES[k].at;
+        return Math.abs((B.planner.y + PL[B.planner.key][at]) - (A.planner.y + PL[A.planner.key][at]));
+      }));
+      const clicked = moves(['list', 'profile', 'tabs']), read = moves(['warning', 'point']);
+      const f0 = layout(parts, sz, { pl: 'listfolded', tb: 'first' }), f1 = layout(parts, sz, { pl: 'listfolded', tb: 'edit' });
+      const leg = Math.abs(Math.round(f1.modesX - f0.modesX)), edit = Math.abs(Math.round(v.L.endX - e.L.endX));
+      const red = (n) => (n >= 24 ? `<span class="bad">${n}</span>` : n ? String(n) : '<span class="good">0</span>');
+      const wxs = (X) => (X.wx.kind === 'float' ? 'floats' : X.wx.kind === 'away' ? `<span class="bad">away</span> (${Math.round(X.wx.free)})` : `${X.wx.kind === 'open' ? '<span class="good">open</span>' : 'line'} (${Math.round(X.wx.free)})`);
+      const g = (k, T) => T.tr.find((x) => x.k === k).d;
+      rows.push(`<tr><th>${o === 'today' ? 'Today' : o.toUpperCase()}</th><td>${sz.W} × ${sz.H}</td><td>${e.L.tools.fits ? Math.round(e.L.tools.room) : `<span class="bad">${Math.round(e.L.tools.room)}</span>`}</td>
+        <td>${OPTS.length - e.L.tools.step.n}${e.L.tools.step.f ? `, folded ×${e.L.tools.step.f}` : ''}</td><td>${o === 'today' ? '3 (today)' : 3 - v.L.tools.step.n + (v.L.tools.step.words ? ', with words' : '')}</td>
+        <td>${wxs(e.L)}</td><td>${wxs(v.L)}</td><td>${red(clicked)}</td><td>${red(read)}</td><td>${red(leg)}</td>
+        <td>${red(Math.abs(v.L.tools.x - e.L.tools.x))}</td><td>${red(edit)}</td>
+        <td>${g('map-modes', e)}</td><td>${g('gear', e)}</td><td>${g('search', e)}</td></tr>`);
+    }
+  }
+  m.remove();
+  document.getElementById('matrix').innerHTML = `<h2>Every option at every size</h2><p class="note scroll-note">The table scrolls sideways.</p><table><thead><tr><th>Option</th><th>Size</th><th>Toolbar’s room</th><th>Route actions in ⋯, editing</th><th>#568’s in ⋯, viewing</th><th>Weather, editing</th><th>Weather, viewing</th><th>What you clicked moves</th><th>The numbers move</th><th>The modes move, first leg</th><th>Left end moves, Done</th><th>Done → Edit moves</th><th>Map ↔ modes</th><th>⚙ ↔ Settings</th><th>Search ↔ place</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+  <p class="note">All in px. <b>Toolbar’s room:</b> from where it may start to 12 px before the map’s buttons (centred in the window: twice the smaller half). <b>Route actions in ⋯:</b> of the seven (Show the whole route, Reverse, Back to start, Share link, Export GPX, Save offline, Clear route); “folded” counts placeTools()’s later steps (the style’s caption, the modes’ names, the sport’s name). <b>Weather:</b> with Waypoints folded (editing) and in the route’s view, the room beside the toolbar in brackets; it needs 640 (420 at 1024) to open and 210 for its line, and the toolbar never gives anything up for it. Today’s timeline floats over the map, 40 px above the toolbar. <b>What you clicked moves:</b> the most Waypoints’ head, the profile’s size button or the tabs move when you click them (the scenes The list, The profile and The tabs). <b>The numbers move:</b> the most the route’s numbers move when a warning comes or a point is added (in every option the warning’s row goes in above them). <b>The modes move, first leg:</b> how far the drawing modes move when the second point brings the route’s actions. <b>Left end moves, Done:</b> the toolbar’s left end when Done turns it into the route’s view; <b>Done → Edit:</b> how far Edit lands from where Done was. <b>Travel</b> is from centre to centre: the map’s middle is the middle of where a fit frames the route.</p>`;
+}
+
+// ============================================================== the switches
+function sync() {
+  for (const sw of document.querySelectorAll('.sw[data-k]')) {
+    const k = sw.dataset.k, v = PARTS.includes(k) ? P[k] : S[k];
+    for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === v));
+  }
+  document.querySelector('[data-k="opt"] [data-v="mix"]').hidden = S.opt !== 'mix';
+  document.getElementById('about').innerHTML = `<h2>${NAME[S.opt]}</h2><p>${ABOUT[S.opt]}</p>`;
+  const sc = SCENES[S.scene];
+  document.getElementById('change').textContent = S.state === 'a' ? sc.ch[0] : sc.ch[1];
+  for (const c of document.querySelectorAll('[data-show]')) c.checked = shows().has(c.dataset.show);
+  const u = new URLSearchParams();
+  for (const k of ['opt', 'size', 'scene', 'state', 'frames', 'show']) if (S[k]) u.set(k, S[k]);
+  if (S.opt === 'mix') for (const k of PARTS) u.set(k, P[k]);
+  history.replaceState(null, '', `?${u}`);
+}
+document.querySelector('[data-k="scene"]').innerHTML = Object.entries(SCENES).map(([k, s]) => `<button data-v="${k}">${s.name}</button>`).join('');
+document.querySelector('.bars').addEventListener('click', (e) => {
+  const b = e.target.closest('.sw button');
+  if (!b) return;
+  const k = b.closest('.sw').dataset.k, v = b.dataset.v;
+  if (k === 'opt') { S.opt = v; P = partsOf(v); }
+  else if (PARTS.includes(k)) {
+    P = { ...P, [k]: v };
+    const match = Object.keys(PRESET).find((o) => o !== 'today' && PARTS.every((p) => partsOf(o)[p] === P[p]));
+    S.opt = match || 'mix';
+    if (match) P = partsOf(match);
+  } else { S[k] = v; if (k === 'scene') S.state = 'a'; }
+  sync();
+  if (k === 'scene') draw(true); else build();
+});
+document.getElementById('change').addEventListener('click', () => { S.state = S.state === 'a' ? 'b' : 'a'; sync(); draw(false); });
+let timer = null;
+document.getElementById('play').addEventListener('click', (e) => {
+  const on = !timer;
+  e.currentTarget.setAttribute('aria-pressed', String(on));
+  if (on) timer = setInterval(() => { S.state = S.state === 'a' ? 'b' : 'a'; sync(); draw(false); }, 1800);
+  else { clearInterval(timer); timer = null; }
+});
+for (const c of document.querySelectorAll('[data-show]')) c.addEventListener('change', () => {
+  const s = shows();
+  if (c.checked) s.add(c.dataset.show); else s.delete(c.dataset.show);
+  S.show = [...s].join(',');
+  sync();
+  draw(true);
+});
+addEventListener('resize', () => fit());
+measureView();
+sync();
+build();
+matrix();
+</script>
+</body>
+</html>
