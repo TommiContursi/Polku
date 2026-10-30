@@ -1224,7 +1224,7 @@ function setTile(id, on) {
     setOverlays(Object.fromEntries(DEPTHS.map((d) => [d, back.includes(d)])));
   } else if (id === 'hillshade' || id === 'contours') { state[id] = on; applyStyle(); }
   else if (TRAIL_KEYS.includes(id)) setTrail(id, on);
-  else if (id.startsWith('wx:')) setWeather({ [id.slice(3)]: on });
+  else if (id.startsWith('wx:')) { setWeather({ [id.slice(3)]: on }); return; } // (it draws the panels: once, so the tile fades)
   else setOverlay(id, on);
   renderLayersPanel();
 }
