@@ -2,7 +2,8 @@
 //
 // - A drag starts from wherever the sheet allows (grab()), after SWIPE.start px of mostly vertical
 //   movement; a tap stays a tap. A drag that starts on a button is a drag: the sheet takes the pointer,
-//   so the button isn't pressed. A second finger is ignored.
+//   so the button isn't pressed. A second finger is ignored. A mouse drags it too (#585), watched on the window, as it
+//   isn't captured by what it presses as a finger is.
 // - In a scrolling body it starts only where the body can't scroll that way itself: down at its top,
 //   or up when there's nothing left to scroll. iOS has no `touch-action: pan-down`, so a touchmove
 //   listener that isn't passive keeps the browser from scrolling once the sheet has the gesture.
@@ -106,7 +107,8 @@ export function swipeSheet(el, o) {
     g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, on: false, claim: false, body, hist: [[e.timeStamp, e.clientY]] };
   });
 
-  el.addEventListener('pointermove', (e) => {
+  // on the window: a mouse isn't captured by what it presses as a finger is, so a quick drag leaves the sheet before it starts
+  addEventListener('pointermove', (e) => {
     if (!g || e.pointerId !== g.id) return;
     track(e);
     const dy = e.clientY - g.y0, dx = e.clientX - g.x0;
@@ -141,8 +143,8 @@ export function swipeSheet(el, o) {
     quietUntil = performance.now() + 350;
     release(v);
   };
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointercancel', up);
+  addEventListener('pointerup', up); // (wherever it lets go, or a mouse moving on with no button would drag)
+  addEventListener('pointercancel', up);
   el.addEventListener('lostpointercapture', up);
   // once the sheet has the gesture, the browser mustn't scroll or zoom with it (iOS: no pan-down)
   el.addEventListener('touchmove', (e) => { if (g && g.claim && e.cancelable) e.preventDefault(); }, { passive: false });
