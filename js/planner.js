@@ -5069,6 +5069,20 @@ export class Planner {
     // moves, the sheet is as tall as its full size and follows the finger with transform; its size, and
     // --sheet-h that the map's buttons follow, change once, when it comes to rest (restSheet()).
     const px = (v) => parseFloat(this.panel.style.getPropertyValue(v)) || 0;
+    // While a finger drags it, the sheet's stops are marked at the screen's left edge, and a line names the one a release
+    // now would go to (C of the sheet's stops, #233). They fade in as the drag starts and out as it lets go; the line moves
+    // from stop to stop at once, as it says where the sheet will go.
+    const marks = h('div', { class: 'sheet-marks', 'aria-hidden': 'true' }), named = h('b');
+    document.body.append(marks);
+    let foot = 0;
+    const markTo = (name) => {
+      const i = [...marks.children].find((m) => m.dataset.n === name);
+      if (!i || i.classList.contains('to')) return;
+      for (const m of marks.children) m.classList.toggle('to', m === i);
+      named.textContent = { closed: 'Away', folded: 'Line', peek: 'Peek', half: 'Half', full: 'Full' }[name];
+      named.style.transform = `translate(-50%, ${Math.round(Math.min(parseFloat(i.style.top), foot - 24)) - 26}px)`;
+    };
+    const unmark = () => marks.classList.remove('on');
     this.sheetSwipe = swipeSheet(this.panel, {
       enabled: () => this.active && this.layout() === 'sheet',
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows
@@ -5091,22 +5105,33 @@ export class Planner {
             : [...line, { name: 'peek', at: peek }, { name: 'half', at: D * 0.5 }, { name: 'full', at: full }];
         const up = S.filter((z, i) => i === 0 || z.at > Math.max(...S.slice(0, i).map((y) => y.at)) + 1); // (only ever up: a peek as tall as the screen has none above it)
         if (from === 'folded' && line.length) up.unshift({ name: 'closed', at: -14 });
-        return { H: full, now, from: up.some((z) => z.name === from) ? from : up[up.length - 1].name, sizes: up, min: up[0].at, max: full };
+        foot = this.panel.getBoundingClientRect().bottom;
+        named.textContent = '';
+        marks.replaceChildren(...up.filter((z) => z.at > 0).map((z) => h('i', { 'data-n': z.name, style: `top:${Math.round(foot - z.at)}px` })), named);
+        marks.classList.add('on');
+        // (the start's views resist above their peek too, as they don't go up)
+        return { H: full, now, from: up.some((z) => z.name === from) ? from : up[up.length - 1].name, sizes: up, min: up[0].at, max: this.peekOnly() ? peek : full };
       },
-      // a closing size needs SWIPE.closeAt of the way, as a sheet that closes by a swipe does
-      pick: (aim, ride) => {
+      // A flick moves one stop: to the next one past where it's let go, its way (and at least one from where it began,
+      // js/sheet.js). A slow release goes to the stop nearest where it would come to rest; a closing size needs SWIPE.closeAt
+      // of the way, as a sheet that closes by a swipe does
+      pick: (aim, ride, v) => {
         const S = ride.sizes, near = (list) => list.reduce((b, z) => (Math.abs(z.at - aim) < Math.abs(b.at - aim) ? z : b)).name;
+        if (v >= SWIPE.flick) return (S.find((z) => z.at > ride.v + 1) || S[S.length - 1]).name;
+        if (v <= -SWIPE.flick) return (S.findLast((z) => z.at < ride.v - 1) || S[0]).name;
         return S[0].name === 'closed' ? (aim < S[1].at * (1 - SWIPE.closeAt) ? 'closed' : near(S.slice(1))) : near(S);
       },
       // the line and what it folds cross-fade as the sheet passes between them, so nothing jumps at rest
-      moved: (v) => {
+      moved: (v, ride) => {
+        if (ride.to && marks.classList.contains('on')) markTo(ride.to);
         if (!this.foldable()) return;
         const top = px('--peek-h'), line = px('--fold-h'), f = Math.max(0, Math.min(1, (top - v) / Math.max(1, top - line)));
         this.els.fold.style.opacity = f;
         for (const el of [this.els.top, this.els.head, this.els.profZone, this.els.tabs, this.els.body]) el.style.opacity = 1 - f;
       },
+      aim: unmark,
       end: (name) => this.restSheet(name),
-      cancel: () => this.restSheet(null),
+      cancel: () => { unmark(); this.restSheet(null); },
     });
     // a tap on the handle, or on the header outside its buttons, folds the sheet or opens it again; folded, the handle
     // opens it as it was (not when the target has gone from it: a control that re-rendered itself, #251)

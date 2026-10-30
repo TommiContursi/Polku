@@ -9364,8 +9364,75 @@ def stops_land(chrome):
     return fails
 
 
+# C: a flick moves one stop; a release just under a flick's speed lands near the finger (0.99); the marks while dragging;
+# the start's views resist above their peek. By touch at 390 × 844
+def stops_swipe(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        st = lambda: pg.js('polku.planner.panel.dataset.state')
+        shown = lambda: pg.js("(() => { const p = polku.planner.panel, t = /translateY\\((-?[\\d.]+)px\\)/.exec(p.style.transform); return Math.round(p.offsetHeight - (t ? +t[1] : 0)); })()")
+        handle = lambda: pg.js("(() => { const p = polku.planner, e = p.panel.dataset.state === 'folded' ? p.els.fold : p.els.handle, r = e.getBoundingClientRect(); return [r.left + r.width / 2, r.top + 9]; })()")
+
+        def at(size):
+            pg.js(f"polku.planner.setSheetState('{size}', {{ remember: false }}); true")
+            fold_settled(pg, fails, f'at {size}')
+        # a light flick, 80 px in 60 ms (1.3 px/ms): one stop its way, from each (from the line 40 px, short of the peek 66 px up)
+        for start, dy, want in (('peek', -80, 'half'), ('half', -80, 'full'), ('full', 80, 'half'), ('half', 80, 'peek'), ('folded', -40, 'peek')):
+            at(start)
+            x, y = handle()
+            pg.swipe(x, y, y + dy, ms=abs(dy) * 3 // 4, steps=4)
+            fold_settled(pg, fails, f'a flick from {start}')
+            if st() != want:
+                fails.append(f'a light flick {"up" if dy < 0 else "down"} from {start} came to {st()}, not {want}')
+        # let go 50 px above half at 0.9 px/ms, just under a flick: it comes to rest about 90 px on, so at half (not full, as at 0.998)
+        at('peek')
+        x, y = handle()
+        peek = pg.js("polku.planner.panel.offsetHeight")
+        pg.swipe(x, y, y - (844 * 0.5 + 50 - peek), ms=int((844 * 0.5 + 50 - peek) / 0.9), steps=20)
+        fold_settled(pg, fails, 'a quick release')
+        if st() != 'half':
+            fails.append(f'let go 50 px above half at 0.9 px/ms: it came to {st()}, not half')
+        # the marks: a tick at each stop and the line named where a release now would go; gone once it's let go
+        at('peek')
+        x, y = handle()
+        pg.touch('start', x, y)
+        for k in range(1, 13):
+            pg.touch('move', x, y - 25 * k)
+            time.sleep(0.03)
+        time.sleep(0.4)  # (still: no flick, so the nearest stop)
+        pg.touch('move', x, y - 301)
+        m = pg.js("(() => { const b = document.querySelector('.sheet-marks'); return { on: b.classList.contains('on'), ticks: [...b.querySelectorAll('i')].map((i) => i.dataset.n), to: b.querySelector('i.to')?.dataset.n, named: b.querySelector('b').textContent }; })()")
+        pg.touch('end')
+        fold_settled(pg, fails, 'the marks')
+        if not m['on'] or m['ticks'] != ['folded', 'peek', 'half', 'full'] or m['to'] != 'half' or m['named'] != 'Half':
+            fails.append(f'the marks while dragging up 300 px from the peek: {m}')
+        if pg.js("document.querySelector('.sheet-marks').classList.contains('on')"):
+            fails.append('the marks stay once the sheet is let go')
+        # the start's views: dragged up 200 px, the sheet goes less than half of it, and back to its peek
+        pg.js("polku.planner.clear(); polku.planner.setActive(true, { edit: true }); true")
+        fold_settled(pg, fails, 'the start')
+        peek = pg.js("polku.planner.panel.offsetHeight")
+        x, y = handle()
+        pg.touch('start', x, y)
+        for k in range(1, 11):
+            pg.touch('move', x, y - 20 * k)
+            time.sleep(0.03)
+        up = shown() - peek
+        pg.touch('end')
+        fold_settled(pg, fails, 'the start let go')
+        if not 0 < up < 100 or st() != 'peek':
+            fails.append(f'the start\'s ways dragged up 200 px: the sheet went {up} px up and came to {st()}')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 def sheet_stops(chrome):
-    fails = stops_land(chrome)
+    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} the sheet's stops" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -14577,7 +14644,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
-    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse'),
+    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
