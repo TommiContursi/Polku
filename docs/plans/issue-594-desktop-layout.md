@@ -2,13 +2,17 @@
 
 Where the toolbar, the planner and the top bar sit on a desktop: today's layout beside an idea from the user (2026-10-30), and the options between them, drawn as a mock-up to choose from. What's still to do, and its status, is on GitHub, in [#594](https://github.com/TommiContursi/Polku/issues/594).
 
-- **Status (2026-10-30): nothing is decided.** The mock-up decides nothing until the user chooses. [#568](https://github.com/TommiContursi/Polku/issues/568) and step 3, part 2 of [#233](https://github.com/TommiContursi/Polku/issues/233) wait for the choice, since both place things at the map's foot.
-- **Recommended: D,** today's planner and toolbar with ⚙ at the top right. **E**, the critique's variant with Done by the planner, is the alternative. [The recommendation](#recommendation-d) says why, and where the idea loses and wins.
+- **Status (2026-10-30): E is chosen,** the critique's own choice: today's planner and toolbar, ⚙ at the top right, and Done and Edit at the toolbar's planner end, so Done stays put and Edit lands where Done was. With two more in the same build, which the mock-up doesn't draw:
+  - the toolbar is rounded at both ends, never square, and floats beside the planner with the same gap as the other floating surfaces (this settles [#595](https://github.com/TommiContursi/Polku/issues/595));
+  - a warning no longer moves the route's numbers.
+
+  The build starts once [#603](https://github.com/TommiContursi/Polku/pull/603) is merged, since it changes the planner's top too. [#568](https://github.com/TommiContursi/Polku/issues/568) and step 3, part 2 of [#233](https://github.com/TommiContursi/Polku/issues/233) follow it.
+- **D was recommended** before the choice; [the recommendation](#recommendation-d) stays below, with where the idea loses and wins.
 - **The mock-up:** [mockups/issue-594-desktop-layout.html](mockups/issue-594-desktop-layout.html). Today on the left, an option on the right, in the same scene and at the same size.
 
 ## The mock-up
 
-[mockups/issue-594-desktop-layout.html](mockups/issue-594-desktop-layout.html), on B's look ([#591](https://github.com/TommiContursi/Polku/pull/591) at 79a6ae4). It opens on B beside today at 1440 × 900. To open it before it's merged, serve the branch's folder (`python3 serve.py 8832` in `.claude/worktrees/desktop-layout`) and go to `http://localhost:8832/docs/plans/mockups/issue-594-desktop-layout.html`; once merged, it's at polku.si under the same path. It's for a desktop: on a phone the frames stack and are small.
+[mockups/issue-594-desktop-layout.html](mockups/issue-594-desktop-layout.html), on B's look ([#591](https://github.com/TommiContursi/Polku/pull/591) at 79a6ae4). It opens on E, the choice, beside today at 1440 × 900. To open it before it's merged, serve the branch's folder (`python3 serve.py 8832` in `.claude/worktrees/desktop-layout`) and go to `http://localhost:8832/docs/plans/mockups/issue-594-desktop-layout.html`; once merged, it's at polku.si under the same path. It's for a desktop: on a phone the frames stack and are small.
 
 - **Its switches:** the option (A, B, C, D), or **its parts** one by one (the top bar; the planner at the top or centred; the toolbar on the planner's edge, centred beside the planner, or centred in the window), so any mix can be tried. The size: 1024 × 768, 1440 × 900, 1920 × 1080 and 2560 × 1440. Side by side, or one above the other for bigger frames.
 - **The scenes,** each with **Change** (or **Play**, which goes back and forth): the first leg (the second point brings the route's actions onto the toolbar), the list (Waypoints folded and open), a warning (a departure after dark puts "1 to read before you go" at the planner's top), the profile (taller and smaller), the tabs (Route and Go), one more point, Done and Edit, the weather while editing and while viewing, and the planner folded to its line.

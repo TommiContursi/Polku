@@ -157,7 +157,7 @@ button { font: inherit; color: inherit; }
   <p>Where the toolbar, the planner and the top bar sit on a desktop (<a href="https://github.com/TommiContursi/Polku/issues/594">#594</a>). <b>Today</b> on the left; the option on the right, in the same scene, at the same size. Use <b>Change</b> (or <b>Play</b>) to grow and shrink the planner, turn the weather on, or press Done, and watch what moves. On B's look (<a href="https://github.com/TommiContursi/Polku/pull/591">#591</a>). The plan with the critique and the recommendation: <a href="../issue-594-desktop-layout.md">issue-594-desktop-layout.md</a>.</p>
 
   <div class="bars" role="group" aria-label="What the frames show">
-    <div class="bar"><span id="l-opt">Option</span><div class="sw" data-k="opt" aria-labelledby="l-opt"><button data-v="a">A: today, with what's decided</button><button data-v="b">B: the idea</button><button data-v="c">C: B, with the planner at the top</button><button data-v="d">D: recommended</button><button data-v="e">E: D, Done by the planner</button><button data-v="mix" hidden>Your mix</button></div></div>
+    <div class="bar"><span id="l-opt">Option</span><div class="sw" data-k="opt" aria-labelledby="l-opt"><button data-v="a">A: today, with what's decided</button><button data-v="b">B: the idea</button><button data-v="c">C: B, with the planner at the top</button><button data-v="d">D: recommended at first</button><button data-v="e">E: chosen, D with Done by the planner</button><button data-v="mix" hidden>Your mix</button></div></div>
     <div class="bar"><span id="l-parts">Its parts</span><div class="sws">
       <div class="sw" data-k="bar" aria-label="The top bar"><button data-v="today">Top bar at the left</button><button data-v="right">At the left, ⚙ at the right</button><button data-v="centre">Search and sport centred, ⚙ at the right</button></div>
       <div class="sw" data-k="planner" aria-label="The planner"><button data-v="top">Planner at the top</button><button data-v="centre">Planner centred</button></div>
@@ -249,13 +249,13 @@ const PRESET = {
   d: { bar: 'right', planner: 'top', tools: 'edge', round: true },
   e: { bar: 'right', planner: 'top', tools: 'edge', round: true, done: 'start' },
 };
-const NAME = { today: 'Today', a: 'A: today, with what’s decided', b: 'B: the idea', c: 'C: B, with the planner at the top', d: 'D: recommended', e: 'E: D, Done by the planner', mix: 'Your mix' };
+const NAME = { today: 'Today', a: 'A: today, with what’s decided', b: 'B: the idea', c: 'C: B, with the planner at the top', d: 'D: recommended at first', e: 'E: chosen, D with Done by the planner', mix: 'Your mix' };
 const ABOUT = {
   a: 'Today’s layout, with what’s already decided for it: <b>#568’s</b> Share link, Export GPX and Save offline in the route’s view, and the weather at the map’s foot by the map’s buttons (<b>step 3, part 2</b> of #233): open where it fits beside the toolbar, else its 210 px line, else away on the Weather button. The top bar at the top left, the planner from under it, as tall as its content, and the toolbar hanging off the planner’s edge at the foot.',
   b: 'The idea: the toolbar centred at the map’s foot, not bound to the planner; the planner centred on its side; the logo where it is; the search and the sport centred at the top; ⚙ (and later sign-in) at the top right. <b>Centred where?</b> In the window, the toolbar would sit under the planner at 1440 and 1024 (try <b>Centred in the window</b>), so B centres it in the map beside the planner. Everything decided for A (#568, the weather at the foot) is here too.',
   c: 'B, with the planner at the top, so its edge doesn’t move when its content grows. This planner is today’s: the build already hangs it from under the top bar and lets its foot follow its content. So C is A with B’s top bar and B’s toolbar.',
   d: 'Today’s planner and toolbar, which keep still, with the part of B that wins: ⚙ at the top right, over the Settings panel it opens (169 px away at every size; at 1024 the left is as near) and beside a later sign-in. The toolbar’s left end is rounded where the planner doesn’t reach it (#595). What’s decided for A is here too. Why: the plan’s Recommendation.',
-  e: 'D, with Done and Edit at the toolbar’s planner end, the end that never moves: from the critique (Assessment A). Edit lands where Done was, and Done stays put when the second point brings the route’s actions. It goes against today’s order (25a), where Done is last, as a toolbar’s main action usually is, and puts the way out before the tools.',
+  e: 'D, with Done and Edit at the toolbar’s planner end, the end that never moves: from the critique (Assessment A). Edit lands where Done was, and Done stays put when the second point brings the route’s actions. It goes against today’s order (25a), where Done is last, as a toolbar’s main action usually is, and puts the way out before the tools. <b>Chosen on 2026-10-30,</b> with two more that this page doesn’t draw: the toolbar floats beside the planner with the gap the other floating surfaces have, rounded at both ends (#595), and a warning no longer moves the route’s numbers.',
   mix: 'The parts as you set them.',
 };
 const SCENES = {
@@ -271,7 +271,7 @@ const SCENES = {
   folded: { name: 'Folded', a: { pl: 'listfolded' }, b: { pl: 'listfolded', fold: true }, ch: ['Fold the planner', 'Open it'], at: 'num', atName: 'the route’s numbers' },
 };
 
-const S = { opt: 'b', size: '1440', scene: 'list', state: 'a', frames: 'side', bar: '', planner: '', tools: '', done: '', show: '' };
+const S = { opt: 'e', size: '1440', scene: 'list', state: 'a', frames: 'side', bar: '', planner: '', tools: '', done: '', show: '' };
 const q = new URLSearchParams(location.search);
 for (const k of Object.keys(S)) if (q.get(k)) S[k] = q.get(k);
 const PARTS = ['bar', 'planner', 'tools', 'done'];
