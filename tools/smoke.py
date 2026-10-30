@@ -9913,6 +9913,13 @@ def stops_card(chrome):
             fold_settled(pg, fails, f'{tag} the short card swiped up')
             if info()['st'] != 'peek' or info()['h'] != s['h']:
                 fails.append(f"{tag}: a short card swiped 150 px up: {info()['st']} at {info()['h']} px, not its own {s['h']}")
+            # with no route, a spot's card over the planner's start: its name and numbers in sight (#606: it opened under the screen's edge)
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            time.sleep(0.6)
+            fold_settled(pg, fails, f"{tag} a spot's card over the start")
+            s = pg.js("(() => { const p = polku.planner, b = p.cards.box, e = b.querySelector(':scope > .sheet-sum') || b.querySelector(':scope > .way-head'); return [p.panel.dataset.state, Math.round(e.getBoundingClientRect().bottom), p.panel.offsetHeight]; })()")
+            if s[0] != 'peek' or s[1] > h - 12:
+                fails.append(f"{tag}: a spot's card over the planner's start, {s[0]} at {s[2]} px: its numbers end at {s[1]} px, under the screen's edge ({h})")
             fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()

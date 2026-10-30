@@ -742,8 +742,9 @@ The user's leaning, as [the work package](https://github.com/TommiContursi/Polku
   - The marks flashed on every flick. They now fade in only once a drag has lasted `--t-open`.
 - **Codex's review:** a tab or a step reset the whole sheet to its top where it scrolls as one, which at 200 % took the tab out of sight. It now opens at its start (`listToTop()`).
 - **A card's stops (the user's ask, 2026-10-30):** a long card opened at nearly half (471 px at 390 × 844, half 422), so its peek and half were the same stop. A card now has the planner's stops, each no taller than the card:
-  - its peek no taller than the planner's peek with a route (194 px at 390 × 844, 251 at 360 × 740), nor 52 % of the window; before the planner has had a route, a third of the screen;
+  - its peek no taller than the planner's peek with a route (194 px at 390 × 844, 251 at 360 × 740), nor 52 % of the window; before the planner has had a route, its name and numbers, as the planner's peek has the route's (a share of the screen was tried: at 200 % a long Finnish name ran out of a third of it);
   - half, then full, each as tall as the card at most; a card that fits in less has its own height alone;
   - a finger on the card itself moves the sheet at its peek and, dragged, shows the card whole; at half and full the card scrolls first. A mouse still moves it by its top row only. Decided with /animate: no new motion, the swipe's own spring.
+  - Measured from what the card holds rather than the header, it also opens in sight over the planner's start, where the header shrank to the sheet's height and the card opened under the screen's edge (#606).
   - At 200 % the card's peek (251 px, 52 % of the window) is above half (211 px), so a card there has its line, its peek and full, as the planner has no half there either.
 - **Not checked:** a real phone (iPhone, Android), Safari, VoiceOver and TalkBack on ⌃ and ⌄, and the feel of 0.99 and the marks by hand.

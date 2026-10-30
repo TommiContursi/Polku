@@ -5091,10 +5091,13 @@ export class Planner {
       this.peekBare = Math.ceil(hd.offsetTop - take + (c ? cardAt : hd.offsetHeight + grow) + under());
       if (readRow) rr.hidden = true;
       let h = this.peekBare + (this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0);
-      // a card's peek is no taller than the planner's own with a route (before it has had one, a third of the screen), nor
-      // than 52 % of the window: the rest of it is a swipe up, at half (#603). A card that fits in less is as tall as it is
+      // a card's peek is no taller than the planner's own with a route, nor than 52 % of the window: the rest of it is a swipe
+      // up, at half (#603). Before the planner has had one, it's the card's name and numbers, as the planner's is its route's
+      // (not a share of the screen, which text outgrows at 200 %). A card that fits in less is as tall as it is
       if (c) {
-        const room = Math.floor(Math.min(dvh() * 0.52 - 8, (this.planPeek || dvh() / 3) - h)), card = Math.min(c.scrollHeight, room);
+        const end = c.querySelector(':scope > .sheet-sum') || c.querySelector(':scope > .way-head');
+        const named = end.getBoundingClientRect().bottom - c.getBoundingClientRect().top + c.scrollTop + parseFloat(getComputedStyle(c).paddingBottom);
+        const room = Math.floor(Math.min(dvh() * 0.52 - 8, this.planPeek ? this.planPeek - h : named)), card = Math.min(c.scrollHeight, room);
         this.panel.style.setProperty('--card-peek', `${room}px`);
         this.peekBare += card;
         h += card;
