@@ -13572,6 +13572,7 @@ CT_POPS = """(async (keyed) => {
   if (keyed) { pill.focus(); if (!pill.matches(':focus-visible')) return { pill: 'no keyboard focus' }; }
   pill.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: keyed ? 0 : 1 }));
   out.pill = menu.hidden ? 'closed' : moves(menu);
+  out.chevron = moves(pill.querySelector('.ic:last-child'));
   await settle(menu);
   if (keyed) pill.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   else pill.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
@@ -13588,8 +13589,31 @@ CT_POPS = """(async (keyed) => {
   out.menuOut = document.querySelector('.menu-pop') ? 'still a menu' : gone ? moves(gone) : 'nothing';
   if (gone && sizes(gone) !== was) out.menuOut += ` (its items ${was} became ${sizes(gone)} as it went)`;
   gone?.remove();
+  if (keyed) return out;
+  // a menu with no room beside its button is a sheet of its own: it only fades, in and out
+  const sh = U.popMenu(b, [{ label: 'One', fn: () => {} }], { sheet: true, maxRight: 200 });
+  out.sheet = sh.el.classList.contains('menu-sheet') ? moves(sh.el) : 'not a sheet';
+  await settle(sh.el);
+  sh.close();
+  const sg = document.querySelector('.menu-leaving');
+  out.sheet += ` / ${sg ? moves(sg) : 'nothing'}`;
+  sg?.remove();
   return out;
 })"""
+# a new light or dark (Settings → Appearance) is drawn at once: nothing fades its colours behind the panels (the
+# chips themselves apart, which fade to their choice); then the appearance it was
+CT_THEME = """(async () => {
+  const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  click(document.querySelector('#btn-settings')); await wait(400);
+  const was = document.querySelector('#settings-body [data-appearance][aria-pressed="true"]').dataset.appearance;
+  click(document.querySelector(`#settings-body [data-appearance="${document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'}"]`));
+  const fading = document.getAnimations().filter((a) => /color/.test(a.transitionProperty || '') && !a.effect.target.closest('[data-appearance]'))
+    .map((a) => `${a.effect.target.id || String(a.effect.target.className).split(' ')[0]} ${a.transitionProperty}`);
+  await wait(300);
+  click(document.querySelector(`#settings-body [data-appearance="${was}"]`)); await wait(300);
+  click(document.querySelector('#settings-panel .panel-close')); await wait(300);
+  return [...new Set(fading)].slice(0, 4).join(', ');
+})()"""
 # two buttons with a tooltip each, and what the tooltip starts moving (transitionrun, so a quick machine doesn't miss it)
 CT_TIPS = """(async () => {
   const U = await import(location.origin + '/js/ui.js');
@@ -13600,14 +13624,16 @@ CT_TIPS = """(async () => {
   }
   window.__tipRuns = [];
   document.getElementById('tip').addEventListener('transitionrun', (e) => { if (e.propertyName !== 'display') __tipRuns.push(e.propertyName); });
+  document.getElementById('tip-b').addEventListener('pointerenter', () => { window.__tipEnter = performance.now(); });
   return true;
 })()"""
-# (the first: what it started, two frames on; the next: what moves as soon as it's there, the first one's exit long done)
+# (the first: what it started, two frames on; the next: what moves as soon as it's there, and how long after the
+# pointer came that was: not the first one's wait)
 CT_TIP_SHOWN = """(async (name, first) => {
   const tip = document.getElementById('tip'), frame = () => new Promise((r) => requestAnimationFrame(r)), t0 = Date.now();
   while ((tip.hidden || tip.textContent !== name) && Date.now() - t0 < 5000) await new Promise((r) => setTimeout(r, 30));
   if (tip.hidden) return 'not shown';
-  if (!first) return tip.getAnimations().map((a) => a.transitionProperty).filter((p) => p !== 'display').sort().join(' ') || 'nothing';
+  if (!first) return `${tip.getAnimations().map((a) => a.transitionProperty).filter((p) => p !== 'display').sort().join(' ') || 'nothing'}${performance.now() - __tipEnter > 300 ? `, after ${Math.round(performance.now() - __tipEnter)} ms` : ''}`;
   await frame(); await frame();
   return [...new Set(__tipRuns)].sort().join(' ') || 'nothing';
 })"""
@@ -13751,17 +13777,22 @@ def controls(chrome):
                     tips.append(pg.js(f'({CT_TIP_SHOWN})({json.dumps(tip)}, {first})'))
                 pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 450, 'button': 'none'}, pg.s)
                 if tips != ['opacity transform', 'nothing']:
-                    fails.append(f'{name}: the first tooltip moves {tips[0]}, the next one just after {tips[1]}, not opacity and transform, then nothing')
-                for media, want in (('no-preference', 'opacity transform'), ('reduce', 'opacity')):
+                    fails.append(f'{name}: the first tooltip moves {tips[0]}, the next one just after {tips[1]}, not opacity and transform, then nothing at once')
+                for media, want, chevron in (('no-preference', 'opacity transform', 'transform'), ('reduce', 'opacity', 'nothing')):
                     pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
                     got = pg.js(f'({CT_POPS})(false)')
-                    if set(got.values()) != {want}:
-                        fails.append(f'{name}, reduced motion {media}: by a click, the sport menu opens moving {got["pill"]} and goes {got["pillOut"]}, a menu opens {got["menu"]} and goes {got["menuOut"]}, not {want}')
+                    if [got['pill'], got['pillOut'], got['menu'], got['menuOut']] != [want] * 4 or got['chevron'] != chevron:
+                        fails.append(f'{name}, reduced motion {media}: by a click, the sport menu opens moving {got["pill"]} (its chevron {got["chevron"]}) and goes {got["pillOut"]}, a menu opens {got["menu"]} and goes {got["menuOut"]}, not {want} ({chevron})')
+                    if got['sheet'] != 'opacity / opacity':
+                        fails.append(f'{name}, reduced motion {media}: a menu that is a sheet of its own comes and goes moving {got["sheet"]}, not opacity alone')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+                fading = pg.js(CT_THEME)
+                if fading:
+                    fails.append(f'{name}: a new light or dark fades {fading} behind the panels')
                 key(pg, 'Tab', 'Tab', 9)
                 got = pg.js(f'({CT_POPS})(true)')
                 if set(got.values()) != {'nothing'}:
-                    fails.append(f'{name}: from the keyboard, the sport menu opens moving {got.get("pill")} and goes {got.get("pillOut")}, a menu opens {got.get("menu")} and goes {got.get("menuOut")}, not at once')
+                    fails.append(f'{name}: from the keyboard, the sport menu opens moving {got.get("pill")} (its chevron {got.get("chevron")}) and goes {got.get("pillOut")}, a menu opens {got.get("menu")} and goes {got.get("menuOut")}, not at once')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
                 enter, exit = pg.js(CT_TOAST)
                 if (enter, exit) != ('opacity', 'opacity'):

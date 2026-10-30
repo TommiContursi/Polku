@@ -234,11 +234,18 @@ function routeHoverRoute(p) {
 const mapDark = () => isAerial(state.base) || state.base === 'night';
 const deviceDark = matchMedia('(prefers-color-scheme: dark)'), deviceMore = matchMedia('(prefers-contrast: more)');
 function applyTheme() {
-  document.documentElement.dataset.contrast = state.highContrast || deviceMore.matches ? 'more' : 'normal';
+  const root = document.documentElement, contrast = state.highContrast || deviceMore.matches ? 'more' : 'normal';
   const a = state.appearance, theme = (a === 'auto' ? deviceDark.matches : a === 'map' ? mapDark() : a === 'dark') ? 'dark' : 'light';
-  if (document.documentElement.dataset.theme === theme) return; // (a write redraws the map: palette.js)
-  document.documentElement.dataset.theme = theme;
-  $('meta[name="theme-color"]').content = theme === 'dark' ? '#181c1a' : '#1f6f4a';
+  if (root.dataset.contrast === contrast && root.dataset.theme === theme) return;
+  // the new look everywhere at once: drawn once with no transitions, so no button fades behind the panels
+  root.classList.add('restyle');
+  root.dataset.contrast = contrast;
+  if (root.dataset.theme !== theme) { // (a write redraws the map: palette.js)
+    root.dataset.theme = theme;
+    $('meta[name="theme-color"]').content = theme === 'dark' ? '#181c1a' : '#1f6f4a';
+  }
+  document.body.offsetWidth; // (drawn now, with the transitions off)
+  root.classList.remove('restyle');
 }
 deviceDark.addEventListener('change', applyTheme);
 deviceMore.addEventListener('change', applyTheme);

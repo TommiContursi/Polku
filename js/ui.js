@@ -175,7 +175,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     if (!refocus && !el.querySelector(':focus-visible') && !anchor.matches(':focus-visible')) {
       const gone = el.cloneNode(true), now = getComputedStyle(el);
       Object.assign(gone.style, { top: `${el.offsetTop}px`, left: `${el.offsetLeft}px`, width: `${el.offsetWidth}px`, height: `${el.offsetHeight}px`, minWidth: '0', maxHeight: 'none', opacity: now.opacity, transform: now.transform });
-      gone.className = 'menu menu-leaving';
+      gone.className = `menu menu-leaving${el.classList.contains('menu-sheet') ? ' menu-sheet' : ''}`;
       gone.inert = true;
       el.replaceWith(gone);
       gone.scrollTop = el.scrollTop;
@@ -266,7 +266,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
 
 /**
  * A toolbar button's tooltip: its name, its keys and one sentence. The first one waits about
- * 450 ms; while one was just shown, the next comes at once. Keyboard focus shows it too; it stays
+ * 450 ms; while one is shown, or was just shown, the next comes at once. Keyboard focus shows it too; it stays
  * while the pointer is on it, and Escape hides it (WCAG 1.4.13). Mouse only: a tap shows none.
  */
 let tipEl = null, tipShow = 0, tipHide = 0, tipLast = 0, tipFor = null;
@@ -296,7 +296,7 @@ export function tooltip(el, { name, keys = '', text = '' }) {
   const later = () => {
     clearTimeout(tipShow);
     if (el.getAttribute('aria-expanded') === 'true') return; // its menu is open: nothing over it
-    tipShow = setTimeout(show, Date.now() - tipLast < 900 ? 0 : 450);
+    tipShow = setTimeout(show, !tipEl.hidden || Date.now() - tipLast < 900 ? 0 : 450);
   };
   el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !el.disabled) later(); });
   el.addEventListener('pointerleave', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(); });
