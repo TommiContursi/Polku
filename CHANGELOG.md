@@ -2,6 +2,13 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-10-30
+
+### Fixed: a mouse drags the planner in a narrow window ([#585](https://github.com/TommiContursi/Polku/issues/585))
+
+- In a window too narrow for the side panel, or with the planner at the bottom, a mouse drags the folded planner's line and its handle up to open it, as a finger does.
+- A quick mouse drag on the open planner's handle moves it too, instead of doing nothing.
+
 ## 2026-10-29
 
 ### Choose light or dark in Settings ([#323](https://github.com/TommiContursi/Polku/issues/323))
