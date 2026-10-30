@@ -57,6 +57,9 @@ body.ss-phone { overflow: hidden; }
 .ss-bar .seg { flex: 1; display: flex; box-shadow: var(--shadow); }
 .ss-bar .seg button { flex: 1; min-height: var(--target); }
 .ss-bar .btn { box-shadow: var(--shadow); background: var(--surface-solid); min-height: var(--target); }
+.ss-warn { max-width: 420px; margin: 72px auto 0; padding: 0 16px; }
+.ss-warn h2 { margin: 0 0 8px; font-size: var(--font-title); }
+.ss-warn p { margin: 0 0 12px; color: var(--muted); line-height: 1.45; }
 @media (prefers-reduced-motion: reduce) { .ss-phone .ss-side, .ss-phone .ss-side[hidden] { transition: opacity var(--t-open) linear; transform: none; } .ss-phone .ss-side[hidden] { opacity: 0; } }
 </style>
 </head>
@@ -70,40 +73,47 @@ const SIZES = {
   p390: { w: 390, h: 844, z: 1, name: 'Phone 390 × 844' },
   p360: { w: 360, h: 740, z: 1, name: 'Phone 360 × 740' },
   z200: { w: 195, h: 422, z: 2, name: '200 %' },
-  d1440: { w: 1440, h: 900, z: 1, name: 'Desktop 1440 × 900', desk: true },
+  d1440: { w: 1440, h: 900, z: 1, name: 'Desktop 1440 × 900, bottom dock', desk: true },
+  d1440s: { w: 1440, h: 900, z: 1, name: 'Desktop 1440 × 900, side panel', desk: true, side: true },
 };
 const SCENES = { edit: 'Editing', view: "The route's view", start: 'The start' };
 const ORDER = ['folded', 'peek', 'profile', 'half', 'full'];
 const NAMES = { closed: 'Away', folded: 'Line', peek: 'Peek', profile: 'Profile', half: 'Half', full: 'Full' };
-// What each option changes. rest: each stop measured with the sheet at that size, so a swipe lands where it rests (#586)
-const BASE = { arrows: false, lineOpens: 'was', drop: [], oneStop: false, decel: 0.998, startResists: false, marks: false, rest: true };
+// What each option changes. arrows: A's ⌃ ⌄, on, or only with a mouse or trackpad ('mouse'). rest: each stop measured with
+// the sheet at that size, so a swipe lands where it rests (#586). asOne: D, the sheet scrolls as one under its top row; half:
+// at half, a finger on the content scrolls it ('scroll') or raises the sheet first ('raise')
+const BASE = { arrows: false, lineOpens: 'was', drop: [], oneStop: false, decel: 0.998, startResists: false, marks: false, rest: true, asOne: false, half: 'scroll' };
+const C = { oneStop: true, decel: 0.99, startResists: true, marks: true };
 const PRESETS = {
   A: { arrows: true },
   B: { drop: ['profile'] },
-  C: { oneStop: true, decel: 0.99, startResists: true, marks: true },
-  BC: { drop: ['profile'], oneStop: true, decel: 0.99, startResists: true, marks: true },
-  ABC: { arrows: true, drop: ['profile'], oneStop: true, decel: 0.99, startResists: true, marks: true },
+  C,
+  D: { asOne: true },
+  BC: { drop: ['profile'], ...C },
+  ABC: { arrows: true, drop: ['profile'], ...C },
+  L: { arrows: 'mouse', drop: ['profile'], ...C, asOne: true }, // the user's leaning, 2026-10-30
 };
-const PRESET_NAMES = { A: 'A', B: 'B', C: 'C', BC: 'B + C', ABC: 'A + B + C' };
+const PRESET_NAMES = { A: 'A', B: 'B', C: 'C', D: 'D', BC: 'B + C', ABC: 'A + B + C', L: 'Your leaning' };
 const FLICK = 1.1; // js/sheet.js's SWIPE.flick, px/ms
 
 // ---------------------------------------------------------------- what's chosen, kept in the address
 const q = new URLSearchParams(location.search);
 const OPT = { ...BASE };
-let preset = PRESETS[q.get('o')] ? q.get('o') : q.has('o') ? null : 'BC';
+let preset = PRESETS[q.get('o')] ? q.get('o') : q.has('o') ? null : 'L';
 if (preset) Object.assign(OPT, PRESETS[preset]);
 else {
-  OPT.arrows = q.get('a') === '1'; OPT.lineOpens = q.get('lo') === 'peek' ? 'peek' : 'was';
+  OPT.arrows = q.get('a') === 'm' ? 'mouse' : q.get('a') === '1'; OPT.lineOpens = q.get('lo') === 'peek' ? 'peek' : 'was';
   OPT.drop = (q.get('d') || '').split(',').filter((s) => ['profile', 'half'].includes(s));
   OPT.oneStop = q.get('one') === '1'; OPT.decel = q.get('dec') === '0.99' ? 0.99 : 0.998;
   OPT.startResists = q.get('sr') === '1'; OPT.marks = q.get('mk') === '1'; OPT.rest = q.get('rest') !== '0';
+  OPT.asOne = q.get('as') === '1'; OPT.half = q.get('hf') === 'raise' ? 'raise' : 'scroll';
 }
 let size = SIZES[q.get('size')] ? q.get('size') : 'p390';
 let scene = SCENES[q.get('scene')] ? q.get('scene') : 'edit';
 let view = q.get('view') === 'today' ? 'today' : 'option';
 const keep = () => {
   const p = new URLSearchParams({ o: preset || 'custom', size, scene, view });
-  if (!preset) Object.entries({ a: +OPT.arrows, lo: OPT.lineOpens, d: OPT.drop.join(','), one: +OPT.oneStop, dec: OPT.decel, sr: +OPT.startResists, mk: +OPT.marks, rest: +OPT.rest }).forEach(([k, v]) => p.set(k, v));
+  if (!preset) Object.entries({ a: OPT.arrows === 'mouse' ? 'm' : +OPT.arrows, lo: OPT.lineOpens, d: OPT.drop.join(','), one: +OPT.oneStop, dec: OPT.decel, sr: +OPT.startResists, mk: +OPT.marks, rest: +OPT.rest, as: +OPT.asOne, hf: OPT.half }).forEach(([k, v]) => p.set(k, v));
   history.replaceState(null, '', `?${p}`);
 };
 const same = (a, b) => Object.keys(BASE).every((k) => JSON.stringify(a[k]) === JSON.stringify(b[k]));
@@ -132,7 +142,7 @@ function renderSide() {
     h('div', { class: 'menu-h' }, 'Option'),
     seg('', [...Object.keys(PRESETS).map((k) => [k, PRESET_NAMES[k]]), ...(preset ? [] : [[null, 'Your mix']])], preset, (k) => { if (!k) return; preset = k; Object.assign(OPT, BASE, PRESETS[k]); changed(); }),
     h('div', { class: 'menu-h' }, 'A: ⌃ and ⌄'),
-    seg('Each one stop up or down, at the sheet\'s top right', [[false, 'Off'], [true, 'On']], OPT.arrows, (v) => set({ arrows: v })),
+    seg('Each one stop up or down, at the sheet\'s top right', [[false, 'Off'], [true, 'On'], ['mouse', 'With a mouse or trackpad']], OPT.arrows, (v) => set({ arrows: v })),
     seg('The folded line opens', [['was', 'As it was'], ['peek', 'To the peek']], OPT.lineOpens, (v) => set({ lineOpens: v })),
     h('div', { class: 'menu-h' }, 'B: fewer stops'),
     seg('Stops that go', [[[], 'None'], [['profile'], 'Profile'], [['half'], 'Half'], [['profile', 'half'], 'Both']], OPT.drop, (v) => set({ drop: v })),
@@ -141,6 +151,9 @@ function renderSide() {
     seg('Where a flick would come to rest (deceleration)', [[0.998, '0.998, today'], [0.99, '0.99, snappier']], OPT.decel, (v) => set({ decel: v })),
     seg("The start's views, dragged up", [[false, 'Move freely'], [true, 'Resist']], OPT.startResists, (v) => set({ startResists: v })),
     seg('Marks at the stops while dragging', [[false, 'Off'], [true, 'On']], OPT.marks, (v) => set({ marks: v })),
+    h('div', { class: 'menu-h' }, 'D: the sheet scrolls as one'),
+    seg('Everything under the top row scrolls together; the top row takes the numbers and the name once they scroll under it', [[false, 'Off'], [true, 'On']], OPT.asOne, (v) => set({ asOne: v })),
+    seg('At half, a finger on the content', [['scroll', 'Scrolls it'], ['raise', 'Raises the sheet first']], OPT.half, (v) => set({ half: v })),
     h('div', { class: 'menu-h' }, 'In every option'),
     seg('Each stop measured at its own size (#586)', [[true, 'Lands where it rests'], [false, "Today's"]], OPT.rest, (v) => set({ rest: v })),
     h('div', { class: 'menu-h' }, 'Where'),
@@ -148,8 +161,8 @@ function renderSide() {
     seg('The planner', Object.entries(SCENES), scene, (v) => { scene = v; keep(); load(); }),
     h('div', { class: 'menu-h' }, 'The stops, px from the sheet\'s foot'),
     stopsBox,
-    h('div', { class: 'menu-h' }, 'On an iPhone'),
-    h('p', {}, 'Serve this folder to the network from the Mac (python3 -m http.server 8807 --bind 0.0.0.0) and open http://<the Mac\'s name>.local:8807/docs/plans/mockups/issue-233-sheet-stops.html in Safari, on the same Wi-Fi. The plan says more.'),
+    h('div', { class: 'menu-h' }, 'On a phone'),
+    h('p', {}, 'Serve this folder to the network from the Mac (python3 -m http.server 8807 --bind 0.0.0.0) and open http://<the Mac\'s address>:8807/docs/plans/mockups/issue-233-sheet-stops.html on the same Wi-Fi: its IP address on an Android phone, or its .local name in Safari. Not at polku.si: there it would replace the route Polku keeps on the phone. The plan says more.'),
   );
   viewSeg.replaceChildren(...[['today', 'Today'], ['option', optName()]].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(view === v), onclick: () => { view = v; keep(); show(); } }, t)));
 }
@@ -162,8 +175,17 @@ function changed() { keep(); renderSide(); figs.option?.apply?.(); caption(); re
 
 // ---------------------------------------------------------------- the frames
 const figs = {};
+// Served over https it's the real site (polku.si), whose storage is Polku's own: the frames would save their route over the
+// one kept there, and the start clears it. A local server has storage of its own.
+let sure = location.protocol !== 'https:';
 function load() {
   stage.replaceChildren();
+  if (!sure) {
+    stage.append(h('div', { class: 'ss-warn' }, h('h2', {}, 'This would replace your route'),
+      h('p', {}, `Here at ${location.host} the mock-up runs Polku in this browser, with its storage: the route Polku keeps here, and some settings, would be replaced by the mock-up's. Open it from the Mac instead (the plan says how).`),
+      h('button', { type: 'button', class: 'btn', onclick: () => { sure = true; load(); } }, 'Open it here anyway')));
+    return;
+  }
   for (const k of ['today', 'option']) {
     const s = SIZES[mac ? size : 'p390'];
     const fr = h('iframe', { src: `../../../${SHARE}`, title: k === 'today' ? 'Today, main as it is' : 'The option', width: s.w, height: s.h });
@@ -178,7 +200,7 @@ function load() {
 }
 function caption() {
   if (figs.today) figs.today.cap.replaceChildren(h('b', {}, 'Today'), ' · main as it is');
-  if (figs.option) figs.option.cap.replaceChildren(h('b', {}, optName()), ' · ', [OPT.arrows && '⌃ ⌄', OPT.drop.length && `without ${OPT.drop.join(' and ')}`, OPT.oneStop && 'a flick moves one stop', OPT.decel === 0.99 && '0.99', OPT.marks && 'marks'].filter(Boolean).join(', ') || "today's stops");
+  if (figs.option) figs.option.cap.replaceChildren(h('b', {}, optName()), ' · ', [OPT.arrows === 'mouse' ? '⌃ ⌄ with a mouse' : OPT.arrows && '⌃ ⌄', OPT.asOne && 'scrolls as one', OPT.drop.length && `without ${OPT.drop.join(' and ')}`, OPT.oneStop && 'a flick moves one stop', OPT.decel === 0.99 && '0.99', OPT.marks && 'marks'].filter(Boolean).join(', ') || "today's stops");
   renderSide();
 }
 function show() { if (!mac) for (const f of Object.values(figs)) f.fig.hidden = f.k !== view; renderSide(); }
@@ -198,7 +220,7 @@ const ready = (fr) => new Promise((res) => {
 });
 async function setUp(f) {
   const w = f.fr.contentWindow, P = w.polku.planner;
-  P.setDock(SIZES[size].desk && mac ? 'bottom' : 'left');
+  P.setDock(SIZES[size].desk && mac && !SIZES[size].side ? 'bottom' : 'left');
   if (scene === 'start') { P.clear(); P.setActive(true, { edit: true }); }
   else P.setEditing(scene === 'edit');
   P.setSheetState(P.restSize(), { remember: false, instant: true }); // (the peek, or the line where the peek would cover half the screen)
@@ -244,7 +266,13 @@ function land(aim, r, o) {
 // the size it's at; with rest, each at its own size (#586). Measured by setting the size for a moment, with nothing drawn.
 function stopsFrom(P, from, o) {
   const p = P.panel, px = (v) => parseFloat(p.style.getPropertyValue(v)) || 0, was = p.dataset.state;
-  const at = (st, v) => { p.dataset.state = st; P.measureSheet(); const x = px(v); p.dataset.state = was; P.measureSheet(); return x; };
+  // (measuring turns .scroll-all off and on, which would scroll the sheet to its top: it's put back)
+  const at = (st, v) => {
+    const all = p.classList.contains('scroll-all'), top = p.scrollTop;
+    p.dataset.state = st; P.measureSheet(); const x = px(v); p.dataset.state = was; P.measureSheet();
+    p.classList.toggle('scroll-all', all); p.scrollTop = top;
+    return x;
+  };
   const D = p.ownerDocument.defaultView.innerHeight, full = D - 76, only = P.peekOnly(), carded = P.cards.place === 'peek';
   const peek = o.rest && !only && !carded ? at('peek', '--peek-h') : at(from, '--peek-h');
   const prof = o.rest && !only && !carded ? at('profile', '--profile-h') : at(from, '--profile-h');
@@ -275,6 +303,35 @@ async function patch(f) {
     .ss-marks i { position: absolute; left: 0; width: 14px; height: 4px; margin-top: -2px; border-radius: 0 2px 2px 0; background: var(--muted); }
     .ss-marks i.to { width: 100%; height: 2px; margin-top: -1px; border-radius: 0; background: var(--accent); }
     .ss-marks b { position: absolute; left: 50%; transform: translateX(-50%); margin-top: -26px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; line-height: 18px; }
+    /* D: the whole sheet scrolls (main's .scroll-all) and a finger on the numbers scrolls it too */
+    .ss-one .sheet.scroll-all > .sheet-head { touch-action: pan-y; }
+    .ss-one .sheet.scroll-all > .sheet-top { z-index: 6; } /* (over the docked toolbox's 5, which scrolls under it) */
+    .ss-raise .sheet[data-layout="sheet"][data-state="half"] > .sheet-body { overflow: hidden; }
+    /* the narrow row: the top row, which takes the numbers and the name once they've scrolled under it: the numbers in
+       Body bold, tabular, each whole or not at all, and the name after them in Control, the first to give way */
+    .sheet-top:has(> .ss-sum) { position: relative; }
+    .ss-sum { position: absolute; top: 0; left: 14px; right: 52px; height: 40px; display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; overflow: hidden;
+      pointer-events: none; opacity: 0; transition: opacity var(--t-press) var(--ease-out); font-variant-numeric: tabular-nums; }
+    .ss-sum > * { line-height: 40px; white-space: nowrap; }
+    .ss-sum b { font-size: var(--font-body); font-weight: var(--weight-strong); }
+    .ss-sum i { font-style: normal; font-size: var(--font-control); font-weight: var(--weight-name); color: var(--muted); }
+    .sheet-top > .ss-sum i::before { content: "· "; }
+    .ss-arrows .sheet-top > .ss-sum { right: 96px; }
+    .sheet-top:has(.pl-tools.docked) > .ss-sum { left: 56px; }
+    .sheet.ss-sum-on .ss-sum { opacity: 1; transition-duration: var(--t-open); }
+    .sheet-handle::before { transition: transform var(--t-open) var(--ease-out); }
+    .sheet.ss-sum-on .sheet-handle::before { transform: translateY(-13px); }
+    /* the side panel has no top row: the narrow row lies over its top once the numbers have scrolled away, so it can take
+       two lines without moving anything: the name, wrapping whole, over the numbers */
+    .ss-siderow { display: none; }
+    .ss-one .sheet[data-layout="side"] > .ss-siderow { display: block; position: sticky; top: 0; height: 0; z-index: 4; }
+    .ss-siderow > div { position: absolute; left: 0; right: 0; top: 0; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 6px 0 14px; background: var(--surface-solid);
+      opacity: 0; visibility: hidden; transition: opacity var(--t-press) var(--ease-out), visibility 0s var(--t-press); }
+    .sheet.ss-sum-on > .ss-siderow > div { opacity: 1; visibility: visible; transition: opacity var(--t-open) var(--ease-out), visibility 0s; }
+    .ss-siderow .ss-sum { position: static; flex: 1; min-width: 0; height: auto; padding: 6px 0; column-gap: 6px; opacity: 1; }
+    .ss-siderow .ss-sum > * { line-height: 1.35; }
+    .ss-siderow .ss-sum i { order: -1; flex-basis: 100%; white-space: normal; overflow-wrap: anywhere; }
+    @media (prefers-reduced-motion: reduce) { .sheet-handle::before { transition: none; } }
   `));
 
   // B: a stop that goes is never set; whatever asks for it (a tab, Check, the handle's tap, a remembered size) gets the
@@ -323,10 +380,17 @@ async function patch(f) {
   panel.addEventListener('pointerdown', () => panel.classList.remove('card'));
   // The planner's start(), pick() and moved() (js/planner.js bindSheet()), with the option's stops and flicks
   let peekAt = 0;
+  // D: a drag that starts on the top row moves the sheet, not what scrolls under it (js/sheet.js leaves a scrolling sheet's
+  // own drags to the browser): for that press the sheet doesn't scroll
+  panel.addEventListener('pointerdown', (e) => {
+    if (!panel.classList.contains('scroll-all') || !e.target.closest('.sheet-top')) return;
+    panel.style.overflowY = 'hidden';
+    w.requestAnimationFrame(() => { panel.style.overflowY = ''; });
+  }, true);
   P.sheetSwipe = swipeSheet(panel, {
     enabled: () => P.active && P.layout() === 'sheet',
     grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize, .card')
-      && (type !== 'mouse' || !!t.closest('.sheet-handle, .sheet-head, .pl-tabs')),
+      && (type !== 'mouse' || !!t.closest('.sheet-handle, .fold-line, .sheet-head, .pl-tabs')),
     start: () => {
       SWIPE.decel = OPT.decel;
       const now = P.shownHeight(), from = panel.dataset.state;
@@ -351,8 +415,43 @@ async function patch(f) {
     end: (name) => P.restSheet(name),
     cancel: () => { marks.end(); P.restSheet(null); },
   });
+  panel.addEventListener('pointerdown', () => { panel.style.overflowY = ''; }); // (once the swipe above has had the press)
+
+  // D: the sheet scrolls as one under its top row, main's .scroll-all (which 200 % uses at full), at half and full and on
+  // the side panel; 'raise' keeps half still, so a finger raises the sheet first. Not drawn for the desktop's bottom dock
+  // (wider than 720 px), whose top row has no ⌄
+  const scrollAll = P.scrollAll;
+  P.scrollAll = function () {
+    if (!OPT.asOne || this.cards.current || (this.layout() === 'sheet' && w.innerWidth > 720)) return scrollAll.call(this);
+    const p = this.panel, st = p.dataset.state;
+    const on = this.layout() === 'side' ? st === 'open' : (st === 'peek' && this.peekCut) || (OPT.half === 'raise' ? ['full'] : ['half', 'full']).includes(st);
+    if (p.classList.contains('scroll-all') === on) return;
+    p.classList.toggle('scroll-all', on);
+    if (!on) p.scrollTop = 0;
+  };
+  // the narrow row: the numbers as the folded line has them, then the route's name
+  const sum = h('div', { class: 'ss-sum', 'aria-hidden': 'true' }), sumSide = h('div', { class: 'ss-sum', 'aria-hidden': 'true' });
+  P.els.top.append(sum);
+  const sideBar = h('div', {}, sumSide,
+    h('button', { type: 'button', class: 'tool', title: 'Fold the planner down to a line', 'aria-label': 'Fold the planner down to a line', html: icon('chevronDown', 19), onclick: (e) => P.fold({ instant: !e.detail }) }));
+  panel.prepend(h('div', { class: 'ss-siderow' }, sideBar));
+  const fill = () => {
+    const nums = [...P.els.sum.querySelectorAll('.sum-item > b')].map((b) => b.textContent.trim()), name = P.routeTitle();
+    for (const box of [sum, sumSide]) box.replaceChildren(...nums.map((t, i) => h('b', {}, i ? `· ${t}` : t)), name ? h('i', {}, name) : '');
+  };
+  new w.MutationObserver(fill).observe(P.els.sum, { childList: true, subtree: true, characterData: true });
+  fill();
+  const narrow = () => {
+    const top = P.layout() === 'side' ? panel.getBoundingClientRect().top + sideBar.offsetHeight : P.els.top.getBoundingClientRect().bottom;
+    panel.classList.toggle('ss-sum-on', OPT.asOne && panel.classList.contains('scroll-all') && P.els.sum.getBoundingClientRect().bottom <= top + 1);
+  };
+  panel.addEventListener('scroll', narrow, { passive: true });
+  panel.addEventListener('sheetstate', narrow);
 
   // A: ⌃ beside ⌄, each one stop (⌄ from the peek folds, as today). The desktop's bottom dock has them in its header row.
+  // 'mouse': only where a mouse or trackpad is what points
+  const mouse = w.matchMedia('(hover: hover) and (pointer: fine)');
+  const arrowsOn = () => OPT.arrows === true || (OPT.arrows === 'mouse' && mouse.matches);
   const up = h('button', { type: 'button', class: 'tool sheet-up', html: icon('chevronUp', 19) });
   const upMin = h('button', { type: 'button', class: 'tool sheet-up-min', html: icon('chevronUp', 19) });
   P.els.foldBtn.before(up);
@@ -364,19 +463,27 @@ async function patch(f) {
   };
   for (const b of [up, upMin]) b.addEventListener('click', (e) => step(1, !e.detail));
   panel.addEventListener('click', (e) => {
-    if (e.defaultPrevented || !OPT.arrows || P.cards.place === 'peek' || P.layout() !== 'sheet') return;
+    if (e.defaultPrevented || !arrowsOn() || P.cards.place === 'peek' || P.layout() !== 'sheet') return;
     if (e.target.closest('.sheet-fold, .sheet-min')) { e.stopPropagation(); step(-1, !e.detail); }
     else if (e.target.closest('.fold-go') && OPT.lineOpens === 'peek') { e.stopPropagation(); P.setSheetState('peek', { instant: !e.detail }); }
   }, true);
   const sync = () => {
-    doc.documentElement.classList.toggle('ss-arrows', OPT.arrows);
-    if (!OPT.arrows) return P.renderFold();
+    doc.documentElement.classList.toggle('ss-arrows', arrowsOn());
+    if (!arrowsOn()) return P.renderFold();
     const k = kept(), cur = panel.dataset.state;
     for (const b of [up, upMin]) { b.disabled = cur === k[k.length - 1]; b.title = 'Raise the planner one size'; b.setAttribute('aria-label', b.title); }
     for (const b of [P.els.foldBtn, P.els.min]) { b.title = cur === 'peek' ? 'Fold the planner to a line' : 'Lower the planner one size'; b.setAttribute('aria-label', b.title); }
   };
   panel.addEventListener('sheetstate', sync);
-  f.apply = () => { SWIPE.decel = OPT.decel; sync(); };
+  f.apply = () => {
+    SWIPE.decel = OPT.decel;
+    doc.documentElement.classList.toggle('ss-one', OPT.asOne);
+    doc.documentElement.classList.toggle('ss-raise', OPT.asOne && OPT.half === 'raise');
+    P.measureSheet(); // (and scrollAll())
+    narrow();
+    sync();
+  };
+  mouse.addEventListener('change', f.apply);
   f.apply();
 }
 
@@ -388,6 +495,8 @@ function renderStops() {
   if (!T || !O) { stopsBox.replaceChildren(h('p', {}, 'Loading the frames…')); return; }
   // (measured with the sheet at rest: sizes set for a moment would turn a move or a drag on its way)
   if ([T, O].some(({ P }) => P.sheetMove || P.sheetSwipe?.busy || P.panel.classList.contains('dragging'))) { setTimeout(renderStops, 500); return; }
+  if (T.P.layout() === 'side') { stopsBox.replaceChildren(h('p', {}, 'The side panel has two sizes, open and its line, in every option; D changes only how it scrolls.')); return; }
+  if (OPT.asOne && O.P.layout() === 'sheet' && figs.option.fr.contentWindow.innerWidth > 720) rows.push(h('p', { class: 'ss-note' }, "D isn't drawn for the bottom dock: its top row has no ⌄. It scrolls as today here."));
   const today = { ...BASE, rest: false };
   const restOf = (fr, o) => stopsFrom(fr.P, fr.P.panel.dataset.state === 'folded' ? 'peek' : fr.P.panel.dataset.state, { ...o, rest: true }).sizes.filter((z) => z.name !== 'closed');
   const list = (S) => S.map((z) => `${NAMES[z.name]} ${Math.round(z.at)}`).join(' · ');

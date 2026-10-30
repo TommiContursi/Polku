@@ -598,15 +598,19 @@ Asked for on 2026-10-29, after trying #558 on a phone. Since the user's note of 
 - In the option's frame the planner's own swipe is set aside, and one built on `main`'s `js/sheet.js` takes its place. It has the same spring (damping 0.85, response 0.3 s), projection, rubber band (0.55) and flick threshold (1.1 px/ms), with the option's stops and flicks.
 - A stop that goes is never set. What asks for it (a tab, Check, the handle's tap, a remembered size) gets the next stop that stays, in its direction.
 - ⌃ and ⌄ are buttons added to the sheet's top row. Cards are as they are today.
-- The settings list each option's stops with their heights, read from the frames, and where a light flick lands from each stop. When the page opens it shows B + C, the recommendation.
-- **On a Mac** (a window 900 px wide or more): the settings at the left, Today and the option side by side at 390 × 844, 360 × 740 or 200 %, or one above the other at 1440 × 900 with the planner at the bottom. A mouse drags the sheet by its top rows, as in the app. Serve the branch's folder with `python3 serve.py 8823` and open `http://localhost:8823/docs/plans/mockups/issue-233-sheet-stops.html`.
-- **On an iPhone:** one frame fills the screen. The bar at the top switches between Today and the option, and **Options** opens the settings. The Mac serves the folder to the network, and both must be on the same Wi-Fi. `serve.py` listens only on the Mac itself, so run Python's own server from the folder that has this branch (`.claude/worktrees/sheet-stops` until it's merged, then the repository's own):
+- The settings list each option's stops with their heights, read from the frames, and where a light flick lands from each stop. When the page opens it shows your leaning (below, since 2026-10-30).
+- **On a Mac** (a window 900 px wide or more): the settings at the left, Today and the option side by side at 390 × 844, 360 × 740 or 200 %, or one above the other at 1440 × 900 with the planner at the bottom or at the side. A mouse drags the sheet by its top rows, as in the app. Serve a checkout of `main` with `python3 serve.py 8823` and open `http://localhost:8823/docs/plans/mockups/issue-233-sheet-stops.html`.
+- **On a phone:** one frame fills the screen. The bar at the top switches between Today and the option, and **Options** opens the settings. The Mac serves the folder to the network, and both must be on the same Wi-Fi. `serve.py` listens only on the Mac itself, so run Python's own server from a checkout of `main` (or the worktree of a branch that isn't merged yet):
 
   ```bash
   python3 -m http.server 8807 --bind 0.0.0.0
   ```
 
-  Then open `http://<the Mac's name>.local:8807/docs/plans/mockups/issue-233-sheet-stops.html` in Safari. The name is in System Settings → General → Sharing → Local hostname, and macOS may ask whether Python may accept connections. Over plain `http` the app can't show your location or save offline, and says so.
+  macOS may ask whether Python may accept connections: allow it.
+  - **On an iPhone,** open `http://<the Mac's name>.local:8807/docs/plans/mockups/issue-233-sheet-stops.html` in Safari. The name is in System Settings → General → Sharing → Local hostname.
+  - **On an Android phone** (a Galaxy, in Chrome or Samsung Internet), use the Mac's IP address instead: `http://<the Mac's IP address>:8807/docs/plans/mockups/issue-233-sheet-stops.html`. It's in System Settings → Wi-Fi → Details… next to the network, a number like 192.168.1.23. Android doesn't always find `.local` names.
+  - Over plain `http` the app can't show your location or save offline, and says so.
+- **Not at polku.si,** even though the mock-up is served there too. There it runs Polku with the phone's own storage: the route Polku keeps on the phone would be replaced by the mock-up's, since a shared route is saved once its legs are worked out, and the start clears it. Served over `https`, the page says so and asks before it loads. A server on the Mac has storage of its own.
 - The address keeps the choice (`?o=BC&size=p360&scene=view`). The two frames share the browser's storage, as two tabs of the app would.
 
 **Today's stops**, measured in the mock-up on `main` at fb4f15a: px from the sheet's foot, with the route's one warning row showing. The peek grows with what the route has to say.
@@ -657,7 +661,8 @@ From the line, a second swipe or ✕ puts the planner away. The start's views ha
   - **The start's views resist** above their peek: the rubber band starts at the peek, not at full.
   - **Marks while dragging:** a tick at each stop at the screen's left edge, and a line where the sheet would come to rest if let go now, named (Half). They fade in over `--t-press` as a drag starts and out over `--t-open` when it's let go, and the line moves at once. This is the mock-up's reading of "shows its stops". Apple's sheets have none.
 - **In every option, #586's fix:** each stop is measured at its own size, so a swipe lands where it rests. A switch shows today's way, to compare with Today on equal terms.
-- **Presets:** A, B (without the profile size), C, B + C, A + B + C. Any mix can be set.
+- **D: the sheet scrolls as one** (added on 2026-10-30, at the user's request). See [below](#d-the-sheet-scrolls-as-one-added-2026-10-30).
+- **Presets:** A, B (without the profile size), C, D, B + C, A + B + C, and **your leaning**. Any mix can be set.
 
 **Recommendation: B + C, without the profile size, with #586's fix.**
 - **B:** the profile size is the smallest step. What asks for it gets half, which shows the profile too, under the key facts and with the list, but smaller (70 px against 160 at 390 × 844). What goes is the profile at its full height with the most map beside it. Dropping half would send tabs and Check to full, over the map.
@@ -670,6 +675,51 @@ From the line, a second swipe or ✕ puts the planner away. The start's views ha
 - **emil-design-eng:** ⌃ and ⌄ side by side read as one control, and the end stop is dimmed rather than hidden, so ⌄ doesn't move. They're the app's `tool` buttons with its press.
 - **animate:** ⌃ and ⌄ move the sheet the way a tap does today (`moveSheet()`), so they add no motion of their own, and from the keyboard they're at once, as the handle's arrows are. The marks fade on opacity alone, and the line follows the finger without a transition, since it says where the sheet will go.
 
+#### D: the sheet scrolls as one (added 2026-10-30)
+
+Today the planner's top part stays put: the numbers, the warning row, the hardest climb, Colour by, the profile and the tabs. Only the list under it scrolls. With D, everything under the sheet's top row scrolls together, at half and at full, and on the desktop's side panel. It's `main`'s own `.scroll-all`, which 200 % already uses at full (#453).
+
+- **The top row stays.** It holds the handle and ⌄, and A's ⌃ where A is on. Once the numbers have scrolled under it, it takes them and the route's name: "2.00 km · 7 min · ↑10 ↓64 m · Start → End".
+  - The numbers are Body bold in tabular figures, each whole or not at all. The name follows in Control, and is the first to give way.
+  - They fade in over `--t-open` as the numbers pass under the row and out over `--t-press`. The handle's bar moves up into the row's top padding with them, as on the folded line.
+  - The row keeps its 40 px, so nothing under it jumps.
+- **The side panel** has no top row. Once the numbers have scrolled away, a row with the name, the numbers and ⌄ lies over its top. It takes no room in the layout, so the name gets a line of its own, wrapping whole, over the numbers (44 px; 66 px with a long name).
+- **At the peek** nothing changes: nothing scrolls, and the numbers are in sight.
+- **A finger:**
+  - On the content, it scrolls it, the numbers too. The header takes `touch-action: pan-y` for that.
+  - On the top row, it moves the sheet.
+  - At the content's top, a finger down lowers the sheet, as on today's list.
+- **At half,** a second switch keeps half still instead: a finger on the content raises the sheet to full first, as Apple's sheets do, and it scrolls there.
+- **What it costs:**
+  - At half, a finger on the numbers scrolls instead of raising the sheet. Today it raises it. Raising takes the top row, or ⌃ with a mouse.
+  - Done, the warning row and the numbers' own buttons (the time sets the departure) scroll away with the rest. Getting back to them is a scroll back up, which phase 24's rule ("nothing takes more scrolling") asks about.
+  - The profile's chart keeps its own drag (scrubbing), so a finger on it neither scrolls nor moves the sheet. That's 64–150 px of the sheet, as today.
+  - **Room:** one row on a phone can't always hold the name and every number. Measured with this route, and with the worst case (132.2 km, 9 h 09 min, ↑2 345 ↓2 310 m and a 70-character Finnish name):
+
+    | | This route | The worst case |
+    |---|---|---|
+    | 390 × 844, by touch | all three numbers and "Start → End" | all three numbers; the name gives way |
+    | 360 × 740 by touch, or 390 and 360 with ⌃ (a mouse) | all three numbers; the name gives way | the distance and the time |
+    | 200 % by touch | the distance and the time | the distance |
+    | 200 % with ⌃ | the distance | the distance |
+    | The side panel | the name on a line of its own, then the numbers (48 px) | the same (66 px) |
+
+    If the name matters more than the climb, the phone's row could take the side panel's two lines, lying over the content as that row does.
+- **The desktop's bottom dock** isn't drawn: its top row has no ⌄, so D would need one there first. There the option scrolls as today, and the page says so.
+- **Found on the way,** both on `main` at 200 %, with the sheet at full, where it already scrolls as one:
+  - #597: a finger on the numbers doesn't scroll the sheet, since `.sheet-head` has `touch-action: none`. D's option frame gives it `pan-y`.
+  - #598: scrolled down, the toolbox's row draws over the top row, and a tap on ⌄ presses ⋯. D's option frame puts the top row above it (`z-index: 6`), and so it reaches ⌄ at full at every size.
+
+#### Your leaning (2026-10-30)
+
+A preset with the user's leaning, which the page opens on:
+- **A with a mouse or trackpad only:** ⌃ and ⌄ show where the pointer is a mouse or a trackpad (`(hover: hover) and (pointer: fine)`): a narrow window on a computer and the desktop's bottom dock. Never on a phone, where a finger has the swipe.
+- **B** without the profile size.
+- **C:** a flick of one stop, 0.99, the start's views resisting, and the marks.
+- **D:** the sheet scrolls as one.
+
+It decides nothing until the user chooses.
+
 **Not in it:** cards (#574), the weather card (part 2), building it in the app.
 
-**Not checked:** the feel on a real iPhone, Safari, VoiceOver on ⌃ and ⌄. The mock-up was tried in headless Chrome (`tools/cdp.py`), at every size above, its swipes by touch and ⌃ and ⌄ by a script's click, with the browser pane hidden. A mouse drag on the desktop's bottom dock wasn't tried. Headless Chrome draws about a frame every 0.6 s, so springs were judged by where they came to rest, not by eye.
+**Not checked:** the feel on a real iPhone or Android phone, Safari, VoiceOver and TalkBack on ⌃ and ⌄. The mock-up was tried in headless Chrome (`tools/cdp.py`), at every size above, its swipes by touch and ⌃ and ⌄ by a script's click, with the browser pane hidden. A mouse drag on the desktop's bottom dock wasn't tried. Headless Chrome draws about a frame every 0.6 s, so springs were judged by where they came to rest, not by eye.
