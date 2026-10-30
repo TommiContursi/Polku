@@ -16,6 +16,20 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - With a mouse or a trackpad, **⌃** sits beside **⌄**, and each moves the planner one size: in a narrow window, and with the planner at the bottom of a wide one. ⌄ from the peek folds it to its line. By touch, ⌄ still folds it at once.
 - Before you have a route, the ways to begin don't move up when you drag them: they spring back at once.
 
+### Choices in Layers and Settings fade to their new look ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- A tile in the layer drawer, a base map, a chip such as **Settings → Display → Appearance** or a paddling craft, and a speed such as **Slow** or **Fast** now fade to their chosen look instead of snapping, as Layers' switches do. After you pick a speed from the keyboard, the focus stays on it.
+- In **Settings → Your speeds**, a sport's speeds fade in as you open them, and its arrow turns. In **Layers**, a group's rows fade in as you open it.
+- Opened from the keyboard, they're there at once. With reduced motion, they fade and nothing slides or turns.
+
+### The map's buttons answer a press, and menus open from their button ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- The map's buttons and the top bar's (Locate, zoom, 3D, the compass, Weather, Layers, Plan, Settings and the sport) shrink a little while you press them, as the planner's buttons do, and a button that turns on or off fades to its new colour. In Layers, the base maps' pictures and the On now chips do the same.
+- The sport's menu and the menus that open from a button, such as the planner's ⋯, grow out of their button as they open and shrink back into it as they close. A menu that opens again in its place, as when you pick Paddle's craft, is there at once, and one with no room beside its button fades in and out instead.
+- The first tooltip on the planner's buttons grows in from its button after its short wait; the next one, as you move along the buttons, is there at once.
+- Opened from the keyboard, a menu or a tooltip is there at once. With reduced motion, they fade instead, and nothing shrinks or grows.
+- A new light or dark look, or more contrast, changes everywhere at once: the buttons no longer catch up with the panels.
+
 ### A lighter look over the map, and the route in magenta ([#547](https://github.com/TommiContursi/Polku/issues/547))
 
 - What floats over the map is now glass that lets the map show through. The top bar, the planner, the timeline, the toolbox, Layers, Settings and, on a desktop, the card at a point sit on a reading glass that stays one calm tone over any map, and the map's buttons on a whiter glass, so they read as one group. Each has a light inner edge and a soft outline, so it stands apart from the map under it, in light and in dark.

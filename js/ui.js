@@ -108,17 +108,23 @@ export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 /**
  * A panel built again after one of its controls changed (its counts, notes and other rows follow the change).
- * Call it before the box is emptied, and what it returns once the box is built: a switch or a segment that
- * changed shows its old state for one style pass, then its new one, so its own transitions run where it was
- * pressed, and the focus goes back to the control it was on.
+ * Call it before the box is emptied, and what it returns once the box is built: a switch, a choice (a segment,
+ * a chip, a tile, a base map) or a row that opens, that changed, shows its old state for one style pass, then
+ * its new one, so its own transitions run where it was pressed, and the focus goes back to the control it was on.
  */
-const CONTROLS = 'input[role="switch"], .seg button';
+const CONTROLS = 'input[role="switch"], [aria-pressed], [aria-checked], [aria-expanded]';
+const stateOf = (el) => ['aria-pressed', 'aria-checked', 'aria-expanded'].find((a) => el.hasAttribute(a));
+// (known by its data-* id where it has one: a tile, a base map, a craft, a sport's row; else by its words)
 const controlKey = (el) => (el.matches('input')
   ? el.closest('label').querySelector('.tg-text').firstChild.textContent
-  : `${el.parentNode.firstElementChild.textContent}/${el.textContent}`);
+  : Object.values(el.dataset)[0] ?? `${el.parentNode.firstElementChild.textContent}/${el.textContent}`);
 // (a switch's drawn state is its checked attribute: a press has already flipped .checked when its panel is built again)
-const controlOn = (el) => (el.matches('input') ? el.defaultChecked : el.getAttribute('aria-pressed') === 'true');
-const showControl = (el, on) => { if (el.matches('input')) el.checked = on; else el.setAttribute('aria-pressed', String(on)); };
+const controlOn = (el) => (el.matches('input') ? el.defaultChecked : el.getAttribute(stateOf(el)) === 'true');
+const showControl = (el, on) => {
+  if (el.matches('input')) { el.checked = on; return; }
+  el.setAttribute(stateOf(el), String(on));
+  if (el.matches('.qt-tog')) el.parentNode.classList.toggle('on', on); // (a quick tile's look is on its .qt)
+};
 export function settleControls(box) {
   const was = new Map($$(CONTROLS, box).map((el) => [controlKey(el), controlOn(el)]));
   const focused = box.contains(document.activeElement) && document.activeElement.matches(CONTROLS) ? controlKey(document.activeElement) : null;
@@ -163,11 +169,26 @@ export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '
 let menuIds = 0;
 export function popMenu(anchor, items, { label = '', onClose = null, align = 'right', maxRight = null, sheet = false } = {}) {
   const el = h('div', { class: 'menu menu-pop', role: 'menu', 'aria-label': label || null });
+  // at once from the keyboard, and in place of a menu still leaving (a choice that opens it again, another menu)
+  const leaving = $$('.menu-leaving');
+  for (const m of leaving) m.remove();
+  el.classList.toggle('instant', leaving.length > 0 || anchor.matches(':focus-visible'));
   let open = true;
   const close = (refocus = false) => {
     if (!open) return;
     open = false;
-    el.remove();
+    // it leaves the way it came, as a copy of itself where it was, unless closed from the keyboard
+    if (!refocus && !el.querySelector(':focus-visible') && !anchor.matches(':focus-visible')) {
+      const gone = el.cloneNode(true), now = getComputedStyle(el), top = el.scrollTop; // (read while it's in the page)
+      Object.assign(gone.style, { top: `${el.offsetTop}px`, left: `${el.offsetLeft}px`, width: `${el.offsetWidth}px`, height: `${el.offsetHeight}px`, minWidth: '0', maxHeight: 'none', opacity: now.opacity, transform: now.transform });
+      gone.className = `menu menu-leaving${el.classList.contains('menu-sheet') ? ' menu-sheet' : ''}`;
+      gone.inert = true;
+      el.replaceWith(gone);
+      gone.scrollTop = top;
+      getComputedStyle(gone).opacity; // (from where it was, caught mid-way too)
+      Object.assign(gone.style, { opacity: '', transform: '' });
+      setTimeout(() => gone.remove(), 120);
+    } else el.remove();
     document.removeEventListener('pointerdown', off, true);
     document.removeEventListener('keydown', key, true);
     removeEventListener('resize', onResize);
@@ -233,6 +254,8 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
       }
       el.style.left = `${Math.max(gap, Math.min(right - mw, align === 'left' ? r.left : r.right - mw))}px`;
     }
+    // it grows from its button: the button's middle, at the edge it's nearest
+    el.style.transformOrigin = `${Math.max(0, Math.min(el.offsetWidth, r.left + r.width / 2 - el.offsetLeft))}px ${r.top + r.height / 2 < el.offsetTop ? '0' : '100%'}`;
   };
   place();
   (el.querySelector('.menu-item[aria-checked="true"]:not(:disabled)') || el.querySelector('.menu-item:not(:disabled)'))?.focus({ preventScroll: true });
@@ -249,7 +272,7 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
 
 /**
  * A toolbar button's tooltip: its name, its keys and one sentence. The first one waits about
- * 450 ms; while one was just shown, the next comes at once. Keyboard focus shows it too; it stays
+ * 450 ms; while one is shown, or was just shown, the next comes at once. Keyboard focus shows it too; it stays
  * while the pointer is on it, and Escape hides it (WCAG 1.4.13). Mouse only: a tap shows none.
  */
 let tipEl = null, tipShow = 0, tipHide = 0, tipLast = 0, tipFor = null;
@@ -265,17 +288,21 @@ export function tooltip(el, { name, keys = '', text = '' }) {
     clearTimeout(tipHide);
     tipFor = el;
     tipEl.innerHTML = `<b>${escapeHtml(name)}${keys ? keys.split(' ').map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('') : ''}</b>${escapeHtml(text)}`;
+    // the first grows from its button; one shown or just gone, or the keyboard's, comes at once
+    tipEl.classList.toggle('instant', !tipEl.hidden || Date.now() - tipLast < 900 || el.matches(':focus-visible'));
     tipEl.hidden = false;
     el.setAttribute('aria-describedby', 'tip');
     const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
-    tipEl.style.left = `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`;
+    const left = Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2)), below = r.bottom + 8 + th <= innerHeight - 8;
+    tipEl.style.left = `${left}px`;
     // under its button, or above it where there's no room (a toolbar at the map's foot, #468)
-    tipEl.style.top = `${r.bottom + 8 + th <= innerHeight - 8 ? r.bottom + 8 : r.top - 8 - th}px`;
+    tipEl.style.top = `${below ? r.bottom + 8 : r.top - 8 - th}px`;
+    tipEl.style.transformOrigin = `${r.left + r.width / 2 - left}px ${below ? '0' : '100%'}`;
   };
   const later = () => {
     clearTimeout(tipShow);
     if (el.getAttribute('aria-expanded') === 'true') return; // its menu is open: nothing over it
-    tipShow = setTimeout(show, Date.now() - tipLast < 900 ? 0 : 450);
+    tipShow = setTimeout(show, !tipEl.hidden || Date.now() - tipLast < 900 ? 0 : 450);
   };
   el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !el.disabled) later(); });
   el.addEventListener('pointerleave', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(); });
@@ -287,6 +314,7 @@ function hideTip(ms = 120) {
   clearTimeout(tipHide);
   tipHide = setTimeout(() => {
     if (!tipEl || tipEl.hidden) return;
+    tipEl.classList.toggle('instant', !ms); // (a press, a key or Escape: at once; the pointer leaving: the way it came)
     tipEl.hidden = true;
     tipLast = Date.now();
     tipFor?.removeAttribute('aria-describedby');

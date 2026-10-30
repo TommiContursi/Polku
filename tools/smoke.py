@@ -363,6 +363,116 @@ LAYERS_MOTION = """(async (reduced) => {
   await wait(300);
   return errs;
 })"""
+# Motion 1's panels (#540), by a pointer: a group a click opens fades its rows in and turns its chevron, not when
+# Layers is drawn again; a quick tile fades to its look, its icon too, and a speed preset to its own (keeping the
+# focus); Settings' speeds open with their editor fading in and their chevron turning, not when Settings is drawn
+# again. The groups' and the speeds' saved choices are put back.
+PANELS_MOTION = """(async (reduced) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], tag = reduced ? 'reduced motion: ' : '';
+  const saved = ['polku:speeds', 'polku:layerGroups'].map((k) => [k, localStorage.getItem(k)]);
+  const click = (el, detail = 1) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
+  const fades = (el) => el.getAnimations().map((a) => a.transitionProperty).filter(Boolean).sort().join(' ') || 'nothing';
+  const named = (els) => [...new Set(els.flatMap((e) => e.getAnimations().map((a) => a.animationName).filter(Boolean)))].join(' ') || 'nothing';
+  const turns = (el) => el.getAnimations({ subtree: true }).filter((a) => a.effect.pseudoElement === '::after').map((a) => a.transitionProperty).join(' ') || 'nothing';
+  if (document.querySelector('#layers-panel').hidden) { click(document.querySelector('#btn-layers')); click(document.querySelector('#quick-layers .qt-more')); }
+  await wait(300);
+  const body = document.querySelector('#layers-body');
+  const group = () => [...body.querySelectorAll('.lg-group')].at(-1), rows = (g) => [...g.children].filter((c) => c.tagName !== 'SUMMARY');
+  if (group().open) { group().open = false; group().querySelector('summary').getAnimations({ subtree: true }).forEach((a) => a.finish()); } // (closed, its chevron too)
+  click(group().querySelector('summary'));
+  let got = `${named(rows(group()))}, ${turns(group().querySelector('summary'))}`;
+  if (got !== (reduced ? 'qd-fade, nothing' : 'lg-in, transform')) errs.push(`${tag}a group a click opens: its rows and chevron move ${got}, not ${reduced ? 'qd-fade, nothing' : 'lg-in, transform'}`);
+  await wait(400);
+  const tswitch = () => [...body.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === 'Trail details').querySelector('input');
+  if (!tswitch().closest('.lg-group').open) { tswitch().closest('.lg-group').open = true; await wait(100); }
+  tswitch().click();
+  got = named(rows(tswitch().closest('.lg-group')));
+  if (got !== 'nothing') errs.push(`${tag}Layers drawn again after a switch: the open group's rows move ${got}`);
+  tswitch().click();
+  await wait(300);
+  // the quick drawer: a tile turned on fades to its look; a weather one (Wind where the sport has it), whose
+  // setWeather() draws the panels itself (once)
+  click(document.querySelector('#btn-layers')); await wait(300);
+  if (!document.querySelector('#quick-layers.open')) { click(document.querySelector('#btn-layers')); await wait(300); }
+  const wxId = (document.querySelector('#quick-layers .qt-tog[data-tile="wx:wind"]') || document.querySelector('#quick-layers .qt-tog[data-tile^="wx:"]'))?.dataset.tile;
+  const wx = () => document.querySelector(`#quick-layers .qt-tog[data-tile="${wxId}"]`);
+  if (wx()?.getAttribute('aria-pressed') === 'true') { click(wx()); await wait(300); }
+  const off = wxId && wx();
+  if (!off) errs.push(`${tag}no weather tile in the quick drawer`);
+  else {
+    const id = off.dataset.tile;
+    getComputedStyle(off.parentNode).backgroundColor;
+    click(off);
+    const tile = document.querySelector(`#quick-layers .qt-tog[data-tile="${id}"]`).parentNode;
+    got = fades(tile);
+    if (!tile.classList.contains('on')) errs.push(`${tag}the ${id} tile didn't turn on`);
+    if (!got.includes('background-color') || !got.includes('border-top-color')) errs.push(`${tag}the ${id} tile turned on moves ${got}, not its colours`);
+    if (fades(tile.querySelector('.qt-ic')) !== 'color') errs.push(`${tag}the ${id} tile's icon turns green moving ${fades(tile.querySelector('.qt-ic'))}, not with its tile`);
+    await wait(300);
+    click(document.querySelector(`#quick-layers .qt-tog[data-tile="${id}"]`));
+    await wait(300);
+  }
+  click(document.querySelector('#btn-layers')); await wait(300);
+  // Settings' speeds
+  click(document.querySelector('#btn-settings')); await wait(300);
+  const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
+  if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
+  click(row());
+  got = [fades(sb.querySelector('.speed-box')), fades(row().querySelector('.way-chev'))].join(', ');
+  if (got !== (reduced ? 'opacity, nothing' : 'opacity transform, transform')) errs.push(`${tag}MTB's speeds open with their editor and chevron moving ${got}, not ${reduced ? 'opacity, nothing' : 'opacity transform, transform'}`);
+  await wait(400);
+  const presets = () => [...sb.querySelectorAll('.speed-presets button')];
+  const other = presets().find((b) => b.getAttribute('aria-pressed') !== 'true' && b.textContent !== 'Custom');
+  other.focus();
+  getComputedStyle(other).backgroundColor;
+  click(other);
+  const now = presets().find((b) => b.textContent === other.textContent);
+  got = fades(now);
+  if (now.getAttribute('aria-pressed') !== 'true') errs.push(`${tag}${now.textContent} isn't pressed`);
+  if (!got.includes('background-color')) errs.push(`${tag}the ${now.textContent} preset moves ${got}, not its colour`);
+  if (document.activeElement !== now) errs.push(`${tag}the focus went to ${document.activeElement.tagName}.${document.activeElement.className}, not the preset it pressed`);
+  await wait(300);
+  click(sb.querySelector('[data-appearance][aria-pressed="true"]'));
+  got = fades(sb.querySelector('.speed-box'));
+  if (got !== 'nothing') errs.push(`${tag}Settings drawn again: the open speeds move ${got}`);
+  click(row()); await wait(300);
+  click(document.querySelector('#settings-panel .panel-close'));
+  for (const [k, v] of saved) if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+  await wait(300);
+  return errs;
+})"""
+# ... and from the keyboard (a real key pressed first, so a focused control shows it): a group, its rows and its
+# chevron at once; MTB's speeds and their chevron at once
+PANELS_KEYS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const saved = ['polku:speeds', 'polku:layerGroups'].map((k) => [k, localStorage.getItem(k)]);
+  const click = (el, detail = 1) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
+  const fades = (el) => el.getAnimations().map((a) => a.transitionProperty).filter(Boolean).sort().join(' ') || 'nothing';
+  const named = (els) => [...new Set(els.flatMap((e) => e.getAnimations().map((a) => a.animationName).filter(Boolean)))].join(' ') || 'nothing';
+  const turns = (el) => el.getAnimations({ subtree: true }).filter((a) => a.effect.pseudoElement === '::after').map((a) => a.transitionProperty).join(' ') || 'nothing';
+  if (document.querySelector('#layers-panel').hidden) { click(document.querySelector('#btn-layers')); click(document.querySelector('#quick-layers .qt-more')); }
+  await wait(300);
+  const g = [...document.querySelectorAll('#layers-body .lg-group')].at(-1), sum = g.querySelector('summary');
+  if (g.open) { g.open = false; sum.getAnimations({ subtree: true }).forEach((a) => a.finish()); } // (closed, its chevron too)
+  sum.focus();
+  if (!sum.matches(':focus-visible')) errs.push(`a group’s heading has no keyboard focus`);
+  click(sum, 0);
+  const got = `${named([...g.children].filter((c) => c !== sum))}, ${turns(sum)}`;
+  if (got !== 'nothing, nothing') errs.push(`a group opened from the keyboard: its rows and chevron move ${got}, not at once`);
+  click(document.querySelector('#btn-layers')); await wait(300);
+  click(document.querySelector('#btn-settings')); await wait(300);
+  const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
+  if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
+  row().focus();
+  click(row(), 0);
+  const speeds = `${fades(sb.querySelector('.speed-box'))}, ${fades(row().querySelector('.way-chev'))}`;
+  if (speeds !== 'nothing, nothing') errs.push(`MTB's speeds opened from the keyboard: their editor and chevron move ${speeds}, not at once`);
+  click(row(), 0);
+  click(document.querySelector('#settings-panel .panel-close'));
+  for (const [k, v] of saved) if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+  await wait(300);
+  return errs;
+})()"""
 LAYERS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const { ACTIVITIES, RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
@@ -5006,6 +5116,19 @@ def layers(chrome):
     fails += pg.js(LAYERS_MOTION + '(false)')
     pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
     fails += pg.js(LAYERS_MOTION + '(true)')
+    fails += pg.js(PANELS_MOTION + '(true)')
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+    # a real click first, as a finger's or a mouse's, on ⚙ (Layers then takes Settings' place): a control the app
+    # focuses after it shows no keyboard focus, as after a tap (with no real input yet, or after a press on something
+    # that takes no focus, Chrome shows a focus from code as the keyboard's)
+    x, y = pg.js("(() => { const r = document.querySelector('#btn-settings').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()")
+    for event, buttons in (('mousePressed', 1), ('mouseReleased', 0)):
+        pg.c.send('Input.dispatchMouseEvent', {'type': event, 'x': x, 'y': y, 'button': 'left', 'buttons': buttons, 'clickCount': 1}, pg.s)
+    fails += pg.js(PANELS_MOTION + '(false)')
+    for event in ('rawKeyDown', 'keyUp'):
+        pg.c.send('Input.dispatchKeyEvent', {'type': event, 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
+    fails += pg.js(PANELS_KEYS)
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} layers (every sport)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
@@ -13870,6 +13993,94 @@ CT_TOAST = """(async () => {
   return [enter, exit];
 })()"""
 CT_PRESSED = """((sel) => { const e = document.querySelector(sel), m = getComputedStyle(e).transform.match(/matrix\\(([\\d.]+)/); return m ? +m[1] : 1; })"""
+# Motion 1 (#540): the sport pill's menu and a menu from a button grow as they open and fade as they go (a copy of the
+# menu fades, the menu itself is gone at once); from the keyboard both come and go at once
+CT_POPS = """(async (keyed) => {
+  const U = await import(location.origin + '/js/ui.js');
+  const moves = (el) => el.getAnimations().map((a) => a.transitionProperty).filter((p) => p !== 'display').sort().join(' ') || 'nothing';
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // (each opens and goes once it has stopped moving: one closed as it starts has nowhere to go)
+  const settle = async (el) => { const t0 = Date.now(); await sleep(30); while (el.getAnimations().length && Date.now() - t0 < 5000) await sleep(30); };
+  const out = {}, pill = document.querySelector('#activity-bar .act-current'), menu = document.querySelector('#activity-bar .act-menu'), b = document.querySelector('#btn-settings');
+  await settle(menu);
+  if (keyed) { pill.focus(); if (!pill.matches(':focus-visible')) return { pill: 'no keyboard focus' }; }
+  pill.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: keyed ? 0 : 1 }));
+  out.pill = menu.hidden ? 'closed' : moves(menu);
+  out.chevron = moves(pill.querySelector('.ic:last-child'));
+  await settle(menu);
+  if (keyed) pill.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  else pill.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  out.pillOut = menu.hidden ? moves(menu) : 'open';
+  await settle(menu);
+  if (keyed) b.focus();
+  const m = U.popMenu(b, [{ group: 'A group', items: [{ label: 'One', fn: () => {} }, { label: 'Two, a longer one', fn: () => {} }] }]);
+  out.menu = moves(m.el);
+  await settle(m.el);
+  const sizes = (el) => [...el.querySelectorAll('.menu-item')].map((i) => `${Math.round(i.getBoundingClientRect().width)}×${Math.round(i.getBoundingClientRect().height)}`).join(' ');
+  const was = sizes(m.el);
+  if (keyed) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); else m.close();
+  const gone = document.querySelector('.menu-leaving');
+  out.menuOut = document.querySelector('.menu-pop') ? 'still a menu' : gone ? moves(gone) : 'nothing';
+  if (gone && sizes(gone) !== was) out.menuOut += ` (its items ${was} became ${sizes(gone)} as it went)`;
+  gone?.remove();
+  // a menu with no room beside its button is a sheet of its own: it only fades, in and out; from the keyboard, at once
+  if (keyed) b.focus();
+  const sh = U.popMenu(b, [{ label: 'One', fn: () => {} }], { sheet: true, maxRight: 200 });
+  out.sheet = sh.el.classList.contains('menu-sheet') ? moves(sh.el) : 'not a sheet';
+  await settle(sh.el);
+  if (keyed) { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); if (document.querySelector('.menu-leaving')) out.sheet += ' / a copy fading'; return out; }
+  sh.close();
+  const sg = document.querySelector('.menu-leaving');
+  out.sheet += ` / ${sg ? moves(sg) : 'nothing'}`;
+  sg?.remove();
+  // a menu scrolled down leaves where it was scrolled to
+  const long = U.popMenu(b, Array.from({ length: 40 }, (_, i) => ({ label: `Item ${i + 1}`, fn: () => {} })));
+  await settle(long.el);
+  long.el.scrollTop = 200;
+  const top = long.el.scrollTop;
+  long.close();
+  const lg = document.querySelector('.menu-leaving');
+  out.scroll = !top ? 'not scrolled' : !lg ? 'no copy' : lg.scrollTop === top ? 'kept' : `at ${lg.scrollTop}, not ${top}`;
+  lg?.remove();
+  return out;
+})"""
+# a new light or dark (Settings → Appearance) is drawn at once: nothing fades its colours behind the panels (the
+# chips themselves apart, which fade to their choice); then the appearance it was
+CT_THEME = """(async () => {
+  const click = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  click(document.querySelector('#btn-settings')); await wait(400);
+  const was = document.querySelector('#settings-body [data-appearance][aria-pressed="true"]').dataset.appearance;
+  click(document.querySelector(`#settings-body [data-appearance="${document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'}"]`));
+  const fading = document.getAnimations().filter((a) => /color/.test(a.transitionProperty || '') && !a.effect.target.closest('[data-appearance]'))
+    .map((a) => `${a.effect.target.id || String(a.effect.target.className).split(' ')[0]} ${a.transitionProperty}`);
+  await wait(300);
+  click(document.querySelector(`#settings-body [data-appearance="${was}"]`)); await wait(300);
+  click(document.querySelector('#settings-panel .panel-close')); await wait(300);
+  return [...new Set(fading)].slice(0, 4).join(', ');
+})()"""
+# two buttons with a tooltip each, and what the tooltip starts moving (transitionrun, so a quick machine doesn't miss it)
+CT_TIPS = """(async () => {
+  const U = await import(location.origin + '/js/ui.js');
+  for (const [id, x] of [['tip-a', 600], ['tip-b', 660]]) {
+    const b = document.body.appendChild(Object.assign(document.createElement('button'), { id, textContent: id }));
+    Object.assign(b.style, { position: 'fixed', left: `${x}px`, top: '300px', width: '50px', height: '40px', zIndex: 40 });
+    U.tooltip(b, { name: id });
+  }
+  window.__tipRuns = [];
+  document.getElementById('tip').addEventListener('transitionrun', (e) => { if (e.propertyName !== 'display') __tipRuns.push(e.propertyName); });
+  document.getElementById('tip-b').addEventListener('pointerenter', () => { window.__tipEnter = performance.now(); });
+  return true;
+})()"""
+# (the first: what it started, two frames on; the next: what moves as soon as it's there, and how long after the
+# pointer came that was: not the first one's wait)
+CT_TIP_SHOWN = """(async (name, first) => {
+  const tip = document.getElementById('tip'), frame = () => new Promise((r) => requestAnimationFrame(r)), t0 = Date.now();
+  while ((tip.hidden || tip.textContent !== name) && Date.now() - t0 < 5000) await new Promise((r) => setTimeout(r, 30));
+  if (tip.hidden) return 'not shown';
+  if (!first) return `${tip.getAnimations().map((a) => a.transitionProperty).filter((p) => p !== 'display').sort().join(' ') || 'nothing'}${performance.now() - __tipEnter > 300 ? `, after ${Math.round(performance.now() - __tipEnter)} ms` : ''}`;
+  await frame(); await frame();
+  return [...new Set(__tipRuns)].sort().join(' ') || 'nothing';
+})"""
 CT_POINTS = "(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); for (const q of [[23.80, 61.512], [23.815, 61.5155], [23.83, 61.513]]) p.addPoint(q); await new Promise((r) => setTimeout(r, 800)); return true; })()"
 CT_RING = """((sel) => { const e = document.activeElement, c = getComputedStyle(e), probe = document.body.appendChild(document.createElement('i'));
   probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--focus'); const want = getComputedStyle(probe).color; probe.remove();
@@ -13981,7 +14192,8 @@ def controls(chrome):
                 # a press answers (motion allowed): the round trip's chip, Make 3 loops, its switch
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
                 pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await new Promise((r) => setTimeout(r, 800)); return true; })()")
-                for sel, what in (('.pl-way .rt-chips .chip:not([aria-pressed=true])', 'a chip'), ('.pl-way .rt-make', 'Make 3 loops'), ('.pl-way .rt-unit button:not([aria-pressed=true])', 'a switch')):
+                for sel, what in (('.pl-way .rt-chips .chip:not([aria-pressed=true])', 'a chip'), ('.pl-way .rt-make', 'Make 3 loops'), ('.pl-way .rt-unit button:not([aria-pressed=true])', 'a switch'),
+                                  ('#btn-locate', 'Locate'), ('#btn-layers', 'Layers'), ('#btn-settings', 'Settings')):
                     # (and what a press there lands on, for the FAIL line)
                     x, y, on = pg.js(f"(() => {{ const e = document.querySelector({json.dumps(sel)}), r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, t = document.elementFromPoint(x, y);"
                                      " return [x, y, !t || e.contains(t) ? '' : t.id || String(t.className) || t.tagName]; })()")
@@ -14001,10 +14213,39 @@ def controls(chrome):
                 enter, exit = pg.js(CT_TOAST)
                 if (enter, exit) != ('opacity translate', 'opacity translate'):
                     fails.append(f'{name}: a note fades and rises in with {enter}, out with {exit}, not opacity and translate')
+                # menus and the toolbar's tooltip (Motion 1, #540): the first tooltip grows; the next, just after, comes at once
+                pg.js(CT_TIPS)
+                tips = []
+                for x, tip, first in ((625, 'tip-a', 'true'), (685, 'tip-b', 'false')):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': 320, 'button': 'none'}, pg.s)
+                    tips.append(pg.js(f'({CT_TIP_SHOWN})({json.dumps(tip)}, {first})'))
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 450, 'button': 'none'}, pg.s)
+                if tips != ['opacity transform', 'nothing']:
+                    fails.append(f'{name}: the first tooltip moves {tips[0]}, the next one just after {tips[1]}, not opacity and transform, then nothing at once')
+                for media, want, chevron in (('no-preference', 'opacity transform', 'transform'), ('reduce', 'opacity', 'nothing')):
+                    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+                    got = pg.js(f'({CT_POPS})(false)')
+                    if [got['pill'], got['pillOut'], got['menu'], got['menuOut']] != [want] * 4 or got['chevron'] != chevron:
+                        fails.append(f'{name}, reduced motion {media}: by a click, the sport menu opens moving {got["pill"]} (its chevron {got["chevron"]}) and goes {got["pillOut"]}, a menu opens {got["menu"]} and goes {got["menuOut"]}, not {want} ({chevron})')
+                    if got['sheet'] != 'opacity / opacity':
+                        fails.append(f'{name}, reduced motion {media}: a menu that is a sheet of its own comes and goes moving {got["sheet"]}, not opacity alone')
+                    if got['scroll'] != 'kept':
+                        fails.append(f'{name}, reduced motion {media}: a menu scrolled down leaves {got["scroll"]}')
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+                key(pg, 'Tab', 'Tab', 9)
+                got = pg.js(f'({CT_POPS})(true)')
+                if set(got.values()) != {'nothing'}:
+                    fails.append(f'{name}: from the keyboard, the sport menu opens moving {got.get("pill")} (its chevron {got.get("chevron")}) and goes {got.get("pillOut")}, a menu opens {got.get("menu")} and goes {got.get("menuOut")}, a sheet of its own {got.get("sheet")}, not at once')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
                 enter, exit = pg.js(CT_TOAST)
                 if (enter, exit) != ('opacity', 'opacity'):
                     fails.append(f'{name}, reduced motion: a note comes in with {enter}, goes with {exit}, not opacity alone')
+                # (after the notes: a new light or dark redraws the map, and what that sets off mustn't land in their checks)
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+                fading = pg.js(CT_THEME)
+                if fading:
+                    fails.append(f'{name}: a new light or dark fades {fading} behind the panels')
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
                 # one focus ring (#385): the sport menu's sports and the ⋯ menu's items draw it inside, a button outside
                 pg.js("polku.planner.close(); document.querySelector('#activity-bar .act-current').focus(), true")
                 key(pg, 'Enter', 'Enter', 13, '\r')
