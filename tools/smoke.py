@@ -8863,6 +8863,69 @@ def fold_desktop(chrome):
     return fails
 
 
+# A mouse drags the phone's sheet in a narrow desktop window as a finger swipes it (#585): the folded line and the
+# handle in its top padding up, the open sheet's handle up and down; in 10 px moves, as a mouse sends them, and a quick
+# one of 40 px that leaves the sheet before the drag starts (a mouse isn't captured as a finger is), held still before
+# it lets go (no flick). A click on the line still opens it
+def fold_mouse(chrome):
+    fails = []
+    pg = chrome.page(800, 844, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        st = lambda: pg.js('polku.planner.panel.dataset.state')
+        mouse = lambda kind, x, y, b: pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left' if b or kind != 'mouseMoved' else 'none', 'buttons': b, 'clickCount': 1}, pg.s)
+
+        def drag(what, x, y, dy, want, step=10):
+            mouse('mouseMoved', x, y, 0)
+            mouse('mousePressed', x, y, 1)
+            for k in range(1, abs(dy) // step + 1):
+                mouse('mouseMoved', x, y + (step if dy > 0 else -step) * k, 1)
+                time.sleep(0.016)
+            moving = pg.js("polku.planner.panel.classList.contains('dragging')")
+            time.sleep(0.15)
+            mouse('mouseReleased', x, y + dy, 0)
+            fold_settled(pg, fails, what)
+            if not moving or st() not in want:
+                fails.append(f"a mouse drag on {what}: the sheet {'followed' if moving else 'stayed still'}, came to {st()} (not {' or '.join(want)})")
+
+        opened = ('peek', 'profile', 'half')
+        pg.js("polku.planner.fold({ instant: true }); true")
+        fold_settled(pg, fails, 'folded')
+        drag('the folded line, 200 px up', *fold_at(pg, 'polku.planner.els.foldGo'), -200, opened)
+        pg.js("polku.planner.fold({ instant: true }); true")
+        fold_settled(pg, fails, 'folded again')
+        x, y = pg.js("(() => { const r = polku.planner.els.fold.getBoundingClientRect(); return [r.left + r.width / 2, r.top + 7]; })()")
+        drag("the folded line's handle, 200 px up", x, y, -200, opened)
+        pg.js("polku.planner.setSheetState('peek', { instant: true }); true")
+        fold_settled(pg, fails, 'peek')
+        drag("the peek's handle, 200 px up", *fold_at(pg, 'polku.planner.els.handle'), -200, ('profile', 'half'))
+        drag('the handle, 500 px down', *fold_at(pg, 'polku.planner.els.handle'), 500, ('folded',))
+        pg.js("polku.planner.setSheetState('peek', { instant: true }); true")
+        fold_settled(pg, fails, 'peek again')
+        drag("the peek's handle, 200 px up in 40 px moves", *fold_at(pg, 'polku.planner.els.handle'), -200, ('profile', 'half'), 40)
+        pg.js("polku.planner.fold({ instant: true }); true")
+        fold_settled(pg, fails, 'folded once more')
+        # let go just off the sheet before a drag starts: the mouse moving on with no button moves nothing
+        x, y = pg.js("(() => { const r = polku.planner.els.fold.getBoundingClientRect(); return [r.left + r.width / 2, r.top + 7]; })()")
+        mouse('mouseMoved', x, y, 0)
+        mouse('mousePressed', x, y, 1)
+        mouse('mouseMoved', x, y - 8, 1)
+        mouse('mouseReleased', x, y - 8, 0)
+        for k in range(1, 11):
+            mouse('mouseMoved', x, y - 8 - 10 * k, 0)
+        if pg.js("polku.planner.panel.classList.contains('dragging')") or st() != 'folded':
+            fails.append(f'a mouse let go off the folded line, then moved with no button: the sheet followed it, to {st()}')
+        fold_click(pg, *fold_at(pg, 'polku.planner.els.foldGo'))
+        fold_settled(pg, fails, 'a click on the line')
+        if st() == 'folded':
+            fails.append('a click on the folded line: still folded')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 # #344 at 100 %: a start step raised to just below the top bar (Draw it's Fine-tune at 360 × 740) leaves no map button under
 # the top bar or the sheet
 def fold_start(chrome):
@@ -9259,7 +9322,7 @@ def fold_away_card(chrome):
 
 
 def fold(chrome):
-    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)] + [f'390x844, a card with the planner put away: {f}' for f in fold_away_card(chrome)]
+    fails = [f'390x844: {f}' for f in fold_phone(chrome)] + [f'360x740: {f}' for f in fold_start(chrome)] + [f'195x422 (200 %): {f}' for f in fold_200(chrome)] + [f'1440x900: {f}' for f in fold_desktop(chrome)] + [f'800x844, by mouse: {f}' for f in fold_mouse(chrome)] + fold_tabs(chrome) + [f'390x844, folded cards: {f}' for f in fold_kinds(chrome)] + [f'390x844, nothing to fold: {f}' for f in fold_clear(chrome)] + [f'390x844, its motion: {f}' for f in fold_motion(chrome)] + [f'390x844, a card with the planner put away: {f}' for f in fold_away_card(chrome)]
     print(f"{'ok  ' if not fails else 'FAIL'} fold, then away: the planner and the cards" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -14471,7 +14534,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
-    ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge'),
+    ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))

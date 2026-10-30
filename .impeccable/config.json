@@ -20,6 +20,15 @@
         ],
         "createdAt": "2026-10-22T04:43:46.487Z",
         "reason": "Claude: the inner card is a demo of the floating menu (menu-item) shown inside the specimen's controls panel, not page structure"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/issue-233-sheet-stops.html"
+        ],
+        "createdAt": "2026-10-29T23:14:09.158Z",
+        "reason": "Claude: the finding is .route-bar > i, css/app.css's routing progress bar linked by the mock-up, not the mock-up's own CSS; it slides only while a leg is routed, after 300 ms, and pulses with reduced motion: a progress indicator, sanctioned constant motion"
       }
     ]
   }

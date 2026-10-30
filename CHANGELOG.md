@@ -14,6 +14,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **High contrast** in Settings → Display, and your device's settings for more contrast or less transparency, turn the glass solid. More contrast also makes grey words darker and lines heavier, and gives every panel and button a clear outline. **High contrast** still thickens the trails too.
 - The word **Layers** on its button sits on a darker band, so it's readable over a light map ([#588](https://github.com/TommiContursi/Polku/issues/588)). On a phone the logo is the green mark alone. In dark, Check's warning box is solid and a switch's chosen choice is lighter than its track.
 
+### Fixed: a mouse drags the planner in a narrow window ([#585](https://github.com/TommiContursi/Polku/issues/585))
+
+- In a window too narrow for the side panel, or with the planner at the bottom, a mouse drags the folded planner's line and its handle up to open it, as a finger does.
+- A quick mouse drag on the open planner's handle moves it too, instead of doing nothing.
+
 ## 2026-10-29
 
 ### Choose light or dark in Settings ([#323](https://github.com/TommiContursi/Polku/issues/323))
