@@ -13909,9 +13909,6 @@ def controls(chrome):
                     if got['sheet'] != 'opacity / opacity':
                         fails.append(f'{name}, reduced motion {media}: a menu that is a sheet of its own comes and goes moving {got["sheet"]}, not opacity alone')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
-                fading = pg.js(CT_THEME)
-                if fading:
-                    fails.append(f'{name}: a new light or dark fades {fading} behind the panels')
                 key(pg, 'Tab', 'Tab', 9)
                 got = pg.js(f'({CT_POPS})(true)')
                 if set(got.values()) != {'nothing'}:
@@ -13920,6 +13917,12 @@ def controls(chrome):
                 enter, exit = pg.js(CT_TOAST)
                 if (enter, exit) != ('opacity', 'opacity'):
                     fails.append(f'{name}, reduced motion: a note comes in with {enter}, goes with {exit}, not opacity alone')
+                # (after the notes: a new light or dark redraws the map, and what that sets off mustn't land in their checks)
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+                fading = pg.js(CT_THEME)
+                if fading:
+                    fails.append(f'{name}: a new light or dark fades {fading} behind the panels')
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
                 # one focus ring (#385): the sport menu's sports and the ⋯ menu's items draw it inside, a button outside
                 pg.js("polku.planner.close(); document.querySelector('#activity-bar .act-current').focus(), true")
                 key(pg, 'Enter', 'Enter', 13, '\r')
