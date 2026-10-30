@@ -15,8 +15,8 @@
   width below are the build's, measured in headless Chrome, except what isn't built yet: #568's three buttons in the
   route's view and the weather at the foot (step 3, part 2 of #233), drawn as their plans say.
 
-  ?opt=today|a|b|c|d  &size=1024|1440|1920|2560  &scene=list|warning|profile|tabs|point|done|weather|folded
-  &state=a|b  &bar=today|centre|right  &planner=top|centre  &tools=edge|map|window  &show=travel,ghost,room
+  ?opt=today|a|b|c|d|e  &size=1024|1440|1920|2560  &scene=list|warning|profile|tabs|point|done|weather|folded
+  &state=a|b  &bar=today|centre|right  &planner=top|centre  &tools=edge|map|window  &done=end|start  &show=travel,ghost,room
   &frames=side|stack
 -->
 <style>
@@ -34,6 +34,7 @@ button { font: inherit; color: inherit; }
 .cv > p { margin: 0 0 8px; max-width: 980px; }
 .bars { margin: 12px -16px 0; padding: 8px 16px; background: var(--page-bg); border-bottom: 1px solid rgba(128,128,128,.25); }
 .bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.sws { flex: 1; display: flex; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
 .bar > span { min-width: 74px; font-size: 12.5px; font-weight: 700; opacity: .8; }
 .sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
 .sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; font-weight: 600; font-size: 13px; }
@@ -46,8 +47,11 @@ button { font: inherit; color: inherit; }
 .about { margin: 14px 0 10px; padding: 12px 16px; border-radius: 14px; background: var(--page-card); max-width: 1100px; box-shadow: 0 1px 3px rgba(16,24,20,.1); }
 .about h2 { margin: 0 0 4px; font-size: 16px; }
 .about p { margin: 4px 0; }
-#stage { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; align-items: start; margin-top: 10px; }
+#stage { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; align-items: end; margin-top: 10px; }
 #stage.stack { grid-template-columns: 1fr; }
+@media (max-width: 900px) { #stage { grid-template-columns: 1fr; } }
+.meas .scroll-note { display: none; }
+@media (max-width: 1100px) { .meas .scroll-note { display: block; } }
 .fr { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .fr figcaption { font-size: 13px; color: var(--page-cap); }
 .fr figcaption b { color: var(--page-fg); }
@@ -118,7 +122,7 @@ button { font: inherit; color: inherit; }
 .tools .tb.danger { color: var(--danger); }
 .tools .lab { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px 0 8px; border-radius: 10px; font-size: 13.5px; font-weight: 600; }
 .tools .lab .ic { color: var(--accent); }
-.tools .sep { width: 1px; height: 24px; margin: 0 3px; background: var(--line); }
+.tools .sep { width: 1px; height: 24px; margin: 0 2px; background: var(--line); }
 .tools .modes { display: flex; gap: 2px; padding: 0; }
 .tools .modes span { display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-width: 40px; padding: 0 8px; border-radius: 10px; font-size: 13.5px; font-weight: 600; }
 .tools .modes span .ic { color: var(--muted-glass); }
@@ -128,7 +132,7 @@ button { font: inherit; color: inherit; }
 .tools .pick .ic:first-child { color: var(--accent); }
 .tools .pick .two { display: flex; flex-direction: column; line-height: 1.1; }
 .tools .pick .two small { font-size: 11px; font-weight: 600; color: var(--muted-glass); }
-.tools .done { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; margin-left: 4px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); background: var(--solid); font-size: 15px; font-weight: 600; }
+.tools .done { display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-width: 59px; padding: 0 12px; margin-left: 4px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); background: var(--solid); font-size: 15px; font-weight: 600; }
 /* the weather: today's timeline (the build's picture) floating, or at the foot as its plan draws it */
 .wx { border-radius: 16px; overflow: hidden; box-shadow: var(--shadow), var(--edge); }
 .wx img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
@@ -153,11 +157,12 @@ button { font: inherit; color: inherit; }
   <p>Where the toolbar, the planner and the top bar sit on a desktop (<a href="https://github.com/TommiContursi/Polku/issues/594">#594</a>). <b>Today</b> on the left; the option on the right, in the same scene, at the same size. Use <b>Change</b> (or <b>Play</b>) to grow and shrink the planner, turn the weather on, or press Done, and watch what moves. On B's look (<a href="https://github.com/TommiContursi/Polku/pull/591">#591</a>). The plan with the critique and the recommendation: <a href="../issue-594-desktop-layout.md">issue-594-desktop-layout.md</a>.</p>
 
   <div class="bars" role="group" aria-label="What the frames show">
-    <div class="bar"><span id="l-opt">Option</span><div class="sw" data-k="opt" aria-labelledby="l-opt"><button data-v="a">A: today, with what's decided</button><button data-v="b">B: the idea</button><button data-v="c">C: B, the planner at the top</button><button data-v="d">D: recommended</button><button data-v="mix" hidden>Your mix</button></div></div>
-    <div class="bar"><span id="l-parts">Its parts</span>
+    <div class="bar"><span id="l-opt">Option</span><div class="sw" data-k="opt" aria-labelledby="l-opt"><button data-v="a">A: today, with what's decided</button><button data-v="b">B: the idea</button><button data-v="c">C: B, with the planner at the top</button><button data-v="d">D: recommended</button><button data-v="e">E: D, Done by the planner</button><button data-v="mix" hidden>Your mix</button></div></div>
+    <div class="bar"><span id="l-parts">Its parts</span><div class="sws">
       <div class="sw" data-k="bar" aria-label="The top bar"><button data-v="today">Top bar at the left</button><button data-v="right">At the left, ⚙ at the right</button><button data-v="centre">Search and sport centred, ⚙ at the right</button></div>
       <div class="sw" data-k="planner" aria-label="The planner"><button data-v="top">Planner at the top</button><button data-v="centre">Planner centred</button></div>
-      <div class="sw" data-k="tools" aria-label="The toolbar"><button data-v="edge">Toolbar on the planner's edge</button><button data-v="map">Centred beside the planner</button><button data-v="window">Centred in the window</button></div></div>
+      <div class="sw" data-k="tools" aria-label="The toolbar"><button data-v="edge">Toolbar on the planner's edge</button><button data-v="map">Centred beside the planner</button><button data-v="window">Centred in the window</button></div>
+      <div class="sw" data-k="done" aria-label="Done and Edit"><button data-v="end">Done at the toolbar's end</button><button data-v="start">Done by the planner</button></div></div></div>
     <div class="bar"><span id="l-size">Size</span><div class="sw" data-k="size" aria-labelledby="l-size"><button data-v="1024">1024 × 768</button><button data-v="1440">1440 × 900</button><button data-v="1920">1920 × 1080</button><button data-v="2560">2560 × 1440</button></div>
       <span id="l-frames">Frames</span><div class="sw" data-k="frames" aria-labelledby="l-frames"><button data-v="side">Side by side</button><button data-v="stack">One above the other</button></div></div>
     <div class="bar"><span id="l-scene">Scene</span><div class="sw" data-k="scene" aria-labelledby="l-scene"></div></div>
@@ -242,13 +247,15 @@ const PRESET = {
   b: { bar: 'centre', planner: 'centre', tools: 'map' },
   c: { bar: 'centre', planner: 'top', tools: 'map' },
   d: { bar: 'right', planner: 'top', tools: 'edge', round: true },
+  e: { bar: 'right', planner: 'top', tools: 'edge', round: true, done: 'start' },
 };
-const NAME = { today: 'Today', a: 'A: today, with what’s decided', b: 'B: the idea', c: 'C: B, with the planner at the top', d: 'D: recommended', mix: 'Your mix' };
+const NAME = { today: 'Today', a: 'A: today, with what’s decided', b: 'B: the idea', c: 'C: B, with the planner at the top', d: 'D: recommended', e: 'E: D, Done by the planner', mix: 'Your mix' };
 const ABOUT = {
   a: 'Today’s layout, with what’s already decided for it: <b>#568’s</b> Share link, Export GPX and Save offline in the route’s view, and the weather at the map’s foot by the map’s buttons (<b>step 3, part 2</b> of #233): open where it fits beside the toolbar, else its 210 px line, else away on the Weather button. The top bar at the top left, the planner from under it, as tall as its content, and the toolbar hanging off the planner’s edge at the foot.',
   b: 'The idea: the toolbar centred at the map’s foot, not bound to the planner; the planner centred on its side; the logo where it is; the search and the sport centred at the top; ⚙ (and later sign-in) at the top right. <b>Centred where?</b> In the window, the toolbar would sit under the planner at 1440 and 1024 (try <b>Centred in the window</b>), so B centres it in the map beside the planner. Everything decided for A (#568, the weather at the foot) is here too.',
   c: 'B, with the planner at the top, so its edge doesn’t move when its content grows. This planner is today’s: the build already hangs it from under the top bar and lets its foot follow its content. So C is A with B’s top bar and B’s toolbar.',
   d: 'Today’s planner and toolbar, which keep still, with the one part of B that wins on every count: ⚙ at the top right, over the Settings panel it opens and beside a later sign-in. The toolbar’s left end is rounded where the planner doesn’t reach it (#595). What’s decided for A is here too. Why: the plan’s Recommendation.',
+  e: 'D, with Done and Edit at the toolbar’s planner end, the end that never moves: from the critique (Assessment A). Edit lands where Done was, and Done stays put when the second point brings the route’s actions. It goes against today’s order (25a), where Done is last, as a toolbar’s main action usually is, and puts the way out before the tools.',
   mix: 'The parts as you set them.',
 };
 const SCENES = {
@@ -264,33 +271,36 @@ const SCENES = {
   folded: { name: 'Folded', a: { pl: 'listfolded' }, b: { pl: 'listfolded', fold: true }, ch: ['Fold the planner', 'Open it'], at: 'num', atName: 'the route’s numbers' },
 };
 
-const S = { opt: 'b', size: '1440', scene: 'list', state: 'a', frames: 'side', bar: '', planner: '', tools: '', show: '' };
+const S = { opt: 'b', size: '1440', scene: 'list', state: 'a', frames: 'side', bar: '', planner: '', tools: '', done: '', show: '' };
 const q = new URLSearchParams(location.search);
 for (const k of Object.keys(S)) if (q.get(k)) S[k] = q.get(k);
-const partsOf = (opt) => ({ ...PRESET[opt === 'mix' ? 'b' : opt] });
+const PARTS = ['bar', 'planner', 'tools', 'done'];
+const partsOf = (opt) => ({ done: 'end', ...PRESET[opt === 'mix' ? 'b' : opt] });
 let P = partsOf(S.opt);
-for (const k of ['bar', 'planner', 'tools']) if (S[k]) P[k] = S[k];
+for (const k of PARTS) if (S[k]) P[k] = S[k];
 const use = (id, size = 20, cls = 'ic') => `<svg class="${cls}" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
 
 // ============================================================== the toolbar's content
-function editTools(step) {
+function editTools(step, first) {
   const f = step.f, modes = [['route', 'Follow paths'], ['line', 'Straight line'], ['water', 'Over water']];
   const seg = modes.map(([ic, t], i) => `<span class="${i === 0 ? 'on' : ''}">${use(ic, 19)}${f >= 4 || (f >= 2 && i > 0) ? '' : t}</span>`).join('');
   const segW = f >= 4 ? 130 : f >= 2 ? 213.4 : 366.5;
   const opts = OPTS.slice(0, step.n).map(([ic, t], i) => (i === 3 || i === 6 ? '<span class="sep"></span>' : '') + `<span class="tb${ic === 'trash' ? ' danger' : ''}" data-t="${ic}" title="${t}">${use(ic, 20)}</span>`).join('');
-  return `<span class="modes" data-t="modes" style="width:${segW}px">${seg}</span><span class="sep"></span>
+  const done = `<span class="done" data-t="end" style="width:59px${first ? ';margin:0 4px 0 0' : ''}">Done</span>`;
+  return `${first ? done : ''}<span class="modes" data-t="modes" style="width:${segW}px">${seg}</span><span class="sep"></span>
     <span class="pick" style="width:${f >= 3 ? 56 : 92.3}px;margin-right:4px">${use('bike', 18)}${f >= 3 ? '' : 'MTB'}${use('down', 12)}</span>
     <span class="pick" style="width:99.2px"><span class="two">${f >= 1 ? '' : '<small>Route style</small>'}<span>Balanced</span></span>${use('down', 12)}</span><span class="sep"></span>
     <span class="tb dim" data-t="undo">${use('undo', 20)}</span><span class="tb dim">${use('redo', 20)}</span>${step.n ? '<span class="sep"></span>' : ''}${opts}<span class="sep"></span>
-    <span class="tb" data-t="more">${use('more', 20)}</span><span class="done" data-t="end">Done</span>`;
+    <span class="tb" data-t="more">${use('more', 20)}</span>${first ? '' : done}`;
 }
 // the route's view: today, Show the whole route, ⋯ and Edit; with #568, Share link, Export GPX and Save offline too,
 // labelled, then as icons, then into ⋯ in turn (Save offline first)
 const VIEW568 = [['link', 'Share link'], ['dl', 'Export GPX'], ['offline', 'Save offline']];
-function viewTools(step) {
+function viewTools(step, first) {
   const n = step.n, words = step.words;
   const mid = VIEW568.slice(0, n).map(([ic, t]) => words ? `<span class="lab" data-t="${ic}">${use(ic, 20)}${t}</span>` : `<span class="tb" data-t="${ic}" title="${t}">${use(ic, 20)}</span>`).join('');
-  return `<span class="tb" data-t="fit">${use('fit', 20)}</span>${mid}<span class="tb" data-t="more">${use('more', 20)}</span><span class="done" data-t="end">${use('pen', 18)}Edit</span>`;
+  const edit = `<span class="done" data-t="end"${first ? ' style="margin:0 4px 0 0"' : ''}>${use('pen', 18)}Edit</span>`;
+  return `${first ? edit : ''}<span class="tb" data-t="fit">${use('fit', 20)}</span>${mid}<span class="tb" data-t="more">${use('more', 20)}</span>${first ? '' : edit}`;
 }
 let VIEW = null; // measured once, in the page, from what's drawn
 function measureView() {
@@ -329,8 +339,8 @@ function layout(P, sz, st) {
   const step = list.find((s) => s.w <= room) || list[list.length - 1];
   const w = Math.round(step.w), x = P.tools === 'edge' ? panelR : P.tools === 'map' ? Math.round((panelR + 12 + limitR) / 2 - w / 2) : Math.round(W / 2 - w / 2);
   const segW = step.f >= 4 ? 130 : step.f >= 2 ? 213.4 : 366.5;
-  L.modesX = view ? null : x + 8 + segW / 2;
-  L.endX = x + w - 8 - (view ? 37.2 : 29.5);
+  L.modesX = view ? null : x + 8 + (P.done === 'start' ? 63 : 0) + segW / 2;
+  L.endX = P.done === 'start' ? x + 8 + (view ? 37.2 : 29.5) : x + w - 8 - (view ? 37.2 : 29.5);
   L.tools = { x, y: H - 68, w, h: 56, step, view, room, fits: step.w <= room, square: P.tools === 'edge' && !(P.round && (st.fold || L.planner.y + L.planner.h < H - 68)) };
   L.more = view
     ? [...VIEW568.slice(step.n).map(([, t]) => t + (t === 'Save offline' ? '…' : '')), 'Reverse', 'Back to start', ...MORE_ALWAYS, 'Clear route']
@@ -386,7 +396,7 @@ function apply(root, L) {
   place(fold, { x: 12, y: L.H - 68, w: 392, h: 56 });
   if (!p.fold) { place(plEl, p); const img = $e(root, 'plimg'), src = `${PIC}${PL[p.key].file}.jpg`; if (img.getAttribute('src') !== src) img.src = src; }
   else place(plEl, { x: 12, y: L.H - 68, w: 392, h: 56 });
-  const t = L.tools, tEl = $e(root, 'tools'), html = t.view ? viewTools(t.step) : editTools(t.step);
+  const t = L.tools, tEl = $e(root, 'tools'), first = L.P.done === 'start', html = t.view ? viewTools(t.step, first) : editTools(t.step, first);
   if (tEl.dataset.html !== html) { tEl.innerHTML = html; tEl.dataset.html = html; }
   tEl.classList.toggle('square', t.square);
   tEl.classList.toggle('bad', !t.fits);
@@ -522,7 +532,7 @@ function sceneTable(res) {
     ${row('The planner’s foot', (r) => mv(r.foot))}
     ${row('The toolbar’s left end', (r) => mv(r.first, 'x'))}
     ${row('The drawing modes', (r) => mv(r.modes, 'x'))}
-    ${row('Done or Edit, at the toolbar’s end', (r) => mv(r.end, 'x'))}
+    ${row('Done or Edit', (r) => mv(r.end, 'x'))}
     ${row('The weather, before → after', (r) => r.wx.join(' → '))}
     ${row('In ⋯, now', (r) => (S.state === 'a' ? r.more[0] : r.more[1]).join(', '))}
     ${row('The toolbar fits', (r) => (r.fits ? 'yes' : '<span class="bad">no: it runs under the planner or the map’s buttons</span>'))}
@@ -532,7 +542,7 @@ function sceneTable(res) {
 
 // every option at every size: the numbers the critique uses
 function matrix() {
-  const opts = ['today', 'a', 'b', 'c', 'd'], sizes = ['1024', '1440', '1920', '2560'];
+  const opts = ['today', 'a', 'b', 'c', 'd', 'e'], sizes = ['1024', '1440', '1920', '2560'];
   const m = document.createElement('div');
   m.className = 'screen';
   m.style.cssText = 'position:absolute;left:-99999px;top:0';
@@ -540,7 +550,7 @@ function matrix() {
   const rows = [];
   for (const o of opts) {
     for (const s of sizes) {
-      const sz = SIZES[s], parts = PRESET[o];
+      const sz = SIZES[s], parts = partsOf(o);
       m.style.width = `${sz.W}px`; m.style.height = `${sz.H}px`;
       const at = (st) => { const L = layout(parts, sz, st); m.innerHTML = frameHTML(L, sz); apply(m, L); return { L, tr: travel(m, L) }; };
       const e = at({ pl: 'listfolded', tb: 'edit', wx: true }), v = at({ pl: 'view', tb: 'view', wx: true });
@@ -563,15 +573,14 @@ function matrix() {
     }
   }
   m.remove();
-  document.getElementById('matrix').innerHTML = `<h2>Every option at every size</h2><table><thead><tr><th>Option</th><th>Size</th><th>Toolbar’s room</th><th>Route actions in ⋯, editing</th><th>#568’s in ⋯, viewing</th><th>Weather, editing</th><th>Weather, viewing</th><th>What you clicked moves</th><th>The numbers move</th><th>The modes move, first leg</th><th>Left end moves, Done</th><th>Done → Edit moves</th><th>Map ↔ modes</th><th>⚙ ↔ Settings</th><th>Search ↔ place</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+  document.getElementById('matrix').innerHTML = `<h2>Every option at every size</h2><p class="note scroll-note">The table scrolls sideways.</p><table><thead><tr><th>Option</th><th>Size</th><th>Toolbar’s room</th><th>Route actions in ⋯, editing</th><th>#568’s in ⋯, viewing</th><th>Weather, editing</th><th>Weather, viewing</th><th>What you clicked moves</th><th>The numbers move</th><th>The modes move, first leg</th><th>Left end moves, Done</th><th>Done → Edit moves</th><th>Map ↔ modes</th><th>⚙ ↔ Settings</th><th>Search ↔ place</th></tr></thead><tbody>${rows.join('')}</tbody></table>
   <p class="note">All in px. <b>Toolbar’s room:</b> from where it may start to 12 px before the map’s buttons (centred in the window: twice the smaller half). <b>Route actions in ⋯:</b> of the seven (Show the whole route, Reverse, Back to start, Share link, Export GPX, Save offline, Clear route); “folded” counts placeTools()’s later steps (the style’s caption, the modes’ names, the sport’s name). <b>Weather:</b> with Waypoints folded (editing) and in the route’s view, the room beside the toolbar in brackets; it needs 640 (420 at 1024) to open and 210 for its line, and the toolbar never gives anything up for it. Today’s timeline floats over the map, 40 px above the toolbar. <b>What you clicked moves:</b> the most Waypoints’ head, the profile’s size button or the tabs move when you click them (the scenes The list, The profile and The tabs). <b>The numbers move:</b> the most the route’s numbers move when a warning comes or a point is added (in every option the warning’s row goes in above them). <b>The modes move, first leg:</b> how far the drawing modes move when the second point brings the route’s actions. <b>Left end moves, Done:</b> the toolbar’s left end when Done turns it into the route’s view; <b>Done → Edit:</b> how far Edit lands from where Done was. <b>Travel</b> is from centre to centre: the map’s middle is the middle of where a fit frames the route.</p>`;
 }
 
 // ============================================================== the switches
 function sync() {
-  const presetOf = () => Object.keys(PRESET).find((k) => k !== 'today' && ['bar', 'planner', 'tools'].every((p) => PRESET[k][p] === P[p]) && !!PRESET[k].round === !!P.round);
   for (const sw of document.querySelectorAll('.sw[data-k]')) {
-    const k = sw.dataset.k, v = k === 'bar' || k === 'planner' || k === 'tools' ? P[k] : S[k];
+    const k = sw.dataset.k, v = PARTS.includes(k) ? P[k] : S[k];
     for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === v));
   }
   document.querySelector('[data-k="opt"] [data-v="mix"]').hidden = S.opt !== 'mix';
@@ -581,9 +590,8 @@ function sync() {
   for (const c of document.querySelectorAll('[data-show]')) c.checked = shows().has(c.dataset.show);
   const u = new URLSearchParams();
   for (const k of ['opt', 'size', 'scene', 'state', 'frames', 'show']) if (S[k]) u.set(k, S[k]);
-  if (S.opt === 'mix') for (const k of ['bar', 'planner', 'tools']) u.set(k, P[k]);
+  if (S.opt === 'mix') for (const k of PARTS) u.set(k, P[k]);
   history.replaceState(null, '', `?${u}`);
-  void presetOf;
 }
 document.querySelector('[data-k="scene"]').innerHTML = Object.entries(SCENES).map(([k, s]) => `<button data-v="${k}">${s.name}</button>`).join('');
 document.querySelector('.bars').addEventListener('click', (e) => {
@@ -591,9 +599,9 @@ document.querySelector('.bars').addEventListener('click', (e) => {
   if (!b) return;
   const k = b.closest('.sw').dataset.k, v = b.dataset.v;
   if (k === 'opt') { S.opt = v; P = partsOf(v); }
-  else if (k === 'bar' || k === 'planner' || k === 'tools') {
+  else if (PARTS.includes(k)) {
     P = { ...P, [k]: v };
-    const match = Object.keys(PRESET).find((o) => o !== 'today' && ['bar', 'planner', 'tools'].every((p) => PRESET[o][p] === P[p]));
+    const match = Object.keys(PRESET).find((o) => o !== 'today' && PARTS.every((p) => partsOf(o)[p] === P[p]));
     S.opt = match || 'mix';
     if (match) P = partsOf(match);
   } else { S[k] = v; if (k === 'scene') S.state = 'a'; }
