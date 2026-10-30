@@ -7,9 +7,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### The map's buttons answer a press, and menus open from their button ([#540](https://github.com/TommiContursi/Polku/issues/540))
 
 - The map's buttons and the top bar's (Locate, zoom, 3D, the compass, Weather, Layers, Plan, Settings and the sport) shrink a little while you press them, as the planner's buttons do, and a button that turns on or off fades to its new colour. In Layers, the base maps' pictures and the On now chips do the same.
-- The sport's menu and the menus that open from a button, such as the planner's ⋯, grow out of their button as they open and shrink back into it as they close. A menu that opens again in its place, as when you pick Paddle's craft, is there at once.
+- The sport's menu and the menus that open from a button, such as the planner's ⋯, grow out of their button as they open and shrink back into it as they close. A menu that opens again in its place, as when you pick Paddle's craft, is there at once, and one with no room beside its button fades in and out instead.
 - The first tooltip on the planner's buttons grows in from its button after its short wait; the next one, as you move along the buttons, is there at once.
 - Opened from the keyboard, a menu or a tooltip is there at once. With reduced motion, they fade instead, and nothing shrinks or grows.
+- A new light or dark look, or more contrast, changes everywhere at once: the buttons no longer catch up with the panels.
 
 ### A lighter look over the map, and the route in magenta ([#547](https://github.com/TommiContursi/Polku/issues/547))
 
