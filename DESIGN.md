@@ -206,7 +206,7 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 ### Neutral
 - **Glass-read (white at 72 %; near-black at 73 % in dark mode)**: the reading glass, for what you read over the map: the top bar, the zoom hint, the planner, the timeline, the toolbox and the desktop's toolbar, the layer drawer, the panels and a track's card.
 - **Glass-control (white at 84 %; near-black at 84 %)**: the whiter glass of the map's buttons: the compass, Locate, zoom, 3D, Weather, Layers when open, ⚙ and the 3D view's controls, so they read as one group and stay close to one tint over a busy map.
-- **Muted-glass, accent-glass and bad-glass**: a darker grey, green and red on the glass (lighter in dark mode), so words, icons, lines and rings keep 4.5:1 (3:1 for what isn't words) over any map. Every glass surface sets its grey, green and red to these.
+- **Muted-glass, accent-glass and bad-glass**: a darker grey, green and red on the glass (lighter in dark mode), so words keep 4.5:1 and icons 3:1 over the Trail map, Maastokartta and the aerial photos (`tools/smoke.py glass`). Every glass surface sets its grey, green and red to these, so its lines, borders and rings take them too; those aren't measured over the map yet.
 - **Surface-solid (white)**: the cards at a point, menus, dialogs, inputs and buttons that need an opaque background, and every glass when the person asks for more contrast or less transparency.
 - **Surface-2 (pale grey-green)**: hover on rows and buttons, and recessed areas.
 - **Seg-on**: a switch's chosen segment: white, and in dark mode a grey lighter than its track, so it never reads as a gap.

@@ -7052,7 +7052,10 @@ def glass(chrome):
         need = 4.5 if kind == 'word' else 3
         if cr < need:
             fails.append(f'{where}: the {kind} "{t}" ({el} {on}) is {cr}:1 at its lowest, under {need}:1')
+    # the lowest of each kind, so a margin that's getting thin shows before it fails
+    low = [min(((cr, f'"{t}" ({el}, {where})') for (where, k, el, t), (cr, _) in found.items() if k == kind), default=None) for kind in ('word', 'icon')]
     print(f"{'ok  ' if not fails else 'FAIL'} words at 4.5:1 and icons at 3:1 on the glass over the map, {len(found)} of them ({measured} measures)"
+          + ''.join(f'; the lowest {kind} {lo[0]}:1, {lo[1]}' for kind, lo in zip(('word', 'icon'), low) if lo)
           + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
