@@ -866,7 +866,7 @@ export class WeatherOverlay {
     const css = getComputedStyle(cv);
     const ink = css.getPropertyValue('--text').trim() || '#1c2420';
     const muted = css.getPropertyValue('--muted').trim() || '#5f6b65';
-    const accent = css.getPropertyValue('--route').trim() || '#e11d48';
+    const accent = css.getPropertyValue('--route').trim();
     const d = this.stripSeries();
     const PAD = 9; // matches the range thumb so strip and slider line up
     const X = (hr) => PAD + (hr / HOURS) * (W - 2 * PAD);

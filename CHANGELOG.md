@@ -4,6 +4,16 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-30
 
+### A lighter look over the map, and the route in magenta ([#547](https://github.com/TommiContursi/Polku/issues/547))
+
+- What floats over the map is now glass that lets the map show through. The top bar, the planner, the timeline, the toolbox, Layers, Settings and, on a desktop, the card at a point sit on a reading glass that stays one calm tone over any map, and the map's buttons on a whiter glass, so they read as one group. Each has a light inner edge and a soft outline, so it stands apart from the map under it, in light and in dark.
+- Words on the glass are a darker grey, green and red, so they stay readable over the busiest map. The menus, popups and dialogs stay solid.
+- The route is magenta, apart from every red the map draws, such as the S3 trails, the no-bike ticks and LIPAS's hiking routes, and from them with colour blindness too. A straight line is a darker magenta, dashed.
+- The Weather button's time ahead and the timeline's ⚑ are in a darker magenta, and a pink in dark, so they're readable on the glass in dark too ([#559](https://github.com/TommiContursi/Polku/issues/559)).
+- Red is for danger only: **Remove**, **Delete** and Check's warnings share one red.
+- **High contrast** in Settings → Display, and your device's settings for more contrast or less transparency, turn the glass solid. More contrast also makes grey words darker and lines heavier, and gives every panel and button a clear outline. **High contrast** still thickens the trails too.
+- The word **Layers** on its button sits on a darker band, so it's readable over a light map ([#588](https://github.com/TommiContursi/Polku/issues/588)). On a phone the logo is the green mark alone. In dark, Check's warning box is solid and a switch's chosen choice is lighter than its track.
+
 ### Fixed: a mouse drags the planner in a narrow window ([#585](https://github.com/TommiContursi/Polku/issues/585))
 
 - In a window too narrow for the side panel, or with the planner at the bottom, a mouse drags the folded planner's line and its handle up to open it, as a finger does.

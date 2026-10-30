@@ -3,21 +3,33 @@
   --accent-2: #2f8f62;
   --accent-soft: #e3f1e9;
   --accent-bg: #1f6f4a; /* the accent behind white text and icons */
-  --route: #e11d48;
-  --surface: rgba(255, 255, 255, 0.94);
+  --route: #d6006e;
+  --route-text: #93004b; /* words in the route's colour: 4.5:1 on either glass over any map, where --route isn't (#559) */
+  /* Two glasses over the map (B of #547): a reading glass for what you read (the top bar, the planner, the panels)
+     and a whiter one for the map's buttons. Each has a light inner edge and a soft outer hairline (--edge). The
+     modes below the dark block turn both solid. */
+  --glass-read: rgba(255, 255, 255, 0.72); --glass-read-filter: blur(32px) saturate(105%);
+  --glass-control: rgba(255, 255, 255, 0.84); --glass-control-filter: blur(24px) saturate(105%);
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 0 0 1px rgba(16, 24, 20, 0.26);
+  --tile-rim: rgba(255, 255, 255, 0.85); /* the Layers tile's light rim, over its picture */
   --surface-solid: #ffffff;
   --surface-2: #f3f4f1;
-  --text: #1c2420;
+  --seg-on: var(--surface-solid); /* a switch's chosen segment */
+  --text: #141b17;
   --muted: #5f6b65;
-  --line: rgba(28, 36, 32, 0.12);
-  --shadow: 0 6px 24px rgba(16, 24, 20, 0.16), 0 1px 3px rgba(16, 24, 20, 0.12);
+  /* words on the glass: a darker grey (every glass surface sets --muted to it), green and red, for 4.5:1 over the map */
+  --muted-glass: #3b4741; --accent-glass: #165a3a; --bad-glass: #9b1f27;
+  --line: rgba(28, 36, 32, 0.14);
+  /* more contrast (prefers-contrast: more, or Settings' High contrast): a darker grey, heavier lines and a 3:1 rim */
+  --muted-hc: #46514b; --line-hc: rgba(28, 36, 32, 0.35); --hc-border: rgba(16, 24, 20, 0.7); --hc-inner: rgba(255, 255, 255, 0.8);
+  --shadow: 0 8px 28px rgba(16, 24, 20, 0.18), 0 1px 3px rgba(16, 24, 20, 0.1);
   --radius: 14px;
   --chart-ink: #26312c;
   --chart-grid: rgba(95, 107, 101, 0.18);
-  --good: #16a34a;
-  --ok: #ca8a04;
-  --warn: #ea580c;
-  --bad: #dc2626;
+  --good: #23863a;
+  --ok: #a35b00;
+  --warn: #c4400c;
+  --bad: var(--danger); /* danger has one red */
   --sheet-h: 0px;
   --pl-left: 0px; /* right edge of the planner side panel, when open */
   --you: #1a73e8; /* the location dot */
@@ -35,7 +47,7 @@
   /* status words and pills (--good and the rest stay for lines, bars and dots) */
   --good-text: #166534; --ok-text: #854d0e; --warn-text: #9a3412; --bad-text: #b91c1c;
   /* the route's legs: over water, a straight line, being routed (the same in both themes: it's on the map) */
-  --route-water: #0369a1; --route-line: #be123c; --route-loading: #9ca3af;
+  --route-water: #0369a1; --route-line: #9c0050; --route-loading: #9ca3af;
   --grip: rgba(95, 107, 101, 0.8); /* every grip and handle */
   /* text sizes, in rem so the browser's text size enlarges them */
   --font-small: 0.75rem; --font-control: 0.8125rem; --font-body: 0.875rem; --font-row: 0.9375rem; --font-field: 1rem;
@@ -79,19 +91,26 @@
   --accent-2: #56c48f;
   --accent-soft: rgba(63, 176, 122, 0.16);
   --accent-bg: #237a52; /* white on --accent is 2.7:1, on this 5.3:1 (#239) */
-  --surface: rgba(24, 28, 26, 0.94);
+  --route-text: #ffa0ce; /* (#ff7ab8 is 3.8:1 on the timeline's glass over a bright map) */
+  --glass-read: rgba(8, 10, 9, 0.73);
+  --glass-control: rgba(8, 10, 9, 0.84);
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 0 0 1px rgba(0, 0, 0, 0.7);
+  --tile-rim: rgba(255, 255, 255, 0.5);
   --surface-solid: #181c1a;
   --surface-2: #232825;
-  --text: #e8ece9;
+  --seg-on: #3f4843; /* lighter than its track, never a gap */
+  --text: #f2f5f3;
   --muted: #9aa69f;
-  --line: rgba(232, 236, 233, 0.12);
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffa3a3;
+  --line: rgba(232, 236, 233, 0.16);
+  --muted-hc: #c3ccc6; --line-hc: rgba(232, 236, 233, 0.32); --hc-border: rgba(0, 0, 0, 0.8); --hc-inner: rgba(255, 255, 255, 0.4);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
   --chart-ink: #e8ece9;
   --chart-grid: rgba(154, 166, 159, 0.18);
+  --good: #3ddc71; --ok: #ffd34d; --warn: #ffa24a;
   --you: #4c9bff;
   --you-soft: rgba(76, 155, 255, 0.16);
-  --bad: #f87171; /* red words: #dc2626 is 3.6:1 on the dark surface, this 6.2:1 (#370) */
-  --danger: #ff8a8a; --danger-soft: rgba(255, 138, 138, 0.14);
+  --danger: #ff8a8a; --danger-soft: #3a2124; /* (solid: Check's box doesn't take the glass's tint) */
   --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12);
   --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13);
   --focus: #6fd3a2;
@@ -100,6 +119,17 @@
   --grip: rgba(232, 236, 233, 0.45);
   --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
+}
+/* The modes (#382's §7): reduced transparency and more contrast turn every glass solid. More contrast is data-contrast
+   on <html>, from the device (prefers-contrast: more) or Settings' High contrast, set as data-theme is (index.html,
+   applyTheme()); it also takes a darker grey, heavier lines and a 3:1 rim. As specific as the dark block, and after it. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-theme] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; }
+}
+:root[data-contrast="more"] {
+  --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none;
+  --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc);
+  --edge: inset 0 0 0 1px var(--hc-inner), 0 0 0 1px var(--hc-border);
 }
 
 * { box-sizing: border-box; }
@@ -135,6 +165,19 @@ button { font: inherit; color: inherit; }
 #map { position: fixed; inset: 0; }
 .ic { flex: none; display: block; }
 
+/* ---------------------------------------------------------------- the glass over the map (B of #547) */
+/* What you read sits on the reading glass (the card at a point on a desktop too), the map's buttons on theirs; menus,
+   popups and dialogs stay solid. Each glass surface has the edge, and its grey, green and red take the glass's (words, icons, lines and rings
+   alike: they're read over the map too). */
+.brand, .search, .top-btn, .zoom-hint, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools, .polku-popup.card-float .maplibregl-popup-content, .card-beside {
+  background: var(--glass-read); -webkit-backdrop-filter: var(--glass-read-filter); backdrop-filter: var(--glass-read-filter);
+  box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); --bad: var(--bad-glass);
+}
+.fab, .view3d, .ctrl-btn, .ctrl-zoom, .ctrl-compass .maplibregl-ctrl-group {
+  background: var(--glass-control); -webkit-backdrop-filter: var(--glass-control-filter); backdrop-filter: var(--glass-control-filter);
+  box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); --bad: var(--bad-glass);
+}
+
 /* ---------------------------------------------------------------- top bar */
 .topbar {
   position: absolute; top: 12px; left: 12px; z-index: 7; /* above the planner: search results and the sport menu open over it */
@@ -142,15 +185,12 @@ button { font: inherit; color: inherit; }
   width: min(730px, calc(100vw - 24px));
 }
 .brand {
-  display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px;
-  background: var(--surface); border-radius: 999px; box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 13px; /* (concentric with its mark's) */
   color: var(--text); text-decoration: none; font-weight: 700; font-size: 16px; letter-spacing: -0.01em;
-  backdrop-filter: blur(10px);
 }
 .search {
   position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
-  height: 40px; padding: 0 10px 0 12px;
-  background: var(--surface); border-radius: 999px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
+  height: 40px; padding: 0 10px 0 12px; border-radius: 999px;
   color: var(--muted);
 }
 .search input {
@@ -162,7 +202,7 @@ button { font: inherit; color: inherit; }
   font: 11px ui-monospace, monospace; padding: 1px 6px; border-radius: 6px;
   border: 1px solid var(--line); color: var(--muted);
 }
-.search:focus-within { box-shadow: var(--shadow), 0 0 0 2px var(--accent); }
+.search:focus-within { box-shadow: var(--shadow), var(--edge), 0 0 0 2px var(--accent); }
 #search-results {
   position: absolute; top: 46px; left: 0; right: 0; margin: 0; padding: 6px; list-style: none;
   background: var(--surface-solid); border-radius: var(--radius); box-shadow: var(--shadow); max-height: 60vh; overflow: auto;
@@ -229,7 +269,7 @@ button { font: inherit; color: inherit; }
 
 .zoom-hint {
   position: absolute; top: 62px; left: calc(12px + var(--pl-left)); z-index: 3; height: 30px; padding: 0 12px; border: 0; border-radius: 999px;
-  background: var(--surface); color: var(--muted); box-shadow: var(--shadow); font-size: 12px; font-weight: 600; cursor: pointer;
+  color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer;
 }
 .zoom-hint:hover { color: var(--text); }
 
@@ -246,12 +286,12 @@ button { font: inherit; color: inherit; }
 body:not(.ready) .map-ctrls { display: none; }
 .ctrl-btn {
   width: 40px; height: 40px; border: 0; border-radius: 12px; cursor: pointer; display: grid; place-items: center;
-  background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow);
+  color: var(--text);
 }
 .ctrl-btn:hover { background: var(--surface-2); }
 .ctrl-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.ctrl-zoom { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
-.ctrl-zoom .ctrl-btn { border-radius: 0; box-shadow: none; }
+.ctrl-zoom { display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
+.ctrl-zoom .ctrl-btn { border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; } /* (the group is the glass) */
 .ctrl-zoom .ctrl-btn + .ctrl-btn { border-top: 1px solid var(--line); }
 /* 3D terrain (#226): pressed, it's filled and underlined, so its state isn't told by colour alone */
 .ctrl-3d { position: relative; font: 700 13px/1 system-ui, sans-serif; letter-spacing: .02em; }
@@ -261,13 +301,14 @@ body:not(.ready) .map-ctrls { display: none; }
 }
 .ctrl-compass .maplibregl-ctrl { margin: 0; }
 .ctrl-compass .maplibregl-ctrl-group button { width: 40px; height: 40px; }
-.fab.fab-layers { position: relative; overflow: hidden; padding: 0; justify-content: flex-end; color: #fff; border: 2px solid #fff; }
+.fab.fab-layers { position: relative; overflow: hidden; padding: 0; justify-content: flex-end; color: #fff; }
+.fab-layers::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1.5px var(--tile-rim); pointer-events: none; } /* (over its picture) */
 .fab-layers .fab-thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.fab-layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); }
-.fab-layers[aria-expanded="true"] { background: var(--surface); box-shadow: var(--shadow), 0 0 0 3px var(--accent); }
+.fab-layers span { position: relative; width: 100%; padding: 12px 0 4px; text-align: center; background: linear-gradient(transparent, rgba(0, 0, 0, .6) 12px, rgba(0, 0, 0, .75)); } /* (dark enough under the word's top for 4.5:1 over a white map) */
+.fab-layers[aria-expanded="true"] { box-shadow: var(--shadow), var(--edge), 0 0 0 3px var(--accent); }
 .top-btn {
   flex: none; width: 40px; height: 40px; border: 0; border-radius: 999px; cursor: pointer; display: grid; place-items: center;
-  background: var(--surface); color: var(--text); box-shadow: var(--shadow); backdrop-filter: blur(10px);
+  color: var(--text);
 }
 .top-btn:hover { background: var(--surface-solid); }
 .top-btn[aria-pressed="true"] { background: var(--accent-bg); color: #fff; }
@@ -275,8 +316,7 @@ body:not(.ready) .map-ctrls { display: none; }
 .fab {
   width: 60px; height: 56px; border: 0; border-radius: 16px; cursor: pointer;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  background: var(--surface); color: var(--text); box-shadow: var(--shadow); backdrop-filter: blur(10px);
-  font-size: 11px; font-weight: 600;
+  color: var(--text); font-size: 11px; font-weight: 600;
 }
 .fab:hover { background: var(--surface-solid); }
 .fab[aria-pressed="true"] { background: var(--accent-bg); color: #fff; }
@@ -315,7 +355,6 @@ body:not(.ready) .map-ctrls { display: none; }
 .wx-bar {
   position: absolute; left: calc(50% + var(--pl-left) / 2); transform: translateX(-50%); bottom: calc(var(--sheet-h) + max(40px, var(--tools-h, 0px) + 8px)); z-index: 6;
   width: min(640px, calc(100% - 200px - var(--pl-left))); padding: 6px 12px 8px 6px; border-radius: 16px;
-  background: var(--surface); box-shadow: var(--shadow); backdrop-filter: blur(12px);
 }
 /* beside the side panel the scale and the credits are under its left end: above them, on the toolbar at the map's foot (#468) */
 body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
@@ -344,7 +383,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .tl-now div .ic { flex: none; }
 .tl-note { font-size: 11px; color: var(--muted); padding: 2px 8px 0; }
 /* docked in the planner while planning: a plain section, no second panel */
-.wx-bar.docked { position: static; transform: none; width: auto; padding: 0 0 4px; background: none; box-shadow: none; backdrop-filter: none; border-radius: 0; transition: none; }
+.wx-bar.docked { position: static; transform: none; width: auto; padding: 0 0 4px; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 0; transition: none; }
 .wx-bar.docked .tl-title, .wx-bar.docked .tl-close, .wx-bar.docked .tl-grip { display: none; }
 .wx-bar.docked .tl-head { padding: 0 0 6px; }
 .wx-bar.docked .tl-strip { margin-left: 0; }
@@ -362,11 +401,11 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
   .tl-grip::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
   .tl-grip:hover::before, .wx-bar.dragging .tl-grip::before { background: var(--accent); }
 }
-.fab.ahead .fab-time-label { color: var(--route); font-weight: 800; }
+.fab.ahead .fab-time-label { color: var(--route-text); font-weight: 800; }
 .fab.ahead[aria-pressed="true"] .fab-time-label { color: #fff; }
 .wx-row { display: flex; align-items: center; gap: 8px; }
 .wx-row input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
-.wx-time.linked::before { content: "⚑ "; color: var(--route); }
+.wx-time.linked::before { content: "⚑ "; color: var(--route-text); }
 .wx-time { font-size: 12px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; width: 132px; flex: none; text-align: right; overflow: hidden; text-overflow: ellipsis; }
 .wx-info { justify-content: space-between; padding-left: 8px; flex-wrap: wrap; gap: 4px 14px; }
 .wx-legend { display: flex; gap: 12px; }
@@ -379,8 +418,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .view3d {
   /* bottom left: the right side holds the map controls */
   position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 40px); z-index: 5;
-  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px 8px;
-  background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px 8px; border-radius: 18px;
 }
 .orbit {
   position: relative; width: 76px; height: 76px; border-radius: 50%; cursor: grab; touch-action: none;
@@ -398,7 +436,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .view3d .tool { width: 30px; height: 30px; }
 
 /* MapLibre controls */
-.maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; background: var(--surface-solid); }
+.maplibregl-ctrl-group { border-radius: 12px !important; box-shadow: var(--shadow), var(--edge) !important; overflow: hidden; } /* (MapLibre's own shadow is !important) */
 .maplibregl-ctrl-group button { width: 36px; height: 36px; }
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { bottom: calc(var(--sheet-h) + 4px); }
 /* --tools-h: the planner's toolbox floating above the sheet, its toolbar above a bottom panel, or beside the side panel the
@@ -432,8 +470,7 @@ body[data-pl="side"] .wx-bar { bottom: calc(var(--tools-h, 0px) + 40px); }
 .panel {
   position: absolute; bottom: calc(var(--sheet-h) + 12px); right: 84px; z-index: 6;
   width: 356px; max-height: calc(100% - 88px - var(--sheet-h));
-  display: flex; flex-direction: column;
-  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; border-radius: var(--radius);
 }
 .panel-settings { top: 64px; right: 12px; bottom: auto; max-height: calc(100% - 76px - var(--sheet-h)); }
 /* a bottom planner raised too high to leave them room above it (under 320 px): over it, at their full height, as on
@@ -512,7 +549,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
   color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap;
 } /* (one height in a place, #356: 36 px with a mouse, 44 px by touch) */
 .seg.small button { padding: 0 10px; font-size: 12px; }
-.seg button[aria-pressed="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
 /* the pressed one's colour and shadow fade in as the press lets go; with reduced motion the fade stays, the press's scale goes */
 .seg button { transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; }
 @media (prefers-reduced-motion: reduce) { .seg button { transition: background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; } }
@@ -551,14 +588,13 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .qd {
   position: absolute; z-index: 7; right: 84px; bottom: var(--qd-bottom, 76px); width: 384px;
   max-height: calc(100% - 64px - var(--qd-bottom, 76px));
-  display: flex; flex-direction: column; padding: 2px 14px 14px;
-  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px); color: var(--text);
+  display: flex; flex-direction: column; padding: 2px 14px 14px; border-radius: var(--radius); color: var(--text);
   container: qd / inline-size; transform-origin: 100% calc(100% - 28px);
   transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out), visibility 0s;
 }
 .qd:not(.open) { opacity: 0; transform: scale(0.96); visibility: hidden; pointer-events: none; transition: transform 120ms var(--ease-out), opacity 120ms var(--ease-out), visibility 0s 120ms; }
 .qd.instant, .qd.dragging { transition: none; }
-.qd.tail::after { content: ""; position: absolute; right: -6px; bottom: 22px; width: 12px; height: 12px; background: var(--surface-solid); transform: rotate(45deg); box-shadow: 3px -3px 4px rgba(0, 0, 0, .05); }
+.qd.tail::after { content: ""; position: absolute; right: -7px; bottom: 22px; width: 7px; height: 14px; background: var(--glass-read); clip-path: polygon(0 0, 100% 50%, 0 100%); } /* (outside the drawer, so it doesn't lie over its glass) */
 .qd-grab { display: none; flex: none; width: 36px; height: 4px; margin: 6px auto 0; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
 .qd-head { flex: none; display: flex; align-items: center; gap: 2px; min-height: 48px; }
 .qd-head h2 { flex: 1; min-width: 0; margin: 0; font-size: 16px; overflow-wrap: anywhere; hyphens: manual; }
@@ -666,7 +702,6 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
   .qt:has(.qt-tog:active), .qt:has(.qt-rm:active), .qt-more:active, .qd-base:active, .qd-chip:active { transform: none; }
 }
 @keyframes qd-fade { from { opacity: 0; } }
-@media (prefers-reduced-transparency: reduce) { .qd { background: var(--surface-solid); backdrop-filter: none; } }
 
 /* ---------------------------------------------------------------- planner */
 /* data-layout="sheet": a bottom panel (folded / peek / profile / half / full, drag the handle) —
@@ -675,8 +710,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .sheet {
   position: absolute; left: 12px; right: 84px; bottom: 12px; z-index: 6;
   height: 50vh; height: 50dvh;
-  display: flex; flex-direction: column;
-  background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; border-radius: 18px;
   --fade-blur: 2px; /* (the line and what it folds, mid-fade: one blurred change, not two layers of text) */
 }
 /* it changes size and comes and goes with transform, as Layers' phone drawer does (js/planner.js moveSheet(), showSheet());
@@ -1235,8 +1269,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   box-shadow: 0 2px 6px rgba(0,0,0,.35);
 }
 /* the handle in the middle of a leg: drag it to reshape the route */
-.wp-ghost { width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2.5px solid #e11d48; box-shadow: 0 1px 4px rgba(0,0,0,.3); opacity: .9; transition: transform .12s, opacity .12s; }
-.ghost-line .wp-ghost { border-color: #be123c; }
+.wp-ghost { width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2.5px solid var(--route); box-shadow: 0 1px 4px rgba(0,0,0,.3); opacity: .9; transition: transform .12s, opacity .12s; }
+.ghost-line .wp-ghost { border-color: var(--route-line); }
 .ghost-water .wp-ghost { border-color: #0369a1; }
 .wp-hit.ghost:hover .wp-ghost { transform: scale(1.3); opacity: 1; }
 .wp-hit.ghost.dragging .wp-ghost { width: 22px; height: 22px; border-color: #111; transform: none; opacity: 1; }
@@ -1465,7 +1499,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .seg.icons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border-radius: 15px; }
 .seg.icons button { height: auto; min-height: var(--target); padding: 6px 4px; border-radius: 12px; flex-direction: row; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; white-space: normal; text-align: center; overflow-wrap: break-word; }
 .seg.icons button span { display: inline; }
-.seg.icons button[aria-checked="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
+.seg.icons button[aria-checked="true"] { background: var(--seg-on); color: var(--text); box-shadow: 0 1px 2px rgba(16,24,20,.16), 0 2px 8px rgba(16,24,20,.1); }
 .seg.icons button[aria-checked="true"] .ic { color: var(--accent); }
 .seg.icons button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* a warning: the box in its group's colour, with its shape and its group's name (Journey C builds the parts that use it) */
@@ -1661,7 +1695,7 @@ body.route-editing :is(.card-float, .card-beside), body.route-editing :is(.card-
 /* the point's row in the planner's list, lit while its card is open */
 .wpl-point[aria-current="true"], .wpl-stretch[aria-current="true"] { background: var(--accent-soft); }
 .wpl-point[aria-current="true"] .wp-mini { box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--accent-bg); }
-.card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; background: var(--surface-solid); box-shadow: var(--shadow); }
+.card-beside { position: fixed; padding: 12px 14px 8px; border-radius: 16px; }
 .card-beside .card { max-height: calc(100vh - 88px); }
 /* Move: the card gives way to a note under the top bar, with Cancel; the point stays ringed */
 .card-banner { position: fixed; z-index: 7; left: 12px; right: 12px; top: 64px; max-width: 440px; margin: 0 auto; background: var(--surface-solid); box-shadow: var(--shadow); font-weight: 600; }
@@ -1828,8 +1862,7 @@ body.card-over .map-ctrls { visibility: hidden; } /* a card too wide to sit besi
 .toast[data-tone="warn"] { background: #7c2d12; }
 .track-card {
   position: absolute; left: calc(12px + var(--pl-left)); bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + var(--tools-h, 0px) + 40px); z-index: 7;
-  display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px;
-  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: var(--radius);
 }
 .tc-main { display: flex; flex-direction: column; }
 .tc-main span { color: var(--muted); font-size: 12px; }
@@ -1844,6 +1877,8 @@ body.dropping .drop-hint { display: flex; }
 @media (max-width: 720px) {
   .topbar { width: auto; right: 12px; }
   .brand span { display: none; }
+  .brand { padding: 0; border-radius: 11px; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--shadow); } /* the mark alone, no pill */
+  .brand svg { width: 44px; height: 44px; }
   .search kbd { display: none; }
   .act-current { padding: 0 8px 0 11px; }
   .act-current span:not(.act-winter) { display: none; }
@@ -1924,7 +1959,7 @@ body.dropping .drop-hint { display: flex; }
 @media (max-width: 720px) {
   .qd {
     z-index: 12; left: 0; right: 0; bottom: 0; width: auto; max-height: calc(100% - 64px);
-    padding: 4px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2);
+    padding: 4px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2), var(--edge);
     transform-origin: 50% 100%; transition: transform 260ms var(--ease-drawer), visibility 0s;
   }
   .qd:not(.open) { opacity: 1; transform: translateY(100%); transition: transform 180ms var(--ease-drawer), visibility 0s 180ms; }
@@ -2045,7 +2080,7 @@ body.dropping .drop-hint { display: flex; }
 /* ---------------------------------------------------------------- the planner's toolbox (25a) */
 /* Phones: floating at the bottom left above the sheet, or docked into it as its first row. Desktops: a labelled
    toolbar on the panel's edge, one surface with it (planner.js placeTools()). */
-.pl-tools { position: fixed; z-index: 5; /* over the map, under the panels (Settings, Layers) and the sheet */ display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 16px; background: var(--surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--shadow); }
+.pl-tools { position: fixed; z-index: 5; /* over the map, under the panels (Settings, Layers) and the sheet */ display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 16px; }
 .pl-tools:not(.docked):not(.desk) { left: 8px; bottom: calc(var(--sheet-h) + var(--wx-h, 0px) + 16px); }
 .pl-tools.probe { visibility: hidden; left: 8px; bottom: 0; }
 .pl-tools.docked { position: static; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin: 0 8px 6px 10px; padding: 0 0 6px; border-radius: 0; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: 1px solid var(--line); }
@@ -2057,7 +2092,7 @@ body.dropping .drop-hint { display: flex; }
 @media (prefers-reduced-motion: no-preference) { .pl-tools.tb-new, .pl-tools .tb-new { animation: tb-in 160ms ease-out; } }
 @keyframes tb-in { from { opacity: 0; } }
 .tbtn { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 0; border-radius: 12px; background: none; color: var(--text); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-.tbtn:disabled { opacity: .35; cursor: default; }
+.tbtn:disabled { opacity: .7; color: var(--muted); cursor: default; } /* (the glass's grey, still dimmer than redo) */
 .tbtn:focus-visible, .modebtn:focus-visible, .stylebtn:focus-visible, .sportbtn:focus-visible, .tb-modes button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .tbtn[aria-expanded="true"], .modebtn[aria-expanded="true"], .stylebtn[aria-expanded="true"], .sportbtn[aria-expanded="true"] { background: var(--accent-soft); }
 @media (hover: hover) { .tbtn:hover:not(:disabled), .modebtn:hover, .stylebtn:hover, .sportbtn:hover { background: var(--surface-2); } }
@@ -2075,11 +2110,11 @@ body.dropping .drop-hint { display: flex; }
 .pl-tools.docked .modebtn { flex: 1 0 auto; margin-right: auto; } /* its name stays whole: undo, redo and More go to a line of their own first */
 /* desktops */
 .pl-tools.desk { height: 56px; gap: 2px; padding: 0 8px; }
-.pl-tools.desk.at-side { border-radius: 0 16px 16px 0; border-left: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12); } /* at the map's foot (#468) */
+.pl-tools.desk.at-side { border-radius: 0 16px 16px 0; border-left: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12), var(--edge); } /* at the map's foot (#468) */
 /* desktops: a bottom panel raised too high for the timeline above it takes it under its header (main.js syncWxH()) */
 @media (min-width: 721px) { body.planning.wx-over .wx-bar { bottom: auto; top: calc(100% - var(--sheet-h) - 12px + var(--sheet-head, 0px)); z-index: 7; } }
 .pl-tools.desk.docked { position: static; height: 56px; flex-wrap: nowrap; margin: 0 8px 0 10px; padding: 0 0 4px; border-radius: 0; border-bottom: 1px solid var(--line); box-shadow: none; background: none; }
-.pl-tools.desk.at-bottom { border-radius: 16px 16px 0 0; border-bottom: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12); }
+.pl-tools.desk.at-bottom { border-radius: 16px 16px 0 0; border-bottom: 1px solid var(--line); box-shadow: 0 -6px 20px rgba(16, 24, 20, 0.12), var(--edge); }
 .pl-tools.desk .tbtn { width: 40px; height: 40px; }
 .tb-modes button { height: 40px; min-width: 40px; padding: 0 8px; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--text); }
 .tb-modes button .ic { color: var(--muted); }
