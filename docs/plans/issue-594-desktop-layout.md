@@ -8,7 +8,7 @@ Where the toolbar, the planner and the top bar sit on a desktop: today's layout 
 
 ## The mock-up
 
-[mockups/issue-594-desktop-layout.html](mockups/issue-594-desktop-layout.html), on B's look ([#591](https://github.com/TommiContursi/Polku/pull/591) at 79a6ae4). It opens on B beside today at 1440 × 900.
+[mockups/issue-594-desktop-layout.html](mockups/issue-594-desktop-layout.html), on B's look ([#591](https://github.com/TommiContursi/Polku/pull/591) at 79a6ae4). It opens on B beside today at 1440 × 900. To open it before it's merged, serve the branch's folder (`python3 serve.py 8832` in `.claude/worktrees/desktop-layout`) and go to `http://localhost:8832/docs/plans/mockups/issue-594-desktop-layout.html`; once merged, it's at polku.si under the same path. It's for a desktop: on a phone the frames stack and are small.
 
 - **Its switches:** the option (A, B, C, D), or **its parts** one by one (the top bar; the planner at the top or centred; the toolbar on the planner's edge, centred beside the planner, or centred in the window), so any mix can be tried. The size: 1024 × 768, 1440 × 900, 1920 × 1080 and 2560 × 1440. Side by side, or one above the other for bigger frames.
 - **The scenes,** each with **Change** (or **Play**, which goes back and forth): the first leg (the second point brings the route's actions onto the toolbar), the list (Waypoints folded and open), a warning (a departure after dark puts "1 to read before you go" at the planner's top), the profile (taller and smaller), the tabs (Route and Go), one more point, Done and Edit, the weather while editing and while viewing, and the planner folded to its line.
