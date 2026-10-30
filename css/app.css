@@ -1108,8 +1108,8 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
   .menu-leaving { transform: none; }
   @starting-style { .menu-pop { transform: none; } }
 }
-.menu-pop > * { flex: none; }
-.menu-pop > [role="group"] { display: flex; flex-direction: column; } /* its items as wide as the menu, as outside a group */
+:is(.menu-pop, .menu-leaving) > * { flex: none; } /* (the leaving copy keeps the menu's layout while it fades) */
+:is(.menu-pop, .menu-leaving) > [role="group"] { display: flex; flex-direction: column; } /* its items as wide as the menu, as outside a group */
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 .menu-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; font: inherit; font-size: 13px; text-align: left; color: var(--text); }
 .menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--surface-2); }
@@ -2224,7 +2224,7 @@ body.dropping .drop-hint { display: flex; }
 .menu-item > .nl-speeds { flex: none; font-size: 12.5px; font-weight: 700; color: var(--accent); }
 .nl-editor { max-width: 320px; padding: 4px 10px 8px 37px; }
 .nl-editor .speed-how { display: none; } /* the full words are in How you go */
-@media (pointer: coarse) { .menu-pop .menu-item { min-height: 44px; } .menu-chips .menu-item.chip { min-height: 44px; } }
+@media (pointer: coarse) { :is(.menu-pop, .menu-leaving) .menu-item { min-height: 44px; } .menu-chips .menu-item.chip { min-height: 44px; } }
 
 /* the map's column on short phones with the sheet raised (main.js fitColumn()) */
 .map-ctrls.no-compass .ctrl-compass, .map-ctrls.no-3d .ctrl-3d { display: none; }
