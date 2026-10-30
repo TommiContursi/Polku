@@ -184,9 +184,11 @@ conversation again
   and a mock-up copies its CSS. A new kind is proposed to the user first. A
   mock-up keeps its earlier versions behind a switch, so they can be compared.
 - **Motion follows DESIGN.md's "Motion"**, built on Emil Kowalski's rules.
-  Every change to motion or interaction is decided with /animate. Before its
-  PRs open, the session stops and asks the user to run /review-animations
-  (only the user can start it), then fixes what it finds.
+  Every change to motion or interaction is decided with /animate. When a
+  change moves something (a new or changed animation, transition, or a
+  gesture's motion), the session stops before its PRs open and asks the user
+  to run /review-animations (only the user can start it), then fixes what it
+  finds. A change to interaction that moves nothing doesn't need it.
 
 ## Testing
 
@@ -204,13 +206,15 @@ conversation again
   proves nothing.
 - **Every bug fix has a check in `tools/smoke.py`** that fails before the fix
   and passes after it: an existing one if it shows the bug, else a new one.
-- **App changes pass `python3 tools/smoke.py`:** while working, the groups
-  you touch (`python3 tools/smoke.py water loops`); before the PR leaves
-  draft, the whole suite once, on its last commit that changes the app. A
-  check stays good for the commit it ran on, whoever ran it, and for any
-  later commit whose files outside `docs/`, AGENTS.md, README.md and
-  PRODUCT.md are the same: a docs-only commit, or a rebase onto one (the
-  app reads `CHANGELOG.md`: run `changelog`).
+- **App changes pass `python3 tools/smoke.py`** in the groups they touch
+  (`python3 tools/smoke.py water loops`): while working, and before the PR
+  leaves draft, once on its last commit that changes the app. A session
+  never runs the whole suite locally. The whole suite runs on GitHub,
+  started by hand, and only once `main`'s suite is green (#579); until then
+  the groups are enough. A check stays good for the commit it ran on,
+  whoever ran it, and for any later commit whose files outside `docs/`,
+  AGENTS.md, README.md and PRODUCT.md are the same: a docs-only commit, or
+  a rebase onto one (the app reads `CHANGELOG.md`: run `changelog`).
 - **A check that fails only sometimes,** or only in a whole run, gets an
   issue (or a comment on its issue): the commit, the command, the browser,
   what was cached and what else ran, what failed, and whether it passes
