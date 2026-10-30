@@ -53,7 +53,7 @@ Any static server works; `serve.py` just turns off HTTP caching while you edit.
 With the dev server running and Google Chrome installed:
 
 ```bash
-python3 tools/smoke.py                  # layout at 5 sizes, trail details, LIPAS, water routing: no overlaps, no console errors
+python3 tools/smoke.py water loops      # only these groups: the ones a change touches (the whole suite runs on GitHub, below)
 python3 tools/smoke.py --list           # every group and size, with what it checks
 python3 tools/shoot.py shots after      # screenshots for a pull request (--list for the scenes)
 python3 tools/readme_shots.py           # legacy README scenes, into docs/screenshots (WebP)
@@ -63,7 +63,7 @@ python3 tools/loop_probe.py             # how long do round-trip loops ride? (ca
 python3 tools/water_probe.py            # paddling legs before/after the water costs: length, ms, grid cells
 ```
 
-GitHub can run the same suite on its Ubuntu runner, for information only: **Actions → Smoke suite → Run workflow** on any branch, or `gh workflow run smoke.yml --ref <branch>`, with `-f groups="fit quick"` for only some groups. The full suite runs in ten parallel jobs, about 4–16 minutes each; `button3d` and `button3dphone` have one each, as the 3D button's checks took 16–27 minutes as one group (#411); `.github/smoke-shards.json` says which groups each one runs, and a new group goes into one of them, by its time on the runner, or the run fails; `tools/smoke.py` fails the same way before a local run starts (`shard_check()`, #577). The `report` job's summary has every `FAIL` with its lines, the Chrome version, the time per step and the requests to other hosts; each job's log is its `smoke-log-<n>` artifact. The runner is set up like the development Mac (Inter, en-GB, Helsinki time, a mouse) in `.github/workflows/smoke.yml` and `.github/chrome.sh`. It isn't a required check (#268).
+A session runs the groups its change touches, never the whole suite on this computer. The whole suite runs on GitHub's Ubuntu runner, started by hand, and only once `main`'s suite is green (#579); until then the groups are enough (AGENTS.md, "Testing"). To start it: **Actions → Smoke suite → Run workflow** on any branch, or `gh workflow run smoke.yml --ref <branch>`, with `-f groups="fit quick"` for only some groups. The full suite runs in ten parallel jobs, about 4–16 minutes each; `button3d` and `button3dphone` have one each, as the 3D button's checks took 16–27 minutes as one group (#411); `.github/smoke-shards.json` says which groups each one runs, and a new group goes into one of them, by its time on the runner, or the run fails; `tools/smoke.py` fails the same way before a local run starts (`shard_check()`, #577). The `report` job's summary has every `FAIL` with its lines, the Chrome version, the time per step and the requests to other hosts; each job's log is its `smoke-log-<n>` artifact. The runner is set up like the development Mac (Inter, en-GB, Helsinki time, a mouse) in `.github/workflows/smoke.yml` and `.github/chrome.sh`. It isn't a required check (#268).
 
 The tests answer from recorded files in `tools/fixtures/` (a route, an Overpass tile, LIPAS answers, Väylävirasto fairways), so they make no routing calls. `tools/brouter-local.sh` starts BRouter on your computer for anything that does route; please don't burst-test brouter.de.
 
