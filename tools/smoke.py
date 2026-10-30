@@ -13578,12 +13578,15 @@ CT_POPS = """(async (keyed) => {
   out.pillOut = menu.hidden ? moves(menu) : 'open';
   await settle(menu);
   if (keyed) b.focus();
-  const m = U.popMenu(b, [{ label: 'One', fn: () => {} }]);
+  const m = U.popMenu(b, [{ group: 'A group', items: [{ label: 'One', fn: () => {} }, { label: 'Two, a longer one', fn: () => {} }] }]);
   out.menu = moves(m.el);
   await settle(m.el);
+  const sizes = (el) => [...el.querySelectorAll('.menu-item')].map((i) => `${Math.round(i.getBoundingClientRect().width)}×${Math.round(i.getBoundingClientRect().height)}`).join(' ');
+  const was = sizes(m.el);
   if (keyed) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); else m.close();
   const gone = document.querySelector('.menu-leaving');
   out.menuOut = document.querySelector('.menu-pop') ? 'still a menu' : gone ? moves(gone) : 'nothing';
+  if (gone && sizes(gone) !== was) out.menuOut += ` (its items ${was} became ${sizes(gone)} as it went)`;
   gone?.remove();
   return out;
 })"""
