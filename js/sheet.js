@@ -74,12 +74,13 @@ export function swipeSheet(el, o) {
 
   const place = (v) => { ride.v = v; el.style.transform = `translateY(${ride.H - v}px)`; if (o.moved) o.moved(v, ride); };
   // what scrolls under the finger: a body in the sheet, or the sheet itself where it scrolls as one (the planner's, on a
-  // phone); none where the browser may not pan (touch-action: none: the planner's top row, which stays as it scrolls)
+  // phone); none where the browser may not pan it up and down (touch-action without pan-y: the planner's top row, which
+  // stays as it scrolls, and a card at its peek, which a finger moves rather than scrolls)
   const scroller = (t) => {
     for (let n = t; n; n = n === el ? null : n.parentElement) {
       const cs = getComputedStyle(n);
+      if (!/auto|pan-y|manipulation/.test(cs.touchAction)) return null;
       if (n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(cs.overflowY)) return n;
-      if (cs.touchAction === 'none') return null;
     }
     return null;
   };
