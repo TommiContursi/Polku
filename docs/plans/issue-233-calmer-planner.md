@@ -699,9 +699,10 @@ Today the planner's top part stays put: the numbers, the warning row, the hardes
     | | This route | The worst case |
     |---|---|---|
     | 390 × 844, by touch | all three numbers and "Start → End" | all three numbers; the name gives way |
-    | 360 × 740, by touch; 390 or 360 with ⌃ (a mouse) | the numbers; the name may give way | the distance and the time |
-    | 200 % | the distance and the time | the distance |
-    | The side panel | the name on its line, then the numbers | the same |
+    | 360 × 740 by touch, or 390 and 360 with ⌃ (a mouse) | all three numbers; the name gives way | the distance and the time |
+    | 200 % by touch | the distance and the time | the distance |
+    | 200 % with ⌃ | the distance | the distance |
+    | The side panel | the name on a line of its own, then the numbers (48 px) | the same (66 px) |
 
     If the name matters more than the climb, the phone's row could take the side panel's two lines, lying over the content as that row does.
 - **The desktop's bottom dock** isn't drawn: its top row has no ⌄, so D would need one there first. There the option scrolls as today, and the page says so.
