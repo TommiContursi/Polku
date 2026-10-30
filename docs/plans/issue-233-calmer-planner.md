@@ -599,8 +599,8 @@ Asked for on 2026-10-29, after trying #558 on a phone. Since the user's note of 
 - A stop that goes is never set. What asks for it (a tab, Check, the handle's tap, a remembered size) gets the next stop that stays, in its direction.
 - ⌃ and ⌄ are buttons added to the sheet's top row. Cards are as they are today.
 - The settings list each option's stops with their heights, read from the frames, and where a light flick lands from each stop. When the page opens it shows your leaning (below, since 2026-10-30).
-- **On a Mac** (a window 900 px wide or more): the settings at the left, Today and the option side by side at 390 × 844, 360 × 740 or 200 %, or one above the other at 1440 × 900 with the planner at the bottom or at the side. A mouse drags the sheet by its top rows, as in the app. Serve the repository's folder with `python3 serve.py 8823` and open `http://localhost:8823/docs/plans/mockups/issue-233-sheet-stops.html`.
-- **On a phone:** one frame fills the screen. The bar at the top switches between Today and the option, and **Options** opens the settings. The Mac serves the folder to the network, and both must be on the same Wi-Fi. `serve.py` listens only on the Mac itself, so run Python's own server from the repository's folder (or the worktree of a branch that isn't merged yet):
+- **On a Mac** (a window 900 px wide or more): the settings at the left, Today and the option side by side at 390 × 844, 360 × 740 or 200 %, or one above the other at 1440 × 900 with the planner at the bottom or at the side. A mouse drags the sheet by its top rows, as in the app. Serve a checkout of `main` with `python3 serve.py 8823` and open `http://localhost:8823/docs/plans/mockups/issue-233-sheet-stops.html`.
+- **On a phone:** one frame fills the screen. The bar at the top switches between Today and the option, and **Options** opens the settings. The Mac serves the folder to the network, and both must be on the same Wi-Fi. `serve.py` listens only on the Mac itself, so run Python's own server from a checkout of `main` (or the worktree of a branch that isn't merged yet):
 
   ```bash
   python3 -m http.server 8807 --bind 0.0.0.0
@@ -683,7 +683,7 @@ Today the planner's top part stays put: the numbers, the warning row, the hardes
   - The numbers are Body bold in tabular figures, each whole or not at all. The name follows in Control, and is the first to give way.
   - They fade in over `--t-open` as the numbers pass under the row and out over `--t-press`. The handle's bar moves up into the row's top padding with them, as on the folded line.
   - The row keeps its 40 px, so nothing under it jumps.
-- **The side panel** has no top row: a 44 px row with the numbers, the name and ⌄ lies over its top once the numbers have scrolled away.
+- **The side panel** has no top row. Once the numbers have scrolled away, a row with the name, the numbers and ⌄ lies over its top. It takes no room in the layout, so the name gets a line of its own, wrapping whole, over the numbers (44 px; 66 px with a long name).
 - **At the peek** nothing changes: nothing scrolls, and the numbers are in sight.
 - **A finger:**
   - On the content, it scrolls it, the numbers too. The header takes `touch-action: pan-y` for that.
@@ -694,8 +694,17 @@ Today the planner's top part stays put: the numbers, the warning row, the hardes
   - At half, a finger on the numbers scrolls instead of raising the sheet. Today it raises it. Raising takes the top row, or ⌃ with a mouse.
   - Done, the warning row and the numbers' own buttons (the time sets the departure) scroll away with the rest. Getting back to them is a scroll back up, which phase 24's rule ("nothing takes more scrolling") asks about.
   - The profile's chart keeps its own drag (scrubbing), so a finger on it neither scrolls nor moves the sheet. That's 64–150 px of the sheet, as today.
-  - **Room:** at 390 × 844 by touch the row holds the three numbers and "Start → End". With A's ⌃ (a mouse), or longer street names on the side panel ("Näkötornintie → Pellavatehtaankatu"), the name gives way.
-- **The desktop's bottom dock** isn't drawn: its top row has no ⌄, so D would need one there first.
+  - **Room:** one row on a phone can't always hold the name and every number. Measured with this route, and with the worst case (132.2 km, 9 h 09 min, ↑2 345 ↓2 310 m and a 70-character Finnish name):
+
+    | | This route | The worst case |
+    |---|---|---|
+    | 390 × 844, by touch | all three numbers and "Start → End" | all three numbers; the name gives way |
+    | 360 × 740, by touch; 390 or 360 with ⌃ (a mouse) | the numbers; the name may give way | the distance and the time |
+    | 200 % | the distance and the time | the distance |
+    | The side panel | the name on its line, then the numbers | the same |
+
+    If the name matters more than the climb, the phone's row could take the side panel's two lines, lying over the content as that row does.
+- **The desktop's bottom dock** isn't drawn: its top row has no ⌄, so D would need one there first. There the option scrolls as today, and the page says so.
 - **Found on the way,** both on `main` at 200 %, with the sheet at full, where it already scrolls as one:
   - #597: a finger on the numbers doesn't scroll the sheet, since `.sheet-head` has `touch-action: none`. D's option frame gives it `pan-y`.
   - #598: scrolled down, the toolbox's row draws over the top row, and a tap on ⌄ presses ⋯. D's option frame puts the top row above it (`z-index: 6`), and so it reaches ⌄ at full at every size.

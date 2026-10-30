@@ -315,19 +315,22 @@ async function patch(f) {
     .ss-sum > * { line-height: 40px; white-space: nowrap; }
     .ss-sum b { font-size: var(--font-body); font-weight: var(--weight-strong); }
     .ss-sum i { font-style: normal; font-size: var(--font-control); font-weight: var(--weight-name); color: var(--muted); }
+    .sheet-top > .ss-sum i::before { content: "· "; }
     .ss-arrows .sheet-top > .ss-sum { right: 96px; }
     .sheet-top:has(.pl-tools.docked) > .ss-sum { left: 56px; }
     .sheet.ss-sum-on .ss-sum { opacity: 1; transition-duration: var(--t-open); }
     .sheet-handle::before { transition: transform var(--t-open) var(--ease-out); }
     .sheet.ss-sum-on .sheet-handle::before { transform: translateY(-13px); }
-    /* the side panel has no top row: the narrow row lies over its top once the numbers have scrolled away */
+    /* the side panel has no top row: the narrow row lies over its top once the numbers have scrolled away, so it can take
+       two lines without moving anything: the name, wrapping whole, over the numbers */
     .ss-siderow { display: none; }
     .ss-one .sheet[data-layout="side"] > .ss-siderow { display: block; position: sticky; top: 0; height: 0; z-index: 4; }
-    .ss-siderow > div { position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 6px 0 14px; background: var(--surface-solid);
+    .ss-siderow > div { position: absolute; left: 0; right: 0; top: 0; min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 6px 0 14px; background: var(--surface-solid);
       opacity: 0; visibility: hidden; transition: opacity var(--t-press) var(--ease-out), visibility 0s var(--t-press); }
     .sheet.ss-sum-on > .ss-siderow > div { opacity: 1; visibility: visible; transition: opacity var(--t-open) var(--ease-out), visibility 0s; }
-    .ss-siderow .ss-sum { position: static; flex: 1; min-width: 0; height: 44px; opacity: 1; }
-    .ss-siderow .ss-sum > * { line-height: 44px; }
+    .ss-siderow .ss-sum { position: static; flex: 1; min-width: 0; height: auto; padding: 6px 0; column-gap: 6px; opacity: 1; }
+    .ss-siderow .ss-sum > * { line-height: 1.35; }
+    .ss-siderow .ss-sum i { order: -1; flex-basis: 100%; white-space: normal; overflow-wrap: anywhere; }
     @media (prefers-reduced-motion: reduce) { .sheet-handle::before { transition: none; } }
   `));
 
@@ -415,10 +418,11 @@ async function patch(f) {
   panel.addEventListener('pointerdown', () => { panel.style.overflowY = ''; }); // (once the swipe above has had the press)
 
   // D: the sheet scrolls as one under its top row, main's .scroll-all (which 200 % uses at full), at half and full and on
-  // the side panel; 'raise' keeps half still, so a finger raises the sheet first
+  // the side panel; 'raise' keeps half still, so a finger raises the sheet first. Not drawn for the desktop's bottom dock
+  // (wider than 720 px), whose top row has no ⌄
   const scrollAll = P.scrollAll;
   P.scrollAll = function () {
-    if (!OPT.asOne || this.cards.current) return scrollAll.call(this);
+    if (!OPT.asOne || this.cards.current || (this.layout() === 'sheet' && w.innerWidth > 720)) return scrollAll.call(this);
     const p = this.panel, st = p.dataset.state;
     const on = this.layout() === 'side' ? st === 'open' : (st === 'peek' && this.peekCut) || (OPT.half === 'raise' ? ['full'] : ['half', 'full']).includes(st);
     if (p.classList.contains('scroll-all') === on) return;
@@ -428,16 +432,17 @@ async function patch(f) {
   // the narrow row: the numbers as the folded line has them, then the route's name
   const sum = h('div', { class: 'ss-sum', 'aria-hidden': 'true' }), sumSide = h('div', { class: 'ss-sum', 'aria-hidden': 'true' });
   P.els.top.append(sum);
-  panel.prepend(h('div', { class: 'ss-siderow' }, h('div', {}, sumSide,
-    h('button', { type: 'button', class: 'tool', title: 'Fold the planner down to a line', 'aria-label': 'Fold the planner down to a line', html: icon('chevronDown', 19), onclick: (e) => P.fold({ instant: !e.detail }) }))));
+  const sideBar = h('div', {}, sumSide,
+    h('button', { type: 'button', class: 'tool', title: 'Fold the planner down to a line', 'aria-label': 'Fold the planner down to a line', html: icon('chevronDown', 19), onclick: (e) => P.fold({ instant: !e.detail }) }));
+  panel.prepend(h('div', { class: 'ss-siderow' }, sideBar));
   const fill = () => {
     const nums = [...P.els.sum.querySelectorAll('.sum-item > b')].map((b) => b.textContent.trim()), name = P.routeTitle();
-    for (const box of [sum, sumSide]) box.replaceChildren(...nums.map((t, i) => h('b', {}, i ? `· ${t}` : t)), name ? h('i', {}, nums.length ? `· ${name}` : name) : '');
+    for (const box of [sum, sumSide]) box.replaceChildren(...nums.map((t, i) => h('b', {}, i ? `· ${t}` : t)), name ? h('i', {}, name) : '');
   };
   new w.MutationObserver(fill).observe(P.els.sum, { childList: true, subtree: true, characterData: true });
   fill();
   const narrow = () => {
-    const top = P.layout() === 'side' ? panel.getBoundingClientRect().top + 44 : P.els.top.getBoundingClientRect().bottom;
+    const top = P.layout() === 'side' ? panel.getBoundingClientRect().top + sideBar.offsetHeight : P.els.top.getBoundingClientRect().bottom;
     panel.classList.toggle('ss-sum-on', OPT.asOne && panel.classList.contains('scroll-all') && P.els.sum.getBoundingClientRect().bottom <= top + 1);
   };
   panel.addEventListener('scroll', narrow, { passive: true });
@@ -491,6 +496,7 @@ function renderStops() {
   // (measured with the sheet at rest: sizes set for a moment would turn a move or a drag on its way)
   if ([T, O].some(({ P }) => P.sheetMove || P.sheetSwipe?.busy || P.panel.classList.contains('dragging'))) { setTimeout(renderStops, 500); return; }
   if (T.P.layout() === 'side') { stopsBox.replaceChildren(h('p', {}, 'The side panel has two sizes, open and its line, in every option; D changes only how it scrolls.')); return; }
+  if (OPT.asOne && O.P.layout() === 'sheet' && figs.option.fr.contentWindow.innerWidth > 720) rows.push(h('p', { class: 'ss-note' }, "D isn't drawn for the bottom dock: its top row has no ⌄. It scrolls as today here."));
   const today = { ...BASE, rest: false };
   const restOf = (fr, o) => stopsFrom(fr.P, fr.P.panel.dataset.state === 'folded' ? 'peek' : fr.P.panel.dataset.state, { ...o, rest: true }).sizes.filter((z) => z.name !== 'closed');
   const list = (S) => S.map((z) => `${NAMES[z.name]} ${Math.round(z.at)}`).join(' · ');
