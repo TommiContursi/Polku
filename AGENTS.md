@@ -211,10 +211,12 @@ conversation again
   leaves draft, once on its last commit that changes the app. A session
   never runs the whole suite locally. The whole suite runs on GitHub,
   started by hand, and only once `main`'s suite is green (#579); until then
-  the groups are enough. A check stays good for the commit it ran on,
-  whoever ran it, and for any later commit whose files outside `docs/`,
-  AGENTS.md, README.md and PRODUCT.md are the same: a docs-only commit, or
-  a rebase onto one (the app reads `CHANGELOG.md`: run `changelog`).
+  the groups are enough. Where an issue, a work package or a plan asks for
+  the whole suite, this rule decides how and when it runs. A check stays
+  good for the commit it ran on, whoever ran it, and for any later commit
+  whose files outside `docs/`, AGENTS.md, README.md and PRODUCT.md are the
+  same: a docs-only commit, or a rebase onto one (the app reads
+  `CHANGELOG.md`: run `changelog`).
 - **A check that fails only sometimes,** or only in a whole run, gets an
   issue (or a comment on its issue): the commit, the command, the browser,
   what was cached and what else ran, what failed, and whether it passes
