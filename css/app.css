@@ -242,7 +242,7 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .act-menu, .act-menu[hidden] { transform: none; }
   @starting-style { .act-menu:not([hidden]) { transform: none; } }
-  .act-current .ic:last-child, .lg-group > summary::after { transition: none; }
+  .act-current .ic:last-child { transition: none; }
 }
 .act { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; color: var(--text); font: inherit; font-weight: 600; text-align: left; }
 .act:hover, .act:focus-visible { background: var(--surface-2); }
@@ -522,6 +522,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .lg-group > summary::-webkit-details-marker { display: none; }
 .lg-group > summary::after { content: ""; width: 8px; height: 8px; margin: 0 4px 0 auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform var(--t-press) var(--ease-out); }
 .lg-group[open] > summary::after { transform: rotate(45deg); transition-duration: var(--t-open); }
+@media (prefers-reduced-motion: reduce) { .lg-group > summary::after { transition: none; } }
 .lg-count { font-size: 11px; font-weight: 700; color: var(--accent); }
 .lg-group > :last-child { margin-bottom: 10px; }
 .lg-key { margin-top: 6px; font-size: 12px; }
