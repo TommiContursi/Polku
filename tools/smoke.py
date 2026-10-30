@@ -9614,6 +9614,19 @@ def stops_scroll(chrome):
                 fold_settled(pg, fails, f'{tag} the handle down at {size}')
                 if st() == size:
                     fails.append(f'{tag}: the handle dragged 200 px down at {size}, scrolled: the sheet stayed at {size}')
+            # a tab or a step from its start (Codex on #603): scrolled to the end at full, Check or How you go leaves the tabs in
+            # sight with room for the tab under them, not the sheet at its own top (at 200 % its header and profile fill it)
+            for how, js in (('Check', "p.setTab('check', { user: true })"), ('How you go', "p.openStep('how')")):
+                pg.js(f"(() => {{ const p = polku.planner; p.openStep(null); p.setTab('route'); p.setSheetState('full', {{ remember: false }}); return true; }})()")
+                fold_settled(pg, fails, f'{tag} at full for {how}')
+                pg.js("polku.planner.panel.scrollTop = polku.planner.panel.scrollHeight; true")
+                time.sleep(0.3)
+                pg.js(f"(() => {{ const p = polku.planner; {js}; return true; }})()")
+                fold_settled(pg, fails, f'{tag} {how}')
+                r = pg.js("(() => { const p = polku.planner, t = p.els.tabs.getBoundingClientRect(), row = p.els.top.getBoundingClientRect(), s = p.panel.getBoundingClientRect(); return { tabs: Math.round(t.top), row: Math.round(row.bottom), foot: Math.round(s.bottom), scroll: Math.round(p.panel.scrollTop) }; })()")
+                if r['tabs'] < r['row'] - 2 or r['tabs'] > r['foot'] - 80:
+                    fails.append(f"{tag} at full, scrolled to the end, then {how}: the tabs at {r['tabs']} px, not in sight between the top row ({r['row']}) and the foot ({r['foot']}) with room under them (scrolled {r['scroll']} px)")
+            pg.js("polku.planner.openStep(null); true")
             if w > 300:
                 # at the content's top, a finger down on the numbers lowers the sheet
                 pg.js("polku.planner.setSheetState('half', { remember: false }); polku.planner.panel.scrollTop = 0; true")

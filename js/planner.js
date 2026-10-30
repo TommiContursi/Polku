@@ -4407,7 +4407,7 @@ export class Planner {
       this.els.tabBtn[t.id].tabIndex = on ? 0 : -1;
       this.els.panes[t.id].hidden = !on;
     }
-    if (changed) this.listScroller().scrollTop = 0;
+    if (changed) this.listToTop();
     if (user) {
       const st = this.panel.dataset.state;
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(st)) this.setSheetState('half');
@@ -4949,6 +4949,14 @@ export class Planner {
   }
   // what scrolls the list: its body, or the sheet where it scrolls as one
   listScroller() { return this.panel.classList.contains('scroll-all') ? this.panel : this.els.body; }
+  // a tab or a step from its start: the body at its top, or where the sheet scrolls as one, the tabs back under the top row
+  // once they've gone past it (not the sheet's own top, which at 200 % would take the tab's content out of sight)
+  listToTop() {
+    const p = this.panel;
+    if (!p.classList.contains('scroll-all')) { this.els.body.scrollTop = 0; return; }
+    const at = this.els.tabs.offsetTop - this.els.top.offsetHeight;
+    if (p.scrollTop > at) p.scrollTop = at;
+  }
   // the peek, or the line where the peek would cover more than half the screen (#453: 200 %, long words)
   restSize() {
     this.measureSheet?.();
@@ -6024,7 +6032,7 @@ export class Planner {
       if (this.tab !== 'route') this.setTab('route');
       if (this.layout() === 'sheet' && ['folded', 'peek'].includes(this.panel.dataset.state)) this.setSheetState('half');
       else if (this.layout() === 'side' && this.panel.dataset.state === 'folded') this.setSheetState('open');
-      this.listScroller().scrollTop = 0;
+      this.listToTop();
       requestAnimationFrame(() => this.els.stepHead.querySelector('.way-back').focus({ preventScroll: true }));
     } else {
       delete pane.dataset.step;
