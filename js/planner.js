@@ -5057,7 +5057,13 @@ export class Planner {
       // as it was last docked (placeToolsNow() says whether the peek docks it)
       const box = this.tools, shown = !!box && !box.hidden, take = shown && box.parentElement === this.panel ? hd.offsetTop - this.els.top.offsetHeight : 0;
       if (take) this.dockTake = take;
+      // …and the row of what to read, which goes above the peek while Check or the list says it (renderReadRow()): shown
+      // for the measure, with nothing drawn in between; not the count beside the numbers (narrow or short), which adds none
+      const rr = this.els.readRow, readRow = rr && rr.hidden && this.panel.dataset.state !== 'peek' && !this.narrowMQ.matches && !this.shortMQ.matches
+        && this.readRowWanted() && !this.checkInSight('peek') && !this.listInSight('peek');
+      if (readRow) rr.hidden = false;
       this.peekBare = Math.ceil(hd.offsetTop - take + hd.offsetHeight + grow + under());
+      if (readRow) rr.hidden = true;
       let h = this.peekBare + (this.panel.dataset.state === 'peek' ? take : shown && this.peekDocks ? this.dockTake || 0 : 0);
       const over = t && !t.hidden && this.layout() === 'sheet' ? h - (dvh() - 76) : 0;
       if (over > 0) { const nh = n.offsetHeight, to = Math.max(38, nh - over); n.style.maxHeight = `${to}px`; h -= nh - to; }
@@ -6654,13 +6660,13 @@ export class Planner {
     this.renderFold();
   }
   // whether Route's list is in sight with a section's warning in it (then the peek's row doesn't say it again)
-  listInSight() {
-    return this.active && this.tab === 'route' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(this.panel.dataset.state))
+  listInSight(st = this.panel.dataset.state) {
+    return this.active && this.tab === 'route' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(st))
       && this.sec.points && this.sec.points.el.dataset.open !== 'false' && !!this.els.points.querySelector('.sec2 .warn-row');
   }
   // whether Check is in sight: a desktop's Check tab, a phone's with the sheet above its peek
-  checkInSight() {
-    return this.active && this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(this.panel.dataset.state));
+  checkInSight(st = this.panel.dataset.state) {
+    return this.active && this.tab === 'check' && (this.layout() !== 'sheet' || this.sideMQ.matches || !['folded', 'peek'].includes(st));
   }
 
   // Check's items on the map [jc-peek, jc-check, jc-worst, jc-step]: Read before you go and Not checked with a place
@@ -6743,11 +6749,13 @@ export class Planner {
   // box; a tap shows the first of them on the route. Not while Check is in sight (a phone's sheet above its peek, a
   // desktop's Check tab); an item's card in the peek takes the head (.carded).
   // Only what's still unread: ✕ marks it all read, with Undo, and the row goes until something new or changed comes.
+  // whether the peek's row has something to say: something to read before you go, or not checked
+  readRowWanted() { return !!this.analysis && !!(this.unread(this.heads, 'read').length || this.unread(this.heads, 'not').length); }
   renderReadRow() {
     const el = this.els.readRow, H = this.heads;
     if (!el) return;
+    el.hidden = !this.readRowWanted() || this.checkInSight() || this.listInSight();
     const R1 = this.unread(H, 'read'), R3 = this.unread(H, 'not'), n1 = R1.length, n3 = R3.length;
-    el.hidden = !this.analysis || (!n1 && !n3) || this.checkInSight() || this.listInSight();
     // narrow (200 %, a small phone): the count alone, beside the numbers above Done; short (a phone on its side at 150 or
     // 200 %, #438): before Done, in the numbers' line. Either way it takes none of the map (the review of #416); its name
     // says the rest, a tap shows the first, and Check's All read marks them all

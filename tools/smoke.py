@@ -9484,13 +9484,14 @@ def stops_scroll(chrome):
                 # a point's card opened from the list and closed: the list where it was
                 pg.js("polku.planner.setSheetState('half', { remember: false }); polku.planner.setTab('route'); true")
                 fold_settled(pg, fails, f'{tag} at half for a card')
-                pg.js("polku.planner.panel.scrollTop = 150; true")
+                # (scrolled until the first point's row is in sight under the top row: how far depends on what's above it)
+                was = pg.js("(() => { const p = polku.planner, r = p.els.points.querySelector('.wpl-point'); if (r) p.panel.scrollTop += r.getBoundingClientRect().top - p.els.top.getBoundingClientRect().bottom - 60; return Math.round(p.panel.scrollTop); })()")
                 time.sleep(0.3)
                 row = pg.js("""(() => { const p = polku.planner, rows = [...p.els.points.querySelectorAll('.wpl-point')], s = p.panel.getBoundingClientRect(), t = p.els.top.getBoundingClientRect();
                   const r = rows.map((e) => e.getBoundingClientRect()).find((b) => b.top > t.bottom && b.bottom < s.bottom);
                   return r ? [r.left + r.width / 2, r.top + r.height / 2] : null; })()""")
-                if not row:
-                    fails.append(f'{tag}: no row of the list in sight at half, scrolled 150 px')
+                if not row or not was:
+                    fails.append(f'{tag}: no row of the list in sight at half, scrolled {was} px')
                 else:
                     pg.tap(*row)
                     time.sleep(0.6)
@@ -9500,8 +9501,8 @@ def stops_scroll(chrome):
                     time.sleep(0.4)
                     fold_settled(pg, fails, f'{tag} the card closed')
                     back = pg.js("[polku.planner.panel.dataset.state, polku.planner.panel.scrollTop]")
-                    if card != 'point' or back[0] != 'half' or abs(back[1] - 150) > 2:
-                        fails.append(f'{tag}: a point\'s card from the list, scrolled 150 px at half ({card}), closed: {back[0]}, scrolled {back[1]} px')
+                    if card != 'point' or back[0] != 'half' or abs(back[1] - was) > 2:
+                        fails.append(f'{tag}: a point\'s card from the list, scrolled {was} px at half ({card}), closed: {back[0]}, scrolled {back[1]} px')
             fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
         finally:
             pg.close()
@@ -9554,8 +9555,73 @@ def stops_arrows(chrome):
     return fails
 
 
+# D on the desktop's side panel, by mouse: it scrolls as one, the wheel over the numbers too; once they've gone, its top row
+# lies over the panel's top with the name and the numbers, and its ⌄ folds the panel; the resize grip is beside the panel
+# (not in it, which would clip it and scroll it away), at its edge and middle, scrolled too, and still resizes it; a card on
+# the map leaves the panel's scroll as it was
+def stops_side(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    tag = '1440x900, the side panel'
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:plannerDock': '"left"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("polku.planner.setTab('check'); polku.planner.setSheetState('open'); polku.planner.panel.scrollTop = 0; true")
+        fold_settled(pg, fails, f'{tag} open')
+        info = lambda: pg.js("""(() => { const p = polku.planner, P = p.panel, r = P.getBoundingClientRect(), g = document.querySelector('.sheet-resize'), gb = g.getBoundingClientRect();
+          return { all: P.classList.contains('scroll-all'), on: P.classList.contains('sum-on'), top: Math.round(P.scrollTop), max: P.scrollHeight - P.clientHeight, row: getComputedStyle(p.els.top).visibility,
+            sum: p.els.topSum.textContent, first: p.els.sum.querySelector('.sum-item > b')?.textContent.trim(), name: p.routeTitle(), inPanel: P.contains(g), shown: !!g.offsetParent,
+            gx: Math.round(gb.left + gb.width / 2), gy: Math.round(gb.top + gb.height / 2), right: Math.round(r.right), mid: Math.round(r.top + r.height / 2), w: Math.round(r.width) }; })()""")
+        s = info()
+        if not s['all'] or s['on'] or s['row'] != 'hidden':
+            fails.append(f"{tag} at rest: scrolls as one {s['all']}, its top row shown {s['on']} ({s['row']}), not scrolling as one with no row")
+        if s['max'] < 60:
+            fails.append(f"{tag}: only {s['max']} px to scroll, too little to check")
+        x, y = fold_at(pg, 'polku.planner.els.sum')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseWheel', 'x': x, 'y': y, 'deltaX': 0, 'deltaY': 300}, pg.s)
+        time.sleep(0.6)
+        fold_settled(pg, fails, f'{tag} wheeled')
+        s = info()
+        if s['top'] < 40 or not s['on'] or s['row'] != 'visible':
+            fails.append(f"{tag}: the wheel over the numbers scrolled {s['top']} px, its top row shown {s['on']} ({s['row']})")
+        if not s['first'] or not s['sum'].startswith(s['first']) or s['name'] not in s['sum']:
+            fails.append(f"{tag} scrolled: the top row says \"{s['sum']}\", not the numbers from {s['first']} and {s['name']}")
+        if s['inPanel'] or not s['shown'] or abs(s['gx'] - s['right']) > 2 or abs(s['gy'] - s['mid']) > 2:
+            fails.append(f"{tag} scrolled: the grip is {'in' if s['inPanel'] else 'beside'} the panel, shown {s['shown']}, at {s['gx']}, {s['gy']}, not at its edge {s['right']} and middle {s['mid']}")
+        w0 = s['w']
+        for typ, dx in (('mousePressed', 0), ('mouseMoved', 30), ('mouseMoved', 60), ('mouseReleased', 60)):
+            pg.c.send('Input.dispatchMouseEvent', {'type': typ, 'x': s['gx'] + dx, 'y': s['gy'], 'button': 'left', 'buttons': 0 if typ == 'mouseReleased' else 1, 'clickCount': 1}, pg.s)
+            time.sleep(0.15)
+        fold_settled(pg, fails, f'{tag} resized')
+        s = info()
+        if abs(s['w'] - w0 - 60) > 2 or abs(s['gx'] - s['right']) > 2:
+            fails.append(f"{tag}: the grip dragged 60 px: the panel {w0} → {s['w']} px wide, the grip at {s['gx']} by its edge at {s['right']}")
+        top = s['top']
+        pg.js("(() => { const p = polku.planner; p.openPointCard(p.points[1]); return true; })()")
+        time.sleep(0.6)
+        fold_settled(pg, fails, f'{tag} a card on the map')
+        c = pg.js("[polku.planner.cards.where(), polku.planner.panel.classList.contains('scroll-all'), Math.round(polku.planner.panel.scrollTop)]")
+        if c[0] != 'float' or not c[1] or abs(c[2] - top) > 2:
+            fails.append(f'{tag}: a point\'s card on the map ({c[0]}): the panel scrolls as one {c[1]}, scrolled {c[2]} px, not {top}')
+        pg.js("polku.planner.cards.close(); true")
+        time.sleep(0.4)
+        at = fold_at(pg, "polku.planner.els.top.querySelector('.sheet-fold')")
+        if not at:
+            fails.append(f'{tag} scrolled: no ⌄ in its top row')
+        else:
+            fold_click(pg, *at)
+            fold_settled(pg, fails, f'{tag} the row\'s ⌄')
+            s = pg.js("[polku.planner.panel.dataset.state, !!document.querySelector('.sheet-resize').offsetParent]")
+            if s != ['folded', False]:
+                fails.append(f'{tag}: the top row\'s ⌄ left the panel {s[0]} with its grip shown {s[1]}, not folded with none')
+        fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 def sheet_stops(chrome):
-    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_arrows(chrome)
+    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_side(chrome) + stops_arrows(chrome)
     print(f"{'ok  ' if not fails else 'FAIL'} the sheet's stops" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -14767,7 +14833,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
-    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch'),
+    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]
