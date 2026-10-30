@@ -4930,8 +4930,15 @@ export class Planner {
         || (innerWidth <= 720 && st === 'half')
         || (st === 'full' && (innerWidth <= 720 || this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2)));
     if (p.classList.contains('scroll-all') === on) return;
+    const was = p.scrollTop; // (before: a sheet that no longer scrolls reads 0)
     p.classList.toggle('scroll-all', on);
-    if (!on) { p.scrollTop = 0; p.classList.remove('sum-on'); }
+    if (on) return;
+    // (scrolled: the size it goes to hides the list at once, so the content can't scroll back with the sheet's move; the
+    // numbers fade in where the list was instead of appearing at once, but not from the keyboard. A swipe has already
+    // scrolled it back, bindSheet()'s unscroll)
+    if (was > 0 && !this.keyed && !p.classList.contains('instant')) this.els.head.animate([{ opacity: 0 }, { opacity: 1 }], { duration: token('--t-open'), easing: cssVar('--ease-out') });
+    p.scrollTop = 0;
+    p.classList.remove('sum-on');
   }
   // one size up or down: the line (from the peek, never away), the peek, half and full; a card's line, its own size and full
   stepSheet(dir, instant) {
@@ -5126,6 +5133,9 @@ export class Planner {
       named.style.transform = `translate(-50%, ${Math.round(Math.min(parseFloat(i.style.top), foot - 24)) - 26}px)`;
     };
     const unmark = () => marks.classList.remove('on');
+    // let go towards the peek or the line with the sheet scrolled as one: its content goes back to its top with the spring,
+    // so it lands there and nothing jumps at rest (scrollAll())
+    let unscroll = null;
     this.sheetSwipe = swipeSheet(this.panel, {
       enabled: () => this.active && this.layout() === 'sheet',
       // not what has its own drag: the profile, a waypoint's grip, the timeline; a mouse only by the top rows
@@ -5167,14 +5177,19 @@ export class Planner {
       // the line and what it folds cross-fade as the sheet passes between them, so nothing jumps at rest
       moved: (v, ride) => {
         if (ride.to && marks.classList.contains('on')) markTo(ride.to);
+        if (unscroll) { const d = unscroll.v0 - unscroll.to; this.panel.scrollTop = unscroll.S * (Math.abs(d) < 1 ? 0 : Math.max(0, Math.min(1, (v - unscroll.to) / d))); }
         if (!this.foldable()) return;
         const top = px('--peek-h'), line = px('--fold-h'), f = Math.max(0, Math.min(1, (top - v) / Math.max(1, top - line)));
         this.els.fold.style.opacity = f;
         for (const el of [this.els.top, this.els.head, this.els.profZone, this.els.tabs, this.els.body]) el.style.opacity = 1 - f;
       },
-      aim: unmark,
-      end: (name) => this.restSheet(name),
-      cancel: () => { unmark(); this.restSheet(null); },
+      aim: (name, ride) => {
+        unmark();
+        const p = this.panel, to = ride.sizes.find((z) => z.name === name);
+        unscroll = p.classList.contains('scroll-all') && p.scrollTop > 0 && to && !['half', 'full'].includes(name) ? { S: p.scrollTop, v0: ride.v, to: to.at } : null;
+      },
+      end: (name) => { unscroll = null; this.restSheet(name); },
+      cancel: () => { unscroll = null; unmark(); this.restSheet(null); },
     });
     // a tap on the handle, or on the header outside its buttons, folds the sheet or opens it again; folded, the handle
     // opens it as it was (not when the target has gone from it: a control that re-rendered itself, #251)

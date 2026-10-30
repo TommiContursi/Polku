@@ -1444,8 +1444,8 @@ function showQuick(open, { instant = false, back = false } = {}) {
   if (instant) { void qd.offsetWidth; qd.classList.remove('instant'); }
 }
 
-// The swipe on a phone: down past 40 % (or a flick) closes the drawer, or steps back from a tile's
-// settings and Edit (it's Done there); up (or a flick) is More. The full panel's swipe down is ‹.
+// The swipe on a phone: down past 40 %, or let go moving down (SWIPE.dismiss), closes the drawer, or steps back from a
+// tile's settings and Edit (it's Done there); up (or a flick) is More. The full panel's swipe down is ‹.
 const qdSwipe = swipeSheet($('#quick-layers'), {
   enabled: () => phoneMQ.matches && quickOpen(),
   start: () => {
@@ -1456,7 +1456,7 @@ const qdSwipe = swipeSheet($('#quick-layers'), {
       sizes: step ? [{ name: 'back', at: 0, rest: H }, { name: 'here', at: H }] : [{ name: 'closed', at: 0 }, { name: 'quick', at: H }, { name: 'all', at: H + 140, rest: H }],
     };
   },
-  pick: (aim, r) => (aim < r.H * (1 - SWIPE.closeAt) ? (r.from === 'quick' ? 'closed' : 'back') : aim > r.H + 70 && r.from === 'quick' ? 'all' : r.from),
+  pick: (aim, r, v) => (aim < r.H * (1 - SWIPE.closeAt) || (v <= -SWIPE.dismiss && r.v < r.H) ? (r.from === 'quick' ? 'closed' : 'back') : aim > r.H + 70 && r.from === 'quick' ? 'all' : r.from),
   aim: (name) => {
     if (name === 'back') quickStep('quick');
     if (name === 'all') openPanel('layers-panel', { step: true });
@@ -1471,7 +1471,7 @@ const lpSwipe = swipeSheet($('#layers-panel'), {
     lp.classList.add('dragging');
     return { H, now: H, min: 0, max: H, from: 'all', sizes: [{ name: 'back', at: 0, rest: H }, { name: 'all', at: H }] };
   },
-  pick: (aim, r) => (aim < r.H * (1 - SWIPE.closeAt) ? 'back' : 'all'),
+  pick: (aim, r, v) => (aim < r.H * (1 - SWIPE.closeAt) || (v <= -SWIPE.dismiss && r.v < r.H) ? 'back' : 'all'),
   aim: (name) => { if (name === 'back') openPanel('quick-layers', { back: true }); },
   end: () => $('#layers-panel').classList.remove('dragging'),
   cancel: () => $('#layers-panel').classList.remove('dragging'),

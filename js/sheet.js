@@ -22,6 +22,7 @@ export const SWIPE = {
   flick: 1.1, // px/ms: a release at least this fast is a flick
   decel: 0.99, // deceleration per ms, for where a flick would come to rest: Apple's faster one, so a slow release lands near the finger (#233's sheet's stops)
   closeAt: 0.4, // a sheet that closes by a swipe does so past this share of its height
+  dismiss: 0.11, // px/ms: …or let go moving down at least this fast, pulled below its size (a drawer's momentum dismissal)
   damping: 0.85, // the spring's damping ratio (1: no bounce)
   response: 0.3, // the spring's response, s
   rubber: 0.55, // resistance past the first and last size

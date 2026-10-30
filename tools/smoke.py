@@ -5867,6 +5867,13 @@ def quick_swipe(chrome):
     time.sleep(0.4)
     if st()['open']:
         fails.append('a flick down did not close the drawer')
+    # let go moving down, slower than a flick (80 px in 200 ms): closed, as a drawer thrown down is (SWIPE.dismiss), which
+    # 0.99's short projection wouldn't do by itself (#233's sheet's stops)
+    top = opened()
+    pg.swipe(195, top + 30, top + 110, ms=200, steps=10)
+    time.sleep(0.5)
+    if st()['open']:
+        fails.append('a swipe down let go moving (80 px in 200 ms, slower than a flick) did not close the drawer')
     # from the ✕: a drag that starts on a button moves the sheet all the way, and doesn't press it
     top = opened()
     x = pg.js("(() => { const b = document.querySelector('#quick-layers .qd-x').getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; })()")
@@ -9527,10 +9534,17 @@ def stops_swipe(chrome):
         # the marks: a tick at each stop and the line named where a release now would go; gone once it's let go
         at('peek')
         x, y = handle()
+        # (when they were asked for, so a slow machine's late read is told apart from a mark shown at once)
+        pg.js("(() => { const b = document.querySelector('.sheet-marks'); window.marksOn = 0; new MutationObserver(() => { if (b.classList.contains('on') && !window.marksOn) window.marksOn = performance.now(); }).observe(b, { attributes: true }); return true; })()")
         pg.touch('start', x, y)
+        early = None
         for k in range(1, 13):
             pg.touch('move', x, y - 25 * k)
+            if k == 2:
+                early = pg.js("({ vis: getComputedStyle(document.querySelector('.sheet-marks')).visibility, dt: window.marksOn ? performance.now() - window.marksOn : null })")
             time.sleep(0.03)
+        if early and early['dt'] is not None and early['dt'] < 120 and early['vis'] != 'hidden':
+            fails.append(f"the marks show {early['dt']:.0f} ms into a drag, as long as a flick lasts: {early['vis']}")
         time.sleep(0.4)  # (still: no flick, so the nearest stop)
         pg.touch('move', x, y - 301)
         m = pg.js("(() => { const b = document.querySelector('.sheet-marks'); return { on: b.classList.contains('on'), ticks: [...b.querySelectorAll('i')].map((i) => i.dataset.n), to: b.querySelector('i.to')?.dataset.n, named: b.querySelector('b').textContent }; })()")
@@ -9683,6 +9697,55 @@ def stops_arrows(chrome):
     return fails
 
 
+# A sheet scrolled as one, leaving it: let go towards the peek, its content goes back to its top with the spring, so nothing
+# jumps once it rests (motion on, read each frame); by a tap on the handle the numbers fade in where the list was, and with
+# Enter at once
+def stops_unscroll(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    tag = '390x844, scrolled'
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'light'}, {'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        st = lambda: pg.js('polku.planner.panel.dataset.state')
+        scrolled = lambda: (pg.js("polku.planner.setSheetState('half', { remember: false }); true"), fold_settled(pg, fails, f'{tag} at half'),
+                            pg.js("polku.planner.panel.scrollTop = 150; Math.round(polku.planner.panel.scrollTop)"))[2]
+        if scrolled() < 100:
+            fails.append(f'{tag}: the sheet at half scrolls only {pg.js("polku.planner.panel.scrollTop")} px')
+            return fails
+        pg.js("""(() => { const p = polku.planner.panel; window.frames_ = []; let n = 0;
+          const tick = () => { window.frames_.push([Math.round(p.scrollTop), p.classList.contains('dragging')]); if (++n < 400) requestAnimationFrame(tick); };
+          requestAnimationFrame(tick); return true; })()""")
+        x, y = fold_at(pg, 'polku.planner.els.handle')
+        pg.swipe(x + 80, y, y + 220, ms=700, steps=20, hold=0.3)
+        fold_settled(pg, fails, f'{tag} dragged to the peek')
+        f = pg.js('window.frames_')
+        drag = [i for i, v in enumerate(f) if v[1]]
+        jump = abs(f[drag[-1]][0] - f[drag[-1] + 1][0]) if drag and drag[-1] + 1 < len(f) else None
+        if st() != 'peek' or pg.js('polku.planner.panel.scrollTop') != 0 or jump is None or jump > 12:
+            fails.append(f'{tag}: the top row dragged down to the peek: at {st()}, the content {jump} px from its top on the last frame before it rested')
+        scrolled()
+        x, y = fold_at(pg, 'polku.planner.els.handle')
+        pg.tap(x, y)
+        fades = pg.js("polku.planner.els.head.getAnimations().length")
+        fold_settled(pg, fails, f'{tag} tapped to the peek')
+        if st() != 'peek' or not fades:
+            fails.append(f'{tag}: a tap on the handle: at {st()}, the numbers {"fade in" if fades else "there at once"}')
+        scrolled()
+        pg.js("polku.planner.els.handle.focus(); true")
+        for kind in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': kind, 'key': 'Enter', 'code': 'Enter', 'windowsVirtualKeyCode': 13}, pg.s)
+        fades = pg.js("polku.planner.els.head.getAnimations().length")
+        fold_settled(pg, fails, f'{tag} Enter on the handle')
+        if fades:
+            fails.append(f'{tag}: Enter on the handle: the numbers fade in ({fades}), not at once')
+        fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    return fails
+
+
 # D on the desktop's side panel, by mouse: it scrolls as one, the wheel over the numbers too; once they've gone, its top row
 # lies over the panel's top with the name and the numbers, and its ⌄ folds the panel; the resize grip is beside the panel
 # (not in it, which would clip it and scroll it away), at its edge and middle, scrolled too, and still resizes it; a card on
@@ -9749,7 +9812,7 @@ def stops_side(chrome):
 
 
 def sheet_stops(chrome):
-    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_side(chrome) + stops_arrows(chrome)
+    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_unscroll(chrome) + stops_side(chrome) + stops_arrows(chrome)
     print(f"{'ok  ' if not fails else 'FAIL'} the sheet's stops" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 

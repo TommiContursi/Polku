@@ -748,9 +748,10 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 @media (min-width: 721px) { .sheet[data-layout="sheet"][data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); } }
 .sheet.dragging { transition: none; user-select: none; }
 /* C of the sheet's stops (#233): while a finger drags the sheet, a tick at each stop at the screen's left edge, and a line
-   with its name at the one a release now would go to (bindSheet() in js/planner.js); in over --t-open, out over --t-press */
+   with its name at the one a release now would go to (bindSheet() in js/planner.js); in over --t-open once the drag has
+   lasted that long too, so a flick, which goes one stop anyway, never shows them; out over --t-press */
 .sheet-marks { position: fixed; inset: 0; z-index: 8; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity var(--t-press) var(--ease-out), visibility 0s var(--t-press); }
-.sheet-marks.on { opacity: 1; visibility: visible; transition: opacity var(--t-open) var(--ease-out), visibility 0s; }
+.sheet-marks.on { opacity: 1; visibility: visible; transition: opacity var(--t-open) var(--ease-out) var(--t-open), visibility 0s var(--t-open); }
 .sheet-marks i { position: absolute; left: 0; width: 14px; height: 4px; margin-top: -2px; border-radius: 0 2px 2px 0; background: var(--muted); }
 .sheet-marks i.to { width: 100%; height: 2px; margin-top: -1px; border-radius: 0; background: var(--accent); }
 .sheet-marks b { position: absolute; top: 0; left: 50%; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--accent-bg); color: #fff; font-size: var(--font-small); font-weight: var(--weight-strong); line-height: 18px; white-space: nowrap; }
