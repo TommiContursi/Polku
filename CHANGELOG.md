@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-10-30
 
+### Choices in Layers and Settings fade to their new look ([#540](https://github.com/TommiContursi/Polku/issues/540))
+
+- A tile in the layer drawer, a base map, a chip such as **Settings → Display → Appearance** or a paddling craft, and a speed such as **Slow** or **Fast** now fade to their chosen look instead of snapping, as Layers' switches do. After you pick a speed from the keyboard, the focus stays on it.
+- In **Settings → Your speeds**, a sport's speeds fade in as you open them, and its arrow turns. In **Layers**, a group's rows fade in as you open it.
+- Opened from the keyboard, they're there at once. With reduced motion, they fade and nothing slides or turns.
+
 ### The map's buttons answer a press, and menus open from their button ([#540](https://github.com/TommiContursi/Polku/issues/540))
 
 - The map's buttons and the top bar's (Locate, zoom, 3D, the compass, Weather, Layers, Plan, Settings and the sport) shrink a little while you press them, as the planner's buttons do, and a button that turns on or off fades to its new colour. In Layers, the base maps' pictures and the On now chips do the same.

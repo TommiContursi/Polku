@@ -3,7 +3,7 @@
 // Stored on this device only (never in share links).
 
 import { CRAFT } from './config.js';
-import { h, store } from './ui.js';
+import { h, store, settleControls } from './ui.js';
 
 // Normal values. Bikes: flat km/h on paved / gravel (unpaved) / trail and the
 // climbing rate in m/h; running: flat km/h on paved / trail; hiking: walking
@@ -96,7 +96,8 @@ export function renderSpeedEditor(box, sport, opts = {}) {
   const craft = opts.craft || 'kayak';
   box.innerHTML = '';
   const s = speedsFor(sport);
-  const rerender = () => { renderSpeedEditor(box, sport, opts); if (opts.onChange) opts.onChange(); };
+  // (drawn again on a change: the preset and the craft pressed move to their new state, and keep the focus)
+  const rerender = () => { const settle = settleControls(box); renderSpeedEditor(box, sport, opts); settle(); if (opts.onChange) opts.onChange(); };
   if (sport === 'paddle' && opts.onCraft) {
     box.append(h('div', { class: 'seg small full', role: 'group', 'aria-label': 'Craft' },
       ...Object.entries(CRAFT).map(([k, v]) => h('button', { type: 'button', 'aria-pressed': String(craft === k), onclick: () => { opts.onCraft(k); opts.craft = k; rerender(); } }, v.label))));

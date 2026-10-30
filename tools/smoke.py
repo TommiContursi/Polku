@@ -363,6 +363,87 @@ LAYERS_MOTION = """(async (reduced) => {
   await wait(300);
   return errs;
 })"""
+# Motion 1's panels (#540): a group a click opens fades its rows in, not from the keyboard nor when Layers is drawn
+# again; a quick tile and a speed preset fade to their new look (the preset keeps the focus); Settings' speeds open
+# with their editor fading in and their chevron turning, not from the keyboard nor when Settings is drawn again.
+# The groups' and the speeds' saved choices are put back.
+PANELS_MOTION = """(async (reduced) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [], tag = reduced ? 'reduced motion: ' : '';
+  const saved = ['polku:speeds', 'polku:layerGroups'].map((k) => [k, localStorage.getItem(k)]);
+  const click = (el, detail = 1) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail }));
+  const fades = (el) => el.getAnimations().map((a) => a.transitionProperty).filter(Boolean).sort().join(' ') || 'nothing';
+  const named = (els) => [...new Set(els.flatMap((e) => e.getAnimations().map((a) => a.animationName).filter(Boolean)))].join(' ') || 'nothing';
+  if (document.querySelector('#layers-panel').hidden) { click(document.querySelector('#btn-layers')); click(document.querySelector('#quick-layers .qt-more')); }
+  await wait(300);
+  const body = document.querySelector('#layers-body');
+  const group = () => [...body.querySelectorAll('.lg-group')].at(-1), rows = (g) => [...g.children].filter((c) => c.tagName !== 'SUMMARY');
+  if (group().open) { group().open = false; await wait(100); }
+  click(group().querySelector('summary'));
+  let got = named(rows(group()));
+  if (got !== (reduced ? 'qd-fade' : 'lg-in')) errs.push(`${tag}a group a click opens: its rows move ${got}, not ${reduced ? 'qd-fade' : 'lg-in'}`);
+  await wait(400);
+  group().open = false; await wait(100);
+  click(group().querySelector('summary'), 0);
+  got = named(rows(group()));
+  if (got !== 'nothing') errs.push(`${tag}a group opened from the keyboard: its rows move ${got}`);
+  const tswitch = () => [...body.querySelectorAll('label.tg')].find((t) => t.querySelector('.tg-text').firstChild.textContent.trim() === 'Trail details').querySelector('input');
+  if (!tswitch().closest('.lg-group').open) { tswitch().closest('.lg-group').open = true; await wait(100); }
+  tswitch().click();
+  got = named(rows(tswitch().closest('.lg-group')));
+  if (got !== 'nothing') errs.push(`${tag}Layers drawn again after a switch: the open group's rows move ${got}`);
+  tswitch().click();
+  await wait(300);
+  // the quick drawer: a tile turned on fades to its look
+  click(document.querySelector('#btn-layers')); await wait(300);
+  if (!document.querySelector('#quick-layers.open')) { click(document.querySelector('#btn-layers')); await wait(300); }
+  const tiles = [...document.querySelectorAll('#quick-layers .qt-tog')];
+  const off = tiles.find((b) => ['hillshade', 'contours', 'trailDetails'].includes(b.dataset.tile) && b.getAttribute('aria-pressed') === 'false') || tiles.find((b) => b.getAttribute('aria-pressed') === 'false');
+  if (!off) errs.push(`${tag}no quick tile off`);
+  else {
+    const id = off.dataset.tile;
+    getComputedStyle(off.parentNode).backgroundColor;
+    click(off);
+    const tile = document.querySelector(`#quick-layers .qt-tog[data-tile="${id}"]`).parentNode;
+    got = fades(tile);
+    if (!tile.classList.contains('on')) errs.push(`${tag}the ${id} tile didn't turn on`);
+    if (!got.includes('background-color') || !got.includes('border-color')) errs.push(`${tag}the ${id} tile turned on moves ${got}, not its colours`);
+    await wait(300);
+    click(document.querySelector(`#quick-layers .qt-tog[data-tile="${id}"]`));
+    await wait(300);
+  }
+  click(document.querySelector('#btn-layers')); await wait(300);
+  // Settings' speeds
+  click(document.querySelector('#btn-settings')); await wait(300);
+  const sb = document.querySelector('#settings-body'), row = () => sb.querySelector('.speed-sport-row[data-k="mtb"]');
+  if (row().getAttribute('aria-expanded') === 'true') { click(row()); await wait(300); }
+  click(row());
+  got = [fades(sb.querySelector('.speed-box')), fades(row().querySelector('.way-chev'))].join(', ');
+  if (got !== (reduced ? 'opacity, nothing' : 'opacity transform, transform')) errs.push(`${tag}MTB's speeds open with their editor and chevron moving ${got}, not ${reduced ? 'opacity, nothing' : 'opacity transform, transform'}`);
+  await wait(400);
+  const presets = () => [...sb.querySelectorAll('.speed-presets button')];
+  const other = presets().find((b) => b.getAttribute('aria-pressed') !== 'true' && b.textContent !== 'Custom');
+  other.focus();
+  getComputedStyle(other).backgroundColor;
+  click(other);
+  const now = presets().find((b) => b.textContent === other.textContent);
+  got = fades(now);
+  if (now.getAttribute('aria-pressed') !== 'true') errs.push(`${tag}${now.textContent} isn't pressed`);
+  if (!got.includes('background-color')) errs.push(`${tag}the ${now.textContent} preset moves ${got}, not its colour`);
+  if (document.activeElement !== now) errs.push(`${tag}the focus went to ${document.activeElement.tagName}.${document.activeElement.className}, not the preset it pressed`);
+  await wait(300);
+  click(sb.querySelector('[data-appearance][aria-pressed="true"]'));
+  got = fades(sb.querySelector('.speed-box'));
+  if (got !== 'nothing') errs.push(`${tag}Settings drawn again: the open speeds move ${got}`);
+  click(row()); await wait(300);
+  click(row(), 0);
+  got = fades(sb.querySelector('.speed-box'));
+  if (got !== 'nothing') errs.push(`${tag}MTB's speeds opened from the keyboard move ${got}`);
+  click(row(), 0);
+  click(document.querySelector('#settings-panel .panel-close'));
+  for (const [k, v] of saved) if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+  await wait(300);
+  return errs;
+})"""
 LAYERS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const { ACTIVITIES, RASTER_OVERLAYS } = await import(location.origin + '/js/config.js');
@@ -5007,6 +5088,10 @@ def layers(chrome):
     fails += pg.js(LAYERS_MOTION + '(false)')
     pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
     fails += pg.js(LAYERS_MOTION + '(true)')
+    fails += pg.js(PANELS_MOTION + '(true)')
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+    fails += pg.js(PANELS_MOTION + '(false)')
+    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} layers (every sport)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
