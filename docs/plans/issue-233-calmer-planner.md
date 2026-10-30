@@ -696,7 +696,9 @@ Today the planner's top part stays put: the numbers, the warning row, the hardes
   - The profile's chart keeps its own drag (scrubbing), so a finger on it neither scrolls nor moves the sheet. That's 64–150 px of the sheet, as today.
   - **Room:** at 390 × 844 by touch the row holds the three numbers and "Start → End". With A's ⌃ (a mouse), or longer street names on the side panel ("Näkötornintie → Pellavatehtaankatu"), the name gives way.
 - **The desktop's bottom dock** isn't drawn: its top row has no ⌄, so D would need one there first.
-- **Found on the way:** #597. On `main` at 200 %, with the sheet at full, a finger on the numbers doesn't scroll the sheet: `.sheet-head` has `touch-action: none`. D's option frame gives it `pan-y`.
+- **Found on the way,** both on `main` at 200 %, with the sheet at full, where it already scrolls as one:
+  - #597: a finger on the numbers doesn't scroll the sheet, since `.sheet-head` has `touch-action: none`. D's option frame gives it `pan-y`.
+  - #598: scrolled down, the toolbox's row draws over the top row, and a tap on ⌄ presses ⋯. D's option frame puts the top row above it (`z-index: 6`), and so it reaches ⌄ at full at every size.
 
 #### Your leaning (2026-10-30)
 

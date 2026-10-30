@@ -305,6 +305,7 @@ async function patch(f) {
     .ss-marks b { position: absolute; left: 50%; transform: translateX(-50%); margin-top: -26px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; line-height: 18px; }
     /* D: the whole sheet scrolls (main's .scroll-all) and a finger on the numbers scrolls it too */
     .ss-one .sheet.scroll-all > .sheet-head { touch-action: pan-y; }
+    .ss-one .sheet.scroll-all > .sheet-top { z-index: 6; } /* (over the docked toolbox's 5, which scrolls under it) */
     .ss-raise .sheet[data-layout="sheet"][data-state="half"] > .sheet-body { overflow: hidden; }
     /* the narrow row: the top row, which takes the numbers and the name once they've scrolled under it: the numbers in
        Body bold, tabular, each whole or not at all, and the name after them in Control, the first to give way */
