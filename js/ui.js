@@ -179,12 +179,12 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
     open = false;
     // it leaves the way it came, as a copy of itself where it was, unless closed from the keyboard
     if (!refocus && !el.querySelector(':focus-visible') && !anchor.matches(':focus-visible')) {
-      const gone = el.cloneNode(true), now = getComputedStyle(el);
+      const gone = el.cloneNode(true), now = getComputedStyle(el), top = el.scrollTop; // (read while it's in the page)
       Object.assign(gone.style, { top: `${el.offsetTop}px`, left: `${el.offsetLeft}px`, width: `${el.offsetWidth}px`, height: `${el.offsetHeight}px`, minWidth: '0', maxHeight: 'none', opacity: now.opacity, transform: now.transform });
       gone.className = `menu menu-leaving${el.classList.contains('menu-sheet') ? ' menu-sheet' : ''}`;
       gone.inert = true;
       el.replaceWith(gone);
-      gone.scrollTop = el.scrollTop;
+      gone.scrollTop = top;
       getComputedStyle(gone).opacity; // (from where it was, caught mid-way too)
       Object.assign(gone.style, { opacity: '', transform: '' });
       setTimeout(() => gone.remove(), 120);

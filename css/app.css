@@ -1109,7 +1109,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .menu-pop.instant { transition: none; }
 .menu-leaving { position: fixed; z-index: 25; overflow: hidden; pointer-events: none; opacity: 0; transform: scale(0.96); transition: opacity var(--t-press) var(--ease-out), transform var(--t-press) var(--ease-out); }
 /* a menu that's a sheet of its own (no room beside its button) only fades: grown from its button it would zoom */
-.menu-pop.menu-sheet { transition: opacity var(--t-open) var(--ease-out); }
+.menu-pop.menu-sheet:not(.instant) { transition: opacity var(--t-open) var(--ease-out); }
 .menu-leaving.menu-sheet { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .menu-leaving { transform: none; }

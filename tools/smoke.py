@@ -13712,15 +13712,25 @@ CT_POPS = """(async (keyed) => {
   out.menuOut = document.querySelector('.menu-pop') ? 'still a menu' : gone ? moves(gone) : 'nothing';
   if (gone && sizes(gone) !== was) out.menuOut += ` (its items ${was} became ${sizes(gone)} as it went)`;
   gone?.remove();
-  if (keyed) return out;
-  // a menu with no room beside its button is a sheet of its own: it only fades, in and out
+  // a menu with no room beside its button is a sheet of its own: it only fades, in and out; from the keyboard, at once
+  if (keyed) b.focus();
   const sh = U.popMenu(b, [{ label: 'One', fn: () => {} }], { sheet: true, maxRight: 200 });
   out.sheet = sh.el.classList.contains('menu-sheet') ? moves(sh.el) : 'not a sheet';
   await settle(sh.el);
+  if (keyed) { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); if (document.querySelector('.menu-leaving')) out.sheet += ' / a copy fading'; return out; }
   sh.close();
   const sg = document.querySelector('.menu-leaving');
   out.sheet += ` / ${sg ? moves(sg) : 'nothing'}`;
   sg?.remove();
+  // a menu scrolled down leaves where it was scrolled to
+  const long = U.popMenu(b, Array.from({ length: 40 }, (_, i) => ({ label: `Item ${i + 1}`, fn: () => {} })));
+  await settle(long.el);
+  long.el.scrollTop = 200;
+  const top = long.el.scrollTop;
+  long.close();
+  const lg = document.querySelector('.menu-leaving');
+  out.scroll = !top ? 'not scrolled' : !lg ? 'no copy' : lg.scrollTop === top ? 'kept' : `at ${lg.scrollTop}, not ${top}`;
+  lg?.remove();
   return out;
 })"""
 # a new light or dark (Settings → Appearance) is drawn at once: nothing fades its colours behind the panels (the
@@ -13908,11 +13918,13 @@ def controls(chrome):
                         fails.append(f'{name}, reduced motion {media}: by a click, the sport menu opens moving {got["pill"]} (its chevron {got["chevron"]}) and goes {got["pillOut"]}, a menu opens {got["menu"]} and goes {got["menuOut"]}, not {want} ({chevron})')
                     if got['sheet'] != 'opacity / opacity':
                         fails.append(f'{name}, reduced motion {media}: a menu that is a sheet of its own comes and goes moving {got["sheet"]}, not opacity alone')
+                    if got['scroll'] != 'kept':
+                        fails.append(f'{name}, reduced motion {media}: a menu scrolled down leaves {got["scroll"]}')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
                 key(pg, 'Tab', 'Tab', 9)
                 got = pg.js(f'({CT_POPS})(true)')
                 if set(got.values()) != {'nothing'}:
-                    fails.append(f'{name}: from the keyboard, the sport menu opens moving {got.get("pill")} (its chevron {got.get("chevron")}) and goes {got.get("pillOut")}, a menu opens {got.get("menu")} and goes {got.get("menuOut")}, not at once')
+                    fails.append(f'{name}: from the keyboard, the sport menu opens moving {got.get("pill")} (its chevron {got.get("chevron")}) and goes {got.get("pillOut")}, a menu opens {got.get("menu")} and goes {got.get("menuOut")}, a sheet of its own {got.get("sheet")}, not at once')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
                 enter, exit = pg.js(CT_TOAST)
                 if (enter, exit) != ('opacity', 'opacity'):
