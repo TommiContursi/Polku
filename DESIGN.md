@@ -318,9 +318,9 @@ Polku's motion follows Emil Kowalski's design engineering ([Great animations](ht
 - **Performance:** interface elements animate `transform` and `opacity` only (`filter: blur()` where needed), with CSS or WAAPI rather than `requestAnimationFrame`, so they stay smooth while the main thread is busy. The map's canvas effects (wind, rain, snow) draw each frame by nature. The one exception is a desktop card folding to its title row, which animates its height (120 ms to fold, 180 ms to open, `roll()` in `js/card.js`): `clip-path` would cut its shadow while it moves.
 - **A crossfade** between two states that still feels off gets 2 px of blur.
 - **The map:** colour and opacity changes use MapLibre's paint transitions; camera moves share one set of durations; no tweening of geometry.
-- **Rebuilt content:** where only a state changes, the control shows its change through `settleControls()` (`js/ui.js`); nothing re-animates on a rebuild the person didn't cause.
+- **Rebuilt content:** where only a state changes, the control shows its change through `settleControls()` (`js/ui.js`); nothing re-animates on a rebuild the person didn't cause. What opens in a rebuilt panel (a group's rows, a sport's speeds) fades in only on the tap that opened it.
 - **Outdoors and battery:** nothing loops while idle unless it says something (busy), and it stops when done. A busy bar waits 300 ms before it shows, so a quick answer shows nothing, and it is never under something hidden.
-- **Reduced motion:** opacity only: things fade in place instead of sliding, pulses stop, the map's camera moves jump, and the planner's list scrolls at once. A busy bar (routing) stays in place and pulses in opacity, since it says something.
+- **Reduced motion:** opacity only: things fade in place instead of sliding, pulses stop, the map's camera moves jump, and the planner's list scrolls at once. A chosen look's colours still fade, since nothing moves, and nothing shrinks, grows or turns. A busy bar (routing) stays in place and pulses in opacity, since it says something.
 
 ## Do's and Don'ts
 

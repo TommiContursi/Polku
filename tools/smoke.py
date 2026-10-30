@@ -393,12 +393,13 @@ PANELS_MOTION = """(async (reduced) => {
   if (got !== 'nothing') errs.push(`${tag}Layers drawn again after a switch: the open group's rows move ${got}`);
   tswitch().click();
   await wait(300);
-  // the quick drawer: a tile turned on fades to its look
+  // the quick drawer: a tile turned on fades to its look; Wind, whose setWeather() draws the panels itself (once)
   click(document.querySelector('#btn-layers')); await wait(300);
   if (!document.querySelector('#quick-layers.open')) { click(document.querySelector('#btn-layers')); await wait(300); }
-  const tiles = [...document.querySelectorAll('#quick-layers .qt-tog')];
-  const off = tiles.find((b) => ['hillshade', 'contours', 'trailDetails'].includes(b.dataset.tile) && b.getAttribute('aria-pressed') === 'false') || tiles.find((b) => b.getAttribute('aria-pressed') === 'false');
-  if (!off) errs.push(`${tag}no quick tile off`);
+  const wind = () => document.querySelector('#quick-layers .qt-tog[data-tile="wx:wind"]');
+  if (wind()?.getAttribute('aria-pressed') === 'true') { click(wind()); await wait(300); }
+  const off = wind();
+  if (!off) errs.push(`${tag}no Wind tile in the quick drawer`);
   else {
     const id = off.dataset.tile;
     getComputedStyle(off.parentNode).backgroundColor;
