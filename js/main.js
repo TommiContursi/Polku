@@ -572,30 +572,25 @@ $('#planner').addEventListener('sheetstate', syncPlannerPadding);
 // Short phones with the sheet raised (25a): the map's column keeps what fits between the top bar and
 // the sheet, leaving out the compass first while north is up (it's back once the map turns), then 3D
 // (still in Layers). Its bottom moves with a transition, so its top is worked out, not measured.
-// whether the column, with what it can leave out, fits between the top bar and the sheet plus `extra`
-function columnFits(extra) {
-  const col = $('#map-ctrls'), had = [...col.classList];
-  col.classList.add('no-compass', 'no-3d');
-  const h = col.offsetHeight;
-  col.className = had.join(' ');
-  const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-h')) || 0;
-  return innerHeight - sheet - extra - 12 - h >= $('.topbar').getBoundingClientRect().bottom + 8;
-}
 // Then the key facts' line under the route's numbers steps aside (a short phone, #471's A2: Check's top keeps the facts),
-// its height remembered so it comes back only once there's room for it again. With less room still (200 %, a raised start
-// step, #344), the column lets go of Weather (T, and in Layers), then Show the whole route (in ⋯), then Locate, and where
-// not even Layers fits, of all of it: nothing goes under the top bar (step 3 of #233).
+// its height remembered so it comes back only once there's room for it again. It's decided at the peek, the one size whose
+// height is the header's: above it the line stays as the peek has it, so a swipe measures the peek as it will be (#586).
+// With less room still (200 %, a raised start step, #344), the column lets go of Weather (T, and in Layers), then Show the
+// whole route (in ⋯), then Locate, and where not even Layers fits, of all of it: nothing goes under the top bar (step 3 of
+// #233).
 let factsH = 0;
 const LETS_GO = ['no-wx', 'no-fit', 'no-locate', 'no-col'];
 function fitColumn() {
   const col = $('#map-ctrls'), off = document.body.classList.contains('kf-off');
+  // (under a phone's full sheet it's hidden: it stays as it was, and the toolbox still measures the peek by it, #586)
+  if (phoneMQ.matches && document.body.dataset.sheet === 'full') return;
   col.classList.remove('no-compass', 'no-3d', ...LETS_GO);
   if (!phoneMQ.matches) { document.body.classList.remove('kf-off'); return; }
   if (!off) factsH = planner.els.facts.offsetHeight + (parseFloat(getComputedStyle(planner.els.facts).marginTop) || 0); // (all the room it takes: else, at the edge, it comes and goes every frame)
-  const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0;
-  const back = off ? factsH : 0; // (the room the line would take back)
+  const css = (k) => parseFloat(document.documentElement.style.getPropertyValue(k)) || 0, peek = planner.panel.dataset.state === 'peek';
+  const back = off && peek ? factsH : 0; // (the room the line would take back)
   const room = (extra = back) => innerHeight - css('--sheet-h') - extra - css('--wx-h') - css('--col-lift') - 12 - col.offsetHeight >= $('.topbar').getBoundingClientRect().bottom + 8;
-  const facts = (on) => document.body.classList.toggle('kf-off', !on);
+  const facts = (on) => { if (peek) document.body.classList.toggle('kf-off', !on); };
   if (room()) { facts(true); return; }
   if (Math.abs(map.getBearing()) < 0.5) col.classList.add('no-compass');
   if (room()) { facts(true); return; }
@@ -1638,7 +1633,7 @@ function syncWxH() {
   const deskOver = shown && !phone && planner.active && planner.layout() === 'sheet' && !b.classList.contains('placed')
     && innerHeight - css('--sheet-h') - Math.max(40, css('--tools-h') + 8) - b.offsetHeight < $('.topbar').getBoundingClientRect().bottom + 8;
   const sheet = !planner.panel.hidden && !planner.panel.classList.contains('leaving'); // (the planner, or a card's sheet with it put away: #572)
-  const over = deskOver || (open && sheet && (st === 'half' || st === 'full' || (st === 'profile' && !columnFits(b.offsetHeight + 12))));
+  const over = deskOver || (open && sheet && (st === 'half' || st === 'full'));
   document.body.classList.toggle('wx-over', over);
   const floating = open && !over;
   // the column normally sits 12 px up; above the timeline it needs its height plus the timeline's offset (less those 12, plus 8 apart)

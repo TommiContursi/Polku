@@ -717,12 +717,6 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
    leaving, it takes no taps */
 .sheet.leaving { pointer-events: none; }
 .sheet[data-state="peek"] { height: var(--peek-h, 116px); }
-/* in between: the summary and the elevation profile (the stats row folds away) */
-.sheet[data-state="profile"] { height: var(--profile-h, 300px); }
-.sheet[data-state="profile"] .stats { display: none; }
-/* …and so does the row of what to read (the count beside the numbers stays): the chart keeps its room (#444); the warnings
-   stay on the map and in Check, and the row comes back at the peek */
-.sheet[data-state="profile"] .sheet-head-in > :is(.pl-readrow, .kf) { display: none; }
 .sheet[data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); }
 @media (min-width: 721px) { .sheet[data-layout="sheet"][data-state="full"] { height: calc(100vh - 76px); height: calc(100dvh - 76px); } }
 .sheet.dragging { transition: none; user-select: none; }
@@ -901,10 +895,9 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .pl-tab-t { font-size: 12px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pl-pane[hidden] { display: none !important; }
 .pl-empty { margin: 14px 0; }
-/* the sheet's sizes: peek is the header; the profile size adds the profile; half and full the tabs too */
+/* the sheet's sizes: peek is the header; half and full add the profile and the tabs */
 .sheet[data-state="peek"]:not(.dragging) :is(.pl-profile, .pl-tabs) { display: none; }
-.sheet[data-state="profile"]:not(.dragging) :is(.pl-tabs, .sheet-body) { display: none; }
-/* half a sheet: a short profile, so the tab has room (the profile size and full show it whole) */
+/* half a sheet: a short profile, so the tab has room (full shows it whole) */
 .sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile #profile-canvas { height: 64px; }
 .sheet[data-layout="sheet"][data-state="half"]:not(.dragging) .pl-profile .profile-top { display: none; }
 /* The start (A with 25b, #233): before there's a route, and while a round trip is open, the header holds the
