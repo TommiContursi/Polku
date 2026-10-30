@@ -406,7 +406,7 @@ PANELS_MOTION = """(async (reduced) => {
     const tile = document.querySelector(`#quick-layers .qt-tog[data-tile="${id}"]`).parentNode;
     got = fades(tile);
     if (!tile.classList.contains('on')) errs.push(`${tag}the ${id} tile didn't turn on`);
-    if (!got.includes('background-color') || !got.includes('border-color')) errs.push(`${tag}the ${id} tile turned on moves ${got}, not its colours`);
+    if (!got.includes('background-color') || !got.includes('border-top-color')) errs.push(`${tag}the ${id} tile turned on moves ${got}, not its colours`);
     await wait(300);
     click(document.querySelector(`#quick-layers .qt-tog[data-tile="${id}"]`));
     await wait(300);
