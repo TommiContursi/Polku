@@ -2665,14 +2665,15 @@ CARD_SCROLL_ARM = """(async (click) => {
   for (let k = 0; k < 50 && !(p.cards.current && p.cards.box); k++) await wait(100);
   const row = p.cards.box && [...p.cards.box.querySelectorAll('.row')].find((r) => /Sunrise and sunset/.test(r.textContent));
   if (!row) return 'no Sunrise and sunset on the card';
-  const real = Element.prototype.scrollIntoView, body = p.els.body, at = [];
-  Element.prototype.scrollIntoView = function (o) { const r = real.call(this, o); at.push(body.scrollTop); return r; };
-  window.cardScroll = { real, body, at };
+  // (what scrolls the list, read when it scrolls: the sheet itself where it scrolls as one, which it doesn't with a card)
+  const real = Element.prototype.scrollIntoView, at = [];
+  Element.prototype.scrollIntoView = function (o) { const r = real.call(this, o); at.push(p.listScroller().scrollTop); return r; };
+  window.cardScroll = { real, at };
   if (click) row.click(); else row.focus();
   return '';
 })"""
 CARD_SCROLL_READ = """(async (atOnce) => {
-  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), { real, body, at } = window.cardScroll;
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), { real, at } = window.cardScroll, body = p.listScroller();
   // (until it has been asked for and the list has stopped: a smooth scroll on a page too busy for frames takes seconds)
   let end = -1;
   for (let k = 0; k < 100 && !(at.length && body.scrollTop && body.scrollTop === end); k++) { end = body.scrollTop; await wait(150); }
