@@ -4339,7 +4339,8 @@ export class Planner {
       'aria-label': 'Planner width', title: 'Drag to resize · double-click: narrow ↔ wide' });
     this.els.top = h('div', { class: 'sheet-top' }, h('span'), this.els.handle, h('span', { class: 'sheet-top-end' }, this.els.up, this.els.foldBtn), this.els.topSum);
     this.els.bar = h('div', { class: 'route-bar', 'aria-hidden': 'true' }, h('i'));
-    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.tabs, this.els.body, this.els.grip, this.els.bar);
+    p.append(this.els.top, this.els.fold, this.els.head, this.els.profZone, this.els.tabs, this.els.body, this.els.bar);
+    p.after(this.els.grip); // (beside the panel, not in it: the side panel scrolls as one, which would clip it and scroll it away)
     this.setTab(this.tab);
     this.els.leave.put();
     this.renderOnMap();
@@ -4920,16 +4921,17 @@ export class Planner {
   autoPeek() {
     if (this.active && this.layout() === 'sheet' && !this.sideMQ.matches && !['folded', 'peek'].includes(this.panel.dataset.state)) this.setSheetState(this.restSize(), { remember: false, rest: true });
   }
-  // The whole sheet scrolls as one under its top row, which stays: on a phone at half and full (D of the sheet's stops,
-  // #233), so a finger on the numbers scrolls it too; wider, at full where the header, the profile and the tabs take more
+  // The whole sheet scrolls as one under its top row, which stays: on a phone at half and full and on the side panel (D of
+  // the sheet's stops, #233), so a finger on the numbers scrolls it too; wider, at full where the header, the profile and the tabs take more
   // than half of it (#453), so the list can be reached; and a peek cut below the top bar
   scrollAll() {
-    const p = this.panel, st = p.dataset.state, on = this.layout() === 'sheet' && !this.cards.current && ((st === 'peek' && this.peekCut)
-      || (innerWidth <= 720 && st === 'half')
-      || (st === 'full' && (innerWidth <= 720 || this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2)));
+    const p = this.panel, st = p.dataset.state, on = this.layout() === 'side' ? st === 'open' && !this.peekOnly()
+      : !this.cards.current && ((st === 'peek' && this.peekCut)
+        || (innerWidth <= 720 && st === 'half')
+        || (st === 'full' && (innerWidth <= 720 || this.els.head.offsetHeight + this.els.profZone.offsetHeight + this.els.tabs.offsetHeight > (dvh() - 76) / 2)));
     if (p.classList.contains('scroll-all') === on) return;
     p.classList.toggle('scroll-all', on);
-    if (!on) p.scrollTop = 0;
+    if (!on) { p.scrollTop = 0; p.classList.remove('sum-on'); }
   }
   // one size up or down: the line (from the peek, never away), the peek, half and full; a card's line, its own size and full
   stepSheet(dir, instant) {
@@ -5012,7 +5014,7 @@ export class Planner {
   // D's top row, once the numbers have scrolled under it: the numbers, as the folded line has them, then the route's name
   renderTopSum() {
     const nums = [...this.els.sum.querySelectorAll('.sum-item > b')].map((b) => b.textContent.trim()), name = this.points.length > 1 ? this.routeTitle() : '';
-    this.els.topSum.replaceChildren(...nums.map((t, i) => h('b', {}, i ? `· ${t}` : t)), name ? h('i', {}, `· ${name}`) : '');
+    this.els.topSum.replaceChildren(...nums.map((t, i) => h('b', {}, i ? `· ${t}` : t)), name ? h('i', {}, name) : '');
   }
 
   // A swipe has come to rest at a size (or was stopped, name null): the size changes while transitions
@@ -5090,7 +5092,8 @@ export class Planner {
     };
     this.measureSheet = sizes;
     // D: the top row takes the numbers once they've scrolled under it
-    const sumOn = () => this.panel.classList.toggle('sum-on', this.panel.classList.contains('scroll-all') && this.els.sum.getBoundingClientRect().bottom <= this.els.top.getBoundingClientRect().bottom + 1);
+    const sumOn = () => this.panel.classList.toggle('sum-on', this.panel.classList.contains('scroll-all') && this.panel.scrollTop > 0 && !!this.els.sum.offsetParent
+      && this.els.sum.getBoundingClientRect().bottom <= (this.layout() === 'side' ? this.els.topSum : this.els.top).getBoundingClientRect().bottom + 1);
     this.panel.addEventListener('scroll', sumOn, { passive: true });
     this.panel.addEventListener('sheetstate', sumOn);
     new ResizeObserver(sizes).observe(this.els.head);

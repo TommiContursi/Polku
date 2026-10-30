@@ -526,7 +526,7 @@ function syncPlanButton(on) {
   }
 }
 
-// What the planner covers: --sheet-h for the bottom sheet, --pl-left for the side panel. The sheet's height is the one it's
+// What the planner covers: --sheet-h for the bottom sheet, --pl-left (and --pl-mid, its middle) for the side panel. The sheet's height is the one it's
 // going to: what rides above it takes its place at once, and never chases it (#540). While the sheet moves or slides
 // there (planner.js moveSheet(), showSheet()), what rides above it goes with it (ride()).
 function syncPlannerPadding() {
@@ -540,7 +540,9 @@ function syncPlannerPadding() {
   const seen = riders.map((el) => (seenBefore ? seenBefore.get(el) : el.getBoundingClientRect().bottom));
   seenBefore = null;
   document.documentElement.style.setProperty('--sheet-h', `${now}px`);
-  document.documentElement.style.setProperty('--pl-left', `${side ? sheet.getBoundingClientRect().right : 0}px`);
+  const r = sheet.getBoundingClientRect();
+  document.documentElement.style.setProperty('--pl-left', `${side ? r.right : 0}px`);
+  document.documentElement.style.setProperty('--pl-mid', `${side ? r.top + r.height / 2 : 0}px`); // (its resize grip, beside it)
   placePanels();
   if (quickOpen()) placeQuick();
   syncWxH(); // (and the map's column)

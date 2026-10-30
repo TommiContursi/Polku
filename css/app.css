@@ -32,6 +32,7 @@
   --bad: var(--danger); /* danger has one red */
   --sheet-h: 0px;
   --pl-left: 0px; /* right edge of the planner side panel, when open */
+  --pl-mid: 0px; /* …and its middle, from the top */
   --you: #1a73e8; /* the location dot */
   --you-soft: rgba(26, 115, 232, 0.12);
   --page: #dfe6e0; /* behind the map, before it draws */
@@ -874,10 +875,11 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet[data-layout="side"] .fold-go { min-height: 56px; padding: 0 0 0 14px; }
 .sheet[data-layout="side"] .fold-line > .fold-x { margin-top: 0; }
 /* resize grip on the side panel's right edge */
-.sheet-resize { display: none; position: absolute; top: 50%; right: -7px; width: 14px; height: 56px; margin-top: -28px; cursor: ew-resize; touch-action: none; z-index: 1; }
-.sheet[data-layout="side"]:not([data-state="folded"]) .sheet-resize { display: block; }
+/* (beside the panel, not in it, as the panel scrolls as one: on its right edge, at its middle, from main.js's --pl-left and --pl-mid) */
+.sheet-resize { display: none; position: absolute; top: calc(var(--pl-mid) - 28px); left: calc(var(--pl-left) - 7px); width: 14px; height: 56px; cursor: ew-resize; touch-action: none; z-index: 6; }
+.sheet[data-layout="side"]:not([data-state="folded"]):not([hidden]):not(.leaving) + .sheet-resize { display: block; }
 .sheet-resize::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 4px; border-radius: 2px; background: rgba(95, 107, 101, 0.45); transition: background .15s; }
-.sheet-resize:hover::before, .sheet-resize:focus-visible::before, .sheet.resizing .sheet-resize::before { background: var(--accent); }
+.sheet-resize:hover::before, .sheet-resize:focus-visible::before, .sheet.resizing + .sheet-resize::before { background: var(--accent); }
 .sheet-resize:focus-visible { outline: none; }
 .sheet.resizing { user-select: none; }
 
@@ -1661,6 +1663,19 @@ button.warn-row .way-chev { flex: none; display: grid; color: var(--muted); }
 .top-sum > * { line-height: 40px; white-space: nowrap; }
 .top-sum b { font-size: var(--font-body); font-weight: var(--weight-strong); }
 .top-sum i { font-style: normal; font-size: var(--font-control); font-weight: var(--weight-name); color: var(--muted); }
+@media (max-width: 720px) { .top-sum i::before { content: "· "; } }
+/* …and the side panel's (D, #233), which has no top row: its top row lies over the panel's top once the numbers have
+   scrolled away, taking no room, so the name has a line of its own, wrapping whole, over the numbers, with ⌄ at its end */
+.sheet[data-layout="side"].scroll-all { scroll-padding-top: 64px; }
+.sheet[data-layout="side"].scroll-all > .sheet-top { display: block; height: 0; overflow: visible; background: none;
+  opacity: 0; visibility: hidden; transition: opacity var(--t-press) var(--ease-out), visibility 0s var(--t-press); }
+.sheet[data-layout="side"].scroll-all.sum-on > .sheet-top { opacity: 1; visibility: visible; transition: opacity var(--t-open) var(--ease-out), visibility 0s; }
+.sheet[data-layout="side"] .top-sum { display: flex; position: absolute; top: 0; left: 0; right: 0; flex-wrap: wrap; column-gap: 6px; padding: 8px 52px 8px 14px;
+  background: var(--surface-solid); border-radius: 18px 18px 0 0; font-variant-numeric: tabular-nums; }
+.sheet[data-layout="side"] .top-sum > * { line-height: 1.4; }
+.sheet[data-layout="side"] .top-sum i { order: -1; flex-basis: 100%; white-space: normal; overflow-wrap: anywhere; }
+.sheet[data-layout="side"].scroll-all > .sheet-top .sheet-top-end { position: absolute; top: 5px; right: 6px; z-index: 1; }
+.sheet[data-layout="side"].scroll-all > .sheet-top .sheet-fold { display: inline-flex; }
 @media (prefers-reduced-motion: reduce) { .sheet-handle::before { transition: none; } }
 /* a phone's peek: the card is the peek, 52 % of the window at most (it scrolls inside), the point in sight above it */
 .card-peek .card { max-height: 52dvh; touch-action: pan-y; padding-bottom: 6px; }
