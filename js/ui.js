@@ -108,17 +108,23 @@ export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 /**
  * A panel built again after one of its controls changed (its counts, notes and other rows follow the change).
- * Call it before the box is emptied, and what it returns once the box is built: a switch or a segment that
- * changed shows its old state for one style pass, then its new one, so its own transitions run where it was
- * pressed, and the focus goes back to the control it was on.
+ * Call it before the box is emptied, and what it returns once the box is built: a switch, a choice (a segment,
+ * a chip, a tile, a base map) or a row that opens, that changed, shows its old state for one style pass, then
+ * its new one, so its own transitions run where it was pressed, and the focus goes back to the control it was on.
  */
-const CONTROLS = 'input[role="switch"], .seg button';
+const CONTROLS = 'input[role="switch"], [aria-pressed], [aria-checked], [aria-expanded]';
+const stateOf = (el) => ['aria-pressed', 'aria-checked', 'aria-expanded'].find((a) => el.hasAttribute(a));
+// (known by its data-* id where it has one: a tile, a base map, a craft, a sport's row; else by its words)
 const controlKey = (el) => (el.matches('input')
   ? el.closest('label').querySelector('.tg-text').firstChild.textContent
-  : `${el.parentNode.firstElementChild.textContent}/${el.textContent}`);
+  : Object.values(el.dataset)[0] ?? `${el.parentNode.firstElementChild.textContent}/${el.textContent}`);
 // (a switch's drawn state is its checked attribute: a press has already flipped .checked when its panel is built again)
-const controlOn = (el) => (el.matches('input') ? el.defaultChecked : el.getAttribute('aria-pressed') === 'true');
-const showControl = (el, on) => { if (el.matches('input')) el.checked = on; else el.setAttribute('aria-pressed', String(on)); };
+const controlOn = (el) => (el.matches('input') ? el.defaultChecked : el.getAttribute(stateOf(el)) === 'true');
+const showControl = (el, on) => {
+  if (el.matches('input')) { el.checked = on; return; }
+  el.setAttribute(stateOf(el), String(on));
+  if (el.matches('.qt-tog')) el.parentNode.classList.toggle('on', on); // (a quick tile's look is on its .qt)
+};
 export function settleControls(box) {
   const was = new Map($$(CONTROLS, box).map((el) => [controlKey(el), controlOn(el)]));
   const focused = box.contains(document.activeElement) && document.activeElement.matches(CONTROLS) ? controlKey(document.activeElement) : null;

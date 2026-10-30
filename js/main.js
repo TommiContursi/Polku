@@ -690,7 +690,7 @@ function sportList(menu) {
   const craft = state.activity !== 'paddle' ? null : h('div', { class: 'act-craft', role: 'group', 'aria-labelledby': 'act-craft-h' },
     h('div', { class: 'act-head', id: 'act-craft-h' }, 'Craft'),
     h('div', { class: 'act-chips' }, ...Object.entries(CRAFT).map(([k, c]) => h('button', { type: 'button', class: 'act-chip', 'data-craft': k, 'aria-pressed': String(planner.craft === k),
-      onclick: () => { planner.setCraft(k); sportList(menu); menu.querySelector(`[data-craft="${k}"]`)?.focus(); }, html: `${planner.craft === k ? icon('check', 15) : ''}<span>${escapeAttr(c.label)}</span>` }))),
+      onclick: () => { const settle = settleControls(menu); planner.setCraft(k); sportList(menu); settle(); menu.querySelector(`[data-craft="${k}"]`)?.focus(); }, html: `${planner.craft === k ? icon('check', 15) : ''}<span>${escapeAttr(c.label)}</span>` }))),
     h('p', { class: 'act-lead' }, CRAFT_NOTE));
   menu.replaceChildren(h('div', { class: 'act-head', 'aria-hidden': 'true' }, 'Sport'),
     h('p', { class: 'act-lead', id: 'act-lead' }, route.length ? `Your route: ${planner.sportsLabel()}, ${planner.legs.length} ${planner.legs.length === 1 ? 'leg' : 'legs'}` : SPORT_LEAD),
@@ -1018,7 +1018,9 @@ function layerGroup(id, title, count, ...kids) {
   const openByDefault = kids[0] === true ? kids.shift() : false; // optional flag before the children
   const saved = store.get('layerGroups', {})[id];
   const d = h('details', { class: 'lg-group', open: saved ?? (openByDefault || count > 0) },
-    h('summary', {}, h('span', { class: 'lg-title' }, title), count ? h('span', { class: 'lg-count' }, `${count} on`) : null), ...kids);
+    // a click that opens it fades its rows in, once (.enter); not the keyboard's, nor Layers drawn again
+    h('summary', { onclick: (e) => d.classList.toggle('enter', !!e.detail && !d.open) }, h('span', { class: 'lg-title' }, title), count ? h('span', { class: 'lg-count' }, `${count} on`) : null), ...kids);
+  d.addEventListener('animationend', () => d.classList.remove('enter'));
   d.addEventListener('toggle', () => store.set('layerGroups', { ...store.get('layerGroups', {}), [id]: d.open }));
   return d;
 }
@@ -1229,7 +1231,7 @@ function setTile(id, on) {
     setOverlays(Object.fromEntries(DEPTHS.map((d) => [d, back.includes(d)])));
   } else if (id === 'hillshade' || id === 'contours') { state[id] = on; applyStyle(); }
   else if (TRAIL_KEYS.includes(id)) setTrail(id, on);
-  else if (id.startsWith('wx:')) setWeather({ [id.slice(3)]: on });
+  else if (id.startsWith('wx:')) { setWeather({ [id.slice(3)]: on }); return; } // (it draws the panels: once, so the tile fades)
   else setOverlay(id, on);
   renderLayersPanel();
 }
@@ -1499,6 +1501,7 @@ map.once('idle', () => (window.requestIdleCallback || setTimeout)(() => { for (c
 // ------------------------------------------------------------------ settings panel
 // How Polku behaves (not what the map shows): your speeds, the planner, display, offline, data (#321).
 let speedOpen = null; // the sport whose speeds Settings shows opened (none at first)
+let speedNew = null; // the sport whose speeds a tap has just opened: they fade in, once
 function renderSettingsPanel() {
   const p = $('#settings-body');
   const keepScroll = p.scrollTop;
@@ -1518,11 +1521,12 @@ function renderSettingsPanel() {
   for (const [k, a] of Object.entries(ACTIVITIES)) {
     const open = speedOpen === k;
     const row = h('button', { type: 'button', class: 'row speed-sport-row', 'data-k': k, 'aria-expanded': String(open),
-      onclick: () => { speedOpen = open ? null : k; renderSettingsPanel(); $(`#settings-body .speed-sport-row[data-k="${k}"]`)?.focus(); },
-      html: `<span>${icon(ACT_ICONS[k], 20)}</span><span><b>${a.label}${inRoute.includes(k) ? ' <span class="cur">your route</span>' : ''}</b><small>${escapeAttr(planner.speedLine(k))}</small></span><span class="way-chev">${icon(open ? 'chevronUp' : 'chevronDown', 16)}</span>` });
+      onclick: (e) => { speedOpen = open ? null : k; speedNew = e.detail && !open ? k : null; renderSettingsPanel(); $(`#settings-body .speed-sport-row[data-k="${k}"]`)?.focus(); },
+      html: `<span>${icon(ACT_ICONS[k], 20)}</span><span><b>${a.label}${inRoute.includes(k) ? ' <span class="cur">your route</span>' : ''}</b><small>${escapeAttr(planner.speedLine(k))}</small></span><span class="way-chev">${icon('chevronDown', 16)}</span>` });
     speeds.append(row);
     if (!open) continue;
-    const box = h('div', { class: 'speed-box' });
+    const box = h('div', { class: `speed-box${speedNew === k ? ' enter' : ''}` });
+    speedNew = null;
     speeds.append(box);
     renderSpeedEditor(box, k, {
       craft: planner.craft, onCraft: (c) => planner.setCraft(c),
