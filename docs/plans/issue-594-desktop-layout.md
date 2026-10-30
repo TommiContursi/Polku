@@ -3,7 +3,7 @@
 Where the toolbar, the planner and the top bar sit on a desktop: today's layout beside an idea from the user (2026-10-30), and the options between them, drawn as a mock-up to choose from. What's still to do, and its status, is on GitHub, in [#594](https://github.com/TommiContursi/Polku/issues/594).
 
 - **Status (2026-10-30): nothing is decided.** The mock-up decides nothing until the user chooses. [#568](https://github.com/TommiContursi/Polku/issues/568) and step 3, part 2 of [#233](https://github.com/TommiContursi/Polku/issues/233) wait for the choice, since both place things at the map's foot.
-- **Recommended: D,** today's planner and toolbar with ⚙ at the top right; **E**, the critique's variant with Done by the planner, is worth a try. [The recommendation](#recommendation-d) says why, and where the idea loses and wins.
+- **Recommended: D,** today's planner and toolbar with ⚙ at the top right. **E**, the critique's variant with Done by the planner, is the alternative. [The recommendation](#recommendation-d) says why, and where the idea loses and wins.
 - **The mock-up:** [mockups/issue-594-desktop-layout.html](mockups/issue-594-desktop-layout.html). Today on the left, an option on the right, in the same scene and at the same size.
 
 ## The mock-up
@@ -16,7 +16,7 @@ Where the toolbar, the planner and the top bar sit on a desktop: today's layout 
 - **Under the frames:** what moved in this scene, in both frames, and a table of every option at every size (the numbers below).
 - **What's a picture and what's drawn:** the map at each size and the planner in each state are pictures of #591's build with the Kauppi route (on `pr-screenshots`, `claude/desktop-layout/`). The top bar, the toolbar, the map's buttons and the lines are drawn with B's values, at the sizes the build measures. Two things aren't built and are drawn as their plans say: #568's Share link, Export GPX and Save offline in the route's view, and the weather at the foot (step 3, part 2).
 - **The worst case:** 1024 × 768 is in the size switch. At 200 % a 1440 × 900 window is 720 × 450, which takes the phone's layout (under 900 px wide), so none of these options applies there.
-- **Left out:** the bottom dock (B's centred planner has no meaning there, and a toolbar centred on the bottom panel's top edge would move as B's does), dark mode, the zoom hint, Finnish (the toolbar is 1121 px where English is 1110: one more of the route's actions in ⋯ at 1440, no change at 1920 and 2560), the search's results, the menus and Settings' panel.
+- **Left out:** the bottom dock (B's centred planner has no meaning there, and a toolbar centred on the bottom panel's top edge would move as B's does), dark mode, the zoom hint, Finnish (not measured on #591; on the old look its toolbar was about 22 px wider than English, which would put one more of the route's actions in ⋯ at 1440 in B and C, with 940 px of room, and probably not in A, D and E, with 952; nothing changes at 1920 and 2560), the search's results, the menus and Settings' panel.
 
 ## The options
 
@@ -54,7 +54,7 @@ Since today's planner is C's, the idea is three changes that can be chosen apart
 
 All in px. **Weather:** what it does with Waypoints folded (editing) and in the route's view, with the room beside the toolbar in brackets: it needs 640 to open and 210 for its line. **What you clicked moves:** the most Waypoints' head, the profile's size button or the tabs move when clicked. **The numbers move:** the most the route's numbers move when a warning comes (its row goes in above them, in every option) or a point is added. **Modes move, first leg:** the drawing modes, when the second point brings the route's actions. **Left end moves, Done:** the toolbar's left end when Done turns it into the route's view. **Done → Edit:** how far Edit lands from where Done was. Travel is from centre to centre; the map's middle is the middle of where a fit frames the route. At 1024 × 768 the toolbar folds every step in every option, the weather is away in all of them, and B's planner moves up to 58 px; the mock-up's table has every size.
 
-**Room for the map is the same in every option:** the planner stays 392 px on its side, the top bar keeps its pieces and their sizes, and a fit frames the route in the same box (`viewPadding()`: from 40 px beside the planner, under the top bar, above the toolbar). What differs is the foot's spare room: one piece by the map's buttons when the toolbar starts at the planner's edge, two halves when it's centred. The weather goes by the map's buttons, so centring halves its room.
+**With the weather off, room for the map is the same in every option:** the planner stays 392 px on its side, the top bar keeps its pieces and their sizes, and a fit frames the route in the same box (`viewPadding()`: from 40 px beside the planner, under the top bar, above the toolbar). What differs is the foot's spare room: one piece by the map's buttons when the toolbar starts at the planner's edge, two halves when it's centred. The weather goes by the map's buttons, so centring halves its room. **With the weather on,** an open strip (173 px tall) takes a fit's box up above it, 117 px less tall: where A, D and E open it and B and C show its line, B and C keep more of the map in view.
 
 ## How each part does
 
@@ -73,16 +73,16 @@ The centred toolbar wins two things:
 The keys P, S, W, E and Ctrl+Z take the same jobs. On the edge, Done also moves 317 px right at the first leg at 1920 (135 at 1440), as the toolbar grows.
 
 **The top bar.**
-- **⚙ at the right** is 169 px from Settings' panel at every size, which opens at the right. At the left it's 531 px away at 1440, 1010 at 1920 and 1649 at 2560. Settings and an account at the top right is what people expect on the web, and it leaves room for a later sign-in. **It wins at no cost.**
+- **⚙ at the right** is 169 px from Settings' panel at every size, which opens at the right. At the left it's 531 px away at 1440, 1010 at 1920 and 1649 at 2560; at 1024 the two are about the same (127 at the left). Settings and an account at the top right is what people expect on the web, and it leaves room for a later sign-in. **It wins from 1440 up and costs nothing at 1024.**
 - **The search and the sport centred** bring the search nearer to where the place it finds shows (510 against 738 px at 1440, 586 against 989 at 1920). That's once a session. The cost: they leave the planner, which the search's **Plan** opens and the sport routes for, so the top left keeps the logo alone over the planner. And the search is centred in the window while the toolbar is centred in the map beside the planner, two centre lines 166 px apart. Map apps with a side panel keep the search over it, at the top left. **A close call; D and E keep it at the left.**
 
-**Room for the map** is the same in every option (above). Only the foot's spare room differs, and that's the weather's.
+**Room for the map** is the same in every option with the weather off (above). With it on, the foot's spare room decides: where A, D and E open the strip and B and C show its line, a fit frames the route 117 px less tall. That's a trade, not only a loss for B: A, D and E show the 48 hours without a click, and B and C keep that map with the strip a click away.
 
 ## The critiques
 
 ### /impeccable critique (2026-10-30)
 
-Two separate reviews, as the command runs them: a design review of the options (Assessment A), and the detector with the page in headless Chrome (Assessment B). A saw the frames and the numbers, not this plan's recommendation.
+Two separate reviews, as the command runs them: a design review of the options (Assessment A), and the detector with the page in headless Chrome (Assessment B). The page already labelled D "recommended"; A was told to ignore the label and judge for itself, and saw the frames, the numbers and the page's code, not this plan.
 
 - **Nielsen's heuristics, out of 40:** A 27, B 25, D 29.
   - B scores 1 on error prevention, because things move under the pointer, and 2 on visibility, because the weather is away more often.
@@ -99,6 +99,8 @@ Two separate reviews, as the command runs them: a design review of the options (
 - **The page in Chrome:** no console errors; nothing runs off the page at 390 or 1440 px. Fixed after it: Done ran 9–13 px past the drawn toolbar (the separators and Done are now the build's sizes), the parts' switches wrapped under their label, the frames now stack on a narrow page and line up at their foot, the wide table says it scrolls, and C's name is the same everywhere.
 
 ### /design:design-critique (2026-10-30)
+
+This session's own pass, with the framework's headings, written after the recommendation was drafted.
 
 - **First look:** A, C, D and E read as the app people know: one column at the left (the logo, the search, the sport, the planner) and everything else held by an edge. B reads as three floating islands with no edge in common, the search at the top's middle, the planner halfway down the left and the toolbar at the foot's middle; on a 2560 screen its planner floats like a dialog.
 - **Reading order:** in A and D, from the top left down the planner to the toolbar at its foot, then the map. In B, a triangle with nothing to follow.
@@ -126,10 +128,11 @@ Two separate reviews, as the command runs them: a design review of the options (
 **Where the idea wins:**
 - ⚙ at the right (taken into D);
 - Done → Edit is shorter (296 px against 584);
+- with the weather on, more of the map stays in view where its strip stays a line;
 - the drawing modes and the search are nearer the map's middle on wide screens;
 - and on a wide screen, as long as nothing changes, it looks more balanced.
 
-**E, the critique's variant,** fixes D's one weak spot, Done → Edit, at the cost of the toolbar's order. Try it in the mock-up: if Done before the drawing tools reads well, E is better than D. D is recommended because the planner in the route's view already has its own **Edit**, and the key E does the same.
+**E, the alternative,** fixes D's one weak spot: Edit lands 8 px from where Done was instead of 584. Its one cost is the order: Done goes before the drawing tools, against today's (25a). D is recommended over it: in the route's view the planner has its own **Edit**, and the key E does the same, so going back rarely needs the toolbar's end.
 
 ## What each choice changes
 
