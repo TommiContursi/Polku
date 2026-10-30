@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Sheet stops</title>
+<!-- A mock-up for #233's "the sheet's stops" (docs/plans/issue-233-calmer-planner.md, "The sheet's stops"). Both frames
+     run main's own app, with a route drawn by straight lines, so nothing is routed. Today runs main's code unchanged
+     (to list its stops, the readout sets its sizes for a moment, with nothing drawn). In the
+     option's frame the planner's own swipe is set aside, and a swipe built on main's js/sheet.js takes its place: the
+     same spring, projection and rubber band, with the option's stops, flicks and buttons. Nothing in the app changes. -->
+<link rel="stylesheet" href="../../../css/app.css">
+<style>
+/* the mock-up's own chrome; its controls are css/app.css's (btn, seg, menu-h) */
+html, body { height: 100%; margin: 0; overscroll-behavior: none; }
+body.ss { background: var(--page); color: var(--text); font-size: var(--font-body); }
+.ss-side { padding: 16px 16px 40px; background: var(--surface-solid); }
+.ss-side h1 { margin: 0 0 4px; font-size: var(--font-title); }
+.ss-side p { margin: 0 0 10px; color: var(--muted); font-size: var(--font-small); line-height: 1.45; }
+.ss-side .menu-h { margin: 16px 0 6px; }
+.ss-side .seg { display: flex; flex-wrap: wrap; }
+.ss-side .seg button { flex: 1 1 auto; min-height: var(--target); }
+.ss-knob { margin: 8px 0 0; }
+.ss-knob > span { display: block; margin: 0 0 4px; font-size: var(--font-small); color: var(--muted); }
+.ss-stops { margin: 4px 0 0; font-size: var(--font-small); border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.ss-stops th, .ss-stops td { padding: 3px 4px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ss-stops th { font-weight: var(--weight-strong); color: var(--muted); }
+.ss-stops td.same { color: var(--muted); }
+.ss-note { margin-top: 6px; }
+.ss-fig { margin: 0; display: grid; gap: 6px; justify-items: start; }
+.ss-fig figcaption { font-size: var(--font-small); color: var(--muted); }
+.ss-fig figcaption b { color: var(--text); font-size: var(--font-control); }
+.ss-frame { position: relative; overflow: hidden; border-radius: 28px; box-shadow: 0 0 0 1px var(--line), var(--shadow); background: var(--page); }
+.ss-frame.desk { border-radius: 10px; }
+.ss-frame iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: var(--page); }
+/* a Mac: the settings at the left, Today and the option side by side (a desktop's two frames one above the other) */
+body.ss-mac { display: grid; grid-template-columns: 340px minmax(0, 1fr); height: 100dvh; overflow: hidden; }
+.ss-mac .ss-side { grid-area: 1 / 1; height: 100dvh; overflow-y: auto; box-sizing: border-box; border-right: 1px solid var(--line); }
+.ss-mac .ss-stage { grid-area: 1 / 2; height: 100dvh; overflow: auto; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center; gap: 16px 24px; padding: 16px; box-sizing: border-box; }
+.ss-mac .ss-bar, .ss-mac .ss-scrim { display: none; }
+/* a phone: one frame, the whole screen; the bar over the app's top bar, and the settings in a sheet of their own */
+body.ss-phone { overflow: hidden; }
+.ss-phone .ss-stage { position: fixed; inset: 0; }
+.ss-phone .ss-fig { position: absolute; inset: 0; display: block; }
+.ss-phone .ss-fig figcaption { display: none; }
+.ss-phone .ss-frame { position: absolute; inset: 0; border-radius: 0; box-shadow: none; width: auto !important; height: auto !important; }
+.ss-phone .ss-frame iframe { width: 100% !important; height: 100% !important; transform: none !important; }
+.ss-phone .ss-fig[hidden] { display: block; visibility: hidden; }
+.ss-phone .ss-side { position: fixed; inset: auto 0 0 0; z-index: 9; max-height: 82dvh; overflow-y: auto; overscroll-behavior: contain; padding-bottom: max(24px, env(safe-area-inset-bottom));
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; box-shadow: var(--shadow-sheet); transition: transform var(--t-sheet) var(--ease-drawer); }
+.ss-phone .ss-side[hidden] { display: block; visibility: hidden; transform: translateY(100%); transition-duration: var(--t-open); }
+.ss-phone .ss-side .ss-mac-only { display: none; }
+.ss-scrim { position: fixed; inset: 0; z-index: 8; background: rgba(0, 0, 0, .25); }
+.ss-scrim[hidden] { display: none; }
+.ss-bar { position: fixed; z-index: 7; top: 10px; left: 10px; right: 10px; display: flex; align-items: center; gap: 8px; }
+.ss-bar .seg { flex: 1; display: flex; box-shadow: var(--shadow); }
+.ss-bar .seg button { flex: 1; min-height: var(--target); }
+.ss-bar .btn { box-shadow: var(--shadow); background: var(--surface-solid); min-height: var(--target); }
+@media (prefers-reduced-motion: reduce) { .ss-phone .ss-side, .ss-phone .ss-side[hidden] { transition: opacity var(--t-open) linear; transform: none; } .ss-phone .ss-side[hidden] { opacity: 0; } }
+</style>
+</head>
+<body class="ss">
+<script type="module">
+import { h, icon } from '../../../js/ui.js';
+
+// A route of four points in Tampere, by straight lines (m=lll): nothing is routed, so reloading a frame never asks brouter.de
+const SHARE = '?r=%7ByivJwvzoC%7BTo%7D%40fJ_jA%7BYgw%40&m=lll&a=mtb';
+const SIZES = {
+  p390: { w: 390, h: 844, z: 1, name: 'Phone 390 × 844' },
+  p360: { w: 360, h: 740, z: 1, name: 'Phone 360 × 740' },
+  z200: { w: 195, h: 422, z: 2, name: '200 %' },
+  d1440: { w: 1440, h: 900, z: 1, name: 'Desktop 1440 × 900', desk: true },
+};
+const SCENES = { edit: 'Editing', view: "The route's view", start: 'The start' };
+const ORDER = ['folded', 'peek', 'profile', 'half', 'full'];
+const NAMES = { closed: 'Away', folded: 'Line', peek: 'Peek', profile: 'Profile', half: 'Half', full: 'Full' };
+// What each option changes. rest: each stop measured with the sheet at that size, so a swipe lands where it rests (#586)
+const BASE = { arrows: false, lineOpens: 'was', drop: [], oneStop: false, decel: 0.998, startResists: false, marks: false, rest: true };
+const PRESETS = {
+  A: { arrows: true },
+  B: { drop: ['profile'] },
+  C: { oneStop: true, decel: 0.99, startResists: true, marks: true },
+  BC: { drop: ['profile'], oneStop: true, decel: 0.99, startResists: true, marks: true },
+  ABC: { arrows: true, drop: ['profile'], oneStop: true, decel: 0.99, startResists: true, marks: true },
+};
+const PRESET_NAMES = { A: 'A', B: 'B', C: 'C', BC: 'B + C', ABC: 'A + B + C' };
+const FLICK = 1.1; // js/sheet.js's SWIPE.flick, px/ms
+
+// ---------------------------------------------------------------- what's chosen, kept in the address
+const q = new URLSearchParams(location.search);
+const OPT = { ...BASE };
+let preset = PRESETS[q.get('o')] ? q.get('o') : q.has('o') ? null : 'BC';
+if (preset) Object.assign(OPT, PRESETS[preset]);
+else {
+  OPT.arrows = q.get('a') === '1'; OPT.lineOpens = q.get('lo') === 'peek' ? 'peek' : 'was';
+  OPT.drop = (q.get('d') || '').split(',').filter((s) => ['profile', 'half'].includes(s));
+  OPT.oneStop = q.get('one') === '1'; OPT.decel = q.get('dec') === '0.99' ? 0.99 : 0.998;
+  OPT.startResists = q.get('sr') === '1'; OPT.marks = q.get('mk') === '1'; OPT.rest = q.get('rest') !== '0';
+}
+let size = SIZES[q.get('size')] ? q.get('size') : 'p390';
+let scene = SCENES[q.get('scene')] ? q.get('scene') : 'edit';
+let view = q.get('view') === 'today' ? 'today' : 'option';
+const keep = () => {
+  const p = new URLSearchParams({ o: preset || 'custom', size, scene, view });
+  if (!preset) Object.entries({ a: +OPT.arrows, lo: OPT.lineOpens, d: OPT.drop.join(','), one: +OPT.oneStop, dec: OPT.decel, sr: +OPT.startResists, mk: +OPT.marks, rest: +OPT.rest }).forEach(([k, v]) => p.set(k, v));
+  history.replaceState(null, '', `?${p}`);
+};
+const same = (a, b) => Object.keys(BASE).every((k) => JSON.stringify(a[k]) === JSON.stringify(b[k]));
+const optName = () => preset ? PRESET_NAMES[preset] : 'Your mix';
+
+// ---------------------------------------------------------------- the page
+document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+const mac = matchMedia('(min-width: 900px)').matches;
+document.body.classList.add(mac ? 'ss-mac' : 'ss-phone');
+const side = h('div', { class: 'ss-side', hidden: !mac || undefined });
+const stage = h('div', { class: 'ss-stage' });
+const scrim = h('div', { class: 'ss-scrim', hidden: true, onclick: () => panel(false) });
+const viewSeg = h('div', { class: 'seg', role: 'group', 'aria-label': 'Which frame' });
+const bar = h('div', { class: 'ss-bar' }, viewSeg, h('button', { type: 'button', class: 'btn', onclick: () => panel(true) }, h('span', { html: icon('sliders', 18) }), 'Options'));
+document.body.append(stage, bar, scrim, side);
+function panel(on) { side.hidden = !on; scrim.hidden = !on; }
+
+const seg = (label, choices, now, pick) => h('div', { class: 'ss-knob' }, label ? h('span', {}, label) : '',
+  h('div', { class: 'seg full', role: 'group', 'aria-label': label || undefined }, ...choices.map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(JSON.stringify(v) === JSON.stringify(now)), onclick: () => pick(v) }, t))));
+const stopsBox = h('div');
+
+function renderSide() {
+  side.replaceChildren(
+    h('h1', {}, "The planner's stops"),
+    h('p', {}, "Today is main's code, unchanged. The option is main's app with its own swipe set aside, and one built on main's js/sheet.js in its place: the same spring, projection and rubber band, with the option's stops and flicks. Cards stay as they are today: their stops are #574's."),
+    h('div', { class: 'menu-h' }, 'Option'),
+    seg('', [...Object.keys(PRESETS).map((k) => [k, PRESET_NAMES[k]]), ...(preset ? [] : [[null, 'Your mix']])], preset, (k) => { if (!k) return; preset = k; Object.assign(OPT, BASE, PRESETS[k]); changed(); }),
+    h('div', { class: 'menu-h' }, 'A: ⌃ and ⌄'),
+    seg('Each one stop up or down, at the sheet\'s top right', [[false, 'Off'], [true, 'On']], OPT.arrows, (v) => set({ arrows: v })),
+    seg('The folded line opens', [['was', 'As it was'], ['peek', 'To the peek']], OPT.lineOpens, (v) => set({ lineOpens: v })),
+    h('div', { class: 'menu-h' }, 'B: fewer stops'),
+    seg('Stops that go', [[[], 'None'], [['profile'], 'Profile'], [['half'], 'Half'], [['profile', 'half'], 'Both']], OPT.drop, (v) => set({ drop: v })),
+    h('div', { class: 'menu-h' }, 'C: a swipe that shows its stops'),
+    seg('A flick moves', [[false, 'As far as it goes'], [true, 'One stop']], OPT.oneStop, (v) => set({ oneStop: v })),
+    seg('Where a flick would come to rest (deceleration)', [[0.998, '0.998, today'], [0.99, '0.99, snappier']], OPT.decel, (v) => set({ decel: v })),
+    seg("The start's views, dragged up", [[false, 'Move freely'], [true, 'Resist']], OPT.startResists, (v) => set({ startResists: v })),
+    seg('Marks at the stops while dragging', [[false, 'Off'], [true, 'On']], OPT.marks, (v) => set({ marks: v })),
+    h('div', { class: 'menu-h' }, 'In every option'),
+    seg('Each stop measured at its own size (#586)', [[true, 'Lands where it rests'], [false, "Today's"]], OPT.rest, (v) => set({ rest: v })),
+    h('div', { class: 'menu-h' }, 'Where'),
+    h('div', { class: 'ss-mac-only' }, seg('Size', Object.entries(SIZES).map(([k, s]) => [k, s.name]), size, (v) => { size = v; keep(); load(); })),
+    seg('The planner', Object.entries(SCENES), scene, (v) => { scene = v; keep(); load(); }),
+    h('div', { class: 'menu-h' }, 'The stops, px from the sheet\'s foot'),
+    stopsBox,
+    h('div', { class: 'menu-h' }, 'On an iPhone'),
+    h('p', {}, 'Serve this folder to the network from the Mac (python3 -m http.server 8807 --bind 0.0.0.0) and open http://<the Mac\'s name>.local:8807/docs/plans/mockups/issue-233-sheet-stops.html in Safari, on the same Wi-Fi. The plan says more.'),
+  );
+  viewSeg.replaceChildren(...[['today', 'Today'], ['option', optName()]].map(([v, t]) => h('button', { type: 'button', 'aria-pressed': String(view === v), onclick: () => { view = v; keep(); show(); } }, t)));
+}
+function set(patch) {
+  Object.assign(OPT, patch);
+  preset = Object.keys(PRESETS).find((k) => same(OPT, { ...BASE, ...PRESETS[k] })) || null;
+  changed();
+}
+function changed() { keep(); renderSide(); figs.option?.apply?.(); caption(); renderStops(); }
+
+// ---------------------------------------------------------------- the frames
+const figs = {};
+function load() {
+  stage.replaceChildren();
+  for (const k of ['today', 'option']) {
+    const s = SIZES[mac ? size : 'p390'];
+    const fr = h('iframe', { src: `../../../${SHARE}`, title: k === 'today' ? 'Today, main as it is' : 'The option', width: s.w, height: s.h });
+    const box = h('div', { class: `ss-frame${s.desk ? ' desk' : ''}` }, fr);
+    const cap = h('figcaption');
+    const fig = h('figure', { class: 'ss-fig' }, cap, box);
+    figs[k] = { fr, box, cap, fig, k };
+    stage.append(fig);
+    ready(fr).then(() => setUp(figs[k]));
+  }
+  fit(); caption(); show(); renderStops();
+}
+function caption() {
+  if (figs.today) figs.today.cap.replaceChildren(h('b', {}, 'Today'), ' · main as it is');
+  if (figs.option) figs.option.cap.replaceChildren(h('b', {}, optName()), ' · ', [OPT.arrows && '⌃ ⌄', OPT.drop.length && `without ${OPT.drop.join(' and ')}`, OPT.oneStop && 'a flick moves one stop', OPT.decel === 0.99 && '0.99', OPT.marks && 'marks'].filter(Boolean).join(', ') || "today's stops");
+  renderSide();
+}
+function show() { if (!mac) for (const f of Object.values(figs)) f.fig.hidden = f.k !== view; renderSide(); }
+function fit() {
+  if (!mac) return;
+  const s = SIZES[size], W = stage.clientWidth - 32, H = stage.clientHeight - 32 - 24;
+  const k = s.desk ? Math.min(W / (s.w * s.z), (H - 40) / 2 / (s.h * s.z)) : Math.min(1, (W - 24) / 2 / (s.w * s.z), H / (s.h * s.z));
+  for (const f of Object.values(figs)) {
+    f.fr.style.transform = `scale(${s.z * k})`;
+    f.box.style.width = `${Math.round(s.w * s.z * k)}px`;
+    f.box.style.height = `${Math.round(s.h * s.z * k)}px`;
+  }
+}
+addEventListener('resize', fit);
+const ready = (fr) => new Promise((res) => {
+  const t = setInterval(() => { if (!fr.isConnected) return clearInterval(t); try { if (fr.contentWindow.polku?.planner?.points.length > 1) { clearInterval(t); res(); } } catch { /* loading */ } }, 150);
+});
+async function setUp(f) {
+  const w = f.fr.contentWindow, P = w.polku.planner;
+  P.setDock(SIZES[size].desk && mac ? 'bottom' : 'left');
+  if (scene === 'start') { P.clear(); P.setActive(true, { edit: true }); }
+  else P.setEditing(scene === 'edit');
+  P.setSheetState(P.restSize(), { remember: false, instant: true }); // (the peek, or the line where the peek would cover half the screen)
+  if (f.k === 'option') await patch(f);
+  f.ready = true;
+  renderStops();
+  setTimeout(renderStops, 4000); // (the route's numbers and rows that come in late change the peek)
+}
+
+// (the app takes the shared route once the map has loaded: a frame out of sight, as in a hidden tab, waits)
+// A module of the frame's own (the one the app runs, from its module map), e.g. './js/sheet.js'
+const frameModule = (w, path) => new Promise((res) => {
+  const key = `ss${Math.random().toString(36).slice(2)}`;
+  w.addEventListener(key, () => res(w[key]), { once: true });
+  const s = w.document.createElement('script');
+  s.type = 'module';
+  s.textContent = `import * as m from '${path}'; window['${key}'] = m; dispatchEvent(new Event('${key}'));`;
+  w.document.head.append(s);
+});
+
+// Where a release lands: the planner's pick() (a closing size needs SWIPE.closeAt of the way, and the nearest stop to
+// where it would come to rest), then C's flick of one stop: the next stop past where it was let go, its way, and at
+// least one from where the drag began, as js/sheet.js's release() asks
+const K = (decel) => decel / (1 - decel);
+function choose(aim, r, o) {
+  const S = r.sizes, near = (l) => l.reduce((b, z) => (Math.abs(z.at - aim) < Math.abs(b.at - aim) ? z : b)).name;
+  const name = S[0].name === 'closed' ? (aim < S[1].at * (1 - 0.4) ? 'closed' : near(S.slice(1))) : near(S);
+  const v = (aim - r.v) / K(o.decel);
+  if (!o.oneStop || Math.abs(v) < FLICK) return name;
+  const i0 = S.findIndex((z) => z.name === r.from);
+  if (v > 0) { const i = S.findIndex((z) => z.at > r.v + 1); return S[Math.min(S.length - 1, Math.max(i0 + 1, i < 0 ? S.length - 1 : i))].name; }
+  return S[Math.max(0, Math.min(i0 - 1, S.findLastIndex((z) => z.at < r.v - 1)))].name;
+}
+// …and js/sheet.js's own rule after it: a flick moves at least one stop its way
+function land(aim, r, o) {
+  const S = r.sizes, at = (n) => Math.max(0, S.findIndex((z) => z.name === n)), i0 = at(r.from), v = (aim - r.v) / K(o.decel);
+  let i = at(choose(aim, r, o));
+  if (Math.abs(v) >= FLICK) { if (v < 0 && i >= i0) i = Math.max(0, i0 - 1); if (v > 0 && i <= i0) i = Math.min(S.length - 1, i0 + 1); }
+  return S[i];
+}
+
+// The stops a drag from `from` aims for, as the planner's start() builds them. Today measures them all with the sheet at
+// the size it's at; with rest, each at its own size (#586). Measured by setting the size for a moment, with nothing drawn.
+function stopsFrom(P, from, o) {
+  const p = P.panel, px = (v) => parseFloat(p.style.getPropertyValue(v)) || 0, was = p.dataset.state;
+  const at = (st, v) => { p.dataset.state = st; P.measureSheet(); const x = px(v); p.dataset.state = was; P.measureSheet(); return x; };
+  const D = p.ownerDocument.defaultView.innerHeight, full = D - 76, only = P.peekOnly(), carded = P.cards.place === 'peek';
+  const peek = o.rest && !only && !carded ? at('peek', '--peek-h') : at(from, '--peek-h');
+  const prof = o.rest && !only && !carded ? at('profile', '--profile-h') : at(from, '--profile-h');
+  const line = P.foldable() ? [{ name: 'folded', at: px('--fold-h') }] : [];
+  const S = only ? [{ name: 'peek', at: peek }]
+    : carded ? [...line, { name: 'peek', at: peek }, { name: 'full', at: px('--card-full') }]
+      : [...line, { name: 'peek', at: peek }, { name: 'profile', at: prof }, { name: 'half', at: D * 0.5 }, { name: 'full', at: full }].filter((z) => !o.drop.includes(z.name));
+  const up = S.filter((z, i) => i === 0 || z.at > Math.max(...S.slice(0, i).map((y) => y.at)) + 1);
+  if (from === 'folded' && line.length) up.unshift({ name: 'closed', at: -14 });
+  return { sizes: up, from: up.some((z) => z.name === from) ? from : up[up.length - 1].name, max: only && o.startResists ? peek : full };
+}
+
+// ---------------------------------------------------------------- the option's frame
+async function patch(f) {
+  const w = f.fr.contentWindow, doc = w.document, P = w.polku.planner, panel = P.panel;
+  const { swipeSheet, SWIPE } = await frameModule(w, './js/sheet.js');
+  const px = (v) => parseFloat(panel.style.getPropertyValue(v)) || 0;
+  const kept = () => ORDER.filter((s) => !OPT.drop.includes(s) && (s !== 'folded' || P.foldable()));
+
+  doc.head.append(h('style', {}, `
+    .sheet-up, .sheet-up-min { display: none; }
+    .ss-arrows .sheet-top { grid-template-columns: 88px 1fr 88px; }
+    @media (max-width: 720px) { .ss-arrows .sheet.foldable:not(.carded) .sheet-up { display: inline-flex; } }
+    @media (max-width: 359px) { .ss-arrows .sheet-top { grid-template-columns: auto minmax(0, 1fr) auto; } .ss-arrows .sheet-handle { max-width: 100%; } }
+    @media (min-width: 721px) { .ss-arrows .sheet[data-layout="sheet"].foldable:not(.carded) .sheet-up-min { display: inline-flex; } }
+    .ss-marks { position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0; transition: opacity var(--t-open) var(--ease-out); }
+    .ss-marks.on { opacity: 1; transition-duration: var(--t-press); }
+    .ss-marks i { position: absolute; left: 0; width: 14px; height: 4px; margin-top: -2px; border-radius: 0 2px 2px 0; background: var(--muted); }
+    .ss-marks i.to { width: 100%; height: 2px; margin-top: -1px; border-radius: 0; background: var(--accent); }
+    .ss-marks b { position: absolute; left: 50%; transform: translateX(-50%); margin-top: -26px; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 600; line-height: 18px; }
+  `));
+
+  // B: a stop that goes is never set; whatever asks for it (a tab, Check, the handle's tap, a remembered size) gets the
+  // next stop that stays, its way
+  const setState = P.setSheetState;
+  P.setSheetState = function (st, o) {
+    if (OPT.drop.includes(st) && this.layout() === 'sheet' && this.cards.place !== 'peek') {
+      const k = kept(), j = ORDER.indexOf(st), up = j > ORDER.indexOf(this.panel.dataset.state);
+      st = up ? (k.find((s) => ORDER.indexOf(s) > j) || k[k.length - 1]) : ([...k].reverse().find((s) => ORDER.indexOf(s) < j) || k[0]);
+    }
+    return setState.call(this, st, o);
+  };
+
+  // C's marks: a tick at each stop, and a line where the sheet's top would come to rest if let go now
+  const marks = (() => {
+    const box = h('div', { class: 'ss-marks', 'aria-hidden': 'true' });
+    doc.body.append(box);
+    let r = null, foot = 0, hist = [];
+    const label = h('b');
+    return {
+      start(ride) {
+        r = OPT.marks ? ride : null;
+        if (!r) return;
+        hist = [];
+        foot = panel.getBoundingClientRect().bottom;
+        box.replaceChildren(...ride.sizes.filter((z) => z.at > 0).map((z) => h('i', { 'data-n': z.name, style: `top:${foot - z.at}px` })), label);
+        box.classList.add('on');
+      },
+      move(v, ride) {
+        if (!r) return;
+        const t = performance.now();
+        hist.push([t, v]);
+        while (hist.length > 2 && t - hist[0][0] > 100) hist.shift();
+        const [t0, v0] = hist[0], s = t > t0 ? (v - v0) / (t - t0) : 0, to = land(v + s * K(OPT.decel), { ...ride, v }, OPT);
+        for (const i of box.querySelectorAll('i')) i.classList.toggle('to', i.dataset.n === to.name);
+        label.textContent = NAMES[to.name];
+        label.style.top = `${foot - Math.max(to.at, 24)}px`;
+      },
+      end() { r = null; box.classList.remove('on'); },
+    };
+  })();
+
+  // The planner's own swipe leaves alone a drag that starts on a card (its grab()): for this press the sheet is one, so
+  // only the mock-up's swipe below takes it (the class goes again before anything is drawn)
+  panel.addEventListener('pointerdown', () => { panel.classList.add('card'); w.requestAnimationFrame(() => panel.classList.remove('card')); }, true);
+  panel.addEventListener('pointerdown', () => panel.classList.remove('card'));
+  // The planner's start(), pick() and moved() (js/planner.js bindSheet()), with the option's stops and flicks
+  let peekAt = 0;
+  P.sheetSwipe = swipeSheet(panel, {
+    enabled: () => P.active && P.layout() === 'sheet',
+    grab: (t, type) => !t.closest('#profile-canvas, .wpl-grip, .wpl.reorder .wpl-row, .tl-strip, .tl-grip, .orbit, .hours, .sheet-resize, .card')
+      && (type !== 'mouse' || !!t.closest('.sheet-handle, .sheet-head, .pl-tabs')),
+    start: () => {
+      SWIPE.decel = OPT.decel;
+      const now = P.shownHeight(), from = panel.dataset.state;
+      P.stopSheet(); // (caught mid-move: the finger takes it from where it is)
+      const s = stopsFrom(P, from, OPT), full = w.innerHeight - 76;
+      peekAt = (s.sizes.find((z) => z.name === 'peek') || {}).at || px('--peek-h');
+      panel.classList.add('dragging');
+      panel.style.height = `${full}px`;
+      const r = { H: full, now, from: s.from, sizes: s.sizes, min: s.sizes[0].at, max: s.max };
+      marks.start(r);
+      return r;
+    },
+    pick: (aim, r) => { marks.end(); return choose(aim, r, OPT); },
+    moved: (v, r) => {
+      if (P.foldable()) {
+        const line = px('--fold-h'), k = Math.max(0, Math.min(1, (peekAt - v) / Math.max(1, peekAt - line)));
+        P.els.fold.style.opacity = k;
+        for (const el of [P.els.top, P.els.head, P.els.profZone, P.els.tabs, P.els.body]) el.style.opacity = 1 - k;
+      }
+      marks.move(v, r);
+    },
+    end: (name) => P.restSheet(name),
+    cancel: () => { marks.end(); P.restSheet(null); },
+  });
+
+  // A: ⌃ beside ⌄, each one stop (⌄ from the peek folds, as today). The desktop's bottom dock has them in its header row.
+  const up = h('button', { type: 'button', class: 'tool sheet-up', html: icon('chevronUp', 19) });
+  const upMin = h('button', { type: 'button', class: 'tool sheet-up-min', html: icon('chevronUp', 19) });
+  P.els.foldBtn.before(up);
+  P.els.min.before(upMin);
+  const step = (dir, instant) => {
+    const k = kept(), cur = panel.dataset.state, i = k.indexOf(cur), to = k[Math.max(0, Math.min(k.length - 1, (i < 0 ? 1 : i) + dir))];
+    if (!to || to === cur) return;
+    if (to === 'folded') P.fold({ instant }); else P.setSheetState(to, { instant });
+  };
+  for (const b of [up, upMin]) b.addEventListener('click', (e) => step(1, !e.detail));
+  panel.addEventListener('click', (e) => {
+    if (e.defaultPrevented || !OPT.arrows || P.cards.place === 'peek' || P.layout() !== 'sheet') return;
+    if (e.target.closest('.sheet-fold, .sheet-min')) { e.stopPropagation(); step(-1, !e.detail); }
+    else if (e.target.closest('.fold-go') && OPT.lineOpens === 'peek') { e.stopPropagation(); P.setSheetState('peek', { instant: !e.detail }); }
+  }, true);
+  const sync = () => {
+    doc.documentElement.classList.toggle('ss-arrows', OPT.arrows);
+    if (!OPT.arrows) return P.renderFold();
+    const k = kept(), cur = panel.dataset.state;
+    for (const b of [up, upMin]) { b.disabled = cur === k[k.length - 1]; b.title = 'Raise the planner one size'; b.setAttribute('aria-label', b.title); }
+    for (const b of [P.els.foldBtn, P.els.min]) { b.title = cur === 'peek' ? 'Fold the planner to a line' : 'Lower the planner one size'; b.setAttribute('aria-label', b.title); }
+  };
+  panel.addEventListener('sheetstate', sync);
+  f.apply = () => { SWIPE.decel = OPT.decel; sync(); };
+  f.apply();
+}
+
+// ---------------------------------------------------------------- the stops, and where a flick lands, read from the frames
+function renderStops() {
+  const rows = [];
+  const read = (f) => f?.ready && { P: f.fr.contentWindow.polku.planner };
+  const T = read(figs.today), O = read(figs.option);
+  if (!T || !O) { stopsBox.replaceChildren(h('p', {}, 'Loading the frames…')); return; }
+  // (measured with the sheet at rest: sizes set for a moment would turn a move or a drag on its way)
+  if ([T, O].some(({ P }) => P.sheetMove || P.sheetSwipe?.busy || P.panel.classList.contains('dragging'))) { setTimeout(renderStops, 500); return; }
+  const today = { ...BASE, rest: false };
+  const restOf = (fr, o) => stopsFrom(fr.P, fr.P.panel.dataset.state === 'folded' ? 'peek' : fr.P.panel.dataset.state, { ...o, rest: true }).sizes.filter((z) => z.name !== 'closed');
+  const list = (S) => S.map((z) => `${NAMES[z.name]} ${Math.round(z.at)}`).join(' · ');
+  rows.push(h('p', {}, h('b', {}, 'Today: '), list(restOf(T, today)), h('br'), h('b', {}, `${optName()}: `), list(restOf(O, OPT)), T.P.foldable() ? '. From the line, a second swipe or ✕ puts the planner away.' : '.'));
+  // Today's jump at rest (#586): the stops a drag from each size aims for, against where they rest
+  const rest = Object.fromEntries(restOf(T, today).map((z) => [z.name, Math.round(z.at)]));
+  const jumps = ['peek', 'profile', 'half', 'full'].flatMap((from) => stopsFrom(T.P, from, today).sizes.filter((z) => ['peek', 'profile'].includes(z.name) && z.name !== from && Math.abs(z.at - rest[z.name]) > 2).map((z) => `from ${NAMES[from].toLowerCase()} to ${NAMES[z.name].toLowerCase()}, ${Math.round(z.at)} → ${rest[z.name]}`));
+  if (jumps.length) rows.push(h('p', { class: 'ss-note' }, `Today a swipe lands, then jumps to where it rests (#586): ${jumps.join('; ')}.`));
+  // the lightest flick that counts (1.2 px/ms), let go 30 px from the stop it began at
+  const flick = (P, o, from, dir) => {
+    const s = stopsFrom(P, from, o), z0 = s.sizes.find((z) => z.name === s.from), v = z0.at + 30 * dir;
+    const to = land(v + 1.2 * dir * K(o.decel), { ...s, v }, o);
+    return to.name === s.from ? '–' : NAMES[to.name];
+  };
+  const fromsO = new Set(restOf(O, OPT).map((z) => z.name)), fromsT = new Set(restOf(T, today).map((z) => z.name));
+  const froms = ORDER.filter((s) => fromsT.has(s) || fromsO.has(s));
+  rows.push(h('table', { class: 'ss-stops' },
+    h('caption', { class: 'menu-h', style: 'text-align:left' }, 'A light flick (1.2 px/ms) lands on'),
+    h('tr', {}, h('th', {}, 'From'), h('th', {}, '↑ Today'), h('th', {}, `↑ ${optName()}`), h('th', {}, '↓ Today'), h('th', {}, `↓ ${optName()}`)),
+    ...froms.map((from) => {
+      const has = fromsO.has(from), t = [flick(T.P, today, from, 1), flick(T.P, today, from, -1)], o = has ? [flick(O.P, OPT, from, 1), flick(O.P, OPT, from, -1)] : ['gone', 'gone'];
+      return h('tr', {}, h('th', {}, NAMES[from]), h('td', {}, t[0]), h('td', { class: o[0] === t[0] ? 'same' : '' }, o[0]), h('td', {}, t[1]), h('td', { class: o[1] === t[1] ? 'same' : '' }, o[1]));
+    })));
+  stopsBox.replaceChildren(...rows);
+}
+
+renderSide();
+load();
+</script>
+</body>
+</html>
