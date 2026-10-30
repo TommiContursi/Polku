@@ -526,6 +526,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .lg-group > summary::-webkit-details-marker { display: none; }
 .lg-group > summary::after { content: ""; width: 8px; height: 8px; margin: 0 4px 0 auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform var(--t-press) var(--ease-out); }
 .lg-group[open] > summary::after { transform: rotate(45deg); transition-duration: var(--t-open); }
+.lg-group > summary:focus-visible::after { transition: none; } /* (the keyboard's: at once, as its rows) */
 .lg-group.enter[open] > :not(summary) { animation: lg-in var(--t-open) var(--ease-out); } /* (js/main.js layerGroup()) */
 @keyframes lg-in { from { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) {
@@ -654,7 +655,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .qd-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .qt { position: relative; display: flex; min-height: 52px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); overflow: hidden; transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, border-color var(--t-press) ease; }
 .qt-tog { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px; border: 0; background: none; text-align: left; font-size: 12.5px; font-weight: 600; line-height: 1.2; color: var(--text); }
-.qt-ic { position: relative; flex: none; color: var(--muted); }
+.qt-ic { position: relative; flex: none; color: var(--muted); transition: color var(--t-press) ease; }
 .qt.on .qt-ic::after { top: -8px; left: -8px; width: 16px; height: 16px; background-size: 11px; box-shadow: 0 0 0 2px var(--accent-soft); }
 /* a word that doesn't fit breaks only at the soft hyphens in its label (Sade­tutka, Tempera­ture), never where
    the browser would pick ("Sadetut-ka"); breaking anywhere is the last resort, so nothing overflows */
@@ -676,7 +677,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
 .qd button, .qd .tg, #layers-panel .panel-back, .fab-layers {
   -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; cursor: pointer;
 }
-.qd .qt-tog, .qd .qt-opt, .qd .qt-more, .qd .qd-base, .qd .qd-chip { transition: transform 120ms var(--ease-out), background-color 120ms ease; }
+.qd .qt-tog, .qd .qt-opt, .qd .qt-more, .qd .qd-base, .qd .qd-chip { transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, color var(--t-press) ease, border-color var(--t-press) ease; }
 .qt:has(.qt-tog:active), .qt:has(.qt-rm:active), .qt-more:active, .qd-base:active, .qd-chip:active { transform: scale(0.97); }
 @media (hover: hover) and (pointer: fine) {
   .qt:not(.on) .qt-tog:hover, .qt-more:hover { background: var(--surface-solid); }
@@ -723,7 +724,7 @@ body.panels-over .panel-settings { bottom: auto; max-height: calc(100% - 64px - 
   .qd:not(.open) { transition: opacity 150ms var(--ease-out), visibility 0s 150ms; }
   .qd-body.from-right, .qd-body.from-left, #layers-panel.step-in { animation: qd-fade 150ms var(--ease-out); }
   .qt { transition: background-color var(--t-press) ease, border-color var(--t-press) ease; }
-  .qd .qt-tog, .qd .qd-base, .qd .qd-chip { transition: none; }
+  .qd .qt-tog, .qd .qd-base, .qd .qd-chip { transition: background-color var(--t-press) ease, color var(--t-press) ease; }
   .qt:has(.qt-tog:active), .qt:has(.qt-rm:active), .qt-more:active, .qd-base:active, .qd-chip:active { transform: none; }
 }
 @keyframes qd-fade { from { opacity: 0; } }
@@ -1503,7 +1504,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 .row small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
 .row .val { flex: none; max-width: 42%; font-size: var(--font-row); font-weight: var(--weight-name); color: var(--accent); text-align: right; overflow-wrap: break-word; }
 .row[aria-expanded="true"] { background: var(--surface-2); } /* (its menu or its editor open) */
-.row .way-chev { transition: transform 120ms ease-out; }
+.row .way-chev { transition: transform var(--t-press) var(--ease-out); }
 .row:active { background: var(--surface-2); }
 .row.danger b, .row.danger > span:first-child { color: var(--bad); }
 .row[aria-checked="true"] { background: var(--accent-soft); }
@@ -1525,6 +1526,7 @@ body[data-sheet="full"] :is(.zoom-hint, .maplibregl-ctrl-bottom-left, .maplibreg
 /* Settings' speeds: a sport's row turns its chevron as it opens (settleControls() gives it its start), and its editor
    fades in on the tap that opened it (.enter, js/main.js), not when Settings is drawn again or from the keyboard */
 .speed-sport-row[aria-expanded="true"] .way-chev { transform: rotate(180deg); transition-duration: var(--t-open); }
+.speed-sport-row:focus-visible .way-chev { transition: none; } /* (the keyboard's: at once, as its speeds) */
 .speed-box.enter { transition: opacity var(--t-open) var(--ease-out), transform var(--t-open) var(--ease-out); }
 @starting-style { .speed-box.enter { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { @starting-style { .speed-box.enter { transform: none; } } }
