@@ -644,19 +644,20 @@ const hoverPointer = matchMedia('(hover: hover) and (pointer: fine)');
 function pillFace() {
   return `${icon(ACT_ICONS[state.activity], 20)}<span>${ACTIVITIES[state.activity].label}</span>${state.winterOn ? `<span class="act-winter" title="${escapeAttr(winterNote())}">${icon('snow', 14)}</span>` : ''}${icon('chevronDown', 16)}`;
 }
+// The menu is kept, open or closed, so it fades out after a pick and isn't drawn in again for Paddle's craft
 function renderActivityBar() {
   const box = $('#activity-bar');
-  box.innerHTML = '';
   const cur = ACTIVITIES[state.activity];
-  const menu = h('div', { class: 'act-menu', hidden: true });
+  const menu = box.querySelector('.act-menu') || h('div', { class: 'act-menu', hidden: true });
   const btn = h('button', {
-    type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', title: `Activity: ${cur.label}`,
+    type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': String(!menu.hidden), title: `Activity: ${cur.label}`,
     // a click just after the hover opened the menu keeps it open (#245); a click on a menu it opened closes it
     onclick: () => { if (menu.hidden) openActs(); else if (actHovered) actHovered = false; else closeActs(); },
     html: pillFace(),
   });
-  box.append(btn, menu);
-  sportList(menu);
+  const was = box.querySelector('.act-current');
+  if (was) was.replaceWith(btn); else box.append(btn, menu);
+  if (!menu.hidden || !menu.checkVisibility()) sportList(menu); // (not while it fades out: it leaves as it was)
 }
 // The sports, each with its icon, its name, one line on what the map shows for it, and "your route" where the
 // route has it (B of #233): the pill's menu, the start's chip and the planner's Next leg are made of these
@@ -737,10 +738,12 @@ function openSportMenu(anchor, { craft = false } = {}) {
 }
 let actTimer = 0;
 let actHovered = false; // the hover opened the menu, and no click on the pill since
-function openActs() {
+// it grows from the pill, and leaves the same way; at once from the keyboard (instant)
+function openActs(instant = false) {
   const box = $('#activity-bar');
   clearTimeout(actTimer);
   if (box.querySelector('.act-menu').hidden) sportList(box.querySelector('.act-menu')); // the route as it is now
+  box.querySelector('.act-menu').classList.toggle('instant', instant || !!box.querySelector(':focus-visible'));
   box.querySelector('.act-menu').hidden = false;
   box.querySelector('.act-current').setAttribute('aria-expanded', 'true');
   box.classList.add('open');
@@ -750,6 +753,7 @@ function closeActs() {
   const m = box.querySelector('.act-menu');
   actHovered = false;
   if (!m || m.hidden) return;
+  m.classList.toggle('instant', !!box.querySelector(':focus-visible'));
   m.hidden = true;
   box.querySelector('.act-current').setAttribute('aria-expanded', 'false');
   box.classList.remove('open');
@@ -1090,7 +1094,7 @@ function renderLayersPanel() {
   p.append(h('div', { class: 'lp-sport' },
     h('span', { html: icon(ACT_ICONS[state.activity], 18) }),
     h('span', {}, h('span', {}, 'Map for ', h('b', {}, act.label)), h('small', {}, 'Your sport sets the trail colours and which layers start on.')),
-    h('button', { type: 'button', class: 'link', onclick: () => { openPanel(null); openActs(); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
+    h('button', { type: 'button', class: 'link', onclick: (e) => { openPanel(null); openActs(!e.detail); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
 
   // what is on right now, at a glance
   const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);

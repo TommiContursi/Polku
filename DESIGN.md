@@ -300,7 +300,7 @@ On the glass:
 What every control shares:
 - **Focus:** one 2 px outline in `--focus`, 2 px out, set once for every button, link, field and focusable element (`:where(…):focus-visible`); inside a row of a list or a menu's item (#385).
 - **Hover:** `--surface-2` behind, only with a mouse. Today 38 of 57 hover rules also apply on touch screens, where they stay after a tap (#208), and the hover looks vary (`--surface-2`, `--surface-solid`, `--accent-soft`, `--accent-bg`).
-- **Pressed:** buttons, chips, tiles and switches shrink to 97 % for `--t-press` while held, with no grey flash; rows keep their grey (`--surface-2`). With reduced motion, nothing moves.
+- **Pressed:** buttons, chips, tiles and switches, the map's buttons and the top bar's too, shrink to 97 % for `--t-press` while held, with no grey flash; rows keep their grey (`--surface-2`). With reduced motion, nothing moves.
 - **Chosen:** never colour alone (#356). A chip: a green tint, a 2 px green border, black words. A switch: white, black words, a green icon or tick. A tile: a green border, icon and tick, black words. A row: a green tint and a tick. A switch that's off has a `--muted` edge, at least 3:1.
 - **Motion:** see [Motion](#motion) below: the timings, the curves and when things move.
 
@@ -312,7 +312,7 @@ Polku's motion follows Emil Kowalski's design engineering ([Great animations](ht
 - **Curves:** entering and leaving ease out on `--ease-out` (`cubic-bezier(0.23, 1, 0.32, 1)`), and the sheet on `--ease-drawer` (`cubic-bezier(0.32, 0.72, 0, 1)`); never ease-in. What moves with a finger uses the sheet's spring (`js/sheet.js`).
 - **Whether it moves:** never for an action started from the keyboard. What people see tens or hundreds of times a day (typing, undo, adding points, scrubbing) gets no motion, and hover effects come only with a mouse (`@media (hover: hover) and (pointer: fine)`). First paint and page load never animate.
 - **Press:** buttons, chips, tiles and switches shrink to 97 % while held (Pressed, under Components).
-- **Entering:** nothing enters from `scale(0)`: from 0.9 or more (tooltips 0.97), with opacity. Menus, popovers and tooltips grow from their trigger (`transform-origin` at the trigger; dialogs stay centred) and leave the way they came.
+- **Entering:** nothing enters from `scale(0)`: from 0.9 or more (tooltips 0.97), with opacity. Menus, popovers and tooltips grow from their trigger (`transform-origin` at the trigger; dialogs stay centred) and leave the way they came, faster; a menu that opens in the place of one still leaving comes at once.
 - **Tooltips:** a delay before the first one; once one is open, the next opens at once, with no animation.
 - **Interrupting:** a move starts from where things are and can be caught mid-way: CSS transitions rather than keyframes.
 - **Performance:** interface elements animate `transform` and `opacity` only (`filter: blur()` where needed), with CSS or WAAPI rather than `requestAnimationFrame`, so they stay smooth while the main thread is busy. The map's canvas effects (wind, rain, snow) draw each frame by nature. The one exception is a desktop card folding to its title row, which animates its height (120 ms to fold, 180 ms to open, `roll()` in `js/card.js`): `clip-path` would cut its shadow while it moves.

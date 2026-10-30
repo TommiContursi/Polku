@@ -163,11 +163,26 @@ export const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '
 let menuIds = 0;
 export function popMenu(anchor, items, { label = '', onClose = null, align = 'right', maxRight = null, sheet = false } = {}) {
   const el = h('div', { class: 'menu menu-pop', role: 'menu', 'aria-label': label || null });
+  // at once from the keyboard, and in place of a menu still leaving (a choice that opens it again, another menu)
+  const leaving = $$('.menu-leaving');
+  for (const m of leaving) m.remove();
+  el.classList.toggle('instant', leaving.length > 0 || anchor.matches(':focus-visible'));
   let open = true;
   const close = (refocus = false) => {
     if (!open) return;
     open = false;
-    el.remove();
+    // it leaves the way it came, as a copy of itself where it was, unless closed from the keyboard
+    if (!refocus && !el.querySelector(':focus-visible') && !anchor.matches(':focus-visible')) {
+      const gone = el.cloneNode(true), now = getComputedStyle(el);
+      Object.assign(gone.style, { top: `${el.offsetTop}px`, left: `${el.offsetLeft}px`, width: `${el.offsetWidth}px`, height: `${el.offsetHeight}px`, minWidth: '0', maxHeight: 'none', opacity: now.opacity, transform: now.transform });
+      gone.className = 'menu menu-leaving';
+      gone.inert = true;
+      el.replaceWith(gone);
+      gone.scrollTop = el.scrollTop;
+      getComputedStyle(gone).opacity; // (from where it was, caught mid-way too)
+      Object.assign(gone.style, { opacity: '', transform: '' });
+      setTimeout(() => gone.remove(), 120);
+    } else el.remove();
     document.removeEventListener('pointerdown', off, true);
     document.removeEventListener('keydown', key, true);
     removeEventListener('resize', onResize);
@@ -233,6 +248,8 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
       }
       el.style.left = `${Math.max(gap, Math.min(right - mw, align === 'left' ? r.left : r.right - mw))}px`;
     }
+    // it grows from its button: the button's middle, at the edge it's nearest
+    el.style.transformOrigin = `${Math.max(0, Math.min(el.offsetWidth, r.left + r.width / 2 - el.offsetLeft))}px ${r.top + r.height / 2 < el.offsetTop ? '0' : '100%'}`;
   };
   place();
   (el.querySelector('.menu-item[aria-checked="true"]:not(:disabled)') || el.querySelector('.menu-item:not(:disabled)'))?.focus({ preventScroll: true });
@@ -265,12 +282,16 @@ export function tooltip(el, { name, keys = '', text = '' }) {
     clearTimeout(tipHide);
     tipFor = el;
     tipEl.innerHTML = `<b>${escapeHtml(name)}${keys ? keys.split(' ').map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('') : ''}</b>${escapeHtml(text)}`;
+    // the first grows from its button; one shown or just gone, or the keyboard's, comes at once
+    tipEl.classList.toggle('instant', !tipEl.hidden || Date.now() - tipLast < 900 || el.matches(':focus-visible'));
     tipEl.hidden = false;
     el.setAttribute('aria-describedby', 'tip');
     const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
-    tipEl.style.left = `${Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2))}px`;
+    const left = Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2)), below = r.bottom + 8 + th <= innerHeight - 8;
+    tipEl.style.left = `${left}px`;
     // under its button, or above it where there's no room (a toolbar at the map's foot, #468)
-    tipEl.style.top = `${r.bottom + 8 + th <= innerHeight - 8 ? r.bottom + 8 : r.top - 8 - th}px`;
+    tipEl.style.top = `${below ? r.bottom + 8 : r.top - 8 - th}px`;
+    tipEl.style.transformOrigin = `${r.left + r.width / 2 - left}px ${below ? '0' : '100%'}`;
   };
   const later = () => {
     clearTimeout(tipShow);
@@ -287,6 +308,7 @@ function hideTip(ms = 120) {
   clearTimeout(tipHide);
   tipHide = setTimeout(() => {
     if (!tipEl || tipEl.hidden) return;
+    tipEl.classList.toggle('instant', !ms); // (a press, a key or Escape: at once; the pointer leaving: the way it came)
     tipEl.hidden = true;
     tipLast = Date.now();
     tipFor?.removeAttribute('aria-describedby');

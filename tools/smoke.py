@@ -13559,6 +13559,55 @@ CT_TOAST = """(async () => {
   return [enter, exit];
 })()"""
 CT_PRESSED = """((sel) => { const e = document.querySelector(sel), m = getComputedStyle(e).transform.match(/matrix\\(([\\d.]+)/); return m ? +m[1] : 1; })"""
+# Motion 1 (#540): the sport pill's menu and a menu from a button grow as they open and fade as they go (a copy of the
+# menu fades, the menu itself is gone at once); from the keyboard both come and go at once
+CT_POPS = """(async (keyed) => {
+  const U = await import(location.origin + '/js/ui.js');
+  const moves = (el) => el.getAnimations().map((a) => a.transitionProperty).filter((p) => p !== 'display').sort().join(' ') || 'nothing';
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // (each opens and goes once it has stopped moving: one closed as it starts has nowhere to go)
+  const settle = async (el) => { const t0 = Date.now(); await sleep(30); while (el.getAnimations().length && Date.now() - t0 < 5000) await sleep(30); };
+  const out = {}, pill = document.querySelector('#activity-bar .act-current'), menu = document.querySelector('#activity-bar .act-menu'), b = document.querySelector('#btn-settings');
+  await settle(menu);
+  if (keyed) { pill.focus(); if (!pill.matches(':focus-visible')) return { pill: 'no keyboard focus' }; }
+  pill.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: keyed ? 0 : 1 }));
+  out.pill = menu.hidden ? 'closed' : moves(menu);
+  await settle(menu);
+  if (keyed) pill.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  else pill.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+  out.pillOut = menu.hidden ? moves(menu) : 'open';
+  await settle(menu);
+  if (keyed) b.focus();
+  const m = U.popMenu(b, [{ label: 'One', fn: () => {} }]);
+  out.menu = moves(m.el);
+  await settle(m.el);
+  if (keyed) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); else m.close();
+  const gone = document.querySelector('.menu-leaving');
+  out.menuOut = document.querySelector('.menu-pop') ? 'still a menu' : gone ? moves(gone) : 'nothing';
+  gone?.remove();
+  return out;
+})"""
+# two buttons with a tooltip each, and what the tooltip starts moving (transitionrun, so a quick machine doesn't miss it)
+CT_TIPS = """(async () => {
+  const U = await import(location.origin + '/js/ui.js');
+  for (const [id, x] of [['tip-a', 600], ['tip-b', 660]]) {
+    const b = document.body.appendChild(Object.assign(document.createElement('button'), { id, textContent: id }));
+    Object.assign(b.style, { position: 'fixed', left: `${x}px`, top: '300px', width: '50px', height: '40px', zIndex: 40 });
+    U.tooltip(b, { name: id });
+  }
+  window.__tipRuns = [];
+  document.getElementById('tip').addEventListener('transitionrun', (e) => { if (e.propertyName !== 'display') __tipRuns.push(e.propertyName); });
+  return true;
+})()"""
+# (the first: what it started, two frames on; the next: what moves as soon as it's there, the first one's exit long done)
+CT_TIP_SHOWN = """(async (name, first) => {
+  const tip = document.getElementById('tip'), frame = () => new Promise((r) => requestAnimationFrame(r)), t0 = Date.now();
+  while ((tip.hidden || tip.textContent !== name) && Date.now() - t0 < 5000) await new Promise((r) => setTimeout(r, 30));
+  if (tip.hidden) return 'not shown';
+  if (!first) return tip.getAnimations().map((a) => a.transitionProperty).filter((p) => p !== 'display').sort().join(' ') || 'nothing';
+  await frame(); await frame();
+  return [...new Set(__tipRuns)].sort().join(' ') || 'nothing';
+})"""
 CT_POINTS = "(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.setMode('line'); for (const q of [[23.80, 61.512], [23.815, 61.5155], [23.83, 61.513]]) p.addPoint(q); await new Promise((r) => setTimeout(r, 800)); return true; })()"
 CT_RING = """((sel) => { const e = document.activeElement, c = getComputedStyle(e), probe = document.body.appendChild(document.createElement('i'));
   probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--focus'); const want = getComputedStyle(probe).color; probe.remove();
@@ -13670,7 +13719,8 @@ def controls(chrome):
                 # a press answers (motion allowed): the round trip's chip, Make 3 loops, its switch
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
                 pg.js("(async () => { const p = polku.planner; p.setActive(true); p.clear(); p.openLoop(polku.map.getCenter().toArray()); await new Promise((r) => setTimeout(r, 800)); return true; })()")
-                for sel, what in (('.pl-way .rt-chips .chip:not([aria-pressed=true])', 'a chip'), ('.pl-way .rt-make', 'Make 3 loops'), ('.pl-way .rt-unit button:not([aria-pressed=true])', 'a switch')):
+                for sel, what in (('.pl-way .rt-chips .chip:not([aria-pressed=true])', 'a chip'), ('.pl-way .rt-make', 'Make 3 loops'), ('.pl-way .rt-unit button:not([aria-pressed=true])', 'a switch'),
+                                  ('#btn-locate', 'Locate'), ('#btn-layers', 'Layers'), ('#btn-settings', 'Settings')):
                     # (and what a press there lands on, for the FAIL line)
                     x, y, on = pg.js(f"(() => {{ const e = document.querySelector({json.dumps(sel)}), r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, t = document.elementFromPoint(x, y);"
                                      " return [x, y, !t || e.contains(t) ? '' : t.id || String(t.className) || t.tagName]; })()")
@@ -13690,6 +13740,25 @@ def controls(chrome):
                 enter, exit = pg.js(CT_TOAST)
                 if (enter, exit) != ('opacity translate', 'opacity translate'):
                     fails.append(f'{name}: a note fades and rises in with {enter}, out with {exit}, not opacity and translate')
+                # menus and the toolbar's tooltip (Motion 1, #540): the first tooltip grows; the next, just after, comes at once
+                pg.js(CT_TIPS)
+                tips = []
+                for x, tip, first in ((625, 'tip-a', 'true'), (685, 'tip-b', 'false')):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': 320, 'button': 'none'}, pg.s)
+                    tips.append(pg.js(f'({CT_TIP_SHOWN})({json.dumps(tip)}, {first})'))
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 900, 'y': 450, 'button': 'none'}, pg.s)
+                if tips != ['opacity transform', 'nothing']:
+                    fails.append(f'{name}: the first tooltip moves {tips[0]}, the next one just after {tips[1]}, not opacity and transform, then nothing')
+                for media, want in (('no-preference', 'opacity transform'), ('reduce', 'opacity')):
+                    pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': media}]}, pg.s)
+                    got = pg.js(f'({CT_POPS})(false)')
+                    if set(got.values()) != {want}:
+                        fails.append(f'{name}, reduced motion {media}: by a click, the sport menu opens moving {got["pill"]} and goes {got["pillOut"]}, a menu opens {got["menu"]} and goes {got["menuOut"]}, not {want}')
+                pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+                key(pg, 'Tab', 'Tab', 9)
+                got = pg.js(f'({CT_POPS})(true)')
+                if set(got.values()) != {'nothing'}:
+                    fails.append(f'{name}: from the keyboard, the sport menu opens moving {got.get("pill")} and goes {got.get("pillOut")}, a menu opens {got.get("menu")} and goes {got.get("menuOut")}, not at once')
                 pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
                 enter, exit = pg.js(CT_TOAST)
                 if (enter, exit) != ('opacity', 'opacity'):
