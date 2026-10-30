@@ -9431,8 +9431,130 @@ def stops_swipe(chrome):
     return fails
 
 
+# D: on a phone at half and full the whole sheet scrolls as one under its top row. A finger on the numbers scrolls it (#597);
+# the top row stays over what scrolls, the docked toolbox too, so ⌄ is what a tap at its place hits (#598), takes the
+# numbers once they're under it, and a finger there moves the sheet; at the content's top a finger down lowers it; a card
+# opened from the list and closed finds it where it was. By touch at 390 × 844 and 200 %
+def stops_scroll(chrome):
+    fails = []
+    for w, h in ((390, 844), (195, 422)):
+        pg = chrome.page(w, h, True)
+        tag = f'{w}x{h}'
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            st = lambda: pg.js('polku.planner.panel.dataset.state')
+            for size in (('half', 'full') if w > 300 else ('full',)):
+                pg.js(f"polku.planner.setSheetState('{size}', {{ remember: false }}); polku.planner.panel.scrollTop = 0; true")
+                fold_settled(pg, fails, f'{tag} at {size}')
+                if not pg.js("polku.planner.panel.classList.contains('scroll-all')"):
+                    fails.append(f"{tag} at {size}: the sheet doesn't scroll as one")
+                    continue
+                x, y = fold_at(pg, 'polku.planner.els.sum')
+                pg.swipe(x, y, y - 120, ms=400, steps=12, hold=0.2)
+                fold_settled(pg, fails, f'{tag} the numbers swiped up at {size}')
+                top = pg.js("polku.planner.panel.scrollTop")
+                if st() != size or top < 40:
+                    fails.append(f'{tag}: a finger on the numbers, 120 px up at {size}: the sheet scrolled {top} px and is at {st()}')
+                pg.js("polku.planner.panel.scrollTop = 400; true")
+                time.sleep(0.3)
+                fold_settled(pg, fails, f'{tag} scrolled at {size}')
+                r = pg.js("""(() => { const p = polku.planner, b = p.els.foldBtn.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+                  return { on: p.panel.classList.contains('sum-on'), sum: p.els.topSum.textContent, first: p.els.sum.querySelector('.sum-item > b')?.textContent.trim(), hit: hit && (p.els.foldBtn.contains(hit) ? 'fold' : hit.getAttribute('aria-label') || hit.className) }; })()""")
+                if r['hit'] != 'fold':
+                    fails.append(f'{tag} scrolled at {size}: a tap at ⌄ hits {r["hit"]}')
+                if not r['on'] or not r['first'] or not r['sum'].startswith(r['first']):
+                    fails.append(f'{tag} scrolled at {size}: the top row says "{r["sum"]}" (shown {r["on"]}), not the numbers from {r["first"]}')
+                # the top row moves the sheet, scrolled too: its handle, 200 px down
+                x, y = fold_at(pg, 'polku.planner.els.handle')
+                pg.swipe(x, y, y + 200, ms=600, steps=20, hold=0.3)
+                fold_settled(pg, fails, f'{tag} the handle down at {size}')
+                if st() == size:
+                    fails.append(f'{tag}: the handle dragged 200 px down at {size}, scrolled: the sheet stayed at {size}')
+            if w > 300:
+                # at the content's top, a finger down on the numbers lowers the sheet
+                pg.js("polku.planner.setSheetState('half', { remember: false }); polku.planner.panel.scrollTop = 0; true")
+                fold_settled(pg, fails, f'{tag} at half again')
+                x, y = fold_at(pg, 'polku.planner.els.sum')
+                pg.swipe(x, y, y + 200, ms=600, steps=20, hold=0.3)
+                fold_settled(pg, fails, f'{tag} the numbers down at half')
+                if st() not in ('peek', 'folded'):
+                    fails.append(f'{tag}: a finger on the numbers, 200 px down at half from the top: the sheet came to {st()}')
+                # a point's card opened from the list and closed: the list where it was
+                pg.js("polku.planner.setSheetState('half', { remember: false }); polku.planner.setTab('route'); true")
+                fold_settled(pg, fails, f'{tag} at half for a card')
+                pg.js("polku.planner.panel.scrollTop = 150; true")
+                time.sleep(0.3)
+                row = pg.js("""(() => { const p = polku.planner, rows = [...p.els.points.querySelectorAll('.wpl-point')], s = p.panel.getBoundingClientRect(), t = p.els.top.getBoundingClientRect();
+                  const r = rows.map((e) => e.getBoundingClientRect()).find((b) => b.top > t.bottom && b.bottom < s.bottom);
+                  return r ? [r.left + r.width / 2, r.top + r.height / 2] : null; })()""")
+                if not row:
+                    fails.append(f'{tag}: no row of the list in sight at half, scrolled 150 px')
+                else:
+                    pg.tap(*row)
+                    time.sleep(0.6)
+                    fold_settled(pg, fails, f'{tag} a card from the list')
+                    card = pg.js("polku.planner.cards.current?.kind")
+                    pg.js("polku.planner.cards.close(); true")
+                    time.sleep(0.4)
+                    fold_settled(pg, fails, f'{tag} the card closed')
+                    back = pg.js("[polku.planner.panel.dataset.state, polku.planner.panel.scrollTop]")
+                    if card != 'point' or back[0] != 'half' or abs(back[1] - 150) > 2:
+                        fails.append(f'{tag}: a point\'s card from the list, scrolled 150 px at half ({card}), closed: {back[0]}, scrolled {back[1]} px')
+            fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    return fails
+
+
+# A: with a mouse or trackpad ⌃ beside ⌄, each one size (⌄ from the peek folds, ⌃ dimmed at full): a narrow window's top
+# row and the bottom dock's header row, by real clicks; by touch no ⌃, and ⌄ folds at once
+def stops_arrows(chrome):
+    fails = []
+    for w, h, ups, down in ((700, 844, 'up', 'foldBtn'), (1440, 900, 'upMin', 'min')):
+        pg = chrome.page(w, h, False)
+        tag = f'{w}x{h}, by mouse'
+        try:
+            pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+            pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+            if w > 900:
+                pg.js("polku.planner.setDock('bottom'); true")
+            pg.js("polku.planner.setSheetState('peek', { remember: false }); true")
+            fold_settled(pg, fails, f'{tag} at the peek')
+            seen = []
+            for b in (ups, ups, ups, down, down, down):
+                at = fold_at(pg, f'polku.planner.els.{b}')
+                if not at:
+                    fails.append(f'{tag}: no {b} in sight at {pg.js("polku.planner.panel.dataset.state")}')
+                    break
+                fold_click(pg, *at)
+                fold_settled(pg, fails, f'{tag} {b} pressed')
+                seen.append(pg.js("[polku.planner.panel.dataset.state, polku.planner.els.up.disabled]"))
+            if [x[0] for x in seen] != ['half', 'full', 'full', 'half', 'peek', 'folded'] or not seen[1][1] or seen[3][1]:
+                fails.append(f'{tag}: ⌃ ⌃ ⌃ ⌄ ⌄ ⌄ from the peek went through {seen}, not half, full (⌃ dimmed), full, half, peek and the line')
+            fails += [f'{tag}: console: {e[:160]}' for e in pg.errors()]
+        finally:
+            pg.close()
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'})
+        pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
+        pg.js("polku.planner.setSheetState('full', { remember: false }); true")
+        fold_settled(pg, fails, '390x844 by touch at full')
+        if fold_at(pg, 'polku.planner.els.up'):
+            fails.append('390x844 by touch: ⌃ shows')
+        pg.tap(*fold_at(pg, 'polku.planner.els.foldBtn'))
+        time.sleep(0.4)
+        fold_settled(pg, fails, '390x844 by touch, ⌄ tapped')
+        if pg.js('polku.planner.panel.dataset.state') != 'folded':
+            fails.append(f"390x844 by touch: ⌄ at full came to {pg.js('polku.planner.panel.dataset.state')}, not the line")
+    finally:
+        pg.close()
+    return fails
+
+
 def sheet_stops(chrome):
-    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)]
+    fails = stops_land(chrome) + [f'390x844: {f}' for f in stops_swipe(chrome)] + stops_scroll(chrome) + stops_arrows(chrome)
     print(f"{'ok  ' if not fails else 'FAIL'} the sheet's stops" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -14644,7 +14766,7 @@ GROUPS = [
     ('keyfacts', [keyfacts], 'key facts (25d, #471\'s A2): the line under the route\'s numbers (what stands out, else the usual fact, the weather when it isn\'t known), a row a sport, the hardest day, taps, Check\'s top, and Climbs\' Hardest tag (straight legs, set values)'),
     ('tabs', [tabs], 'the planner\'s tabs, C (25d, #424): Route opens with How you go › and Your speed ›, each a step with Back; Check\'s top without Speed and Style; Go\'s Leave, There at, the time and Your speed ›; the map\'s marks in Layers (straight legs)'),
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
-    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting'),
+    ('sheetstops', [sheet_stops], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
     ('runner', [runner], 'the runner itself: a name it doesn\'t know, a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254)'),
 ]

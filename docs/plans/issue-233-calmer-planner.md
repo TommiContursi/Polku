@@ -718,8 +718,21 @@ A preset with the user's leaning, which the page opens on:
 - **C:** a flick of one stop, 0.99, the start's views resisting, and the marks.
 - **D:** the sheet scrolls as one.
 
-It decides nothing until the user chooses.
+**Chosen on 2026-10-30:** the leaning, built as below ("The sheet's stops, built"), with D at a phone's half and full only.
 
 **Not in it:** cards (#574), the weather card (part 2), building it in the app.
 
 **Not checked:** the feel on a real iPhone or Android phone, Safari, VoiceOver and TalkBack on ⌃ and ⌄. The mock-up was tried in headless Chrome (`tools/cdp.py`), at every size above, its swipes by touch and ⌃ and ⌄ by a script's click, with the browser pane hidden. A mouse drag on the desktop's bottom dock wasn't tried. Headless Chrome draws about a frame every 0.6 s, so springs were judged by where they came to rest, not by eye.
+
+### The sheet's stops, built (2026-10-30)
+
+The user's leaning, as [the work package](https://github.com/TommiContursi/Polku/issues/233#issuecomment-6523500922) has it, with #586, #597 and #598.
+- **B:** the planner's sizes are its line, the peek, half and full. The profile size is gone from the code (`SHEET_STATES`, its CSS, `--profile-h`): what asked for it (the handle's tap from the peek, the profile's section, a stretch's On the profile) asks for half, and a size remembered as the profile size opens at half.
+- **C:** a flick moves one stop, to the next one past where it's let go; deceleration 0.99 for every sheet (`SWIPE.decel`, shared with the quick layer drawer and the phone's Layers panel); the start's views resist above their peek; the marks while dragging, a tick at each stop and the named line at the stop a release now would go to (`ride.to`).
+- **#586:** every stop is measured as it will rest. The key facts' line steps aside only at the peek, and the peek counts the toolbox as the peek has it, docked or floating, from any size. Today's jumps were from full on a phone (the toolbox docked, the key facts' line away), and from the line at 360 px and 200 % (the toolbox floating over the line, docked into the peek).
+- **D:** at half and full on a phone (720 px wide or less) the whole sheet scrolls as one (`.scroll-all`), the top row staying over what scrolls and taking the numbers and the route's name once they've scrolled under it; a finger on the numbers scrolls (#597), the top row stays over the docked toolbox (#598) and moves the sheet. **Changed from the mock-up:** the desktop's side panel doesn't scroll as one, as the choice said "at half and full": its resize grip reaches 7 px past its edge and would be clipped and scroll away. Moving the grip first would let it follow, if the user wants it.
+- **A:** with a mouse or trackpad, ⌃ beside ⌄ in a narrow window's top row and the bottom dock's header row, each one size (`stepSheet()`, which the handle's arrows use too); ⌄ from the peek folds, ⌃ is dimmed at full. By touch and over a card, ⌄ folds at once.
+- **Found on the way:** with the sheet scrolled as one, a drag on the handle used to be handed to the browser, which may not pan there, so it did nothing (200 % at full, scrolled). `js/sheet.js` now never hands over where `touch-action` is `none`. The routing bar is sticky on the sheet's top edge where it scrolls, and a card closed finds the list's scroll in the sheet (`listScroller()`).
+- **The mock-up** runs against `main` at 894d6a7. Its option frame expects the profile size and wraps `scrollAll()`, so on later commits it no longer draws the options; it isn't rebuilt.
+- **Checks:** `python3 tools/smoke.py sheetstops` (390 × 844, 360 × 740, 200 % and the bottom dock by mouse for #586; flicks, a quick release, the marks and the start by touch; D by touch at 390 × 844 and 200 %; ⌃ and ⌄ by mouse at 700 × 844 and the bottom dock, and none by touch), with the profile size's checks in `fold`, `quick`, `warnfix`, `loops`, `winterroute`, `panels`, `tabs`, `button3d` and the sizes moved to half.
+- **Not checked:** a real phone (iPhone, Android), Safari, VoiceOver and TalkBack on ⌃ and ⌄, and the feel of 0.99 and the marks by hand.

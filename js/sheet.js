@@ -72,10 +72,13 @@ export function swipeSheet(el, o) {
   let quietUntil = 0; // the click that may follow a drag isn't a tap
 
   const place = (v) => { ride.v = v; el.style.transform = `translateY(${ride.H - v}px)`; if (o.moved) o.moved(v, ride); };
-  // what scrolls under the finger: a body in the sheet, or the sheet itself where it scrolls as one (the planner at 200 %)
+  // what scrolls under the finger: a body in the sheet, or the sheet itself where it scrolls as one (the planner's, on a
+  // phone); none where the browser may not pan (touch-action: none: the planner's top row, which stays as it scrolls)
   const scroller = (t) => {
     for (let n = t; n; n = n === el ? null : n.parentElement) {
-      if (n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(n).overflowY)) return n;
+      const cs = getComputedStyle(n);
+      if (n.scrollHeight > n.clientHeight + 1 && /auto|scroll/.test(cs.overflowY)) return n;
+      if (cs.touchAction === 'none') return null;
     }
     return null;
   };
@@ -129,8 +132,9 @@ export function swipeSheet(el, o) {
       try { el.setPointerCapture(e.pointerId); } catch { /* a synthetic pointer */ }
     }
     const want = g.base - dy;
+    ride.v = want > ride.max ? ride.max + rubber(want - ride.max, ride.H) : want < ride.min ? ride.min - rubber(ride.min - want, ride.H) : want;
     ride.to = landing(speed(e.timeStamp)).name;
-    place(want > ride.max ? ride.max + rubber(want - ride.max, ride.H) : want < ride.min ? ride.min - rubber(ride.min - want, ride.H) : want);
+    place(ride.v);
   });
 
   const up = (e) => {
