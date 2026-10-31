@@ -9080,7 +9080,8 @@ def fold_phone(chrome):
         if s['card'] or s['st'] != 'half':
             fails.append(f"the planner's line after a card opened from it: card {s['card']}, {s['st']} (half, as it was)")
         # a card over the start's view folds as every card does (the start's views keep their peek; a card has its own sizes)
-        pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+        # (a phone's tap shows the line at the spot first, #574: a tap on it opens the card)
+        pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
         time.sleep(0.6)
         fold_settled(pg, fails, 'step 25')
         pg.tap(*(fold_at(pg, 'polku.planner.els.foldBtn') or (0, 0)))
@@ -9413,7 +9414,7 @@ def fold_kinds(chrome):
             'esport': r'Sport for this stretch, MTB',
             'estyle': re.escape(f"Route style, {r.get('styleVal')}"),
             'notright': r'Not right\?',
-            'place': r'Pyynikki, Peak',
+            'place': r'Pyynikki, \d+ m',  # (its height on its card since #574: a card with numbers says its first ones)
             'lipas': r'Kaupin kuntorata, Kuntorata, Tampere',
         }
         for k, rx in want.items():
@@ -9559,6 +9560,7 @@ FOLD_MOTION = """(async (reduced) => {
     p.close();
     await settle();
     p.openSpotCard(p.map.getCenter(), { touch: true });
+    if (p.picked) p.openLine(); // (a phone's tap shows the line at the spot first, #574)
     const cin = move();
     if (p.cards.place !== 'peek' || !cin || cin.effect.getTiming().duration !== 260) errs.push(`a card with the planner put away: ${p.cards.place}, the sheet ${cin ? `in ${cin.effect.getTiming().duration} ms` : 'there at once'} (up in 260 ms)`);
     await settle();
@@ -9648,7 +9650,7 @@ def fold_away_card(chrome):
                 pg.tap(*fold_at(pg, 'polku.planner.els.foldX'))
             fold_settled(pg, fails, f'{how}: step 2')
             # (a spot low on the screen, where the sheet comes: the map moves it into sight above the sheet)
-            pg.js("(() => { const p = polku.planner; p.spotAt = p.map.unproject([195, 760]); p.openSpotCard(p.spotAt, { touch: true }); return true; })()")
+            pg.js("(() => { const p = polku.planner; p.spotAt = p.map.unproject([195, 760]); p.openSpotCard(p.spotAt, { touch: true }); if (p.picked) p.openLine(); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f'{how}: step 3')
             s, x = info(), pg.js(extra)
@@ -9685,7 +9687,7 @@ def fold_away_card(chrome):
         # a full planner, not off the screen above it
         pg.js("document.querySelector('#btn-time').click(); true")
         pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => !document.querySelector('#wx-bar').hidden || Date.now() - t0 > 20000 ? ok() : setTimeout(go, 100); go(); })")
-        pg.js("(() => { const p = polku.planner; p.close(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+        pg.js("(() => { const p = polku.planner; p.close(); p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
         time.sleep(0.6)
         fold_settled(pg, fails, 'the timeline: step 1')
         pg.js("polku.planner.setSheetState('full'); true")
@@ -10166,7 +10168,8 @@ def stops_card(chrome):
             if info()['st'] != 'peek' or info()['h'] != s['h']:
                 fails.append(f"{tag}: a short card swiped 150 px up: {info()['st']} at {info()['h']} px, not its own {s['h']}")
             # with no route, a spot's card over the planner's start: its name and numbers in sight (#606: it opened under the screen's edge)
-            pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            # (a phone's tap shows the line at the spot first, #574: a tap on it opens the card)
+            pg.js("(() => { const p = polku.planner; p.cards.close(); p.clear(); p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f"{tag} a spot's card over the start")
             s = pg.js("(() => { const p = polku.planner, b = p.cards.box, e = b.querySelector(':scope > .sheet-sum') || b.querySelector(':scope > .way-head'); return [p.panel.dataset.state, Math.round(e.getBoundingClientRect().bottom), p.panel.offsetHeight]; })()")
@@ -10177,7 +10180,7 @@ def stops_card(chrome):
             pg.js(f"({TB_ROUTE})({json.dumps(TB_PTS)})", timeout=60000)
             pg.js("(() => { const p = polku.planner; p.cards.close(); p.close(); return true; })()")
             time.sleep(0.6)
-            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); return true; })()")
+            pg.js("(() => { const p = polku.planner; p.openSpotCard(p.map.getCenter(), { touch: true }); if (p.picked) p.openLine(); return true; })()")
             time.sleep(0.6)
             fold_settled(pg, fails, f"{tag} a spot's card, the planner put away")
             x, y = body()
