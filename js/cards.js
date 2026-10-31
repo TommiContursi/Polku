@@ -287,6 +287,7 @@ export function routeCard(pl, li, ll) {
     mark: wayMark, at: () => card.key,
     alive: () => { const k = pl.legNear(card.key); if (k == null) return false; card.li = k; return true; },
     get stretch() { return pl.stretchAt(card.li); },
+    get lit() { return { from: card.li, to: card.li + 1 }; }, // on the map, the leg between the two points around the spot (#83)
     build: (body) => routeBody(pl, card, body),
   };
   return card;
@@ -426,7 +427,7 @@ const details = (box) => { const n = box.querySelectorAll('.insp-row').length; r
 // OpenStreetMap's own data on demand (part 6 makes this its levels)
 function hereCard(pl, route) {
   const card = {
-    kind: 'here', get key() { return route.key; }, get stretch() { return route.stretch; }, get title() { return route.title; }, get sub() { const x = route.spot; return x && x.name ? cap(x.kind) : ''; }, // (a way with no name is its kind, once)
+    kind: 'here', get key() { return route.key; }, get stretch() { return route.stretch; }, get lit() { return route.lit; }, get title() { return route.title; }, get sub() { const x = route.spot; return x && x.name ? cap(x.kind) : ''; }, // (a way with no name is its kind, once)
     mark: wayMark, at: () => route.key, alive: () => route.alive(), osm: null, fold: (box) => (route.spot ? [details(box)] : []),
     build: (body) => {
       const x = route.spot;
