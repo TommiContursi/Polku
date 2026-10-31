@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings, rethought</title>
+<meta name="description" content="Mock-up for #321: today's Settings beside two layouts that gather Polku's preferences in one place, on a phone and a desktop.">
+<!--
+  #321, 2026-10-31: today's Settings beside two new layouts. The plan: docs/plans/issue-321-settings.md.
+  Not wired to the app: nothing here is loaded by Polku.
+
+  Today is the panel itself, captured from main at 349971f (its DOM after renderSettingsPanel(), at 1440 x 900).
+  The CSS below the page's own is css/app.css at 349971f, only the rules that match Settings and Layers'
+  panels, so A and B use the shared controls as they are: .lp-sec, .lg-group, .tg, .seg, .chip, .row, .btn.
+  Settings that aren't built yet are marked "planned" with their issue.
+
+  ?v=today|a|b  &theme=light|dark  &planned=show|hide
+-->
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body.page { margin: 0; padding: 24px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); }
+.cv { max-width: 1100px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -.01em; }
+.cv > p { margin: 0 0 8px; max-width: 760px; }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 8px 0; }
+.bar > span { min-width: 74px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: inherit; cursor: pointer; font-weight: 600; font-size: 13px; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.why { max-width: 760px; margin: 12px 0 16px; padding: 10px 14px; border-left: 3px solid var(--page-link); background: rgba(128,128,128,.08); border-radius: 0 8px 8px 0; }
+.why p { margin: 4px 0; }
+.frames { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.fr-cap { margin: 0 0 6px; font-size: 12.5px; font-weight: 700; color: var(--page-cap); }
+/* a stand-in for the map: the glass needs something behind it */
+.scene { position: relative; overflow: hidden; border-radius: 18px; box-shadow: 0 2px 12px rgba(0,0,0,.18);
+  background: radial-gradient(circle at 30% 20%, #cfe3c0 0 18%, transparent 19%), radial-gradient(circle at 75% 60%, #a9cde8 0 22%, transparent 23%),
+    repeating-linear-gradient(35deg, transparent 0 38px, rgba(230,170,60,.55) 38px 41px), repeating-linear-gradient(-60deg, transparent 0 70px, rgba(120,120,120,.35) 70px 72px), #e9efe3; }
+:root[data-theme="dark"] .scene { background: radial-gradient(circle at 30% 20%, #20321f 0 18%, transparent 19%), radial-gradient(circle at 75% 60%, #12304a 0 22%, transparent 23%),
+    repeating-linear-gradient(35deg, transparent 0 38px, rgba(200,140,40,.45) 38px 41px), repeating-linear-gradient(-60deg, transparent 0 70px, rgba(160,160,160,.25) 70px 72px), #1a1f1b; }
+.phone { width: 390px; height: 844px; max-width: 100%; }
+.desk { width: 420px; height: 900px; max-width: 100%; }
+/* the panel where the app puts it: a phone's above the bottom edge, a desktop's under ⚙ at the top right */
+.scene .panel { --sheet-h: 0px; }
+.phone .panel { position: absolute; left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-height: min(62%, 768px); }
+.desk .panel { position: absolute; top: 64px; right: 12px; left: auto; bottom: auto; width: 356px; max-height: calc(100% - 76px); }
+.gear { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; background: var(--accent, #2a6); opacity: .9; }
+.panel-body { overscroll-behavior: contain; }
+/* the mock-up's own marks */
+.plan-tag { display: inline-block; width: fit-content; align-self: flex-start; margin-left: 6px; padding: 0 6px; border: 1px dashed currentColor; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; color: var(--muted); vertical-align: 1px; }
+body.no-planned .planned { display: none !important; }
+.planned { opacity: .8; }
+.moved { box-shadow: inset 3px 0 0 #d9a520; padding-left: 6px; margin-left: -6px; border-radius: 2px; }
+body.no-marks .moved { box-shadow: none; padding-left: 0; margin-left: 0; }
+.mk-key { display: inline-block; width: 10px; height: 10px; margin-right: 4px; background: #d9a520; border-radius: 2px; }
+.speed-box.mock { padding: 4px 0 10px 32px; }
+.speed-box.mock h4 { margin: 8px 0 4px; font-size: 12px; }
+.tile-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.sub-h { margin: 14px 0 4px; font-size: 12.5px; font-weight: 700; }
+.row-act { margin-left: auto; }
+.hid-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.hid-row:last-of-type { border-bottom: 0; }
+.hid-row > span { flex: 1; }
+.lg-group > .note:first-of-type { margin-top: 0; }
+</style>
+<style id="app-css">
+/* ======================================================= css/app.css at 349971f: the rules for Settings and Layers' panels */
+:root { --accent: #1f6f4a; --accent-2: #2f8f62; --accent-soft: #e3f1e9; --accent-bg: #1f6f4a; --route: #d6006e; --route-text: #93004b; --glass-read: rgba(255, 255, 255, 0.72); --glass-read-filter: blur(32px) saturate(105%); --glass-control: rgba(255, 255, 255, 0.84); --glass-control-filter: blur(24px) saturate(105%); --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 0 0 1px rgba(16, 24, 20, 0.26); --tile-rim: rgba(255, 255, 255, 0.85); --surface-solid: #ffffff; --surface-2: #f3f4f1; --seg-on: var(--surface-solid); --text: #141b17; --muted: #5f6b65; --muted-glass: #3b4741; --accent-glass: #165a3a; --bad-glass: #9b1f27; --line: rgba(28, 36, 32, 0.14); --muted-hc: #46514b; --line-hc: rgba(28, 36, 32, 0.35); --hc-border: rgba(16, 24, 20, 0.7); --hc-inner: rgba(255, 255, 255, 0.8); --shadow: 0 8px 28px rgba(16, 24, 20, 0.18), 0 1px 3px rgba(16, 24, 20, 0.1); --radius: 14px; --chart-ink: #26312c; --chart-grid: rgba(95, 107, 101, 0.18); --good: #23863a; --ok: #a35b00; --warn: #c4400c; --bad: var(--danger); --sheet-h: 0px; --pl-left: 0px; --you: #1a73e8; --you-soft: rgba(26, 115, 232, 0.12); --page: #dfe6e0; --danger: #b4232a; --danger-soft: #fbe9e9; --look: #8a5a00; --look-soft: #fbf4e2; --unk: #47607a; --unk-soft: #eaf0f6; --focus: #1f6f4a; --ink: #000000; --wx-text: #1d4ed8; --good-text: #166534; --ok-text: #854d0e; --warn-text: #9a3412; --bad-text: #b91c1c; --route-water: #0369a1; --route-line: #9c0050; --route-loading: #9ca3af; --grip: rgba(95, 107, 101, 0.8); --font-small: 0.75rem; --font-control: 0.8125rem; --font-body: 0.875rem; --font-row: 0.9375rem; --font-field: 1rem; --font-title: 1.0625rem; --font-number: 1.1875rem; --font-numeral: 1.375rem; --font-glance: 2.125rem; --weight-regular: 400; --weight-name: 600; --weight-strong: 700; --radius-small: 6px; --radius-control: 10px; --radius-sheet: 20px; --radius-pill: 999px; --radius-round: 50%; --shadow-marker: 0 1px 4px rgba(0, 0, 0, 0.35); --shadow-sheet: 0 -6px 28px rgba(16, 24, 20, 0.2); --shadow-dialog: 0 24px 60px rgba(0, 0, 0, 0.35); --t-press: 120ms; --t-open: 180ms; --t-sheet: 260ms; --ease-out: cubic-bezier(0.23, 1, 0.32, 1); --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-10: 10px; --space-12: 12px; --space-16: 16px; --space-24: 24px; --target: 36px; --row-h: 50px; --mark: 34px; --diff-s0: #22a447; --diff-s1: #c7c100; --diff-s2: #f59e0b; --diff-s3: #ef4444; --diff-s4: #c026d3; --diff-s5: #7e22ce; --diff-s6: #4c1d95; --grade-20: #6d28d9; --grade-15: #dc2626; --grade-10: #f97316; --grade-6: #facc15; --grade-3: #a3d977; --grade-flat: #8fb996; --grade-down: #7cb7f2; --grade-steep-down: #3b82f6; --surf-paved: #64748b; --surf-stones: #94a3b8; --surf-compacted: #d4a017; --surf-fine-gravel: #e0b84a; --surf-gravel: #c58b2b; --surf-unpaved: #b07d3a; --surf-dirt: #8b5e34; --surf-grass: #65a30d; --surf-sand: #eab308; --surf-rock: #57534e; --surf-wood: #a16207; --surf-water: #0ea5e9; --surf-unknown: #cbd5e1; --sport-mtb: #c2410c; --sport-gravel: #a16207; --sport-road: #b91c1c; --sport-hike: #15803d; --sport-trailrun: #4d7c0f; --sport-run: #0f766e; --sport-paddle: #0369a1; --sport-swim: #6d28d9; --way-path: #7c2d12; --way-footway: #b45309; --way-steps: #dc2626; --way-track: #a16207; --way-cycleway: #2563eb; --way-minor-road: #64748b; --way-main-road: #f59e0b; --way-water: #0ea5e9; --way-portage: #ea580c; --way-straight: var(--route-line); --way-other: #94a3b8; --trail-width-road: #94a3b8; --trail-width-none: #d6dde3; --trail-width-narrowest: #c2410c; --trail-width-narrow: #f59e0b; --trail-width-wide: #65a30d; --trail-width-widest: #15803d; --trail-vis-road: #94a3b8; --trail-vis-none: #d6dde3; --trail-vis-clear: #16a34a; --trail-vis-faint: #eab308; --trail-vis-hard: #f97316; --trail-vis-barely: #dc2626; --temp-frost: #6d28d9; --temp-cold: #3b82f6; --temp-cool: #7dd3fc; --temp-mild: #86efac; --temp-warm: #fde047; --temp-warmer: #fdba74; --temp-hot: #f97316; --temp-hotter: #dc2626; --rain-dry: #a3acb9; --rain-drizzle: #93c5fd; --rain-rain: #3b82f6; --rain-heavy: #1e3a8a; --rain-snow: #a78bfa; --wind-strong-head: #b91c1c; --wind-head: #f87171; --wind-cross: #f59e0b; --wind-tail: #4ade80; --wind-strong-tail: #15803d; --wind-calm: #a3acb9; color-scheme: light; }
+@media (pointer: coarse) {
+:root { --target: 44px; }
+}
+:root[data-theme="dark"] { --accent: #3fb07a; --accent-2: #56c48f; --accent-soft: rgba(63, 176, 122, 0.16); --accent-bg: #237a52; --route-text: #ffa0ce; --glass-read: rgba(8, 10, 9, 0.73); --glass-control: rgba(8, 10, 9, 0.84); --edge: inset 0 0 0 1px rgba(255, 255, 255, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 0 0 1px rgba(0, 0, 0, 0.7); --tile-rim: rgba(255, 255, 255, 0.5); --surface-solid: #181c1a; --surface-2: #232825; --seg-on: #3f4843; --text: #f2f5f3; --muted: #9aa69f; --muted-glass: #c5cec9; --accent-glass: #7fdcae; --bad-glass: #ffa3a3; --line: rgba(232, 236, 233, 0.16); --muted-hc: #c3ccc6; --line-hc: rgba(232, 236, 233, 0.32); --hc-border: rgba(0, 0, 0, 0.8); --hc-inner: rgba(255, 255, 255, 0.4); --shadow: 0 8px 28px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25); --chart-ink: #e8ece9; --chart-grid: rgba(154, 166, 159, 0.18); --good: #3ddc71; --ok: #ffd34d; --warn: #ffa24a; --you: #4c9bff; --you-soft: rgba(76, 155, 255, 0.16); --danger: #ff8a8a; --danger-soft: #3a2124; --look: #f2c45a; --look-soft: rgba(242, 196, 90, 0.12); --unk: #9cc0e4; --unk-soft: rgba(156, 192, 228, 0.13); --focus: #6fd3a2; --wx-text: #93c5fd; --good-text: #4ade80; --ok-text: #facc15; --warn-text: #fb923c; --bad-text: #f87171; --grip: rgba(232, 236, 233, 0.45); --shadow-sheet: 0 -6px 28px rgba(0, 0, 0, 0.5); color-scheme: dark; }
+@media (prefers-reduced-transparency: reduce) {
+:root[data-theme] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; }
+}
+:root[data-contrast="more"] { --glass-read: var(--surface-solid); --glass-control: var(--surface-solid); --glass-read-filter: none; --glass-control-filter: none; --muted: var(--muted-hc); --muted-glass: var(--muted-hc); --line: var(--line-hc); --edge: inset 0 0 0 1px var(--hc-inner), 0 0 0 1px var(--hc-border); }
+button { font: inherit; color: inherit; }
+:where(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
+:is(.btn, .tool, .chip:not(.chip-on), .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back):active:not(:disabled) { transform: scale(0.97); }
+@media (prefers-reduced-motion: reduce) {
+:is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back) { transition: background-color var(--t-press) ease, border-color var(--t-press) ease, color var(--t-press) ease; }
+:is(.btn, .tool, .chip, .act-chip, .way-tile, .seg button, .ctrl-btn, .compass-btn, .fab, .plan-btn, .top-btn, .act-current, .search-plan, .zoom-hint, .base-opt, .on-chip, .qd-x, .qd-back):active:not(:disabled) { transform: none; }
+}
+.menu-h, .act-head, .lp-sec h3, .lg-title, .qd-lab, .chip-group-label, .sec-title, .stat-label, .pt-label, .speed-route h4, .wind-title, .cam-wx-title, .bd-group-toggle, #search-results li.r-group { font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.ic { flex: 0 0 auto; display: block; }
+.brand, .search, .top-btn, .zoom-hint, .wx-bar, .panel, .qd, .sheet, .track-card, .pl-tools, .polku-popup.card-float .maplibregl-popup-content, .card-beside { background: var(--glass-read); backdrop-filter: var(--glass-read-filter); box-shadow: var(--shadow), var(--edge); --muted: var(--muted-glass); --accent: var(--accent-glass); --bad: var(--bad-glass); }
+.base-grid { display: grid; grid-template-columns: repeat(4, 64px); gap: 10px 8px; justify-content: space-between; }
+.base-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0px; border: 0px; background: none; cursor: pointer; font-style: inherit; font-variant: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 11px; font-weight: 600; color: var(--muted); }
+.base-opt img { width: 64px; height: 64px; border-radius: 12px; border: 2px solid transparent; object-fit: cover; box-shadow: 0 0 0 1px var(--line); transition: border-color var(--t-press) ease; }
+.base-opt:hover img { border-color: var(--line); }
+.base-opt[aria-pressed="true"] { color: var(--text); }
+.base-opt[aria-pressed="true"] img { border-color: var(--accent); }
+@keyframes pulse { 
+  50% { opacity: 0.35; }
+}
+.panel { position: absolute; bottom: calc(var(--sheet-h) + 12px); right: 84px; z-index: 6; width: 356px; max-height: calc(100% - 88px - var(--sheet-h)); display: flex; flex-direction: column; border-radius: var(--radius); }
+.panel-settings { top: 64px; right: 12px; bottom: auto; max-height: calc(100% - 76px - var(--sheet-h)); }
+.panel-settings { transform-origin: 100% 0px; transition: transform var(--t-open) var(--ease-out), opacity var(--t-open) var(--ease-out); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 10px 6px 16px; }
+.panel-head h2 { margin: 0px; font-size: 16px; }
+.panel-body { overflow: auto; padding: 0px 16px 16px; }
+.lp-sec { padding: 10px 0px; border-top: 1px solid var(--line); }
+.lp-sec:first-child { border-top: 0px; }
+.lp-sec h3 { margin: 0px 0px 8px; }
+.note { margin: 8px 0px 0px; color: var(--muted); font-size: 12px; }
+.lp-sport { display: flex; align-items: center; gap: 10px; margin: 0px 0px 10px; padding: 9px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--text); font-size: 13px; }
+.lp-sport > span:first-child { color: var(--accent); display: grid; }
+.lp-sport > span:nth-child(2) { flex: 1 1 0%; display: grid; }
+.lp-sport small { color: var(--muted); font-size: 11.5px; }
+.lp-sport .link { flex: 0 0 auto; }
+.on-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.on-chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0px 8px 0px 10px; border: 0px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-style: inherit; font-variant: inherit; font-stretch: inherit; line-height: inherit; font-family: inherit; font-optical-sizing: inherit; font-size-adjust: inherit; font-kerning: inherit; font-feature-settings: inherit; font-variation-settings: inherit; font-language-override: inherit; font-size: 12px; font-weight: 600; cursor: pointer; max-width: 100%; }
+.on-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.on-chip:hover { background: var(--accent-bg); color: rgb(255, 255, 255); }
+.lg-group { border-top: 1px solid var(--line); }
+.lg-group > summary { display: flex; align-items: center; gap: 8px; padding: 11px 0px; cursor: pointer; list-style: none; }
+.lg-group > summary::-webkit-details-marker { display: none; }
+.lg-group > summary::after { content: ""; width: 8px; height: 8px; margin: 0px 4px 0px auto; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform var(--t-press) var(--ease-out); }
+.lg-group[open] > summary::after { transform: rotate(45deg); transition-duration: var(--t-open); }
+.lg-group > summary:focus-visible::after { transition: none; }
+@keyframes lg-in { 
+  0% { opacity: 0; transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+.lg-group > summary::after { transition: none; }
+}
+.lg-count { font-size: 11px; font-weight: 700; color: var(--accent); }
+.lg-group > :last-child { margin-bottom: 10px; }
+.lg-key { margin-top: 6px; font-size: 12px; }
+.lg-key > summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 4px 0px; }
+.lg-key h4 { margin: 8px 0px 2px; font-size: 11px; color: var(--muted); font-weight: 700; }
+.note a { color: var(--accent); }
+.tg { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 0px; cursor: pointer; }
+.tg-text { flex: 1 1 0%; display: flex; flex-direction: column; }
+.tg-text small { color: var(--muted); font-size: 11px; }
+.lp-sec > .tg-text { padding: 7px 0px 8px; }
+.tg input { position: absolute; right: 0px; top: 50%; width: 1px; height: 1px; margin: 0px; opacity: 0; pointer-events: none; }
+.tg-ui { width: 36px; height: 21px; border-radius: 999px; background: var(--line); box-shadow: inset 0 0 0 1.5px var(--muted); position: relative; flex: 0 0 auto; transition: background-color var(--t-press) ease, box-shadow var(--t-press) ease; }
+.tg-ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: rgb(255, 255, 255); box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 2px; transition: transform var(--t-press) var(--ease-out); }
+.tg input:checked + .tg-ui { background: var(--accent-bg); box-shadow: none; }
+.tg input:checked + .tg-ui::after { transform: translateX(15px); }
+.tg input:focus-visible + .tg-ui { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+.tg-ui::after { transition: none; }
+}
+.range { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); padding: 4px 0px 8px; }
+.range.op-row { flex-direction: row; align-items: center; gap: 10px; padding: 0px 0px 8px 2px; }
+.range.op-row input { flex: 1 1 0%; min-width: 0px; accent-color: var(--accent); }
+.op-val { width: 40px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); font-weight: 600; }
+.range input { accent-color: var(--accent); }
+.key-row { display: flex; gap: 6px; margin-top: 8px; }
+.key-row input { flex: 1 1 0%; min-width: 0px; height: 34px; padding: 0px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); font: inherit; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: 12px; }
+.seg.full { display: flex; flex-wrap: wrap; }
+.seg.full button { flex: 1 1 auto; }
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--target); padding: 0px 12px; border: 0px; border-radius: 9px; background: transparent; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 13px; white-space: nowrap; }
+.seg.small button { padding: 0px 10px; font-size: 12px; }
+.seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--text); box-shadow: rgba(0, 0, 0, 0.14) 0px 1px 3px; }
+.seg button { transition: transform var(--t-press) var(--ease-out), background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; }
+@media (prefers-reduced-motion: reduce) {
+.seg button { transition: background-color var(--t-press) ease, color var(--t-press) ease, box-shadow var(--t-press) ease; }
+}
+.seg button:disabled { opacity: 0.45; cursor: not-allowed; }
+.chip { height: 28px; padding: 0px 11px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"], .chip.chip-on, .act-chip[aria-pressed="true"], .menu-chips .menu-item.chip[aria-checked="true"] { background: var(--accent-soft); border: 2px solid var(--accent); color: var(--text); }
+.btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-solid); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px; overflow-wrap: break-word; text-align: center; }
+.btn:hover { background: var(--surface-2); }
+.tool { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 0px; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; }
+.tool:hover { background: var(--surface-2); }
+.tool:disabled { opacity: 0.35; cursor: default; background: transparent; }
+.link { border: 0px; background: none; padding: 4px 0px; color: var(--accent); cursor: pointer; font-weight: 600; font-size: 12px; text-align: left; }
+.qd-grab { display: none; flex: 0 0 auto; width: 36px; height: 4px; margin: 6px auto 0px; border-radius: 2px; background: rgba(95, 107, 101, 0.4); }
+@keyframes qd-from-right { 
+  0% { opacity: 0; transform: translateX(28px); }
+}
+@keyframes qd-from-left { 
+  0% { opacity: 0; transform: translateX(-28px); }
+}
+.qd button, .qd .tg, #layers-panel .panel-back, .fab-layers { -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; cursor: pointer; }
+#layers-panel .panel-head { justify-content: flex-start; gap: 4px; padding-left: 8px; }
+#layers-panel .panel-head h2 { flex: 1 1 0%; min-width: 0px; }
+#layers-panel .panel-back { width: 44px; height: 44px; color: var(--accent); }
+#layers-panel .panel-close { width: 44px; height: 44px; }
+#layers-panel > .qd-grab { display: none; }
+@keyframes qd-fade { 
+  0% { opacity: 0; }
+}
+@keyframes bar-in { 
+  0% { opacity: 0; }
+}
+@keyframes busy { 
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(150%); }
+}
+.way-chev { flex: 0 0 auto; align-self: center; color: var(--muted); display: inline-flex; }
+.way-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.way-chips .chip, .rt-chips .chip { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0px 14px; font-size: 14px; color: var(--text); }
+@media (pointer: coarse) {
+.way-chips .chip, .rt-chips .chip, .mr-state .btn { min-height: 44px; }
+}
+@keyframes wp-pulse { 
+  0% { box-shadow: rgba(225, 29, 72, 0.55) 0px 0px 0px 0px; }
+  100% { box-shadow: rgba(225, 29, 72, 0) 0px 0px 0px 16px; }
+}
+.rows { display: grid; grid-template-columns: minmax(0px, 1fr); margin: 0px -8px; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--row-h); padding: 6px 10px; border: 0px; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.rows > .row + .row, .rows > :not(.row) + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0px; }
+.rows > .row:first-child:not(:only-child) { border-radius: 12px 12px 0px 0px; }
+.rows > .row:last-child:not(:only-child) { border-radius: 0px 0px 12px 12px; }
+.row > span:first-child { flex: 0 0 auto; display: grid; color: var(--text); }
+.row > span:nth-child(2) { flex: 1 1 0%; min-width: 0px; display: grid; gap: 1px; }
+.row b { font-size: var(--font-row); font-weight: var(--weight-name); line-height: 1.25; overflow-wrap: anywhere; }
+.row small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.row .way-chev { transition: transform var(--t-press) var(--ease-out); }
+.row:active { background: var(--surface-2); }
+.row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+@media (hover: hover) {
+.row:hover { background: var(--surface-2); }
+.row:hover .way-chev { transform: translateX(2px); }
+}
+.speed-sport-row:focus-visible .way-chev { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+.row .way-chev { transition: none; }
+}
+@keyframes hold-fill { 
+  100% { --fill: 100%; }
+}
+@keyframes hover-tip-in { 
+  0% { opacity: 0; }
+}
+.lg-item { display: flex; align-items: center; gap: 10px; padding: 3px 0px; font-size: 12.5px; }
+.lg-line { display: block; width: 34px; flex: 0 0 auto; border-radius: 3px; }
+.lg-dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto; margin: 0px 10px; border: 2px solid rgb(255, 255, 255); box-shadow: 0 0 0 1px var(--line); }
+.lg-icon { width: 20px; height: 20px; flex: 0 0 auto; margin: 0px 7px; }
+@media (prefers-reduced-motion: reduce) {
+.panel-settings, .modal { transition: opacity 150ms; }
+}
+@media (max-width: 720px) {
+.panel { left: 12px; right: 12px; top: auto; bottom: calc(12px + var(--sheet-h)); width: auto; max-height: min(62vh, calc(100% - 76px - var(--sheet-h))); }
+.tool { width: 30px; height: 32px; }
+}
+@media (max-width: 720px) {
+.qd-grab, #layers-panel > .qd-grab { display: block; }
+#layers-panel { z-index: 12; inset: 64px 0px 0px; max-height: none; width: auto; padding-bottom: env(safe-area-inset-bottom, 0px); border-radius: 20px 20px 0px 0px; box-shadow: rgba(16, 24, 20, 0.2) 0px -6px 28px; }
+#layers-panel::before { content: ""; position: absolute; left: 0px; right: 0px; top: 100%; height: 240px; background: var(--surface-solid); }
+#layers-panel .panel-head { padding-top: 2px; }
+}
+@media (max-width: 720px) and (max-height: 760px) {
+.qd-grab { margin-top: 5px; }
+}
+:root[data-theme="dark"] .tl-note.warn, :root[data-theme="dark"] .stale-note { color: rgb(251, 191, 36); }
+.use-row { padding: 7px 0px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.use-head { display: flex; align-items: baseline; gap: 6px; }
+.use-head b { font-size: 13px; }
+.use-head small { color: var(--muted); }
+.use-count { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.use-win { display: grid; grid-template-columns: 74px 1fr 92px; align-items: center; gap: 8px; margin-top: 4px; }
+.use-win span, .use-win small { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.use-win small { text-align: right; }
+.use-bar { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.use-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+@keyframes sec-flash { 
+  0%, 30% { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  100% { box-shadow: transparent 0px 0px 0px 2px inset; background: transparent; }
+}
+@keyframes tb-in { 
+  0% { opacity: 0; }
+}
+:root[data-theme="dark"] .tip { background: rgb(232, 236, 233); color: rgb(17, 17, 17); }
+</style>
+</head>
+<body class="page">
+<div class="cv">
+  <h1>Settings, rethought</h1>
+  <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/321">#321</a>. Polku's preferences in one place, in the order people come for them. The plan and the decisions: <a href="../issue-321-settings.md">issue-321-settings.md</a>.</p>
+  <div class="bar"><span>Version</span><div class="sw" data-sw="v"><button data-val="today">Today</button><button data-val="a">A: one list</button><button data-val="b">B: folding groups</button></div></div>
+  <div class="bar"><span>Look</span><div class="sw" data-sw="theme"><button data-val="light">Light</button><button data-val="dark">Dark</button></div>
+    <span>Planned</span><div class="sw" data-sw="planned"><button data-val="show">Show</button><button data-val="hide">Hide</button></div>
+    <span>Moved here</span><div class="sw" data-sw="marks"><button data-val="show">Mark</button><button data-val="hide">Don't</button></div></div>
+  <div class="why" id="why"></div>
+  <div class="frames">
+    <div><p class="fr-cap">Phone, 390 × 844</p><div class="scene phone" id="f-phone"></div></div>
+    <div><p class="fr-cap">Desktop, 1440 × 900 (its right edge)</p><div class="scene desk" id="f-desk"><span class="gear"></span></div></div>
+  </div>
+</div>
+
+<template id="today"><aside id="settings-panel" class="panel panel-settings" aria-label="Settings">
+    <div class="panel-head"><h2>Settings</h2><button class="panel-close tool" type="button" aria-label="Close"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div>
+    <div id="settings-body" class="panel-body"><section class="lp-sec"><h3>About Polku</h3><button type="button" class="btn" id="btn-changelog">What’s new</button><p class="note">Read recent changes without leaving your route.</p></section><section class="lp-sec"><h3>Your speeds</h3><div class="speed-list rows"><button type="button" class="row speed-sport-row" data-k="mtb" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="16.5" r="3.5"></circle><circle cx="18.5" cy="16.5" r="3.5"></circle><path d="M5.5 16.5 9 9h6l3.5 7.5M9 9l3 7.5L15 9M13 5h3l1 4"></path></svg></span><span><b>MTB</b><small>Normal · 20 / 16 / 11 km/h · 600 m/h up</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button><button type="button" class="row speed-sport-row" data-k="gravel" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="16.5" r="3.5"></circle><circle cx="18.5" cy="16.5" r="3.5"></circle><path d="M5.5 16.5 10 9h5l3.5 7.5M10 9l2.5 7.5M14 6h2.5l-1.5 3"></path><path d="M2 22h2M7 22h2M12 22h2M17 22h2" opacity=".6"></path></svg></span><span><b>Gravel</b><small>Normal · 25 / 20 / 12 km/h · 700 m/h up</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button><button type="button" class="row speed-sport-row" data-k="road" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="16.5" r="3.5"></circle><circle cx="18.5" cy="16.5" r="3.5"></circle><path d="M5.5 16.5 10 9.5h6.5l2 7M10 9.5l2.5 7 4-7M14 5.5h3.2a1.4 1.4 0 0 1 .4 2.7"></path></svg></span><span><b>Road cycling</b><small>Normal · 27 / 15 / 8 km/h · 800 m/h up</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button><button type="button" class="row speed-sport-row" data-k="hike" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4.5" r="2"></circle><path d="m9 21 2.5-7 3 3V21M11.5 14 12 9l-3 2v3M12 9l3 3 2.5-1"></path><path d="M18 9v12"></path></svg></span><span><b>Hike</b><small>Normal · 5 km/h on the flat</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button><button type="button" class="row speed-sport-row" data-k="trailrun" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4.5" r="2"></circle><path d="M11.6 7.6 9 13l2.6 3.2-1 4.8M9 13l-2.6 3.5H3M6 10.2l3.6-2 2.6 2.6 3-1.2"></path><path d="m14.5 21 3.5-5 1.6 2 1.4-1.6 1.5 4.6"></path></svg></span><span><b>Trail run</b><small>Normal · 6:00 /km paved · 7:04 trail</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button><button type="button" class="row speed-sport-row" data-k="run" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="15" cy="4.5" r="2"></circle><path d="M13.6 7.6 11 13l2.6 3.2-1 4.8M11 13l-2.6 3.5H5M8 10.2l3.6-2 2.6 2.6 3-1.2"></path></svg></span><span><b>Run</b><small>Normal · 5:43 /km paved · 6:19 trail</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button><button type="button" class="row speed-sport-row" data-k="paddle" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"></path><path d="M5 13.5h14l-2 2.5H7Z"></path><path d="m6 5 12 9M4.5 3.8 7 5.7M17 13.3l2.5 1.9"></path></svg></span><span><b>Paddle</b><small>Sea kayak · 6.5 km/h</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button><button type="button" class="row speed-sport-row" data-k="swim" aria-expanded="false"><span><svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="16" cy="6" r="2"></circle><path d="m4 13 5-3.5 3.5 2.5"></path><path d="M2 17c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5"></path><path d="M2 21c2.5 1.5 5 1.5 7.5 0s5-1.5 7.5 0 3.5 1 5 .5" opacity=".55"></path></svg></span><span><b>Swim</b><small>Normal · 2:24 /100 m</small></span><span class="way-chev"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></span></button></div><p class="note">Polku times your route with these speeds, so they also decide when you reach each place and the weather you meet there. A change applies at once to your route’s legs in that sport. The planner has the same speeds in its drawing menu and in Route › How you go. Kept on this device only.</p></section><section class="lp-sec"><h3>Route planner</h3><div class="seg small full"><button type="button" aria-pressed="true">Side panel (left)</button><button type="button" aria-pressed="false">Bottom panel</button></div><p class="note">Open it with Plan or R. The button beside its fold, and its ⋯ menu, have the same switch. While planning, the departure clock lives inside it.</p></section><section class="lp-sec"><h3>Display</h3><div class="tg-text" id="appearance-h">Appearance</div><div class="way-chips" role="group" aria-labelledby="appearance-h"><button type="button" class="chip" data-appearance="auto" aria-pressed="true"><svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg><span>Automatic</span></button><button type="button" class="chip" data-appearance="light" aria-pressed="false"><span>Light</span></button><button type="button" class="chip" data-appearance="dark" aria-pressed="false"><span>Dark</span></button><button type="button" class="chip" data-appearance="map" aria-pressed="false"><span>Match the map</span></button></div><p class="note">Automatic follows your device. Match the map is dark over the aerial photos and the night map, and light over the rest. Kept on this device only.</p><label class="tg" for="t-mihmsm"><span class="tg-text">High contrast<small>Thicker trails, solid panels and darker grey words, for bright sunlight</small></span><input type="checkbox" id="t-mihmsm" role="switch"><span class="tg-ui" aria-hidden="true"></span></label><label class="tg" for="t-8srsga"><span class="tg-text">Details on hover<small>Difficulty, surface or name under the mouse · click for everything</small></span><input type="checkbox" id="t-8srsga" checked="" role="switch"><span class="tg-ui" aria-hidden="true"></span></label><label class="tg" for="t-q9z5xc"><span class="tg-text">Moving arrows on the route<small>Chevrons drift along your route the way it goes. They rest when you leave the map alone; off saves a little battery</small></span><input type="checkbox" id="t-q9z5xc" checked="" role="switch"><span class="tg-ui" aria-hidden="true"></span></label><label class="tg" for="t-fgunyr"><span class="tg-text">Trackpad rotates &amp; tilts<small>Two-finger sideways scroll rotates; in 3D, up/down tilts. Pinch zooms</small></span><input type="checkbox" id="t-fgunyr" checked="" role="switch"><span class="tg-ui" aria-hidden="true"></span></label></section><section class="lp-sec"><h3>Offline maps</h3><div class="off-list"><p class="note">Plan a route, then press <svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18.5a4.5 4.5 0 1 1 1-8.9 6 6 0 0 1 11.3 1.9 3.8 3.8 0 0 1-1.3 7"></path><path d="M12 11v9M8.8 16.8 12 20l3.2-3.2"></path></svg> <b>Save offline</b> in the route panel. The trail map, terrain and the route then work without signal.</p><p class="note">Polku uses 491 kB on this device (up to 4.3 GB available).</p></div></section><section class="lp-sec"><h3>Data sources</h3><div class="use-list"><div class="use-row"><div class="use-head"><b>LIPAS</b><small>routes &amp; places, and search</small><span class="use-count" title="Calls this session · today (UTC day)">9 · 9 today</span></div></div><div class="use-row"><div class="use-head"><b>FMI</b><small>rain radar and measured snow (Finland)</small><span class="use-count" title="Calls this session · today (UTC day)">1 · 1 today</span></div><div class="use-win" title="1 of 600 calls per 5 minutes"><span>per 5 minutes</span><div class="use-bar"><i style="width:0.2%"></i></div><small>1 / 600</small></div><div class="use-win" title="1 of 20,000 calls per day"><span>per day</span><div class="use-bar"><i style="width:0.0%"></i></div><small>1 / 20,000</small></div></div><div class="use-row"><div class="use-head"><b>Open-Meteo</b><small>weather</small><span class="use-count" title="Calls this session · today (UTC day)">0 · 0 today</span></div><div class="use-win" title="0 of 600 calls per minute"><span>per minute</span><div class="use-bar"><i style="width:0.0%"></i></div><small>0 / 600</small></div><div class="use-win" title="0 of 5,000 calls per hour"><span>per hour</span><div class="use-bar"><i style="width:0.0%"></i></div><small>0 / 5,000</small></div><div class="use-win" title="0 of 10,000 calls per day"><span>per day</span><div class="use-bar"><i style="width:0.0%"></i></div><small>0 / 10,000</small></div></div><p class="note">Counted on this device. Open-Meteo counts every location as a call. The providers count per internet connection, so other devices on the same network add to their totals.</p></div></section><section class="lp-sec"><h3>Routing server (optional)</h3><p class="note">Routes come from brouter.de, a free public server that takes about a dozen routes a minute from one device. If you run BRouter yourself, enter its address — for one on this computer, http://localhost:17777/brouter (see tools/brouter-local.sh). Empty means brouter.de.</p><div class="key-row"><input type="url" placeholder="https://brouter.de/brouter" value="" autocomplete="off" spellcheck="false" aria-label="Routing server address"><button type="button" class="btn">Save</button></div><p class="note"></p></section><section class="lp-sec"><h3>MML API key (optional)</h3><p class="note">Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay. Keys are free from <a href="https://www.maanmittauslaitos.fi/rajapinnat/api-avaimen-ohje" target="_blank" rel="noopener">maanmittauslaitos.fi</a> and is stored only in this browser.</p><div class="key-row"><input type="password" placeholder="Paste your MML API key" value="" autocomplete="off" spellcheck="false"><button type="button" class="btn">Save</button></div></section></div>
+  </aside></template>
+
+<script>
+const WHY = {
+  today: '<p><b>Today</b> (main at 349971f). About Polku comes first, and on a phone Display starts a screen and a half down. Distance marks, 3D height and hidden Heads-up are elsewhere, and twelve planned settings have no place yet.</p>',
+  a: '<p><b>A: one list.</b> Today\'s single scroll, regrouped in nine groups, the ones people use most first and About last. Nothing folds, so nothing takes a tap more than today; it\'s long, about 3,000 px with every planned setting.</p>',
+  b: '<p><b>B: folding groups (recommended).</b> The same nine groups, folded like Layers\' groups, with the same control. Settings opens on its list of groups, short enough for one phone screen, and each group stays open or folded as you leave it. Every setting is a tap away, and none is further down than the ninth row.</p>',
+};
+const $ = (s, el = document) => el.querySelector(s);
+const ic = (d, s = 20) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const EYE_OFF = '<path d="M3 3l18 18"/><path d="M10.6 5.1Q11.3 5 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-2.7 3.8M6.6 6.6C4.3 8 2.7 10.2 2 12c1 2.5 5 7 10 7 1.9 0 3.6-.6 5-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>';
+let uid = 0;
+const tg = (label, line, on = false, cls = '', tag = '') => { const id = `m-${++uid}`; return `<label class="tg ${cls}" for="${id}"><span class="tg-text">${label}${tag}<small>${line}</small></span><input type="checkbox" id="${id}" role="switch"${on ? ' checked' : ''}><span class="tg-ui" aria-hidden="true"></span></label>`; };
+const seg = (opts, on, label) => `<div class="seg small full" role="group" aria-label="${label}">${opts.map((o) => `<button type="button" aria-pressed="${o === on}">${o}</button>`).join('')}</div>`;
+const planned = (n) => `<span class="plan-tag">planned #${n}</span>`;
+
+// the parts of today's panel that move as they are
+function parts() {
+  const t = $('#today').content.cloneNode(true);
+  const secs = [...t.querySelectorAll('.lp-sec')];
+  const by = (name) => secs.find((s) => s.querySelector('h3').textContent.startsWith(name));
+  const disp = by('Display');
+  const tgs = [...disp.querySelectorAll('.tg')];
+  const pick = (re) => tgs.find((l) => re.test(l.textContent));
+  const keep = (el) => { el.removeAttribute('id'); el.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id')); return el.outerHTML; };
+  return {
+    about: keep(by('About').querySelector('.btn')),
+    speeds: by('Your speeds').querySelector('.speed-list'),
+    planner: by('Route planner'),
+    appearance: [disp.querySelector('.tg-text'), disp.querySelector('.way-chips'), disp.querySelector('.note')].map(keep).join(''),
+    contrast: keep(pick(/High contrast/)),
+    hover: keep(pick(/hover/)),
+    trackpad: keep(pick(/Trackpad/)),
+    arrows: keep(pick(/Moving arrows/)),
+    offline: keep(by('Offline maps').querySelector('.off-list')),
+    usage: keep(by('Data sources').querySelector('.use-list')),
+    router: [...by('Routing server').children].filter((c) => c.tagName !== 'H3').map(keep).join(''),
+    mml: [...by('MML').children].filter((c) => c.tagName !== 'H3').map(keep).join(''),
+  };
+}
+
+function groups(P, desk) {
+  const tiles = { mtb: ['Trail colours', 'Trail details', 'Official routes', 'Waymarked MTB', 'Rain radar'], paddle: ['Depths', 'Fairways', 'Wind', 'Ships', 'Rain radar'] };
+  const speeds = P.speeds.cloneNode(true);
+  speeds.querySelectorAll('.speed-sport-row').forEach((r) => {
+    const k = r.dataset.k, t = tiles[k] || tiles.mtb;
+    r.dataset.tiles = t.join(', ');
+  });
+  return [
+    { id: 'sports', title: 'Your sports', html: speeds.outerHTML +
+      `<p class="note">Each sport's speeds time your route, and so decide the weather you meet on the way. Its five tiles are the ones Layers shows for it. Kept on this device only.</p>` },
+    { id: 'display', title: 'Display', html: P.appearance + P.contrast +
+      `<div class="planned">${tg('Larger text and buttons', 'Bigger words and controls everywhere, the map too', false, '', planned(325))}
+       ${tg('Colours for colour blindness', 'Trail difficulty, the profile and warnings in colours that stay apart', false, '', planned(324))}
+       ${tg('Less motion', 'Panels appear without sliding, the route\'s arrows stand still. Your device\'s setting turns it on too', false, '', planned(327))}
+       ${tg('Fewer effects', 'No glass or shadows, for slower phones and a little battery', false, '', planned(330))}</div>` },
+    { id: 'route', title: 'Your route on the map', html: `<div class="moved">${P.arrows}</div>
+       <div class="moved">${tg('Distance marks', 'Every 1, 5, 10 or 25 km along the route, by its length', true)}
+       ${tg('Arrival times at marks', 'The clock time you reach each mark', true)}
+       ${tg('Elapsed time at marks', 'Hours, minutes and seconds from departure, including stops and changeovers', true)}</div>
+       <div class="planned">${tg('Trails show through the route', 'The route drawn thinner and beside the trail, so its colours stay visible', false, '', planned(199))}</div>` },
+    { id: 'map', title: 'Map and planner', html:
+      `<div class="moved"><label class="range"><span>3D height</span><input type="range" min="1" max="3" step="0.1" value="1.4" aria-label="3D height"></label><p class="note">How tall hills stand in 3D. 3D itself is in Layers.</p></div>` +
+      P.hover + P.trackpad +
+      `<div class="planned">${tg('Turn the map with two fingers', 'Off keeps north up, so a pinch only zooms', true, '', planned(328))}
+       <div class="tg-text">Units ${planned(326)}</div>${seg(['Metric', 'Imperial'], 'Metric', 'Units')}
+       <div class="tg-text">When Polku opens ${planned(329)}</div>${seg(['Where you left off', 'Where you are', 'All of Finland'], 'Where you left off', 'When Polku opens')}
+       ${tg('Keep the screen on while following', 'Only while Follow me is on; it costs battery', false, '', planned(331))}</div>` +
+      (desk ? `<div class="tg-text">Route planner on a desktop</div>${P.planner.querySelector('.seg').outerHTML}<p class="note">The button beside the planner's fold, and its ⋯ menu, have the same switch.</p>` : '') },
+    { id: 'hidden', title: 'Hidden in Check', count: '2 hidden', html:
+      `<div class="moved"><div class="hid-row">${ic(EYE_OFF, 18)}<span>Steps</span><button type="button" class="btn">Show again</button></div>
+       <div class="hid-row">${ic(EYE_OFF, 18)}<span>Gates and barriers</span><button type="button" class="btn">Show again</button></div></div>
+       <p class="note">A Heads-up row's ⋯ hides a kind you don't need. Check lists them at its end too.</p>` },
+    { id: 'offline', title: 'Offline maps', count: '', html: P.offline },
+    { id: 'device', title: 'On this device', html:
+      `<p class="note">Polku keeps your route, these settings, offline maps and recent searches here, and nowhere else.</p>
+       <div class="hid-row"><span>Recent searches<small class="note" style="display:block;margin:0">6 places</small></span><button type="button" class="btn">Clear</button></div>
+       <div class="planned"><div class="hid-row"><span>A copy of everything ${planned(282)}</span><button type="button" class="btn">Export</button><button type="button" class="btn">Import</button></div>
+       <div class="hid-row"><span>Settings as they first were ${planned(332)}<small class="note" style="display:block;margin:0">Your route and offline maps stay</small></span><button type="button" class="btn">Reset</button></div></div>` },
+    { id: 'data', title: 'Data sources', html: P.usage + `<p class="sub-h moved">Routing server (optional)</p><div class="moved">${P.router}</div><p class="sub-h moved">MML API key (optional)</p><div class="moved">${P.mml}</div>` },
+    { id: 'about', title: 'About Polku', html: P.about +
+      `<div class="planned" style="margin-top:8px"><button type="button" class="btn">How to use Polku</button> <button type="button" class="btn">Credits and licence</button> ${planned(321)}</div>` },
+  ];
+}
+
+function panel(v, desk) {
+  if (v === 'today') {
+    const el = $('#today').content.firstElementChild.cloneNode(true);
+    el.removeAttribute('id'); el.querySelectorAll('[id]').forEach((x) => x.removeAttribute('id'));
+    if (!desk) el.querySelector('.lp-sec:nth-child(3)')?.remove(); // (Route planner is a desktop's only)
+    return el;
+  }
+  const P = parts();
+  const el = document.createElement('aside');
+  el.className = 'panel panel-settings';
+  el.setAttribute('aria-label', 'Settings');
+  el.innerHTML = `<div class="panel-head"><h2>Settings</h2><button class="panel-close tool" type="button" aria-label="Close">${ic('<path d="M6 6l12 12M18 6 6 18"/>', 18)}</button></div><div class="panel-body"></div>`;
+  const body = el.querySelector('.panel-body');
+  for (const g of groups(P, desk)) {
+    const title = g.title;
+    if (v === 'a') body.insertAdjacentHTML('beforeend', `<section class="lp-sec"><h3>${title}</h3>${g.html}</section>`);
+    else body.insertAdjacentHTML('beforeend', `<details class="lg-group"${g.open ? ' open' : ''}><summary><span class="lg-title">${title}</span>${g.count ? `<span class="lg-count">${g.count}</span>` : ''}</summary>${g.html}</details>`);
+  }
+  return el;
+}
+
+// a sport's row opens its speeds and its five tiles (the speed editor itself is the planner's, as today)
+document.addEventListener('click', (e) => {
+  const r = e.target.closest('.speed-sport-row');
+  if (r && !r.closest('template')) {
+    const open = r.getAttribute('aria-expanded') === 'true';
+    r.setAttribute('aria-expanded', String(!open));
+    if (open) { r.nextElementSibling?.classList.contains('speed-box') && r.nextElementSibling.remove(); return; }
+    const box = document.createElement('div');
+    box.className = 'speed-box mock';
+    const t = (r.dataset.tiles || '').split(', ').filter(Boolean);
+    box.innerHTML = `<p class="note">The speed editor, as today.</p>` + (t.length ? `<h4>Tiles in Layers</h4><div class="tile-chips">${t.map((x) => `<span class="chip"><span>${x}</span></span>`).join('')}</div><button type="button" class="btn">Edit tiles</button>` : '');
+    r.after(box);
+  }
+  const hb = e.target.closest('.hid-row .btn');
+  if (hb && hb.textContent === 'Show again') hb.closest('.hid-row').remove();
+  const sb = e.target.closest('.seg button');
+  if (sb) sb.parentElement.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === sb)));
+  const ch = e.target.closest('.way-chips .chip');
+  if (ch) ch.parentElement.querySelectorAll('.chip').forEach((b) => b.setAttribute('aria-pressed', String(b === ch)));
+});
+
+const q = new URLSearchParams(location.search);
+const st = { v: q.get('v') || 'b', theme: q.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), planned: q.get('planned') || 'show', marks: q.get('marks') || 'show' };
+function render() {
+  document.documentElement.dataset.theme = st.theme;
+  document.body.classList.toggle('no-planned', st.planned === 'hide');
+  document.body.classList.toggle('no-marks', st.marks === 'hide');
+  for (const sw of document.querySelectorAll('.sw')) for (const b of sw.children) b.setAttribute('aria-pressed', String(st[sw.dataset.sw] === b.dataset.val));
+  $('#why').innerHTML = WHY[st.v] + (st.v !== 'today' ? '<p><span class="mk-key"></span>Moved here from elsewhere in Polku. Dashed tags are settings their issues plan, placed where they\'d go.</p>' : '');
+  for (const [id, desk] of [['f-phone', false], ['f-desk', true]]) { const f = $(`#${id}`); f.querySelector('.panel')?.remove(); f.append(panel(st.v, desk)); }
+  history.replaceState(null, '', `?${new URLSearchParams(st)}`);
+}
+for (const sw of document.querySelectorAll('.sw')) sw.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { st[sw.dataset.sw] = b.dataset.val; render(); } });
+render();
+</script>
+</body>
+</html>
