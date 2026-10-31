@@ -242,6 +242,7 @@ export class Planner {
     // Marked routes list the view: again after you move the map (not after framing a picked one)
     map.on('moveend', () => { if (this.startView() !== 'find') return; if (this.marked.framed) this.marked.framed = false; else this.listMarkedSoon(); });
     map.on('mousemove', (e) => this.onMapMove(e));
+    map.on('mouseout', () => this.mapUnhover()); // off the map (onto the planner, say): nothing under the pointer
     map.on('touchstart', () => { this.lastTouchAt = Date.now(); });
     // was a menu or card open when this press began? (MapLibre closes it on the click; the click shouldn't add a point too)
     const pressed = () => { this.popupAtPress = !this.picking && (!!this.map.getContainer().querySelector('.maplibregl-popup') || !!this.cards.current); };
@@ -1419,6 +1420,7 @@ export class Planner {
       }
     });
     this.app.setData('route', { type: 'FeatureCollection', features });
+    if (this.litSpan && this.legs[this.litSpan.to - 1]) this.showSpan(this.litSpan);
     if (!this.edit) this.renderGhosts();
   }
 
@@ -2794,6 +2796,7 @@ export class Planner {
     if (way) {
       this.map.getCanvas().style.cursor = 'pointer'; // a way on offer: a click takes it
       if (this.app.hoverLeg) this.app.hoverLeg(null);
+      this.mapUnhover();
       return;
     }
     const a = this.analysis;
@@ -2804,10 +2807,10 @@ export class Planner {
     glow(over ? over.properties.leg : null);
     const view = this.inView();
     this.map.getCanvas().style.cursor = hit ? (view ? 'pointer' : 'grab') : (view ? '' : 'crosshair'); // the line can be dragged (not in the route's view)
-    if (!hit) {
-      if (this.mapHover) { this.mapHover = false; this.chart.setHover(-1); this.app.setData('routeHover', EMPTY); this.app.routeTip(null); }
-      return;
-    }
+    if (!hit) { this.mapUnhover(); return; }
+    // the stretch under the pointer lit, as a click opens its card (#83)
+    const s = this.stretchAt(over.properties.leg), l = this.litSpan;
+    if (!l || l.from !== s.from || l.to !== s.to) this.lightStretchHover(s);
     const p = [e.lngLat.lng, e.lngLat.lat];
     const k = Math.cos((p[1] * Math.PI) / 180);
     let best = -1, bd = Infinity;
@@ -2822,6 +2825,12 @@ export class Planner {
     const onMap = this.app.routeTip(e.originalEvent, d);
     this.chart.setHover(best, !onMap);
     this.hoverAt(best, true);
+  }
+
+  // the pointer off the route: its dot, tip and lit stretch go (back to what a card lights)
+  mapUnhover() {
+    if (!this.mapHover) return;
+    this.mapHover = false; this.chart.setHover(-1); this.app.setData('routeHover', EMPTY); this.app.routeTip(null); this.unlitLeg();
   }
 
   // the name of the road or path at analysis sample i ('' if none known)
@@ -3002,7 +3011,7 @@ export class Planner {
   }
   // a stretch under the mouse in the list: lit on the map, as a leg's row was
   lightStretchHover(s) {
-    this.showLit(this.stretchCoords(s), s.from, s.to);
+    this.showSpan(s);
     if (this.chart && this.analysis) this.chart.setHighlight([this.lengthTo(s.from), this.lengthTo(s.to)]);
   }
 
@@ -4452,19 +4461,25 @@ export class Planner {
     if (!leg) {
       // (what was picked stays lit: a climb, an item of Check, the stretch a card is about)
       const s = this.stretchLit && this.legs[this.stretchLit.from] ? this.stretchLit : null;
-      if (s) this.showLit(this.stretchCoords(s), s.from, s.to);
+      if (s) this.showSpan(s);
       else if (this.focusLit) this.showLit(this.focusLit, this.legAt(this.focusHl[0]), this.legAt(this.focusHl[1]) + 1);
-      else this.app.setData('routeLit', EMPTY);
+      else { this.litSpan = null; this.app.setData('routeLit', EMPTY); }
       if (this.chart) this.chart.setHighlight(s && this.analysis ? [this.lengthTo(s.from), this.lengthTo(s.to)] : this.focusHl || null);
       return;
     }
-    this.showLit(leg.result ? leg.result.coords : [this.points[i], this.points[i + 1]], i, i + 1);
+    this.showSpan({ from: i, to: i + 1 });
     if (this.chart && this.analysis) this.chart.setHighlight([this.lengthTo(i), this.lengthTo(i + 1)]);
   }
   // routeLit: `coords` over legs from…to−1, in their colour when they go the same way (style.js route-lit)
   showLit(coords, from, to) {
+    this.litSpan = null;
     const modes = new Set(this.legs.slice(from, to).map(drawnMode));
     this.app.setData('routeLit', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: modes.size === 1 ? { mode: [...modes][0] } : {}, geometry: { type: 'LineString', coordinates: coords } }] });
+  }
+  // a leg or a stretch {from, to} lit, end to end: drawn again with the route (drawRoute), so it follows a new line
+  showSpan(s) {
+    this.showLit(this.stretchCoords(s), s.from, s.to);
+    this.litSpan = { from: s.from, to: s.to };
   }
   stretchCoords(s) {
     return this.legs.slice(s.from, s.to).flatMap((l, k) => { const c = l.result ? l.result.coords : [this.points[s.from + k], this.points[s.from + k + 1]]; return k ? c.slice(1) : c; });

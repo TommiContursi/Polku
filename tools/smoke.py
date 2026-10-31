@@ -11818,6 +11818,11 @@ RC_ON = """(async (li, t) => {
   const R = m.getCanvas().getBoundingClientRect(), q = m.project(ll);
   return { x: Math.round(R.left + q.x), y: Math.round(R.top + q.y), ll };
 })"""
+# what routeLit draws (#83): 'that stretch' when it's the line of the stretch from…to as the route has it now
+RC_LIT = """((from, to) => {
+  const f = polku.map.getSource('routeLit').serialize().data.features || [];
+  return !f.length ? 'nothing' : JSON.stringify(f[0].geometry.coordinates) === JSON.stringify(polku.planner.stretchCoords({ from, to })) ? 'that stretch' : 'another line';
+})"""
 RC_STATE = """(() => {
   const p = polku.planner, c = document.querySelector('.pl-way.card'), r = (e) => e.getBoundingClientRect(), vis = (e) => !!e && e.getClientRects().length > 0;
   const box = (e) => (e ? (({ left, top, right, bottom, width, height }) => ({ left, top, right, bottom, width, height }))(r(e)) : null);
@@ -11944,6 +11949,9 @@ def route_card(chrome):
         if s['kind'] != 'route' or s['place'] != 'peek' or s['n'] != s0['n'] or s['past'] != s0['past'] or s['menu']:
             fails.append(f"{name}: a tap on the line: {s['kind'] or 'no'} card ({s['place']}), {s['n'] - s0['n']} points added, {s['past'] - s0['past']} steps in Undo{', and the old menu' if s['menu'] else ''}")
         else:
+            lit = pg.js(f"({RC_LIT})(0, 4)")
+            if lit != 'that stretch':
+                fails.append(f"{name}: with the route's card open, the map lights {lit}, not its stretch (#83)")
             # (the map has moved the spot into sight above the card in the peek, as for a point's card)
             spot = pg.js(f"(() => {{ const R = polku.map.getCanvas().getBoundingClientRect(), q = polku.map.project({json.dumps(t['ll'])}); return {{ x: R.left + q.x, y: R.top + q.y }}; }})()")
             if not s['pill'] or not s['pin'] or not 0 <= spot['y'] - s['pill']['bottom'] <= 60 or spot['y'] >= s['card']['top']:
@@ -12109,6 +12117,9 @@ def route_card(chrome):
         if s['kind'] != 'route' or s['place'] != 'float' or s['n'] != s0['n'] or s['past'] != s0['past']:
             fails.append(f"{name}: a click on the line: {s['kind']} card ({s['place']}), {s['n'] - s0['n']} points added, {s['past'] - s0['past']} steps in Undo")
         else:
+            lit = pg.js(f"({RC_LIT})(0, 1)")
+            if lit != 'that stretch':
+                fails.append(f"{name}: with the route's card open, the map lights {lit}, not its stretch (#83)")
             f = s['first']
             near = f and round(math.hypot(max(0, f['box']['left'] - t['x'], t['x'] - f['box']['right']), max(0, f['box']['top'] - t['y'], t['y'] - f['box']['bottom'])))
             if not f or f['text'] != 'Add a point here' or near > 30:
@@ -12139,6 +12150,35 @@ def route_card(chrome):
             if mid['kind'] != 'route' or s['kind'] != 'route' or s['values'][2:] != ['S0']:
                 fails.append(f"{name}: the route's card while its leg was routed again: {mid['kind']} card, then {s['kind']}, its difficulty {s['values'][2:]}")
             close(pg)
+            # the mouse over the line lights the stretch under it, as a click would open it; off the line, or off the map,
+            # nothing is (#83)
+            mouse = lambda at: (pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'], 'y': at['y'], 'button': 'none'}, pg.s), time.sleep(0.3))
+            lit = []
+            for li, stretch in ((0, '(0, 1)'), (1, '(1, 2)')):
+                u = on_line(pg, li, 0.5)
+                mouse(u)
+                lit.append(pg.js(f"({RC_LIT}){stretch}"))
+            mouse({'x': u['x'], 'y': u['y'] - 60})
+            lit.append(pg.js(f"({RC_LIT})(1, 2)"))
+            mouse(u)
+            mouse({'x': 150, 'y': 450})  # onto the planner, beside the map
+            lit.append(pg.js(f"({RC_LIT})(1, 2)"))
+            if lit != ['that stretch', 'that stretch', 'nothing', 'nothing']:
+                fails.append(f"{name}: the mouse over the first stretch, the second, off the line and off the map lit {lit} (#83)")
+            # the mouse resting on a stretch in the list while its end moves: the lit stretch is its new line, while the
+            # route is worked out and once it's in (#83)
+            r = pg.js("(() => { const b = document.querySelector('.wpl-stretch[data-from=\"1\"]'); b.scrollIntoView({ block: 'center' }); const r = b.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()")
+            mouse(r)
+            pg.js("(() => { const p = polku.planner; window.rcHold = new Promise((r) => { window.rcRelease = r; }); p.movePoint(2, [p.points[2][0], p.points[2][1] + 0.0005]); return true; })()")
+            time.sleep(0.5)
+            lit = [pg.js(f"({RC_LIT})(1, 2)")]
+            pg.js("window.rcRelease(); window.rcHold = null; true")
+            pg.js("(async () => { const p = polku.planner; for (let k = 0; k < 100 && !(p.legs[1].result && p.analysisFits()); k++) await new Promise((x) => setTimeout(x, 100)); return true; })()")
+            lit.append(pg.js(f"({RC_LIT})(1, 2)"))
+            if lit != ['that stretch', 'that stretch']:
+                fails.append(f"{name}: a stretch lit from the list while its end moved: {lit[0]}, then {lit[1]}, not its new line (#83)")
+            mouse({'x': 1000, 'y': 450})
+            on_line(pg, 0, 0.3)  # (back where the clicks below expect the line)
             # at the window's right edge it opens to the left; near the bottom upwards, its button still at the click
             for where, tx, ty in (('right edge', 1440 - 110, 'y'), ('bottom', 'x', 900 - 130)):
                 pg.js(f"(() => {{ const m = polku.map, R = m.getCanvas().getBoundingClientRect(), q = m.project({json.dumps(t['ll'])}), x = R.left + q.x, y = R.top + q.y; m.panBy([x - ({tx}), y - ({ty})], {{ duration: 0 }}); return true; }})()")
