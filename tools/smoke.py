@@ -15704,24 +15704,42 @@ def pick_card(chrome):
             back = pg.js("!!document.querySelector('.pl-way.card canvas.pick-chart') && document.querySelector('.pl-way.card .sec-head').getAttribute('aria-expanded')")
             if f['chart'] or f['by'] or not (f['sum'] or '').startswith('Way type') or f['kept'] != 'false' or back != 'true':
                 fails.append(f"Rauhaniemenreitti's profile folded: {f}; opened again: {back}")
+        # while the heights come (2026-10-31: the profile's arrow wasn't there, and only grey shapes): the profile says so in words and
+        # folds by its head, then opens again; while the ways come, the same. (Set back on Rauhaniemenreitti's own pick after.)
+        load = pg.js("""(async () => {
+          const pick = polku.planner.cards.current.pick, kept = { a: pick.a, ways: pick.ways }, card = () => document.querySelector('.pl-way.card');
+          const look = () => { const hd = card().querySelector('.sec-head'); return { head: hd ? hd.textContent : '', open: hd && hd.getAttribute('aria-expanded'), say: card().querySelector('.pick-skel .pick-note')?.textContent || '', shapes: !!card().querySelector('.pick-skel-chart') }; };
+          const click = async () => { card().querySelector('.sec-head').click(); await new Promise((r) => setTimeout(r, 300)); return look(); };
+          const out = {};
+          pick.a = undefined; polku.planner.cards.refresh(); out.heights = look();
+          out.folded = await click(); out.opened = await click();
+          pick.ways = undefined; polku.planner.cards.refresh(); out.ways = look();
+          Object.assign(pick, kept); polku.planner.cards.refresh();
+          return out; })()""")
+        hs, fo, op, ws = load['heights'], load['folded'], load['opened'], load['ways']
+        if not hs['head'].startswith('Profile') or hs['open'] != 'true' or 'Loading the heights' not in hs['say'] or not hs['shapes'] \
+                or fo['open'] != 'false' or fo['shapes'] or 'Loading the heights' not in fo['head'] or op['open'] != 'true' or not op['shapes'] \
+                or not ws['head'].startswith('Profile') or 'Loading the whole way' not in ws['say']:
+            fails.append(f"the profile while it loads: {load} (says what it waits for, folds by its head and opens again)")
         # an area (#574): a lake and a park by their outline from OpenStreetMap (recorded: tools/fixtures/areas-tampere.json), with
         # their name and kind; the water with its depth and Paddle from here, also where OpenStreetMap has no area there or no answer
         pg.js("""(async () => { const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/areas-tampere.json')).json();
           for (const [k, d] of Object.entries(fx.areas)) W.seedArea(k.split('/').map(Number).reverse(), d);
           return true; })()""")
         area = lambda r: {k: r[k] for k in ('kind', 'ways', 'title', 'sub', 'nums', 'rows', 'outline')} | {'paddle': 'Paddle from here' in r['text'], 'at': r['at']['under']}
-        for name, ll, on, want in (('Iidesjärvi', [23.8129, 61.4844], '^water$', ('Iidesjärvi', 'Lake', True)), ('Sorsapuisto', [23.7824, 61.4978], '^(lc-grass|park-fill)$', ('Sorsapuisto', 'Park', False)),
-                                   ('water with no area', [23.8045, 61.4862], '^water$', ('Water', '', True))):
-            r = tap(pg, ll, want=('none', None), secs=15, on=on)
-            rows = dict(r['rows'])
-            if (r['title'], r['sub'], r['paddle']) != want or ('Depth' in rows) != want[2] or (want[2] and rows.get('Depth') != 'Traficom didn’t answer') \
-                    or bool(r['outline']) != (want[0] != 'Water') or (want[0] == 'Iidesjärvi' and not any('round its edge' in n for n in r['nums'])):
-                fails.append(f"{name}: {area(r)} (its name, its kind, its outline drawn and how far round it; on water the depth and Paddle from here)")
+        # (first: a tile once loaded stays, so the lake's must fail before the taps below load it)
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(true, true); return true; })')
         r = tap(pg, [23.8045, 61.4862], want=('failed', None), secs=15, on='^water$')
         if r['ways'] != 'failed' or dict(r['rows']).get('Depth') != 'Traficom didn’t answer' or 'Paddle from here' not in r['text'] or "didn’t answer" not in r['text']:
             fails.append(f"the water, OpenStreetMap not answering: {area(r)} (the depth and Paddle from here still, and saying it didn't answer)")
         pg.js('import(location.origin + "/js/ways.js").then((W) => { W.holdWays(); return true; })')
+        for name, ll, on, want in (('Iidesjärvi', [23.8129, 61.4844], '^water$', ('Iidesjärvi', 'Lake', True)), ('Sorsapuisto', [23.7824, 61.4978], '^(lc-grass|park-fill)$', ('Sorsapuisto', 'Park', False)),
+                                   ('water with no area', [23.8045, 61.4862], '^water$', ('Water', '', True))):
+            r = tap(pg, ll, want=('none', None), secs=15, on=on)
+            rows = dict(r['rows'])
+            if (r['title'], r['sub'], 'Paddle from here' in r['text']) != want or ('Depth' in rows) != want[2] or (want[2] and rows.get('Depth') != 'Traficom didn’t answer') or 'Bikes' in rows \
+                    or bool(r['outline']) != (want[0] != 'Water') or (want[0] == 'Iidesjärvi' and not any('round its edge' in n for n in r['nums'])):
+                fails.append(f"{name}: {area(r)} (its name, its kind, its outline drawn and how far round it; on water the depth and Paddle from here)")
         # road works (#564, #565): a click opens the same card as a way, not the old popup, the works ringed on the map, and dates
         # outside this year with their year
         y = pg.js('new Date().getFullYear()')

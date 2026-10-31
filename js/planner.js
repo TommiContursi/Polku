@@ -20,7 +20,7 @@ import { toGPX, download } from './gpx.js';
 import { windAlong, windClass, windRating, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip } from './ui.js';
-import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
@@ -3708,10 +3708,11 @@ export class Planner {
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
     const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
-    const water = !d && this.map.getLayer('water') && this.map.queryRenderedFeatures(p, { layers: ['water'] }).length;
-    const card = spotCard(this, { ll, pin, title: d ? text(d.title) : water ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : water ? '' : 'Nothing is mapped right here',
+    // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
+    const area = areaUnder(this.map, p);
+    const card = spotCard(this, { ll, pin, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
-      partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch });
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null, hold, touch, area });
     // a phone's tap while browsing: the line at the spot first (#574); a hold, a click and the rest: the card
     if (card.kind === 'spot' && touch && !hold && !pin && from === 'map' && this.cards.where() === 'peek') { this.showLine(card); return; }
     this.hideLine();
@@ -3740,7 +3741,7 @@ export class Planner {
   }
   drawThing(f) {
     const g = f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
-    const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type) && f.layer.id !== 'water';
+    const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type);
     this.app.setData('pick', line ? fc(g, { color: '#f59e0b' }) : EMPTY);
     this.app.setData('pickSide', EMPTY);
     this.app.setData('pickArea', area ? fc(g) : EMPTY);

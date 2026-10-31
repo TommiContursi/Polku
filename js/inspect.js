@@ -1,5 +1,5 @@
-// Click-to-inspect: what a tap on the map opens with the planner put away. Ways, places and LIPAS's routes and places open
-// on the planner's card (25d part 6: openSpot()), and so do road works, sea marks, the water and the map's other things
+// Click-to-inspect: what a tap on the map opens with the planner put away. Ways, places, LIPAS's routes and places, the water
+// and a park open on the planner's card (25d part 6: openSpot()), and so do road works, sea marks and the map's other things
 // (#564: openThing(), with thingOf() here); ships and cameras keep their own live card and modal.
 
 import { TRAFICOM_WMS, isLipasRoute } from './config.js';
@@ -204,12 +204,11 @@ const clip = (t, n) => (t && t.length > n ? `${t.slice(0, n)}…` : t);
 
 /**
  * What the card says of the map's other things (#564), from what the map draws: road works, an incident, road conditions,
- * a busy road, a military area, a sea mark and its kin, and the water. { title, sub, group, rows: [[label, value]], info,
- * link: [words, url], src, depth } (`depth`: the water, whose depth Traficom says, depthAt()).
+ * a busy road, a military area, a sea mark and its kin. { title, sub, group, rows: [[label, value]], info, link: [words,
+ * url], src }. The water is a pick's, with depthAt().
  */
 export function thingOf(f, map) {
   const p = f.properties, id = f.layer.id, rows = (...r) => r.filter(Boolean);
-  if (id === 'water') return { title: 'Water', group: 'The water', rows: [], depth: true, src: 'The depth from Traficom’s chart' };
   if (id === 'military-fill') return { title: 'Military area', rows: [], info: 'May be closed or have live firing. Check the Defence Forces’ notices before you go.' };
   if (/^sf-/.test(id)) {
     if (p.kind === 'incident' || p.kind === 'roadwork') {

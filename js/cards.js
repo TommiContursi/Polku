@@ -3,15 +3,15 @@
 // the planner's note with Edit.
 import { h, icon, toast, store } from './ui.js';
 import { nums, group, rows, acts, item, pickRow, lockNote, segIcons, mainButton } from './card.js';
-import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped } from './facts.js';
+import { pointNums, headline, wayFacts, SPORT_FACTS, placeGroups, wayGroups, unmapped, areaFacts } from './facts.js';
 import { newPick, resolvePick, modesOf, modeOf, setMode, loadWeather } from './pick.js';
 import { breakdownRows, colorAt, PICK_MODES, COLOR_MODES, NO_TERRAIN, ProfileChart } from './chart.js';
-import { notRight, isHttp, thingOf, depthAt } from './inspect.js';
+import { notRight, isHttp, thingOf } from './inspect.js';
 import { elevation } from './dem.js';
 import { iconUrl } from './icons.js';
 import { ACTIVITIES, CRAFTS, LIPAS_TYPES } from './config.js';
 import { STYLES, styleName } from './styles.js';
-import { fmtDist, fmtDuration, compass, bearing } from './geo.js';
+import { fmtDist, fmtDuration, compass, bearing, lineLength } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
 import { LONG_HOURS } from './weather.js';
 
@@ -610,7 +610,7 @@ export function pickCard(pl, spot) {
   };
   // (as a card, or as the line at the spot before it's opened)
   const changed = () => { const line = pl.picked === card; if (here() || line) pl.drawPick(pick); if (here()) pl.cards.refresh(); if (line) pl.renderLine(); };
-  pick.again = () => { pick.ways = pick.a = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
+  pick.again = () => { pick.ways = pick.a = pick.area = pick.depth = undefined; pl.cards.refresh(); resolvePick(pick, changed); };
   pick.weather = () => loadWeather(pick, changed);
   resolvePick(pick, changed);
   return card;
@@ -618,27 +618,24 @@ export function pickCard(pl, spot) {
 const PLAIN = '#374151';
 const markColour = (pick) => (pick.a && pick.a !== 'failed' && (breakdownRows(pick.a, modeOf(pick.a))[0] || [])[2]) || PLAIN;
 // The map's other things (#564): road works, an incident, road conditions, a busy road, a military area, a sea mark and its
-// kin, and the water, on the same card as a way, highlighted on the map: what it is, its facts, where they come from, and the
-// card's last row (Share, Weather here ›, and the source's own page where it has one). The water's depth comes from Traficom.
+// kin, on the same card as a way, highlighted on the map: what it is, its facts, where they come from, and the card's last row
+// (Share, Weather here ›, and the source's own page where it has one). The water is a pick's (pickBody()), with its depth.
 export function thingCard(pl, f, ll) {
   const t = thingOf(f, pl.map), spot = { ll, title: t.title, line: t.sub || '' };
   const card = {
-    kind: 'thing', key: ll, spot, depth: undefined, pinned: true,
+    kind: 'thing', key: ll, spot, pinned: true,
     get title() { return t.title; }, get label() { return t.title; }, get sub() { return t.sub || ''; },
-    mark: () => h('span', { class: 'pick-mark dot', style: `--c:${f.layer.id === 'water' ? 'var(--route-water, #0ea5e9)' : '#f59e0b'}` }), at: () => ll, fold: () => [t.sub || t.title],
+    mark: () => h('span', { class: 'pick-mark dot', style: '--c:#f59e0b' }), at: () => ll, fold: () => [t.sub || t.title],
     build: (body) => {
       if (t.src) body.append(h('p', { class: 'rt-cost' }, t.src));
-      const rows = t.depth ? [['Depth', card.depth === undefined ? 'Asking Traficom' : card.depth === null ? 'Traficom didn’t answer' : card.depth]] : t.rows;
-      body.append(...factGroup(t.group || 'About it', rows));
+      body.append(...factGroup(t.group || 'About it', t.rows));
       if (t.info) body.append(h('p', { class: 'insp-info' }, t.info));
-      if (t.depth && !pl.inView()) body.append(acts(item({ icon: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here', k: 'paddle', onclick: () => pl.paddleFrom(ll) })));
       const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));
       body.append(h('div', { class: 'insp-actions card-foot' }, btn('Share', 'share', () => pl.shareSpot(spot)), btn('Weather here ›', 'cloudSun', () => pl.weatherHere(ll)),
         t.link ? btn(t.link[0], 'external', () => window.open(t.link[1], '_blank', 'noopener')) : null));
     },
     gone: () => pl.drawThing(null),
   };
-  if (t.depth) depthAt(ll).then((d) => { card.depth = d; }, () => { card.depth = null; }).then(() => { if (pl.cards.stack.some((e) => e.card === card)) pl.cards.refresh(); });
   return card;
 }
 
@@ -708,15 +705,17 @@ function pickChart(pl, card, a, mode) {
 
 // The profile, Colour by and its words in one group that folds (the planner's sections' control), remembered. Folded, no
 // chart is drawn and the weather along the way isn't asked (js/pick.js); its line says what the map's colours are.
-function profileGroup(pl, card, a) {
-  const open = store.get('pickProfile', true), mode = modeOf(a);
+// (`a` null while the ways or the heights come: its shapes, and `say` what's asked; it folds then too)
+function profileGroup(pl, card, a, say = '') {
+  const open = store.get('pickProfile', true), mode = a && modeOf(a);
   const head = h('button', { type: 'button', class: 'sec-head', 'aria-expanded': String(open), onclick: () => {
     store.set('pickProfile', !open);
-    if (!open && !a.wind && !a.windError) card.pick.weather();
+    if (!open && a && !a.wind && !a.windError) card.pick.weather();
     pl.cards.refresh();
-  } }, h('span', { class: 'sec-title' }, 'Profile'), h('span', { class: 'sec-sum' }, [PICK_MODES[mode], Number.isFinite(a.minE) ? `${Math.round(a.minE)}–${Math.round(a.maxE)} m` : ''].filter(Boolean).join(' · ')),
+  } }, h('span', { class: 'sec-title' }, 'Profile'), h('span', { class: 'sec-sum' }, a ? [PICK_MODES[mode], Number.isFinite(a.minE) ? `${Math.round(a.minE)}–${Math.round(a.maxE)} m` : ''].filter(Boolean).join(' · ') : say || 'Loading'),
   h('span', { class: 'sec-chev', 'aria-hidden': 'true', html: icon('chevronDown', 16) }));
-  return h('section', { class: 'sec', 'data-open': String(open) }, head, open ? h('div', { class: 'sec-body' }, pickChart(pl, card, a, mode), ...colourBy(pl, card.pick)) : null);
+  const inside = a ? [pickChart(pl, card, a, mode), ...colourBy(pl, card.pick)] : [skeleton(card.pick, say, h('i', { class: 'pick-skel-chart', 'aria-hidden': 'true' }), h('i', { class: 'pick-skel-by', 'aria-hidden': 'true' }))];
+  return h('section', { class: 'sec', 'data-open': String(open) }, head, open ? h('div', { class: 'sec-body' }, ...inside) : null);
 }
 
 // Colour by under it: every fact that changes along the way, where this pick has data, grouped as the route's are; then the
@@ -755,7 +754,8 @@ function placesGroup(pl, pick) {
 
 function pickBody(pl, card, body) {
   const { pick, spot } = card, w = pick.ways, view = pl.inView(), a = pick.a && pick.a !== 'failed' ? pick.a : null;
-  const way = w && typeof w === 'object';
+  const way = w && typeof w === 'object', ar = pick.area && typeof pick.area === 'object' ? pick.area : null, water = !way && spot.area === 'water';
+  if (ar) spot.osm = { type: ar.id.split('/')[0], id: +ar.id.split('/')[1] };
   if (way) {
     spot.osm = { type: 'way', id: w.seed.id };
     const pieces = new Set(w.chain.map((x) => x.w.id)).size;
@@ -765,34 +765,43 @@ function pickBody(pl, card, body) {
       a ? { value: `${Math.round(a.down)} m`, label: 'down' } : pick.a === 'failed' ? null : { value: '–', label: 'down', wait: true }]));
     if (a) body.append(profileGroup(pl, card, a));
     else if (pick.a === 'failed') body.append(failed('The terrain didn’t load: no profile or grades yet. ', pick.again));
-    else body.append(skeleton(pick, { nums: false }));
+    else body.append(profileGroup(pl, card, null, 'Loading the heights for its profile'));
     const stops = Object.values(w.stops);
     if (stops.some((s) => s.unloaded)) body.append(failed('It may go on: the ways beyond didn’t load.'));
     if (stops.some((s) => s.why === 'long')) body.append(failed('It goes on for more than 25 km: the card stops there.'));
-  } else if (w === undefined) body.append(skeleton(pick));
+  } else if (w === undefined) body.append(skeleton(pick, 'Loading the whole way from OpenStreetMap', h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i'))), profileGroup(pl, card, null));
   else if (w === 'failed') body.append(failed('OpenStreetMap didn’t answer: what shows is the map’s own. ', pick.again));
-  else body.append(nums([pick.ele === undefined ? { value: '–', label: 'height here', wait: true } : pick.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(pick.ele)} m`, label: 'height here' }]));
+  else {
+    // (an area's edge only when all of it came: a big lake's outline is cut some kilometres off)
+    body.append(nums([pick.ele === undefined ? { value: '–', label: 'height here', wait: true } : pick.ele == null ? { value: '?', label: 'height not known', missing: true } : { value: `${Math.round(pick.ele)} m`, label: 'height here' },
+      ar && ar.whole ? { value: fmtDist(ar.outer.reduce((m, l) => m + lineLength(l), 0)), label: 'round its edge' } : null]));
+    if (pick.area === 'failed') body.append(failed('OpenStreetMap didn’t answer: its outline and facts aren’t shown. ', pick.again));
+  }
   // what a hold opens it for: your route's actions (in the route's view, the planner's note with Edit)
   if (view) body.append(lockNote('You’re not editing: the route stays as it is.', () => { pl.setEditing(true); pl.cards.refresh(); }));
   else if (pick.hold) body.append(...yourRoute(pl, spot, { add: true }));
-  const g = way ? wayGroups(w.chain, a) : wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]);
+  // (the map tile's own way while the ways come; no way's facts where there's none)
+  const g = way ? wayGroups(w.chain, a) : spot.way ? wayGroups([{ w: { tags: spot.tags || {}, len: 1 } }]) : { along: [], surface: [], diff: [] };
   // the incline where you tapped, whatever the sport (what the hover says, #561)
   if (a && !(a.eleGap && a.eleGap[nearestSample(a, spot.ll)])) { const gr = Math.round(a.grade[nearestSample(a, spot.ll)]) || 0; g.diff.unshift(['Grade here', `${gr >= 0 ? '+' : '−'}${Math.abs(gr)} %`, gr >= 0 ? 'uphill, where you tapped' : 'downhill, where you tapped']); }
-  body.append(...factGroup('Getting along', g.along), ...factGroup('Surface', g.surface), ...factGroup('Difficulty', g.diff), ...weatherGroup(pick), ...placesGroup(pl, pick));
+  body.append(...factGroup('Getting along', g.along), ...factGroup('Surface', g.surface), ...factGroup('Difficulty', g.diff));
+  // an area's own facts; the water's depth from Traficom's chart (shown, never routed on) and Paddle from here, whatever OpenStreetMap says
+  body.append(...factGroup('About it', [...(ar ? areaFacts(ar.tags).rows : []),
+    water ? ['Depth', pick.depth === undefined ? 'Asking Traficom' : pick.depth === null ? 'Traficom didn’t answer' : pick.depth, 'From Traficom’s chart'] : null]));
+  if (water && !view) body.append(acts(item({ icon: 'paddle', label: 'Paddle from here', line: 'A route over the water, from here', k: 'paddle', onclick: () => pl.paddleFrom(spot.ll) })));
+  body.append(...weatherGroup(pick), ...placesGroup(pl, pick));
   if (card.osm && card.osm.rows) body.append(h('h4', { class: 'menu-h' }, 'All OpenStreetMap details'), ...card.osm.rows.map(([k, v]) => h('div', { class: 'insp-row' }, h('span', {}, k), h('b', {}, v))));
-  const miss = way ? unmapped(w.chain) : [];
-  // (only what OpenStreetMap's own ways say can be "not mapped": while they load or didn't come, no claim)
-  body.append(h('p', { class: 'pick-unmapped' }, h('span', {}, way ? (miss.length ? `Not mapped: ${miss.join(', ')}.` : 'From OpenStreetMap.') : w === 'none' ? 'Nothing is mapped right here.' : ''),
+  const miss = way ? unmapped(w.chain) : ar ? areaFacts(ar.tags).missing : [];
+  // (only what OpenStreetMap's own ways or area say can be "not mapped": while they load or didn't come, no claim)
+  body.append(h('p', { class: 'pick-unmapped' }, h('span', {}, way || ar ? (miss.length ? `Not mapped: ${miss.join(', ')}.` : 'From OpenStreetMap.') : w === 'none' && !spot.area ? 'Nothing is mapped right here.' : ''),
     h('button', { type: 'button', class: 'btn quiet', onclick: () => pl.cards.open(notRightCard(pl, card, spot), { at: spot.ll, from: card }) }, 'Not right?')));
   body.append(osmState(card), pickFoot(pl, card, spot));
 }
-// While the ways come (or, `nums` off, the heights): the card's own shapes for its numbers, profile and Colour by, so nothing
-// jumps when they're in. They
-// show after 300 ms and breathe, as the busy bar does; a rebuild (the weather came) goes on where it was, as the delays
-// count from the tap (--since).
-const skeleton = (pick, { nums = true } = {}) => h('div', { class: 'pick-skel', role: 'status', style: `--since:${Date.now() - pick.at}ms` },
-  h('span', { class: 'sr-only' }, nums ? 'Loading the way from OpenStreetMap' : 'Loading its heights'),
-  nums ? h('div', { class: 'pick-skel-nums', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')) : null, h('i', { class: 'pick-skel-chart', 'aria-hidden': 'true' }), h('i', { class: 'pick-skel-by', 'aria-hidden': 'true' }));
+// While the ways or the heights come: what's asked, in words (`say`), and the card's own shapes for what will come, so nothing
+// jumps when they're in. They show after 300 ms and breathe, as the busy bar does; a rebuild (the weather came) goes on
+// where it was, as the delays count from the tap (--since).
+const skeleton = (pick, say, ...shapes) => h('div', { class: 'pick-skel', style: `--since:${Date.now() - pick.at}ms` },
+  say ? h('p', { class: 'pick-note', role: 'status' }, `${say}…`) : null, ...shapes);
 // the card's last row: Share and Weather here ›; a hold adds All OpenStreetMap details and Copy
 function pickFoot(pl, card, spot) {
   const btn = (label, ic, fn) => h('button', { type: 'button', class: 'btn quiet', onclick: fn, html: icon(ic, 16) }, h('span', {}, label));

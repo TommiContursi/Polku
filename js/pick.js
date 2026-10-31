@@ -22,8 +22,8 @@ const metresPerPixel = (ll, zoom) => (40075016.686 * Math.cos((ll[1] * Math.PI) 
  * A new pick at `spot` (the planner's: where, the map's own words for it). `hold`: opened by a hold or a right-click, so
  * it has the actions; `sec`: the hour the map's weather shows; `zoom`, `touch`: how far a finger or a pointer reaches.
  * ways, a, wx, places, area: undefined while asked, 'failed', 'none' (no way there; no area: null), or the answer. Where
- * no way is in reach, the area the spot is in (`spot.area`: the map draws water or a park there) and, on water, its depth
- * (`depth`: words, or null where Traficom didn't answer).
+ * no way is in reach, the area the spot is in (`spot.area`: the map draws water or a park there); on water, its depth
+ * (`depth`: words, or null where Traficom didn't answer), whatever the ways do.
  */
 export const newPick = (spot, { hold = false, sport, sec, zoom, touch = false } = {}) => ({
   spot, ll: spot.ll, hold, sport, sec, zoom, touch, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, area: undefined, depth: undefined, dead: false,
@@ -35,6 +35,7 @@ export async function resolvePick(pick, changed) {
   // the weather here and the places at the spot don't wait for the ways
   pointForecasts([pick.ll]).then(([s]) => sampleAt(s, pick.sec), () => 'failed').then((w) => step(() => { pick.wx = w; }));
   nearPlaces(pick.ll).then((p) => step(() => { pick.places = p; }), () => step(() => { pick.places = 'failed'; }));
+  if (pick.spot.area === 'water') depthAt(pick.ll).then((d) => step(() => { pick.depth = d; }), () => step(() => { pick.depth = null; }));
   try { await loadWays(wayTile(pick.ll), { force: true }); } catch { step(() => { pick.ways = 'failed'; }); return; }
   const seed = nearestWay(pick.ll, (pick.touch ? 18 : 9) * metresPerPixel(pick.ll, pick.zoom));
   if (!seed) {
@@ -42,7 +43,6 @@ export async function resolvePick(pick, changed) {
     elevation(pick.ll).then((e) => step(() => { pick.ele = Number.isFinite(e) ? e : null; }), () => step(() => { pick.ele = null; }));
     // (only where the map draws water or a park: a tap on bare land asks nothing)
     if (!pick.spot.area) { step(() => { pick.area = null; pick.line = 'Nothing is mapped right here'; }); return; }
-    if (pick.spot.area === 'water') depthAt(pick.ll).then((d) => step(() => { pick.depth = d; }), () => step(() => { pick.depth = null; }));
     const area = await areaAt(pick.ll).catch(() => 'failed');
     step(() => {
       pick.area = area;
